@@ -7,7 +7,7 @@ const zat = @import("zat");
 
 const log = std.log.scoped(.ingester);
 
-const MAX_BATCH: usize = 500;
+const MAX_BATCH: usize = 100;
 
 const Config = struct {
     worker_url: []const u8,
