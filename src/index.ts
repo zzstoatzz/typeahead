@@ -27,9 +27,9 @@ function json(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: CORS_HEADERS });
 }
 
-/** strip anything that could break FTS5 syntax */
+/** strip anything that could break FTS5 syntax, preserving unicode letters/digits */
 function sanitize(q: string): string {
-  return q.replace(/[^\w\s.-]/g, "").trim();
+  return q.replace(/[^\p{L}\p{N}\s.-]/gu, "").trim();
 }
 
 interface ActorRow {
@@ -123,8 +123,15 @@ async function handleSearch(
   const url = new URL(request.url);
   const q = url.searchParams.get("q") || url.searchParams.get("term") || "";
   const limitParam = parseInt(url.searchParams.get("limit") || "10", 10);
-  const limit = Math.max(1, Math.min(limitParam || 10, 100));
 
+  if (!q.trim()) {
+    return json({ error: "InvalidRequest", message: "Error: Params must have the property \"q\"" }, 400);
+  }
+  if (limitParam > 100) {
+    return json({ error: "InvalidRequest", message: "Error: limit must be <= 100" }, 400);
+  }
+
+  const limit = Math.max(1, limitParam || 10);
   const term = sanitize(q);
   if (!term) {
     return json({ actors: [] });
