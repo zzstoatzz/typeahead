@@ -235,7 +235,11 @@ async function handleIngest(
   await env.DB.batch(stmts);
 
   if (cursor !== undefined) {
-    await env.KV.put("jetstream_cursor", String(cursor));
+    try {
+      await env.KV.put("jetstream_cursor", String(cursor));
+    } catch {
+      // best-effort — don't fail the ingest if KV write fails (e.g. quota)
+    }
   }
 
   return json({ ok: true, ingested: events.length });
