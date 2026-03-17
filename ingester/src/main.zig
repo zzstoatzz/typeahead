@@ -43,6 +43,7 @@ const IngestHandler = struct {
     total_ingested: u64 = 0,
     total_deleted: u64 = 0,
     last_flush: i64 = 0,
+    retry_after: i64 = 0, // timestamp before which we skip flush attempts
 
     fn init(allocator: Allocator, config: Config) IngestHandler {
         return .{
@@ -85,7 +86,11 @@ const IngestHandler = struct {
             self.delete_buffer.clearRetainingCapacity();
             _ = self.arena.reset(.retain_capacity);
             self.flushed_cursor = self.pending_cursor;
+            self.retry_after = 0;
         }
+
+        // respect backoff cooldown after failures
+        if (now < self.retry_after) return;
 
         const should_flush = self.buffer.items.len >= MAX_BATCH or
             self.delete_buffer.items.len >= MAX_BATCH or
@@ -144,50 +149,76 @@ const IngestHandler = struct {
 
     fn flush(self: *IngestHandler) void {
         self.last_flush = std.time.timestamp();
-        var ingest_ok = true;
-        var delete_ok = true;
+        var any_failure = false;
 
         if (self.buffer.items.len > 0) {
-            const count = self.buffer.items.len;
-            ingest_ok = postBatch(
+            // send at most MAX_BATCH at a time to avoid overwhelming D1
+            const batch_end = @min(self.buffer.items.len, MAX_BATCH);
+            const batch = self.buffer.items[0..batch_end];
+            const ok = postBatch(
                 self.allocator,
                 self.config,
-                self.buffer.items,
+                batch,
                 self.flushed_cursor,
             );
-            if (ingest_ok) {
-                self.total_ingested += count;
-                log.info("+{d} actors (total: {d}) cursor={d}", .{
-                    count, self.total_ingested, self.pending_cursor,
+            if (ok) {
+                self.total_ingested += batch_end;
+                log.info("+{d} actors (total: {d}, pending: {d}) cursor={d}", .{
+                    batch_end, self.total_ingested,
+                    self.buffer.items.len - batch_end, self.pending_cursor,
                 });
-                self.buffer.clearRetainingCapacity();
+                // shift remaining items forward
+                if (batch_end < self.buffer.items.len) {
+                    std.mem.copyForwards(
+                        ActorEvent,
+                        self.buffer.items[0 .. self.buffer.items.len - batch_end],
+                        self.buffer.items[batch_end..],
+                    );
+                }
+                self.buffer.shrinkRetainingCapacity(self.buffer.items.len - batch_end);
             } else {
-                log.err("ingest batch failed ({d} events), will retry", .{count});
+                log.err("ingest batch failed ({d} events, {d} pending), will retry in 5s", .{
+                    batch_end, self.buffer.items.len,
+                });
+                any_failure = true;
             }
         }
 
         if (self.delete_buffer.items.len > 0) {
-            const count = self.delete_buffer.items.len;
-            delete_ok = deleteActors(
+            const batch_end = @min(self.delete_buffer.items.len, MAX_BATCH);
+            const batch = self.delete_buffer.items[0..batch_end];
+            const ok = deleteActors(
                 self.allocator,
                 self.config,
-                self.delete_buffer.items,
+                batch,
             );
-            if (delete_ok) {
-                self.total_deleted += count;
+            if (ok) {
+                self.total_deleted += batch_end;
                 log.info("-{d} moderated (total: {d})", .{
-                    count, self.total_deleted,
+                    batch_end, self.total_deleted,
                 });
-                self.delete_buffer.clearRetainingCapacity();
+                if (batch_end < self.delete_buffer.items.len) {
+                    const remaining = self.delete_buffer.items.len - batch_end;
+                    // shift items - need to copy as slices
+                    var i: usize = 0;
+                    while (i < remaining) : (i += 1) {
+                        self.delete_buffer.items[i] = self.delete_buffer.items[batch_end + i];
+                    }
+                    self.delete_buffer.shrinkRetainingCapacity(remaining);
+                } else {
+                    self.delete_buffer.clearRetainingCapacity();
+                }
             } else {
-                log.err("delete batch failed ({d} dids), will retry", .{count});
+                log.err("delete batch failed ({d} dids), will retry in 5s", .{batch_end});
+                any_failure = true;
             }
         }
 
-        // only advance cursor when all pending work succeeded
-        if (ingest_ok and delete_ok) {
+        if (any_failure) {
+            self.retry_after = std.time.timestamp() + 5;
+        } else if (self.buffer.items.len == 0 and self.delete_buffer.items.len == 0) {
+            // only advance cursor and free arena when all work is drained
             self.flushed_cursor = self.pending_cursor;
-            // free all duped strings at once — safe because buffers are empty
             _ = self.arena.reset(.retain_capacity);
         }
     }
