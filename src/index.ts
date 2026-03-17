@@ -98,6 +98,21 @@ async function backfillFromBsky(
   }
 }
 
+async function throttledBackfill(term: string, limit: number, env: Env): Promise<void> {
+  // kill switch — set KV key "backfill" to "off" to disable without redeploying
+  const flag = await env.KV.get("backfill");
+  if (flag === "off") return;
+
+  // global budget — cap total backfill triggers across all users
+  const { success } = await env.RATE_LIMITER_STRICT.limit({ key: "backfill" });
+  if (!success) {
+    console.log(JSON.stringify({ event: "backfill_throttled", term }));
+    return;
+  }
+
+  return backfillFromBsky(term, limit, env);
+}
+
 // --- end backfill ---
 
 async function handleSearch(
@@ -148,7 +163,7 @@ async function handleSearch(
   // --- backfill: remove this block once at parity with Bluesky ---
   const hasGaps = actors.length < limit || actors.some((a) => !a.avatar);
   if (hasGaps) {
-    ctx.waitUntil(backfillFromBsky(term, limit, env));
+    ctx.waitUntil(throttledBackfill(term, limit, env));
   }
   // --- end backfill ---
 
