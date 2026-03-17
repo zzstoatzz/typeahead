@@ -140,6 +140,27 @@ def test_limit_over_max(base_url: str):
     check("limit>100 returns 400", data is not None and data.get("_http_error") == 400, f"got {data}")
 
 
+def test_stats_page(base_url: str):
+    print("\n--- stats page ---")
+    try:
+        req = urllib.request.Request(
+            f"{base_url}/stats",
+            headers={"User-Agent": "typeahead-smoke/1.0"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            ct = resp.headers.get("Content-Type", "")
+            body = resp.read().decode()
+            check("stats returns 200", resp.status == 200)
+            check("stats content-type is html", "text/html" in ct, f"got '{ct}'")
+            check("stats contains actors indexed", "actors indexed" in body)
+            check("stats contains sparkline heading", "searches / hour" in body)
+            check("stats has home link", 'href="/"' in body)
+    except urllib.error.HTTPError as e:
+        check("stats returns 200", False, f"got {e.code}")
+    except Exception as e:
+        check("stats fetch succeeded", False, str(e))
+
+
 def test_comparison(base_url: str, queries: list[str]):
     print("\n--- comparison vs public.api.bsky.app ---")
 
@@ -187,6 +208,7 @@ def main():
     test_limit_bounds(args.url)
     test_empty_query(args.url)
     test_limit_over_max(args.url)
+    test_stats_page(args.url)
 
     if args.compare:
         test_comparison(args.url, args.queries)

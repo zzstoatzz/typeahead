@@ -115,6 +115,20 @@ async function throttledBackfill(term: string, limit: number, env: Env): Promise
 
 // --- end backfill ---
 
+/** fire-and-forget: increment hourly search count + accumulate response time */
+async function recordMetric(env: Env, ms: number): Promise<void> {
+  const hour = Math.floor(Date.now() / 3_600_000);
+  await env.DB.prepare(
+    `INSERT INTO metrics (hour, searches, total_ms)
+     VALUES (?1, 1, ?2)
+     ON CONFLICT(hour) DO UPDATE SET
+       searches = searches + 1,
+       total_ms = total_ms + ?2`
+  )
+    .bind(hour, ms)
+    .run();
+}
+
 async function handleSearch(
   request: Request,
   env: Env,
@@ -149,12 +163,14 @@ async function handleSearch(
     return cached;
   }
 
+  const t0 = Date.now();
+
   const ftsQuery = `"${term}"*`;
   const { results } = await env.DB.prepare(
     `SELECT a.did, a.handle, a.display_name, a.avatar_url
      FROM actors_fts
      JOIN actors a ON a.rowid = actors_fts.rowid
-     WHERE actors_fts MATCH ?1
+     WHERE actors_fts MATCH ?1 AND a.handle != ''
      ORDER BY rank
      LIMIT ?2`
   )
@@ -162,7 +178,6 @@ async function handleSearch(
     .all<ActorRow>();
 
   const actors = (results || [])
-    .filter((r) => r.handle)
     .map((r) => ({
       did: r.did,
       handle: r.handle,
@@ -176,6 +191,8 @@ async function handleSearch(
     ctx.waitUntil(throttledBackfill(term, limit, env));
   }
   // --- end backfill ---
+
+  ctx.waitUntil(recordMetric(env, Date.now() - t0));
 
   const response = json({ actors });
 
@@ -362,6 +379,193 @@ async function handleRequestIndexing(
   );
 }
 
+async function handleStats(env: Env): Promise<Response> {
+  const [totalRes, handlesRes, avatarsRes, updatedRes, metricsRes] =
+    await env.DB.batch([
+      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors"),
+      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE handle != ''"),
+      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE avatar_url != ''"),
+      env.DB.prepare("SELECT MAX(updated_at) AS ts FROM actors"),
+      env.DB.prepare(
+        "SELECT hour, searches, total_ms FROM metrics ORDER BY hour DESC LIMIT 168"
+      ),
+    ]);
+
+  const total = (totalRes.results[0] as any)?.cnt ?? 0;
+  const withHandles = (handlesRes.results[0] as any)?.cnt ?? 0;
+  const withAvatars = (avatarsRes.results[0] as any)?.cnt ?? 0;
+  const lastUpdated = (updatedRes.results[0] as any)?.ts ?? null;
+  const rows = (metricsRes.results ?? []) as {
+    hour: number;
+    searches: number;
+    total_ms: number;
+  }[];
+
+  const totalSearches = rows.reduce((s, r) => s + r.searches, 0);
+  const totalMs = rows.reduce((s, r) => s + r.total_ms, 0);
+  const avgLatency = totalSearches > 0 ? totalMs / totalSearches : 0;
+  const handlePct = total > 0 ? ((withHandles / total) * 100).toFixed(1) : "0";
+  const avatarPct = total > 0 ? ((withAvatars / total) * 100).toFixed(1) : "0";
+
+  const lastUpdatedStr = lastUpdated
+    ? new Date(lastUpdated * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC"
+    : "never";
+
+  return html(statsPage({ total, withHandles, withAvatars, lastUpdatedStr, rows, totalSearches, avgLatency, handlePct, avatarPct }));
+}
+
+interface StatsData {
+  total: number;
+  withHandles: number;
+  withAvatars: number;
+  lastUpdatedStr: string;
+  rows: { hour: number; searches: number; total_ms: number }[];
+  totalSearches: number;
+  avgLatency: number;
+  handlePct: string;
+  avatarPct: string;
+}
+
+function statsPage(d: StatsData): string {
+  // build sparkline data (oldest first)
+  const sorted = [...d.rows].reverse();
+  const counts = sorted.map((r) => r.searches);
+  const max = Math.max(...counts, 1);
+  const w = 600;
+  const h = 80;
+  const step = counts.length > 1 ? w / (counts.length - 1) : 0;
+  const points = counts
+    .map((c, i) => `${(i * step).toFixed(1)},${(h - (c / max) * h).toFixed(1)}`)
+    .join(" ");
+  const jsonData = JSON.stringify(
+    sorted.map((r) => ({
+      hour: new Date(r.hour * 3_600_000).toISOString().slice(0, 13) + ":00Z",
+      searches: r.searches,
+    }))
+  );
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>typeahead — stats</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e0e0e0;
+           display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+    .container { max-width: 620px; width: 100%; padding: 2rem; }
+    .header { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
+    h1 { font-size: 1.1rem; font-weight: 400; color: #888; }
+    h1 strong { color: #e0e0e0; }
+    .subtitle { font-size: 0.8rem; color: #555; margin-bottom: 1.5rem; }
+    .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
+    .metric { background: #111; border: 1px solid #222; border-radius: 6px; padding: 0.7rem 0.9rem; }
+    .metric .label { font-size: 0.7rem; color: #555; margin-bottom: 0.2rem; }
+    .metric .label[data-tip] { cursor: default; position: relative; border-bottom: 1px dotted #444; display: inline-block; }
+    .metric .label[data-tip]:hover::after {
+      content: attr(data-tip); position: absolute; left: 0; top: 1.6em; width: 200px;
+      padding: 0.4rem 0.5rem; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
+      font-size: 0.95em; color: #999; line-height: 1.4; z-index: 20; white-space: normal;
+    }
+    .metric .value { font-size: 1.1rem; color: #ccc; }
+    .sparkline-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
+                      padding: 0.9rem; margin-bottom: 1.5rem; }
+    .sparkline-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
+    svg { width: 100%; height: auto; }
+    polyline { fill: none; stroke: #4a9; stroke-width: 1.5; }
+    .summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
+    .tooltip { display: none; position: fixed; background: #1a1a1a; border: 1px solid #333;
+               border-radius: 4px; padding: 0.4rem 0.6rem; font-size: 0.75rem; color: #ccc;
+               pointer-events: none; z-index: 50; }
+    footer { padding-top: 1.5rem; border-top: 1px solid #1a1a1a; font-size: 0.7rem;
+             color: #444; display: flex; justify-content: center; gap: 0.4rem; }
+    footer a { color: #555; text-decoration: none; }
+    footer a:hover { color: #888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><strong>typeahead</strong> stats</h1>
+    </div>
+    <p class="subtitle">index health and search activity</p>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="label">actors indexed</div>
+        <div class="value">${d.total.toLocaleString()}</div>
+      </div>
+      <div class="metric">
+        <div class="label">with handles</div>
+        <div class="value">${d.withHandles.toLocaleString()}</div>
+      </div>
+      <div class="metric">
+        <div class="label">with avatars</div>
+        <div class="value">${d.withAvatars.toLocaleString()}</div>
+      </div>
+      <div class="metric">
+        <div class="label">last indexed</div>
+        <div class="value" style="font-size:0.8rem">${escHtml(d.lastUpdatedStr)}</div>
+      </div>
+    </div>
+
+    <div class="sparkline-wrap">
+      <h2>searches / hour (7 days)</h2>
+      ${counts.length > 1
+        ? `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" id="spark">
+            <polyline points="${points}" />
+          </svg>`
+        : `<div style="color:#444;font-size:0.8rem;padding:1rem 0;text-align:center">no data yet</div>`}
+    </div>
+
+    <div class="summary">
+      <div class="metric">
+        <div class="label">total searches (7d)</div>
+        <div class="value">${d.totalSearches.toLocaleString()}</div>
+      </div>
+      <div class="metric">
+        <div class="label" data-tip="average response time for uncached searches">avg latency</div>
+        <div class="value">${d.avgLatency.toFixed(1)} ms</div>
+      </div>
+      <div class="metric">
+        <div class="label" data-tip="% of indexed actors with a resolved handle (vs bare DID only)">handle coverage</div>
+        <div class="value">${d.handlePct}%</div>
+      </div>
+      <div class="metric">
+        <div class="label" data-tip="% of indexed actors with a profile image">avatar coverage</div>
+        <div class="value">${d.avatarPct}%</div>
+      </div>
+    </div>
+
+    <footer>
+      <a href="/">&larr; home</a>
+    </footer>
+  </div>
+  <div class="tooltip" id="tip"></div>
+  <script>
+    const data = ${jsonData};
+    const spark = document.getElementById('spark');
+    const tip = document.getElementById('tip');
+    if (spark) {
+      spark.addEventListener('mousemove', e => {
+        const rect = spark.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const idx = Math.min(Math.round(x / rect.width * (data.length - 1)), data.length - 1);
+        if (idx >= 0 && data[idx]) {
+          tip.textContent = data[idx].hour + ' — ' + data[idx].searches + ' searches';
+          tip.style.display = 'block';
+          tip.style.left = (e.clientX + 12) + 'px';
+          tip.style.top = (e.clientY - 28) + 'px';
+        }
+      });
+      spark.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    }
+  </script>
+</body>
+</html>`;
+}
+
 function indexPage(message?: string): string {
   return `<!doctype html>
 <html>
@@ -461,6 +665,7 @@ function indexPage(message?: string): string {
 
     <footer>
       by <a href="https://bsky.app/profile/zzstoatzz.io" target="_blank" rel="noopener">@zzstoatzz.io</a>
+      · <a href="/stats">stats</a>
     </footer>
   </div>
   <script>
@@ -515,6 +720,10 @@ export default {
 
     if (pathname === "/" && request.method === "GET") {
       return html(indexPage());
+    }
+
+    if (pathname === "/stats" && request.method === "GET") {
+      return handleStats(env);
     }
 
     if (pathname === "/request-indexing" && request.method === "GET") {

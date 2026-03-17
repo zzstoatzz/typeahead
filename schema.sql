@@ -31,3 +31,9 @@ CREATE TRIGGER IF NOT EXISTS actors_au AFTER UPDATE ON actors BEGIN
   INSERT INTO actors_fts(rowid, handle, display_name)
   VALUES (new.rowid, new.handle, new.display_name);
 END;
+
+CREATE TABLE IF NOT EXISTS metrics (
+  hour INTEGER PRIMARY KEY,
+  searches INTEGER NOT NULL DEFAULT 0,
+  total_ms REAL NOT NULL DEFAULT 0
+);
