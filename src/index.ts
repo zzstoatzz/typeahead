@@ -15,6 +15,8 @@ const CORS_HEADERS = {
 const SLINGSHOT_URL =
   "https://slingshot.microcosm.blue/xrpc/blue.microcosm.identity.resolveMiniDoc";
 
+const FAVICON = `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='13' cy='13' r='9' fill='none' stroke='%2344aa99' stroke-width='2.5' opacity='0.8'/%3E%3Cline x1='20' y1='20' x2='28' y2='28' stroke='%2344aa99' stroke-width='2.5' stroke-linecap='round' opacity='0.8'/%3E%3C/svg%3E">`;
+
 function clientIP(request: Request): string {
   return request.headers.get("CF-Connecting-IP") || "unknown";
 }
@@ -479,6 +481,7 @@ function statsPage(d: StatsData): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>typeahead — stats</title>
+  ${FAVICON}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e0e0e0;
@@ -790,6 +793,7 @@ function indexPage(message?: string): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>typeahead</title>
+  ${FAVICON}
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e0e0e0;
