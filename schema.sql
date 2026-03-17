@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS actors (
   did TEXT PRIMARY KEY,
-  handle TEXT NOT NULL,
+  handle TEXT NOT NULL DEFAULT '',
   display_name TEXT DEFAULT '',
   avatar_url TEXT DEFAULT '',
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())

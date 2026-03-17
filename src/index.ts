@@ -79,15 +79,15 @@ async function backfillFromBsky(
         `INSERT INTO actors (did, handle, display_name, avatar_url, updated_at)
          VALUES (?1, ?2, ?3, ?4, unixepoch())
          ON CONFLICT(did) DO UPDATE SET
-           handle = COALESCE(?2, actors.handle),
+           handle = COALESCE(NULLIF(?2, ''), actors.handle),
            display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
            avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
            updated_at = unixepoch()`
       ).bind(
         a.did,
-        a.handle || null,
-        a.displayName || null,
-        a.avatar || null
+        a.handle || '',
+        a.displayName || '',
+        a.avatar || ''
       )
     );
 
@@ -122,16 +122,17 @@ async function handleSearch(
 ): Promise<Response> {
   const url = new URL(request.url);
   const q = url.searchParams.get("q") || url.searchParams.get("term") || "";
-  const limitParam = parseInt(url.searchParams.get("limit") || "10", 10);
+  const limitRaw = url.searchParams.get("limit");
+  const limitParam = limitRaw !== null ? parseInt(limitRaw, 10) : 10;
 
   if (!q.trim()) {
     return json({ error: "InvalidRequest", message: "Error: Params must have the property \"q\"" }, 400);
   }
-  if (limitParam > 100) {
-    return json({ error: "InvalidRequest", message: "Error: limit must be <= 100" }, 400);
+  if (isNaN(limitParam) || limitParam < 1 || limitParam > 100) {
+    return json({ error: "InvalidRequest", message: "Error: limit must be between 1 and 100" }, 400);
   }
 
-  const limit = Math.max(1, limitParam || 10);
+  const limit = limitParam;
   const term = sanitize(q);
   if (!term) {
     return json({ actors: [] });
@@ -160,12 +161,14 @@ async function handleSearch(
     .bind(ftsQuery, limit)
     .all<ActorRow>();
 
-  const actors = (results || []).map((r) => ({
-    did: r.did,
-    handle: r.handle,
-    ...(r.display_name ? { displayName: r.display_name } : {}),
-    ...(r.avatar_url ? { avatar: r.avatar_url } : {}),
-  }));
+  const actors = (results || [])
+    .filter((r) => r.handle)
+    .map((r) => ({
+      did: r.did,
+      handle: r.handle,
+      ...(r.display_name ? { displayName: r.display_name } : {}),
+      ...(r.avatar_url ? { avatar: r.avatar_url } : {}),
+    }));
 
   // --- backfill: remove this block once at parity with Bluesky ---
   const hasGaps = actors.length < limit || actors.some((a) => !a.avatar);
@@ -220,19 +223,24 @@ async function handleIngest(
       `INSERT INTO actors (did, handle, display_name, avatar_url, updated_at)
        VALUES (?1, ?2, ?3, ?4, unixepoch())
        ON CONFLICT(did) DO UPDATE SET
-         handle = COALESCE(?2, actors.handle),
-         display_name = COALESCE(?3, actors.display_name),
+         handle = COALESCE(NULLIF(?2, ''), actors.handle),
+         display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
          avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
          updated_at = unixepoch()`
     ).bind(
       e.did,
-      e.handle || null,
-      e.display_name || null,
-      avatarUrl
+      e.handle || '',
+      e.display_name || '',
+      avatarUrl || ''
     );
   });
 
-  await env.DB.batch(stmts);
+  try {
+    await env.DB.batch(stmts);
+  } catch (e: any) {
+    console.log(JSON.stringify({ event: "ingest_error", error: e?.message, count: events.length }));
+    return json({ error: e?.message || "db batch failed" }, 500);
+  }
 
   if (cursor !== undefined) {
     try {
