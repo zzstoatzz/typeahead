@@ -855,7 +855,7 @@ function indexPage(message?: string): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1><strong>typeahead</strong><a href="https://tangled.sh/zzstoatzz.io/typeahead" class="src" target="_blank" rel="noopener">[src]</a><sup class="experimental">*experimental</sup></h1>
+      <h1><strong>typeahead</strong><sup class="experimental">*experimental</sup> <a href="https://tangled.sh/zzstoatzz.io/typeahead" class="src" target="_blank" rel="noopener">[src]</a></h1>
     </div>
     <p class="subtitle">community actor search for <a href="https://atproto.com" target="_blank" rel="noopener">atproto</a></p>
 
