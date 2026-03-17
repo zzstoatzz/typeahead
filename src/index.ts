@@ -127,6 +127,26 @@ async function recordMetric(env: Env, ms: number): Promise<void> {
   )
     .bind(hour, ms)
     .run();
+
+  // hourly actor count snapshot (first search of each hour wins)
+  const snapKey = `snap:${hour}`;
+  if (!(await env.KV.get(snapKey))) {
+    const row = await env.DB.prepare(
+      `SELECT COUNT(*) AS total,
+              SUM(CASE WHEN handle != '' THEN 1 ELSE 0 END) AS with_handles,
+              SUM(CASE WHEN avatar_url != '' THEN 1 ELSE 0 END) AS with_avatars
+       FROM actors`
+    ).first<{ total: number; with_handles: number; with_avatars: number }>();
+    if (row) {
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO snapshots (hour, total, with_handles, with_avatars)
+         VALUES (?1, ?2, ?3, ?4)`
+      )
+        .bind(hour, row.total, row.with_handles, row.with_avatars)
+        .run();
+    }
+    await env.KV.put(snapKey, "1", { expirationTtl: 7200 });
+  }
 }
 
 async function handleSearch(
@@ -380,26 +400,34 @@ async function handleRequestIndexing(
 }
 
 async function handleStats(env: Env): Promise<Response> {
-  const [totalRes, handlesRes, avatarsRes, updatedRes, metricsRes] =
+  const [totalRes, handlesRes, avatarsRes, metricsRes, snapshotRes] =
     await env.DB.batch([
       env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors"),
       env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE handle != ''"),
       env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE avatar_url != ''"),
-      env.DB.prepare("SELECT MAX(updated_at) AS ts FROM actors"),
       env.DB.prepare(
         "SELECT hour, searches, total_ms FROM metrics ORDER BY hour DESC LIMIT 168"
+      ),
+      env.DB.prepare(
+        "SELECT hour, total, with_handles, with_avatars FROM snapshots ORDER BY hour ASC LIMIT 2000"
       ),
     ]);
 
   const total = (totalRes.results[0] as any)?.cnt ?? 0;
   const withHandles = (handlesRes.results[0] as any)?.cnt ?? 0;
   const withAvatars = (avatarsRes.results[0] as any)?.cnt ?? 0;
-  const lastUpdated = (updatedRes.results[0] as any)?.ts ?? null;
   const rows = (metricsRes.results ?? []) as {
     hour: number;
     searches: number;
     total_ms: number;
   }[];
+  const snapshots = (snapshotRes.results ?? []) as SnapshotPoint[];
+
+  // append live counts as the latest point
+  const liveHour = Math.floor(Date.now() / 3_600_000);
+  if (snapshots.length === 0 || snapshots[snapshots.length - 1].hour < liveHour) {
+    snapshots.push({ hour: liveHour, total, with_handles: withHandles, with_avatars: withAvatars });
+  }
 
   const totalSearches = rows.reduce((s, r) => s + r.searches, 0);
   const totalMs = rows.reduce((s, r) => s + r.total_ms, 0);
@@ -407,42 +435,44 @@ async function handleStats(env: Env): Promise<Response> {
   const handlePct = total > 0 ? ((withHandles / total) * 100).toFixed(1) : "0";
   const avatarPct = total > 0 ? ((withAvatars / total) * 100).toFixed(1) : "0";
 
-  const lastUpdatedStr = lastUpdated
-    ? new Date(lastUpdated * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC"
-    : "never";
+  return html(statsPage({ total, rows, totalSearches, avgLatency, handlePct, avatarPct, snapshots }));
+}
 
-  return html(statsPage({ total, withHandles, withAvatars, lastUpdatedStr, rows, totalSearches, avgLatency, handlePct, avatarPct }));
+interface SnapshotPoint {
+  hour: number;
+  total: number;
+  with_handles: number;
+  with_avatars: number;
 }
 
 interface StatsData {
   total: number;
-  withHandles: number;
-  withAvatars: number;
-  lastUpdatedStr: string;
   rows: { hour: number; searches: number; total_ms: number }[];
   totalSearches: number;
   avgLatency: number;
   handlePct: string;
   avatarPct: string;
+  snapshots: SnapshotPoint[];
 }
 
 function statsPage(d: StatsData): string {
-  // build sparkline data (oldest first)
+  // search sparkline data (oldest first)
   const sorted = [...d.rows].reverse();
   const counts = sorted.map((r) => r.searches);
-  const max = Math.max(...counts, 1);
-  const w = 600;
-  const h = 80;
-  const step = counts.length > 1 ? w / (counts.length - 1) : 0;
-  const points = counts
-    .map((c, i) => `${(i * step).toFixed(1)},${(h - (c / max) * h).toFixed(1)}`)
+  const sparkMax = Math.max(...counts, 1);
+  const sw = 600, sh = 80;
+  const step = counts.length > 1 ? sw / (counts.length - 1) : 0;
+  const sparkPoints = counts
+    .map((c, i) => `${(i * step).toFixed(1)},${(sh - (c / sparkMax) * sh).toFixed(1)}`)
     .join(" ");
-  const jsonData = JSON.stringify(
+  const sparkJson = JSON.stringify(
     sorted.map((r) => ({
       hour: new Date(r.hour * 3_600_000).toISOString().slice(0, 13) + ":00Z",
       searches: r.searches,
     }))
   );
+
+  const snapshotJson = JSON.stringify(d.snapshots);
 
   return `<!doctype html>
 <html>
@@ -453,13 +483,36 @@ function statsPage(d: StatsData): string {
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e0e0e0;
-           display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .container { max-width: 620px; width: 100%; padding: 2rem; }
+           display: flex; justify-content: center; padding: 2rem 1rem; min-height: 100vh; }
+    .container { max-width: 620px; width: 100%; }
     .header { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
     h1 { font-size: 1.1rem; font-weight: 400; color: #888; }
     h1 strong { color: #e0e0e0; }
     .subtitle { font-size: 0.8rem; color: #555; margin-bottom: 1.5rem; }
-    .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
+
+    .chart-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
+                  padding: 0.9rem; margin-bottom: 1.5rem; position: relative; }
+    .chart-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
+    #trend { width: 100%; height: 200px; display: block; touch-action: none; }
+    .legend { display: flex; gap: 1.2rem; margin-top: 0.6rem; font-size: 0.7rem; color: #888; }
+    .legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .ldot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .chart-tip { display: none; position: fixed; background: rgba(17, 17, 17, 0.95);
+                 border: 1px solid #333; border-radius: 6px; padding: 0.5rem 0.7rem;
+                 font-size: 0.72rem; color: #ccc; pointer-events: none; z-index: 50;
+                 line-height: 1.6; white-space: nowrap;
+                 box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .ct-time { color: #666; font-size: 0.65rem; }
+    .ct-row { display: flex; align-items: center; gap: 0.35rem; }
+    .ct-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+    .sparkline-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
+                      padding: 0.9rem; margin-bottom: 1.5rem; }
+    .sparkline-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
+    svg { width: 100%; height: auto; }
+    polyline { fill: none; stroke: #4a9; stroke-width: 1.5; }
+
+    .summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
     .metric { background: #111; border: 1px solid #222; border-radius: 6px; padding: 0.7rem 0.9rem; }
     .metric .label { font-size: 0.7rem; color: #555; margin-bottom: 0.2rem; }
     .metric .label[data-tip] { cursor: default; position: relative; border-bottom: 1px dotted #444; display: inline-block; }
@@ -469,19 +522,21 @@ function statsPage(d: StatsData): string {
       font-size: 0.95em; color: #999; line-height: 1.4; z-index: 20; white-space: normal;
     }
     .metric .value { font-size: 1.1rem; color: #ccc; }
-    .sparkline-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
-                      padding: 0.9rem; margin-bottom: 1.5rem; }
-    .sparkline-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
-    svg { width: 100%; height: auto; }
-    polyline { fill: none; stroke: #4a9; stroke-width: 1.5; }
-    .summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
-    .tooltip { display: none; position: fixed; background: #1a1a1a; border: 1px solid #333;
-               border-radius: 4px; padding: 0.4rem 0.6rem; font-size: 0.75rem; color: #ccc;
-               pointer-events: none; z-index: 50; }
+    .spark-tip { display: none; position: fixed; background: #1a1a1a; border: 1px solid #333;
+                 border-radius: 4px; padding: 0.4rem 0.6rem; font-size: 0.75rem; color: #ccc;
+                 pointer-events: none; z-index: 50; }
+
     footer { padding-top: 1.5rem; border-top: 1px solid #1a1a1a; font-size: 0.7rem;
              color: #444; display: flex; justify-content: center; gap: 0.4rem; }
     footer a { color: #555; text-decoration: none; }
     footer a:hover { color: #888; }
+
+    @media (max-width: 640px) {
+      body { padding: 1.5rem 0.75rem; }
+      #trend { height: 160px; }
+      .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
+      .summary { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -491,30 +546,24 @@ function statsPage(d: StatsData): string {
     </div>
     <p class="subtitle">index health and search activity</p>
 
-    <div class="metrics">
-      <div class="metric">
-        <div class="label">actors indexed</div>
-        <div class="value">${d.total.toLocaleString()}</div>
-      </div>
-      <div class="metric">
-        <div class="label">with handles</div>
-        <div class="value">${d.withHandles.toLocaleString()}</div>
-      </div>
-      <div class="metric">
-        <div class="label">with avatars</div>
-        <div class="value">${d.withAvatars.toLocaleString()}</div>
-      </div>
-      <div class="metric">
-        <div class="label">last indexed</div>
-        <div class="value" style="font-size:0.8rem">${escHtml(d.lastUpdatedStr)}</div>
+    <div class="chart-wrap">
+      <h2>actors indexed</h2>
+      ${d.snapshots.length > 1
+        ? `<canvas id="trend"></canvas>`
+        : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
+      <div class="legend">
+        <span><span class="ldot" style="background:#4a9"></span> total (${d.total.toLocaleString()})</span>
+        <span><span class="ldot" style="background:#58a6ff"></span> with handles</span>
+        <span><span class="ldot" style="background:#bc8cff"></span> with avatars</span>
       </div>
     </div>
+    <div class="chart-tip" id="chart-tip"></div>
 
     <div class="sparkline-wrap">
       <h2>searches / hour (7 days)</h2>
       ${counts.length > 1
-        ? `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" id="spark">
-            <polyline points="${points}" />
+        ? `<svg viewBox="0 0 ${sw} ${sh}" preserveAspectRatio="none" id="spark">
+            <polyline points="${sparkPoints}" />
           </svg>`
         : `<div style="color:#444;font-size:0.8rem;padding:1rem 0;text-align:center">no data yet</div>`}
     </div>
@@ -542,24 +591,193 @@ function statsPage(d: StatsData): string {
       <a href="/">&larr; home</a>
     </footer>
   </div>
-  <div class="tooltip" id="tip"></div>
+  <div class="spark-tip" id="spark-tip"></div>
   <script>
-    const data = ${jsonData};
+    const COLORS = { total: '#4a9', handles: '#58a6ff', avatars: '#bc8cff' };
+
+    function fmtNum(n) {
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + 'k';
+      return n.toLocaleString();
+    }
+
+    /* --- actors indexed trend chart --- */
+    const snaps = ${snapshotJson};
+    const canvas = document.getElementById('trend');
+    const chartTip = document.getElementById('chart-tip');
+
+    function drawChart(hoverIdx) {
+      if (!canvas || snaps.length < 2) return;
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const W = canvas.clientWidth, H = canvas.clientHeight;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, W, H);
+
+      const pad = { t: 16, r: 12, b: 24, l: 12 };
+      const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+      const n = snaps.length;
+
+      let yMax = 0;
+      for (const s of snaps) { if (s.total > yMax) yMax = s.total; }
+      yMax = yMax * 1.08 || 1;
+
+      const toX = i => pad.l + (i / (n - 1)) * cw;
+      const toY = v => pad.t + ch - (v / yMax) * ch;
+
+      const series = [
+        { key: 'with_avatars', color: COLORS.avatars },
+        { key: 'with_handles', color: COLORS.handles },
+        { key: 'total', color: COLORS.total },
+      ];
+
+      for (const s of series) {
+        const pts = snaps.map((d, i) => [toX(i), toY(d[s.key])]);
+        const trace = () => {
+          ctx.beginPath();
+          ctx.moveTo(pts[0][0], pts[0][1]);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        };
+
+        // glow
+        ctx.save(); trace();
+        ctx.shadowColor = s.color; ctx.shadowBlur = 18;
+        ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.07;
+        ctx.stroke(); ctx.restore();
+
+        // medium glow
+        ctx.save(); trace();
+        ctx.shadowColor = s.color; ctx.shadowBlur = 6;
+        ctx.strokeStyle = s.color; ctx.lineWidth = 1; ctx.globalAlpha = 0.15;
+        ctx.stroke(); ctx.restore();
+
+        // core line
+        trace();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 1.2; ctx.globalAlpha = 0.55;
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+
+      // x-axis
+      {
+        const axisY = H - pad.b;
+        ctx.beginPath(); ctx.moveTo(pad.l, axisY); ctx.lineTo(W - pad.r, axisY);
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.fillStyle = '#555'; ctx.textAlign = 'center';
+        const t0ms = snaps[0].hour * 3600000;
+        const tNms = snaps[n - 1].hour * 3600000;
+        const spanDays = (tNms - t0ms) / 86400000;
+
+        // walk midnights
+        const d = new Date(t0ms);
+        d.setUTCMinutes(0, 0, 0);
+        d.setUTCHours(0);
+        d.setUTCDate(d.getUTCDate() + 1);
+        const minGap = W < 500 ? 65 : 50;
+        let prevX = -Infinity;
+
+        while (d.getTime() <= tNms) {
+          const frac = (d.getTime() - t0ms) / (tNms - t0ms);
+          const x = pad.l + frac * cw;
+          if (x >= pad.l && x <= W - pad.r && x - prevX >= minGap) {
+            ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + 4);
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+            const label = spanDays > 14
+              ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+              : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+            ctx.globalAlpha = 0.4;
+            ctx.fillText(label, x, axisY + 15);
+            ctx.globalAlpha = 1;
+            prevX = x;
+          }
+          d.setUTCDate(d.getUTCDate() + 1);
+        }
+      }
+
+      // hover crosshair + dots
+      if (hoverIdx != null && hoverIdx >= 0 && hoverIdx < n) {
+        const x = toX(hoverIdx);
+        ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H - pad.b);
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+
+        const snap = snaps[hoverIdx];
+        for (const s of series) {
+          const y = toY(snap[s.key]);
+          ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9; ctx.fill();
+          ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.strokeStyle = s.color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8;
+          ctx.stroke(); ctx.globalAlpha = 1;
+        }
+      }
+    }
+
+    function chartHover(clientX, clientY) {
+      if (!canvas || snaps.length < 2) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = clientX - rect.left;
+      const pad = { l: 12, r: 12 };
+      const cw = rect.width - pad.l - pad.r;
+      const frac = (mx - pad.l) / cw;
+      const idx = Math.max(0, Math.min(snaps.length - 1, Math.round(frac * (snaps.length - 1))));
+      drawChart(idx);
+
+      const snap = snaps[idx];
+      const t = new Date(snap.hour * 3600000);
+      const time = t.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+      chartTip.innerHTML =
+        '<div class="ct-time">' + time + '</div>'
+        + '<div class="ct-row"><span class="ct-dot" style="background:' + COLORS.total + '"></span> ' + fmtNum(snap.total) + ' actors</div>'
+        + '<div class="ct-row"><span class="ct-dot" style="background:' + COLORS.handles + '"></span> ' + fmtNum(snap.with_handles) + ' with handles</div>'
+        + '<div class="ct-row"><span class="ct-dot" style="background:' + COLORS.avatars + '"></span> ' + fmtNum(snap.with_avatars) + ' with avatars</div>';
+      chartTip.style.display = 'block';
+      const tx = clientX + 14, ty = clientY - 10;
+      chartTip.style.left = (tx + chartTip.offsetWidth > window.innerWidth ? clientX - chartTip.offsetWidth - 10 : tx) + 'px';
+      chartTip.style.top = ty + 'px';
+    }
+
+    if (canvas) {
+      drawChart(null);
+      window.addEventListener('resize', () => drawChart(null));
+
+      canvas.addEventListener('mousemove', e => chartHover(e.clientX, e.clientY));
+      canvas.addEventListener('mouseleave', () => {
+        chartTip.style.display = 'none';
+        drawChart(null);
+      });
+      canvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        chartHover(t.clientX, t.clientY);
+      });
+      canvas.addEventListener('touchend', () => {
+        chartTip.style.display = 'none';
+        drawChart(null);
+      });
+    }
+
+    /* --- search sparkline --- */
+    const sparkData = ${sparkJson};
     const spark = document.getElementById('spark');
-    const tip = document.getElementById('tip');
+    const sparkTip = document.getElementById('spark-tip');
     if (spark) {
       spark.addEventListener('mousemove', e => {
         const rect = spark.getBoundingClientRect();
         const x = e.clientX - rect.left;
-        const idx = Math.min(Math.round(x / rect.width * (data.length - 1)), data.length - 1);
-        if (idx >= 0 && data[idx]) {
-          tip.textContent = data[idx].hour + ' — ' + data[idx].searches + ' searches';
-          tip.style.display = 'block';
-          tip.style.left = (e.clientX + 12) + 'px';
-          tip.style.top = (e.clientY - 28) + 'px';
+        const idx = Math.min(Math.round(x / rect.width * (sparkData.length - 1)), sparkData.length - 1);
+        if (idx >= 0 && sparkData[idx]) {
+          sparkTip.textContent = sparkData[idx].hour + ' — ' + sparkData[idx].searches + ' searches';
+          sparkTip.style.display = 'block';
+          sparkTip.style.left = (e.clientX + 12) + 'px';
+          sparkTip.style.top = (e.clientY - 28) + 'px';
         }
       });
-      spark.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+      spark.addEventListener('mouseleave', () => { sparkTip.style.display = 'none'; });
     }
   </script>
 </body>
@@ -728,11 +946,10 @@ export default {
 
     if (pathname === "/request-indexing" && request.method === "GET") {
       const ip = clientIP(request);
-      // stricter limit — this endpoint makes outbound fetches
-      const { success } = await env.RATE_LIMITER_STRICT.limit({ key: ip });
+      const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
       if (!success) {
         console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
-        return json({ error: "rate limited" }, 429);
+        return html(indexPage("slow down — try again in a minute."), 429);
       }
       return handleRequestIndexing(request, env);
     }
