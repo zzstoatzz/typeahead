@@ -224,59 +224,18 @@ const IngestHandler = struct {
     }
 };
 
-fn writeJsonEscaped(w: anytype, s: []const u8) !void {
-    for (s) |c| {
-        switch (c) {
-            '"' => try w.writeAll("\\\""),
-            '\\' => try w.writeAll("\\\\"),
-            '\n' => try w.writeAll("\\n"),
-            '\r' => try w.writeAll("\\r"),
-            '\t' => try w.writeAll("\\t"),
-            else => {
-                if (c < 0x20) {
-                    try w.print("\\u{x:0>4}", .{c});
-                } else {
-                    try w.writeByte(c);
-                }
-            },
-        }
-    }
-}
-
 fn postBatch(allocator: Allocator, config: Config, events: []const ActorEvent, cursor: i64) bool {
     var client = http.Client{ .allocator = allocator };
     defer client.deinit();
 
-    var body: std.ArrayList(u8) = .{};
-    defer body.deinit(allocator);
+    var output: std.Io.Writer.Allocating = .init(allocator);
+    defer output.deinit();
 
-    var w = body.writer(allocator);
-    w.writeAll("{\"events\":[") catch return false;
-
-    for (events, 0..) |event, i| {
-        if (i > 0) w.writeByte(',') catch return false;
-        w.writeAll("{\"did\":\"") catch return false;
-        w.writeAll(event.did) catch return false;
-        w.writeByte('"') catch return false;
-        if (event.handle) |h| {
-            w.writeAll(",\"handle\":\"") catch return false;
-            writeJsonEscaped(&w, h) catch return false;
-            w.writeByte('"') catch return false;
-        }
-        if (event.display_name) |n| {
-            w.writeAll(",\"display_name\":\"") catch return false;
-            writeJsonEscaped(&w, n) catch return false;
-            w.writeByte('"') catch return false;
-        }
-        if (event.avatar_cid) |c| {
-            w.writeAll(",\"avatar_cid\":\"") catch return false;
-            w.writeAll(c) catch return false;
-            w.writeByte('"') catch return false;
-        }
-        w.writeByte('}') catch return false;
-    }
-
-    w.print("],\"cursor\":{d}}}", .{cursor}) catch return false;
+    var jw: json.Stringify = .{
+        .writer = &output.writer,
+        .options = .{ .emit_null_optional_fields = false },
+    };
+    jw.write(.{ .events = events, .cursor = cursor }) catch return false;
 
     var url_buf: [512]u8 = undefined;
     const url = std.fmt.bufPrint(&url_buf, "{s}/admin/ingest", .{config.worker_url}) catch return false;
@@ -284,8 +243,10 @@ fn postBatch(allocator: Allocator, config: Config, events: []const ActorEvent, c
     var auth_buf: [256]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
 
-    var aw: std.Io.Writer.Allocating = .init(allocator);
-    defer aw.deinit();
+    var resp_output: std.Io.Writer.Allocating = .init(allocator);
+    defer resp_output.deinit();
+
+    const body = output.toArrayList();
 
     const result = client.fetch(.{
         .location = .{ .url = url },
@@ -295,11 +256,11 @@ fn postBatch(allocator: Allocator, config: Config, events: []const ActorEvent, c
             .authorization = .{ .override = auth },
         },
         .payload = body.items,
-        .response_writer = &aw.writer,
+        .response_writer = &resp_output.writer,
     }) catch return false;
 
     if (result.status != .ok) {
-        const resp = aw.toArrayList();
+        const resp = resp_output.toArrayList();
         log.err("ingest HTTP {d}: {s}", .{ @intFromEnum(result.status), resp.items });
     }
 
@@ -310,24 +271,19 @@ fn deleteActors(allocator: Allocator, config: Config, dids: []const []const u8) 
     var client = http.Client{ .allocator = allocator };
     defer client.deinit();
 
-    var body: std.ArrayList(u8) = .{};
-    defer body.deinit(allocator);
+    var output: std.Io.Writer.Allocating = .init(allocator);
+    defer output.deinit();
 
-    var w = body.writer(allocator);
-    w.writeAll("{\"dids\":[") catch return false;
-    for (dids, 0..) |did, i| {
-        if (i > 0) w.writeByte(',') catch return false;
-        w.writeByte('"') catch return false;
-        w.writeAll(did) catch return false;
-        w.writeByte('"') catch return false;
-    }
-    w.writeAll("]}") catch return false;
+    var jw: json.Stringify = .{ .writer = &output.writer };
+    jw.write(.{ .dids = dids }) catch return false;
 
     var url_buf: [512]u8 = undefined;
     const url = std.fmt.bufPrint(&url_buf, "{s}/admin/delete", .{config.worker_url}) catch return false;
 
     var auth_buf: [256]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
+
+    const body = output.toArrayList();
 
     const result = client.fetch(.{
         .location = .{ .url = url },
