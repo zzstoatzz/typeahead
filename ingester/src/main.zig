@@ -38,7 +38,8 @@ const IngestHandler = struct {
     delete_buffer: std.ArrayList([]const u8),
     /// arena owns all string data in buffer/delete_buffer
     arena: std.heap.ArenaAllocator,
-    last_cursor: i64 = 0,
+    pending_cursor: i64 = 0,
+    flushed_cursor: i64 = 0,
     total_ingested: u64 = 0,
     total_deleted: u64 = 0,
     last_flush: i64 = 0,
@@ -71,9 +72,21 @@ const IngestHandler = struct {
             .account => |acct| self.handleAccount(acct),
         }
 
-        self.last_cursor = event.timeUs();
+        self.pending_cursor = event.timeUs();
 
         const now = std.time.timestamp();
+        // drop incoming events if buffers are backed up (persistent failure)
+        const MAX_BACKLOG = MAX_BATCH * 10;
+        if (self.buffer.items.len >= MAX_BACKLOG or self.delete_buffer.items.len >= MAX_BACKLOG) {
+            log.err("backlog overflow ({d} ingest, {d} delete), dropping oldest events", .{
+                self.buffer.items.len, self.delete_buffer.items.len,
+            });
+            self.buffer.clearRetainingCapacity();
+            self.delete_buffer.clearRetainingCapacity();
+            _ = self.arena.reset(.retain_capacity);
+            self.flushed_cursor = self.pending_cursor;
+        }
+
         const should_flush = self.buffer.items.len >= MAX_BATCH or
             self.delete_buffer.items.len >= MAX_BATCH or
             (now - self.last_flush >= 5 and (self.buffer.items.len > 0 or self.delete_buffer.items.len > 0));
@@ -131,46 +144,52 @@ const IngestHandler = struct {
 
     fn flush(self: *IngestHandler) void {
         self.last_flush = std.time.timestamp();
+        var ingest_ok = true;
+        var delete_ok = true;
 
         if (self.buffer.items.len > 0) {
             const count = self.buffer.items.len;
-            const ok = postBatch(
+            ingest_ok = postBatch(
                 self.allocator,
                 self.config,
                 self.buffer.items,
-                self.last_cursor,
+                self.flushed_cursor,
             );
-            if (ok) {
+            if (ingest_ok) {
                 self.total_ingested += count;
                 log.info("+{d} actors (total: {d}) cursor={d}", .{
-                    count, self.total_ingested, self.last_cursor,
+                    count, self.total_ingested, self.pending_cursor,
                 });
+                self.buffer.clearRetainingCapacity();
             } else {
-                log.err("ingest batch failed ({d} events)", .{count});
+                log.err("ingest batch failed ({d} events), will retry", .{count});
             }
-            self.buffer.clearRetainingCapacity();
         }
 
         if (self.delete_buffer.items.len > 0) {
             const count = self.delete_buffer.items.len;
-            const ok = deleteActors(
+            delete_ok = deleteActors(
                 self.allocator,
                 self.config,
                 self.delete_buffer.items,
             );
-            if (ok) {
+            if (delete_ok) {
                 self.total_deleted += count;
                 log.info("-{d} moderated (total: {d})", .{
                     count, self.total_deleted,
                 });
+                self.delete_buffer.clearRetainingCapacity();
             } else {
-                log.err("delete batch failed ({d} dids)", .{count});
+                log.err("delete batch failed ({d} dids), will retry", .{count});
             }
-            self.delete_buffer.clearRetainingCapacity();
         }
 
-        // free all duped strings at once
-        _ = self.arena.reset(.retain_capacity);
+        // only advance cursor when all pending work succeeded
+        if (ingest_ok and delete_ok) {
+            self.flushed_cursor = self.pending_cursor;
+            // free all duped strings at once — safe because buffers are empty
+            _ = self.arena.reset(.retain_capacity);
+        }
     }
 };
 
@@ -292,7 +311,7 @@ fn deleteActors(allocator: Allocator, config: Config, dids: []const []const u8) 
     return result.status == .ok;
 }
 
-fn fetchCursor(allocator: Allocator, config: Config) ?i64 {
+fn fetchCursorOnce(allocator: Allocator, config: Config) ?i64 {
     var client = http.Client{ .allocator = allocator };
     defer client.deinit();
 
@@ -328,6 +347,16 @@ fn fetchCursor(allocator: Allocator, config: Config) ?i64 {
         .float => |f| @intFromFloat(f),
         else => null,
     };
+}
+
+fn fetchCursor(allocator: Allocator, config: Config) ?i64 {
+    const backoff = [_]u64{ 1, 3, 10 };
+    for (backoff, 0..) |delay, attempt| {
+        if (fetchCursorOnce(allocator, config)) |cursor| return cursor;
+        log.warn("cursor fetch failed (attempt {d}/3), retrying in {d}s", .{ attempt + 1, delay });
+        std.Thread.sleep(delay * std.time.ns_per_s);
+    }
+    return null;
 }
 
 pub fn main() !void {

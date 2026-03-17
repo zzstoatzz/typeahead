@@ -131,12 +131,13 @@ def test_limit_bounds(base_url: str):
 def test_empty_query(base_url: str):
     print("\n--- empty query ---")
     data, _ = fetch(f"{base_url}{XRPC_PATH}?q=")
-    if not data or "_error" in data or "_http_error" in data:
-        check("fetch succeeded", False)
-        return
+    check("empty query returns 400", data is not None and data.get("_http_error") == 400, f"got {data}")
 
-    actors = data.get("actors", [])
-    check("empty query returns empty actors", len(actors) == 0, f"got {len(actors)}")
+
+def test_limit_over_max(base_url: str):
+    print("\n--- limit > 100 ---")
+    data, _ = fetch(f"{base_url}{XRPC_PATH}?q=test&limit=200")
+    check("limit>100 returns 400", data is not None and data.get("_http_error") == 400, f"got {data}")
 
 
 def test_comparison(base_url: str, queries: list[str]):
@@ -185,6 +186,7 @@ def main():
     test_deprecated_param(args.url)
     test_limit_bounds(args.url)
     test_empty_query(args.url)
+    test_limit_over_max(args.url)
 
     if args.compare:
         test_comparison(args.url, args.queries)
