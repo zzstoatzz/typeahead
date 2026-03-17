@@ -19,6 +19,10 @@ function clientIP(request: Request): string {
   return request.headers.get("CF-Connecting-IP") || "unknown";
 }
 
+function escHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function json(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: CORS_HEADERS });
 }
@@ -286,7 +290,7 @@ async function handleRequestIndexing(
     `${SLINGSHOT_URL}?identifier=${encodeURIComponent(identifier)}`
   );
   if (!res.ok) {
-    return html(indexPage(`could not resolve "${identifier}". check that it's a valid handle or DID.`));
+    return html(indexPage(`could not resolve "${escHtml(identifier)}". check that it's a valid handle or DID.`));
   }
 
   const identity: SlingshotResponse = await res.json();
@@ -320,7 +324,7 @@ async function handleRequestIndexing(
     .run();
 
   return html(
-    indexPage(`indexed <strong>@${identity.handle}</strong> (${identity.did})`)
+    indexPage(`indexed <strong>@${escHtml(identity.handle)}</strong> (${escHtml(identity.did)})`)
   );
 }
 
