@@ -115,6 +115,25 @@ async function throttledBackfill(term: string, limit: number, env: Env): Promise
 
 // --- end backfill ---
 
+/** record an actor-count snapshot for the current hour (idempotent) */
+async function recordSnapshot(env: Env): Promise<void> {
+  const hour = Math.floor(Date.now() / 3_600_000);
+  const row = await env.DB.prepare(
+    `SELECT COUNT(*) AS total,
+            SUM(CASE WHEN handle != '' THEN 1 ELSE 0 END) AS with_handles,
+            SUM(CASE WHEN avatar_url != '' THEN 1 ELSE 0 END) AS with_avatars
+     FROM actors`
+  ).first<{ total: number; with_handles: number; with_avatars: number }>();
+  if (row) {
+    await env.DB.prepare(
+      `INSERT OR REPLACE INTO snapshots (hour, total, with_handles, with_avatars)
+       VALUES (?1, ?2, ?3, ?4)`
+    )
+      .bind(hour, row.total, row.with_handles, row.with_avatars)
+      .run();
+  }
+}
+
 /** fire-and-forget: increment hourly search count + accumulate response time */
 async function recordMetric(env: Env, ms: number): Promise<void> {
   const hour = Math.floor(Date.now() / 3_600_000);
@@ -127,26 +146,6 @@ async function recordMetric(env: Env, ms: number): Promise<void> {
   )
     .bind(hour, ms)
     .run();
-
-  // hourly actor count snapshot (first search of each hour wins)
-  const snapKey = `snap:${hour}`;
-  if (!(await env.KV.get(snapKey))) {
-    const row = await env.DB.prepare(
-      `SELECT COUNT(*) AS total,
-              SUM(CASE WHEN handle != '' THEN 1 ELSE 0 END) AS with_handles,
-              SUM(CASE WHEN avatar_url != '' THEN 1 ELSE 0 END) AS with_avatars
-       FROM actors`
-    ).first<{ total: number; with_handles: number; with_avatars: number }>();
-    if (row) {
-      await env.DB.prepare(
-        `INSERT OR IGNORE INTO snapshots (hour, total, with_handles, with_avatars)
-         VALUES (?1, ?2, ?3, ?4)`
-      )
-        .bind(hour, row.total, row.with_handles, row.with_avatars)
-        .run();
-    }
-    await env.KV.put(snapKey, "1", { expirationTtl: 7200 });
-  }
 }
 
 async function handleSearch(
@@ -929,6 +928,10 @@ function html(body: string, status = 200): Response {
 }
 
 export default {
+  async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
+    await recordSnapshot(env);
+  },
+
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
