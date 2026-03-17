@@ -8,7 +8,6 @@ const zat = @import("zat");
 const log = std.log.scoped(.ingester);
 
 const MAX_BATCH: usize = 500;
-const SLINGSHOT_URL = "https://slingshot.microcosm.blue/xrpc/blue.microcosm.identity.resolveMiniDoc?identifier=";
 
 const Config = struct {
     worker_url: []const u8,
@@ -97,7 +96,6 @@ const IngestHandler = struct {
         if (c.operation != .create and c.operation != .update) return;
 
         const record = c.record orelse return;
-        const aa = self.arena.allocator();
 
         const did = self.dupe(c.did) orelse return;
         var event = ActorEvent{ .did = did };
@@ -112,10 +110,7 @@ const IngestHandler = struct {
             }
         }
 
-        // resolve handle via slingshot
-        event.handle = resolveHandle(aa, did);
-
-        if (event.handle != null or event.display_name != null or event.avatar_cid != null) {
+        if (event.display_name != null or event.avatar_cid != null) {
             self.buffer.append(self.allocator, event) catch return;
         }
     }
@@ -178,35 +173,6 @@ const IngestHandler = struct {
         _ = self.arena.reset(.retain_capacity);
     }
 };
-
-/// resolve DID → handle via slingshot (microcosm community service)
-fn resolveHandle(allocator: Allocator, did: []const u8) ?[]const u8 {
-    var client = http.Client{ .allocator = allocator };
-    defer client.deinit();
-
-    var url_buf: [256]u8 = undefined;
-    const url = std.fmt.bufPrint(&url_buf, SLINGSHOT_URL ++ "{s}", .{did}) catch return null;
-
-    var aw: std.Io.Writer.Allocating = .init(allocator);
-    defer aw.deinit();
-
-    const result = client.fetch(.{
-        .location = .{ .url = url },
-        .method = .GET,
-        .response_writer = &aw.writer,
-    }) catch return null;
-
-    if (result.status != .ok) return null;
-
-    var resp = aw.toArrayList();
-    defer resp.deinit(allocator);
-
-    const parsed = json.parseFromSlice(json.Value, allocator, resp.items, .{}) catch return null;
-    defer parsed.deinit();
-
-    const handle = zat.json.getString(parsed.value, "handle") orelse return null;
-    return allocator.dupe(u8, handle) catch null;
-}
 
 fn writeJsonEscaped(w: anytype, s: []const u8) !void {
     for (s) |c| {
@@ -326,6 +292,44 @@ fn deleteActors(allocator: Allocator, config: Config, dids: []const []const u8) 
     return result.status == .ok;
 }
 
+fn fetchCursor(allocator: Allocator, config: Config) ?i64 {
+    var client = http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var url_buf: [512]u8 = undefined;
+    const url = std.fmt.bufPrint(&url_buf, "{s}/admin/cursor", .{config.worker_url}) catch return null;
+
+    var auth_buf: [256]u8 = undefined;
+    const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return null;
+
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
+
+    const result = client.fetch(.{
+        .location = .{ .url = url },
+        .method = .GET,
+        .headers = .{
+            .authorization = .{ .override = auth },
+        },
+        .response_writer = &aw.writer,
+    }) catch return null;
+
+    if (result.status != .ok) return null;
+
+    var resp = aw.toArrayList();
+    defer resp.deinit(allocator);
+
+    const parsed = json.parseFromSlice(json.Value, allocator, resp.items, .{}) catch return null;
+    defer parsed.deinit();
+
+    const cursor_val = parsed.value.object.get("cursor") orelse return null;
+    return switch (cursor_val) {
+        .integer => |n| n,
+        .float => |f| @intFromFloat(f),
+        else => null,
+    };
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -334,11 +338,19 @@ pub fn main() !void {
     const config = getConfig();
     log.info("typeahead ingester → {s}", .{config.worker_url});
 
+    const cursor = fetchCursor(allocator, config);
+    if (cursor) |c| {
+        log.info("resuming from cursor {d}", .{c});
+    } else {
+        log.info("no cursor found, starting from live", .{});
+    }
+
     var handler = IngestHandler.init(allocator, config);
     defer handler.deinit();
 
     var client = zat.JetstreamClient.init(allocator, .{
         .wanted_collections = &.{"app.bsky.actor.profile"},
+        .cursor = cursor,
     });
     defer client.deinit();
 
