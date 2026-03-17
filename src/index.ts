@@ -849,7 +849,7 @@ function indexPage(message?: string): string {
     label { display: block; font-size: 0.8rem; color: #666; margin-bottom: 0.5rem; }
     .search-wrap { position: relative; }
     input { width: 100%; padding: 0.6rem 0.8rem; background: #1a1a1a; border: 1px solid #333;
-            border-radius: 6px; color: #e0e0e0; font-size: 0.9rem; outline: none; }
+            border-radius: 6px; color: #e0e0e0; font-size: 16px; outline: none; }
     input:focus { border-color: #555; }
     input::placeholder { color: #555; }
     .results { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
