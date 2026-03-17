@@ -339,6 +339,8 @@ function indexPage(message?: string): string {
     .header { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
     h1 { font-size: 1.1rem; font-weight: 400; color: #888; }
     h1 strong { color: #e0e0e0; }
+    .src { font-size: 0.75em; color: #555; text-decoration: none; margin-left: 0.3em; }
+    .src:hover { color: #888; }
     .experimental { font-size: 0.55em; color: #664; cursor: default; position: relative;
                     vertical-align: super; line-height: 1; margin-left: 0.3em; }
     .experimental:hover::after {
@@ -393,7 +395,7 @@ function indexPage(message?: string): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1><strong>typeahead</strong><sup class="experimental">*experimental</sup></h1>
+      <h1><strong>typeahead</strong><a href="https://tangled.sh/zzstoatzz.io/typeahead" class="src" target="_blank" rel="noopener">[src]</a><sup class="experimental">*experimental</sup></h1>
     </div>
     <p class="subtitle">community actor search for <a href="https://atproto.com" target="_blank" rel="noopener">atproto</a></p>
 
