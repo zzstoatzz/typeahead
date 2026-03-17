@@ -139,7 +139,7 @@ async function recordSnapshot(env: Env): Promise<void> {
 /** resolve handles for actors missing them via slingshot */
 async function resolveHandles(env: Env): Promise<void> {
   const { results } = await env.DB.prepare(
-    "SELECT did FROM actors WHERE handle = '' ORDER BY updated_at DESC LIMIT 200"
+    "SELECT did FROM actors WHERE handle = '' ORDER BY updated_at DESC LIMIT 1000"
   ).all<{ did: string }>();
   if (!results || results.length === 0) return;
 
