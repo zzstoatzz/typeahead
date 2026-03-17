@@ -136,6 +136,36 @@ async function recordSnapshot(env: Env): Promise<void> {
   }
 }
 
+/** resolve handles for actors missing them via slingshot */
+async function resolveHandles(env: Env): Promise<void> {
+  const { results } = await env.DB.prepare(
+    "SELECT did FROM actors WHERE handle = '' ORDER BY updated_at DESC LIMIT 200"
+  ).all<{ did: string }>();
+  if (!results || results.length === 0) return;
+
+  let resolved = 0;
+  for (const { did } of results) {
+    try {
+      const res = await fetch(
+        `${SLINGSHOT_URL}?identifier=${encodeURIComponent(did)}`
+      );
+      if (!res.ok) continue;
+      const identity: SlingshotResponse = await res.json();
+      if (identity.handle) {
+        await env.DB.prepare(
+          "UPDATE actors SET handle = ?1 WHERE did = ?2 AND handle = ''"
+        ).bind(identity.handle, did).run();
+        resolved++;
+      }
+    } catch {
+      // best-effort — skip failures
+    }
+  }
+  if (resolved > 0) {
+    console.log(JSON.stringify({ event: "handle_resolve", resolved, checked: results.length }));
+  }
+}
+
 /** fire-and-forget: increment hourly search count + accumulate response time */
 async function recordMetric(env: Env, ms: number): Promise<void> {
   const hour = Math.floor(Date.now() / 3_600_000);
@@ -934,6 +964,7 @@ function html(body: string, status = 200): Response {
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     await recordSnapshot(env);
+    await resolveHandles(env);
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
