@@ -1,0 +1,22 @@
+# fly.toml app configuration file generated for typeahead-ingester on 2026-03-16T22:03:25-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'typeahead-ingester'
+primary_region = 'ewr'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  TYPEAHEAD_URL = 'https://typeahead.nate-8fe.workers.dev'
+
+[processes]
+  app = './typeahead-ingester'
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256

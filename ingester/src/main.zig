@@ -1,0 +1,346 @@
+const std = @import("std");
+const mem = std.mem;
+const json = std.json;
+const http = std.http;
+const Allocator = mem.Allocator;
+const zat = @import("zat");
+
+const log = std.log.scoped(.ingester);
+
+const MAX_BATCH: usize = 500;
+const SLINGSHOT_URL = "https://slingshot.microcosm.blue/xrpc/blue.microcosm.identity.resolveMiniDoc?identifier=";
+
+const Config = struct {
+    worker_url: []const u8,
+    secret: []const u8,
+};
+
+fn getConfig() Config {
+    return .{
+        .worker_url = std.posix.getenv("TYPEAHEAD_URL") orelse
+            @panic("TYPEAHEAD_URL not set"),
+        .secret = std.posix.getenv("TYPEAHEAD_SECRET") orelse
+            @panic("TYPEAHEAD_SECRET not set"),
+    };
+}
+
+/// an actor event to POST to the worker
+const ActorEvent = struct {
+    did: []const u8,
+    handle: ?[]const u8 = null,
+    display_name: ?[]const u8 = null,
+    avatar_cid: ?[]const u8 = null,
+};
+
+const IngestHandler = struct {
+    allocator: Allocator,
+    config: Config,
+    buffer: std.ArrayList(ActorEvent),
+    delete_buffer: std.ArrayList([]const u8),
+    /// arena owns all string data in buffer/delete_buffer
+    arena: std.heap.ArenaAllocator,
+    last_cursor: i64 = 0,
+    total_ingested: u64 = 0,
+    total_deleted: u64 = 0,
+    last_flush: i64 = 0,
+
+    fn init(allocator: Allocator, config: Config) IngestHandler {
+        return .{
+            .allocator = allocator,
+            .config = config,
+            .buffer = .{},
+            .delete_buffer = .{},
+            .arena = std.heap.ArenaAllocator.init(allocator),
+            .last_flush = std.time.timestamp(),
+        };
+    }
+
+    fn deinit(self: *IngestHandler) void {
+        self.arena.deinit();
+        self.buffer.deinit(self.allocator);
+        self.delete_buffer.deinit(self.allocator);
+    }
+
+    fn dupe(self: *IngestHandler, s: []const u8) ?[]const u8 {
+        return self.arena.allocator().dupe(u8, s) catch null;
+    }
+
+    pub fn onEvent(self: *IngestHandler, event: zat.JetstreamEvent) void {
+        switch (event) {
+            .commit => |c| self.handleCommit(c),
+            .identity => |id| self.handleIdentity(id),
+            .account => |acct| self.handleAccount(acct),
+        }
+
+        self.last_cursor = event.timeUs();
+
+        const now = std.time.timestamp();
+        const should_flush = self.buffer.items.len >= MAX_BATCH or
+            self.delete_buffer.items.len >= MAX_BATCH or
+            (now - self.last_flush >= 5 and (self.buffer.items.len > 0 or self.delete_buffer.items.len > 0));
+
+        if (should_flush) {
+            self.flush();
+        }
+    }
+
+    pub fn onError(_: *IngestHandler, err: anyerror) void {
+        log.err("jetstream: {s}", .{@errorName(err)});
+    }
+
+    pub fn onConnect(_: *IngestHandler, host: []const u8) void {
+        log.info("connected to {s}", .{host});
+    }
+
+    fn handleCommit(self: *IngestHandler, c: zat.jetstream.CommitEvent) void {
+        if (!mem.eql(u8, c.collection, "app.bsky.actor.profile")) return;
+        if (c.operation != .create and c.operation != .update) return;
+
+        const record = c.record orelse return;
+        const aa = self.arena.allocator();
+
+        const did = self.dupe(c.did) orelse return;
+        var event = ActorEvent{ .did = did };
+
+        if (zat.json.getString(record, "displayName")) |name| {
+            event.display_name = self.dupe(name);
+        }
+
+        if (zat.json.getPath(record, "avatar")) |avatar| {
+            if (zat.json.getString(avatar, "ref.$link")) |cid| {
+                event.avatar_cid = self.dupe(cid);
+            }
+        }
+
+        // resolve handle via slingshot
+        event.handle = resolveHandle(aa, did);
+
+        if (event.handle != null or event.display_name != null or event.avatar_cid != null) {
+            self.buffer.append(self.allocator, event) catch return;
+        }
+    }
+
+    fn handleIdentity(self: *IngestHandler, id: zat.jetstream.IdentityEvent) void {
+        const handle = id.handle orelse return;
+        self.buffer.append(self.allocator, .{
+            .did = self.dupe(id.did) orelse return,
+            .handle = self.dupe(handle),
+        }) catch return;
+    }
+
+    fn handleAccount(self: *IngestHandler, acct: zat.jetstream.AccountEvent) void {
+        if (!acct.active) {
+            self.delete_buffer.append(self.allocator, self.dupe(acct.did) orelse return) catch return;
+        }
+    }
+
+    fn flush(self: *IngestHandler) void {
+        self.last_flush = std.time.timestamp();
+
+        if (self.buffer.items.len > 0) {
+            const count = self.buffer.items.len;
+            const ok = postBatch(
+                self.allocator,
+                self.config,
+                self.buffer.items,
+                self.last_cursor,
+            );
+            if (ok) {
+                self.total_ingested += count;
+                log.info("+{d} actors (total: {d}) cursor={d}", .{
+                    count, self.total_ingested, self.last_cursor,
+                });
+            } else {
+                log.err("ingest batch failed ({d} events)", .{count});
+            }
+            self.buffer.clearRetainingCapacity();
+        }
+
+        if (self.delete_buffer.items.len > 0) {
+            const count = self.delete_buffer.items.len;
+            const ok = deleteActors(
+                self.allocator,
+                self.config,
+                self.delete_buffer.items,
+            );
+            if (ok) {
+                self.total_deleted += count;
+                log.info("-{d} moderated (total: {d})", .{
+                    count, self.total_deleted,
+                });
+            } else {
+                log.err("delete batch failed ({d} dids)", .{count});
+            }
+            self.delete_buffer.clearRetainingCapacity();
+        }
+
+        // free all duped strings at once
+        _ = self.arena.reset(.retain_capacity);
+    }
+};
+
+/// resolve DID → handle via slingshot (microcosm community service)
+fn resolveHandle(allocator: Allocator, did: []const u8) ?[]const u8 {
+    var client = http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var url_buf: [256]u8 = undefined;
+    const url = std.fmt.bufPrint(&url_buf, SLINGSHOT_URL ++ "{s}", .{did}) catch return null;
+
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
+
+    const result = client.fetch(.{
+        .location = .{ .url = url },
+        .method = .GET,
+        .response_writer = &aw.writer,
+    }) catch return null;
+
+    if (result.status != .ok) return null;
+
+    var resp = aw.toArrayList();
+    defer resp.deinit(allocator);
+
+    const parsed = json.parseFromSlice(json.Value, allocator, resp.items, .{}) catch return null;
+    defer parsed.deinit();
+
+    const handle = zat.json.getString(parsed.value, "handle") orelse return null;
+    return allocator.dupe(u8, handle) catch null;
+}
+
+fn writeJsonEscaped(w: anytype, s: []const u8) !void {
+    for (s) |c| {
+        switch (c) {
+            '"' => try w.writeAll("\\\""),
+            '\\' => try w.writeAll("\\\\"),
+            '\n' => try w.writeAll("\\n"),
+            '\r' => try w.writeAll("\\r"),
+            '\t' => try w.writeAll("\\t"),
+            else => {
+                if (c < 0x20) {
+                    try w.print("\\u{x:0>4}", .{c});
+                } else {
+                    try w.writeByte(c);
+                }
+            },
+        }
+    }
+}
+
+fn postBatch(allocator: Allocator, config: Config, events: []const ActorEvent, cursor: i64) bool {
+    var client = http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var body: std.ArrayList(u8) = .{};
+    defer body.deinit(allocator);
+
+    var w = body.writer(allocator);
+    w.writeAll("{\"events\":[") catch return false;
+
+    for (events, 0..) |event, i| {
+        if (i > 0) w.writeByte(',') catch return false;
+        w.writeAll("{\"did\":\"") catch return false;
+        w.writeAll(event.did) catch return false;
+        w.writeByte('"') catch return false;
+        if (event.handle) |h| {
+            w.writeAll(",\"handle\":\"") catch return false;
+            writeJsonEscaped(&w, h) catch return false;
+            w.writeByte('"') catch return false;
+        }
+        if (event.display_name) |n| {
+            w.writeAll(",\"display_name\":\"") catch return false;
+            writeJsonEscaped(&w, n) catch return false;
+            w.writeByte('"') catch return false;
+        }
+        if (event.avatar_cid) |c| {
+            w.writeAll(",\"avatar_cid\":\"") catch return false;
+            w.writeAll(c) catch return false;
+            w.writeByte('"') catch return false;
+        }
+        w.writeByte('}') catch return false;
+    }
+
+    w.print("],\"cursor\":{d}}}", .{cursor}) catch return false;
+
+    var url_buf: [512]u8 = undefined;
+    const url = std.fmt.bufPrint(&url_buf, "{s}/admin/ingest", .{config.worker_url}) catch return false;
+
+    var auth_buf: [256]u8 = undefined;
+    const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
+
+    var aw: std.Io.Writer.Allocating = .init(allocator);
+    defer aw.deinit();
+
+    const result = client.fetch(.{
+        .location = .{ .url = url },
+        .method = .POST,
+        .headers = .{
+            .content_type = .{ .override = "application/json" },
+            .authorization = .{ .override = auth },
+        },
+        .payload = body.items,
+        .response_writer = &aw.writer,
+    }) catch return false;
+
+    if (result.status != .ok) {
+        const resp = aw.toArrayList();
+        log.err("ingest HTTP {d}: {s}", .{ @intFromEnum(result.status), resp.items });
+    }
+
+    return result.status == .ok;
+}
+
+fn deleteActors(allocator: Allocator, config: Config, dids: []const []const u8) bool {
+    var client = http.Client{ .allocator = allocator };
+    defer client.deinit();
+
+    var body: std.ArrayList(u8) = .{};
+    defer body.deinit(allocator);
+
+    var w = body.writer(allocator);
+    w.writeAll("{\"dids\":[") catch return false;
+    for (dids, 0..) |did, i| {
+        if (i > 0) w.writeByte(',') catch return false;
+        w.writeByte('"') catch return false;
+        w.writeAll(did) catch return false;
+        w.writeByte('"') catch return false;
+    }
+    w.writeAll("]}") catch return false;
+
+    var url_buf: [512]u8 = undefined;
+    const url = std.fmt.bufPrint(&url_buf, "{s}/admin/delete", .{config.worker_url}) catch return false;
+
+    var auth_buf: [256]u8 = undefined;
+    const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
+
+    const result = client.fetch(.{
+        .location = .{ .url = url },
+        .method = .POST,
+        .headers = .{
+            .content_type = .{ .override = "application/json" },
+            .authorization = .{ .override = auth },
+        },
+        .payload = body.items,
+    }) catch return false;
+
+    return result.status == .ok;
+}
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    const config = getConfig();
+    log.info("typeahead ingester → {s}", .{config.worker_url});
+
+    var handler = IngestHandler.init(allocator, config);
+    defer handler.deinit();
+
+    var client = zat.JetstreamClient.init(allocator, .{
+        .wanted_collections = &.{"app.bsky.actor.profile"},
+    });
+    defer client.deinit();
+
+    client.subscribe(&handler);
+}

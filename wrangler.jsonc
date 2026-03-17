@@ -1,0 +1,35 @@
+{
+  "name": "typeahead",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-12-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "typeahead-db",
+      "database_id": "7e289d5d-dc50-46d1-8084-49aeec2679e5"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "a2582ddac2f841cf8ba7117dd851c770"
+    }
+  ],
+  "unsafe": {
+    "bindings": [
+      {
+        "type": "ratelimit",
+        "name": "RATE_LIMITER",
+        "namespace_id": "0",
+        "simple": { "limit": 60, "period": 60 }
+      },
+      {
+        "type": "ratelimit",
+        "name": "RATE_LIMITER_STRICT",
+        "namespace_id": "0",
+        "simple": { "limit": 10, "period": 60 }
+      }
+    ]
+  }
+}

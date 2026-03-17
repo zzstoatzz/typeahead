@@ -1,0 +1,17 @@
+.{
+    .name = .typeahead_ingester,
+    .version = "0.0.1",
+    .fingerprint = 0xc3959a06c9697d7c,
+    .minimum_zig_version = "0.15.0",
+    .dependencies = .{
+        .zat = .{
+            .url = "https://tangled.sh/zat.dev/zat/archive/v0.2.15",
+            .hash = "zat-0.2.15-5PuC7tjwBAAR5tL2Nc5LfSUaUORA6vONr1IdgaU4vAvo",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}
