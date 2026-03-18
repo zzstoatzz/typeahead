@@ -23,8 +23,7 @@ and serves FTS5 prefix search from cloudflare's edge.
 
 1. **ingester**: streams jetstream, buffers actor events, POSTs batches to
    `/admin/ingest`. sends avatar CIDs (not full URLs — the CDN URL is
-   deterministic from DID + CID). detects `!no-unauthenticated` self-labels
-   and sets `hidden` flag.
+   deterministic from DID + CID).
 
 2. **backfill**: when a search has gaps (missing avatars, few results), the
    worker calls bluesky's `searchActorsTypeahead` API and upserts results.
@@ -64,15 +63,16 @@ impractical.
 
 ## moderation
 
-actors with certain labels are hidden from search results (`hidden = 1`):
+actors with certain labels from bluesky's moderation service
+(`did:plc:ar7c4by46qjdydhdevvrndac`) are hidden from search results
+(`hidden = 1`): `!hide`, `!takedown`, or `spam`.
 
-- bluesky moderation service (`did:plc:ar7c4by46qjdydhdevvrndac`) issued
-  `!hide`, `!takedown`, or `spam`
-- any source (including self-labels): `!no-unauthenticated`
+`!no-unauthenticated` is intentionally **not** filtered — it applies to
+content, not identity. bluesky's own public typeahead API returns these
+accounts, and so do we.
 
-this is an unauthenticated service, so we respect user opt-outs. the ingester
-catches self-labels on ingest; the hourly cron refreshes moderation labels
-by walking the full index over multiple runs.
+the hourly cron refreshes moderation labels by walking the full index over
+multiple runs (1000 actors/run via `mod_cursor` in KV).
 
 ## scripts
 
