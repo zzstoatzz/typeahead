@@ -43,10 +43,10 @@ def check(name: str, ok: bool, detail: str = ""):
     return ok
 
 
-def fetch(url: str, timeout: int = 15) -> tuple[dict | None, dict]:
+def fetch(url: str, timeout: int = 15, method: str = "GET") -> tuple[dict | None, dict]:
     """fetch JSON + response headers. returns (body, headers)."""
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "typeahead-smoke/1.0"})
+        req = urllib.request.Request(url, headers={"User-Agent": "typeahead-smoke/1.0"}, method=method)
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             headers = {k.lower(): v for k, v in resp.headers.items()}
             return json.loads(resp.read()), headers
@@ -155,10 +155,107 @@ def test_stats_page(base_url: str):
             check("stats contains actors indexed", "actors indexed" in body)
             check("stats contains sparkline heading", "searches / hour" in body)
             check("stats has home link", 'href="/"' in body)
+            check("stats shows hidden count", "hidden by moderation" in body)
     except urllib.error.HTTPError as e:
         check("stats returns 200", False, f"got {e.code}")
     except Exception as e:
         check("stats fetch succeeded", False, str(e))
+
+
+def test_request_indexing(base_url: str):
+    print("\n--- request indexing ---")
+    # GET should redirect to homepage (302)
+    try:
+        req = urllib.request.Request(
+            f"{base_url}/request-indexing?handle=test",
+            headers={"User-Agent": "typeahead-smoke/1.0"},
+        )
+        opener = urllib.request.build_opener(urllib.request.HTTPHandler)
+        # don't follow redirects
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                raise urllib.error.HTTPError(newurl, code, msg, headers, fp)
+        opener = urllib.request.build_opener(NoRedirect)
+        opener.open(req, timeout=15)
+        check("GET redirects (302)", False, "no redirect")
+    except urllib.error.HTTPError as e:
+        check("GET redirects (302)", e.code == 302, f"got {e.code}")
+
+    # POST with empty handle should return 400
+    data, _ = fetch(f"{base_url}/request-indexing", method="POST")
+    check("POST empty returns 400", data is not None and data.get("_http_error") == 400, f"got {data}")
+
+    # POST with valid handle should return JSON with handle/did/hidden
+    data, _ = fetch(f"{base_url}/request-indexing?handle=zzstoatzz.io", method="POST")
+    if not data or "_error" in data or "_http_error" in data:
+        check("POST valid handle", False, f"got {data}")
+    else:
+        check("POST returns handle", data.get("handle") == "zzstoatzz.io", f"got {data.get('handle')}")
+        check("POST returns did", data.get("did", "").startswith("did:"), f"got {data.get('did')}")
+        check("POST returns hidden field", "hidden" in data, f"keys: {list(data.keys())}")
+
+
+def test_moderation_filtering(base_url: str):
+    print("\n--- moderation filtering ---")
+    data, _ = fetch(f"{base_url}{XRPC_PATH}?q=test&limit=10")
+    if not data or "_error" in data or "_http_error" in data:
+        check("fetch succeeded", False)
+        return
+
+    actors = data.get("actors", [])
+    has_labels = any("labels" in a for a in actors)
+    check("no labels field leaked in results", not has_labels)
+
+    allowed_keys = {"did", "handle", "displayName", "avatar"}
+    extra_keys: set[str] = set()
+    for a in actors:
+        extra_keys |= set(a.keys()) - allowed_keys
+    check("actor objects have clean shape", len(extra_keys) == 0, f"extra keys: {extra_keys}" if extra_keys else "")
+
+    # verify hidden actors are actually excluded by finding one with !no-unauthenticated
+    # via bsky API and checking it doesn't appear in our results
+    print("\n--- hidden actor exclusion ---")
+    found_hidden = find_hidden_actor(base_url)
+    if not found_hidden:
+        check("found a hidden actor to verify", False, "couldn't find one — skipping exclusion check")
+
+
+def find_hidden_actor(base_url: str) -> bool:
+    """find an actor we've indexed that has !no-unauthenticated, verify they're excluded."""
+    # search our index for common names and cross-check labels via bsky API
+    for q in ["alex", "sam", "chris", "jordan"]:
+        # get actors from bsky that have !no-unauthenticated
+        bsky_data, _ = fetch(f"{BSKY_PUBLIC}/xrpc/app.bsky.actor.searchActors?q={q}&limit=25")
+        if not bsky_data or "_error" in bsky_data:
+            continue
+
+        for actor in bsky_data.get("actors", []):
+            labels = actor.get("labels", [])
+            has_noauth = any(
+                l.get("val") == "!no-unauthenticated" and not l.get("neg")
+                for l in labels
+            )
+            if not has_noauth:
+                continue
+
+            handle = actor.get("handle", "")
+            if not handle:
+                continue
+
+            # this actor has !no-unauthenticated — check they're NOT in our results
+            our_data, _ = fetch(f"{base_url}{XRPC_PATH}?q={handle}&limit=10")
+            if not our_data or "_error" in our_data:
+                continue
+
+            our_handles = {a.get("handle") for a in our_data.get("actors", [])}
+            if handle in our_handles:
+                check(f"hidden actor @{handle} excluded from search", False, "appeared in results")
+                return True
+            else:
+                check(f"hidden actor @{handle} excluded from search", True)
+                return True
+
+    return False
 
 
 def test_comparison(base_url: str, queries: list[str]):
@@ -209,6 +306,8 @@ def main():
     test_empty_query(args.url)
     test_limit_over_max(args.url)
     test_stats_page(args.url)
+    test_request_indexing(args.url)
+    test_moderation_filtering(args.url)
 
     if args.compare:
         test_comparison(args.url, args.queries)

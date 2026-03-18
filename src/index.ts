@@ -29,6 +29,16 @@ function json(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: CORS_HEADERS });
 }
 
+function avatarUrl(did: string, cidOrUrl: string): string {
+  if (cidOrUrl.startsWith("https://")) return cidOrUrl;
+  return `https://cdn.bsky.app/img/avatar/plain/${did}/${cidOrUrl}@jpeg`;
+}
+
+function extractAvatarCid(url: string): string {
+  const match = url.match(/\/([^/]+)@jpeg$/);
+  return match?.[1] ?? '';
+}
+
 /** strip anything that could break FTS5 syntax, preserving unicode letters/digits */
 function sanitize(q: string): string {
   return q.replace(/[^\p{L}\p{N}\s.-]/gu, "").trim();
@@ -46,6 +56,7 @@ interface IngestEvent {
   handle?: string;
   display_name?: string;
   avatar_cid?: string;
+  hidden?: boolean;
 }
 
 interface SlingshotResponse {
@@ -56,6 +67,32 @@ interface SlingshotResponse {
 
 const BSKY_TYPEAHEAD_URL =
   "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead";
+
+const BSKY_MOD_DID = "did:plc:ar7c4by46qjdydhdevvrndac";
+/** labels from bluesky's moderation service that hide an actor */
+const MOD_HIDE_VALS = new Set(["!hide", "!takedown", "spam"]);
+/** labels that hide regardless of issuer (protocol-level, self-labeling respected) */
+const ANY_SRC_HIDE_VALS = new Set(["!no-unauthenticated"]);
+
+/**
+ * true if actor should be hidden from our unauthenticated search.
+ *
+ * two paths:
+ *  1. bluesky moderation issued !hide or spam → always hide
+ *  2. anyone (including the actor themselves) issued !no-unauthenticated → hide,
+ *     because our service is unauthenticated and we should respect the user's intent
+ */
+function shouldHide(labels?: any[]): boolean {
+  if (!labels) return false;
+  const now = Date.now();
+  return labels.some((l: any) => {
+    if (l.neg) return false;
+    if (l.exp && new Date(l.exp).getTime() <= now) return false;
+    if (l.src === BSKY_MOD_DID && MOD_HIDE_VALS.has(l.val)) return true;
+    if (ANY_SRC_HIDE_VALS.has(l.val)) return true;
+    return false;
+  });
+}
 
 // --- backfill: remove this block once at parity with Bluesky ---
 
@@ -78,18 +115,20 @@ async function backfillFromBsky(
     // (e.g. actors ingested via Jetstream that lack avatar/displayName)
     const stmts = actors.map((a) =>
       env.DB.prepare(
-        `INSERT INTO actors (did, handle, display_name, avatar_url, updated_at)
-         VALUES (?1, ?2, ?3, ?4, unixepoch())
+        `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, unixepoch())
          ON CONFLICT(did) DO UPDATE SET
            handle = COALESCE(NULLIF(?2, ''), actors.handle),
            display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
            avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
+           hidden = ?5,
            updated_at = unixepoch()`
       ).bind(
         a.did,
         a.handle || '',
         a.displayName || '',
-        a.avatar || ''
+        extractAvatarCid(a.avatar || ''),
+        shouldHide(a.labels) ? 1 : 0
       )
     );
 
@@ -124,7 +163,7 @@ async function recordSnapshot(env: Env): Promise<void> {
     `SELECT COUNT(*) AS total,
             SUM(CASE WHEN handle != '' THEN 1 ELSE 0 END) AS with_handles,
             SUM(CASE WHEN avatar_url != '' THEN 1 ELSE 0 END) AS with_avatars
-     FROM actors`
+     FROM actors WHERE hidden = 0`
   ).first<{ total: number; with_handles: number; with_avatars: number }>();
   if (row) {
     await env.DB.prepare(
@@ -164,6 +203,74 @@ async function resolveHandles(env: Env): Promise<void> {
   if (resolved > 0) {
     console.log(JSON.stringify({ event: "handle_resolve", resolved, checked: results.length }));
   }
+}
+
+const BSKY_GET_PROFILES_URL =
+  "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles";
+
+/** refresh moderation labels, walking the full index over multiple cron runs */
+async function refreshModeration(env: Env): Promise<void> {
+  // resume where we left off (rowid cursor persisted in KV)
+  const cursorStr = await env.KV.get("mod_cursor");
+  const cursor = cursorStr ? Number(cursorStr) : 0;
+
+  const { results } = await env.DB.prepare(
+    "SELECT rowid, did FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
+  ).bind(cursor).all<{ rowid: number; did: string }>();
+
+  if (!results || results.length === 0) {
+    // wrapped around — reset cursor for next run
+    await env.KV.put("mod_cursor", "0");
+    console.log(JSON.stringify({ event: "moderation_refresh", status: "wrapped", cursor }));
+    return;
+  }
+
+  let checked = 0;
+  let changed = 0;
+
+  // batch into groups of 25 (getProfiles limit), ~200ms pause between calls
+  for (let i = 0; i < results.length; i += 25) {
+    const batch = results.slice(i, i + 25);
+    const params = batch.map((r) => `actors=${encodeURIComponent(r.did)}`).join("&");
+    try {
+      if (i > 0) await new Promise((r) => setTimeout(r, 200));
+
+      const res = await fetch(`${BSKY_GET_PROFILES_URL}?${params}`);
+      if (res.status === 429) {
+        // save progress and bail — pick up here next run
+        const lastRowid = results[Math.max(0, i - 1)].rowid;
+        await env.KV.put("mod_cursor", String(lastRowid));
+        console.log(JSON.stringify({ event: "moderation_refresh", status: "rate_limited", checked, changed, cursor: lastRowid }));
+        return;
+      }
+      if (!res.ok) continue;
+
+      const data: any = await res.json();
+      const profiles: any[] = data.profiles || [];
+      checked += profiles.length;
+
+      const stmts: D1PreparedStatement[] = [];
+      for (const p of profiles) {
+        const hide = shouldHide(p.labels) ? 1 : 0;
+        stmts.push(
+          env.DB.prepare(
+            "UPDATE actors SET hidden = ?1 WHERE did = ?2 AND hidden != ?1"
+          ).bind(hide, p.did)
+        );
+      }
+      if (stmts.length > 0) {
+        const batchResults = await env.DB.batch(stmts);
+        changed += batchResults.filter((r) => r.meta.changes > 0).length;
+      }
+    } catch {
+      // best-effort — skip failures
+    }
+  }
+
+  // save cursor at end of this page
+  const lastRowid = results[results.length - 1].rowid;
+  await env.KV.put("mod_cursor", String(lastRowid));
+  console.log(JSON.stringify({ event: "moderation_refresh", checked, changed, cursor: lastRowid }));
 }
 
 /** fire-and-forget: increment hourly search count + accumulate response time */
@@ -221,7 +328,7 @@ async function handleSearch(
     `SELECT a.did, a.handle, a.display_name, a.avatar_url
      FROM actors_fts
      JOIN actors a ON a.rowid = actors_fts.rowid
-     WHERE actors_fts MATCH ?1 AND a.handle != ''
+     WHERE actors_fts MATCH ?1 AND a.handle != '' AND a.hidden = 0
      ORDER BY rank
      LIMIT ?2`
   )
@@ -233,7 +340,7 @@ async function handleSearch(
       did: r.did,
       handle: r.handle,
       ...(r.display_name ? { displayName: r.display_name } : {}),
-      ...(r.avatar_url ? { avatar: r.avatar_url } : {}),
+      ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url) } : {}),
     }));
 
   // --- backfill: remove this block once at parity with Bluesky ---
@@ -284,22 +391,23 @@ async function handleIngest(
 
   // batch upsert — use COALESCE to preserve existing fields on partial updates
   const stmts = events.map((e) => {
-    const avatarUrl = e.avatar_cid
-      ? `https://cdn.bsky.app/img/avatar/plain/${e.did}/${e.avatar_cid}@jpeg`
-      : null;
+    const avatarCid = e.avatar_cid || null;
+    const hidden = e.hidden !== undefined ? (e.hidden ? 1 : 0) : null;
     return env.DB.prepare(
-      `INSERT INTO actors (did, handle, display_name, avatar_url, updated_at)
-       VALUES (?1, ?2, ?3, ?4, unixepoch())
+      `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, updated_at)
+       VALUES (?1, ?2, ?3, ?4, COALESCE(?5, 0), unixepoch())
        ON CONFLICT(did) DO UPDATE SET
          handle = COALESCE(NULLIF(?2, ''), actors.handle),
          display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
          avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
+         hidden = COALESCE(?5, actors.hidden),
          updated_at = unixepoch()`
     ).bind(
       e.did,
       e.handle || '',
       e.display_name || '',
-      avatarUrl || ''
+      avatarCid || '',
+      hidden
     );
   });
 
@@ -384,7 +492,7 @@ async function handleRequestIndexing(
     "";
 
   if (!identifier) {
-    return html(indexPage("enter a handle or DID to request indexing."));
+    return json({ error: "enter a handle or DID to request indexing." }, 400);
   }
 
   // resolve via slingshot
@@ -392,14 +500,15 @@ async function handleRequestIndexing(
     `${SLINGSHOT_URL}?identifier=${encodeURIComponent(identifier)}`
   );
   if (!res.ok) {
-    return html(indexPage(`could not resolve "${escHtml(identifier)}". check that it's a valid handle or DID.`));
+    return json({ error: `could not resolve "${identifier}". check that it's a valid handle or DID.` }, 404);
   }
 
   const identity: SlingshotResponse = await res.json();
 
-  // fetch profile from public API for display name + avatar
+  // fetch profile from public API for display name + avatar + labels
   let displayName = "";
-  let avatarUrl = "";
+  let avatarCid = "";
+  let hidden = false;
   try {
     const profileRes = await fetch(
       `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(identity.did)}`
@@ -407,35 +516,36 @@ async function handleRequestIndexing(
     if (profileRes.ok) {
       const profile: any = await profileRes.json();
       displayName = profile.displayName || "";
-      avatarUrl = profile.avatar || "";
+      avatarCid = extractAvatarCid(profile.avatar || "");
+      hidden = shouldHide(profile.labels);
     }
   } catch {
     // profile enrichment is best-effort
   }
 
   await env.DB.prepare(
-    `INSERT INTO actors (did, handle, display_name, avatar_url, updated_at)
-     VALUES (?1, ?2, ?3, ?4, unixepoch())
+    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, unixepoch())
      ON CONFLICT(did) DO UPDATE SET
        handle = ?2,
        display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
        avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
+       hidden = ?5,
        updated_at = unixepoch()`
   )
-    .bind(identity.did, identity.handle, displayName, avatarUrl)
+    .bind(identity.did, identity.handle, displayName, avatarCid, hidden ? 1 : 0)
     .run();
 
-  return html(
-    indexPage(`indexed <strong>@${escHtml(identity.handle)}</strong> (${escHtml(identity.did)})`)
-  );
+  return json({ handle: identity.handle, did: identity.did, hidden });
 }
 
 async function handleStats(env: Env): Promise<Response> {
-  const [totalRes, handlesRes, avatarsRes, metricsRes, snapshotRes] =
+  const [totalRes, handlesRes, avatarsRes, hiddenRes, metricsRes, snapshotRes] =
     await env.DB.batch([
-      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors"),
-      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE handle != ''"),
-      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE avatar_url != ''"),
+      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden = 0"),
+      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE handle != '' AND hidden = 0"),
+      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE avatar_url != '' AND hidden = 0"),
+      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden = 1"),
       env.DB.prepare(
         "SELECT hour, searches, total_ms FROM metrics ORDER BY hour DESC LIMIT 168"
       ),
@@ -447,6 +557,7 @@ async function handleStats(env: Env): Promise<Response> {
   const total = (totalRes.results[0] as any)?.cnt ?? 0;
   const withHandles = (handlesRes.results[0] as any)?.cnt ?? 0;
   const withAvatars = (avatarsRes.results[0] as any)?.cnt ?? 0;
+  const hiddenCount = (hiddenRes.results[0] as any)?.cnt ?? 0;
   const rows = (metricsRes.results ?? []) as {
     hour: number;
     searches: number;
@@ -466,7 +577,7 @@ async function handleStats(env: Env): Promise<Response> {
   const handlePct = total > 0 ? ((withHandles / total) * 100).toFixed(1) : "0";
   const avatarPct = total > 0 ? ((withAvatars / total) * 100).toFixed(1) : "0";
 
-  return html(statsPage({ total, rows, totalSearches, avgLatency, handlePct, avatarPct, snapshots }));
+  return html(statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, handlePct, avatarPct, snapshots }));
 }
 
 interface SnapshotPoint {
@@ -478,6 +589,7 @@ interface SnapshotPoint {
 
 interface StatsData {
   total: number;
+  hiddenCount: number;
   rows: { hour: number; searches: number; total_ms: number }[];
   totalSearches: number;
   avgLatency: number;
@@ -616,6 +728,10 @@ function statsPage(d: StatsData): string {
       <div class="metric">
         <div class="label" data-tip="% of indexed actors with a profile image">avatar coverage</div>
         <div class="value">${d.avatarPct}%</div>
+      </div>
+      <div class="metric">
+        <div class="label" data-tip="actors hidden from search by bluesky moderation labels">hidden by moderation</div>
+        <div class="value">${d.hiddenCount.toLocaleString()}</div>
       </div>
     </div>
 
@@ -816,7 +932,7 @@ function statsPage(d: StatsData): string {
 </html>`;
 }
 
-function indexPage(message?: string): string {
+function indexPage(): string {
   return `<!doctype html>
 <html>
 <head>
@@ -870,8 +986,14 @@ function indexPage(message?: string): string {
     button { padding: 0.6rem 1rem; background: #2a2a2a; border: 1px solid #333;
              border-radius: 6px; color: #e0e0e0; font-size: 0.9rem; cursor: pointer; }
     button:hover { background: #333; }
-    .msg { margin-top: 1rem; padding: 0.8rem; background: #1a1a1a; border-radius: 6px;
-           font-size: 0.85rem; line-height: 1.4; }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .msg { margin-top: 0.75rem; padding: 0.6rem 0.8rem; background: #1a1a1a; border-radius: 6px;
+           font-size: 0.85rem; line-height: 1.4; display: flex; justify-content: space-between;
+           align-items: start; gap: 0.5rem; }
+    .msg.error { border-left: 2px solid #a55; }
+    .msg .dismiss { color: #555; cursor: pointer; font-size: 0.75rem; flex-shrink: 0;
+                    background: none; border: none; padding: 0; }
+    .msg .dismiss:hover { color: #888; }
     .api { margin-bottom: 1.5rem; background: #111; border: 1px solid #222; border-radius: 6px;
            padding: 0.5rem 0.7rem; display: flex; align-items: center; gap: 0.5rem;
            overflow-x: auto; white-space: nowrap; }
@@ -902,11 +1024,11 @@ function indexPage(message?: string): string {
 
     <section>
       <label>request indexing</label>
-      <form class="index-form" method="get" action="/request-indexing">
-        <input name="handle" placeholder="handle or DID" autocomplete="off">
-        <button type="submit">index</button>
+      <form class="index-form" id="index-form">
+        <input id="handle-input" placeholder="handle or DID" autocomplete="off">
+        <button type="submit" id="index-btn">index</button>
       </form>
-      ${message ? `<div class="msg">${message}</div>` : ""}
+      <div id="index-msg"></div>
     </section>
 
     <div class="api">
@@ -949,6 +1071,49 @@ function indexPage(message?: string): string {
     document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) results.classList.remove('show'); });
     q.addEventListener('focus', () => { if (results.innerHTML) results.classList.add('show'); });
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    // request indexing form
+    const indexForm = document.getElementById('index-form');
+    const handleInput = document.getElementById('handle-input');
+    const indexBtn = document.getElementById('index-btn');
+    const indexMsg = document.getElementById('index-msg');
+
+    function showMsg(text, isError) {
+      indexMsg.innerHTML = '<div class="msg' + (isError ? ' error' : '') + '">' +
+        '<span>' + text + '</span>' +
+        '<button class="dismiss" onclick="dismissMsg()">\\u00d7</button></div>';
+    }
+
+    function dismissMsg() {
+      indexMsg.innerHTML = '';
+    }
+
+    indexForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const val = handleInput.value.trim();
+      if (!val) { showMsg('enter a handle or DID.', true); return; }
+
+      indexBtn.disabled = true;
+      indexBtn.textContent = '...';
+      dismissMsg();
+
+      try {
+        const r = await fetch('/request-indexing?handle=' + encodeURIComponent(val), { method: 'POST' });
+        const data = await r.json();
+        if (data.error) {
+          showMsg(esc(data.error), true);
+        } else {
+          const hidden = data.hidden ? ' <em style="color:#886">(hidden by moderation)</em>' : '';
+          showMsg('indexed <strong>@' + esc(data.handle) + '</strong>' + hidden, false);
+          handleInput.value = '';
+        }
+      } catch {
+        showMsg('something went wrong — try again.', true);
+      } finally {
+        indexBtn.disabled = false;
+        indexBtn.textContent = 'index';
+      }
+    });
   </script>
 </body>
 </html>`;
@@ -964,6 +1129,7 @@ function html(body: string, status = 200): Response {
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     await recordSnapshot(env);
+    await refreshModeration(env);
     await resolveHandles(env);
   },
 
@@ -982,14 +1148,20 @@ export default {
       return handleStats(env);
     }
 
-    if (pathname === "/request-indexing" && request.method === "GET") {
-      const ip = clientIP(request);
-      const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
-      if (!success) {
-        console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
-        return html(indexPage("slow down — try again in a minute."), 429);
+    if (pathname === "/request-indexing") {
+      if (request.method === "GET") {
+        // old bookmarks / form fallback — redirect to homepage
+        return new Response(null, { status: 302, headers: { Location: "/" } });
       }
-      return handleRequestIndexing(request, env);
+      if (request.method === "POST") {
+        const ip = clientIP(request);
+        const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
+        if (!success) {
+          console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
+          return json({ error: "slow down — try again in a minute." }, 429);
+        }
+        return handleRequestIndexing(request, env);
+      }
     }
 
     if (

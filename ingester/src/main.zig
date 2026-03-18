@@ -29,6 +29,7 @@ const ActorEvent = struct {
     handle: ?[]const u8 = null,
     display_name: ?[]const u8 = null,
     avatar_cid: ?[]const u8 = null,
+    hidden: ?bool = null,
 };
 
 const IngestHandler = struct {
@@ -128,9 +129,17 @@ const IngestHandler = struct {
             }
         }
 
-        if (event.display_name != null or event.avatar_cid != null) {
-            self.buffer.append(self.allocator, event) catch return;
-        }
+        // check self-labels for !no-unauthenticated (user opts out of unauthenticated visibility)
+        event.hidden = blk: {
+            const values = zat.json.getArray(record, "labels.values") orelse break :blk false;
+            for (values) |item| {
+                const val = zat.json.getString(item, "val") orelse continue;
+                if (mem.eql(u8, val, "!no-unauthenticated")) break :blk true;
+            }
+            break :blk false;
+        };
+
+        self.buffer.append(self.allocator, event) catch return;
     }
 
     fn handleIdentity(self: *IngestHandler, id: zat.jetstream.IdentityEvent) void {
