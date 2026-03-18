@@ -13,11 +13,11 @@ curl "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=na
 ```
 jetstream → ingester (zig, fly.io) → worker (cloudflare)
                                         ↓
-                                   D1 (sqlite/FTS5)
+                                   Turso (libSQL/FTS5)
 ```
 
 - **ingester**: [zig](https://ziglang.org) on [fly.io](https://fly.io) — streams identity + profile events via [jetstream](https://docs.bsky.app/blog/jetstream), batches to worker
-- **worker**: [cloudflare worker](https://workers.cloudflare.com) + D1 + KV + cache API — FTS5 prefix search, edge-cached (60s), rate-limited
+- **worker**: [cloudflare worker](https://workers.cloudflare.com) + [Turso](https://turso.tech) + KV + cache API — FTS5 prefix search, edge-cached (60s), rate-limited
 - **identity**: [slingshot](https://microcosm.blue) for on-demand handle resolution
 
 ## dev

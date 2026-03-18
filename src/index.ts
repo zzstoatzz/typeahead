@@ -1,9 +1,60 @@
+import { createClient, type Client } from "@libsql/client/web";
+
 interface Env {
-  DB: D1Database;
   KV: KVNamespace;
   ADMIN_SECRET: string;
   RATE_LIMITER: RateLimit;
   RATE_LIMITER_STRICT: RateLimit;
+  TURSO_URL: string;
+  TURSO_AUTH_TOKEN: string;
+}
+
+interface Stmt {
+  bind(...args: unknown[]): Stmt;
+  all<T = Record<string, unknown>>(): Promise<{ results: T[] }>;
+  first<T = Record<string, unknown>>(): Promise<T | null>;
+  run(): Promise<{ meta: { changes: number } }>;
+}
+
+interface TursoDB {
+  prepare(sql: string): Stmt;
+  batch(stmts: Stmt[]): Promise<{ results: unknown[]; meta: { changes: number } }[]>;
+}
+
+function tursoDb(client: Client): TursoDB {
+  return {
+    prepare(sql) {
+      let args: unknown[] = [];
+      const s: Stmt & { _sql: string; _args: () => unknown[] } = {
+        _sql: sql,
+        _args: () => args,
+        bind(...a) { args = a; return s; },
+        async all<T>() {
+          const r = await client.execute({ sql, args: args as any });
+          return { results: r.rows as unknown as T[] };
+        },
+        async first<T>() {
+          const r = await client.execute({ sql, args: args as any });
+          return (r.rows[0] as unknown as T) ?? null;
+        },
+        async run() {
+          const r = await client.execute({ sql, args: args as any });
+          return { meta: { changes: r.rowsAffected } };
+        },
+      };
+      return s;
+    },
+    async batch(stmts) {
+      const results = await client.batch(
+        stmts.map((s) => ({ sql: (s as any)._sql as string, args: (s as any)._args() as any[] })),
+        "write",
+      );
+      return results.map((r) => ({
+        results: r.rows as unknown[],
+        meta: { changes: r.rowsAffected },
+      }));
+    },
+  };
 }
 
 const CORS_HEADERS = {
@@ -69,18 +120,15 @@ const BSKY_TYPEAHEAD_URL =
   "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead";
 
 const BSKY_MOD_DID = "did:plc:ar7c4by46qjdydhdevvrndac";
-/** labels from bluesky's moderation service that hide an actor */
+/** labels from bluesky's moderation service that hide an actor from search */
 const MOD_HIDE_VALS = new Set(["!hide", "!takedown", "spam"]);
-/** labels that hide regardless of issuer (protocol-level, self-labeling respected) */
-const ANY_SRC_HIDE_VALS = new Set(["!no-unauthenticated"]);
 
 /**
- * true if actor should be hidden from our unauthenticated search.
+ * returns whether an actor should be hidden from search.
  *
- * two paths:
- *  1. bluesky moderation issued !hide or spam → always hide
- *  2. anyone (including the actor themselves) issued !no-unauthenticated → hide,
- *     because our service is unauthenticated and we should respect the user's intent
+ * only hides actors flagged by bluesky's moderation service (!hide, !takedown, spam).
+ * !no-unauthenticated is intentionally NOT filtered — it applies to content, not identity.
+ * bluesky's own public typeahead API returns !no-unauthenticated accounts, and so do we.
  */
 function shouldHide(labels?: any[]): boolean {
   if (!labels) return false;
@@ -88,9 +136,7 @@ function shouldHide(labels?: any[]): boolean {
   return labels.some((l: any) => {
     if (l.neg) return false;
     if (l.exp && new Date(l.exp).getTime() <= now) return false;
-    if (l.src === BSKY_MOD_DID && MOD_HIDE_VALS.has(l.val)) return true;
-    if (ANY_SRC_HIDE_VALS.has(l.val)) return true;
-    return false;
+    return l.src === BSKY_MOD_DID && MOD_HIDE_VALS.has(l.val);
   });
 }
 
@@ -99,7 +145,7 @@ function shouldHide(labels?: any[]): boolean {
 async function backfillFromBsky(
   term: string,
   limit: number,
-  env: Env
+  db: TursoDB,
 ): Promise<void> {
   try {
     const res = await fetch(
@@ -114,7 +160,7 @@ async function backfillFromBsky(
     // upsert all — fills in missing actors AND enriches existing ones
     // (e.g. actors ingested via Jetstream that lack avatar/displayName)
     const stmts = actors.map((a) =>
-      env.DB.prepare(
+      db.prepare(
         `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, unixepoch())
          ON CONFLICT(did) DO UPDATE SET
@@ -132,14 +178,14 @@ async function backfillFromBsky(
       )
     );
 
-    await env.DB.batch(stmts);
+    await db.batch(stmts);
     console.log(JSON.stringify({ event: "backfill", term, upserted: actors.length }));
   } catch {
     // best-effort — don't let backfill errors affect anything
   }
 }
 
-async function throttledBackfill(term: string, limit: number, env: Env): Promise<void> {
+async function throttledBackfill(term: string, limit: number, db: TursoDB, env: Env): Promise<void> {
   // kill switch — set KV key "backfill" to "off" to disable without redeploying
   const flag = await env.KV.get("backfill");
   if (flag === "off") return;
@@ -151,22 +197,22 @@ async function throttledBackfill(term: string, limit: number, env: Env): Promise
     return;
   }
 
-  return backfillFromBsky(term, limit, env);
+  return backfillFromBsky(term, limit, db);
 }
 
 // --- end backfill ---
 
 /** record an actor-count snapshot for the current hour (idempotent) */
-async function recordSnapshot(env: Env): Promise<void> {
+async function recordSnapshot(db: TursoDB): Promise<void> {
   const hour = Math.floor(Date.now() / 3_600_000);
-  const row = await env.DB.prepare(
+  const row = await db.prepare(
     `SELECT COUNT(*) AS total,
             SUM(CASE WHEN handle != '' THEN 1 ELSE 0 END) AS with_handles,
             SUM(CASE WHEN avatar_url != '' THEN 1 ELSE 0 END) AS with_avatars
      FROM actors WHERE hidden = 0`
   ).first<{ total: number; with_handles: number; with_avatars: number }>();
   if (row) {
-    await env.DB.prepare(
+    await db.prepare(
       `INSERT OR REPLACE INTO snapshots (hour, total, with_handles, with_avatars)
        VALUES (?1, ?2, ?3, ?4)`
     )
@@ -176,8 +222,8 @@ async function recordSnapshot(env: Env): Promise<void> {
 }
 
 /** resolve handles for actors missing them via slingshot */
-async function resolveHandles(env: Env): Promise<void> {
-  const { results } = await env.DB.prepare(
+async function resolveHandles(db: TursoDB): Promise<void> {
+  const { results } = await db.prepare(
     "SELECT did FROM actors WHERE handle = '' ORDER BY updated_at DESC LIMIT 1000"
   ).all<{ did: string }>();
   if (!results || results.length === 0) return;
@@ -191,7 +237,7 @@ async function resolveHandles(env: Env): Promise<void> {
       if (!res.ok) continue;
       const identity: SlingshotResponse = await res.json();
       if (identity.handle) {
-        await env.DB.prepare(
+        await db.prepare(
           "UPDATE actors SET handle = ?1 WHERE did = ?2 AND handle = ''"
         ).bind(identity.handle, did).run();
         resolved++;
@@ -209,12 +255,12 @@ const BSKY_GET_PROFILES_URL =
   "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles";
 
 /** refresh moderation labels, walking the full index over multiple cron runs */
-async function refreshModeration(env: Env): Promise<void> {
+async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   // resume where we left off (rowid cursor persisted in KV)
   const cursorStr = await env.KV.get("mod_cursor");
   const cursor = cursorStr ? Number(cursorStr) : 0;
 
-  const { results } = await env.DB.prepare(
+  const { results } = await db.prepare(
     "SELECT rowid, did FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
   ).bind(cursor).all<{ rowid: number; did: string }>();
 
@@ -249,17 +295,17 @@ async function refreshModeration(env: Env): Promise<void> {
       const profiles: any[] = data.profiles || [];
       checked += profiles.length;
 
-      const stmts: D1PreparedStatement[] = [];
+      const stmts: Stmt[] = [];
       for (const p of profiles) {
         const hide = shouldHide(p.labels) ? 1 : 0;
         stmts.push(
-          env.DB.prepare(
+          db.prepare(
             "UPDATE actors SET hidden = ?1 WHERE did = ?2 AND hidden != ?1"
           ).bind(hide, p.did)
         );
       }
       if (stmts.length > 0) {
-        const batchResults = await env.DB.batch(stmts);
+        const batchResults = await db.batch(stmts);
         changed += batchResults.filter((r) => r.meta.changes > 0).length;
       }
     } catch {
@@ -274,9 +320,9 @@ async function refreshModeration(env: Env): Promise<void> {
 }
 
 /** fire-and-forget: increment hourly search count + accumulate response time */
-async function recordMetric(env: Env, ms: number): Promise<void> {
+async function recordMetric(db: TursoDB, ms: number): Promise<void> {
   const hour = Math.floor(Date.now() / 3_600_000);
-  await env.DB.prepare(
+  await db.prepare(
     `INSERT INTO metrics (hour, searches, total_ms)
      VALUES (?1, 1, ?2)
      ON CONFLICT(hour) DO UPDATE SET
@@ -289,8 +335,9 @@ async function recordMetric(env: Env, ms: number): Promise<void> {
 
 async function handleSearch(
   request: Request,
+  db: TursoDB,
   env: Env,
-  ctx: ExecutionContext
+  ctx: ExecutionContext,
 ): Promise<Response> {
   const url = new URL(request.url);
   const q = url.searchParams.get("q") || url.searchParams.get("term") || "";
@@ -324,7 +371,7 @@ async function handleSearch(
   const t0 = Date.now();
 
   const ftsQuery = `"${term}"*`;
-  const { results } = await env.DB.prepare(
+  const { results } = await db.prepare(
     `SELECT a.did, a.handle, a.display_name, a.avatar_url
      FROM actors_fts
      JOIN actors a ON a.rowid = actors_fts.rowid
@@ -346,11 +393,11 @@ async function handleSearch(
   // --- backfill: remove this block once at parity with Bluesky ---
   const hasGaps = actors.length < limit || actors.some((a) => !a.avatar);
   if (hasGaps) {
-    ctx.waitUntil(throttledBackfill(term, limit, env));
+    ctx.waitUntil(throttledBackfill(term, limit, db, env));
   }
   // --- end backfill ---
 
-  ctx.waitUntil(recordMetric(env, Date.now() - t0));
+  ctx.waitUntil(recordMetric(db, Date.now() - t0));
 
   const response = json({ actors });
 
@@ -364,7 +411,8 @@ async function handleSearch(
 
 async function handleIngest(
   request: Request,
-  env: Env
+  db: TursoDB,
+  env: Env,
 ): Promise<Response> {
   const auth = request.headers.get("Authorization");
   if (auth !== `Bearer ${env.ADMIN_SECRET}`) {
@@ -393,7 +441,7 @@ async function handleIngest(
   const stmts = events.map((e) => {
     const avatarCid = e.avatar_cid || null;
     const hidden = e.hidden !== undefined ? (e.hidden ? 1 : 0) : null;
-    return env.DB.prepare(
+    return db.prepare(
       `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, updated_at)
        VALUES (?1, ?2, ?3, ?4, COALESCE(?5, 0), unixepoch())
        ON CONFLICT(did) DO UPDATE SET
@@ -412,7 +460,7 @@ async function handleIngest(
   });
 
   try {
-    await env.DB.batch(stmts);
+    await db.batch(stmts);
   } catch (e: any) {
     console.log(JSON.stringify({ event: "ingest_error", error: e?.message, count: events.length }));
     return json({ error: e?.message || "db batch failed" }, 500);
@@ -431,7 +479,8 @@ async function handleIngest(
 
 async function handleDelete(
   request: Request,
-  env: Env
+  db: TursoDB,
+  env: Env,
 ): Promise<Response> {
   const auth = request.headers.get("Authorization");
   if (auth !== `Bearer ${env.ADMIN_SECRET}`) {
@@ -457,9 +506,9 @@ async function handleDelete(
   }
 
   const stmts = dids.map((did) =>
-    env.DB.prepare("DELETE FROM actors WHERE did = ?1").bind(did)
+    db.prepare("DELETE FROM actors WHERE did = ?1").bind(did)
   );
-  await env.DB.batch(stmts);
+  await db.batch(stmts);
 
   return json({ ok: true, deleted: dids.length });
 }
@@ -480,10 +529,11 @@ async function handleCursor(
   return json({ cursor: cursor ? Number(cursor) : null });
 }
 
-/** resolve a handle or DID via slingshot, then upsert into D1 */
+/** resolve a handle or DID via slingshot, then upsert into the active DB */
 async function handleRequestIndexing(
   request: Request,
-  env: Env
+  db: TursoDB,
+  env: Env,
 ): Promise<Response> {
   const url = new URL(request.url);
   const identifier =
@@ -523,7 +573,7 @@ async function handleRequestIndexing(
     // profile enrichment is best-effort
   }
 
-  await env.DB.prepare(
+  await db.prepare(
     `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, updated_at)
      VALUES (?1, ?2, ?3, ?4, ?5, unixepoch())
      ON CONFLICT(did) DO UPDATE SET
@@ -536,20 +586,24 @@ async function handleRequestIndexing(
     .bind(identity.did, identity.handle, displayName, avatarCid, hidden ? 1 : 0)
     .run();
 
-  return json({ handle: identity.handle, did: identity.did, hidden });
+  return json({
+    handle: identity.handle,
+    did: identity.did,
+    ...(hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
+  });
 }
 
-async function handleStats(env: Env): Promise<Response> {
+async function handleStats(db: TursoDB): Promise<Response> {
   const [totalRes, handlesRes, avatarsRes, hiddenRes, metricsRes, snapshotRes] =
-    await env.DB.batch([
-      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden = 0"),
-      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE handle != '' AND hidden = 0"),
-      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE avatar_url != '' AND hidden = 0"),
-      env.DB.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden = 1"),
-      env.DB.prepare(
+    await db.batch([
+      db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden = 0"),
+      db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE handle != '' AND hidden = 0"),
+      db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE avatar_url != '' AND hidden = 0"),
+      db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden != 0"),
+      db.prepare(
         "SELECT hour, searches, total_ms FROM metrics ORDER BY hour DESC LIMIT 168"
       ),
-      env.DB.prepare(
+      db.prepare(
         "SELECT hour, total, with_handles, with_avatars FROM snapshots ORDER BY hour ASC LIMIT 2000"
       ),
     ]);
@@ -730,7 +784,7 @@ function statsPage(d: StatsData): string {
         <div class="value">${d.avatarPct}%</div>
       </div>
       <div class="metric">
-        <div class="label" data-tip="actors hidden from search by bluesky moderation labels">hidden by moderation</div>
+        <div class="label" data-tip="actors hidden by bluesky moderation (!hide, !takedown, spam)">hidden by moderation</div>
         <div class="value">${d.hiddenCount.toLocaleString()}</div>
       </div>
     </div>
@@ -1103,7 +1157,7 @@ function indexPage(): string {
         if (data.error) {
           showMsg(esc(data.error), true);
         } else {
-          const hidden = data.hidden ? ' <em style="color:#886">(hidden by moderation)</em>' : '';
+          const hidden = data.hidden ? ' <em style="color:#886">(' + esc(data.reason || 'hidden') + ')</em>' : '';
           showMsg('indexed <strong>@' + esc(data.handle) + '</strong>' + hidden, false);
           handleInput.value = '';
         }
@@ -1128,9 +1182,10 @@ function html(body: string, status = 200): Response {
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
-    await recordSnapshot(env);
-    await refreshModeration(env);
-    await resolveHandles(env);
+    const db = tursoDb(createClient({ url: env.TURSO_URL, authToken: env.TURSO_AUTH_TOKEN }));
+    await recordSnapshot(db);
+    await refreshModeration(db, env);
+    await resolveHandles(db);
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -1143,25 +1198,27 @@ export default {
     if (pathname === "/" && request.method === "GET") {
       return html(indexPage());
     }
-
-    if (pathname === "/stats" && request.method === "GET") {
-      return handleStats(env);
+    if (pathname === "/admin/cursor" && request.method === "GET") {
+      return handleCursor(request, env);
+    }
+    if (pathname === "/request-indexing" && request.method === "GET") {
+      return new Response(null, { status: 302, headers: { Location: "/" } });
     }
 
-    if (pathname === "/request-indexing") {
-      if (request.method === "GET") {
-        // old bookmarks / form fallback — redirect to homepage
-        return new Response(null, { status: 302, headers: { Location: "/" } });
+    const db = tursoDb(createClient({ url: env.TURSO_URL, authToken: env.TURSO_AUTH_TOKEN }));
+
+    if (pathname === "/stats" && request.method === "GET") {
+      return handleStats(db);
+    }
+
+    if (pathname === "/request-indexing" && request.method === "POST") {
+      const ip = clientIP(request);
+      const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
+      if (!success) {
+        console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
+        return json({ error: "slow down — try again in a minute." }, 429);
       }
-      if (request.method === "POST") {
-        const ip = clientIP(request);
-        const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
-        if (!success) {
-          console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
-          return json({ error: "slow down — try again in a minute." }, 429);
-        }
-        return handleRequestIndexing(request, env);
-      }
+      return handleRequestIndexing(request, db, env);
     }
 
     if (
@@ -1174,19 +1231,15 @@ export default {
         console.log(JSON.stringify({ event: "rate_limited", endpoint: "/search", ip }));
         return json({ error: "rate limited" }, 429);
       }
-      return handleSearch(request, env, ctx);
+      return handleSearch(request, db, env, ctx);
     }
 
     if (pathname === "/admin/ingest" && request.method === "POST") {
-      return handleIngest(request, env);
+      return handleIngest(request, db, env);
     }
 
     if (pathname === "/admin/delete" && request.method === "POST") {
-      return handleDelete(request, env);
-    }
-
-    if (pathname === "/admin/cursor" && request.method === "GET") {
-      return handleCursor(request, env);
+      return handleDelete(request, db, env);
     }
 
     return json({ error: "not found" }, 404);

@@ -4,13 +4,6 @@
   "compatibility_date": "2024-12-01",
   "compatibility_flags": ["nodejs_compat"],
   "triggers": { "crons": ["0 * * * *"] },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "typeahead-db",
-      "database_id": "7e289d5d-dc50-46d1-8084-49aeec2679e5"
-    }
-  ],
   "kv_namespaces": [
     {
       "binding": "KV",

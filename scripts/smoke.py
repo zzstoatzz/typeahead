@@ -212,19 +212,16 @@ def test_moderation_filtering(base_url: str):
         extra_keys |= set(a.keys()) - allowed_keys
     check("actor objects have clean shape", len(extra_keys) == 0, f"extra keys: {extra_keys}" if extra_keys else "")
 
-    # verify hidden actors are actually excluded by finding one with !no-unauthenticated
-    # via bsky API and checking it doesn't appear in our results
-    print("\n--- hidden actor exclusion ---")
-    found_hidden = find_hidden_actor(base_url)
-    if not found_hidden:
-        check("found a hidden actor to verify", False, "couldn't find one — skipping exclusion check")
+    # !no-unauthenticated actors should be VISIBLE (it's about content, not identity)
+    print("\n--- !no-unauthenticated inclusion ---")
+    found = find_noauth_actor(base_url)
+    if not found:
+        check("found a !no-unauthenticated actor to verify", False, "couldn't find one — skipping")
 
 
-def find_hidden_actor(base_url: str) -> bool:
-    """find an actor we've indexed that has !no-unauthenticated, verify they're excluded."""
-    # search our index for common names and cross-check labels via bsky API
+def find_noauth_actor(base_url: str) -> bool:
+    """find an actor with !no-unauthenticated and verify they ARE included in our results."""
     for q in ["alex", "sam", "chris", "jordan"]:
-        # get actors from bsky that have !no-unauthenticated
         bsky_data, _ = fetch(f"{BSKY_PUBLIC}/xrpc/app.bsky.actor.searchActors?q={q}&limit=25")
         if not bsky_data or "_error" in bsky_data:
             continue
@@ -242,17 +239,17 @@ def find_hidden_actor(base_url: str) -> bool:
             if not handle:
                 continue
 
-            # this actor has !no-unauthenticated — check they're NOT in our results
+            # this actor has !no-unauthenticated — check they ARE in our results
             our_data, _ = fetch(f"{base_url}{XRPC_PATH}?q={handle}&limit=10")
             if not our_data or "_error" in our_data:
                 continue
 
             our_handles = {a.get("handle") for a in our_data.get("actors", [])}
             if handle in our_handles:
-                check(f"hidden actor @{handle} excluded from search", False, "appeared in results")
+                check(f"!no-unauthenticated actor @{handle} visible in search", True)
                 return True
             else:
-                check(f"hidden actor @{handle} excluded from search", True)
+                check(f"!no-unauthenticated actor @{handle} visible in search", False, "not found in results")
                 return True
 
     return False

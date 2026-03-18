@@ -14,8 +14,8 @@ and serves FTS5 prefix search from cloudflare's edge.
        v
   worker (cloudflare)
        |
-       +---> D1 (actors table + FTS5 index)
-       +---> KV (cursor, config flags, mod_cursor)
+       +---> Turso (actors table + FTS5 index)
+       +---> KV (cursor, mod_cursor)
        +---> cache API (60s edge cache for search)
 ```
 
@@ -57,15 +57,10 @@ the actors table stores one row per DID:
 
 plus FTS5 index overhead. roughly ~280 bytes/row total.
 
-D1 has a 10GB hard limit (non-negotiable). at current row size that's ~35M
-actors. D1 is designed for per-tenant databases, not single large datasets —
-sharding a global search index across multiple D1s degrades FTS5 ranking
-(scores aren't comparable across shards) and fans out every query.
-
-when we outgrow D1, the natural move is **Turso** (hosted libSQL). our sibling
-project [leaflet-search](https://tangled.org/zzstoatzz.io/leaflet-search)
-already runs Turso + local SQLite read replica in production for FTS5 search.
-the schema and queries would port with minimal changes.
+storage is [Turso](https://turso.tech) (hosted libSQL). previously used
+Cloudflare D1 but migrated to Turso to avoid D1's 10GB hard limit and
+per-tenant design constraints that made sharding a global FTS5 index
+impractical.
 
 ## moderation
 
@@ -86,3 +81,5 @@ by walking the full index over multiple runs.
   existing actors (run once after adding moderation support)
 - `scripts/migrate-avatar-cid.sql` — one-shot migration from full avatar
   URLs to bare CIDs (already applied to production)
+- `scripts/migrate-to-turso.py` — one-shot D1-to-Turso data migration
+  (already applied to production)
