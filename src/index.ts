@@ -473,8 +473,15 @@ async function handleIngest(
     return json({ error: "batch too large (max 10000)" }, 400);
   }
 
-  // batch upsert — use COALESCE to preserve existing fields on partial updates
+  // batch upsert — bare-DID events use INSERT OR IGNORE (0 Turso writes for known actors),
+  // profile/identity events use full UPSERT with COALESCE to preserve existing fields
   const stmts = events.map((e) => {
+    const isBareDID = !e.handle && !e.display_name && !e.avatar_cid && e.hidden === undefined;
+    if (isBareDID) {
+      return db.prepare(
+        "INSERT OR IGNORE INTO actors (did) VALUES (?1)"
+      ).bind(e.did);
+    }
     const avatarCid = e.avatar_cid || null;
     const hidden = e.hidden !== undefined ? (e.hidden ? 1 : 0) : null;
     return db.prepare(
@@ -809,7 +816,7 @@ function statsPage(d: StatsData): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1><strong>typeahead</strong> stats</h1>
+      <h1><a href="/" style="color:inherit;text-decoration:none"><strong>typeahead</strong></a> stats</h1>
     </div>
     <p class="subtitle">index health and search activity</p>
 
@@ -1408,6 +1415,11 @@ function docsPage(): string {
     pre code { background: none; border: none; padding: 0; font-size: 0.72rem; color: #bbb; }
     .diff-add { color: #4a9; }
     .diff-del { color: #a55; }
+    .kw { color: #c678dd; }
+    .str { color: #98c379; }
+    .fn { color: #61afef; }
+    .cm { color: #5c6370; font-style: italic; }
+    .op { color: #abb2bf; }
     .callout { background: #111; border: 1px solid #222; border-left: 3px solid #4a9;
                border-radius: 6px; padding: 0.7rem 0.9rem; margin-bottom: 1rem;
                font-size: 0.78rem; color: #999; line-height: 1.6; }
@@ -1434,25 +1446,29 @@ function docsPage(): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1><strong>typeahead</strong> docs</h1>
+      <h1><a href="/" style="color:inherit;text-decoration:none"><strong>typeahead</strong></a> docs</h1>
     </div>
     <p class="subtitle">switching from the bluesky typeahead API</p>
 
     <div class="callout">
-      <strong>tl;dr</strong> — change the base URL. the endpoint path and query params are the same.
-      response shape is compatible but slimmer.
+      <strong>tl;dr</strong> — replace <code>public.api.bsky.app</code> with <code>typeahead.waow.tech</code>.
     </div>
 
     <h2>what this is</h2>
     <p>
-      typeahead is a community-run actor search for <a href="https://atproto.com">atproto</a>.
-      it's designed as a drop-in replacement for bluesky's
-      <code>app.bsky.actor.searchActorsTypeahead</code> endpoint.
+      typeahead is a community-run actor search for <a href="https://atproto.com">atproto</a>,
+      aiming to be a drop-in replacement for bluesky's
+      <code>app.bsky.actor.searchActorsTypeahead</code> endpoint. the endpoint path and query
+      params are identical; the response shape is compatible but slimmer (see
+      <a href="#response-comparison">response comparison</a> below).
     </p>
     <p>
-      the index is populated via <a href="https://docs.bsky.app/blog/jetstream">jetstream</a>,
-      so it tracks the full network. searches use FTS5 prefix matching against handles and
-      display names, with results edge-cached for 60s.
+      the index is built from a few <a href="https://docs.bsky.app/blog/jetstream">jetstream</a>
+      collections — profiles, posts, likes, and follows — so any account that creates or
+      interacts with content gets discovered automatically. for accounts that predate the index
+      or haven't been seen yet, search queries trigger a throttled backfill from the bluesky API
+      to fill gaps on demand. searches use FTS5 prefix matching against handles and display names,
+      with results edge-cached for 60s.
     </p>
 
     <h2>the change</h2>
@@ -1461,15 +1477,15 @@ function docsPage(): string {
 <span class="diff-add">+ https://typeahead.waow.tech</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10</code></pre>
 
     <h3>before</h3>
-    <pre><code>const response = await fetch(
-  \`https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${encodeURIComponent(query)}&amp;limit=10\`
+    <pre><code><span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
+  <span class="str">\`https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>
 );</code></pre>
 
     <h3>after</h3>
-    <pre><code>const TYPEAHEAD_URL = 'https://typeahead.waow.tech';
+    <pre><code><span class="kw">const</span> TYPEAHEAD_URL <span class="op">=</span> <span class="str">'https://typeahead.waow.tech'</span>;
 
-const response = await fetch(
-  \`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${encodeURIComponent(query)}&amp;limit=10\`
+<span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
+  <span class="str">\`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>
 );</code></pre>
 
     <p>
@@ -1482,9 +1498,9 @@ const response = await fetch(
       set the <code>X-Client</code> header so your app shows up by name in our
       <a href="/stats">traffic stats</a> instead of as "unknown":
     </p>
-    <pre><code>const response = await fetch(
-  \`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${encodeURIComponent(query)}&amp;limit=10\`,
-  { headers: { 'X-Client': 'my-app.example.com' } }
+    <pre><code><span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
+  <span class="str">\`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>,
+  { headers: { <span class="str">'X-Client'</span>: <span class="str">'my-app.example.com'</span> } }
 );</code></pre>
     <p>
       use your domain or app name — whatever you want to be identified as.
@@ -1492,7 +1508,7 @@ const response = await fetch(
       but <code>X-Client</code> is preferred since it works everywhere (server-side, CLI, native apps).
     </p>
 
-    <h2>response comparison</h2>
+    <h2 id="response-comparison">response comparison</h2>
     <p>
       both return <code>{ "actors": [...] }</code>. the actor objects differ:
     </p>
@@ -1516,38 +1532,34 @@ const response = await fetch(
       fetch those fields separately.
     </div>
 
-    <h2>other differences</h2>
+    <h2>operational notes</h2>
     <ul>
-      <li><strong>no auth required</strong> — public CORS endpoint, no token needed</li>
-      <li><strong>rate limited</strong> — 60 req/min per IP (vs bluesky's per-token limits)</li>
+      <li><strong>rate limited</strong> — 60 req/min per IP</li>
       <li><strong>cached</strong> — results are edge-cached for 60s, so very recent profile changes may lag</li>
-      <li><strong>limit range</strong> — <code>1–100</code> (bluesky caps at 10 by default)</li>
-      <li><strong>moderation</strong> — actors flagged with <code>!hide</code> or <code>!takedown</code> labels are excluded from results</li>
+      <li><strong>limit range</strong> — <code>1–100</code> (bluesky defaults to 10)</li>
+      <li><strong>moderation</strong> — actors with <code>!hide</code> or <code>!takedown</code> labels are excluded</li>
+      <li><strong>CORS</strong> — enabled, so browser-based apps can call it directly</li>
     </ul>
 
     <h2>example: plyr.fm</h2>
     <p>
-      <a href="https://tangled.sh/zzstoatzz.io/plyr.fm">plyr.fm</a> switched from a backend proxy
-      (which called the bluesky API) to calling typeahead directly from the frontend. the diff was
-      roughly:
+      <a href="https://tangled.sh/zzstoatzz.io/plyr.fm">plyr.fm</a> uses typeahead for actor
+      search. the integration looks roughly like:
     </p>
-    <pre><code><span class="diff-add">// config.ts</span>
-<span class="diff-add">export const TYPEAHEAD_URL = 'https://typeahead.waow.tech';</span>
+    <pre><code><span class="cm">// config.ts</span>
+<span class="kw">export const</span> TYPEAHEAD_URL <span class="op">=</span> <span class="str">'https://typeahead.waow.tech'</span>;
 
-<span class="diff-add">// HandleSearch.svelte</span>
-const response = await fetch(
-  \`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${encodeURIComponent(query)}&amp;limit=10\`
+<span class="cm">// HandleSearch.svelte</span>
+<span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
+  <span class="str">\`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>
 );
-const data = await response.json();
-const actors = (data.actors ?? []).map(actor => ({
+<span class="kw">const</span> data <span class="op">=</span> <span class="kw">await</span> response.<span class="fn">json</span>();
+<span class="kw">const</span> actors <span class="op">=</span> (data.actors ?? []).<span class="fn">map</span>(actor <span class="op">=></span> ({
   did: actor.did,
   handle: actor.handle,
   display_name: actor.displayName ?? actor.handle,
-  avatar_url: actor.avatar ?? null,
+  avatar_url: actor.avatar ?? <span class="kw">null</span>,
 }));</code></pre>
-    <p>
-      no backend proxy needed. the API supports CORS, so frontend calls work directly.
-    </p>
 
     <h2>request indexing</h2>
     <p>

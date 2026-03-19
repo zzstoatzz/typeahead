@@ -8,7 +8,59 @@ const zat = @import("zat");
 const log = std.log.scoped(.ingester);
 
 const MAX_BATCH: usize = 100;
-const SEEN_CAP: usize = 500_000;
+const BLOOM_BITS: usize = 10_000_000; // ~1.2MB fixed
+const BLOOM_HASHES: usize = 7;
+
+const BloomFilter = struct {
+    bits: std.DynamicBitSetUnmanaged,
+    num_bits: usize,
+    num_hashes: usize,
+    count: usize = 0,
+
+    fn init(allocator: Allocator, num_bits: usize, num_hashes: usize) !BloomFilter {
+        const bits = try std.DynamicBitSetUnmanaged.initEmpty(allocator, num_bits);
+        return .{
+            .bits = bits,
+            .num_bits = num_bits,
+            .num_hashes = num_hashes,
+        };
+    }
+
+    fn deinit(self: *BloomFilter, allocator: Allocator) void {
+        self.bits.deinit(allocator);
+    }
+
+    fn hashIndices(self: *const BloomFilter, key: []const u8) [BLOOM_HASHES]usize {
+        const h1 = std.hash.Wyhash.hash(0, key);
+        const h2 = std.hash.Wyhash.hash(1, key);
+        var indices: [BLOOM_HASHES]usize = undefined;
+        for (0..self.num_hashes) |i| {
+            indices[i] = @intCast((h1 +% i *% h2) % self.num_bits);
+        }
+        return indices;
+    }
+
+    fn insert(self: *BloomFilter, key: []const u8) void {
+        const indices = self.hashIndices(key);
+        for (indices) |idx| {
+            self.bits.set(idx);
+        }
+        self.count += 1;
+    }
+
+    fn contains(self: *const BloomFilter, key: []const u8) bool {
+        const indices = self.hashIndices(key);
+        for (indices) |idx| {
+            if (!self.bits.isSet(idx)) return false;
+        }
+        return true;
+    }
+
+    fn reset(self: *BloomFilter) void {
+        self.bits.unsetAll();
+        self.count = 0;
+    }
+};
 
 const Config = struct {
     worker_url: []const u8,
@@ -40,10 +92,8 @@ const IngestHandler = struct {
     delete_buffer: std.ArrayList([]const u8),
     /// arena owns all string data in buffer/delete_buffer
     arena: std.heap.ArenaAllocator,
-    /// dedup set: tracks DIDs we've already enqueued from non-profile commits
-    seen: std.StringHashMapUnmanaged(void) = .{},
-    seen_arena: std.heap.ArenaAllocator,
-    seen_count: usize = 0,
+    /// bloom filter: fixed-size dedup for non-profile DIDs (~1.2MB)
+    bloom: BloomFilter,
     pending_cursor: i64 = 0,
     flushed_cursor: i64 = 0,
     total_ingested: u64 = 0,
@@ -51,21 +101,20 @@ const IngestHandler = struct {
     last_flush: i64 = 0,
     retry_after: i64 = 0, // timestamp before which we skip flush attempts
 
-    fn init(allocator: Allocator, config: Config) IngestHandler {
+    fn init(allocator: Allocator, config: Config) !IngestHandler {
         return .{
             .allocator = allocator,
             .config = config,
             .buffer = .{},
             .delete_buffer = .{},
             .arena = std.heap.ArenaAllocator.init(allocator),
-            .seen_arena = std.heap.ArenaAllocator.init(allocator),
+            .bloom = try BloomFilter.init(allocator, BLOOM_BITS, BLOOM_HASHES),
             .last_flush = std.time.timestamp(),
         };
     }
 
     fn deinit(self: *IngestHandler) void {
-        self.seen.deinit(self.allocator);
-        self.seen_arena.deinit();
+        self.bloom.deinit(self.allocator);
         self.arena.deinit();
         self.buffer.deinit(self.allocator);
         self.delete_buffer.deinit(self.allocator);
@@ -75,15 +124,9 @@ const IngestHandler = struct {
         return self.arena.allocator().dupe(u8, s) catch null;
     }
 
-    fn dupeForSeen(self: *IngestHandler, s: []const u8) ?[]const u8 {
-        return self.seen_arena.allocator().dupe(u8, s) catch null;
-    }
-
-    fn pruneSeen(self: *IngestHandler) void {
-        log.info("pruning seen set ({d} entries)", .{self.seen_count});
-        self.seen.clearRetainingCapacity();
-        _ = self.seen_arena.reset(.retain_capacity);
-        self.seen_count = 0;
+    fn resetBloom(self: *IngestHandler) void {
+        log.info("resetting bloom filter ({d} insertions)", .{self.bloom.count});
+        self.bloom.reset();
     }
 
     pub fn onEvent(self: *IngestHandler, event: zat.JetstreamEvent) void {
@@ -105,7 +148,7 @@ const IngestHandler = struct {
             self.buffer.clearRetainingCapacity();
             self.delete_buffer.clearRetainingCapacity();
             _ = self.arena.reset(.retain_capacity);
-            self.pruneSeen();
+            self.resetBloom();
             self.flushed_cursor = self.pending_cursor;
             self.retry_after = 0;
         }
@@ -165,17 +208,12 @@ const IngestHandler = struct {
             // non-profile collections: just discover the DID
             if (c.operation == .delete) return;
 
-            // dedup: skip if we've seen this DID recently
-            if (self.seen.contains(c.did)) return;
-
-            const seen_key = self.dupeForSeen(c.did) orelse return;
-            self.seen.put(self.allocator, seen_key, {}) catch return;
-            self.seen_count += 1;
+            // dedup: skip if bloom filter says we've seen this DID recently
+            if (self.bloom.contains(c.did)) return;
+            self.bloom.insert(c.did);
 
             const did = self.dupe(c.did) orelse return;
             self.buffer.append(self.allocator, .{ .did = did }) catch return;
-
-            if (self.seen_count >= SEEN_CAP) self.pruneSeen();
         }
     }
 
@@ -407,7 +445,7 @@ pub fn main() !void {
         log.info("no cursor found, starting from live", .{});
     }
 
-    var handler = IngestHandler.init(allocator, config);
+    var handler = try IngestHandler.init(allocator, config);
     defer handler.deinit();
 
     var client = zat.JetstreamClient.init(allocator, .{
