@@ -8,6 +8,7 @@ const zat = @import("zat");
 const log = std.log.scoped(.ingester);
 
 const MAX_BATCH: usize = 100;
+const SEEN_CAP: usize = 500_000;
 
 const Config = struct {
     worker_url: []const u8,
@@ -39,6 +40,10 @@ const IngestHandler = struct {
     delete_buffer: std.ArrayList([]const u8),
     /// arena owns all string data in buffer/delete_buffer
     arena: std.heap.ArenaAllocator,
+    /// dedup set: tracks DIDs we've already enqueued from non-profile commits
+    seen: std.StringHashMapUnmanaged(void) = .{},
+    seen_arena: std.heap.ArenaAllocator,
+    seen_count: usize = 0,
     pending_cursor: i64 = 0,
     flushed_cursor: i64 = 0,
     total_ingested: u64 = 0,
@@ -53,11 +58,14 @@ const IngestHandler = struct {
             .buffer = .{},
             .delete_buffer = .{},
             .arena = std.heap.ArenaAllocator.init(allocator),
+            .seen_arena = std.heap.ArenaAllocator.init(allocator),
             .last_flush = std.time.timestamp(),
         };
     }
 
     fn deinit(self: *IngestHandler) void {
+        self.seen.deinit(self.allocator);
+        self.seen_arena.deinit();
         self.arena.deinit();
         self.buffer.deinit(self.allocator);
         self.delete_buffer.deinit(self.allocator);
@@ -65,6 +73,17 @@ const IngestHandler = struct {
 
     fn dupe(self: *IngestHandler, s: []const u8) ?[]const u8 {
         return self.arena.allocator().dupe(u8, s) catch null;
+    }
+
+    fn dupeForSeen(self: *IngestHandler, s: []const u8) ?[]const u8 {
+        return self.seen_arena.allocator().dupe(u8, s) catch null;
+    }
+
+    fn pruneSeen(self: *IngestHandler) void {
+        log.info("pruning seen set ({d} entries)", .{self.seen_count});
+        self.seen.clearRetainingCapacity();
+        _ = self.seen_arena.reset(.retain_capacity);
+        self.seen_count = 0;
     }
 
     pub fn onEvent(self: *IngestHandler, event: zat.JetstreamEvent) void {
@@ -86,6 +105,7 @@ const IngestHandler = struct {
             self.buffer.clearRetainingCapacity();
             self.delete_buffer.clearRetainingCapacity();
             _ = self.arena.reset(.retain_capacity);
+            self.pruneSeen();
             self.flushed_cursor = self.pending_cursor;
             self.retry_after = 0;
         }
@@ -111,35 +131,52 @@ const IngestHandler = struct {
     }
 
     fn handleCommit(self: *IngestHandler, c: zat.jetstream.CommitEvent) void {
-        if (!mem.eql(u8, c.collection, "app.bsky.actor.profile")) return;
-        if (c.operation != .create and c.operation != .update) return;
+        if (mem.eql(u8, c.collection, "app.bsky.actor.profile")) {
+            // rich extraction from profile records
+            if (c.operation != .create and c.operation != .update) return;
 
-        const record = c.record orelse return;
+            const record = c.record orelse return;
 
-        const did = self.dupe(c.did) orelse return;
-        var event = ActorEvent{ .did = did };
+            const did = self.dupe(c.did) orelse return;
+            var event = ActorEvent{ .did = did };
 
-        if (zat.json.getString(record, "displayName")) |name| {
-            event.display_name = self.dupe(name);
-        }
-
-        if (zat.json.getPath(record, "avatar")) |avatar| {
-            if (zat.json.getString(avatar, "ref.$link")) |cid| {
-                event.avatar_cid = self.dupe(cid);
+            if (zat.json.getString(record, "displayName")) |name| {
+                event.display_name = self.dupe(name);
             }
-        }
 
-        // check self-labels for !no-unauthenticated (user opts out of unauthenticated visibility)
-        event.hidden = blk: {
-            const values = zat.json.getArray(record, "labels.values") orelse break :blk false;
-            for (values) |item| {
-                const val = zat.json.getString(item, "val") orelse continue;
-                if (mem.eql(u8, val, "!no-unauthenticated")) break :blk true;
+            if (zat.json.getPath(record, "avatar")) |avatar| {
+                if (zat.json.getString(avatar, "ref.$link")) |cid| {
+                    event.avatar_cid = self.dupe(cid);
+                }
             }
-            break :blk false;
-        };
 
-        self.buffer.append(self.allocator, event) catch return;
+            // check self-labels for !no-unauthenticated
+            event.hidden = blk: {
+                const values = zat.json.getArray(record, "labels.values") orelse break :blk false;
+                for (values) |item| {
+                    const val = zat.json.getString(item, "val") orelse continue;
+                    if (mem.eql(u8, val, "!no-unauthenticated")) break :blk true;
+                }
+                break :blk false;
+            };
+
+            self.buffer.append(self.allocator, event) catch return;
+        } else {
+            // non-profile collections: just discover the DID
+            if (c.operation == .delete) return;
+
+            // dedup: skip if we've seen this DID recently
+            if (self.seen.contains(c.did)) return;
+
+            const seen_key = self.dupeForSeen(c.did) orelse return;
+            self.seen.put(self.allocator, seen_key, {}) catch return;
+            self.seen_count += 1;
+
+            const did = self.dupe(c.did) orelse return;
+            self.buffer.append(self.allocator, .{ .did = did }) catch return;
+
+            if (self.seen_count >= SEEN_CAP) self.pruneSeen();
+        }
     }
 
     fn handleIdentity(self: *IngestHandler, id: zat.jetstream.IdentityEvent) void {
@@ -374,7 +411,12 @@ pub fn main() !void {
     defer handler.deinit();
 
     var client = zat.JetstreamClient.init(allocator, .{
-        .wanted_collections = &.{"app.bsky.actor.profile"},
+        .wanted_collections = &.{
+            "app.bsky.actor.profile",
+            "app.bsky.feed.post",
+            "app.bsky.feed.like",
+            "app.bsky.graph.follow",
+        },
         .cursor = cursor,
     });
     defer client.deinit();

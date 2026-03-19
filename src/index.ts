@@ -224,27 +224,31 @@ async function recordSnapshot(db: TursoDB): Promise<void> {
 /** resolve handles for actors missing them via slingshot */
 async function resolveHandles(db: TursoDB): Promise<void> {
   const { results } = await db.prepare(
-    "SELECT did FROM actors WHERE handle = '' ORDER BY updated_at DESC LIMIT 1000"
+    "SELECT did FROM actors WHERE handle = '' ORDER BY updated_at DESC LIMIT 5000"
   ).all<{ did: string }>();
   if (!results || results.length === 0) return;
 
   let resolved = 0;
-  for (const { did } of results) {
-    try {
-      const res = await fetch(
-        `${SLINGSHOT_URL}?identifier=${encodeURIComponent(did)}`
-      );
-      if (!res.ok) continue;
-      const identity: SlingshotResponse = await res.json();
-      if (identity.handle) {
-        await db.prepare(
-          "UPDATE actors SET handle = ?1 WHERE did = ?2 AND handle = ''"
-        ).bind(identity.handle, did).run();
-        resolved++;
+  const BATCH = 10;
+  for (let i = 0; i < results.length; i += BATCH) {
+    const batch = results.slice(i, i + BATCH);
+    await Promise.all(batch.map(async ({ did }) => {
+      try {
+        const res = await fetch(
+          `${SLINGSHOT_URL}?identifier=${encodeURIComponent(did)}`
+        );
+        if (!res.ok) return;
+        const identity: SlingshotResponse = await res.json();
+        if (identity.handle) {
+          await db.prepare(
+            "UPDATE actors SET handle = ?1 WHERE did = ?2 AND handle = ''"
+          ).bind(identity.handle, did).run();
+          resolved++;
+        }
+      } catch {
+        // best-effort — skip failures
       }
-    } catch {
-      // best-effort — skip failures
-    }
+    }));
   }
   if (resolved > 0) {
     console.log(JSON.stringify({ event: "handle_resolve", resolved, checked: results.length }));
