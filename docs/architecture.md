@@ -10,33 +10,79 @@ and serves FTS5 prefix search from cloudflare's edge.
        |
        v
   ingester (zig, fly.io)
-       |  batches of {did, handle, display_name, avatar_cid, hidden}
+       |  bloom filter dedup (~1.2MB fixed)
+       |  two-tier writes:
+       |    - bare DID: INSERT OR IGNORE (0 Turso writes for known actors)
+       |    - profile/identity event: full UPSERT with COALESCE
        v
   worker (cloudflare)
        |
        +---> Turso (actors table + FTS5 index)
-       +---> KV (cursor, mod_cursor)
+       +---> KV (cursor, mod_cursor, enrich_lock)
        +---> cache API (60s edge cache for search)
 ```
 
 ### write paths
 
-1. **ingester**: streams jetstream, buffers actor events, POSTs batches to
-   `/admin/ingest`. sends avatar CIDs (not full URLs — the CDN URL is
-   deterministic from DID + CID).
+1. **ingester**: streams jetstream (profiles, posts, likes, follows), buffers
+   actor events, POSTs batches to `/admin/ingest`. sends avatar CIDs (not full
+   URLs — the CDN URL is deterministic from DID + CID). bloom filter dedup
+   prevents re-sending already-known bare DIDs.
 
-2. **backfill**: when a search has gaps (missing avatars, few results), the
+2. **enrichment pipeline** (dispatched from ingest hot path via `waitUntil`):
+   - **phase 1 — identity**: slingshot resolves DID → handle + PDS endpoint.
+     100 DIDs/run, 20 concurrent. attempt tracking (`identity_checked_at`)
+     backs off failures for 1 hour.
+   - **phase 2 — profile**: PDS-native `getRecord` fetches avatar CID +
+     display_name directly from the actor's PDS. 20/run. attempt tracking
+     (`profile_checked_at`) backs off failures for 1 hour.
+   - lease-coordinated via KV (`enrich_lock`, 30s TTL) — no stampede from
+     overlapping ingest batches.
+   - converges to zero work as gaps fill (gap-driven queries return fewer
+     results over time).
+
+3. **backfill**: when a search has gaps (missing avatars, few results), the
    worker calls bluesky's `searchActorsTypeahead` API and upserts results.
    extracts CIDs from the full avatar URLs returned by the API.
 
-3. **request-indexing**: POST `/request-indexing?handle=...` resolves via
+4. **request-indexing**: POST `/request-indexing?handle=...` resolves via
    slingshot, fetches profile from bluesky public API, extracts avatar CID,
    checks moderation labels, upserts.
 
-4. **hourly cron**:
-   - records actor count snapshot (total, with handles, with avatars)
-   - refreshes moderation labels (walks 1000 actors/run via `mod_cursor`)
-   - resolves missing handles via slingshot (up to 1000/run)
+5. **hourly cron**:
+   - records actor count snapshot (total, with handles, with avatars) —
+     serves as reconciliation anchor for delta-based tracking
+   - refreshes moderation labels (walks 1000 actors/run via `mod_cursor`);
+     piggybacks enrichment — saves handle, display_name, avatar from the
+     getProfiles response at zero additional API cost
+   - runs `enrichActors` as a catch-up for idle periods (same function,
+     same lease — no overlap risk)
+
+### metrics
+
+- **search metrics**: 5-min buckets in `metrics` table (searches + total_ms)
+- **actor deltas**: 5-min buckets in `actor_deltas` table tracking incremental
+  changes to actors, handles, and avatars counts. recorded at write time
+  (ingest, delete, enrichment) via fire-and-forget `waitUntil`.
+- **hourly snapshots**: absolute counts from `COUNT(*)` queries, used as
+  reconciliation anchors. the trend chart stitches snapshots + deltas for
+  sub-hourly resolution between anchor points.
+- **traffic sources**: cumulative hit counters per client identity (X-Client >
+  Origin > Referer). loopback/localhost normalized to "unknown".
+
+### enrichment convergence
+
+the enrichment pipeline is gap-driven:
+
+- identity phase queries actors with `handle = ''` and
+  `identity_checked_at < now - 1hr`
+- profile phase queries actors with `handle != ''`, `avatar_url = ''`,
+  `pds != ''`, and `profile_checked_at < now - 1hr`
+- as actors get enriched, these queries return fewer rows
+- system quiesces when all actors are resolved or backed off
+
+AppView (public.api.bsky.app) is used only for moderation label checks.
+profile data comes from PDS-native fetches.
 
 ### read path
 
@@ -53,8 +99,11 @@ the actors table stores one row per DID:
     avatar_url TEXT               -- ~59 bytes (CID only, URL reconstructed at query time)
     hidden INTEGER                -- 1 byte
     updated_at INTEGER            -- 8 bytes
+    pds TEXT                      -- ~40 bytes (PDS endpoint URL)
+    identity_checked_at INTEGER   -- 8 bytes (last slingshot attempt)
+    profile_checked_at INTEGER    -- 8 bytes (last PDS profile attempt)
 
-plus FTS5 index overhead. roughly ~280 bytes/row total.
+plus FTS5 index overhead. roughly ~320 bytes/row total.
 
 storage is [Turso](https://turso.tech) (hosted libSQL). previously used
 Cloudflare D1 but migrated to Turso to avoid D1's 10GB hard limit and
@@ -72,14 +121,28 @@ content, not identity. bluesky's own public typeahead API returns these
 accounts, and so do we.
 
 the hourly cron refreshes moderation labels by walking the full index over
-multiple runs (1000 actors/run via `mod_cursor` in KV).
+multiple runs (1000 actors/run via `mod_cursor` in KV). it piggybacks
+enrichment data (handle, display_name, avatar) from the same getProfiles
+response at no additional API cost.
 
 ## scripts
 
 - `scripts/smoke.py` — end-to-end smoke tests against a live deployment
 - `scripts/backfill-moderation.py` — one-shot sweep to set hidden flags on
   existing actors (run once after adding moderation support)
+- `scripts/add-enrichment-columns.sql` — one-shot migration adding pds,
+  identity_checked_at, profile_checked_at columns (run once before deploying
+  enrichment pipeline)
+- `scripts/add-actor-deltas.sql` — one-shot migration adding actor_deltas
+  table for 5-min granularity delta tracking
 - `scripts/migrate-avatar-cid.sql` — one-shot migration from full avatar
   URLs to bare CIDs (already applied to production)
 - `scripts/migrate-to-turso.py` — one-shot D1-to-Turso data migration
   (already applied to production)
+
+## notes
+
+- `docs/notes/ingester-oom-firehose-widening.md` — postmortem from widening
+  jetstream subscriptions to posts/likes/follows, causing ingester OOM on
+  256MB fly.io VM. root cause: in-memory dedup set with retain-capacity
+  semantics. resolved with bloom filter approach.
