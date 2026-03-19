@@ -337,7 +337,22 @@ async function recordMetric(db: TursoDB, ms: number): Promise<void> {
 async function recordTrafficSource(db: TursoDB, request: Request): Promise<void> {
   const client = request.headers.get("X-Client");
   const origin = request.headers.get("Origin");
-  const domain = client || (origin ? new URL(origin).hostname : "unknown");
+  const referer = request.headers.get("Referer");
+  const selfHost = new URL(request.url).hostname;
+
+  let domain: string;
+  if (client) {
+    domain = client;
+  } else if (origin) {
+    domain = new URL(origin).hostname;
+  } else if (referer) {
+    try {
+      const refHost = new URL(referer).hostname;
+      domain = refHost === selfHost ? "homepage" : refHost;
+    } catch { domain = "unknown"; }
+  } else {
+    domain = "unknown";
+  }
   await db.prepare(
     `INSERT INTO traffic_sources (domain, hits)
      VALUES (?1, 1)
@@ -696,10 +711,11 @@ function statsPage(d: StatsData): string {
 
   const PIE_COLORS = ['#4a9', '#58a6ff', '#bc8cff', '#e5a04b', '#e06c75', '#56b6c2', '#c678dd', '#98c379', '#d19a66'];
   const trafficTotal = d.trafficSources.reduce((s, r) => s + r.hits, 0);
+  const SPECIAL_DOMAINS: Record<string, string> = { unknown: '#555', homepage: '#666' };
   const pieLegendHtml = d.trafficSources.map((r, i) => {
-    const color = r.domain === 'unknown' ? '#555' : PIE_COLORS[i % PIE_COLORS.length];
+    const color = SPECIAL_DOMAINS[r.domain] ?? PIE_COLORS[i % PIE_COLORS.length];
     const pct = trafficTotal > 0 ? ((r.hits / trafficTotal) * 100).toFixed(1) : '0';
-    const label = r.domain === 'unknown'
+    const label = r.domain in SPECIAL_DOMAINS
       ? r.domain
       : `<a href="https://${r.domain}" target="_blank" rel="noopener" class="legend-link">${r.domain}</a>`;
     return `<span><span class="ldot" style="background:${color}"></span>${label} (${pct}%)</span>`;
@@ -1033,8 +1049,9 @@ function statsPage(d: StatsData): string {
     if (pieCanvas && traffic.length > 0) {
       const pieTotal = traffic.reduce((s, r) => s + r.hits, 0);
 
+      const SPECIAL = { unknown: '#555', homepage: '#666' };
       function getColor(i) {
-        return traffic[i].domain === 'unknown' ? '#555' : PIE_COLORS[i % PIE_COLORS.length];
+        return SPECIAL[traffic[i].domain] || PIE_COLORS[i % PIE_COLORS.length];
       }
 
       // build segments: { start, end, color, domain, hits }
