@@ -45,3 +45,8 @@ CREATE TABLE IF NOT EXISTS snapshots (
   with_handles INTEGER NOT NULL DEFAULT 0,
   with_avatars INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS traffic_sources (
+  domain TEXT PRIMARY KEY,
+  hits INTEGER NOT NULL DEFAULT 0
+);

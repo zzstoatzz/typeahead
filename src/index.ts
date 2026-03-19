@@ -333,6 +333,19 @@ async function recordMetric(db: TursoDB, ms: number): Promise<void> {
     .run();
 }
 
+/** fire-and-forget: increment cumulative hit counter per origin domain */
+async function recordTrafficSource(db: TursoDB, request: Request): Promise<void> {
+  const origin = request.headers.get("Origin");
+  const domain = origin ? new URL(origin).hostname : "unknown";
+  await db.prepare(
+    `INSERT INTO traffic_sources (domain, hits)
+     VALUES (?1, 1)
+     ON CONFLICT(domain) DO UPDATE SET hits = hits + 1`
+  )
+    .bind(domain)
+    .run();
+}
+
 async function handleSearch(
   request: Request,
   db: TursoDB,
@@ -397,7 +410,10 @@ async function handleSearch(
   }
   // --- end backfill ---
 
-  ctx.waitUntil(recordMetric(db, Date.now() - t0));
+  ctx.waitUntil(Promise.all([
+    recordMetric(db, Date.now() - t0),
+    recordTrafficSource(db, request),
+  ]));
 
   const response = json({ actors });
 
@@ -594,7 +610,7 @@ async function handleRequestIndexing(
 }
 
 async function handleStats(db: TursoDB): Promise<Response> {
-  const [totalRes, handlesRes, avatarsRes, hiddenRes, metricsRes, snapshotRes] =
+  const [totalRes, handlesRes, avatarsRes, hiddenRes, metricsRes, snapshotRes, trafficRes] =
     await db.batch([
       db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden = 0"),
       db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE handle != '' AND hidden = 0"),
@@ -605,6 +621,9 @@ async function handleStats(db: TursoDB): Promise<Response> {
       ),
       db.prepare(
         "SELECT hour, total, with_handles, with_avatars FROM snapshots ORDER BY hour ASC LIMIT 2000"
+      ),
+      db.prepare(
+        "SELECT domain, hits FROM traffic_sources ORDER BY hits DESC LIMIT 10"
       ),
     ]);
 
@@ -618,6 +637,7 @@ async function handleStats(db: TursoDB): Promise<Response> {
     total_ms: number;
   }[];
   const snapshots = (snapshotRes.results ?? []) as SnapshotPoint[];
+  const trafficSources = (trafficRes.results ?? []) as { domain: string; hits: number }[];
 
   // append live counts as the latest point
   const liveHour = Math.floor(Date.now() / 3_600_000);
@@ -631,7 +651,7 @@ async function handleStats(db: TursoDB): Promise<Response> {
   const handlePct = total > 0 ? ((withHandles / total) * 100).toFixed(1) : "0";
   const avatarPct = total > 0 ? ((withAvatars / total) * 100).toFixed(1) : "0";
 
-  return html(statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, handlePct, avatarPct, snapshots }));
+  return html(statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, handlePct, avatarPct, snapshots, trafficSources }));
 }
 
 interface SnapshotPoint {
@@ -650,6 +670,7 @@ interface StatsData {
   handlePct: string;
   avatarPct: string;
   snapshots: SnapshotPoint[];
+  trafficSources: { domain: string; hits: number }[];
 }
 
 function statsPage(d: StatsData): string {
@@ -670,6 +691,15 @@ function statsPage(d: StatsData): string {
   );
 
   const snapshotJson = JSON.stringify(d.snapshots);
+  const trafficJson = JSON.stringify(d.trafficSources);
+
+  const PIE_COLORS = ['#4a9', '#58a6ff', '#bc8cff', '#e5a04b', '#e06c75', '#56b6c2', '#c678dd', '#98c379', '#d19a66'];
+  const trafficTotal = d.trafficSources.reduce((s, r) => s + r.hits, 0);
+  const pieLegendHtml = d.trafficSources.map((r, i) => {
+    const color = r.domain === 'unknown' ? '#555' : PIE_COLORS[i % PIE_COLORS.length];
+    const pct = trafficTotal > 0 ? ((r.hits / trafficTotal) * 100).toFixed(1) : '0';
+    return `<span><span class="ldot" style="background:${color}"></span>${r.domain} (${pct}%)</span>`;
+  }).join('');
 
   return `<!doctype html>
 <html>
@@ -724,6 +754,18 @@ function statsPage(d: StatsData): string {
                  border-radius: 4px; padding: 0.4rem 0.6rem; font-size: 0.75rem; color: #ccc;
                  pointer-events: none; z-index: 50; }
 
+    .pie-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
+                padding: 0.9rem; margin-bottom: 1.5rem; }
+    .pie-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
+    #pie { display: block; margin: 0 auto; width: 280px; height: 280px; touch-action: none; }
+    .pie-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.7rem;
+                  font-size: 0.7rem; color: #888; justify-content: center; }
+    .pie-legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .pie-tip { display: none; position: fixed; background: rgba(17, 17, 17, 0.95);
+               border: 1px solid #333; border-radius: 6px; padding: 0.5rem 0.7rem;
+               font-size: 0.72rem; color: #ccc; pointer-events: none; z-index: 50;
+               white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+
     footer { padding-top: 1.5rem; border-top: 1px solid #1a1a1a; font-size: 0.7rem;
              color: #444; display: flex; justify-content: center; gap: 0.4rem; }
     footer a { color: #555; text-decoration: none; }
@@ -734,6 +776,7 @@ function statsPage(d: StatsData): string {
       #trend { height: 160px; }
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
       .summary { grid-template-columns: 1fr 1fr; }
+      #pie { width: 220px; height: 220px; }
     }
   </style>
 </head>
@@ -765,6 +808,15 @@ function statsPage(d: StatsData): string {
           </svg>`
         : `<div style="color:#444;font-size:0.8rem;padding:1rem 0;text-align:center">no data yet</div>`}
     </div>
+
+    <div class="pie-wrap">
+      <h2>traffic sources</h2>
+      ${d.trafficSources.length > 0
+        ? `<canvas id="pie"></canvas>
+           <div class="pie-legend">${pieLegendHtml}</div>`
+        : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
+    </div>
+    <div class="pie-tip" id="pie-tip"></div>
 
     <div class="summary">
       <div class="metric">
@@ -961,6 +1013,128 @@ function statsPage(d: StatsData): string {
         chartTip.style.display = 'none';
         drawChart(null);
       });
+    }
+
+    /* --- traffic sources pie chart --- */
+    const PIE_COLORS = ['#4a9', '#58a6ff', '#bc8cff', '#e5a04b', '#e06c75', '#56b6c2', '#c678dd', '#98c379', '#d19a66'];
+    const traffic = ${trafficJson};
+    const pieCanvas = document.getElementById('pie');
+    const pieTip = document.getElementById('pie-tip');
+
+    if (pieCanvas && traffic.length > 0) {
+      const pieTotal = traffic.reduce((s, r) => s + r.hits, 0);
+
+      function getColor(i) {
+        return traffic[i].domain === 'unknown' ? '#555' : PIE_COLORS[i % PIE_COLORS.length];
+      }
+
+      // build segments: { start, end, color, domain, hits }
+      const segments = [];
+      let angle = -Math.PI / 2;
+      for (let i = 0; i < traffic.length; i++) {
+        const sweep = (traffic[i].hits / pieTotal) * Math.PI * 2;
+        segments.push({ start: angle, end: angle + sweep, color: getColor(i), domain: traffic[i].domain, hits: traffic[i].hits });
+        angle += sweep;
+      }
+
+      let animProgress = 0;
+      let hoverIdx = -1;
+      const animStart = performance.now();
+      const animDur = 800;
+
+      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+      function drawPie() {
+        const pctx = pieCanvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const W = pieCanvas.clientWidth, H = pieCanvas.clientHeight;
+        pieCanvas.width = W * dpr; pieCanvas.height = H * dpr;
+        pctx.scale(dpr, dpr);
+        pctx.clearRect(0, 0, W, H);
+
+        const cx = W / 2, cy = H / 2;
+        const outerR = Math.min(W, H) / 2 - 8;
+        const innerR = outerR * 0.6;
+        const maxAngle = -Math.PI / 2 + animProgress * Math.PI * 2;
+
+        for (let i = 0; i < segments.length; i++) {
+          const seg = segments[i];
+          const drawStart = seg.start;
+          const drawEnd = Math.min(seg.end, maxAngle);
+          if (drawEnd <= drawStart) continue;
+
+          const grow = hoverIdx === i ? 4 : 0;
+          const alpha = hoverIdx >= 0 && hoverIdx !== i ? 0.4 : 1;
+
+          pctx.globalAlpha = alpha;
+          pctx.beginPath();
+          pctx.arc(cx, cy, outerR + grow, drawStart, drawEnd);
+          pctx.arc(cx, cy, innerR - (grow ? 2 : 0), drawEnd, drawStart, true);
+          pctx.closePath();
+          pctx.fillStyle = seg.color;
+          pctx.fill();
+        }
+
+        // center text
+        pctx.globalAlpha = 1;
+        pctx.fillStyle = '#888';
+        pctx.font = '600 ' + (outerR * 0.22) + 'px system-ui, sans-serif';
+        pctx.textAlign = 'center';
+        pctx.textBaseline = 'middle';
+        pctx.fillText(fmtNum(pieTotal), cx, cy - outerR * 0.06);
+        pctx.font = (outerR * 0.11) + 'px system-ui, sans-serif';
+        pctx.fillStyle = '#555';
+        pctx.fillText('hits', cx, cy + outerR * 0.14);
+      }
+
+      function animLoop(now) {
+        const t = Math.min((now - animStart) / animDur, 1);
+        animProgress = easeOutCubic(t);
+        drawPie();
+        if (t < 1) requestAnimationFrame(animLoop);
+      }
+      requestAnimationFrame(animLoop);
+
+      function hitTest(clientX, clientY) {
+        const rect = pieCanvas.getBoundingClientRect();
+        const mx = clientX - rect.left - rect.width / 2;
+        const my = clientY - rect.top - rect.height / 2;
+        const dist = Math.sqrt(mx * mx + my * my);
+        const outerR = Math.min(rect.width, rect.height) / 2 - 8;
+        const innerR = outerR * 0.6;
+        if (dist < innerR || dist > outerR + 8) return -1;
+        let a = Math.atan2(my, mx);
+        if (a < -Math.PI / 2) a += Math.PI * 2;
+        for (let i = 0; i < segments.length; i++) {
+          if (a >= segments[i].start && a < segments[i].end) return i;
+        }
+        return -1;
+      }
+
+      function pieHover(clientX, clientY) {
+        const idx = hitTest(clientX, clientY);
+        if (idx !== hoverIdx) {
+          hoverIdx = idx;
+          drawPie();
+        }
+        if (idx >= 0) {
+          const seg = segments[idx];
+          const pct = ((seg.hits / pieTotal) * 100).toFixed(1);
+          pieTip.innerHTML = '<strong>' + seg.domain + '</strong><br>' + seg.hits.toLocaleString() + ' hits (' + pct + '%)';
+          pieTip.style.display = 'block';
+          const tx = clientX + 14, ty = clientY - 10;
+          pieTip.style.left = (tx + pieTip.offsetWidth > window.innerWidth ? clientX - pieTip.offsetWidth - 10 : tx) + 'px';
+          pieTip.style.top = ty + 'px';
+        } else {
+          pieTip.style.display = 'none';
+        }
+      }
+
+      pieCanvas.addEventListener('mousemove', e => pieHover(e.clientX, e.clientY));
+      pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; });
+      pieCanvas.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; pieHover(t.clientX, t.clientY); });
+      pieCanvas.addEventListener('touchend', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; });
+      window.addEventListener('resize', () => drawPie());
     }
 
     /* --- search sparkline --- */
