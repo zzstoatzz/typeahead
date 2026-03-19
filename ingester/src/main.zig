@@ -1,9 +1,9 @@
 const std = @import("std");
 const mem = std.mem;
 const json = std.json;
-const http = std.http;
 const Allocator = mem.Allocator;
 const zat = @import("zat");
+const HttpTransport = zat.HttpTransport;
 
 const log = std.log.scoped(.ingester);
 
@@ -88,6 +88,7 @@ const ActorEvent = struct {
 const IngestHandler = struct {
     allocator: Allocator,
     config: Config,
+    transport: *HttpTransport,
     buffer: std.ArrayList(ActorEvent),
     delete_buffer: std.ArrayList([]const u8),
     /// arena owns all string data in buffer/delete_buffer
@@ -101,10 +102,11 @@ const IngestHandler = struct {
     last_flush: i64 = 0,
     retry_after: i64 = 0, // timestamp before which we skip flush attempts
 
-    fn init(allocator: Allocator, config: Config) !IngestHandler {
+    fn init(allocator: Allocator, config: Config, transport: *HttpTransport) !IngestHandler {
         return .{
             .allocator = allocator,
             .config = config,
+            .transport = transport,
             .buffer = .{},
             .delete_buffer = .{},
             .arena = std.heap.ArenaAllocator.init(allocator),
@@ -240,7 +242,7 @@ const IngestHandler = struct {
             const batch_end = @min(self.buffer.items.len, MAX_BATCH);
             const batch = self.buffer.items[0..batch_end];
             const ok = postBatch(
-                self.allocator,
+                self.transport,
                 self.config,
                 batch,
                 self.flushed_cursor,
@@ -272,7 +274,7 @@ const IngestHandler = struct {
             const batch_end = @min(self.delete_buffer.items.len, MAX_BATCH);
             const batch = self.delete_buffer.items[0..batch_end];
             const ok = deleteActors(
-                self.allocator,
+                self.transport,
                 self.config,
                 batch,
             );
@@ -308,11 +310,8 @@ const IngestHandler = struct {
     }
 };
 
-fn postBatch(allocator: Allocator, config: Config, events: []const ActorEvent, cursor: i64) bool {
-    var client = http.Client{ .allocator = allocator };
-    defer client.deinit();
-
-    var output: std.Io.Writer.Allocating = .init(allocator);
+fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEvent, cursor: i64) bool {
+    var output: std.Io.Writer.Allocating = .init(transport.allocator);
     defer output.deinit();
 
     var jw: json.Stringify = .{
@@ -327,35 +326,25 @@ fn postBatch(allocator: Allocator, config: Config, events: []const ActorEvent, c
     var auth_buf: [256]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
 
-    var resp_output: std.Io.Writer.Allocating = .init(allocator);
-    defer resp_output.deinit();
-
     const body = output.toArrayList();
 
-    const result = client.fetch(.{
-        .location = .{ .url = url },
+    const result = transport.fetch(.{
+        .url = url,
         .method = .POST,
-        .headers = .{
-            .content_type = .{ .override = "application/json" },
-            .authorization = .{ .override = auth },
-        },
         .payload = body.items,
-        .response_writer = &resp_output.writer,
+        .authorization = auth,
     }) catch return false;
+    defer transport.allocator.free(result.body);
 
     if (result.status != .ok) {
-        const resp = resp_output.toArrayList();
-        log.err("ingest HTTP {d}: {s}", .{ @intFromEnum(result.status), resp.items });
+        log.err("ingest HTTP {d}: {s}", .{ @intFromEnum(result.status), result.body });
     }
 
     return result.status == .ok;
 }
 
-fn deleteActors(allocator: Allocator, config: Config, dids: []const []const u8) bool {
-    var client = http.Client{ .allocator = allocator };
-    defer client.deinit();
-
-    var output: std.Io.Writer.Allocating = .init(allocator);
+fn deleteActors(transport: *HttpTransport, config: Config, dids: []const []const u8) bool {
+    var output: std.Io.Writer.Allocating = .init(transport.allocator);
     defer output.deinit();
 
     var jw: json.Stringify = .{ .writer = &output.writer };
@@ -369,47 +358,33 @@ fn deleteActors(allocator: Allocator, config: Config, dids: []const []const u8) 
 
     const body = output.toArrayList();
 
-    const result = client.fetch(.{
-        .location = .{ .url = url },
+    const result = transport.fetch(.{
+        .url = url,
         .method = .POST,
-        .headers = .{
-            .content_type = .{ .override = "application/json" },
-            .authorization = .{ .override = auth },
-        },
         .payload = body.items,
+        .authorization = auth,
     }) catch return false;
+    defer transport.allocator.free(result.body);
 
     return result.status == .ok;
 }
 
-fn fetchCursorOnce(allocator: Allocator, config: Config) ?i64 {
-    var client = http.Client{ .allocator = allocator };
-    defer client.deinit();
-
+fn fetchCursorOnce(transport: *HttpTransport, config: Config) ?i64 {
     var url_buf: [512]u8 = undefined;
     const url = std.fmt.bufPrint(&url_buf, "{s}/admin/cursor", .{config.worker_url}) catch return null;
 
     var auth_buf: [256]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return null;
 
-    var aw: std.Io.Writer.Allocating = .init(allocator);
-    defer aw.deinit();
-
-    const result = client.fetch(.{
-        .location = .{ .url = url },
-        .method = .GET,
-        .headers = .{
-            .authorization = .{ .override = auth },
-        },
-        .response_writer = &aw.writer,
+    const result = transport.fetch(.{
+        .url = url,
+        .authorization = auth,
     }) catch return null;
+    defer transport.allocator.free(result.body);
 
     if (result.status != .ok) return null;
 
-    var resp = aw.toArrayList();
-    defer resp.deinit(allocator);
-
-    const parsed = json.parseFromSlice(json.Value, allocator, resp.items, .{}) catch return null;
+    const parsed = json.parseFromSlice(json.Value, transport.allocator, result.body, .{}) catch return null;
     defer parsed.deinit();
 
     const cursor_val = parsed.value.object.get("cursor") orelse return null;
@@ -420,10 +395,10 @@ fn fetchCursorOnce(allocator: Allocator, config: Config) ?i64 {
     };
 }
 
-fn fetchCursor(allocator: Allocator, config: Config) ?i64 {
+fn fetchCursor(transport: *HttpTransport, config: Config) ?i64 {
     const backoff = [_]u64{ 1, 3, 10 };
     for (backoff, 0..) |delay, attempt| {
-        if (fetchCursorOnce(allocator, config)) |cursor| return cursor;
+        if (fetchCursorOnce(transport, config)) |cursor| return cursor;
         log.warn("cursor fetch failed (attempt {d}/3), retrying in {d}s", .{ attempt + 1, delay });
         std.Thread.sleep(delay * std.time.ns_per_s);
     }
@@ -438,14 +413,17 @@ pub fn main() !void {
     const config = getConfig();
     log.info("typeahead ingester → {s}", .{config.worker_url});
 
-    const cursor = fetchCursor(allocator, config);
+    var transport = HttpTransport.init(allocator);
+    defer transport.deinit();
+
+    const cursor = fetchCursor(&transport, config);
     if (cursor) |c| {
         log.info("resuming from cursor {d}", .{c});
     } else {
         log.info("no cursor found, starting from live", .{});
     }
 
-    var handler = try IngestHandler.init(allocator, config);
+    var handler = try IngestHandler.init(allocator, config, &transport);
     defer handler.deinit();
 
     var client = zat.JetstreamClient.init(allocator, .{
