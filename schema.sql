@@ -4,7 +4,10 @@ CREATE TABLE IF NOT EXISTS actors (
   display_name TEXT DEFAULT '',
   avatar_url TEXT DEFAULT '',  -- stores CID only (e.g. bafkrei...); reconstruct URL at query time
   updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-  hidden INTEGER NOT NULL DEFAULT 0
+  hidden INTEGER NOT NULL DEFAULT 0,
+  pds TEXT DEFAULT '',
+  identity_checked_at INTEGER DEFAULT 0,
+  profile_checked_at INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_actors_handle ON actors(handle COLLATE NOCASE);
@@ -44,6 +47,13 @@ CREATE TABLE IF NOT EXISTS snapshots (
   total INTEGER NOT NULL DEFAULT 0,
   with_handles INTEGER NOT NULL DEFAULT 0,
   with_avatars INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS actor_deltas (
+  bucket INTEGER PRIMARY KEY,  -- 5-min bucket (Date.now() / 300_000)
+  actors_delta INTEGER NOT NULL DEFAULT 0,
+  handles_delta INTEGER NOT NULL DEFAULT 0,
+  avatars_delta INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS traffic_sources (

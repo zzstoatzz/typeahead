@@ -221,38 +221,112 @@ async function recordSnapshot(db: TursoDB): Promise<void> {
   }
 }
 
-/** resolve handles for actors missing them via slingshot */
-async function resolveHandles(db: TursoDB): Promise<void> {
-  const { results } = await db.prepare(
-    "SELECT did FROM actors WHERE handle = '' ORDER BY updated_at DESC LIMIT 5000"
-  ).all<{ did: string }>();
-  if (!results || results.length === 0) return;
+/** lease-coordinated, two-phase enrichment: slingshot identity + PDS-native profile.
+ *  returns { resolved, enriched } counts for delta tracking. */
+async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: number; enriched: number }> {
+  // lease via KV — 30s TTL, skip if another run is active
+  const existing = await env.KV.get("enrich_lock");
+  if (existing) return { resolved: 0, enriched: 0 };
+  await env.KV.put("enrich_lock", "1", { expirationTtl: 30 });
 
-  let resolved = 0;
-  const BATCH = 10;
-  for (let i = 0; i < results.length; i += BATCH) {
-    const batch = results.slice(i, i + BATCH);
-    await Promise.all(batch.map(async ({ did }) => {
-      try {
-        const res = await fetch(
-          `${SLINGSHOT_URL}?identifier=${encodeURIComponent(did)}`
-        );
-        if (!res.ok) return;
-        const identity: SlingshotResponse = await res.json();
-        if (identity.handle) {
-          await db.prepare(
-            "UPDATE actors SET handle = ?1 WHERE did = ?2 AND handle = ''"
-          ).bind(identity.handle, did).run();
-          resolved++;
-        }
-      } catch {
-        // best-effort — skip failures
+  let totalResolved = 0;
+  let totalEnriched = 0;
+
+  try {
+    // phase 1: identity resolution via slingshot
+    const { results: identityRows } = await db.prepare(
+      `SELECT did FROM actors
+       WHERE handle = '' AND identity_checked_at < unixepoch() - 3600
+       ORDER BY identity_checked_at ASC LIMIT 100`
+    ).all<{ did: string }>();
+
+    if (identityRows && identityRows.length > 0) {
+      let resolved = 0;
+      const BATCH = 20;
+      for (let i = 0; i < identityRows.length; i += BATCH) {
+        const batch = identityRows.slice(i, i + BATCH);
+        await Promise.all(batch.map(async ({ did }) => {
+          try {
+            const res = await fetch(
+              `${SLINGSHOT_URL}?identifier=${encodeURIComponent(did)}`
+            );
+            if (!res.ok) {
+              // mark attempt so we back off for 1hr
+              await db.prepare(
+                "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
+              ).bind(did).run();
+              return;
+            }
+            const identity: SlingshotResponse = await res.json();
+            await db.prepare(
+              `UPDATE actors SET handle = COALESCE(NULLIF(?1, ''), handle),
+                 pds = COALESCE(NULLIF(?2, ''), pds),
+                 identity_checked_at = unixepoch()
+               WHERE did = ?3`
+            ).bind(identity.handle || '', identity.pds || '', did).run();
+            if (identity.handle) resolved++;
+          } catch {
+            await db.prepare(
+              "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
+            ).bind(did).run().catch(() => {});
+          }
+        }));
       }
-    }));
+      totalResolved = resolved;
+      if (resolved > 0) {
+        console.log(JSON.stringify({ event: "enrich_identity", resolved, checked: identityRows.length }));
+      }
+    }
+
+    // phase 2: profile enrichment via PDS-native getRecord
+    const { results: profileRows } = await db.prepare(
+      `SELECT did, pds FROM actors
+       WHERE handle != '' AND avatar_url = '' AND pds != ''
+         AND profile_checked_at < unixepoch() - 3600
+       ORDER BY profile_checked_at ASC LIMIT 20`
+    ).all<{ did: string; pds: string }>();
+
+    if (profileRows && profileRows.length > 0) {
+      let enriched = 0;
+      await Promise.all(profileRows.map(async ({ did, pds }) => {
+        try {
+          const res = await fetch(
+            `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=app.bsky.actor.profile&rkey=self`
+          );
+          if (!res.ok) {
+            await db.prepare(
+              "UPDATE actors SET profile_checked_at = unixepoch() WHERE did = ?1"
+            ).bind(did).run();
+            return;
+          }
+          const data: any = await res.json();
+          const value = data?.value;
+          const avatarCid = value?.avatar?.ref?.$link || '';
+          const displayName = value?.displayName || '';
+          await db.prepare(
+            `UPDATE actors SET
+               avatar_url = COALESCE(NULLIF(?1, ''), avatar_url),
+               display_name = COALESCE(NULLIF(?2, ''), display_name),
+               profile_checked_at = unixepoch()
+             WHERE did = ?3`
+          ).bind(avatarCid, displayName, did).run();
+          if (avatarCid) enriched++;
+        } catch {
+          await db.prepare(
+            "UPDATE actors SET profile_checked_at = unixepoch() WHERE did = ?1"
+          ).bind(did).run().catch(() => {});
+        }
+      }));
+      totalEnriched = enriched;
+      if (enriched > 0) {
+        console.log(JSON.stringify({ event: "enrich_profile", enriched, checked: profileRows.length }));
+      }
+    }
+  } finally {
+    await env.KV.delete("enrich_lock").catch(() => {});
   }
-  if (resolved > 0) {
-    console.log(JSON.stringify({ event: "handle_resolve", resolved, checked: results.length }));
-  }
+
+  return { resolved: totalResolved, enriched: totalEnriched };
 }
 
 const BSKY_GET_PROFILES_URL =
@@ -302,10 +376,15 @@ async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
       const stmts: Stmt[] = [];
       for (const p of profiles) {
         const hide = shouldHide(p.labels) ? 1 : 0;
+        const avatarCid = extractAvatarCid(p.avatar || '');
         stmts.push(
           db.prepare(
-            "UPDATE actors SET hidden = ?1 WHERE did = ?2 AND hidden != ?1"
-          ).bind(hide, p.did)
+            `UPDATE actors SET hidden = ?1,
+               handle = COALESCE(NULLIF(?3, ''), handle),
+               display_name = COALESCE(NULLIF(?4, ''), display_name),
+               avatar_url = COALESCE(NULLIF(?5, ''), avatar_url)
+             WHERE did = ?2`
+          ).bind(hide, p.did, p.handle || '', p.displayName || '', avatarCid)
         );
       }
       if (stmts.length > 0) {
@@ -323,9 +402,9 @@ async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   console.log(JSON.stringify({ event: "moderation_refresh", checked, changed, cursor: lastRowid }));
 }
 
-/** fire-and-forget: increment hourly search count + accumulate response time */
+/** fire-and-forget: increment 5-min search count + accumulate response time */
 async function recordMetric(db: TursoDB, ms: number): Promise<void> {
-  const hour = Math.floor(Date.now() / 3_600_000);
+  const bucket = Math.floor(Date.now() / 300_000);
   await db.prepare(
     `INSERT INTO metrics (hour, searches, total_ms)
      VALUES (?1, 1, ?2)
@@ -333,7 +412,25 @@ async function recordMetric(db: TursoDB, ms: number): Promise<void> {
        searches = searches + 1,
        total_ms = total_ms + ?2`
   )
-    .bind(hour, ms)
+    .bind(bucket, ms)
+    .run();
+}
+
+/** fire-and-forget: record actor count deltas at 5-min granularity */
+async function recordActorDelta(
+  db: TursoDB,
+  deltas: { actors?: number; handles?: number; avatars?: number },
+): Promise<void> {
+  const bucket = Math.floor(Date.now() / 300_000);
+  await db.prepare(
+    `INSERT INTO actor_deltas (bucket, actors_delta, handles_delta, avatars_delta)
+     VALUES (?1, ?2, ?3, ?4)
+     ON CONFLICT(bucket) DO UPDATE SET
+       actors_delta = actors_delta + ?2,
+       handles_delta = handles_delta + ?3,
+       avatars_delta = avatars_delta + ?4`
+  )
+    .bind(bucket, deltas.actors ?? 0, deltas.handles ?? 0, deltas.avatars ?? 0)
     .run();
 }
 
@@ -355,6 +452,11 @@ async function recordTrafficSource(db: TursoDB, request: Request): Promise<void>
       domain = refHost === selfHost ? "homepage" : refHost;
     } catch { domain = "unknown"; }
   } else {
+    domain = "unknown";
+  }
+
+  // normalize local/dev traffic
+  if (domain === "localhost" || domain.startsWith("127.") || domain === "[::1]") {
     domain = "unknown";
   }
   await db.prepare(
@@ -449,6 +551,7 @@ async function handleIngest(
   request: Request,
   db: TursoDB,
   env: Env,
+  ctx: ExecutionContext,
 ): Promise<Response> {
   const auth = request.headers.get("Authorization");
   if (auth !== `Bearer ${env.ADMIN_SECRET}`) {
@@ -502,11 +605,23 @@ async function handleIngest(
     );
   });
 
+  let batchResults: { results: unknown[]; meta: { changes: number } }[];
   try {
-    await db.batch(stmts);
+    batchResults = await db.batch(stmts);
   } catch (e: any) {
     console.log(JSON.stringify({ event: "ingest_error", error: e?.message, count: events.length }));
     return json({ error: e?.message || "db batch failed" }, 500);
+  }
+
+  // count newly inserted bare DIDs (changes === 1 means INSERT succeeded, not IGNORE'd)
+  let newActors = 0;
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    const isBareDID = !e.handle && !e.display_name && !e.avatar_cid && e.hidden === undefined;
+    if (isBareDID && batchResults[i]?.meta.changes === 1) newActors++;
+  }
+  if (newActors > 0) {
+    ctx.waitUntil(recordActorDelta(db, { actors: newActors }));
   }
 
   if (cursor !== undefined) {
@@ -517,6 +632,14 @@ async function handleIngest(
     }
   }
 
+  ctx.waitUntil(
+    enrichActors(db, env).then(({ resolved, enriched }) => {
+      if (resolved > 0 || enriched > 0) {
+        return recordActorDelta(db, { handles: resolved, avatars: enriched });
+      }
+    }),
+  );
+
   return json({ ok: true, ingested: events.length });
 }
 
@@ -524,6 +647,7 @@ async function handleDelete(
   request: Request,
   db: TursoDB,
   env: Env,
+  ctx: ExecutionContext,
 ): Promise<Response> {
   const auth = request.headers.get("Authorization");
   if (auth !== `Bearer ${env.ADMIN_SECRET}`) {
@@ -551,7 +675,12 @@ async function handleDelete(
   const stmts = dids.map((did) =>
     db.prepare("DELETE FROM actors WHERE did = ?1").bind(did)
   );
-  await db.batch(stmts);
+  const batchResults = await db.batch(stmts);
+  const actualDeletes = batchResults.reduce((s, r) => s + r.meta.changes, 0);
+
+  if (actualDeletes > 0) {
+    ctx.waitUntil(recordActorDelta(db, { actors: -actualDeletes }));
+  }
 
   return json({ ok: true, deleted: dids.length });
 }
@@ -637,20 +766,23 @@ async function handleRequestIndexing(
 }
 
 async function handleStats(db: TursoDB): Promise<Response> {
-  const [totalRes, handlesRes, avatarsRes, hiddenRes, metricsRes, snapshotRes, trafficRes] =
+  const [totalRes, handlesRes, avatarsRes, hiddenRes, metricsRes, snapshotRes, trafficRes, deltasRes] =
     await db.batch([
       db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden = 0"),
       db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE handle != '' AND hidden = 0"),
       db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE avatar_url != '' AND hidden = 0"),
       db.prepare("SELECT COUNT(*) AS cnt FROM actors WHERE hidden != 0"),
       db.prepare(
-        "SELECT hour, searches, total_ms FROM metrics ORDER BY hour DESC LIMIT 168"
+        "SELECT hour, searches, total_ms FROM metrics ORDER BY hour DESC LIMIT 2016"
       ),
       db.prepare(
         "SELECT hour, total, with_handles, with_avatars FROM snapshots ORDER BY hour ASC LIMIT 2000"
       ),
       db.prepare(
         "SELECT domain, hits FROM traffic_sources ORDER BY hits DESC LIMIT 10"
+      ),
+      db.prepare(
+        "SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket ASC LIMIT 2016"
       ),
     ]);
 
@@ -663,13 +795,41 @@ async function handleStats(db: TursoDB): Promise<Response> {
     searches: number;
     total_ms: number;
   }[];
-  const snapshots = (snapshotRes.results ?? []) as SnapshotPoint[];
+  const dbSnapshots = (snapshotRes.results ?? []) as { hour: number; total: number; with_handles: number; with_avatars: number }[];
   const trafficSources = (trafficRes.results ?? []) as { domain: string; hits: number }[];
+  const deltas = (deltasRes.results ?? []) as { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
 
-  // append live counts as the latest point
-  const liveHour = Math.floor(Date.now() / 3_600_000);
-  if (snapshots.length === 0 || snapshots[snapshots.length - 1].hour < liveHour) {
-    snapshots.push({ hour: liveHour, total, with_handles: withHandles, with_avatars: withAvatars });
+  // build snapshot points with timestamps
+  const snapshots: SnapshotPoint[] = dbSnapshots.map((s) => ({
+    ts: s.hour * 3_600_000,
+    total: s.total,
+    with_handles: s.with_handles,
+    with_avatars: s.with_avatars,
+  }));
+
+  // stitch deltas after last snapshot for interpolated points
+  if (snapshots.length > 0 && deltas.length > 0) {
+    const lastSnap = snapshots[snapshots.length - 1];
+    const lastSnapBucket = Math.floor(lastSnap.ts / 300_000);
+    let cumActors = 0, cumHandles = 0, cumAvatars = 0;
+    for (const d of deltas) {
+      if (d.bucket <= lastSnapBucket) continue;
+      cumActors += d.actors_delta;
+      cumHandles += d.handles_delta;
+      cumAvatars += d.avatars_delta;
+      snapshots.push({
+        ts: d.bucket * 300_000,
+        total: lastSnap.total + cumActors,
+        with_handles: lastSnap.with_handles + cumHandles,
+        with_avatars: lastSnap.with_avatars + cumAvatars,
+      });
+    }
+  }
+
+  // append live point
+  const now = Date.now();
+  if (snapshots.length === 0 || snapshots[snapshots.length - 1].ts < now - 60_000) {
+    snapshots.push({ ts: now, total, with_handles: withHandles, with_avatars: withAvatars });
   }
 
   const totalSearches = rows.reduce((s, r) => s + r.searches, 0);
@@ -682,7 +842,7 @@ async function handleStats(db: TursoDB): Promise<Response> {
 }
 
 interface SnapshotPoint {
-  hour: number;
+  ts: number;  // millisecond timestamp
   total: number;
   with_handles: number;
   with_avatars: number;
@@ -712,7 +872,7 @@ function statsPage(d: StatsData): string {
     .join(" ");
   const sparkJson = JSON.stringify(
     sorted.map((r) => ({
-      hour: new Date(r.hour * 3_600_000).toISOString().slice(0, 13) + ":00Z",
+      time: new Date(r.hour * 300_000).toISOString().slice(0, 16) + "Z",
       searches: r.searches,
     }))
   );
@@ -771,7 +931,9 @@ function statsPage(d: StatsData): string {
     svg { width: 100%; height: auto; }
     polyline { fill: none; stroke: #4a9; stroke-width: 1.5; }
 
-    .summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
+    .summary { display: grid; gap: 0.8rem; margin-bottom: 1.5rem; }
+    .summary-2 { grid-template-columns: repeat(2, 1fr); }
+    .summary-3 { grid-template-columns: repeat(3, 1fr); }
     .metric { background: #111; border: 1px solid #222; border-radius: 6px; padding: 0.7rem 0.9rem; }
     .metric .label { font-size: 0.7rem; color: #555; margin-bottom: 0.2rem; }
     .metric .label[data-tip] { cursor: default; position: relative; border-bottom: 1px dotted #444; display: inline-block; }
@@ -808,7 +970,7 @@ function statsPage(d: StatsData): string {
       body { padding: 1.5rem 0.75rem; }
       #trend { height: 160px; }
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
-      .summary { grid-template-columns: 1fr 1fr; }
+      .summary-3 { grid-template-columns: 1fr 1fr; }
       #pie { width: 220px; height: 220px; }
     }
   </style>
@@ -826,43 +988,18 @@ function statsPage(d: StatsData): string {
         ? `<canvas id="trend"></canvas>`
         : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
       <div class="legend">
-        <span><span class="ldot" style="background:#4a9"></span> total (${d.total.toLocaleString()})</span>
-        <span><span class="ldot" style="background:#58a6ff"></span> with handles</span>
-        <span><span class="ldot" style="background:#bc8cff"></span> with avatars</span>
+        ${[
+          { color: '#4a9', label: `total (${d.total.toLocaleString()})`, value: d.total },
+          { color: '#bc8cff', label: 'with avatars', value: d.snapshots[d.snapshots.length - 1]?.with_avatars ?? 0 },
+          { color: '#58a6ff', label: 'with handles', value: d.snapshots[d.snapshots.length - 1]?.with_handles ?? 0 },
+        ].sort((a, b) => b.value - a.value)
+         .map(r => `<span><span class="ldot" style="background:${r.color}"></span> ${r.label}</span>`)
+         .join('\n        ')}
       </div>
     </div>
     <div class="chart-tip" id="chart-tip"></div>
 
-    <div class="sparkline-wrap">
-      <h2>searches / hour (7 days)</h2>
-      ${counts.length > 1
-        ? `<svg viewBox="0 0 ${sw} ${sh}" preserveAspectRatio="none" id="spark">
-            <polyline points="${sparkPoints}" />
-          </svg>`
-        : `<div style="color:#444;font-size:0.8rem;padding:1rem 0;text-align:center">no data yet</div>`}
-    </div>
-
-    <div class="pie-wrap">
-      <h2>traffic sources</h2>
-      ${d.trafficSources.length > 0
-        ? `<canvas id="pie"></canvas>
-           <div class="pie-legend">${pieLegendHtml}</div>`
-        : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
-      <div style="margin-top:0.6rem;font-size:0.7rem;color:#555;text-align:center">
-        want to show up here? <a href="/docs" style="color:#58a6ff;text-decoration:none">switch from bluesky&rsquo;s typeahead &rarr;</a>
-      </div>
-    </div>
-    <div class="pie-tip" id="pie-tip"></div>
-
-    <div class="summary">
-      <div class="metric">
-        <div class="label">total searches (7d)</div>
-        <div class="value">${d.totalSearches.toLocaleString()}</div>
-      </div>
-      <div class="metric">
-        <div class="label" data-tip="average response time for uncached searches">avg latency</div>
-        <div class="value">${d.avgLatency.toFixed(1)} ms</div>
-      </div>
+    <div class="summary summary-3">
       <div class="metric">
         <div class="label" data-tip="% of indexed actors with a resolved handle (vs bare DID only)">handle coverage</div>
         <div class="value">${d.handlePct}%</div>
@@ -876,6 +1013,37 @@ function statsPage(d: StatsData): string {
         <div class="value">${d.hiddenCount.toLocaleString()}</div>
       </div>
     </div>
+
+    <div class="sparkline-wrap">
+      <h2>searches / 5 min (7 days)</h2>
+      ${counts.length > 1
+        ? `<svg viewBox="0 0 ${sw} ${sh}" preserveAspectRatio="none" id="spark">
+            <polyline points="${sparkPoints}" />
+          </svg>`
+        : `<div style="color:#444;font-size:0.8rem;padding:1rem 0;text-align:center">no data yet</div>`}
+    </div>
+    <div class="summary summary-2">
+      <div class="metric">
+        <div class="label">total searches (7d)</div>
+        <div class="value">${d.totalSearches.toLocaleString()}</div>
+      </div>
+      <div class="metric">
+        <div class="label" data-tip="average response time for uncached searches">avg latency</div>
+        <div class="value">${d.avgLatency.toFixed(1)} ms</div>
+      </div>
+    </div>
+
+    <div class="pie-wrap">
+      <h2>traffic sources</h2>
+      ${d.trafficSources.length > 0
+        ? `<canvas id="pie"></canvas>
+           <div class="pie-legend">${pieLegendHtml}</div>`
+        : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
+      <div style="margin-top:0.6rem;font-size:0.7rem;color:#555;text-align:center">
+        want to show up here? <a href="/docs" style="color:#58a6ff;text-decoration:none">switch from bluesky&rsquo;s typeahead &rarr;</a>
+      </div>
+    </div>
+    <div class="pie-tip" id="pie-tip"></div>
 
     <footer>
       <a href="/">&larr; home</a>
@@ -958,8 +1126,8 @@ function statsPage(d: StatsData): string {
 
         ctx.font = '10px system-ui, sans-serif';
         ctx.fillStyle = '#555'; ctx.textAlign = 'center';
-        const t0ms = snaps[0].hour * 3600000;
-        const tNms = snaps[n - 1].hour * 3600000;
+        const t0ms = snaps[0].ts;
+        const tNms = snaps[n - 1].ts;
         const spanDays = (tNms - t0ms) / 86400000;
 
         // walk midnights
@@ -977,8 +1145,8 @@ function statsPage(d: StatsData): string {
             ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + 4);
             ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
             const label = spanDays > 14
-              ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-              : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+              ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
+              : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
             ctx.globalAlpha = 0.4;
             ctx.fillText(label, x, axisY + 15);
             ctx.globalAlpha = 1;
@@ -1018,13 +1186,17 @@ function statsPage(d: StatsData): string {
       drawChart(idx);
 
       const snap = snaps[idx];
-      const t = new Date(snap.hour * 3600000);
+      const t = new Date(snap.ts);
       const time = t.toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
       chartTip.innerHTML =
         '<div class="ct-time">' + time + '</div>'
-        + '<div class="ct-row"><span class="ct-dot" style="background:' + COLORS.total + '"></span> ' + fmtNum(snap.total) + ' actors</div>'
-        + '<div class="ct-row"><span class="ct-dot" style="background:' + COLORS.handles + '"></span> ' + fmtNum(snap.with_handles) + ' with handles</div>'
-        + '<div class="ct-row"><span class="ct-dot" style="background:' + COLORS.avatars + '"></span> ' + fmtNum(snap.with_avatars) + ' with avatars</div>';
+      const tipRows = [
+        { color: COLORS.total, value: snap.total, label: 'actors' },
+        { color: COLORS.avatars, value: snap.with_avatars, label: 'with avatars' },
+        { color: COLORS.handles, value: snap.with_handles, label: 'with handles' },
+      ].sort((a, b) => b.value - a.value);
+      chartTip.innerHTML = '<div class="ct-time">' + time + '</div>'
+        + tipRows.map(r => '<div class="ct-row"><span class="ct-dot" style="background:' + r.color + '"></span> ' + fmtNum(r.value) + ' ' + r.label + '</div>').join('');
       chartTip.style.display = 'block';
       const tx = clientX + 14, ty = clientY - 10;
       chartTip.style.left = (tx + chartTip.offsetWidth > window.innerWidth ? clientX - chartTip.offsetWidth - 10 : tx) + 'px';
@@ -1157,7 +1329,7 @@ function statsPage(d: StatsData): string {
         if (idx >= 0) {
           const seg = segments[idx];
           const pct = ((seg.hits / pieTotal) * 100).toFixed(1);
-          pieTip.innerHTML = '<strong>' + seg.domain + '</strong><br>' + seg.hits.toLocaleString() + ' hits (' + pct + '%)';
+          pieTip.innerHTML = '<strong>' + seg.domain + '</strong><br>' + seg.hits.toLocaleString() + (seg.hits === 1 ? ' hit' : ' hits') + ' (' + pct + '%)';
           pieTip.style.display = 'block';
           const tx = clientX + 14, ty = clientY - 10;
           pieTip.style.left = (tx + pieTip.offsetWidth > window.innerWidth ? clientX - pieTip.offsetWidth - 10 : tx) + 'px';
@@ -1184,7 +1356,8 @@ function statsPage(d: StatsData): string {
         const x = e.clientX - rect.left;
         const idx = Math.min(Math.round(x / rect.width * (sparkData.length - 1)), sparkData.length - 1);
         if (idx >= 0 && sparkData[idx]) {
-          sparkTip.textContent = sparkData[idx].hour + ' — ' + sparkData[idx].searches + ' searches';
+          const sc = sparkData[idx].searches;
+          sparkTip.textContent = sparkData[idx].time + ' — ' + sc + (sc === 1 ? ' search' : ' searches');
           sparkTip.style.display = 'block';
           sparkTip.style.left = (e.clientX + 12) + 'px';
           sparkTip.style.top = (e.clientY - 28) + 'px';
@@ -1589,7 +1762,7 @@ export default {
     const db = tursoDb(createClient({ url: env.TURSO_URL, authToken: env.TURSO_AUTH_TOKEN }));
     await recordSnapshot(db);
     await refreshModeration(db, env);
-    await resolveHandles(db);
+    await enrichActors(db, env);
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -1642,11 +1815,11 @@ export default {
     }
 
     if (pathname === "/admin/ingest" && request.method === "POST") {
-      return handleIngest(request, db, env);
+      return handleIngest(request, db, env, ctx);
     }
 
     if (pathname === "/admin/delete" && request.method === "POST") {
-      return handleDelete(request, db, env);
+      return handleDelete(request, db, env, ctx);
     }
 
     return json({ error: "not found" }, 404);
