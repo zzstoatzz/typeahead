@@ -815,6 +815,9 @@ function statsPage(d: StatsData): string {
         ? `<canvas id="pie"></canvas>
            <div class="pie-legend">${pieLegendHtml}</div>`
         : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
+      <div style="margin-top:0.6rem;font-size:0.7rem;color:#555;text-align:center">
+        want to show up here? <a href="/docs" style="color:#58a6ff;text-decoration:none">switch from bluesky&rsquo;s typeahead &rarr;</a>
+      </div>
     </div>
     <div class="pie-tip" id="pie-tip"></div>
 
@@ -1267,6 +1270,7 @@ function indexPage(): string {
     <footer>
       by <a href="https://bsky.app/profile/zzstoatzz.io" target="_blank" rel="noopener">@zzstoatzz.io</a>
       · <a href="/stats">stats</a>
+      · <a href="/docs">docs</a>
     </footer>
   </div>
   <script>
@@ -1347,6 +1351,178 @@ function indexPage(): string {
 </html>`;
 }
 
+function docsPage(): string {
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>typeahead — switching from bluesky</title>
+  ${FAVICON}
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e0e0e0;
+           display: flex; justify-content: center; padding: 2rem 1rem; min-height: 100vh; }
+    .container { max-width: 620px; width: 100%; }
+    .header { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
+    h1 { font-size: 1.1rem; font-weight: 400; color: #888; }
+    h1 strong { color: #e0e0e0; }
+    .subtitle { font-size: 0.8rem; color: #555; margin-bottom: 1.5rem; }
+    h2 { font-size: 0.85rem; font-weight: 600; color: #ccc; margin: 1.5rem 0 0.6rem; }
+    h3 { font-size: 0.8rem; font-weight: 600; color: #aaa; margin: 1.2rem 0 0.5rem; }
+    p, li { font-size: 0.8rem; color: #999; line-height: 1.6; }
+    p { margin-bottom: 0.7rem; }
+    ul { margin: 0 0 0.7rem 1.2rem; }
+    li { margin-bottom: 0.3rem; }
+    code { font-family: ui-monospace, monospace; font-size: 0.75rem; background: #1a1a1a;
+           border: 1px solid #222; border-radius: 3px; padding: 0.1rem 0.35rem; color: #ccc; }
+    pre { background: #111; border: 1px solid #222; border-radius: 6px; padding: 0.8rem;
+          overflow-x: auto; margin-bottom: 0.7rem; }
+    pre code { background: none; border: none; padding: 0; font-size: 0.72rem; color: #bbb; }
+    .diff-add { color: #4a9; }
+    .diff-del { color: #a55; }
+    .callout { background: #111; border: 1px solid #222; border-left: 3px solid #4a9;
+               border-radius: 6px; padding: 0.7rem 0.9rem; margin-bottom: 1rem;
+               font-size: 0.78rem; color: #999; line-height: 1.6; }
+    .callout strong { color: #ccc; }
+    .callout.warn { border-left-color: #b98a3e; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.75rem; }
+    th { text-align: left; color: #666; font-weight: 400; padding: 0.4rem 0.6rem;
+         border-bottom: 1px solid #222; }
+    td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #1a1a1a; color: #999; }
+    td code { font-size: 0.7rem; }
+    .yes { color: #4a9; }
+    .no { color: #666; }
+    footer { padding-top: 1.5rem; border-top: 1px solid #1a1a1a; font-size: 0.7rem;
+             color: #444; display: flex; justify-content: center; gap: 0.4rem; }
+    footer a { color: #555; text-decoration: none; }
+    footer a:hover { color: #888; }
+    a { color: #58a6ff; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media (max-width: 640px) {
+      body { padding: 1.5rem 0.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><strong>typeahead</strong> docs</h1>
+    </div>
+    <p class="subtitle">switching from the bluesky typeahead API</p>
+
+    <div class="callout">
+      <strong>tl;dr</strong> — change the base URL. the endpoint path and query params are the same.
+      response shape is compatible but slimmer.
+    </div>
+
+    <h2>what this is</h2>
+    <p>
+      typeahead is a community-run actor search for <a href="https://atproto.com">atproto</a>.
+      it's designed as a drop-in replacement for bluesky's
+      <code>app.bsky.actor.searchActorsTypeahead</code> endpoint.
+    </p>
+    <p>
+      the index is populated via <a href="https://docs.bsky.app/blog/jetstream">jetstream</a>,
+      so it tracks the full network. searches use FTS5 prefix matching against handles and
+      display names, with results edge-cached for 60s.
+    </p>
+
+    <h2>the change</h2>
+    <p>replace the base URL. everything else stays the same:</p>
+    <pre><code><span class="diff-del">- https://public.api.bsky.app</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10
+<span class="diff-add">+ https://typeahead.waow.tech</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10</code></pre>
+
+    <h3>before</h3>
+    <pre><code>const response = await fetch(
+  \`https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${encodeURIComponent(query)}&amp;limit=10\`
+);</code></pre>
+
+    <h3>after</h3>
+    <pre><code>const TYPEAHEAD_URL = 'https://typeahead.waow.tech';
+
+const response = await fetch(
+  \`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${encodeURIComponent(query)}&amp;limit=10\`
+);</code></pre>
+
+    <p>
+      extracting the base URL into a constant (or env var) makes it easy to switch back
+      if you ever need to.
+    </p>
+
+    <h2>response comparison</h2>
+    <p>
+      both return <code>{ "actors": [...] }</code>. the actor objects differ:
+    </p>
+    <table>
+      <tr><th>field</th><th>bluesky</th><th>typeahead</th></tr>
+      <tr><td><code>did</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><code>handle</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><code>displayName</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><code>avatar</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
+      <tr><td><code>associated</code></td><td class="yes">✓</td><td class="no">—</td></tr>
+      <tr><td><code>labels</code></td><td class="yes">✓</td><td class="no">—</td></tr>
+      <tr><td><code>createdAt</code></td><td class="yes">✓</td><td class="no">—</td></tr>
+      <tr><td><code>viewer</code></td><td class="yes">✓</td><td class="no">—</td></tr>
+    </table>
+
+    <div class="callout warn">
+      <strong>if you depend on <code>labels</code>, <code>associated</code>, <code>viewer</code>,
+      or <code>createdAt</code></strong> — this API doesn't return them. most typeahead UIs only
+      need did + handle + displayName + avatar, which is exactly what we return. if you need the
+      full <code>profileViewBasic</code> surface, you'll need to stick with the bluesky API or
+      fetch those fields separately.
+    </div>
+
+    <h2>other differences</h2>
+    <ul>
+      <li><strong>no auth required</strong> — public CORS endpoint, no token needed</li>
+      <li><strong>rate limited</strong> — 60 req/min per IP (vs bluesky's per-token limits)</li>
+      <li><strong>cached</strong> — results are edge-cached for 60s, so very recent profile changes may lag</li>
+      <li><strong>limit range</strong> — <code>1–100</code> (bluesky caps at 10 by default)</li>
+      <li><strong>moderation</strong> — actors flagged with <code>!hide</code> or <code>!takedown</code> labels are excluded from results</li>
+    </ul>
+
+    <h2>example: plyr.fm</h2>
+    <p>
+      <a href="https://tangled.sh/zzstoatzz.io/plyr.fm">plyr.fm</a> switched from a backend proxy
+      (which called the bluesky API) to calling typeahead directly from the frontend. the diff was
+      roughly:
+    </p>
+    <pre><code><span class="diff-add">// config.ts</span>
+<span class="diff-add">export const TYPEAHEAD_URL = 'https://typeahead.waow.tech';</span>
+
+<span class="diff-add">// HandleSearch.svelte</span>
+const response = await fetch(
+  \`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${encodeURIComponent(query)}&amp;limit=10\`
+);
+const data = await response.json();
+const actors = (data.actors ?? []).map(actor => ({
+  did: actor.did,
+  handle: actor.handle,
+  display_name: actor.displayName ?? actor.handle,
+  avatar_url: actor.avatar ?? null,
+}));</code></pre>
+    <p>
+      no backend proxy needed. the API supports CORS, so frontend calls work directly.
+    </p>
+
+    <h2>request indexing</h2>
+    <p>
+      if someone isn't showing up in results, you (or your users) can request indexing from the
+      <a href="/">homepage</a>. newly created accounts are picked up automatically via jetstream,
+      but accounts created before the index existed may need a manual nudge.
+    </p>
+
+    <footer>
+      <a href="/">&larr; home</a>
+      · <a href="/stats">stats</a>
+    </footer>
+  </div>
+</body>
+</html>`;
+}
+
 function html(body: string, status = 200): Response {
   return new Response(body, {
     status,
@@ -1371,6 +1547,9 @@ export default {
 
     if (pathname === "/" && request.method === "GET") {
       return html(indexPage());
+    }
+    if (pathname === "/docs" && request.method === "GET") {
+      return html(docsPage());
     }
     if (pathname === "/admin/cursor" && request.method === "GET") {
       return handleCursor(request, env);
