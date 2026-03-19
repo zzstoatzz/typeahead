@@ -60,7 +60,7 @@ function tursoDb(client: Client): TursoDB {
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client",
 };
 
 const SLINGSHOT_URL =
@@ -333,10 +333,11 @@ async function recordMetric(db: TursoDB, ms: number): Promise<void> {
     .run();
 }
 
-/** fire-and-forget: increment cumulative hit counter per origin domain */
+/** fire-and-forget: increment cumulative hit counter per client identity */
 async function recordTrafficSource(db: TursoDB, request: Request): Promise<void> {
+  const client = request.headers.get("X-Client");
   const origin = request.headers.get("Origin");
-  const domain = origin ? new URL(origin).hostname : "unknown";
+  const domain = client || (origin ? new URL(origin).hostname : "unknown");
   await db.prepare(
     `INSERT INTO traffic_sources (domain, hits)
      VALUES (?1, 1)
@@ -1448,6 +1449,21 @@ const response = await fetch(
     <p>
       extracting the base URL into a constant (or env var) makes it easy to switch back
       if you ever need to.
+    </p>
+
+    <h2>identify your app</h2>
+    <p>
+      set the <code>X-Client</code> header so your app shows up by name in our
+      <a href="/stats">traffic stats</a> instead of as "unknown":
+    </p>
+    <pre><code>const response = await fetch(
+  \`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${encodeURIComponent(query)}&amp;limit=10\`,
+  { headers: { 'X-Client': 'my-app.example.com' } }
+);</code></pre>
+    <p>
+      use your domain or app name — whatever you want to be identified as.
+      browser-based apps will also be identified automatically via the <code>Origin</code> header,
+      but <code>X-Client</code> is preferred since it works everywhere (server-side, CLI, native apps).
     </p>
 
     <h2>response comparison</h2>
