@@ -699,7 +699,10 @@ function statsPage(d: StatsData): string {
   const pieLegendHtml = d.trafficSources.map((r, i) => {
     const color = r.domain === 'unknown' ? '#555' : PIE_COLORS[i % PIE_COLORS.length];
     const pct = trafficTotal > 0 ? ((r.hits / trafficTotal) * 100).toFixed(1) : '0';
-    return `<span><span class="ldot" style="background:${color}"></span>${r.domain} (${pct}%)</span>`;
+    const label = r.domain === 'unknown'
+      ? r.domain
+      : `<a href="https://${r.domain}" target="_blank" rel="noopener" class="legend-link">${r.domain}</a>`;
+    return `<span><span class="ldot" style="background:${color}"></span>${label} (${pct}%)</span>`;
   }).join('');
 
   return `<!doctype html>
@@ -761,7 +764,9 @@ function statsPage(d: StatsData): string {
     #pie { display: block; margin: 0 auto; width: 280px; height: 280px; touch-action: none; }
     .pie-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.7rem;
                   font-size: 0.7rem; color: #888; justify-content: center; }
-    .pie-legend span { display: flex; align-items: center; gap: 0.3rem; }
+    .pie-legend span { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4; }
+    .legend-link { color: #888; text-decoration: none; border-bottom: 1px dotted #444; }
+    .legend-link:hover { color: #ccc; border-bottom-color: #888; }
     .pie-tip { display: none; position: fixed; background: rgba(17, 17, 17, 0.95);
                border: 1px solid #333; border-radius: 6px; padding: 0.5rem 0.7rem;
                font-size: 0.72rem; color: #ccc; pointer-events: none; z-index: 50;
