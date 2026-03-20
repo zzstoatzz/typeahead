@@ -9,7 +9,12 @@ export async function handleStats(request: Request, db: TursoDB, ctx: ExecutionC
   const cache = caches.default;
   const cacheKey = new Request(new URL("/stats", request.url).href);
   const cached = await cache.match(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    // override cache-control so browser doesn't cache the cached response
+    const resp = new Response(cached.body, cached);
+    resp.headers.set("Cache-Control", "no-store");
+    return resp;
+  }
 
   const t0 = performance.now();
 
@@ -91,13 +96,18 @@ export async function handleStats(request: Request, db: TursoDB, ctx: ExecutionC
   const renderMs = (tRender - tProcess).toFixed(0);
   const totalMs2 = (tRender - t0).toFixed(0);
 
-  const response = html(body, {
-    "Server-Timing": `query;dur=${queryMs}, process;dur=${processMs}, render;dur=${renderMs}, total;dur=${totalMs2}`,
+  const timing = `query;dur=${queryMs}, process;dur=${processMs}, render;dur=${renderMs}, total;dur=${totalMs2}`;
+
+  // edge cache entry — public, max-age controls the Cache API TTL
+  const cacheResponse = html(body, {
+    "Server-Timing": timing,
     "Cache-Control": `public, max-age=${EDGE_CACHE_TTL}`,
   });
+  ctx.waitUntil(cache.put(cacheKey, cacheResponse));
 
-  // populate edge cache — use waitUntil so it completes after response is sent
-  ctx.waitUntil(cache.put(cacheKey, response.clone()));
-
-  return response;
+  // browser response — no caching so refreshes always get fresh data
+  return html(body, {
+    "Server-Timing": timing,
+    "Cache-Control": "no-store",
+  });
 }
