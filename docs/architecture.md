@@ -33,11 +33,11 @@ and serves FTS5 prefix search from cloudflare's edge.
    - **phase 1 — identity**: slingshot resolves DID → handle + PDS endpoint.
      100 DIDs/run, 20 concurrent. attempt tracking (`identity_checked_at`)
      backs off failures for 1 hour.
-   - **phase 2 — profile + labels**: `getProfiles` batch call (25 DIDs/call,
-     75/run) fetches avatar, display_name, and labels in one shot. also
-     recomputes `hidden` from full label data. attempt tracking
-     (`profile_checked_at`) backs off failures for 1 hour. actors not
-     returned by getProfiles are marked to avoid retrying.
+   - **phase 2 — profile + labels + metadata**: `getProfiles` batch call
+     (25 DIDs/call, 75/run) fetches avatar, display_name, labels, createdAt,
+     and associated in one shot. also recomputes `hidden` from full label
+     data. attempt tracking (`profile_checked_at`) backs off failures for
+     1 hour. actors not returned by getProfiles are marked to avoid retrying.
    - lease-coordinated via KV (`enrich_lock`, 30s TTL) — no stampede from
      overlapping ingest batches.
    - converges to zero work as gaps fill (gap-driven queries return fewer
@@ -79,18 +79,20 @@ the enrichment pipeline is gap-driven:
 - identity phase queries actors with `handle = ''` and
   `identity_checked_at < now - 1hr`
 - profile phase queries actors with `handle != ''` and
-  (`avatar_url = ''` OR `labels = '[]'`), `profile_checked_at < now - 1hr`
+  (`avatar_url = ''` OR `labels = '[]'` OR `created_at = ''`),
+  `profile_checked_at < now - 1hr`
 - as actors get enriched, these queries return fewer rows
 - system quiesces when all actors are resolved or backed off
 
 AppView (public.api.bsky.app) is used for both enrichment (phase 2
 getProfiles) and moderation label checks (hourly cron). phase 2 gets
-avatar, displayName, labels, and hidden in one batch call.
+avatar, displayName, labels, createdAt, associated, and hidden in one
+batch call.
 
 ### read path
 
 search query -> cache API (hit?) -> FTS5 prefix match -> reconstruct avatar
-URLs from DID + CID -> return `{did, handle, displayName?, avatar?, labels}`
+URLs from DID + CID -> return `{did, handle, displayName?, avatar?, associated?, labels, createdAt?}`
 
 ## storage
 
@@ -104,14 +106,18 @@ the actors table stores one row per DID:
     labels TEXT                   -- 2 bytes ('[]') for ~92% of actors;
                                   -- ~256 bytes per label for the ~8% that have them
                                   -- stored as raw JSON array matching bsky's API shape
+    created_at TEXT               -- ~24 bytes (ISO 8601 timestamp from getProfiles)
+    associated TEXT               -- 2 bytes ('{}') until enriched; ~100 bytes when populated
+                                  -- stored as JSON matching bsky's profileAssociated shape
     updated_at INTEGER            -- 8 bytes
     pds TEXT                      -- ~40 bytes (PDS endpoint URL)
     identity_checked_at INTEGER   -- 8 bytes (last slingshot attempt)
     profile_checked_at INTEGER    -- 8 bytes (last PDS profile attempt)
 
-plus FTS5 index overhead. roughly ~320 bytes/row for unlabeled actors,
-~580 bytes/row for labeled ones (~8% of index). at 1.33M actors this
-adds ~30MB over the baseline.
+plus FTS5 index overhead. roughly ~350 bytes/row for unlabeled actors,
+~610 bytes/row for labeled ones (~8% of index). `created_at` and
+`associated` populate progressively as the enrichment pipeline and
+moderation cron cycle through actors — no separate backfill needed.
 
 storage is [Turso](https://turso.tech) (hosted libSQL). previously used
 Cloudflare D1 but migrated to Turso to avoid D1's 10GB hard limit and
@@ -154,6 +160,8 @@ avatar) from the same getProfiles response at no additional API cost.
   populates labels, handle, display_name, avatar_url via getProfiles API.
   also recomputes hidden from full label data, fixing actors incorrectly
   hidden by stale !no-unauthenticated logic.
+- `scripts/add-created-associated.sql` — one-shot migration adding created_at
+  and associated columns to actors table
 - `scripts/add-actor-deltas.sql` — one-shot migration adding actor_deltas
   table for 5-min granularity delta tracking
 - `scripts/migrate-avatar-cid.sql` — one-shot migration from full avatar

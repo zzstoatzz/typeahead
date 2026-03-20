@@ -1,8 +1,7 @@
 import type { Stmt, TursoDB } from "./db";
 import type { Env } from "./types";
 import { BSKY_GET_PROFILES_URL } from "./types";
-import { shouldHide } from "./moderation";
-import { extractAvatarCid } from "./utils";
+import { extractProfileFields } from "./utils";
 
 /** refresh moderation labels, walking the full index over multiple cron runs */
 export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
@@ -47,17 +46,19 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
 
       const stmts: Stmt[] = [];
       for (const p of profiles) {
-        const hide = shouldHide(p.labels) ? 1 : 0;
-        const avatarCid = extractAvatarCid(p.avatar || '');
+        const f = extractProfileFields(p);
         stmts.push(
           db.prepare(
             `UPDATE actors SET hidden = ?1,
                handle = COALESCE(NULLIF(?3, ''), handle),
                display_name = COALESCE(NULLIF(?4, ''), display_name),
                avatar_url = COALESCE(NULLIF(?5, ''), avatar_url),
-               labels = ?6
+               labels = ?6,
+               created_at = COALESCE(NULLIF(?7, ''), created_at),
+               associated = COALESCE(NULLIF(?8, '{}'), associated)
              WHERE did = ?2`
-          ).bind(hide, p.did, p.handle || '', p.displayName || '', avatarCid, JSON.stringify(p.labels || []))
+          ).bind(f.hidden, p.did, f.handle, f.displayName, f.avatarCid, f.labels,
+            f.createdAt, f.associated)
         );
       }
       if (stmts.length > 0) {

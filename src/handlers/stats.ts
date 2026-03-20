@@ -2,7 +2,17 @@ import type { TursoDB } from "../db";
 import { html } from "../utils";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
 
-export async function handleStats(db: TursoDB): Promise<Response> {
+const EDGE_CACHE_TTL = 60; // seconds — stats are backward-looking, 1 min staleness is invisible
+
+export async function handleStats(request: Request, db: TursoDB, ctx: ExecutionContext): Promise<Response> {
+  // serve from CF edge cache when available (avoids Turso cold-start penalty)
+  const cache = caches.default;
+  const cacheKey = new Request(new URL("/stats", request.url).href);
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
+
+  const t0 = performance.now();
+
   const [metricsRes, snapshotRes, trafficRes, deltasRes] =
     await db.batch([
       db.prepare(
@@ -15,9 +25,12 @@ export async function handleStats(db: TursoDB): Promise<Response> {
         "SELECT domain, hits FROM traffic_sources ORDER BY hits DESC LIMIT 10"
       ),
       db.prepare(
-        "SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket ASC LIMIT 2016"
+        "SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket DESC LIMIT 288"
       ),
-    ]);
+    ], "read");
+
+  const tQuery = performance.now();
+
   const rows = (metricsRes.results ?? []) as {
     hour: number;
     searches: number;
@@ -25,7 +38,7 @@ export async function handleStats(db: TursoDB): Promise<Response> {
   }[];
   const dbSnapshots = (snapshotRes.results ?? []) as { hour: number; total: number; with_handles: number; with_avatars: number; hidden: number }[];
   const trafficSources = (trafficRes.results ?? []) as { domain: string; hits: number }[];
-  const deltas = (deltasRes.results ?? []) as { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
+  const deltas = ((deltasRes.results ?? []) as { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[]).reverse();
 
   // build snapshot points with timestamps
   const snapshots: SnapshotPoint[] = dbSnapshots.map((s) => ({
@@ -67,5 +80,24 @@ export async function handleStats(db: TursoDB): Promise<Response> {
   const handlePct = total > 0 ? ((withHandles / total) * 100).toFixed(1) : "0";
   const avatarPct = total > 0 ? ((withAvatars / total) * 100).toFixed(1) : "0";
 
-  return html(statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, handlePct, avatarPct, snapshots, trafficSources }));
+  const tProcess = performance.now();
+
+  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, handlePct, avatarPct, snapshots, trafficSources });
+
+  const tRender = performance.now();
+
+  const queryMs = (tQuery - t0).toFixed(0);
+  const processMs = (tProcess - tQuery).toFixed(0);
+  const renderMs = (tRender - tProcess).toFixed(0);
+  const totalMs2 = (tRender - t0).toFixed(0);
+
+  const response = html(body, {
+    "Server-Timing": `query;dur=${queryMs}, process;dur=${processMs}, render;dur=${renderMs}, total;dur=${totalMs2}`,
+    "Cache-Control": `public, max-age=${EDGE_CACHE_TTL}`,
+  });
+
+  // populate edge cache — use waitUntil so it completes after response is sent
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+
+  return response;
 }

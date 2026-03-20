@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS actors (
   updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
   hidden INTEGER NOT NULL DEFAULT 0,
   labels TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT DEFAULT '',
+  associated TEXT DEFAULT '{}',
   pds TEXT DEFAULT '',
   identity_checked_at INTEGER DEFAULT 0,
   profile_checked_at INTEGER DEFAULT 0

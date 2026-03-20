@@ -1,8 +1,7 @@
 import type { Stmt, TursoDB } from "./db";
 import type { Env, SlingshotResponse } from "./types";
 import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL } from "./types";
-import { shouldHide } from "./moderation";
-import { extractAvatarCid } from "./utils";
+import { extractProfileFields } from "./utils";
 
 /** record an actor-count snapshot for the current hour (idempotent) */
 export async function recordSnapshot(db: TursoDB): Promise<void> {
@@ -86,7 +85,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
     const { results: profileRows } = await db.prepare(
       `SELECT did FROM actors
        WHERE handle != ''
-         AND (avatar_url = '' OR labels = '[]')
+         AND (avatar_url = '' OR labels = '[]' OR created_at = '')
          AND profile_checked_at < unixepoch() - 3600
        ORDER BY profile_checked_at ASC LIMIT 75`
     ).all<{ did: string }>();
@@ -112,8 +111,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
           const returned = new Set<string>();
           for (const p of profiles) {
             returned.add(p.did);
-            const avatarCid = extractAvatarCid(p.avatar || '');
-            const hide = shouldHide(p.labels) ? 1 : 0;
+            const f = extractProfileFields(p);
             stmts.push(
               db.prepare(
                 `UPDATE actors SET
@@ -121,14 +119,17 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
                    display_name = COALESCE(NULLIF(?3, ''), display_name),
                    avatar_url = COALESCE(NULLIF(?4, ''), avatar_url),
                    labels = ?5, hidden = ?6,
+                   created_at = COALESCE(NULLIF(?7, ''), created_at),
+                   associated = COALESCE(NULLIF(?8, '{}'), associated),
                    profile_checked_at = unixepoch()
                  WHERE did = ?1`
               ).bind(
-                p.did, p.handle || '', p.displayName || '',
-                avatarCid, JSON.stringify(p.labels || []), hide
+                p.did, f.handle, f.displayName,
+                f.avatarCid, f.labels, f.hidden,
+                f.createdAt, f.associated
               )
             );
-            if (avatarCid) enriched++;
+            if (f.avatarCid) enriched++;
           }
           // mark actors not returned by getProfiles so we back off
           for (const r of batch) {

@@ -10,7 +10,7 @@ export interface Stmt {
 
 export interface TursoDB {
   prepare(sql: string): Stmt;
-  batch(stmts: Stmt[]): Promise<{ results: unknown[]; meta: { changes: number } }[]>;
+  batch(stmts: Stmt[], mode?: "write" | "read"): Promise<{ results: unknown[]; meta: { changes: number } }[]>;
 }
 
 export function tursoDb(client: Client): TursoDB {
@@ -36,10 +36,10 @@ export function tursoDb(client: Client): TursoDB {
       };
       return s;
     },
-    async batch(stmts) {
+    async batch(stmts, mode = "write") {
       const results = await client.batch(
         stmts.map((s) => ({ sql: (s as any)._sql as string, args: (s as any)._args() as any[] })),
-        "write",
+        mode as any,
       );
       return results.map((r) => ({
         results: r.rows as unknown[],

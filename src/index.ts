@@ -43,7 +43,7 @@ export default {
     const db = createDb(env);
 
     if (pathname === "/stats" && request.method === "GET") {
-      return handleStats(db);
+      return handleStats(request, db, ctx);
     }
 
     if (pathname === "/request-indexing" && request.method === "POST") {

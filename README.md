@@ -1,6 +1,6 @@
 # typeahead
 
-community actor search for [atproto](https://atproto.com). aims to be a drop-in replacement for `app.bsky.actor.searchActorsTypeahead` — same endpoint path and query params, returns core fields (`did`, `handle`, `displayName`, `avatar`, `labels`) but not the full `profileViewBasic` surface (no `associated`, `viewer`, `createdAt`).
+community actor search for [atproto](https://atproto.com). aims to be a drop-in replacement for `app.bsky.actor.searchActorsTypeahead` — same endpoint path and query params, returns the full `profileViewBasic` surface minus `viewer` (`did`, `handle`, `displayName`, `avatar`, `associated`, `labels`, `createdAt`).
 
 **live:** https://typeahead.waow.tech
 

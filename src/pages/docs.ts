@@ -133,18 +133,17 @@ export function docsPage(): string {
       <tr><td><code>handle</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td><code>displayName</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td><code>avatar</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>associated</code></td><td class="yes">✓</td><td class="no">—</td></tr>
+      <tr><td><code>associated</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td><code>labels</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>createdAt</code></td><td class="yes">✓</td><td class="no">—</td></tr>
+      <tr><td><code>createdAt</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
       <tr><td><code>viewer</code></td><td class="yes">✓</td><td class="no">—</td></tr>
     </table>
 
     <div class="callout warn">
-      <strong>if you depend on <code>associated</code>, <code>viewer</code>,
-      or <code>createdAt</code></strong> — this API doesn't return them. we return
-      did + handle + displayName + avatar + labels, which covers most typeahead UIs.
-      if you need the full <code>profileViewBasic</code> surface, you'll need to stick with
-      the bluesky API or fetch those fields separately.
+      <strong>if you depend on <code>viewer</code></strong> — this API doesn't return it
+      (it requires authentication). we return did + handle + displayName + avatar +
+      associated + labels + createdAt, which covers the full <code>profileViewBasic</code>
+      surface minus <code>viewer</code>.
     </div>
 
     <h2>operational notes</h2>

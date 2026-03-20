@@ -43,7 +43,7 @@ export async function handleSearch(
 
   const ftsQuery = `"${term}"*`;
   const { results } = await db.prepare(
-    `SELECT a.did, a.handle, a.display_name, a.avatar_url, a.labels
+    `SELECT a.did, a.handle, a.display_name, a.avatar_url, a.labels, a.created_at, a.associated
      FROM actors_fts
      JOIN actors a ON a.rowid = actors_fts.rowid
      WHERE actors_fts MATCH ?1 AND a.handle != '' AND a.hidden = 0
@@ -59,7 +59,9 @@ export async function handleSearch(
       handle: r.handle,
       ...(r.display_name ? { displayName: r.display_name } : {}),
       ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url) } : {}),
+      ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
       labels: JSON.parse(r.labels || '[]'),
+      ...(r.created_at ? { createdAt: r.created_at } : {}),
     }));
 
   // --- backfill: remove this block once at parity with Bluesky ---
@@ -76,10 +78,10 @@ export async function handleSearch(
 
   const response = json({ actors });
 
-  // cache for 60 seconds
-  const cacheable = new Response(response.body, response);
+  // cache for 60 seconds — non-blocking so it doesn't delay the response
+  const cacheable = new Response(response.clone().body, response);
   cacheable.headers.set("Cache-Control", "public, max-age=60");
-  await cache.put(cacheKey, cacheable.clone());
+  ctx.waitUntil(cache.put(cacheKey, cacheable));
 
-  return cacheable;
+  return response;
 }

@@ -1,8 +1,7 @@
 import type { TursoDB } from "../db";
 import type { Env, SlingshotResponse } from "../types";
 import { SLINGSHOT_URL } from "../types";
-import { clientIP, json, extractAvatarCid } from "../utils";
-import { shouldHide } from "../moderation";
+import { clientIP, json, extractProfileFields } from "../utils";
 import { recordActorDelta } from "../metrics";
 
 export async function handleDelete(
@@ -89,43 +88,38 @@ export async function handleRequestIndexing(
 
   const identity: SlingshotResponse = await res.json();
 
-  // fetch profile from public API for display name + avatar + labels
-  let displayName = "";
-  let avatarCid = "";
-  let hidden = false;
-  let labelsJson = "[]";
+  // fetch profile from public API for display name + avatar + labels + metadata
+  let f = { displayName: '', avatarCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}' };
   try {
     const profileRes = await fetch(
       `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(identity.did)}`
     );
     if (profileRes.ok) {
-      const profile: any = await profileRes.json();
-      displayName = profile.displayName || "";
-      avatarCid = extractAvatarCid(profile.avatar || "");
-      hidden = shouldHide(profile.labels);
-      labelsJson = JSON.stringify(profile.labels || []);
+      f = extractProfileFields(await profileRes.json());
     }
   } catch {
     // profile enrichment is best-effort
   }
 
   await db.prepare(
-    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, unixepoch())
+    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, unixepoch())
      ON CONFLICT(did) DO UPDATE SET
        handle = ?2,
        display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
        avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
        hidden = ?5,
        labels = ?6,
+       created_at = COALESCE(NULLIF(?7, ''), actors.created_at),
+       associated = COALESCE(NULLIF(?8, '{}'), actors.associated),
        updated_at = unixepoch()`
   )
-    .bind(identity.did, identity.handle, displayName, avatarCid, hidden ? 1 : 0, labelsJson)
+    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated)
     .run();
 
   return json({
     handle: identity.handle,
     did: identity.did,
-    ...(hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
+    ...(f.hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
   });
 }

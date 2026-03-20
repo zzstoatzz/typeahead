@@ -1,8 +1,7 @@
 import type { TursoDB } from "./db";
 import type { Env } from "./types";
 import { BSKY_TYPEAHEAD_URL } from "./types";
-import { shouldHide } from "./moderation";
-import { extractAvatarCid } from "./utils";
+import { extractProfileFields } from "./utils";
 
 // --- backfill: remove this block once at parity with Bluesky ---
 
@@ -30,26 +29,25 @@ export async function backfillFromBsky(
 
     // upsert all — fills in missing actors AND enriches existing ones
     // (e.g. actors ingested via Jetstream that lack avatar/displayName)
-    const stmts = actors.map((a) =>
-      db.prepare(
-        `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, unixepoch())
+    const stmts = actors.map((a) => {
+      const f = extractProfileFields(a);
+      return db.prepare(
+        `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, unixepoch())
          ON CONFLICT(did) DO UPDATE SET
            handle = COALESCE(NULLIF(?2, ''), actors.handle),
            display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
            avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
            hidden = ?5,
            labels = ?6,
+           created_at = COALESCE(NULLIF(?7, ''), actors.created_at),
+           associated = COALESCE(NULLIF(?8, '{}'), actors.associated),
            updated_at = unixepoch()`
       ).bind(
-        a.did,
-        a.handle || '',
-        a.displayName || '',
-        extractAvatarCid(a.avatar || ''),
-        shouldHide(a.labels) ? 1 : 0,
-        JSON.stringify(a.labels || [])
-      )
-    );
+        a.did, f.handle, f.displayName, f.avatarCid,
+        f.hidden, f.labels, f.createdAt, f.associated
+      );
+    });
 
     await db.batch(stmts);
 

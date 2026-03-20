@@ -13,6 +13,8 @@ export interface ActorRow {
   display_name: string;
   avatar_url: string;
   labels: string;
+  created_at: string;
+  associated: string;
 }
 
 export interface IngestEvent {
