@@ -82,7 +82,6 @@ const ActorEvent = struct {
     handle: ?[]const u8 = null,
     display_name: ?[]const u8 = null,
     avatar_cid: ?[]const u8 = null,
-    hidden: ?bool = null,
 };
 
 const IngestHandler = struct {
@@ -195,15 +194,8 @@ const IngestHandler = struct {
                 }
             }
 
-            // check self-labels for !no-unauthenticated
-            event.hidden = blk: {
-                const values = zat.json.getArray(record, "labels.values") orelse break :blk false;
-                for (values) |item| {
-                    const val = zat.json.getString(item, "val") orelse continue;
-                    if (mem.eql(u8, val, "!no-unauthenticated")) break :blk true;
-                }
-                break :blk false;
-            };
+            // ingester only sees self-labels from profile records — it can never
+            // correctly determine hidden. let refreshModeration cron handle it.
 
             self.buffer.append(self.allocator, event) catch return;
         } else {
@@ -249,9 +241,10 @@ const IngestHandler = struct {
             );
             if (ok) {
                 self.total_ingested += batch_end;
-                log.info("+{d} actors (total: {d}, pending: {d}) cursor={d}", .{
+                const rss = getRssKB();
+                log.info("+{d} actors (total: {d}, pending: {d}) cursor={d} rss={d}KB", .{
                     batch_end, self.total_ingested,
-                    self.buffer.items.len - batch_end, self.pending_cursor,
+                    self.buffer.items.len - batch_end, self.pending_cursor, rss,
                 });
                 // shift remaining items forward
                 if (batch_end < self.buffer.items.len) {
@@ -310,6 +303,18 @@ const IngestHandler = struct {
     }
 };
 
+fn getRssKB() u64 {
+    const f = std.fs.openFileAbsolute("/proc/self/statm", .{}) catch return 0;
+    defer f.close();
+    var buf: [128]u8 = undefined;
+    const n = f.read(&buf) catch return 0;
+    // statm: size resident shared text lib data dt (in pages)
+    var it = std.mem.splitScalar(u8, buf[0..n], ' ');
+    _ = it.next(); // size
+    const rss_pages = std.fmt.parseInt(u64, it.next() orelse return 0, 10) catch return 0;
+    return rss_pages * 4; // pages are 4KB on Linux
+}
+
 fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEvent, cursor: i64) bool {
     var output: std.Io.Writer.Allocating = .init(transport.allocator);
     defer output.deinit();
@@ -326,12 +331,10 @@ fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEve
     var auth_buf: [256]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
 
-    const body = output.toArrayList();
-
     const result = transport.fetch(.{
         .url = url,
         .method = .POST,
-        .payload = body.items,
+        .payload = output.written(),
         .authorization = auth,
     }) catch return false;
     defer transport.allocator.free(result.body);
@@ -356,12 +359,10 @@ fn deleteActors(transport: *HttpTransport, config: Config, dids: []const []const
     var auth_buf: [256]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
 
-    const body = output.toArrayList();
-
     const result = transport.fetch(.{
         .url = url,
         .method = .POST,
-        .payload = body.items,
+        .payload = output.written(),
         .authorization = auth,
     }) catch return false;
     defer transport.allocator.free(result.body);
@@ -414,6 +415,7 @@ pub fn main() !void {
     log.info("typeahead ingester → {s}", .{config.worker_url});
 
     var transport = HttpTransport.init(allocator);
+    transport.keep_alive = false;
     defer transport.deinit();
 
     const cursor = fetchCursor(&transport, config);

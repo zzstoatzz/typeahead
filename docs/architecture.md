@@ -33,9 +33,11 @@ and serves FTS5 prefix search from cloudflare's edge.
    - **phase 1 — identity**: slingshot resolves DID → handle + PDS endpoint.
      100 DIDs/run, 20 concurrent. attempt tracking (`identity_checked_at`)
      backs off failures for 1 hour.
-   - **phase 2 — profile**: PDS-native `getRecord` fetches avatar CID +
-     display_name directly from the actor's PDS. 20/run. attempt tracking
-     (`profile_checked_at`) backs off failures for 1 hour.
+   - **phase 2 — profile + labels**: `getProfiles` batch call (25 DIDs/call,
+     75/run) fetches avatar, display_name, and labels in one shot. also
+     recomputes `hidden` from full label data. attempt tracking
+     (`profile_checked_at`) backs off failures for 1 hour. actors not
+     returned by getProfiles are marked to avoid retrying.
    - lease-coordinated via KV (`enrich_lock`, 30s TTL) — no stampede from
      overlapping ingest batches.
    - converges to zero work as gaps fill (gap-driven queries return fewer
@@ -76,18 +78,19 @@ the enrichment pipeline is gap-driven:
 
 - identity phase queries actors with `handle = ''` and
   `identity_checked_at < now - 1hr`
-- profile phase queries actors with `handle != ''`, `avatar_url = ''`,
-  `pds != ''`, and `profile_checked_at < now - 1hr`
+- profile phase queries actors with `handle != ''` and
+  (`avatar_url = ''` OR `labels = '[]'`), `profile_checked_at < now - 1hr`
 - as actors get enriched, these queries return fewer rows
 - system quiesces when all actors are resolved or backed off
 
-AppView (public.api.bsky.app) is used only for moderation label checks.
-profile data comes from PDS-native fetches.
+AppView (public.api.bsky.app) is used for both enrichment (phase 2
+getProfiles) and moderation label checks (hourly cron). phase 2 gets
+avatar, displayName, labels, and hidden in one batch call.
 
 ### read path
 
 search query -> cache API (hit?) -> FTS5 prefix match -> reconstruct avatar
-URLs from DID + CID -> return `{did, handle, displayName?, avatar?}`
+URLs from DID + CID -> return `{did, handle, displayName?, avatar?, labels}`
 
 ## storage
 
@@ -98,12 +101,17 @@ the actors table stores one row per DID:
     display_name TEXT             -- ~20 bytes
     avatar_url TEXT               -- ~59 bytes (CID only, URL reconstructed at query time)
     hidden INTEGER                -- 1 byte
+    labels TEXT                   -- 2 bytes ('[]') for ~92% of actors;
+                                  -- ~256 bytes per label for the ~8% that have them
+                                  -- stored as raw JSON array matching bsky's API shape
     updated_at INTEGER            -- 8 bytes
     pds TEXT                      -- ~40 bytes (PDS endpoint URL)
     identity_checked_at INTEGER   -- 8 bytes (last slingshot attempt)
     profile_checked_at INTEGER    -- 8 bytes (last PDS profile attempt)
 
-plus FTS5 index overhead. roughly ~320 bytes/row total.
+plus FTS5 index overhead. roughly ~320 bytes/row for unlabeled actors,
+~580 bytes/row for labeled ones (~8% of index). at 1.33M actors this
+adds ~30MB over the baseline.
 
 storage is [Turso](https://turso.tech) (hosted libSQL). previously used
 Cloudflare D1 but migrated to Turso to avoid D1's 10GB hard limit and
@@ -120,10 +128,17 @@ actors with certain labels from bluesky's moderation service
 content, not identity. bluesky's own public typeahead API returns these
 accounts, and so do we.
 
-the hourly cron refreshes moderation labels by walking the full index over
-multiple runs (1000 actors/run via `mod_cursor` in KV). it piggybacks
-enrichment data (handle, display_name, avatar) from the same getProfiles
-response at no additional API cost.
+the full labels array (matching bsky's API shape) is stored per actor and
+returned in search results. clients can use this for rendering decisions
+(e.g. blur avatars for `porn`/`sexual` labels). the ingester only sees
+self-labels from profile records — it cannot see bsky mod labels, so it
+does not set `hidden`. only API-based paths (cron, backfill, request-indexing)
+set `hidden` from full label data.
+
+the hourly cron refreshes moderation labels and persists the full labels
+array by walking the full index over multiple runs (1000 actors/run via
+`mod_cursor` in KV). it piggybacks enrichment data (handle, display_name,
+avatar) from the same getProfiles response at no additional API cost.
 
 ## scripts
 
@@ -133,6 +148,12 @@ response at no additional API cost.
 - `scripts/add-enrichment-columns.sql` — one-shot migration adding pds,
   identity_checked_at, profile_checked_at columns (run once before deploying
   enrichment pipeline)
+- `scripts/add-labels-column.sql` — one-shot migration adding labels column
+  to actors table (run once before deploying labels support)
+- `scripts/backfill-profiles.py` — bulk enrichment: walks actors table and
+  populates labels, handle, display_name, avatar_url via getProfiles API.
+  also recomputes hidden from full label data, fixing actors incorrectly
+  hidden by stale !no-unauthenticated logic.
 - `scripts/add-actor-deltas.sql` — one-shot migration adding actor_deltas
   table for 5-min granularity delta tracking
 - `scripts/migrate-avatar-cid.sql` — one-shot migration from full avatar

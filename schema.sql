@@ -5,12 +5,14 @@ CREATE TABLE IF NOT EXISTS actors (
   avatar_url TEXT DEFAULT '',  -- stores CID only (e.g. bafkrei...); reconstruct URL at query time
   updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
   hidden INTEGER NOT NULL DEFAULT 0,
+  labels TEXT NOT NULL DEFAULT '[]',
   pds TEXT DEFAULT '',
   identity_checked_at INTEGER DEFAULT 0,
   profile_checked_at INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_actors_handle ON actors(handle COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_actors_hidden ON actors(hidden) WHERE hidden != 0;
 
 CREATE VIRTUAL TABLE IF NOT EXISTS actors_fts USING fts5(
   handle, display_name,
@@ -46,7 +48,8 @@ CREATE TABLE IF NOT EXISTS snapshots (
   hour INTEGER PRIMARY KEY,
   total INTEGER NOT NULL DEFAULT 0,
   with_handles INTEGER NOT NULL DEFAULT 0,
-  with_avatars INTEGER NOT NULL DEFAULT 0
+  with_avatars INTEGER NOT NULL DEFAULT 0,
+  hidden INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS actor_deltas (
