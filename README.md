@@ -1,6 +1,6 @@
 # typeahead
 
-community actor search for [atproto](https://atproto.com). aims to be a drop-in replacement for `app.bsky.actor.searchActorsTypeahead` — same endpoint path and query params, but returns only core fields (`did`, `handle`, `displayName`, `avatar`), not the full `profileViewBasic` surface (no moderation labels, viewer state, etc).
+community actor search for [atproto](https://atproto.com). aims to be a drop-in replacement for `app.bsky.actor.searchActorsTypeahead` — same endpoint path and query params, returns core fields (`did`, `handle`, `displayName`, `avatar`, `labels`) but not the full `profileViewBasic` surface (no `associated`, `viewer`, `createdAt`).
 
 **live:** https://typeahead.waow.tech
 
@@ -16,7 +16,7 @@ jetstream → ingester (zig, fly.io) → worker (cloudflare)
                                    Turso (libSQL/FTS5)
 ```
 
-- **ingester**: [zig](https://ziglang.org) on [fly.io](https://fly.io) — streams identity + profile events via [jetstream](https://docs.bsky.app/blog/jetstream), batches to worker
+- **ingester**: [zig](https://ziglang.org) on [fly.io](https://fly.io) — streams profiles, posts, likes, and follows via [jetstream](https://docs.bsky.app/blog/jetstream), batches to worker
 - **worker**: [cloudflare worker](https://workers.cloudflare.com) + [Turso](https://turso.tech) + KV + cache API — FTS5 prefix search, edge-cached (60s), rate-limited
 - **identity**: [slingshot](https://microcosm.blue) for on-demand handle resolution
 

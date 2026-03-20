@@ -1,0 +1,78 @@
+import type { TursoDB } from "./db";
+import type { Env } from "./types";
+import { BSKY_TYPEAHEAD_URL } from "./types";
+import { shouldHide } from "./moderation";
+import { extractAvatarCid } from "./utils";
+
+// --- backfill: remove this block once at parity with Bluesky ---
+
+export async function backfillFromBsky(
+  term: string,
+  limit: number,
+  db: TursoDB,
+): Promise<void> {
+  try {
+    const res = await fetch(
+      `${BSKY_TYPEAHEAD_URL}?q=${encodeURIComponent(term)}&limit=${limit}`
+    );
+    if (!res.ok) return; // 429 or other error — just bail
+
+    const data: any = await res.json();
+    const actors: any[] = (data.actors || []).filter((a: any) => a.did);
+    if (actors.length === 0) return;
+
+    // drift detection: check which DIDs we already know about
+    const placeholders = actors.map(() => '?').join(',');
+    const existing = await db.prepare(
+      `SELECT did FROM actors WHERE did IN (${placeholders})`
+    ).bind(...actors.map(a => a.did)).all<{ did: string }>();
+    const known = new Set((existing.results || []).map(r => r.did));
+
+    // upsert all — fills in missing actors AND enriches existing ones
+    // (e.g. actors ingested via Jetstream that lack avatar/displayName)
+    const stmts = actors.map((a) =>
+      db.prepare(
+        `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, unixepoch())
+         ON CONFLICT(did) DO UPDATE SET
+           handle = COALESCE(NULLIF(?2, ''), actors.handle),
+           display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
+           avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
+           hidden = ?5,
+           labels = ?6,
+           updated_at = unixepoch()`
+      ).bind(
+        a.did,
+        a.handle || '',
+        a.displayName || '',
+        extractAvatarCid(a.avatar || ''),
+        shouldHide(a.labels) ? 1 : 0,
+        JSON.stringify(a.labels || [])
+      )
+    );
+
+    await db.batch(stmts);
+
+    const discovered = actors.filter(a => !known.has(a.did)).length;
+    console.log(JSON.stringify({ event: "backfill", term, upserted: actors.length, discovered }));
+  } catch {
+    // best-effort — don't let backfill errors affect anything
+  }
+}
+
+export async function throttledBackfill(term: string, limit: number, db: TursoDB, env: Env): Promise<void> {
+  // kill switch — set KV key "backfill" to "off" to disable without redeploying
+  const flag = await env.KV.get("backfill");
+  if (flag === "off") return;
+
+  // global budget — cap total backfill triggers across all users
+  const { success } = await env.RATE_LIMITER_STRICT.limit({ key: "backfill" });
+  if (!success) {
+    console.log(JSON.stringify({ event: "backfill_throttled", term }));
+    return;
+  }
+
+  return backfillFromBsky(term, limit, db);
+}
+
+// --- end backfill ---
