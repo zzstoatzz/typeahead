@@ -14,11 +14,11 @@ export function json(data: unknown, status = 200): Response {
 
 export function avatarUrl(did: string, cidOrUrl: string): string {
   if (cidOrUrl.startsWith("https://")) return cidOrUrl;
-  return `https://cdn.bsky.app/img/avatar/plain/${did}/${cidOrUrl}@jpeg`;
+  return `https://cdn.bsky.app/img/avatar/plain/${did}/${cidOrUrl}`;
 }
 
 export function extractAvatarCid(url: string): string {
-  const match = url.match(/\/([^/]+)@jpeg$/);
+  const match = url.match(/\/([^/]+?)(?:@[a-z]+)?$/);
   return match?.[1] ?? '';
 }
 
