@@ -2,7 +2,7 @@ import type { Env } from "./types";
 import { CORS_HEADERS } from "./types";
 import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
-import { recordSnapshot } from "./enrichment";
+import { recordSnapshot, materializeStats } from "./enrichment";
 import { enrichActors } from "./enrichment";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
@@ -16,6 +16,7 @@ export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     const db = await getDb(env);
     await recordSnapshot(db);
+    await materializeStats(db, env);
     await refreshModeration(db, env);
     await enrichActors(db, env);
   },
@@ -43,7 +44,7 @@ export default {
     const db = await getDb(env);
 
     if (pathname === "/stats" && request.method === "GET") {
-      return handleStats(request, db, ctx);
+      return handleStats(request, db, env, ctx);
     }
 
     if (pathname === "/request-indexing" && request.method === "POST") {

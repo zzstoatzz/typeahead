@@ -1,16 +1,15 @@
 import type { TursoDB } from "../db";
+import type { Env } from "../types";
 import { html } from "../utils";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
 
-const EDGE_CACHE_TTL = 60; // seconds — stats are backward-looking, 1 min staleness is invisible
+const EDGE_CACHE_TTL = 60; // seconds
 
-export async function handleStats(request: Request, db: TursoDB, ctx: ExecutionContext): Promise<Response> {
-  // serve from CF edge cache when available (avoids Turso cold-start penalty)
+export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: ExecutionContext): Promise<Response> {
   const cache = caches.default;
   const cacheKey = new Request(new URL("/stats", request.url).href);
   const cached = await cache.match(cacheKey);
   if (cached) {
-    // override cache-control so browser doesn't cache the cached response
     const resp = new Response(cached.body, cached);
     resp.headers.set("Cache-Control", "no-store");
     return resp;
@@ -18,32 +17,25 @@ export async function handleStats(request: Request, db: TursoDB, ctx: ExecutionC
 
   const t0 = performance.now();
 
-  const [metricsRes, snapshotRes, trafficRes, deltasRes] =
-    await db.batch([
-      db.prepare(
-        "SELECT hour, searches, total_ms FROM metrics ORDER BY hour DESC LIMIT 2016"
-      ),
-      db.prepare(
-        "SELECT hour, total, with_handles, with_avatars, hidden FROM snapshots ORDER BY hour ASC LIMIT 2000"
-      ),
-      db.prepare(
-        "SELECT domain, hits FROM traffic_sources ORDER BY hits DESC LIMIT 10"
-      ),
-      db.prepare(
-        "SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket DESC LIMIT 288"
-      ),
-    ], "read");
+  // materialized data from KV (written by cron) — never hits turso
+  const kvData = await env.KV.get("stats_data", "json") as {
+    metrics: { hour: number; searches: number; total_ms: number }[];
+    snapshots: { hour: number; total: number; with_handles: number; with_avatars: number; hidden: number }[];
+    deltas: { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
+    materialized_at: number;
+  } | null;
+
+  // traffic sources: live from turso (7 rows, real-time)
+  const trafficRes = await db.prepare(
+    "SELECT domain, hits FROM traffic_sources ORDER BY hits DESC LIMIT 10"
+  ).all<{ domain: string; hits: number }>();
 
   const tQuery = performance.now();
 
-  const rows = (metricsRes.results ?? []) as {
-    hour: number;
-    searches: number;
-    total_ms: number;
-  }[];
-  const dbSnapshots = (snapshotRes.results ?? []) as { hour: number; total: number; with_handles: number; with_avatars: number; hidden: number }[];
-  const trafficSources = (trafficRes.results ?? []) as { domain: string; hits: number }[];
-  const deltas = ((deltasRes.results ?? []) as { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[]).reverse();
+  const rows = kvData?.metrics ?? [];
+  const dbSnapshots = kvData?.snapshots ?? [];
+  const trafficSources = trafficRes.results ?? [];
+  const deltas = [...(kvData?.deltas ?? [])].reverse();
 
   // build snapshot points with timestamps
   const snapshots: SnapshotPoint[] = dbSnapshots.map((s) => ({
@@ -72,7 +64,6 @@ export async function handleStats(request: Request, db: TursoDB, ctx: ExecutionC
     }
   }
 
-  // derive current counts from the latest point (snapshot + deltas)
   const latest = snapshots[snapshots.length - 1] ?? { total: 0, with_handles: 0, with_avatars: 0 };
   const total = latest.total;
   const withHandles = latest.with_handles;
@@ -98,14 +89,12 @@ export async function handleStats(request: Request, db: TursoDB, ctx: ExecutionC
 
   const timing = `query;dur=${queryMs}, process;dur=${processMs}, render;dur=${renderMs}, total;dur=${totalMs2}`;
 
-  // edge cache entry — public, max-age controls the Cache API TTL
   const cacheResponse = html(body, {
     "Server-Timing": timing,
     "Cache-Control": `public, max-age=${EDGE_CACHE_TTL}`,
   });
   ctx.waitUntil(cache.put(cacheKey, cacheResponse));
 
-  // browser response — no caching so refreshes always get fresh data
   return html(body, {
     "Server-Timing": timing,
     "Cache-Control": "no-store",
