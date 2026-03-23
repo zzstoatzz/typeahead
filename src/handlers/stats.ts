@@ -71,8 +71,11 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const hiddenCount = dbSnapshots.length > 0 ? (dbSnapshots[dbSnapshots.length - 1].hidden ?? 0) : 0;
 
   const totalSearches = rows.reduce((s, r) => s + r.searches, 0);
-  const totalMs = rows.reduce((s, r) => s + r.total_ms, 0);
-  const avgLatency = totalSearches > 0 ? totalMs / totalSearches : 0;
+  // avg latency over last 24h only (288 five-min buckets) so transient spikes age out quickly
+  const recentRows = rows.slice(0, 288);
+  const recentSearches = recentRows.reduce((s, r) => s + r.searches, 0);
+  const recentMs = recentRows.reduce((s, r) => s + r.total_ms, 0);
+  const avgLatency = recentSearches > 0 ? recentMs / recentSearches : 0;
   const handlePct = total > 0 ? ((withHandles / total) * 100).toFixed(1) : "0";
   const avatarPct = total > 0 ? ((withAvatars / total) * 100).toFixed(1) : "0";
 

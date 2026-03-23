@@ -187,7 +187,7 @@ export function statsPage(d: StatsData): string {
         <div class="value">${d.totalSearches.toLocaleString()}</div>
       </div>
       <div class="metric">
-        <div class="label" data-tip="average response time for uncached searches">avg latency</div>
+        <div class="label" data-tip="average response time for uncached searches (last 24h)">avg latency</div>
         <div class="value">${d.avgLatency.toFixed(1)} ms</div>
       </div>
     </div>
