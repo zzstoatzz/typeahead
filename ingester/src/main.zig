@@ -406,6 +406,43 @@ fn fetchCursor(transport: *HttpTransport, config: Config) ?i64 {
     return null;
 }
 
+const HealthState = struct {
+    handler: *IngestHandler,
+};
+
+fn healthThread(state: *HealthState) void {
+    const addr = std.net.Address.parseIp4("0.0.0.0", 8080) catch return;
+    var srv = addr.listen(.{ .reuse_address = true }) catch |err| {
+        log.err("health listener failed: {s}", .{@errorName(err)});
+        return;
+    };
+    log.info("health endpoint listening on :8080", .{});
+
+    while (true) {
+        const conn = srv.accept() catch continue;
+        handleHealthConn(conn.stream, state.handler) catch {};
+        conn.stream.close();
+    }
+}
+
+fn handleHealthConn(stream: std.net.Stream, handler: *IngestHandler) !void {
+    var buf: [1024]u8 = undefined;
+    _ = stream.read(&buf) catch return;
+
+    const rss = getRssKB();
+    var body_buf: [256]u8 = undefined;
+    const body = std.fmt.bufPrint(&body_buf, "{{\"status\":\"ok\",\"ingested\":{d},\"deleted\":{d},\"bloom\":{d},\"rss_kb\":{d}}}", .{
+        handler.total_ingested, handler.total_deleted, handler.bloom.count, rss,
+    }) catch return;
+
+    var resp_buf: [512]u8 = undefined;
+    const resp = std.fmt.bufPrint(&resp_buf, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {d}\r\nConnection: close\r\n\r\n{s}", .{
+        body.len, body,
+    }) catch return;
+
+    _ = stream.write(resp) catch {};
+}
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -427,6 +464,11 @@ pub fn main() !void {
 
     var handler = try IngestHandler.init(allocator, config, &transport);
     defer handler.deinit();
+
+    // health endpoint in background thread
+    var health_state = HealthState{ .handler = &handler };
+    const health_thread = try std.Thread.spawn(.{}, healthThread, .{&health_state});
+    health_thread.detach();
 
     var client = zat.JetstreamClient.init(allocator, .{
         .wanted_collections = &.{
