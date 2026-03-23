@@ -49,6 +49,36 @@ export function tursoDb(client: Client): TursoDB {
   };
 }
 
-export function createDb(env: Env): TursoDB {
-  return tursoDb(createClient({ url: env.TURSO_URL, authToken: env.TURSO_AUTH_TOKEN }));
+let cachedKey: string | undefined;
+let cachedClient: Client | undefined;
+let cachedDb: TursoDB | undefined;
+let initPromise: Promise<TursoDB> | undefined;
+
+/** lazy singleton — reuses the client across requests within a worker isolate */
+export function getDb(env: Env): Promise<TursoDB> {
+  const key = `${env.TURSO_URL}::${env.TURSO_AUTH_TOKEN}`;
+
+  if (cachedDb && cachedKey === key) return Promise.resolve(cachedDb);
+  if (initPromise && cachedKey === key) return initPromise;
+
+  cachedKey = key;
+  initPromise = (async () => {
+    const client = createClient({
+      url: env.TURSO_URL,
+      authToken: env.TURSO_AUTH_TOKEN,
+    });
+    const db = tursoDb(client);
+    cachedClient = client;
+    cachedDb = db;
+    return db;
+  })().catch((err) => {
+    if (cachedKey === key) {
+      cachedClient = undefined;
+      cachedDb = undefined;
+      initPromise = undefined;
+    }
+    throw err;
+  });
+
+  return initPromise;
 }

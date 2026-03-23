@@ -1,6 +1,6 @@
 import type { Env } from "./types";
 import { CORS_HEADERS } from "./types";
-import { createDb } from "./db";
+import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
 import { recordSnapshot } from "./enrichment";
 import { enrichActors } from "./enrichment";
@@ -14,7 +14,7 @@ import { docsPage } from "./pages/docs";
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
-    const db = createDb(env);
+    const db = await getDb(env);
     await recordSnapshot(db);
     await refreshModeration(db, env);
     await enrichActors(db, env);
@@ -40,7 +40,7 @@ export default {
       return new Response(null, { status: 302, headers: { Location: "/" } });
     }
 
-    const db = createDb(env);
+    const db = await getDb(env);
 
     if (pathname === "/stats" && request.method === "GET") {
       return handleStats(request, db, ctx);

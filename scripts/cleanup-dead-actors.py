@@ -127,22 +127,27 @@ def main():
     if args.start_rowid: print(f"  resuming from rowid {args.start_rowid}")
 
     while True:
-        remaining = args.limit - checked if args.limit else PAGE_SIZE
-        if args.limit and remaining <= 0:
+        if args.limit and checked >= args.limit:
             break
-        page_size = min(PAGE_SIZE, remaining) if args.limit else PAGE_SIZE
 
         rows = turso_query(
-            "SELECT rowid, did, display_name FROM actors WHERE handle = '' AND rowid > ?1 ORDER BY rowid ASC LIMIT ?2",
-            [{"type": "integer", "value": str(last_rowid)}, {"type": "integer", "value": str(page_size)}],
+            "SELECT rowid, did, handle, display_name FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT ?2",
+            [{"type": "integer", "value": str(last_rowid)}, {"type": "integer", "value": str(PAGE_SIZE)}],
             turso_url, turso_token,
         )
         if not rows:
             break
 
+        last_rowid = int(rows[-1]["rowid"])
+
+        # only check actors with empty handles — skip the rest client-side
+        empty = [r for r in rows if r.get("handle", "") == ""]
+        if not empty:
+            continue
+        rows = empty
+
         dids = [r["did"] for r in rows]
         did_to_row = {r["did"]: r for r in rows}
-        last_rowid = int(rows[-1]["rowid"])
 
         batches = [dids[i:i+25] for i in range(0, len(dids), 25)]
         to_delete = []
