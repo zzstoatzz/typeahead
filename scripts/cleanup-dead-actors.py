@@ -27,15 +27,60 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BSKY_GET_PROFILES = "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles"
+BSKY_MOD_DID = "did:plc:ar7c4by46qjdydhdevvrndac"
+MOD_HIDE_VALS = {"!hide", "!takedown", "spam"}
 PAGE_SIZE = 500
 BSKY_CONCURRENCY = 5
-DELETE_BATCH = 100
-DELETE_PAUSE = 0.1
+WRITE_BATCH = 25       # max statements per turso batch (keep write lock short)
+WRITE_PAUSE = 0.5      # seconds between write batches (let reads through)
 
 DIM = "\033[2m"
 RESET = "\033[0m"
 RED = "\033[31m"
 GREEN = "\033[32m"
+
+
+def extract_avatar_cid(url: str) -> str:
+    """extract CID from bsky avatar URL (mirrors extractAvatarCid in utils.ts)"""
+    import re
+    m = re.search(r'/([^/]+?)(?:@[a-z]+)?$', url)
+    return m.group(1) if m else ''
+
+
+def should_hide(labels: list) -> bool:
+    """mirrors shouldHide in moderation.ts"""
+    import datetime
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for l in labels:
+        if l.get("neg"): continue
+        exp = l.get("exp")
+        if exp:
+            try:
+                if datetime.datetime.fromisoformat(exp.replace("Z", "+00:00")) <= now:
+                    continue
+            except ValueError:
+                continue
+        if l.get("src") == BSKY_MOD_DID and l.get("val") in MOD_HIDE_VALS:
+            return True
+    return False
+
+
+def extract_profile_fields(profile: dict) -> dict:
+    """mirrors extractProfileFields in utils.ts — full profile extraction"""
+    labels = profile.get("labels", [])
+    associated = profile.get("associated", {})
+    # clean associated: strip zero/false/null values
+    clean_assoc = {k: v for k, v in (associated or {}).items()
+                   if v not in (0, False, None)}
+    return {
+        "handle": profile.get("handle", ""),
+        "display_name": profile.get("displayName", ""),
+        "avatar_cid": extract_avatar_cid(profile.get("avatar", "")),
+        "labels": json.dumps(labels),
+        "hidden": 1 if should_hide(labels) else 0,
+        "created_at": profile.get("createdAt", ""),
+        "associated": json.dumps(clean_assoc) if clean_assoc else "{}",
+    }
 
 
 def get_turso_url() -> str:
@@ -121,7 +166,7 @@ def main():
     last_rowid = args.start_rowid
 
     tag = "dry" if args.dry_run else "live"
-    print(f"cleanup dead actors (concurrency={BSKY_CONCURRENCY}, delete_batch={DELETE_BATCH})")
+    print(f"cleanup dead actors (concurrency={BSKY_CONCURRENCY}, write_batch={WRITE_BATCH}, write_pause={WRITE_PAUSE}s)")
     if args.dry_run: print("  DRY RUN — no writes")
     if args.limit: print(f"  limit: {args.limit:,}")
     if args.start_rowid: print(f"  resuming from rowid {args.start_rowid}")
@@ -176,7 +221,9 @@ def main():
                         p = returned[did]
                         handle = p.get("handle", "")
                         if handle:
-                            to_update.append({"did": did, "handle": handle})
+                            fields = extract_profile_fields(p)
+                            fields["did"] = did
+                            to_update.append(fields)
                         else:
                             alive += 1  # deactivated but bsky knows it
                     else:
@@ -189,29 +236,47 @@ def main():
             print(f"  {RED}DELETE{RESET} {d['did']}  {DIM}{name}{RESET}")
 
         for u in to_update:
-            print(f"  {GREEN}UPDATE{RESET} {u['did']}  → {u['handle']}")
+            avatar = "+" if u.get("avatar_cid") else "-"
+            print(f"  {GREEN}UPDATE{RESET} {u['did']}  → {u['handle']}  avatar={avatar}")
 
         if not args.dry_run:
-            # batch deletes
+            # all writes go through throttled_write to keep lock hold times short
             if to_delete:
                 del_stmts = [
                     {"sql": "DELETE FROM actors WHERE did = ?1",
                      "args": [{"type": "text", "value": d["did"]}]}
                     for d in to_delete
                 ]
-                for i in range(0, len(del_stmts), DELETE_BATCH):
-                    turso_batch_write(del_stmts[i:i+DELETE_BATCH], turso_url, turso_token)
-                    time.sleep(DELETE_PAUSE)
+                for i in range(0, len(del_stmts), WRITE_BATCH):
+                    turso_batch_write(del_stmts[i:i+WRITE_BATCH], turso_url, turso_token)
+                    time.sleep(WRITE_PAUSE)
 
-            # batch updates (handle recovery)
             if to_update:
                 upd_stmts = [
-                    {"sql": "UPDATE actors SET handle = ?2 WHERE did = ?1",
-                     "args": [{"type": "text", "value": u["did"]},
-                              {"type": "text", "value": u["handle"]}]}
+                    {"sql": """UPDATE actors SET
+                        handle = COALESCE(NULLIF(?2, ''), handle),
+                        display_name = COALESCE(NULLIF(?3, ''), display_name),
+                        avatar_url = COALESCE(NULLIF(?4, ''), avatar_url),
+                        labels = ?5, hidden = ?6,
+                        created_at = COALESCE(NULLIF(?7, ''), created_at),
+                        associated = COALESCE(NULLIF(?8, '{}'), associated),
+                        profile_checked_at = unixepoch()
+                     WHERE did = ?1""",
+                     "args": [
+                         {"type": "text", "value": u["did"]},
+                         {"type": "text", "value": u["handle"]},
+                         {"type": "text", "value": u.get("display_name", "")},
+                         {"type": "text", "value": u.get("avatar_cid", "")},
+                         {"type": "text", "value": u.get("labels", "[]")},
+                         {"type": "integer", "value": str(u.get("hidden", 0))},
+                         {"type": "text", "value": u.get("created_at", "")},
+                         {"type": "text", "value": u.get("associated", "{}")},
+                     ]}
                     for u in to_update
                 ]
-                turso_batch_write(upd_stmts, turso_url, turso_token)
+                for i in range(0, len(upd_stmts), WRITE_BATCH):
+                    turso_batch_write(upd_stmts[i:i+WRITE_BATCH], turso_url, turso_token)
+                    time.sleep(WRITE_PAUSE)
 
         deleted += len(to_delete)
         updated += len(to_update)

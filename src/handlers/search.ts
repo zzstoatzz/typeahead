@@ -41,28 +41,50 @@ export async function handleSearch(
 
   const t0 = Date.now();
 
+  // 3-tier ranking: exact handle → handle prefix → FTS prefix
   const ftsQuery = `"${term}"*`;
-  const { results } = await db.prepare(
-    `SELECT a.did, a.handle, a.display_name, a.avatar_url, a.labels, a.created_at, a.associated
-     FROM actors_fts
-     JOIN actors a ON a.rowid = actors_fts.rowid
-     WHERE actors_fts MATCH ?1 AND a.handle != '' AND a.hidden = 0
-     ORDER BY rank
-     LIMIT ?2`
-  )
-    .bind(ftsQuery, limit)
-    .all<ActorRow>();
+  const [exactRes, prefixRes, ftsRes] = await db.batch([
+    db.prepare(
+      `SELECT did, handle, display_name, avatar_url, labels, created_at, associated
+       FROM actors WHERE handle = ?1 COLLATE NOCASE AND hidden = 0 LIMIT 1`
+    ).bind(term),
+    db.prepare(
+      `SELECT did, handle, display_name, avatar_url, labels, created_at, associated
+       FROM actors WHERE handle LIKE ?1 COLLATE NOCASE AND handle != ?2 COLLATE NOCASE AND hidden = 0
+       ORDER BY length(handle) LIMIT ?3`
+    ).bind(term + '%', term, limit),
+    db.prepare(
+      `SELECT a.did, a.handle, a.display_name, a.avatar_url, a.labels, a.created_at, a.associated
+       FROM actors_fts
+       JOIN actors a ON a.rowid = actors_fts.rowid
+       WHERE actors_fts MATCH ?1 AND a.handle != '' AND a.hidden = 0
+       ORDER BY rank
+       LIMIT ?2`
+    ).bind(ftsQuery, limit),
+  ], "read");
 
-  const actors = (results || [])
-    .map((r) => ({
-      did: r.did,
-      handle: r.handle,
-      ...(r.display_name ? { displayName: r.display_name } : {}),
-      ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url) } : {}),
-      ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
-      labels: JSON.parse(r.labels || '[]'),
-      ...(r.created_at ? { createdAt: r.created_at } : {}),
-    }));
+  const seen = new Set<string>();
+  const merged: ActorRow[] = [];
+  for (const row of [
+    ...((exactRes.results as ActorRow[]) || []),
+    ...((prefixRes.results as ActorRow[]) || []),
+    ...((ftsRes.results as ActorRow[]) || []),
+  ]) {
+    if (seen.has(row.did)) continue;
+    seen.add(row.did);
+    merged.push(row);
+    if (merged.length >= limit) break;
+  }
+
+  const actors = merged.map((r) => ({
+    did: r.did,
+    handle: r.handle,
+    ...(r.display_name ? { displayName: r.display_name } : {}),
+    ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url) } : {}),
+    ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
+    labels: JSON.parse(r.labels || '[]'),
+    ...(r.created_at ? { createdAt: r.created_at } : {}),
+  }));
 
   // --- backfill: remove this block once at parity with Bluesky ---
   const hasGaps = actors.length < limit || actors.some((a) => !a.avatar);

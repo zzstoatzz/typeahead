@@ -33,17 +33,34 @@ export async function handleDelete(
     return json({ error: "batch too large (max 10000)" }, 400);
   }
 
-  const stmts = dids.map((did) =>
-    db.prepare("DELETE FROM actors WHERE did = ?1").bind(did)
-  );
-  const batchResults = await db.batch(stmts);
-  const actualDeletes = batchResults.reduce((s, r) => s + r.meta.changes, 0);
+  // chunk into batches of 200 with short pauses to let reads through
+  const CHUNK = 200;
+  let actualDeletes = 0;
+  const t0 = Date.now();
+
+  for (let i = 0; i < dids.length; i += CHUNK) {
+    if (i > 0) await new Promise((r) => setTimeout(r, 100));
+    const chunk = dids.slice(i, i + CHUNK);
+    const stmts = chunk.flatMap((did) => [
+      db.prepare("DELETE FROM actors WHERE did = ?1").bind(did),
+      db.prepare("INSERT OR REPLACE INTO tombstones (did, deleted_at) VALUES (?1, unixepoch())").bind(did),
+    ]);
+    const batchResults = await db.batch(stmts);
+    actualDeletes += batchResults
+      .filter((_, j) => j % 2 === 0)
+      .reduce((s, r) => s + r.meta.changes, 0);
+  }
+
+  console.log(JSON.stringify({
+    event: "admin_delete", requested: dids.length, deleted: actualDeletes,
+    chunks: Math.ceil(dids.length / CHUNK), ms: Date.now() - t0,
+  }));
 
   if (actualDeletes > 0) {
     ctx.waitUntil(recordActorDelta(db, { actors: -actualDeletes }));
   }
 
-  return json({ ok: true, deleted: dids.length });
+  return json({ ok: true, deleted: actualDeletes });
 }
 
 export async function handleCursor(

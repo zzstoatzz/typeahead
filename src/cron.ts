@@ -11,8 +11,8 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   const cursor = cursorStr ? Number(cursorStr) : 0;
 
   const { results } = await db.prepare(
-    "SELECT rowid, did, handle FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
-  ).bind(cursor).all<{ rowid: number; did: string; handle: string }>();
+    "SELECT rowid, did, handle, hidden, labels FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
+  ).bind(cursor).all<{ rowid: number; did: string; handle: string; hidden: number; labels: string }>();
 
   if (!results || results.length === 0) {
     // wrapped around — reset cursor for next run
@@ -24,6 +24,8 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   let checked = 0;
   let changed = 0;
   let deleted = 0;
+  let skipped = 0;
+  const t0 = Date.now();
 
   // batch into groups of 25 (getProfiles limit), ~200ms pause between calls
   for (let i = 0; i < results.length; i += 25) {
@@ -46,9 +48,16 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
       const profiles: any[] = data.profiles || [];
       checked += profiles.length;
 
+      // build a lookup of current DB state for this batch
+      const current = new Map(batch.map((r) => [r.did, r]));
+
       const stmts: Stmt[] = [];
       for (const p of profiles) {
         const f = extractProfileFields(p);
+        const cur = current.get(p.did);
+        // skip no-op updates — only write if labels or hidden actually changed
+        if (cur && cur.hidden === f.hidden && cur.labels === f.labels) { skipped++; continue; }
+
         stmts.push(
           db.prepare(
             `UPDATE actors SET hidden = ?1,
@@ -72,9 +81,10 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
       const returnedDids = new Set(profiles.map((p: any) => p.did));
       const deadDids = batch.filter((r) => !returnedDids.has(r.did) && r.handle === "");
       if (deadDids.length > 0) {
-        const delStmts: Stmt[] = deadDids.map((r) =>
-          db.prepare("DELETE FROM actors WHERE did = ?1").bind(r.did)
-        );
+        const delStmts: Stmt[] = deadDids.flatMap((r) => [
+          db.prepare("DELETE FROM actors WHERE did = ?1").bind(r.did),
+          db.prepare("INSERT OR REPLACE INTO tombstones (did, deleted_at) VALUES (?1, unixepoch())").bind(r.did),
+        ]);
         await db.batch(delStmts);
         deleted += deadDids.length;
         await recordActorDelta(db, { actors: -deadDids.length }).catch(() => {});
@@ -87,8 +97,12 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   // save cursor at end of this page
   const lastRowid = results[results.length - 1].rowid;
   await env.KV.put("mod_cursor", String(lastRowid));
+
+  // prune old tombstones (> 7 days)
+  await db.prepare("DELETE FROM tombstones WHERE deleted_at < unixepoch() - 604800").run();
+
   if (deleted > 0) {
     console.log(JSON.stringify({ event: "mod_cleanup", deleted }));
   }
-  console.log(JSON.stringify({ event: "moderation_refresh", checked, changed, deleted, cursor: lastRowid }));
+  console.log(JSON.stringify({ event: "moderation_refresh", checked, changed, skipped, deleted, cursor: lastRowid, ms: Date.now() - t0 }));
 }

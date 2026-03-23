@@ -33,7 +33,9 @@ CREATE TRIGGER IF NOT EXISTS actors_ad AFTER DELETE ON actors BEGIN
   VALUES ('delete', old.rowid, old.handle, old.display_name);
 END;
 
-CREATE TRIGGER IF NOT EXISTS actors_au AFTER UPDATE ON actors BEGIN
+CREATE TRIGGER IF NOT EXISTS actors_au AFTER UPDATE ON actors
+  WHEN old.handle <> new.handle OR old.display_name <> new.display_name
+BEGIN
   INSERT INTO actors_fts(actors_fts, rowid, handle, display_name)
   VALUES ('delete', old.rowid, old.handle, old.display_name);
   INSERT INTO actors_fts(rowid, handle, display_name)
@@ -64,4 +66,9 @@ CREATE TABLE IF NOT EXISTS actor_deltas (
 CREATE TABLE IF NOT EXISTS traffic_sources (
   domain TEXT PRIMARY KEY,
   hits INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS tombstones (
+  did TEXT PRIMARY KEY,
+  deleted_at INTEGER NOT NULL
 );
