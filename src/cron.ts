@@ -2,6 +2,7 @@ import type { Stmt, TursoDB } from "./db";
 import type { Env } from "./types";
 import { BSKY_GET_PROFILES_URL } from "./types";
 import { extractProfileFields } from "./utils";
+import { recordActorDelta } from "./metrics";
 
 /** refresh moderation labels, walking the full index over multiple cron runs */
 export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
@@ -10,8 +11,8 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   const cursor = cursorStr ? Number(cursorStr) : 0;
 
   const { results } = await db.prepare(
-    "SELECT rowid, did FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
-  ).bind(cursor).all<{ rowid: number; did: string }>();
+    "SELECT rowid, did, handle FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
+  ).bind(cursor).all<{ rowid: number; did: string; handle: string }>();
 
   if (!results || results.length === 0) {
     // wrapped around — reset cursor for next run
@@ -22,6 +23,7 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
 
   let checked = 0;
   let changed = 0;
+  let deleted = 0;
 
   // batch into groups of 25 (getProfiles limit), ~200ms pause between calls
   for (let i = 0; i < results.length; i += 25) {
@@ -65,6 +67,18 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
         const batchResults = await db.batch(stmts);
         changed += batchResults.filter((r) => r.meta.changes > 0).length;
       }
+
+      // dead-actor cleanup: DIDs not returned by getProfiles with empty handles
+      const returnedDids = new Set(profiles.map((p: any) => p.did));
+      const deadDids = batch.filter((r) => !returnedDids.has(r.did) && r.handle === "");
+      if (deadDids.length > 0) {
+        const delStmts: Stmt[] = deadDids.map((r) =>
+          db.prepare("DELETE FROM actors WHERE did = ?1").bind(r.did)
+        );
+        await db.batch(delStmts);
+        deleted += deadDids.length;
+        await recordActorDelta(db, { actors: -deadDids.length }).catch(() => {});
+      }
     } catch {
       // best-effort — skip failures
     }
@@ -73,5 +87,8 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   // save cursor at end of this page
   const lastRowid = results[results.length - 1].rowid;
   await env.KV.put("mod_cursor", String(lastRowid));
-  console.log(JSON.stringify({ event: "moderation_refresh", checked, changed, cursor: lastRowid }));
+  if (deleted > 0) {
+    console.log(JSON.stringify({ event: "mod_cleanup", deleted }));
+  }
+  console.log(JSON.stringify({ event: "moderation_refresh", checked, changed, deleted, cursor: lastRowid }));
 }
