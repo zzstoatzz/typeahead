@@ -1,7 +1,7 @@
 import type { TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
 import { json, sanitize, avatarUrl } from "../utils";
-import { recordMetric, recordTrafficSource } from "../metrics";
+import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
 import { throttledBackfill } from "../backfill";
 
 export async function handleSearch(
@@ -28,6 +28,8 @@ export async function handleSearch(
     return json({ actors: [] });
   }
 
+  const t0 = Date.now();
+
   // cache API — edge cache for hot queries
   const cacheKey = new Request(
     `https://typeahead-cache/${encodeURIComponent(term)}:${limit}`,
@@ -36,10 +38,9 @@ export async function handleSearch(
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) {
+    ctx.waitUntil(recordCacheHit(db, Date.now() - t0));
     return cached;
   }
-
-  const t0 = Date.now();
 
   // 3-tier ranking: exact handle → handle prefix → FTS prefix
   const ftsQuery = `"${term}"*`;

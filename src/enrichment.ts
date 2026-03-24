@@ -26,7 +26,7 @@ export async function recordSnapshot(db: TursoDB): Promise<void> {
 /** materialize stats data to KV so /stats never queries turso on the request path */
 export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
   const [metricsRes, snapshotRes, deltasRes] = await db.batch([
-    db.prepare("SELECT hour, searches, total_ms FROM metrics ORDER BY hour DESC LIMIT 2016"),
+    db.prepare("SELECT hour, searches, total_ms, cache_hits, cache_ms FROM metrics ORDER BY hour DESC LIMIT 2016"),
     db.prepare("SELECT hour, total, with_handles, with_avatars, hidden FROM snapshots ORDER BY hour ASC LIMIT 2000"),
     db.prepare("SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket DESC LIMIT 288"),
   ], "read");

@@ -19,7 +19,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   // materialized data from KV (written by cron) — never hits turso
   const kvData = await env.KV.get("stats_data", "json") as {
-    metrics: { hour: number; searches: number; total_ms: number }[];
+    metrics: { hour: number; searches: number; total_ms: number; cache_hits: number; cache_ms: number }[];
     snapshots: { hour: number; total: number; with_handles: number; with_avatars: number; hidden: number }[];
     deltas: { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
     materialized_at: number;
@@ -70,18 +70,21 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const withAvatars = latest.with_avatars;
   const hiddenCount = dbSnapshots.length > 0 ? (dbSnapshots[dbSnapshots.length - 1].hidden ?? 0) : 0;
 
-  const totalSearches = rows.reduce((s, r) => s + r.searches, 0);
+  const totalSearches = rows.reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
   // avg latency over last 24h only (288 five-min buckets) so transient spikes age out quickly
   const recentRows = rows.slice(0, 288);
   const recentSearches = recentRows.reduce((s, r) => s + r.searches, 0);
   const recentMs = recentRows.reduce((s, r) => s + r.total_ms, 0);
   const avgLatency = recentSearches > 0 ? recentMs / recentSearches : 0;
+  const recentCacheHits = recentRows.reduce((s, r) => s + (r.cache_hits ?? 0), 0);
+  const recentCacheMs = recentRows.reduce((s, r) => s + (r.cache_ms ?? 0), 0);
+  const avgCacheLatency = recentCacheHits > 0 ? recentCacheMs / recentCacheHits : 0;
   const handlePct = total > 0 ? ((withHandles / total) * 100).toFixed(1) : "0";
   const avatarPct = total > 0 ? ((withAvatars / total) * 100).toFixed(1) : "0";
 
   const tProcess = performance.now();
 
-  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, handlePct, avatarPct, snapshots, trafficSources });
+  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources });
 
   const tRender = performance.now();
 

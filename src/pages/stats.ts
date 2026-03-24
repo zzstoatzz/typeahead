@@ -10,9 +10,10 @@ export interface SnapshotPoint {
 export interface StatsData {
   total: number;
   hiddenCount: number;
-  rows: { hour: number; searches: number; total_ms: number }[];
+  rows: { hour: number; searches: number; total_ms: number; cache_hits: number; cache_ms: number }[];
   totalSearches: number;
   avgLatency: number;
+  avgCacheLatency: number;
   handlePct: string;
   avatarPct: string;
   snapshots: SnapshotPoint[];
@@ -187,8 +188,8 @@ export function statsPage(d: StatsData): string {
         <div class="value">${d.totalSearches.toLocaleString()}</div>
       </div>
       <div class="metric">
-        <div class="label" data-tip="average response time for uncached searches (last 24h)">avg latency</div>
-        <div class="value">${d.avgLatency.toFixed(1)} ms</div>
+        <div class="label" data-tip="last 24h — cached (edge) vs uncached (turso)">avg latency</div>
+        <div class="value" style="font-size:1.3rem">${d.avgCacheLatency.toFixed(0)} ms <span style="opacity:.4;font-size:.85rem">cached</span> · ${d.avgLatency.toFixed(0)} ms <span style="opacity:.4;font-size:.85rem">cold</span></div>
       </div>
     </div>
 

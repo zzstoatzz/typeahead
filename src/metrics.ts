@@ -14,6 +14,19 @@ export async function recordMetric(db: TursoDB, ms: number): Promise<void> {
     .run();
 }
 
+export async function recordCacheHit(db: TursoDB, ms: number): Promise<void> {
+  const bucket = Math.floor(Date.now() / 300_000);
+  await db.prepare(
+    `INSERT INTO metrics (hour, cache_hits, cache_ms)
+     VALUES (?1, 1, ?2)
+     ON CONFLICT(hour) DO UPDATE SET
+       cache_hits = cache_hits + 1,
+       cache_ms = cache_ms + ?2`
+  )
+    .bind(bucket, ms)
+    .run();
+}
+
 /** fire-and-forget: record actor count deltas at 5-min granularity */
 export async function recordActorDelta(
   db: TursoDB,
