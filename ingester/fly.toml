@@ -9,8 +9,13 @@ primary_region = 'ewr'
 [build]
   dockerfile = 'Dockerfile'
 
+[mounts]
+  source = 'typeahead_data'
+  destination = '/data'
+
 [env]
   TYPEAHEAD_URL = 'https://typeahead.nate-8fe.workers.dev'
+  SQLITE_TMPDIR = '/data/tmp'
 
 [processes]
   app = './typeahead-ingester'
@@ -24,7 +29,6 @@ primary_region = 'ewr'
   processes = ['app']
 
 [[vm]]
-  memory = '256mb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256

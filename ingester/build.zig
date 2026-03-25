@@ -9,6 +9,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const zqlite = b.dependency("zqlite", .{
+        .target = target,
+        .optimize = optimize,
+        .sqlite3 = &[_][]const u8{ "-std=c99", "-DSQLITE_ENABLE_FTS5" },
+    });
+
     const exe = b.addExecutable(.{
         .name = "typeahead-ingester",
         .root_module = b.createModule(.{
@@ -17,9 +23,12 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .imports = &.{
                 .{ .name = "zat", .module = zat.module("zat") },
+                .{ .name = "zqlite", .module = zqlite.module("zqlite") },
             },
         }),
     });
+
+    exe.linkLibC();
 
     b.installArtifact(exe);
 
