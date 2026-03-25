@@ -4,3 +4,4 @@ node_modules/
 zig-out/
 zig-cache/
 .dev.vars
+scripts/bench-results.json

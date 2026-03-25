@@ -1,5 +1,6 @@
 import type { TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
+import { CORS_HEADERS } from "../types";
 import { json, sanitize, avatarUrl } from "../utils";
 import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
 import { throttledBackfill } from "../backfill";
@@ -42,7 +43,35 @@ export async function handleSearch(
     return cached;
   }
 
-  // 3-tier ranking: exact handle → handle prefix → FTS prefix
+  // try fly backend (local SQLite replica) if configured
+  if (env.SEARCH_BACKEND_URL) {
+    try {
+      const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}`;
+      const backendRes = await fetch(backendUrl, { signal: AbortSignal.timeout(3000) });
+      if (backendRes.ok) {
+        const body = await backendRes.text();
+
+        ctx.waitUntil(Promise.all([
+          recordMetric(db, Date.now() - t0),
+          recordTrafficSource(db, request),
+        ]));
+
+        const response = new Response(body, {
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+        });
+
+        const cacheable = new Response(response.clone().body, response);
+        cacheable.headers.set("Cache-Control", "public, max-age=60");
+        ctx.waitUntil(cache.put(cacheKey, cacheable));
+
+        return response;
+      }
+    } catch {
+      // fall through to turso
+    }
+  }
+
+  // fallback: 3-tier ranking via turso
   const ftsQuery = `"${term}"*`;
   const [exactRes, prefixRes, ftsRes] = await db.batch([
     db.prepare(

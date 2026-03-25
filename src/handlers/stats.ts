@@ -25,9 +25,9 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
     materialized_at: number;
   } | null;
 
-  // traffic sources: live from turso (7 rows, real-time)
+  // traffic sources: live from turso (exclude internal/testing traffic)
   const trafficRes = await db.prepare(
-    "SELECT domain, hits FROM traffic_sources ORDER BY hits DESC LIMIT 10"
+    "SELECT domain, hits FROM traffic_sources WHERE domain != 'bench' ORDER BY hits DESC LIMIT 10"
   ).all<{ domain: string; hits: number }>();
 
   const tQuery = performance.now();

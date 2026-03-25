@@ -188,8 +188,8 @@ export function statsPage(d: StatsData): string {
         <div class="value">${d.totalSearches.toLocaleString()}</div>
       </div>
       <div class="metric">
-        <div class="label" data-tip="last 24h — cached (edge) vs uncached (turso)">avg latency</div>
-        <div class="value" style="font-size:1.3rem">${d.avgCacheLatency.toFixed(0)} ms <span style="opacity:.4;font-size:.85rem">cached</span> · ${d.avgLatency.toFixed(0)} ms <span style="opacity:.4;font-size:.85rem">cold</span></div>
+        <div class="label" data-tip="last 24h — cached (edge) vs uncached (fly replica)">avg latency</div>
+        <div class="value" style="font-size:1.3rem">${d.avgCacheLatency > 0 ? `${d.avgCacheLatency.toFixed(1)} ms <span style="opacity:.4;font-size:.85rem">cached</span> · ` : ''}${d.avgLatency.toFixed(0)} ms${d.avgCacheLatency > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : ''}</div>
       </div>
     </div>
 

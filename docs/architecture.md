@@ -14,13 +14,61 @@ and serves FTS5 prefix search from cloudflare's edge.
        |  two-tier writes:
        |    - bare DID: INSERT OR IGNORE (0 Turso writes for known actors)
        |    - profile/identity event: full UPSERT with COALESCE
-       v
-  worker (cloudflare)
+       |  dual-write to local SQLite (profile/identity events)
        |
-       +---> Turso (actors table + FTS5 index)
-       +---> KV (cursor, mod_cursor, enrich_lock)
-       +---> cache API (60s edge cache for search)
+       +---> worker (cloudflare) ---> Turso (source of truth)
+       |                         ---> KV (cursor, mod_cursor, enrich_lock)
+       |
+       +---> local SQLite replica (/data/local.db on fly volume)
+                synced from Turso on startup + every 5 min
+                serves search queries directly (FTS5)
 ```
+
+### search read path
+
+```
+  search request
+       |
+       v
+  CF worker ---> cache API (60s edge cache, hit?)
+       |                         |
+       | miss                    | hit → return cached
+       v
+  fly ingester /search (local SQLite, 50-150ms cold)
+       |
+       | timeout/error (3s)
+       v
+  Turso fallback (CF worker queries Turso directly)
+```
+
+the ingester's `/search` uses a 3-tier ranking strategy (matching the
+worker's Turso fallback):
+
+1. **exact handle** — `WHERE handle = ? COLLATE NOCASE`, instant via index
+2. **handle prefix** (two-phase) — phase 1: `WHERE handle LIKE ? LIMIT N`
+   with no `ORDER BY` (index-friendly, early termination), overfetch 5x
+   into a stack buffer. phase 2: insertion-sort candidates by handle length
+   in zig, then point-lookup by DID for full rows. restores the worker's
+   shortest-handle-first ranking without the pathological full-scan sort
+   that `ORDER BY length(handle)` causes on broad prefixes.
+3. **FTS5 prefix** (two-phase, skipped if tiers 1+2 fill the limit or
+   `term.len < 2`) — phase 1: `SELECT did FROM actors_fts WHERE MATCH ?
+   ORDER BY rank LIMIT N` (pure FTS5, no JOIN — enables rank optimization
+   with priority queue + early termination). phase 2: point-lookup each
+   candidate DID on the actors table, filter `hidden = 0` and
+   `handle != ''`.
+
+the two-phase approach avoids two pathological query shapes:
+- tier 2: `ORDER BY length(handle)` forces SQLite to scan all LIKE matches
+  before sorting — catastrophic for short prefixes like `a%` (100k+ rows)
+- tier 3: `JOIN actors ON actors.did = actors_fts.did` prevents FTS5's
+  native rank optimization — SQLite must scan all FTS matches, JOIN each,
+  filter, sort, then take top N
+
+**caveat**: the ingester has a single `read_conn` shared across the HTTP
+thread pool. one slow query blocks all concurrent reads. the two-phase
+strategy bounds individual query time, but read concurrency isolation
+(connection pool or per-request connections) is a longer-term fix.
 
 ### write paths
 
@@ -70,7 +118,9 @@ and serves FTS5 prefix search from cloudflare's edge.
   reconciliation anchors. the trend chart stitches snapshots + deltas for
   sub-hourly resolution between anchor points.
 - **traffic sources**: cumulative hit counters per client identity (X-Client >
-  Origin > Referer). loopback/localhost normalized to "unknown".
+  Origin > Referer). loopback/localhost normalized to "unknown". internal
+  traffic (bench script) identified via `X-Client: bench` and excluded from
+  the stats page pie chart.
 
 ### enrichment convergence
 
@@ -89,10 +139,26 @@ getProfiles) and moderation label checks (hourly cron). phase 2 gets
 avatar, displayName, labels, createdAt, associated, and hidden in one
 batch call.
 
-### read path
+### local replica sync
 
-search query -> cache API (hit?) -> FTS5 prefix match -> reconstruct avatar
-URLs from DID + CID -> return `{did, handle, displayName?, avatar?, associated?, labels, createdAt?}`
+the ingester maintains a local SQLite replica on a fly.io persistent volume,
+synced from Turso. search queries hit this replica directly — no round-trip
+to Turso for reads.
+
+- **bootstrap** (first run or wipe): stage-and-swap — loads all actors into
+  staging tables with no indexes, builds indexes in bulk (`CREATE INDEX` on
+  unindexed data), populates FTS5, then atomically swaps staging tables into
+  place via `ALTER TABLE RENAME`. temp files pinned to `/data/tmp` on the
+  volume. read connection closed during bootstrap to avoid WAL interference.
+- **re-sync** (restart with existing data): keeps serving while re-syncing
+  from Turso. updates the live indexed table directly — index maintenance
+  cost is negligible for incremental changes.
+- **incremental** (every 5 min): keyset pagination on `(updated_at, did)`,
+  tombstone + unsearchable cleanup. only advances watermark when all
+  queries succeed.
+- **dual-write**: profile and identity events from jetstream are written
+  directly to the local replica for immediate search availability (when
+  `ready=true`).
 
 ## storage
 
@@ -148,6 +214,8 @@ avatar) from the same getProfiles response at no additional API cost.
 
 ## scripts
 
+- `scripts/bench.py` — latency, coverage, and stress benchmarks against prod
+  (sends `X-Client: bench` to avoid polluting traffic stats)
 - `scripts/smoke.py` — end-to-end smoke tests against a live deployment
 - `scripts/backfill-moderation.py` — one-shot sweep to set hidden flags on
   existing actors (run once after adding moderation support)

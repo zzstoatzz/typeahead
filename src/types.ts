@@ -5,6 +5,7 @@ export interface Env {
   RATE_LIMITER_STRICT: RateLimit;
   TURSO_URL: string;
   TURSO_AUTH_TOKEN: string;
+  SEARCH_BACKEND_URL?: string;
 }
 
 export interface ActorRow {
