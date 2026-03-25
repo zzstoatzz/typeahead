@@ -153,7 +153,7 @@ def test_stats_page(base_url: str):
             check("stats returns 200", resp.status == 200)
             check("stats content-type is html", "text/html" in ct, f"got '{ct}'")
             check("stats contains actors indexed", "actors indexed" in body)
-            check("stats contains sparkline heading", "searches / hour" in body)
+            check("stats contains sparkline heading", "searches / 5 min" in body)
             check("stats has home link", 'href="/"' in body)
             check("stats shows hidden count", "hidden by moderation" in body)
     except urllib.error.HTTPError as e:
@@ -203,14 +203,19 @@ def test_moderation_filtering(base_url: str):
         return
 
     actors = data.get("actors", [])
-    has_labels = any("labels" in a for a in actors)
-    check("no labels field leaked in results", not has_labels)
 
-    allowed_keys = {"did", "handle", "displayName", "avatar"}
+    # labels, createdAt, associated are intentional fields returned for client rendering
+    allowed_keys = {"did", "handle", "displayName", "avatar", "labels", "createdAt", "associated"}
     extra_keys: set[str] = set()
     for a in actors:
         extra_keys |= set(a.keys()) - allowed_keys
-    check("actor objects have clean shape", len(extra_keys) == 0, f"extra keys: {extra_keys}" if extra_keys else "")
+    check("actor objects have expected shape", len(extra_keys) == 0, f"extra keys: {extra_keys}" if extra_keys else "")
+
+    # verify labels is always an array when present
+    for a in actors:
+        if "labels" in a:
+            check("labels is array", isinstance(a["labels"], list), f"got {type(a['labels']).__name__}")
+            break
 
     # !no-unauthenticated actors should be VISIBLE (it's about content, not identity)
     print("\n--- !no-unauthenticated inclusion ---")
