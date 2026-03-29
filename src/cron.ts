@@ -81,29 +81,44 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
         changed += batchResults.filter((r) => r.meta.changes > 0).length;
       }
 
-      // PDS fallback for unreturned DIDs with show overrides
+      // PDS fallback for unreturned DIDs — check if bsky banned them
       const returnedDids = new Set(profiles.map((p: any) => p.did));
       const pdsStmts: Stmt[] = [];
       for (const r of batch) {
         if (returnedDids.has(r.did)) continue;
-        if (overrides.get(r.did) === 'show' && r.pds) {
-          const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
-          if (pdsProfile) {
-            const f = extractProfileFields(pdsProfile, 'show');
-            const cur = current.get(r.did);
-            if (cur && cur.hidden === f.hidden && cur.labels === f.labels) continue;
-            pdsStmts.push(
-              db.prepare(
-                `UPDATE actors SET hidden = ?1,
-                   display_name = COALESCE(NULLIF(?3, ''), display_name),
-                   avatar_url = COALESCE(NULLIF(?4, ''), avatar_url),
-                   labels = ?5,
-                   created_at = COALESCE(NULLIF(?6, ''), created_at),
-                   associated = COALESCE(NULLIF(?7, '{}'), associated)
-                 WHERE did = ?2`
-              ).bind(f.hidden, r.did, f.displayName, f.avatarCid, f.labels, f.createdAt, f.associated)
-            );
-            returnedDids.add(r.did); // don't delete this actor
+        const override = overrides.get(r.did) ?? null;
+        if (r.pds && (override === 'show' || !override)) {
+          let isTakedown = override === 'show';
+          if (!isTakedown) {
+            try {
+              const probe = await fetch(
+                `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(r.did)}`
+              );
+              if (!probe.ok) {
+                const err: any = await probe.json().catch(() => ({}));
+                isTakedown = err.error === 'AccountTakedown';
+              }
+            } catch {}
+          }
+          if (isTakedown) {
+            const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
+            if (pdsProfile) {
+              const f = extractProfileFields(pdsProfile, override);
+              const cur = current.get(r.did);
+              if (cur && cur.hidden === f.hidden && cur.labels === f.labels) continue;
+              pdsStmts.push(
+                db.prepare(
+                  `UPDATE actors SET hidden = ?1,
+                     display_name = COALESCE(NULLIF(?3, ''), display_name),
+                     avatar_url = COALESCE(NULLIF(?4, ''), avatar_url),
+                     labels = ?5,
+                     created_at = COALESCE(NULLIF(?6, ''), created_at),
+                     associated = COALESCE(NULLIF(?7, '{}'), associated)
+                   WHERE did = ?2`
+                ).bind(f.hidden, r.did, f.displayName, f.avatarCid, f.labels, f.createdAt, f.associated)
+              );
+              returnedDids.add(r.did); // don't delete this actor
+            }
           }
         }
       }

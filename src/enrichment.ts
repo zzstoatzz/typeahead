@@ -97,6 +97,53 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
       }
     }
 
+    // phase 1b: backfill PDS for actors that have handles but no PDS
+    const { results: pdsRows } = await db.prepare(
+      `SELECT did FROM actors
+       WHERE handle != '' AND pds = ''
+         AND identity_checked_at < unixepoch() - 86400
+       ORDER BY identity_checked_at ASC LIMIT 100`
+    ).all<{ did: string }>();
+
+    if (pdsRows && pdsRows.length > 0) {
+      let filled = 0;
+      const BATCH = 20;
+      for (let i = 0; i < pdsRows.length; i += BATCH) {
+        const batch = pdsRows.slice(i, i + BATCH);
+        await Promise.all(batch.map(async ({ did }) => {
+          try {
+            const res = await fetch(
+              `${SLINGSHOT_URL}?identifier=${encodeURIComponent(did)}`
+            );
+            if (!res.ok) {
+              await db.prepare(
+                "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
+              ).bind(did).run();
+              return;
+            }
+            const identity: SlingshotResponse = await res.json();
+            if (identity.pds) {
+              await db.prepare(
+                "UPDATE actors SET pds = ?1, identity_checked_at = unixepoch() WHERE did = ?2"
+              ).bind(identity.pds, did).run();
+              filled++;
+            } else {
+              await db.prepare(
+                "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
+              ).bind(did).run();
+            }
+          } catch {
+            await db.prepare(
+              "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
+            ).bind(did).run().catch(() => {});
+          }
+        }));
+      }
+      if (filled > 0) {
+        console.log(JSON.stringify({ event: "enrich_pds", filled, checked: pdsRows.length }));
+      }
+    }
+
     // phase 2: profile + labels enrichment via getProfiles batch
     // targets actors missing avatar OR labels — one API call per 25 actors
     const { results: profileRows } = await db.prepare(
@@ -149,27 +196,43 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
             );
             if (f.avatarCid) enriched++;
           }
-          // PDS fallback for unreturned DIDs with show overrides
+          // PDS fallback for unreturned DIDs — check if bsky banned them
           for (const r of batch) {
             if (returned.has(r.did)) continue;
-            if (overrides.get(r.did) === 'show' && r.pds) {
-              const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
-              if (pdsProfile) {
-                const f = extractProfileFields(pdsProfile, 'show');
-                stmts.push(
-                  db.prepare(
-                    `UPDATE actors SET
-                       display_name = COALESCE(NULLIF(?2, ''), display_name),
-                       avatar_url = COALESCE(NULLIF(?3, ''), avatar_url),
-                       labels = ?4, hidden = ?5,
-                       created_at = COALESCE(NULLIF(?6, ''), created_at),
-                       associated = COALESCE(NULLIF(?7, '{}'), associated),
-                       profile_checked_at = unixepoch()
-                     WHERE did = ?1`
-                  ).bind(r.did, f.displayName, f.avatarCid, f.labels, f.hidden, f.createdAt, f.associated)
-                );
-                if (f.avatarCid) enriched++;
-                continue;
+            const override = overrides.get(r.did) ?? null;
+            // if we have a PDS, check if this is a takedown (or has show override)
+            if (r.pds && (override === 'show' || !override)) {
+              let isTakedown = override === 'show'; // trust override
+              if (!isTakedown) {
+                try {
+                  const probe = await fetch(
+                    `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(r.did)}`
+                  );
+                  if (!probe.ok) {
+                    const err: any = await probe.json().catch(() => ({}));
+                    isTakedown = err.error === 'AccountTakedown';
+                  }
+                } catch {}
+              }
+              if (isTakedown) {
+                const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
+                if (pdsProfile) {
+                  const f = extractProfileFields(pdsProfile, override);
+                  stmts.push(
+                    db.prepare(
+                      `UPDATE actors SET
+                         display_name = COALESCE(NULLIF(?2, ''), display_name),
+                         avatar_url = COALESCE(NULLIF(?3, ''), avatar_url),
+                         labels = ?4, hidden = ?5,
+                         created_at = COALESCE(NULLIF(?6, ''), created_at),
+                         associated = COALESCE(NULLIF(?7, '{}'), associated),
+                         profile_checked_at = unixepoch()
+                       WHERE did = ?1`
+                    ).bind(r.did, f.displayName, f.avatarCid, f.labels, f.hidden, f.createdAt, f.associated)
+                  );
+                  if (f.avatarCid) enriched++;
+                  continue;
+                }
               }
             }
             stmts.push(

@@ -124,8 +124,8 @@ export async function handleRequestIndexing(
   }
 
   await db.prepare(
-    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, unixepoch())
+    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, unixepoch())
      ON CONFLICT(did) DO UPDATE SET
        handle = ?2,
        display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
@@ -134,9 +134,10 @@ export async function handleRequestIndexing(
        labels = ?6,
        created_at = COALESCE(NULLIF(?7, ''), actors.created_at),
        associated = COALESCE(NULLIF(?8, '{}'), actors.associated),
+       pds = COALESCE(NULLIF(?9, ''), actors.pds),
        updated_at = unixepoch()`
   )
-    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated)
+    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '')
     .run();
 
   return json({
