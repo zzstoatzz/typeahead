@@ -23,6 +23,37 @@ export function extractAvatarCid(url: string): string {
   return match?.[1] ?? '';
 }
 
+/** fetch profile directly from an actor's PDS — fallback for banned/suspended accounts */
+export async function fetchProfileFromPds(did: string, pds: string): Promise<any | null> {
+  try {
+    const res = await fetch(
+      `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=app.bsky.actor.profile&rkey=self`
+    );
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    const val = data?.value;
+    if (!val) return null;
+
+    let avatar = '';
+    const cid = val.avatar?.ref?.$link || val.avatar?.ref?.['$link'];
+    if (cid) {
+      avatar = `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
+    }
+
+    return {
+      did,
+      handle: '',
+      displayName: val.displayName || '',
+      avatar,
+      labels: [],
+      createdAt: val.createdAt || '',
+      associated: {},
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** strip zero/false fields from associated object to match bsky's typeahead shape */
 export function cleanAssociated(assoc: any): Record<string, unknown> {
   if (!assoc || typeof assoc !== 'object') return {};
@@ -45,13 +76,16 @@ export interface ProfileFields {
   associated: string;
 }
 
-export function extractProfileFields(profile: any): ProfileFields {
+export function extractProfileFields(profile: any, override?: 'show' | 'hide' | null): ProfileFields {
+  let hidden = shouldHide(profile.labels) ? 1 : 0;
+  if (override === 'show') hidden = 0;
+  if (override === 'hide') hidden = 1;
   return {
     handle: profile.handle || '',
     displayName: profile.displayName || '',
     avatarCid: extractAvatarCid(profile.avatar || ''),
     labels: JSON.stringify(profile.labels || []),
-    hidden: shouldHide(profile.labels) ? 1 : 0,
+    hidden,
     createdAt: profile.createdAt || '',
     associated: JSON.stringify(cleanAssociated(profile.associated)),
   };

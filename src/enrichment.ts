@@ -1,7 +1,8 @@
 import type { Stmt, TursoDB } from "./db";
 import type { Env, SlingshotResponse } from "./types";
 import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL } from "./types";
-import { extractProfileFields } from "./utils";
+import { extractProfileFields, fetchProfileFromPds } from "./utils";
+import { getOverrides } from "./moderation";
 
 /** record an actor-count snapshot for the current hour (idempotent) */
 export async function recordSnapshot(db: TursoDB): Promise<void> {
@@ -99,14 +100,15 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
     // phase 2: profile + labels enrichment via getProfiles batch
     // targets actors missing avatar OR labels — one API call per 25 actors
     const { results: profileRows } = await db.prepare(
-      `SELECT did FROM actors
+      `SELECT did, pds FROM actors
        WHERE handle != ''
          AND (avatar_url = '' OR labels = '[]' OR created_at = '')
          AND profile_checked_at < unixepoch() - 3600
        ORDER BY profile_checked_at ASC LIMIT 75`
-    ).all<{ did: string }>();
+    ).all<{ did: string; pds: string }>();
 
     if (profileRows && profileRows.length > 0) {
+      const overrides = await getOverrides(db, profileRows.map((r) => r.did));
       let enriched = 0;
       for (let i = 0; i < profileRows.length; i += 25) {
         const batch = profileRows.slice(i, i + 25);
@@ -127,7 +129,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
           const returned = new Set<string>();
           for (const p of profiles) {
             returned.add(p.did);
-            const f = extractProfileFields(p);
+            const f = extractProfileFields(p, overrides.get(p.did) ?? null);
             stmts.push(
               db.prepare(
                 `UPDATE actors SET
@@ -147,15 +149,34 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
             );
             if (f.avatarCid) enriched++;
           }
-          // mark actors not returned by getProfiles so we back off
+          // PDS fallback for unreturned DIDs with show overrides
           for (const r of batch) {
-            if (!returned.has(r.did)) {
-              stmts.push(
-                db.prepare(
-                  "UPDATE actors SET profile_checked_at = unixepoch() WHERE did = ?1"
-                ).bind(r.did)
-              );
+            if (returned.has(r.did)) continue;
+            if (overrides.get(r.did) === 'show' && r.pds) {
+              const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
+              if (pdsProfile) {
+                const f = extractProfileFields(pdsProfile, 'show');
+                stmts.push(
+                  db.prepare(
+                    `UPDATE actors SET
+                       display_name = COALESCE(NULLIF(?2, ''), display_name),
+                       avatar_url = COALESCE(NULLIF(?3, ''), avatar_url),
+                       labels = ?4, hidden = ?5,
+                       created_at = COALESCE(NULLIF(?6, ''), created_at),
+                       associated = COALESCE(NULLIF(?7, '{}'), associated),
+                       profile_checked_at = unixepoch()
+                     WHERE did = ?1`
+                  ).bind(r.did, f.displayName, f.avatarCid, f.labels, f.hidden, f.createdAt, f.associated)
+                );
+                if (f.avatarCid) enriched++;
+                continue;
+              }
             }
+            stmts.push(
+              db.prepare(
+                "UPDATE actors SET profile_checked_at = unixepoch() WHERE did = ?1"
+              ).bind(r.did)
+            );
           }
           if (stmts.length > 0) await db.batch(stmts);
         } catch {

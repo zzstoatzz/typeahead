@@ -1,7 +1,8 @@
 import type { Stmt, TursoDB } from "./db";
 import type { Env } from "./types";
 import { BSKY_GET_PROFILES_URL } from "./types";
-import { extractProfileFields } from "./utils";
+import { extractProfileFields, fetchProfileFromPds } from "./utils";
+import { getOverrides } from "./moderation";
 import { recordActorDelta } from "./metrics";
 
 /** refresh moderation labels, walking the full index over multiple cron runs */
@@ -11,8 +12,8 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   const cursor = cursorStr ? Number(cursorStr) : 0;
 
   const { results } = await db.prepare(
-    "SELECT rowid, did, handle, hidden, labels FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
-  ).bind(cursor).all<{ rowid: number; did: string; handle: string; hidden: number; labels: string }>();
+    "SELECT rowid, did, handle, hidden, labels, pds FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
+  ).bind(cursor).all<{ rowid: number; did: string; handle: string; hidden: number; labels: string; pds: string }>();
 
   if (!results || results.length === 0) {
     // wrapped around — reset cursor for next run
@@ -26,6 +27,9 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   let deleted = 0;
   let skipped = 0;
   const t0 = Date.now();
+
+  // fetch all overrides for this page so cron respects them
+  const overrides = await getOverrides(db, results.map((r) => r.did));
 
   // batch into groups of 25 (getProfiles limit), ~200ms pause between calls
   for (let i = 0; i < results.length; i += 25) {
@@ -53,7 +57,7 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
 
       const stmts: Stmt[] = [];
       for (const p of profiles) {
-        const f = extractProfileFields(p);
+        const f = extractProfileFields(p, overrides.get(p.did) ?? null);
         const cur = current.get(p.did);
         // skip no-op updates — only write if labels or hidden actually changed
         if (cur && cur.hidden === f.hidden && cur.labels === f.labels) { skipped++; continue; }
@@ -77,8 +81,38 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
         changed += batchResults.filter((r) => r.meta.changes > 0).length;
       }
 
-      // dead-actor cleanup: DIDs not returned by getProfiles with empty handles
+      // PDS fallback for unreturned DIDs with show overrides
       const returnedDids = new Set(profiles.map((p: any) => p.did));
+      const pdsStmts: Stmt[] = [];
+      for (const r of batch) {
+        if (returnedDids.has(r.did)) continue;
+        if (overrides.get(r.did) === 'show' && r.pds) {
+          const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
+          if (pdsProfile) {
+            const f = extractProfileFields(pdsProfile, 'show');
+            const cur = current.get(r.did);
+            if (cur && cur.hidden === f.hidden && cur.labels === f.labels) continue;
+            pdsStmts.push(
+              db.prepare(
+                `UPDATE actors SET hidden = ?1,
+                   display_name = COALESCE(NULLIF(?3, ''), display_name),
+                   avatar_url = COALESCE(NULLIF(?4, ''), avatar_url),
+                   labels = ?5,
+                   created_at = COALESCE(NULLIF(?6, ''), created_at),
+                   associated = COALESCE(NULLIF(?7, '{}'), associated)
+                 WHERE did = ?2`
+              ).bind(f.hidden, r.did, f.displayName, f.avatarCid, f.labels, f.createdAt, f.associated)
+            );
+            returnedDids.add(r.did); // don't delete this actor
+          }
+        }
+      }
+      if (pdsStmts.length > 0) {
+        const batchResults = await db.batch(pdsStmts);
+        changed += batchResults.filter((r) => r.meta.changes > 0).length;
+      }
+
+      // dead-actor cleanup: DIDs not returned by getProfiles with empty handles
       const deadDids = batch.filter((r) => !returnedDids.has(r.did) && r.handle === "");
       if (deadDids.length > 0) {
         const delStmts: Stmt[] = deadDids.flatMap((r) => [

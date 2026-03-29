@@ -1,7 +1,8 @@
 import type { TursoDB } from "../db";
 import type { Env, SlingshotResponse } from "../types";
 import { SLINGSHOT_URL } from "../types";
-import { clientIP, json, extractProfileFields } from "../utils";
+import { clientIP, json, extractProfileFields, fetchProfileFromPds } from "../utils";
+import { getOverride, shouldHide } from "../moderation";
 import { recordActorDelta } from "../metrics";
 
 export async function handleDelete(
@@ -107,12 +108,16 @@ export async function handleRequestIndexing(
 
   // fetch profile from public API for display name + avatar + labels + metadata
   let f = { displayName: '', avatarCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}' };
+  const override = await getOverride(db, identity.did);
   try {
     const profileRes = await fetch(
       `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(identity.did)}`
     );
     if (profileRes.ok) {
-      f = extractProfileFields(await profileRes.json());
+      f = extractProfileFields(await profileRes.json(), override);
+    } else if (override === 'show' && identity.pds) {
+      const pdsProfile = await fetchProfileFromPds(identity.did, identity.pds);
+      if (pdsProfile) f = extractProfileFields(pdsProfile, override);
     }
   } catch {
     // profile enrichment is best-effort
@@ -139,4 +144,94 @@ export async function handleRequestIndexing(
     did: identity.did,
     ...(f.hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
   });
+}
+
+function authCheck(request: Request, env: Env): Response | null {
+  const auth = request.headers.get("Authorization");
+  if (auth === `Bearer ${env.ADMIN_SECRET}`) return null;
+  const ip = clientIP(request);
+  console.log(JSON.stringify({ event: "auth_failure", endpoint: "/admin/mod-override", ip }));
+  return json({ error: "unauthorized" }, 401);
+}
+
+export async function handleModOverrideSet(
+  request: Request,
+  db: TursoDB,
+  env: Env,
+): Promise<Response> {
+  const denied = authCheck(request, env);
+  if (denied) return denied;
+
+  let body: { did: string; action: string; reason?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid json" }, 400);
+  }
+
+  const { did, action, reason } = body;
+  if (!did || (action !== 'show' && action !== 'hide')) {
+    return json({ error: "did required, action must be 'show' or 'hide'" }, 400);
+  }
+
+  // upsert override
+  await db.prepare(
+    `INSERT INTO mod_overrides (did, action, reason) VALUES (?1, ?2, ?3)
+     ON CONFLICT(did) DO UPDATE SET action = ?2, reason = ?3, created_at = unixepoch()`
+  ).bind(did, action, reason || '').run();
+
+  // immediately apply to actors table (touch updated_at so fly replica syncs)
+  const hidden = action === 'show' ? 0 : 1;
+  await db.prepare(
+    "UPDATE actors SET hidden = ?1, updated_at = unixepoch() WHERE did = ?2"
+  ).bind(hidden, did).run();
+
+  return json({ did, action, reason: reason || '', hidden });
+}
+
+export async function handleModOverrideDelete(
+  request: Request,
+  db: TursoDB,
+  env: Env,
+): Promise<Response> {
+  const denied = authCheck(request, env);
+  if (denied) return denied;
+
+  const url = new URL(request.url);
+  const did = url.searchParams.get("did") || "";
+  if (!did) return json({ error: "did query param required" }, 400);
+
+  await db.prepare("DELETE FROM mod_overrides WHERE did = ?1").bind(did).run();
+
+  // recompute hidden from stored labels
+  const row = await db.prepare(
+    "SELECT labels FROM actors WHERE did = ?1"
+  ).bind(did).first<{ labels: string }>();
+
+  let hidden = 0;
+  if (row) {
+    try {
+      hidden = shouldHide(JSON.parse(row.labels)) ? 1 : 0;
+    } catch {
+      hidden = 0;
+    }
+    await db.prepare("UPDATE actors SET hidden = ?1, updated_at = unixepoch() WHERE did = ?2").bind(hidden, did).run();
+  }
+
+  return json({ did, hidden });
+}
+
+export async function handleModOverrideList(
+  request: Request,
+  db: TursoDB,
+  env: Env,
+): Promise<Response> {
+  const denied = authCheck(request, env);
+  if (denied) return denied;
+
+  const { results } = await db.prepare(
+    "SELECT did, action, reason, created_at FROM mod_overrides ORDER BY created_at DESC"
+  ).all<{ did: string; action: string; reason: string; created_at: number }>();
+
+  return json({ overrides: results || [] });
 }
