@@ -228,7 +228,11 @@ fn writeActorFromRow(jw: anytype, row: LocalDb.Row) !void {
     }
     if (avatar_url.len > 0) {
         try jw.objectField("avatar");
-        try jw.print("\"https://cdn.bsky.app/img/avatar/plain/{s}/{s}\"", .{ did, avatar_url });
+        if (mem.startsWith(u8, avatar_url, "https://")) {
+            try jw.write(avatar_url);
+        } else {
+            try jw.print("\"https://cdn.bsky.app/img/avatar/plain/{s}/{s}\"", .{ did, avatar_url });
+        }
     }
     if (!mem.eql(u8, associated, "{}") and associated.len > 2) {
         try jw.objectField("associated");
