@@ -80,10 +80,15 @@ export function extractProfileFields(profile: any, override?: 'show' | 'hide' | 
   let hidden = shouldHide(profile.labels) ? 1 : 0;
   if (override === 'show') hidden = 0;
   if (override === 'hide') hidden = 1;
+  const raw = profile.avatar || '';
+  // PDS blob URLs are already full URLs — store as-is; CDN URLs get CID extracted
+  const avatarCid = raw.startsWith('https://') && !raw.includes('cdn.bsky.app')
+    ? raw
+    : extractAvatarCid(raw);
   return {
     handle: profile.handle || '',
     displayName: profile.displayName || '',
-    avatarCid: extractAvatarCid(profile.avatar || ''),
+    avatarCid,
     labels: JSON.stringify(profile.labels || []),
     hidden,
     createdAt: profile.createdAt || '',
