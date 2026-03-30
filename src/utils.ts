@@ -1,5 +1,5 @@
 import { CORS_HEADERS } from "./types";
-import { shouldHide } from "./moderation";
+import { shouldHide, hasExplicitSlur } from "./moderation";
 
 export function clientIP(request: Request): string {
   return request.headers.get("CF-Connecting-IP") || "unknown";
@@ -78,6 +78,7 @@ export interface ProfileFields {
 
 export function extractProfileFields(profile: any, override?: 'show' | 'hide' | null): ProfileFields {
   let hidden = shouldHide(profile.labels) ? 1 : 0;
+  if (hasExplicitSlur(profile.handle || '')) hidden = 1;
   if (override === 'show') hidden = 0;
   if (override === 'hide') hidden = 1;
   const raw = profile.avatar || '';
