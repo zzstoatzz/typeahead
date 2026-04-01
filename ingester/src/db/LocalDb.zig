@@ -2,6 +2,7 @@
 //! Provides fast FTS5 queries while Turso remains source of truth
 
 const std = @import("std");
+const io = std.Options.debug_io;
 const zqlite = @import("zqlite");
 const Allocator = std.mem.Allocator;
 
@@ -13,8 +14,29 @@ conn: ?zqlite.Conn = null,
 read_conn: ?zqlite.Conn = null, // separate read connection — never blocked by writes in WAL mode
 allocator: Allocator,
 is_ready: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
-mutex: std.Thread.Mutex = .{}, // protects write conn only
+mutex: std.Io.Mutex = std.Io.Mutex.init, // protects write conn only
 path: []const u8 = "",
+
+/// column list for full actor row queries (sync + search)
+pub const actor_cols = "did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds";
+
+/// named column indexes matching actor_cols order
+pub const Col = struct {
+    pub const did: usize = 0;
+    pub const handle: usize = 1;
+    pub const display_name: usize = 2;
+    pub const avatar_url: usize = 3;
+    pub const hidden: usize = 4;
+    pub const labels: usize = 5;
+    pub const created_at: usize = 6;
+    pub const associated: usize = 7;
+    pub const pds: usize = 8;
+};
+
+fn cGetenv(name: [*:0]const u8) ?[]const u8 {
+    if (std.c.getenv(name)) |p| return std.mem.span(p);
+    return null;
+}
 
 pub fn init(allocator: Allocator) LocalDb {
     return .{ .allocator = allocator };
@@ -52,12 +74,12 @@ fn repairFtsIfBroken(self: *LocalDb) void {
 }
 
 pub fn open(self: *LocalDb) !void {
-    const path_env = std.posix.getenv("LOCAL_DB_PATH") orelse "/data/local.db";
+    const path_env = cGetenv("LOCAL_DB_PATH") orelse "/data/local.db";
     self.path = path_env;
 
     // ensure SQLite temp directory exists on the persistent volume
-    const tmp_dir = std.posix.getenv("SQLITE_TMPDIR") orelse "/data/tmp";
-    std.fs.cwd().makePath(tmp_dir) catch |err| {
+    const tmp_dir = cGetenv("SQLITE_TMPDIR") orelse "/data/tmp";
+    std.Io.Dir.createDirPath(.cwd(), io, tmp_dir) catch |err| {
         log.warn("failed to create temp dir {s}: {}", .{ tmp_dir, err });
     };
 
@@ -230,8 +252,8 @@ pub fn query(self: *LocalDb, comptime sql: []const u8, args: anytype) !Rows {
 
 /// Execute a statement (INSERT, UPDATE, DELETE) — mutex-protected
 pub fn exec(self: *LocalDb, comptime sql: []const u8, args: anytype) !void {
-    self.mutex.lock();
-    defer self.mutex.unlock();
+    self.mutex.lockUncancelable(io);
+    defer self.mutex.unlock(io);
 
     const c = self.conn orelse return error.NotOpen;
     c.exec(sql, args) catch |e| {
@@ -246,11 +268,11 @@ pub fn getConn(self: *LocalDb) ?zqlite.Conn {
 }
 
 pub fn lock(self: *LocalDb) void {
-    self.mutex.lock();
+    self.mutex.lockUncancelable(io);
 }
 
 pub fn unlock(self: *LocalDb) void {
-    self.mutex.unlock();
+    self.mutex.unlock(io);
 }
 
 /// Get cached actor count from sync_meta (written during sync, avoids full table scan)

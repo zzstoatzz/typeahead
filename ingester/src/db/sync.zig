@@ -2,13 +2,26 @@
 //! Full sync on startup, incremental sync every 5 minutes
 
 const std = @import("std");
+const io = std.Options.debug_io;
 const zqlite = @import("zqlite");
 const logfire = @import("logfire");
 const Allocator = std.mem.Allocator;
 const TursoClient = @import("TursoClient.zig");
 const LocalDb = @import("LocalDb.zig");
+const Col = LocalDb.Col;
 
 const log = std.log.scoped(.sync);
+
+fn timestamp() i64 {
+    return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
+}
+
+fn milliTimestamp() i64 {
+    return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_ms));
+}
+
+/// index of the first column appended after actor_cols (rowid or updated_at)
+const trailing_col: usize = Col.pds + 1;
 
 const BATCH_SIZE = 2000;
 const SYNC_INTERVAL_S = 300; // 5 minutes
@@ -61,7 +74,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
     const span = logfire.span("sync.bootstrap", .{});
     defer span.end();
 
-    const total_t0 = std.time.milliTimestamp();
+    const total_t0 = milliTimestamp();
     local.setReady(false);
 
     // close read connection during bootstrap — not serving traffic,
@@ -110,27 +123,26 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
     var error_count: usize = 0;
     var last_rowid: i64 = 0;
     var had_turso_error = false;
-    const load_t0 = std.time.milliTimestamp();
+    const load_t0 = milliTimestamp();
 
     while (true) {
         var rowid_buf: [20]u8 = undefined;
         const rowid_str = std.fmt.bufPrint(&rowid_buf, "{d}", .{last_rowid}) catch break;
 
-        const t0 = std.time.milliTimestamp();
+        const t0 = milliTimestamp();
 
         // fetch from turso (no lock held)
         var result = turso.query(
-            \\SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, rowid
-            \\FROM actors WHERE handle != '' AND rowid > ?
-            \\ORDER BY rowid LIMIT 2000
-        , &.{rowid_str}) catch |err| {
+            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000",
+            &.{rowid_str},
+        ) catch |err| {
             log.err("turso query failed at rowid {d}: {}", .{ last_rowid, err });
             had_turso_error = true;
             break;
         };
         defer result.deinit();
 
-        const t1 = std.time.milliTimestamp();
+        const t1 = milliTimestamp();
 
         if (result.rows.len == 0) break;
 
@@ -140,7 +152,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
             defer local.unlock();
             conn.exec("BEGIN", .{}) catch {};
             for (result.rows) |row| {
-                insertActorStage(conn, row) catch |err| {
+                insertActorRow(conn, "INSERT INTO actors_stage", row) catch |err| {
                     log.err("insert actor failed: {}", .{err});
                     error_count += 1;
                     continue;
@@ -150,10 +162,9 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
             conn.exec("COMMIT", .{}) catch {};
         }
 
-        const t2 = std.time.milliTimestamp();
+        const t2 = milliTimestamp();
 
-        // advance cursor to last row's rowid (column 8)
-        last_rowid = result.rows[result.rows.len - 1].int(9);
+        last_rowid = result.rows[result.rows.len - 1].int(trailing_col);
 
         // high-frequency batch progress — keep on stderr only
         log.info("batch: {d} rows, rowid={d}, total={d} | fetch={d}ms apply={d}ms", .{
@@ -176,7 +187,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
         return;
     }
 
-    const load_ms = std.time.milliTimestamp() - load_t0;
+    const load_ms = milliTimestamp() - load_t0;
 
     // checkpoint WAL before heavy DDL — clean slate for index builds
     {
@@ -186,7 +197,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
     }
 
     // build indexes on staging table
-    const idx_did_t0 = std.time.milliTimestamp();
+    const idx_did_t0 = milliTimestamp();
     {
         local.lock();
         defer local.unlock();
@@ -196,9 +207,9 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
             return err;
         };
     }
-    const idx_did_ms = std.time.milliTimestamp() - idx_did_t0;
+    const idx_did_ms = milliTimestamp() - idx_did_t0;
 
-    const idx_handle_t0 = std.time.milliTimestamp();
+    const idx_handle_t0 = milliTimestamp();
     {
         local.lock();
         defer local.unlock();
@@ -208,7 +219,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
             return err;
         };
     }
-    const idx_handle_ms = std.time.milliTimestamp() - idx_handle_t0;
+    const idx_handle_ms = milliTimestamp() - idx_handle_t0;
 
     // swap actors table first, then build FTS with final name.
     {
@@ -229,7 +240,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
     }
 
     // build FTS with its final name — no rename needed
-    const fts_create_t0 = std.time.milliTimestamp();
+    const fts_create_t0 = milliTimestamp();
     {
         local.lock();
         defer local.unlock();
@@ -243,9 +254,9 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
             return err;
         };
     }
-    const fts_create_ms = std.time.milliTimestamp() - fts_create_t0;
+    const fts_create_ms = milliTimestamp() - fts_create_t0;
 
-    const fts_pop_t0 = std.time.milliTimestamp();
+    const fts_pop_t0 = milliTimestamp();
     {
         local.lock();
         defer local.unlock();
@@ -257,7 +268,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
             return err;
         };
     }
-    const fts_pop_ms = std.time.milliTimestamp() - fts_pop_t0;
+    const fts_pop_ms = milliTimestamp() - fts_pop_t0;
 
     // post-swap: optimize, record completion + actor count, checkpoint
     {
@@ -266,7 +277,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
         conn.exec("PRAGMA optimize", .{}) catch {};
 
         var ts_buf: [20]u8 = undefined;
-        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{std.time.timestamp()}) catch "0";
+        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{timestamp()}) catch "0";
         conn.exec(
             "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)",
             .{ts_str},
@@ -286,7 +297,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
         conn.exec("PRAGMA wal_checkpoint(PASSIVE)", .{}) catch {};
     }
 
-    const total_ms = std.time.milliTimestamp() - total_t0;
+    const total_ms = milliTimestamp() - total_t0;
 
     // reopen read connection before serving traffic
     local.reopenReadConn() catch {};
@@ -321,13 +332,12 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
         const rowid_str = std.fmt.bufPrint(&rowid_buf, "{d}", .{last_rowid}) catch break;
 
         const q_span = logfire.span("sync.query.resync_batch", .{});
-        const t0 = std.time.milliTimestamp();
+        const t0 = milliTimestamp();
 
         var result = turso.query(
-            \\SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, rowid
-            \\FROM actors WHERE handle != '' AND rowid > ?
-            \\ORDER BY rowid LIMIT 2000
-        , &.{rowid_str}) catch |err| {
+            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000",
+            &.{rowid_str},
+        ) catch |err| {
             log.err("resync: turso query failed at rowid {d}: {}", .{ last_rowid, err });
             q_span.setStatus(.@"error", "query failed");
             q_span.end();
@@ -336,7 +346,7 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
         };
         defer result.deinit();
 
-        const t1 = std.time.milliTimestamp();
+        const t1 = milliTimestamp();
         q_span.setAttribute("rows", @as(i64, @intCast(result.rows.len)));
         q_span.setAttribute("fetch_ms", t1 - t0);
         q_span.setStatus(.ok, null);
@@ -352,7 +362,7 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
             defer local.unlock();
             conn.exec("BEGIN", .{}) catch {};
             for (result.rows) |row| {
-                insertActorOnly(conn, row) catch |err| {
+                insertActorRow(conn, "INSERT OR REPLACE INTO actors", row) catch |err| {
                     log.err("resync: insert actor failed: {}", .{err});
                     error_count += 1;
                     continue;
@@ -365,8 +375,8 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
             a_span.setStatus(.ok, null);
         }
 
-        const t2 = std.time.milliTimestamp();
-        last_rowid = result.rows[result.rows.len - 1].int(9);
+        const t2 = milliTimestamp();
+        last_rowid = result.rows[result.rows.len - 1].int(trailing_col);
         batch_num += 1;
 
         log.info("resync: batch {d}: {d} rows, rowid={d}, total={d} | fetch={d}ms apply={d}ms", .{
@@ -416,7 +426,7 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
         local.lock();
         defer local.unlock();
         var ts_buf: [20]u8 = undefined;
-        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{std.time.timestamp()}) catch "0";
+        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{timestamp()}) catch "0";
         conn.exec(
             "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)",
             .{ts_str},
@@ -488,7 +498,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     }
 
     // if last sync is older than tombstone retention, local data is too stale
-    const now = std.time.timestamp();
+    const now = timestamp();
     if (now - last_sync_ts > TOMBSTONE_RETENTION_S) {
         log.info("incremental: stale ({d}s old), falling back to full sync with wipe", .{now - last_sync_ts});
         span.setAttribute("fallback", "stale_wipe");
@@ -522,13 +532,9 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 &.{cursor_ts};
 
             const sql = if (cursor_did_len > 0)
-                \\SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, updated_at
-                \\FROM actors WHERE handle != '' AND (updated_at > ?1 OR (updated_at = ?2 AND did > ?3))
-                \\ORDER BY updated_at, did LIMIT 2000
+                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND (updated_at > ?1 OR (updated_at = ?2 AND did > ?3)) ORDER BY updated_at, did LIMIT 2000"
             else
-                \\SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, updated_at
-                \\FROM actors WHERE handle != '' AND updated_at > ?1
-                \\ORDER BY updated_at, did LIMIT 2000
+                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 2000"
             ;
 
             log.info("incremental: querying updated actors (cursor_ts={s})", .{cursor_ts});
@@ -558,7 +564,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 defer local.unlock();
                 conn.exec("BEGIN", .{}) catch {};
                 for (result.rows) |row| {
-                    upsertActorLocal(conn, row) catch {
+                    insertActorRow(conn, "INSERT OR REPLACE INTO actors", row) catch {
                         error_count += 1;
                         continue;
                     };
@@ -570,10 +576,9 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 a_span.setStatus(.ok, null);
             }
 
-            // advance cursor to last row's (updated_at, did)
             const last_row = result.rows[result.rows.len - 1];
-            const last_ua_int = last_row.int(9); // updated_at is integer
-            const last_did = last_row.text(0);
+            const last_ua_int = last_row.int(trailing_col);
+            const last_did = last_row.text(Col.did);
 
             // serialize updated_at integer to string for next query
             const ua_str = std.fmt.bufPrint(&cursor_ts_buf, "{d}", .{last_ua_int}) catch break;
@@ -725,7 +730,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         local.lock();
         defer local.unlock();
         var ts_buf: [20]u8 = undefined;
-        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{std.time.timestamp()}) catch "0";
+        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{timestamp()}) catch "0";
         conn.exec(
             "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)",
             .{ts_str},
@@ -764,7 +769,7 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
 
     // periodic incremental sync
     while (true) {
-        std.Thread.sleep(SYNC_INTERVAL_S * std.time.ns_per_s);
+        io.sleep(.{ .nanoseconds = SYNC_INTERVAL_S * std.time.ns_per_s }, .real) catch {};
 
         incrementalSync(&turso, local) catch |err| {
             log.err("periodic sync failed: {}", .{err});
@@ -772,69 +777,20 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
     }
 }
 
-/// Insert actor row into staging table (no indexes, no FTS — used during bootstrap)
-fn insertActorStage(conn: zqlite.Conn, row: anytype) !void {
-    conn.exec(
-        \\INSERT INTO actors_stage
-        \\(did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds)
-        \\VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    , .{
-        row.text(0), // did
-        row.text(1), // handle
-        row.text(2), // display_name
-        row.text(3), // avatar_url
-        row.int(4), // hidden
-        row.text(5), // labels
-        row.text(6), // created_at
-        row.text(7), // associated
-        row.text(8), // pds
-    }) catch |err| {
-        return err;
-    };
-}
-
-/// Insert actor row without FTS update (used during re-sync on live table)
-fn insertActorOnly(conn: zqlite.Conn, row: anytype) !void {
-    conn.exec(
-        \\INSERT OR REPLACE INTO actors
-        \\(did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds)
-        \\VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    , .{
-        row.text(0), // did
-        row.text(1), // handle
-        row.text(2), // display_name
-        row.text(3), // avatar_url
-        row.int(4), // hidden
-        row.text(5), // labels
-        row.text(6), // created_at
-        row.text(7), // associated
-        row.text(8), // pds
-    }) catch |err| {
-        return err;
-    };
-}
-
-/// Upsert a turso row into local SQLite (actors table only, no FTS).
-/// FTS is rebuilt in bulk at sync boundaries — per-row FTS deletes are O(N) scans
-/// because `did` is UNINDEXED in the FTS5 table.
-fn upsertActorLocal(conn: zqlite.Conn, row: anytype) !void {
-    conn.exec(
-        \\INSERT OR REPLACE INTO actors
-        \\(did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds)
-        \\VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    , .{
-        row.text(0), // did
-        row.text(1), // handle
-        row.text(2), // display_name
-        row.text(3), // avatar_url
-        row.int(4), // hidden
-        row.text(5), // labels
-        row.text(6), // created_at
-        row.text(7), // associated
-        row.text(8), // pds
-    }) catch |err| {
-        return err;
-    };
+/// Insert actor row into a table. `prefix` is the INSERT clause, e.g.
+/// "INSERT INTO actors_stage" or "INSERT OR REPLACE INTO actors".
+fn insertActorRow(conn: zqlite.Conn, comptime prefix: []const u8, row: anytype) !void {
+    conn.exec(prefix ++ " (" ++ LocalDb.actor_cols ++ ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", .{
+        row.text(Col.did),
+        row.text(Col.handle),
+        row.text(Col.display_name),
+        row.text(Col.avatar_url),
+        row.int(Col.hidden),
+        row.text(Col.labels),
+        row.text(Col.created_at),
+        row.text(Col.associated),
+        row.text(Col.pds),
+    }) catch |err| return err;
 }
 
 /// Update cached actor count in sync_meta (avoids COUNT(*) on health checks)

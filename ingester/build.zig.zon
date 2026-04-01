@@ -2,19 +2,19 @@
     .name = .typeahead_ingester,
     .version = "0.0.1",
     .fingerprint = 0xc3959a06c9697d7c,
-    .minimum_zig_version = "0.15.0",
+    .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .zat = .{
-            .url = "https://tangled.sh/zat.dev/zat/archive/v0.2.18",
-            .hash = "zat-0.2.18-5PuC7iVfBQAV6IUlytvAWrpwrVUbwbLlAcSTvkXwncb_",
+            .url = "https://tangled.sh/zat.dev/zat/archive/v0.3.0-alpha.4",
+            .hash = "zat-0.3.0-alpha.4-5PuC7pNgBQCDMShv93KamG-leB6U1GOgqflbaX7Faf_1",
         },
         .zqlite = .{
             .url = "https://github.com/karlseguin/zqlite.zig/archive/refs/heads/master.tar.gz",
             .hash = "zqlite-0.0.1-RWLaYz6bmAAT7E_jxopXf-j5Ea8VQldnxsd6TU8sa0Bb",
         },
         .logfire = .{
-            .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/main",
-            .hash = "logfire_zig-0.1.0-x2yDLgdwAADOXAZLNQJ8FUH5v1vfFwe5CApJtQ7c_pZd",
+            .url = "https://tangled.sh/zzstoatzz.io/logfire-zig/archive/1ed66749bb5910d07586f6aa8641682f6b154928",
+            .hash = "logfire_zig-0.1.0-x2yDLr5wAADNrQCuIHDTBMgyrohjJkhSSXvJRuWU5SPv",
         },
     },
     .paths = .{

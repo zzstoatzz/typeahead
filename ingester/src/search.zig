@@ -6,6 +6,7 @@ const json = std.json;
 const mem = std.mem;
 const Allocator = mem.Allocator;
 const LocalDb = @import("db/LocalDb.zig");
+const Col = LocalDb.Col;
 
 const log = std.log.scoped(.search);
 
@@ -42,9 +43,9 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
     // 1. exact handle match
     {
         var rows = local.query(
-            \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
-            \\FROM actors WHERE handle = ? COLLATE NOCASE AND hidden = 0 LIMIT 1
-        , .{term}) catch |err| blk: {
+            "SELECT " ++ LocalDb.actor_cols ++ " FROM actors WHERE handle = ? COLLATE NOCASE AND hidden = 0 LIMIT 1",
+            .{term},
+        ) catch |err| blk: {
             log.err("exact query failed: {}", .{err});
             break :blk null;
         };
@@ -53,7 +54,7 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
             if (r.next()) |row| {
                 if (emitted < limit) {
                     try writeActorFromRow(&jw, row);
-                    if (trackDid(&seen_fba, &seen_dids, &seen_count, row.text(0))) {}
+                    if (trackDid(&seen_fba, &seen_dids, &seen_count, row.text(Col.did))) {}
                     emitted += 1;
                 }
             }
@@ -135,13 +136,13 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
         for (prefix_dids[0..prefix_count]) |did| {
             if (emitted >= limit) break;
             var rows = local.query(
-                \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
-                \\FROM actors WHERE did = ?
-            , .{did}) catch continue;
+                "SELECT " ++ LocalDb.actor_cols ++ " FROM actors WHERE did = ?",
+                .{did},
+            ) catch continue;
             defer rows.deinit();
             if (rows.next()) |row| {
                 try writeActorFromRow(&jw, row);
-                if (trackDid(&seen_fba, &seen_dids, &seen_count, row.text(0))) {}
+                if (trackDid(&seen_fba, &seen_dids, &seen_count, row.text(Col.did))) {}
                 emitted += 1;
             }
         }
@@ -186,14 +187,14 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
         for (candidate_dids[0..candidate_count]) |did| {
             if (emitted >= limit) break;
             var rows = local.query(
-                \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
-                \\FROM actors WHERE did = ? AND handle != '' AND hidden = 0
-            , .{did}) catch continue;
+                "SELECT " ++ LocalDb.actor_cols ++ " FROM actors WHERE did = ? AND handle != '' AND hidden = 0",
+                .{did},
+            ) catch continue;
             defer rows.deinit();
             if (rows.next()) |row| {
-                if (!isDuplicate(seen_dids[0..seen_count], row.text(0))) {
+                if (!isDuplicate(seen_dids[0..seen_count], row.text(Col.did))) {
                     try writeActorFromRow(&jw, row);
-                    if (trackDid(&seen_fba, &seen_dids, &seen_count, row.text(0))) {}
+                    if (trackDid(&seen_fba, &seen_dids, &seen_count, row.text(Col.did))) {}
                     emitted += 1;
                 }
             }
@@ -206,16 +207,16 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
 
 /// Write a single actor object from a live SQLite row.
 /// Must be called while the row's statement is still alive.
-/// Row columns: did, handle, display_name, avatar_url, labels, created_at, associated, pds
+/// Row uses LocalDb.actor_cols column order.
 fn writeActorFromRow(jw: anytype, row: LocalDb.Row) !void {
-    const did = row.text(0);
-    const handle = row.text(1);
-    const display_name = row.text(2);
-    const avatar_url = row.text(3);
-    const labels = row.text(4);
-    const created_at = row.text(5);
-    const associated = row.text(6);
-    const pds = row.text(7);
+    const did = row.text(Col.did);
+    const handle = row.text(Col.handle);
+    const display_name = row.text(Col.display_name);
+    const avatar_url = row.text(Col.avatar_url);
+    const labels = row.text(Col.labels);
+    const created_at = row.text(Col.created_at);
+    const associated = row.text(Col.associated);
+    const pds = row.text(Col.pds);
 
     try jw.beginObject();
 

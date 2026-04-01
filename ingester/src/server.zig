@@ -3,9 +3,9 @@
 
 const std = @import("std");
 const http = std.http;
-const net = std.net;
 const mem = std.mem;
 const json = std.json;
+const io = std.Options.debug_io;
 const logfire = @import("logfire");
 const LocalDb = @import("db/LocalDb.zig");
 const search = @import("search.zig");
@@ -15,16 +15,16 @@ const log = std.log.scoped(.server);
 
 const HTTP_BUF_SIZE = 65536;
 
-pub fn handleConnection(conn: net.Server.Connection, local_db: *LocalDb) void {
-    defer conn.stream.close();
+pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb) void {
+    defer stream.close(io);
 
     var read_buffer: [HTTP_BUF_SIZE]u8 = undefined;
     var write_buffer: [HTTP_BUF_SIZE]u8 = undefined;
 
-    var reader = conn.stream.reader(&read_buffer);
-    var writer = conn.stream.writer(&write_buffer);
+    var reader = stream.reader(io, &read_buffer);
+    var writer = stream.writer(io, &write_buffer);
 
-    var server = http.Server.init(reader.interface(), &writer.interface);
+    var server = http.Server.init(&reader.interface, &writer.interface);
 
     while (true) {
         var request = server.receiveHead() catch |err| {
@@ -266,4 +266,3 @@ fn writeDebugRow(jw: anytype, local_db: *LocalDb, comptime sql: []const u8, para
         try jw.write(null);
     }
 }
-

@@ -2,12 +2,18 @@
 //! Uses hrana v2 pipeline protocol
 
 const std = @import("std");
+const io = std.Options.debug_io;
 const http = std.http;
 const json = std.json;
 const mem = std.mem;
 const Allocator = mem.Allocator;
 
 const log = std.log.scoped(.turso);
+
+fn cGetenv(name: [*:0]const u8) ?[]const u8 {
+    if (std.c.getenv(name)) |p| return mem.span(p);
+    return null;
+}
 
 const TursoClient = @This();
 
@@ -20,14 +26,14 @@ allocator: Allocator,
 url: []const u8, // host only (no protocol prefix)
 token: []const u8,
 http_client: http.Client,
-mutex: std.Thread.Mutex = .{},
+mutex: std.Io.Mutex = std.Io.Mutex.init,
 
 pub fn init(allocator: Allocator) !TursoClient {
-    const url = std.posix.getenv("TURSO_URL") orelse {
+    const url = cGetenv("TURSO_URL") orelse {
         log.err("TURSO_URL not set", .{});
         return error.MissingEnv;
     };
-    const token = std.posix.getenv("TURSO_AUTH_TOKEN") orelse {
+    const token = cGetenv("TURSO_AUTH_TOKEN") orelse {
         log.err("TURSO_AUTH_TOKEN not set", .{});
         return error.MissingEnv;
     };
@@ -44,7 +50,7 @@ pub fn init(allocator: Allocator) !TursoClient {
         .allocator = allocator,
         .url = host,
         .token = token,
-        .http_client = .{ .allocator = allocator },
+        .http_client = .{ .allocator = allocator, .io = io },
     };
 }
 
@@ -84,8 +90,8 @@ pub fn query(self: *TursoClient, sql: []const u8, args: []const []const u8) !Res
 }
 
 fn executeRaw(self: *TursoClient, sql: []const u8, args: []const []const u8) ![]const u8 {
-    self.mutex.lock();
-    defer self.mutex.unlock();
+    self.mutex.lockUncancelable(io);
+    defer self.mutex.unlock(io);
 
     var url_buf: [512]u8 = undefined;
     const url = std.fmt.bufPrint(&url_buf, "https://{s}/v2/pipeline", .{self.url}) catch
@@ -165,7 +171,7 @@ fn parseResult(allocator: Allocator, response: []const u8) !Result {
         return .{ .allocator = allocator, .parsed = parsed, .rows = &.{} };
     };
 
-    var rows: std.ArrayList(Row) = .{};
+    var rows: std.ArrayList(Row) = .empty;
     errdefer rows.deinit(allocator);
 
     for (json_rows.items) |item| {

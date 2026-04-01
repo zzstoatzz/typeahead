@@ -1,9 +1,7 @@
 const std = @import("std");
 const mem = std.mem;
-const net = std.net;
-const posix = std.posix;
+const io = std.Options.debug_io;
 const Allocator = mem.Allocator;
-const Thread = std.Thread;
 const zat = @import("zat");
 const logfire = @import("logfire");
 const HttpTransport = zat.HttpTransport;
@@ -14,8 +12,12 @@ const ingest = @import("ingest.zig");
 
 const log = std.log.scoped(.ingester);
 
-const MAX_HTTP_WORKERS = 8;
 const SOCKET_TIMEOUT_SECS = 5;
+
+fn cGetenv(name: [*:0]const u8) ?[]const u8 {
+    if (std.c.getenv(name)) |p| return mem.span(p);
+    return null;
+}
 
 const JetstreamArgs = struct {
     allocator: Allocator,
@@ -51,25 +53,23 @@ fn jetstreamThread(args: JetstreamArgs) void {
     client.subscribe(&handler);
 }
 
-fn setSocketTimeout(fd: posix.fd_t, secs: u32) !void {
-    const timeout = mem.toBytes(posix.timeval{
+fn setSocketTimeout(fd: std.posix.fd_t, secs: u32) !void {
+    const timeout = mem.toBytes(std.posix.timeval{
         .sec = @intCast(secs),
         .usec = 0,
     });
-    try posix.setsockopt(fd, posix.SOL.SOCKET, posix.SO.RCVTIMEO, &timeout);
-    try posix.setsockopt(fd, posix.SOL.SOCKET, posix.SO.SNDTIMEO, &timeout);
+    try std.posix.setsockopt(fd, std.posix.SOL.SOCKET, std.posix.SO.RCVTIMEO, &timeout);
+    try std.posix.setsockopt(fd, std.posix.SOL.SOCKET, std.posix.SO.SNDTIMEO, &timeout);
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+    const allocator = std.heap.smp_allocator;
 
     // configure logfire (reads LOGFIRE_WRITE_TOKEN from env)
     _ = logfire.configure(.{
         .service_name = "typeahead-ingester",
         .service_version = "0.1.0",
-        .environment = posix.getenv("FLY_APP_NAME") orelse "development",
+        .environment = cGetenv("FLY_APP_NAME") orelse "development",
     }) catch |err| {
         log.err("logfire configure failed: {}", .{err});
     };
@@ -90,36 +90,31 @@ pub fn main() !void {
 
     // start HTTP server FIRST so Fly proxy doesn't timeout
     const port: u16 = blk: {
-        const port_str = posix.getenv("PORT") orelse "8080";
+        const port_str = cGetenv("PORT") orelse "8080";
         break :blk std.fmt.parseInt(u16, port_str, 10) catch 8080;
     };
 
-    const address = try net.Address.parseIp("0.0.0.0", port);
-    var listener = try address.listen(.{ .reuse_address = true });
-    defer listener.deinit();
+    var addr = std.Io.net.IpAddress{ .ip4 = .{ .bytes = .{ 0, 0, 0, 0 }, .port = port } };
+    var srv = std.Io.net.IpAddress.listen(&addr, io, .{ .reuse_address = true }) catch |err| {
+        log.err("listen failed: {}", .{err});
+        return err;
+    };
+    defer srv.deinit(io);
 
     log.info("listening on port {d}", .{port});
 
-    // init thread pool for HTTP connections
-    var pool: Thread.Pool = undefined;
-    try pool.init(.{
-        .allocator = allocator,
-        .n_jobs = MAX_HTTP_WORKERS,
-    });
-    defer pool.deinit();
-
     // start sync thread (background — turso → local SQLite)
     if (local_db_ptr) |db| {
-        const sync_thread = try Thread.spawn(.{}, sync.syncLoop, .{ allocator, db });
+        const sync_thread = try std.Thread.spawn(.{}, sync.syncLoop, .{ allocator, db });
         sync_thread.detach();
     }
 
     // start jetstream thread (background — ingestion)
-    var transport = HttpTransport.init(allocator);
+    var transport = HttpTransport.init(io, allocator);
     transport.keep_alive = false;
     defer transport.deinit();
 
-    const js_thread = try Thread.spawn(.{}, jetstreamThread, .{JetstreamArgs{
+    const js_thread = try std.Thread.spawn(.{}, jetstreamThread, .{JetstreamArgs{
         .allocator = allocator,
         .config = config,
         .transport = &transport,
@@ -129,29 +124,31 @@ pub fn main() !void {
 
     // main thread: HTTP accept loop
     while (true) {
-        const conn = listener.accept() catch |err| {
+        const stream = srv.accept(io) catch |err| {
             log.err("accept error: {}", .{err});
             continue;
         };
 
-        setSocketTimeout(conn.stream.handle, SOCKET_TIMEOUT_SECS) catch |err| {
+        setSocketTimeout(stream.socket.handle, SOCKET_TIMEOUT_SECS) catch |err| {
             log.warn("failed to set socket timeout: {}", .{err});
         };
 
         if (local_db_ptr) |db| {
-            pool.spawn(server.handleConnection, .{ conn, db }) catch |err| {
-                log.err("pool spawn error: {}", .{err});
-                conn.stream.close();
+            const handler_thread = std.Thread.spawn(.{}, server.handleConnection, .{ stream, db }) catch |err| {
+                log.err("thread spawn error: {}", .{err});
+                stream.close(io);
+                continue;
             };
+            handler_thread.detach();
         } else {
             // no local DB — just serve health
             var read_buffer: [1024]u8 = undefined;
             var write_buffer: [1024]u8 = undefined;
-            var reader = conn.stream.reader(&read_buffer);
-            var writer = conn.stream.writer(&write_buffer);
-            var srv = std.http.Server.init(reader.interface(), &writer.interface);
-            var request = srv.receiveHead() catch {
-                conn.stream.close();
+            var reader = stream.reader(io, &read_buffer);
+            var writer = stream.writer(io, &write_buffer);
+            var http_srv = std.http.Server.init(&reader.interface, &writer.interface);
+            var request = http_srv.receiveHead() catch {
+                stream.close(io);
                 continue;
             };
             request.respond("{\"error\":\"search unavailable\"}", .{
@@ -160,7 +157,7 @@ pub fn main() !void {
                     .{ .name = "content-type", .value = "application/json" },
                 },
             }) catch {};
-            conn.stream.close();
+            stream.close(io);
         }
     }
 }

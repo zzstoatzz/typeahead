@@ -26,6 +26,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
             .imports = &.{
                 .{ .name = "zat", .module = zat.module("zat") },
                 .{ .name = "zqlite", .module = zqlite.module("zqlite") },
@@ -33,8 +34,6 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
-
-    exe.linkLibC();
 
     b.installArtifact(exe);
 
@@ -54,12 +53,12 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/test_logfire.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
             .imports = &.{
                 .{ .name = "logfire", .module = logfire.module("logfire") },
             },
         }),
     });
-    test_lf.linkLibC();
 
     const run_test_lf = b.addRunArtifact(test_lf);
     run_test_lf.step.dependOn(b.getInstallStep());

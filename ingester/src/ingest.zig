@@ -2,6 +2,7 @@
 //! Dual-writes profile/identity events to local SQLite for immediate search
 
 const std = @import("std");
+const io = std.Options.debug_io;
 const mem = std.mem;
 const json = std.json;
 const Allocator = mem.Allocator;
@@ -11,6 +12,15 @@ const LocalDb = @import("db/LocalDb.zig");
 const BloomFilter = @import("bloom.zig").BloomFilter;
 
 const log = std.log.scoped(.ingester);
+
+fn cGetenv(name: [*:0]const u8) ?[]const u8 {
+    if (std.c.getenv(name)) |p| return mem.span(p);
+    return null;
+}
+
+fn timestamp() i64 {
+    return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
+}
 
 pub const MAX_BATCH: usize = 100;
 const BLOOM_BITS: usize = 10_000_000; // ~1.2MB fixed
@@ -23,9 +33,9 @@ pub const Config = struct {
 
 pub fn getConfig() Config {
     return .{
-        .worker_url = std.posix.getenv("TYPEAHEAD_URL") orelse
+        .worker_url = cGetenv("TYPEAHEAD_URL") orelse
             @panic("TYPEAHEAD_URL not set"),
-        .secret = std.posix.getenv("TYPEAHEAD_SECRET") orelse
+        .secret = cGetenv("TYPEAHEAD_SECRET") orelse
             @panic("TYPEAHEAD_SECRET not set"),
     };
 }
@@ -62,11 +72,11 @@ pub const IngestHandler = struct {
             .config = config,
             .transport = transport,
             .local_db = local_db,
-            .buffer = .{},
-            .delete_buffer = .{},
+            .buffer = .empty,
+            .delete_buffer = .empty,
             .arena = std.heap.ArenaAllocator.init(allocator),
             .bloom = try BloomFilter.init(allocator, BLOOM_BITS, BLOOM_HASHES),
-            .last_flush = std.time.timestamp(),
+            .last_flush = timestamp(),
         };
     }
 
@@ -95,7 +105,7 @@ pub const IngestHandler = struct {
 
         self.pending_cursor = event.timeUs();
 
-        const now = std.time.timestamp();
+        const now = timestamp();
         // drop incoming events if buffers are backed up (persistent failure)
         const MAX_BACKLOG = MAX_BATCH * 10;
         if (self.buffer.items.len >= MAX_BACKLOG or self.delete_buffer.items.len >= MAX_BACKLOG) {
@@ -193,7 +203,7 @@ pub const IngestHandler = struct {
             // dual-write: delete from local (skip if sync holds the lock)
             if (self.local_db) |db| {
                 if (db.mutex.tryLock()) {
-                    defer db.mutex.unlock();
+                    defer db.mutex.unlock(io);
                     if (db.getConn()) |c| {
                         c.exec("DELETE FROM actors WHERE did = ?", .{did}) catch {};
                     }
@@ -214,7 +224,7 @@ pub const IngestHandler = struct {
         const conn = db.getConn() orelse return;
 
         if (!db.mutex.tryLock()) return; // sync thread has the lock, skip
-        defer db.mutex.unlock();
+        defer db.mutex.unlock(io);
 
         // only write if we have searchable data (handle or display_name)
         const has_handle = event.handle != null and event.handle.?.len > 0;
@@ -238,7 +248,7 @@ pub const IngestHandler = struct {
     }
 
     fn flush(self: *IngestHandler) void {
-        self.last_flush = std.time.timestamp();
+        self.last_flush = timestamp();
         var any_failure = false;
 
         if (self.buffer.items.len > 0) {
@@ -303,7 +313,7 @@ pub const IngestHandler = struct {
         }
 
         if (any_failure) {
-            self.retry_after = std.time.timestamp() + 5;
+            self.retry_after = timestamp() + 5;
         } else if (self.buffer.items.len == 0 and self.delete_buffer.items.len == 0) {
             self.flushed_cursor = self.pending_cursor;
             _ = self.arena.reset(.retain_capacity);
@@ -399,7 +409,7 @@ pub fn fetchCursor(transport: *HttpTransport, config: Config) ?i64 {
     for (backoff, 0..) |delay, attempt| {
         if (fetchCursorOnce(transport, config)) |cursor| return cursor;
         log.warn("cursor fetch failed (attempt {d}/3), retrying in {d}s", .{ attempt + 1, delay });
-        std.Thread.sleep(delay * std.time.ns_per_s);
+        io.sleep(.{ .nanoseconds = delay * std.time.ns_per_s }, .real) catch {};
     }
     return null;
 }
@@ -407,10 +417,10 @@ pub fn fetchCursor(transport: *HttpTransport, config: Config) ?i64 {
 // -- utilities --
 
 pub fn getRssKB() u64 {
-    const f = std.fs.openFileAbsolute("/proc/self/statm", .{}) catch return 0;
-    defer f.close();
+    const f = std.Io.Dir.openFileAbsolute(io, "/proc/self/statm", .{}) catch return 0;
+    defer f.close(io);
     var buf: [128]u8 = undefined;
-    const n = f.read(&buf) catch return 0;
+    const n = f.readStreaming(io, &.{&buf}) catch return 0;
     var it = std.mem.splitScalar(u8, buf[0..n], ' ');
     _ = it.next(); // size
     const rss_pages = std.fmt.parseInt(u64, it.next() orelse return 0, 10) catch return 0;
