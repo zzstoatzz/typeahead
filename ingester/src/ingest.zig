@@ -131,8 +131,10 @@ pub const IngestHandler = struct {
     }
 
     fn handleCommit(self: *IngestHandler, c: zat.jetstream.CommitEvent) void {
-        if (mem.eql(u8, c.collection, "app.bsky.actor.profile")) {
-            // rich extraction from profile records
+        if (mem.eql(u8, c.collection, "app.bsky.actor.profile") or
+            mem.eql(u8, c.collection, "sh.tangled.actor.profile"))
+        {
+            // rich extraction from profile records (bsky and tangled)
             if (c.operation != .create and c.operation != .update) return;
 
             const record = c.record orelse return;
@@ -140,6 +142,7 @@ pub const IngestHandler = struct {
             const did = self.dupe(c.did) orelse return;
             var event = ActorEvent{ .did = did };
 
+            // bsky profiles have displayName; tangled profiles don't
             if (zat.json.getString(record, "displayName")) |name| {
                 event.display_name = self.dupe(name);
             }
@@ -187,32 +190,38 @@ pub const IngestHandler = struct {
         if (!acct.active) {
             const did = self.dupe(acct.did) orelse return;
 
-            // dual-write: delete from local
+            // dual-write: delete from local (skip if sync holds the lock)
             if (self.local_db) |db| {
-                db.exec("DELETE FROM actors WHERE did = ?", .{did}) catch {};
-                db.exec("DELETE FROM actors_fts WHERE did = ?", .{did}) catch {};
+                if (db.mutex.tryLock()) {
+                    defer db.mutex.unlock();
+                    if (db.getConn()) |c| {
+                        c.exec("DELETE FROM actors WHERE did = ?", .{did}) catch {};
+                    }
+                }
             }
 
             self.delete_buffer.append(self.allocator, did) catch return;
         }
     }
 
-    /// Dual-write to local SQLite for immediate search availability
+    /// Dual-write to local SQLite for immediate search availability.
+    /// Uses tryLock to avoid blocking ingester when sync holds the write lock.
+    /// FTS is rebuilt by sync at cycle boundaries — no per-row FTS maintenance here.
     fn writeToLocal(self: *IngestHandler, event: ActorEvent) void {
         const db = self.local_db orelse return;
         if (!db.isReady()) return;
 
         const conn = db.getConn() orelse return;
 
-        db.lock();
-        defer db.unlock();
+        if (!db.mutex.tryLock()) return; // sync thread has the lock, skip
+        defer db.mutex.unlock();
 
         // only write if we have searchable data (handle or display_name)
         const has_handle = event.handle != null and event.handle.?.len > 0;
         const has_name = event.display_name != null and event.display_name.?.len > 0;
         if (!has_handle and !has_name) return;
 
-        // upsert actor
+        // upsert actor (FTS will be rebuilt by next sync cycle)
         conn.exec(
             \\INSERT INTO actors (did, handle, display_name, avatar_url)
             \\VALUES (?, ?, ?, ?)
@@ -226,26 +235,6 @@ pub const IngestHandler = struct {
             event.display_name orelse "",
             event.avatar_cid orelse "",
         }) catch return;
-
-        // update FTS
-        conn.exec("DELETE FROM actors_fts WHERE did = ?", .{event.did}) catch {};
-
-        // read back current handle + display_name for FTS
-        const row = conn.row(
-            "SELECT handle, display_name FROM actors WHERE did = ?",
-            .{event.did},
-        ) catch return;
-        if (row) |r| {
-            defer r.deinit();
-            const h = r.text(0);
-            const dn = r.text(1);
-            if (h.len > 0 or dn.len > 0) {
-                conn.exec(
-                    "INSERT INTO actors_fts (did, handle, display_name) VALUES (?, ?, ?)",
-                    .{ event.did, h, dn },
-                ) catch {};
-            }
-        }
     }
 
     fn flush(self: *IngestHandler) void {

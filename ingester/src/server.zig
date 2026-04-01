@@ -6,6 +6,7 @@ const http = std.http;
 const net = std.net;
 const mem = std.mem;
 const json = std.json;
+const logfire = @import("logfire");
 const LocalDb = @import("db/LocalDb.zig");
 const search = @import("search.zig");
 const ingest = @import("ingest.zig");
@@ -109,6 +110,9 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
 }
 
 fn handleHealth(request: *http.Server.Request, local_db: *LocalDb) !void {
+    const span = logfire.span("http.health", .{});
+    defer span.end();
+
     const ready = local_db.isReady();
     const actors = local_db.countActors();
     const rss = ingest.getRssKB();
@@ -121,6 +125,10 @@ fn handleHealth(request: *http.Server.Request, local_db: *LocalDb) !void {
         actors,
         rss,
     }) catch "{\"status\":\"ok\"}";
+
+    span.setAttribute("ready", if (ready) "true" else "false");
+    span.setAttribute("actors", @as(i64, @intCast(actors)));
+    span.setStatus(.ok, null);
 
     try sendJson(request, .ok, body);
 }

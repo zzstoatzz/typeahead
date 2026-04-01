@@ -7,7 +7,7 @@ import { enrichActors } from "./enrichment";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
-import { handleDelete, handleCursor, handleRequestIndexing } from "./handlers/admin";
+import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList } from "./handlers/admin";
 import { handleStats } from "./handlers/stats";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
@@ -48,11 +48,14 @@ export default {
     }
 
     if (pathname === "/request-indexing" && request.method === "POST") {
-      const ip = clientIP(request);
-      const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
-      if (!success) {
-        console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
-        return json({ error: "slow down — try again in a minute." }, 429);
+      const isAdmin = request.headers.get("Authorization") === `Bearer ${env.ADMIN_SECRET}`;
+      if (!isAdmin) {
+        const ip = clientIP(request);
+        const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
+        if (!success) {
+          console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
+          return json({ error: "slow down — try again in a minute." }, 429);
+        }
       }
       return handleRequestIndexing(request, db, env);
     }
@@ -76,6 +79,16 @@ export default {
 
     if (pathname === "/admin/delete" && request.method === "POST") {
       return handleDelete(request, db, env, ctx);
+    }
+
+    if (pathname === "/admin/mod-override" && request.method === "POST") {
+      return handleModOverrideSet(request, db, env);
+    }
+    if (pathname === "/admin/mod-override" && request.method === "DELETE") {
+      return handleModOverrideDelete(request, db, env);
+    }
+    if (pathname === "/admin/mod-overrides" && request.method === "GET") {
+      return handleModOverrideList(request, db, env);
     }
 
     return json({ error: "not found" }, 404);

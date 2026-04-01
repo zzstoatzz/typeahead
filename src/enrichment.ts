@@ -196,25 +196,31 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
             );
             if (f.avatarCid) enriched++;
           }
-          // PDS fallback for unreturned DIDs — check if bsky banned them
+          // PDS fallback for unreturned DIDs
           for (const r of batch) {
             if (returned.has(r.did)) continue;
             const override = overrides.get(r.did) ?? null;
-            // if we have a PDS, check if this is a takedown (or has show override)
             if (r.pds && (override === 'show' || !override)) {
-              let isTakedown = override === 'show'; // trust override
-              if (!isTakedown) {
-                try {
-                  const probe = await fetch(
-                    `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(r.did)}`
-                  );
-                  if (!probe.ok) {
-                    const err: any = await probe.json().catch(() => ({}));
-                    isTakedown = err.error === 'AccountTakedown';
-                  }
-                } catch {}
+              // non-bsky PDS (e.g. tngl.sh): always try PDS fallback directly
+              const isNonBsky = !r.pds.includes('.bsky.network');
+              let tryPds = isNonBsky;
+              if (!tryPds) {
+                // bsky PDS: check if this is a takedown
+                if (override === 'show') {
+                  tryPds = true;
+                } else {
+                  try {
+                    const probe = await fetch(
+                      `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(r.did)}`
+                    );
+                    if (!probe.ok) {
+                      const err: any = await probe.json().catch(() => ({}));
+                      tryPds = err.error === 'AccountTakedown';
+                    }
+                  } catch {}
+                }
               }
-              if (isTakedown) {
+              if (tryPds) {
                 const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
                 if (pdsProfile) {
                   const f = extractProfileFields(pdsProfile, override);

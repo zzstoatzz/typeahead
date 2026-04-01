@@ -17,6 +17,7 @@ usage:
 
 import argparse
 import json
+import os
 import sys
 import urllib.request
 import urllib.error
@@ -260,6 +261,101 @@ def find_noauth_actor(base_url: str) -> bool:
     return False
 
 
+LINK_DID = "did:plc:63hvnyjvqi2nzzcsjgnry5we"
+LINK_HANDLE = "spacelawshitpost.me"
+
+
+def admin_fetch(url: str, secret: str, method: str = "GET", body: dict | None = None) -> tuple[dict | None, int]:
+    """fetch with admin auth. returns (body, status_code)."""
+    data = json.dumps(body).encode() if body else None
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "User-Agent": "typeahead-smoke/1.0",
+            "Authorization": f"Bearer {secret}",
+            **({"Content-Type": "application/json"} if data else {}),
+        },
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read()), resp.status
+    except urllib.error.HTTPError as e:
+        try:
+            return json.loads(e.read()), e.code
+        except Exception:
+            return None, e.code
+
+
+def test_link_visible(base_url: str):
+    """verify Link (spacelawshitpost.me) is visible — requires a permanent show override."""
+    print("\n--- Link visibility ---")
+    data, _ = fetch(f"{base_url}{XRPC_PATH}?q=spacelawshitpost&limit=5")
+    if not data or "_error" in data or "_http_error" in data:
+        check("search for Link", False, f"got {data}")
+        return
+    handles = [a.get("handle", "") for a in data.get("actors", [])]
+    check(f"Link visible in search", LINK_HANDLE in handles, f"got {handles}")
+
+
+def test_mod_overrides(base_url: str, secret: str):
+    """exercise the override admin CRUD lifecycle."""
+    print("\n--- mod_overrides admin API ---")
+
+    # 1. ensure Link is indexed
+    data, _ = fetch(f"{base_url}/request-indexing?handle={LINK_HANDLE}", method="POST")
+    if not data or "_error" in data:
+        check("index Link", False, f"got {data}")
+        return
+    check("index Link", data.get("did") == LINK_DID, f"got {data.get('did')}")
+
+    # 2. set show override
+    data, status = admin_fetch(
+        f"{base_url}/admin/mod-override", secret, "POST",
+        {"did": LINK_DID, "action": "show", "reason": "FREE LINK"},
+    )
+    check("set show override", status == 200 and data and data.get("action") == "show",
+          f"status={status}, got {data}")
+    if data:
+        check("override sets hidden=0", data.get("hidden") == 0, f"got hidden={data.get('hidden')}")
+
+    # 3. validate input — bad action should 400
+    data, status = admin_fetch(
+        f"{base_url}/admin/mod-override", secret, "POST",
+        {"did": LINK_DID, "action": "yolo"},
+    )
+    check("bad action returns 400", status == 400, f"status={status}")
+
+    # 4. list overrides — Link should be there
+    data, status = admin_fetch(f"{base_url}/admin/mod-overrides", secret)
+    if data:
+        override_dids = [o.get("did") for o in data.get("overrides", [])]
+        check("Link in override list", LINK_DID in override_dids)
+    else:
+        check("list overrides", False, f"status={status}")
+
+    # 5. delete override — hidden recomputed from labels
+    data, status = admin_fetch(f"{base_url}/admin/mod-override?did={LINK_DID}", secret, "DELETE")
+    check("delete override", status == 200, f"status={status}, got {data}")
+
+    # 6. verify override is gone
+    data, status = admin_fetch(f"{base_url}/admin/mod-overrides", secret)
+    if data:
+        override_dids = [o.get("did") for o in data.get("overrides", [])]
+        check("Link removed from overrides", LINK_DID not in override_dids)
+    else:
+        check("list overrides after delete", False, f"status={status}")
+
+    # 7. re-set the override — Link should stay visible permanently
+    data, status = admin_fetch(
+        f"{base_url}/admin/mod-override", secret, "POST",
+        {"did": LINK_DID, "action": "show", "reason": "FREE LINK"},
+    )
+    check("re-set show override", status == 200 and data and data.get("hidden") == 0,
+          f"status={status}, got {data}")
+
+
 def test_comparison(base_url: str, queries: list[str]):
     print("\n--- comparison vs public.api.bsky.app ---")
 
@@ -288,6 +384,8 @@ def test_comparison(base_url: str, queries: list[str]):
 def main():
     parser = argparse.ArgumentParser(description="typeahead smoke tests")
     parser.add_argument("--url", required=True, help="typeahead service URL")
+    parser.add_argument("--secret", default=os.environ.get("TYPEAHEAD_SECRET", ""),
+                        help="admin secret (or set TYPEAHEAD_SECRET env var)")
     parser.add_argument("--compare", action="store_true", help="compare results vs public.api.bsky.app")
     parser.add_argument(
         "--queries",
@@ -310,6 +408,13 @@ def main():
     test_stats_page(args.url)
     test_request_indexing(args.url)
     test_moderation_filtering(args.url)
+    test_link_visible(args.url)
+
+    if args.secret:
+        test_mod_overrides(args.url, args.secret)
+    else:
+        print(f"\n--- mod_overrides admin API ---")
+        print(f"  [{SKIP}] skipped (use --secret or set TYPEAHEAD_SECRET)")
 
     if args.compare:
         test_comparison(args.url, args.queries)

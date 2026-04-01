@@ -75,16 +75,16 @@ export async function handleSearch(
   const ftsQuery = `"${term}"*`;
   const [exactRes, prefixRes, ftsRes] = await db.batch([
     db.prepare(
-      `SELECT did, handle, display_name, avatar_url, labels, created_at, associated
+      `SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
        FROM actors WHERE handle = ?1 COLLATE NOCASE AND hidden = 0 LIMIT 1`
     ).bind(term),
     db.prepare(
-      `SELECT did, handle, display_name, avatar_url, labels, created_at, associated
+      `SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
        FROM actors WHERE handle LIKE ?1 COLLATE NOCASE AND handle != ?2 COLLATE NOCASE AND hidden = 0
        ORDER BY length(handle) LIMIT ?3`
     ).bind(term + '%', term, limit),
     db.prepare(
-      `SELECT a.did, a.handle, a.display_name, a.avatar_url, a.labels, a.created_at, a.associated
+      `SELECT a.did, a.handle, a.display_name, a.avatar_url, a.labels, a.created_at, a.associated, a.pds
        FROM actors_fts
        JOIN actors a ON a.rowid = actors_fts.rowid
        WHERE actors_fts MATCH ?1 AND a.handle != '' AND a.hidden = 0
@@ -110,7 +110,7 @@ export async function handleSearch(
     did: r.did,
     handle: r.handle,
     ...(r.display_name ? { displayName: r.display_name } : {}),
-    ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url) } : {}),
+    ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url, r.pds) } : {}),
     ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
     labels: JSON.parse(r.labels || '[]'),
     ...(r.created_at ? { createdAt: r.created_at } : {}),

@@ -42,7 +42,7 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
     // 1. exact handle match
     {
         var rows = local.query(
-            \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated
+            \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
             \\FROM actors WHERE handle = ? COLLATE NOCASE AND hidden = 0 LIMIT 1
         , .{term}) catch |err| blk: {
             log.err("exact query failed: {}", .{err});
@@ -135,7 +135,7 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
         for (prefix_dids[0..prefix_count]) |did| {
             if (emitted >= limit) break;
             var rows = local.query(
-                \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated
+                \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
                 \\FROM actors WHERE did = ?
             , .{did}) catch continue;
             defer rows.deinit();
@@ -186,7 +186,7 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
         for (candidate_dids[0..candidate_count]) |did| {
             if (emitted >= limit) break;
             var rows = local.query(
-                \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated
+                \\SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
                 \\FROM actors WHERE did = ? AND handle != '' AND hidden = 0
             , .{did}) catch continue;
             defer rows.deinit();
@@ -206,6 +206,7 @@ pub fn search(local: *LocalDb, raw_query: []const u8, limit: usize, writer: anyt
 
 /// Write a single actor object from a live SQLite row.
 /// Must be called while the row's statement is still alive.
+/// Row columns: did, handle, display_name, avatar_url, labels, created_at, associated, pds
 fn writeActorFromRow(jw: anytype, row: LocalDb.Row) !void {
     const did = row.text(0);
     const handle = row.text(1);
@@ -214,6 +215,7 @@ fn writeActorFromRow(jw: anytype, row: LocalDb.Row) !void {
     const labels = row.text(4);
     const created_at = row.text(5);
     const associated = row.text(6);
+    const pds = row.text(7);
 
     try jw.beginObject();
 
@@ -230,6 +232,9 @@ fn writeActorFromRow(jw: anytype, row: LocalDb.Row) !void {
         try jw.objectField("avatar");
         if (mem.startsWith(u8, avatar_url, "https://")) {
             try jw.write(avatar_url);
+        } else if (pds.len > 0 and !mem.endsWith(u8, pds, ".bsky.network")) {
+            // non-bsky PDS: construct blob URL from PDS + DID + CID
+            try jw.print("\"{s}/xrpc/com.atproto.sync.getBlob?did={s}&cid={s}\"", .{ pds, did, avatar_url });
         } else {
             try jw.print("\"https://cdn.bsky.app/img/avatar/plain/{s}/{s}\"", .{ did, avatar_url });
         }

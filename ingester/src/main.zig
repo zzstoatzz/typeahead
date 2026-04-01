@@ -5,6 +5,7 @@ const posix = std.posix;
 const Allocator = mem.Allocator;
 const Thread = std.Thread;
 const zat = @import("zat");
+const logfire = @import("logfire");
 const HttpTransport = zat.HttpTransport;
 const LocalDb = @import("db/LocalDb.zig");
 const sync = @import("db/sync.zig");
@@ -41,6 +42,7 @@ fn jetstreamThread(args: JetstreamArgs) void {
             "app.bsky.feed.post",
             "app.bsky.feed.like",
             "app.bsky.graph.follow",
+            "sh.tangled.actor.profile",
         },
         .cursor = ingest.fetchCursor(args.transport, args.config),
     });
@@ -62,6 +64,15 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
+
+    // configure logfire (reads LOGFIRE_WRITE_TOKEN from env)
+    _ = logfire.configure(.{
+        .service_name = "typeahead-ingester",
+        .service_version = "0.1.0",
+        .environment = posix.getenv("FLY_APP_NAME") orelse "development",
+    }) catch |err| {
+        log.err("logfire configure failed: {}", .{err});
+    };
 
     const config = ingest.getConfig();
     log.info("typeahead ingester → {s}", .{config.worker_url});

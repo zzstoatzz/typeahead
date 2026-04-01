@@ -152,12 +152,16 @@ fn createSchema(self: *LocalDb) !void {
         \\  hidden INTEGER NOT NULL DEFAULT 0,
         \\  labels TEXT NOT NULL DEFAULT '[]',
         \\  created_at TEXT DEFAULT '',
-        \\  associated TEXT DEFAULT '{}'
+        \\  associated TEXT DEFAULT '{}',
+        \\  pds TEXT DEFAULT ''
         \\)
     , .{}) catch |err| {
         log.err("failed to create actors table: {}", .{err});
         return err;
     };
+
+    // migration: add pds column if missing (existing deployments)
+    c.exec("ALTER TABLE actors ADD COLUMN pds TEXT DEFAULT ''", .{}) catch {};
 
     c.exec("CREATE INDEX IF NOT EXISTS idx_actors_handle ON actors(handle COLLATE NOCASE)", .{}) catch {};
 

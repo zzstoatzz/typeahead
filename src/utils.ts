@@ -13,45 +13,54 @@ export function json(data: unknown, status = 200): Response {
   return Response.json(data, { status, headers: CORS_HEADERS });
 }
 
-export function avatarUrl(did: string, cidOrUrl: string): string {
+export function avatarUrl(did: string, cidOrUrl: string, pds?: string): string {
   if (cidOrUrl.startsWith("https://")) return cidOrUrl;
+  if (pds && !pds.includes('.bsky.network')) {
+    return `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cidOrUrl)}`;
+  }
   return `https://cdn.bsky.app/img/avatar/plain/${did}/${cidOrUrl}`;
 }
 
-export function extractAvatarCid(url: string): string {
-  const match = url.match(/\/([^/]+?)(?:@[a-z]+)?$/);
+export function extractAvatarCid(urlOrCid: string): string {
+  if (!urlOrCid) return '';
+  // bare CID (from PDS fallback) — no slashes
+  if (!urlOrCid.includes('/')) return urlOrCid;
+  // PDS getBlob URL — extract cid param
+  const cidParam = urlOrCid.match(/[?&]cid=([^&]+)/);
+  if (cidParam) return decodeURIComponent(cidParam[1]);
+  // bsky CDN URL — extract last path segment
+  const match = urlOrCid.match(/\/([^/]+?)(?:@[a-z]+)?$/);
   return match?.[1] ?? '';
 }
 
-/** fetch profile directly from an actor's PDS — fallback for banned/suspended accounts */
+/** fetch profile directly from an actor's PDS — tries bsky profile first, then tangled.
+ *  returns bare CID for avatar (not full URL) — caller reconstructs at query time via pds column. */
 export async function fetchProfileFromPds(did: string, pds: string): Promise<any | null> {
-  try {
-    const res = await fetch(
-      `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=app.bsky.actor.profile&rkey=self`
-    );
-    if (!res.ok) return null;
-    const data: any = await res.json();
-    const val = data?.value;
-    if (!val) return null;
+  const collections = ['app.bsky.actor.profile', 'sh.tangled.actor.profile'];
+  for (const collection of collections) {
+    try {
+      const res = await fetch(
+        `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${collection}&rkey=self`
+      );
+      if (!res.ok) continue;
+      const data: any = await res.json();
+      const val = data?.value;
+      if (!val) continue;
 
-    let avatar = '';
-    const cid = val.avatar?.ref?.$link || val.avatar?.ref?.['$link'];
-    if (cid) {
-      avatar = `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
+      return {
+        did,
+        handle: '',
+        displayName: val.displayName || '',
+        avatar: val.avatar?.ref?.$link || val.avatar?.ref?.['$link'] || '',
+        labels: [],
+        createdAt: val.createdAt || '',
+        associated: {},
+      };
+    } catch {
+      continue;
     }
-
-    return {
-      did,
-      handle: '',
-      displayName: val.displayName || '',
-      avatar,
-      labels: [],
-      createdAt: val.createdAt || '',
-      associated: {},
-    };
-  } catch {
-    return null;
   }
+  return null;
 }
 
 /** strip zero/false fields from associated object to match bsky's typeahead shape */
@@ -82,10 +91,7 @@ export function extractProfileFields(profile: any, override?: 'show' | 'hide' | 
   if (override === 'show') hidden = 0;
   if (override === 'hide') hidden = 1;
   const raw = profile.avatar || '';
-  // PDS blob URLs are already full URLs — store as-is; CDN URLs get CID extracted
-  const avatarCid = raw.startsWith('https://') && !raw.includes('cdn.bsky.app')
-    ? raw
-    : extractAvatarCid(raw);
+  const avatarCid = extractAvatarCid(raw);
   return {
     handle: profile.handle || '',
     displayName: profile.displayName || '',

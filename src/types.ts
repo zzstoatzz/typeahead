@@ -16,6 +16,7 @@ export interface ActorRow {
   labels: string;
   created_at: string;
   associated: string;
+  pds: string;
 }
 
 export interface IngestEvent {

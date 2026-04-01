@@ -110,6 +110,7 @@ fn executeRaw(self: *TursoClient, sql: []const u8, args: []const []const u8) ![]
         },
         .payload = body,
         .response_writer = &response_body.writer,
+        .keep_alive = false,
     }) catch |err| {
         log.err("http failed: {s}", .{@errorName(err)});
         return error.HttpError;

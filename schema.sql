@@ -74,3 +74,10 @@ CREATE TABLE IF NOT EXISTS tombstones (
   did TEXT PRIMARY KEY,
   deleted_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS mod_overrides (
+  did TEXT PRIMARY KEY,
+  action TEXT NOT NULL,        -- 'show' or 'hide'
+  reason TEXT DEFAULT '',
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);

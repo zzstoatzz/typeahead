@@ -2,6 +2,7 @@ import type { TursoDB } from "./db";
 import type { Env } from "./types";
 import { BSKY_TYPEAHEAD_URL } from "./types";
 import { extractProfileFields } from "./utils";
+import { getOverrides } from "./moderation";
 
 // --- backfill: remove this block once at parity with Bluesky ---
 
@@ -29,8 +30,9 @@ export async function backfillFromBsky(
 
     // upsert all — fills in missing actors AND enriches existing ones
     // (e.g. actors ingested via Jetstream that lack avatar/displayName)
+    const overrides = await getOverrides(db, actors.map((a) => a.did));
     const stmts = actors.map((a) => {
-      const f = extractProfileFields(a);
+      const f = extractProfileFields(a, overrides.get(a.did) ?? null);
       return db.prepare(
         `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, unixepoch())
