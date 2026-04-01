@@ -151,9 +151,36 @@ export function docsPage(): string {
       <li><strong>rate limited</strong> — 60 req/min per IP</li>
       <li><strong>cached</strong> — results are edge-cached for 60s, so very recent profile changes may lag</li>
       <li><strong>limit range</strong> — <code>1–100</code> (bluesky defaults to 10)</li>
-      <li><strong>moderation</strong> — actors with <code>!hide</code> or <code>!takedown</code> labels are excluded</li>
+      <li><strong>moderation</strong> — see <a href="#moderation">moderation</a> below</li>
       <li><strong>CORS</strong> — enabled, so browser-based apps can call it directly</li>
     </ul>
+
+    <h2 id="moderation">moderation</h2>
+    <p>
+      atproto is a network, not a single app. bluesky PBC runs the largest appview and applies its
+      own moderation labels — <code>!hide</code>, <code>!takedown</code>, <code>!suspend</code>,
+      <code>spam</code> — which hide actors from its search results. we respect these labels by
+      default: actors flagged by bluesky's moderation service
+      (<code>did:plc:ar7c4by46qjdydhdevvrndac</code>) are excluded from search.
+    </p>
+    <p>
+      however, not every account banned by bluesky PBC is harmful. some were suspended for policy
+      disputes, handle issues, or reasons unrelated to abuse. because atproto is designed for
+      <a href="https://atproto.com/articles/intent">credible exit</a>, we think these people should
+      still be findable — identity is not content moderation.
+    </p>
+    <p>
+      to support this, the index enriches banned/suspended accounts via their PDS directly
+      (using <code>com.atproto.repo.getRecord</code>), so profiles are discoverable even when
+      bluesky's API refuses to serve them. these accounts start hidden and can be explicitly
+      un-hidden via an admin override on a case-by-case basis.
+    </p>
+    <p>
+      handles containing explicit slurs are always filtered, regardless of override status. these
+      regexes are
+      <a href="https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/handle/explicit-slurs.ts">ported
+      from bluesky's own PDS</a> and catch Unicode diacritics, Cyrillic substitutions, and leetspeak.
+    </p>
 
     <h2>example: plyr.fm</h2>
     <p>
