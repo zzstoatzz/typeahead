@@ -38,7 +38,7 @@ fn jetstreamThread(args: JetstreamArgs) void {
     };
     defer handler.deinit();
 
-    var client = zat.JetstreamClient.init(args.allocator, .{
+    var client = zat.JetstreamClient.init(io, args.allocator, .{
         .wanted_collections = &.{
             "app.bsky.actor.profile",
             "app.bsky.feed.post",
@@ -50,7 +50,9 @@ fn jetstreamThread(args: JetstreamArgs) void {
     });
     defer client.deinit();
 
-    client.subscribe(&handler);
+    client.subscribe(&handler) catch |err| {
+        log.err("jetstream subscribe failed: {}", .{err});
+    };
 }
 
 fn setSocketTimeout(fd: std.posix.fd_t, secs: u32) !void {

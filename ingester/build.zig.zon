@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         .zat = .{
-            .url = "https://tangled.sh/zat.dev/zat/archive/v0.3.0-alpha.4",
-            .hash = "zat-0.3.0-alpha.4-5PuC7pNgBQCDMShv93KamG-leB6U1GOgqflbaX7Faf_1",
+            .url = "https://tangled.sh/zat.dev/zat/archive/v0.3.0-alpha.7",
+            .hash = "zat-0.3.0-alpha.7-5PuC7uNjBQDv28db31DEKkFn1tU5I4f1GfJs-RrG8_pS",
         },
         .zqlite = .{
             .url = "https://github.com/karlseguin/zqlite.zig/archive/refs/heads/master.tar.gz",
