@@ -1,6 +1,5 @@
 const std = @import("std");
 const mem = std.mem;
-const io = std.Options.debug_io;
 const Allocator = mem.Allocator;
 const zat = @import("zat");
 const logfire = @import("logfire");
@@ -11,6 +10,14 @@ const server = @import("server.zig");
 const ingest = @import("ingest.zig");
 
 const log = std.log.scoped(.ingester);
+
+// override debug_io with a real threaded implementation so Io.Mutex,
+// io.sleep, and network ops work concurrently across threads.
+// without this, std.Options.debug_io uses global_single_threaded which
+// silently serializes all I/O.
+var app_threaded_io: std.Io.Threaded = undefined;
+pub const std_options_debug_threaded_io: ?*std.Io.Threaded = &app_threaded_io;
+const io = std.Options.debug_io;
 
 const SOCKET_TIMEOUT_SECS = 5;
 
@@ -66,6 +73,7 @@ fn setSocketTimeout(fd: std.posix.fd_t, secs: u32) !void {
 
 pub fn main() !void {
     const allocator = std.heap.smp_allocator;
+    app_threaded_io = std.Io.Threaded.init(allocator, .{});
 
     // configure logfire (reads LOGFIRE_WRITE_TOKEN from env)
     _ = logfire.configure(.{
