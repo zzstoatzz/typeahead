@@ -56,7 +56,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
     const { results: identityRows } = await db.prepare(
       `SELECT did FROM actors
        WHERE handle = '' AND identity_checked_at < unixepoch() - 3600
-       ORDER BY identity_checked_at ASC LIMIT 100`
+       ORDER BY identity_checked_at ASC LIMIT 500`
     ).all<{ did: string }>();
 
     if (identityRows && identityRows.length > 0) {
@@ -102,7 +102,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
       `SELECT did FROM actors
        WHERE handle != '' AND pds = ''
          AND identity_checked_at < unixepoch() - 86400
-       ORDER BY identity_checked_at ASC LIMIT 100`
+       ORDER BY identity_checked_at ASC LIMIT 500`
     ).all<{ did: string }>();
 
     if (pdsRows && pdsRows.length > 0) {
@@ -151,7 +151,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
        WHERE handle != ''
          AND (avatar_url = '' OR labels = '[]' OR created_at = '')
          AND profile_checked_at < unixepoch() - 3600
-       ORDER BY profile_checked_at ASC LIMIT 75`
+       ORDER BY profile_checked_at ASC LIMIT 250`
     ).all<{ did: string; pds: string }>();
 
     if (profileRows && profileRows.length > 0) {

@@ -2,7 +2,6 @@ import type { TursoDB } from "../db";
 import type { Env, IngestEvent } from "../types";
 import { clientIP, json } from "../utils";
 import { recordActorDelta } from "../metrics";
-import { enrichActors } from "../enrichment";
 
 export async function handleIngest(
   request: Request,
@@ -85,14 +84,6 @@ export async function handleIngest(
       // best-effort — don't fail the ingest if KV write fails (e.g. quota)
     }
   }
-
-  ctx.waitUntil(
-    enrichActors(db, env).then(({ resolved, enriched }) => {
-      if (resolved > 0 || enriched > 0) {
-        return recordActorDelta(db, { handles: resolved, avatars: enriched });
-      }
-    }),
-  );
 
   return json({ ok: true, ingested: events.length });
 }

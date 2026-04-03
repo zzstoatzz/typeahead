@@ -4,13 +4,10 @@
 # dependencies = []
 # ///
 """
-bulk enrich actors via bsky getProfiles API.
+bulk enrich actors missing handles or avatars via bsky getProfiles API.
 
-pages through all actors by rowid, calls getProfiles in concurrent batches,
-writes back handles, avatars, labels, createdAt, associated.
-
-writes in small batches (50 stmts) with 200ms pauses between to avoid
-saturating Turso and blocking production reads.
+only fetches+writes actors that actually need data (handle='' or avatar_url=''),
+skipping already-enriched rows entirely. writes in small batches with pauses.
 
 usage:
     TURSO_URL=... TURSO_AUTH_TOKEN=... ./scripts/bulk-enrich.py
@@ -29,10 +26,10 @@ import urllib.error
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BSKY_GET_PROFILES = "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles"
-PAGE_SIZE = 500  # DIDs per Turso read page
+PAGE_SIZE = 500  # unenriched DIDs per page
 BSKY_CONCURRENCY = 5  # concurrent getProfiles calls
-WRITE_BATCH = 50  # stmts per Turso write — keep write lock short
-WRITE_PAUSE = 0.2  # seconds between write batches — let reads through
+WRITE_BATCH = 25  # stmts per Turso write — tiny to minimize lock time
+WRITE_PAUSE = 0.05  # seconds between write batches
 
 DIM = "\033[2m"
 RESET = "\033[0m"
@@ -79,7 +76,7 @@ def turso_batch_write(stmts, turso_url, turso_token):
         "Authorization": f"Bearer {turso_token}", "Content-Type": "application/json",
     })
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             json.loads(resp.read())
             return True
     except Exception as e:
@@ -156,26 +153,37 @@ def main():
     turso_token = get_turso_token()
 
     enriched = 0
-    checked = 0
+    skipped = 0
     not_found = 0
     t0 = time.time()
     last_rowid = args.start_rowid
 
-    print(f"bulk enriching (concurrency={BSKY_CONCURRENCY}, write_batch={WRITE_BATCH}, write_pause={WRITE_PAUSE}s)...")
+    print(f"bulk enriching unenriched actors only (concurrency={BSKY_CONCURRENCY}, write_batch={WRITE_BATCH})...")
     if args.dry_run: print("  DRY RUN — no writes")
     if args.start_rowid: print(f"  resuming from rowid {args.start_rowid}")
 
     while True:
+        # cheap rowid-paginated read — no filter scan, just walk forward
         rows = turso_query(
-            "SELECT rowid, did FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT ?2",
+            "SELECT rowid, did, handle, avatar_url FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT ?2",
             [{"type": "integer", "value": str(last_rowid)}, {"type": "integer", "value": str(PAGE_SIZE)}],
             turso_url, turso_token,
         )
         if not rows:
             break
 
-        dids = [r["did"] for r in rows]
         last_rowid = int(rows[-1]["rowid"])
+
+        # filter client-side: only fetch profiles for rows missing data
+        need = [r for r in rows if not r["handle"] or not r["avatar_url"]]
+        skipped += len(rows) - len(need)
+
+        if not need:
+            elapsed = time.time() - t0
+            print(f"  skipped {len(rows)} already-enriched  {DIM}rowid={last_rowid}{RESET}")
+            continue
+
+        dids = [r["did"] for r in need]
 
         # getProfiles in concurrent batches of 25
         batches = [dids[i:i+25] for i in range(0, len(dids), 25)]
@@ -193,10 +201,9 @@ def main():
                     result = fetch_profiles(batch)
                     if result == "rate_limited":
                         print("  still limited, skipping batch")
-                        checked += len(batch)
+                        not_found += len(batch)
                         continue
 
-                checked += len(batch)
                 returned = {p["did"] for p in result}
                 not_found += len(batch) - len(returned)
 
@@ -204,28 +211,27 @@ def main():
                     pending.append(profile_to_stmt(p))
                     enriched += 1
 
-        # write in small batches with pauses between each
+        # write in small batches
         if pending and not args.dry_run:
             write_t0 = time.time()
-            write_chunks = 0
+            ok = 0
             for i in range(0, len(pending), WRITE_BATCH):
-                turso_batch_write(pending[i:i+WRITE_BATCH], turso_url, turso_token)
-                write_chunks += 1
+                if turso_batch_write(pending[i:i+WRITE_BATCH], turso_url, turso_token):
+                    ok += len(pending[i:i+WRITE_BATCH])
                 time.sleep(WRITE_PAUSE)
             write_ms = int((time.time() - write_t0) * 1000)
-            print(f"    wrote {len(pending)} stmts in {write_chunks} chunks ({write_ms}ms)")
+            print(f"    wrote {ok}/{len(pending)} stmts ({write_ms}ms)")
 
         elapsed = time.time() - t0
-        rate = checked / elapsed if elapsed > 0 else 0
+        rate = enriched / elapsed if elapsed > 0 else 0
         tag = "dry" if args.dry_run else "live"
         print(
-            f"  [{tag}] checked={checked:,}  enriched={enriched:,}  "
-            f"not_found={not_found:,}  "
-            f"{DIM}{rate:.0f} dids/s  rowid={last_rowid}{RESET}"
+            f"  [{tag}] enriched={enriched:,}  skipped={skipped:,}  not_found={not_found:,}  "
+            f"{DIM}{rate:.0f}/s  rowid={last_rowid}{RESET}"
         )
 
     elapsed = time.time() - t0
-    print(f"\ndone in {elapsed:.0f}s. enriched={enriched:,}, not_found={not_found:,}, checked={checked:,}")
+    print(f"\ndone in {elapsed:.0f}s. enriched={enriched:,}, not_found={not_found:,}")
 
 
 if __name__ == "__main__":

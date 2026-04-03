@@ -2,12 +2,12 @@ import type { Env } from "./types";
 import { CORS_HEADERS } from "./types";
 import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
-import { recordSnapshot, materializeStats } from "./enrichment";
-import { enrichActors } from "./enrichment";
+import { recordSnapshot, materializeStats, enrichActors } from "./enrichment";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList } from "./handlers/admin";
+import { handleGetProfiles } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
@@ -71,6 +71,18 @@ export default {
         return json({ error: "rate limited" }, 429);
       }
       return handleSearch(request, db, env, ctx);
+    }
+
+    if (
+      pathname === "/xrpc/app.bsky.actor.getProfiles" &&
+      request.method === "GET"
+    ) {
+      const ip = clientIP(request);
+      const { success } = await env.RATE_LIMITER.limit({ key: ip });
+      if (!success) {
+        return json({ error: "rate limited" }, 429);
+      }
+      return handleGetProfiles(request, db, env);
     }
 
     if (pathname === "/admin/ingest" && request.method === "POST") {

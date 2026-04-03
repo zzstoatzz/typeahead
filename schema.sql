@@ -16,6 +16,14 @@ CREATE TABLE IF NOT EXISTS actors (
 CREATE INDEX IF NOT EXISTS idx_actors_handle ON actors(handle COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS idx_actors_hidden ON actors(hidden) WHERE hidden != 0;
 
+-- sync index: incremental sync queries filter on updated_at
+CREATE INDEX IF NOT EXISTS idx_actors_updated_at ON actors(updated_at, did);
+
+-- enrichment indexes: avoid full-table scans in cron enrichment queries
+CREATE INDEX IF NOT EXISTS idx_actors_enrich_identity ON actors(identity_checked_at) WHERE handle = '';
+CREATE INDEX IF NOT EXISTS idx_actors_enrich_pds ON actors(identity_checked_at) WHERE handle != '' AND pds = '';
+CREATE INDEX IF NOT EXISTS idx_actors_enrich_profile ON actors(profile_checked_at) WHERE handle != '' AND (avatar_url = '' OR labels = '[]' OR created_at = '');
+
 CREATE VIRTUAL TABLE IF NOT EXISTS actors_fts USING fts5(
   handle, display_name,
   content='actors', content_rowid='rowid',
@@ -74,6 +82,8 @@ CREATE TABLE IF NOT EXISTS tombstones (
   did TEXT PRIMARY KEY,
   deleted_at INTEGER NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_tombstones_deleted_at ON tombstones(deleted_at);
 
 CREATE TABLE IF NOT EXISTS mod_overrides (
   did TEXT PRIMARY KEY,
