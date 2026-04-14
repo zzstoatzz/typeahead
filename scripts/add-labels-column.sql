@@ -1,1 +1,0 @@
-ALTER TABLE actors ADD COLUMN labels TEXT NOT NULL DEFAULT '[]';

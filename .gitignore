@@ -3,5 +3,7 @@ node_modules/
 .zig-cache/
 zig-out/
 zig-cache/
+zig-pkg/
 .dev.vars
+.env
 scripts/bench-results.json
