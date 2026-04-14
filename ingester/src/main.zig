@@ -21,6 +21,14 @@ const io = std.Options.debug_io;
 
 const SOCKET_TIMEOUT_SECS = 5;
 
+// graceful shutdown: SIGTERM → close listening socket → accept breaks → drain tasks
+var listen_fd: std.atomic.Value(std.posix.fd_t) = std.atomic.Value(std.posix.fd_t).init(-1);
+
+fn handleSigterm(_: std.posix.SIG) callconv(.c) void {
+    const fd = listen_fd.load(.acquire);
+    if (fd >= 0) _ = std.posix.system.shutdown(fd, 2); // SHUT_RDWR
+}
+
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     if (std.c.getenv(name)) |p| return mem.span(p);
     return null;
@@ -73,7 +81,10 @@ fn setSocketTimeout(fd: std.posix.fd_t, secs: u32) !void {
 
 pub fn main() !void {
     const allocator = std.heap.smp_allocator;
-    app_threaded_io = std.Io.Threaded.init(allocator, .{});
+    app_threaded_io = std.Io.Threaded.init(allocator, .{
+        .stack_size = 8 * 1024 * 1024, // 8MB (default 16MB is wasteful on 256MB VM)
+        .async_limit = std.Io.Limit.limited(8), // bounded HTTP handler pool
+    });
 
     // configure logfire (reads LOGFIRE_WRITE_TOKEN from env)
     _ = logfire.configure(.{
@@ -113,30 +124,47 @@ pub fn main() !void {
 
     log.info("listening on port {d}", .{port});
 
-    // start sync thread (background — turso → local SQLite)
+    // register SIGTERM for graceful shutdown (Fly sends SIGTERM before stopping)
+    listen_fd.store(srv.socket.handle, .release);
+    std.posix.sigaction(.TERM, &.{
+        .handler = .{ .handler = handleSigterm },
+        .mask = mem.zeroes(std.posix.sigset_t),
+        .flags = 0,
+    }, null);
+
+    // task group: .concurrent for long-lived background tasks,
+    // .async (bounded pool, inline fallback) for HTTP handlers
+    var tasks: std.Io.Group = .init;
+
+    // start sync (background — turso → local SQLite)
     if (local_db_ptr) |db| {
-        const sync_thread = try std.Thread.spawn(.{}, sync.syncLoop, .{ allocator, db });
-        sync_thread.detach();
+        tasks.concurrent(io, sync.syncLoop, .{ allocator, db }) catch |err| {
+            log.err("sync task failed: {}", .{err});
+        };
     }
 
-    // start jetstream thread (background — ingestion)
+    // start jetstream (background — ingestion)
     var transport = HttpTransport.init(io, allocator);
     transport.keep_alive = false;
     defer transport.deinit();
 
-    const js_thread = try std.Thread.spawn(.{}, jetstreamThread, .{JetstreamArgs{
+    tasks.concurrent(io, jetstreamThread, .{JetstreamArgs{
         .allocator = allocator,
         .config = config,
         .transport = &transport,
         .local_db = local_db_ptr,
-    }});
-    js_thread.detach();
+    }}) catch |err| {
+        log.err("jetstream task failed: {}", .{err});
+    };
 
     // main thread: HTTP accept loop
     while (true) {
-        const stream = srv.accept(io) catch |err| {
-            log.err("accept error: {}", .{err});
-            continue;
+        const stream = srv.accept(io) catch |err| switch (err) {
+            error.SocketNotListening => break,
+            else => {
+                log.err("accept error: {}", .{err});
+                continue;
+            },
         };
 
         setSocketTimeout(stream.socket.handle, SOCKET_TIMEOUT_SECS) catch |err| {
@@ -144,12 +172,8 @@ pub fn main() !void {
         };
 
         if (local_db_ptr) |db| {
-            const handler_thread = std.Thread.spawn(.{}, server.handleConnection, .{ stream, db }) catch |err| {
-                log.err("thread spawn error: {}", .{err});
-                stream.close(io);
-                continue;
-            };
-            handler_thread.detach();
+            // bounded pool — inline fallback under load (graceful degradation)
+            tasks.async(io, server.handleConnection, .{ stream, db });
         } else {
             // no local DB — just serve health
             var read_buffer: [1024]u8 = undefined;
@@ -170,4 +194,8 @@ pub fn main() !void {
             stream.close(io);
         }
     }
+
+    log.info("SIGTERM received, draining tasks…", .{});
+    tasks.cancel(io);
+    log.info("shutdown complete", .{});
 }
