@@ -200,12 +200,40 @@ pub const IngestHandler = struct {
         if (!acct.active) {
             const did = self.dupe(acct.did) orelse return;
 
-            // dual-write: delete from local (skip if sync holds the lock)
+            // dual-write: delete from local + FTS (skip if sync holds the lock)
             if (self.local_db) |db| {
                 if (db.mutex.tryLock()) {
                     defer db.mutex.unlock(io);
                     if (db.getConn()) |c| {
+                        // FTS5 special delete: read old values before removing
+                        var old_handle_buf: [256]u8 = undefined;
+                        var old_name_buf: [512]u8 = undefined;
+                        var old_handle: ?[]const u8 = null;
+                        var old_name: ?[]const u8 = null;
+                        if (c.row("SELECT handle, display_name FROM actors WHERE did = ?", .{did})) |maybe_row| {
+                            if (maybe_row) |r| {
+                                defer r.deinit();
+                                const h = r.text(0);
+                                const n = r.text(1);
+                                if (h.len > 0 and h.len <= old_handle_buf.len) {
+                                    @memcpy(old_handle_buf[0..h.len], h);
+                                    old_handle = old_handle_buf[0..h.len];
+                                }
+                                if (n.len > 0 and n.len <= old_name_buf.len) {
+                                    @memcpy(old_name_buf[0..n.len], n);
+                                    old_name = old_name_buf[0..n.len];
+                                }
+                            }
+                        } else |_| {}
+
                         c.exec("DELETE FROM actors WHERE did = ?", .{did}) catch {};
+
+                        if (old_handle) |oh| {
+                            c.exec(
+                                \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
+                                \\VALUES('delete', ?, ?, ?)
+                            , .{ did, oh, old_name orelse "" }) catch {};
+                        }
                     }
                 }
             }
@@ -216,7 +244,7 @@ pub const IngestHandler = struct {
 
     /// Dual-write to local SQLite for immediate search availability.
     /// Uses tryLock to avoid blocking ingester when sync holds the write lock.
-    /// FTS is rebuilt by sync at cycle boundaries — no per-row FTS maintenance here.
+    /// Per-row FTS maintenance for handle/identity changes; sync does bulk rebuilds for Turso-sourced changes.
     fn writeToLocal(self: *IngestHandler, event: ActorEvent) void {
         const db = self.local_db orelse return;
         if (!db.isReady()) return;
@@ -231,7 +259,30 @@ pub const IngestHandler = struct {
         const has_name = event.display_name != null and event.display_name.?.len > 0;
         if (!has_handle and !has_name) return;
 
-        // upsert actor (FTS will be rebuilt by next sync cycle)
+        // snapshot old FTS values before upsert (for FTS5 special delete)
+        var old_handle_buf: [256]u8 = undefined;
+        var old_name_buf: [512]u8 = undefined;
+        var old_handle: ?[]const u8 = null;
+        var old_name: ?[]const u8 = null;
+        if (has_handle) {
+            if (conn.row("SELECT handle, display_name FROM actors WHERE did = ?", .{event.did})) |maybe_row| {
+                if (maybe_row) |r| {
+                    defer r.deinit();
+                    const h = r.text(0);
+                    const n = r.text(1);
+                    if (h.len > 0 and h.len <= old_handle_buf.len) {
+                        @memcpy(old_handle_buf[0..h.len], h);
+                        old_handle = old_handle_buf[0..h.len];
+                    }
+                    if (n.len > 0 and n.len <= old_name_buf.len) {
+                        @memcpy(old_name_buf[0..n.len], n);
+                        old_name = old_name_buf[0..n.len];
+                    }
+                }
+            } else |_| {}
+        }
+
+        // upsert actor
         conn.exec(
             \\INSERT INTO actors (did, handle, display_name, avatar_url)
             \\VALUES (?, ?, ?, ?)
@@ -245,6 +296,42 @@ pub const IngestHandler = struct {
             event.display_name orelse "",
             event.avatar_cid orelse "",
         }) catch return;
+
+        // read final merged values post-upsert — the event may lack fields
+        // that COALESCE preserved, and FTS must match what's in `actors`.
+        var final_handle_buf: [256]u8 = undefined;
+        var final_name_buf: [512]u8 = undefined;
+        var final_handle: []const u8 = "";
+        var final_name: []const u8 = "";
+        if (conn.row("SELECT handle, display_name FROM actors WHERE did = ?", .{event.did})) |maybe_row| {
+            if (maybe_row) |r| {
+                defer r.deinit();
+                const h = r.text(0);
+                const n = r.text(1);
+                if (h.len > 0 and h.len <= final_handle_buf.len) {
+                    @memcpy(final_handle_buf[0..h.len], h);
+                    final_handle = final_handle_buf[0..h.len];
+                }
+                if (n.len > 0 and n.len <= final_name_buf.len) {
+                    @memcpy(final_name_buf[0..n.len], n);
+                    final_name = final_name_buf[0..n.len];
+                }
+            }
+        } else |_| return;
+
+        // per-row FTS maintenance: delete old entry, insert new one with merged values
+        if (old_handle) |oh| {
+            conn.exec(
+                \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
+                \\VALUES('delete', ?, ?, ?)
+            , .{ event.did, oh, old_name orelse "" }) catch {};
+        }
+        if (final_handle.len > 0) {
+            conn.exec(
+                \\INSERT INTO actors_fts (did, handle, display_name)
+                \\VALUES (?, ?, ?)
+            , .{ event.did, final_handle, final_name }) catch {};
+        }
     }
 
     fn flush(self: *IngestHandler) void {

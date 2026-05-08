@@ -672,9 +672,10 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         }
     }
 
-    // rebuild FTS from actors table if anything changed.
-    // per-row FTS maintenance is O(N) per delete because `did` is UNINDEXED —
-    // bulk rebuild is O(N) total regardless of how many rows changed.
+    // rebuild FTS from actors table if anything changed from Turso.
+    // identity/account events do per-row FTS maintenance inline (ingest.zig) using
+    // FTS5 special delete (O(1) with known old values). This bulk rebuild handles
+    // Turso-sourced changes that bypass the ingester's real-time path.
     if (updated > 0 or cleared > 0 or deleted > 0) {
         // checkpoint WAL before FTS rebuild — large WAL from batch deletes
         // makes the INSERT SELECT scan extremely slow
