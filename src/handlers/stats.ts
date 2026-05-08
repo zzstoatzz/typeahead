@@ -27,7 +27,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   // traffic sources: live from turso (exclude internal/testing traffic)
   const trafficRes = await db.prepare(
-    "SELECT domain, hits FROM traffic_sources WHERE domain != 'bench' ORDER BY hits DESC LIMIT 10"
+    "SELECT domain, hits FROM traffic_sources WHERE domain != 'bench' ORDER BY hits DESC LIMIT 50"
   ).all<{ domain: string; hits: number }>();
 
   const tQuery = performance.now();

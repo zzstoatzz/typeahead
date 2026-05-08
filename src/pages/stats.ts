@@ -38,18 +38,30 @@ export function statsPage(d: StatsData): string {
   );
 
   const snapshotJson = JSON.stringify(d.snapshots);
-  const trafficJson = JSON.stringify(d.trafficSources);
 
   const PIE_COLORS = ['#4a9', '#58a6ff', '#bc8cff', '#e5a04b', '#e06c75', '#56b6c2', '#c678dd', '#98c379', '#d19a66'];
-  const trafficTotal = d.trafficSources.reduce((s, r) => s + r.hits, 0);
   const SPECIAL_DOMAINS: Record<string, string> = { unknown: '#555', homepage: '#666' };
-  const pieLegendHtml = d.trafficSources.map((r, i) => {
+  const PIE_TOP_N = 12;
+  const trafficTotal = d.trafficSources.reduce((s, r) => s + r.hits, 0);
+  const pieSlice = d.trafficSources.slice(0, PIE_TOP_N);
+  const trafficJson = JSON.stringify(pieSlice);
+  const trafficGrandTotal = trafficTotal;
+
+  const pieLegendHtml = pieSlice.map((r, i) => {
     const color = SPECIAL_DOMAINS[r.domain] ?? PIE_COLORS[i % PIE_COLORS.length];
-    const pct = trafficTotal > 0 ? ((r.hits / trafficTotal) * 100).toFixed(1) : '0';
+    const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
     const label = r.domain in SPECIAL_DOMAINS
       ? r.domain
       : `<a href="https://${r.domain}" target="_blank" rel="noopener" class="legend-link">${r.domain}</a>`;
     return `<span><span class="ldot" style="background:${color}"></span>${label} (${pct}%)</span>`;
+  }).join('');
+
+  const trafficTableRows = d.trafficSources.map((r, i) => {
+    const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
+    const label = r.domain in SPECIAL_DOMAINS
+      ? r.domain
+      : `<a href="https://${r.domain}" target="_blank" rel="noopener" class="legend-link">${r.domain}</a>`;
+    return `<tr><td class="ts-rank">${i + 1}</td><td class="ts-domain">${label}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td></tr>`;
   }).join('');
 
   return `<!doctype html>
@@ -121,6 +133,31 @@ export function statsPage(d: StatsData): string {
                font-size: 0.72rem; color: #ccc; pointer-events: none; z-index: 50;
                white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
 
+    .ts-table-wrap { margin-top: 1rem; max-height: 240px; overflow-y: auto;
+                     -webkit-overflow-scrolling: touch;
+                     border: 1px solid #1f1f1f; border-radius: 4px; }
+    .ts-table-wrap::-webkit-scrollbar { width: 8px; }
+    .ts-table-wrap::-webkit-scrollbar-track { background: #0a0a0a; }
+    .ts-table-wrap::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+    .ts-table { width: 100%; border-collapse: collapse; font-size: 0.72rem;
+                color: #aaa; table-layout: fixed; }
+    .ts-table thead th { position: sticky; top: 0; background: #161616; color: #666;
+                         font-weight: 400; text-align: left; padding: 0.45rem 0.7rem;
+                         border-bottom: 1px solid #222; font-size: 0.68rem;
+                         text-transform: uppercase; letter-spacing: 0.04em; }
+    .ts-table td { padding: 0.35rem 0.7rem; border-bottom: 1px solid #181818; }
+    .ts-table tr:last-child td { border-bottom: none; }
+    .ts-rank { color: #555; width: 2.2rem; }
+    .ts-domain { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ts-domain a { display: inline-block; max-width: 100%;
+                   overflow: hidden; text-overflow: ellipsis;
+                   white-space: nowrap; vertical-align: bottom; }
+    .ts-hits { text-align: right; font-variant-numeric: tabular-nums; color: #ccc;
+               width: 4.5rem; }
+    .ts-pct { text-align: right; font-variant-numeric: tabular-nums; color: #888;
+              width: 3.2rem; }
+    .ts-summary { font-size: 0.7rem; color: #555; margin-top: 0.6rem; text-align: center; }
+
     footer { padding-top: 1.5rem; border-top: 1px solid #1a1a1a; font-size: 0.7rem;
              color: #444; display: flex; justify-content: center; gap: 0.4rem; }
     footer a { color: #555; text-decoration: none; }
@@ -132,6 +169,14 @@ export function statsPage(d: StatsData): string {
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
       .summary-3 { grid-template-columns: 1fr 1fr; }
       #pie { width: 220px; height: 220px; }
+      .pie-legend { gap: 0.4rem 0.7rem; font-size: 0.65rem; }
+      .ts-table-wrap { max-height: 280px; }
+      .ts-table { font-size: 0.68rem; }
+      .ts-table thead th { padding: 0.4rem 0.5rem; font-size: 0.62rem; }
+      .ts-table td { padding: 0.32rem 0.5rem; }
+      .ts-rank { width: 1.8rem; }
+      .ts-hits { width: 3.6rem; }
+      .ts-pct { width: 2.8rem; }
     }
   </style>
 </head>
@@ -197,7 +242,16 @@ export function statsPage(d: StatsData): string {
       <h2>traffic sources</h2>
       ${d.trafficSources.length > 0
         ? `<canvas id="pie"></canvas>
-           <div class="pie-legend">${pieLegendHtml}</div>`
+           <div class="pie-legend">${pieLegendHtml}</div>
+           ${d.trafficSources.length > PIE_TOP_N
+              ? `<div class="ts-summary">top ${PIE_TOP_N} above · all ${d.trafficSources.length} sources below</div>`
+              : ''}
+           <div class="ts-table-wrap">
+             <table class="ts-table">
+               <thead><tr><th>#</th><th>domain</th><th style="text-align:right">hits</th><th style="text-align:right">%</th></tr></thead>
+               <tbody>${trafficTableRows}</tbody>
+             </table>
+           </div>`
         : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
       <div style="margin-top:0.6rem;font-size:0.7rem;color:#555;text-align:center">
         want to show up here? <a href="/docs" style="color:#58a6ff;text-decoration:none">switch from bluesky&rsquo;s typeahead &rarr;</a>
@@ -386,6 +440,7 @@ export function statsPage(d: StatsData): string {
     /* --- traffic sources pie chart --- */
     const PIE_COLORS = ['#4a9', '#58a6ff', '#bc8cff', '#e5a04b', '#e06c75', '#56b6c2', '#c678dd', '#98c379', '#d19a66'];
     const traffic = ${trafficJson};
+    const trafficGrandTotal = ${trafficGrandTotal};
     const pieCanvas = document.getElementById('pie');
     const pieTip = document.getElementById('pie-tip');
 
@@ -488,7 +543,8 @@ export function statsPage(d: StatsData): string {
         }
         if (idx >= 0) {
           const seg = segments[idx];
-          const pct = ((seg.hits / pieTotal) * 100).toFixed(1);
+          const denom = trafficGrandTotal > 0 ? trafficGrandTotal : pieTotal;
+          const pct = ((seg.hits / denom) * 100).toFixed(1);
           pieTip.innerHTML = '<strong>' + seg.domain + '</strong><br>' + seg.hits.toLocaleString() + (seg.hits === 1 ? ' hit' : ' hits') + ' (' + pct + '%)';
           pieTip.style.display = 'block';
           const tx = clientX + 14, ty = clientY - 10;
