@@ -32,15 +32,22 @@ export async function handleSearch(
   const t0 = Date.now();
 
   // cache API — edge cache for hot queries
+  // - hostname must belong to this zone so the CF zone-purge API can target it
+  // - skip cache for handle-shaped queries (contain '.') so newly-indexed
+  //   handles are visible immediately without waiting for TTL expiry
+  const useCache = !term.includes('.');
+  const host = new URL(request.url).host;
   const cacheKey = new Request(
-    `https://typeahead-cache/${encodeURIComponent(term)}:${limit}`,
+    `https://${host}/__cache/${encodeURIComponent(term)}:${limit}`,
     request
   );
   const cache = caches.default;
-  const cached = await cache.match(cacheKey);
-  if (cached) {
-    ctx.waitUntil(recordCacheHit(db, Date.now() - t0));
-    return cached;
+  if (useCache) {
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      ctx.waitUntil(recordCacheHit(db, Date.now() - t0));
+      return cached;
+    }
   }
 
   // try fly backend (local SQLite replica) if configured
@@ -60,9 +67,11 @@ export async function handleSearch(
           headers: { "Content-Type": "application/json", ...CORS_HEADERS },
         });
 
-        const cacheable = new Response(response.clone().body, response);
-        cacheable.headers.set("Cache-Control", "public, max-age=60");
-        ctx.waitUntil(cache.put(cacheKey, cacheable));
+        if (useCache) {
+          const cacheable = new Response(response.clone().body, response);
+          cacheable.headers.set("Cache-Control", "public, max-age=60");
+          ctx.waitUntil(cache.put(cacheKey, cacheable));
+        }
 
         return response;
       }
@@ -131,9 +140,11 @@ export async function handleSearch(
   const response = json({ actors });
 
   // cache for 60 seconds — non-blocking so it doesn't delay the response
-  const cacheable = new Response(response.clone().body, response);
-  cacheable.headers.set("Cache-Control", "public, max-age=60");
-  ctx.waitUntil(cache.put(cacheKey, cacheable));
+  if (useCache) {
+    const cacheable = new Response(response.clone().body, response);
+    cacheable.headers.set("Cache-Control", "public, max-age=60");
+    ctx.waitUntil(cache.put(cacheKey, cacheable));
+  }
 
   return response;
 }
