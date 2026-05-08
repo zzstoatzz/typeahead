@@ -10,7 +10,7 @@
         },
         .zqlite = .{
             .url = "https://github.com/karlseguin/zqlite.zig/archive/refs/heads/master.tar.gz",
-            .hash = "zqlite-0.0.1-RWLaY2UvnAA4CCI5IMmkj5EsRJ3a5EIk_JELFR5Pjxzk",
+            .hash = "zqlite-0.0.1-RWLaY64xnAAxsD2YNT8QqPMJUuaFv2GOzFRR4aGypJv3",
         },
         .logfire = .{
             .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/1ed66749bb5910d07586f6aa8641682f6b154928",
