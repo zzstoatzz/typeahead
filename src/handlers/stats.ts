@@ -25,9 +25,23 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
     materialized_at: number;
   } | null;
 
-  // traffic sources: live from turso (exclude internal/testing traffic)
+  // traffic sources: live from turso. exclude:
+  //  - internal probes (bench, cf-migration-*, migration-*)
+  //  - dev tunnels (trycloudflare, ngrok variants)
+  //  - rfc1918 / loopback IPs
   const trafficRes = await db.prepare(
-    "SELECT domain, hits FROM traffic_sources WHERE domain != 'bench' ORDER BY hits DESC LIMIT 50"
+    `SELECT domain, hits FROM traffic_sources
+     WHERE domain != 'bench'
+       AND domain NOT IN ('cf-migration-verify', 'cf-migration-baseline',
+                          'migration-check', 'migration-debug')
+       AND domain NOT LIKE '%.trycloudflare.com'
+       AND domain NOT LIKE '%.ngrok.app'
+       AND domain NOT LIKE '%.ngrok.io'
+       AND domain NOT LIKE '%.ngrok-free.app'
+       AND domain NOT LIKE '192.168.%'
+       AND domain NOT LIKE '10.%.%.%'
+       AND domain NOT LIKE '127.%'
+     ORDER BY hits DESC LIMIT 50`
   ).all<{ domain: string; hits: number }>();
 
   const tQuery = performance.now();
