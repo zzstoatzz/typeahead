@@ -49,6 +49,28 @@ def get_turso_token() -> str:
     return token
 
 
+def _urlopen_with_retry(req, *, timeout=30, attempts=5):
+    """retry on transient network errors (DNS, conn reset, timeout, 5xx).
+    survives a sleeping laptop / wifi blip without losing the run."""
+    delay = 1.0
+    for i in range(attempts):
+        try:
+            return urllib.request.urlopen(req, timeout=timeout).read()
+        except urllib.error.HTTPError as e:
+            # retry server-side hiccups; bubble client errors
+            if 500 <= e.code < 600 and i < attempts - 1:
+                print(f"  retry HTTP {e.code} (attempt {i+1}/{attempts})", file=sys.stderr)
+            else:
+                raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
+            if i < attempts - 1:
+                print(f"  retry {type(e).__name__}: {e} (attempt {i+1}/{attempts})", file=sys.stderr)
+            else:
+                raise
+        time.sleep(delay)
+        delay = min(delay * 2, 30)
+
+
 def turso_query(sql, args, turso_url, turso_token):
     body = json.dumps({"requests": [
         {"type": "execute", "stmt": {"sql": sql, "args": args}},
@@ -57,15 +79,15 @@ def turso_query(sql, args, turso_url, turso_token):
     req = urllib.request.Request(f"{turso_url}/v3/pipeline", data=body, headers={
         "Authorization": f"Bearer {turso_token}", "Content-Type": "application/json",
     })
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        result = json.loads(resp.read())
-        res = result["results"][0]
-        if res.get("type") == "error":
-            print(f"  turso error: {res['error']['message']}", file=sys.stderr)
-            return []
-        cols = [c["name"] for c in res["response"]["result"]["cols"]]
-        return [{c: (v["value"] if v["type"] != "null" else None) for c, v in zip(cols, row)}
-                for row in res["response"]["result"]["rows"]]
+    raw = _urlopen_with_retry(req, timeout=30)
+    result = json.loads(raw)
+    res = result["results"][0]
+    if res.get("type") == "error":
+        print(f"  turso error: {res['error']['message']}", file=sys.stderr)
+        return []
+    cols = [c["name"] for c in res["response"]["result"]["cols"]]
+    return [{c: (v["value"] if v["type"] != "null" else None) for c, v in zip(cols, row)}
+            for row in res["response"]["result"]["rows"]]
 
 
 def turso_batch_write(stmts, turso_url, turso_token):
@@ -76,11 +98,10 @@ def turso_batch_write(stmts, turso_url, turso_token):
         "Authorization": f"Bearer {turso_token}", "Content-Type": "application/json",
     })
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            json.loads(resp.read())
-            return True
+        json.loads(_urlopen_with_retry(req, timeout=30))
+        return True
     except Exception as e:
-        print(f"\n  turso write failed: {e}", file=sys.stderr)
+        print(f"\n  turso write failed after retries: {e}", file=sys.stderr)
         return False
 
 

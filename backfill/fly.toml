@@ -1,0 +1,20 @@
+# one-shot bulk backfill — drains the handle='' backlog via bsky.getProfiles.
+# deploy from the repo root: fly deploy --config backfill/fly.toml
+# secrets: TURSO_URL, TURSO_AUTH_TOKEN
+# stop when done: fly scale count 0 -a typeahead-backfill
+
+app = 'typeahead-backfill'
+primary_region = 'ewr'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+# clean exit (process done) → no restart; non-zero exit → up to 5 retries
+[[restart]]
+  policy = 'on-failure'
+  retries = 5
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'
+  cpus = 1

@@ -40,3 +40,14 @@ cleanup batch_size="500" batches="10" pause="30":
 # dry-run cleanup (no writes)
 cleanup-dry batch_size="500":
     ./scripts/cleanup-dead-actors.py --dry-run --limit {{batch_size}}
+
+# sync the script copy + deploy the fly backfill app
+# (the canonical script is scripts/bulk-enrich.py; backfill/ keeps a copy
+# only because fly's build context is rooted at fly.toml's directory)
+backfill-deploy:
+    cp scripts/bulk-enrich.py backfill/bulk-enrich.py
+    cd backfill && fly deploy
+
+# stop the backfill app (run when /stats coverage hits ~100% and logs say "done")
+backfill-stop:
+    fly scale count 0 -a typeahead-backfill
