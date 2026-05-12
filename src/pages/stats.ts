@@ -21,7 +21,7 @@ export interface StatsData {
 }
 
 export function statsPage(d: StatsData): string {
-  // search sparkline data (oldest first)
+  // search sparkline (oldest first) — fixed 7d view; not interactive.
   const sorted = [...d.rows].reverse();
   const counts = sorted.map((r) => r.searches);
   const sparkMax = Math.max(...counts, 1);
@@ -34,6 +34,15 @@ export function statsPage(d: StatsData): string {
     sorted.map((r) => ({
       time: new Date(r.hour * 300_000).toISOString().slice(0, 16) + "Z",
       searches: r.searches,
+    }))
+  );
+  // raw metrics for the total-searches range selector. cache_hits included so
+  // "total" matches what the SSR computes (searches + cache_hits).
+  const metricsJson = JSON.stringify(
+    sorted.map((r) => ({
+      hour: r.hour,
+      searches: r.searches,
+      cache_hits: r.cache_hits ?? 0,
     }))
   );
 
@@ -84,6 +93,15 @@ export function statsPage(d: StatsData): string {
     .chart-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
                   padding: 0.9rem; margin-bottom: 1.5rem; position: relative; }
     .chart-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
+    .ranged-header { display: flex; justify-content: space-between; align-items: center;
+                     margin-bottom: 0.6rem; }
+    .ranged-header h2 { margin-bottom: 0; }
+    .range-btns { display: inline-flex; gap: 0.15rem; }
+    .range-btns button { background: transparent; border: 1px solid #222; color: #666;
+                         padding: 0.15rem 0.45rem; font-size: 0.65rem; cursor: pointer;
+                         border-radius: 3px; font-family: inherit; }
+    .range-btns button:hover { color: #aaa; border-color: #333; }
+    .range-btns button.active { background: #1a1a1a; color: #ccc; border-color: #333; }
     #trend { width: 100%; height: 200px; display: block; touch-action: none; }
     .legend { display: flex; gap: 1.2rem; margin-top: 0.6rem; font-size: 0.7rem; color: #888; }
     .legend span { display: flex; align-items: center; gap: 0.35rem; }
@@ -107,6 +125,9 @@ export function statsPage(d: StatsData): string {
     .summary-2 { grid-template-columns: repeat(2, 1fr); }
     .summary-3 { grid-template-columns: repeat(3, 1fr); }
     .metric { background: #111; border: 1px solid #222; border-radius: 6px; padding: 0.7rem 0.9rem; }
+    .metric .metric-head { display: flex; justify-content: space-between; align-items: center;
+                           gap: 0.5rem; margin-bottom: 0.2rem; }
+    .metric .metric-head .label { margin-bottom: 0; }
     .metric .label { font-size: 0.7rem; color: #555; margin-bottom: 0.2rem; }
     .metric .label[data-tip] { cursor: default; position: relative; border-bottom: 1px dotted #444; display: inline-block; }
     .metric .label[data-tip]:hover::after {
@@ -229,8 +250,15 @@ export function statsPage(d: StatsData): string {
     </div>
     <div class="summary summary-2">
       <div class="metric">
-        <div class="label">total searches (7d)</div>
-        <div class="value">${d.totalSearches.toLocaleString()}</div>
+        <div class="metric-head">
+          <div class="label">total searches</div>
+          <span class="range-btns" id="searches-range">
+            <button data-range="7d" class="active">7d</button>
+            <button data-range="30d">30d</button>
+            <button data-range="all">all</button>
+          </span>
+        </div>
+        <div class="value" id="searches-value">${d.totalSearches.toLocaleString()}</div>
       </div>
       <div class="metric">
         <div class="label" data-tip="last 24h — cached (edge) vs uncached (fly replica)">avg latency</div>
@@ -562,7 +590,7 @@ export function statsPage(d: StatsData): string {
       window.addEventListener('resize', () => drawPie());
     }
 
-    /* --- search sparkline --- */
+    /* --- search sparkline (fixed 7d) --- */
     const sparkData = ${sparkJson};
     const spark = document.getElementById('spark');
     const sparkTip = document.getElementById('spark-tip');
@@ -581,6 +609,27 @@ export function statsPage(d: StatsData): string {
       });
       spark.addEventListener('mouseleave', () => { sparkTip.style.display = 'none'; });
     }
+
+    /* --- total searches range selector --- */
+    // metrics are 5-min buckets, oldest first
+    const allMetrics = ${metricsJson};
+    const searchesValue = document.getElementById('searches-value');
+    // 5-min buckets: 7d = 2016, 30d = 8640
+    const SEARCH_BUCKETS = { '7d': 2016, '30d': 8640 };
+
+    function totalForRange(range) {
+      const n = SEARCH_BUCKETS[range];
+      const slice = n == null ? allMetrics : allMetrics.slice(Math.max(0, allMetrics.length - n));
+      return slice.reduce((s, r) => s + r.searches + (r.cache_hits || 0), 0);
+    }
+
+    document.getElementById('searches-range')?.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-range]');
+      if (!btn || !searchesValue) return;
+      document.querySelectorAll('#searches-range button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      searchesValue.textContent = totalForRange(btn.dataset.range).toLocaleString();
+    });
   </script>
 </body>
 </html>`;
