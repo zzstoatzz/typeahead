@@ -10,6 +10,7 @@ const zat = @import("zat");
 const HttpTransport = zat.HttpTransport;
 const LocalDb = @import("db/LocalDb.zig");
 const BloomFilter = @import("bloom.zig").BloomFilter;
+const identity = @import("identity.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -53,6 +54,9 @@ pub const IngestHandler = struct {
     config: Config,
     transport: *HttpTransport,
     local_db: ?*LocalDb,
+    /// nullable so unit tests / minimal modes can run without it.
+    /// in production main wires this to a pool with N concurrent slingshot workers.
+    identity_pool: ?*identity.Pool,
     buffer: std.ArrayList(ActorEvent),
     delete_buffer: std.ArrayList([]const u8),
     /// arena owns all string data in buffer/delete_buffer
@@ -66,12 +70,19 @@ pub const IngestHandler = struct {
     last_flush: i64 = 0,
     retry_after: i64 = 0, // timestamp before which we skip flush attempts
 
-    pub fn init(allocator: Allocator, config: Config, transport: *HttpTransport, local_db: ?*LocalDb) !IngestHandler {
+    pub fn init(
+        allocator: Allocator,
+        config: Config,
+        transport: *HttpTransport,
+        local_db: ?*LocalDb,
+        identity_pool: ?*identity.Pool,
+    ) !IngestHandler {
         return .{
             .allocator = allocator,
             .config = config,
             .transport = transport,
             .local_db = local_db,
+            .identity_pool = identity_pool,
             .buffer = .empty,
             .delete_buffer = .empty,
             .arena = std.heap.ArenaAllocator.init(allocator),
@@ -184,16 +195,30 @@ pub const IngestHandler = struct {
     }
 
     fn handleIdentity(self: *IngestHandler, id: zat.jetstream.IdentityEvent) void {
-        const handle = id.handle orelse return;
-        const event = ActorEvent{
-            .did = self.dupe(id.did) orelse return,
-            .handle = self.dupe(handle),
-        };
+        // jetstream's #identity event has `handle` as a spec-optional field; in
+        // practice the bsky relay omits it on every event. so we always enqueue
+        // the DID for slingshot resolution via the identity pool, and *also* take
+        // the event handle as a hint for the local dual-write path if it happens
+        // to be present (rare, but harmless).
+        if (self.identity_pool) |pool| {
+            if (identity.Did.fromSlice(id.did)) |did| {
+                _ = pool.tryEnqueue(io, did); // best-effort; drop count tracked on pool
+            }
+        }
 
-        // dual-write: identity events have handles (searchable)
-        self.writeToLocal(event);
-
-        self.buffer.append(self.allocator, event) catch return;
+        // if (rare) the event included a non-invalid handle, also drive the
+        // immediate dual-write so fly local picks up the change without waiting
+        // for slingshot → worker → next sync.
+        if (id.handle) |h| {
+            if (!mem.eql(u8, h, "handle.invalid")) {
+                const event = ActorEvent{
+                    .did = self.dupe(id.did) orelse return,
+                    .handle = self.dupe(h),
+                };
+                self.writeToLocal(event);
+                self.buffer.append(self.allocator, event) catch return;
+            }
+        }
     }
 
     fn handleAccount(self: *IngestHandler, acct: zat.jetstream.AccountEvent) void {

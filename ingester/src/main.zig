@@ -8,6 +8,7 @@ const LocalDb = @import("db/LocalDb.zig");
 const sync = @import("db/sync.zig");
 const server = @import("server.zig");
 const ingest = @import("ingest.zig");
+const identity = @import("identity.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -39,6 +40,7 @@ const JetstreamArgs = struct {
     config: ingest.Config,
     transport: *HttpTransport,
     local_db: ?*LocalDb,
+    identity_pool: ?*identity.Pool,
 };
 
 fn jetstreamThread(args: JetstreamArgs) void {
@@ -47,6 +49,7 @@ fn jetstreamThread(args: JetstreamArgs) void {
         args.config,
         args.transport,
         args.local_db,
+        args.identity_pool,
     ) catch |err| {
         log.err("handler init failed: {}", .{err});
         return;
@@ -148,11 +151,33 @@ pub fn main() !void {
     transport.keep_alive = false;
     defer transport.deinit();
 
+    // identity resolution pool: jetstream #identity events omit the handle in
+    // practice, so we slingshot-resolve each one and POST back to the worker.
+    var resolver = identity.Resolver.init(allocator, io, config.worker_url, config.secret);
+    defer resolver.deinit();
+
+    var identity_pool: identity.Pool = undefined;
+    identity_pool.init(allocator, .{
+        .queue_size = 4096,
+        .ctx = &resolver,
+        .process = identity.Resolver.process,
+    }) catch |err| {
+        log.err("identity pool init failed: {}", .{err});
+        return err;
+    };
+    defer identity_pool.deinit();
+
+    identity_pool.start(io, 4) catch |err| {
+        log.err("identity pool start failed: {}", .{err});
+        return err;
+    };
+
     tasks.concurrent(io, jetstreamThread, .{JetstreamArgs{
         .allocator = allocator,
         .config = config,
         .transport = &transport,
         .local_db = local_db_ptr,
+        .identity_pool = &identity_pool,
     }}) catch |err| {
         log.err("jetstream task failed: {}", .{err});
     };
@@ -173,7 +198,7 @@ pub fn main() !void {
 
         if (local_db_ptr) |db| {
             // bounded pool — inline fallback under load (graceful degradation)
-            tasks.async(io, server.handleConnection, .{ stream, db });
+            tasks.async(io, server.handleConnection, .{ stream, db, &identity_pool });
         } else {
             // no local DB — just serve health
             var read_buffer: [1024]u8 = undefined;
@@ -197,5 +222,7 @@ pub fn main() !void {
 
     log.info("SIGTERM received, draining tasks…", .{});
     tasks.cancel(io);
+    log.info("draining identity resolver…", .{});
+    identity_pool.shutdown(io);
     log.info("shutdown complete", .{});
 }

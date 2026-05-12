@@ -10,12 +10,13 @@ const logfire = @import("logfire");
 const LocalDb = @import("db/LocalDb.zig");
 const search = @import("search.zig");
 const ingest = @import("ingest.zig");
+const identity = @import("identity.zig");
 
 const log = std.log.scoped(.server);
 
 const HTTP_BUF_SIZE = 65536;
 
-pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb) void {
+pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_pool: *identity.Pool) void {
     defer stream.close(io);
 
     var read_buffer: [HTTP_BUF_SIZE]u8 = undefined;
@@ -34,7 +35,7 @@ pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb) void {
             return;
         };
 
-        handleRequest(&request, local_db) catch |err| {
+        handleRequest(&request, local_db, identity_pool) catch |err| {
             log.err("request error: {}", .{err});
             return;
         };
@@ -43,7 +44,7 @@ pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb) void {
     }
 }
 
-fn handleRequest(request: *http.Server.Request, local_db: *LocalDb) !void {
+fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_pool: *identity.Pool) !void {
     const target = request.head.target;
 
     if (request.head.method == .OPTIONS) {
@@ -56,7 +57,7 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb) !void {
     if (mem.eql(u8, path, "/search")) {
         try handleSearch(request, target, local_db);
     } else if (mem.eql(u8, path, "/health")) {
-        try handleHealth(request, local_db);
+        try handleHealth(request, local_db, identity_pool);
     } else if (mem.eql(u8, path, "/debug/fts")) {
         try handleDebugFts(request, target, local_db);
     } else {
@@ -109,25 +110,28 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
     });
 }
 
-fn handleHealth(request: *http.Server.Request, local_db: *LocalDb) !void {
+fn handleHealth(request: *http.Server.Request, local_db: *LocalDb, identity_pool: *identity.Pool) !void {
     const span = logfire.span("http.health", .{});
     defer span.end();
 
     const ready = local_db.isReady();
     const actors = local_db.countActors();
     const rss = ingest.getRssKB();
+    const identity_dropped = identity_pool.droppedCount();
 
-    var buf: [256]u8 = undefined;
+    var buf: [320]u8 = undefined;
     const body = std.fmt.bufPrint(&buf,
-        \\{{"status":"ok","ready":{s},"actors":{d},"rss_kb":{d}}}
+        \\{{"status":"ok","ready":{s},"actors":{d},"rss_kb":{d},"identity_dropped":{d}}}
     , .{
         if (ready) "true" else "false",
         actors,
         rss,
+        identity_dropped,
     }) catch "{\"status\":\"ok\"}";
 
     span.setAttribute("ready", if (ready) "true" else "false");
     span.setAttribute("actors", @as(i64, @intCast(actors)));
+    span.setAttribute("identity_dropped", @as(i64, @intCast(identity_dropped)));
     span.setStatus(.ok, null);
 
     try sendJson(request, .ok, body);
