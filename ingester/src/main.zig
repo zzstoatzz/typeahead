@@ -10,6 +10,12 @@ const server = @import("server.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 
+// phase 2 build-time check: ensure the zug adapter compiles. removed in
+// phase 3 when zug.sqlite.run actually consumes it.
+comptime {
+    _ = @import("db/zug_conn.zig");
+}
+
 const log = std.log.scoped(.ingester);
 
 // override debug_io with a real threaded implementation so Io.Mutex,
