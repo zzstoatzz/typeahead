@@ -89,16 +89,54 @@ pub fn query(self: *TursoClient, sql: []const u8, args: []const []const u8) !Res
     return parseResult(self.allocator, response);
 }
 
+/// Typed bind value for the runtime-typed exec/query path. Hrana wants
+/// per-arg type tags; emitting the right one matters for INTEGER columns
+/// where text-encoded numbers would be coerced unpredictably.
+///
+/// `null` is included for future-proofing — zug binds only `text` and
+/// `int` today.
+pub const RuntimeValue = union(enum) {
+    text: []const u8,
+    int: i64,
+    @"null",
+};
+
+/// Execute a statement that returns no rows (INSERT/UPDATE/CREATE/etc.)
+/// using runtime-typed bind values. Required for callers that can't
+/// express their args as `[]const []const u8` (e.g. zug binds an i64 for
+/// the dirty flag).
+pub fn execRuntime(self: *TursoClient, sql: []const u8, args: []const RuntimeValue) !void {
+    const body = try self.buildTypedRequestBody(sql, args);
+    defer self.allocator.free(body);
+    const response = try self.doRequest(body);
+    self.allocator.free(response);
+}
+
+/// Same as `query` but takes runtime-typed bind values.
+pub fn queryRuntime(self: *TursoClient, sql: []const u8, args: []const RuntimeValue) !Result {
+    const body = try self.buildTypedRequestBody(sql, args);
+    defer self.allocator.free(body);
+    const response = try self.doRequest(body);
+    defer self.allocator.free(response);
+    return parseResult(self.allocator, response);
+}
+
 fn executeRaw(self: *TursoClient, sql: []const u8, args: []const []const u8) ![]const u8 {
+    const body = try self.buildRequestBody(sql, args);
+    defer self.allocator.free(body);
+    return self.doRequest(body);
+}
+
+/// POST a fully-built hrana v2 pipeline JSON body. Shared between the
+/// string-only `executeRaw` and the typed `execRuntime`/`queryRuntime`
+/// paths so the HTTP / mutex / error handling stays one place.
+fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
     self.mutex.lockUncancelable(io);
     defer self.mutex.unlock(io);
 
     var url_buf: [512]u8 = undefined;
     const url = std.fmt.bufPrint(&url_buf, "https://{s}/v2/pipeline", .{self.url}) catch
         return error.UrlTooLong;
-
-    const body = try self.buildRequestBody(sql, args);
-    defer self.allocator.free(body);
 
     var auth_buf: [512]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.token}) catch
@@ -156,6 +194,69 @@ fn buildRequestBody(self: *TursoClient, sql: []const u8, args: []const []const u
         .stmt = .{ .sql = sql, .args = if (values.len > 0) values else null },
     });
     try jw.write(CloseReq{});
+    try jw.endArray();
+    try jw.endObject();
+
+    return try body.toOwnedSlice();
+}
+
+/// Hrana v2 pipeline body for a single execute with per-arg typed bind
+/// values. Written manually (rather than via a serde-style struct) because
+/// the hrana value shape varies per type — `text` and `integer` carry a
+/// `value`, `null` doesn't — and integers serialize as a JSON string
+/// (per hrana, to preserve i64 precision through JSON).
+fn buildTypedRequestBody(self: *TursoClient, sql: []const u8, args: []const RuntimeValue) ![]const u8 {
+    var body: std.Io.Writer.Allocating = .init(self.allocator);
+    errdefer body.deinit();
+    var jw: json.Stringify = .{ .writer = &body.writer, .options = .{ .emit_null_optional_fields = false } };
+
+    try jw.beginObject();
+    try jw.objectField("requests");
+    try jw.beginArray();
+
+    // execute request
+    try jw.beginObject();
+    try jw.objectField("type");
+    try jw.write("execute");
+    try jw.objectField("stmt");
+    try jw.beginObject();
+    try jw.objectField("sql");
+    try jw.write(sql);
+    if (args.len > 0) {
+        try jw.objectField("args");
+        try jw.beginArray();
+        var int_buf: [24]u8 = undefined; // i64 max width is 20 chars (incl. sign), 24 is plenty
+        for (args) |arg| {
+            try jw.beginObject();
+            switch (arg) {
+                .text => |s| {
+                    try jw.objectField("type");
+                    try jw.write("text");
+                    try jw.objectField("value");
+                    try jw.write(s);
+                },
+                .int => |n| {
+                    try jw.objectField("type");
+                    try jw.write("integer");
+                    try jw.objectField("value");
+                    const s = std.fmt.bufPrint(&int_buf, "{d}", .{n}) catch return error.IntFormat;
+                    try jw.write(s);
+                },
+                .@"null" => {
+                    try jw.objectField("type");
+                    try jw.write("null");
+                },
+            }
+            try jw.endObject();
+        }
+        try jw.endArray();
+    }
+    try jw.endObject();
+    try jw.endObject();
+
+    // close request
+    try jw.write(CloseReq{});
+
     try jw.endArray();
     try jw.endObject();
 
