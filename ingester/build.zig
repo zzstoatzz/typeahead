@@ -20,6 +20,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const zug = b.dependency("zug", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe = b.addExecutable(.{
         .name = "typeahead-ingester",
         .root_module = b.createModule(.{
@@ -31,6 +36,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "zat", .module = zat.module("zat") },
                 .{ .name = "zqlite", .module = zqlite.module("zqlite") },
                 .{ .name = "logfire", .module = logfire.module("logfire") },
+                .{ .name = "zug", .module = zug.module("zug") },
             },
         }),
     });

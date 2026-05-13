@@ -5,16 +5,12 @@ const zat = @import("zat");
 const logfire = @import("logfire");
 const HttpTransport = zat.HttpTransport;
 const LocalDb = @import("db/LocalDb.zig");
+const TursoClient = @import("db/TursoClient.zig");
 const sync = @import("db/sync.zig");
+const turso_schema = @import("db/turso_schema.zig");
 const server = @import("server.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
-
-// phase 2 build-time check: ensure the zug adapter compiles. removed in
-// phase 3 when zug.sqlite.run actually consumes it.
-comptime {
-    _ = @import("db/zug_conn.zig");
-}
 
 const log = std.log.scoped(.ingester);
 
@@ -140,6 +136,24 @@ pub fn main() !void {
         .mask = mem.zeroes(std.posix.sigset_t),
         .flags = 0,
     }, null);
+
+    // Run Turso schema migrations BEFORE spawning sync/jetstream — sync queries
+    // turso assuming the schema exists. On baselined prod this is a few sub-
+    // second SELECTs + INSERT OR IGNORE; on a fresh DB it creates everything
+    // from migration 001. The listening socket is already bound so the fly
+    // proxy can queue connections during this window; we'll start accepting
+    // once we reach the main accept loop below.
+    {
+        var schema_client = TursoClient.init(allocator) catch |err| {
+            log.err("turso client init for schema failed: {}, aborting boot", .{err});
+            return err;
+        };
+        defer schema_client.deinit();
+        turso_schema.init(allocator, &schema_client) catch |err| {
+            log.err("turso schema init failed: {}, aborting boot", .{err});
+            return err;
+        };
+    }
 
     // task group: .concurrent for long-lived background tasks,
     // .async (bounded pool, inline fallback) for HTTP handlers
