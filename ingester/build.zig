@@ -25,6 +25,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const poolio = b.dependency("poolio", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
     const exe = b.addExecutable(.{
         .name = "typeahead-ingester",
         .root_module = b.createModule(.{
@@ -37,6 +42,7 @@ pub fn build(b: *std.Build) void {
                 .{ .name = "zqlite", .module = zqlite.module("zqlite") },
                 .{ .name = "logfire", .module = logfire.module("logfire") },
                 .{ .name = "zug", .module = zug.module("zug") },
+                .{ .name = "poolio", .module = poolio.module("poolio") },
             },
         }),
     });

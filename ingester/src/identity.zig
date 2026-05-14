@@ -19,7 +19,7 @@ const json = std.json;
 const zat = @import("zat");
 const HttpTransport = zat.HttpTransport;
 const ingest = @import("ingest.zig");
-const WorkerPool = @import("worker_pool.zig").WorkerPool;
+const poolio = @import("poolio");
 
 const log = std.log.scoped(.identity);
 
@@ -72,8 +72,8 @@ pub const Resolver = struct {
         self.transport.deinit();
     }
 
-    /// WorkerPool process function — called per dequeued Did.
-    /// Signature matches WorkerPool(Did, Resolver).ProcessFn.
+    /// poolio process function — called per dequeued Did.
+    /// Signature matches poolio.Pool(Did, Resolver).ProcessFn.
     pub fn process(self: *Resolver, io: Io, did: Did) void {
         _ = io;
         const did_slice = did.slice();
@@ -154,5 +154,5 @@ pub const Resolver = struct {
     }
 };
 
-/// Convenience alias — the WorkerPool instantiation used throughout the ingester.
-pub const Pool = WorkerPool(Did, Resolver);
+/// Convenience alias — the poolio instantiation used throughout the ingester.
+pub const Pool = poolio.Pool(Did, Resolver);

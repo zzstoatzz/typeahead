@@ -20,6 +20,10 @@
             .url = "https://tangled.org/zzstoatzz.io/zug/archive/v0.1.2-alpha.0.tar.gz",
             .hash = "zug-0.1.2-alpha.0-h4vXbauvAAA2iBb7fFmNoqDr0SPX-98pP99OEkMHS1j9",
         },
+        .poolio = .{
+            .url = "https://tangled.org/zzstoatzz.io/poolio/archive/v0.0.1-alpha.1.tar.gz",
+            .hash = "poolio-0.0.1-alpha.1-qYctK2JcAADiWqRISK92yk_GjGTVYeBEUGMrE4QtJE0N",
+        },
     },
     .paths = .{
         "build.zig",

@@ -176,9 +176,9 @@ pub fn main() !void {
     var resolver = identity.Resolver.init(allocator, io, config.worker_url, config.secret);
     defer resolver.deinit();
 
-    var identity_pool: identity.Pool = undefined;
-    identity_pool.init(allocator, .{
-        .queue_size = 4096,
+    var identity_pool = identity.Pool.init(allocator, .{
+        .queue_capacity = 4096,
+        .workers = 4,
         .ctx = &resolver,
         .process = identity.Resolver.process,
     }) catch |err| {
@@ -187,7 +187,7 @@ pub fn main() !void {
     };
     defer identity_pool.deinit();
 
-    identity_pool.start(io, 4) catch |err| {
+    identity_pool.start(io) catch |err| {
         log.err("identity pool start failed: {}", .{err});
         return err;
     };

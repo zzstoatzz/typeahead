@@ -117,21 +117,27 @@ fn handleHealth(request: *http.Server.Request, local_db: *LocalDb, identity_pool
     const ready = local_db.isReady();
     const actors = local_db.countActors();
     const rss = ingest.getRssKB();
-    const identity_dropped = identity_pool.droppedCount();
+    const ic = identity_pool.counters(io);
 
-    var buf: [320]u8 = undefined;
+    var buf: [512]u8 = undefined;
     const body = std.fmt.bufPrint(&buf,
-        \\{{"status":"ok","ready":{s},"actors":{d},"rss_kb":{d},"identity_dropped":{d}}}
+        \\{{"status":"ok","ready":{s},"actors":{d},"rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d}}}}}
     , .{
         if (ready) "true" else "false",
         actors,
         rss,
-        identity_dropped,
+        ic.accepted,
+        ic.dropped,
+        ic.processed,
+        ic.queued,
     }) catch "{\"status\":\"ok\"}";
 
     span.setAttribute("ready", if (ready) "true" else "false");
     span.setAttribute("actors", @as(i64, @intCast(actors)));
-    span.setAttribute("identity_dropped", @as(i64, @intCast(identity_dropped)));
+    span.setAttribute("identity.accepted", @as(i64, @intCast(ic.accepted)));
+    span.setAttribute("identity.dropped", @as(i64, @intCast(ic.dropped)));
+    span.setAttribute("identity.processed", @as(i64, @intCast(ic.processed)));
+    span.setAttribute("identity.queued", @as(i64, @intCast(ic.queued)));
     span.setStatus(.ok, null);
 
     try sendJson(request, .ok, body);

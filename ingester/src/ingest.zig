@@ -202,7 +202,7 @@ pub const IngestHandler = struct {
         // to be present (rare, but harmless).
         if (self.identity_pool) |pool| {
             if (identity.Did.fromSlice(id.did)) |did| {
-                _ = pool.tryEnqueue(io, did); // best-effort; drop count tracked on pool
+                _ = pool.offer(io, did); // best-effort; drop count tracked on pool
             }
         }
 
@@ -376,8 +376,9 @@ pub const IngestHandler = struct {
                 self.total_ingested += batch_end;
                 const rss = getRssKB();
                 log.info("+{d} actors (total: {d}, pending: {d}) cursor={d} rss={d}KB", .{
-                    batch_end, self.total_ingested,
-                    self.buffer.items.len - batch_end, self.pending_cursor, rss,
+                    batch_end,                         self.total_ingested,
+                    self.buffer.items.len - batch_end, self.pending_cursor,
+                    rss,
                 });
                 if (batch_end < self.buffer.items.len) {
                     std.mem.copyForwards(
