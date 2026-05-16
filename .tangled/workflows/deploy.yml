@@ -1,0 +1,20 @@
+when:
+  - event: ["push"]
+    branch: main
+
+engine: nixery
+
+dependencies:
+  nixpkgs:
+    - bun
+    - nodejs
+
+environment:
+  CLOUDFLARE_ACCOUNT_ID: "3e9ba01cd687b3c4d29033908177072e"
+
+steps:
+  - name: deploy worker
+    command: |
+      test -n "$CLOUDFLARE_API_TOKEN"
+      bun install
+      bunx wrangler deploy
