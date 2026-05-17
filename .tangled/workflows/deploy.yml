@@ -15,6 +15,7 @@ environment:
 steps:
   - name: deploy worker
     command: |
-      test -n "$CLOUDFLARE_API_TOKEN"
+      set -euo pipefail
+      : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN secret not set}"
       bun install
       bunx wrangler deploy
