@@ -65,6 +65,7 @@ fn jetstreamThread(args: JetstreamArgs) void {
             "app.bsky.feed.like",
             "app.bsky.graph.follow",
             "sh.tangled.actor.profile",
+            "site.standard.*",
         },
         .cursor = ingest.fetchCursor(args.transport, args.config),
     });
