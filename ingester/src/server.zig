@@ -16,7 +16,7 @@ const log = std.log.scoped(.server);
 
 const HTTP_BUF_SIZE = 65536;
 
-pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_pool: *identity.Pool) void {
+pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_pool: ?*identity.Pool) void {
     defer stream.close(io);
 
     var read_buffer: [HTTP_BUF_SIZE]u8 = undefined;
@@ -44,7 +44,7 @@ pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_
     }
 }
 
-fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_pool: *identity.Pool) !void {
+fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_pool: ?*identity.Pool) !void {
     const target = request.head.target;
 
     if (request.head.method == .OPTIONS) {
@@ -110,34 +110,42 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
     });
 }
 
-fn handleHealth(request: *http.Server.Request, local_db: *LocalDb, identity_pool: *identity.Pool) !void {
+fn handleHealth(request: *http.Server.Request, local_db: *LocalDb, identity_pool: ?*identity.Pool) !void {
     const span = logfire.span("http.health", .{});
     defer span.end();
 
     const ready = local_db.isReady();
     const actors = local_db.countActors();
     const rss = ingest.getRssKB();
-    const ic = identity_pool.counters(io);
 
     var buf: [512]u8 = undefined;
-    const body = std.fmt.bufPrint(&buf,
-        \\{{"status":"ok","ready":{s},"actors":{d},"rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d}}}}}
+    const body = if (identity_pool) |pool| blk: {
+        const ic = pool.counters(io);
+        span.setAttribute("identity.accepted", @as(i64, @intCast(ic.accepted)));
+        span.setAttribute("identity.dropped", @as(i64, @intCast(ic.dropped)));
+        span.setAttribute("identity.processed", @as(i64, @intCast(ic.processed)));
+        span.setAttribute("identity.queued", @as(i64, @intCast(ic.queued)));
+        break :blk std.fmt.bufPrint(&buf,
+            \\{{"status":"ok","ready":{s},"actors":{d},"rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d}}}}}
+        , .{
+            if (ready) "true" else "false",
+            actors,
+            rss,
+            ic.accepted,
+            ic.dropped,
+            ic.processed,
+            ic.queued,
+        }) catch "{\"status\":\"ok\"}";
+    } else std.fmt.bufPrint(&buf,
+        \\{{"status":"ok","ready":{s},"actors":{d},"rss_kb":{d}}}
     , .{
         if (ready) "true" else "false",
         actors,
         rss,
-        ic.accepted,
-        ic.dropped,
-        ic.processed,
-        ic.queued,
     }) catch "{\"status\":\"ok\"}";
 
     span.setAttribute("ready", if (ready) "true" else "false");
     span.setAttribute("actors", @as(i64, @intCast(actors)));
-    span.setAttribute("identity.accepted", @as(i64, @intCast(ic.accepted)));
-    span.setAttribute("identity.dropped", @as(i64, @intCast(ic.dropped)));
-    span.setAttribute("identity.processed", @as(i64, @intCast(ic.processed)));
-    span.setAttribute("identity.queued", @as(i64, @intCast(ic.queued)));
     span.setStatus(.ok, null);
 
     try sendJson(request, .ok, body);

@@ -37,6 +37,15 @@ fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     return null;
 }
 
+/// Parse a boolean env flag. Defaults to true (preserves existing behavior
+/// when var is unset). "0", "false", "no", "off" → false; anything else → true.
+fn envFlag(name: [*:0]const u8, default: bool) bool {
+    const v = cGetenv(name) orelse return default;
+    if (mem.eql(u8, v, "0") or mem.eql(u8, v, "false") or
+        mem.eql(u8, v, "no") or mem.eql(u8, v, "off")) return false;
+    return true;
+}
+
 const JetstreamArgs = struct {
     allocator: Allocator,
     config: ingest.Config,
@@ -92,17 +101,26 @@ pub fn main() !void {
         .async_limit = std.Io.Limit.limited(8), // bounded HTTP handler pool
     });
 
-    // configure logfire (reads LOGFIRE_WRITE_TOKEN from env)
+    // role flags — defaults preserve current all-in-one behavior
+    const enable_jetstream = envFlag("ENABLE_JETSTREAM", true);
+    const enable_sync = envFlag("ENABLE_SYNC", true);
+    const enable_schema_migrations = envFlag("ENABLE_SCHEMA_MIGRATIONS", true);
+
+    // service_name distinguishes app A vs app B in logfire traces.
+    // Fly injects FLY_APP_NAME so the two apps tag distinctly without manual config.
+    const service_name = cGetenv("FLY_APP_NAME") orelse "typeahead-ingester";
+
+    log.info("role: jetstream={} sync={} schema={} service_name={s}", .{
+        enable_jetstream, enable_sync, enable_schema_migrations, service_name,
+    });
+
     _ = logfire.configure(.{
-        .service_name = "typeahead-ingester",
+        .service_name = service_name,
         .service_version = "0.1.0",
         .environment = cGetenv("FLY_APP_NAME") orelse "development",
     }) catch |err| {
         log.err("logfire configure failed: {}", .{err});
     };
-
-    const config = ingest.getConfig();
-    log.info("typeahead ingester → {s}", .{config.worker_url});
 
     // open local SQLite (optional — graceful degradation if no volume)
     var local_db = LocalDb.init(allocator);
@@ -114,6 +132,13 @@ pub fn main() !void {
         local_db_ptr = &local_db;
     }
     defer local_db.deinit();
+
+    // A search service without a local DB is not a service. Fail boot loudly
+    // rather than serving 503s indefinitely.
+    if (enable_sync and local_db_ptr == null) {
+        log.err("ENABLE_SYNC=1 but local DB unavailable — aborting boot", .{});
+        return error.LocalDbRequired;
+    }
 
     // start HTTP server FIRST so Fly proxy doesn't timeout
     const port: u16 = blk: {
@@ -141,10 +166,8 @@ pub fn main() !void {
     // Run Turso schema migrations BEFORE spawning sync/jetstream — sync queries
     // turso assuming the schema exists. On baselined prod this is a few sub-
     // second SELECTs + INSERT OR IGNORE; on a fresh DB it creates everything
-    // from migration 001. The listening socket is already bound so the fly
-    // proxy can queue connections during this window; we'll start accepting
-    // once we reach the main accept loop below.
-    {
+    // from migration 001. The search-only role (App B) must NOT run these.
+    if (enable_schema_migrations) {
         var schema_client = TursoClient.init(allocator) catch |err| {
             log.err("turso client init for schema failed: {}, aborting boot", .{err});
             return err;
@@ -161,47 +184,71 @@ pub fn main() !void {
     var tasks: std.Io.Group = .init;
 
     // start sync (background — turso → local SQLite)
-    if (local_db_ptr) |db| {
+    if (enable_sync) {
+        const db = local_db_ptr.?; // guaranteed non-null by check above
         tasks.concurrent(io, sync.syncLoop, .{ allocator, db }) catch |err| {
             log.err("sync task failed: {}", .{err});
         };
     }
 
-    // start jetstream (background — ingestion)
-    var transport = HttpTransport.init(io, allocator);
-    transport.keep_alive = false;
-    defer transport.deinit();
+    // jetstream-only state (transport, resolver, identity pool) — declared at
+    // outer scope so the spawned task's pointers stay valid for main()'s lifetime
+    var transport: HttpTransport = undefined;
+    var have_transport = false;
+    defer if (have_transport) transport.deinit();
 
-    // identity resolution pool: jetstream #identity events omit the handle in
-    // practice, so we slingshot-resolve each one and POST back to the worker.
-    var resolver = identity.Resolver.init(allocator, io, config.worker_url, config.secret);
-    defer resolver.deinit();
+    var resolver: identity.Resolver = undefined;
+    var have_resolver = false;
+    defer if (have_resolver) resolver.deinit();
 
-    var identity_pool = identity.Pool.init(allocator, .{
-        .queue_capacity = 4096,
-        .workers = 4,
-        .ctx = &resolver,
-        .process = identity.Resolver.process,
-    }) catch |err| {
-        log.err("identity pool init failed: {}", .{err});
-        return err;
-    };
-    defer identity_pool.deinit();
+    var identity_pool: identity.Pool = undefined;
+    var have_identity_pool = false;
+    defer if (have_identity_pool) identity_pool.deinit();
 
-    identity_pool.start(io) catch |err| {
-        log.err("identity pool start failed: {}", .{err});
-        return err;
-    };
+    if (enable_jetstream) {
+        // Reading TYPEAHEAD_URL/TYPEAHEAD_SECRET here (not unconditionally at
+        // top of main) so the search-only role (App B) can come up without them.
+        const config = ingest.getConfig();
+        log.info("typeahead ingester → {s}", .{config.worker_url});
 
-    tasks.concurrent(io, jetstreamThread, .{JetstreamArgs{
-        .allocator = allocator,
-        .config = config,
-        .transport = &transport,
-        .local_db = local_db_ptr,
-        .identity_pool = &identity_pool,
-    }}) catch |err| {
-        log.err("jetstream task failed: {}", .{err});
-    };
+        transport = HttpTransport.init(io, allocator);
+        transport.keep_alive = false;
+        have_transport = true;
+
+        // identity resolution pool: jetstream #identity events omit the handle
+        // in practice, so we slingshot-resolve each one and POST to the worker.
+        resolver = identity.Resolver.init(allocator, io, config.worker_url, config.secret);
+        have_resolver = true;
+
+        identity_pool = identity.Pool.init(allocator, .{
+            .queue_capacity = 4096,
+            .workers = 4,
+            .ctx = &resolver,
+            .process = identity.Resolver.process,
+        }) catch |err| {
+            log.err("identity pool init failed: {}", .{err});
+            return err;
+        };
+        have_identity_pool = true;
+
+        identity_pool.start(io) catch |err| {
+            log.err("identity pool start failed: {}", .{err});
+            return err;
+        };
+
+        tasks.concurrent(io, jetstreamThread, .{JetstreamArgs{
+            .allocator = allocator,
+            .config = config,
+            .transport = &transport,
+            .local_db = local_db_ptr,
+            .identity_pool = &identity_pool,
+        }}) catch |err| {
+            log.err("jetstream task failed: {}", .{err});
+        };
+    }
+
+    // HTTP handlers receive identity pool as optional — search-only role has none
+    const id_pool_arg: ?*identity.Pool = if (have_identity_pool) &identity_pool else null;
 
     // main thread: HTTP accept loop
     while (true) {
@@ -219,7 +266,7 @@ pub fn main() !void {
 
         if (local_db_ptr) |db| {
             // bounded pool — inline fallback under load (graceful degradation)
-            tasks.async(io, server.handleConnection, .{ stream, db, &identity_pool });
+            tasks.async(io, server.handleConnection, .{ stream, db, id_pool_arg });
         } else {
             // no local DB — just serve health
             var read_buffer: [1024]u8 = undefined;
@@ -243,7 +290,9 @@ pub fn main() !void {
 
     log.info("SIGTERM received, draining tasks…", .{});
     tasks.cancel(io);
-    log.info("draining identity resolver…", .{});
-    identity_pool.shutdown(io);
+    if (have_identity_pool) {
+        log.info("draining identity resolver…", .{});
+        identity_pool.shutdown(io);
+    }
     log.info("shutdown complete", .{});
 }
