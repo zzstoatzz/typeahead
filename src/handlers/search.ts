@@ -1,6 +1,6 @@
 import type { TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
-import { CORS_HEADERS } from "../types";
+import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
 import { json, sanitize, avatarUrl } from "../utils";
 import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
 import { throttledBackfill } from "../backfill";
@@ -27,6 +27,24 @@ export async function handleSearch(
   const term = sanitize(q);
   if (!term) {
     return json({ actors: [] });
+  }
+
+  // Emergency kill switch: bypass the whole pipeline and proxy to Bluesky.
+  // Set/unset via `bunx wrangler secret put|delete EMERGENCY_PROXY_BSKY`.
+  // No cache writes here — old cache entries expire (60s) and the moment the
+  // switch is flipped off we resume normal behavior.
+  if (env.EMERGENCY_PROXY_BSKY) {
+    const bskyUrl = `${BSKY_TYPEAHEAD_URL}?q=${encodeURIComponent(term)}&limit=${limit}`;
+    try {
+      const r = await fetch(bskyUrl, { signal: AbortSignal.timeout(5000) });
+      const body = await r.text();
+      return new Response(body, {
+        status: r.status,
+        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+      });
+    } catch {
+      return json({ actors: [] });
+    }
   }
 
   const t0 = Date.now();

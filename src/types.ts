@@ -6,6 +6,13 @@ export interface Env {
   TURSO_URL: string;
   TURSO_AUTH_TOKEN: string;
   SEARCH_BACKEND_URL?: string;
+  /// Emergency kill switch: when set (any non-empty value), the search
+  /// handler bypasses everything (ingester, Turso, cache) and proxies
+  /// directly to Bluesky's public typeahead API. Flip via:
+  ///   bunx wrangler secret put EMERGENCY_PROXY_BSKY
+  /// Turn off with:
+  ///   bunx wrangler secret delete EMERGENCY_PROXY_BSKY
+  EMERGENCY_PROXY_BSKY?: string;
 }
 
 export interface ActorRow {
