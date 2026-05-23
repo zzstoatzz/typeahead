@@ -83,7 +83,7 @@ export async function handleSearch(
     db.prepare(
       `SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
        FROM actors WHERE handle LIKE ?1 COLLATE NOCASE AND handle != ?2 COLLATE NOCASE AND hidden = 0
-       ORDER BY length(handle) LIMIT ?3`
+       LIMIT ?3`
     ).bind(term + '%', term, limit),
     db.prepare(
       `SELECT a.did, a.handle, a.display_name, a.avatar_url, a.labels, a.created_at, a.associated, a.pds
