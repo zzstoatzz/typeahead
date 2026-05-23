@@ -2,6 +2,7 @@
 //! Full sync on startup, incremental sync every 5 minutes
 
 const std = @import("std");
+const mem = std.mem;
 const io = std.Options.debug_io;
 const zqlite = @import("zqlite");
 const logfire = @import("logfire");
@@ -18,6 +19,21 @@ fn timestamp() i64 {
 
 fn milliTimestamp() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_ms));
+}
+
+fn cGetenv(name: [*:0]const u8) ?[]const u8 {
+    if (std.c.getenv(name)) |p| return mem.span(p);
+    return null;
+}
+
+/// Read SYNC_BOOTSTRAP_PAUSE_MS — sleep this many ms between Turso fetch
+/// batches during full bootstrap/resync. Defaults to 0 (no pause, fastest).
+/// Set to 100-500ms when bootstrap risks competing with live Turso reads
+/// from the worker's fallback path. The trade-off is bootstrap takes longer
+/// to complete but live traffic stays responsive.
+fn bootstrapPauseMs() u32 {
+    const v = cGetenv("SYNC_BOOTSTRAP_PAUSE_MS") orelse return 0;
+    return std.fmt.parseInt(u32, v, 10) catch 0;
 }
 
 /// index of the first column appended after actor_cols (rowid or updated_at)
@@ -124,6 +140,10 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
     var last_rowid: i64 = 0;
     var had_turso_error = false;
     const load_t0 = milliTimestamp();
+    const pause_ms = bootstrapPauseMs();
+    if (pause_ms > 0) {
+        log.info("bootstrap: pacing with {d}ms pause between batches", .{pause_ms});
+    }
 
     while (true) {
         var rowid_buf: [20]u8 = undefined;
@@ -171,6 +191,10 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
             result.rows.len, last_rowid, actor_count,
             t1 - t0, t2 - t1,
         });
+
+        if (pause_ms > 0) {
+            io.sleep(.{ .nanoseconds = @as(u64, pause_ms) * std.time.ns_per_ms }, .real) catch {};
+        }
     }
 
     if (had_turso_error or error_count > 0) {
@@ -326,6 +350,10 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
     var last_rowid: i64 = 0;
     var had_turso_error = false;
     var batch_num: usize = 0;
+    const pause_ms = bootstrapPauseMs();
+    if (pause_ms > 0) {
+        log.info("resync: pacing with {d}ms pause between batches", .{pause_ms});
+    }
 
     while (true) {
         var rowid_buf: [20]u8 = undefined;
@@ -383,6 +411,10 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
             batch_num, result.rows.len, last_rowid, actor_count,
             t1 - t0, t2 - t1,
         });
+
+        if (pause_ms > 0) {
+            io.sleep(.{ .nanoseconds = @as(u64, pause_ms) * std.time.ns_per_ms }, .real) catch {};
+        }
     }
 
     if (had_turso_error or error_count > 0) {

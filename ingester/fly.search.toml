@@ -1,0 +1,50 @@
+# fly.toml app configuration for typeahead-search.
+#
+# This is the read replica + HTTP search service: a clone of the ingester
+# binary configured to ONLY sync from Turso → local SQLite and serve /search.
+# It does NOT consume jetstream and does NOT run Turso schema migrations.
+#
+# Worker's SEARCH_BACKEND_URL points here after the cutover.
+
+app = 'typeahead-search'
+primary_region = 'ewr'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[mounts]
+  source = 'typeahead_search_data'
+  destination = '/data'
+
+[env]
+  # Role: sync-only + HTTP search. No jetstream → no need for TYPEAHEAD_URL/SECRET.
+  ENABLE_JETSTREAM = '0'
+  ENABLE_SCHEMA_MIGRATIONS = '0'
+  ENABLE_SYNC = '1'
+
+  # Bootstrap politeness: pace Turso reads so the initial sync doesn't
+  # starve worker fallback queries on the same Turso DB. ~200ms between
+  # 2k-row batches drops effective rate from ~2000/s to ~1500/s — bootstrap
+  # finishes in ~70min instead of ~50min, but live traffic stays responsive.
+  SYNC_BOOTSTRAP_PAUSE_MS = '200'
+
+  SQLITE_TMPDIR = '/data/tmp'
+
+[processes]
+  app = './typeahead-ingester'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  # Same manual-restart posture as the ingester app during initial bake.
+  # Revisit and flip to auto-start once the service has proven stable —
+  # a search service should normally restart automatically after host failure.
+  auto_start_machines = false
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
