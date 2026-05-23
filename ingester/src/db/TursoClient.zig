@@ -316,17 +316,50 @@ fn extractText(val: json.Value) []const u8 {
     };
 }
 
+// Recursive, exhaustive-by-construction. Hrana wraps INTEGER columns as
+// `{"type":"integer","value":"<digits>"}` (value is a quoted string to
+// preserve i64 precision). The original implementation matched that exact
+// shape but used a non-recursive inner switch with an `else => 0`, which
+// silently dropped values that arrived in any other shape (e.g. number
+// type without a value field, or future server-side encoding changes).
+// When that happened to the rowid/updated_at trailing column, the keyset
+// cursor in sync.zig never advanced and the loop re-fetched the same
+// 2000-row batch forever, hammering Turso. Recursing on the inner Value
+// makes this resilient to any of hrana's documented value shapes plus
+// any reasonable bare JSON forms.
 fn extractInt(val: json.Value) i64 {
     return switch (val) {
         .integer => |i| i,
-        .object => |obj| {
-            const v = obj.get("value") orelse return 0;
-            return switch (v) {
-                .integer => |i| i,
-                .string => |s| std.fmt.parseInt(i64, s, 10) catch 0,
-                else => 0,
+        .float => |f| @as(i64, @intFromFloat(f)),
+        .number_string => |s| std.fmt.parseInt(i64, s, 10) catch 0,
+        .string => |s| std.fmt.parseInt(i64, s, 10) catch 0,
+        .object => |obj| blk: {
+            const v = obj.get("value") orelse {
+                // log once with the keys we saw so we can diagnose future drift
+                logExtractIntMiss(obj);
+                break :blk 0;
             };
+            break :blk extractInt(v);
         },
+        .bool => |b| if (b) 1 else 0,
         else => 0,
     };
+}
+
+var logged_miss: bool = false;
+fn logExtractIntMiss(obj: anytype) void {
+    if (logged_miss) return;
+    logged_miss = true;
+    var it = obj.iterator();
+    var buf: [256]u8 = undefined;
+    const w = std.fmt.bufPrint(&buf, "extractInt missed: keys=", .{}) catch return;
+    var used = w.len;
+    while (it.next()) |entry| {
+        const k = entry.key_ptr.*;
+        const remain = buf.len - used;
+        if (remain < k.len + 2) break;
+        const part = std.fmt.bufPrint(buf[used..], "{s},", .{k}) catch break;
+        used += part.len;
+    }
+    log.warn("{s}", .{buf[0..used]});
 }
