@@ -217,6 +217,34 @@ fn deleteStagingFiles(build_dir: []const u8) void {
     }
 }
 
+/// File size in bytes, 0 if it can't be opened. Used for build observability
+/// (final index.db size, peak staging footprint).
+fn fileSize(path: []const u8) u64 {
+    const f = std.Io.Dir.openFileAbsolute(io, path, .{}) catch return 0;
+    defer f.close(io);
+    const st = f.stat(io) catch return 0;
+    return st.size;
+}
+
+/// Peak resident set size (VmHWM) from /proc/self/status, in kB. 0 when
+/// unavailable (macOS has no such file). The CREATE INDEX sort is the
+/// memory high-water mark, so this is the number that sizes the machine.
+fn peakRssKb() u64 {
+    const f = std.Io.Dir.openFileAbsolute(io, "/proc/self/status", .{}) catch return 0;
+    defer f.close(io);
+    var buf: [4096]u8 = undefined;
+    const n = f.readStreaming(io, &.{&buf}) catch return 0;
+    const content = buf[0..n];
+    const idx = std.mem.indexOf(u8, content, "VmHWM:") orelse return 0;
+    var rest = content[idx + "VmHWM:".len ..];
+    var i: usize = 0;
+    while (i < rest.len and (rest[i] == ' ' or rest[i] == '\t')) : (i += 1) {}
+    rest = rest[i..];
+    var j: usize = 0;
+    while (j < rest.len and rest[j] >= '0' and rest[j] <= '9') : (j += 1) {}
+    return std.fmt.parseInt(u64, rest[0..j], 10) catch 0;
+}
+
 /// Fetch max(updated_at) from Turso actors. Used as source_watermark
 /// in index_meta. Cheap (single aggregate) compared to the streaming
 /// pass. Used by the hrana fallback path; the export path reads the
@@ -412,6 +440,9 @@ pub fn run(allocator: Allocator) !void {
     }
 
     // ── cleanup + metadata ────────────────────────────────────────────────
+    // Peak disk footprint: staging (emissions+index) + index.db coexist here,
+    // just before we drop staging. Logged for machine/volume sizing.
+    log.info("peak artifact footprint: staging.db={d}B index.db={d}B", .{ fileSize(staging_path), fileSize(db_path) });
     // Discard staging entirely: DETACH then delete the file. Frees the
     // ~11GB of emissions+index instantly with no VACUUM rewrite, and
     // guarantees index.db ships at real-artifact size.
@@ -447,19 +478,9 @@ pub fn run(allocator: Allocator) !void {
         "phase ms: turso_fetch={d} derive={d} actor_insert={d} emission_insert={d} index_build={d} group_pack={d} meta={d} analyze={d}",
         .{ p.turso_fetch_ms, p.derive_ms, p.actor_insert_ms, p.emission_insert_ms, p.index_build_ms, p.group_pack_ms, p.meta_ms, p.analyze_ms },
     );
+    log.info("indexer resources: index_db_bytes={d} peak_rss_kb={d}", .{ fileSize(db_path), peakRssKb() });
 }
 
-/// Source path via hrana v3 cursor — one POST /v3/cursor request whose
-/// NDJSON response streams every actor row + the source watermark in a
-/// single transactional snapshot.
-///
-/// Batch shape:
-///   step 0: SELECT max(updated_at)  → captures the watermark
-///   step 1: SELECT did, handle, ... → streams every actor
-///
-/// Both steps execute within the same cursor (one server-side read
-/// transaction), so the watermark is the actual cutoff for what's in
-/// the row stream — no race window like the v2 paginated path needed.
 /// Primary source path. Export Turso → local SQLite checkpoint file via
 /// the export HTTP endpoints (TursoClient.exportToFile), ATTACH it
 /// read-only, validate, then iterate `src.actors` from local disk.
