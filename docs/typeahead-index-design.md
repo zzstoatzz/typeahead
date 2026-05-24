@@ -219,48 +219,46 @@ OUTPUTS:
   /data/index/manifest.json          (rewritten atomically at end)
 ```
 
-algorithm:
+algorithm (as implemented in `ingester/src/index/builder.zig`):
 
 ```
-1. begin: pick build_id = ulid(); mkdir /data/index/build-<id>/
-2. stream actors from turso:
-   SELECT did, handle, display_name, avatar_url, labels, pds, created_at,
-          associated, hidden, quality_score
-   FROM actors
-   WHERE handle != ''
-   ORDER BY did   -- stable iteration, restartable on crash
-3. for each row:
-   a. write actor_compact_base row (pack blob, INSERT)
-   b. compute prefix emissions via shared prefixes.zig:
-        handle_norm = normalize(handle)
-        name_tokens = tokenize_display(display_name)
-        emit ('h:' + handle_norm[0..i], did, score) for i in 1..min(len, PREFIX_MAX)
-        emit ('n:' + tok[0..i], did, score) for each tok, each i
-        emit ('e:' + handle_norm, did, score)
-   c. write emissions to a temporary unkeyed table (ordered by key, score desc)
-4. group emissions:
-   SELECT key, did, score FROM emissions ORDER BY key, score DESC;
-   for each key, take the top-N where N depends on len(key):
-     len 1-3 → TOP_N_SHORT (300)
-     len 4-6 → TOP_N_MEDIUM (200)
-     len 7+  → TOP_N_LONG (100)
-5. pack top-N into BLOB ([f32 score, 16-byte did_bin]*) and INSERT into prefix_top_base
-6. write index_meta rows (build_id, built_at, source_watermark, top_n_*, etc.)
-7. ANALYZE, VACUUM
-8. write manifest.json atomically:
-   {
-     "active_build": "<id>",
-     "previous_build": "<old_id_or_null>",
-     "promoted_at": <unix>,
-     "source_watermark": <unix>,
-     "validation": {"actor_count": N, "prefix_count": P, "byte_size": B}
-   }
-9. App B reads manifest on a tick (every 30s) and swaps active snapshot
-   on change. switch is done by ATTACH DATABASE under a new alias and
-   re-binding the prepared statements; no in-place mutation of the old.
-10. old snapshot stays on disk for one more cycle as rollback. delete on
-    the build after that.
+1. begin: build_id = "b<unix_s>-<hex4>"; mkdir <build_root>/build-<id>/
+   open index.db; pragmas (journal_mode=DELETE, synchronous=OFF,
+   temp_store=FILE, cache_size=-200000); SQLITE_TMPDIR/TMPDIR := build_dir
+   (so the file-backed sort spills onto the volume, not RAM/root fs).
+2. ATTACH a SEPARATE scratch DB:  ATTACH '<build_dir>/staging.db' AS stage
+   (stage.journal_mode=OFF, stage.synchronous=OFF — throwaway).
+   CREATE TABLE stage.emissions(key, did, score).
+3. acquire source rows. PRIMARY = export HTTP (TursoClient.exportToFile):
+     GET /info → current_generation; GET /export/{gen} streamed to
+     <build_dir>/source.db.part → rename source.db; ATTACH 'source.db' AS src
+     (plain-path, SQL-quoted); validate (quick_check + count).
+   FALLBACK = hrana v2 keyset pagination (INDEX_SOURCE=hrana_v2).
+   DEV = INDEX_REUSE_SOURCE=<path> builds from an existing local export.
+4. BEGIN; iterate  SELECT ... FROM src.actors WHERE handle != '' ORDER BY did:
+   a. write actor_compact_base row (pack blob, INSERT) → index.db
+   b. derive prefix emissions via shared prefixes.zig (deriveAllUnique):
+        'h:' + handle_norm[0..i] for i in 1..min(len, PREFIX_MAX)
+        'n:' + tok[0..i] per display token; 'e:' + handle_norm
+   c. INSERT each (key, did, score) → stage.emissions
+   COMMIT. (src detaches on return; source.db deleted now, before the
+   disk-heavy index build, to lower peak volume usage.)
+5. CREATE INDEX stage.idx_emissions_key_score ON emissions(key, score DESC)
+   — file-backed sort, spills to SQLITE_TMPDIR (the volume), flat RAM.
+6. group:  SELECT key, did, score FROM stage.emissions ORDER BY key, score DESC
+   per key, take top-N by len(key): 1-3 → 300, 4-6 → 200, 7+ → 100.
+7. pack top-N into BLOB ([f32 score, 16-byte did_bin]*) → prefix_top_base (index.db)
+8. DETACH stage; DELETE staging.db  (frees the ~11GB emissions+index instantly,
+   no VACUUM — index.db only ever held the real artifact, so it ships at size).
+9. write index_meta; ANALYZE.  (no VACUUM step exists or is needed.)
 ```
+
+steps 1–9 are implemented and validated. manifest write + atomic promotion
++ App B fetch/swap are the NEXT piece (see `## manifest contract` /
+`## promotion gate` below) and are intentionally NOT wired yet — the first
+Fly run is measurement-only (prove the builder produces a correct full-scale
+artifact within RAM/disk budget), no promotion, no serving change, backstop
+stays on.
 
 ### sizing (measured from real sample builds)
 
@@ -290,45 +288,53 @@ SQLite overhead:          +25-30%
 TOTAL SNAPSHOT:           ~6-7 GB
 ```
 
-### build-time breakdown (measured from 100k sample, phase timings)
+### source acquisition: export HTTP, not row streaming
+
+The original plan streamed rows over hrana and paginated to bound memory.
+That's gone. The builder now pulls the corpus via the Turso **export
+endpoints** — a binary SQLite page stream, ~60× faster than per-row JSON:
 
 ```
-turso_fetch       194,722 ms   ← 91% of total (single big SELECT response)
-derive                667 ms     normalize + deriveAll per actor
-actor_insert          425 ms     INSERT actor_compact_base
-emission_insert     4,137 ms     INSERT into emissions staging
-index_build         3,820 ms     CREATE INDEX on emissions
-group_pack         10,006 ms     ORDER BY + pack top-N → prefix_top_base
-analyze + meta        156 ms
-─────────────────
-total             214,741 ms
+export endpoints (GET /info + /export/{gen}):  234 s  (3.2 GB, 13.6 MB/s)
+hrana v3 /v3/cursor NDJSON (abandoned):       ~4 h    (~200 KB/s)
 ```
 
-The bottleneck is not SQLite work (19 s combined) — it's the
-single-shot HTTP fetch from Turso. Three consequences:
+The export body streams straight to `source.db` via a `std.Io.File.Writer`
+(flat memory, no buffering), then we `ATTACH` it and iterate. Memory during
+fetch is constant regardless of corpus size. hrana v2 pagination survives
+only as an `INDEX_SOURCE=hrana_v2` fallback. (See `docs/turso-research.md`
+and `../notes/databases/turso.md` for the wire format.)
 
-1. **Memory**: 5.9M rows × ~500 B JSON ≈ 3 GB response body. Won't fit
-   as one allocation in any reasonable VM. The builder MUST paginate
-   before running against full corpus.
-2. **Resumability**: a crash mid-build today loses the entire fetched
-   payload. Paginated fetch makes the build cheaply restartable from
-   the last applied keyset cursor.
-3. **Latency in transit**: numbers above were measured laptop→Turso
-   over public internet. From a Fly machine co-located in AWS region
-   the fetch latency drops substantially, but the volume problem
-   remains.
+### build-time + memory (measured)
 
-**Required v1 fix before full-scale builds**: keyset-paginated fetch
-in `streamActorsAndEmit`, matching the pattern already in
-`ingester/src/db/sync.zig` (LIMIT 2000 with `rowid > last_rowid` /
-`(did > last_did)` cursor). Process each batch immediately; the
-emissions staging table absorbs them without needing the full set in
-RAM. Estimated full-corpus build time after pagination from Fly-local:
-**~30 minutes**, dominated by ~10-15 min Turso fetch + ~20 min local
-processing. Cadence target: **every 6-12 hours**.
+Full-scale `temp_store=MEMORY` (the bug) vs. 1M-actor `temp_store=FILE` +
+scratch staging.db (the fix):
 
-Build optimization beyond pagination (CTAS, batched inserts, parallel
-emit) stays a v2 follow-up.
+```
+                       5.9M, temp_store=MEMORY   1M, temp_store=FILE
+peak RSS               6.18 GB                   481 MB
+total wall             1617 s                    282 s
+index.db (shipped)     ~12 GB (mostly free pgs)  1.57 GB (real data)
+```
+
+1M phase timings (reuse build, no fetch): derive 18 s, actor_insert 5 s,
+emission_insert 46 s, index_build 43 s, **group_pack 118 s** (dominant —
+packing 14.3M distinct prefix keys), analyze 2 s.
+
+Two findings drove the redesign:
+
+1. **Memory**: the `CREATE INDEX` over ~144M emission rows did its sort in
+   RAM under `temp_store=MEMORY` → 6.18 GB peak. `temp_store=FILE` steered
+   to the volume drops it to flat ~`cache_size` (≈480 MB at 1M; bounded,
+   not corpus-linear). This is THE knob that sizes the machine.
+2. **Disk / artifact**: emissions (~8 GB) + its index (~3 GB) lived inside
+   `index.db`; `DROP TABLE` without `VACUUM` left ~11 GB of free pages in
+   the shipped file. Moving them to a throwaway attached `staging.db` that
+   we delete means `index.db` ships at real size with no VACUUM rewrite.
+
+Cadence target: **every 6-12 hours**. The first full Fly run is
+measurement-only — confirm full-corpus peak RSS stays bounded, capture peak
+disk and final `index.db` size, then wire promotion.
 
 ### volume sizing per machine
 
@@ -347,14 +353,17 @@ App B (typeahead-search.app machines):
   TARGET VOLUME:           20 GB  (10 GB → 20 GB before first
                                     real-scale build)
 
-Indexer (typeahead-search.indexer machine):
-  active build (current):  ~7 GB
-  previous build (kept on disk so App B rollback can re-fetch
-    a known-good target without rebuilding): ~7 GB
-  in-progress new build:   ~7 GB  (transient, during the next build)
-  WAL / tmp / overhead:    ~2 GB
-  peak during build:       ~23 GB
-  TARGET VOLUME:           30 GB
+Indexer machine — peak disk is DURING a build, from coexisting scratch:
+  source.db (export):      ~3.2 GB  (deleted right after emissions phase)
+  staging.db:              ~11 GB   (emissions ~8 + its index ~3; deleted at end)
+  temp_store=FILE scratch: ~3 GB    (CREATE INDEX sort spill, transient)
+  index.db (in progress):  up to ~7 GB  (real artifact)
+  ─ phased, not all at once: emissions-phase peak ≈ source+staging+index
+    ≈ 13 GB; index-phase peak ≈ staging+tmp+index ≈ 16 GB.
+  retained previous artifact (rollback target): ~7 GB
+  WAL / overhead:          ~1 GB
+  PEAK DURING BUILD:       ~24 GB
+  TARGET VOLUME:           30 GB   (measure actual peak on the first Fly run)
 ```
 
 ### cleanup policy
@@ -364,6 +373,15 @@ policy, stale files fill the volume — this is the next disk-full
 incident waiting to happen.
 
 **Indexer-side cleanup** (`typeahead-search.indexer` machine):
+
+> NOT YET IMPLEMENTED — lands with manifest/promotion. The builder today
+> only cleans within its own build: source.db deleted after the emissions
+> phase, staging.db deleted at the end (both on success). The cross-build
+> sweep below is manifest-aware, so it can't be written until the manifest
+> exists — implementing a naive "delete all build-*" sweep now would delete
+> the active snapshot once promotion lands. For the measurement-only first
+> Fly run, start from a clean volume. A crashed build leaves its build dir
+> (incl. a possible source.db.part) until the manifest-aware sweep ships.
 
 - At the START of every build, sweep `/data/build-*/` directories that
   are not referenced by the current `manifest.json`'s `active_build` or
