@@ -5,23 +5,25 @@
 # ///
 """
 targeted backfill: enrich a focused set of actors via getProfiles + upsert
-to turso, including ranking columns (followers_count, follows_count,
-posts_count, last_activity_at).
+to turso (via `turso db shell typeahead`, no token plumbing — uses your
+already-authed CLI), including ranking columns (followers_count,
+follows_count, posts_count, quality_score).
 
 two modes:
   default        — walks atprotocol.dev/atmosphereconf.org graph
-  --benchmark    — uses bsky typeahead for the canonical ranking corpus,
-                   so `just bench-ranking` has signal to score against
+  --benchmark    — seeds DIDs from both bsky-top-10 AND App B-top-25 for the
+                   canonical ranking corpus so `just bench-ranking` has signal
+                   for both sides of every comparison
 
 usage:
-    TURSO_URL=... TURSO_AUTH_TOKEN=... ./scripts/targeted-backfill.py
-    TURSO_URL=... TURSO_AUTH_TOKEN=... ./scripts/targeted-backfill.py --benchmark
+    ./scripts/targeted-backfill.py
+    ./scripts/targeted-backfill.py --benchmark
 """
 
 import argparse
 import json
-import os
 import re
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -31,6 +33,7 @@ import urllib.error
 BSKY = "https://public.api.bsky.app/xrpc"
 WRITE_BATCH = 50
 WRITE_PAUSE = 0.2
+TURSO_DB = "typeahead"
 
 # Mirrors RANKING_CORPUS in scripts/bench.py. Kept here as a separate constant
 # because importing across the scripts/ directory adds path-hackery without
@@ -42,24 +45,28 @@ BENCHMARK_QUERIES = [
     "nate", "alex", "bob", "aoc", "car",
 ]
 
-def env(k):
-    v = os.environ.get(k, "")
-    if not v: print(f"error: {k} not set", file=sys.stderr); sys.exit(1)
-    return v
+def sql_quote(s):
+    """SQLite single-quoted string literal, with embedded ' doubled."""
+    if s is None:
+        return "''"
+    return "'" + str(s).replace("'", "''") + "'"
 
-def turso_batch_write(stmts, url, token):
-    reqs = [{"type": "execute", "stmt": s} for s in stmts]
-    reqs.append({"type": "close"})
-    body = json.dumps({"requests": reqs}).encode()
-    req = urllib.request.Request(f"{url}/v3/pipeline", data=body, headers={
-        "Authorization": f"Bearer {token}", "Content-Type": "application/json",
-    })
+
+def turso_batch_write(sql_statements):
+    """Pipe a batch of SQL statements to `turso db shell`. CLI is already
+    authed (browser flow), so no token plumbing here."""
+    body = ";\n".join(sql_statements) + ";\n"
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            json.loads(resp.read())
-            return True
+        r = subprocess.run(
+            ["turso", "db", "shell", TURSO_DB],
+            input=body, text=True, capture_output=True, timeout=60,
+        )
+        if r.returncode != 0:
+            print(f"  turso shell failed (rc={r.returncode}): {r.stderr[:300]}", file=sys.stderr)
+            return False
+        return True
     except Exception as e:
-        print(f"  turso write failed: {e}", file=sys.stderr)
+        print(f"  turso shell error: {e}", file=sys.stderr)
         return False
 
 def fetch_all(endpoint, actor, key):
@@ -107,42 +114,70 @@ def clean_associated(assoc):
     clean = {k: v for k, v in assoc.items() if v not in (0, False, None)}
     return json.dumps(clean) if clean else "{}"
 
-def profile_to_stmt(p):
+import math
+import datetime
+
+
+def compute_authority_score(followers, follows, posts, created_at):
+    """Mirror of computeAuthorityScore in src/utils.ts. Both implementations
+    must stay aligned — divergence between worker writes and script writes
+    would cause inconsistent quality_score across enrichment paths."""
+    f = max(0, int(followers or 0))
+    fw = max(0, int(follows or 0))
+    pc = max(0, int(posts or 0))
+    score = math.log10(f + 1) * 100 + math.log10(pc + 1) * 20
+    if f > 100 and fw > 0:
+        ratio = f / fw
+        if ratio > 10: score += 50
+        if ratio > 100: score += 100
+    if created_at:
+        try:
+            t = datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00")).timestamp()
+            age_days = (time.time() - t) / 86400
+            if age_days > 365: score += 30
+            if age_days > 365 * 3: score += 30
+        except Exception:
+            pass
+    return round(score * 100) / 100
+
+
+def profile_to_sql(p):
+    """Build a single SQLite UPSERT for one bsky profile. Returns a SQL
+    string suitable for piping to `turso db shell`."""
     hide_vals = {"!hide", "!takedown", "!suspend", "spam"}
     mod_did = "did:plc:ar7c4by46qjdydhdevvrndac"
     hidden = 0
     for lbl in (p.get("labels") or []):
         if lbl.get("val", "") in hide_vals or (lbl.get("val") == "!no-unauthenticated" and lbl.get("src") == mod_did):
             hidden = 1; break
-    return {
-        "sql": """INSERT INTO actors (did, handle, display_name, avatar_url, labels, hidden, created_at, associated, followers_count, follows_count, posts_count, updated_at)
-          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, unixepoch())
-          ON CONFLICT(did) DO UPDATE SET
-            handle = COALESCE(NULLIF(?2, ''), actors.handle),
-            display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
-            avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
-            labels = ?5, hidden = ?6,
-            created_at = COALESCE(NULLIF(?7, ''), actors.created_at),
-            associated = COALESCE(NULLIF(?8, '{}'), actors.associated),
-            followers_count = COALESCE(NULLIF(?9, 0), actors.followers_count),
-            follows_count = COALESCE(NULLIF(?10, 0), actors.follows_count),
-            posts_count = COALESCE(NULLIF(?11, 0), actors.posts_count),
-            profile_checked_at = unixepoch(),
-            updated_at = unixepoch()""",
-        "args": [
-            {"type": "text", "value": p["did"]},
-            {"type": "text", "value": p.get("handle", "")},
-            {"type": "text", "value": p.get("displayName", "")},
-            {"type": "text", "value": extract_avatar_cid(p.get("avatar", ""))},
-            {"type": "text", "value": json.dumps(p.get("labels", []))},
-            {"type": "integer", "value": str(hidden)},
-            {"type": "text", "value": p.get("createdAt", "")},
-            {"type": "text", "value": clean_associated(p.get("associated"))},
-            {"type": "integer", "value": str(int(p.get("followersCount") or 0))},
-            {"type": "integer", "value": str(int(p.get("followsCount") or 0))},
-            {"type": "integer", "value": str(int(p.get("postsCount") or 0))},
-        ],
-    }
+    followers = int(p.get("followersCount") or 0)
+    follows = int(p.get("followsCount") or 0)
+    posts = int(p.get("postsCount") or 0)
+    quality = compute_authority_score(followers, follows, posts, p.get("createdAt", ""))
+
+    did = sql_quote(p["did"])
+    handle = sql_quote(p.get("handle", ""))
+    display = sql_quote(p.get("displayName", ""))
+    avatar = sql_quote(extract_avatar_cid(p.get("avatar", "")))
+    labels = sql_quote(json.dumps(p.get("labels", [])))
+    created = sql_quote(p.get("createdAt", ""))
+    associated = sql_quote(clean_associated(p.get("associated")))
+
+    return f"""INSERT INTO actors (did, handle, display_name, avatar_url, labels, hidden, created_at, associated, followers_count, follows_count, posts_count, quality_score, updated_at)
+VALUES ({did}, {handle}, {display}, {avatar}, {labels}, {hidden}, {created}, {associated}, {followers}, {follows}, {posts}, {quality}, unixepoch())
+ON CONFLICT(did) DO UPDATE SET
+  handle = COALESCE(NULLIF({handle}, ''), actors.handle),
+  display_name = COALESCE(NULLIF({display}, ''), actors.display_name),
+  avatar_url = COALESCE(NULLIF({avatar}, ''), actors.avatar_url),
+  labels = {labels}, hidden = {hidden},
+  created_at = COALESCE(NULLIF({created}, ''), actors.created_at),
+  associated = COALESCE(NULLIF({associated}, '{{}}'), actors.associated),
+  followers_count = COALESCE(NULLIF({followers}, 0), actors.followers_count),
+  follows_count = COALESCE(NULLIF({follows}, 0), actors.follows_count),
+  posts_count = COALESCE(NULLIF({posts}, 0), actors.posts_count),
+  quality_score = COALESCE(NULLIF({quality}, 0), actors.quality_score),
+  profile_checked_at = unixepoch(),
+  updated_at = unixepoch()"""
 
 
 APPB_DEFAULT = "https://typeahead-search.fly.dev"
@@ -198,9 +233,6 @@ def main():
                    help="seed DIDs from bsky typeahead of the canonical ranking corpus")
     args = p.parse_args()
 
-    turso_url = env("TURSO_URL").replace("libsql://", "https://")
-    turso_token = env("TURSO_AUTH_TOKEN")
-
     # collect DIDs
     if args.benchmark:
         print(f"benchmark mode — seeding from bsky typeahead of {len(BENCHMARK_QUERIES)} canonical queries:")
@@ -220,7 +252,7 @@ def main():
     # enrich via getProfiles in batches of 25
     enriched = 0
     t0 = time.time()
-    all_stmts = []
+    all_sql = []
 
     for i in range(0, len(dids), 25):
         batch = dids[i:i+25]
@@ -233,18 +265,18 @@ def main():
                 print("  still limited, skipping")
                 continue
         for p in result:
-            all_stmts.append(profile_to_stmt(p))
+            all_sql.append(profile_to_sql(p))
             enriched += 1
         print(f"  enriched {enriched}/{len(dids)}...", end="\r")
         time.sleep(0.05)
 
-    print(f"\n\nenriched {enriched} profiles, writing to turso...")
+    print(f"\n\nenriched {enriched} profiles, piping to `turso db shell {TURSO_DB}`...")
 
-    # write in small batches
-    for i in range(0, len(all_stmts), WRITE_BATCH):
-        chunk = all_stmts[i:i+WRITE_BATCH]
-        turso_batch_write(chunk, turso_url, turso_token)
-        print(f"  wrote {min(i+WRITE_BATCH, len(all_stmts))}/{len(all_stmts)}", end="\r")
+    # write in small batches via turso CLI
+    for i in range(0, len(all_sql), WRITE_BATCH):
+        chunk = all_sql[i:i+WRITE_BATCH]
+        turso_batch_write(chunk)
+        print(f"  wrote {min(i+WRITE_BATCH, len(all_sql))}/{len(all_sql)}", end="\r")
         time.sleep(WRITE_PAUSE)
 
     elapsed = time.time() - t0

@@ -422,29 +422,57 @@ async def run_ranking(
 
 
 def acceptance_checks(results: list[RankingResult]) -> list[str]:
-    """Return list of acceptance-criterion failures. Empty list = pass."""
+    """Return list of acceptance-criterion failures. Empty list = pass.
+
+    Two tiers of criteria:
+
+      Structural — must always pass. Failure means the search infrastructure
+      itself is broken: wrong response, exact handle ranked wrong, etc.
+
+      Parity — bsky's top result must appear in our top 8 for the listed
+      queries. These are the queries that define whether typeahead "feels
+      real or spammy". They are EXPECTED to fail until authority data
+      coverage is real; that's deliberate — PASS shouldn't be possible
+      to achieve by tuning lexical weights alone.
+    """
     failures = []
+
+    # parity queries: bsky's top result must be findable in ours top 8.
+    # Listed explicitly rather than "all canonical queries" so future-me
+    # has to consciously add or remove an entry, not silently soften.
+    PARITY_QUERIES = {"fig", "phil", "nate", "alex", "bob", "aoc", "car"}
+
     for r in results:
+        # ── structural ──
         if r.ours_status != 200:
-            failures.append(f"non-200 from ours for q={r.query!r} (status={r.ours_status})")
+            failures.append(f"[structural] non-200 from ours for q={r.query!r} (status={r.ours_status})")
             continue
 
         if r.query == "zzstoatzz.io" and r.ours_actors:
             top = r.ours_actors[0].get("handle", "").lower()
             if top != "zzstoatzz.io":
-                failures.append(f"zzstoatzz.io not rank 1 for q={r.query!r} (got {top!r})")
+                failures.append(f"[structural] zzstoatzz.io not rank 1 for q={r.query!r} (got {top!r})")
 
         if r.query in ("fig (", "fig aka"):
             if not any(a.get("handle", "").lower() == "bad-example.com" for a in r.ours_actors):
-                failures.append(f"bad-example.com missing from ours top {len(r.ours_actors)} for q={r.query!r}")
+                failures.append(f"[structural] bad-example.com missing from ours top {len(r.ours_actors)} for q={r.query!r}")
 
+        # ── parity ──
+        if r.query in PARITY_QUERIES:
+            bsky_top = r.bsky_top_handle
+            if bsky_top and bsky_top not in r.ours_handles:
+                failures.append(
+                    f"[parity] bsky's top ({bsky_top!r}) missing from ours top {len(r.ours_actors)} "
+                    f"for q={r.query!r}"
+                )
+
+        # spam guard (kept as structural — if it fires, something is seriously wrong)
         if r.query in ("alex", "nate", "bob"):
-            # if bsky's top is a real account (not spam itself), ours top-3 shouldn't be ≥2/3 spam
             top = (r.bsky_actors[:1] or [{}])[0]
             if top and not looks_like_spam(top):
                 top3_spam = sum(1 for a in r.ours_actors[:3] if looks_like_spam(a))
                 if top3_spam >= 2:
-                    failures.append(f"ours top 3 dominated by spam for q={r.query!r} ({top3_spam}/3 flagged)")
+                    failures.append(f"[structural] ours top 3 dominated by spam for q={r.query!r} ({top3_spam}/3 flagged)")
     return failures
 
 
