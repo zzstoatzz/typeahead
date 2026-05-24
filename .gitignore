@@ -6,4 +6,6 @@ zig-cache/
 zig-pkg/
 .dev.vars
 .env
+.claude/
+.codex/
 scripts/bench-results.json

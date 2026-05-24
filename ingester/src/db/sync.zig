@@ -194,7 +194,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
         // high-frequency batch progress — keep on stderr only
         log.info("batch: {d} rows, rowid={d}, total={d} | fetch={d}ms apply={d}ms", .{
             result.rows.len, last_rowid, actor_count,
-            t1 - t0, t2 - t1,
+            t1 - t0,         t2 - t1,
         });
 
         if (pause_ms > 0) {
@@ -414,7 +414,7 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
 
         log.info("resync: batch {d}: {d} rows, rowid={d}, total={d} | fetch={d}ms apply={d}ms", .{
             batch_num, result.rows.len, last_rowid, actor_count,
-            t1 - t0, t2 - t1,
+            t1 - t0,   t2 - t1,
         });
 
         if (pause_ms > 0) {
@@ -571,8 +571,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             const sql = if (cursor_did_len > 0)
                 "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND (updated_at > ?1 OR (updated_at = ?2 AND did > ?3)) ORDER BY updated_at, did LIMIT 2000"
             else
-                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 2000"
-            ;
+                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 2000";
 
             log.info("incremental: querying updated actors (cursor_ts={s})", .{cursor_ts});
             const q_span = logfire.span("sync.query.updated", .{});
@@ -740,7 +739,15 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             updateActorCount(conn);
         }
 
-        conn.exec("PRAGMA wal_checkpoint(PASSIVE)", .{}) catch {};
+        // TRUNCATE (not PASSIVE): the read pool nearly always has at least
+        // one slot active under live load, and PASSIVE never reclaims frames
+        // while a reader exists — WAL grows unbounded (we observed 748MB
+        // bloat in ~16min, dragging per-query latency from <50ms to >1s).
+        // TRUNCATE waits up to the writer's busy_timeout for readers to
+        // release their snapshots, then truncates the WAL file to zero.
+        // If it can't (sustained read pressure), it returns busy without
+        // throwing; we'll retry next cycle.
+        conn.exec("PRAGMA wal_checkpoint(TRUNCATE)", .{}) catch {};
         span.setStatus(.ok, null);
         log.info("incremental: done (updated={d}, cleared={d}, deleted={d})", .{
             updated, cleared, deleted,
@@ -806,8 +813,15 @@ const OldFtsRow = struct {
     name: ?[]const u8 = null,
 };
 
+/// Snapshot must come from `actors_fts` (not `actors`) because the FTS5
+/// special-delete `INSERT INTO ft(ft, did, handle, display_name) VALUES('delete', ...)`
+/// requires the EXACT tuple currently in the FTS table. Reading from
+/// `actors` can produce a stale snapshot (prior sync already updated the
+/// row but FTS rebuild failed silently), so the delete-old never matches
+/// and the FTS table accumulates orphan rows — causing the hundreds-per-
+/// cycle "FTS delete-old failed" warnings we saw on App B.
 fn snapshotOldFtsRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
-    if (conn.row("SELECT handle, display_name FROM actors WHERE did = ?", .{did})) |maybe| {
+    if (conn.row("SELECT handle, display_name FROM actors_fts WHERE did = ?", .{did})) |maybe| {
         if (maybe) |r| {
             defer r.deinit();
             const h = r.text(0);

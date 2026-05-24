@@ -96,7 +96,11 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
     var output: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
     defer output.deinit();
 
-    search.search(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch {
+    search.search(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch |err| {
+        if (err == error.PoolExhausted) {
+            try sendJson(request, .service_unavailable, "{\"error\":\"read pool exhausted\"}");
+            return;
+        }
         try sendJson(request, .internal_server_error, "{\"error\":\"search failed\"}");
         return;
     };
@@ -136,7 +140,11 @@ fn handleDebugSearch(request: *http.Server.Request, target: []const u8, local_db
     var output: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
     defer output.deinit();
 
-    search.debugSearch(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch {
+    search.debugSearch(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch |err| {
+        if (err == error.PoolExhausted) {
+            try sendJson(request, .service_unavailable, "{\"error\":\"read pool exhausted\"}");
+            return;
+        }
         try sendJson(request, .internal_server_error, "{\"error\":\"debug search failed\"}");
         return;
     };
@@ -306,7 +314,13 @@ fn handleDebugFts(request: *http.Server.Request, target: []const u8, local_db: *
 }
 
 fn writeDebugRow(jw: anytype, local_db: *LocalDb, comptime sql: []const u8, param: []const u8) !void {
-    var rows = local_db.query(sql, .{param}) catch {
+    const lease = local_db.checkoutRead() catch {
+        try jw.write("error");
+        return;
+    };
+    defer lease.release();
+
+    var rows = lease.query(sql, .{param}) catch {
         try jw.write("error");
         return;
     };

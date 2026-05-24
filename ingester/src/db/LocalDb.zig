@@ -10,8 +10,36 @@ const log = std.log.scoped(.local_db);
 
 const LocalDb = @This();
 
+/// One read connection per HTTP worker thread is wrong (deadlocks under
+/// concurrent /search) and a single shared one is also wrong (zqlite.Conn
+/// is one statement at a time). The pool gives each in-flight search its
+/// own exclusive conn for the duration of the request, mutex-checkout
+/// style; release with `lease.release()` (or `defer`).
+const READ_POOL_DEFAULT_SIZE: usize = 4;
+/// How long checkoutRead is willing to wait when all slots are busy
+/// before returning error.PoolExhausted. Caller (HTTP handler) should
+/// translate that to 503 so the worker falls back fast.
+const READ_WAIT_DEFAULT_MS: u64 = 250;
+const READ_TICK_MS: u64 = 5;
+
 conn: ?zqlite.Conn = null,
-read_conn: ?zqlite.Conn = null, // separate read connection — never blocked by writes in WAL mode
+
+/// Pool of read-only connections handed out one-per-request. Each slot
+/// has its own mutex so concurrent /search calls don't serialize behind
+/// one queue. WAL allows N concurrent readers safely. Sized at open()
+/// from READ_POOL_SIZE env var (default 4) so we can tune without a
+/// recompile when load characteristics change.
+read_conns: []?zqlite.Conn = &.{},
+read_slot_mu: []std.Io.Mutex = &.{},
+read_rr: std.atomic.Value(usize) = std.atomic.Value(usize).init(0),
+read_wait_budget_ms: u64 = READ_WAIT_DEFAULT_MS,
+
+/// Dedicated read conn for /health and other operational lookups. Kept
+/// out of the pool so a saturated search load can NEVER wedge health.
+/// Single-statement queries only — not a hot path.
+meta_conn: ?zqlite.Conn = null,
+meta_mu: std.Io.Mutex = std.Io.Mutex.init,
+
 allocator: Allocator,
 is_ready: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
 mutex: std.Io.Mutex = std.Io.Mutex.init, // protects write conn only
@@ -41,6 +69,18 @@ pub const Col = struct {
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     if (std.c.getenv(name)) |p| return std.mem.span(p);
     return null;
+}
+
+fn envUsize(name: [*:0]const u8, default: usize, min: usize, max: usize) usize {
+    const v = cGetenv(name) orelse return default;
+    const parsed = std.fmt.parseInt(usize, v, 10) catch return default;
+    return @min(@max(parsed, min), max);
+}
+
+fn envU64(name: [*:0]const u8, default: u64, min: u64, max: u64) u64 {
+    const v = cGetenv(name) orelse return default;
+    const parsed = std.fmt.parseInt(u64, v, 10) catch return default;
+    return @min(@max(parsed, min), max);
 }
 
 pub fn init(allocator: Allocator) LocalDb {
@@ -112,14 +152,7 @@ fn openDb(self: *LocalDb, path_env: []const u8) !void {
     _ = self.conn.?.exec("PRAGMA cache_size=-20000", .{}) catch {}; // 20MB page cache
     _ = self.conn.?.exec("PRAGMA mmap_size=268435456", .{}) catch {}; // 256MB
 
-    // separate read connection — WAL allows concurrent reads + writes
-    self.read_conn = zqlite.open(path, zqlite.OpenFlags.ReadOnly) catch |err| {
-        log.err("failed to open read conn: {}", .{err});
-        return err;
-    };
-    _ = self.read_conn.?.exec("PRAGMA busy_timeout=1000", .{}) catch {};
-    _ = self.read_conn.?.exec("PRAGMA mmap_size=268435456", .{}) catch {}; // 256MB
-    _ = self.read_conn.?.exec("PRAGMA cache_size=-20000", .{}) catch {}; // 20MB
+    try self.openReadPool(path);
 
     self.cleanupStagingTables();
     try self.createSchema();
@@ -128,21 +161,83 @@ fn openDb(self: *LocalDb, path_env: []const u8) !void {
 }
 
 pub fn deinit(self: *LocalDb) void {
-    if (self.read_conn) |c| c.close();
-    self.read_conn = null;
+    self.closeReadConn();
+    if (self.read_conns.len > 0) {
+        self.allocator.free(self.read_conns);
+        self.allocator.free(self.read_slot_mu);
+        self.read_conns = &.{};
+        self.read_slot_mu = &.{};
+    }
     if (self.conn) |c| c.close();
     self.conn = null;
 }
 
-/// Close read connection (e.g. during bootstrap to avoid WAL reader interference)
-pub fn closeReadConn(self: *LocalDb) void {
-    if (self.read_conn) |c| c.close();
-    self.read_conn = null;
+/// Open the read pool + meta conn. Each conn is read-only with `query_only`
+/// set as defense in depth — even if a future bug tries to write, SQLite
+/// will reject it. `busy_timeout` is small because we want to fail fast
+/// to a higher-level fallback rather than block on a stuck writer.
+fn openReadPool(self: *LocalDb, path: [*:0]const u8) !void {
+    if (self.read_conns.len == 0) {
+        const size = envUsize("READ_POOL_SIZE", READ_POOL_DEFAULT_SIZE, 1, 64);
+        self.read_conns = try self.allocator.alloc(?zqlite.Conn, size);
+        @memset(self.read_conns, null);
+        self.read_slot_mu = try self.allocator.alloc(std.Io.Mutex, size);
+        for (self.read_slot_mu) |*mu| mu.* = std.Io.Mutex.init;
+        self.read_wait_budget_ms = envU64("READ_POOL_WAIT_MS", READ_WAIT_DEFAULT_MS, 0, 5000);
+        log.info("read pool: size={d} wait_budget_ms={d}", .{ size, self.read_wait_budget_ms });
+    }
+
+    for (self.read_conns, 0..) |*slot, i| {
+        slot.* = zqlite.open(path, zqlite.OpenFlags.ReadOnly) catch |err| {
+            log.err("failed to open read pool conn {d}: {}", .{ i, err });
+            return err;
+        };
+        applyReadPragmas(slot.*.?);
+    }
+
+    self.meta_conn = zqlite.open(path, zqlite.OpenFlags.ReadOnly) catch |err| {
+        log.err("failed to open meta conn: {}", .{err});
+        return err;
+    };
+    applyReadPragmas(self.meta_conn.?);
 }
 
-/// Reopen read connection after bootstrap completes
+fn applyReadPragmas(c: zqlite.Conn) void {
+    _ = c.exec("PRAGMA query_only=ON", .{}) catch {};
+    _ = c.exec("PRAGMA busy_timeout=1000", .{}) catch {};
+    _ = c.exec("PRAGMA mmap_size=268435456", .{}) catch {}; // 256MB
+    _ = c.exec("PRAGMA cache_size=-20000", .{}) catch {}; // 20MB
+}
+
+/// Close all read connections (pool + meta). Called during bootstrap to
+/// avoid WAL reader interference with the writer's exclusive operations.
+///
+/// Lock-then-close: acquires every slot mutex (and meta_mu) BEFORE
+/// closing the underlying conns. Without this, an in-flight /search
+/// holding a lease while bootstrap closes would dereference a freed
+/// conn — exactly the wedge we're trying to eliminate. Locks are
+/// released after the conns are nulled so any racing checkoutRead
+/// that wins the tryLock observes a null slot and bails out cleanly.
+pub fn closeReadConn(self: *LocalDb) void {
+    for (self.read_slot_mu) |*mu| mu.lockUncancelable(io);
+    self.meta_mu.lockUncancelable(io);
+
+    for (self.read_conns) |*slot| {
+        if (slot.*) |c| c.close();
+        slot.* = null;
+    }
+    if (self.meta_conn) |c| c.close();
+    self.meta_conn = null;
+
+    self.meta_mu.unlock(io);
+    for (self.read_slot_mu) |*mu| mu.unlock(io);
+}
+
+/// Reopen read connections after bootstrap completes. Re-acquires the
+/// same locks so a checkoutRead racing with reopen sees either "still
+/// closed" (null slot) or "fully open" — never a partially-init conn.
 pub fn reopenReadConn(self: *LocalDb) !void {
-    if (self.read_conn != null) return;
+    if (self.read_conns.len > 0 and self.read_conns[0] != null and self.meta_conn != null) return;
 
     var path_buf: [256]u8 = undefined;
     if (self.path.len >= path_buf.len) return error.PathTooLong;
@@ -150,13 +245,14 @@ pub fn reopenReadConn(self: *LocalDb) !void {
     path_buf[self.path.len] = 0;
     const path: [*:0]const u8 = path_buf[0..self.path.len :0];
 
-    self.read_conn = zqlite.open(path, zqlite.OpenFlags.ReadOnly) catch |err| {
-        log.err("failed to reopen read conn: {}", .{err});
-        return err;
-    };
-    _ = self.read_conn.?.exec("PRAGMA busy_timeout=1000", .{}) catch {};
-    _ = self.read_conn.?.exec("PRAGMA mmap_size=268435456", .{}) catch {};
-    _ = self.read_conn.?.exec("PRAGMA cache_size=-20000", .{}) catch {};
+    for (self.read_slot_mu) |*mu| mu.lockUncancelable(io);
+    self.meta_mu.lockUncancelable(io);
+    defer {
+        self.meta_mu.unlock(io);
+        for (self.read_slot_mu) |*mu| mu.unlock(io);
+    }
+
+    try self.openReadPool(path);
 }
 
 pub fn isReady(self: *LocalDb) bool {
@@ -260,31 +356,75 @@ pub const Rows = struct {
     }
 };
 
-/// SELECT using read connection (never blocked by writes)
-pub fn query(self: *LocalDb, comptime sql: []const u8, args: anytype) !Rows {
-    const c = self.read_conn orelse return error.NotOpen;
-    const rows = c.rows(sql, args) catch |e| {
-        log.err("query failed: {s}", .{@errorName(e)});
-        return e;
-    };
-    return .{ .inner = rows };
+pub const PoolError = error{ PoolExhausted, NotOpen };
+
+/// Exclusive lease on one read connection. Callers MUST `release()` (use
+/// `defer lease.release()`). Holding a lease across multiple queries is
+/// intentional — one /search call makes 3-4 reads, all sharing the same
+/// leased conn so it doesn't ping-pong across slots.
+pub const ReadLease = struct {
+    db: *LocalDb,
+    slot: usize,
+    conn: zqlite.Conn,
+
+    pub fn release(self: ReadLease) void {
+        self.db.read_slot_mu[self.slot].unlock(io);
+    }
+
+    pub fn query(self: ReadLease, comptime sql: []const u8, args: anytype) !Rows {
+        const rows = self.conn.rows(sql, args) catch |e| {
+            log.err("lease.query failed: {s}", .{@errorName(e)});
+            return e;
+        };
+        return .{ .inner = rows };
+    }
+
+    /// SELECT with runtime SQL + runtime-sized list of text bind values.
+    /// Needed for `WHERE did IN (?, ?, ?, …)` batched lookups where the
+    /// placeholder count is only known at runtime.
+    pub fn queryTextList(self: ReadLease, sql: []const u8, args_text: []const []const u8) !Rows {
+        const stmt = self.conn.prepare(sql) catch |e| {
+            log.err("lease.queryTextList prepare failed: {s}", .{@errorName(e)});
+            return e;
+        };
+        errdefer stmt.deinit();
+        for (args_text, 0..) |arg, i| {
+            try stmt.bindValue(arg, i);
+        }
+        return .{ .inner = .{ .stmt = stmt, .err = null } };
+    }
+};
+
+/// Lease one read connection from the pool. Round-robins the first try
+/// across slots to spread load, then falls back to a bounded poll. On
+/// `error.PoolExhausted` the caller should fail the request fast — the
+/// worker will fall back to bsky/turso rather than hold a doomed connection.
+pub fn checkoutRead(self: *LocalDb) PoolError!ReadLease {
+    if (self.read_conns.len == 0) return error.NotOpen;
+    const start = self.read_rr.fetchAdd(1, .monotonic) % self.read_conns.len;
+
+    if (self.tryAcquireSlot(start)) |lease| return lease;
+
+    var elapsed: u64 = 0;
+    while (elapsed < self.read_wait_budget_ms) : (elapsed += READ_TICK_MS) {
+        io.sleep(.{ .nanoseconds = READ_TICK_MS * std.time.ns_per_ms }, .real) catch return error.PoolExhausted;
+        if (self.tryAcquireSlot(start)) |lease| return lease;
+    }
+    return error.PoolExhausted;
 }
 
-/// SELECT with runtime SQL + runtime-sized list of text bind values. Needed
-/// for `WHERE did IN (?, ?, ?, …)` batched lookups where the placeholder
-/// count is only known at runtime. The standard `query()` uses comptime SQL
-/// + comptime tuple binding via `inline for`, which can't express N args.
-pub fn queryTextList(self: *LocalDb, sql: []const u8, args: []const []const u8) !Rows {
-    const c = self.read_conn orelse return error.NotOpen;
-    const stmt = c.prepare(sql) catch |e| {
-        log.err("queryTextList prepare failed: {s}", .{@errorName(e)});
-        return e;
-    };
-    errdefer stmt.deinit();
-    for (args, 0..) |arg, i| {
-        try stmt.bindValue(arg, i);
+fn tryAcquireSlot(self: *LocalDb, start: usize) ?ReadLease {
+    var i: usize = 0;
+    while (i < self.read_conns.len) : (i += 1) {
+        const slot = (start + i) % self.read_conns.len;
+        if (self.read_slot_mu[slot].tryLock()) {
+            if (self.read_conns[slot]) |conn| {
+                return .{ .db = self, .slot = slot, .conn = conn };
+            }
+            self.read_slot_mu[slot].unlock(io);
+        }
     }
-    return .{ .inner = .{ .stmt = stmt, .err = null } };
+    return null;
 }
 
 /// Execute a statement (INSERT, UPDATE, DELETE) — mutex-protected
@@ -312,9 +452,14 @@ pub fn unlock(self: *LocalDb) void {
     self.mutex.unlock(io);
 }
 
-/// Get cached actor count from sync_meta (written during sync, avoids full table scan)
+/// Get cached actor count from sync_meta. Uses the dedicated meta conn
+/// (NOT the read pool) so /health stays responsive even when /search is
+/// saturating the pool.
 pub fn countActors(self: *LocalDb) u64 {
-    const c = self.read_conn orelse return 0;
+    self.meta_mu.lockUncancelable(io);
+    defer self.meta_mu.unlock(io);
+
+    const c = self.meta_conn orelse return 0;
     const row = c.row("SELECT value FROM sync_meta WHERE key = 'actor_count'", .{}) catch return 0;
     if (row) |r| {
         defer r.deinit();

@@ -38,6 +38,16 @@ fn nowSeconds() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
 }
 
+fn nowMs() i64 {
+    return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_ms));
+}
+
+/// Slow-search threshold: log a one-line timing breakdown only when a
+/// /search exceeds this many ms so steady-state hot-cache calls don't
+/// spam the log, but anything that drifts into "users notice" territory
+/// is recorded. Keep generous; tighten as we drive the floor down.
+const SLOW_SEARCH_LOG_MS: i64 = 300;
+
 /// Per-candidate score components. `total()` sums them; storing each lets
 /// `/debug/search` show why a row ranked where it did.
 ///
@@ -102,6 +112,7 @@ pub const Candidate = struct {
 /// Main search entry. Writes a `{"actors":[...]}` body, matching the public
 /// `app.bsky.actor.searchActorsTypeahead` response shape.
 pub fn search(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, writer: anytype) !void {
+    const t_start = nowMs();
     const term = sanitize(raw_query);
     if (term.len == 0) {
         try writer.writeAll("{\"actors\":[]}");
@@ -112,13 +123,22 @@ pub fn search(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limi
     defer arena.deinit();
     const aa = arena.allocator();
 
-    var candidates = gatherCandidates(local, aa, term) catch |err| {
+    const t_lease_start = nowMs();
+    const lease = try local.checkoutRead();
+    defer lease.release();
+    const t_lease_done = nowMs();
+
+    var phases: GatherPhases = .{};
+    var candidates = gatherCandidatesTimed(lease, aa, term, &phases) catch |err| {
         log.err("gather candidates failed: {s}", .{@errorName(err)});
         try writer.writeAll("{\"actors\":[]}");
         return;
     };
+    const t_gather_done = nowMs();
+
     scoreCandidates(candidates, term);
     sortCandidates(candidates, term);
+    const t_rank_done = nowMs();
 
     var jw: json.Stringify = .{ .writer = writer };
     try jw.beginObject();
@@ -132,7 +152,36 @@ pub fn search(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limi
 
     try jw.endArray();
     try jw.endObject();
+    const t_end = nowMs();
+
+    const total = t_end - t_start;
+    if (total >= SLOW_SEARCH_LOG_MS) {
+        log.info(
+            "slow /search q='{s}' total={d}ms lease_wait={d}ms exact={d}ms prefix={d}ms fts={d}ms batch={d}ms rank={d}ms write={d}ms candidates={d}",
+            .{
+                term,
+                total,
+                t_lease_done - t_lease_start,
+                phases.exact_ms,
+                phases.prefix_ms,
+                phases.fts_ms,
+                phases.batch_ms,
+                t_rank_done - t_gather_done,
+                t_end - t_rank_done,
+                candidates.len,
+            },
+        );
+    }
 }
+
+/// Per-phase timings collected during candidate gathering. Populated by
+/// `gatherCandidatesTimed` and emitted by the slow-search log line.
+const GatherPhases = struct {
+    exact_ms: i64 = 0,
+    prefix_ms: i64 = 0,
+    fts_ms: i64 = 0,
+    batch_ms: i64 = 0,
+};
 
 /// Debug entry. Returns `{"q":..., "candidates":[{..., score, breakdown, source}]}`
 /// for inspecting why ranking turned out the way it did. App B-only — not
@@ -157,7 +206,18 @@ pub fn debugSearch(local: *LocalDb, allocator: Allocator, raw_query: []const u8,
         return;
     }
 
-    var candidates = gatherCandidates(local, aa, term) catch |err| {
+    const lease = local.checkoutRead() catch |err| {
+        try jw.objectField("error");
+        try jw.write(@errorName(err));
+        try jw.objectField("candidates");
+        try jw.beginArray();
+        try jw.endArray();
+        try jw.endObject();
+        return;
+    };
+    defer lease.release();
+
+    var candidates = gatherCandidates(lease, aa, term) catch |err| {
         try jw.objectField("error");
         try jw.write(@errorName(err));
         try jw.objectField("candidates");
@@ -185,27 +245,51 @@ pub fn debugSearch(local: *LocalDb, allocator: Allocator, raw_query: []const u8,
 
 // ── candidate gathering ──────────────────────────────────────────────────
 
-const PREFIX_OVERFETCH: usize = 200;
-const FTS_OVERFETCH: usize = 300;
+// Overfetch sizing: for a default limit=8 typeahead, fetching 500
+// candidates and hydrating their full rows is the dominant cost
+// (batch phase: 1.1-3.7s on a 5.9M-row DB). Top-8 ranking doesn't
+// benefit from 500 alternatives — most never reach the output.
+// Per the per-phase timing instrumentation, the batched IN scaled
+// roughly linearly with N, so cutting overfetch ~3× translates
+// directly to ~3× faster total /search.
+const PREFIX_OVERFETCH: usize = 60;
+const FTS_OVERFETCH: usize = 80;
 
 /// Collect candidates from all three sources, dedupe by DID, then hydrate
 /// each unique DID's full row via primary-key point-lookups. Source is
 /// remembered (debug-only signal — scoring is source-agnostic).
-fn gatherCandidates(local: *LocalDb, aa: Allocator, term: []const u8) ![]Candidate {
+fn gatherCandidates(lease: LocalDb.ReadLease, aa: Allocator, term: []const u8) ![]Candidate {
+    var dummy: GatherPhases = .{};
+    return gatherCandidatesTimed(lease, aa, term, &dummy);
+}
+
+fn gatherCandidatesTimed(lease: LocalDb.ReadLease, aa: Allocator, term: []const u8, phases: *GatherPhases) ![]Candidate {
     var seen = std.StringHashMap(Source).init(aa);
     var ordered: std.ArrayListUnmanaged([]const u8) = .empty;
 
-    try collectExact(local, aa, term, &seen, &ordered);
-    try collectPrefix(local, aa, term, &seen, &ordered);
-    if (term.len >= 2) try collectFts(local, aa, term, &seen, &ordered);
+    var t = nowMs();
+    try collectExact(lease, aa, term, &seen, &ordered);
+    phases.exact_ms = nowMs() - t;
+
+    t = nowMs();
+    try collectPrefix(lease, aa, term, &seen, &ordered);
+    phases.prefix_ms = nowMs() - t;
+
+    if (term.len >= 2) {
+        t = nowMs();
+        try collectFts(lease, aa, term, &seen, &ordered);
+        phases.fts_ms = nowMs() - t;
+    }
 
     if (ordered.items.len == 0) return &.{};
 
+    const t_batch = nowMs();
+    defer phases.batch_ms = nowMs() - t_batch;
+
     // Batched fetch: one `WHERE did IN (?, ?, …)` instead of N point-lookups.
-    // N can hit 501 for hot prefixes (1 exact + 200 prefix + 300 FTS). N
-    // individual queries through zqlite's single read connection serialize
-    // and push p95 past the worker's 3s fallback timeout; batching collapses
-    // it to a single index range scan.
+    // N can hit 501 for hot prefixes (1 exact + 200 prefix + 300 FTS). All
+    // reads run on the same leased conn, so this is a single index range
+    // scan rather than ping-ponging across the pool.
     var sql_buf: std.ArrayListUnmanaged(u8) = .empty;
     try sql_buf.appendSlice(aa, "SELECT " ++ LocalDb.actor_cols ++ " FROM actors WHERE hidden = 0 AND did IN (");
     for (ordered.items, 0..) |_, i| {
@@ -214,7 +298,7 @@ fn gatherCandidates(local: *LocalDb, aa: Allocator, term: []const u8) ![]Candida
     }
     try sql_buf.append(aa, ')');
 
-    var rows = local.queryTextList(sql_buf.items, ordered.items) catch |err| {
+    var rows = lease.queryTextList(sql_buf.items, ordered.items) catch |err| {
         log.err("batched candidate fetch failed: {s}", .{@errorName(err)});
         return &.{};
     };
@@ -245,8 +329,8 @@ fn gatherCandidates(local: *LocalDb, aa: Allocator, term: []const u8) ![]Candida
     return candidates.toOwnedSlice(aa);
 }
 
-fn collectExact(local: *LocalDb, aa: Allocator, term: []const u8, seen: *std.StringHashMap(Source), ordered: *std.ArrayListUnmanaged([]const u8)) !void {
-    var rows = local.query(
+fn collectExact(lease: LocalDb.ReadLease, aa: Allocator, term: []const u8, seen: *std.StringHashMap(Source), ordered: *std.ArrayListUnmanaged([]const u8)) !void {
+    var rows = lease.query(
         "SELECT did FROM actors WHERE handle = ? COLLATE NOCASE AND hidden = 0 LIMIT 1",
         .{term},
     ) catch |err| {
@@ -257,10 +341,10 @@ fn collectExact(local: *LocalDb, aa: Allocator, term: []const u8, seen: *std.Str
     if (rows.next()) |row| try addDid(aa, seen, ordered, row.text(0), .exact);
 }
 
-fn collectPrefix(local: *LocalDb, aa: Allocator, term: []const u8, seen: *std.StringHashMap(Source), ordered: *std.ArrayListUnmanaged([]const u8)) !void {
+fn collectPrefix(lease: LocalDb.ReadLease, aa: Allocator, term: []const u8, seen: *std.StringHashMap(Source), ordered: *std.ArrayListUnmanaged([]const u8)) !void {
     var like_buf: [600]u8 = undefined;
     const like = std.fmt.bufPrint(&like_buf, "{s}%", .{term}) catch return;
-    var rows = local.query(
+    var rows = lease.query(
         "SELECT did FROM actors WHERE handle LIKE ? COLLATE NOCASE AND hidden = 0 LIMIT ?",
         .{ like, PREFIX_OVERFETCH },
     ) catch |err| {
@@ -271,11 +355,16 @@ fn collectPrefix(local: *LocalDb, aa: Allocator, term: []const u8, seen: *std.St
     while (rows.next()) |row| try addDid(aa, seen, ordered, row.text(0), .prefix);
 }
 
-fn collectFts(local: *LocalDb, aa: Allocator, term: []const u8, seen: *std.StringHashMap(Source), ordered: *std.ArrayListUnmanaged([]const u8)) !void {
+fn collectFts(lease: LocalDb.ReadLease, aa: Allocator, term: []const u8, seen: *std.StringHashMap(Source), ordered: *std.ArrayListUnmanaged([]const u8)) !void {
     var fts_buf: [600]u8 = undefined;
     const fts = buildFtsQuery(term, &fts_buf) orelse return;
-    var rows = local.query(
-        "SELECT did FROM actors_fts WHERE actors_fts MATCH ? ORDER BY rank LIMIT ?",
+    // No ORDER BY rank: computing bm25 across every match for a common
+    // prefix (e.g. "alex*") costs ~1.8s on a 5.9M-row FTS, while taking
+    // any LIMIT matches costs ~67ms — 27× speedup. We re-rank with our
+    // own quality_score + lexical signals downstream, so FTS rank order
+    // isn't load-bearing.
+    var rows = lease.query(
+        "SELECT did FROM actors_fts WHERE actors_fts MATCH ? LIMIT ?",
         .{ fts, FTS_OVERFETCH },
     ) catch |err| {
         log.err("FTS query failed for '{s}': {s}", .{ fts, @errorName(err) });
@@ -497,18 +586,31 @@ fn writeActor(jw: anytype, c: *const Candidate) !void {
         try jw.objectField("avatar");
         if (mem.startsWith(u8, c.avatar_url, "https://")) {
             try jw.write(c.avatar_url);
-        } else if (c.pds.len > 0 and !mem.endsWith(u8, c.pds, ".bsky.network")) {
-            try jw.print("\"{s}/xrpc/com.atproto.sync.getBlob?did={s}&cid={s}\"", .{ c.pds, c.did, c.avatar_url });
         } else {
-            try jw.print("\"https://cdn.bsky.app/img/avatar/plain/{s}/{s}\"", .{ c.did, c.avatar_url });
+            // Build the URL into a stack buffer, then let Stringify quote +
+            // escape it. Manual `\"...\"` printing would skip JSON escaping
+            // and produce invalid output if a value ever contains " or \.
+            var url_buf: [512]u8 = undefined;
+            const url = if (c.pds.len > 0 and !mem.endsWith(u8, c.pds, ".bsky.network"))
+                std.fmt.bufPrint(&url_buf, "{s}/xrpc/com.atproto.sync.getBlob?did={s}&cid={s}", .{ c.pds, c.did, c.avatar_url }) catch null
+            else
+                std.fmt.bufPrint(&url_buf, "https://cdn.bsky.app/img/avatar/plain/{s}/{s}", .{ c.did, c.avatar_url }) catch null;
+            if (url) |u| try jw.write(u) else try jw.write(null);
         }
     }
+    // `associated` and `labels` are stored as JSON strings — embed via the
+    // explicit raw-passthrough API rather than `print("{s}", ...)` so the
+    // intent is obvious and Stringify's internal safety asserts apply.
     if (!mem.eql(u8, c.associated, "{}") and c.associated.len > 2) {
         try jw.objectField("associated");
-        try jw.print("{s}", .{c.associated});
+        try jw.beginWriteRaw();
+        try jw.writer.writeAll(c.associated);
+        jw.endWriteRaw();
     }
     try jw.objectField("labels");
-    try jw.print("{s}", .{c.labels});
+    try jw.beginWriteRaw();
+    try jw.writer.writeAll(c.labels);
+    jw.endWriteRaw();
 
     if (c.created_at.len > 0) {
         try jw.objectField("createdAt");
