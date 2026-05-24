@@ -78,6 +78,23 @@ const BuildStats = struct {
     prefix_key_count: usize = 0,
     build_start_ms: i64 = 0,
     build_end_ms: i64 = 0,
+    phases: Phases = .{},
+};
+
+/// Per-phase cumulative time. Bracketed via `nowMs()` at coarse boundaries
+/// (one bracket pair around each logical phase, not per-row) so the
+/// overhead of the timestamp syscall stays well under 1% of total build
+/// cost. The breakdown is what tells us whether build-time growth is
+/// driven by Turso fetch, emission inserts, or the group/pack pass.
+const Phases = struct {
+    turso_fetch_ms: i64 = 0,
+    derive_ms: i64 = 0, // normalize + deriveAll per actor (cumulative)
+    actor_insert_ms: i64 = 0, // pack + INSERT actor_compact_base (cumulative)
+    emission_insert_ms: i64 = 0, // INSERT emissions inner loop (cumulative)
+    index_build_ms: i64 = 0, // CREATE INDEX idx_emissions_key_score
+    group_pack_ms: i64 = 0, // buildPrefixTopBase whole pass
+    meta_ms: i64 = 0, // writeMeta
+    analyze_ms: i64 = 0, // ANALYZE
 };
 
 fn nowMs() i64 {
@@ -161,19 +178,36 @@ pub fn run(allocator: Allocator) !void {
     _ = arena.reset(.free_all);
 
     // ── group, pack, write prefix_top_base ────────────────────────────────
-    try conn.exec("CREATE INDEX IF NOT EXISTS idx_emissions_key_score ON emissions(key, score DESC)", .{});
-    try buildPrefixTopBase(aa, conn, cfg, &stats);
+    {
+        const t = nowMs();
+        try conn.exec("CREATE INDEX IF NOT EXISTS idx_emissions_key_score ON emissions(key, score DESC)", .{});
+        stats.phases.index_build_ms = nowMs() - t;
+    }
+    {
+        const t = nowMs();
+        try buildPrefixTopBase(aa, conn, cfg, &stats);
+        stats.phases.group_pack_ms = nowMs() - t;
+    }
     _ = arena.reset(.free_all);
 
     // ── cleanup + metadata ────────────────────────────────────────────────
     try conn.exec("DROP TABLE IF EXISTS emissions", .{});
-    try writeMeta(conn, build_id, cfg, &stats);
+    {
+        const t = nowMs();
+        try writeMeta(conn, build_id, cfg, &stats);
+        stats.phases.meta_ms = nowMs() - t;
+    }
 
-    _ = conn.exec("ANALYZE", .{}) catch {};
+    {
+        const t = nowMs();
+        _ = conn.exec("ANALYZE", .{}) catch {};
+        stats.phases.analyze_ms = nowMs() - t;
+    }
     // VACUUM is not free — leave it for a follow-up if size matters.
 
     stats.build_end_ms = nowMs();
     const elapsed_ms = stats.build_end_ms - stats.build_start_ms;
+    const p = stats.phases;
     log.info("indexer done: build_id={s} actors={d} emissions={d} prefix_keys={d} elapsed_ms={d}", .{
         build_id,
         stats.actor_count,
@@ -181,6 +215,10 @@ pub fn run(allocator: Allocator) !void {
         stats.prefix_key_count,
         elapsed_ms,
     });
+    log.info(
+        "phase ms: turso_fetch={d} derive={d} actor_insert={d} emission_insert={d} index_build={d} group_pack={d} meta={d} analyze={d}",
+        .{ p.turso_fetch_ms, p.derive_ms, p.actor_insert_ms, p.emission_insert_ms, p.index_build_ms, p.group_pack_ms, p.meta_ms, p.analyze_ms },
+    );
 }
 
 fn streamActorsAndEmit(
@@ -200,10 +238,15 @@ fn streamActorsAndEmit(
 
     log.info("turso query: {s}", .{sql});
 
-    var result = try turso.query(sql, &.{});
+    var result = blk: {
+        const t = nowMs();
+        const r = try turso.query(sql, &.{});
+        stats.phases.turso_fetch_ms = nowMs() - t;
+        break :blk r;
+    };
     defer result.deinit();
 
-    log.info("turso returned {d} rows", .{result.rows.len});
+    log.info("turso returned {d} rows in {d}ms", .{ result.rows.len, stats.phases.turso_fetch_ms });
 
     try snapshot.exec("BEGIN", .{});
     errdefer _ = snapshot.exec("ROLLBACK", .{}) catch {};
@@ -234,7 +277,8 @@ fn streamActorsAndEmit(
 
         if (hidden) continue; // builder skips hidden actors (mod tombstones land in overlay)
 
-        // 1. pack the actor
+        // 1. pack + insert actor blob
+        const t_actor = nowMs();
         const blob = pack.packActor(aa, .{
             .hidden = false,
             .quality_score = @floatCast(quality_score),
@@ -249,20 +293,23 @@ fn streamActorsAndEmit(
             log.warn("packActor failed for {s}: {s}", .{ did, @errorName(err) });
             continue;
         };
-
         try stmt_actor.reset();
         try stmt_actor.bindValue(did, 0);
         try stmt_actor.bindValue(zqlite.blob(blob), 1);
         try stmt_actor.stepToCompletion();
+        stats.phases.actor_insert_ms += nowMs() - t_actor;
 
         // 2. derive prefix keys (deduped is unnecessary here — builder GROUP BY
         // handles dup keys naturally; saving the StringHashMap pass)
+        const t_derive = nowMs();
         const norm_handle = try normalize.handle(aa, raw_handle);
         const norm_display = try normalize.display(aa, raw_display);
         const keys = try prefixes.deriveAll(aa, norm_handle, norm_display);
+        stats.phases.derive_ms += nowMs() - t_derive;
 
         const score: f32 = scoring.scoreOf(.{ .quality_score = @floatCast(quality_score) });
 
+        const t_emit = nowMs();
         for (keys) |k| {
             try stmt_emit.reset();
             try stmt_emit.bindValue(k, 0);
@@ -271,6 +318,7 @@ fn streamActorsAndEmit(
             try stmt_emit.stepToCompletion();
             stats.emission_count += 1;
         }
+        stats.phases.emission_insert_ms += nowMs() - t_emit;
 
         stats.actor_count += 1;
         if (stats.actor_count % 1000 == 0) {

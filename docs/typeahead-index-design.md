@@ -28,7 +28,7 @@ ground-truth check from research:
 - no independent atproto AppView has shipped prefix actor search.
   constellation, slingshot, hubble all serve exact-key lookups.
   plyr.fm explicitly delegates typeahead to us.
-- for our constraints (256MB Fly VM, 5.9M actors, 10GB volume), the
+- for our constraints (256MB Fly VM, 5.9M actors, 20-30GB volumes), the
   SQLite-as-KV approach wins on operational simplicity over fst/MARISA
   because the top-N-by-score problem is solved at *build time*, not at
   query time — we never ask SQLite to rank.
@@ -262,18 +262,139 @@ algorithm:
     the build after that.
 ```
 
-sizing (5.9M actors, target):
+### sizing (measured from real sample builds)
+
+100k-actor sample produced (measured, not estimated):
 
 ```
-prefix emissions:    ~150M tuples before group/cap
-unique prefix keys:  ~1-5M
-avg dids per key:    150 (skewed; short prefixes hit the cap)
-prefix_top_base:     ~3-8 GB
-actor_compact_base:  ~1.2 GB
-total per snapshot:  ~4-10 GB
-volume needs:        20 GB Fly volume (currently 10; extend before going live)
-build time:          10-30 min on shared-cpu Fly machine
+emissions per actor:    24.5  (linear)
+emissions total:        2.45M
+distinct prefix keys:   1.6M
+prefix_top_base bytes:  87 MB
+actor_compact_base:     24 MB  (240 B/actor)
+on-disk total:          350 MB
+build time:             ~140 s
 ```
+
+Extrapolation to 5.9M actors:
+
+```
+actor_compact_base:     ~1.4 GB   (linear in actor count)
+prefix_top_base:
+  short tier (cap=300):   ~18 MB  (saturates by 100k — constant from here)
+  medium tier (cap=200):  ~250 MB (uncapped now, will bind at 5.9M)
+  long tier (cap=100):    ~3 GB   (almost all uncapped; ~1-2 DIDs/key)
+  e: keys:                ~242 MB (1 per actor, fixed 41 B)
+total prefix_top_base:    ~3.5 GB
+SQLite overhead:          +25-30%
+TOTAL SNAPSHOT:           ~6-7 GB
+```
+
+### build-time breakdown (measured from 100k sample, phase timings)
+
+```
+turso_fetch       194,722 ms   ← 91% of total (single big SELECT response)
+derive                667 ms     normalize + deriveAll per actor
+actor_insert          425 ms     INSERT actor_compact_base
+emission_insert     4,137 ms     INSERT into emissions staging
+index_build         3,820 ms     CREATE INDEX on emissions
+group_pack         10,006 ms     ORDER BY + pack top-N → prefix_top_base
+analyze + meta        156 ms
+─────────────────
+total             214,741 ms
+```
+
+The bottleneck is not SQLite work (19 s combined) — it's the
+single-shot HTTP fetch from Turso. Three consequences:
+
+1. **Memory**: 5.9M rows × ~500 B JSON ≈ 3 GB response body. Won't fit
+   as one allocation in any reasonable VM. The builder MUST paginate
+   before running against full corpus.
+2. **Resumability**: a crash mid-build today loses the entire fetched
+   payload. Paginated fetch makes the build cheaply restartable from
+   the last applied keyset cursor.
+3. **Latency in transit**: numbers above were measured laptop→Turso
+   over public internet. From a Fly machine co-located in AWS region
+   the fetch latency drops substantially, but the volume problem
+   remains.
+
+**Required v1 fix before full-scale builds**: keyset-paginated fetch
+in `streamActorsAndEmit`, matching the pattern already in
+`ingester/src/db/sync.zig` (LIMIT 2000 with `rowid > last_rowid` /
+`(did > last_did)` cursor). Process each batch immediately; the
+emissions staging table absorbs them without needing the full set in
+RAM. Estimated full-corpus build time after pagination from Fly-local:
+**~30 minutes**, dominated by ~10-15 min Turso fetch + ~20 min local
+processing. Cadence target: **every 6-12 hours**.
+
+Build optimization beyond pagination (CTAS, batched inserts, parallel
+emit) stays a v2 follow-up.
+
+### volume sizing per machine
+
+Earlier "10 GB volume is fine" was wrong. App B and the indexer each
+need to hold MULTIPLE snapshot copies plus runtime DB state during
+promotion. Required minimums:
+
+```
+App B (typeahead-search.app machines):
+  active snapshot:         ~7 GB
+  incoming .part download: ~7 GB  (transient, during promotion)
+  local.db (actors+overlay): ~4 GB  (currently 3.7 GB, grows slowly)
+  WAL / tmp / overhead:    ~1 GB
+  peak during promotion:   ~19 GB
+  steady state:            ~12 GB
+  TARGET VOLUME:           20 GB  (10 GB → 20 GB before first
+                                    real-scale build)
+
+Indexer (typeahead-search.indexer machine):
+  active build (current):  ~7 GB
+  previous build (kept on disk so App B rollback can re-fetch
+    a known-good target without rebuilding): ~7 GB
+  in-progress new build:   ~7 GB  (transient, during the next build)
+  WAL / tmp / overhead:    ~2 GB
+  peak during build:       ~23 GB
+  TARGET VOLUME:           30 GB
+```
+
+### cleanup policy
+
+Snapshots are immutable but multi-versioned on disk. Without a cleanup
+policy, stale files fill the volume — this is the next disk-full
+incident waiting to happen.
+
+**Indexer-side cleanup** (`typeahead-search.indexer` machine):
+
+- At the START of every build, sweep `/data/build-*/` directories that
+  are not referenced by the current `manifest.json`'s `active_build` or
+  `previous_build`. Failed/aborted prior builds leave partial dirs;
+  this is where they get removed.
+- After a successful build, the new manifest atomically promotes the
+  new build_id as `active_build` and demotes the old `active_build` to
+  `previous_build`. The build that was previously `previous_build` is
+  now unreferenced and the next build's sweep deletes it.
+- Crash recovery: if `manifest.json` is corrupt or absent, the indexer
+  refuses to promote a new build until manually fixed — better than
+  guessing. Operator runs the indexer once with `--manifest-init` (or
+  similar) to bootstrap.
+
+**App-side cleanup** (`typeahead-search.app` machines):
+
+- On boot, delete every file under `/data/index/downloads/*.part`
+  (stale from a previous run's interrupted download).
+- On boot, list `/data/index/build-*/` directories; keep only the one
+  matching the locally-fetched `manifest.json`'s `active_build` and
+  one prior (for rollback). Delete the rest.
+- After a successful promotion, the old active becomes the new
+  previous; the previous-previous becomes unreferenced and gets
+  deleted at the next promotion.
+- WAL files: SQLite's WAL on the local.db is auto-managed by sync.zig's
+  TRUNCATE checkpoint cadence (see hardening commit). Snapshot DBs are
+  read-only after promotion so they don't grow WAL.
+
+**Disk monitoring**: both machines should log `df -h /data` results
+hourly. The "ingester disk-full silently kills sync" project memory
+note applies equally here — disk pressure is silent and catastrophic.
 
 ## the overlay updater
 
@@ -310,7 +431,7 @@ on each (new_actor) applied from turso:
 
 invariants:
 
-- overlay is bounded between rebuilds. typical rebuild cadence 4-6h,
+- overlay is bounded between rebuilds. rebuild cadence 6-12h (see sizing block above),
   typical handle/display change rate is low — overlay stays small (single-
   digit MB at most).
 - compaction (next build) starts from current actors table state + last
