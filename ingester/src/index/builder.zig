@@ -910,10 +910,23 @@ fn buildPrefixTopBase(
     var current_top: std.ArrayListUnmanaged(pack.DidEntry) = .empty;
     var current_top_n: usize = 0;
 
+    // Progress logging: this scan is the longest phase (tens of minutes at
+    // full scale on shared CPU) and would otherwise sit silent. Log every
+    // 10M rows against the known emission total.
+    const total_emissions = stats.emission_count;
+    var rows_scanned: u64 = 0;
+    var progress_at: u64 = 0;
+
     while (rows.next()) |row| {
         const key = row.text(0);
         const did = row.text(1);
         const score = row.float(2);
+
+        rows_scanned += 1;
+        if (rows_scanned - progress_at >= 10_000_000) {
+            progress_at = rows_scanned;
+            log.info("group/pack progress: scanned={d}/{d} keys={d}", .{ rows_scanned, total_emissions, stats.prefix_key_count });
+        }
 
         if (current_key == null or !std.mem.eql(u8, current_key.?, key)) {
             // flush previous key group, THEN reset the arena — writeGroup
