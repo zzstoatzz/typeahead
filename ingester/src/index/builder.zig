@@ -38,14 +38,12 @@ const io = std.Options.debug_io;
 /// big enough to amortize roundtrip latency.
 const BATCH_SIZE: usize = 2000;
 
-/// Source for the actor row stream. The enum is kept as a dispatcher
-/// hook in case we ever need a fallback again; for now `.auto` resolves
-/// to the only available implementation (hrana v2 keyset pagination).
-/// Hrana v3 cursor support lands next, after which `.auto` will pick
-/// the cursor path and the paginated variant becomes a fallback for
-/// one cycle before deletion.
+/// Source for the actor row stream. `.auto` picks the best available
+/// path; explicit values force a specific source. v3 cursor is the
+/// primary; v2 paginated is the fallback for one cycle before deletion.
 pub const SourceMode = enum {
     auto,
+    hrana_v3_cursor,
     hrana_v2_paginated,
 };
 
@@ -85,7 +83,8 @@ pub fn readConfigFromEnv() Config {
 fn parseSourceMode(s: ?[]const u8) SourceMode {
     const v = s orelse return .auto;
     if (std.mem.eql(u8, v, "auto")) return .auto;
-    if (std.mem.eql(u8, v, "hrana") or std.mem.eql(u8, v, "hrana_v2") or std.mem.eql(u8, v, "hrana_v2_paginated")) return .hrana_v2_paginated;
+    if (std.mem.eql(u8, v, "cursor") or std.mem.eql(u8, v, "hrana_v3") or std.mem.eql(u8, v, "hrana_v3_cursor")) return .hrana_v3_cursor;
+    if (std.mem.eql(u8, v, "hrana_v2") or std.mem.eql(u8, v, "hrana_v2_paginated")) return .hrana_v2_paginated;
     log.warn("INDEX_SOURCE='{s}' unrecognized; defaulting to auto", .{v});
     return .auto;
 }
@@ -157,13 +156,12 @@ fn readSourceWatermark(turso: *TursoClient) !i64 {
     return result.rows[0].int(0);
 }
 
-/// Resolve `.auto` into a concrete mode. Currently always picks the
-/// hrana v2 paginated source — the only implementation that exists.
-/// When the v3 cursor path lands, this becomes the resolution point
-/// that prefers cursor when reachable and falls back to paginated.
+/// Resolve `.auto` to the preferred source. v3 cursor first; v2
+/// paginated stays around as a fallback override via env.
 fn chooseSourceMode(cfg: Config) SourceMode {
     return switch (cfg.source_mode) {
-        .auto => .hrana_v2_paginated,
+        .auto => .hrana_v3_cursor,
+        .hrana_v3_cursor => .hrana_v3_cursor,
         .hrana_v2_paginated => .hrana_v2_paginated,
     };
 }
@@ -265,6 +263,11 @@ pub fn run(allocator: Allocator) !void {
     log.info("source mode: {s}", .{@tagName(effective_mode)});
 
     switch (effective_mode) {
+        .hrana_v3_cursor => {
+            var turso = try TursoClient.init(allocator);
+            defer turso.deinit();
+            try streamFromCursor(allocator, &turso, conn, cfg, &stats);
+        },
         .hrana_v2_paginated => {
             var turso = try TursoClient.init(allocator);
             defer turso.deinit();
@@ -319,6 +322,202 @@ pub fn run(allocator: Allocator) !void {
         "phase ms: turso_fetch={d} derive={d} actor_insert={d} emission_insert={d} index_build={d} group_pack={d} meta={d} analyze={d}",
         .{ p.turso_fetch_ms, p.derive_ms, p.actor_insert_ms, p.emission_insert_ms, p.index_build_ms, p.group_pack_ms, p.meta_ms, p.analyze_ms },
     );
+}
+
+/// Source path via hrana v3 cursor — one POST /v3/cursor request whose
+/// NDJSON response streams every actor row + the source watermark in a
+/// single transactional snapshot.
+///
+/// Batch shape:
+///   step 0: SELECT max(updated_at)  → captures the watermark
+///   step 1: SELECT did, handle, ... → streams every actor
+///
+/// Both steps execute within the same cursor (one server-side read
+/// transaction), so the watermark is the actual cutoff for what's in
+/// the row stream — no race window like the v2 paginated path needed.
+fn streamFromCursor(
+    gpa: Allocator,
+    turso: *TursoClient,
+    snapshot: zqlite.Conn,
+    cfg: Config,
+    stats: *BuildStats,
+) !void {
+    var sctx = StreamCtx{
+        .gpa = gpa,
+        .cfg = cfg,
+        .snapshot = snapshot,
+        .stats = stats,
+        .row_arena = std.heap.ArenaAllocator.init(gpa),
+        .current_step = -1,
+        .stmt_actor = undefined,
+        .stmt_emit = undefined,
+    };
+    defer sctx.row_arena.deinit();
+
+    sctx.stmt_actor = try snapshot.prepare(
+        "INSERT OR REPLACE INTO actor_compact_base (did, blob) VALUES (?, ?)",
+    );
+    defer sctx.stmt_actor.deinit();
+
+    sctx.stmt_emit = try snapshot.prepare(
+        "INSERT INTO emissions (key, did, score) VALUES (?, ?, ?)",
+    );
+    defer sctx.stmt_emit.deinit();
+
+    try snapshot.exec("BEGIN", .{});
+    errdefer _ = snapshot.exec("ROLLBACK", .{}) catch {};
+
+    // Build the actors SELECT — include a SQL-level LIMIT in sample
+    // mode so the server stops pumping after N rows. Without this, the
+    // cursor reads the full corpus and the callback just no-ops past
+    // sample_limit. Production runs use sample_limit=0 (no LIMIT clause).
+    var actors_sql_buf: [512]u8 = undefined;
+    const actors_sql = if (cfg.sample_limit == 0)
+        @as([]const u8, "SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM actors WHERE handle != '' ORDER BY did")
+    else
+        try std.fmt.bufPrint(&actors_sql_buf, "SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM actors WHERE handle != '' ORDER BY did LIMIT {d}", .{cfg.sample_limit});
+
+    const stmts = [_]TursoClient.CursorStmt{
+        .{ .sql = "SELECT COALESCE(MAX(updated_at), 0) FROM actors WHERE handle != ''" },
+        .{ .sql = actors_sql },
+    };
+
+    const t_stream = nowMs();
+    try turso.streamCursor(gpa, &stmts, &sctx, processCursorEntry);
+    stats.phases.turso_fetch_ms = nowMs() - t_stream;
+
+    try snapshot.exec("COMMIT", .{});
+
+    log.info("emissions phase done (cursor): rows_seen={d} actors={d} emissions={d} watermark={d}", .{
+        stats.rows_seen,
+        stats.actor_count,
+        stats.emission_count,
+        stats.source_watermark,
+    });
+}
+
+/// Per-cursor-stream state threaded through the entry callback.
+const StreamCtx = struct {
+    gpa: Allocator,
+    cfg: Config,
+    snapshot: zqlite.Conn,
+    stats: *BuildStats,
+    row_arena: std.heap.ArenaAllocator,
+    /// Which step's rows we're currently processing.
+    /// -1 before any step_begin; 0 = watermark; 1 = actors.
+    current_step: i32,
+    stmt_actor: zqlite.Stmt,
+    stmt_emit: zqlite.Stmt,
+    progress_at: usize = 0,
+};
+
+fn processCursorEntry(ctx: *StreamCtx, entry: TursoClient.CursorEntry) !void {
+    switch (entry) {
+        .step_begin => |sb| {
+            ctx.current_step = @intCast(sb.step);
+        },
+        .step_end => |se| {
+            _ = se;
+        },
+        .row => |r| {
+            if (ctx.current_step == 0) {
+                // step 0: SELECT max(updated_at) — single row, single column.
+                ctx.stats.source_watermark = r.int(0);
+                log.info("source_watermark (from cursor step 0): {d}", .{ctx.stats.source_watermark});
+            } else if (ctx.current_step == 1) {
+                // Honor sample_limit by silently skipping past N rows.
+                // We can't cancel the cursor mid-stream cleanly, so the
+                // server still pushes the full result; we just stop
+                // processing. Production runs use sample_limit=0.
+                if (ctx.cfg.sample_limit > 0 and ctx.stats.rows_seen >= ctx.cfg.sample_limit) return;
+
+                try processActorRow(ctx, r);
+                ctx.stats.rows_seen += 1;
+
+                if (ctx.stats.rows_seen - ctx.progress_at >= 50_000) {
+                    ctx.progress_at = ctx.stats.rows_seen;
+                    log.info("indexer progress (cursor): rows_seen={d} actors={d} emissions={d}", .{
+                        ctx.stats.rows_seen,
+                        ctx.stats.actor_count,
+                        ctx.stats.emission_count,
+                    });
+                }
+            }
+        },
+        .step_error => |e| {
+            log.err("cursor step {d} error: {s}", .{ e.step, e.message });
+            return error.TursoCursorStepError;
+        },
+        .err => |e| {
+            log.err("cursor error: {s}", .{e.message});
+            return error.TursoCursorError;
+        },
+    }
+}
+
+/// Process one actor row (step 1 of the cursor batch). Same per-row
+/// arena reset pattern as the v2 path. The TursoClient.Row reference
+/// borrows from the per-line JSON parse, which lives only for the
+/// duration of this call.
+fn processActorRow(ctx: *StreamCtx, row: TursoClient.Row) !void {
+    defer _ = ctx.row_arena.reset(.retain_capacity);
+    const aa = ctx.row_arena.allocator();
+
+    const did = row.text(0);
+    if (did.len == 0) return;
+
+    const raw_handle = row.text(1);
+    const raw_display = row.text(2);
+    const avatar = row.text(3);
+    const labels_json = row.text(4);
+    const pds = row.text(5);
+    const created_at = row.text(6);
+    const associated_json = row.text(7);
+    const hidden = row.int(8) != 0;
+    const quality_score = row.float(9);
+
+    if (hidden) return;
+
+    const t_actor = nowMs();
+    const blob = pack.packActor(aa, .{
+        .hidden = false,
+        .quality_score = @floatCast(quality_score),
+        .handle = raw_handle,
+        .display = raw_display,
+        .avatar = avatar,
+        .labels = if (labels_json.len == 0) "[]" else labels_json,
+        .pds = pds,
+        .created_at = created_at,
+        .associated = if (associated_json.len == 0) "{}" else associated_json,
+    }) catch |err| {
+        log.warn("packActor failed for {s}: {s}", .{ did, @errorName(err) });
+        return;
+    };
+    try ctx.stmt_actor.reset();
+    try ctx.stmt_actor.bindValue(did, 0);
+    try ctx.stmt_actor.bindValue(zqlite.blob(blob), 1);
+    try ctx.stmt_actor.stepToCompletion();
+    ctx.stats.phases.actor_insert_ms += nowMs() - t_actor;
+    ctx.stats.actor_count += 1;
+
+    const t_derive = nowMs();
+    const norm_handle = try normalize.handle(aa, raw_handle);
+    const norm_display = try normalize.display(aa, raw_display);
+    const keys = try prefixes.deriveAllUnique(aa, norm_handle, norm_display);
+    ctx.stats.phases.derive_ms += nowMs() - t_derive;
+
+    const score: f32 = scoring.scoreOf(.{ .quality_score = @floatCast(quality_score) });
+
+    const t_emit = nowMs();
+    for (keys) |k| {
+        try ctx.stmt_emit.reset();
+        try ctx.stmt_emit.bindValue(k, 0);
+        try ctx.stmt_emit.bindValue(did, 1);
+        try ctx.stmt_emit.bindValue(@as(f64, @floatCast(score)), 2);
+        try ctx.stmt_emit.stepToCompletion();
+        ctx.stats.emission_count += 1;
+    }
+    ctx.stats.phases.emission_insert_ms += nowMs() - t_emit;
 }
 
 /// gpa is used for long-lived allocations (the per-actor scratch arena's
