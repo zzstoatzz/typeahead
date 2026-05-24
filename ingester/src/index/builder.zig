@@ -32,6 +32,12 @@ const scoring = @import("scoring.zig");
 const log = std.log.scoped(.indexer);
 const io = std.Options.debug_io;
 
+/// Rows per Turso roundtrip during the streaming fetch. Matches the
+/// pattern in `sync.zig`'s bulk pagination. 2000 is small enough that
+/// each batch is ≤ ~1 MB JSON over the wire and decode is fast, but
+/// big enough to amortize roundtrip latency.
+const BATCH_SIZE: usize = 2000;
+
 pub const Config = struct {
     /// Filesystem root where build-<id>/ directories are created.
     /// Indexer machine's volume mount.
@@ -73,6 +79,15 @@ fn envUsize(name: [*:0]const u8, default: usize) usize {
 }
 
 const BuildStats = struct {
+    /// Number of rows the builder advanced past in Turso. Used for the
+    /// cursor (sample_limit, progress logs) and to know we've reached the
+    /// watermark's tail. NOT the same as rows in actor_compact_base —
+    /// hidden actors are skipped by the builder but still counted here so
+    /// the cursor can advance past them.
+    rows_seen: usize = 0,
+    /// Number of rows ACTUALLY written to actor_compact_base. This is what
+    /// the manifest contract calls `actor_count` and what /health should
+    /// report. Excludes hidden actors and any rows where packActor failed.
     actor_count: usize = 0,
     emission_count: usize = 0,
     prefix_key_count: usize = 0,
@@ -265,11 +280,19 @@ pub fn run(allocator: Allocator) !void {
     );
 }
 
-/// gpa is used for the LONG-lived allocations (the Turso result set itself
-/// is owned by TursoClient and freed on result.deinit; the per-row arena
-/// uses gpa as its backing allocator). The per-actor scratch arena resets
-/// after each row so peak memory stays flat at full corpus scale instead
-/// of growing with N actors.
+/// gpa is used for long-lived allocations (the per-actor scratch arena's
+/// backing, the last-DID cursor buffer). The per-actor scratch arena
+/// resets after each row so peak memory stays flat at full corpus scale
+/// instead of growing with N actors.
+///
+/// Pagination: keyset cursor on `did` with batch size BATCH_SIZE. Each
+/// batch is a fresh Turso roundtrip + a fresh local transaction, so a
+/// crash mid-build loses at most one batch of work. The
+/// `updated_at <= source_watermark` filter pins the snapshot to a
+/// consistent point-in-time — actors written after the watermark are
+/// excluded from this build and pick up in the next one. Without this
+/// filter, an actor renamed during pagination could appear in the
+/// snapshot under both old and new handles.
 fn streamActorsAndEmit(
     gpa: Allocator,
     turso: *TursoClient,
@@ -277,29 +300,6 @@ fn streamActorsAndEmit(
     cfg: Config,
     stats: *BuildStats,
 ) !void {
-    // Stream-friendly: order by did so we can resume on partial failure
-    // later. The build is single-shot for now — full SELECT every time.
-    var sql_buf: [512]u8 = undefined;
-    const sql = if (cfg.sample_limit == 0)
-        "SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM actors WHERE handle != '' ORDER BY did"
-    else
-        try std.fmt.bufPrint(&sql_buf, "SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM actors WHERE handle != '' ORDER BY did LIMIT {d}", .{cfg.sample_limit});
-
-    log.info("turso query: {s}", .{sql});
-
-    var result = blk: {
-        const t = nowMs();
-        const r = try turso.query(sql, &.{});
-        stats.phases.turso_fetch_ms = nowMs() - t;
-        break :blk r;
-    };
-    defer result.deinit();
-
-    log.info("turso returned {d} rows in {d}ms", .{ result.rows.len, stats.phases.turso_fetch_ms });
-
-    try snapshot.exec("BEGIN", .{});
-    errdefer _ = snapshot.exec("ROLLBACK", .{}) catch {};
-
     const stmt_actor = try snapshot.prepare(
         "INSERT OR REPLACE INTO actor_compact_base (did, blob) VALUES (?, ?)",
     );
@@ -310,90 +310,148 @@ fn streamActorsAndEmit(
     );
     defer stmt_emit.deinit();
 
-    // Per-row scratch arena. Reset after each actor so blob+normalize+
-    // keys for the current actor are freed before the next iteration.
-    // Without this, allocations for ALL actors in the result set sit in
-    // memory until the outer loop completes (~5.5 GB at 5.9M actors).
+    // Per-row scratch arena lives across batches; reset per actor inside
+    // the inner loop.
     var row_arena = std.heap.ArenaAllocator.init(gpa);
     defer row_arena.deinit();
     const aa = row_arena.allocator();
 
-    for (result.rows) |row| {
-        defer _ = row_arena.reset(.retain_capacity);
+    // GPA-backed buffer for the cursor: row.text() slices borrow from
+    // turso's parsed JSON, which is freed at result.deinit() each batch.
+    // We dupe the last DID after each batch so the next iteration's
+    // `did > ?` bind has a valid pointer.
+    var last_did_buf: std.ArrayListUnmanaged(u8) = .empty;
+    defer last_did_buf.deinit(gpa);
 
-        const did = row.text(0);
-        if (did.len == 0) continue;
+    var watermark_buf: [24]u8 = undefined;
+    const watermark_str = try std.fmt.bufPrint(&watermark_buf, "{d}", .{stats.source_watermark});
 
-        const raw_handle = row.text(1);
-        const raw_display = row.text(2);
-        const avatar = row.text(3);
-        const labels_json = row.text(4);
-        const pds = row.text(5);
-        const created_at = row.text(6);
-        const associated_json = row.text(7);
-        const hidden = row.int(8) != 0;
-        const quality_score = row.float(9);
+    var batch_idx: usize = 0;
+    paginate: while (true) {
+        // Honor cfg.sample_limit by capping this batch's LIMIT.
+        const remaining: usize = if (cfg.sample_limit == 0)
+            BATCH_SIZE
+        else if (stats.rows_seen >= cfg.sample_limit)
+            break :paginate
+        else
+            @min(BATCH_SIZE, cfg.sample_limit - stats.rows_seen);
 
-        if (hidden) continue; // builder skips hidden actors (mod tombstones land in overlay)
+        var limit_buf: [16]u8 = undefined;
+        const limit_str = try std.fmt.bufPrint(&limit_buf, "{d}", .{remaining});
 
-        // 1. pack + insert actor blob
-        const t_actor = nowMs();
-        const blob = pack.packActor(aa, .{
-            .hidden = false,
-            .quality_score = @floatCast(quality_score),
-            .handle = raw_handle,
-            .display = raw_display,
-            .avatar = avatar,
-            .labels = if (labels_json.len == 0) "[]" else labels_json,
-            .pds = pds,
-            .created_at = created_at,
-            .associated = if (associated_json.len == 0) "{}" else associated_json,
-        }) catch |err| {
-            log.warn("packActor failed for {s}: {s}", .{ did, @errorName(err) });
-            continue;
-        };
-        try stmt_actor.reset();
-        try stmt_actor.bindValue(did, 0);
-        try stmt_actor.bindValue(zqlite.blob(blob), 1);
-        try stmt_actor.stepToCompletion();
-        stats.phases.actor_insert_ms += nowMs() - t_actor;
+        const t_fetch = nowMs();
+        var result = try turso.query(
+            "SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM actors WHERE handle != '' AND updated_at <= ? AND did > ? ORDER BY did LIMIT ?",
+            &.{ watermark_str, last_did_buf.items, limit_str },
+        );
+        stats.phases.turso_fetch_ms += nowMs() - t_fetch;
 
-        // 2. derive prefix keys, deduped. Without dedup, a display name
-        // with a repeated token ("fig fig") emits two `n:fig` keys for
-        // the same DID — both flow through emissions and the group/pack
-        // pass appends the same (DID, score) twice into the top-N blob.
-        // deriveAllUnique runs a small StringHashMap pass per actor;
-        // overhead is negligible vs the cost of duplicate DIDs in serving.
-        const t_derive = nowMs();
-        const norm_handle = try normalize.handle(aa, raw_handle);
-        const norm_display = try normalize.display(aa, raw_display);
-        const keys = try prefixes.deriveAllUnique(aa, norm_handle, norm_display);
-        stats.phases.derive_ms += nowMs() - t_derive;
-
-        const score: f32 = scoring.scoreOf(.{ .quality_score = @floatCast(quality_score) });
-
-        const t_emit = nowMs();
-        for (keys) |k| {
-            try stmt_emit.reset();
-            try stmt_emit.bindValue(k, 0);
-            try stmt_emit.bindValue(did, 1);
-            try stmt_emit.bindValue(@as(f64, @floatCast(score)), 2);
-            try stmt_emit.stepToCompletion();
-            stats.emission_count += 1;
+        if (result.rows.len == 0) {
+            result.deinit();
+            break :paginate;
         }
-        stats.phases.emission_insert_ms += nowMs() - t_emit;
 
-        stats.actor_count += 1;
-        if (stats.actor_count % 1000 == 0) {
-            log.info("indexer progress: actors={d} emissions={d}", .{
-                stats.actor_count, stats.emission_count,
-            });
+        try snapshot.exec("BEGIN", .{});
+        errdefer _ = snapshot.exec("ROLLBACK", .{}) catch {};
+
+        var batch_last_did: []const u8 = "";
+
+        for (result.rows) |row| {
+            defer _ = row_arena.reset(.retain_capacity);
+
+            const did = row.text(0);
+            if (did.len == 0) continue;
+            batch_last_did = did;
+
+            const raw_handle = row.text(1);
+            const raw_display = row.text(2);
+            const avatar = row.text(3);
+            const labels_json = row.text(4);
+            const pds = row.text(5);
+            const created_at = row.text(6);
+            const associated_json = row.text(7);
+            const hidden = row.int(8) != 0;
+            const quality_score = row.float(9);
+
+            // rows_seen advances for cursor / sample_limit / progress;
+            // actor_count advances only after we actually write the row.
+            stats.rows_seen += 1;
+
+            if (hidden) continue;
+
+            // 1. pack + insert actor blob
+            const t_actor = nowMs();
+            const blob = pack.packActor(aa, .{
+                .hidden = false,
+                .quality_score = @floatCast(quality_score),
+                .handle = raw_handle,
+                .display = raw_display,
+                .avatar = avatar,
+                .labels = if (labels_json.len == 0) "[]" else labels_json,
+                .pds = pds,
+                .created_at = created_at,
+                .associated = if (associated_json.len == 0) "{}" else associated_json,
+            }) catch |err| {
+                log.warn("packActor failed for {s}: {s}", .{ did, @errorName(err) });
+                continue;
+            };
+            try stmt_actor.reset();
+            try stmt_actor.bindValue(did, 0);
+            try stmt_actor.bindValue(zqlite.blob(blob), 1);
+            try stmt_actor.stepToCompletion();
+            stats.phases.actor_insert_ms += nowMs() - t_actor;
+            stats.actor_count += 1; // bumps ONLY after the actor row is in the snapshot DB
+
+            // 2. derive prefix keys, deduped (see commit 36d969f rationale)
+            const t_derive = nowMs();
+            const norm_handle = try normalize.handle(aa, raw_handle);
+            const norm_display = try normalize.display(aa, raw_display);
+            const keys = try prefixes.deriveAllUnique(aa, norm_handle, norm_display);
+            stats.phases.derive_ms += nowMs() - t_derive;
+
+            const score: f32 = scoring.scoreOf(.{ .quality_score = @floatCast(quality_score) });
+
+            const t_emit = nowMs();
+            for (keys) |k| {
+                try stmt_emit.reset();
+                try stmt_emit.bindValue(k, 0);
+                try stmt_emit.bindValue(did, 1);
+                try stmt_emit.bindValue(@as(f64, @floatCast(score)), 2);
+                try stmt_emit.stepToCompletion();
+                stats.emission_count += 1;
+            }
+            stats.phases.emission_insert_ms += nowMs() - t_emit;
         }
+
+        // Capture rows-len for the short-batch check before deinit
+        // invalidates the slice header.
+        const this_batch_rows = result.rows.len;
+
+        // Save the last DID into gpa-owned memory BEFORE result.deinit
+        // invalidates the slice. Cursor for the next iteration.
+        last_did_buf.clearRetainingCapacity();
+        try last_did_buf.appendSlice(gpa, batch_last_did);
+
+        result.deinit();
+        try snapshot.exec("COMMIT", .{});
+
+        batch_idx += 1;
+        log.info("indexer batch {d}: rows_seen={d} actors={d} emissions={d} cursor_did={s}", .{
+            batch_idx,
+            stats.rows_seen,
+            stats.actor_count,
+            stats.emission_count,
+            last_did_buf.items[0..@min(40, last_did_buf.items.len)],
+        });
+
+        // Short-batch sentinel: if Turso returned fewer rows than asked
+        // for, we've reached the watermark's tail. No need for another
+        // roundtrip just to learn that.
+        if (this_batch_rows < remaining) break :paginate;
     }
 
-    try snapshot.exec("COMMIT", .{});
-    log.info("emissions phase done: actors={d} emissions={d}", .{
-        stats.actor_count, stats.emission_count,
+    log.info("emissions phase done: rows_seen={d} actors={d} emissions={d}", .{
+        stats.rows_seen, stats.actor_count, stats.emission_count,
     });
 }
 
