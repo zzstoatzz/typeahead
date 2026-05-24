@@ -103,9 +103,19 @@ export function extractProfileFields(profile: any, override?: 'show' | 'hide' | 
   };
 }
 
-/** strip anything that could break FTS5 syntax, preserving unicode letters/digits */
+/**
+ * Strip only what would break our SQL: LIKE wildcards (% _), the LIKE escape
+ * (\), the FTS5 phrase-quote char ("), and control characters. Everything
+ * else passes through — parens, brackets, colons, commas, quotes, emoji,
+ * unicode, etc. all appear in real display names (e.g. "fig (aka:[phil])")
+ * and stripping them silently turns a meaningful query into a useless one.
+ *
+ * Parameter binding (?) handles SQL injection. The FTS5 tokenizer treats
+ * non-alphanumeric chars as token delimiters inside phrase quotes, so the
+ * preserved characters don't break the FTS MATCH syntax.
+ */
 export function sanitize(q: string): string {
-  return q.replace(/[^\p{L}\p{N}\s.-]/gu, "").trim();
+  return q.replace(/[\\%_"\x00-\x1f\x7f]/g, "").trim();
 }
 
 export function html(body: string, extra?: Record<string, string> | number, status = 200): Response {
