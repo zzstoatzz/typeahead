@@ -718,37 +718,56 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         }
 
         const fts_span = logfire.span("sync.fts_rebuild", .{});
-        log.info("incremental: rebuilding FTS ({d} changes)", .{updated + cleared + deleted});
+        log.info("incremental: rebuilding FTS via staging swap ({d} changes)", .{updated + cleared + deleted});
         {
             local.lock();
             defer local.unlock();
-            conn.exec("DROP TABLE IF EXISTS actors_fts", .{}) catch {};
+            // Build into a staging FTS so the live actors_fts keeps serving
+            // queries through the (multi-minute) populate. Atomic swap at the
+            // end gives a millisecond reader gap instead of a 15-20 min gap.
+            // The previous DROP+CREATE+INSERT-against-live pattern produced
+            // ~80% FTS-empty time and broke display-name search in prod.
+            conn.exec("DROP TABLE IF EXISTS actors_fts_new", .{}) catch {};
             conn.exec(
-                \\CREATE VIRTUAL TABLE actors_fts USING fts5(
+                \\CREATE VIRTUAL TABLE actors_fts_new USING fts5(
                 \\  did UNINDEXED, handle, display_name,
                 \\  tokenize='unicode61 remove_diacritics 2'
                 \\)
             , .{}) catch |err| {
-                log.err("FTS rebuild: create failed: {}", .{err});
+                log.err("FTS rebuild: staging create failed: {}", .{err});
                 fts_span.recordError(err);
                 fts_span.setStatus(.@"error", "create failed");
                 fts_span.end();
                 return;
             };
             conn.exec(
-                \\INSERT INTO actors_fts (did, handle, display_name)
+                \\INSERT INTO actors_fts_new (did, handle, display_name)
                 \\SELECT did, handle, display_name FROM actors WHERE handle != ''
             , .{}) catch |err| {
-                log.err("FTS rebuild: populate failed: {}", .{err});
+                log.err("FTS rebuild: staging populate failed: {}", .{err});
+                conn.exec("DROP TABLE IF EXISTS actors_fts_new", .{}) catch {};
                 fts_span.recordError(err);
                 fts_span.setStatus(.@"error", "populate failed");
                 fts_span.end();
                 return;
             };
+            // Atomic swap.
+            conn.exec("BEGIN", .{}) catch {};
+            conn.exec("DROP TABLE IF EXISTS actors_fts", .{}) catch {};
+            conn.exec("ALTER TABLE actors_fts_new RENAME TO actors_fts", .{}) catch |err| {
+                log.err("FTS rebuild: swap failed: {}", .{err});
+                conn.exec("ROLLBACK", .{}) catch {};
+                conn.exec("DROP TABLE IF EXISTS actors_fts_new", .{}) catch {};
+                fts_span.recordError(err);
+                fts_span.setStatus(.@"error", "swap failed");
+                fts_span.end();
+                return;
+            };
+            conn.exec("COMMIT", .{}) catch {};
         }
         fts_span.setStatus(.ok, null);
         fts_span.end();
-        log.info("incremental: FTS rebuild complete", .{});
+        log.info("incremental: FTS rebuild complete (staging swap)", .{});
     }
 
     // only advance watermark when everything succeeded
