@@ -4,6 +4,14 @@ set dotenv-filename := ".dev.vars"
 deploy:
     npx wrangler deploy
 
+# perf benchmark against prod worker — latency, coverage, fields, stress
+bench *ARGS:
+    ./scripts/bench.py {{ARGS}}
+
+# ranking-quality benchmark against App B direct (with /debug/search breakdowns)
+bench-ranking appb_url="https://typeahead-search.fly.dev":
+    ./scripts/bench.py --ranking --appb-direct --url {{appb_url}}
+
 # cleanup dead actors in batches with pauses between
 cleanup batch_size="500" batches="10" pause="30":
     #!/usr/bin/env bash

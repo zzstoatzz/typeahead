@@ -4,23 +4,34 @@
 # dependencies = ["httpx"]
 # ///
 """
-performance benchmark: typeahead vs bluesky searchActorsTypeahead.
+benchmark: typeahead vs bluesky searchActorsTypeahead.
 
-measures latency (cold + warm), coverage/overlap, field completeness,
-display-name search, and stress-tests our API under concurrent load.
+two modes:
+
+  default (perf) — latency (cold + warm), coverage/overlap, field
+    completeness, display-name search, and stress-tests our API under
+    concurrent load. hits whatever URL `--url` points at (worker by default).
+
+  --ranking — focused ranking-quality run against a canonical query set,
+    side-by-side with bluesky as oracle. when paired with `--appb-direct`,
+    additionally fetches /debug/search for per-candidate score breakdowns.
+    exits 1 if any acceptance criterion fails.
 
 usage:
-    ./scripts/bench.py                              # full benchmark against prod
-    ./scripts/bench.py --url http://localhost:8787   # test local dev
+    just bench                                       # perf mode against prod worker
+    just bench-ranking                               # ranking mode against App B direct
     ./scripts/bench.py --quick                       # 10 queries, 1 run
     ./scripts/bench.py --no-stress                   # skip stress test
     ./scripts/bench.py --queries nate boorkie        # specific queries only
-    ./scripts/bench.py --runs 5                      # more runs for confidence
+    ./scripts/bench.py --ranking                     # ranking mode via worker
+    ./scripts/bench.py --ranking --appb-direct \
+        --url https://typeahead-search.fly.dev       # ranking + /debug/search
 """
 
 import argparse
 import asyncio
 import json
+import re
 import statistics
 import sys
 import time
@@ -42,6 +53,38 @@ RED = "\033[31m"
 YELLOW = "\033[33m"
 CYAN = "\033[36m"
 RESET = "\033[0m"
+
+# canonical ranking-quality query set. each entry exists for a specific reason
+# (regression we hunted down, behavior we want to lock in). extend this list
+# rather than discard entries — once a query exposes a ranking bug, it should
+# guard against the same bug forever.
+RANKING_CORPUS = [
+    "fig",              # display-name match dominates bsky top
+    "fig (",            # punctuation must not collapse to "fig"
+    "fig aka",          # multi-token display-name
+    "phil",             # bad-example.com has phil in display name
+    "zzstoatzz",        # known handle prefix
+    "zzstoatzz.io",     # exact full handle — must rank 1
+    "nate",             # common prefix
+    "alex",             # common prefix, easily spammed
+    "bob",              # short common prefix
+    "aoc",              # popular account
+    "car",              # short, ambiguous
+]
+
+# spam heuristic for flagging "obvious junk" in top-3 (matches ingester's
+# suspiciousNumberedHandle but expressed as a regex for portability).
+NUMBERED_HANDLE_RE = re.compile(r"^[a-z]+[-_]?\d+(\.|$)", re.IGNORECASE)
+
+
+def looks_like_spam(actor: dict) -> bool:
+    if NUMBERED_HANDLE_RE.match(actor.get("handle", "")):
+        return True
+    toks = (actor.get("displayName") or "").lower().split()
+    if len(toks) >= 3 and max(toks.count(t) for t in set(toks)) >= 3:
+        return True
+    return False
+
 
 FULL_CORPUS = [
     # short prefixes
@@ -126,6 +169,32 @@ class StressResult:
     latencies_ms: list[float] = field(default_factory=list)
 
 
+@dataclass
+class RankingResult:
+    query: str
+    bsky_actors: list[dict]
+    ours_actors: list[dict]
+    debug: dict | None  # /debug/search response (None if not fetched or failed)
+    bsky_status: int
+    ours_status: int
+    ours_ms: float
+
+    @property
+    def bsky_top_handle(self) -> str | None:
+        if not self.bsky_actors:
+            return None
+        return self.bsky_actors[0].get("handle", "").lower() or None
+
+    @property
+    def ours_handles(self) -> set[str]:
+        return {a.get("handle", "").lower() for a in self.ours_actors}
+
+    @property
+    def parity_top_in_ours(self) -> bool:
+        top = self.bsky_top_handle
+        return top is None or top in self.ours_handles
+
+
 def progress(label: str, done: int, total: int):
     sys.stdout.write(f"\r  {label}: {done}/{total}")
     sys.stdout.flush()
@@ -153,6 +222,18 @@ async def timed_fetch(
 
 def search_url(base: str, q: str, limit: int = 10) -> str:
     return f"{base}{XRPC}?q={quote(q)}&limit={limit}"
+
+
+def ours_search_url(base: str, q: str, limit: int, appb_direct: bool) -> str:
+    """Build the search URL for "ours" — XRPC path via worker, /search via App B."""
+    if appb_direct:
+        return f"{base}/search?q={quote(q)}&limit={limit}"
+    return search_url(base, q, limit)
+
+
+def debug_search_url(base: str, q: str, limit: int = 25) -> str:
+    """Debug endpoint is App B-only; not exposed through the worker."""
+    return f"{base}/debug/search?q={quote(q)}&limit={limit}"
 
 
 async def run_latency(
@@ -298,6 +379,73 @@ async def run_display_name_check(
         })
 
     return results
+
+
+async def run_ranking(
+    client: httpx.AsyncClient,
+    ours_url: str,
+    corpus: list[str],
+    appb_direct: bool,
+    limit: int = 8,
+) -> list[RankingResult]:
+    """Hit bsky + ours (+ /debug/search if appb_direct) for each canonical query."""
+    results = []
+    for i, q in enumerate(corpus):
+        progress("ranking", i + 1, len(corpus))
+
+        bsky_data, _, bs = await timed_fetch(client, search_url(BSKY, q, limit), timeout=6.0)
+        await asyncio.sleep(0.2)
+        ours_data, ours_ms, oss = await timed_fetch(
+            client, ours_search_url(ours_url, q, limit, appb_direct), timeout=6.0
+        )
+
+        debug_data = None
+        if appb_direct:
+            await asyncio.sleep(0.1)
+            dd, _, ds = await timed_fetch(client, debug_search_url(ours_url, q, 25), timeout=6.0)
+            if ds == 200:
+                debug_data = dd
+
+        results.append(RankingResult(
+            query=q,
+            bsky_actors=(bsky_data or {}).get("actors", []),
+            ours_actors=(ours_data or {}).get("actors", []),
+            debug=debug_data,
+            bsky_status=bs,
+            ours_status=oss,
+            ours_ms=ours_ms,
+        ))
+        await asyncio.sleep(0.4)
+
+    clear_line()
+    return results
+
+
+def acceptance_checks(results: list[RankingResult]) -> list[str]:
+    """Return list of acceptance-criterion failures. Empty list = pass."""
+    failures = []
+    for r in results:
+        if r.ours_status != 200:
+            failures.append(f"non-200 from ours for q={r.query!r} (status={r.ours_status})")
+            continue
+
+        if r.query == "zzstoatzz.io" and r.ours_actors:
+            top = r.ours_actors[0].get("handle", "").lower()
+            if top != "zzstoatzz.io":
+                failures.append(f"zzstoatzz.io not rank 1 for q={r.query!r} (got {top!r})")
+
+        if r.query in ("fig (", "fig aka"):
+            if not any(a.get("handle", "").lower() == "bad-example.com" for a in r.ours_actors):
+                failures.append(f"bad-example.com missing from ours top {len(r.ours_actors)} for q={r.query!r}")
+
+        if r.query in ("alex", "nate", "bob"):
+            # if bsky's top is a real account (not spam itself), ours top-3 shouldn't be ≥2/3 spam
+            top = (r.bsky_actors[:1] or [{}])[0]
+            if top and not looks_like_spam(top):
+                top3_spam = sum(1 for a in r.ours_actors[:3] if looks_like_spam(a))
+                if top3_spam >= 2:
+                    failures.append(f"ours top 3 dominated by spam for q={r.query!r} ({top3_spam}/3 flagged)")
+    return failures
 
 
 async def run_stress(
@@ -462,6 +610,66 @@ def print_display_name_table(results: list[dict]):
         print(f"  {r['query']:<20} {found:>17} {r['ours_count']:>6} {r['bsky_count']:>6}  {samples}")
 
 
+def _fmt_actor_line(idx: int, actor: dict) -> str:
+    handle = (actor.get("handle") or "?")[:36]
+    name = (actor.get("displayName") or "")[:42]
+    flag = f" {YELLOW}[spam?]{RESET}" if looks_like_spam(actor) else ""
+    return f"  {idx:2d}. {handle:36s}  {name}{flag}"
+
+
+def _fmt_breakdown(b: dict) -> str:
+    parts = []
+    for k, v in b.items():
+        if not v:
+            continue
+        formatted = int(v) if isinstance(v, (int, float)) and v == int(v) else round(v, 1)
+        parts.append(f"{k}={formatted}")
+    return " ".join(parts) if parts else "(no signal)"
+
+
+def print_ranking_results(results: list[RankingResult]) -> None:
+    print(f"\n{BOLD}--- ranking quality ---{RESET}")
+    for r in results:
+        print()
+        print("=" * 82)
+        print(f"  q={r.query!r}    ours={fmt_ms(r.ours_ms)}    bsky status={r.bsky_status} ours status={r.ours_status}")
+        print("=" * 82)
+
+        print(f"  {BOLD}bsky{RESET}")
+        if not r.bsky_actors:
+            print("    (no results)")
+        for i, a in enumerate(r.bsky_actors, 1):
+            print(_fmt_actor_line(i, a))
+
+        print(f"  {BOLD}ours{RESET}")
+        if not r.ours_actors:
+            print("    (no results)")
+        for i, a in enumerate(r.ours_actors, 1):
+            print(_fmt_actor_line(i, a))
+
+        if r.bsky_top_handle:
+            if r.parity_top_in_ours:
+                print(f"  [{GREEN}ok{RESET}]   bsky's top ({r.bsky_top_handle}) is in ours top {len(r.ours_actors)}")
+            else:
+                print(f"  [{RED}FAIL{RESET}] bsky's top ({r.bsky_top_handle}) is MISSING from ours top {len(r.ours_actors)}")
+
+        if r.debug:
+            cands = (r.debug.get("candidates") or [])[:8]
+            if cands:
+                print(f"  {BOLD}score breakdown (top 8 candidates from /debug/search){RESET}")
+                for i, c in enumerate(cands, 1):
+                    handle = (c.get("handle") or "?")[:36]
+                    score = int(c.get("score", 0))
+                    src = c.get("source", "?")
+                    f_count = c.get("followers", 0)
+                    p_count = c.get("posts", 0)
+                    br = c.get("breakdown") or {}
+                    print(
+                        f"    {i:2d}. {handle:36s}  score={score:>7d}  src={src:<6s}  "
+                        f"f={f_count} p={p_count}  | {_fmt_breakdown(br)}"
+                    )
+
+
 def print_stress_table(results: list[StressResult]):
     print(f"\n{BOLD}--- stress test (ours only) ---{RESET}")
     print(f"  {'concurrency':>12} {'ok':>6} {'429s':>6} {'5xx':>6} {'p50':>8} {'p95':>8}")
@@ -534,18 +742,59 @@ def build_report(
 
 # ── main ────────────────────────────────────────────────────────────
 
+async def run_ranking_mode(args: argparse.Namespace) -> int:
+    """Run the ranking-quality benchmark and return shell exit code."""
+    corpus = args.queries or RANKING_CORPUS
+
+    print(f"\n{BOLD}=== ranking quality ==={RESET}")
+    print(f"  target:   {args.url}{'  (direct App B)' if args.appb_direct else '  (via worker)'}")
+    print(f"  oracle:   {BSKY}")
+    print(f"  corpus:   {len(corpus)} queries")
+    print(f"  debug:    {'yes (/debug/search)' if args.appb_direct else 'no (worker mode)'}")
+
+    async with httpx.AsyncClient(
+        headers={"User-Agent": "typeahead-bench/1.0", "X-Client": "bench-ranking"},
+        follow_redirects=True,
+    ) as client:
+        results = await run_ranking(client, args.url, corpus, args.appb_direct)
+        print_ranking_results(results)
+
+        failures = acceptance_checks(results)
+
+        print()
+        print("=" * 82)
+        if failures:
+            print(f"{RED}{BOLD}FAIL{RESET} — {len(failures)} acceptance criteria failed:")
+            for f in failures:
+                print(f"  - {f}")
+        else:
+            print(f"{GREEN}{BOLD}PASS{RESET} — all acceptance criteria met. "
+                  "proxy backstop can be flipped off cautiously.")
+        print("=" * 82)
+        return 1 if failures else 0
+
+
 async def main():
-    parser = argparse.ArgumentParser(description="typeahead performance benchmark")
+    parser = argparse.ArgumentParser(description="typeahead benchmark — perf + ranking quality")
     parser.add_argument("--url", default=OURS_DEFAULT, help=f"our API URL (default: {OURS_DEFAULT})")
     parser.add_argument("--quick", action="store_true", help="10 queries, 1 run")
     parser.add_argument("--no-stress", action="store_true", help="skip stress test")
     parser.add_argument("--queries", nargs="+", help="specific queries only")
     parser.add_argument("--runs", type=int, default=3, help="runs per query for latency (default: 3)")
     parser.add_argument("--output", default="scripts/bench-results.json", help="JSON report path")
+    parser.add_argument("--ranking", action="store_true",
+                        help="run ranking-quality check (canonical corpus + acceptance criteria) "
+                             "instead of perf phases")
+    parser.add_argument("--appb-direct", action="store_true",
+                        help="treat --url as App B (uses /search instead of /xrpc/..., enables "
+                             "/debug/search fetching for ranking mode)")
     args = parser.parse_args()
 
     if args.quick:
         args.runs = 1
+
+    if args.ranking:
+        return await run_ranking_mode(args)
 
     corpus = args.queries or (QUICK_CORPUS if args.quick else FULL_CORPUS)
     dn_queries = [q for q in DISPLAY_NAME_QUERIES if q in corpus] or DISPLAY_NAME_QUERIES[:2]
@@ -596,4 +845,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    sys.exit(asyncio.run(main()) or 0)
