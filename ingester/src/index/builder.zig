@@ -38,12 +38,25 @@ const io = std.Options.debug_io;
 /// big enough to amortize roundtrip latency.
 const BATCH_SIZE: usize = 2000;
 
+/// Source for the actor row stream. The enum is kept as a dispatcher
+/// hook in case we ever need a fallback again; for now `.auto` resolves
+/// to the only available implementation (hrana v2 keyset pagination).
+/// Hrana v3 cursor support lands next, after which `.auto` will pick
+/// the cursor path and the paginated variant becomes a fallback for
+/// one cycle before deletion.
+pub const SourceMode = enum {
+    auto,
+    hrana_v2_paginated,
+};
+
 pub const Config = struct {
     /// Filesystem root where build-<id>/ directories are created.
     /// Indexer machine's volume mount.
     build_root: []const u8 = "/data",
     /// 0 = unlimited (full corpus); >0 = LIMIT N actors (sampling).
     sample_limit: usize = 1000,
+    /// Where the actor stream comes from. See SourceMode.
+    source_mode: SourceMode = .auto,
     /// Top-N caps per prefix-length tier.
     top_n_short: usize = 300, // prefix len 1-3
     top_n_medium: usize = 200, // prefix len 4-6
@@ -59,6 +72,7 @@ pub fn readConfigFromEnv() Config {
     return .{
         .build_root = cGetenv("INDEX_BUILD_ROOT") orelse "/data",
         .sample_limit = envUsize("INDEX_SAMPLE_LIMIT", 1000),
+        .source_mode = parseSourceMode(cGetenv("INDEX_SOURCE")),
         .top_n_short = envUsize("INDEX_TOP_N_SHORT", 300),
         .top_n_medium = envUsize("INDEX_TOP_N_MEDIUM", 200),
         .top_n_long = envUsize("INDEX_TOP_N_LONG", 100),
@@ -66,6 +80,14 @@ pub fn readConfigFromEnv() Config {
         .hydrate_cap = envUsize("INDEX_HYDRATE_CAP", 50),
         .builder_version = cGetenv("INDEXER_VERSION") orelse "dev",
     };
+}
+
+fn parseSourceMode(s: ?[]const u8) SourceMode {
+    const v = s orelse return .auto;
+    if (std.mem.eql(u8, v, "auto")) return .auto;
+    if (std.mem.eql(u8, v, "hrana") or std.mem.eql(u8, v, "hrana_v2") or std.mem.eql(u8, v, "hrana_v2_paginated")) return .hrana_v2_paginated;
+    log.warn("INDEX_SOURCE='{s}' unrecognized; defaulting to auto", .{v});
+    return .auto;
 }
 
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
@@ -126,12 +148,24 @@ fn nowSeconds() i64 {
 
 /// Fetch max(updated_at) from Turso actors. Used as source_watermark
 /// in index_meta. Cheap (single aggregate) compared to the streaming
-/// pass.
+/// pass. Used by the hrana fallback path; the export path reads the
+/// watermark from the local snapshot DB instead.
 fn readSourceWatermark(turso: *TursoClient) !i64 {
     var result = try turso.query("SELECT COALESCE(MAX(updated_at), 0) FROM actors", &.{});
     defer result.deinit();
     if (result.rows.len == 0) return 0;
     return result.rows[0].int(0);
+}
+
+/// Resolve `.auto` into a concrete mode. Currently always picks the
+/// hrana v2 paginated source — the only implementation that exists.
+/// When the v3 cursor path lands, this becomes the resolution point
+/// that prefers cursor when reachable and falls back to paginated.
+fn chooseSourceMode(cfg: Config) SourceMode {
+    return switch (cfg.source_mode) {
+        .auto => .hrana_v2_paginated,
+        .hrana_v2_paginated => .hrana_v2_paginated,
+    };
 }
 
 /// Random 16-bit hex suffix appended to the unix-second timestamp in the
@@ -220,22 +254,29 @@ pub fn run(allocator: Allocator) !void {
     , .{});
     try conn.exec("DELETE FROM emissions", .{}); // clean slate for retries
 
-    var turso = try TursoClient.init(allocator);
-    defer turso.deinit();
+    // ── stream actors + emit ──────────────────────────────────────────────
+    //
+    // Source dispatch. Hrana v2 keyset pagination is the only path that
+    // exists right now; the v3 HTTP cursor path lands in a follow-up
+    // commit (see docs/hrana-v3-cursor-plan.md). chooseSourceMode lets
+    // us flip between them via env without changing the dispatcher
+    // surface here.
+    const effective_mode = chooseSourceMode(cfg);
+    log.info("source mode: {s}", .{@tagName(effective_mode)});
 
-    // Record source_watermark BEFORE the emit phase: max(updated_at) seen
-    // in Turso right now. The snapshot will reflect every actor row whose
-    // updated_at is ≤ this value (paginated fetch may miss races, but
-    // anything past this point is by definition "in the next build").
-    // Stored as text-encoded unix seconds in index_meta.
-    stats.source_watermark = readSourceWatermark(&turso) catch |err| blk: {
-        log.warn("source_watermark fetch failed: {s}; defaulting to 0", .{@errorName(err)});
-        break :blk 0;
-    };
-    log.info("source_watermark: {d}", .{stats.source_watermark});
-
-    // ── stream actors + emit (per-row scratch arena inside) ─────────────────
-    try streamActorsAndEmit(allocator, &turso, conn, cfg, &stats);
+    switch (effective_mode) {
+        .hrana_v2_paginated => {
+            var turso = try TursoClient.init(allocator);
+            defer turso.deinit();
+            stats.source_watermark = readSourceWatermark(&turso) catch |err| blk: {
+                log.warn("source_watermark fetch failed: {s}; defaulting to 0", .{@errorName(err)});
+                break :blk 0;
+            };
+            log.info("source_watermark: {d}", .{stats.source_watermark});
+            try streamActorsAndEmit(allocator, &turso, conn, cfg, &stats);
+        },
+        .auto => unreachable, // chooseSourceMode resolves auto
+    }
 
     // ── group, pack, write prefix_top_base (per-group scratch arena inside) ──
     {
