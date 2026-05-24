@@ -442,16 +442,134 @@ rollback is just a manifest write + DETACH/ATTACH cycle.
 
 failure modes:
 - **indexer machine unreachable**: app machines keep serving from their
-  current local snapshot. staleness grows but service stays up. when
-  indexer comes back, normal poll picks up new manifests.
+  current local snapshot indefinitely. serving liveness MUST NOT depend
+  on the indexer being up — the indexer is a batch job, the app
+  machines own their own copy. staleness grows but service stays up.
+  when indexer comes back, normal poll picks up new manifests.
 - **indexer machine OOM mid-build**: build-<new>/ files are partial,
   not promoted (manifest.json still points at previous). next indexer
   run sweeps unreferenced build-<id>/ dirs.
 - **app machine disk fills during snapshot download**: download fails,
   watcher retries next tick. monitor `/data` usage on app machines;
   current overhead ~10-20GB total.
-- **sha256 mismatch on download**: discard, retry. log + page if it
-  keeps failing.
+- **sha256 mismatch on download**: discard the partial, retry. log +
+  page if it keeps failing — never attach a file that failed checksum.
+
+## manifest contract
+
+The manifest is the one durable artifact whose shape is part of the
+indexer↔serving interface. Both sides must agree on it forever, and
+breaking changes require a `manifest_version` bump + serving-side
+handling for both old and new shapes during transition.
+
+```json
+{
+  "manifest_version": 1,
+  "active_build": "b1779638898",
+  "previous_build": "b1779635298",
+  "promoted_at": 1779638902,
+  "snapshot_url": "/snapshot/b1779638898/index.db",
+  "byte_size": 6442450944,
+  "sha256": "3a7b...e9c1",
+  "source_watermark": 1779638800,
+  "actor_count": 5894868,
+  "prefix_count": 4123550,
+  "normalize_version": "v1-ascii-latin1",
+  "scoring_version": "v1-quality-score",
+  "top_n_short": 300,
+  "top_n_medium": 200,
+  "top_n_long": 100,
+  "overlay_top_n": 100,
+  "hydrate_cap": 50,
+  "builder_version": "<git sha>"
+}
+```
+
+Required fields, written atomically by the indexer (`.tmp` then rename):
+
+| field | purpose |
+|---|---|
+| `manifest_version` | breaking-change guard. v1 is the first shipped format. |
+| `active_build` | which build-<id>/ dir holds the current snapshot |
+| `previous_build` | last good build kept on disk for rollback (or `null` for first ship) |
+| `promoted_at` | unix seconds the indexer atomically rewrote this file |
+| `snapshot_url` | relative path the indexer's HTTP server serves the .db under |
+| `byte_size` | exact length of the .db file in bytes |
+| `sha256` | hex-encoded SHA-256 of the .db file contents |
+| `source_watermark` | max(updated_at) the indexer saw in turso actors at build start |
+| `actor_count` | count of rows in actor_compact_base in this build |
+| `prefix_count` | count of rows in prefix_top_base in this build |
+| `normalize_version` | mirrors `normalize.zig` VERSION at build time |
+| `scoring_version` | mirrors `scoring.zig` VERSION at build time |
+| `top_n_*`, `overlay_top_n`, `hydrate_cap` | config values stamped at build time |
+| `builder_version` | git sha of the indexer binary that produced this build |
+
+Indexer writes manifest.json LAST in the build sequence, after the .db
+file is fully fsync'd and checksummed. App B reads it via HTTP, parses
+all fields, applies the promotion gate (next section), and only then
+fetches the .db.
+
+## promotion gate
+
+The serving side never accepts a snapshot it can't fully validate.
+"Accept" means: download, verify, open, version-check, then atomically
+swap the active ATTACH. Each step is a gate.
+
+```
+1. Read indexer's manifest.json over HTTP.
+   Reject if: HTTP non-200, JSON parse fails, unknown manifest_version,
+   active_build matches the App's currently-attached build (nothing to do).
+
+2. Download snapshot_url to /data/index/downloads/<id>.db.part
+   (separate dir from the active build-<id>/ to make stray .part files
+   easy to sweep on startup).
+   Reject if: HTTP non-200, byte count != manifest.byte_size,
+   sha256 of downloaded bytes != manifest.sha256.
+   On reject: delete the .part, retry next tick.
+
+3. Open the downloaded file with sqlite3 (read-only). Validate it:
+   - prefix_top_base, actor_compact_base, index_meta tables exist
+   - index_meta has every required key
+   - index_meta.normalize_version == own normalize.VERSION (else: reject)
+   - index_meta.scoring_version == own scoring.VERSION (else: reject)
+   - index_meta.actor_count >= floor(prev_actor_count * 0.5)
+       (sanity floor: a build with half the actors is suspect.
+        For the FIRST build, prev_actor_count = 0 and this is skipped.)
+   - index_meta.prefix_count >= floor(prev_prefix_count * 0.5)
+   On reject: delete the .db, log + page operator. Stay on previous
+   build. NEVER promote a snapshot that fails this stage.
+
+4. Move the .part to /data/index/build-<id>/index.db (atomic rename).
+   Now it's an addressable local artifact.
+
+5. ATTACH DATABASE on the new file under alias "idx_new".
+
+6. Briefly hold the App's snapshot mutex, re-prepare the live queries
+   against idx_new, atomically swap the active alias to point at idx_new,
+   release the mutex.
+
+7. DETACH the old snapshot. Leave the old build-<id>/index.db on disk
+   as the rollback target until the NEXT promotion's step 7.
+
+8. Sweep: delete every build-<id>/ dir except the current active and
+   the now-renamed-to-previous one.
+```
+
+Rollback is just rewriting manifest.json to point `active_build` at
+`previous_build` on the indexer side; App B picks it up on its next
+manifest poll and runs the same gate sequence against the rollback
+target. Versions in index_meta MUST match too (the rollback target
+has its own normalize_version that the current binary either still
+supports or doesn't).
+
+Critical invariants:
+- The active snapshot file is **never mutated in place**. Snapshots are
+  immutable artifacts; promotion is a re-attach.
+- Serving keeps running from the currently-attached snapshot at every
+  step. The promotion gate is non-blocking for /search.
+- If the gate rejects a snapshot for ANY reason, the App stays on the
+  prior snapshot indefinitely. We'd rather serve a stale-but-correct
+  index than a fresh-but-suspect one.
 
 ## migration
 
@@ -586,6 +704,49 @@ pagerank job writes actors.quality_score in turso
 no coordination needed. track 1 already plumbs `quality_score` through
 the index. swap the score function under it and the index updates
 automatically.
+
+## backfill contract
+
+Bulk / historical writes are first-class. The architecture absorbs them
+without special-casing because the snapshot is fully regenerable and
+the overlay tolerates re-ingestion.
+
+Existing and future backfill paths:
+
+| Path | Destination | Frequency | How the index sees it |
+|---|---|---|---|
+| `scripts/bulk-enrich.py` (getProfiles) | worker → Turso `actors` | one-shot / nightly | local sync picks up updated rows → overlay updater diffs prefixes → next rebuild folds into base |
+| `scripts/backfill-pds.py` (slingshot PDS) | worker → Turso `actors.pds` | one-shot | same path; PDS is a column, doesn't change prefix keys, overlay just updates blob |
+| AccountTakedown PDS-direct enrichment | worker → Turso `actors` | continuous (cron) | same path |
+| follow graph backfill (Track 2) | ingester-local `follows` table | phased (sample → broad) | pagerank job reads `follows`, writes scores back to Turso `actors.quality_score` → same path as above |
+| handle rename event | jetstream → worker → Turso | continuous | overlay diff produces `op=0` rows for stale prefixes (set-diff via deriveAllUnique) |
+| account deletion (tombstone) | jetstream → worker → Turso | continuous | `actor_overlay.blob = NULL` tombstone + `prefix_overlay op=0` for every prefix the actor used to occupy |
+
+**Invariants the backfill contract relies on:**
+
+1. **Turso `actors` is source-of-truth for everything in the index.**
+   Backfills always write there (via worker). Ingester-local artifacts
+   (`follows` table, snapshot DB) are derived state.
+2. **The overlay updater is idempotent.** Replaying the same actor
+   change N times produces the same overlay state. Backfills can stream
+   updates as fast as the worker can write; the overlay absorbs them.
+3. **Snapshots regenerate from current Turso state.** Bad data corrected
+   in Turso is automatically corrected in the next rebuild. No special
+   "rebuild from scratch" or "wipe index" tool needed.
+4. **Snapshots are NEVER backfilled in place.** A snapshot file is
+   immutable from the moment its manifest is promoted. Corrections land
+   in the next snapshot, gated by the promotion gate above.
+5. **The follows table on the ingester volume CAN be backfilled in
+   place** — it's append-only (or upsert) state, not a snapshot. Lost
+   rows can be re-fetched from PDSes via listRepos.
+
+Operational note: a large bulk-enrichment run will produce thousands of
+overlay rows over the sync window before the next snapshot rebuild
+absorbs them. The overlay tables are sized for that — `prefix_overlay`
+is unbounded between rebuilds, and each rebuild compacts everything
+back into the base. Monitor `prefix_overlay` row count in /health
+during big backfills; if it ever exceeds a sane bound (say 1M rows),
+trigger a rebuild manually.
 
 ## quality bar
 
