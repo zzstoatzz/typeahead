@@ -91,8 +91,10 @@ export async function handleSearch(
     }
   }
 
-  // fallback: 3-tier ranking via turso
+  // fallback: 3-tier ranking via turso. Overfetch prefix + FTS so the
+  // interleaved merge below has real candidates to pick from.
   const ftsQuery = `"${term}"*`;
+  const overfetch = Math.min(limit * 5, 50);
   const [exactRes, prefixRes, ftsRes] = await db.batch([
     db.prepare(
       `SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
@@ -102,7 +104,7 @@ export async function handleSearch(
       `SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
        FROM actors WHERE handle LIKE ?1 COLLATE NOCASE AND handle != ?2 COLLATE NOCASE AND hidden = 0
        LIMIT ?3`
-    ).bind(term + '%', term, limit),
+    ).bind(term + '%', term, overfetch),
     db.prepare(
       `SELECT a.did, a.handle, a.display_name, a.avatar_url, a.labels, a.created_at, a.associated, a.pds
        FROM actors_fts
@@ -110,20 +112,55 @@ export async function handleSearch(
        WHERE actors_fts MATCH ?1 AND a.handle != '' AND a.hidden = 0
        ORDER BY rank
        LIMIT ?2`
-    ).bind(ftsQuery, limit),
+    ).bind(ftsQuery, overfetch),
   ], "read");
 
+  // Sort prefix by handle length (shortest first) for the shortest-handle bias.
+  // We dropped ORDER BY length(handle) from the SQL to avoid Turso's full-scan
+  // sort; doing it in JS over <= 50 rows is cheap.
+  const prefixRows = ((prefixRes.results as ActorRow[]) || [])
+    .slice()
+    .sort((a, b) => a.handle.length - b.handle.length);
+  const ftsRows = (ftsRes.results as ActorRow[]) || [];
+  const exactRows = (exactRes.results as ActorRow[]) || [];
+
+  // Interleave prefix and FTS so display-name-only matches surface even when
+  // there are >= limit handle-prefix matches. Without this, q=fig with many
+  // 'fig*' handles starves the FTS tier — bad-example.com (displayName
+  // 'fig (aka:[phil])') never appears.
   const seen = new Set<string>();
   const merged: ActorRow[] = [];
-  for (const row of [
-    ...((exactRes.results as ActorRow[]) || []),
-    ...((prefixRes.results as ActorRow[]) || []),
-    ...((ftsRes.results as ActorRow[]) || []),
-  ]) {
+  for (const row of exactRows) {
     if (seen.has(row.did)) continue;
     seen.add(row.did);
     merged.push(row);
     if (merged.length >= limit) break;
+  }
+  let pi = 0, fi = 0;
+  let takePrefix = true; // bias: handle-prefix gets the first non-exact slot
+  while (merged.length < limit && (pi < prefixRows.length || fi < ftsRows.length)) {
+    let row: ActorRow | null = null;
+    if (takePrefix) {
+      while (pi < prefixRows.length && seen.has(prefixRows[pi].did)) pi++;
+      if (pi < prefixRows.length) {
+        row = prefixRows[pi++];
+      } else {
+        while (fi < ftsRows.length && seen.has(ftsRows[fi].did)) fi++;
+        if (fi < ftsRows.length) row = ftsRows[fi++];
+      }
+    } else {
+      while (fi < ftsRows.length && seen.has(ftsRows[fi].did)) fi++;
+      if (fi < ftsRows.length) {
+        row = ftsRows[fi++];
+      } else {
+        while (pi < prefixRows.length && seen.has(prefixRows[pi].did)) pi++;
+        if (pi < prefixRows.length) row = prefixRows[pi++];
+      }
+    }
+    if (!row) break;
+    seen.add(row.did);
+    merged.push(row);
+    takePrefix = !takePrefix;
   }
 
   const actors = merged.map((r) => ({
