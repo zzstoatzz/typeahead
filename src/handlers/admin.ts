@@ -109,7 +109,7 @@ export async function handleRequestIndexing(
   // fetch profile from public API for display name + avatar + labels + metadata
   let f = {
     displayName: '', avatarCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}',
-    followersCount: 0, followsCount: 0, postsCount: 0,
+    followersCount: 0, followsCount: 0, postsCount: 0, qualityScore: 0,
   };
   const override = await getOverride(db, identity.did);
   try {
@@ -127,8 +127,8 @@ export async function handleRequestIndexing(
   }
 
   await db.prepare(
-    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, unixepoch())
+    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, quality_score, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, unixepoch())
      ON CONFLICT(did) DO UPDATE SET
        handle = ?2,
        display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
@@ -141,9 +141,10 @@ export async function handleRequestIndexing(
        followers_count = COALESCE(NULLIF(?10, 0), actors.followers_count),
        follows_count = COALESCE(NULLIF(?11, 0), actors.follows_count),
        posts_count = COALESCE(NULLIF(?12, 0), actors.posts_count),
+       quality_score = COALESCE(NULLIF(?13, 0), actors.quality_score),
        updated_at = unixepoch()`
   )
-    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount)
+    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore)
     .run();
 
   return json({

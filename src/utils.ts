@@ -89,6 +89,51 @@ export interface ProfileFields {
   followersCount: number;
   followsCount: number;
   postsCount: number;
+  qualityScore: number;
+}
+
+/**
+ * Authority/quality score — our own ranking signal computed from the data we have.
+ * Not bsky's pagerank, but a defensible proxy that promotes real accounts over
+ * spam without requiring graph-derived rank.
+ *
+ *   log10(followers+1) * 100   base influence (saturating)
+ *   log10(posts+1) * 20        productivity (saturating)
+ *   +50 / +100                 follower:follow ratio (real accounts follow fewer than follow them)
+ *   +30 / +60                  age bonuses for 1y+ / 3y+ accounts
+ *
+ * Typical output range: spam ~80, normal ~200-400, popular ~600-900, top ~1000+.
+ * Search uses this as the dominant non-lexical signal so popular accounts win
+ * lexical ties without unrelated accounts surfacing.
+ */
+export function computeAuthorityScore(p: {
+  followersCount: number;
+  followsCount: number;
+  postsCount: number;
+  createdAt?: string;
+}): number {
+  const f = Math.max(0, Number(p.followersCount) || 0);
+  const fw = Math.max(0, Number(p.followsCount) || 0);
+  const pc = Math.max(0, Number(p.postsCount) || 0);
+
+  let score = Math.log10(f + 1) * 100 + Math.log10(pc + 1) * 20;
+
+  if (f > 100 && fw > 0) {
+    const ratio = f / fw;
+    if (ratio > 10) score += 50;
+    if (ratio > 100) score += 100;
+  }
+
+  if (p.createdAt) {
+    const t = Date.parse(p.createdAt);
+    if (!Number.isNaN(t)) {
+      const ageDays = (Date.now() - t) / 86400000;
+      if (ageDays > 365) score += 30;
+      if (ageDays > 365 * 3) score += 30;
+    }
+  }
+
+  return Math.round(score * 100) / 100;
 }
 
 export function extractProfileFields(profile: any, override?: 'show' | 'hide' | null): ProfileFields {
@@ -98,17 +143,22 @@ export function extractProfileFields(profile: any, override?: 'show' | 'hide' | 
   if (override === 'hide') hidden = 1;
   const raw = profile.avatar || '';
   const avatarCid = extractAvatarCid(raw);
+  const followersCount = Number(profile.followersCount) || 0;
+  const followsCount = Number(profile.followsCount) || 0;
+  const postsCount = Number(profile.postsCount) || 0;
+  const createdAt = profile.createdAt || '';
   return {
     handle: profile.handle || '',
     displayName: profile.displayName || '',
     avatarCid,
     labels: JSON.stringify(profile.labels || []),
     hidden,
-    createdAt: profile.createdAt || '',
+    createdAt,
     associated: JSON.stringify(cleanAssociated(profile.associated)),
-    followersCount: Number(profile.followersCount) || 0,
-    followsCount: Number(profile.followsCount) || 0,
-    postsCount: Number(profile.postsCount) || 0,
+    followersCount,
+    followsCount,
+    postsCount,
+    qualityScore: computeAuthorityScore({ followersCount, followsCount, postsCount, createdAt }),
   };
 }
 

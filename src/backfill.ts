@@ -34,8 +34,8 @@ export async function backfillFromBsky(
     const stmts = actors.map((a) => {
       const f = extractProfileFields(a, overrides.get(a.did) ?? null);
       return db.prepare(
-        `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, followers_count, follows_count, posts_count, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, unixepoch())
+        `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, followers_count, follows_count, posts_count, quality_score, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, unixepoch())
          ON CONFLICT(did) DO UPDATE SET
            handle = COALESCE(NULLIF(?2, ''), actors.handle),
            display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
@@ -47,11 +47,12 @@ export async function backfillFromBsky(
            followers_count = COALESCE(NULLIF(?9, 0), actors.followers_count),
            follows_count = COALESCE(NULLIF(?10, 0), actors.follows_count),
            posts_count = COALESCE(NULLIF(?11, 0), actors.posts_count),
+           quality_score = COALESCE(NULLIF(?12, 0), actors.quality_score),
            updated_at = unixepoch()`
       ).bind(
         a.did, f.handle, f.displayName, f.avatarCid,
         f.hidden, f.labels, f.createdAt, f.associated,
-        f.followersCount, f.followsCount, f.postsCount
+        f.followersCount, f.followsCount, f.postsCount, f.qualityScore
       );
     });
 
