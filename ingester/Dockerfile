@@ -22,8 +22,11 @@ RUN zig build -Doptimize=ReleaseSafe
 # runtime stage
 FROM debian:bookworm-slim
 
+# sqlite3 baked in so debug sessions can query /data/local.db without
+# paying the apt-install tax on every fly ssh; ca-certificates for HTTPS.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/* \
     # prefer IPv4 over IPv6 for outbound connections
     && echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
