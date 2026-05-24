@@ -11,6 +11,7 @@ const turso_schema = @import("db/turso_schema.zig");
 const server = @import("server.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
+const index_builder = @import("index/builder.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -100,6 +101,21 @@ pub fn main() !void {
         .stack_size = 8 * 1024 * 1024, // 8MB (default 16MB is wasteful on 256MB VM)
         .async_limit = std.Io.Limit.limited(8), // bounded HTTP handler pool
     });
+
+    // Process-role selection. `MODE=indexer` runs the offline snapshot
+    // builder against Turso and exits — used as a fly process group on
+    // the typeahead-indexer machine. Unset = existing serving + sync +
+    // jetstream behavior.
+    if (cGetenv("MODE")) |mode| {
+        if (mem.eql(u8, mode, "indexer")) {
+            // Logfire stays unconfigured here — indexer is a short-lived
+            // offline job, std.log to stderr is enough for now. Wire spans
+            // later if cadence-wise insight matters.
+            log.info("MODE=indexer — running snapshot builder", .{});
+            return index_builder.run(allocator);
+        }
+        log.warn("MODE='{s}' unrecognized; falling through to serving role", .{mode});
+    }
 
     // role flags — defaults preserve current all-in-one behavior
     const enable_jetstream = envFlag("ENABLE_JETSTREAM", true);

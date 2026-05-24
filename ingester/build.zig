@@ -76,4 +76,23 @@ pub fn build(b: *std.Build) void {
     run_test_lf.step.dependOn(b.getInstallStep());
     const test_lf_step = b.step("test-logfire", "Run logfire test");
     test_lf_step.dependOn(&run_test_lf.step);
+
+    // Unit tests for the index/ module (normalize, prefixes, scoring,
+    // pack, schema, builder). Rooted at src/test_index.zig so transitive
+    // imports inside builder.zig (e.g. ../db/TursoClient.zig) stay in
+    // the module tree.
+    const index_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/test_index.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "zqlite", .module = zqlite.module("zqlite") },
+            },
+        }),
+    });
+    const run_index_tests = b.addRunArtifact(index_tests);
+    const test_step = b.step("test", "Run unit tests");
+    test_step.dependOn(&run_index_tests.step);
 }
