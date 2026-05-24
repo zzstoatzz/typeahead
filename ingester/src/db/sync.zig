@@ -37,7 +37,7 @@ fn bootstrapPauseMs() u32 {
 }
 
 /// index of the first column appended after actor_cols (rowid or updated_at)
-const trailing_col: usize = Col.pds + 1;
+const trailing_col: usize = Col.quality_score + 1;
 
 const BATCH_SIZE = 2000;
 const SYNC_INTERVAL_S = 300; // 5 minutes
@@ -126,7 +126,12 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
             \\  labels TEXT NOT NULL DEFAULT '[]',
             \\  created_at TEXT DEFAULT '',
             \\  associated TEXT DEFAULT '{}',
-            \\  pds TEXT DEFAULT ''
+            \\  pds TEXT DEFAULT '',
+            \\  followers_count INTEGER NOT NULL DEFAULT 0,
+            \\  follows_count INTEGER NOT NULL DEFAULT 0,
+            \\  posts_count INTEGER NOT NULL DEFAULT 0,
+            \\  last_activity_at INTEGER NOT NULL DEFAULT 0,
+            \\  quality_score REAL NOT NULL DEFAULT 0
             \\)
         , .{}) catch |err| {
             span.recordError(err);
@@ -774,7 +779,7 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
 /// Insert actor row into a table. `prefix` is the INSERT clause, e.g.
 /// "INSERT INTO actors_stage" or "INSERT OR REPLACE INTO actors".
 fn insertActorRow(conn: zqlite.Conn, comptime prefix: []const u8, row: anytype) !void {
-    conn.exec(prefix ++ " (" ++ LocalDb.actor_cols ++ ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", .{
+    conn.exec(prefix ++ " (" ++ LocalDb.actor_cols ++ ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", .{
         row.text(Col.did),
         row.text(Col.handle),
         row.text(Col.display_name),
@@ -784,6 +789,11 @@ fn insertActorRow(conn: zqlite.Conn, comptime prefix: []const u8, row: anytype) 
         row.text(Col.created_at),
         row.text(Col.associated),
         row.text(Col.pds),
+        row.int(Col.followers_count),
+        row.int(Col.follows_count),
+        row.int(Col.posts_count),
+        row.int(Col.last_activity_at),
+        row.float(Col.quality_score),
     }) catch |err| return err;
 }
 

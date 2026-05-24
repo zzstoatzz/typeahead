@@ -18,7 +18,7 @@ mutex: std.Io.Mutex = std.Io.Mutex.init, // protects write conn only
 path: []const u8 = "",
 
 /// column list for full actor row queries (sync + search)
-pub const actor_cols = "did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds";
+pub const actor_cols = "did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score";
 
 /// named column indexes matching actor_cols order
 pub const Col = struct {
@@ -31,6 +31,11 @@ pub const Col = struct {
     pub const created_at: usize = 6;
     pub const associated: usize = 7;
     pub const pds: usize = 8;
+    pub const followers_count: usize = 9;
+    pub const follows_count: usize = 10;
+    pub const posts_count: usize = 11;
+    pub const last_activity_at: usize = 12;
+    pub const quality_score: usize = 13;
 };
 
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
@@ -175,15 +180,26 @@ fn createSchema(self: *LocalDb) !void {
         \\  labels TEXT NOT NULL DEFAULT '[]',
         \\  created_at TEXT DEFAULT '',
         \\  associated TEXT DEFAULT '{}',
-        \\  pds TEXT DEFAULT ''
+        \\  pds TEXT DEFAULT '',
+        \\  followers_count INTEGER NOT NULL DEFAULT 0,
+        \\  follows_count INTEGER NOT NULL DEFAULT 0,
+        \\  posts_count INTEGER NOT NULL DEFAULT 0,
+        \\  last_activity_at INTEGER NOT NULL DEFAULT 0,
+        \\  quality_score REAL NOT NULL DEFAULT 0
         \\)
     , .{}) catch |err| {
         log.err("failed to create actors table: {}", .{err});
         return err;
     };
 
-    // migration: add pds column if missing (existing deployments)
+    // in-place column adds for existing deployments. All allowed to fail silently
+    // (column already present is the common case).
     c.exec("ALTER TABLE actors ADD COLUMN pds TEXT DEFAULT ''", .{}) catch {};
+    c.exec("ALTER TABLE actors ADD COLUMN followers_count INTEGER NOT NULL DEFAULT 0", .{}) catch {};
+    c.exec("ALTER TABLE actors ADD COLUMN follows_count INTEGER NOT NULL DEFAULT 0", .{}) catch {};
+    c.exec("ALTER TABLE actors ADD COLUMN posts_count INTEGER NOT NULL DEFAULT 0", .{}) catch {};
+    c.exec("ALTER TABLE actors ADD COLUMN last_activity_at INTEGER NOT NULL DEFAULT 0", .{}) catch {};
+    c.exec("ALTER TABLE actors ADD COLUMN quality_score REAL NOT NULL DEFAULT 0", .{}) catch {};
 
     c.exec("CREATE INDEX IF NOT EXISTS idx_actors_handle ON actors(handle COLLATE NOCASE)", .{}) catch {};
 
@@ -248,6 +264,23 @@ pub fn query(self: *LocalDb, comptime sql: []const u8, args: anytype) !Rows {
         return e;
     };
     return .{ .inner = rows };
+}
+
+/// SELECT with runtime SQL + runtime-sized list of text bind values. Needed
+/// for `WHERE did IN (?, ?, ?, …)` batched lookups where the placeholder
+/// count is only known at runtime. The standard `query()` uses comptime SQL
+/// + comptime tuple binding via `inline for`, which can't express N args.
+pub fn queryTextList(self: *LocalDb, sql: []const u8, args: []const []const u8) !Rows {
+    const c = self.read_conn orelse return error.NotOpen;
+    const stmt = c.prepare(sql) catch |e| {
+        log.err("queryTextList prepare failed: {s}", .{@errorName(e)});
+        return e;
+    };
+    errdefer stmt.deinit();
+    for (args, 0..) |arg, i| {
+        try stmt.bindValue(arg, i);
+    }
+    return .{ .inner = .{ .stmt = stmt, .err = null } };
 }
 
 /// Execute a statement (INSERT, UPDATE, DELETE) — mutex-protected

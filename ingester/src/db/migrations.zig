@@ -151,4 +151,19 @@ pub const migrations = [_]zug.Migration{
             ,
         },
     },
+    // Ranking signals. Populated by worker enrichment (counts) and by App A's
+    // /admin/ingest path bumping last_activity_at when a known DID's jetstream
+    // event arrives. quality_score is computed offline (future), so it ships
+    // as 0 today. Search.zig consumes all of these at scoring time.
+    .{
+        .id = "002_ranking_columns",
+        .name = "add followers/follows/posts/last_activity_at/quality_score for ranking",
+        .statements = &.{
+            "ALTER TABLE actors ADD COLUMN followers_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE actors ADD COLUMN follows_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE actors ADD COLUMN posts_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE actors ADD COLUMN last_activity_at INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE actors ADD COLUMN quality_score REAL NOT NULL DEFAULT 0",
+        },
+    },
 };

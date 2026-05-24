@@ -70,6 +70,11 @@ pub const Row = struct {
         if (index >= self.columns.len) return 0;
         return extractInt(self.columns[index]);
     }
+
+    pub fn float(self: Row, index: usize) f64 {
+        if (index >= self.columns.len) return 0;
+        return extractFloat(self.columns[index]);
+    }
 };
 
 pub const Result = struct {
@@ -340,6 +345,25 @@ fn extractInt(val: json.Value) i64 {
                 break :blk 0;
             };
             break :blk extractInt(v);
+        },
+        .bool => |b| if (b) 1 else 0,
+        else => 0,
+    };
+}
+
+// Same shape-tolerance as extractInt — hrana wraps REAL columns as
+// `{"type":"float","value":<number>}` (bare JSON number, no string quoting).
+// Falls through to integer/string forms so we don't silently lose data
+// if the server-side encoding ever shifts.
+fn extractFloat(val: json.Value) f64 {
+    return switch (val) {
+        .float => |f| f,
+        .integer => |i| @floatFromInt(i),
+        .number_string => |s| std.fmt.parseFloat(f64, s) catch 0,
+        .string => |s| std.fmt.parseFloat(f64, s) catch 0,
+        .object => |obj| blk: {
+            const v = obj.get("value") orelse break :blk 0;
+            break :blk extractFloat(v);
         },
         .bool => |b| if (b) 1 else 0,
         else => 0,
