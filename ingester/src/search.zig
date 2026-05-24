@@ -56,8 +56,11 @@ pub const ScoreBreakdown = struct {
     raw_phrase_in_name: f64 = 0,
     name_tokens: f64 = 0,
     handle_tokens: f64 = 0,
-    followers: f64 = 0,
-    posts: f64 = 0,
+    /// Authority — our own quality_score signal (or a synthetic fallback
+    /// from raw followers/posts for actors not yet re-enriched). Scaled to
+    /// dominate within lexical-tied candidate groups without overriding
+    /// genuinely different lexical tiers.
+    authority: f64 = 0,
     avatar: f64 = 0,
     has_display_name: f64 = 0,
     has_created_at: f64 = 0,
@@ -69,11 +72,10 @@ pub const ScoreBreakdown = struct {
     pub fn total(self: ScoreBreakdown) f64 {
         return self.exact_handle + self.handle_prefix + self.name_prefix +
             self.raw_phrase_prefix_name + self.raw_phrase_in_name +
-            self.name_tokens + self.handle_tokens + self.followers +
-            self.posts + self.avatar + self.has_display_name +
-            self.has_created_at + self.recent_activity +
-            self.no_avatar_no_name + self.suspicious_numbered +
-            self.repeated_tokens;
+            self.name_tokens + self.handle_tokens + self.authority +
+            self.avatar + self.has_display_name + self.has_created_at +
+            self.recent_activity + self.no_avatar_no_name +
+            self.suspicious_numbered + self.repeated_tokens;
     }
 };
 
@@ -92,6 +94,7 @@ pub const Candidate = struct {
     follows_count: i64,
     posts_count: i64,
     last_activity_at: i64,
+    quality_score: f64,
     source: Source,
     breakdown: ScoreBreakdown = .{},
 };
@@ -234,6 +237,7 @@ fn gatherCandidates(local: *LocalDb, aa: Allocator, term: []const u8) ![]Candida
             .follows_count = row.int(Col.follows_count),
             .posts_count = row.int(Col.posts_count),
             .last_activity_at = row.int(Col.last_activity_at),
+            .quality_score = row.float(Col.quality_score),
             .source = source,
         });
     }
@@ -361,8 +365,21 @@ fn scoreCandidates(candidates: []Candidate, term: []const u8) void {
         if (c.display_name.len > 0 and allTokensPrefixInText(c.display_name, tokens)) b.name_tokens = 12000;
         if (allTokensPrefixInText(c.handle, tokens)) b.handle_tokens = 8000;
 
-        b.followers = 900 * std.math.log10(@as(f64, @floatFromInt(@max(c.followers_count, 0) + 1)));
-        b.posts = 180 * std.math.log10(@as(f64, @floatFromInt(@max(c.posts_count, 0) + 1)));
+        // Authority: scaled quality_score from the worker. Quality_score
+        // outputs ~80 for spam, ~200-400 for normal accounts, ~600-900 for
+        // popular ones. Multiplier of 30 gives popular accounts ~24000 bonus
+        // — enough to win lexical ties without overriding genuine lexical
+        // differences (e.g. exact_handle at 100000 still dominates).
+        //
+        // Fallback for actors not yet re-enriched: synthesize from raw
+        // followers + posts so we have signal during the migration window.
+        if (c.quality_score > 0) {
+            b.authority = c.quality_score * 30;
+        } else if (c.followers_count > 0 or c.posts_count > 0) {
+            const fallback = std.math.log10(@as(f64, @floatFromInt(@max(c.followers_count, 0) + 1))) * 100 +
+                std.math.log10(@as(f64, @floatFromInt(@max(c.posts_count, 0) + 1))) * 20;
+            b.authority = fallback * 30;
+        }
 
         if (c.avatar_url.len > 0) b.avatar = 150;
         if (c.display_name.len > 0) b.has_display_name = 100;
@@ -515,6 +532,8 @@ fn writeCandidateDebug(jw: anytype, c: *const Candidate) !void {
     try jw.write(c.followers_count);
     try jw.objectField("posts");
     try jw.write(c.posts_count);
+    try jw.objectField("qualityScore");
+    try jw.write(c.quality_score);
     try jw.objectField("lastActivityAt");
     try jw.write(c.last_activity_at);
     try jw.objectField("score");
