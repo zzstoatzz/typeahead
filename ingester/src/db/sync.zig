@@ -596,7 +596,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 defer local.unlock();
                 conn.exec("BEGIN", .{}) catch {};
                 for (result.rows) |row| {
-                    insertActorRow(conn, "INSERT OR REPLACE INTO actors", row) catch {
+                    applyActorUpdate(conn, row, "incremental") catch {
                         error_count += 1;
                         continue;
                     };
@@ -655,7 +655,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             conn.exec("BEGIN", .{}) catch {};
             for (result.rows) |row| {
                 const did = row.text(0);
-                conn.exec("DELETE FROM actors WHERE did = ?", .{did}) catch {
+                applyActorDelete(conn, did, "incremental.cleared") catch {
                     error_count += 1;
                     continue;
                 };
@@ -694,7 +694,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             conn.exec("BEGIN", .{}) catch {};
             for (tomb_result.rows) |row| {
                 const did = row.text(0);
-                conn.exec("DELETE FROM actors WHERE did = ?", .{did}) catch {
+                applyActorDelete(conn, did, "incremental.tombstone") catch {
                     error_count += 1;
                     continue;
                 };
@@ -704,71 +704,13 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         }
     }
 
-    // rebuild FTS from actors table if anything changed from Turso.
-    // identity/account events do per-row FTS maintenance inline (ingest.zig) using
-    // FTS5 special delete (O(1) with known old values). This bulk rebuild handles
-    // Turso-sourced changes that bypass the ingester's real-time path.
-    if (updated > 0 or cleared > 0 or deleted > 0) {
-        // checkpoint WAL before FTS rebuild — large WAL from batch deletes
-        // makes the INSERT SELECT scan extremely slow
-        {
-            local.lock();
-            defer local.unlock();
-            conn.exec("PRAGMA wal_checkpoint(PASSIVE)", .{}) catch {};
-        }
-
-        const fts_span = logfire.span("sync.fts_rebuild", .{});
-        log.info("incremental: rebuilding FTS via staging swap ({d} changes)", .{updated + cleared + deleted});
-        {
-            local.lock();
-            defer local.unlock();
-            // Build into a staging FTS so the live actors_fts keeps serving
-            // queries through the (multi-minute) populate. Atomic swap at the
-            // end gives a millisecond reader gap instead of a 15-20 min gap.
-            // The previous DROP+CREATE+INSERT-against-live pattern produced
-            // ~80% FTS-empty time and broke display-name search in prod.
-            conn.exec("DROP TABLE IF EXISTS actors_fts_new", .{}) catch {};
-            conn.exec(
-                \\CREATE VIRTUAL TABLE actors_fts_new USING fts5(
-                \\  did UNINDEXED, handle, display_name,
-                \\  tokenize='unicode61 remove_diacritics 2'
-                \\)
-            , .{}) catch |err| {
-                log.err("FTS rebuild: staging create failed: {}", .{err});
-                fts_span.recordError(err);
-                fts_span.setStatus(.@"error", "create failed");
-                fts_span.end();
-                return;
-            };
-            conn.exec(
-                \\INSERT INTO actors_fts_new (did, handle, display_name)
-                \\SELECT did, handle, display_name FROM actors WHERE handle != ''
-            , .{}) catch |err| {
-                log.err("FTS rebuild: staging populate failed: {}", .{err});
-                conn.exec("DROP TABLE IF EXISTS actors_fts_new", .{}) catch {};
-                fts_span.recordError(err);
-                fts_span.setStatus(.@"error", "populate failed");
-                fts_span.end();
-                return;
-            };
-            // Atomic swap.
-            conn.exec("BEGIN", .{}) catch {};
-            conn.exec("DROP TABLE IF EXISTS actors_fts", .{}) catch {};
-            conn.exec("ALTER TABLE actors_fts_new RENAME TO actors_fts", .{}) catch |err| {
-                log.err("FTS rebuild: swap failed: {}", .{err});
-                conn.exec("ROLLBACK", .{}) catch {};
-                conn.exec("DROP TABLE IF EXISTS actors_fts_new", .{}) catch {};
-                fts_span.recordError(err);
-                fts_span.setStatus(.@"error", "swap failed");
-                fts_span.end();
-                return;
-            };
-            conn.exec("COMMIT", .{}) catch {};
-        }
-        fts_span.setStatus(.ok, null);
-        fts_span.end();
-        log.info("incremental: FTS rebuild complete (staging swap)", .{});
-    }
+    // FTS is maintained per-row above via applyActorUpdate / applyActorDelete.
+    // No bulk rebuild — that pattern (drop + recreate + insert ~6M rows) took
+    // 15-20 min on a 256MB VM and left the live FTS empty for that entire
+    // window, breaking display-name search ~80% of the time in steady state.
+    // Bootstrap / resync still do bulk builds (against staging, while ready=false)
+    // and LocalDb.checkAndRepair detects a broken FTS on startup and triggers
+    // a fresh bootstrap as recovery.
 
     // only advance watermark when everything succeeded
     const had_error = had_turso_error or error_count > 0;
@@ -843,6 +785,85 @@ fn insertActorRow(conn: zqlite.Conn, comptime prefix: []const u8, row: anytype) 
         row.text(Col.associated),
         row.text(Col.pds),
     }) catch |err| return err;
+}
+
+/// Snapshot of (handle, display_name) from `actors` for a DID, used to
+/// drive FTS5 special-delete before the row is upserted/removed.
+const OldFtsRow = struct {
+    handle_buf: [256]u8 = undefined,
+    name_buf: [512]u8 = undefined,
+    handle: ?[]const u8 = null,
+    name: ?[]const u8 = null,
+};
+
+fn snapshotOldFtsRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
+    if (conn.row("SELECT handle, display_name FROM actors WHERE did = ?", .{did})) |maybe| {
+        if (maybe) |r| {
+            defer r.deinit();
+            const h = r.text(0);
+            const n = r.text(1);
+            if (h.len > 0 and h.len <= out.handle_buf.len) {
+                @memcpy(out.handle_buf[0..h.len], h);
+                out.handle = out.handle_buf[0..h.len];
+            }
+            if (n.len > 0 and n.len <= out.name_buf.len) {
+                @memcpy(out.name_buf[0..n.len], n);
+                out.name = out.name_buf[0..n.len];
+            }
+        }
+    } else |_| {}
+}
+
+/// Per-row incremental apply: snapshot old FTS values, INSERT OR REPLACE the
+/// actor, then FTS5 special-delete the old entry and insert the new one.
+/// Mirrors the per-row maintenance pattern in ingest.zig::writeToLocal so the
+/// local FTS table stays consistent without periodic full rebuilds.
+/// `caller` is just for log context ("incremental" vs other future callers).
+fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8) !void {
+    const did = row.text(Col.did);
+    const new_handle = row.text(Col.handle);
+    const new_name = row.text(Col.display_name);
+
+    var old: OldFtsRow = .{};
+    snapshotOldFtsRow(conn, did, &old);
+
+    try insertActorRow(conn, "INSERT OR REPLACE INTO actors", row);
+
+    if (old.handle) |oh| {
+        conn.exec(
+            \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
+            \\VALUES('delete', ?, ?, ?)
+        , .{ did, oh, old.name orelse "" }) catch |err| {
+            log.warn("{s}: FTS delete-old failed for {s}: {}", .{ caller, did, err });
+        };
+    }
+    if (new_handle.len > 0) {
+        conn.exec(
+            \\INSERT INTO actors_fts (did, handle, display_name)
+            \\VALUES (?, ?, ?)
+        , .{ did, new_handle, new_name }) catch |err| {
+            log.warn("{s}: FTS insert-new failed for {s}: {}", .{ caller, did, err });
+        };
+    }
+}
+
+/// Per-row incremental remove: snapshot old FTS values, DELETE the actor
+/// row, then FTS5 special-delete the old entry. Used for both the "became
+/// unsearchable" and "tombstoned" paths.
+fn applyActorDelete(conn: zqlite.Conn, did: []const u8, caller: []const u8) !void {
+    var old: OldFtsRow = .{};
+    snapshotOldFtsRow(conn, did, &old);
+
+    try conn.exec("DELETE FROM actors WHERE did = ?", .{did});
+
+    if (old.handle) |oh| {
+        conn.exec(
+            \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
+            \\VALUES('delete', ?, ?, ?)
+        , .{ did, oh, old.name orelse "" }) catch |err| {
+            log.warn("{s}: FTS delete failed for {s}: {}", .{ caller, did, err });
+        };
+    }
 }
 
 /// Update cached actor count in sync_meta (avoids COUNT(*) on health checks)
