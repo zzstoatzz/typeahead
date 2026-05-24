@@ -56,6 +56,8 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_poo
 
     if (mem.eql(u8, path, "/search")) {
         try handleSearch(request, target, local_db);
+    } else if (mem.eql(u8, path, "/debug/search")) {
+        try handleDebugSearch(request, target, local_db);
     } else if (mem.eql(u8, path, "/health")) {
         try handleHealth(request, local_db, identity_pool);
     } else if (mem.eql(u8, path, "/debug/fts")) {
@@ -94,7 +96,7 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
     var output: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
     defer output.deinit();
 
-    search.search(local_db, q, clamped_limit, &output.writer) catch {
+    search.search(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch {
         try sendJson(request, .internal_server_error, "{\"error\":\"search failed\"}");
         return;
     };
@@ -106,6 +108,44 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
             .{ .name = "access-control-allow-origin", .value = "*" },
             .{ .name = "access-control-allow-methods", .value = "GET, OPTIONS" },
             .{ .name = "access-control-allow-headers", .value = "content-type" },
+        },
+    });
+}
+
+fn handleDebugSearch(request: *http.Server.Request, target: []const u8, local_db: *LocalDb) !void {
+    if (!local_db.isReady()) {
+        try sendJson(request, .service_unavailable, "{\"error\":\"not ready\"}");
+        return;
+    }
+
+    const raw_q = parseQueryParam(target, "q") orelse parseQueryParam(target, "term") orelse {
+        try sendJson(request, .bad_request, "{\"error\":\"missing q parameter\"}");
+        return;
+    };
+
+    var decode_buf: [512]u8 = undefined;
+    const q = percentDecode(raw_q, &decode_buf) orelse raw_q;
+
+    const limit_str = parseQueryParam(target, "limit");
+    const limit: usize = if (limit_str) |s|
+        std.fmt.parseInt(usize, s, 10) catch 25
+    else
+        25;
+    const clamped_limit = @min(@max(limit, 1), 200);
+
+    var output: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
+    defer output.deinit();
+
+    search.debugSearch(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch {
+        try sendJson(request, .internal_server_error, "{\"error\":\"debug search failed\"}");
+        return;
+    };
+
+    const body = output.written();
+    try request.respond(body, .{
+        .extra_headers = &.{
+            .{ .name = "content-type", .value = "application/json" },
+            .{ .name = "access-control-allow-origin", .value = "*" },
         },
     });
 }
