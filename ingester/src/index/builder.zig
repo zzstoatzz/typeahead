@@ -4,19 +4,27 @@
 //!
 //! Pipeline (single pass over actors, no extra memory for the corpus):
 //!
-//!   1. open snapshot DB, init schema, set perf pragmas
-//!   2. stream rows from Turso actors
-//!   3. per row: pack actor_compact blob, write to actor_compact_base
+//!   1. open index.db, init schema, set pragmas, ATTACH a scratch staging.db
+//!   2. stream rows from Turso actors (or a local export via INDEX_REUSE_SOURCE)
+//!   3. per row: pack actor_compact blob, write to actor_compact_base (index.db)
 //!              normalize handle + display, derive prefix keys,
-//!              emit (key, did, score) rows to staging emissions table
-//!   4. sort emissions by (key, score DESC) via an index
+//!              emit (key, did, score) rows to stage.emissions (staging.db)
+//!   4. sort stage.emissions by (key, score DESC) via an index in staging.db
 //!   5. iterate sorted emissions, group by key in-stream, take tier-aware
-//!      top-N, pack as did_list blob, write to prefix_top_base
-//!   6. drop staging, write index_meta, ANALYZE, close
+//!      top-N, pack as did_list blob, write to prefix_top_base (index.db)
+//!   6. DETACH + delete staging.db, write index_meta, ANALYZE, close
+//!
+//! Staging lives in a SEPARATE attached DB, never in index.db. emissions
+//! (~144M rows, ~8GB) + its index (~3GB) are pure scratch; in index.db they
+//! ballooned the shipped artifact to ~12GB of unreclaimed free pages. Deleting
+//! the scratch file frees them with no VACUUM, so index.db ships at its real
+//! ~2GB size. The CREATE INDEX sort is file-backed (temp_store=FILE) and
+//! steered onto the build volume via SQLITE_TMPDIR, not held in RAM.
 //!
 //! No in-memory accumulation of emissions or top-N lists across keys —
 //! everything streams. Memory usage is bounded by one key's top-N
-//! candidate buffer (≤300 entries × ~32 bytes ≈ 10 KB at peak).
+//! candidate buffer (≤300 entries × ~32 bytes ≈ 10 KB at peak) plus the
+//! 200MB page cache — flat regardless of corpus size.
 
 const std = @import("std");
 const zqlite = @import("zqlite");
@@ -32,6 +40,11 @@ const scoring = @import("scoring.zig");
 const log = std.log.scoped(.indexer);
 const io = std.Options.debug_io;
 
+// std.c omits setenv in 0.16's curated libc list (getenv is present).
+// Declared here so we can steer SQLite's temp_store=FILE scratch onto the
+// build volume via SQLITE_TMPDIR.
+extern "c" fn setenv(name: [*:0]const u8, value: [*:0]const u8, overwrite: c_int) c_int;
+
 /// Rows per Turso roundtrip during the streaming fetch. Matches the
 /// pattern in `sync.zig`'s bulk pagination. 2000 is small enough that
 /// each batch is ≤ ~1 MB JSON over the wire and decode is fast, but
@@ -39,11 +52,12 @@ const io = std.Options.debug_io;
 const BATCH_SIZE: usize = 2000;
 
 /// Source for the actor row stream. `.auto` picks the best available
-/// path; explicit values force a specific source. v3 cursor is the
-/// primary; v2 paginated is the fallback for one cycle before deletion.
+/// path. `export_http` (GET /info + /export/{gen} → local SQLite, then
+/// ATTACH) is the primary — ~60× faster than the v3 cursor for bulk
+/// reads. `hrana_v2_paginated` stays as a fallback for one cycle.
 pub const SourceMode = enum {
     auto,
-    hrana_v3_cursor,
+    export_http,
     hrana_v2_paginated,
 };
 
@@ -83,7 +97,7 @@ pub fn readConfigFromEnv() Config {
 fn parseSourceMode(s: ?[]const u8) SourceMode {
     const v = s orelse return .auto;
     if (std.mem.eql(u8, v, "auto")) return .auto;
-    if (std.mem.eql(u8, v, "cursor") or std.mem.eql(u8, v, "hrana_v3") or std.mem.eql(u8, v, "hrana_v3_cursor")) return .hrana_v3_cursor;
+    if (std.mem.eql(u8, v, "export") or std.mem.eql(u8, v, "export_http")) return .export_http;
     if (std.mem.eql(u8, v, "hrana_v2") or std.mem.eql(u8, v, "hrana_v2_paginated")) return .hrana_v2_paginated;
     log.warn("INDEX_SOURCE='{s}' unrecognized; defaulting to auto", .{v});
     return .auto;
@@ -145,6 +159,64 @@ fn nowSeconds() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
 }
 
+/// SQLite single-quoted string literal: wrap in '' and double any
+/// embedded single quote. Writes into `buf`, returns the quoted slice
+/// (including the surrounding quotes). Defensive for paths interpolated
+/// into ATTACH — our build dirs don't contain quotes, but this is
+/// becoming general infrastructure.
+fn sqlQuote(buf: []u8, s: []const u8) ![]const u8 {
+    var w: usize = 0;
+    if (w >= buf.len) return error.PathTooLong;
+    buf[w] = '\'';
+    w += 1;
+    for (s) |c| {
+        if (c == '\'') {
+            if (w + 2 > buf.len) return error.PathTooLong;
+            buf[w] = '\'';
+            buf[w + 1] = '\'';
+            w += 2;
+        } else {
+            if (w + 1 > buf.len) return error.PathTooLong;
+            buf[w] = c;
+            w += 1;
+        }
+    }
+    if (w >= buf.len) return error.PathTooLong;
+    buf[w] = '\'';
+    w += 1;
+    return buf[0..w];
+}
+
+/// Delete a build's source.db + sidecars. Called on a SUCCESSFUL export
+/// build to reclaim ~3+ GB. On failure we leave them so an operator can
+/// inspect / re-run with INDEX_REUSE_SOURCE.
+fn deleteSourceFiles(build_dir: []const u8) void {
+    const names = [_][]const u8{ "source.db", "source.db-wal", "source.db-shm", "source.db.part" };
+    for (names) |name| {
+        var path_buf: [320]u8 = undefined;
+        const p = std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ build_dir, name }) catch continue;
+        std.Io.Dir.deleteFile(.cwd(), io, p) catch |err| switch (err) {
+            error.FileNotFound => {},
+            else => log.warn("deleteSourceFiles({s}) failed: {s}", .{ p, @errorName(err) }),
+        };
+    }
+}
+
+/// Delete a build's staging.db + sidecars after DETACH. The scratch DB
+/// holds the ~11GB emissions table + its index; dropping the file frees it
+/// without a VACUUM rewrite of index.db.
+fn deleteStagingFiles(build_dir: []const u8) void {
+    const names = [_][]const u8{ "staging.db", "staging.db-journal", "staging.db-wal", "staging.db-shm" };
+    for (names) |name| {
+        var path_buf: [320]u8 = undefined;
+        const p = std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ build_dir, name }) catch continue;
+        std.Io.Dir.deleteFile(.cwd(), io, p) catch |err| switch (err) {
+            error.FileNotFound => {},
+            else => log.warn("deleteStagingFiles({s}) failed: {s}", .{ p, @errorName(err) }),
+        };
+    }
+}
+
 /// Fetch max(updated_at) from Turso actors. Used as source_watermark
 /// in index_meta. Cheap (single aggregate) compared to the streaming
 /// pass. Used by the hrana fallback path; the export path reads the
@@ -156,12 +228,12 @@ fn readSourceWatermark(turso: *TursoClient) !i64 {
     return result.rows[0].int(0);
 }
 
-/// Resolve `.auto` to the preferred source. v3 cursor first; v2
-/// paginated stays around as a fallback override via env.
+/// Resolve `.auto` to the preferred source: export_http. v2 paginated
+/// stays available as an explicit fallback via INDEX_SOURCE=hrana_v2.
 fn chooseSourceMode(cfg: Config) SourceMode {
     return switch (cfg.source_mode) {
-        .auto => .hrana_v3_cursor,
-        .hrana_v3_cursor => .hrana_v3_cursor,
+        .auto => .export_http,
+        .export_http => .export_http,
         .hrana_v2_paginated => .hrana_v2_paginated,
     };
 }
@@ -211,6 +283,22 @@ pub fn run(allocator: Allocator) !void {
         return err;
     };
 
+    // Point SQLite's file-backed temp scratch (temp_store=FILE, set below)
+    // at the build dir. build_dir lives on the Fly volume (build_root
+    // defaults to /data), so the CREATE INDEX sort over ~144M emission rows
+    // spills to the volume instead of the root fs / RAM. setenv copies the
+    // value, so the stack buffer can go out of scope safely.
+    {
+        var tmp_z_buf: [260]u8 = undefined;
+        if (build_dir.len + 1 <= tmp_z_buf.len) {
+            @memcpy(tmp_z_buf[0..build_dir.len], build_dir);
+            tmp_z_buf[build_dir.len] = 0;
+            const tmp_z: [*:0]const u8 = tmp_z_buf[0..build_dir.len :0];
+            _ = setenv("SQLITE_TMPDIR", tmp_z, 1);
+            _ = setenv("TMPDIR", tmp_z, 1);
+        }
+    }
+
     var path_buf: [320]u8 = undefined;
     const db_path = try std.fmt.bufPrint(&path_buf, "{s}/index.db", .{build_dir});
     var path_z_buf: [320]u8 = undefined;
@@ -235,38 +323,60 @@ pub fn run(allocator: Allocator) !void {
     // anyway (manifest hasn't been promoted), so torn writes don't matter.
     _ = conn.exec("PRAGMA journal_mode = DELETE", .{}) catch {};
     _ = conn.exec("PRAGMA synchronous = OFF", .{}) catch {};
-    _ = conn.exec("PRAGMA temp_store = MEMORY", .{}) catch {};
+    _ = conn.exec("PRAGMA temp_store = FILE", .{}) catch {}; // sort scratch → SQLITE_TMPDIR (volume), not RAM
     _ = conn.exec("PRAGMA cache_size = -200000", .{}) catch {}; // 200MB page cache for the build only
 
     try schema.initSnapshot(conn);
 
-    // Staging emissions: every (prefix_key, did, score) tuple emitted by
-    // any actor. Dropped at end of build. Indexed on (key, score DESC)
-    // so the group-and-pack step is a single sequential scan.
+    // Staging lives in a SEPARATE attached DB, never in index.db. The
+    // emissions table (~144M rows, ~8GB) plus its (key, score DESC) index
+    // (~3GB) are pure build scratch. Kept in index.db they ballooned the
+    // shipped artifact to ~12GB of mostly-free pages — DROP TABLE without
+    // VACUUM never reclaims them. With a scratch DB we DETACH + delete it
+    // at the end: index.db only ever holds the real artifact (~2GB), and we
+    // never pay a VACUUM rewrite.
+    var staging_buf: [320]u8 = undefined;
+    const staging_path = try std.fmt.bufPrint(&staging_buf, "{s}/staging.db", .{build_dir});
+    {
+        var q_buf: [400]u8 = undefined;
+        const q = try sqlQuote(&q_buf, staging_path);
+        var sql_buf: [480]u8 = undefined;
+        const attach_sql = try std.fmt.bufPrint(&sql_buf, "ATTACH DATABASE {s} AS stage", .{q});
+        try conn.exec(attach_sql, .{});
+    }
+    // Scratch DB is throwaway: no rollback journal, no fsync. A crash just
+    // restarts the whole build from a fresh dir, so durability is moot.
+    _ = conn.exec("PRAGMA stage.journal_mode = OFF", .{}) catch {};
+    _ = conn.exec("PRAGMA stage.synchronous = OFF", .{}) catch {};
     try conn.exec(
-        \\CREATE TABLE IF NOT EXISTS emissions (
+        \\CREATE TABLE stage.emissions (
         \\  key   TEXT NOT NULL,
         \\  did   TEXT NOT NULL,
         \\  score REAL NOT NULL
         \\)
     , .{});
-    try conn.exec("DELETE FROM emissions", .{}); // clean slate for retries
 
     // ── stream actors + emit ──────────────────────────────────────────────
     //
-    // Source dispatch. Hrana v2 keyset pagination is the only path that
-    // exists right now; the v3 HTTP cursor path lands in a follow-up
-    // commit (see docs/hrana-v3-cursor-plan.md). chooseSourceMode lets
-    // us flip between them via env without changing the dispatcher
-    // surface here.
+    // Source dispatch. export_http is primary (GET /info + /export →
+    // local SQLite checkpoint, ATTACH, iterate — ~60× faster than the
+    // hrana cursor for bulk reads). hrana_v2_paginated is the fallback.
     const effective_mode = chooseSourceMode(cfg);
     log.info("source mode: {s}", .{@tagName(effective_mode)});
 
     switch (effective_mode) {
-        .hrana_v3_cursor => {
-            var turso = try TursoClient.init(allocator);
-            defer turso.deinit();
-            try streamFromCursor(allocator, &turso, conn, cfg, &stats);
+        .export_http => {
+            // Dev affordance: build from an existing local SQLite file,
+            // no Turso creds or network needed. Useful for iterating on
+            // the build phase without re-downloading 3+ GB.
+            if (cGetenv("INDEX_REUSE_SOURCE")) |reuse| {
+                log.info("INDEX_REUSE_SOURCE set — skipping export, using {s}", .{reuse});
+                try buildFromAttached(allocator, conn, reuse, cfg, &stats);
+            } else {
+                var turso = try TursoClient.init(allocator);
+                defer turso.deinit();
+                try streamFromExport(allocator, &turso, conn, build_dir, cfg, &stats);
+            }
         },
         .hrana_v2_paginated => {
             var turso = try TursoClient.init(allocator);
@@ -281,10 +391,18 @@ pub fn run(allocator: Allocator) !void {
         .auto => unreachable, // chooseSourceMode resolves auto
     }
 
+    // Source is fully consumed once emissions are staged (buildFromAttached
+    // detaches src on return). Reclaim its ~3GB now, before the disk-heavy
+    // CREATE INDEX, so peak volume usage stays lower. Skipped in reuse mode
+    // — that file isn't ours to delete.
+    if (effective_mode == .export_http and cGetenv("INDEX_REUSE_SOURCE") == null) {
+        deleteSourceFiles(build_dir);
+    }
+
     // ── group, pack, write prefix_top_base (per-group scratch arena inside) ──
     {
         const t = nowMs();
-        try conn.exec("CREATE INDEX IF NOT EXISTS idx_emissions_key_score ON emissions(key, score DESC)", .{});
+        try conn.exec("CREATE INDEX IF NOT EXISTS stage.idx_emissions_key_score ON emissions(key, score DESC)", .{});
         stats.phases.index_build_ms = nowMs() - t;
     }
     {
@@ -294,7 +412,13 @@ pub fn run(allocator: Allocator) !void {
     }
 
     // ── cleanup + metadata ────────────────────────────────────────────────
-    try conn.exec("DROP TABLE IF EXISTS emissions", .{});
+    // Discard staging entirely: DETACH then delete the file. Frees the
+    // ~11GB of emissions+index instantly with no VACUUM rewrite, and
+    // guarantees index.db ships at real-artifact size.
+    conn.exec("DETACH DATABASE stage", .{}) catch |err| {
+        log.warn("DETACH stage failed: {s}", .{@errorName(err)});
+    };
+    deleteStagingFiles(build_dir);
     {
         const t = nowMs();
         try writeMeta(conn, build_id, cfg, &stats);
@@ -306,7 +430,8 @@ pub fn run(allocator: Allocator) !void {
         _ = conn.exec("ANALYZE", .{}) catch {};
         stats.phases.analyze_ms = nowMs() - t;
     }
-    // VACUUM is not free — leave it for a follow-up if size matters.
+    // No VACUUM needed: staging never lived in index.db, so there are no
+    // freed pages to reclaim — index.db is already real-artifact size.
 
     stats.build_end_ms = nowMs();
     const elapsed_ms = stats.build_end_ms - stats.build_start_ms;
@@ -335,20 +460,70 @@ pub fn run(allocator: Allocator) !void {
 /// Both steps execute within the same cursor (one server-side read
 /// transaction), so the watermark is the actual cutoff for what's in
 /// the row stream — no race window like the v2 paginated path needed.
-fn streamFromCursor(
+/// Primary source path. Export Turso → local SQLite checkpoint file via
+/// the export HTTP endpoints (TursoClient.exportToFile), ATTACH it
+/// read-only, validate, then iterate `src.actors` from local disk.
+/// source_watermark comes from the exported file's own MAX(updated_at)
+/// — the exact watermark of this checkpoint snapshot. The exported file
+/// is deleted after a successful build.
+fn streamFromExport(
     gpa: Allocator,
     turso: *TursoClient,
     snapshot: zqlite.Conn,
+    build_dir: []const u8,
     cfg: Config,
     stats: *BuildStats,
 ) !void {
+    var path_buf: [320]u8 = undefined;
+    const source_path = try std.fmt.bufPrint(&path_buf, "{s}/source.db", .{build_dir});
+
+    const t_export = nowMs();
+    try turso.exportToFile(source_path);
+    stats.phases.turso_fetch_ms = nowMs() - t_export;
+    log.info("export complete in {d}ms → {s}", .{ stats.phases.turso_fetch_ms, source_path });
+
+    try buildFromAttached(gpa, snapshot, source_path, cfg, stats);
+}
+
+/// ATTACH a local SQLite file as `src`, validate it, then iterate
+/// `src.actors` into the snapshot. Split out so the export path and the
+/// INDEX_REUSE_SOURCE dev path share the build logic.
+fn buildFromAttached(
+    gpa: Allocator,
+    snapshot: zqlite.Conn,
+    source_path: []const u8,
+    cfg: Config,
+    stats: *BuildStats,
+) !void {
+    // Plain-path ATTACH (NOT a file: URI). The snapshot connection isn't
+    // opened with SQLITE_OPEN_URI, so a 'file:...?mode=ro' string would
+    // be treated as a literal filename and fail. We never write to src
+    // (all writes target the main snapshot tables), so read-write attach
+    // is harmless. Path is SQL-quoted (single quotes doubled) so it's
+    // safe even if a build dir ever contains one.
+    var quoted_buf: [512]u8 = undefined;
+    const quoted_path = try sqlQuote(&quoted_buf, source_path);
+    var attach_buf: [600]u8 = undefined;
+    const attach_sql = try std.fmt.bufPrint(&attach_buf, "ATTACH DATABASE {s} AS src", .{quoted_path});
+    try snapshot.exec(attach_sql, .{});
+    defer snapshot.exec("DETACH DATABASE src", .{}) catch {};
+
+    try validateExportedDb(snapshot);
+
+    // source_watermark from the exported file — the checkpoint's own cutoff.
+    {
+        const row = try snapshot.row("SELECT COALESCE(MAX(updated_at), 0) FROM src.actors", .{});
+        if (row) |r| {
+            defer r.deinit();
+            stats.source_watermark = r.int(0);
+        }
+        log.info("source_watermark from exported DB: {d}", .{stats.source_watermark});
+    }
+
     var sctx = StreamCtx{
         .gpa = gpa,
-        .cfg = cfg,
-        .snapshot = snapshot,
         .stats = stats,
         .row_arena = std.heap.ArenaAllocator.init(gpa),
-        .current_step = -1,
         .stmt_actor = undefined,
         .stmt_emit = undefined,
     };
@@ -358,108 +533,83 @@ fn streamFromCursor(
         "INSERT OR REPLACE INTO actor_compact_base (did, blob) VALUES (?, ?)",
     );
     defer sctx.stmt_actor.deinit();
-
     sctx.stmt_emit = try snapshot.prepare(
-        "INSERT INTO emissions (key, did, score) VALUES (?, ?, ?)",
+        "INSERT INTO stage.emissions (key, did, score) VALUES (?, ?, ?)",
     );
     defer sctx.stmt_emit.deinit();
 
     try snapshot.exec("BEGIN", .{});
     errdefer _ = snapshot.exec("ROLLBACK", .{}) catch {};
 
-    // Build the actors SELECT — include a SQL-level LIMIT in sample
-    // mode so the server stops pumping after N rows. Without this, the
-    // cursor reads the full corpus and the callback just no-ops past
-    // sample_limit. Production runs use sample_limit=0 (no LIMIT clause).
-    var actors_sql_buf: [512]u8 = undefined;
-    const actors_sql = if (cfg.sample_limit == 0)
-        @as([]const u8, "SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM actors WHERE handle != '' ORDER BY did")
+    var rows = if (cfg.sample_limit == 0)
+        try snapshot.rows("SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM src.actors WHERE handle != '' ORDER BY did", .{})
     else
-        try std.fmt.bufPrint(&actors_sql_buf, "SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM actors WHERE handle != '' ORDER BY did LIMIT {d}", .{cfg.sample_limit});
+        try snapshot.rows("SELECT did, handle, display_name, avatar_url, labels, pds, created_at, associated, hidden, quality_score FROM src.actors WHERE handle != '' ORDER BY did LIMIT ?", .{cfg.sample_limit});
+    defer rows.deinit();
 
-    const stmts = [_]TursoClient.CursorStmt{
-        .{ .sql = "SELECT COALESCE(MAX(updated_at), 0) FROM actors WHERE handle != ''" },
-        .{ .sql = actors_sql },
-    };
-
-    const t_stream = nowMs();
-    try turso.streamCursor(gpa, &stmts, &sctx, processCursorEntry);
-    stats.phases.turso_fetch_ms = nowMs() - t_stream;
+    while (rows.next()) |row| {
+        try processActorRow(&sctx, row);
+        stats.rows_seen += 1;
+        if (stats.rows_seen - sctx.progress_at >= 50_000) {
+            sctx.progress_at = stats.rows_seen;
+            log.info("indexer progress (export): rows_seen={d} actors={d} emissions={d}", .{
+                stats.rows_seen, stats.actor_count, stats.emission_count,
+            });
+        }
+    }
 
     try snapshot.exec("COMMIT", .{});
-
-    log.info("emissions phase done (cursor): rows_seen={d} actors={d} emissions={d} watermark={d}", .{
-        stats.rows_seen,
-        stats.actor_count,
-        stats.emission_count,
-        stats.source_watermark,
+    log.info("emissions phase done (export): rows_seen={d} actors={d} emissions={d} watermark={d}", .{
+        stats.rows_seen, stats.actor_count, stats.emission_count, stats.source_watermark,
     });
 }
 
-/// Per-cursor-stream state threaded through the entry callback.
+/// Validate the exported DB before building from it. Cheap structural
+/// checks: quick_check (catches a torn/garbage file — belt-and-suspenders
+/// on top of the .part→rename guard) and a plausible actor count.
+fn validateExportedDb(snapshot: zqlite.Conn) !void {
+    {
+        const row = snapshot.row("PRAGMA src.quick_check", .{}) catch |err| {
+            log.err("exported DB quick_check errored: {s}", .{@errorName(err)});
+            return error.ExportValidationFailed;
+        };
+        if (row) |r| {
+            defer r.deinit();
+            const result = r.text(0);
+            if (!std.mem.eql(u8, result, "ok")) {
+                log.err("exported DB quick_check: {s}", .{result});
+                return error.ExportCorrupt;
+            }
+        } else return error.ExportValidationFailed;
+    }
+    {
+        const row = try snapshot.row("SELECT COUNT(*) FROM src.actors WHERE handle != ''", .{});
+        if (row) |r| {
+            defer r.deinit();
+            const count = r.int(0);
+            if (count < 1) {
+                log.err("exported DB has no searchable actors", .{});
+                return error.ExportEmptyActors;
+            }
+            log.info("exported DB validated: {d} searchable actors", .{count});
+        } else return error.ExportEmptyActors;
+    }
+}
+
+/// Per-stream state threaded through processActorRow.
 const StreamCtx = struct {
     gpa: Allocator,
-    cfg: Config,
-    snapshot: zqlite.Conn,
     stats: *BuildStats,
     row_arena: std.heap.ArenaAllocator,
-    /// Which step's rows we're currently processing.
-    /// -1 before any step_begin; 0 = watermark; 1 = actors.
-    current_step: i32,
     stmt_actor: zqlite.Stmt,
     stmt_emit: zqlite.Stmt,
     progress_at: usize = 0,
 };
 
-fn processCursorEntry(ctx: *StreamCtx, entry: TursoClient.CursorEntry) !void {
-    switch (entry) {
-        .step_begin => |sb| {
-            ctx.current_step = @intCast(sb.step);
-        },
-        .step_end => |se| {
-            _ = se;
-        },
-        .row => |r| {
-            if (ctx.current_step == 0) {
-                // step 0: SELECT max(updated_at) — single row, single column.
-                ctx.stats.source_watermark = r.int(0);
-                log.info("source_watermark (from cursor step 0): {d}", .{ctx.stats.source_watermark});
-            } else if (ctx.current_step == 1) {
-                // Honor sample_limit by silently skipping past N rows.
-                // We can't cancel the cursor mid-stream cleanly, so the
-                // server still pushes the full result; we just stop
-                // processing. Production runs use sample_limit=0.
-                if (ctx.cfg.sample_limit > 0 and ctx.stats.rows_seen >= ctx.cfg.sample_limit) return;
-
-                try processActorRow(ctx, r);
-                ctx.stats.rows_seen += 1;
-
-                if (ctx.stats.rows_seen - ctx.progress_at >= 50_000) {
-                    ctx.progress_at = ctx.stats.rows_seen;
-                    log.info("indexer progress (cursor): rows_seen={d} actors={d} emissions={d}", .{
-                        ctx.stats.rows_seen,
-                        ctx.stats.actor_count,
-                        ctx.stats.emission_count,
-                    });
-                }
-            }
-        },
-        .step_error => |e| {
-            log.err("cursor step {d} error: {s}", .{ e.step, e.message });
-            return error.TursoCursorStepError;
-        },
-        .err => |e| {
-            log.err("cursor error: {s}", .{e.message});
-            return error.TursoCursorError;
-        },
-    }
-}
-
-/// Process one actor row (step 1 of the cursor batch). Same per-row
-/// arena reset pattern as the v2 path. The TursoClient.Row reference
-/// borrows from the per-line JSON parse, which lives only for the
-/// duration of this call.
-fn processActorRow(ctx: *StreamCtx, row: TursoClient.Row) !void {
+/// Process one actor row. Per-row arena reset keeps memory flat. `row`
+/// is `anytype` so this works for both zqlite rows (export path, reading
+/// the ATTACHed file) and any other row type exposing text/int/float.
+fn processActorRow(ctx: *StreamCtx, row: anytype) !void {
     defer _ = ctx.row_arena.reset(.retain_capacity);
     const aa = ctx.row_arena.allocator();
 
@@ -546,7 +696,7 @@ fn streamActorsAndEmit(
     defer stmt_actor.deinit();
 
     const stmt_emit = try snapshot.prepare(
-        "INSERT INTO emissions (key, did, score) VALUES (?, ?, ?)",
+        "INSERT INTO stage.emissions (key, did, score) VALUES (?, ?, ?)",
     );
     defer stmt_emit.deinit();
 
@@ -721,7 +871,7 @@ fn buildPrefixTopBase(
     // Sequential scan in (key, score DESC) order — idx_emissions_key_score
     // backs this with O(n) work and no temp B-tree.
     var rows = try snapshot.rows(
-        "SELECT key, did, score FROM emissions ORDER BY key, score DESC",
+        "SELECT key, did, score FROM stage.emissions ORDER BY key, score DESC",
         .{},
     );
     defer rows.deinit();

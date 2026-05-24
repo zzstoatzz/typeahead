@@ -370,407 +370,120 @@ fn extractFloat(val: json.Value) f64 {
     };
 }
 
-// ─── hrana v3 cursor (POST /v3/cursor) ───────────────────────────────────
+// ─── database export (GET /info + GET /export/{generation}) ──────────────
 //
-// One HTTP request, one streaming NDJSON response:
+// The fast bulk-read path. `turso db export` does exactly this under the
+// hood: GET /info for the current generation, then GET /export/{gen} which
+// streams a standalone, internally-consistent SQLite checkpoint file.
 //
-//   POST /v3/cursor                  body: { baton: null, batch: {steps: [...]} }
-//   ← line 1 (CursorRespBody):       {"baton": "...", "base_url": null}
-//   ← lines 2..N (CursorEntry):      {"type": "step_begin"|"row"|"step_end"|...}
+// We deliberately SKIP the CLI's /sync WAL-frame reassembly. The /export
+// body is a complete committed database (a real checkpoint boundary, never
+// torn); the only thing the WAL frames add is the handful of writes
+// committed after that checkpoint. Our index tolerates minutes-staleness
+// (rebuild cadence is hours; the overlay layer covers recent changes), so
+// the main DB file alone is the right snapshot. source_watermark comes
+// from MAX(updated_at) in the exported file — the watermark of THAT
+// snapshot, exactly.
 //
-// Cursor verbs (open_cursor/fetch_cursor/close_cursor) are WebSocket-only
-// per the spec — over HTTP the entire cursor lifecycle is this single
-// endpoint with newline-framed response chunks.
-//
-// We MUST NOT buffer the entire response (could be GBs). The custom
-// NdjsonCursorWriter below implements std.Io.Writer with a small
-// per-line buffer that dispatches each parsed CursorEntry through a
-// user-provided callback as bytes arrive off the wire.
+// Measured ~60× faster wire throughput than /v3/cursor for bulk reads
+// (export: 234s for 5.9M rows; cursor: ~4h).
 
-/// One statement in a cursor batch. Each becomes its own step in the
-/// CursorEntry stream (step_begin → rows → step_end).
-pub const CursorStmt = struct {
-    sql: []const u8,
-    args: []const RuntimeValue = &.{},
-};
-
-/// One item in the streamed cursor response. Borrowed from the per-line
-/// JSON parse — the callback MUST consume any strings/rows before
-/// returning, or dupe them into its own arena.
-pub const CursorEntry = union(enum) {
-    step_begin: struct { step: u32 },
-    step_end: struct { affected_row_count: u32 },
-    row: Row,
-    step_error: struct { step: u32, message: []const u8 },
-    err: struct { message: []const u8 },
-};
-
-pub const CursorError = error{
-    LineTooLong,
-    NdjsonParseFailed,
-    MalformedCursorEntry,
-    MissingHeader,
-    CallbackError,
-};
-
-/// Drive a /v3/cursor stream. The callback fires for every CursorEntry
-/// as soon as it parses off the wire — never holds more than one entry
-/// in memory at a time. Callback errors abort the stream and propagate.
-///
-/// `ctx` must be a pointer type so we can type-erase across the
-/// std.Io.Writer drain boundary. `onEntry` is comptime-bound; the
-/// concrete callback is preserved through the wrapper.
-pub fn streamCursor(
-    self: *TursoClient,
-    allocator: Allocator,
-    stmts: []const CursorStmt,
-    ctx: anytype,
-    comptime onEntry: fn (@TypeOf(ctx), CursorEntry) anyerror!void,
-) !void {
-    const CtxType = @TypeOf(ctx);
-    comptime {
-        const info = @typeInfo(CtxType);
-        if (info != .pointer) {
-            @compileError("streamCursor: ctx must be a pointer type, got " ++ @typeName(CtxType));
-        }
-    }
-
-    const Wrapper = struct {
-        fn call(opaque_ctx: *anyopaque, entry: CursorEntry) anyerror!void {
-            const typed_ctx: CtxType = @ptrCast(@alignCast(opaque_ctx));
-            return onEntry(typed_ctx, entry);
-        }
-    };
-
-    var parser = NdjsonCursorWriter.init(
-        allocator,
-        @ptrCast(ctx),
-        Wrapper.call,
-    );
-    defer parser.deinit();
-
-    const body = try self.buildCursorReqBody(allocator, stmts);
-    defer allocator.free(body);
-
-    try self.doRequestStreaming("/v3/cursor", body, &parser.writer);
-
-    if (parser.deferred_error) |err| return err;
-    if (!parser.have_header) return error.MissingHeader;
-}
-
-/// Build a CursorReqBody JSON document.
-fn buildCursorReqBody(
-    self: *TursoClient,
-    allocator: Allocator,
-    stmts: []const CursorStmt,
-) ![]const u8 {
-    _ = self; // for symmetry with other buildXxxRequestBody methods
-
-    var body: std.Io.Writer.Allocating = .init(allocator);
-    errdefer body.deinit();
-    var jw: json.Stringify = .{
-        .writer = &body.writer,
-        .options = .{ .emit_null_optional_fields = false },
-    };
-
-    try jw.beginObject();
-
-    try jw.objectField("baton");
-    try jw.write(null);
-
-    try jw.objectField("batch");
-    try jw.beginObject();
-    try jw.objectField("steps");
-    try jw.beginArray();
-    for (stmts) |stmt| {
-        try jw.beginObject();
-        try jw.objectField("stmt");
-        try jw.beginObject();
-        try jw.objectField("sql");
-        try jw.write(stmt.sql);
-        if (stmt.args.len > 0) {
-            try jw.objectField("args");
-            try jw.beginArray();
-            var int_buf: [24]u8 = undefined;
-            for (stmt.args) |arg| {
-                try jw.beginObject();
-                switch (arg) {
-                    .text => |s| {
-                        try jw.objectField("type");
-                        try jw.write("text");
-                        try jw.objectField("value");
-                        try jw.write(s);
-                    },
-                    .int => |n| {
-                        try jw.objectField("type");
-                        try jw.write("integer");
-                        try jw.objectField("value");
-                        const s = std.fmt.bufPrint(&int_buf, "{d}", .{n}) catch return error.IntFormat;
-                        try jw.write(s);
-                    },
-                    .null => {
-                        try jw.objectField("type");
-                        try jw.write("null");
-                    },
-                }
-                try jw.endObject();
-            }
-            try jw.endArray();
-        }
-        try jw.endObject(); // stmt
-        try jw.endObject(); // step
-    }
-    try jw.endArray(); // steps
-    try jw.endObject(); // batch
-
-    try jw.endObject(); // root
-
-    return try body.toOwnedSlice();
-}
-
-/// POST `body` to `path` on the Turso host, stream the response body
-/// through `response_writer` chunk-by-chunk. Same auth + mutex shape
-/// as the unary `doRequest`, but we don't buffer the response.
-fn doRequestStreaming(
-    self: *TursoClient,
-    path: []const u8,
-    body: []const u8,
-    response_writer: *std.Io.Writer,
-) !void {
+/// GET /info → current_generation. Small JSON response, buffered.
+fn fetchCurrentGeneration(self: *TursoClient) !i64 {
     self.mutex.lockUncancelable(io);
     defer self.mutex.unlock(io);
 
     var url_buf: [512]u8 = undefined;
-    const url = std.fmt.bufPrint(&url_buf, "https://{s}{s}", .{ self.url, path }) catch
-        return error.UrlTooLong;
-
+    const url = std.fmt.bufPrint(&url_buf, "https://{s}/info", .{self.url}) catch return error.UrlTooLong;
     var auth_buf: [512]u8 = undefined;
-    const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.token}) catch
-        return error.AuthTooLong;
+    const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.token}) catch return error.AuthTooLong;
+
+    var response_body: std.Io.Writer.Allocating = .init(self.allocator);
+    defer response_body.deinit();
 
     const res = self.http_client.fetch(.{
         .location = .{ .url = url },
-        .method = .POST,
-        .headers = .{
-            .content_type = .{ .override = "application/json" },
-            .authorization = .{ .override = auth },
-        },
-        .payload = body,
-        .response_writer = response_writer,
+        .method = .GET,
+        .headers = .{ .authorization = .{ .override = auth } },
+        .response_writer = &response_body.writer,
         .keep_alive = false,
     }) catch |err| {
-        log.err("v3/cursor http failed: {s}", .{@errorName(err)});
+        log.err("/info http failed: {s}", .{@errorName(err)});
+        return error.HttpError;
+    };
+    if (res.status != .ok) {
+        log.err("/info status: {}", .{res.status});
+        return error.TursoError;
+    }
+
+    const parsed = json.parseFromSlice(json.Value, self.allocator, response_body.written(), .{}) catch
+        return error.TursoError;
+    defer parsed.deinit();
+    if (parsed.value != .object) return error.TursoError;
+    const gen_v = parsed.value.object.get("current_generation") orelse return error.TursoError;
+    return switch (gen_v) {
+        .integer => |n| n,
+        else => error.TursoError,
+    };
+}
+
+/// Export the database to a local SQLite file. Two GETs: /info for the
+/// generation, then /export/{gen} streamed straight to disk. Writes to
+/// `<output_path>.part` first, then renames into place so a partial
+/// download is never mistaken for a complete file. `output_path` must
+/// be absolute.
+pub fn exportToFile(self: *TursoClient, output_path: []const u8) !void {
+    const gen = try self.fetchCurrentGeneration();
+    log.info("turso export: current_generation={d}", .{gen});
+
+    var part_buf: [320]u8 = undefined;
+    const part_path = std.fmt.bufPrint(&part_buf, "{s}.part", .{output_path}) catch return error.PathTooLong;
+
+    self.mutex.lockUncancelable(io);
+    defer self.mutex.unlock(io);
+
+    var url_buf: [512]u8 = undefined;
+    const url = std.fmt.bufPrint(&url_buf, "https://{s}/export/{d}", .{ self.url, gen }) catch return error.UrlTooLong;
+    var auth_buf: [512]u8 = undefined;
+    const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.token}) catch return error.AuthTooLong;
+
+    const file = std.Io.Dir.createFileAbsolute(io, part_path, .{ .truncate = true }) catch |err| {
+        log.err("export create {s} failed: {s}", .{ part_path, @errorName(err) });
+        return error.ExportFileCreateFailed;
+    };
+    // 64KB write buffer so the file writer batches fd writes; the HTTP
+    // body streams through here, never buffered whole in memory.
+    var write_buf: [64 * 1024]u8 = undefined;
+    var fw = std.Io.File.Writer.init(file, io, &write_buf);
+
+    const res = self.http_client.fetch(.{
+        .location = .{ .url = url },
+        .method = .GET,
+        .headers = .{ .authorization = .{ .override = auth } },
+        .response_writer = &fw.interface,
+        .keep_alive = false,
+    }) catch |err| {
+        log.err("/export http failed: {s}", .{@errorName(err)});
+        file.close(io);
         return error.HttpError;
     };
 
+    fw.interface.flush() catch |err| {
+        log.err("export flush failed: {s}", .{@errorName(err)});
+        file.close(io);
+        return error.ExportFlushFailed;
+    };
+    file.close(io);
+
     if (res.status != .ok) {
-        log.err("v3/cursor status: {}", .{res.status});
+        log.err("/export status: {}", .{res.status});
         return error.TursoError;
     }
-}
 
-/// Custom std.Io.Writer that splits the incoming response stream on
-/// '\n' and dispatches each parsed CursorEntry through a callback.
-///
-/// `buffer` is set to empty so every drain delivers fresh bytes (no
-/// writer-level coalescing). The line accumulator lives on
-/// `line_buf` and is bounded by `line_max` (default 1 MiB) — pathological
-/// lines beyond that fail the stream rather than buffer unboundedly.
-const NdjsonCursorWriter = struct {
-    allocator: Allocator,
-    writer: std.Io.Writer,
-
-    line_buf: std.ArrayListUnmanaged(u8) = .empty,
-    line_max: usize = 1 * 1024 * 1024,
-
-    /// First NDJSON line is CursorRespBody (header). Subsequent lines
-    /// are CursorEntry. The first line we see flips this true.
-    have_header: bool = false,
-    /// Captured from the header for debug logging.
-    baton: ?[]const u8 = null,
-    base_url: ?[]const u8 = null,
-
-    entry_cb: *const fn (ctx: *anyopaque, entry: CursorEntry) anyerror!void,
-    entry_ctx: *anyopaque,
-
-    /// Set when a callback or parse fails. Stream is then drained-to-
-    /// completion without further dispatch; streamCursor surfaces this
-    /// error to the caller.
-    deferred_error: ?anyerror = null,
-
-    fn init(
-        allocator: Allocator,
-        entry_ctx: *anyopaque,
-        entry_cb: *const fn (ctx: *anyopaque, entry: CursorEntry) anyerror!void,
-    ) NdjsonCursorWriter {
-        return .{
-            .allocator = allocator,
-            .writer = .{
-                .vtable = &vtable,
-                .buffer = &.{},
-            },
-            .entry_cb = entry_cb,
-            .entry_ctx = entry_ctx,
-        };
-    }
-
-    fn deinit(self: *NdjsonCursorWriter) void {
-        self.line_buf.deinit(self.allocator);
-    }
-
-    const vtable: std.Io.Writer.VTable = .{
-        .drain = drainFn,
-        // Default flush, never-rebase: our buffer is always empty so
-        // there's nothing to flush or rebase.
-        .flush = std.Io.Writer.defaultFlush,
-        .rebase = std.Io.Writer.failingRebase,
+    std.Io.Dir.renameAbsolute(part_path, output_path, io) catch |err| {
+        log.err("export rename {s} → {s} failed: {s}", .{ part_path, output_path, @errorName(err) });
+        return error.ExportRenameFailed;
     };
-
-    fn drainFn(
-        w: *std.Io.Writer,
-        data: []const []const u8,
-        splat: usize,
-    ) std.Io.Writer.Error!usize {
-        const self: *NdjsonCursorWriter = @fieldParentPtr("writer", w);
-
-        // If we previously latched an error, keep accepting bytes so
-        // the HTTP layer can complete its read, but stop dispatching.
-        if (self.deferred_error != null) {
-            var total: usize = 0;
-            for (data, 0..) |slice, i| {
-                const reps = if (i + 1 == data.len) splat else 1;
-                total += slice.len * reps;
-            }
-            return total;
-        }
-
-        var total: usize = 0;
-        for (data, 0..) |slice, i| {
-            const reps = if (i + 1 == data.len) splat else 1;
-            for (0..reps) |_| {
-                self.feed(slice) catch |err| {
-                    self.deferred_error = err;
-                    // Keep returning consumed bytes so the writer protocol
-                    // is happy; streamCursor checks deferred_error after fetch.
-                    return total + slice.len;
-                };
-            }
-            total += slice.len * reps;
-        }
-        return total;
-    }
-
-    /// Walk `bytes`, dispatching every complete line ending in '\n'.
-    /// Trailing partial line accumulates onto `line_buf` for the next call.
-    fn feed(self: *NdjsonCursorWriter, bytes: []const u8) !void {
-        var start: usize = 0;
-        var i: usize = 0;
-        while (i < bytes.len) : (i += 1) {
-            if (bytes[i] != '\n') continue;
-
-            const chunk = bytes[start..i];
-            if (self.line_buf.items.len == 0) {
-                // Whole line is in this slice — dispatch without copying.
-                if (chunk.len > 0) try self.dispatchLine(chunk);
-            } else {
-                if (self.line_buf.items.len + chunk.len > self.line_max) return error.LineTooLong;
-                try self.line_buf.appendSlice(self.allocator, chunk);
-                try self.dispatchLine(self.line_buf.items);
-                self.line_buf.clearRetainingCapacity();
-            }
-            start = i + 1;
-        }
-        // tail: incomplete line
-        const tail = bytes[start..];
-        if (tail.len > 0) {
-            if (self.line_buf.items.len + tail.len > self.line_max) return error.LineTooLong;
-            try self.line_buf.appendSlice(self.allocator, tail);
-        }
-    }
-
-    fn dispatchLine(self: *NdjsonCursorWriter, line: []const u8) !void {
-        if (line.len == 0) return;
-
-        const parsed = json.parseFromSlice(json.Value, self.allocator, line, .{}) catch {
-            log.err("ndjson parse failed: {s}", .{line[0..@min(line.len, 200)]});
-            return error.NdjsonParseFailed;
-        };
-        defer parsed.deinit();
-
-        if (!self.have_header) {
-            // First line is CursorRespBody { baton, base_url }
-            if (parsed.value == .object) {
-                if (parsed.value.object.get("baton")) |v| if (v == .string) {
-                    self.baton = v.string;
-                };
-                if (parsed.value.object.get("base_url")) |v| if (v == .string) {
-                    self.base_url = v.string;
-                    log.info("v3/cursor base_url: {s}", .{v.string});
-                };
-            }
-            self.have_header = true;
-            return;
-        }
-
-        // Subsequent lines are CursorEntry
-        const entry = parseCursorEntry(parsed.value) catch |err| {
-            log.err("malformed cursor entry: {s}", .{line[0..@min(line.len, 200)]});
-            return err;
-        };
-
-        self.entry_cb(self.entry_ctx, entry) catch return error.CallbackError;
-    }
-};
-
-fn parseCursorEntry(value: json.Value) !CursorEntry {
-    if (value != .object) return error.MalformedCursorEntry;
-    const obj = value.object;
-
-    const type_v = obj.get("type") orelse return error.MalformedCursorEntry;
-    if (type_v != .string) return error.MalformedCursorEntry;
-    const t = type_v.string;
-
-    if (mem.eql(u8, t, "step_begin")) {
-        const step = obj.get("step") orelse return error.MalformedCursorEntry;
-        const step_u: u32 = switch (step) {
-            .integer => |n| if (n >= 0) @intCast(n) else return error.MalformedCursorEntry,
-            else => return error.MalformedCursorEntry,
-        };
-        return .{ .step_begin = .{ .step = step_u } };
-    }
-    if (mem.eql(u8, t, "step_end")) {
-        const affected = obj.get("affected_row_count") orelse json.Value{ .integer = 0 };
-        const affected_u: u32 = switch (affected) {
-            .integer => |n| if (n >= 0) @intCast(n) else 0,
-            else => 0,
-        };
-        return .{ .step_end = .{ .affected_row_count = affected_u } };
-    }
-    if (mem.eql(u8, t, "row")) {
-        const row_v = obj.get("row") orelse return error.MalformedCursorEntry;
-        if (row_v != .array) return error.MalformedCursorEntry;
-        return .{ .row = .{ .columns = row_v.array.items } };
-    }
-    if (mem.eql(u8, t, "step_error")) {
-        const step = obj.get("step") orelse return error.MalformedCursorEntry;
-        const step_u: u32 = switch (step) {
-            .integer => |n| if (n >= 0) @intCast(n) else 0,
-            else => 0,
-        };
-        const err_v = obj.get("error") orelse return error.MalformedCursorEntry;
-        if (err_v != .object) return error.MalformedCursorEntry;
-        const msg_v = err_v.object.get("message") orelse return error.MalformedCursorEntry;
-        if (msg_v != .string) return error.MalformedCursorEntry;
-        return .{ .step_error = .{ .step = step_u, .message = msg_v.string } };
-    }
-    if (mem.eql(u8, t, "error")) {
-        const err_v = obj.get("error") orelse return error.MalformedCursorEntry;
-        if (err_v != .object) return error.MalformedCursorEntry;
-        const msg_v = err_v.object.get("message") orelse return error.MalformedCursorEntry;
-        if (msg_v != .string) return error.MalformedCursorEntry;
-        return .{ .err = .{ .message = msg_v.string } };
-    }
-    return error.MalformedCursorEntry;
 }
 
 var logged_miss: bool = false;
