@@ -107,7 +107,10 @@ export async function handleRequestIndexing(
   const identity: SlingshotResponse = await res.json();
 
   // fetch profile from public API for display name + avatar + labels + metadata
-  let f = { displayName: '', avatarCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}' };
+  let f = {
+    displayName: '', avatarCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}',
+    followersCount: 0, followsCount: 0, postsCount: 0,
+  };
   const override = await getOverride(db, identity.did);
   try {
     const profileRes = await fetch(
@@ -124,8 +127,8 @@ export async function handleRequestIndexing(
   }
 
   await db.prepare(
-    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, unixepoch())
+    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, unixepoch())
      ON CONFLICT(did) DO UPDATE SET
        handle = ?2,
        display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
@@ -135,9 +138,12 @@ export async function handleRequestIndexing(
        created_at = COALESCE(NULLIF(?7, ''), actors.created_at),
        associated = COALESCE(NULLIF(?8, '{}'), actors.associated),
        pds = COALESCE(NULLIF(?9, ''), actors.pds),
+       followers_count = COALESCE(NULLIF(?10, 0), actors.followers_count),
+       follows_count = COALESCE(NULLIF(?11, 0), actors.follows_count),
+       posts_count = COALESCE(NULLIF(?12, 0), actors.posts_count),
        updated_at = unixepoch()`
   )
-    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '')
+    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount)
     .run();
 
   return json({

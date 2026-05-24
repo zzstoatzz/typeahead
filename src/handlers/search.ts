@@ -121,8 +121,16 @@ export async function handleSearch(
   const prefixRows = ((prefixRes.results as ActorRow[]) || [])
     .slice()
     .sort((a, b) => a.handle.length - b.handle.length);
-  const ftsRows = (ftsRes.results as ActorRow[]) || [];
   const exactRows = (exactRes.results as ActorRow[]) || [];
+
+  // Dedupe FTS candidates against the prefix candidate pool. Without this,
+  // FTS rank tends to return the same short-handle rows the prefix tier
+  // already has, those slots collapse to dupes on emit, and display-name-only
+  // matches (e.g. bad-example.com / "fig (aka:[phil])" for q=fig) never
+  // contribute to the response.
+  const prefixDids = new Set(prefixRows.map((r) => r.did));
+  const ftsRows = ((ftsRes.results as ActorRow[]) || [])
+    .filter((r) => !prefixDids.has(r.did));
 
   // Interleave prefix and FTS so display-name-only matches surface even when
   // there are >= limit handle-prefix matches. Without this, q=fig with many

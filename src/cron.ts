@@ -70,10 +70,13 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
                avatar_url = COALESCE(NULLIF(?5, ''), avatar_url),
                labels = ?6,
                created_at = COALESCE(NULLIF(?7, ''), created_at),
-               associated = COALESCE(NULLIF(?8, '{}'), associated)
+               associated = COALESCE(NULLIF(?8, '{}'), associated),
+               followers_count = COALESCE(NULLIF(?9, 0), followers_count),
+               follows_count = COALESCE(NULLIF(?10, 0), follows_count),
+               posts_count = COALESCE(NULLIF(?11, 0), posts_count)
              WHERE did = ?2`
           ).bind(f.hidden, p.did, f.handle, f.displayName, f.avatarCid, f.labels,
-            f.createdAt, f.associated)
+            f.createdAt, f.associated, f.followersCount, f.followsCount, f.postsCount)
         );
       }
       if (stmts.length > 0) {

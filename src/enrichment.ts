@@ -190,12 +190,16 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
                    labels = ?5, hidden = ?6,
                    created_at = COALESCE(NULLIF(?7, ''), created_at),
                    associated = COALESCE(NULLIF(?8, '{}'), associated),
+                   followers_count = COALESCE(NULLIF(?9, 0), followers_count),
+                   follows_count = COALESCE(NULLIF(?10, 0), follows_count),
+                   posts_count = COALESCE(NULLIF(?11, 0), posts_count),
                    profile_checked_at = unixepoch()
                  WHERE did = ?1`
               ).bind(
                 p.did, f.handle, f.displayName,
                 f.avatarCid, f.labels, f.hidden,
-                f.createdAt, f.associated
+                f.createdAt, f.associated,
+                f.followersCount, f.followsCount, f.postsCount
               )
             );
             if (f.avatarCid) enriched++;

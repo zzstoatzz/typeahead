@@ -85,5 +85,21 @@ export async function handleIngest(
     }
   }
 
+  // Best-effort activity bump: tag actors that produced any jetstream event in
+  // the last hour. Guarded by a 1h threshold so a hot actor causes at most one
+  // row write per hour even if they generate hundreds of events. Ranking only
+  // needs hour granularity ("active recently" vs "dormant for months").
+  // Fire-and-forget — must never delay or fail the ingest response.
+  const uniqueDids = Array.from(new Set(events.map((e) => e.did))).filter((d) => d);
+  if (uniqueDids.length > 0) {
+    const placeholders = uniqueDids.map(() => "?").join(",");
+    ctx.waitUntil(
+      db.prepare(
+        `UPDATE actors SET last_activity_at = unixepoch()
+         WHERE did IN (${placeholders}) AND last_activity_at < unixepoch() - 3600`
+      ).bind(...uniqueDids).run().catch(() => {})
+    );
+  }
+
   return json({ ok: true, ingested: events.length });
 }

@@ -74,7 +74,10 @@ export function cleanAssociated(assoc: any): Record<string, unknown> {
   return clean;
 }
 
-/** extract the fields we store from a bsky profile response (getProfiles/getProfile/typeahead) */
+/** extract the fields we store from a bsky profile response (getProfiles/getProfile/typeahead).
+ *  Count fields come from profileViewDetailed (getProfile/getProfiles); they default to 0 when
+ *  absent so PDS-fallback profiles (no counts) don't introduce undefineds. Writers use a
+ *  COALESCE(NULLIF(?, 0), existing) pattern so a 0-bind from PDS preserves the previous value. */
 export interface ProfileFields {
   handle: string;
   displayName: string;
@@ -83,6 +86,9 @@ export interface ProfileFields {
   hidden: number;
   createdAt: string;
   associated: string;
+  followersCount: number;
+  followsCount: number;
+  postsCount: number;
 }
 
 export function extractProfileFields(profile: any, override?: 'show' | 'hide' | null): ProfileFields {
@@ -100,6 +106,9 @@ export function extractProfileFields(profile: any, override?: 'show' | 'hide' | 
     hidden,
     createdAt: profile.createdAt || '',
     associated: JSON.stringify(cleanAssociated(profile.associated)),
+    followersCount: Number(profile.followersCount) || 0,
+    followsCount: Number(profile.followsCount) || 0,
+    postsCount: Number(profile.postsCount) || 0,
   };
 }
 
