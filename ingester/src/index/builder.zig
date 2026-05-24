@@ -78,6 +78,10 @@ const BuildStats = struct {
     prefix_key_count: usize = 0,
     build_start_ms: i64 = 0,
     build_end_ms: i64 = 0,
+    /// max(updated_at) seen in Turso actors at build start. Persisted to
+    /// index_meta so the serving layer can answer "how stale is this
+    /// snapshot" without re-querying Turso.
+    source_watermark: i64 = 0,
     phases: Phases = .{},
 };
 
@@ -105,6 +109,32 @@ fn nowSeconds() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
 }
 
+/// Fetch max(updated_at) from Turso actors. Used as source_watermark
+/// in index_meta. Cheap (single aggregate) compared to the streaming
+/// pass.
+fn readSourceWatermark(turso: *TursoClient) !i64 {
+    var result = try turso.query("SELECT COALESCE(MAX(updated_at), 0) FROM actors", &.{});
+    defer result.deinit();
+    if (result.rows.len == 0) return 0;
+    return result.rows[0].int(0);
+}
+
+/// Random 16-bit hex suffix appended to the unix-second timestamp in the
+/// build_id. Two builds starting in the same wall-clock second would
+/// otherwise collide and contaminate each other's per-build directory.
+/// Crash recovery in the same second after a failed build is the more
+/// realistic case; the suffix makes it impossible to step on a stale
+/// dir even then.
+fn randomHex4(io_: std.Io, buf: *[4]u8) void {
+    var raw: [2]u8 = undefined;
+    io_.random(&raw);
+    const hex = "0123456789abcdef";
+    buf[0] = hex[(raw[0] >> 4) & 0xF];
+    buf[1] = hex[raw[0] & 0xF];
+    buf[2] = hex[(raw[1] >> 4) & 0xF];
+    buf[3] = hex[raw[1] & 0xF];
+}
+
 /// Top-level entry. Reads config from env, runs the full build, writes
 /// metadata, exits. Errors propagate so the caller (main.zig) can decide
 /// whether to retry/exit-fail.
@@ -116,11 +146,15 @@ pub fn run(allocator: Allocator) !void {
         cfg.sample_limit, cfg.top_n_short, cfg.top_n_medium, cfg.top_n_long,
     });
 
-    // Build a unique-per-invocation id. Unix seconds is fine — two indexers
-    // starting in the same second on the same machine isn't a real risk
-    // (single indexer machine; cadence is hours).
+    // build_id = "b<unix_seconds>-<16-bit hex random>". The random suffix
+    // makes accidental same-second collisions (mostly a retry-after-crash
+    // scenario) impossible; without it, the retry would land in an
+    // existing dir with stale partial state and INSERT into emissions
+    // without conflict resolution (duplicating rows).
     var id_buf: [32]u8 = undefined;
-    const build_id = try std.fmt.bufPrint(&id_buf, "b{d}", .{nowSeconds()});
+    var rand_buf: [4]u8 = undefined;
+    randomHex4(io, &rand_buf);
+    const build_id = try std.fmt.bufPrint(&id_buf, "b{d}-{s}", .{ nowSeconds(), rand_buf });
 
     // Create the build directory atomically (mkdir -p semantics; ignore EEXIST).
     var dir_buf: [256]u8 = undefined;
@@ -144,10 +178,15 @@ pub fn run(allocator: Allocator) !void {
     var conn = try zqlite.open(db_path_z, flags);
     defer conn.close();
 
-    // Build-time pragmas: WAL stays on (we want crash recovery), but skip
-    // fsync per write — losing a half-built snapshot is fine because the
-    // manifest hasn't been promoted yet.
-    _ = conn.exec("PRAGMA journal_mode = WAL", .{}) catch {};
+    // Build-time pragmas. journal_mode=DELETE matters: the snapshot
+    // artifact transport ships ONLY index.db (no .db-wal sidecar). WAL
+    // mode would leave committed pages in index.db-wal until a checkpoint,
+    // so App B fetching just index.db would silently get an incomplete
+    // snapshot. With DELETE, every COMMIT flushes through to the main
+    // file and the rollback journal is removed at COMMIT end.
+    // synchronous=OFF skips fsync — a half-built snapshot is discarded
+    // anyway (manifest hasn't been promoted), so torn writes don't matter.
+    _ = conn.exec("PRAGMA journal_mode = DELETE", .{}) catch {};
     _ = conn.exec("PRAGMA synchronous = OFF", .{}) catch {};
     _ = conn.exec("PRAGMA temp_store = MEMORY", .{}) catch {};
     _ = conn.exec("PRAGMA cache_size = -200000", .{}) catch {}; // 200MB page cache for the build only
@@ -166,18 +205,24 @@ pub fn run(allocator: Allocator) !void {
     , .{});
     try conn.exec("DELETE FROM emissions", .{}); // clean slate for retries
 
-    var arena = std.heap.ArenaAllocator.init(allocator);
-    defer arena.deinit();
-    const aa = arena.allocator();
-
     var turso = try TursoClient.init(allocator);
     defer turso.deinit();
 
-    // ── stream actors + emit ──────────────────────────────────────────────
-    try streamActorsAndEmit(aa, &turso, conn, cfg, &stats);
-    _ = arena.reset(.free_all);
+    // Record source_watermark BEFORE the emit phase: max(updated_at) seen
+    // in Turso right now. The snapshot will reflect every actor row whose
+    // updated_at is ≤ this value (paginated fetch may miss races, but
+    // anything past this point is by definition "in the next build").
+    // Stored as text-encoded unix seconds in index_meta.
+    stats.source_watermark = readSourceWatermark(&turso) catch |err| blk: {
+        log.warn("source_watermark fetch failed: {s}; defaulting to 0", .{@errorName(err)});
+        break :blk 0;
+    };
+    log.info("source_watermark: {d}", .{stats.source_watermark});
 
-    // ── group, pack, write prefix_top_base ────────────────────────────────
+    // ── stream actors + emit (per-row scratch arena inside) ─────────────────
+    try streamActorsAndEmit(allocator, &turso, conn, cfg, &stats);
+
+    // ── group, pack, write prefix_top_base (per-group scratch arena inside) ──
     {
         const t = nowMs();
         try conn.exec("CREATE INDEX IF NOT EXISTS idx_emissions_key_score ON emissions(key, score DESC)", .{});
@@ -185,10 +230,9 @@ pub fn run(allocator: Allocator) !void {
     }
     {
         const t = nowMs();
-        try buildPrefixTopBase(aa, conn, cfg, &stats);
+        try buildPrefixTopBase(allocator, conn, cfg, &stats);
         stats.phases.group_pack_ms = nowMs() - t;
     }
-    _ = arena.reset(.free_all);
 
     // ── cleanup + metadata ────────────────────────────────────────────────
     try conn.exec("DROP TABLE IF EXISTS emissions", .{});
@@ -221,8 +265,13 @@ pub fn run(allocator: Allocator) !void {
     );
 }
 
+/// gpa is used for the LONG-lived allocations (the Turso result set itself
+/// is owned by TursoClient and freed on result.deinit; the per-row arena
+/// uses gpa as its backing allocator). The per-actor scratch arena resets
+/// after each row so peak memory stays flat at full corpus scale instead
+/// of growing with N actors.
 fn streamActorsAndEmit(
-    aa: Allocator,
+    gpa: Allocator,
     turso: *TursoClient,
     snapshot: zqlite.Conn,
     cfg: Config,
@@ -261,7 +310,17 @@ fn streamActorsAndEmit(
     );
     defer stmt_emit.deinit();
 
+    // Per-row scratch arena. Reset after each actor so blob+normalize+
+    // keys for the current actor are freed before the next iteration.
+    // Without this, allocations for ALL actors in the result set sit in
+    // memory until the outer loop completes (~5.5 GB at 5.9M actors).
+    var row_arena = std.heap.ArenaAllocator.init(gpa);
+    defer row_arena.deinit();
+    const aa = row_arena.allocator();
+
     for (result.rows) |row| {
+        defer _ = row_arena.reset(.retain_capacity);
+
         const did = row.text(0);
         if (did.len == 0) continue;
 
@@ -299,12 +358,16 @@ fn streamActorsAndEmit(
         try stmt_actor.stepToCompletion();
         stats.phases.actor_insert_ms += nowMs() - t_actor;
 
-        // 2. derive prefix keys (deduped is unnecessary here — builder GROUP BY
-        // handles dup keys naturally; saving the StringHashMap pass)
+        // 2. derive prefix keys, deduped. Without dedup, a display name
+        // with a repeated token ("fig fig") emits two `n:fig` keys for
+        // the same DID — both flow through emissions and the group/pack
+        // pass appends the same (DID, score) twice into the top-N blob.
+        // deriveAllUnique runs a small StringHashMap pass per actor;
+        // overhead is negligible vs the cost of duplicate DIDs in serving.
         const t_derive = nowMs();
         const norm_handle = try normalize.handle(aa, raw_handle);
         const norm_display = try normalize.display(aa, raw_display);
-        const keys = try prefixes.deriveAll(aa, norm_handle, norm_display);
+        const keys = try prefixes.deriveAllUnique(aa, norm_handle, norm_display);
         stats.phases.derive_ms += nowMs() - t_derive;
 
         const score: f32 = scoring.scoreOf(.{ .quality_score = @floatCast(quality_score) });
@@ -342,7 +405,7 @@ fn topNFor(key_len: usize, cfg: Config) usize {
 }
 
 fn buildPrefixTopBase(
-    aa: Allocator,
+    gpa: Allocator,
     snapshot: zqlite.Conn,
     cfg: Config,
     stats: *BuildStats,
@@ -365,6 +428,15 @@ fn buildPrefixTopBase(
     );
     defer rows.deinit();
 
+    // Per-group scratch arena. Holds the current key's duped string, the
+    // top-N DidEntry items, and the packed blob. Reset on each key change
+    // after the previous group has been flushed to the DB — without this,
+    // per-key allocations accumulate across the full key space (1.6M at
+    // 100k actors → 10M+ at 5.9M) and the build OOMs late in the pass.
+    var group_arena = std.heap.ArenaAllocator.init(gpa);
+    defer group_arena.deinit();
+    const aa = group_arena.allocator();
+
     var current_key: ?[]const u8 = null;
     var current_top: std.ArrayListUnmanaged(pack.DidEntry) = .empty;
     var current_top_n: usize = 0;
@@ -375,9 +447,14 @@ fn buildPrefixTopBase(
         const score = row.float(2);
 
         if (current_key == null or !std.mem.eql(u8, current_key.?, key)) {
-            // flush previous key group
-            if (current_key) |k| try writeGroup(aa, &stmt_insert, k, current_top.items);
-            current_top.clearRetainingCapacity();
+            // flush previous key group, THEN reset the arena — writeGroup
+            // binds the packed blob with SQLITE_STATIC, so the blob must
+            // stay valid through stepToCompletion which lives inside it.
+            if (current_key) |k| {
+                try writeGroup(aa, &stmt_insert, k, current_top.items);
+                _ = group_arena.reset(.retain_capacity);
+                current_top = .empty;
+            }
             // copy the new key into arena memory so it survives across iterations
             current_key = try aa.dupe(u8, key);
             current_top_n = topNFor(current_key.?.len, cfg);
@@ -423,6 +500,7 @@ fn writeMeta(
 
     try schema.setMeta(conn, schema.meta.build_id, build_id);
     try schema.setMeta(conn, schema.meta.built_at, try std.fmt.bufPrint(&buf, "{d}", .{nowSeconds()}));
+    try schema.setMeta(conn, schema.meta.source_watermark, try std.fmt.bufPrint(&buf, "{d}", .{stats.source_watermark}));
     try schema.setMeta(conn, schema.meta.builder_version, cfg.builder_version);
     try schema.setMeta(conn, schema.meta.normalize_version, normalize.VERSION);
     try schema.setMeta(conn, schema.meta.scoring_version, scoring.VERSION);
