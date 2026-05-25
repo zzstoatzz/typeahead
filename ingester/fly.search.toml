@@ -22,6 +22,12 @@ primary_region = 'ewr'
   ENABLE_SCHEMA_MIGRATIONS = '0'
   ENABLE_SYNC = '1'
 
+  # Prefix-index promote watcher: poll R2 latest.json, validate, ATTACH as
+  # `idx`. Does NOT change the live /search path (that's a separate flag) —
+  # only keeps a validated snapshot attached + queryable via /index/status.
+  ENABLE_INDEX_PROMOTE = '1'
+  INDEX_BUILD_ROOT = '/data'
+
   # Bootstrap politeness: pace Turso reads so the initial sync doesn't
   # starve worker fallback queries on the same Turso DB. ~200ms between
   # 2k-row batches drops effective rate from ~2000/s to ~1500/s — bootstrap

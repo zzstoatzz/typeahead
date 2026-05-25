@@ -1,0 +1,24 @@
+# typeahead-indexer — offline snapshot builder (runs MODE=indexer, exits).
+# Currently used for measurement-only full-corpus builds via `fly machine
+# run` (restart=no). NOT a long-running service; do not `fly deploy` this as
+# a service with MODE=indexer in env or it will loop-rebuild on restart.
+app = 'typeahead-indexer'
+primary_region = 'iad'  # AWS us-east-1 colocation → fast Turso export
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[mounts]
+  source = 'typeahead_indexer_data'
+  destination = '/data'
+
+[env]
+  INDEX_BUILD_ROOT = '/data'
+  # Publish the built artifact to R2 (builds/<id>/index.db + latest.json).
+  # INDEX_R2_* creds come from `fly secrets`. Omit/unset for a dry build.
+  INDEX_UPLOAD_R2 = '1'
+
+[[vm]]
+  memory = '2gb'
+  cpu_kind = 'shared'
+  cpus = 4
