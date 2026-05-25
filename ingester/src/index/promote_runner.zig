@@ -80,7 +80,7 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
     defer arena_state.deinit();
     const arena = arena_state.allocator();
 
-    const bucket = try r2.configure();
+    const cfg = try r2.configure(arena);
     const dir = indexRoot();
     var idx_dir_buf: [256]u8 = undefined;
     const idx_dir = try std.fmt.bufPrint(&idx_dir_buf, "{s}/index", .{dir});
@@ -91,7 +91,7 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
 
     // 1. fetch latest.json (tiny; safe to re-pull every poll) and parse it.
     const manifest_local = try std.fmt.allocPrint(arena, "{s}/{s}", .{ idx_dir, LATEST_KEY });
-    try r2.download(arena, bucket, LATEST_KEY, manifest_local);
+    try r2.download(arena, cfg, LATEST_KEY, manifest_local);
     const json = try readSmallFile(arena, manifest_local);
     const parsed = try promote.parse(arena, json);
     defer parsed.deinit();
@@ -114,7 +114,7 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
     std.Io.Dir.deleteFile(.cwd(), io, part) catch {}; // clear any stale partial
 
     // 4. download the snapshot into the slot's .part file.
-    try r2.download(arena, bucket, m.snapshot_url, part);
+    try r2.download(arena, cfg, m.snapshot_url, part);
 
     // 5. verify bytes against the manifest before we trust a single row.
     try promote.verifyFile(part, m.byte_size, m.sha256);

@@ -525,18 +525,18 @@ pub fn run(allocator: Allocator) !void {
 /// latest.json LAST — so App B never sees a latest.json pointing at an
 /// index.db that isn't fully present.
 fn uploadArtifacts(gpa: Allocator, build_id: []const u8, db_path: []const u8, build_dir: []const u8) !void {
-    const bucket = try r2.configure();
+    const cfg = try r2.configure(gpa);
     var kbuf: [320]u8 = undefined;
     const db_key = try std.fmt.bufPrint(&kbuf, "builds/{s}/index.db", .{build_id});
-    try r2.upload(gpa, bucket, db_path, db_key);
+    try r2.upload(gpa, cfg, db_path, db_key);
 
     var mpath_buf: [320]u8 = undefined;
     const manifest_local = try std.fmt.bufPrint(&mpath_buf, "{s}/manifest.json", .{build_dir});
     var mkey_buf: [320]u8 = undefined;
     const m_key = try std.fmt.bufPrint(&mkey_buf, "builds/{s}/manifest.json", .{build_id});
-    try r2.upload(gpa, bucket, manifest_local, m_key);
+    try r2.upload(gpa, cfg, manifest_local, m_key);
 
-    try r2.upload(gpa, bucket, manifest_local, "latest.json");
+    try r2.upload(gpa, cfg, manifest_local, "latest.json");
     log.info("R2 publish complete: latest.json -> builds/{s}/index.db", .{build_id});
 }
 
