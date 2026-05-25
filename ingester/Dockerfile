@@ -14,10 +14,16 @@ RUN curl -L https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz |
     && ln -s /usr/local/zig-x86_64-linux-0.16.0/zig /usr/local/bin/zig
 
 WORKDIR /app
-COPY build.zig build.zig.zon ./
+COPY build.zig build.zig.zon build.zig.zon.gh ./
 COPY src ./src
 
-RUN zig build -Doptimize=ReleaseSafe
+# tangled.org (primary dep host) 502s intermittently and zig has no per-dep
+# fallback URL, so a failed fetch falls back to GitHub mirrors (same content,
+# same hashes — see build.zig.zon.gh). Primary path is unchanged.
+RUN zig build -Doptimize=ReleaseSafe \
+    || ( echo "primary dep fetch failed (tangled.org?); retrying via GitHub mirrors" \
+         && cp build.zig.zon.gh build.zig.zon \
+         && zig build -Doptimize=ReleaseSafe )
 
 # runtime stage
 FROM debian:bookworm-slim
