@@ -1,10 +1,14 @@
 //! Prefix key derivation. Given a normalized handle and display name,
 //! emit the lookup keys that map an actor into the prefix index.
 //!
-//! Three namespaces:
+//! Four namespaces:
 //!   `h:<prefix>` — every prefix of the normalized handle, length 1..PREFIX_MAX
 //!   `n:<prefix>` — every prefix of every display-name token, length 1..PREFIX_MAX
 //!   `e:<handle>` — the exact normalized handle (one key per actor)
+//!   `d:<prefix>` — every prefix of every dot-boundary suffix of the handle,
+//!                  so `foo.germ.network` is findable by `germ.network`,
+//!                  `germ`, `network` (atproto handles are domain-structured;
+//!                  `h:` only matches start-anchored, never mid-handle).
 //!
 //! Builder calls `deriveAll` for each actor and emits (key, did, score)
 //! tuples. Serving calls `queryKeys` on the user's normalized query.
@@ -32,6 +36,7 @@ pub const Namespace = enum(u8) {
     handle_prefix = 'h',
     display_token = 'n',
     exact_handle = 'e',
+    domain_suffix = 'd',
 };
 
 /// Render a namespace + text into a freshly-allocated key string
@@ -104,6 +109,26 @@ pub fn exactHandleKey(arena: Allocator, normalized_handle: []const u8) !?[]const
     return try formatKey(arena, .exact_handle, normalized_handle);
 }
 
+/// Derive every `d:` key: prefixes of each dot-boundary suffix of the handle.
+/// For `foo.germ.network` the suffixes are `germ.network` and `network` (the
+/// full handle is excluded — `h:` already covers start-anchored matches), and
+/// each emits prefixes up to PREFIX_MAX. Lets a domain search like
+/// `germ.network` (or just `germ`/`network`) surface every account under it.
+pub fn domainSuffixKeys(arena: Allocator, normalized_handle: []const u8) ![][]const u8 {
+    var keys: std.ArrayListUnmanaged([]const u8) = .empty;
+    var i: usize = 0;
+    while (i < normalized_handle.len) : (i += 1) {
+        if (normalized_handle[i] != '.') continue;
+        const suffix = normalized_handle[i + 1 ..];
+        const max = @min(suffix.len, PREFIX_MAX);
+        var j: usize = 0;
+        while (j < max) : (j += 1) {
+            try keys.append(arena, try formatKey(arena, .domain_suffix, suffix[0 .. j + 1]));
+        }
+    }
+    return keys.toOwnedSlice(arena);
+}
+
 /// Derive every key for an actor (h: prefixes, n: token prefixes, e: exact).
 /// Called per-actor by the builder. Order doesn't matter — the builder
 /// groups by key later. Output may contain DUPLICATES (e.g. display name
@@ -130,6 +155,9 @@ pub fn deriveAll(
         try all.append(arena, k);
     }
     for (try displayPrefixKeys(arena, normalized_display)) |k| {
+        try all.append(arena, k);
+    }
+    for (try domainSuffixKeys(arena, normalized_handle)) |k| {
         try all.append(arena, k);
     }
 
@@ -194,6 +222,9 @@ pub fn queryKeys(arena: Allocator, normalized_query: []const u8) ![][]const u8 {
     if (!has_space) {
         try keys.append(arena, try formatKey(arena, .handle_prefix, normalized_query));
         try keys.append(arena, try formatKey(arena, .exact_handle, normalized_query));
+        // domain-suffix lookup: matches accounts under a domain the query names
+        // (e.g. `germ.network` → `*.germ.network`, or `germ` → that label).
+        try keys.append(arena, try formatKey(arena, .domain_suffix, normalized_query));
     }
 
     const tokens = try displayTokens(arena, normalized_query);
@@ -327,10 +358,51 @@ test "queryKeys: single token" {
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const keys = try queryKeys(arena.allocator(), "nate");
-    try testing.expectEqual(@as(usize, 3), keys.len); // h:, e:, n:
+    try testing.expectEqual(@as(usize, 4), keys.len); // h:, e:, d:, n:
     try testing.expectEqualStrings("h:nate", keys[0]);
     try testing.expectEqualStrings("e:nate", keys[1]);
-    try testing.expectEqualStrings("n:nate", keys[2]);
+    try testing.expectEqualStrings("d:nate", keys[2]);
+    try testing.expectEqualStrings("n:nate", keys[3]);
+}
+
+test "domainSuffixKeys: prefixes of each dot-boundary suffix" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const keys = try domainSuffixKeys(arena.allocator(), "foo.germ.network");
+    // suffixes: "germ.network" (12 prefixes) + "network" (7 prefixes) = 19
+    try testing.expectEqual(@as(usize, 19), keys.len);
+    var has_germ = false;
+    var has_germ_network = false;
+    var has_network = false;
+    var has_full = false;
+    for (keys) |k| {
+        if (std.mem.eql(u8, k, "d:germ")) has_germ = true;
+        if (std.mem.eql(u8, k, "d:germ.network")) has_germ_network = true;
+        if (std.mem.eql(u8, k, "d:network")) has_network = true;
+        if (std.mem.eql(u8, k, "d:foo.germ.network")) has_full = true;
+    }
+    try testing.expect(has_germ); // searchable by domain label prefix
+    try testing.expect(has_germ_network); // searchable by full domain suffix
+    try testing.expect(has_network); // searchable by TLD-ish label
+    try testing.expect(!has_full); // full handle excluded (h:/e: cover it)
+}
+
+test "domainSuffixKeys: no dots → no keys" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const keys = try domainSuffixKeys(arena.allocator(), "nodots");
+    try testing.expectEqual(@as(usize, 0), keys.len);
+}
+
+test "deriveAll for a domain handle is findable by its domain suffix" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const keys = try deriveAll(arena.allocator(), "foo.germ.network", "");
+    var has_d_germ_network = false;
+    for (keys) |k| if (std.mem.eql(u8, k, "d:germ.network")) {
+        has_d_germ_network = true;
+    };
+    try testing.expect(has_d_germ_network);
 }
 
 test "queryKeys: multi-token query skips h:/e: (would never match)" {
