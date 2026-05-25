@@ -130,13 +130,18 @@ const testing = std.testing;
 
 test "sha256File matches known digest" {
     // sha256("hello\n") = 5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03
-    var tmp = testing.tmpDir(.{});
-    defer tmp.cleanup();
-    try tmp.dir.writeFile(.{ .sub_path = "x", .data = "hello\n" });
-    var path_buf: [std.fs.max_path_bytes]u8 = undefined;
-    const abs = try tmp.dir.realpath("x", &path_buf);
+    const path = "/tmp/typeahead-manifest-sha-test.bin";
+    {
+        const f = try std.Io.Dir.createFileAbsolute(io, path, .{ .truncate = true });
+        var wbuf: [64]u8 = undefined;
+        var fw = std.Io.File.Writer.init(f, io, &wbuf);
+        try fw.interface.writeAll("hello\n");
+        try fw.interface.flush();
+        f.close(io);
+    }
+    defer std.Io.Dir.deleteFile(.cwd(), io, path) catch {};
     var hex: [64]u8 = undefined;
-    const n = try sha256File(abs, &hex);
+    const n = try sha256File(path, &hex);
     try testing.expectEqual(@as(u64, 6), n);
     try testing.expectEqualStrings("5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03", &hex);
 }

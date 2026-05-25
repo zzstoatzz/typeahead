@@ -10,5 +10,7 @@ comptime {
     _ = @import("index/pack.zig");
     _ = @import("index/scoring.zig");
     _ = @import("index/schema.zig");
+    _ = @import("index/manifest.zig");
+    _ = @import("index/promote.zig");
     _ = @import("index/builder.zig");
 }
