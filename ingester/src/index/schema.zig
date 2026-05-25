@@ -77,13 +77,24 @@ pub fn initSnapshot(conn: zqlite.Conn) !void {
 
 /// Create overlay tables on the App B serving DB (its existing local.db).
 /// Idempotent. Called from LocalDb.openDb after the existing schema runs.
+/// `source` distinguishes sync-derived overlay (0) from operator overrides (1).
+/// Compaction-on-promote prunes only source=0 rows ≤ the new snapshot
+/// watermark; operator rows survive forever (a manual hide/show must not vanish
+/// when a snapshot promotes). blob=NULL in actor_overlay is a global DID
+/// tombstone — suppresses the candidate regardless of any prefix_overlay row.
+pub const overlay_source = struct {
+    pub const sync: i64 = 0;
+    pub const operator: i64 = 1;
+};
+
 pub fn initOverlay(conn: zqlite.Conn) !void {
     try conn.exec(
         \\CREATE TABLE IF NOT EXISTS actor_overlay (
         \\  did         TEXT PRIMARY KEY,
         \\  blob        BLOB,
         \\  hidden      INTEGER NOT NULL,
-        \\  updated_at  INTEGER NOT NULL
+        \\  updated_at  INTEGER NOT NULL,
+        \\  source      INTEGER NOT NULL DEFAULT 0
         \\) WITHOUT ROWID
     , .{});
 
@@ -94,15 +105,23 @@ pub fn initOverlay(conn: zqlite.Conn) !void {
         \\  score       REAL NOT NULL,
         \\  op          INTEGER NOT NULL,
         \\  updated_at  INTEGER NOT NULL,
+        \\  source      INTEGER NOT NULL DEFAULT 0,
         \\  PRIMARY KEY (key, did)
         \\) WITHOUT ROWID
     , .{});
 
-    // Used by the overlay compaction step (next build folds rows older
-    // than the snapshot watermark) and by ad-hoc inspection.
+    // additive column-add for any DB created before `source` existed.
+    conn.exec("ALTER TABLE actor_overlay ADD COLUMN source INTEGER NOT NULL DEFAULT 0", .{}) catch {};
+    conn.exec("ALTER TABLE prefix_overlay ADD COLUMN source INTEGER NOT NULL DEFAULT 0", .{}) catch {};
+
+    // updated_at indexes back the compaction prune (delete rows ≤ watermark).
     try conn.exec(
         \\CREATE INDEX IF NOT EXISTS idx_prefix_overlay_updated_at
         \\  ON prefix_overlay(updated_at)
+    , .{});
+    try conn.exec(
+        \\CREATE INDEX IF NOT EXISTS idx_actor_overlay_updated_at
+        \\  ON actor_overlay(updated_at)
     , .{});
 }
 

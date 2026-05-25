@@ -5,6 +5,7 @@ const std = @import("std");
 const io = std.Options.debug_io;
 const zqlite = @import("zqlite");
 const Allocator = std.mem.Allocator;
+const index_schema = @import("../index/schema.zig");
 
 const log = std.log.scoped(.local_db);
 
@@ -406,6 +407,13 @@ fn createSchema(self: *LocalDb) !void {
         log.err("failed to create sync_meta table: {}", .{err});
         return err;
     };
+
+    // Prefix-index overlay tables (actor_overlay / prefix_overlay): the live
+    // mutation layer the index serving path merges over the base snapshot.
+    index_schema.initOverlay(c) catch |err| {
+        log.err("failed to create overlay tables: {}", .{err});
+        return err;
+    };
 }
 
 pub const Row = struct {
@@ -425,6 +433,10 @@ pub const Row = struct {
 
     pub fn blob(self: Row, index: usize) []const u8 {
         return self.stmt.blob(index);
+    }
+
+    pub fn nullableBlob(self: Row, index: usize) ?[]const u8 {
+        return self.stmt.nullableBlob(index);
     }
 };
 
