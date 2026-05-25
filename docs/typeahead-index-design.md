@@ -305,36 +305,50 @@ fetch is constant regardless of corpus size. hrana v2 pagination survives
 only as an `INDEX_SOURCE=hrana_v2` fallback. (See `docs/turso-research.md`
 and `../notes/databases/turso.md` for the wire format.)
 
-### build-time + memory (measured)
+### build-time + memory (measured at full scale)
 
-Full-scale `temp_store=MEMORY` (the bug) vs. 1M-actor `temp_store=FILE` +
-scratch staging.db (the fix):
+Authoritative full-corpus run on Fly (`performance`-2x / 4 GB, iad,
+co-located with Turso aws-us-east-1), 5.9M actors:
 
 ```
-                       5.9M, temp_store=MEMORY   1M, temp_store=FILE
-peak RSS               6.18 GB                   481 MB
-total wall             1617 s                    282 s
-index.db (shipped)     ~12 GB (mostly free pgs)  1.57 GB (real data)
+total wall             1534 s  (~25.6 min)
+peak RSS               406 MB  (VmHWM; bounded — NOT corpus-linear)
+peak disk              24.2 GB (staging.db 15.6 + index.db 8.6; volume was 40 GB)
+final index.db         8.58 GB  (real data; ships as-is, no free pages)
+actors / emissions     5,903,058 / 144,070,520
+distinct prefix keys   77,677,899  (prefix_top_base rows)
+
+phase ms: turso_fetch 269k · derive 48k · actor_insert 15k
+          emission_insert 96k · index_build 561k · group_pack 239k
+          · analyze 232k
 ```
 
-1M phase timings (reuse build, no fetch): derive 18 s, actor_insert 5 s,
-emission_insert 46 s, index_build 43 s, **group_pack 118 s** (dominant —
-packing 14.3M distinct prefix keys), analyze 2 s.
+The dominant phases are now **CREATE INDEX (~9.4 min)** building the covering
+staging index, then **ANALYZE (~3.9 min)** over the 8.6 GB artifact. group/pack
+is only ~4 min.
 
-Two findings drove the redesign:
+Three fixes got us here, each found by a full-scale run:
 
-1. **Memory**: the `CREATE INDEX` over ~144M emission rows did its sort in
-   RAM under `temp_store=MEMORY` → 6.18 GB peak. `temp_store=FILE` steered
-   to the volume drops it to flat ~`cache_size` (≈480 MB at 1M; bounded,
-   not corpus-linear). This is THE knob that sizes the machine.
-2. **Disk / artifact**: emissions (~8 GB) + its index (~3 GB) lived inside
-   `index.db`; `DROP TABLE` without `VACUUM` left ~11 GB of free pages in
-   the shipped file. Moving them to a throwaway attached `staging.db` that
-   we delete means `index.db` ships at real size with no VACUUM rewrite.
+1. **Memory** (`temp_store=MEMORY` → `FILE`): the `CREATE INDEX` sort over
+   ~144M rows ran in RAM → **6.18 GB** peak at full scale. Spilling to the
+   volume via `SQLITE_TMPDIR` drops it to a flat ~`cache_size` (**406 MB**,
+   bounded regardless of corpus). This is THE knob that sizes the machine —
+   a 1 GB machine runs this.
+2. **Disk / artifact** (emissions staging → separate `staging.db`): kept in
+   `index.db`, the ~11 GB of emissions+index left free pages that `DROP
+   TABLE` without `VACUUM` never reclaimed → a ~12 GB artifact of mostly
+   garbage. A throwaway attached `staging.db` we delete means `index.db`
+   ships at real size (8.58 GB) with no VACUUM.
+3. **group/pack I/O** (non-covering → covering index): the `(key, score)`
+   index forced a rowid lookup into the ~8 GB emissions table for `did` on
+   every one of 144M rows. At full scale that random I/O ran **4+ hours and
+   did not finish**. Adding `did` to the index (`USING COVERING INDEX`,
+   index-only sequential scan) cut it to **~4 min** (60×+). The covering
+   index roughly doubles `staging.db` (it now carries `did`) — a cheap
+   trade since staging is deleted.
 
-Cadence target: **every 6-12 hours**. The first full Fly run is
-measurement-only — confirm full-corpus peak RSS stays bounded, capture peak
-disk and final `index.db` size, then wire promotion.
+Cadence target: **every 6-12 hours** — a ~26 min offline build fits easily.
+The 8.58 GB artifact is the App B download/volume-sizing input.
 
 ### volume sizing per machine
 
