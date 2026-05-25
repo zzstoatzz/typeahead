@@ -570,7 +570,7 @@ fn candidateLessThan(ctx: SortCtx, a: Candidate, b: Candidate) bool {
 
 // ── emit ─────────────────────────────────────────────────────────────────
 
-fn writeActor(jw: anytype, c: *const Candidate) !void {
+pub fn writeActor(jw: anytype, c: *const Candidate) !void {
     try jw.beginObject();
 
     try jw.objectField("did");
@@ -755,7 +755,7 @@ fn repeatedTokenName(name: []const u8) bool {
 /// Uses a static buffer — safe for single query at a time per thread.
 var sanitize_buf: [512]u8 = undefined;
 
-fn sanitize(input: []const u8) []const u8 {
+pub fn sanitize(input: []const u8) []const u8 {
     var out: usize = 0;
     for (input) |c| {
         if (out >= sanitize_buf.len) break;

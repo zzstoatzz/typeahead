@@ -8,6 +8,8 @@ comptime {
     _ = @import("index/normalize.zig");
     _ = @import("index/prefixes.zig");
     _ = @import("index/pack.zig");
+    _ = @import("index/merge.zig");
+    _ = @import("index/index_search.zig");
     _ = @import("index/scoring.zig");
     _ = @import("index/schema.zig");
     _ = @import("index/manifest.zig");

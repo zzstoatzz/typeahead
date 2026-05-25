@@ -12,6 +12,7 @@ const search = @import("search.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 const promote_runner = @import("index/promote_runner.zig");
+const index_search = @import("index/index_search.zig");
 
 const log = std.log.scoped(.server);
 
@@ -101,11 +102,19 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
     var output: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
     defer output.deinit();
 
-    search.search(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch |err| {
+    // USE_PREFIX_INDEX routes /search to the precomputed prefix index; unset
+    // keeps the FTS path. Same response shape either way. On index-path error
+    // we 500/503 so the worker falls back to its bsky backstop.
+    const search_result = if (std.c.getenv("USE_PREFIX_INDEX") != null)
+        index_search.run(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer)
+    else
+        search.search(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer);
+    search_result catch |err| {
         if (err == error.PoolExhausted) {
             try sendJson(request, .service_unavailable, "{\"error\":\"read pool exhausted\"}");
             return;
         }
+        log.err("search failed: {s}", .{@errorName(err)});
         try sendJson(request, .internal_server_error, "{\"error\":\"search failed\"}");
         return;
     };
