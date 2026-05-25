@@ -12,6 +12,7 @@ const server = @import("server.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 const index_builder = @import("index/builder.zig");
+const promote_runner = @import("index/promote_runner.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -204,6 +205,17 @@ pub fn main() !void {
         const db = local_db_ptr.?; // guaranteed non-null by check above
         tasks.concurrent(io, sync.syncLoop, .{ allocator, db }) catch |err| {
             log.err("sync task failed: {}", .{err});
+        };
+    }
+
+    // start prefix-index promote watcher (background — R2 latest.json → ATTACH).
+    // Off by default; App B opts in via ENABLE_INDEX_PROMOTE=1 once R2 creds are
+    // set. Does not touch the live /search path (that's gated separately by
+    // USE_PREFIX_INDEX) — it only keeps a validated snapshot attached.
+    if (enable_sync and envFlag("ENABLE_INDEX_PROMOTE", false)) {
+        const db = local_db_ptr.?;
+        tasks.concurrent(io, promote_runner.watchLoop, .{ allocator, db }) catch |err| {
+            log.err("promote watcher task failed: {}", .{err});
         };
     }
 

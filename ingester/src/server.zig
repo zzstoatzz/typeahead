@@ -11,6 +11,7 @@ const LocalDb = @import("db/LocalDb.zig");
 const search = @import("search.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
+const promote_runner = @import("index/promote_runner.zig");
 
 const log = std.log.scoped(.server);
 
@@ -62,6 +63,10 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_poo
         try handleHealth(request, local_db, identity_pool);
     } else if (mem.eql(u8, path, "/debug/fts")) {
         try handleDebugFts(request, target, local_db);
+    } else if (mem.eql(u8, path, "/index/status")) {
+        try handleIndexStatus(request, local_db);
+    } else if (mem.eql(u8, path, "/debug/index")) {
+        try handleDebugIndex(request, target, local_db);
     } else {
         try sendJson(request, .not_found, "{\"error\":\"not found\"}");
     }
@@ -310,6 +315,40 @@ fn handleDebugFts(request: *http.Server.Request, target: []const u8, local_db: *
 
     try jw.endObject();
 
+    try sendJson(request, .ok, out.written());
+}
+
+fn handleIndexStatus(request: *http.Server.Request, local_db: *LocalDb) !void {
+    var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena_state.deinit();
+
+    var out: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
+    defer out.deinit();
+    var jw: json.Stringify = .{ .writer = &out.writer };
+
+    promote_runner.writeStatus(arena_state.allocator(), local_db, &jw) catch {
+        try sendJson(request, .internal_server_error, "{\"error\":\"index status failed\"}");
+        return;
+    };
+    try sendJson(request, .ok, out.written());
+}
+
+fn handleDebugIndex(request: *http.Server.Request, target: []const u8, local_db: *LocalDb) !void {
+    const raw_q = parseQueryParam(target, "q") orelse "a";
+    var decode_buf: [512]u8 = undefined;
+    const q = percentDecode(raw_q, &decode_buf) orelse raw_q;
+
+    var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena_state.deinit();
+
+    var out: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
+    defer out.deinit();
+    var jw: json.Stringify = .{ .writer = &out.writer };
+
+    promote_runner.writeProbe(arena_state.allocator(), local_db, q, &jw) catch {
+        try sendJson(request, .internal_server_error, "{\"error\":\"index probe failed\"}");
+        return;
+    };
     try sendJson(request, .ok, out.written());
 }
 
