@@ -45,6 +45,11 @@ is_ready: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
 mutex: std.Io.Mutex = std.Io.Mutex.init, // protects write conn only
 path: []const u8 = "",
 
+/// Absolute path to the prefix-index snapshot currently ATTACHed (as `idx`)
+/// on every read conn, or null if none. Owned by this struct. Set only via
+/// swapSnapshot, which rebuilds the read pool so all conns attach atomically.
+snapshot_path: ?[]const u8 = null,
+
 /// column list for full actor row queries (sync + search)
 pub const actor_cols = "did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score";
 
@@ -170,6 +175,8 @@ pub fn deinit(self: *LocalDb) void {
     }
     if (self.conn) |c| c.close();
     self.conn = null;
+    if (self.snapshot_path) |sp| self.allocator.free(sp);
+    self.snapshot_path = null;
 }
 
 /// Open the read pool + meta conn. Each conn is read-only with `query_only`
@@ -193,6 +200,7 @@ fn openReadPool(self: *LocalDb, path: [*:0]const u8) !void {
             return err;
         };
         applyReadPragmas(slot.*.?);
+        if (self.snapshot_path) |sp| try attachSnapshot(slot.*.?, sp);
     }
 
     self.meta_conn = zqlite.open(path, zqlite.OpenFlags.ReadOnly) catch |err| {
@@ -200,6 +208,18 @@ fn openReadPool(self: *LocalDb, path: [*:0]const u8) !void {
         return err;
     };
     applyReadPragmas(self.meta_conn.?);
+    if (self.snapshot_path) |sp| try attachSnapshot(self.meta_conn.?, sp);
+}
+
+/// ATTACH the immutable snapshot as `idx` on a read conn. Bound parameter
+/// (not string interpolation) so a build_id in the path can't break the SQL.
+/// The conn is already query_only=ON, which extends to attached databases —
+/// so the snapshot is read-only even though ATTACH defaults to read-write.
+fn attachSnapshot(c: zqlite.Conn, path: []const u8) !void {
+    c.exec("ATTACH DATABASE ? AS idx", .{path}) catch |err| {
+        log.err("ATTACH snapshot failed ({s}): {}", .{ path, err });
+        return err;
+    };
 }
 
 fn applyReadPragmas(c: zqlite.Conn) void {
@@ -253,6 +273,73 @@ pub fn reopenReadConn(self: *LocalDb) !void {
     }
 
     try self.openReadPool(path);
+}
+
+/// Atomically swap the ATTACHed prefix-index snapshot to `new_path`. Rebuilds
+/// the read pool (close → set path → reopen) so every conn attaches the new
+/// file in lockstep. The caller MUST have already verified + validated the
+/// file (promote.zig) — this only does the attach. On reopen failure the swap
+/// reverts to the prior snapshot so the pool never lands fully wedged.
+///
+/// Brief unavailability window during the rebuild (same as bootstrap's
+/// close/reopen): a concurrent checkoutRead observes null slots and fails
+/// fast to 503. Swaps are rare (per build, every 6-12h), so this is fine.
+pub fn swapSnapshot(self: *LocalDb, new_path: []const u8) !void {
+    const dup = try self.allocator.dupe(u8, new_path);
+    const old = self.snapshot_path;
+
+    self.closeReadConn();
+    self.snapshot_path = dup;
+    self.reopenReadConn() catch |err| {
+        log.err("snapshot swap failed: {}; reverting to prior snapshot", .{err});
+        self.allocator.free(dup);
+        self.snapshot_path = old;
+        self.reopenReadConn() catch |rerr| {
+            log.err("revert reopen also failed: {}", .{rerr});
+        };
+        return err;
+    };
+
+    if (old) |o| self.allocator.free(o);
+    log.info("snapshot attached: {s}", .{new_path});
+}
+
+/// build_id of the currently-attached snapshot, or null if none attached.
+/// Caller owns the returned slice. Used by the /index/status debug endpoint.
+pub fn attachedBuildId(self: *LocalDb, gpa: Allocator) !?[]const u8 {
+    if (self.snapshot_path == null) return null;
+    self.meta_mu.lockUncancelable(io);
+    defer self.meta_mu.unlock(io);
+    const c = self.meta_conn orelse return null;
+    const row = c.row("SELECT value FROM idx.index_meta WHERE key = 'build_id'", .{}) catch return null;
+    if (row) |r| {
+        defer r.deinit();
+        return try gpa.dupe(u8, r.text(0));
+    }
+    return null;
+}
+
+/// Path of the currently-attached snapshot file, or null. Only the promote
+/// watcher mutates snapshot_path (via swapSnapshot) and only it reads this,
+/// so no lock is needed. Used to pick the inactive A/B slot to download into.
+pub fn snapshotPath(self: *LocalDb) ?[]const u8 {
+    return self.snapshot_path;
+}
+
+/// Integer-valued `index_meta` key from the attached snapshot, or 0 if no
+/// snapshot is attached / the key is missing. Used to feed the previous
+/// build's actor/prefix counts into the promote sanity floors.
+pub fn attachedMetaInt(self: *LocalDb, key: []const u8) u64 {
+    if (self.snapshot_path == null) return 0;
+    self.meta_mu.lockUncancelable(io);
+    defer self.meta_mu.unlock(io);
+    const c = self.meta_conn orelse return 0;
+    const row = c.row("SELECT value FROM idx.index_meta WHERE key = ?", .{key}) catch return 0;
+    if (row) |r| {
+        defer r.deinit();
+        return std.fmt.parseInt(u64, r.text(0), 10) catch 0;
+    }
+    return 0;
 }
 
 pub fn isReady(self: *LocalDb) bool {
@@ -334,6 +421,10 @@ pub const Row = struct {
 
     pub fn float(self: Row, index: usize) f64 {
         return self.stmt.float(index);
+    }
+
+    pub fn blob(self: Row, index: usize) []const u8 {
+        return self.stmt.blob(index);
     }
 };
 
