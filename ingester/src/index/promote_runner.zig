@@ -108,6 +108,11 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
         log.info("no snapshot attached; promoting first build {s}", .{m.active_build});
     }
 
+    // 2b. fast path: if a local A/B slot already holds active_build (e.g. after
+    // a restart — snapshot_path is in-memory), adopt it without re-downloading
+    // the multi-GB artifact.
+    if (try adoptIfPresent(arena, db, idx_dir, m)) return;
+
     // 3. pick the inactive slot so we never overwrite the live file.
     const target = pickSlot(db.snapshotPath(), idx_dir, arena) catch return error.OutOfMemory;
     const part = try std.fmt.allocPrint(arena, "{s}.part", .{target});
@@ -136,6 +141,41 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
     // Prune sync overlay rows the new base now covers (operator rows survive).
     db.compactOverlay(m.source_watermark);
     log.info("promoted build {s} → {s}", .{ m.active_build, target });
+}
+
+/// If a local A/B slot file already holds `active_build`, validate + attach it
+/// (no download). Returns true if adopted. Used after a restart, where the
+/// in-memory snapshot_path is null but the artifact is still on the volume.
+/// Skips the multi-GB sha re-verify (the file was verified when written +
+/// renamed atomically) but still runs validateSnapshot + sentinel.
+fn adoptIfPresent(arena: Allocator, db: *LocalDb, idx_dir: []const u8, m: promote.Manifest) !bool {
+    for ([_][]const u8{ SLOT_A, SLOT_B }) |slot| {
+        const path = try std.fmt.allocPrint(arena, "{s}/{s}", .{ idx_dir, slot });
+        const path_z = try arena.dupeZ(u8, path);
+        const snap = promote.openSnapshotReadOnly(path_z) catch continue; // missing/unreadable → skip
+        var adopt = false;
+        {
+            defer snap.close();
+            const bid = (schema.getMeta(snap, arena, schema.meta.build_id) catch null) orelse continue;
+            if (!std.mem.eql(u8, bid, m.active_build)) continue;
+            promote.validateSnapshot(arena, snap, m, 0, 0) catch |err| {
+                log.warn("adopt: validate failed for {s}: {s}", .{ path, @errorName(err) });
+                continue;
+            };
+            sentinelCheck(arena, snap, &COMMON_PROBES) catch |err| {
+                log.warn("adopt: sentinel failed for {s}: {s}", .{ path, @errorName(err) });
+                continue;
+            };
+            adopt = true;
+        }
+        if (adopt) {
+            try db.swapSnapshot(path);
+            db.compactOverlay(m.source_watermark);
+            log.info("adopted on-disk snapshot {s} (build {s}, no download)", .{ path, m.active_build });
+            return true;
+        }
+    }
+    return false;
 }
 
 /// Return the A/B slot path NOT currently attached, so a download can never
