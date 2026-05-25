@@ -430,7 +430,12 @@ pub fn run(allocator: Allocator) !void {
     // ── group, pack, write prefix_top_base (per-group scratch arena inside) ──
     {
         const t = nowMs();
-        try conn.exec("CREATE INDEX IF NOT EXISTS stage.idx_emissions_key_score ON emissions(key, score DESC)", .{});
+        // did is in the index so the group/pack scan is index-ONLY (covering).
+        // Without it, the (key,score) index orders the scan but SQLite must do
+        // a rowid lookup into the ~8GB emissions table for did on every one of
+        // ~144M rows — random I/O that thrashed the volume for hours at full
+        // scale. Covering it turns the scan into a sequential index read.
+        try conn.exec("CREATE INDEX IF NOT EXISTS stage.idx_emissions_key_score ON emissions(key, score DESC, did)", .{});
         stats.phases.index_build_ms = nowMs() - t;
     }
     {
@@ -889,8 +894,9 @@ fn buildPrefixTopBase(
     );
     defer stmt_insert.deinit();
 
-    // Sequential scan in (key, score DESC) order — idx_emissions_key_score
-    // backs this with O(n) work and no temp B-tree.
+    // Sequential scan in (key, score DESC) order. idx_emissions_key_score is
+    // a COVERING index (key, score DESC, did) so this is index-only: one
+    // ordered pass over the index, no per-row table lookups, no temp B-tree.
     var rows = try snapshot.rows(
         "SELECT key, did, score FROM stage.emissions ORDER BY key, score DESC",
         .{},
@@ -1018,4 +1024,24 @@ test "Config defaults reflect design doc" {
     try testing.expectEqual(@as(usize, 100), cfg.overlay_top_n);
     try testing.expectEqual(@as(usize, 50), cfg.hydrate_cap);
     try testing.expectEqualStrings("/data", cfg.build_root);
+}
+
+// Regression guard: the group/pack scan MUST be index-only. The index has to
+// include `did` (the third selected column) or SQLite does a rowid lookup
+// into the multi-GB emissions table per row — ~144M random reads that
+// thrashed the volume for hours at full scale. If someone drops `did` from
+// the index, this catches it: the plan degrades from COVERING INDEX to INDEX.
+test "group/pack index is covering (index-only scan)" {
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try conn.exec("CREATE TABLE emissions (key TEXT NOT NULL, did TEXT NOT NULL, score REAL NOT NULL)", .{});
+    try conn.exec("CREATE INDEX idx_emissions_key_score ON emissions(key, score DESC, did)", .{});
+
+    var rows = try conn.rows("EXPLAIN QUERY PLAN SELECT key, did, score FROM emissions ORDER BY key, score DESC", .{});
+    defer rows.deinit();
+    var covering = false;
+    while (rows.next()) |row| {
+        if (std.mem.indexOf(u8, row.text(3), "COVERING INDEX") != null) covering = true;
+    }
+    try testing.expect(covering);
 }
