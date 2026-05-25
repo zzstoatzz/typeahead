@@ -584,3 +584,20 @@ pub fn countActors(self: *LocalDb) u64 {
     }
     return 0;
 }
+
+/// Seconds since the last successful incremental sync watermark, or -1 if
+/// unknown. Surfaced on /health as a staleness SLO: a growing value means
+/// the local replica is drifting from Turso (moderation/profile get stale).
+pub fn syncLagSeconds(self: *LocalDb, now_unix: i64) i64 {
+    self.meta_mu.lockUncancelable(io);
+    defer self.meta_mu.unlock(io);
+
+    const c = self.meta_conn orelse return -1;
+    const row = c.row("SELECT value FROM sync_meta WHERE key = 'last_sync'", .{}) catch return -1;
+    if (row) |r| {
+        defer r.deinit();
+        const last = std.fmt.parseInt(i64, r.text(0), 10) catch return -1;
+        return now_unix - last;
+    }
+    return -1;
+}
