@@ -46,6 +46,14 @@ fn bootstrapPauseMs() u32 {
     return std.fmt.parseInt(u32, v, 10) catch 0;
 }
 
+/// Max acceptable replica lag before incremental self-heals via a bulk resync.
+/// Default 6h: well under tombstone retention, comfortably above a healthy
+/// incremental cadence. Tunable via SYNC_MAX_LAG_S.
+fn maxLagS() i64 {
+    const v = cGetenv("SYNC_MAX_LAG_S") orelse return 6 * 3600;
+    return std.fmt.parseInt(i64, v, 10) catch 6 * 3600;
+}
+
 /// index of the first column appended after actor_cols (rowid or updated_at)
 const trailing_col: usize = Col.quality_score + 1;
 
@@ -545,11 +553,22 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     }
 
     // if last sync is older than tombstone retention, local data is too stale
+    // to trust incremental tombstones — wipe and rebootstrap.
     const now = timestamp();
     if (now - last_sync_ts > TOMBSTONE_RETENTION_S) {
         log.info("incremental: stale ({d}s old), falling back to full sync with wipe", .{now - last_sync_ts});
         span.setAttribute("fallback", "stale_wipe");
         return fullSync(turso, local, true);
+    }
+
+    // self-healing convergence: if lag exceeds SYNC_MAX_LAG_S, the per-row
+    // incremental drain is too slow to catch up — do a bulk resync (keeps
+    // serving, rebuilds FTS clean, resets the watermark to now) instead of
+    // grinding. Keeps the replica from drifting permanently.
+    if (now - last_sync_ts > maxLagS()) {
+        log.info("incremental: lag {d}s exceeds max {d}s, self-healing via bulk resync", .{ now - last_sync_ts, maxLagS() });
+        span.setAttribute("fallback", "lag_resync");
+        return fullSync(turso, local, false);
     }
 
     local.setReady(true);
