@@ -28,6 +28,11 @@ primary_region = 'ewr'
   ENABLE_INDEX_PROMOTE = '1'
   INDEX_BUILD_ROOT = '/data'
 
+  # Serve /search from the precomputed prefix index (canary). App B is not the
+  # worker's backend yet, so this only affects direct callers until we point
+  # SEARCH_BACKEND_URL here. Index-path errors fall back to the bsky backstop.
+  USE_PREFIX_INDEX = '1'
+
   # Bootstrap politeness: pace Turso reads so the initial sync doesn't
   # starve worker fallback queries on the same Turso DB. ~200ms between
   # 2k-row batches drops effective rate from ~2000/s to ~1500/s — bootstrap
@@ -51,6 +56,9 @@ primary_region = 'ewr'
   processes = ['app']
 
 [[vm]]
-  memory = '256mb'
+  # 2GB so the OS page cache can hold the hot pages of the 8.58GB prefix index
+  # — at 256MB, varied-prefix queries cold-thrash to ~1s. (Index serving needs
+  # RAM proportional to the working set; revisit at 10x corpus.)
+  memory = '2048mb'
   cpu_kind = 'shared'
   cpus = 1
