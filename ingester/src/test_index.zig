@@ -10,6 +10,7 @@ comptime {
     _ = @import("index/pack.zig");
     _ = @import("index/merge.zig");
     _ = @import("index/index_search.zig");
+    _ = @import("index/overlay.zig");
     _ = @import("index/scoring.zig");
     _ = @import("index/schema.zig");
     _ = @import("index/manifest.zig");

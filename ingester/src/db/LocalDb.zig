@@ -6,6 +6,7 @@ const io = std.Options.debug_io;
 const zqlite = @import("zqlite");
 const Allocator = std.mem.Allocator;
 const index_schema = @import("../index/schema.zig");
+const overlay = @import("../index/overlay.zig");
 
 const log = std.log.scoped(.local_db);
 
@@ -318,6 +319,18 @@ pub fn attachedBuildId(self: *LocalDb, gpa: Allocator) !?[]const u8 {
         return try gpa.dupe(u8, r.text(0));
     }
     return null;
+}
+
+/// Prune sync-derived overlay rows the freshly-promoted base now covers
+/// (updated_at ≤ new_watermark). Operator rows (source=1) survive. Writes via
+/// the write conn under the write mutex; best-effort (logged, not fatal).
+pub fn compactOverlay(self: *LocalDb, new_watermark: i64) void {
+    const c = self.conn orelse return;
+    self.mutex.lockUncancelable(io);
+    defer self.mutex.unlock(io);
+    overlay.compact(c, new_watermark) catch |err| {
+        log.warn("overlay compaction failed: {}", .{err});
+    };
 }
 
 /// Path of the currently-attached snapshot file, or null. Only the promote

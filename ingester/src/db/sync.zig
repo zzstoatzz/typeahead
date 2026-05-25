@@ -10,8 +10,18 @@ const Allocator = std.mem.Allocator;
 const TursoClient = @import("TursoClient.zig");
 const LocalDb = @import("LocalDb.zig");
 const Col = LocalDb.Col;
+const overlay = @import("../index/overlay.zig");
+const index_schema = @import("../index/schema.zig");
 
 const log = std.log.scoped(.sync);
+
+/// Per-row overlay-projection context, passed into applyActorUpdate/Delete
+/// when a delta is newer than the attached snapshot watermark. `arena` is
+/// reset by the caller after each row; `updated_at` is the source timestamp.
+const OverlayCtx = struct {
+    arena: Allocator,
+    updated_at: i64,
+};
 
 fn timestamp() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
@@ -544,6 +554,13 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
 
     local.setReady(true);
 
+    // Overlay projection: gate deltas on the attached snapshot watermark — only
+    // changes NEWER than the base get projected (older state is already baked
+    // in). 0 = no snapshot attached → overlay projection is skipped entirely.
+    const overlay_watermark: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
+    var ov_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer ov_arena.deinit();
+
     // buffer: subtract 300s to catch stragglers (matches leaflet-search)
     const since_ts = last_sync_ts - 300;
     var since_buf: [20]u8 = undefined;
@@ -600,10 +617,16 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 defer local.unlock();
                 conn.exec("BEGIN", .{}) catch {};
                 for (result.rows) |row| {
-                    applyActorUpdate(conn, row, "incremental") catch {
+                    const ua = row.int(trailing_col);
+                    const octx: ?OverlayCtx = if (overlay_watermark > 0 and ua > overlay_watermark)
+                        .{ .arena = ov_arena.allocator(), .updated_at = ua }
+                    else
+                        null;
+                    applyActorUpdate(conn, row, "incremental", octx) catch {
                         error_count += 1;
                         continue;
                     };
+                    if (octx != null) _ = ov_arena.reset(.retain_capacity);
                     updated += 1;
                 }
                 conn.exec("COMMIT", .{}) catch {};
@@ -637,7 +660,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         const q_span = logfire.span("sync.query.unsearchable", .{});
 
         var result = turso.query(
-            "SELECT did FROM actors WHERE updated_at > ? AND handle = ''",
+            "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = ''",
             &.{since_str},
         ) catch |err| {
             log.err("unsearchable query failed: {}", .{err});
@@ -659,10 +682,16 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             conn.exec("BEGIN", .{}) catch {};
             for (result.rows) |row| {
                 const did = row.text(0);
-                applyActorDelete(conn, did, "incremental.cleared") catch {
+                const ua = row.int(1);
+                const octx: ?OverlayCtx = if (overlay_watermark > 0 and ua > overlay_watermark)
+                    .{ .arena = ov_arena.allocator(), .updated_at = ua }
+                else
+                    null;
+                applyActorDelete(conn, did, "incremental.cleared", octx) catch {
                     error_count += 1;
                     continue;
                 };
+                if (octx != null) _ = ov_arena.reset(.retain_capacity);
                 cleared += 1;
             }
             conn.exec("COMMIT", .{}) catch {};
@@ -676,7 +705,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         const q_span = logfire.span("sync.query.tombstones", .{});
 
         var tomb_result = turso.query(
-            "SELECT did FROM tombstones WHERE deleted_at > ?",
+            "SELECT did, deleted_at FROM tombstones WHERE deleted_at > ?",
             &.{since_str},
         ) catch |err| {
             log.err("tombstone query failed: {}", .{err});
@@ -698,10 +727,16 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             conn.exec("BEGIN", .{}) catch {};
             for (tomb_result.rows) |row| {
                 const did = row.text(0);
-                applyActorDelete(conn, did, "incremental.tombstone") catch {
+                const del_at = row.int(1);
+                const octx: ?OverlayCtx = if (overlay_watermark > 0 and del_at > overlay_watermark)
+                    .{ .arena = ov_arena.allocator(), .updated_at = del_at }
+                else
+                    null;
+                applyActorDelete(conn, did, "incremental.tombstone", octx) catch {
                     error_count += 1;
                     continue;
                 };
+                if (octx != null) _ = ov_arena.reset(.retain_capacity);
                 deleted += 1;
             }
             conn.exec("COMMIT", .{}) catch {};
@@ -843,7 +878,7 @@ fn snapshotOldFtsRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
 /// Mirrors the per-row maintenance pattern in ingest.zig::writeToLocal so the
 /// local FTS table stays consistent without periodic full rebuilds.
 /// `caller` is just for log context ("incremental" vs other future callers).
-fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8) !void {
+fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8, octx: ?OverlayCtx) !void {
     const did = row.text(Col.did);
     const new_handle = row.text(Col.handle);
     const new_name = row.text(Col.display_name);
@@ -869,12 +904,32 @@ fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8) !void {
             log.warn("{s}: FTS insert-new failed for {s}: {}", .{ caller, did, err });
         };
     }
+
+    // Overlay projection (same transaction as the actor write). Best-effort:
+    // the live-actors safety belt still gives serving correct moderation if a
+    // projection fails; base still serves the actor either way.
+    if (octx) |ctx| {
+        overlay.projectUpdate(ctx.arena, conn, .{
+            .did = did,
+            .handle = new_handle,
+            .display_name = new_name,
+            .avatar_url = row.text(Col.avatar_url),
+            .labels = row.text(Col.labels),
+            .associated = row.text(Col.associated),
+            .pds = row.text(Col.pds),
+            .created_at = row.text(Col.created_at),
+            .hidden = row.int(Col.hidden) != 0,
+            .quality_score = @floatCast(row.float(Col.quality_score)),
+        }, old.handle orelse "", old.name orelse "", ctx.updated_at) catch |err| {
+            log.warn("{s}: overlay projectUpdate failed for {s}: {}", .{ caller, did, err });
+        };
+    }
 }
 
 /// Per-row incremental remove: snapshot old FTS values, DELETE the actor
 /// row, then FTS5 special-delete the old entry. Used for both the "became
 /// unsearchable" and "tombstoned" paths.
-fn applyActorDelete(conn: zqlite.Conn, did: []const u8, caller: []const u8) !void {
+fn applyActorDelete(conn: zqlite.Conn, did: []const u8, caller: []const u8, octx: ?OverlayCtx) !void {
     var old: OldFtsRow = .{};
     snapshotOldFtsRow(conn, did, &old);
 
@@ -886,6 +941,14 @@ fn applyActorDelete(conn: zqlite.Conn, did: []const u8, caller: []const u8) !voi
             \\VALUES('delete', ?, ?, ?)
         , .{ did, oh, old.name orelse "" }) catch |err| {
             log.warn("{s}: FTS delete failed for {s}: {}", .{ caller, did, err });
+        };
+    }
+
+    // Global tombstone in the overlay so index serving suppresses the actor
+    // immediately (same transaction as the row delete).
+    if (octx) |ctx| {
+        overlay.projectDelete(ctx.arena, conn, did, old.handle orelse "", old.name orelse "", ctx.updated_at) catch |err| {
+            log.warn("{s}: overlay projectDelete failed for {s}: {}", .{ caller, did, err });
         };
     }
 }

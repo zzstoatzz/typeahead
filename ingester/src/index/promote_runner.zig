@@ -133,6 +133,8 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
     // 7. atomic rename .part → slot, then ATTACH-swap into the read pool.
     try std.Io.Dir.renameAbsolute(part, target, io);
     try db.swapSnapshot(target);
+    // Prune sync overlay rows the new base now covers (operator rows survive).
+    db.compactOverlay(m.source_watermark);
     log.info("promoted build {s} → {s}", .{ m.active_build, target });
 }
 
