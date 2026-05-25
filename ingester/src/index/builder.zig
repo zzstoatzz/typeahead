@@ -37,6 +37,7 @@ const prefixes = @import("prefixes.zig");
 const pack = @import("pack.zig");
 const scoring = @import("scoring.zig");
 const manifest = @import("manifest.zig");
+const r2 = @import("r2.zig");
 
 const log = std.log.scoped(.indexer);
 const io = std.Options.debug_io;
@@ -510,6 +511,33 @@ pub fn run(allocator: Allocator) !void {
         .{ p.turso_fetch_ms, p.derive_ms, p.actor_insert_ms, p.emission_insert_ms, p.index_build_ms, p.group_pack_ms, p.meta_ms, p.analyze_ms, p.manifest_ms },
     );
     log.info("indexer resources: index_db_bytes={d} peak_rss_kb={d}", .{ fileSize(db_path), peakRssKb() });
+
+    // Publish to R2 (opt-in via INDEX_UPLOAD_R2 so local/sample builds don't
+    // upload). On failure we log loudly but don't discard the on-disk build —
+    // a retry/manual upload can still promote it.
+    if (cGetenv("INDEX_UPLOAD_R2") != null) {
+        uploadArtifacts(allocator, build_id, db_path, build_dir) catch |err|
+            log.err("R2 upload failed: {s}", .{@errorName(err)});
+    }
+}
+
+/// Upload index.db + manifest.json to builds/<id>/, then copy the manifest to
+/// latest.json LAST — so App B never sees a latest.json pointing at an
+/// index.db that isn't fully present.
+fn uploadArtifacts(gpa: Allocator, build_id: []const u8, db_path: []const u8, build_dir: []const u8) !void {
+    const bucket = try r2.configure();
+    var kbuf: [320]u8 = undefined;
+    const db_key = try std.fmt.bufPrint(&kbuf, "builds/{s}/index.db", .{build_id});
+    try r2.upload(gpa, bucket, db_path, db_key);
+
+    var mpath_buf: [320]u8 = undefined;
+    const manifest_local = try std.fmt.bufPrint(&mpath_buf, "{s}/manifest.json", .{build_dir});
+    var mkey_buf: [320]u8 = undefined;
+    const m_key = try std.fmt.bufPrint(&mkey_buf, "builds/{s}/manifest.json", .{build_id});
+    try r2.upload(gpa, bucket, manifest_local, m_key);
+
+    try r2.upload(gpa, bucket, manifest_local, "latest.json");
+    log.info("R2 publish complete: latest.json -> builds/{s}/index.db", .{build_id});
 }
 
 /// Primary source path. Export Turso → local SQLite checkpoint file via

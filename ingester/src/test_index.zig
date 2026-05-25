@@ -12,5 +12,6 @@ comptime {
     _ = @import("index/schema.zig");
     _ = @import("index/manifest.zig");
     _ = @import("index/promote.zig");
+    _ = @import("index/r2.zig");
     _ = @import("index/builder.zig");
 }
