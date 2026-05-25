@@ -36,6 +36,7 @@ const normalize = @import("normalize.zig");
 const prefixes = @import("prefixes.zig");
 const pack = @import("pack.zig");
 const scoring = @import("scoring.zig");
+const manifest = @import("manifest.zig");
 
 const log = std.log.scoped(.indexer);
 const io = std.Options.debug_io;
@@ -149,6 +150,7 @@ const Phases = struct {
     group_pack_ms: i64 = 0, // buildPrefixTopBase whole pass
     meta_ms: i64 = 0, // writeMeta
     analyze_ms: i64 = 0, // ANALYZE
+    manifest_ms: i64 = 0, // sha256 + write manifest.json
 };
 
 fn nowMs() i64 {
@@ -469,6 +471,30 @@ pub fn run(allocator: Allocator) !void {
     // No VACUUM needed: staging never lived in index.db, so there are no
     // freed pages to reclaim — index.db is already real-artifact size.
 
+    // Manifest LAST: index.db is final + ANALYZE'd. Streams its sha256 (the
+    // ~30-60s pass over the artifact is counted in elapsed). App B reads this
+    // to gate promotion before downloading. R2 upload (Phase 2) consumes it.
+    {
+        const t = nowMs();
+        const m = try manifest.write(allocator, .{
+            .build_id = build_id,
+            .db_path = db_path,
+            .build_dir = build_dir,
+            .promoted_at = nowSeconds(),
+            .source_watermark = stats.source_watermark,
+            .actor_count = stats.actor_count,
+            .prefix_count = stats.prefix_key_count,
+            .top_n_short = cfg.top_n_short,
+            .top_n_medium = cfg.top_n_medium,
+            .top_n_long = cfg.top_n_long,
+            .overlay_top_n = cfg.overlay_top_n,
+            .hydrate_cap = cfg.hydrate_cap,
+            .builder_version = cfg.builder_version,
+        });
+        stats.phases.manifest_ms = nowMs() - t;
+        log.info("manifest written: byte_size={d} sha256={s}", .{ m.byte_size, m.sha256_hex[0..16] });
+    }
+
     stats.build_end_ms = nowMs();
     const elapsed_ms = stats.build_end_ms - stats.build_start_ms;
     const p = stats.phases;
@@ -480,8 +506,8 @@ pub fn run(allocator: Allocator) !void {
         elapsed_ms,
     });
     log.info(
-        "phase ms: turso_fetch={d} derive={d} actor_insert={d} emission_insert={d} index_build={d} group_pack={d} meta={d} analyze={d}",
-        .{ p.turso_fetch_ms, p.derive_ms, p.actor_insert_ms, p.emission_insert_ms, p.index_build_ms, p.group_pack_ms, p.meta_ms, p.analyze_ms },
+        "phase ms: turso_fetch={d} derive={d} actor_insert={d} emission_insert={d} index_build={d} group_pack={d} meta={d} analyze={d} manifest={d}",
+        .{ p.turso_fetch_ms, p.derive_ms, p.actor_insert_ms, p.emission_insert_ms, p.index_build_ms, p.group_pack_ms, p.meta_ms, p.analyze_ms, p.manifest_ms },
     );
     log.info("indexer resources: index_db_bytes={d} peak_rss_kb={d}", .{ fileSize(db_path), peakRssKb() });
 }
