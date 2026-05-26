@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1330 1030" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" role="img" aria-label="typeahead.waow.tech architecture: continuous ingest, offline snapshot build, bounded snapshot+overlay serving">
+  <style>
+    .title  { font-weight:700; font-size:24px; fill:#0f172a; }
+    .thesis { font-weight:500; font-size:13px; fill:#713f12; }
+    .thesisB{ font-weight:700; font-size:13px; fill:#854d0e; }
+    .ttl    { font-weight:600; font-size:13px; fill:#0f172a; }
+    .sm     { font-weight:400; font-size:11px; fill:#475569; }
+    .lbl    { font-weight:500; font-size:10.5px; fill:#334155; }
+    .lane   { font-weight:700; font-size:12px; fill:#334155; }
+    .lanesm { font-weight:500; font-size:11px; fill:#94a3b8; }
+    .big    { font-weight:700; font-size:13px; fill:#5b21b6; }
+    .wk     { font-weight:600; font-size:11.5px; fill:#9a3412; }
+  </style>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1330" height="1030" fill="#ffffff"/>
+
+  <!-- title + thesis caption -->
+  <text class="title" x="34" y="44">typeahead.waow.tech — architecture</text>
+  <rect x="34" y="62" width="1262" height="46" rx="10" fill="#fef9c3" stroke="#eab308" stroke-width="1.4"/>
+  <text class="thesisB" x="50" y="82">The whole design in one line:</text>
+  <text class="thesis" x="218" y="82">a search <tspan font-weight="700">never scans the corpus</tspan>. It's bounded point-lookups into a precomputed snapshot plus a small live-overlay</text>
+  <text class="thesis" x="50" y="99">merge — independent of the 5.9 M-actor corpus size. Bluesky is rollback-only.</text>
+
+  <g transform="translate(0,120)">
+    <!-- flow tags -->
+    <text class="lane" x="34" y="96">① INGEST</text>
+    <text class="lanesm" x="106" y="96">keep the source of truth fresh</text>
+    <text class="lane" x="34" y="244">② BUILD</text>
+    <text class="lanesm" x="104" y="244">turn the corpus into a bounded lookup artifact (periodic, offline)</text>
+    <text class="lane" x="34" y="396">③ SERVE</text>
+    <text class="lanesm" x="104" y="396">snapshot + overlay, so requests never scan the corpus</text>
+
+    <!-- ① INGEST -->
+    <rect x="34" y="110" width="152" height="60" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+    <text class="ttl" x="110" y="135" text-anchor="middle">Jetstream</text>
+    <text class="sm"  x="110" y="153" text-anchor="middle">atproto firehose</text>
+
+    <rect x="230" y="104" width="190" height="72" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+    <text class="ttl" x="325" y="126" text-anchor="middle">Ingest service</text>
+    <text class="sm"  x="325" y="143" text-anchor="middle">typeahead-ingester · Fly · Zig</text>
+    <text class="sm"  x="325" y="160" text-anchor="middle">consume → resolve/enrich → POST</text>
+
+    <rect x="470" y="100" width="200" height="172" rx="10" fill="#fff1e6" stroke="#f6821f" stroke-width="1.5"/>
+    <text class="ttl" x="570" y="121" text-anchor="middle">Edge Worker</text>
+    <text class="sm"  x="570" y="137" text-anchor="middle">typeahead.waow.tech · Cloudflare</text>
+    <line x1="486" y1="146" x2="654" y2="146" stroke="#fcd9b6" stroke-width="1"/>
+    <text class="wk"  x="570" y="162" text-anchor="middle">WRITE · /admin/ingest</text>
+    <line x1="486" y1="174" x2="654" y2="174" stroke="#fcd9b6" stroke-width="1"/>
+    <text class="wk"  x="570" y="190" text-anchor="middle">SERVE · /search + 60s cache</text>
+    <text class="sm"  x="570" y="208" text-anchor="middle">fallback · rollback switch</text>
+    <text class="sm"  x="570" y="225" text-anchor="middle">admin · hide / show</text>
+
+    <rect x="732" y="104" width="192" height="86" rx="10" fill="#ccfbf1" stroke="#0d9488" stroke-width="1.5"/>
+    <text class="ttl" x="828" y="126" text-anchor="middle">Source DB · Turso</text>
+    <text class="sm"  x="828" y="144" text-anchor="middle">libSQL · source of truth</text>
+    <text class="sm"  x="828" y="161" text-anchor="middle">actors · mod_overrides</text>
+    <text class="sm"  x="828" y="178" text-anchor="middle">· tombstones</text>
+
+    <!-- ② BUILD -->
+    <rect x="732" y="250" width="192" height="80" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+    <text class="ttl" x="828" y="272" text-anchor="middle">Snapshot builder</text>
+    <text class="sm"  x="828" y="289" text-anchor="middle">MODE=indexer · ephemeral</text>
+    <text class="sm"  x="828" y="306" text-anchor="middle">same Zig binary · 4 CPU · ~100GB</text>
+    <text class="sm"  x="828" y="323" text-anchor="middle">export → build → upload</text>
+
+    <rect x="990" y="250" width="200" height="80" rx="10" fill="#fff1e6" stroke="#f6821f" stroke-width="1.5"/>
+    <text class="ttl" x="1090" y="272" text-anchor="middle">Cloudflare R2</text>
+    <text class="sm"  x="1090" y="290" text-anchor="middle">index snapshot</text>
+    <text class="sm"  x="1090" y="307" text-anchor="middle">builds/&lt;id&gt;/index.db</text>
+    <text class="sm"  x="1090" y="324" text-anchor="middle">+ manifest · latest.json</text>
+
+    <!-- ③ SERVE -->
+    <rect x="34" y="468" width="152" height="64" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+    <text class="ttl" x="110" y="496" text-anchor="middle">User</text>
+    <text class="sm"  x="110" y="514" text-anchor="middle">types  q=…</text>
+
+    <rect x="230" y="614" width="190" height="56" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text class="ttl" x="325" y="638" text-anchor="middle" fill="#3b82f6">Bluesky API</text>
+    <text class="sm"  x="325" y="656" text-anchor="middle">rollback only · currently OFF</text>
+
+    <rect x="458" y="378" width="732" height="322" rx="14" fill="#faf5ff" stroke="#7c3aed" stroke-width="2"/>
+    <text class="big" x="476" y="404">Search service · typeahead-search · Fly · Zig — serves /search from snapshot + overlay</text>
+
+    <rect x="478" y="426" width="208" height="122" rx="9" fill="#ffffff" stroke="#a78bfa" stroke-width="1.4"/>
+    <text class="ttl" x="582" y="448" text-anchor="middle">index snapshot · idx</text>
+    <text class="sm"  x="582" y="467" text-anchor="middle">8.66 GB · 78 M keys</text>
+    <text class="sm"  x="582" y="486" text-anchor="middle">prefix_top_base</text>
+    <text class="sm"  x="582" y="503" text-anchor="middle">(h: e: n: d: → top-N DIDs)</text>
+    <text class="sm"  x="582" y="522" text-anchor="middle">actor_compact_base</text>
+    <text class="sm"  x="582" y="539" text-anchor="middle">(packed presentation blobs)</text>
+
+    <rect x="702" y="426" width="208" height="122" rx="9" fill="#ffffff" stroke="#a78bfa" stroke-width="1.4"/>
+    <text class="ttl" x="806" y="448" text-anchor="middle">live overlay</text>
+    <text class="sm"  x="806" y="467" text-anchor="middle">actor_overlay</text>
+    <text class="sm"  x="806" y="485" text-anchor="middle">prefix_overlay</text>
+    <text class="sm"  x="806" y="507" text-anchor="middle">deletes · moderation</text>
+    <text class="sm"  x="806" y="524" text-anchor="middle">renames · new actors</text>
+    <text class="sm"  x="806" y="541" text-anchor="middle" fill="#7c3aed">authority over base</text>
+
+    <rect x="926" y="426" width="244" height="122" rx="9" fill="#ffffff" stroke="#a78bfa" stroke-width="1.4"/>
+    <text class="ttl" x="1048" y="448" text-anchor="middle">sync replica · actors</text>
+    <text class="sm"  x="1048" y="468" text-anchor="middle">kept fresh from Source DB</text>
+    <text class="sm"  x="1048" y="489" text-anchor="middle">moderation safety belt</text>
+    <text class="sm"  x="1048" y="506" text-anchor="middle">(hidden / exists check)</text>
+    <text class="sm"  x="1048" y="527" text-anchor="middle">FTS disabled</text>
+
+    <rect x="478" y="566" width="692" height="116" rx="9" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.4"/>
+    <text class="ttl" x="824" y="590" text-anchor="middle">/search — bounded, independent of corpus size</text>
+    <text class="sm"  x="824" y="612" text-anchor="middle">normalize → queryKeys (h: e: n: d:) → base ∪ overlay → exact-handle promote</text>
+    <text class="sm"  x="824" y="630" text-anchor="middle">→ merge / dedupe / score → hydrate ≤ cap (overlay wins, tombstone/hidden suppress)</text>
+    <text class="sm"  x="824" y="648" text-anchor="middle">→ moderation belt → JSON   (≈ point lookups + small merge, ~75 ms warm)</text>
+    <text class="lbl" x="824" y="670" text-anchor="middle" fill="#7c3aed">single-token: union h:/e:/n:/d:   ·   multi-token: intersect n: tokens</text>
+
+    <!-- arrows -->
+    <line x1="186" y1="140" x2="226" y2="140" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text class="lbl" x="206" y="132" text-anchor="middle">events</text>
+    <line x1="420" y1="140" x2="466" y2="150" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text class="lbl" x="444" y="129" text-anchor="middle">POST</text>
+    <line x1="670" y1="148" x2="728" y2="146" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text class="lbl" x="699" y="138" text-anchor="middle">upsert+enrich</text>
+
+    <line x1="828" y1="190" x2="828" y2="248" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text class="lbl" x="893" y="222" text-anchor="middle">export ~3.2 GB</text>
+    <line x1="924" y1="288" x2="988" y2="288" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text class="lbl" x="956" y="280" text-anchor="middle">rclone</text>
+
+    <path d="M1090,330 L1090,378" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
+    <text class="lbl" x="1104" y="348" text-anchor="start">snapshot promotion:</text>
+    <text class="lbl" x="1104" y="362" text-anchor="start">poll latest.json → download</text>
+
+    <path d="M760,190 C 688,300 688,420 720,470" fill="none" stroke="#0d9488" stroke-width="1.8" marker-end="url(#arr)"/>
+    <text class="lbl" x="648" y="356" text-anchor="middle" fill="#0d9488">sync deltas →</text>
+    <text class="lbl" x="648" y="370" text-anchor="middle" fill="#0d9488">actors + live overlay</text>
+
+    <path d="M186,492 C 330,486 372,250 466,206" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+    <text class="lbl" x="300" y="430" text-anchor="middle">GET /search</text>
+
+    <path d="M566,272 L566,378" fill="none" stroke="#334155" stroke-width="2" marker-end="url(#arr)"/>
+    <text class="lbl" x="512" y="322" text-anchor="middle">/search</text>
+    <text class="lbl" x="512" y="336" text-anchor="middle">(edge cache)</text>
+
+    <path d="M600,378 L600,272" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arrg)"/>
+    <text class="lbl" x="646" y="326" text-anchor="middle" fill="#64748b">JSON</text>
+
+    <path d="M672,168 C 700,176 706,176 730,172" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arrg)"/>
+    <text class="lbl" x="700" y="190" text-anchor="middle" fill="#64748b">fallback</text>
+
+    <path d="M500,272 C 420,420 360,540 326,612" fill="none" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#arrg)"/>
+    <text class="lbl" x="372" y="476" text-anchor="middle" fill="#64748b">rollback (OFF)</text>
+
+    <!-- legend -->
+    <g transform="translate(34,824)">
+      <rect x="0" y="0" width="16" height="12" rx="3" fill="#ede9fe" stroke="#7c3aed"/><text class="sm" x="22" y="10">Fly · Zig</text>
+      <rect x="120" y="0" width="16" height="12" rx="3" fill="#fff1e6" stroke="#f6821f"/><text class="sm" x="142" y="10">Cloudflare</text>
+      <rect x="250" y="0" width="16" height="12" rx="3" fill="#ccfbf1" stroke="#0d9488"/><text class="sm" x="272" y="10">Turso</text>
+      <rect x="350" y="0" width="16" height="12" rx="3" fill="#f1f5f9" stroke="#64748b"/><text class="sm" x="372" y="10">network / user</text>
+      <line x1="490" y1="6" x2="524" y2="6" stroke="#0d9488" stroke-width="1.8"/><text class="sm" x="530" y="10">live mutation feed</text>
+      <line x1="650" y1="6" x2="684" y2="6" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="5 4"/><text class="sm" x="690" y="10">fallback / rollback (off)</text>
+    </g>
+  </g>
+</svg>
