@@ -28,6 +28,12 @@ primary_region = 'ewr'
   ENABLE_INDEX_PROMOTE = '1'
   INDEX_BUILD_ROOT = '/data'
 
+  # The prefix-index serving path doesn't use FTS — only the snapshot + the
+  # actors table (moderation belt). Maintaining actors_fts per-row was the
+  # incremental bottleneck (orphan rows → failing delete-old → couldn't keep
+  # up). Off here; App A keeps FTS (default on).
+  ENABLE_LOCAL_FTS = '0'
+
   # Serve /search from the precomputed prefix index (canary). App B is not the
   # worker's backend yet, so this only affects direct callers until we point
   # SEARCH_BACKEND_URL here. Index-path errors fall back to the bsky backstop.
@@ -51,8 +57,10 @@ primary_region = 'ewr'
   # Same manual-restart posture as the ingester app during initial bake.
   # Revisit and flip to auto-start once the service has proven stable —
   # a search service should normally restart automatically after host failure.
-  auto_start_machines = false
-  min_machines_running = 0
+  # Live-backend posture: keep one machine running and auto-recover on host
+  # failure (Turso fallback covers any gap). Was manual-restart during the bake.
+  auto_start_machines = true
+  min_machines_running = 1
   processes = ['app']
 
 [[vm]]
@@ -61,4 +69,7 @@ primary_region = 'ewr'
   # RAM proportional to the working set; revisit at 10x corpus.)
   memory = '2048mb'
   cpu_kind = 'shared'
-  cpus = 1
+  # 4 CPUs: the 5.9M-row resync + cold prefix-index queries are CPU-bound on
+  # 1 shared CPU (resync ~3-4h, cold queries ~300-500ms). Production-grade for
+  # a live search backend.
+  cpus = 4

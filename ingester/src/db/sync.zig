@@ -54,6 +54,16 @@ fn maxLagS() i64 {
     return std.fmt.parseInt(i64, v, 10) catch 6 * 3600;
 }
 
+/// Whether to maintain the local actors_fts table. The prefix-index serving
+/// path does NOT use FTS (only the snapshot + actors for the moderation belt),
+/// so the search service sets ENABLE_LOCAL_FTS=0 — the per-row FTS delete-old
+/// was the incremental bottleneck (orphan rows → failing deletes → can't keep
+/// up). Default on so App A (which may still serve FTS) is unaffected.
+fn localFtsEnabled() bool {
+    const v = cGetenv("ENABLE_LOCAL_FTS") orelse return true;
+    return !std.mem.eql(u8, v, "0");
+}
+
 /// index of the first column appended after actor_cols (rowid or updated_at)
 const trailing_col: usize = Col.quality_score + 1;
 
@@ -286,36 +296,43 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
         };
     }
 
-    // build FTS with its final name — no rename needed
-    const fts_create_t0 = milliTimestamp();
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec(
-            \\CREATE VIRTUAL TABLE actors_fts USING fts5(
-            \\  did UNINDEXED, handle, display_name,
-            \\  tokenize='unicode61 remove_diacritics 2'
-            \\)
-        , .{}) catch |err| {
-            span.recordError(err);
-            return err;
-        };
-    }
-    const fts_create_ms = milliTimestamp() - fts_create_t0;
+    // build FTS with its final name — no rename needed. Skipped when
+    // ENABLE_LOCAL_FTS=0 (prefix-index serving doesn't use FTS).
+    var fts_create_ms: i64 = 0;
+    var fts_pop_ms: i64 = 0;
+    if (localFtsEnabled()) {
+        const fts_create_t0 = milliTimestamp();
+        {
+            local.lock();
+            defer local.unlock();
+            conn.exec(
+                \\CREATE VIRTUAL TABLE actors_fts USING fts5(
+                \\  did UNINDEXED, handle, display_name,
+                \\  tokenize='unicode61 remove_diacritics 2'
+                \\)
+            , .{}) catch |err| {
+                span.recordError(err);
+                return err;
+            };
+        }
+        fts_create_ms = milliTimestamp() - fts_create_t0;
 
-    const fts_pop_t0 = milliTimestamp();
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec(
-            \\INSERT INTO actors_fts (did, handle, display_name)
-            \\SELECT did, handle, display_name FROM actors WHERE handle != ''
-        , .{}) catch |err| {
-            span.recordError(err);
-            return err;
-        };
+        const fts_pop_t0 = milliTimestamp();
+        {
+            local.lock();
+            defer local.unlock();
+            conn.exec(
+                \\INSERT INTO actors_fts (did, handle, display_name)
+                \\SELECT did, handle, display_name FROM actors WHERE handle != ''
+            , .{}) catch |err| {
+                span.recordError(err);
+                return err;
+            };
+        }
+        fts_pop_ms = milliTimestamp() - fts_pop_t0;
+    } else {
+        log.info("bootstrap: FTS disabled (ENABLE_LOCAL_FTS=0), skipping FTS build", .{});
     }
-    const fts_pop_ms = milliTimestamp() - fts_pop_t0;
 
     // post-swap: optimize, record completion + actor count, checkpoint
     {
@@ -447,10 +464,11 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
         return;
     }
 
-    log.info("resync: download complete ({d} actors), rebuilding FTS", .{actor_count});
-
-    // rebuild FTS from scratch
-    {
+    // rebuild FTS from scratch (skipped when ENABLE_LOCAL_FTS=0 — the prefix
+    // index path doesn't use FTS, and per-row FTS maintenance was the sync
+    // bottleneck on the search service).
+    if (localFtsEnabled()) {
+        log.info("resync: download complete ({d} actors), rebuilding FTS", .{actor_count});
         const fts_span = logfire.span("sync.fts_rebuild", .{});
         defer fts_span.end();
 
@@ -472,9 +490,10 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
             fts_span.recordError(err);
         };
         fts_span.setAttribute("actors", @as(i64, @intCast(actor_count)));
+        log.info("resync: FTS rebuild complete", .{});
+    } else {
+        log.info("resync: download complete ({d} actors), FTS disabled (skipped)", .{actor_count});
     }
-
-    log.info("resync: FTS rebuild complete", .{});
 
     // record sync time + mark complete + actor count
     {
@@ -874,6 +893,27 @@ const OldFtsRow = struct {
 /// row but FTS rebuild failed silently), so the delete-old never matches
 /// and the FTS table accumulates orphan rows — causing the hundreds-per-
 /// cycle "FTS delete-old failed" warnings we saw on App B.
+/// Old handle/display from the `actors` row being replaced — the correct
+/// source for overlay old-prefix derivation, and FTS-independent (works when
+/// ENABLE_LOCAL_FTS=0). Shares OldFtsRow's buffers.
+fn snapshotOldActorRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
+    if (conn.row("SELECT handle, display_name FROM actors WHERE did = ?", .{did})) |maybe| {
+        if (maybe) |r| {
+            defer r.deinit();
+            const h = r.text(0);
+            const n = r.text(1);
+            if (h.len > 0 and h.len <= out.handle_buf.len) {
+                @memcpy(out.handle_buf[0..h.len], h);
+                out.handle = out.handle_buf[0..h.len];
+            }
+            if (n.len > 0 and n.len <= out.name_buf.len) {
+                @memcpy(out.name_buf[0..n.len], n);
+                out.name = out.name_buf[0..n.len];
+            }
+        }
+    } else |_| {}
+}
+
 fn snapshotOldFtsRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
     if (conn.row("SELECT handle, display_name FROM actors_fts WHERE did = ?", .{did})) |maybe| {
         if (maybe) |r| {
@@ -901,27 +941,36 @@ fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8, octx: ?
     const did = row.text(Col.did);
     const new_handle = row.text(Col.handle);
     const new_name = row.text(Col.display_name);
+    const fts = localFtsEnabled();
 
+    // Old handle/display: from actors_fts when maintaining FTS (its tuple is
+    // needed for the special-delete), else from `actors` for the overlay diff.
     var old: OldFtsRow = .{};
-    snapshotOldFtsRow(conn, did, &old);
+    if (fts) {
+        snapshotOldFtsRow(conn, did, &old);
+    } else if (octx != null) {
+        snapshotOldActorRow(conn, did, &old);
+    }
 
     try insertActorRow(conn, "INSERT OR REPLACE INTO actors", row);
 
-    if (old.handle) |oh| {
-        conn.exec(
-            \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
-            \\VALUES('delete', ?, ?, ?)
-        , .{ did, oh, old.name orelse "" }) catch |err| {
-            log.warn("{s}: FTS delete-old failed for {s}: {}", .{ caller, did, err });
-        };
-    }
-    if (new_handle.len > 0) {
-        conn.exec(
-            \\INSERT INTO actors_fts (did, handle, display_name)
-            \\VALUES (?, ?, ?)
-        , .{ did, new_handle, new_name }) catch |err| {
-            log.warn("{s}: FTS insert-new failed for {s}: {}", .{ caller, did, err });
-        };
+    if (fts) {
+        if (old.handle) |oh| {
+            conn.exec(
+                \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
+                \\VALUES('delete', ?, ?, ?)
+            , .{ did, oh, old.name orelse "" }) catch |err| {
+                log.warn("{s}: FTS delete-old failed for {s}: {}", .{ caller, did, err });
+            };
+        }
+        if (new_handle.len > 0) {
+            conn.exec(
+                \\INSERT INTO actors_fts (did, handle, display_name)
+                \\VALUES (?, ?, ?)
+            , .{ did, new_handle, new_name }) catch |err| {
+                log.warn("{s}: FTS insert-new failed for {s}: {}", .{ caller, did, err });
+            };
+        }
     }
 
     // Overlay projection (same transaction as the actor write). Best-effort:
@@ -949,18 +998,25 @@ fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8, octx: ?
 /// row, then FTS5 special-delete the old entry. Used for both the "became
 /// unsearchable" and "tombstoned" paths.
 fn applyActorDelete(conn: zqlite.Conn, did: []const u8, caller: []const u8, octx: ?OverlayCtx) !void {
+    const fts = localFtsEnabled();
     var old: OldFtsRow = .{};
-    snapshotOldFtsRow(conn, did, &old);
+    if (fts) {
+        snapshotOldFtsRow(conn, did, &old);
+    } else if (octx != null) {
+        snapshotOldActorRow(conn, did, &old);
+    }
 
     try conn.exec("DELETE FROM actors WHERE did = ?", .{did});
 
-    if (old.handle) |oh| {
-        conn.exec(
-            \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
-            \\VALUES('delete', ?, ?, ?)
-        , .{ did, oh, old.name orelse "" }) catch |err| {
-            log.warn("{s}: FTS delete failed for {s}: {}", .{ caller, did, err });
-        };
+    if (fts) {
+        if (old.handle) |oh| {
+            conn.exec(
+                \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
+                \\VALUES('delete', ?, ?, ?)
+            , .{ did, oh, old.name orelse "" }) catch |err| {
+                log.warn("{s}: FTS delete failed for {s}: {}", .{ caller, did, err });
+            };
+        }
     }
 
     // Global tombstone in the overlay so index serving suppresses the actor
