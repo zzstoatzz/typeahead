@@ -10,7 +10,7 @@ curl "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=na
 
 ## stack
 
-![typeahead architecture](docs/architecture-diagram.svg)
+![typeahead architecture](docs/architecture-diagram.png)
 
 - **edge worker**: [Cloudflare Worker](https://workers.cloudflare.com) in `src/`.
   It owns the public XRPC-compatible endpoint, 60s edge cache, admin ingest
