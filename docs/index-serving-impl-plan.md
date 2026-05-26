@@ -4,16 +4,16 @@ Milestones **B + C combined** (per the chosen approach: pure-index serving with
 overlay semantics built in, not bolted on). Target bar for today: **canary** —
 worker serves `/search` from our index with `EMERGENCY_PROXY_BSKY` still wired
 as fallback. Backstop *removal* is later (needs benchmark). `USE_PREFIX_INDEX=0`
-in prod until validated on App B directly.
+in prod until validated on search service directly.
 
 Status: `merge.zig` is built + tested (81/81). Everything below is **proposed,
 not yet written** — reviewing before I build it.
 
 ## What's already true
 
-- App B has the full snapshot ATTACHed as `idx` (5.9M actors, 77.7M keys).
+- search service has the full snapshot ATTACHed as `idx` (5.9M actors, 77.7M keys).
 - `/search` is unchanged (FTS path), structurally isolated from `idx.*`.
-- Overlay tables exist on App B's `local.db`: `actor_overlay(did, blob, hidden,
+- Overlay tables exist on search service's `local.db`: `actor_overlay(did, blob, hidden,
   updated_at)`, `prefix_overlay(key, did, score, op, updated_at)`.
 - `prefixes.queryKeys` / `deriveAllUnique` give the shared key contract.
 - `merge.combine(keysets, mode, cap)` folds base+overlay per-key sets into a
@@ -101,7 +101,7 @@ wrong if the actor changed again. **Proposal:** on `swapSnapshot`, delete
 are still newer than the watermark survive — so we **cannot resurrect a
 suppressed actor**. Prune-by-watermark vs clear-all — preference?
 
-## Part 3 — concurrency (three actors on App B)
+## Part 3 — concurrency (three actors on search service)
 
 1. **sync loop** → writes `local.db` (actors, FTS, + overlay) via the WAL writer.
 2. **serving** → reads `idx.*` + overlay via the read pool (WAL readers).
@@ -128,9 +128,9 @@ lookup we're already positioned for), or trust the overlay fully? Costs one more
    in-memory snapshot+overlay.
 3. overlay updater in `sync.zig` (watermark-gated) + compaction in
    `swapSnapshot`. Tests for the diff/tombstone/rename cases.
-4. Deploy App B; `USE_PREFIX_INDEX=1` on App B only; bench/poke `/search`
+4. Deploy search service; `USE_PREFIX_INDEX=1` on search service only; bench/poke `/search`
    (direct) vs FTS vs bsky for quality + latency.
-5. Point worker `SEARCH_BACKEND_URL` → App B with backstop still wired (canary).
+5. Point worker `SEARCH_BACKEND_URL` → search service with backstop still wired (canary).
 
 ## 10x note
 
@@ -161,7 +161,7 @@ prefix top-N). Not in scope today; just not precluding it.
 **Two hard requirements:**
 - **Single transaction:** the actor-table write and its overlay write happen in
   the *same* local transaction — no "actor updated, overlay failed" split-brain.
-- **Canary order:** do not point the worker at App B until direct App B tests
+- **Canary order:** do not point the worker at search service until direct search service tests
   pass with `USE_PREFIX_INDEX=1`. Backstop stays on regardless.
 
 Schema add: `source INTEGER NOT NULL DEFAULT 0` (0=sync, 1=operator) on both

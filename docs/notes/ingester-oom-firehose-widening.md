@@ -12,12 +12,12 @@ who posts, likes, or follows.
 commit: `5822553` on main
 
 files changed:
-- `ingester/src/main.zig` — added collections, added in-memory dedup set
+- `services/src/main.zig` — added collections, added in-memory dedup set
 - `src/index.ts` — bumped `resolveHandles` from 1000→5000/hr with concurrency
 
 ## what nate is seeing
 
-on the fly.io dashboard (`fly.io/apps/typeahead-ingester/monitoring`),
+on the fly.io dashboard (`fly.io/apps/typeahead-services/monitoring`),
 the firecracker memory usage shows a **sawtooth pattern** — memory climbs
 steadily until it hits the 256MB VM limit, the process OOMs and restarts,
 then climbs again. this may be happening every few hours.
@@ -70,10 +70,10 @@ fly machine status 78465ddb202278 --app typeahead-ingester --display-config
 fly status --app typeahead-ingester
 
 # rebuild ingester locally
-cd ingester && zig build
+cd services && zig build
 
 # deploy ingester
-cd ingester && fly deploy
+cd services && fly deploy
 
 # deploy worker
 npx wrangler deploy

@@ -1,4 +1,4 @@
-//! App B's snapshot consumer — the live side of the promote pipeline.
+//! Search service snapshot consumer — the live side of the promote pipeline.
 //!
 //! Polls R2 `latest.json` (a copy of the active build's manifest). When it
 //! points at a build we don't already have attached, it downloads the

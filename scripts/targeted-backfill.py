@@ -11,7 +11,7 @@ follows_count, posts_count, quality_score).
 
 two modes:
   default        — walks atprotocol.dev/atmosphereconf.org graph
-  --benchmark    — seeds DIDs from both bsky-top-10 AND App B-top-25 for the
+  --benchmark    — seeds DIDs from both bsky-top-10 AND search service-top-25 for the
                    canonical ranking corpus so `just bench-ranking` has signal
                    for both sides of every comparison
 
@@ -185,11 +185,11 @@ APPB_DEFAULT = "https://typeahead-search.fly.dev"
 
 def collect_benchmark_dids(appb_url=APPB_DEFAULT):
     """For each canonical query, union DIDs from BOTH sides of the ranking
-    competition: bsky's top results AND App B's current top results.
+    competition: bsky's top results AND search service's current top results.
 
-    Enriching only bsky-top biases the benchmark — App B's competing candidates
+    Enriching only bsky-top biases the benchmark — search service's competing candidates
     (handle-prefix / FTS matches) stay at 0 followers, so they lose lexical-tier
-    ties they shouldn't be winning in the first place. Pulling App B's top too
+    ties they shouldn't be winning in the first place. Pulling search service's top too
     means every candidate that influences the ranking has real signal.
     """
     dids = set()
@@ -209,7 +209,7 @@ def collect_benchmark_dids(appb_url=APPB_DEFAULT):
         except Exception as e:
             print(f"  q={q!r:14s}: bsky error {e}", file=sys.stderr)
 
-        # App B side — pulls 25 so we cover both prefix and FTS tier candidates
+        # search service side — pulls 25 so we cover both prefix and FTS tier candidates
         try:
             url = f"{appb_url}/search?q={urllib.parse.quote(q)}&limit=25"
             req = urllib.request.Request(url, headers={"User-Agent": "typeahead-bench-prep/1.0"})

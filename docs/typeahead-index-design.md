@@ -135,7 +135,7 @@ credential to manage.
 
 ## data model
 
-served from App B's local sqlite, three logical layers:
+served from search service's local sqlite, three logical layers:
 
 ```sql
 -- BASE SNAPSHOT (immutable per build, atomic swap on rebuild)
@@ -219,7 +219,7 @@ OUTPUTS:
   /data/index/manifest.json          (rewritten atomically at end)
 ```
 
-algorithm (as implemented in `ingester/src/index/builder.zig`):
+algorithm (as implemented in `services/src/index/builder.zig`):
 
 ```
 1. begin: build_id = "b<unix_s>-<hex4>"; mkdir <build_root>/build-<id>/
@@ -254,7 +254,7 @@ algorithm (as implemented in `ingester/src/index/builder.zig`):
 ```
 
 steps 1–9 are implemented and validated. manifest write + atomic promotion
-+ App B fetch/swap are the NEXT piece (see `## manifest contract` /
++ search service fetch/swap are the NEXT piece (see `## manifest contract` /
 `## promotion gate` below) and are intentionally NOT wired yet — the first
 Fly run is measurement-only (prove the builder produces a correct full-scale
 artifact within RAM/disk budget), no promotion, no serving change, backstop
@@ -348,16 +348,16 @@ Three fixes got us here, each found by a full-scale run:
    trade since staging is deleted.
 
 Cadence target: **every 6-12 hours** — a ~26 min offline build fits easily.
-The 8.58 GB artifact is the App B download/volume-sizing input.
+The 8.58 GB artifact is the search service download/volume-sizing input.
 
 ### volume sizing per machine
 
-Earlier "10 GB volume is fine" was wrong. App B and the indexer each
+Earlier "10 GB volume is fine" was wrong. search service and the indexer each
 need to hold MULTIPLE snapshot copies plus runtime DB state during
 promotion. Required minimums:
 
 ```
-App B (typeahead-search.app machines):
+search service (typeahead-search.app machines):
   active snapshot:         ~7 GB
   incoming .part download: ~7 GB  (transient, during promotion)
   local.db (actors+overlay): ~4 GB  (currently 3.7 GB, grows slowly)
@@ -430,7 +430,7 @@ note applies equally here — disk pressure is silent and catastrophic.
 
 ## the overlay updater
 
-lives inside App B's existing sync loop (`ingester/src/db/sync.zig`).
+lives inside search service's existing sync loop (`services/src/db/sync.zig`).
 runs on every actor row applied locally. shared code with builder via
 the prefixes.zig module.
 
@@ -658,7 +658,7 @@ Required fields, written atomically by the indexer (`.tmp` then rename):
 | `builder_version` | git sha of the indexer binary that produced this build |
 
 Indexer writes manifest.json LAST in the build sequence, after the .db
-file is fully fsync'd and checksummed. App B reads it via HTTP, parses
+file is fully fsync'd and checksummed. search service reads it via HTTP, parses
 all fields, applies the promotion gate (next section), and only then
 fetches the .db.
 
@@ -709,7 +709,7 @@ swap the active ATTACH. Each step is a gate.
 ```
 
 Rollback is just rewriting manifest.json to point `active_build` at
-`previous_build` on the indexer side; App B picks it up on its next
+`previous_build` on the indexer side; search service picks it up on its next
 manifest poll and runs the same gate sequence against the rollback
 target. Versions in index_meta MUST match too (the rollback target
 has its own normalize_version that the current binary either still
@@ -727,19 +727,19 @@ Critical invariants:
 ## migration
 
 1. land builder binary + indexer mode behind a build flag. new tables
-   are local-only to App B and the indexer machine — created
+   are local-only to search service and the indexer machine — created
    idempotently by a Zig `index/schema.zig` module on first open. NOT
    a Zug migration (Zug is for Turso shared schema; these tables don't
-   exist in Turso). App B's existing FTS path untouched.
+   exist in Turso). search service's existing FTS path untouched.
 2. run indexer once manually. validate sizes, query a few prefixes from
    the resulting snapshot via sqlite3 directly.
-3. wire overlay updater into App B's sync loop behind env flag
+3. wire overlay updater into search service's sync loop behind env flag
    `INDEX_OVERLAY=1`. defaults OFF.
-4. add `USE_PREFIX_INDEX=1` env flag to App B's search handler. when set,
+4. add `USE_PREFIX_INDEX=1` env flag to search service's search handler. when set,
    route to new path. defaults OFF.
-5. turn `INDEX_OVERLAY=1` on in App B. let it run for an hour. confirm
+5. turn `INDEX_OVERLAY=1` on in search service. let it run for an hour. confirm
    overlay row counts stay bounded.
-6. smoke test via Option A (direct App B URL, public unaffected).
+6. smoke test via Option A (direct search service URL, public unaffected).
 7. flip `USE_PREFIX_INDEX=1` in production with backstop still on. one
    week bake.
 8. drop `EMERGENCY_PROXY_BSKY`. baked.
@@ -848,7 +848,7 @@ cadence: every 6-24h. matches bsky's published 24h cadence.
 
 ```
 pagerank job writes actors.quality_score in turso
-→ App B's sync replicates actors row updates
+→ search service's sync replicates actors row updates
 → overlay updater detects score_changed prefixes → writes prefix_overlay
   with op=1 and the new score
 → next indexer rebuild (4-6h later) folds the new scores into prefix_top_base
@@ -960,7 +960,7 @@ architecture without crawling source.
 # shared modules (used by both tracks)
 
 ```
-ingester/src/index/normalize.zig
+services/src/index/normalize.zig
   pub fn query(arena, raw) []const u8           // for search input
   pub fn handle(arena, raw) []const u8          // for actor handles
   pub fn display(arena, raw) []const u8         // for display names
@@ -973,16 +973,16 @@ ingester/src/index/normalize.zig
   --   token split: whitespace + ascii punct except dots in handles
   --   normalize_version constant: bump when behavior changes
 
-ingester/src/index/prefixes.zig
+services/src/index/prefixes.zig
   pub fn derive(arena, actor) []PrefixKey
   pub const PREFIX_MAX_LEN: usize = 16
 
-ingester/src/index/scoring.zig
+services/src/index/scoring.zig
   pub fn score_of(actor) f32
   -- v1: returns actor.quality_score directly
   -- v2 (later): may incorporate recency, mod signals, etc.
 
-ingester/src/index/pack.zig
+services/src/index/pack.zig
   pub fn pack_actor(arena, actor) []u8       // for actor_compact blob
   pub fn unpack_actor(blob) Actor
   pub fn pack_did_list(arena, entries) []u8  // for prefix_top blob

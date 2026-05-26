@@ -58,7 +58,7 @@ fn maxLagS() i64 {
 /// path does NOT use FTS (only the snapshot + actors for the moderation belt),
 /// so the search service sets ENABLE_LOCAL_FTS=0 — the per-row FTS delete-old
 /// was the incremental bottleneck (orphan rows → failing deletes → can't keep
-/// up). Default on so App A (which may still serve FTS) is unaffected.
+/// up). Default on so non-search roles keep the old local FTS tables if needed.
 fn localFtsEnabled() bool {
     const v = cGetenv("ENABLE_LOCAL_FTS") orelse return true;
     return !std.mem.eql(u8, v, "0");
@@ -892,7 +892,7 @@ const OldFtsRow = struct {
 /// `actors` can produce a stale snapshot (prior sync already updated the
 /// row but FTS rebuild failed silently), so the delete-old never matches
 /// and the FTS table accumulates orphan rows — causing the hundreds-per-
-/// cycle "FTS delete-old failed" warnings we saw on App B.
+/// cycle "FTS delete-old failed" warnings we saw on the search service.
 /// Old handle/display from the `actors` row being replaced — the correct
 /// source for overlay old-prefix derivation, and FTS-independent (works when
 /// ENABLE_LOCAL_FTS=0). Shares OldFtsRow's buffers.

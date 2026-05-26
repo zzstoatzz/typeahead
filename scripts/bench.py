@@ -19,7 +19,7 @@ two modes:
 
 usage:
     just bench                                       # perf mode against prod worker
-    just bench-ranking                               # ranking mode against App B direct
+    just bench-ranking                               # ranking mode against search service direct
     ./scripts/bench.py --quick                       # 10 queries, 1 run
     ./scripts/bench.py --no-stress                   # skip stress test
     ./scripts/bench.py --queries nate boorkie        # specific queries only
@@ -225,14 +225,14 @@ def search_url(base: str, q: str, limit: int = 10) -> str:
 
 
 def ours_search_url(base: str, q: str, limit: int, appb_direct: bool) -> str:
-    """Build the search URL for "ours" — XRPC path via worker, /search via App B."""
+    """Build the search URL for "ours" — XRPC path via worker, /search via search service."""
     if appb_direct:
         return f"{base}/search?q={quote(q)}&limit={limit}"
     return search_url(base, q, limit)
 
 
 def debug_search_url(base: str, q: str, limit: int = 25) -> str:
-    """Debug endpoint is App B-only; not exposed through the worker."""
+    """Debug endpoint is search service-only; not exposed through the worker."""
     return f"{base}/debug/search?q={quote(q)}&limit={limit}"
 
 
@@ -775,7 +775,7 @@ async def run_ranking_mode(args: argparse.Namespace) -> int:
     corpus = args.queries or RANKING_CORPUS
 
     print(f"\n{BOLD}=== ranking quality ==={RESET}")
-    print(f"  target:   {args.url}{'  (direct App B)' if args.appb_direct else '  (via worker)'}")
+    print(f"  target:   {args.url}{'  (direct search service)' if args.appb_direct else '  (via worker)'}")
     print(f"  oracle:   {BSKY}")
     print(f"  corpus:   {len(corpus)} queries")
     print(f"  debug:    {'yes (/debug/search)' if args.appb_direct else 'no (worker mode)'}")
@@ -814,7 +814,7 @@ async def main():
                         help="run ranking-quality check (canonical corpus + acceptance criteria) "
                              "instead of perf phases")
     parser.add_argument("--appb-direct", action="store_true",
-                        help="treat --url as App B (uses /search instead of /xrpc/..., enables "
+                        help="treat --url as search service (uses /search instead of /xrpc/..., enables "
                              "/debug/search fetching for ranking mode)")
     args = parser.parse_args()
 

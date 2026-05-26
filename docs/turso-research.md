@@ -18,7 +18,7 @@ just learned exist. Decisions live in `docs/typeahead-index-design.md`.
   - 30-day point-in-time recovery
   - 25ms commit latency budget
 - We TALK to Turso from Zig via hrana **v2** pipeline (HTTP, JSON-encoded
-  request bodies, manually serialized in `ingester/src/db/TursoClient.zig`).
+  request bodies, manually serialized in `services/src/db/TursoClient.zig`).
 - We bind args as `text` or `integer` only (see `RuntimeValue` tagged union).
   Missing: `blob`, `float`, `null` is supported.
 - The worker (Cloudflare) talks to Turso via the libsql JS client.
@@ -71,7 +71,7 @@ What it would change:
   for reads. The sync subsystem handles deltas in the background.
 - The current `sync.zig` pipeline (Turso fetch → batch insert into
   local sqlite) becomes redundant — libsql does it natively.
-- `App B serving` already reads from `LocalDb` (zqlite over stock
+- `search service serving` already reads from `LocalDb` (zqlite over stock
   libsqlite3); switching the underlying storage to a libsql embedded
   replica means changing the SQLite driver in the ingester.
 
@@ -210,7 +210,7 @@ swap. Branching would be a different paradigm, not an additive feature.
 ([cloud/limitations](https://docs.turso.tech/cloud/limitations)).
 
 We set these in `TursoClient`-using code paths sometimes. They only
-matter for the LOCAL SQLite (snapshot DB, App B's `local.db`, the
+matter for the LOCAL SQLite (snapshot DB, search service's `local.db`, the
 indexer's emissions staging) — never for the actual Turso connection.
 This is mostly a comment correction; we aren't setting them where it
 matters, but it's worth noting so future code doesn't mistakenly try.

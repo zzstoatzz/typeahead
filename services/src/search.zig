@@ -184,7 +184,7 @@ const GatherPhases = struct {
 };
 
 /// Debug entry. Returns `{"q":..., "candidates":[{..., score, breakdown, source}]}`
-/// for inspecting why ranking turned out the way it did. App B-only — not
+/// for inspecting why ranking turned out the way it did. Search-service only — not
 /// proxied through the worker.
 pub fn debugSearch(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, writer: anytype) !void {
     const term = sanitize(raw_query);

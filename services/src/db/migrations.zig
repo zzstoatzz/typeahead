@@ -151,7 +151,7 @@ pub const migrations = [_]zug.Migration{
             ,
         },
     },
-    // Ranking signals. Populated by worker enrichment (counts) and by App A's
+    // Ranking signals. Populated by worker enrichment (counts) and by the ingest service's
     // /admin/ingest path bumping last_activity_at when a known DID's jetstream
     // event arrives. quality_score is computed offline (future), so it ships
     // as 0 today. Search.zig consumes all of these at scoring time.

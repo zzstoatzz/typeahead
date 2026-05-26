@@ -90,7 +90,7 @@ shapes but does not explain the original bug.
 - `fly secrets unset LOGFIRE_WRITE_TOKEN` — bypasses OTEL crash; sync
   now exits early with `error.IoErr` instead of crash-looping.
 - Defensive `extractInt` + one-shot diagnostic log in
-  `ingester/src/db/TursoClient.zig` (commit `983b801`).
+  `services/src/db/TursoClient.zig` (commit `983b801`).
 
 **Not yet fixed:** root cause of the parse bug. The diagnostic log
 will tell us next time it happens.

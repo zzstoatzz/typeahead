@@ -1,6 +1,6 @@
 //! Build manifest. Written last in a build, after index.db is final and
 //! checksummed. This is the one durable artifact whose shape is part of the
-//! indexer↔serving contract — App B reads it (from R2 via `latest.json`),
+//! indexer↔serving contract — the search service reads it (from R2 via `latest.json`),
 //! applies the promotion gate, and only then downloads/promotes the .db.
 //! `manifest_version` guards breaking changes.
 //!
@@ -8,7 +8,7 @@
 //! prefix in keys):
 //!   builds/<build_id>/index.db
 //!   builds/<build_id>/manifest.json
-//!   latest.json            (stable pointer App B polls; written last)
+//!   latest.json            (stable pointer the search service polls; written last)
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
@@ -68,7 +68,7 @@ pub fn sha256File(path: []const u8, out_hex: *[64]u8) !u64 {
 
 /// Write `<build_dir>/manifest.json` atomically (.tmp → rename). Streams the
 /// sha256 of index.db as part of the write. normalize/scoring versions are
-/// stamped from the binary's own constants so App B can reject a snapshot
+/// stamped from the binary's own constants so the search service can reject a snapshot
 /// built with incompatible normalization. previous_build is null here; the
 /// active/previous pointer pair lives in R2 `latest.json` (set at upload).
 pub fn write(gpa: Allocator, in: Inputs) !Result {

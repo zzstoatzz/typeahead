@@ -347,7 +347,7 @@ pub fn run(allocator: Allocator) !void {
     // Build-time pragmas. journal_mode=DELETE matters: the snapshot
     // artifact transport ships ONLY index.db (no .db-wal sidecar). WAL
     // mode would leave committed pages in index.db-wal until a checkpoint,
-    // so App B fetching just index.db would silently get an incomplete
+    // so the search service fetching just index.db would silently get an incomplete
     // snapshot. With DELETE, every COMMIT flushes through to the main
     // file and the rollback journal is removed at COMMIT end.
     // synchronous=OFF skips fsync — a half-built snapshot is discarded
@@ -473,7 +473,7 @@ pub fn run(allocator: Allocator) !void {
     // freed pages to reclaim — index.db is already real-artifact size.
 
     // Manifest LAST: index.db is final + ANALYZE'd. Streams its sha256 (the
-    // ~30-60s pass over the artifact is counted in elapsed). App B reads this
+    // ~30-60s pass over the artifact is counted in elapsed). The search service reads this
     // to gate promotion before downloading. R2 upload (Phase 2) consumes it.
     {
         const t = nowMs();
@@ -522,7 +522,7 @@ pub fn run(allocator: Allocator) !void {
 }
 
 /// Upload index.db + manifest.json to builds/<id>/, then copy the manifest to
-/// latest.json LAST — so App B never sees a latest.json pointing at an
+/// latest.json LAST — so the search service never sees a latest.json pointing at an
 /// index.db that isn't fully present.
 fn uploadArtifacts(gpa: Allocator, build_id: []const u8, db_path: []const u8, build_dir: []const u8) !void {
     const cfg = try r2.configure(gpa);

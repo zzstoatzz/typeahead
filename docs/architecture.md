@@ -1,245 +1,140 @@
 # architecture
 
-community actor search for atproto. indexes the network via jetstream
-and serves FTS5 prefix search from cloudflare's edge.
+`typeahead.waow.tech` is an independent atproto actor typeahead service. It
+serves the Bluesky-compatible
+`app.bsky.actor.searchActorsTypeahead` route from our own index; Bluesky is a
+rollback-only kill switch.
 
-## data flow
+The current design has three flows:
 
-```
-  jetstream (JSON over WebSocket)
-       |
-       v
-  ingester (zig, fly.io)
-       |  bloom filter dedup (~1.2MB fixed)
-       |  two-tier writes:
-       |    - bare DID: INSERT OR IGNORE (0 Turso writes for known actors)
-       |    - profile/identity event: full UPSERT with COALESCE
-       |  dual-write to local SQLite (profile/identity events)
-       |
-       +---> worker (cloudflare) ---> Turso (source of truth)
-       |                         ---> KV (cursor, mod_cursor, enrich_lock)
-       |
-       +---> local SQLite replica (/data/local.db on fly volume)
-                synced from Turso on startup + every 5 min
-                serves search queries directly (FTS5)
-```
+1. **Continuous ingest** keeps Turso up to date from Jetstream.
+2. **Periodic offline builds** turn Turso into a precomputed SQLite prefix-index
+   snapshot and publish it to R2.
+3. **Bounded serving** answers requests from an attached snapshot plus a live
+   overlay. No request scans the actor corpus.
 
-### search read path
+See also:
 
-```
-  search request
-       |
-       v
-  CF worker ---> cache API (60s edge cache, hit?)
-       |                         |
-       | miss                    | hit → return cached
-       v
-  fly ingester /search (local SQLite, 50-150ms cold)
-       |
-       | timeout/error (3s)
-       v
-  Turso fallback (CF worker queries Turso directly)
-```
+- `docs/architecture-diagram.html` / `docs/architecture-diagram.svg`
+- `docs/typeahead-index-design.md` for the longer design history
+- `docs/index-serving-impl-plan.md` for the serving-path implementation plan
 
-the ingester's `/search` uses a 3-tier ranking strategy (matching the
-worker's Turso fallback):
+## components
 
-1. **exact handle** — `WHERE handle = ? COLLATE NOCASE`, instant via index
-2. **handle prefix** (two-phase) — phase 1: `WHERE handle LIKE ? LIMIT N`
-   with no `ORDER BY` (index-friendly, early termination), overfetch 5x
-   into a stack buffer. phase 2: insertion-sort candidates by handle length
-   in zig, then point-lookup by DID for full rows. restores the worker's
-   shortest-handle-first ranking without the pathological full-scan sort
-   that `ORDER BY length(handle)` causes on broad prefixes.
-3. **FTS5 prefix** (two-phase, skipped if tiers 1+2 fill the limit or
-   `term.len < 2`) — phase 1: `SELECT did FROM actors_fts WHERE MATCH ?
-   ORDER BY rank LIMIT N` (pure FTS5, no JOIN — enables rank optimization
-   with priority queue + early termination). phase 2: point-lookup each
-   candidate DID on the actors table, filter `hidden = 0` and
-   `handle != ''`.
+### Edge worker
 
-the two-phase approach avoids two pathological query shapes:
-- tier 2: `ORDER BY length(handle)` forces SQLite to scan all LIKE matches
-  before sorting — catastrophic for short prefixes like `a%` (100k+ rows)
-- tier 3: `JOIN actors ON actors.did = actors_fts.did` prevents FTS5's
-  native rank optimization — SQLite must scan all FTS matches, JOIN each,
-  filter, sort, then take top N
+The Cloudflare Worker in `src/` is the public edge:
 
-**caveat**: the ingester has a single `read_conn` shared across the HTTP
-thread pool. one slow query blocks all concurrent reads. the two-phase
-strategy bounds individual query time, but read concurrency isolation
-(connection pool or per-request connections) is a longer-term fix.
+- exposes the XRPC-compatible typeahead endpoint
+- caches search responses at the edge for 60 seconds
+- accepts ingest batches on the admin path
+- owns the Turso fallback path
+- keeps the Bluesky emergency rollback switch available
 
-### write paths
+Normal production traffic now flows through the search service, not Bluesky.
 
-1. **ingester**: streams jetstream (profiles, posts, likes, follows), buffers
-   actor events, POSTs batches to `/admin/ingest`. sends avatar CIDs (not full
-   URLs — the CDN URL is deterministic from DID + CID). bloom filter dedup
-   prevents re-sending already-known bare DIDs.
+### Ingest service
 
-2. **enrichment pipeline** (dispatched from ingest hot path via `waitUntil`):
-   - **phase 1 — identity**: slingshot resolves DID → handle + PDS endpoint.
-     100 DIDs/run, 20 concurrent. attempt tracking (`identity_checked_at`)
-     backs off failures for 1 hour.
-   - **phase 2 — profile + labels + metadata**: `getProfiles` batch call
-     (25 DIDs/call, 75/run) fetches avatar, display_name, labels, createdAt,
-     and associated in one shot. also recomputes `hidden` from full label
-     data. attempt tracking (`profile_checked_at`) backs off failures for
-     1 hour. actors not returned by getProfiles are marked to avoid retrying.
-   - lease-coordinated via KV (`enrich_lock`, 30s TTL) — no stampede from
-     overlapping ingest batches.
-   - converges to zero work as gaps fill (gap-driven queries return fewer
-     results over time).
+`typeahead-ingester` runs the Zig service binary from `services/` in its
+continuous ingest role. It reads Jetstream, resolves identities, batches actor
+updates, and POSTs them to the worker's admin ingest endpoint. The worker writes
+the canonical rows to Turso.
 
-3. **backfill**: when a search has gaps (missing avatars, few results), the
-   worker calls bluesky's `searchActorsTypeahead` API and upserts results.
-   extracts CIDs from the full avatar URLs returned by the API.
+The `services/` directory contains the shared Zig codebase for all Fly-side
+roles: continuous ingest, search serving, and offline snapshot building.
 
-4. **request-indexing**: POST `/request-indexing?handle=...` resolves via
-   slingshot, fetches profile from bluesky public API, extracts avatar CID,
-   checks moderation labels, upserts.
+### Source DB
 
-5. **hourly cron**:
-   - records actor count snapshot (total, with handles, with avatars) —
-     serves as reconciliation anchor for delta-based tracking
-   - refreshes moderation labels (walks 1000 actors/run via `mod_cursor`);
-     piggybacks enrichment — saves handle, display_name, avatar from the
-     getProfiles response at zero additional API cost
-   - runs `enrichActors` as a catch-up for idle periods (same function,
-     same lease — no overlap risk)
+Turso/libSQL is the durable source of truth:
 
-### metrics
+- actors
+- moderation overrides
+- tombstones
+- enrichment state
 
-- **search metrics**: 5-min buckets in `metrics` table (searches + total_ms)
-- **actor deltas**: 5-min buckets in `actor_deltas` table tracking incremental
-  changes to actors, handles, and avatars counts. recorded at write time
-  (ingest, delete, enrichment) via fire-and-forget `waitUntil`.
-- **hourly snapshots**: absolute counts from `COUNT(*)` queries, used as
-  reconciliation anchors. the trend chart stitches snapshots + deltas for
-  sub-hourly resolution between anchor points.
-- **traffic sources**: cumulative hit counters per client identity (X-Client >
-  Origin > Referer). loopback/localhost normalized to "unknown". internal
-  traffic (bench script) identified via `X-Client: bench` and excluded from
-  the stats page pie chart.
+The search service treats Turso as the replication source for its local actor
+table and live overlay. The snapshot builder treats Turso as the source for
+offline index builds.
 
-### enrichment convergence
+### Snapshot builder
 
-the enrichment pipeline is gap-driven:
+The snapshot builder is the same Zig binary with `MODE=indexer`, launched as an
+ephemeral Fly job from `services/fly.indexer.toml`.
 
-- identity phase queries actors with `handle = ''` and
-  `identity_checked_at < now - 1hr`
-- profile phase queries actors with `handle != ''` and
-  (`avatar_url = ''` OR `labels = '[]'` OR `created_at = ''`),
-  `profile_checked_at < now - 1hr`
-- as actors get enriched, these queries return fewer rows
-- system quiesces when all actors are resolved or backed off
+It:
 
-AppView (public.api.bsky.app) is used for both enrichment (phase 2
-getProfiles) and moderation label checks (hourly cron). phase 2 gets
-avatar, displayName, labels, createdAt, associated, and hidden in one
-batch call.
+1. exports the Turso database
+2. builds a SQLite snapshot with `prefix_top_base` and `actor_compact_base`
+3. writes a manifest with size, sha256, versions, counts, and source watermark
+4. uploads `index.db` and `latest.json` to Cloudflare R2
+5. exits
 
-### local replica sync
+The builder can use large temporary disk during construction, but the shipped
+artifact is a standalone SQLite file. It is not served by an always-on indexer
+machine.
 
-the ingester maintains a local SQLite replica on a fly.io persistent volume,
-synced from Turso. search queries hit this replica directly — no round-trip
-to Turso for reads.
+### Search service
 
-- **bootstrap** (first run or wipe): stage-and-swap — loads all actors into
-  staging tables with no indexes, builds indexes in bulk (`CREATE INDEX` on
-  unindexed data), populates FTS5, then atomically swaps staging tables into
-  place via `ALTER TABLE RENAME`. temp files pinned to `/data/tmp` on the
-  volume. read connection closed during bootstrap to avoid WAL interference.
-- **re-sync** (restart with existing data): keeps serving while re-syncing
-  from Turso. updates the live indexed table directly — index maintenance
-  cost is negligible for incremental changes.
-- **incremental** (every 5 min): keyset pagination on `(updated_at, did)`,
-  tombstone + unsearchable cleanup. only advances watermark when all
-  queries succeed.
-- **dual-write**: profile and identity events from jetstream are written
-  directly to the local replica for immediate search availability (when
-  `ready=true`).
+`typeahead-search` is the live read backend. It runs the same Zig binary with
+Jetstream disabled and sync/index promotion enabled.
 
-## storage
+It maintains:
 
-the actors table stores one row per DID:
+- **attached snapshot**: read-only `index.db` from R2, attached under the index
+  alias and swapped only after manifest, sha256, schema, version, and sentinel
+  checks pass
+- **live overlay**: `actor_overlay` and `prefix_overlay`, projected from recent
+  Turso deltas so deletes, moderation changes, renames, new actors, and
+  operator actions take effect without waiting for the next full build
+- **actor sync replica**: local actors table used for hydration and the
+  moderation safety belt
 
-    did TEXT PRIMARY KEY          -- ~32 bytes
-    handle TEXT                   -- ~25 bytes
-    display_name TEXT             -- ~20 bytes
-    avatar_url TEXT               -- ~59 bytes (CID only, URL reconstructed at query time)
-    hidden INTEGER                -- 1 byte
-    labels TEXT                   -- 2 bytes ('[]') for ~92% of actors;
-                                  -- ~256 bytes per label for the ~8% that have them
-                                  -- stored as raw JSON array matching bsky's API shape
-    created_at TEXT               -- ~24 bytes (ISO 8601 timestamp from getProfiles)
-    associated TEXT               -- 2 bytes ('{}') until enriched; ~100 bytes when populated
-                                  -- stored as JSON matching bsky's profileAssociated shape
-    updated_at INTEGER            -- 8 bytes
-    pds TEXT                      -- ~40 bytes (PDS endpoint URL)
-    identity_checked_at INTEGER   -- 8 bytes (last slingshot attempt)
-    profile_checked_at INTEGER    -- 8 bytes (last PDS profile attempt)
+Local FTS maintenance is disabled on the search service. The request path uses
+the precomputed prefix index instead.
 
-plus FTS5 index overhead. roughly ~350 bytes/row for unlabeled actors,
-~610 bytes/row for labeled ones (~8% of index). `created_at` and
-`associated` populate progressively as the enrichment pipeline and
-moderation cron cycle through actors — no separate backfill needed.
+## request path
 
-storage is [Turso](https://turso.tech) (hosted libSQL). previously used
-Cloudflare D1 but migrated to Turso to avoid D1's 10GB hard limit and
-per-tenant design constraints that made sharding a global FTS5 index
-impractical.
+For a query:
 
-## moderation
+1. normalize the input
+2. derive bounded lookup keys:
+   - `e:` exact handle
+   - `h:` handle prefix
+   - `n:` display-name token prefix
+   - `d:` domain suffix / subdomain search
+3. read matching DID lists from the attached snapshot
+4. merge live overlay additions and suppressions
+5. promote exact-handle matches
+6. hydrate a capped candidate set from overlay first, then the base actor blobs
+7. cross-check the local actor replica for hidden/tombstoned actors
+8. return the Bluesky-compatible `profileViewBasic` shape
 
-actors with certain labels from bluesky's moderation service
-(`did:plc:ar7c4by46qjdydhdevvrndac`) are hidden from search results
-(`hidden = 1`): `!hide`, `!takedown`, or `spam`.
+The important invariant is that every request performs bounded point lookups
+and a small merge. It does not do FTS, `LIKE`, `ORDER BY`, or any operation
+whose work grows with the total actor corpus.
 
-`!no-unauthenticated` is intentionally **not** filtered — it applies to
-content, not identity. bluesky's own public typeahead API returns these
-accounts, and so do we.
+## freshness
 
-the full labels array (matching bsky's API shape) is stored per actor and
-returned in search results. clients can use this for rendering decisions
-(e.g. blur avatars for `porn`/`sexual` labels). the ingester only sees
-self-labels from profile records — it cannot see bsky mod labels, so it
-does not set `hidden`. only API-based paths (cron, backfill, request-indexing)
-set `hidden` from full label data.
+The base snapshot is periodic. Freshness between builds comes from the overlay.
+The search service tails Turso deltas and projects them into prefix/actor
+overlay tables:
 
-the hourly cron refreshes moderation labels and persists the full labels
-array by walking the full index over multiple runs (1000 actors/run via
-`mod_cursor` in KV). it piggybacks enrichment data (handle, display_name,
-avatar) from the same getProfiles response at no additional API cost.
+- deletes and account removals suppress base results
+- moderation hides suppress base results
+- restores/show operations re-add actors
+- handle/display-name changes remove old prefixes and add new prefixes
+- newly indexed actors can appear before the next full snapshot
 
-## scripts
+On promotion of a newer snapshot, overlay rows older than the snapshot
+watermark can be compacted away while operator rows that must survive are kept.
 
-- `scripts/bench.py` — latency, coverage, and stress benchmarks against prod
-  (sends `X-Client: bench` to avoid polluting traffic stats)
-- `scripts/smoke.py` — end-to-end smoke tests against a live deployment
-- `scripts/backfill-moderation.py` — one-shot sweep to set hidden flags on
-  existing actors (run once after adding moderation support)
-- `scripts/add-enrichment-columns.sql` — one-shot migration adding pds,
-  identity_checked_at, profile_checked_at columns (run once before deploying
-  enrichment pipeline)
-- `scripts/add-labels-column.sql` — one-shot migration adding labels column
-  to actors table (run once before deploying labels support)
-- `scripts/backfill-profiles.py` — bulk enrichment: walks actors table and
-  populates labels, handle, display_name, avatar_url via getProfiles API.
-  also recomputes hidden from full label data, fixing actors incorrectly
-  hidden by stale !no-unauthenticated logic.
-- `scripts/add-created-associated.sql` — one-shot migration adding created_at
-  and associated columns to actors table
-- `scripts/add-actor-deltas.sql` — one-shot migration adding actor_deltas
-  table for 5-min granularity delta tracking
-- `scripts/migrate-avatar-cid.sql` — one-shot migration from full avatar
-  URLs to bare CIDs (already applied to production)
-- `scripts/migrate-to-turso.py` — one-shot D1-to-Turso data migration
-  (already applied to production)
+This means staleness is self-correcting: the next snapshot refreshes the base,
+and the overlay covers the gap.
 
-## notes
+## operational notes
 
-- `docs/notes/ingester-oom-firehose-widening.md` — postmortem from widening
-  jetstream subscriptions to posts/likes/follows, causing ingester OOM on
-  256MB fly.io VM. root cause: in-memory dedup set with retain-capacity
-  semantics. resolved with bloom filter approach.
+- `services/fly.toml` deploys the continuous ingest service.
+- `services/fly.search.toml` deploys the live search service.
+- `services/fly.indexer.toml` is for one-off snapshot builder machines, not a
+  daemon.
+- The public rollback is to restore the `EMERGENCY_PROXY_BSKY` Worker secret.

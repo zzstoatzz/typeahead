@@ -25,7 +25,7 @@ The fix became a new architecture:
 - Split ingest and search roles.
 - Build a precomputed prefix index offline.
 - Store the generated snapshot in R2.
-- Have App B download, verify, validate, and attach the snapshot.
+- Have search service download, verify, validate, and attach the snapshot.
 - Serve `/search` from bounded point lookups into that snapshot plus a live
   overlay for deletes, moderation, renames, and fresh actors.
 - Disable local FTS on the search service once the new path owned serving.
@@ -55,10 +55,10 @@ The emergency move was a Worker kill switch:
 
 The first structural move was splitting roles:
 
-- App A: ingestion / Jetstream / schema work.
-- App B: search role, no Jetstream, no schema migrations, local SQLite copy.
+- ingest service: ingestion / Jetstream / schema work.
+- search service: search role, no Jetstream, no schema migrations, local SQLite copy.
 
-This revealed a second smell: App B could bootstrap off-path, but the old local
+This revealed a second smell: search service could bootstrap off-path, but the old local
 SQLite + FTS serving shape still had serious correctness and performance
 issues.
 
@@ -93,7 +93,7 @@ The new model:
 - Offline builder emits `prefix_top_base`.
 - Each prefix key maps to a score-ordered packed list of DIDs.
 - `actor_compact_base` stores the packed presentation data for hydration.
-- App B reads a bounded number of keys and hydrates a bounded number of DIDs.
+- search service reads a bounded number of keys and hydrates a bounded number of DIDs.
 - Request-time work becomes point lookups and bounded merges, not FTS scans.
 
 Core tables:
@@ -153,11 +153,11 @@ Artifact flow:
    versions, counts, and source watermark.
 3. Builder uploads `builds/<id>/index.db`, `builds/<id>/manifest.json`, and
    `latest.json` to R2.
-4. App B watcher polls `latest.json`.
-5. App B downloads into inactive A/B slot.
-6. App B verifies size + sha256.
-7. App B validates schema, versions, counts, and sentinel queries.
-8. App B atomically renames and rebuilds the read pool with the new snapshot
+4. search service watcher polls `latest.json`.
+5. search service downloads into inactive A/B slot.
+6. search service verifies size + sha256.
+7. search service validates schema, versions, counts, and sentinel queries.
+8. search service atomically renames and rebuilds the read pool with the new snapshot
    attached as `idx`.
 
 ### Sunday: Builder Cost Surprises
@@ -189,7 +189,7 @@ Full-scale numbers before domain suffix:
 - Peak RSS around hundreds of MB, not GBs, after fixes.
 - Build became viable as an offline batch job.
 
-### Monday, May 25: Serving Path, Overlay, And App B As Primary Candidate
+### Monday, May 25: Serving Path, Overlay, And search service As Primary Candidate
 
 After promotion worked, the real serving path landed:
 
@@ -212,14 +212,14 @@ Overlay updater landed inside the sync transaction:
 Sync health became an explicit operational signal:
 
 - `/health` exposes `sync_lag_s`.
-- If lag exceeds threshold, App B bulk-resyncs as a self-healing circuit
+- If lag exceeds threshold, search service bulk-resyncs as a self-healing circuit
   breaker.
-- Local FTS on App B was disabled with `ENABLE_LOCAL_FTS=0`, because the search
+- Local FTS on search service was disabled with `ENABLE_LOCAL_FTS=0`, because the search
   service no longer needed FTS and FTS maintenance was throttling incremental
   sync.
 
 This was a major simplification: once prefix-index serving owned `/search`, FTS
-on App B became legacy baggage.
+on the search service became dead weight.
 
 ### Monday Night: Domain Suffix Search
 
@@ -264,7 +264,7 @@ Before removing the backstop, we ran side-by-side baseline:
 
 - Bsky API:
   `https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead`
-- App B direct:
+- search service direct:
   `https://typeahead-search.fly.dev/search`
 
 Corpus covered:
@@ -282,7 +282,7 @@ Corpus covered:
 
 Honest comparison:
 
-- App B was faster or competitive on latency.
+- search service was faster or competitive on latency.
 - Exact handles matched top-1.
 - Domain suffix was better than bsky.
 - Display and multi-token known cases passed.
@@ -293,7 +293,7 @@ Flip:
 
 1. Set `SEARCH_BACKEND_URL=https://typeahead-search.fly.dev`.
 2. Delete `EMERGENCY_PROXY_BSKY`.
-3. Public worker now routes to App B prefix index.
+3. Public worker now routes to search service prefix index.
 4. Rollback staged:
 
    ```sh
@@ -333,7 +333,7 @@ The important distinction:
 ### 2. Splitting Services Helped, But Did Not Solve The Shape
 
 Separating ingest and search was necessary. It stopped bootstrap from directly
-contending with production reads. But App B still needed a serving model that
+contending with production reads. But search service still needed a serving model that
 could not be wedged by one expensive query.
 
 The real invariant became:
@@ -346,7 +346,7 @@ SQLite FTS helped us understand the problem, but it was not the long-term shape
 for this service. FTS maintenance and FTS query behavior were too hard to bound
 for typeahead over millions of actors on small infrastructure.
 
-The final App B does not need local FTS for serving.
+The final search service does not need local FTS for serving.
 
 ### 4. Build-Time Cost Is Part Of Serving Architecture
 
@@ -395,7 +395,7 @@ Several painful loops happened because the system was silent:
 
 - group/pack without heartbeat logs
 - CREATE INDEX without progress logs
-- unclear whether App B sync was advancing
+- unclear whether search service sync was advancing
 - unclear whether overlay was actually projecting
 
 The future system needs boring answers:
@@ -467,4 +467,3 @@ The fix was not "make SQLite faster"; it was changing typeahead from a
 request-time search problem into an offline index-build plus bounded lookup
 problem, with a live overlay for the parts of the network that cannot wait for
 the next snapshot.
-

@@ -72,7 +72,7 @@ def turso_batch_write(stmts, turso_url, turso_token):
 
 def resolve_pds(did):
     url = f"{SLINGSHOT_URL}?identifier={urllib.request.quote(did)}"
-    req = urllib.request.Request(url, headers={"User-Agent": "typeahead-backfill/1.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "typeahead-maintenance/1.0"})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read())

@@ -10,15 +10,41 @@ curl "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=na
 
 ## stack
 
-```
-jetstream → ingester (zig, fly.io) → worker (cloudflare)
-                                        ↓
-                                   Turso (libSQL/FTS5)
-```
+![typeahead architecture](docs/architecture-diagram.svg)
 
-- **ingester**: [zig](https://ziglang.org) on [fly.io](https://fly.io) — streams profiles, posts, likes, and follows via [jetstream](https://docs.bsky.app/blog/jetstream), batches to worker
-- **worker**: [cloudflare worker](https://workers.cloudflare.com) + [Turso](https://turso.tech) + KV + cache API — FTS5 prefix search, edge-cached (60s), rate-limited
-- **identity**: [slingshot](https://microcosm.blue) for on-demand handle resolution
+- **edge worker**: [Cloudflare Worker](https://workers.cloudflare.com) in `src/`.
+  It owns the public XRPC-compatible endpoint, 60s edge cache, admin ingest
+  endpoint, Turso fallback, and the Bluesky rollback kill switch.
+- **ingest service**: [Zig](https://ziglang.org) on [Fly.io](https://fly.io),
+  `typeahead-ingester`. It streams profiles, posts, likes, and follows via
+  [Jetstream](https://docs.bsky.app/blog/jetstream), resolves identities, and
+  batches actor updates to the worker.
+- **source DB**: [Turso](https://turso.tech) / libSQL. It is the durable source
+  of truth for actors, moderation overrides, and tombstones.
+- **snapshot builder**: same Zig binary, `MODE=indexer`, run as an ephemeral Fly
+  job. It exports Turso, builds a precomputed prefix-index SQLite snapshot, and
+  publishes `index.db` + `latest.json` to Cloudflare R2.
+- **search service**: same Zig binary, `typeahead-search`. It downloads and
+  verifies snapshots from R2, attaches them read-only, tails Turso into a local
+  actor replica, projects live changes into an overlay, and serves `/search`
+  from bounded point lookups. Local FTS is disabled here.
+- **identity**: [slingshot](https://microcosm.blue) for on-demand handle
+  resolution.
+
+The serving invariant: no request does work proportional to the actor corpus.
+The request path reads a small set of precomputed prefix keys, merges the live
+overlay, hydrates a capped list of actors, and returns JSON. Bluesky is rollback
+only, not part of the normal serving path.
+
+## layout
+
+- `src/` — Cloudflare Worker.
+- `services/` — shared Zig service code. It builds three Fly roles from one
+  codebase: ingest service (`fly.toml`), search service (`fly.search.toml`),
+  and snapshot builder (`fly.indexer.toml`).
+- `scripts/` — local/ops scripts for smoke tests, benchmarks, backfills, and
+  maintenance.
+- `docs/` — architecture notes, design docs, retros, and diagrams.
 
 ## dev
 
@@ -26,15 +52,29 @@ jetstream → ingester (zig, fly.io) → worker (cloudflare)
 # worker
 npm install && npx wrangler dev
 
-# ingester
-cd ingester && zig build run
+# Zig services
+cd services && zig build test
+cd services && zig build run
 ```
 
-requires `TYPEAHEAD_URL` and `TYPEAHEAD_SECRET` env vars for the ingester.
+The default Zig run mode is the long-running service binary. Fly config controls
+the role:
+
+- ingest service: Jetstream on, sync/search off as configured in `fly.toml`
+- search service: Jetstream off, sync + index promotion + prefix search on in
+  `fly.search.toml`
+- snapshot builder: `MODE=indexer` in `fly.indexer.toml`
+
+The ingest service requires `TYPEAHEAD_URL` and `TYPEAHEAD_SECRET`. R2 and Turso
+credentials are provided as Fly/Worker secrets in production.
 
 ## deploy
 
 ```bash
-npx wrangler deploy              # worker to cloudflare
-cd ingester && fly deploy        # ingester to fly.io
+npx wrangler deploy                         # edge worker to Cloudflare
+cd services && fly deploy -c fly.toml       # ingest service
+cd services && fly deploy -c fly.search.toml # search service
 ```
+
+The snapshot builder is launched as a one-off Fly machine from
+`services/fly.indexer.toml`; it is not a long-running service.

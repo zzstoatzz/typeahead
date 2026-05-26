@@ -36,7 +36,7 @@ Plan: **Scaler** (~$30/mo base), period resets monthly.
 | embedded syncs | **29 GB** | **24 GB** | **119% (4.6 GB over)** | the indexer's full-DB export (~3.2 GB) per build; ~6 builds today drove the overage |
 
 Top read consumers (`--queries`, all batch/cron — **none are request-path**):
-- sync pagination walk `… WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000` — App B's incremental/resync
+- sync pagination walk `… WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000` — search service's incremental/resync
 - stats aggregate `SELECT COUNT(*), SUM(CASE…) FROM actors` (~25 M rows) — still a full scan; `actor_deltas` rollup exists but the scan persists (cheap to retire)
 - `last_activity_at` batch UPDATEs — ingester write churn
 
@@ -50,18 +50,18 @@ Top read consumers (`--queries`, all batch/cron — **none are request-path**):
 
 Fly volumes bill ~$0.15/GB/mo. The indexer's 140 GB of idle build-scratch
 volumes (~$21/mo) were deleted 2026-05-26 — build scratch should be
-**ephemeral** (create → build → destroy). App B was bumped to shared-cpu-4x
+**ephemeral** (create → build → destroy). search service was bumped to shared-cpu-4x
 for resync throughput; revisit to 2× once steady-state is confirmed (cold-query
 latency is RAM/page-cache bound, not CPU bound).
 
 ### R2 (`developers.cloudflare.com/r2/pricing`)
 
 ~3–4 accumulated artifacts × ~8.6 GB (no pruning yet) at ~$0.015/GB/mo ≈
-**~$0.50/mo**, and **R2 has no egress fees** — App B's ~8.6 GB download per
+**~$0.50/mo**, and **R2 has no egress fees** — search service's ~8.6 GB download per
 promote is free. Cheapest line item; the accumulation is a cleanliness issue,
 not a cost one.
 
-**Total ≈ $50–55/mo** post-cleanup (Turso $30 + App B ~$20 + App A ~$2 + R2
+**Total ≈ $50–55/mo** post-cleanup (Turso $30 + search service ~$20 + ingest service ~$2 + R2
 ~$0.50 + sync overage a few $). The avoidable waste (idle volumes) is already
 removed.
 
@@ -70,7 +70,7 @@ removed.
 | Component | 1× today | 10× behavior | Verdict |
 |---|---|---|---|
 | **Request path / latency** | ~75 ms warm | unchanged — bounded lookups | ✅ scales |
-| **App B RAM (page cache)** | 2 GB / 8.66 GB artifact | working set grows; must scale RAM or cold latency degrades (saw this at 256 MB) | ⚠️ scale RAM with corpus |
+| **search service RAM (page cache)** | 2 GB / 8.66 GB artifact | working set grows; must scale RAM or cold latency degrades (saw this at 256 MB) | ⚠️ scale RAM with corpus |
 | **Served artifact** | 8.66 GB | ~50–85 GB (≈linear in actors) | ⚠️ download + disk grow |
 | **Builder emissions** | 244 M | ~2.4 B | ⚠️ build is the bottleneck |
 | **Build scratch disk** | ~100 GB | ~hundreds GB–1 TB | ⚠️ ephemeral big volume per build |
@@ -102,9 +102,9 @@ emissions, needed a 100 GB scratch volume, though the served artifact only grew
 ### Maintenance gaps (none block serving; all needed to be "boring")
 
 1. **Builds are manual** — no scheduled indexer; needs cron + ephemeral-volume create/destroy. Each build costs ~3.2 GB Turso export + ~100 GB scratch + ~2.4 h.
-2. **No alerting** — `/health` + `/index/status` exist; nothing pages on stale build / sync lag / failed build / App B down.
+2. **No alerting** — `/health` + `/index/status` exist; nothing pages on stale build / sync lag / failed build / search service down.
 3. **No cleanup automation** — R2 artifacts accumulate; indexer machines/volumes did too (cleaned manually).
-4. **Token expiry** — the indexer Turso token expired mid-weekend (refreshed to 30 d); App B's could too. Needs longer-lived tokens or rotation.
+4. **Token expiry** — the indexer Turso token expired mid-weekend (refreshed to 30 d); search service's could too. Needs longer-lived tokens or rotation.
 5. **Operator visibility** — no explain-actor / explain-query / "why does X appear" tools; `/index/status` + `/debug/index` are the seeds.
 6. **Stats full scan** — retire the `COUNT(*)` aggregate in favor of the `actor_deltas` rollup.
 

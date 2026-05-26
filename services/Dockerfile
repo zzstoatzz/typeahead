@@ -15,7 +15,7 @@ RUN curl -L https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz |
     && ln -s /usr/local/zig-x86_64-linux-0.16.0/zig /usr/local/bin/zig
 
 # rclone (pinned) for R2 transport — handles multipart upload (>5GiB) +
-# streaming download + retries. Used by the indexer (upload) and App B
+# streaming download + retries. Used by the indexer (upload) and search service
 # (download); the ingester role doesn't use it (TODO: split images by role).
 RUN curl -fsSL https://downloads.rclone.org/v1.69.1/rclone-v1.69.1-linux-amd64.zip -o /tmp/rclone.zip \
     && unzip -j /tmp/rclone.zip 'rclone-*/rclone' -d /usr/local/bin \

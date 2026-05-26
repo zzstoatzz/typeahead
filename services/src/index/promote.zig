@@ -1,4 +1,4 @@
-//! App B side of the index promote flow: parse the manifest, verify a
+//! Search-service side of the index promote flow: parse the manifest, verify a
 //! downloaded snapshot (size + sha256), and gate it before it's allowed to
 //! become servable. The actual transport (R2 signed GET) and the ATTACH-swap
 //! into LocalDb's read pool are wired separately; this module is the
@@ -21,7 +21,7 @@ const io = std.Options.debug_io;
 
 /// Mirrors the manifest contract (docs/typeahead-index-design.md). Unknown
 /// fields are ignored on parse so the indexer can add fields without breaking
-/// App B; breaking changes bump `manifest_version` (checked in the gate).
+/// the search service; breaking changes bump `manifest_version` (checked in the gate).
 pub const Manifest = struct {
     manifest_version: u32,
     active_build: []const u8,

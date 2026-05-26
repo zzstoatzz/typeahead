@@ -31,12 +31,10 @@ primary_region = 'ewr'
   # The prefix-index serving path doesn't use FTS — only the snapshot + the
   # actors table (moderation belt). Maintaining actors_fts per-row was the
   # incremental bottleneck (orphan rows → failing delete-old → couldn't keep
-  # up). Off here; App A keeps FTS (default on).
+  # up). Off here; the ingest service keeps the default.
   ENABLE_LOCAL_FTS = '0'
 
-  # Serve /search from the precomputed prefix index (canary). App B is not the
-  # worker's backend yet, so this only affects direct callers until we point
-  # SEARCH_BACKEND_URL here. Index-path errors fall back to the bsky backstop.
+  # Serve /search from the precomputed prefix index.
   USE_PREFIX_INDEX = '1'
 
   # Bootstrap politeness: pace Turso reads so the initial sync doesn't

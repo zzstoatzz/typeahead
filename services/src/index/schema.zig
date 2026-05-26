@@ -1,14 +1,14 @@
 //! Local schema setup for the prefix index. NOT a Zug migration — these
 //! tables live in two LOCAL SQLite databases (the indexer's per-build
-//! snapshot file and App B's overlay DB) and never touch Turso. Init
+//! snapshot file and the search service's overlay DB) and never touch Turso. Init
 //! runs idempotently every time we open either DB.
 //!
-//! Snapshot DB layout (indexer writes once, App B opens via ATTACH AS idx):
+//! Snapshot DB layout (indexer writes once, search service opens via ATTACH AS idx):
 //!   prefix_top_base       — top-N DIDs per prefix key (immutable)
 //!   actor_compact_base    — packed presentation blob per DID (immutable)
 //!   index_meta            — build metadata (build_id, versions, top_n_*)
 //!
-//! Overlay DB layout (App B's local.db, mutable from the sync loop):
+//! Overlay DB layout (search service local.db, mutable from the sync loop):
 //!   actor_overlay         — newer blob / tombstone wins over base
 //!   prefix_overlay        — op=1 adds, op=0 suppresses a base entry
 //!
@@ -50,7 +50,7 @@ pub const meta = struct {
 
 /// Create snapshot tables on the indexer's per-build DB. Idempotent.
 /// Called once when the indexer opens a fresh build-<id>/index.db AND
-/// every time App B opens an existing snapshot file (CREATE IF NOT
+/// every time the search service opens an existing snapshot file (CREATE IF NOT
 /// EXISTS makes this safe).
 pub fn initSnapshot(conn: zqlite.Conn) !void {
     try conn.exec(
@@ -75,7 +75,7 @@ pub fn initSnapshot(conn: zqlite.Conn) !void {
     , .{});
 }
 
-/// Create overlay tables on the App B serving DB (its existing local.db).
+/// Create overlay tables on the search service DB (its existing local.db).
 /// Idempotent. Called from LocalDb.openDb after the existing schema runs.
 /// `source` distinguishes sync-derived overlay (0) from operator overrides (1).
 /// Compaction-on-promote prunes only source=0 rows ≤ the new snapshot

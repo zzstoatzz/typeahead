@@ -183,7 +183,7 @@ pub fn main() !void {
     // Run Turso schema migrations BEFORE spawning sync/jetstream — sync queries
     // turso assuming the schema exists. On baselined prod this is a few sub-
     // second SELECTs + INSERT OR IGNORE; on a fresh DB it creates everything
-    // from migration 001. The search-only role (App B) must NOT run these.
+    // from migration 001. The search service must NOT run these.
     if (enable_schema_migrations) {
         var schema_client = TursoClient.init(allocator) catch |err| {
             log.err("turso client init for schema failed: {}, aborting boot", .{err});
@@ -209,7 +209,7 @@ pub fn main() !void {
     }
 
     // start prefix-index promote watcher (background — R2 latest.json → ATTACH).
-    // Off by default; App B opts in via ENABLE_INDEX_PROMOTE=1 once R2 creds are
+    // Off by default; the search service opts in via ENABLE_INDEX_PROMOTE=1 once R2 creds are
     // set. Does not touch the live /search path (that's gated separately by
     // USE_PREFIX_INDEX) — it only keeps a validated snapshot attached.
     if (enable_sync and envFlag("ENABLE_INDEX_PROMOTE", false)) {
@@ -235,7 +235,7 @@ pub fn main() !void {
 
     if (enable_jetstream) {
         // Reading TYPEAHEAD_URL/TYPEAHEAD_SECRET here (not unconditionally at
-        // top of main) so the search-only role (App B) can come up without them.
+        // top of main) so the search service can come up without them.
         const config = ingest.getConfig();
         log.info("typeahead ingester → {s}", .{config.worker_url});
 
