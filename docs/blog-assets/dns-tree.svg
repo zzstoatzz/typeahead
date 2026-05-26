@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 640" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif">
+  <style>
+    .title { font-weight:700; font-size:24px; fill:#0f172a; }
+    .sub   { font-weight:500; font-size:13px; fill:#475569; }
+    .node  { font-weight:600; font-size:14px; fill:#0f172a; }
+    .leaf  { font-weight:500; font-size:13px; fill:#334155; }
+    .mono  { font-family:ui-monospace,'SF Mono',Menlo,monospace; font-weight:600; font-size:13px; }
+    .sm    { font-weight:400; font-size:12px; fill:#64748b; }
+    .hit   { font-weight:700; font-size:13px; fill:#7c3aed; }
+    .key   { font-family:ui-monospace,'SF Mono',Menlo,monospace; font-weight:600; font-size:13px; fill:#0d9488; }
+    .note  { font-weight:500; font-size:13px; fill:#713f12; }
+  </style>
+  <rect x="0" y="0" width="1040" height="640" fill="#ffffff"/>
+
+  <text class="title" x="40" y="48">a handle is a path through the DNS tree</text>
+  <text class="sub"   x="40" y="72">we index every dot-suffix, so one prefix query returns an entire subtree — not just the exact root</text>
+
+  <!-- TREE (left ~ center) -->
+  <!-- root: com -->
+  <rect x="120" y="110" width="120" height="42" rx="9" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
+  <text class="node" x="180" y="136" text-anchor="middle">com</text>
+
+  <!-- edge com -> germnetwork.com -->
+  <path d="M180,152 L180,210" fill="none" stroke="#94a3b8" stroke-width="1.6"/>
+
+  <!-- germnetwork.com (internal node, the matched one) -->
+  <rect x="96" y="210" width="220" height="46" rx="9" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <text class="node" x="206" y="238" text-anchor="middle">germnetwork.com</text>
+
+  <!-- query annotation -->
+  <path d="M470,233 L322,233" fill="none" stroke="#7c3aed" stroke-width="1.8" marker-end="url(#a)"/>
+  <text class="hit" x="486" y="229">query  </text>
+  <text class="mono" x="540" y="229" fill="#7c3aed">germ</text>
+  <text class="hit" x="582" y="229">  ⊑  germnetwork.com</text>
+  <text class="sm"  x="486" y="248">a prefix match on an internal node…</text>
+
+  <!-- edges to leaves -->
+  <path d="M206,256 L120,310" fill="none" stroke="#94a3b8" stroke-width="1.6"/>
+  <path d="M206,256 L206,310" fill="none" stroke="#94a3b8" stroke-width="1.6"/>
+  <path d="M206,256 L300,310" fill="none" stroke="#94a3b8" stroke-width="1.6"/>
+
+  <!-- leaves -->
+  <rect x="36" y="310" width="170" height="40" rx="9" fill="#ffffff" stroke="#a78bfa" stroke-width="1.4"/>
+  <text class="leaf" x="121" y="335" text-anchor="middle">tessa.germnetwork.com</text>
+  <rect x="120" y="364" width="170" height="40" rx="9" fill="#ffffff" stroke="#a78bfa" stroke-width="1.4"/>
+  <text class="leaf" x="205" y="389" text-anchor="middle">anna.germnetwork.com</text>
+  <rect x="204" y="418" width="170" height="40" rx="9" fill="#ffffff" stroke="#a78bfa" stroke-width="1.4"/>
+  <text class="leaf" x="289" y="443" text-anchor="middle">jess.germnetwork.com</text>
+  <text class="sm" x="300" y="486" text-anchor="middle">…the whole subtree is returned</text>
+
+  <!-- divider -->
+  <line x1="560" y1="290" x2="560" y2="600" stroke="#e2e8f0" stroke-width="1.5"/>
+
+  <!-- RIGHT: key harvest -->
+  <text class="node" x="600" y="300">harvesting keys from one handle</text>
+  <text class="mono" x="600" y="330" fill="#0f172a">tessa.germnetwork.com</text>
+  <path d="M600,344 L600,372" fill="none" stroke="#94a3b8" stroke-width="1.6" marker-end="url(#a)"/>
+  <text class="sm" x="624" y="364">dot-suffixes (sⱼ) → prefixes (≤ P chars)</text>
+
+  <text class="key" x="600" y="396">d:com</text>
+  <text class="key" x="600" y="420">d:germnetwork.com</text>
+  <text class="key" x="600" y="444">d:tessa.germnetwork.com</text>
+  <text class="sm"  x="600" y="468">(plus every prefix of each suffix)</text>
+
+  <text class="node" x="600" y="514">the payoff</text>
+  <text class="sm"   x="600" y="538">Bluesky matches only the exact root string.</text>
+  <text class="sm"   x="600" y="558">indexing suffixes makes any ancestor domain</text>
+  <text class="sm"   x="600" y="578">a gateway to its full subtree of subdomains.</text>
+
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+</svg>

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 600" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif">
+  <style>
+    .title { font-weight:700; font-size:24px; fill:#0f172a; }
+    .sub   { font-weight:500; font-size:13px; fill:#475569; }
+    .axis  { font-weight:500; font-size:12px; fill:#94a3b8; }
+    .barlbl{ font-weight:700; font-size:15px; fill:#0f172a; }
+    .barsub{ font-weight:400; font-size:12px; fill:#64748b; }
+    .pct   { font-weight:700; font-size:30px; }
+    .note  { font-weight:500; font-size:13px; fill:#713f12; }
+  </style>
+  <rect x="0" y="0" width="960" height="600" fill="#ffffff"/>
+
+  <text class="title" x="40" y="50">the d: index — cost decoupling</text>
+  <text class="sub"   x="40" y="74">adding domain-suffix keys: what the build pays vs. what serving pays</text>
+
+  <!-- plot frame: baseline y=470, 75% gridline at y=120 (4.667 px / %) -->
+  <line x1="150" y1="470" x2="820" y2="470" stroke="#cbd5e1" stroke-width="1.5"/>
+  <!-- gridlines -->
+  <line x1="150" y1="120" x2="820" y2="120" stroke="#eef2f7" stroke-width="1"/>
+  <text class="axis" x="142" y="124" text-anchor="end">+75%</text>
+  <line x1="150" y1="237" x2="820" y2="237" stroke="#eef2f7" stroke-width="1"/>
+  <text class="axis" x="142" y="241" text-anchor="end">+50%</text>
+  <line x1="150" y1="354" x2="820" y2="354" stroke="#eef2f7" stroke-width="1"/>
+  <text class="axis" x="142" y="358" text-anchor="end">+25%</text>
+  <text class="axis" x="142" y="474" text-anchor="end">0%</text>
+
+  <!-- build bar: +69% -> height 322, top y=148 -->
+  <rect x="250" y="148" width="160" height="322" rx="6" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"/>
+  <text class="pct" x="330" y="138" text-anchor="middle" fill="#7c3aed">+69%</text>
+  <text class="barlbl" x="330" y="500" text-anchor="middle">build emissions · E</text>
+  <text class="barsub" x="330" y="520" text-anchor="middle">every (key, DID) tuple — offline, ephemeral</text>
+
+  <!-- serve bar: +0.9% -> ~6px nub -->
+  <rect x="560" y="462" width="160" height="8" rx="3" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"/>
+  <text class="pct" x="640" y="452" text-anchor="middle" fill="#0d9488">+0.9%</text>
+  <text class="barlbl" x="640" y="500" text-anchor="middle">served artifact · A</text>
+  <text class="barsub" x="640" y="520" text-anchor="middle">top-N capped rows — what every request hits</text>
+
+  <!-- note box -->
+  <rect x="150" y="548" width="670" height="38" rx="9" fill="#fef9c3" stroke="#eab308" stroke-width="1.4"/>
+  <text class="note" x="170" y="572">the top-N cap pushes the d: cost almost entirely into the offline build. serving barely moves.</text>
+</svg>
