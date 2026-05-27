@@ -1,5 +1,9 @@
 # plan: hrana v3 cursor source for the indexer (v2 — corrected after spec re-read)
 
+> **status: NOT adopted (historical).** The indexer reads its source via the
+> Turso HTTP export path (`INDEX_SOURCE=export_http`), not the hrana v3 cursor
+> this plan proposed. Kept for context.
+
 Replace the CLI-shellout path in `index/builder.zig` with a direct
 `POST /v3/cursor` streaming NDJSON read into the builder. Same Turso DB
 host as our existing hrana v2 client, same JWT bearer.

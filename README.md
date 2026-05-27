@@ -50,10 +50,10 @@ only, not part of the normal serving path.
 
 ```bash
 # worker
-npm install && npx wrangler dev
+bun install && bunx wrangler dev
 
 # Zig services
-cd services && zig build test
+just test-services      # cd services && zig build test --summary all
 cd services && zig build run
 ```
 
@@ -71,10 +71,11 @@ credentials are provided as Fly/Worker secrets in production.
 ## deploy
 
 ```bash
-npx wrangler deploy                         # edge worker to Cloudflare
-cd services && fly deploy -c fly.toml       # ingest service
-cd services && fly deploy -c fly.search.toml # search service
+just deploy-worker    # edge worker to Cloudflare (also auto-deploys on push to main)
+just deploy-ingest    # ingest service  (App A, fly.toml)
+just deploy-search    # search service  (App B, fly.search.toml)
 ```
 
 The snapshot builder is launched as a one-off Fly machine from
-`services/fly.indexer.toml`; it is not a long-running service.
+`services/fly.indexer.toml` (`just indexer-build-staging` for an isolated
+staging build); it is not a long-running service. See `docs/operations.md`.

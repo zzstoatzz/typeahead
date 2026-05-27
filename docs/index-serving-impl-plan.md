@@ -1,5 +1,10 @@
 # index-backed serving + overlay — implementation plan (for review)
 
+> **status: SHIPPED (historical).** Implemented — `/search` serves from the
+> prefix index behind `USE_PREFIX_INDEX`, the `EMERGENCY_PROXY_BSKY` backstop is
+> removed. Kept for context; current design lives in `docs/architecture.md` +
+> `docs/typeahead-index-design.md`.
+
 Milestones **B + C combined** (per the chosen approach: pure-index serving with
 overlay semantics built in, not bolted on). Target bar for today: **canary** —
 worker serves `/search` from our index with `EMERGENCY_PROXY_BSKY` still wired
