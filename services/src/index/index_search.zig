@@ -49,24 +49,27 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     const lease = try local.checkoutRead();
     defer lease.release();
 
-    // Per-key base ∪ overlay sets; capture the exact-handle (e:) hit set so we
-    // can hard-promote exact matches above everything else after the merge.
-    var exact_dids: std.StringHashMapUnmanaged(void) = .empty;
+    // Per-key base ∪ overlay sets; capture the exact-handle (e:) hits WITH their
+    // score so we can hard-promote them — and re-inject them if the score cap
+    // dropped them. A brand-new exact match (e.g. handle `pds.dad`, quality
+    // score 0) otherwise loses to high-score token matches under the same query
+    // (e.g. the ~300 accounts in `n:dad`) and never survives combine()'s cap.
+    var exact: std.StringHashMapUnmanaged(f32) = .empty;
     var keysets: std.ArrayListUnmanaged(merge.KeySet) = .empty;
     for (keys) |key| {
         const base = try basePrefixDids(arena, lease, key);
         const ov = try overlayPrefixRows(arena, lease, key);
         if (key.len >= 2 and key[0] == 'e' and key[1] == ':') {
-            for (base) |b| try exact_dids.put(arena, b.did, {});
+            for (base) |b| try exact.put(arena, b.did, b.score);
             for (ov) |o| {
-                if (o.op == 0) _ = exact_dids.remove(o.did) else try exact_dids.put(arena, o.did, {});
+                if (o.op == 0) _ = exact.remove(o.did) else try exact.put(arena, o.did, o.score);
             }
         }
         try keysets.append(arena, .{ .base = base, .overlay = ov });
     }
 
     var merged = try merge.combine(arena, keysets.items, mode, HYDRATE_CAP);
-    if (exact_dids.count() > 0) merged = try promoteExact(arena, merged, exact_dids);
+    if (exact.count() > 0) merged = try promoteExact(arena, merged, exact);
 
     const candidates = try hydrate(arena, lease, merged);
 
@@ -108,13 +111,25 @@ fn overlayPrefixRows(arena: Allocator, lease: LocalDb.ReadLease, key: []const u8
     return out.toOwnedSlice(arena);
 }
 
-/// Stable-partition so exact-handle hits rank first; each tier keeps its
-/// score order (merged is already score-sorted). Codex: exact = hard win.
-fn promoteExact(arena: Allocator, merged: []merge.Scored, exact: std.StringHashMapUnmanaged(void)) ![]merge.Scored {
+/// Exact-handle = hard win (Codex): exact hits rank first, AND survive the
+/// score cap. combine() caps by score, so a low-score exact match (a brand-new
+/// handle, quality score 0) can be evicted before promotion — re-inject any
+/// exact hit the cap dropped, then stable-partition exact to the front (each
+/// tier keeps its score order). `exact` maps did → its e:-key score.
+fn promoteExact(arena: Allocator, merged: []merge.Scored, exact: std.StringHashMapUnmanaged(f32)) ![]merge.Scored {
     var ex: std.ArrayListUnmanaged(merge.Scored) = .empty;
     var rest: std.ArrayListUnmanaged(merge.Scored) = .empty;
+    var seen: std.StringHashMapUnmanaged(void) = .empty;
     for (merged) |m| {
-        if (exact.contains(m.did)) try ex.append(arena, m) else try rest.append(arena, m);
+        if (exact.contains(m.did)) {
+            try ex.append(arena, m);
+            try seen.put(arena, m.did, {});
+        } else try rest.append(arena, m);
+    }
+    // exact hits the cap evicted (not seen in merged) — add them back up front.
+    var it = exact.iterator();
+    while (it.next()) |e| {
+        if (!seen.contains(e.key_ptr.*)) try ex.append(arena, .{ .did = e.key_ptr.*, .score = e.value_ptr.* });
     }
     try ex.appendSlice(arena, rest.items);
     return ex.toOwnedSlice(arena);
@@ -237,9 +252,9 @@ test "promoteExact lifts exact hits to the front, preserving score order" {
         .{ .did = "C", .score = 0.7 },
         .{ .did = "D", .score = 0.6 },
     };
-    var exact: std.StringHashMapUnmanaged(void) = .empty;
-    try exact.put(a, "C", {});
-    try exact.put(a, "A", {});
+    var exact: std.StringHashMapUnmanaged(f32) = .empty;
+    try exact.put(a, "C", 0.7);
+    try exact.put(a, "A", 0.8);
 
     const out = try promoteExact(a, try a.dupe(merge.Scored, &merged), exact);
     // exact tier first (A before C — A had higher score), then the rest.
@@ -247,6 +262,29 @@ test "promoteExact lifts exact hits to the front, preserving score order" {
     try testing.expectEqualStrings("C", out[1].did);
     try testing.expectEqualStrings("B", out[2].did);
     try testing.expectEqualStrings("D", out[3].did);
+}
+
+test "promoteExact re-injects an exact hit the score cap evicted" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+
+    // merged is the post-cap survivors: high-score token matches, NONE of which
+    // is the exact hit (regression for `pds.dad` = Bailey, quality_score 0,
+    // capped out by ~300 high-score `n:dad` matches). The exact did is absent
+    // from merged but present in `exact`.
+    const merged = [_]merge.Scored{
+        .{ .did = "tok1", .score = 500 },
+        .{ .did = "tok2", .score = 400 },
+    };
+    var exact: std.StringHashMapUnmanaged(f32) = .empty;
+    try exact.put(a, "bailey", 0); // exact handle hit, score 0, evicted by the cap
+
+    const out = try promoteExact(a, try a.dupe(merge.Scored, &merged), exact);
+    try testing.expectEqual(@as(usize, 3), out.len);
+    try testing.expectEqualStrings("bailey", out[0].did); // hard win, despite score 0
+    try testing.expectEqualStrings("tok1", out[1].did);
+    try testing.expectEqualStrings("tok2", out[2].did);
 }
 
 test "inClause builds the right placeholder count" {
