@@ -250,7 +250,7 @@ const Heartbeat = struct {
             var slept: u32 = 0;
             while (slept < self.interval_s) : (slept += 1) {
                 if (self.stop.load(.acquire)) return;
-                std.Thread.sleep(std.time.ns_per_s);
+                io.sleep(.{ .nanoseconds = std.time.ns_per_s }, .real) catch return;
             }
             if (self.stop.load(.acquire)) return;
             self.emit("phase heartbeat");
