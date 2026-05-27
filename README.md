@@ -71,7 +71,7 @@ credentials are provided as Fly/Worker secrets in production.
 ## deploy
 
 ```bash
-just deploy-worker    # edge worker to Cloudflare (also auto-deploys on push to main)
+just deploy-worker    # edge worker to Cloudflare (manual; CI auto-deploy needs CLOUDFLARE_API_TOKEN set)
 just deploy-ingest    # ingest service  (App A, fly.toml)
 just deploy-search    # search service  (App B, fly.search.toml)
 ```
