@@ -922,14 +922,16 @@ documented up front so they don't surprise anyone later. tracked here,
 not in code comments alone, so they're visible to anyone reading the
 architecture without crawling source.
 
-1. **non-Latin scripts are unsearchable in v1.** `normalize.zig` drops
-   every codepoint outside ASCII + Latin-1 Supplement + Latin
-   Extended-A. A Japanese display name `佐藤` normalizes to the empty
-   string and emits no `n:` prefix keys. The actor is still indexed by
-   its (typically ASCII) handle. Mitigation: bump to full Unicode case
-   folding (e.g., via a generated table from CLDR) when atproto adoption
-   warrants. Until then, this is acceptable for the dominant search
-   shape (typing a handle prefix).
+1. **Japanese/CJK search — addressed in v2 (`normalize_version` =
+   `v2-cjk-bigram`).** v1 dropped every codepoint outside ASCII + Latin-1
+   + Latin Extended-A, so `佐藤` normalized to the empty string and emitted
+   no `n:` keys. v2 preserves Han + Hiragana (folding katakana→hiragana +
+   full-width ASCII), and the prefix tokenizer bigrams CJK runs into `n:`
+   keys (+ a leading unigram). See **`docs/i18n-cjk-search.md`** for the
+   design + Phase 0 sizing (~7.3% of display names are CJK; +0.7% build
+   emissions). **Still unsearchable:** other non-Latin scripts (Arabic,
+   Hebrew, Hangul, Thai…) and reading-based search (`さとう`→`佐藤`, needs
+   furigana we don't store) — later versions.
 
 2. **score function is sparse.** `quality_score` is populated for
    ~250 actors today (canonical-query backfill). Until track 2
