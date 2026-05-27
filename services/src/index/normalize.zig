@@ -25,18 +25,21 @@
 //!     `_` because display names commonly have it ("alice_b") and we
 //!     tokenize on whitespace later anyway.
 //!
-//! Scope (v1): ASCII letters/digits + a hand-rolled fold table for
+//! Scope (v2): ASCII letters/digits + a hand-rolled fold table for
 //! Latin-1 Supplement (U+0080..U+00FF) and Latin Extended-A
-//! (U+0100..U+017F). Covers the vast majority of accented Latin
-//! characters in handles + display names. Everything outside that range
-//! (CJK, Arabic, Hebrew, emoji, symbols, combining marks) is dropped.
+//! (U+0100..U+017F), PLUS Japanese/CJK: Han, Hiragana, and Katakana
+//! (folded to Hiragana), with NFKC-lite width folding (full-width ASCII →
+//! ASCII, ideographic/middle-dot → space). CJK codepoints are PRESERVED
+//! inline in the output; the prefix tokenizer (prefixes.zig) segments
+//! script runs and bigrams CJK runs. See docs/i18n-cjk-search.md.
 //!
-//! KNOWN LIMITATION: non-Latin scripts are unsearchable by handle or
-//! display name. A Japanese display "佐藤" produces the empty string and
-//! emits no `n:` prefix keys. This is acceptable for v1 (most atproto
-//! handles are ASCII; display names searched by users are dominantly
-//! Latin) but should be revisited as the network internationalizes.
-//! Tracked in docs/typeahead-index-design.md.
+//! STILL DROPPED: other non-Latin scripts (Arabic, Hebrew, Hangul, Thai…),
+//! emoji, symbols, combining marks. Known gap: half-width katakana is kept
+//! as-is (not cross-form folded to full-width). These are later versions.
+//!
+//! LOAD-BEARING: bumping the supported set or any fold changes `VERSION`,
+//! which forces a full re-index (the snapshot loader rejects a snapshot
+//! whose recorded normalize_version disagrees with the running binary).
 //!
 //! Output character sets:
 //!   query():   a-z 0-9 .  -  _   plus single ' ' between tokens
@@ -46,7 +49,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-pub const VERSION: []const u8 = "v1-ascii-latin1";
+pub const VERSION: []const u8 = "v2-cjk-bigram";
 
 /// Hard cap on normalized output length. Atproto handles are ≤253 chars;
 /// display names are ≤64 codepoints (≤256 bytes UTF-8). Queries arrive
@@ -179,9 +182,79 @@ pub fn handle(arena: Allocator, raw: []const u8) ![]const u8 {
     return normalizeWith(arena, raw, .drop);
 }
 
+// ─── v2: CJK (Japanese) support ────────────────────────────────────────────
+// Checked BEFORE the Latin fold path in normalizeWith. The Latin fold table
+// above is unchanged; CJK/width handling lives here so the two stay decoupled.
+
+/// CJK codepoints we index. Han is preserved; katakana is folded to hiragana
+/// (so サトウ and さとう collide); hiragana preserved. Returns the canonical
+/// codepoint to emit, or null if `cp` is not CJK. NOTE: half-width katakana is
+/// preserved as-is (not cross-form folded) — a known v2 gap, rare in names.
+fn cjkFold(cp: u21) ?u21 {
+    if (cp >= 0x3041 and cp <= 0x3096) return cp; // hiragana
+    if (cp >= 0x30A1 and cp <= 0x30F6) return cp - 0x60; // katakana → hiragana
+    if (cp == 0x30FC) return cp; // ー prolonged sound mark (shared by kana)
+    if (cp >= 0xFF66 and cp <= 0xFF9D) return cp; // half-width katakana (as-is)
+    if (cp >= 0x3400 and cp <= 0x4DBF) return cp; // CJK Ext A
+    if (cp >= 0x4E00 and cp <= 0x9FFF) return cp; // CJK Unified Ideographs
+    if (cp >= 0xF900 and cp <= 0xFAFF) return cp; // CJK Compatibility Ideographs
+    return null;
+}
+
+/// Full-width / ideographic forms that fold to a single ASCII byte (handled
+/// before CJK + Latin). Full-width `Ａ-Ｚ０-９！…` → ASCII; ideographic and
+/// katakana middle-dot spaces → ' ' (a separator). Returns the raw ASCII byte
+/// (not yet lowercased) or null.
+fn widthFoldAscii(cp: u21) ?u8 {
+    if (cp >= 0xFF01 and cp <= 0xFF5E) return @intCast(cp - 0xFEE0); // full-width ASCII
+    if (cp == 0x3000) return ' '; // ideographic space
+    if (cp == 0x30FB or cp == 0xFF65) return ' '; // ・ middle dot → token separator
+    return null;
+}
+
+/// Classify + append one already-lowercased ASCII byte through the shared
+/// separator/letter logic. Returns false when MAX_OUTPUT is reached (stop).
+/// Used by both the width-fold path and the Latin fold loop — one code path,
+/// no "almost-same" duplication.
+fn emitAscii(
+    out: *std.ArrayListUnmanaged(u8),
+    c: u8,
+    underscore: UnderscorePolicy,
+    pending_space: *bool,
+    has_non_space: *bool,
+) bool {
+    if (out.items.len >= MAX_OUTPUT) return false;
+    const cls = classifyAscii(c);
+    const effective: CharClass = switch (cls) {
+        .underscore => switch (underscore) {
+            .keep => .letter_or_digit,
+            .drop => .drop,
+        },
+        else => cls,
+    };
+    switch (effective) {
+        .drop => {},
+        .separator => {
+            if (has_non_space.*) pending_space.* = true;
+        },
+        .letter_or_digit, .handle_internal => {
+            if (pending_space.*) {
+                out.appendAssumeCapacity(' ');
+                pending_space.* = false;
+            }
+            out.appendAssumeCapacity(c);
+            has_non_space.* = true;
+        },
+        .underscore => unreachable, // resolved above
+    }
+    return true;
+}
+
 fn normalizeWith(arena: Allocator, raw: []const u8, underscore: UnderscorePolicy) ![]const u8 {
     var out: std.ArrayListUnmanaged(u8) = .empty;
-    try out.ensureTotalCapacityPrecise(arena, @min(raw.len + 4, MAX_OUTPUT));
+    // +8 slack so a multi-byte CJK codepoint appended at the MAX_OUTPUT
+    // boundary still fits before the next-iteration break.
+    try out.ensureTotalCapacityPrecise(arena, @min(raw.len + 4, MAX_OUTPUT + 8));
 
     var pending_space = false; // becomes true when a separator runs; emitted lazily
     var has_non_space = false; // leading separators get dropped
@@ -201,34 +274,31 @@ fn normalizeWith(arena: Allocator, raw: []const u8, underscore: UnderscorePolicy
         };
         i += cp_len;
 
-        const folded = foldCodepoint(cp);
-        if (folded.len == 0) continue;
+        // 1. full-width / ideographic → ASCII, then shared classify path.
+        if (widthFoldAscii(cp)) |raw_c| {
+            const c = if (raw_c >= 'A' and raw_c <= 'Z') raw_c + 32 else raw_c;
+            if (!emitAscii(&out, c, underscore, &pending_space, &has_non_space)) break;
+            continue;
+        }
 
-        for (folded.bytes[0..folded.len]) |c| {
-            if (out.items.len >= MAX_OUTPUT) break;
-            const cls = classifyAscii(c);
-            const effective: CharClass = switch (cls) {
-                .underscore => switch (underscore) {
-                    .keep => .letter_or_digit,
-                    .drop => .drop,
-                },
-                else => cls,
-            };
-            switch (effective) {
-                .drop => {},
-                .separator => {
-                    if (has_non_space) pending_space = true;
-                },
-                .letter_or_digit, .handle_internal => {
-                    if (pending_space) {
-                        out.appendAssumeCapacity(' ');
-                        pending_space = false;
-                    }
-                    out.appendAssumeCapacity(c);
-                    has_non_space = true;
-                },
-                .underscore => unreachable, // resolved above
+        // 2. CJK: preserve (katakana already folded to hiragana). Emitted as
+        //    its UTF-8 bytes — letter-class, lazy leading space like ASCII.
+        if (cjkFold(cp)) |kept| {
+            var buf: [4]u8 = undefined;
+            const n = std.unicode.utf8Encode(kept, &buf) catch continue;
+            if (pending_space) {
+                out.appendAssumeCapacity(' ');
+                pending_space = false;
             }
+            for (buf[0..n]) |b| out.appendAssumeCapacity(b);
+            has_non_space = true;
+            continue;
+        }
+
+        // 3. Latin / ASCII fold path (table above, unchanged).
+        const folded = foldCodepoint(cp);
+        for (folded.bytes[0..folded.len]) |c| {
+            if (!emitAscii(&out, c, underscore, &pending_space, &has_non_space)) break;
         }
     }
 
@@ -298,10 +368,36 @@ test "internal runs of separators collapse to single space" {
     try expectNorm("foo , , , bar", "foo bar");
 }
 
-test "emoji and CJK dropped" {
-    try expectNorm("nate 👋", "nate");
-    try expectNorm("hello 你好", "hello");
+test "emoji dropped, CJK preserved (v2)" {
+    try expectNorm("nate 👋", "nate"); // emoji still dropped
     try expectNorm("🚀rocket🚀", "rocket");
+    try expectNorm("hello 你好", "hello 你好"); // CJK now preserved
+}
+
+test "v2: japanese kana + han preserved" {
+    try expectNorm("日本", "日本"); // Han preserved
+    try expectNorm("さとう", "さとう"); // hiragana preserved
+    try expectNorm("佐藤太郎", "佐藤太郎"); // kanji run preserved
+}
+
+test "v2: katakana folds to hiragana" {
+    try expectNorm("サトウ", "さとう"); // katakana → hiragana (collides with さとう)
+    try expectNorm("トーキョー", "とーきょー"); // ー prolonged mark preserved
+}
+
+test "v2: full-width ascii folds to ascii" {
+    try expectNorm("Ｎａｔｅ", "nate"); // full-width latin → ascii lowercase
+    try expectNorm("ｈｅｌｌｏ１２３", "hello123");
+}
+
+test "v2: ideographic + middle-dot spaces separate tokens" {
+    try expectNorm("ジョン・スミス", "じょん すみす"); // ・ → space; katakana → hiragana
+    try expectNorm("東京　タワー", "東京 たわー"); // ideographic space → space
+}
+
+test "v2: mixed latin + cjk preserved inline (segmented later)" {
+    try expectNorm("Tokyo東京", "tokyo東京"); // no space inserted; tokenizer segments runs
+    try expectNorm("東京2020", "東京2020");
 }
 
 test "combining marks dropped (pre-composed already folded above)" {
@@ -377,5 +473,5 @@ test "query() keeps underscore (user may type a username with _)" {
 
 test "version constant is stable" {
     // Don't change this without bumping VERSION and rebuilding the index.
-    try testing.expectEqualStrings("v1-ascii-latin1", VERSION);
+    try testing.expectEqualStrings("v2-cjk-bigram", VERSION);
 }

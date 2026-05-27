@@ -79,26 +79,138 @@ pub fn displayTokens(arena: Allocator, normalized_display: []const u8) ![][]cons
     return tokens.toOwnedSlice(arena);
 }
 
-/// Derive every `n:` prefix key for a normalized display name. Tokenizes
-/// then emits prefixes of each token (lengths 1..PREFIX_MAX per token).
+/// Max codepoints bigrammed from a single CJK run (defense against a
+/// pathological all-CJK display name). Phase 0 avg is ~4 codepoints.
+pub const CJK_RUN_MAX: usize = 24;
+
+/// CJK codepoints we index: Han, Hiragana (katakana is folded to Hiragana
+/// upstream in normalize.zig), and half-width katakana. Must agree with the
+/// set normalize.zig preserves — anything preserved-and-non-ASCII is CJK.
+fn isCjkCodepoint(cp: u21) bool {
+    return (cp >= 0x3040 and cp <= 0x30FF) // hiragana + (folded-away) katakana + ー
+    or (cp >= 0x3400 and cp <= 0x4DBF) // CJK Ext A
+    or (cp >= 0x4E00 and cp <= 0x9FFF) // CJK Unified Ideographs
+    or (cp >= 0xF900 and cp <= 0xFAFF) // CJK Compatibility Ideographs
+    or (cp >= 0xFF66 and cp <= 0xFF9D); // half-width katakana
+}
+
+/// Emit `n:` keys for one contiguous CJK run (codepoint-safe — all slices
+/// land on UTF-8 boundaries). Adjacent-codepoint BIGRAMS (`n:日本`, `n:本太`)
+/// approximate word boundaries for a script with no spaces; the query side
+/// intersects them (the existing multi-token `n:` AND). Plus the LEADING
+/// UNIGRAM (`n:日`) so a 1-char in-progress query matches.
+///   for_query=false (builder): bigrams + leading unigram.
+///   for_query=true  (query):   bigrams; or the single unigram when the run
+///                              is one codepoint (no every-char unigram).
+fn appendCjkKeys(
+    arena: Allocator,
+    keys: *std.ArrayListUnmanaged([]const u8),
+    run: []const u8,
+    for_query: bool,
+) !void {
+    // Byte offsets of each codepoint boundary, capped at CJK_RUN_MAX cps.
+    var bound: [CJK_RUN_MAX + 1]usize = undefined;
+    var n: usize = 0;
+    bound[0] = 0;
+    const view = std.unicode.Utf8View.init(run) catch return;
+    var it = view.iterator();
+    while (it.nextCodepointSlice()) |cps| {
+        if (n >= CJK_RUN_MAX) break;
+        bound[n + 1] = bound[n] + cps.len;
+        n += 1;
+    }
+    if (n == 0) return;
+    if (n == 1) {
+        try keys.append(arena, try formatKey(arena, .display_token, run[0..bound[1]]));
+        return;
+    }
+    var i: usize = 0;
+    while (i + 1 < n) : (i += 1) {
+        try keys.append(arena, try formatKey(arena, .display_token, run[bound[i]..bound[i + 2]]));
+    }
+    if (!for_query) {
+        try keys.append(arena, try formatKey(arena, .display_token, run[0..bound[1]])); // leading unigram
+    }
+}
+
+/// Emit `n:` keys for one Latin (ASCII, post-normalize) run.
+///   for_query=false (builder): every prefix, length 1..PREFIX_MAX.
+///   for_query=true  (query):   the full run as a single key.
+fn appendLatinKeys(
+    arena: Allocator,
+    keys: *std.ArrayListUnmanaged([]const u8),
+    run: []const u8,
+    for_query: bool,
+) !void {
+    if (run.len == 0) return;
+    if (for_query) {
+        try keys.append(arena, try formatKey(arena, .display_token, run));
+        return;
+    }
+    const max = @min(run.len, PREFIX_MAX); // Latin run is ASCII → byte == codepoint
+    var i: usize = 0;
+    while (i < max) : (i += 1) {
+        try keys.append(arena, try formatKey(arena, .display_token, run[0 .. i + 1]));
+    }
+}
+
+/// The shared, script-aware `n:`-key tokenizer. Segments one whitespace-token
+/// into contiguous Latin vs CJK runs (codepoint-safe) and emits keys per run.
+/// BOTH the builder (`displayPrefixKeys`, for_query=false) and the serving
+/// path (`queryKeys`, for_query=true) go through here — one code path, so the
+/// index and the query can never disagree on what a CJK key looks like.
+fn emitTokenKeys(
+    arena: Allocator,
+    keys: *std.ArrayListUnmanaged([]const u8),
+    token: []const u8,
+    for_query: bool,
+) !void {
+    const view = std.unicode.Utf8View.init(token) catch {
+        try appendLatinKeys(arena, keys, token, for_query); // invalid utf8: treat as ascii
+        return;
+    };
+    var it = view.iterator();
+    var run_start: usize = 0;
+    var pos: usize = 0;
+    var cur_cjk: ?bool = null;
+    while (it.nextCodepointSlice()) |cps| {
+        const cp = std.unicode.utf8Decode(cps) catch {
+            pos += cps.len;
+            continue;
+        };
+        const this_cjk = isCjkCodepoint(cp);
+        if (cur_cjk) |ck| {
+            if (ck != this_cjk) {
+                try emitRun(arena, keys, token[run_start..pos], ck, for_query);
+                run_start = pos;
+            }
+        }
+        cur_cjk = this_cjk;
+        pos += cps.len;
+    }
+    if (cur_cjk) |ck| try emitRun(arena, keys, token[run_start..pos], ck, for_query);
+}
+
+fn emitRun(
+    arena: Allocator,
+    keys: *std.ArrayListUnmanaged([]const u8),
+    run: []const u8,
+    is_cjk: bool,
+    for_query: bool,
+) !void {
+    if (is_cjk) try appendCjkKeys(arena, keys, run, for_query) else try appendLatinKeys(arena, keys, run, for_query);
+}
+
+/// Derive every `n:` key for a normalized display name. Latin runs emit
+/// prefixes; CJK runs emit bigrams + a leading unigram (see emitTokenKeys).
 /// Duplicate keys across tokens are NOT deduplicated here — the builder's
 /// group-by pass naturally dedupes.
 pub fn displayPrefixKeys(arena: Allocator, normalized_display: []const u8) ![][]const u8 {
     const tokens = try displayTokens(arena, normalized_display);
     if (tokens.len == 0) return &.{};
 
-    // Worst case: every token at PREFIX_MAX length → up to
-    // MAX_DISPLAY_TOKENS * PREFIX_MAX keys.
     var keys: std.ArrayListUnmanaged([]const u8) = .empty;
-    try keys.ensureTotalCapacity(arena, tokens.len * PREFIX_MAX);
-
-    for (tokens) |tok| {
-        const max = @min(tok.len, PREFIX_MAX);
-        var i: usize = 0;
-        while (i < max) : (i += 1) {
-            keys.appendAssumeCapacity(try formatKey(arena, .display_token, tok[0 .. i + 1]));
-        }
-    }
+    for (tokens) |tok| try emitTokenKeys(arena, &keys, tok, false);
     return keys.toOwnedSlice(arena);
 }
 
@@ -227,10 +339,11 @@ pub fn queryKeys(arena: Allocator, normalized_query: []const u8) ![][]const u8 {
         try keys.append(arena, try formatKey(arena, .domain_suffix, normalized_query));
     }
 
+    // CJK-aware: a CJK query token yields its bigram set (intersected by the
+    // serving layer); a Latin token yields its single full-run key. Same
+    // tokenizer the builder uses, so index + query agree.
     const tokens = try displayTokens(arena, normalized_query);
-    for (tokens) |tok| {
-        try keys.append(arena, try formatKey(arena, .display_token, tok));
-    }
+    for (tokens) |tok| try emitTokenKeys(arena, &keys, tok, true);
 
     return keys.toOwnedSlice(arena);
 }
@@ -536,4 +649,62 @@ test "deriveAllUnique enables clean set-diff for overlay rename" {
     }
     try testing.expect(has_h_alice);
     try testing.expect(has_e_alicefm);
+}
+
+// ─── v2: CJK / Japanese ────────────────────────────────────────────────────
+
+fn keySet(arena: Allocator, keys: [][]const u8) !std.StringHashMap(void) {
+    var s = std.StringHashMap(void).init(arena);
+    for (keys) |k| try s.put(k, {});
+    return s;
+}
+
+test "v2: displayPrefixKeys bigrams a CJK run + leading unigram" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const keys = try displayPrefixKeys(arena.allocator(), "日本太郎");
+    // bigrams 日本, 本太, 太郎 + leading unigram 日 → 4 keys
+    try testing.expectEqual(@as(usize, 4), keys.len);
+    var s = try keySet(arena.allocator(), keys);
+    try testing.expect(s.contains("n:日本"));
+    try testing.expect(s.contains("n:本太"));
+    try testing.expect(s.contains("n:太郎"));
+    try testing.expect(s.contains("n:日"));
+}
+
+test "v2: queryKeys bigrams a CJK query" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    var s = try keySet(arena.allocator(), try queryKeys(arena.allocator(), "佐藤太郎"));
+    try testing.expect(s.contains("n:佐藤"));
+    try testing.expect(s.contains("n:藤太"));
+    try testing.expect(s.contains("n:太郎"));
+}
+
+test "v2: single CJK char query → leading unigram only" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    var s = try keySet(arena.allocator(), try queryKeys(arena.allocator(), "日"));
+    try testing.expect(s.contains("n:日"));
+}
+
+test "v2: mixed latin+cjk token segments into runs" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    var s = try keySet(arena.allocator(), try displayPrefixKeys(arena.allocator(), "tokyo東京"));
+    try testing.expect(s.contains("n:t")); // latin prefix
+    try testing.expect(s.contains("n:tokyo")); // latin full
+    try testing.expect(s.contains("n:東京")); // cjk bigram
+    try testing.expect(s.contains("n:東")); // cjk leading unigram
+}
+
+test "v2: query bigrams are a subset of indexed keys (builder/query agree)" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    var idx = try keySet(arena.allocator(), try displayPrefixKeys(arena.allocator(), "佐藤太郎"));
+    // a partial query "佐藤太" must produce only n: keys present in the index
+    const q = try queryKeys(arena.allocator(), "佐藤太");
+    for (q) |k| {
+        if (std.mem.startsWith(u8, k, "n:")) try testing.expect(idx.contains(k));
+    }
 }
