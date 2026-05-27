@@ -2,7 +2,7 @@ import type { TursoDB } from "./db";
 import type { Env } from "./types";
 import { BSKY_TYPEAHEAD_URL } from "./types";
 import { extractProfileFields } from "./utils";
-import { getOverrides } from "./moderation";
+import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 
 // --- backfill: remove this block once at parity with Bluesky ---
 
@@ -31,8 +31,9 @@ export async function backfillFromBsky(
     // upsert all — fills in missing actors AND enriches existing ones
     // (e.g. actors ingested via Jetstream that lack avatar/displayName)
     const overrides = await getOverrides(db, actors.map((a) => a.did));
+    const blockedDomains = await getBlockedDomains(db);
     const stmts = actors.map((a) => {
-      const f = extractProfileFields(a, overrides.get(a.did) ?? null);
+      const f = extractProfileFields(a, overrides.get(a.did) ?? null, isDomainBlocked(a.handle || "", blockedDomains));
       return db.prepare(
         `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, followers_count, follows_count, posts_count, quality_score, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, unixepoch())

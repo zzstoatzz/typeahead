@@ -2,7 +2,7 @@ import type { Stmt, TursoDB } from "./db";
 import type { Env } from "./types";
 import { BSKY_GET_PROFILES_URL } from "./types";
 import { extractProfileFields, fetchProfileFromPds } from "./utils";
-import { getOverrides } from "./moderation";
+import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 import { recordActorDelta } from "./metrics";
 
 /** refresh moderation labels, walking the full index over multiple cron runs */
@@ -30,6 +30,9 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
 
   // fetch all overrides for this page so cron respects them
   const overrides = await getOverrides(db, results.map((r) => r.did));
+  // domain blocks must be re-applied here too — else this recompute would
+  // un-hide a domain-blocked account whose labels alone don't hide it.
+  const blockedDomains = await getBlockedDomains(db);
 
   // batch into groups of 25 (getProfiles limit), ~200ms pause between calls
   for (let i = 0; i < results.length; i += 25) {
@@ -57,7 +60,7 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
 
       const stmts: Stmt[] = [];
       for (const p of profiles) {
-        const f = extractProfileFields(p, overrides.get(p.did) ?? null);
+        const f = extractProfileFields(p, overrides.get(p.did) ?? null, isDomainBlocked(p.handle || "", blockedDomains));
         const cur = current.get(p.did);
         // skip no-op updates — only write if labels or hidden actually changed
         if (cur && cur.hidden === f.hidden && cur.labels === f.labels) { skipped++; continue; }
@@ -107,7 +110,7 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
           if (isTakedown) {
             const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
             if (pdsProfile) {
-              const f = extractProfileFields(pdsProfile, override);
+              const f = extractProfileFields(pdsProfile, override, isDomainBlocked(r.handle || "", blockedDomains));
               const cur = current.get(r.did);
               if (cur && cur.hidden === f.hidden && cur.labels === f.labels) continue;
               pdsStmts.push(

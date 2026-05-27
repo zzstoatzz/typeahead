@@ -2,7 +2,7 @@ import type { Stmt, TursoDB } from "./db";
 import type { Env, SlingshotResponse } from "./types";
 import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL } from "./types";
 import { extractProfileFields, fetchProfileFromPds } from "./utils";
-import { getOverrides } from "./moderation";
+import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 
 /** record an actor-count snapshot for the current hour (idempotent) */
 export async function recordSnapshot(db: TursoDB): Promise<void> {
@@ -151,15 +151,16 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
     // phase 2: profile + labels enrichment via getProfiles batch
     // targets actors missing avatar OR labels — one API call per 25 actors
     const { results: profileRows } = await db.prepare(
-      `SELECT did, pds FROM actors
+      `SELECT did, handle, pds FROM actors
        WHERE handle != ''
          AND (avatar_url = '' OR labels = '[]' OR created_at = '')
          AND profile_checked_at < unixepoch() - 3600
        ORDER BY profile_checked_at ASC LIMIT 250`
-    ).all<{ did: string; pds: string }>();
+    ).all<{ did: string; handle: string; pds: string }>();
 
     if (profileRows && profileRows.length > 0) {
       const overrides = await getOverrides(db, profileRows.map((r) => r.did));
+      const blockedDomains = await getBlockedDomains(db);
       let enriched = 0;
       for (let i = 0; i < profileRows.length; i += 25) {
         const batch = profileRows.slice(i, i + 25);
@@ -180,7 +181,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
           const returned = new Set<string>();
           for (const p of profiles) {
             returned.add(p.did);
-            const f = extractProfileFields(p, overrides.get(p.did) ?? null);
+            const f = extractProfileFields(p, overrides.get(p.did) ?? null, isDomainBlocked(p.handle || "", blockedDomains));
             stmts.push(
               db.prepare(
                 `UPDATE actors SET
@@ -232,7 +233,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
               if (tryPds) {
                 const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
                 if (pdsProfile) {
-                  const f = extractProfileFields(pdsProfile, override);
+                  const f = extractProfileFields(pdsProfile, override, isDomainBlocked(r.handle || "", blockedDomains));
                   stmts.push(
                     db.prepare(
                       `UPDATE actors SET

@@ -2,7 +2,7 @@ import type { TursoDB } from "../db";
 import type { Env, SlingshotResponse } from "../types";
 import { SLINGSHOT_URL } from "../types";
 import { clientIP, json, extractProfileFields, fetchProfileFromPds } from "../utils";
-import { getOverride, shouldHide } from "../moderation";
+import { getOverride, getOverrides, resolveHidden, isDomainBlocked, getBlockedDomains } from "../moderation";
 import { recordActorDelta } from "../metrics";
 
 export async function handleDelete(
@@ -112,15 +112,16 @@ export async function handleRequestIndexing(
     followersCount: 0, followsCount: 0, postsCount: 0, qualityScore: 0,
   };
   const override = await getOverride(db, identity.did);
+  const domainBlocked = isDomainBlocked(identity.handle || "", await getBlockedDomains(db));
   try {
     const profileRes = await fetch(
       `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(identity.did)}`
     );
     if (profileRes.ok) {
-      f = extractProfileFields(await profileRes.json(), override);
+      f = extractProfileFields(await profileRes.json(), override, domainBlocked);
     } else if (override === 'show' && identity.pds) {
       const pdsProfile = await fetchProfileFromPds(identity.did, identity.pds);
-      if (pdsProfile) f = extractProfileFields(pdsProfile, override);
+      if (pdsProfile) f = extractProfileFields(pdsProfile, override, domainBlocked);
     }
   } catch {
     // profile enrichment is best-effort
@@ -211,18 +212,24 @@ export async function handleModOverrideDelete(
 
   await db.prepare("DELETE FROM mod_overrides WHERE did = ?1").bind(did).run();
 
-  // recompute hidden from stored labels
+  // recompute effective hidden from ALL sources now that the override is gone
+  // (labels + slur + domain block) — not labels alone, or a domain-blocked
+  // account would resurface the moment its show/hide override is removed.
   const row = await db.prepare(
-    "SELECT labels FROM actors WHERE did = ?1"
-  ).bind(did).first<{ labels: string }>();
+    "SELECT handle, labels FROM actors WHERE did = ?1"
+  ).bind(did).first<{ handle: string; labels: string }>();
 
   let hidden = 0;
   if (row) {
-    try {
-      hidden = shouldHide(JSON.parse(row.labels)) ? 1 : 0;
-    } catch {
-      hidden = 0;
-    }
+    let labels: any[] = [];
+    try { labels = JSON.parse(row.labels); } catch { labels = []; }
+    const blockedDomains = await getBlockedDomains(db);
+    hidden = resolveHidden({
+      labels,
+      handle: row.handle,
+      override: null,
+      domainBlocked: isDomainBlocked(row.handle || "", blockedDomains),
+    });
     await db.prepare("UPDATE actors SET hidden = ?1, updated_at = unixepoch() WHERE did = ?2").bind(hidden, did).run();
   }
 
@@ -242,4 +249,114 @@ export async function handleModOverrideList(
   ).all<{ did: string; action: string; reason: string; created_at: number }>();
 
   return json({ overrides: results || [] });
+}
+
+/** normalize an input domain: lowercase, trim, strip a leading "*." / "." */
+function normalizeDomain(raw: string): string {
+  return (raw || "").trim().toLowerCase().replace(/^\*?\.?/, "");
+}
+
+export async function handleDomainBlockSet(
+  request: Request,
+  db: TursoDB,
+  env: Env,
+): Promise<Response> {
+  const denied = authCheck(request, env);
+  if (denied) return denied;
+
+  let body: { domain: string; reason?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid json" }, 400);
+  }
+
+  const domain = normalizeDomain(body.domain);
+  if (!domain || !domain.includes(".") || /\s/.test(domain)) {
+    return json({ error: "valid domain required (e.g. dadavidtseng.com)" }, 400);
+  }
+
+  await db.prepare(
+    `INSERT INTO blocked_domains (domain, reason) VALUES (?1, ?2)
+     ON CONFLICT(domain) DO UPDATE SET reason = ?2, created_at = unixepoch()`
+  ).bind(domain, body.reason || "").run();
+
+  // backfill: hide the apex + every subdomain, except DIDs a manual 'show'
+  // override rescues. Only flip 0→1 so we don't churn updated_at (and the App B
+  // sync) for accounts already hidden.
+  const suffix = "%." + domain;
+  const res = await db.prepare(
+    `UPDATE actors SET hidden = 1, updated_at = unixepoch()
+     WHERE (handle = ?1 OR handle LIKE ?2) COLLATE NOCASE
+       AND hidden = 0
+       AND did NOT IN (SELECT did FROM mod_overrides WHERE action = 'show')`
+  ).bind(domain, suffix).run();
+
+  return json({ domain, reason: body.reason || "", hidden_now: res.meta?.changes ?? 0 });
+}
+
+export async function handleDomainBlockDelete(
+  request: Request,
+  db: TursoDB,
+  env: Env,
+): Promise<Response> {
+  const denied = authCheck(request, env);
+  if (denied) return denied;
+
+  const url = new URL(request.url);
+  const domain = normalizeDomain(url.searchParams.get("domain") || "");
+  if (!domain) return json({ error: "domain query param required" }, 400);
+
+  await db.prepare("DELETE FROM blocked_domains WHERE domain = ?1").bind(domain).run();
+
+  // recompute effective hidden for every actor that matched this domain, from
+  // all remaining sources (labels + slur + OTHER domain blocks + override).
+  // Paged by rowid to bound memory on large domains.
+  const remaining = await getBlockedDomains(db);
+  const suffix = "%." + domain;
+  let restored = 0;
+  let cursor = 0;
+  while (true) {
+    const { results } = await db.prepare(
+      `SELECT rowid, did, handle, labels FROM actors
+       WHERE (handle = ?1 OR handle LIKE ?2) COLLATE NOCASE AND rowid > ?3
+       ORDER BY rowid ASC LIMIT 500`
+    ).bind(domain, suffix, cursor).all<{ rowid: number; did: string; handle: string; labels: string }>();
+    if (!results || results.length === 0) break;
+
+    const overrides = await getOverrides(db, results.map((r) => r.did));
+    const stmts = results.map((r) => {
+      let labels: any[] = [];
+      try { labels = JSON.parse(r.labels); } catch { labels = []; }
+      const hidden = resolveHidden({
+        labels,
+        handle: r.handle,
+        override: overrides.get(r.did) ?? null,
+        domainBlocked: isDomainBlocked(r.handle || "", remaining),
+      });
+      return db.prepare(
+        "UPDATE actors SET hidden = ?1, updated_at = unixepoch() WHERE did = ?2 AND hidden != ?1"
+      ).bind(hidden, r.did);
+    });
+    const batchResults = await db.batch(stmts);
+    restored += batchResults.filter((x) => x.meta.changes > 0).length;
+    cursor = results[results.length - 1].rowid;
+  }
+
+  return json({ domain, recomputed: restored });
+}
+
+export async function handleDomainBlockList(
+  request: Request,
+  db: TursoDB,
+  env: Env,
+): Promise<Response> {
+  const denied = authCheck(request, env);
+  if (denied) return denied;
+
+  const { results } = await db.prepare(
+    "SELECT domain, reason, created_at FROM blocked_domains ORDER BY created_at DESC"
+  ).all<{ domain: string; reason: string; created_at: number }>();
+
+  return json({ blocked_domains: results || [] });
 }

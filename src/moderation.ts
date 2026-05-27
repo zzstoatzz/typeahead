@@ -64,3 +64,51 @@ export async function getOverrides(db: TursoDB, dids: string[]): Promise<Map<str
   }
   return map;
 }
+
+/**
+ * apex-inclusive domain match: a handle is blocked if it equals a blocked
+ * domain OR is a subdomain of one (`x.dadavidtseng.com` and the bare
+ * `dadavidtseng.com` both match a block on `dadavidtseng.com`). Case-folded;
+ * `domains` is assumed lowercase (see getBlockedDomains).
+ */
+export function isDomainBlocked(handle: string, domains: Set<string>): boolean {
+  if (!handle || domains.size === 0) return false;
+  const h = handle.toLowerCase();
+  for (const d of domains) {
+    if (h === d || h.endsWith("." + d)) return true;
+  }
+  return false;
+}
+
+/** all blocked domains, lowercased, as a set for isDomainBlocked. */
+export async function getBlockedDomains(db: TursoDB): Promise<Set<string>> {
+  const { results } = await db.prepare(
+    "SELECT domain FROM blocked_domains"
+  ).all<{ domain: string }>();
+  return new Set((results || []).map((r) => r.domain.toLowerCase()));
+}
+
+/**
+ * The single source of truth for an actor's effective `hidden` flag. Every
+ * write site (profile enrich, mod refresh, override change, domain block)
+ * MUST resolve through this so precedence stays consistent — otherwise e.g.
+ * the mod-refresh cron would recompute from labels alone and silently
+ * un-hide a domain-blocked account.
+ *
+ * Precedence (later wins): label hide → slur → domain block → per-DID
+ * override. A per-DID `show` is the final word, so it rescues a
+ * false-positive on a blocked domain without un-blocking the whole domain.
+ */
+export function resolveHidden(opts: {
+  labels?: any[];
+  handle?: string;
+  override?: 'show' | 'hide' | null;
+  domainBlocked?: boolean;
+}): 0 | 1 {
+  let hidden = shouldHide(opts.labels) ? 1 : 0;
+  if (hasExplicitSlur(opts.handle || "")) hidden = 1;
+  if (opts.domainBlocked) hidden = 1;
+  if (opts.override === "show") hidden = 0;
+  if (opts.override === "hide") hidden = 1;
+  return hidden as 0 | 1;
+}

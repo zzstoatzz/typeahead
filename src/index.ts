@@ -6,7 +6,7 @@ import { recordSnapshot, materializeStats, enrichActors } from "./enrichment";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
-import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList } from "./handlers/admin";
+import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList } from "./handlers/admin";
 import { handleGetProfiles } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { indexPage } from "./pages/home";
@@ -101,6 +101,16 @@ export default {
     }
     if (pathname === "/admin/mod-overrides" && request.method === "GET") {
       return handleModOverrideList(request, db, env);
+    }
+
+    if (pathname === "/admin/domain-block" && request.method === "POST") {
+      return handleDomainBlockSet(request, db, env);
+    }
+    if (pathname === "/admin/domain-block" && request.method === "DELETE") {
+      return handleDomainBlockDelete(request, db, env);
+    }
+    if (pathname === "/admin/domain-blocks" && request.method === "GET") {
+      return handleDomainBlockList(request, db, env);
     }
 
     return json({ error: "not found" }, 404);

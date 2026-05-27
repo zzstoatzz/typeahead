@@ -166,4 +166,16 @@ pub const migrations = [_]zug.Migration{
             "ALTER TABLE actors ADD COLUMN quality_score REAL NOT NULL DEFAULT 0",
         },
     },
+    .{
+        .id = "003_blocked_domains",
+        .name = "domain-level moderation blocks (apex + all subdomains)",
+        .statements = &.{
+            \\CREATE TABLE IF NOT EXISTS blocked_domains (
+            \\  domain TEXT PRIMARY KEY,
+            \\  reason TEXT NOT NULL DEFAULT '',
+            \\  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+            \\)
+            ,
+        },
+    },
 };

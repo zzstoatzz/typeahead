@@ -1,5 +1,5 @@
 import { CORS_HEADERS } from "./types";
-import { shouldHide, hasExplicitSlur } from "./moderation";
+import { resolveHidden } from "./moderation";
 
 export function clientIP(request: Request): string {
   return request.headers.get("CF-Connecting-IP") || "unknown";
@@ -136,11 +136,17 @@ export function computeAuthorityScore(p: {
   return Math.round(score * 100) / 100;
 }
 
-export function extractProfileFields(profile: any, override?: 'show' | 'hide' | null): ProfileFields {
-  let hidden = shouldHide(profile.labels) ? 1 : 0;
-  if (hasExplicitSlur(profile.handle || '')) hidden = 1;
-  if (override === 'show') hidden = 0;
-  if (override === 'hide') hidden = 1;
+export function extractProfileFields(
+  profile: any,
+  override?: 'show' | 'hide' | null,
+  domainBlocked?: boolean,
+): ProfileFields {
+  const hidden = resolveHidden({
+    labels: profile.labels,
+    handle: profile.handle,
+    override,
+    domainBlocked,
+  });
   const raw = profile.avatar || '';
   const avatarCid = extractAvatarCid(raw);
   const followersCount = Number(profile.followersCount) || 0;
