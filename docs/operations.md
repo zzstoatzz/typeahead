@@ -43,6 +43,45 @@ managed in the dashboard (Rules → Configuration Rules).
 **For volume/abuse control** use a **Rate Limiting Rule** on `/xrpc/*`
 (requests/min per IP) — BIC only fingerprints, it does not bound volume.
 
+## Cloudflare: Browser Cache TTL must "Respect Existing Headers"
+
+The worker sets `Cache-Control: public, max-age=60` on search responses
+(`src/handlers/search.ts`) so the edge + browser cache results for ~1 min and
+moderation/profile/deletion changes go live within that window.
+
+The `waow.tech` zone's **Browser Cache TTL** setting was `14400` (4 hours, a
+legacy CF default), which **overrides** the worker's `max-age` — the served
+header became `max-age=14400` and stale results persisted on the edge per-POP
+for up to 4h. Symptom: a just-applied moderation change (e.g. a domain block)
+keeps showing in the UI long after the DB + App B are correct; `curl` of a
+cache-busted URL returns the fresh value but the cached query URL does not.
+
+**Fix (live):** Browser Cache TTL set to **0 = "Respect Existing Headers"**
+(Caching → Configuration), so the worker's `max-age=60` is honored. After
+changing it, **purge the cache** to clear the inflated entries.
+
+Unlike the BIC rule above, this **is** doable via API with a properly-scoped
+token (the MCP's own token still can't). Mint a zone-scoped token for
+`waow.tech` with permission groups **Cache Purge**, **Cache Settings : Edit**,
+**Zone Settings : Edit**, put it in gitignored `.env` as `CF_CACHE_TOKEN` —
+**not** `CF_API_TOKEN`/`CLOUDFLARE_API_TOKEN`, which `bunx` auto-loads from
+`.env` and wrangler uses for `deploy` (a cache-scoped token under that name
+breaks `bunx wrangler deploy`). Then:
+
+```sh
+set -a; . ./.env; set +a
+ZONE=8c32e078cab2a47dcaeaf5284ca0aa54
+# inspect / fix the setting
+curl -sS "https://api.cloudflare.com/client/v4/zones/$ZONE/settings/browser_cache_ttl" -H "Authorization: Bearer $CF_CACHE_TOKEN"
+curl -sS -X PATCH "https://api.cloudflare.com/client/v4/zones/$ZONE/settings/browser_cache_ttl" -H "Authorization: Bearer $CF_CACHE_TOKEN" -H "Content-Type: application/json" --data '{"value":0}'
+# purge stale entries
+curl -sS -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE/purge_cache" -H "Authorization: Bearer $CF_CACHE_TOKEN" -H "Content-Type: application/json" --data '{"purge_everything":true}'
+```
+
+Verify with `curl -D-` of an `/xrpc/` query: `cache-control` should read
+`max-age=60`, not `14400`. (`Cache Purge` is a **Zone** permission — it doesn't
+appear if the token's permission dropdown is scoped to Account.)
+
 ## Snapshot builder: R2 channels (don't clobber prod `latest.json`)
 
 The indexer (`MODE=indexer`) writes the snapshot + manifest to R2 and a
