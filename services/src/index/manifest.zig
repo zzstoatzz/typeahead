@@ -32,6 +32,8 @@ pub const Inputs = struct {
     overlay_top_n: usize,
     hydrate_cap: usize,
     builder_version: []const u8,
+    cjk_key_count: usize, // v2+ : CJK n: keys (display-name bigrams)
+    cjk_actor_count: usize, // v2+ : actors with ≥1 CJK key
 };
 
 pub const Result = struct {
@@ -94,7 +96,9 @@ pub fn write(gpa: Allocator, in: Inputs) !Result {
         \\  "top_n_long": {d},
         \\  "overlay_top_n": {d},
         \\  "hydrate_cap": {d},
-        \\  "builder_version": "{s}"
+        \\  "builder_version": "{s}",
+        \\  "cjk_key_count": {d},
+        \\  "cjk_actor_count": {d}
         \\}}
         \\
     , .{
@@ -102,7 +106,7 @@ pub fn write(gpa: Allocator, in: Inputs) !Result {
         byte_size,          sha_hex[0..],      in.source_watermark, in.actor_count,
         in.prefix_count,    normalize.VERSION, scoring.VERSION,     in.top_n_short,
         in.top_n_medium,    in.top_n_long,     in.overlay_top_n,    in.hydrate_cap,
-        in.builder_version,
+        in.builder_version, in.cjk_key_count,  in.cjk_actor_count,
     });
     defer gpa.free(json);
 

@@ -128,6 +128,11 @@ const BuildStats = struct {
     actor_count: usize = 0,
     emission_count: usize = 0,
     prefix_key_count: usize = 0,
+    /// CJK n: keys emitted (any key with a non-ASCII byte) and actors that
+    /// emitted ≥1. Manifest-reported; the promote gate floors them for
+    /// v2-cjk snapshots so a CJK-blind build can't silently attach.
+    cjk_key_count: usize = 0,
+    cjk_actor_count: usize = 0,
     build_start_ms: i64 = 0,
     build_end_ms: i64 = 0,
     /// max(updated_at) seen in Turso actors at build start. Persisted to
@@ -491,6 +496,8 @@ pub fn run(allocator: Allocator) !void {
             .overlay_top_n = cfg.overlay_top_n,
             .hydrate_cap = cfg.hydrate_cap,
             .builder_version = cfg.builder_version,
+            .cjk_key_count = stats.cjk_key_count,
+            .cjk_actor_count = stats.cjk_actor_count,
         });
         stats.phases.manifest_ms = nowMs() - t;
         log.info("manifest written: byte_size={d} sha256={s}", .{ m.byte_size, m.sha256_hex[0..16] });
@@ -739,6 +746,7 @@ fn processActorRow(ctx: *StreamCtx, row: anytype) !void {
     const score: f32 = scoring.scoreOf(.{ .quality_score = @floatCast(quality_score) });
 
     const t_emit = nowMs();
+    var actor_has_cjk = false;
     for (keys) |k| {
         try ctx.stmt_emit.reset();
         try ctx.stmt_emit.bindValue(k, 0);
@@ -746,7 +754,17 @@ fn processActorRow(ctx: *StreamCtx, row: anytype) !void {
         try ctx.stmt_emit.bindValue(@as(f64, @floatCast(score)), 2);
         try ctx.stmt_emit.stepToCompletion();
         ctx.stats.emission_count += 1;
+        // CJK keys (display-name bigrams) carry non-ASCII bytes; ASCII h:/n:/
+        // e:/d: keys never do. Count them for the manifest + promote floor.
+        for (k) |b| {
+            if (b >= 0x80) {
+                ctx.stats.cjk_key_count += 1;
+                actor_has_cjk = true;
+                break;
+            }
+        }
     }
+    if (actor_has_cjk) ctx.stats.cjk_actor_count += 1;
     ctx.stats.phases.emission_insert_ms += nowMs() - t_emit;
 }
 
@@ -1053,6 +1071,8 @@ fn writeMeta(
     try schema.setMeta(conn, schema.meta.hydrate_cap, try std.fmt.bufPrint(&buf, "{d}", .{cfg.hydrate_cap}));
     try schema.setMeta(conn, schema.meta.actor_count, try std.fmt.bufPrint(&buf, "{d}", .{stats.actor_count}));
     try schema.setMeta(conn, schema.meta.prefix_count, try std.fmt.bufPrint(&buf, "{d}", .{stats.prefix_key_count}));
+    try schema.setMeta(conn, schema.meta.cjk_key_count, try std.fmt.bufPrint(&buf, "{d}", .{stats.cjk_key_count}));
+    try schema.setMeta(conn, schema.meta.cjk_actor_count, try std.fmt.bufPrint(&buf, "{d}", .{stats.cjk_actor_count}));
 }
 
 // ─── tests ───────────────────────────────────────────────────────────────

@@ -41,7 +41,18 @@ pub const Manifest = struct {
     overlay_top_n: u32,
     hydrate_cap: u32,
     builder_version: []const u8,
+    // v2+ : count of CJK `n:` keys / actors. Default 0 so v1 manifests
+    // (which lack these) still parse. Floored by the gate only when the
+    // snapshot's normalize_version is a CJK version.
+    cjk_key_count: u64 = 0,
+    cjk_actor_count: u64 = 0,
 };
+
+/// Minimum CJK keys a v2-cjk build must carry. Phase 0 estimated ~1.7M for
+/// ~434k CJK actors; this floor (~34× under that) exists only to reject a
+/// CJK-blind build (normalizer/tokenizer regression → ~0 CJK keys), not to
+/// track the true count. Cheap structural guard, no live-account dependency.
+pub const CJK_KEY_FLOOR: u64 = 50_000;
 
 pub const GateError = error{
     UnsupportedManifestVersion,
@@ -54,6 +65,7 @@ pub const GateError = error{
     ManifestMetaMismatch,
     ActorCountFloor,
     PrefixCountFloor,
+    CjkKeyFloor,
 };
 
 /// Parse manifest JSON. Caller owns the returned Parsed and must deinit it
@@ -118,6 +130,14 @@ pub fn validateSnapshot(
     // Sanity floors: a build with <half the prior actors/keys is suspect.
     if (prev_actor_count > 0 and m.actor_count < prev_actor_count / 2) return GateError.ActorCountFloor;
     if (prev_prefix_count > 0 and m.prefix_count < prev_prefix_count / 2) return GateError.PrefixCountFloor;
+
+    // CJK floor: a v2-cjk snapshot that emits ~no CJK keys means the
+    // normalizer/tokenizer regressed (Japanese silently unsearchable). Reject
+    // rather than ship a CJK-blind index. Structural, not account-dependent.
+    if (std.mem.startsWith(u8, nv, "v2-cjk") and m.cjk_key_count < CJK_KEY_FLOOR) {
+        log.warn("cjk_key_count {d} below floor {d} for {s}", .{ m.cjk_key_count, CJK_KEY_FLOOR, nv });
+        return GateError.CjkKeyFloor;
+    }
 }
 
 // ─── tests ───────────────────────────────────────────────────────────────
@@ -158,6 +178,9 @@ test "parse manifest (ignores unknown fields)" {
     try testing.expectEqual(@as(u64, 6442450944), m.byte_size);
     try testing.expectEqualStrings("v1-ascii-latin1", m.normalize_version);
     try testing.expectEqual(@as(u32, 300), m.top_n_short);
+    // v1 manifest lacks CJK fields → they default to 0 (no parse error).
+    try testing.expectEqual(@as(u64, 0), m.cjk_key_count);
+    try testing.expectEqual(@as(u64, 0), m.cjk_actor_count);
 }
 
 test "verifyFile size + checksum gate" {
@@ -205,6 +228,8 @@ fn goodManifest() Manifest {
         .overlay_top_n = 100,
         .hydrate_cap = 50,
         .builder_version = "dev",
+        .cjk_key_count = 100_000, // above CJK_KEY_FLOOR (normalize.VERSION is v2-cjk)
+        .cjk_actor_count = 20_000,
     };
 }
 
@@ -213,6 +238,16 @@ test "validateSnapshot accepts a good snapshot" {
     defer conn.close();
     try validateSnapshot(testing.allocator, conn, goodManifest(), 0, 0); // first ship
     try validateSnapshot(testing.allocator, conn, goodManifest(), 1500, 8000); // within floor
+}
+
+test "validateSnapshot CJK floor: v2 build with ~no CJK keys is rejected" {
+    var conn = try goodSnapshot(); // normalize_version = v2-cjk-bigram
+    defer conn.close();
+    var m = goodManifest();
+    m.cjk_key_count = 0; // CJK-blind build (regressed tokenizer)
+    try testing.expectError(GateError.CjkKeyFloor, validateSnapshot(testing.allocator, conn, m, 0, 0));
+    m.cjk_key_count = CJK_KEY_FLOOR; // exactly at floor → accepted
+    try validateSnapshot(testing.allocator, conn, m, 0, 0);
 }
 
 test "validateSnapshot rejects bad manifest_version" {

@@ -46,6 +46,8 @@ pub const meta = struct {
     pub const hydrate_cap = "hydrate_cap"; // serving merge cap
     pub const actor_count = "actor_count"; // count emitted by builder
     pub const prefix_count = "prefix_count"; // distinct keys in prefix_top_base
+    pub const cjk_key_count = "cjk_key_count"; // v2+ : CJK n: keys emitted
+    pub const cjk_actor_count = "cjk_actor_count"; // v2+ : actors with ≥1 CJK key
 };
 
 /// Create snapshot tables on the indexer's per-build DB. Idempotent.
@@ -299,7 +301,7 @@ test "meta key constants are non-empty and stable" {
         meta.builder_version, meta.normalize_version, meta.scoring_version,
         meta.top_n_short,     meta.top_n_medium,      meta.top_n_long,
         meta.overlay_top_n,   meta.hydrate_cap,       meta.actor_count,
-        meta.prefix_count,
+        meta.prefix_count,    meta.cjk_key_count,     meta.cjk_actor_count,
     }) |k| {
         try testing.expect(k.len > 0);
     }
