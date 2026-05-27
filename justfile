@@ -24,13 +24,12 @@ search-status url="https://typeahead-search.fly.dev":
 prod-smoke url="https://typeahead.waow.tech":
     ./scripts/smoke.py --url {{url}}
 
-# run on a one-off indexer machine; branch namespaces the prefix + latest key
-# STAGING index build to an isolated R2 channel (never touches prod latest.json)
+# STAGING index build to an isolated R2 channel (never touches prod latest.json).
+# branch namespaces the channel: staging/<branch>/ + latest.<branch>.json
 indexer-build-staging branch="cjk-search":
     cd services && \
-      INDEX_UPLOAD_R2=1 \
-      INDEX_BUILD_PREFIX="staging/{{branch}}/" \
-      INDEX_LATEST_KEY="latest.{{branch}}.json" \
+      INDEX_CHANNEL=staging \
+      INDEX_STAGING_NAME="{{branch}}" \
       MODE=indexer zig build run
 
 # perf benchmark against prod worker — latency, coverage, fields, stress

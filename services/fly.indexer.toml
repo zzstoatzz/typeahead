@@ -14,9 +14,12 @@ primary_region = 'iad'  # AWS us-east-1 colocation → fast Turso export
 
 [env]
   INDEX_BUILD_ROOT = '/data'
-  # Publish the built artifact to R2 (builds/<id>/index.db + latest.json).
-  # INDEX_R2_* creds come from `fly secrets`. Omit/unset for a dry build.
-  INDEX_UPLOAD_R2 = '1'
+  # Publish channel. Default `local` = build to the volume, upload NOTHING —
+  # so a machine launched without an explicit channel can never touch prod.
+  # Per-run overrides pick the real target (INDEX_R2_* creds come from `fly secrets`):
+  #   staging: --env INDEX_CHANNEL=staging --env INDEX_STAGING_NAME=<branch>
+  #   prod:    --env INDEX_CHANNEL=prod    --env INDEX_ALLOW_PROD=1
+  INDEX_CHANNEL = 'local'
 
 [[vm]]
   memory = '2gb'

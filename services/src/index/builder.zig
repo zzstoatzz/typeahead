@@ -27,6 +27,7 @@
 //! 200MB page cache — flat regardless of corpus size.
 
 const std = @import("std");
+const builtin = @import("builtin");
 const zqlite = @import("zqlite");
 const Allocator = std.mem.Allocator;
 
@@ -46,6 +47,40 @@ const io = std.Options.debug_io;
 // Declared here so we can steer SQLite's temp_store=FILE scratch onto the
 // build volume via SQLITE_TMPDIR.
 extern "c" fn setenv(name: [*:0]const u8, value: [*:0]const u8, overwrite: c_int) c_int;
+
+// Linux glibc `struct statvfs` (64-bit): every field we touch is an
+// `unsigned long` (8 bytes). Used only on the Fly build VM (Linux); the
+// heartbeat reports free space so an operator never has to ssh + `df` to
+// tell a long phase apart from a dead one. macOS has a different layout,
+// so diskFreeBytes is a no-op off Linux (tests don't depend on it).
+const Statvfs = extern struct {
+    f_bsize: c_ulong,
+    f_frsize: c_ulong,
+    f_blocks: c_ulong,
+    f_bfree: c_ulong,
+    f_bavail: c_ulong,
+    f_files: c_ulong,
+    f_ffree: c_ulong,
+    f_favail: c_ulong,
+    f_fsid: c_ulong,
+    f_flag: c_ulong,
+    f_namemax: c_ulong,
+    __spare: [6]c_int,
+};
+extern "c" fn statvfs(path: [*:0]const u8, buf: *Statvfs) c_int;
+
+/// Free bytes available on the filesystem holding `path`. 0 on any failure
+/// or off Linux. Cheap (one syscall) — safe to call on each heartbeat tick.
+fn diskFreeBytes(path: []const u8) u64 {
+    if (builtin.os.tag != .linux) return 0;
+    var zbuf: [256]u8 = undefined;
+    if (path.len + 1 > zbuf.len) return 0;
+    @memcpy(zbuf[0..path.len], path);
+    zbuf[path.len] = 0;
+    var st: Statvfs = undefined;
+    if (statvfs(zbuf[0..path.len :0], &st) != 0) return 0;
+    return @as(u64, st.f_bavail) *% @as(u64, st.f_frsize);
+}
 
 /// Rows per Turso roundtrip during the streaming fetch. Matches the
 /// pattern in `sync.zig`'s bulk pagination. 2000 is small enough that
@@ -116,8 +151,8 @@ fn envUsize(name: [*:0]const u8, default: usize) usize {
 }
 
 /// Truthy env flag: unset / "" / "0" / "false" / "no" → false, anything else
-/// → true. So `INDEX_UPLOAD_R2=0` actually disables upload — a bare presence
-/// check would treat "0" as on and surprise a dry-run.
+/// → true. So `INDEX_ALLOW_PROD=0` actually leaves prod disarmed — a bare
+/// presence check would treat "0" as on and arm a prod write by surprise.
 fn envFlag(name: [*:0]const u8) bool {
     const v = cGetenv(name) orelse return false;
     if (v.len == 0 or std.mem.eql(u8, v, "0")) return false;
@@ -175,6 +210,123 @@ fn nowMs() i64 {
 
 fn nowSeconds() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
+}
+
+/// Heartbeat cadence for the silent blocking phases. 30s ≈ 2 lines/min —
+/// enough to prove liveness across a tens-of-minutes phase without spamming.
+const HEARTBEAT_INTERVAL_S: u32 = 30;
+
+/// Liveness logger for phases SQLite (or R2) runs as a single opaque
+/// blocking call — `CREATE INDEX` over ~250M emission rows, the multi-GB
+/// Turso export, the multi-GB index.db upload. The calling thread can't
+/// emit progress from inside those, so a side thread prints elapsed +
+/// watched-file size + free disk every tick until finish() joins it. This
+/// is what turns "is it alive?" (manual ssh + df) into a log line.
+///
+/// Construct on the caller's stack, then start()/finish() around the
+/// blocking call — `self` must stay put for the spawned thread's lifetime,
+/// which the start..finish scope guarantees.
+const Heartbeat = struct {
+    phase: []const u8,
+    watch_path: []const u8,
+    vol_path: []const u8,
+    interval_s: u32 = HEARTBEAT_INTERVAL_S,
+    start_ms: i64 = 0,
+    stop: std.atomic.Value(bool) = .init(false),
+    thread: ?std.Thread = null,
+
+    fn start(self: *Heartbeat) void {
+        self.start_ms = nowMs();
+        self.stop.store(false, .release);
+        log.info("phase start: {s}", .{self.phase});
+        self.thread = std.Thread.spawn(.{}, loop, .{self}) catch |err| blk: {
+            log.warn("heartbeat spawn failed ({s}): {s}", .{ self.phase, @errorName(err) });
+            break :blk null;
+        };
+    }
+
+    fn loop(self: *Heartbeat) void {
+        while (true) {
+            var slept: u32 = 0;
+            while (slept < self.interval_s) : (slept += 1) {
+                if (self.stop.load(.acquire)) return;
+                std.Thread.sleep(std.time.ns_per_s);
+            }
+            if (self.stop.load(.acquire)) return;
+            self.emit("phase heartbeat");
+        }
+    }
+
+    fn emit(self: *Heartbeat, label: []const u8) void {
+        const elapsed_s = @divFloor(nowMs() - self.start_ms, std.time.ms_per_s);
+        log.info("{s}: phase={s} elapsed_s={d} {s}={d}B disk_free={d}B", .{
+            label,
+            self.phase,
+            elapsed_s,
+            std.fs.path.basename(self.watch_path),
+            fileSize(self.watch_path),
+            diskFreeBytes(self.vol_path),
+        });
+    }
+
+    fn finish(self: *Heartbeat) void {
+        self.stop.store(true, .release);
+        if (self.thread) |t| {
+            t.join();
+            self.thread = null;
+        }
+        self.emit("phase done");
+    }
+};
+
+/// Snapshot publish channel. Default (unset INDEX_CHANNEL) is `local` — a
+/// build that forgets to declare its channel CANNOT touch prod's
+/// `latest.json`. See resolvePublish for the per-channel rules.
+const Channel = enum { local, staging, prod };
+
+fn parseChannel(s: ?[]const u8) Channel {
+    const v = s orelse return .local;
+    if (std.mem.eql(u8, v, "local")) return .local;
+    if (std.mem.eql(u8, v, "staging")) return .staging;
+    if (std.mem.eql(u8, v, "prod")) return .prod;
+    log.warn("INDEX_CHANNEL='{s}' unrecognized; defaulting to local (no upload)", .{v});
+    return .local;
+}
+
+const Publish = struct { prefix: []const u8, latest_key: []const u8 };
+
+/// Resolve where a build publishes, enforcing the safety rules. Pure (no
+/// env reads) so the rules are unit-testable:
+///   - local   → never publishes (error.LocalNoPublish; caller gates first)
+///   - staging → requires a non-empty name; namespaced to
+///               `staging/<name>/` + `latest.<name>.json`
+///   - prod    → `builds/` + `latest.json`, but ONLY when armed
+///               (allow_prod). Declaring the channel is not enough; prod
+///               writes must be explicitly armed so a scratch build can't
+///               clobber the prod pointer by accident.
+/// staging prefix/latest are written into the caller-provided buffers.
+fn resolvePublish(
+    channel: Channel,
+    allow_prod: bool,
+    staging_name: ?[]const u8,
+    prefix_buf: []u8,
+    latest_buf: []u8,
+) !Publish {
+    switch (channel) {
+        .local => return error.LocalNoPublish,
+        .prod => {
+            if (!allow_prod) return error.ProdNotArmed;
+            return .{ .prefix = "builds/", .latest_key = "latest.json" };
+        },
+        .staging => {
+            const name = staging_name orelse return error.StagingNameMissing;
+            if (name.len == 0) return error.StagingNameMissing;
+            return .{
+                .prefix = try std.fmt.bufPrint(prefix_buf, "staging/{s}/", .{name}),
+                .latest_key = try std.fmt.bufPrint(latest_buf, "latest.{s}.json", .{name}),
+            };
+        },
+    }
 }
 
 /// SQLite single-quoted string literal: wrap in '' and double any
@@ -447,6 +599,12 @@ pub fn run(allocator: Allocator) !void {
 
     // ── group, pack, write prefix_top_base (per-group scratch arena inside) ──
     {
+        // CREATE INDEX is one opaque blocking call over ~250M rows — the
+        // single longest silent phase. Heartbeat it so staging.db growth +
+        // free disk are visible while it runs.
+        var hb: Heartbeat = .{ .phase = "create_index.emissions", .watch_path = staging_path, .vol_path = cfg.build_root };
+        hb.start();
+        defer hb.finish();
         const t = nowMs();
         // did is in the index so the group/pack scan is index-ONLY (covering).
         // Without it, the (key,score) index orders the scan but SQLite must do
@@ -490,6 +648,7 @@ pub fn run(allocator: Allocator) !void {
     // Manifest LAST: index.db is final + ANALYZE'd. Streams its sha256 (the
     // ~30-60s pass over the artifact is counted in elapsed). The search service reads this
     // to gate promotion before downloading. R2 upload (Phase 2) consumes it.
+    log.info("phase start: manifest sha256 + write ({d}B artifact)", .{fileSize(db_path)});
     {
         const t = nowMs();
         const m = try manifest.write(allocator, .{
@@ -531,33 +690,51 @@ pub fn run(allocator: Allocator) !void {
     );
     log.info("indexer resources: index_db_bytes={d} peak_rss_kb={d}", .{ fileSize(db_path), peakRssKb() });
 
-    // Publish to R2 (opt-in via truthy INDEX_UPLOAD_R2 so local/sample/dry
-    // builds don't upload). On failure we log loudly but don't discard the
-    // on-disk build — a retry/manual upload can still promote it.
-    if (envFlag("INDEX_UPLOAD_R2")) {
-        uploadArtifacts(allocator, build_id, db_path, build_dir) catch |err|
-            log.err("R2 upload failed: {s}", .{@errorName(err)});
-    } else {
-        log.info("R2 upload skipped (INDEX_UPLOAD_R2 not truthy); build on disk at {s}", .{build_dir});
+    // Publish to R2 per INDEX_CHANNEL. `local` (the default) never uploads,
+    // so local/sample/dry builds — and any build that forgets to declare a
+    // channel — leave prod untouched. On failure we log loudly but keep the
+    // on-disk build; a retry/manual upload can still promote it.
+    const channel = parseChannel(cGetenv("INDEX_CHANNEL"));
+    switch (channel) {
+        .local => log.info("channel=local — R2 upload skipped; build on disk at {s}", .{build_dir}),
+        .staging, .prod => uploadArtifacts(allocator, channel, build_id, db_path, build_dir) catch |err|
+            log.err("R2 upload failed ({s}); build retained on disk at {s}", .{ @errorName(err), build_dir }),
     }
 }
 
-/// Upload index.db + manifest.json under the build prefix, then copy the
+/// Upload index.db + manifest.json under the channel's prefix, then copy the
 /// manifest to the latest key LAST — so the search service never sees a
 /// latest pointing at an index.db that isn't fully present.
 ///
-/// CHANNEL ISOLATION: prod search polls `latest.json` under `builds/`. A
-/// scratch/staging build MUST set `INDEX_BUILD_PREFIX` (e.g.
-/// `staging/cjk-search/`) AND `INDEX_LATEST_KEY` (e.g.
-/// `latest.cjk-search.json`) so it never overwrites prod's `latest.json`.
-fn uploadArtifacts(gpa: Allocator, build_id: []const u8, db_path: []const u8, build_dir: []const u8) !void {
+/// The publish target (and the prod-arming / staging-name rules) come from
+/// resolvePublish. prod search polls `latest.json` under `builds/`; only a
+/// `prod` channel armed with INDEX_ALLOW_PROD can write there.
+fn uploadArtifacts(gpa: Allocator, channel: Channel, build_id: []const u8, db_path: []const u8, build_dir: []const u8) !void {
+    var prefix_buf: [160]u8 = undefined;
+    var latest_buf: [160]u8 = undefined;
+    const target = resolvePublish(channel, envFlag("INDEX_ALLOW_PROD"), cGetenv("INDEX_STAGING_NAME"), &prefix_buf, &latest_buf) catch |err| {
+        switch (err) {
+            error.ProdNotArmed => log.err("channel=prod but INDEX_ALLOW_PROD unset — refusing to overwrite prod latest.json. Build on disk at {s}; rerun with INDEX_ALLOW_PROD=1 to publish.", .{build_dir}),
+            error.StagingNameMissing => log.err("channel=staging requires a non-empty INDEX_STAGING_NAME (e.g. cjk-search) — refusing to publish. Build on disk at {s}.", .{build_dir}),
+            else => log.err("publish target unresolved ({s}); build on disk at {s}", .{ @errorName(err), build_dir }),
+        }
+        return err;
+    };
+    const prefix = target.prefix;
+    const latest_key = target.latest_key;
+    log.info("publish channel={s} prefix={s} latest_key={s}", .{ @tagName(channel), prefix, latest_key });
+
     const cfg = try r2.configure(gpa);
-    const prefix = cGetenv("INDEX_BUILD_PREFIX") orelse "builds/";
-    const latest_key = cGetenv("INDEX_LATEST_KEY") orelse "latest.json";
 
     var kbuf: [320]u8 = undefined;
     const db_key = try std.fmt.bufPrint(&kbuf, "{s}{s}/index.db", .{ prefix, build_id });
-    try r2.upload(gpa, cfg, db_path, db_key);
+    {
+        // index.db is multi-GB; the upload is one blocking call. Heartbeat it.
+        var hb: Heartbeat = .{ .phase = "r2.upload.index_db", .watch_path = db_path, .vol_path = build_dir };
+        hb.start();
+        defer hb.finish();
+        try r2.upload(gpa, cfg, db_path, db_key);
+    }
 
     var mpath_buf: [320]u8 = undefined;
     const manifest_local = try std.fmt.bufPrint(&mpath_buf, "{s}/manifest.json", .{build_dir});
@@ -566,7 +743,7 @@ fn uploadArtifacts(gpa: Allocator, build_id: []const u8, db_path: []const u8, bu
     try r2.upload(gpa, cfg, manifest_local, m_key);
 
     try r2.upload(gpa, cfg, manifest_local, latest_key);
-    log.info("R2 publish complete: {s} -> {s}{s}/index.db", .{ latest_key, prefix, build_id });
+    log.info("R2 publish complete: channel={s} {s} -> {s}{s}/index.db", .{ @tagName(channel), latest_key, prefix, build_id });
 }
 
 /// Primary source path. Export Turso → local SQLite checkpoint file via
@@ -587,7 +764,14 @@ fn streamFromExport(
     const source_path = try std.fmt.bufPrint(&path_buf, "{s}/source.db", .{build_dir});
 
     const t_export = nowMs();
-    try turso.exportToFile(source_path);
+    {
+        // Multi-GB download, one blocking call. Heartbeat the falling free
+        // disk so a stalled export is distinguishable from a slow one.
+        var hb: Heartbeat = .{ .phase = "turso.export", .watch_path = source_path, .vol_path = build_dir };
+        hb.start();
+        defer hb.finish();
+        try turso.exportToFile(source_path);
+    }
     stats.phases.turso_fetch_ms = nowMs() - t_export;
     log.info("export complete in {d}ms → {s}", .{ stats.phases.turso_fetch_ms, source_path });
 
@@ -1140,4 +1324,42 @@ test "group/pack index is covering (index-only scan)" {
         if (std.mem.indexOf(u8, row.text(3), "COVERING INDEX") != null) covering = true;
     }
     try testing.expect(covering);
+}
+
+test "parseChannel defaults to local (safe) and maps known values" {
+    try testing.expectEqual(Channel.local, parseChannel(null));
+    try testing.expectEqual(Channel.local, parseChannel("local"));
+    try testing.expectEqual(Channel.staging, parseChannel("staging"));
+    try testing.expectEqual(Channel.prod, parseChannel("prod"));
+    // Unrecognized must fail closed to local — never silently to prod.
+    try testing.expectEqual(Channel.local, parseChannel("production"));
+    try testing.expectEqual(Channel.local, parseChannel(""));
+}
+
+test "resolvePublish: prod requires explicit arming" {
+    var pb: [160]u8 = undefined;
+    var lb: [160]u8 = undefined;
+    try testing.expectError(error.ProdNotArmed, resolvePublish(.prod, false, null, &pb, &lb));
+    const armed = try resolvePublish(.prod, true, null, &pb, &lb);
+    try testing.expectEqualStrings("builds/", armed.prefix);
+    try testing.expectEqualStrings("latest.json", armed.latest_key);
+}
+
+test "resolvePublish: staging needs a name and is namespaced away from prod" {
+    var pb: [160]u8 = undefined;
+    var lb: [160]u8 = undefined;
+    try testing.expectError(error.StagingNameMissing, resolvePublish(.staging, false, null, &pb, &lb));
+    try testing.expectError(error.StagingNameMissing, resolvePublish(.staging, false, "", &pb, &lb));
+    const s = try resolvePublish(.staging, false, "cjk-search", &pb, &lb);
+    try testing.expectEqualStrings("staging/cjk-search/", s.prefix);
+    try testing.expectEqualStrings("latest.cjk-search.json", s.latest_key);
+    // arming prod has no bearing on a staging build's target
+    const s2 = try resolvePublish(.staging, true, "cjk-search", &pb, &lb);
+    try testing.expectEqualStrings("staging/cjk-search/", s2.prefix);
+}
+
+test "resolvePublish: local never publishes" {
+    var pb: [160]u8 = undefined;
+    var lb: [160]u8 = undefined;
+    try testing.expectError(error.LocalNoPublish, resolvePublish(.local, true, "anything", &pb, &lb));
 }

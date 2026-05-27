@@ -50,18 +50,21 @@ pointer the search service polls. **Production search polls `latest.json`.**
 A scratch/staging build must NOT overwrite it, or prod will poll an
 incompatible build and reject it forever (masking real promotions).
 
-Controlling env (all read by `services/src/index/builder.zig`):
+`INDEX_CHANNEL` picks the publish target and **defaults to `local` (no
+upload)**, so a build that forgets to declare a channel — or a one-off
+machine launched without per-run env — can never clobber prod. Read by
+`services/src/index/builder.zig`:
 
-| env | default | effect |
-|---|---|---|
-| `INDEX_UPLOAD_R2` | unset (off) | **truthy** to upload. `0`/`false`/`no`/unset = no upload (build stays on the volume). |
-| `INDEX_BUILD_PREFIX` | `builds/` | object prefix for `<id>/index.db` + `manifest.json`. |
-| `INDEX_LATEST_KEY` | `latest.json` | the pointer object the build overwrites last. |
+| `INDEX_CHANNEL` | publishes to | also requires | use |
+|---|---|---|---|
+| `local` (default) | nothing — build stays on the volume | — | pure inspection; read counts in the build dir |
+| `staging` | `staging/<name>/<id>/` + `latest.<name>.json` | `INDEX_STAGING_NAME` (non-empty) | a scratch search instance can poll the namespaced latest |
+| `prod` | `builds/<id>/` + `latest.json` | `INDEX_ALLOW_PROD=1` | the prod promote — deliberate, separate go/no-go |
 
-- **Pure inspection** (no R2): leave `INDEX_UPLOAD_R2` unset → manifest +
-  index.db land in the build dir on the indexer volume; read the counts there.
-- **Staging channel** (a scratch search instance can poll it):
-  `INDEX_UPLOAD_R2=1 INDEX_BUILD_PREFIX=staging/<branch>/ INDEX_LATEST_KEY=latest.<branch>.json`
-  → `just indexer-build-staging <branch>`. Prod's `latest.json` is untouched.
-- **Production promote** is the *only* time the defaults (`builds/` +
-  `latest.json`) are used — a deliberate, separate go/no-go.
+- **Inspection**: omit `INDEX_CHANNEL` (or set `local`) → manifest + index.db
+  land in the build dir; nothing is uploaded.
+- **Staging**: `just indexer-build-staging <branch>` →
+  `INDEX_CHANNEL=staging INDEX_STAGING_NAME=<branch>`. Prod's `latest.json` is untouched.
+- **Production promote**: `INDEX_CHANNEL=prod INDEX_ALLOW_PROD=1`. Declaring
+  `prod` alone is **not enough** — the arming flag is the second key. Without
+  it the build refuses to publish and stays on disk for a retry.
