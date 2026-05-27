@@ -53,6 +53,52 @@ fn indexRoot() []const u8 {
     return cGetenv("INDEX_BUILD_ROOT") orelse "/data";
 }
 
+/// A persisted snapshot file is only ever `index.{A,B}.db` (or `latest.json`).
+/// Anything ending in `.part` (a download renamed-but-never-adopted) or
+/// containing `.partial` (rclone's multi-thread copy temp) is transient debris
+/// from an interrupted/failed promote. Pure so the matching rules — which must
+/// NOT match a live `index.A.db` — are unit-tested.
+fn isTransientArtifact(name: []const u8) bool {
+    return std.mem.endsWith(u8, name, ".part") or std.mem.indexOf(u8, name, ".partial") != null;
+}
+
+/// Delete stale `.part`/`.partial` debris in the index dir. A promote download
+/// is single-threaded within checkOnce, so at the top of any poll every such
+/// file is leftover from a PRIOR failed/interrupted attempt — the prior code
+/// only deleted the one slot it was about to reuse, so a download to the other
+/// slot (or an rclone temp) leaked and accumulated until the volume filled.
+/// Best-effort: a failure to open/iterate/delete is logged, never fatal.
+fn sweepStalePartials(arena: Allocator, idx_dir: []const u8) void {
+    var dir = std.Io.Dir.openDirAbsolute(io, idx_dir, .{ .iterate = true }) catch |err| {
+        log.warn("sweep: open {s} failed: {s}", .{ idx_dir, @errorName(err) });
+        return;
+    };
+    defer dir.close(io);
+
+    // Collect first (entry.name borrows the iterator's buffer, invalidated on
+    // the next next()), then delete — also avoids mutating the dir mid-iterate.
+    var stale: std.ArrayListUnmanaged([]const u8) = .empty;
+    var it = dir.iterate();
+    while (true) {
+        const entry = (it.next(io) catch |err| {
+            log.warn("sweep: iterate {s} failed: {s}", .{ idx_dir, @errorName(err) });
+            break;
+        }) orelse break;
+        if (entry.kind != .file) continue;
+        if (isTransientArtifact(entry.name)) {
+            const dup = arena.dupe(u8, entry.name) catch continue;
+            stale.append(arena, dup) catch continue;
+        }
+    }
+    for (stale.items) |name| {
+        dir.deleteFile(io, name) catch |err| {
+            log.warn("sweep: delete {s} failed: {s}", .{ name, @errorName(err) });
+            continue;
+        };
+        log.info("sweep: removed stale partial {s}", .{name});
+    }
+}
+
 /// Poll loop. Spawned as a concurrent task by main.zig when the serving role
 /// has ENABLE_INDEX_PROMOTE=1. Never returns; checkOnce failures are logged
 /// and retried on the next tick rather than tearing down the task.
@@ -88,6 +134,9 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
         error.PathAlreadyExists => {},
         else => return err,
     };
+
+    // 0. sweep stale .part/.partial debris before we (maybe) download a new one.
+    sweepStalePartials(arena, idx_dir);
 
     // 1. fetch latest.json (tiny; safe to re-pull every poll) and parse it.
     const manifest_local = try std.fmt.allocPrint(arena, "{s}/{s}", .{ idx_dir, LATEST_KEY });
@@ -356,6 +405,18 @@ test "pickSlot toggles A/B and defaults to A" {
     try testing.expectEqualStrings("/d/index/index.A.db", try pickSlot(null, "/d/index", a));
     try testing.expectEqualStrings("/d/index/index.B.db", try pickSlot("/d/index/index.A.db", "/d/index", a));
     try testing.expectEqualStrings("/d/index/index.A.db", try pickSlot("/d/index/index.B.db", "/d/index", a));
+}
+
+test "isTransientArtifact matches debris, never live snapshots" {
+    // debris the sweep must reclaim
+    try testing.expect(isTransientArtifact("index.A.db.part"));
+    try testing.expect(isTransientArtifact("index.B.db.part"));
+    try testing.expect(isTransientArtifact("index.A.db.part.1083f833.partial"));
+    try testing.expect(isTransientArtifact("index.db.partial"));
+    // live files the sweep must NEVER touch
+    try testing.expect(!isTransientArtifact("index.A.db"));
+    try testing.expect(!isTransientArtifact("index.B.db"));
+    try testing.expect(!isTransientArtifact("latest.json"));
 }
 
 /// Build an in-memory snapshot whose prefix_top_base + actor_compact_base
