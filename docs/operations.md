@@ -42,3 +42,26 @@ managed in the dashboard (Rules → Configuration Rules).
 
 **For volume/abuse control** use a **Rate Limiting Rule** on `/xrpc/*`
 (requests/min per IP) — BIC only fingerprints, it does not bound volume.
+
+## Snapshot builder: R2 channels (don't clobber prod `latest.json`)
+
+The indexer (`MODE=indexer`) writes the snapshot + manifest to R2 and a
+pointer the search service polls. **Production search polls `latest.json`.**
+A scratch/staging build must NOT overwrite it, or prod will poll an
+incompatible build and reject it forever (masking real promotions).
+
+Controlling env (all read by `services/src/index/builder.zig`):
+
+| env | default | effect |
+|---|---|---|
+| `INDEX_UPLOAD_R2` | unset (off) | **truthy** to upload. `0`/`false`/`no`/unset = no upload (build stays on the volume). |
+| `INDEX_BUILD_PREFIX` | `builds/` | object prefix for `<id>/index.db` + `manifest.json`. |
+| `INDEX_LATEST_KEY` | `latest.json` | the pointer object the build overwrites last. |
+
+- **Pure inspection** (no R2): leave `INDEX_UPLOAD_R2` unset → manifest +
+  index.db land in the build dir on the indexer volume; read the counts there.
+- **Staging channel** (a scratch search instance can poll it):
+  `INDEX_UPLOAD_R2=1 INDEX_BUILD_PREFIX=staging/<branch>/ INDEX_LATEST_KEY=latest.<branch>.json`
+  → `just indexer-build-staging <branch>`. Prod's `latest.json` is untouched.
+- **Production promote** is the *only* time the defaults (`builds/` +
+  `latest.json`) are used — a deliberate, separate go/no-go.

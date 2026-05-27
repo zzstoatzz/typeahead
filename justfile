@@ -1,8 +1,37 @@
 set dotenv-filename := ".dev.vars"
 
-# deploy worker to cloudflare
-deploy:
+# run the zig unit tests for the services (ingester/search/indexer)
+test-services:
+    cd services && zig build test --summary all
+
+# deploy the cloudflare worker (the edge / API). NOT the fly services.
+deploy-worker:
     npx wrangler deploy
+
+# deploy the ingest service (App A: jetstream -> worker)
+deploy-ingest:
+    cd services && fly deploy -c fly.toml
+
+# deploy the search service (App B: snapshot+overlay serving). prod read path.
+deploy-search:
+    cd services && fly deploy -c fly.search.toml
+
+# what snapshot is the search service on? (build_id, normalize_version, counts)
+search-status url="https://typeahead-search.fly.dev":
+    curl -sS {{url}}/index/status | jq .
+
+# end-to-end smoke against the public API
+prod-smoke url="https://typeahead.waow.tech":
+    ./scripts/smoke.py --url {{url}}
+
+# run on a one-off indexer machine; branch namespaces the prefix + latest key
+# STAGING index build to an isolated R2 channel (never touches prod latest.json)
+indexer-build-staging branch="cjk-search":
+    cd services && \
+      INDEX_UPLOAD_R2=1 \
+      INDEX_BUILD_PREFIX="staging/{{branch}}/" \
+      INDEX_LATEST_KEY="latest.{{branch}}.json" \
+      MODE=indexer zig build run
 
 # perf benchmark against prod worker — latency, coverage, fields, stress
 bench *ARGS:

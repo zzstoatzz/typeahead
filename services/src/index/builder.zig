@@ -115,6 +115,16 @@ fn envUsize(name: [*:0]const u8, default: usize) usize {
     return std.fmt.parseInt(usize, v, 10) catch default;
 }
 
+/// Truthy env flag: unset / "" / "0" / "false" / "no" → false, anything else
+/// → true. So `INDEX_UPLOAD_R2=0` actually disables upload — a bare presence
+/// check would treat "0" as on and surprise a dry-run.
+fn envFlag(name: [*:0]const u8) bool {
+    const v = cGetenv(name) orelse return false;
+    if (v.len == 0 or std.mem.eql(u8, v, "0")) return false;
+    if (std.ascii.eqlIgnoreCase(v, "false") or std.ascii.eqlIgnoreCase(v, "no")) return false;
+    return true;
+}
+
 const BuildStats = struct {
     /// Number of rows the builder advanced past in Turso. Used for the
     /// cursor (sample_limit, progress logs) and to know we've reached the
@@ -519,32 +529,42 @@ pub fn run(allocator: Allocator) !void {
     );
     log.info("indexer resources: index_db_bytes={d} peak_rss_kb={d}", .{ fileSize(db_path), peakRssKb() });
 
-    // Publish to R2 (opt-in via INDEX_UPLOAD_R2 so local/sample builds don't
-    // upload). On failure we log loudly but don't discard the on-disk build —
-    // a retry/manual upload can still promote it.
-    if (cGetenv("INDEX_UPLOAD_R2") != null) {
+    // Publish to R2 (opt-in via truthy INDEX_UPLOAD_R2 so local/sample/dry
+    // builds don't upload). On failure we log loudly but don't discard the
+    // on-disk build — a retry/manual upload can still promote it.
+    if (envFlag("INDEX_UPLOAD_R2")) {
         uploadArtifacts(allocator, build_id, db_path, build_dir) catch |err|
             log.err("R2 upload failed: {s}", .{@errorName(err)});
+    } else {
+        log.info("R2 upload skipped (INDEX_UPLOAD_R2 not truthy); build on disk at {s}", .{build_dir});
     }
 }
 
-/// Upload index.db + manifest.json to builds/<id>/, then copy the manifest to
-/// latest.json LAST — so the search service never sees a latest.json pointing at an
-/// index.db that isn't fully present.
+/// Upload index.db + manifest.json under the build prefix, then copy the
+/// manifest to the latest key LAST — so the search service never sees a
+/// latest pointing at an index.db that isn't fully present.
+///
+/// CHANNEL ISOLATION: prod search polls `latest.json` under `builds/`. A
+/// scratch/staging build MUST set `INDEX_BUILD_PREFIX` (e.g.
+/// `staging/cjk-search/`) AND `INDEX_LATEST_KEY` (e.g.
+/// `latest.cjk-search.json`) so it never overwrites prod's `latest.json`.
 fn uploadArtifacts(gpa: Allocator, build_id: []const u8, db_path: []const u8, build_dir: []const u8) !void {
     const cfg = try r2.configure(gpa);
+    const prefix = cGetenv("INDEX_BUILD_PREFIX") orelse "builds/";
+    const latest_key = cGetenv("INDEX_LATEST_KEY") orelse "latest.json";
+
     var kbuf: [320]u8 = undefined;
-    const db_key = try std.fmt.bufPrint(&kbuf, "builds/{s}/index.db", .{build_id});
+    const db_key = try std.fmt.bufPrint(&kbuf, "{s}{s}/index.db", .{ prefix, build_id });
     try r2.upload(gpa, cfg, db_path, db_key);
 
     var mpath_buf: [320]u8 = undefined;
     const manifest_local = try std.fmt.bufPrint(&mpath_buf, "{s}/manifest.json", .{build_dir});
     var mkey_buf: [320]u8 = undefined;
-    const m_key = try std.fmt.bufPrint(&mkey_buf, "builds/{s}/manifest.json", .{build_id});
+    const m_key = try std.fmt.bufPrint(&mkey_buf, "{s}{s}/manifest.json", .{ prefix, build_id });
     try r2.upload(gpa, cfg, manifest_local, m_key);
 
-    try r2.upload(gpa, cfg, manifest_local, "latest.json");
-    log.info("R2 publish complete: latest.json -> builds/{s}/index.db", .{build_id});
+    try r2.upload(gpa, cfg, manifest_local, latest_key);
+    log.info("R2 publish complete: {s} -> {s}{s}/index.db", .{ latest_key, prefix, build_id });
 }
 
 /// Primary source path. Export Turso → local SQLite checkpoint file via
