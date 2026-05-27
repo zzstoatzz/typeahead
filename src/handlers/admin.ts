@@ -256,10 +256,46 @@ function normalizeDomain(raw: string): string {
   return (raw || "").trim().toLowerCase().replace(/^\*?\.?/, "");
 }
 
+// rowid-window size for domain backfills. The `handle LIKE '%.domain'` match
+// is a full table scan (leading wildcard can't use the handle index), so a
+// single UPDATE holds the SQLite single-writer lock for ~8s over 5.9M rows,
+// blocking ALL reads and timing out the client. Windowing bounds each
+// transaction to ~WINDOW rows → short locks reads can interleave with, run in
+// the background so the client returns immediately.
+const BACKFILL_WINDOW = 500_000;
+
+async function maxRowid(db: TursoDB): Promise<number> {
+  const row = await db.prepare("SELECT max(rowid) AS m FROM actors").first<{ m: number | null }>();
+  return row?.m ?? 0;
+}
+
+/** Hide apex + every subdomain of `domain`, sparing 'show'-override DIDs, in
+ *  bounded rowid windows (short write locks). Only flips 0→1 so already-hidden
+ *  rows don't churn updated_at / the App B sync. */
+async function backfillDomainBlock(db: TursoDB, domain: string): Promise<void> {
+  const suffix = "%." + domain;
+  const max = await maxRowid(db);
+  let cursor = 0;
+  let hidden = 0;
+  while (cursor < max) {
+    const res = await db.prepare(
+      `UPDATE actors SET hidden = 1, updated_at = unixepoch()
+       WHERE rowid > ?1 AND rowid <= ?2
+         AND (handle = ?3 OR handle LIKE ?4) COLLATE NOCASE
+         AND hidden = 0
+         AND did NOT IN (SELECT did FROM mod_overrides WHERE action = 'show')`
+    ).bind(cursor, cursor + BACKFILL_WINDOW, domain, suffix).run();
+    hidden += res.meta?.changes ?? 0;
+    cursor += BACKFILL_WINDOW;
+  }
+  console.log(JSON.stringify({ event: "domain_block_backfill", domain, hidden }));
+}
+
 export async function handleDomainBlockSet(
   request: Request,
   db: TursoDB,
   env: Env,
+  ctx: ExecutionContext,
 ): Promise<Response> {
   const denied = authCheck(request, env);
   if (denied) return denied;
@@ -276,53 +312,39 @@ export async function handleDomainBlockSet(
     return json({ error: "valid domain required (e.g. dadavidtseng.com)" }, 400);
   }
 
+  // record the block synchronously (fast, indexed PK) — new accounts are then
+  // caught by the enrich/cron paths via resolveHidden regardless of backfill.
   await db.prepare(
     `INSERT INTO blocked_domains (domain, reason) VALUES (?1, ?2)
      ON CONFLICT(domain) DO UPDATE SET reason = ?2, created_at = unixepoch()`
   ).bind(domain, body.reason || "").run();
 
-  // backfill: hide the apex + every subdomain, except DIDs a manual 'show'
-  // override rescues. Only flip 0→1 so we don't churn updated_at (and the App B
-  // sync) for accounts already hidden.
-  const suffix = "%." + domain;
-  const res = await db.prepare(
-    `UPDATE actors SET hidden = 1, updated_at = unixepoch()
-     WHERE (handle = ?1 OR handle LIKE ?2) COLLATE NOCASE
-       AND hidden = 0
-       AND did NOT IN (SELECT did FROM mod_overrides WHERE action = 'show')`
-  ).bind(domain, suffix).run();
+  // backfill existing matches in the background so the client never blocks on
+  // the scan. waitUntil keeps the worker alive past the response; the cron's
+  // resolveHidden pass is the backstop if it doesn't finish.
+  ctx.waitUntil(backfillDomainBlock(db, domain));
 
-  return json({ domain, reason: body.reason || "", hidden_now: res.meta?.changes ?? 0 });
+  return json({ domain, reason: body.reason || "", status: "blocked; backfilling existing matches in background" });
 }
 
-export async function handleDomainBlockDelete(
-  request: Request,
-  db: TursoDB,
-  env: Env,
-): Promise<Response> {
-  const denied = authCheck(request, env);
-  if (denied) return denied;
-
-  const url = new URL(request.url);
-  const domain = normalizeDomain(url.searchParams.get("domain") || "");
-  if (!domain) return json({ error: "domain query param required" }, 400);
-
-  await db.prepare("DELETE FROM blocked_domains WHERE domain = ?1").bind(domain).run();
-
-  // recompute effective hidden for every actor that matched this domain, from
-  // all remaining sources (labels + slur + OTHER domain blocks + override).
-  // Paged by rowid to bound memory on large domains.
+/** After unblocking `domain`, recompute effective hidden for every actor that
+ *  matched it, from all REMAINING sources (labels + slur + other domain blocks
+ *  + override) — so a label-hidden or still-domain-blocked account stays hidden.
+ *  Bounded rowid windows (short locks); runs in the background. */
+async function recomputeDomainUnblock(db: TursoDB, domain: string): Promise<void> {
   const remaining = await getBlockedDomains(db);
   const suffix = "%." + domain;
-  let restored = 0;
+  const max = await maxRowid(db);
   let cursor = 0;
-  while (true) {
+  let restored = 0;
+  while (cursor < max) {
+    const lo = cursor;
+    cursor += BACKFILL_WINDOW;
     const { results } = await db.prepare(
-      `SELECT rowid, did, handle, labels FROM actors
-       WHERE (handle = ?1 OR handle LIKE ?2) COLLATE NOCASE AND rowid > ?3
-       ORDER BY rowid ASC LIMIT 500`
-    ).bind(domain, suffix, cursor).all<{ rowid: number; did: string; handle: string; labels: string }>();
-    if (!results || results.length === 0) break;
+      `SELECT did, handle, labels FROM actors
+       WHERE rowid > ?1 AND rowid <= ?2 AND (handle = ?3 OR handle LIKE ?4) COLLATE NOCASE`
+    ).bind(lo, cursor, domain, suffix).all<{ did: string; handle: string; labels: string }>();
+    if (!results || results.length === 0) continue;
 
     const overrides = await getOverrides(db, results.map((r) => r.did));
     const stmts = results.map((r) => {
@@ -340,10 +362,27 @@ export async function handleDomainBlockDelete(
     });
     const batchResults = await db.batch(stmts);
     restored += batchResults.filter((x) => x.meta.changes > 0).length;
-    cursor = results[results.length - 1].rowid;
   }
+  console.log(JSON.stringify({ event: "domain_unblock_recompute", domain, restored }));
+}
 
-  return json({ domain, recomputed: restored });
+export async function handleDomainBlockDelete(
+  request: Request,
+  db: TursoDB,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const denied = authCheck(request, env);
+  if (denied) return denied;
+
+  const url = new URL(request.url);
+  const domain = normalizeDomain(url.searchParams.get("domain") || "");
+  if (!domain) return json({ error: "domain query param required" }, 400);
+
+  await db.prepare("DELETE FROM blocked_domains WHERE domain = ?1").bind(domain).run();
+  ctx.waitUntil(recomputeDomainUnblock(db, domain));
+
+  return json({ domain, status: "unblocked; recomputing affected actors in background" });
 }
 
 export async function handleDomainBlockList(

@@ -104,10 +104,10 @@ export default {
     }
 
     if (pathname === "/admin/domain-block" && request.method === "POST") {
-      return handleDomainBlockSet(request, db, env);
+      return handleDomainBlockSet(request, db, env, ctx);
     }
     if (pathname === "/admin/domain-block" && request.method === "DELETE") {
-      return handleDomainBlockDelete(request, db, env);
+      return handleDomainBlockDelete(request, db, env, ctx);
     }
     if (pathname === "/admin/domain-blocks" && request.method === "GET") {
       return handleDomainBlockList(request, db, env);
