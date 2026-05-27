@@ -21,29 +21,33 @@ export interface StatsData {
 }
 
 export function statsPage(d: StatsData): string {
-  // search sparkline (oldest first) — fixed 7d view; not interactive.
-  const sorted = [...d.rows].reverse();
-  const counts = sorted.map((r) => r.searches);
-  const sparkMax = Math.max(...counts, 1);
+  // The total-searches metric AND the sparkline both default to the 7d window
+  // and share one range selector (7d/30d/all). The JS re-slices the same data
+  // on click; here we render the 7d view so the page is correct without JS.
+  const sorted = [...d.rows].reverse(); // oldest first
   const sw = 600, sh = 80;
+  const BUCKETS_7D = 2016; // 5-min buckets in 7 days
+  const spark7 = sorted.slice(Math.max(0, sorted.length - BUCKETS_7D));
+  const counts = spark7.map((r) => r.searches);
+  const sparkMax = Math.max(...counts, 1);
   const step = counts.length > 1 ? sw / (counts.length - 1) : 0;
   const sparkPoints = counts
     .map((c, i) => `${(i * step).toFixed(1)},${(sh - (c / sparkMax) * sh).toFixed(1)}`)
     .join(" ");
+  // initial total matches the default (7d) window, so the rendered value agrees
+  // with the active button on load (previously this showed the all-time sum
+  // under a "7d"-active button).
+  const initialTotal = spark7.reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
+  // full data (all buckets, oldest first) for the client range selector +
+  // sparkline redraw. cache_hits included so "total" matches the SSR formula.
   const sparkJson = JSON.stringify(
     sorted.map((r) => ({
       time: new Date(r.hour * 300_000).toISOString().slice(0, 16) + "Z",
       searches: r.searches,
     }))
   );
-  // raw metrics for the total-searches range selector. cache_hits included so
-  // "total" matches what the SSR computes (searches + cache_hits).
   const metricsJson = JSON.stringify(
-    sorted.map((r) => ({
-      hour: r.hour,
-      searches: r.searches,
-      cache_hits: r.cache_hits ?? 0,
-    }))
+    sorted.map((r) => ({ hour: r.hour, searches: r.searches, cache_hits: r.cache_hits ?? 0 }))
   );
 
   const snapshotJson = JSON.stringify(d.snapshots);
@@ -241,10 +245,10 @@ export function statsPage(d: StatsData): string {
     </div>
 
     <div class="sparkline-wrap">
-      <h2>searches / 5 min (7 days)</h2>
+      <h2 id="spark-label">searches / 5 min (7 days)</h2>
       ${counts.length > 1
         ? `<svg viewBox="0 0 ${sw} ${sh}" preserveAspectRatio="none" id="spark">
-            <polyline points="${sparkPoints}" />
+            <polyline points="${sparkPoints}" id="spark-poly" />
           </svg>`
         : `<div style="color:#444;font-size:0.8rem;padding:1rem 0;text-align:center">no data yet</div>`}
     </div>
@@ -258,7 +262,7 @@ export function statsPage(d: StatsData): string {
             <button data-range="all">all</button>
           </span>
         </div>
-        <div class="value" id="searches-value">${d.totalSearches.toLocaleString()}</div>
+        <div class="value" id="searches-value">${initialTotal.toLocaleString()}</div>
       </div>
       <div class="metric">
         <div class="label" data-tip="last 24h — cached (edge) vs uncached (fly replica)">avg latency</div>
@@ -590,18 +594,55 @@ export function statsPage(d: StatsData): string {
       window.addEventListener('resize', () => drawPie());
     }
 
-    /* --- search sparkline (fixed 7d) --- */
-    const sparkData = ${sparkJson};
+    /* --- searches: one range selector drives BOTH the total and the sparkline --- */
+    const sparkData = ${sparkJson};    // {time, searches}, oldest first, ALL buckets
+    const allMetrics = ${metricsJson}; // {hour, searches, cache_hits}, same order
+    const SEARCH_BUCKETS = { '7d': 2016, '30d': 8640 }; // 5-min buckets; missing key (all) = everything
+    const RANGE_LABEL = { '7d': '7 days', '30d': '30 days', 'all': 'all time' };
+    const SPARK_W = ${sw}, SPARK_H = ${sh};
+
+    const searchesValue = document.getElementById('searches-value');
     const spark = document.getElementById('spark');
+    const sparkPoly = document.getElementById('spark-poly');
+    const sparkLabel = document.getElementById('spark-label');
     const sparkTip = document.getElementById('spark-tip');
+    let sparkView = sparkData; // the currently-shown slice; the tooltip reads this
+
+    function sliceTail(arr, range) {
+      const n = SEARCH_BUCKETS[range];
+      return n == null ? arr : arr.slice(Math.max(0, arr.length - n));
+    }
+    function totalForRange(range) {
+      return sliceTail(allMetrics, range).reduce((s, r) => s + r.searches + (r.cache_hits || 0), 0);
+    }
+    function drawSpark(range) {
+      if (!sparkPoly) return;
+      sparkView = sliceTail(sparkData, range);
+      const counts = sparkView.map(r => r.searches);
+      const max = Math.max(...counts, 1);
+      const step = counts.length > 1 ? SPARK_W / (counts.length - 1) : 0;
+      sparkPoly.setAttribute('points', counts.map((c, i) => (i * step).toFixed(1) + ',' + (SPARK_H - (c / max) * SPARK_H).toFixed(1)).join(' '));
+      if (sparkLabel) sparkLabel.textContent = 'searches / 5 min (' + (RANGE_LABEL[range] || range) + ')';
+    }
+    function applyRange(range) {
+      document.querySelectorAll('#searches-range button').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+      if (searchesValue) searchesValue.textContent = totalForRange(range).toLocaleString();
+      drawSpark(range);
+    }
+
+    document.getElementById('searches-range')?.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-range]');
+      if (btn) applyRange(btn.dataset.range);
+    });
+
     if (spark) {
       spark.addEventListener('mousemove', e => {
         const rect = spark.getBoundingClientRect();
         const x = e.clientX - rect.left;
-        const idx = Math.min(Math.round(x / rect.width * (sparkData.length - 1)), sparkData.length - 1);
-        if (idx >= 0 && sparkData[idx]) {
-          const sc = sparkData[idx].searches;
-          sparkTip.textContent = sparkData[idx].time + ' — ' + sc + (sc === 1 ? ' search' : ' searches');
+        const idx = Math.min(Math.round(x / rect.width * (sparkView.length - 1)), sparkView.length - 1);
+        if (idx >= 0 && sparkView[idx]) {
+          const sc = sparkView[idx].searches;
+          sparkTip.textContent = sparkView[idx].time + ' — ' + sc + (sc === 1 ? ' search' : ' searches');
           sparkTip.style.display = 'block';
           sparkTip.style.left = (e.clientX + 12) + 'px';
           sparkTip.style.top = (e.clientY - 28) + 'px';
@@ -610,26 +651,10 @@ export function statsPage(d: StatsData): string {
       spark.addEventListener('mouseleave', () => { sparkTip.style.display = 'none'; });
     }
 
-    /* --- total searches range selector --- */
-    // metrics are 5-min buckets, oldest first
-    const allMetrics = ${metricsJson};
-    const searchesValue = document.getElementById('searches-value');
-    // 5-min buckets: 7d = 2016, 30d = 8640
-    const SEARCH_BUCKETS = { '7d': 2016, '30d': 8640 };
-
-    function totalForRange(range) {
-      const n = SEARCH_BUCKETS[range];
-      const slice = n == null ? allMetrics : allMetrics.slice(Math.max(0, allMetrics.length - n));
-      return slice.reduce((s, r) => s + r.searches + (r.cache_hits || 0), 0);
-    }
-
-    document.getElementById('searches-range')?.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-range]');
-      if (!btn || !searchesValue) return;
-      document.querySelectorAll('#searches-range button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      searchesValue.textContent = totalForRange(btn.dataset.range).toLocaleString();
-    });
+    // default 7d: SSR already renders the 7d view; this makes the JS slice the
+    // single source of truth so server + client always agree, and primes
+    // sparkView for the tooltip.
+    applyRange('7d');
   </script>
 </body>
 </html>`;
