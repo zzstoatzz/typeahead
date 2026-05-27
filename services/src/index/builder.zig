@@ -516,11 +516,13 @@ pub fn run(allocator: Allocator) !void {
     stats.build_end_ms = nowMs();
     const elapsed_ms = stats.build_end_ms - stats.build_start_ms;
     const p = stats.phases;
-    log.info("indexer done: build_id={s} actors={d} emissions={d} prefix_keys={d} elapsed_ms={d}", .{
+    log.info("indexer done: build_id={s} actors={d} emissions={d} prefix_keys={d} cjk_keys={d} cjk_actors={d} elapsed_ms={d}", .{
         build_id,
         stats.actor_count,
         stats.emission_count,
         stats.prefix_key_count,
+        stats.cjk_key_count,
+        stats.cjk_actor_count,
         elapsed_ms,
     });
     log.info(
