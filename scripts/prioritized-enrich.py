@@ -381,6 +381,70 @@ def print_targets_breakdown(
     return {"union": union, "net": net, "capped": capped, "enriched": enriched}
 
 
+def apply_enrichment(capped_dids: list[str], typeahead_url: str, admin_secret: str, batch_size: int = 100) -> dict:
+    """POST each batch of DIDs to /admin/enrich-profiles. The endpoint owns
+    bsky fetch + extractProfileFields + resolveHidden + write — we just send
+    DIDs. Sequential by default; the endpoint already runs its 25-chunks
+    concurrently internally so the bottleneck is bsky's pacing, not us.
+    Prints first/last/every-5th batch progress + final totals."""
+    print()
+    print(f"{BOLD}--apply: enriching {len(capped_dids)} DIDs via /admin/enrich-profiles{RESET}")
+    totals = {"requested": 0, "profiles_found": 0, "written": 0, "hidden": 0, "errors": 0}
+    error_reasons: Counter = Counter()
+    n_batches = (len(capped_dids) + batch_size - 1) // batch_size
+
+    for i in range(0, len(capped_dids), batch_size):
+        batch = capped_dids[i:i + batch_size]
+        b_idx = i // batch_size + 1
+        body = json.dumps({"dids": batch}).encode("utf-8")
+        req = urllib.request.Request(
+            f"{typeahead_url.rstrip('/')}/admin/enrich-profiles",
+            data=body,
+            headers={
+                "Authorization": f"Bearer {admin_secret}",
+                "Content-Type": "application/json",
+                "User-Agent": "typeahead-enrich-apply/0.1",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=90.0) as r:
+                resp = json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            print(f"  {RED}batch {b_idx}/{n_batches}: HTTP {e.code}{RESET} — {e.read().decode('utf-8', 'replace')[:200]}")
+            totals["errors"] += len(batch)
+            continue
+        except (urllib.error.URLError, TimeoutError) as e:
+            print(f"  {RED}batch {b_idx}/{n_batches}: network{RESET} — {e}")
+            totals["errors"] += len(batch)
+            continue
+
+        totals["requested"] += int(resp.get("requested", 0))
+        totals["profiles_found"] += int(resp.get("profiles_found", 0))
+        totals["written"] += int(resp.get("written", 0))
+        totals["hidden"] += int(resp.get("hidden", 0))
+        for err in resp.get("errors", []) or []:
+            error_reasons[err.get("reason", "?")] += 1
+            totals["errors"] += 1
+
+        if b_idx == 1 or b_idx == n_batches or b_idx % 5 == 0:
+            print(f"  batch {b_idx}/{n_batches}: written={resp.get('written',0)}/{resp.get('requested',0)} "
+                  f"hidden={resp.get('hidden',0)} errors={len(resp.get('errors') or [])}")
+
+    print()
+    print(f"{BOLD}--apply totals{RESET}")
+    print(f"  requested:      {totals['requested']}")
+    print(f"  profiles_found: {totals['profiles_found']}")
+    print(f"  written:        {totals['written']}")
+    print(f"  hidden:         {totals['hidden']}")
+    if error_reasons:
+        breakdown = ", ".join(f"{k}={v}" for k, v in error_reasons.most_common())
+        print(f"  errors:         {totals['errors']}  ({breakdown})")
+    else:
+        print(f"  errors:         {totals['errors']}")
+    return totals
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--handle", default="zzstoatzz.io")
@@ -395,6 +459,10 @@ def main():
     ap.add_argument("--max-targets", type=int, default=DEFAULT_MAX_TARGETS,
                     help=f"kill switch: cap on total writes for --apply (default {DEFAULT_MAX_TARGETS})")
     ap.add_argument("--skip-b", action="store_true", help="skip the indie-PDS hop entirely")
+    ap.add_argument("--apply", action="store_true",
+                    help="actually enrich (requires TYPEAHEAD_URL + TYPEAHEAD_SECRET in env; --yes required)")
+    ap.add_argument("--yes", action="store_true",
+                    help="bypass interactive confirmation for --apply (required in non-tty contexts)")
     args = ap.parse_args()
 
     t0 = time.time()
@@ -409,10 +477,36 @@ def main():
         )
 
     follower_dids = phase_c_followers(did)
+    breakdown = print_targets_breakdown(follows, b_report, follower_dids, args.max_targets)
 
-    print_targets_breakdown(follows, b_report, follower_dids, args.max_targets)
-    print()
-    print(f"{DIM}elapsed: {time.time() - t0:.1f}s — dry-run, no writes{RESET}")
+    if args.apply:
+        url = os.environ.get("TYPEAHEAD_URL")
+        secret = os.environ.get("TYPEAHEAD_SECRET")
+        if not url or not secret:
+            print()
+            print(f"{RED}--apply requires TYPEAHEAD_URL + TYPEAHEAD_SECRET in env. aborting.{RESET}")
+            sys.exit(1)
+        n = len(breakdown["capped"])
+        if n == 0:
+            print()
+            print(f"{DIM}nothing to enrich (net=0).{RESET}")
+            return
+        if not args.yes:
+            if not sys.stdin.isatty():
+                print()
+                print(f"{RED}--apply in non-tty requires --yes. aborting.{RESET}")
+                sys.exit(1)
+            print()
+            resp = input(f"{BOLD}about to enrich {n} DIDs at {url}/admin/enrich-profiles. type 'YES' to proceed: {RESET}").strip()
+            if resp != "YES":
+                print("aborted.")
+                return
+        apply_enrichment(breakdown["capped"], url, secret)
+        print()
+        print(f"{DIM}elapsed: {time.time() - t0:.1f}s{RESET}")
+    else:
+        print()
+        print(f"{DIM}elapsed: {time.time() - t0:.1f}s — dry-run, no writes{RESET}")
 
 
 if __name__ == "__main__":

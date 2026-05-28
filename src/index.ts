@@ -6,7 +6,7 @@ import { recordSnapshot, materializeStats, enrichActors } from "./enrichment";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
-import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList } from "./handlers/admin";
+import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
 import { handleGetProfiles } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { indexPage } from "./pages/home";
@@ -111,6 +111,10 @@ export default {
     }
     if (pathname === "/admin/domain-blocks" && request.method === "GET") {
       return handleDomainBlockList(request, db, env);
+    }
+
+    if (pathname === "/admin/enrich-profiles" && request.method === "POST") {
+      return handleEnrichProfiles(request, db, env);
     }
 
     return json({ error: "not found" }, 404);

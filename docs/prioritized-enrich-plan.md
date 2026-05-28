@@ -192,26 +192,57 @@ SKIP (listRepos failed): `at.nogrp.net`.
 writes jetstream-shaped fields and is the wrong tool. Instead, a new
 worker endpoint is the canonical enrichment writer:
 
-### new endpoint: `POST /admin/enrich-profiles`
+### new endpoint: `POST /admin/enrich-profiles` (codex round 2 shape)
+
+The body accepts **DIDs only** — the worker owns the entire scoring pipeline.
+The Python script never sends `followersCount` / `quality_score` / any
+moderation-relevant data: it just names *who* to enrich. The worker fetches
+`getProfiles`, applies `extractProfileFields` + `resolveHidden`, writes.
+That keeps a single source of truth for scoring and moderation, and means
+nothing in the script can lie to the database.
 
 - **auth:** `Bearer ADMIN_SECRET` (same as the other admin endpoints).
-- **body:** `{ profiles: [<bsky getProfile response shape>], reason?: string }`.
-- **batch limit:** ≤ 50 profiles per request (a hard server-side max).
-- **per profile:** run `extractProfileFields(profile, override?, domainBlocked?)`
-  exactly as the existing enrichment paths do — so `resolveHidden`
-  (label / slur / domain-block / per-DID override) and the
-  `computeAuthorityScore` math live in **one** place. No mirrored Python
-  scoring.
-- **writes:** `INSERT ... ON CONFLICT(did) DO UPDATE SET …` with the full
-  field set: handle, display_name, avatar_url, labels, hidden, created_at,
+  Unauthorized requests go through the strict rate limiter; authorized
+  requests bypass it.
+- **body:** `{ dids: string[] }` — basic DID-shape validation, max **100**
+  per request (a hard server-side cap). Internally chunked into bsky's
+  25-per-call `getProfiles` limit.
+- **per-batch setup (once):**
+  - `getOverrides(db, dids)` → per-DID `show`/`hide` overrides.
+  - `getBlockedDomains(db)` → the live domain-block list.
+- **per profile (from `getProfiles`):**
+  - `extractProfileFields(profile, override, isDomainBlocked(handle, blocked))`
+    — same call shape every existing enrichment site uses.
+- **writes:** `INSERT … ON CONFLICT(did) DO UPDATE SET …` with the full
+  field set (handle, display_name, avatar_url, labels, hidden, created_at,
   associated, pds, followers_count, follows_count, posts_count,
   quality_score, `profile_checked_at = unixepoch()`,
-  `updated_at = unixepoch()`. Insert path covers phase-B *discovery*
-  DIDs we don't have yet.
-- **returns:** `{ written, hidden, skipped, errors: [{did, reason}] }`.
-- **idempotent:** safe to retry. We pre-fetch overrides + the blocked
-  domains list once per batch and pass them in (same caller pattern as
-  enrichment/cron already use).
+  `updated_at = unixepoch()`). Insert path covers phase-B *discovery*
+  DIDs we don't have yet. Direct overwrite — no `COALESCE` games: the
+  whole point is the fresh data wins.
+- **returns:**
+  ```json
+  {
+    "ok": true,
+    "requested": 100,
+    "profiles_found": 97,
+    "written": 97,
+    "hidden": 3,
+    "errors": [
+      { "did": "did:plc:…", "reason": "bsky_404" },
+      { "did": "did:plc:…", "reason": "timeout" }
+    ]
+  }
+  ```
+  `errors[].reason` is one of `bsky_404` (deleted/takedown — not in bsky's
+  view), `timeout`, `network`, `db`. So the script can decide whether to
+  retry vs. record as permanently-missing.
+- **partial success is the contract** — a 100-DID batch with 3 missing
+  writes the 97 and reports the 3. The only all-or-nothing case is a
+  Turso batch failure (one row's error blocks the transaction); we
+  return that as a single `db` error covering all unwritten DIDs.
+- **idempotent:** re-running with the same DIDs safely refreshes. The
+  bumped `updated_at` is desired — App B's overlay picks it up.
 
 ### python `--apply` against the endpoint
 

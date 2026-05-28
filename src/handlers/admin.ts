@@ -1,6 +1,6 @@
-import type { TursoDB } from "../db";
+import type { Stmt, TursoDB } from "../db";
 import type { Env, SlingshotResponse } from "../types";
-import { SLINGSHOT_URL } from "../types";
+import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL } from "../types";
 import { clientIP, json, extractProfileFields, fetchProfileFromPds } from "../utils";
 import { getOverride, getOverrides, resolveHidden, isDomainBlocked, getBlockedDomains } from "../moderation";
 import { recordActorDelta } from "../metrics";
@@ -398,4 +398,151 @@ export async function handleDomainBlockList(
   ).all<{ domain: string; reason: string; created_at: number }>();
 
   return json({ blocked_domains: results || [] });
+}
+
+/* ─── profile enrichment ─────────────────────────────────────────────────
+ * POST /admin/enrich-profiles — the canonical enrichment writer.
+ * Accepts DIDs only; the worker fetches bsky `getProfiles`, applies
+ * `extractProfileFields` + `resolveHidden`, and upserts. Body cannot lie
+ * about counts/quality_score — the script is a pure orchestrator.
+ * See docs/prioritized-enrich-plan.md.
+ */
+
+const ENRICH_MAX_DIDS = 100;
+const ENRICH_BSKY_CHUNK = 25; // bsky's getProfiles per-call cap
+
+type EnrichError = { did: string; reason: "bsky_404" | "bsky_error" | "rate_limited" | "timeout" | "db" };
+
+export async function handleEnrichProfiles(
+  request: Request,
+  db: TursoDB,
+  env: Env,
+): Promise<Response> {
+  const denied = authCheck(request, env);
+  if (denied) return denied;
+
+  let body: { dids?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "invalid json" }, 400);
+  }
+
+  const dids = body.dids;
+  if (!Array.isArray(dids)) return json({ error: "body.dids must be an array of DIDs" }, 400);
+  if (dids.length === 0) {
+    return json({ ok: true, requested: 0, profiles_found: 0, written: 0, hidden: 0, errors: [] });
+  }
+  if (dids.length > ENRICH_MAX_DIDS) {
+    return json({ error: `max ${ENRICH_MAX_DIDS} DIDs per request, got ${dids.length}` }, 400);
+  }
+  const bad = dids.find((d) => typeof d !== "string" || !(d as string).startsWith("did:"));
+  if (bad !== undefined) return json({ error: `invalid DID shape: ${String(bad).slice(0, 80)}` }, 400);
+  const didList = dids as string[];
+
+  // batch-fetch the moderation inputs ONCE per request (caller pattern from
+  // enrichment/cron). Overrides + blocked_domains scope the resolveHidden.
+  const [overrides, blockedDomains] = await Promise.all([
+    getOverrides(db, didList),
+    getBlockedDomains(db),
+  ]);
+
+  // chunk to bsky's 25-per-call cap; run chunks concurrently.
+  const chunks: string[][] = [];
+  for (let i = 0; i < didList.length; i += ENRICH_BSKY_CHUNK) {
+    chunks.push(didList.slice(i, i + ENRICH_BSKY_CHUNK));
+  }
+  const fetched = new Map<string, any>();
+  const errors: EnrichError[] = [];
+
+  await Promise.all(chunks.map(async (chunk) => {
+    const qs = chunk.map((d) => `actors=${encodeURIComponent(d)}`).join("&");
+    try {
+      const res = await fetch(`${BSKY_GET_PROFILES_URL}?${qs}`);
+      if (!res.ok) {
+        const reason: EnrichError["reason"] = res.status === 429 ? "rate_limited" : "bsky_error";
+        for (const d of chunk) errors.push({ did: d, reason });
+        return;
+      }
+      const data: any = await res.json();
+      for (const p of (data.profiles || [])) {
+        if (p && p.did) fetched.set(p.did, p);
+      }
+    } catch {
+      for (const d of chunk) errors.push({ did: d, reason: "timeout" });
+    }
+  }));
+
+  // any DID we asked for that bsky didn't return is missing — could be a
+  // takedown, deleted, or never-existed. Report so the script can decide.
+  for (const did of didList) {
+    if (!fetched.has(did) && !errors.find((e) => e.did === did)) {
+      errors.push({ did, reason: "bsky_404" });
+    }
+  }
+
+  // build upsert stmts via the canonical extractProfileFields path. PDS is
+  // intentionally NOT in the SET — bsky's getProfiles doesn't return it, and
+  // we'd rather preserve any existing value than zero it; backfill-pds.py is
+  // the separate concern for filling PDS.
+  const stmts: Stmt[] = [];
+  let hiddenCount = 0;
+  for (const [did, profile] of fetched) {
+    const f = extractProfileFields(
+      profile,
+      overrides.get(did) ?? null,
+      isDomainBlocked(profile.handle || "", blockedDomains),
+    );
+    if (f.hidden) hiddenCount++;
+    stmts.push(
+      db.prepare(
+        `INSERT INTO actors (
+           did, handle, display_name, avatar_url, labels, hidden, created_at,
+           associated, followers_count, follows_count, posts_count, quality_score,
+           profile_checked_at, updated_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, unixepoch(), unixepoch())
+         ON CONFLICT(did) DO UPDATE SET
+           handle = excluded.handle,
+           display_name = excluded.display_name,
+           avatar_url = excluded.avatar_url,
+           labels = excluded.labels,
+           hidden = excluded.hidden,
+           created_at = excluded.created_at,
+           associated = excluded.associated,
+           followers_count = excluded.followers_count,
+           follows_count = excluded.follows_count,
+           posts_count = excluded.posts_count,
+           quality_score = excluded.quality_score,
+           profile_checked_at = unixepoch(),
+           updated_at = unixepoch()`
+      ).bind(
+        did, f.handle, f.displayName, f.avatarCid, f.labels, f.hidden,
+        f.createdAt, f.associated,
+        f.followersCount, f.followsCount, f.postsCount, f.qualityScore,
+      )
+    );
+  }
+
+  let written = 0;
+  if (stmts.length > 0) {
+    try {
+      const results = await db.batch(stmts);
+      written = results.filter((r) => (r.meta?.changes ?? 0) > 0).length;
+    } catch {
+      // wholesale batch failure: report a `db` error for every fetched DID
+      // that didn't already have a per-DID error logged.
+      for (const did of fetched.keys()) {
+        if (!errors.find((e) => e.did === did)) errors.push({ did, reason: "db" });
+      }
+    }
+  }
+
+  return json({
+    ok: true,
+    requested: didList.length,
+    profiles_found: fetched.size,
+    written,
+    hidden: hiddenCount,
+    errors,
+  });
 }

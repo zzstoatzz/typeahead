@@ -32,6 +32,12 @@ indexer-build-staging branch="cjk-search":
       INDEX_STAGING_NAME="{{branch}}" \
       MODE=indexer zig build run
 
+# dry-run the prioritized enrichment walk (A: follows, B: indie PDS hop, C: followers)
+# reads TURSO_URL/TURSO_AUTH_TOKEN from .env if present for the dedup query.
+# `--apply` is NOT yet implemented — wait until the /admin/enrich-profiles endpoint ships.
+enrich-plan *ARGS:
+    ./scripts/prioritized-enrich.py {{ARGS}}
+
 # perf benchmark against prod worker — latency, coverage, fields, stress
 bench *ARGS:
     ./scripts/bench.py {{ARGS}}
