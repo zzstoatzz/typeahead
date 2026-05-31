@@ -5,15 +5,52 @@ import { extractProfileFields, fetchProfileFromPds } from "./utils";
 import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 import { recordActorDelta } from "./metrics";
 
+type CurRow = {
+  handle: string; hidden: number; labels: string;
+  display_name: string; avatar_url: string; created_at: string; associated: string;
+  followers_count: number; follows_count: number; posts_count: number; quality_score: number;
+};
+
+export function isProfileIdentical(
+  cur: CurRow,
+  f: ReturnType<typeof extractProfileFields>,
+): boolean {
+  return (
+    cur.hidden === f.hidden &&
+    cur.labels === f.labels &&
+    cur.handle === f.handle &&
+    cur.display_name === f.displayName &&
+    cur.avatar_url === f.avatarCid &&
+    cur.created_at === f.createdAt &&
+    cur.associated === f.associated &&
+    cur.followers_count === f.followersCount &&
+    cur.follows_count === f.followsCount &&
+    cur.posts_count === f.postsCount &&
+    Math.round(cur.quality_score * 100) === Math.round(f.qualityScore * 100)
+  );
+}
+
 /** refresh moderation labels, walking the full index over multiple cron runs */
 export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   // resume where we left off (rowid cursor persisted in KV)
   const cursorStr = await env.KV.get("mod_cursor");
   const cursor = cursorStr ? Number(cursorStr) : 0;
 
+  // pull every field the UPDATE below writes, so the no-op skip can compare
+  // ALL of them — not just hidden+labels. This cron is the de facto profile
+  // refresh for actors whose firehose commits don't reach us (third-party PDSs
+  // per project_did_web_discovery_gap); a hidden+labels-only skip silently
+  // froze avatar / display_name / follower counts / quality_score forever.
   const { results } = await db.prepare(
-    "SELECT rowid, did, handle, hidden, labels, pds FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000"
-  ).bind(cursor).all<{ rowid: number; did: string; handle: string; hidden: number; labels: string; pds: string }>();
+    `SELECT rowid, did, handle, hidden, labels, pds,
+            display_name, avatar_url, created_at, associated,
+            followers_count, follows_count, posts_count, quality_score
+     FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000`
+  ).bind(cursor).all<{
+    rowid: number; did: string; handle: string; hidden: number; labels: string; pds: string;
+    display_name: string; avatar_url: string; created_at: string; associated: string;
+    followers_count: number; follows_count: number; posts_count: number; quality_score: number;
+  }>();
 
   if (!results || results.length === 0) {
     // wrapped around — reset cursor for next run
@@ -62,8 +99,10 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
       for (const p of profiles) {
         const f = extractProfileFields(p, overrides.get(p.did) ?? null, isDomainBlocked(p.handle || "", blockedDomains));
         const cur = current.get(p.did);
-        // skip no-op updates — only write if labels or hidden actually changed
-        if (cur && cur.hidden === f.hidden && cur.labels === f.labels) { skipped++; continue; }
+        // skip ONLY if every materialized field is identical. Quality score is
+        // compared rounded — extractProfileFields already rounds to 2dp, but
+        // float-eq across a JSON round-trip is fragile.
+        if (cur && isProfileIdentical(cur, f)) { skipped++; continue; }
 
         stmts.push(
           db.prepare(
