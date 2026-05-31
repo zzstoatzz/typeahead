@@ -12,8 +12,12 @@
 //!     hydrate regardless of prefix rows).
 //!   - sync rows are source=0; operator overrides (future) are source=1 and
 //!     survive compaction.
-//!   - prefix diff writes only added (op=1) / removed (op=0) keys; unchanged
-//!     keys stay served by the base (score drift waits for the next build).
+//!   - prefix diff writes added (op=1) / removed (op=0) keys, AND upserts the
+//!     latest score for unchanged-set keys too. The original design deferred
+//!     "score drift" to the next build, but enrichment (`quality_score`:
+//!     0 → 850) is exactly the signal ranking needs to reflect immediately —
+//!     waiting hours for a snapshot rebuild defeated the whole prioritized
+//!     enrichment pipeline. compaction prunes these on the next rebuild.
 const std = @import("std");
 const zqlite = @import("zqlite");
 const Allocator = std.mem.Allocator;
@@ -62,11 +66,15 @@ pub fn projectUpdate(
 
     const score = scoring.scoreOf(.{ .quality_score = a.quality_score });
 
+    // Pack the RAW handle/display — `nh`/`nd` are normalized for key derivation
+    // only. The blob is what hydrate returns to clients, so we'd otherwise
+    // serve every enriched actor's displayName lowercased. The builder packs
+    // raw (builder.zig); the overlay must match.
     const blob = try pack.packActor(arena, .{
         .hidden = a.hidden,
         .quality_score = a.quality_score,
-        .handle = nh,
-        .display = nd,
+        .handle = a.handle,
+        .display = a.display_name,
         .avatar = a.avatar_url,
         .labels = a.labels,
         .pds = a.pds,
@@ -105,9 +113,13 @@ pub fn projectDelete(
     }
 }
 
-/// Merge-walk two sorted+deduped key lists: keys only in `old` → suppress
-/// (op=0); keys only in `new` → add (op=1). Common keys are left to the base
-/// (membership unchanged; score drift is corrected at the next build).
+/// Merge-walk two sorted+deduped key lists. Writes per branch:
+///   - key only in `old` (rename / delete) → suppress (op=0).
+///   - key only in `new` (rename / new actor) → add (op=1, new score).
+///   - key in both (unchanged set) → upsert (op=1, new score). Carries live
+///     score updates (enrichment, refresh) into ranking before the next
+///     snapshot rebuild. INSERT OR REPLACE handles the no-change case as a
+///     cheap rewrite; compaction prunes on rebuild.
 fn diffPrefixes(
     conn: zqlite.Conn,
     did: []const u8,
@@ -135,6 +147,7 @@ fn diffPrefixes(
                 ni += 1;
             },
             .eq => {
+                try upsertPrefix(conn, new_keys[ni], did, score, 1, updated_at);
                 oi += 1;
                 ni += 1;
             },
@@ -231,7 +244,74 @@ test "projectUpdate rename suppresses old keys, adds new, leaves common" {
     try testing.expectEqual(@as(?i64, 0), try prefixOp(conn, "h:alice", "did:plc:y")); // old handle prefix suppressed
     try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "e:alicia.fm", "did:plc:y")); // new exact added
     try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "h:alici", "did:plc:y")); // new handle prefix added
-    try testing.expectEqual(@as(?i64, null), try prefixOp(conn, "h:al", "did:plc:y")); // common → untouched
+    try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "h:al", "did:plc:y")); // common key → upserted w/ new score (live score carry)
+}
+
+test "projectUpdate packs RAW handle/display (not normalized) into the blob" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const conn = try memConn();
+    defer conn.close();
+
+    // mixed-case display name with kanji is what hydrate returns to clients;
+    // it MUST round-trip exactly. The bug was packing normalize.display(…)
+    // (lowercased + katakana→hiragana folded) into the blob, so every overlay
+    // hit showed up lowercased + script-folded.
+    try projectUpdate(arena.allocator(), conn, .{
+        .did = "did:plc:q",
+        .handle = "Pfrazee.com", // raw casing preserved
+        .display_name = "Paul Frazee 🦀",
+        .avatar_url = "",
+        .labels = "[]",
+        .associated = "{}",
+        .pds = "",
+        .created_at = "",
+        .hidden = false,
+        .quality_score = 850.0,
+    }, "", "", 100);
+
+    const row = (try conn.row(
+        "SELECT blob FROM actor_overlay WHERE did = ?",
+        .{"did:plc:q"},
+    )).?;
+    defer row.deinit();
+    const blob = row.blob(0);
+    const a = try pack.unpackActor(blob);
+    try testing.expectEqualStrings("Pfrazee.com", a.handle);
+    try testing.expectEqualStrings("Paul Frazee 🦀", a.display);
+}
+
+test "projectUpdate score-only change carries score into overlay (enrichment bug)" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const conn = try memConn();
+    defer conn.close();
+
+    // initial project: zero-score actor (unenriched, ~99% of corpus pre-enrichment).
+    try projectUpdate(arena.allocator(), conn, .{
+        .did = "did:plc:p", .handle = "pfrazee.com", .display_name = "Paul Frazee",
+        .avatar_url = "", .labels = "[]", .associated = "{}", .pds = "",
+        .created_at = "", .hidden = false, .quality_score = 0.0,
+    }, "", "", 100);
+    try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "h:pfrazee.com", "did:plc:p"));
+
+    // same handle/display, score now 850 (enrichment). ALL keys hit `.eq` —
+    // the pre-fix updater skipped these, leaving overlay scores at 0 and
+    // ranking unchanged. fixed updater upserts every common key with the
+    // new score so ranking reflects the enrichment within sync's next tick.
+    try projectUpdate(arena.allocator(), conn, .{
+        .did = "did:plc:p", .handle = "pfrazee.com", .display_name = "Paul Frazee",
+        .avatar_url = "", .labels = "[]", .associated = "{}", .pds = "",
+        .created_at = "", .hidden = false, .quality_score = 850.0,
+    }, "pfrazee.com", "Paul Frazee", 200);
+
+    const row = (try conn.row(
+        "SELECT op, score FROM prefix_overlay WHERE key = ? AND did = ?",
+        .{ "h:pfrazee.com", "did:plc:p" },
+    )).?;
+    defer row.deinit();
+    try testing.expectEqual(@as(i64, 1), row.int(0));
+    try testing.expect(row.float(1) > 100); // scoring.scoreOf(850) ≫ 0
 }
 
 test "projectDelete writes tombstone (NULL blob) + suppresses old keys" {
