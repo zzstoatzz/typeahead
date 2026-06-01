@@ -3,11 +3,25 @@ import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS } from "../types";
 import { json, avatarUrl } from "../utils";
 
+/** edge cache TTL for getProfiles responses, in seconds. profiles change rarely
+ *  (the enrichment cron refreshes them), so a few minutes of staleness is fine and
+ *  collapses repeated lookups of the same actors from origin (Turso) reads to edge hits. */
+export const PROFILES_CACHE_TTL = 300;
+
+/** Build a stable Cache API key for a getProfiles request, independent of actor order,
+ *  case, and duplicates — so `?actors=b&actors=A` and `?actors=a&actors=b` share one entry.
+ *  DIDs are case-sensitive; handles are not, so only handles are lowercased. */
+export function profilesCacheKey(actors: string[]): string {
+  const norm = [...new Set(actors.map((a) => (a.startsWith("did:") ? a : a.toLowerCase())))].sort();
+  return `https://typeahead.cache/xrpc/app.bsky.actor.getProfiles?actors=${norm.join(",")}`;
+}
+
 /** Batch profile lookup by DID or handle — compatible with app.bsky.actor.getProfiles response shape. */
 export async function handleGetProfiles(
   request: Request,
   db: TursoDB,
   _env: Env,
+  ctx: ExecutionContext,
 ): Promise<Response> {
   const url = new URL(request.url);
   const actors = url.searchParams.getAll("actors");
@@ -18,6 +32,13 @@ export async function handleGetProfiles(
   if (actors.length > 25) {
     return json({ error: "InvalidRequest", message: "max 25 actors per request" }, 400);
   }
+
+  // edge cache: a Worker-generated Response is never cached automatically, so we
+  // explicitly look it up / store it via the Cache API keyed on the normalized actors.
+  const cache = caches.default;
+  const cacheKey = new Request(profilesCacheKey(actors), { method: "GET" });
+  const cached = await cache.match(cacheKey);
+  if (cached) return cached;
 
   // split into DIDs and handles
   const dids: string[] = [];
@@ -57,7 +78,14 @@ export async function handleGetProfiles(
     ...(r.created_at ? { createdAt: r.created_at } : {}),
   }));
 
-  return new Response(JSON.stringify({ profiles }), {
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+  const response = new Response(JSON.stringify({ profiles }), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": `public, max-age=${PROFILES_CACHE_TTL}, s-maxage=${PROFILES_CACHE_TTL}`,
+      ...CORS_HEADERS,
+    },
   });
+
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  return response;
 }

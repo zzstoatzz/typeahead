@@ -82,7 +82,7 @@ export default {
       if (!success) {
         return json({ error: "rate limited" }, 429);
       }
-      return handleGetProfiles(request, db, env);
+      return handleGetProfiles(request, db, env, ctx);
     }
 
     if (pathname === "/admin/ingest" && request.method === "POST") {
