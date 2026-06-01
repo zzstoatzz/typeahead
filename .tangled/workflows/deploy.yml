@@ -8,35 +8,17 @@ dependencies:
   nixpkgs:
     - bun
     - nodejs
-    - curl
-    - jq
 
-environment:
-  CLOUDFLARE_ACCOUNT_ID: "3e9ba01cd687b3c4d29033908177072e"
+# Deploy is intentionally NOT done from tangled CI — the secrets path has been
+# unreliable (rolled values don't propagate, see commits 0ff3acb/eacaf7f). The
+# worker is deployed manually with `bunx wrangler deploy` using CF_NEW from
+# .env. CI just verifies the bundle builds and tests pass. Revisit when the
+# tangled secret store is fixed.
 
 steps:
-  - name: token fingerprint (debug — no value leak)
+  - name: verify
     command: |
       set -euo pipefail
-      : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN secret not set}"
-      LEN=${#CLOUDFLARE_API_TOKEN}
-      HEAD4=${CLOUDFLARE_API_TOKEN:0:4}
-      TAIL4=${CLOUDFLARE_API_TOKEN: -4}
-      echo "token length: $LEN  head4: $HEAD4  tail4: $TAIL4"
-      echo "--- /user/tokens/verify ---"
-      curl -sS https://api.cloudflare.com/client/v4/user/tokens/verify \
-        -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq '{success, errors, status: .result.status, id: .result.id}'
-      echo "--- /accounts (token-visible) ---"
-      curl -sS https://api.cloudflare.com/client/v4/accounts \
-        -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | jq '{success, errors, accounts: [.result[]? | {id, name}]}'
-      echo "--- GET workers/services/typeahead (the failing call) ---"
-      curl -sS -w "\nhttp_status: %{http_code}\n" \
-        "https://api.cloudflare.com/client/v4/accounts/3e9ba01cd687b3c4d29033908177072e/workers/services/typeahead" \
-        -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" | tail -10
-
-  - name: deploy worker
-    command: |
-      set -euo pipefail
-      : "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN secret not set}"
       bun install
-      bunx wrangler deploy
+      bun test
+      bunx wrangler deploy --dry-run
