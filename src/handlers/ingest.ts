@@ -42,14 +42,20 @@ export async function handleIngest(
       ).bind(e.did);
     }
     const avatarCid = e.avatar_cid || null;
+    // profile/identity-bearing events: also reset profile_checked_at to 0 so
+    // the cron's cold-floor pool picks this actor up on the very next tick
+    // and refreshes the appview aggregates (followers / qs) that firehose
+    // can never carry. This is the "firehose-triggered enqueue" the priority
+    // selector relies on.
     return db.prepare(
-      `INSERT INTO actors (did, handle, display_name, avatar_url, updated_at)
-       VALUES (?1, ?2, ?3, ?4, unixepoch())
+      `INSERT INTO actors (did, handle, display_name, avatar_url, updated_at, profile_checked_at)
+       VALUES (?1, ?2, ?3, ?4, unixepoch(), 0)
        ON CONFLICT(did) DO UPDATE SET
          handle = COALESCE(NULLIF(?2, ''), actors.handle),
          display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
          avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
-         updated_at = unixepoch()`
+         updated_at = unixepoch(),
+         profile_checked_at = 0`
     ).bind(
       e.did,
       e.handle || '',

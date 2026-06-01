@@ -11,6 +11,10 @@ type CurRow = {
   followers_count: number; follows_count: number; posts_count: number; quality_score: number;
 };
 
+type ActorRow = CurRow & {
+  rowid: number; did: string; pds: string;
+};
+
 export function isProfileIdentical(
   cur: CurRow,
   f: ReturnType<typeof extractProfileFields>,
@@ -32,30 +36,52 @@ export function isProfileIdentical(
 
 /** refresh moderation labels, walking the full index over multiple cron runs */
 export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
-  // resume where we left off (rowid cursor persisted in KV)
-  const cursorStr = await env.KV.get("mod_cursor");
-  const cursor = cursorStr ? Number(cursorStr) : 0;
+  // Two-pool selector — replaces the old rowid cursor that took ~245 days to
+  // walk the corpus and treated viral handles the same as 2022-dormant ones.
+  //
+  //   PRIORITY POOL (800/run): ORDER BY staleness × value × activity DESC.
+  //     - staleness: now - profile_checked_at (NULL → very stale)
+  //     - value:     log(1 + quality_score), so popular accounts refresh more
+  //     - activity:  recent firehose touch via last_activity_at boosts further
+  //   COLD FLOOR    (200/run): ORDER BY profile_checked_at ASC NULLS FIRST.
+  //     Guarantees the long tail gets touched without starving on score=0
+  //     accounts that never get a priority bump. Also picks up actors whose
+  //     firehose enqueue set profile_checked_at=0 (see handlers/ingest.ts).
+  //
+  // Per Turso Scaler (100B reads/mo): one full scan per tick ~ 6M reads × 24/day
+  // × 30 = 4.3B/mo ≈ 4% of budget. Will add a functional index later.
+  const PRIORITY_N = 800;
+  const FLOOR_N = 200;
 
-  // pull every field the UPDATE below writes, so the no-op skip can compare
-  // ALL of them — not just hidden+labels. This cron is the de facto profile
-  // refresh for actors whose firehose commits don't reach us (third-party PDSs
-  // per project_did_web_discovery_gap); a hidden+labels-only skip silently
-  // froze avatar / display_name / follower counts / quality_score forever.
-  const { results } = await db.prepare(
+  const priorityRows = (await db.prepare(
     `SELECT rowid, did, handle, hidden, labels, pds,
             display_name, avatar_url, created_at, associated,
             followers_count, follows_count, posts_count, quality_score
-     FROM actors WHERE rowid > ?1 ORDER BY rowid ASC LIMIT 1000`
-  ).bind(cursor).all<{
-    rowid: number; did: string; handle: string; hidden: number; labels: string; pds: string;
-    display_name: string; avatar_url: string; created_at: string; associated: string;
-    followers_count: number; follows_count: number; posts_count: number; quality_score: number;
-  }>();
+     FROM actors
+     ORDER BY (unixepoch() - COALESCE(profile_checked_at, 0))
+              * (1.0 + ln(1.0 + COALESCE(quality_score, 0)))
+              * (CASE WHEN last_activity_at > unixepoch() - 86400 THEN 3.0
+                      WHEN last_activity_at > unixepoch() - 604800 THEN 1.5
+                      ELSE 1.0 END)
+              DESC
+     LIMIT ?1`
+  ).bind(PRIORITY_N).all<ActorRow>()).results ?? [];
 
-  if (!results || results.length === 0) {
-    // wrapped around — reset cursor for next run
-    await env.KV.put("mod_cursor", "0");
-    console.log(JSON.stringify({ event: "moderation_refresh", status: "wrapped", cursor }));
+  const floorRows = (await db.prepare(
+    `SELECT rowid, did, handle, hidden, labels, pds,
+            display_name, avatar_url, created_at, associated,
+            followers_count, follows_count, posts_count, quality_score
+     FROM actors
+     ORDER BY COALESCE(profile_checked_at, 0) ASC
+     LIMIT ?1`
+  ).bind(FLOOR_N).all<ActorRow>()).results ?? [];
+
+  // dedup: priority pool wins (cold floor is a backstop, not a duplicate-fetcher).
+  const seen = new Set(priorityRows.map((r) => r.did));
+  const results = [...priorityRows, ...floorRows.filter((r) => !seen.has(r.did))];
+
+  if (results.length === 0) {
+    console.log(JSON.stringify({ event: "moderation_refresh", status: "empty" }));
     return;
   }
 
@@ -80,10 +106,9 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
 
       const res = await fetch(`${BSKY_GET_PROFILES_URL}?${params}`);
       if (res.status === 429) {
-        // save progress and bail — pick up here next run
-        const lastRowid = results[Math.max(0, i - 1)].rowid;
-        await env.KV.put("mod_cursor", String(lastRowid));
-        console.log(JSON.stringify({ event: "moderation_refresh", status: "rate_limited", checked, changed, cursor: lastRowid }));
+        // bail — next tick re-selects from scratch via the priority queue,
+        // so rate-limited progress just shrinks this run's batch.
+        console.log(JSON.stringify({ event: "moderation_refresh", status: "rate_limited", checked, changed }));
         return;
       }
       if (!res.ok) continue;
@@ -189,15 +214,16 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
     }
   }
 
-  // save cursor at end of this page
-  const lastRowid = results[results.length - 1].rowid;
-  await env.KV.put("mod_cursor", String(lastRowid));
-
   // prune old tombstones (> 7 days)
   await db.prepare("DELETE FROM tombstones WHERE deleted_at < unixepoch() - 604800").run();
 
   if (deleted > 0) {
     console.log(JSON.stringify({ event: "mod_cleanup", deleted }));
   }
-  console.log(JSON.stringify({ event: "moderation_refresh", checked, changed, skipped, deleted, cursor: lastRowid, ms: Date.now() - t0 }));
+  console.log(JSON.stringify({
+    event: "moderation_refresh",
+    checked, changed, skipped, deleted,
+    priority: priorityRows.length, floor: floorRows.length,
+    ms: Date.now() - t0,
+  }));
 }
