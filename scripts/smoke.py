@@ -97,6 +97,33 @@ def test_prefix_match(base_url: str):
     check("prefix 'zzst' finds zzstoatzz.io", "zzstoatzz.io" in handles, f"got {handles[:5]}")
 
 
+def test_ranking(base_url: str):
+    """popularity ranking — a high-follower account must rank above low-follower
+    namesakes that share its prefix. Guards the quality_score-clobber class of
+    bug (see project_quality_score_clobber): zzstoatzz.io (2k followers) once
+    sank to position 7 behind its own ~30-follower bots because a countless
+    profile froze its score. Presence checks pass that silently — only POSITION
+    catches it."""
+    print("\n--- popularity ranking ---")
+    data, _ = fetch(f"{base_url}{XRPC_PATH}?q=zzst&limit=10")
+    if not data or "_error" in data or "_http_error" in data:
+        check("fetch succeeded", False)
+        return
+
+    handles = [a.get("handle", "") for a in data.get("actors", [])]
+
+    def pos(h: str) -> int:
+        return handles.index(h) if h in handles else 10**6
+
+    main = pos("zzstoatzz.io")
+    check("zzstoatzz.io present for 'zzst'", main < 10**6, f"got {handles[:5]}")
+    # the high-follower account must outrank its low-follower namesakes
+    for bot in ("phi.zzstoatzz.io", "zzstoatzzdevlog.bsky.social"):
+        if bot in handles:
+            check(f"zzstoatzz.io ranks above {bot}", main < pos(bot),
+                  f"main@{main} vs {bot}@{pos(bot)} — handles={handles[:5]}")
+
+
 def test_cors(base_url: str):
     print("\n--- CORS headers ---")
     _, headers = fetch(f"{base_url}{XRPC_PATH}?q=test&limit=1")
@@ -400,6 +427,7 @@ def main():
     test_response_shape(args.url)
     test_known_handle(args.url)
     test_prefix_match(args.url)
+    test_ranking(args.url)
     test_cors(args.url)
     test_deprecated_param(args.url)
     test_limit_bounds(args.url)

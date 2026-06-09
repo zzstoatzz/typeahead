@@ -5,7 +5,16 @@ test-services:
     cd services && zig build test --summary all
 
 # deploy the cloudflare worker (the edge / API). NOT the fly services.
-deploy-worker:
+# runs the prod smoke suite afterward as a post-deploy gate — a deploy that
+# breaks response shape, ranking, or the admin API fails loudly here.
+deploy-worker url="https://typeahead.waow.tech":
+    npx wrangler deploy
+    @echo "--- waiting for edge propagation before smoke ---"
+    sleep 5
+    ./scripts/smoke.py --url {{url}}
+
+# deploy the worker WITHOUT the post-deploy smoke gate (escape hatch)
+deploy-worker-only:
     npx wrangler deploy
 
 # deploy the ingest service (App A: jetstream -> worker)
