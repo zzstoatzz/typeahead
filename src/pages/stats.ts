@@ -327,7 +327,13 @@ export function statsPage(d: StatsData): string {
       for (const s of snaps) { if (s.total > yMax) yMax = s.total; }
       yMax = yMax * 1.08 || 1;
 
-      const toX = i => pad.l + (i / (n - 1)) * cw;
+      // x is mapped by ACTUAL TIME, not array index — snapshots are not evenly
+      // spaced (irregular hourly gaps + outage gaps), and the date axis below is
+      // time-based, so index-based points would desync from the labels/hover.
+      const t0ms = snaps[0].ts;
+      const tNms = snaps[n - 1].ts;
+      const span = (tNms - t0ms) || 1;
+      const toX = ts => pad.l + ((ts - t0ms) / span) * cw;
       const toY = v => pad.t + ch - (v / yMax) * ch;
 
       const series = [
@@ -337,7 +343,7 @@ export function statsPage(d: StatsData): string {
       ];
 
       for (const s of series) {
-        const pts = snaps.map((d, i) => [toX(i), toY(d[s.key])]);
+        const pts = snaps.map((d) => [toX(d.ts), toY(d[s.key])]);
         const trace = () => {
           ctx.beginPath();
           ctx.moveTo(pts[0][0], pts[0][1]);
@@ -372,9 +378,7 @@ export function statsPage(d: StatsData): string {
 
         ctx.font = '10px system-ui, sans-serif';
         ctx.fillStyle = '#555'; ctx.textAlign = 'center';
-        const t0ms = snaps[0].ts;
-        const tNms = snaps[n - 1].ts;
-        const spanDays = (tNms - t0ms) / 86400000;
+        const spanDays = span / 86400000;
 
         // walk midnights
         const d = new Date(t0ms);
@@ -404,7 +408,7 @@ export function statsPage(d: StatsData): string {
 
       // hover crosshair + dots
       if (hoverIdx != null && hoverIdx >= 0 && hoverIdx < n) {
-        const x = toX(hoverIdx);
+        const x = toX(snaps[hoverIdx].ts);
         ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H - pad.b);
         ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
@@ -427,8 +431,17 @@ export function statsPage(d: StatsData): string {
       const mx = clientX - rect.left;
       const pad = { l: 12, r: 12 };
       const cw = rect.width - pad.l - pad.r;
-      const frac = (mx - pad.l) / cw;
-      const idx = Math.max(0, Math.min(snaps.length - 1, Math.round(frac * (snaps.length - 1))));
+      const frac = Math.max(0, Math.min(1, (mx - pad.l) / cw));
+      // map cursor → time, then pick the snapshot nearest in time (x is
+      // time-based, so nearest-by-index would not match the cursor position)
+      const t0ms = snaps[0].ts;
+      const span = (snaps[snaps.length - 1].ts - t0ms) || 1;
+      const targetTs = t0ms + frac * span;
+      let idx = 0, best = Infinity;
+      for (let i = 0; i < snaps.length; i++) {
+        const dd = Math.abs(snaps[i].ts - targetTs);
+        if (dd < best) { best = dd; idx = i; }
+      }
       drawChart(idx);
 
       const snap = snaps[idx];

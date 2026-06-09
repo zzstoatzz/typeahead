@@ -27,22 +27,33 @@ export async function recordCacheHit(db: TursoDB, ms: number): Promise<void> {
     .run();
 }
 
-/** fire-and-forget: record actor count deltas at 5-min granularity */
+/** fire-and-forget: record actor count deltas at 5-min granularity.
+ *  also maintains the running `actors_total` counter so the hourly snapshot
+ *  never has to COUNT(*) the full ~6M-row table (a ~300s scan over libSQL HTTP). */
 export async function recordActorDelta(
   db: TursoDB,
   deltas: { actors?: number; handles?: number; avatars?: number },
 ): Promise<void> {
   const bucket = Math.floor(Date.now() / 300_000);
-  await db.prepare(
-    `INSERT INTO actor_deltas (bucket, actors_delta, handles_delta, avatars_delta)
-     VALUES (?1, ?2, ?3, ?4)
-     ON CONFLICT(bucket) DO UPDATE SET
-       actors_delta = actors_delta + ?2,
-       handles_delta = handles_delta + ?3,
-       avatars_delta = avatars_delta + ?4`
-  )
-    .bind(bucket, deltas.actors ?? 0, deltas.handles ?? 0, deltas.avatars ?? 0)
-    .run();
+  const actorsDelta = deltas.actors ?? 0;
+  const stmts = [
+    db.prepare(
+      `INSERT INTO actor_deltas (bucket, actors_delta, handles_delta, avatars_delta)
+       VALUES (?1, ?2, ?3, ?4)
+       ON CONFLICT(bucket) DO UPDATE SET
+         actors_delta = actors_delta + ?2,
+         handles_delta = handles_delta + ?3,
+         avatars_delta = avatars_delta + ?4`
+    ).bind(bucket, actorsDelta, deltas.handles ?? 0, deltas.avatars ?? 0),
+  ];
+  if (actorsDelta !== 0) {
+    stmts.push(
+      db.prepare(
+        `UPDATE counters SET value = value + ?1 WHERE name = 'actors_total'`
+      ).bind(actorsDelta)
+    );
+  }
+  await db.batch(stmts);
 }
 
 /** fire-and-forget: increment cumulative hit counter per client identity */

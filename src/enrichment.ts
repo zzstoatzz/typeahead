@@ -4,24 +4,40 @@ import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL } from "./types";
 import { extractProfileFields, fetchProfileFromPds } from "./utils";
 import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 
-/** record an actor-count snapshot for the current hour (idempotent) */
+/** record an actor-count snapshot for the current hour (idempotent).
+ *
+ *  the corpus is ~6M rows; a `COUNT(*)` / `SUM(CASE …)` over the whole table
+ *  takes ~300s over libSQL HTTP, which silently blew the cron's budget once the
+ *  table grew (snapshots froze 2026-05-18). instead:
+ *    - `total`        — O(1) read of the maintained `actors_total` counter
+ *    - `hidden`       — selective count via `idx_actors_hidden` (partial index)
+ *    - empty handles  — selective range seek on `idx_actors_handle`
+ *    - empty avatars  — selective count via `idx_actors_avatar_empty`
+ *  with_handles / with_avatars are then `total - empty`. every count touches
+ *  only a small slice (<400k matching rows), so the whole thing is sub-second. */
 export async function recordSnapshot(db: TursoDB): Promise<void> {
   const hour = Math.floor(Date.now() / 3_600_000);
-  const row = await db.prepare(
-    `SELECT COUNT(*) AS total,
-            SUM(CASE WHEN handle != '' THEN 1 ELSE 0 END) AS with_handles,
-            SUM(CASE WHEN avatar_url != '' THEN 1 ELSE 0 END) AS with_avatars,
-            SUM(CASE WHEN hidden != 0 THEN 1 ELSE 0 END) AS hidden
-     FROM actors`
-  ).first<{ total: number; with_handles: number; with_avatars: number; hidden: number }>();
-  if (row) {
-    await db.prepare(
-      `INSERT OR REPLACE INTO snapshots (hour, total, with_handles, with_avatars, hidden)
-       VALUES (?1, ?2, ?3, ?4, ?5)`
-    )
-      .bind(hour, row.total - (row.hidden ?? 0), row.with_handles, row.with_avatars, row.hidden ?? 0)
-      .run();
-  }
+  const [totalRes, hiddenRes, emptyHandlesRes, emptyAvatarsRes] = await db.batch([
+    db.prepare("SELECT value AS n FROM counters WHERE name = 'actors_total'"),
+    db.prepare("SELECT COUNT(*) AS n FROM actors WHERE hidden != 0"),
+    db.prepare("SELECT COUNT(*) AS n FROM actors WHERE handle = ''"),
+    db.prepare("SELECT COUNT(*) AS n FROM actors WHERE avatar_url = ''"),
+  ], "read");
+
+  const num = (r: any): number => Number(r?.results?.[0]?.n ?? 0);
+  const total = num(totalRes);
+  if (total <= 0) return; // counter not seeded yet — don't write a bogus zero row
+
+  const hidden = num(hiddenRes);
+  const withHandles = total - num(emptyHandlesRes);
+  const withAvatars = total - num(emptyAvatarsRes);
+
+  await db.prepare(
+    `INSERT OR REPLACE INTO snapshots (hour, total, with_handles, with_avatars, hidden)
+     VALUES (?1, ?2, ?3, ?4, ?5)`
+  )
+    .bind(hour, total - hidden, withHandles, withAvatars, hidden)
+    .run();
 }
 
 /** materialize stats data to KV so /stats never queries turso on the request path */

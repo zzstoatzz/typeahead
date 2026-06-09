@@ -15,10 +15,22 @@ import { docsPage } from "./pages/docs";
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     const db = await getDb(env);
-    await recordSnapshot(db);
-    await materializeStats(db, env);
-    await refreshModeration(db, env);
-    await enrichActors(db, env);
+    // isolate each step: a slow/failing one (e.g. recordSnapshot when the table
+    // grew past a cheap COUNT) must never take down the rest — that cascade is
+    // what froze the /stats page from 2026-05-18.
+    const steps: [string, () => Promise<unknown>][] = [
+      ["recordSnapshot", () => recordSnapshot(db)],
+      ["materializeStats", () => materializeStats(db, env)],
+      ["refreshModeration", () => refreshModeration(db, env)],
+      ["enrichActors", () => enrichActors(db, env)],
+    ];
+    for (const [name, fn] of steps) {
+      try {
+        await fn();
+      } catch (e: any) {
+        console.log(JSON.stringify({ event: "cron_step_failed", step: name, error: e?.message }));
+      }
+    }
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {

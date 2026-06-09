@@ -178,4 +178,27 @@ pub const migrations = [_]zug.Migration{
             ,
         },
     },
+    // Maintained corpus counters + an empty-avatar index, so the hourly
+    // `recordSnapshot` never has to COUNT(*) the whole ~6M-row table (a ~300s
+    // scan over libSQL HTTP that silently blew the cron budget once the table
+    // grew, freezing /stats from 2026-05-18). `actors_total` is bumped by the
+    // worker's recordActorDelta on every ingest/delete; with_handles /
+    // with_avatars are derived from cheap selective empty-counts.
+    //
+    // Fresh DBs seed `actors_total` at 0 (correct — they start empty). The
+    // already-populated prod DB is seeded out-of-band to its true row count;
+    // the INSERT OR IGNORE below is a no-op there.
+    .{
+        .id = "004_corpus_counters",
+        .name = "maintained actors_total counter + empty-avatar index for cheap snapshots",
+        .statements = &.{
+            \\CREATE TABLE IF NOT EXISTS counters (
+            \\  name TEXT PRIMARY KEY,
+            \\  value INTEGER NOT NULL DEFAULT 0
+            \\)
+            ,
+            "INSERT OR IGNORE INTO counters (name, value) VALUES ('actors_total', 0)",
+            "CREATE INDEX IF NOT EXISTS idx_actors_avatar_empty ON actors(avatar_url) WHERE avatar_url = ''",
+        },
+    },
 };
