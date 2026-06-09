@@ -153,6 +153,21 @@ export function extractProfileFields(
   const followsCount = Number(profile.followsCount) || 0;
   const postsCount = Number(profile.postsCount) || 0;
   const createdAt = profile.createdAt || '';
+
+  // Did this profile actually carry appview aggregates? A countless response
+  // (transient appview gap, PDS-record fallback) omits these fields entirely.
+  // We must distinguish that from a genuine zero-follower account (which sends
+  // followersCount: 0). Scoring a countless profile yields only the age bonus
+  // (30/60) — non-zero, so it would sail through every `NULLIF(?,0)` write
+  // guard and CLOBBER a real account's score while the real follower count is
+  // preserved. Emit 0 instead so the same guards keep the prior good score.
+  // (This froze zzstoatzz.io at 30 and pfrazee.com at 60 despite 2k/308k
+  // followers — the counts survived, the score didn't.)
+  const hasAggregates =
+    profile.followersCount != null ||
+    profile.followsCount != null ||
+    profile.postsCount != null;
+
   return {
     handle: profile.handle || '',
     displayName: profile.displayName || '',
@@ -164,7 +179,9 @@ export function extractProfileFields(
     followersCount,
     followsCount,
     postsCount,
-    qualityScore: computeAuthorityScore({ followersCount, followsCount, postsCount, createdAt }),
+    qualityScore: hasAggregates
+      ? computeAuthorityScore({ followersCount, followsCount, postsCount, createdAt })
+      : 0,
   };
 }
 

@@ -54,6 +54,43 @@ test("extractProfileFields: populated profile writes counts + qualityScore", () 
   expect(f.qualityScore).toBeGreaterThan(500);
 });
 
+test("extractProfileFields: countless profile → qualityScore 0 (no age-bonus clobber)", () => {
+  // A getProfiles response that omits aggregate counts (transient appview gap)
+  // must NOT score the account on age alone. The age-only 30/60 is non-zero, so
+  // it would slip past every NULLIF(?,0) write guard and overwrite a real
+  // account's score while its true follower count stays put — exactly how
+  // zzstoatzz.io froze at 30 and pfrazee.com at 60. Emit 0 so the guards hold.
+  const profile = {
+    handle: "zzstoatzz.io",
+    displayName: "nate",
+    labels: [],
+    createdAt: "2023-01-01T00:00:00.000Z", // > 3yr old → would be +60 if scored
+    // followersCount / followsCount / postsCount intentionally ABSENT
+    associated: {},
+  };
+  const f = extractProfileFields(profile, null, false);
+  expect(f.followersCount).toBe(0);
+  expect(f.postsCount).toBe(0);
+  expect(f.qualityScore).toBe(0);
+});
+
+test("extractProfileFields: genuine zero-follower profile still scores (counts present)", () => {
+  // A real account that simply has 0 followers DOES send followersCount: 0.
+  // That is an aggregate, not an absence — it should still be scored (age bonus
+  // applies), unlike the countless case above.
+  const profile = {
+    handle: "newbie.bsky.social",
+    labels: [],
+    createdAt: "2023-01-01T00:00:00.000Z", // > 3yr → +60
+    followersCount: 0,
+    followsCount: 0,
+    postsCount: 0,
+    associated: {},
+  };
+  const f = extractProfileFields(profile, null, false);
+  expect(f.qualityScore).toBe(60);
+});
+
 test("extractProfileFields: label-hidden profile → hidden=1", () => {
   const profile = {
     handle: "x.bsky.social",

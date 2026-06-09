@@ -509,10 +509,10 @@ export async function handleEnrichProfiles(
            hidden = excluded.hidden,
            created_at = excluded.created_at,
            associated = excluded.associated,
-           followers_count = excluded.followers_count,
-           follows_count = excluded.follows_count,
-           posts_count = excluded.posts_count,
-           quality_score = excluded.quality_score,
+           followers_count = COALESCE(NULLIF(excluded.followers_count, 0), actors.followers_count),
+           follows_count = COALESCE(NULLIF(excluded.follows_count, 0), actors.follows_count),
+           posts_count = COALESCE(NULLIF(excluded.posts_count, 0), actors.posts_count),
+           quality_score = COALESCE(NULLIF(excluded.quality_score, 0), actors.quality_score),
            profile_checked_at = unixepoch(),
            updated_at = unixepoch()`
       ).bind(
