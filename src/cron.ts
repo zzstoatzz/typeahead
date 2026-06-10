@@ -209,6 +209,20 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
         deleted += deadDids.length;
         await recordActorDelta(db, { actors: -deadDids.length }).catch(() => {});
       }
+
+      // ADVANCE THE WALK CURSOR for everything we confirmed alive this run —
+      // changed OR unchanged. Both selector pools order by profile_checked_at;
+      // if we never bump it, the same head is re-selected every hour and the
+      // rest of the corpus starves — stale avatars and counts never self-heal.
+      // (returnedDids = getProfiles hits ∪ PDS-resolved takedowns; excludes the
+      // dead rows just deleted.)
+      const checkedAlive = [...returnedDids];
+      if (checkedAlive.length > 0) {
+        const ph = checkedAlive.map((_, i) => `?${i + 1}`).join(",");
+        await db.prepare(
+          `UPDATE actors SET profile_checked_at = unixepoch() WHERE did IN (${ph})`
+        ).bind(...checkedAlive).run();
+      }
     } catch {
       // best-effort — skip failures
     }
