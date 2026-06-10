@@ -241,8 +241,13 @@ async def run_latency(
     ours_url: str,
     corpus: list[str],
     runs: int,
+    appb_direct: bool = False,
 ) -> list[LatencyStats]:
-    """sequential latency: cold (cache-busted) + warm (cached) + bsky baseline."""
+    """sequential latency: cold (cache-busted) + warm (cached) + bsky baseline.
+
+    appb_direct hits the search service's /search (engine latency, no edge
+    cache) instead of the worker's /xrpc. In that mode "warm" measures the
+    engine on a repeated query, not a CF cache hit — there is no edge cache."""
     results = []
     # cold: runs * 2 reqs/query (ours+bsky), warm: 2 reqs/query (ours+bsky)
     total = len(corpus) * (runs * 2 + 2)
@@ -255,7 +260,7 @@ async def run_latency(
         for run_i in range(runs):
             limit = 8 + (run_i % 3)
 
-            _, ms, status = await timed_fetch(client, search_url(ours_url, q, limit))
+            _, ms, status = await timed_fetch(client, ours_search_url(ours_url, q, limit, appb_direct))
             if status == 200:
                 stats.ours_cold_ms.append(ms)
             done += 1
@@ -270,12 +275,12 @@ async def run_latency(
             await asyncio.sleep(0.2)
 
         # warm run: repeat exact same request (limit=10, should hit CF cache)
-        _, ms, status = await timed_fetch(client, search_url(ours_url, q, 10))
+        _, ms, status = await timed_fetch(client, ours_search_url(ours_url, q, 10, appb_direct))
         done += 1
         progress("latency", done, total)
         await asyncio.sleep(1.05)
         # second hit — this one should be cached
-        _, ms, status = await timed_fetch(client, search_url(ours_url, q, 10))
+        _, ms, status = await timed_fetch(client, ours_search_url(ours_url, q, 10, appb_direct))
         if status == 200:
             stats.ours_warm_ms.append(ms)
         done += 1
@@ -292,6 +297,7 @@ async def run_coverage_and_fields(
     client: httpx.AsyncClient,
     ours_url: str,
     corpus: list[str],
+    appb_direct: bool = False,
 ) -> tuple[list[CoverageResult], dict]:
     """compare result sets at limit=10; also compute field completeness."""
     coverage_results = []
@@ -305,7 +311,7 @@ async def run_coverage_and_fields(
     for i, q in enumerate(corpus):
         progress("coverage+fields", i + 1, len(corpus))
 
-        ours_data, _, _ = await timed_fetch(client, search_url(ours_url, q))
+        ours_data, _, _ = await timed_fetch(client, ours_search_url(ours_url, q, 10, appb_direct))
         await asyncio.sleep(1.05)
         bsky_data, _, _ = await timed_fetch(client, search_url(BSKY, q))
         await asyncio.sleep(0.2)
@@ -358,11 +364,12 @@ async def run_display_name_check(
     client: httpx.AsyncClient,
     ours_url: str,
     queries: list[str],
+    appb_direct: bool = False,
 ) -> list[dict]:
     """verify display-name-only queries return results."""
     results = []
     for q in queries:
-        ours_data, _, _ = await timed_fetch(client, search_url(ours_url, q))
+        ours_data, _, _ = await timed_fetch(client, ours_search_url(ours_url, q, 10, appb_direct))
         await asyncio.sleep(1.05)
         bsky_data, _, _ = await timed_fetch(client, search_url(BSKY, q))
         await asyncio.sleep(0.2)
@@ -481,6 +488,7 @@ async def run_stress(
     ours_url: str,
     corpus: list[str],
     levels: list[int],
+    appb_direct: bool = False,
 ) -> list[StressResult]:
     """concurrent request stress test (our API only)."""
     results = []
@@ -491,7 +499,7 @@ async def run_stress(
 
         queries = (corpus * ((n // len(corpus)) + 1))[:n]
         tasks = [
-            timed_fetch(client, search_url(ours_url, q, limit=7 + (i % 4)))
+            timed_fetch(client, ours_search_url(ours_url, q, 7 + (i % 4), appb_direct))
             for i, q in enumerate(queries)
         ]
 
@@ -576,7 +584,7 @@ def print_latency_table(stats_list: list[LatencyStats]):
     if all_warm:
         w50 = sorted(all_warm)[len(all_warm) // 2]
         w95 = sorted(all_warm)[int(len(all_warm) * 0.95)] if len(all_warm) >= 2 else max(all_warm)
-        print(f"  {BOLD}warm:{RESET}  ours p50={fmt_ms(w50)} p95={fmt_ms(w95)} (CF cache hit)")
+        print(f"  {BOLD}warm:{RESET}  ours p50={fmt_ms(w50)} p95={fmt_ms(w95)} (repeat query — CF cache hit via worker; engine warm via --appb-direct)")
 
 
 def print_coverage_table(results: list[CoverageResult]):
@@ -828,7 +836,7 @@ async def main():
     dn_queries = [q for q in DISPLAY_NAME_QUERIES if q in corpus] or DISPLAY_NAME_QUERIES[:2]
 
     print(f"\n{BOLD}=== typeahead benchmark ==={RESET}")
-    print(f"  target:   {args.url}")
+    print(f"  target:   {args.url}{'  (direct search service — engine latency, no edge cache)' if args.appb_direct else '  (via worker — edge latency)'}")
     print(f"  baseline: {BSKY}")
     print(f"  corpus:   {len(corpus)} queries, {args.runs} run(s) each")
     print(f"  date:     {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
@@ -839,18 +847,18 @@ async def main():
     ) as client:
         # 1. latency (cold + warm)
         print(f"\n{CYAN}[1/4] latency comparison (cold + warm){RESET}")
-        latency = await run_latency(client, args.url, corpus, args.runs)
+        latency = await run_latency(client, args.url, corpus, args.runs, args.appb_direct)
         print_latency_table(latency)
 
         # 2. coverage + field completeness (single pass)
         print(f"\n{CYAN}[2/4] coverage + field completeness{RESET}")
-        coverage, field_summary = await run_coverage_and_fields(client, args.url, corpus)
+        coverage, field_summary = await run_coverage_and_fields(client, args.url, corpus, args.appb_direct)
         print_coverage_table(coverage)
         print_field_table(field_summary)
 
         # 3. display name search
         print(f"\n{CYAN}[3/4] display name search{RESET}")
-        display_name = await run_display_name_check(client, args.url, dn_queries)
+        display_name = await run_display_name_check(client, args.url, dn_queries, args.appb_direct)
         print_display_name_table(display_name)
 
         # 4. stress test
@@ -860,7 +868,7 @@ async def main():
             print(f"  {YELLOW}skipped{RESET}")
         else:
             print(f"\n{CYAN}[4/4] stress test (ours only){RESET}")
-            stress = await run_stress(client, args.url, corpus, [5, 10, 20])
+            stress = await run_stress(client, args.url, corpus, [5, 10, 20], args.appb_direct)
             print_stress_table(stress)
 
     # write report

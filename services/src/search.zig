@@ -3,7 +3,7 @@
 //! Independent ranking informed by — not dependent on — Bluesky. Three
 //! candidate sources (exact handle, handle prefix, FTS) feed a single scoring
 //! pipeline. Bluesky's typeahead serves as the benchmark oracle in
-//! scripts/bench-search.py, not as a serving dependency.
+//! scripts/bench.py (run via `just bench-ranking`), not as a serving dependency.
 //!
 //! Score model (totals add):
 //!

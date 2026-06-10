@@ -4,9 +4,7 @@ set dotenv-filename := ".dev.vars"
 test-services:
     cd services && zig build test --summary all
 
-# deploy the cloudflare worker (the edge / API). NOT the fly services.
-# runs the prod smoke suite afterward as a post-deploy gate — a deploy that
-# breaks response shape, ranking, or the admin API fails loudly here.
+# deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech":
     npx wrangler deploy
     @echo "--- waiting for edge propagation before smoke ---"
@@ -25,13 +23,49 @@ deploy-ingest:
 deploy-search:
     cd services && fly deploy -c fly.search.toml
 
-# what snapshot is the search service on? (build_id, normalize_version, counts)
-search-status url="https://typeahead-search.fly.dev":
-    curl -sS {{url}}/index/status | jq .
+# ─── benchmarking & health ───────────────────────────────────────────────
+# How to assess performance. Four layers, run from here. See CLAUDE.md
+# "Performance & benchmarking" for what each measures and what "good" looks like.
+#
+#   just smoke          correctness gate (shape, ranking, moderation, admin)
+#   just bench          edge latency — what users feel (worker + CF cache)
+#   just bench-search   engine latency — the query engine alone (App B, no cache)
+#   just bench-ranking  ranking quality vs bluesky oracle (acceptance-gated)
+#   just index-status   corpus scale (actor_count, prefix_count, build_id)
+#   just perf           run all of the above in sequence
 
-# end-to-end smoke against the public API
-prod-smoke url="https://typeahead.waow.tech":
+WORKER_URL := "https://typeahead.waow.tech"
+SEARCH_URL := "https://typeahead-search.fly.dev"
+
+# correctness gate against the public API (shape, ranking, moderation, admin)
+smoke url=WORKER_URL:
     ./scripts/smoke.py --url {{url}}
+alias prod-smoke := smoke
+
+# edge latency + coverage + fields + stress, against the prod worker (what users feel)
+bench *ARGS:
+    ./scripts/bench.py {{ARGS}}
+
+# engine latency — search service direct, bypassing the edge cache (App B; stress off by default)
+bench-search url=SEARCH_URL *ARGS:
+    ./scripts/bench.py --url {{url}} --appb-direct --no-stress {{ARGS}}
+
+# ranking quality vs bluesky oracle (+ /debug/search breakdowns); exits non-zero on acceptance failure
+bench-ranking url=SEARCH_URL:
+    ./scripts/bench.py --ranking --appb-direct --url {{url}}
+
+# corpus scale: build_id, actor_count, prefix_count, normalize_version
+index-status url=SEARCH_URL:
+    curl -sS {{url}}/index/status | jq .
+alias search-status := index-status
+
+# full performance assessment: correctness → edge → engine → ranking → scale
+perf:
+    just smoke
+    just bench --quick
+    just bench-search --quick
+    just bench-ranking
+    just index-status
 
 # STAGING index build to an isolated R2 channel (never touches prod latest.json).
 # branch namespaces the channel: staging/<branch>/ + latest.<branch>.json
@@ -46,14 +80,6 @@ indexer-build-staging branch="cjk-search":
 # `--apply` is NOT yet implemented — wait until the /admin/enrich-profiles endpoint ships.
 enrich-plan *ARGS:
     ./scripts/prioritized-enrich.py {{ARGS}}
-
-# perf benchmark against prod worker — latency, coverage, fields, stress
-bench *ARGS:
-    ./scripts/bench.py {{ARGS}}
-
-# ranking-quality benchmark against the search service direct (with /debug/search breakdowns)
-bench-ranking appb_url="https://typeahead-search.fly.dev":
-    ./scripts/bench.py --ranking --appb-direct --url {{appb_url}}
 
 # cleanup dead actors in batches with pauses between
 cleanup batch_size="500" batches="10" pause="30":
