@@ -9,3 +9,4 @@ zig-pkg/
 .claude/
 .codex/
 scripts/bench-results.json
+__pycache__/
