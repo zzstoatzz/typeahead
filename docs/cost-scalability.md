@@ -44,8 +44,8 @@ Top read consumers (`--queries`, all batch/cron — **none are request-path**):
 
 | App | Machine | Volume | ~$/mo (est.) |
 |---|---|---|---|
-| `typeahead-ingester` (A) | shared-cpu-1x / 256 MB | 10 GB | ~$2 |
-| `typeahead-search` (B) | shared-cpu-4x / 2 GB | 30 GB | ~$20 (≈$15 compute + ~$5 vol) |
+| `typeahead-ingester` | shared-cpu-1x / 256 MB | 10 GB | ~$2 |
+| `typeahead-search` | shared-cpu-4x / 2 GB | 30 GB | ~$20 (≈$15 compute + ~$5 vol) |
 | `typeahead-indexer` | ephemeral (0 idle after cleanup) | 0 (was 40+100 GB) | ~$0 idle + ~$0.50/build compute |
 
 Fly volumes bill ~$0.15/GB/mo. The indexer's 140 GB of idle build-scratch

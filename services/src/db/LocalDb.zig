@@ -1,5 +1,7 @@
-//! Local SQLite read replica using zqlite
-//! Provides fast FTS5 queries while Turso remains source of truth
+//! Local SQLite state using zqlite.
+//! The search role keeps a Turso actor replica, live overlay tables, and an
+//! attached read-only prefix-index snapshot. Older FTS helpers remain for roles
+//! that still need local FTS maintenance.
 
 const std = @import("std");
 const io = std.Options.debug_io;

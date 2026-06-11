@@ -271,7 +271,7 @@ async function maxRowid(db: TursoDB): Promise<number> {
 
 /** Hide apex + every subdomain of `domain`, sparing 'show'-override DIDs, in
  *  bounded rowid windows (short write locks). Only flips 0→1 so already-hidden
- *  rows don't churn updated_at / the App B sync. */
+ *  rows don't churn updated_at / the search service sync. */
 async function backfillDomainBlock(db: TursoDB, domain: string): Promise<void> {
   const suffix = "%." + domain;
   const max = await maxRowid(db);

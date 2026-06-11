@@ -1,9 +1,9 @@
-# prioritized enrichment — plan (for review)
+# prioritized enrichment — plan and implementation record
 
-> status: **proposed, reviewed once** (codex). dry-run script at
-> `scripts/prioritized-enrich.py`; `--apply` is **explicitly blocked** until
-> the new admin enrichment endpoint exists. validate the logic + thresholds
-> before we touch Turso.
+> status: **implemented**. `scripts/prioritized-enrich.py` supports dry-run
+> planning and `--apply`; `POST /admin/enrich-profiles` is the canonical
+> enrichment writer. Keep dry-run as the default, and use `--max-targets` as
+> the first-run kill switch.
 >
 > **review outcomes (codex round 1):**
 > - the original plan said `--apply` would write via `/admin/ingest` "so
@@ -143,7 +143,7 @@ small communities and false-negatives on evolved spam.
    engagement guard and turns out to be spam after the fact, one
    `POST /admin/domain-block` hides the whole tree (we shipped this).
 6. **Overlay path carries propagation**: every enriched account's bumped
-   `updated_at` is projected into App B's `actor_overlay` /
+   `updated_at` is projected into the search service's `actor_overlay` /
    `prefix_overlay` within ~5 min of the next sync. So ranking improves
    live during the run; no snapshot rebuild required for individual
    results to appear. A *full* snapshot rebuild after the run bakes the
@@ -242,7 +242,7 @@ nothing in the script can lie to the database.
   Turso batch failure (one row's error blocks the transaction); we
   return that as a single `db` error covering all unwritten DIDs.
 - **idempotent:** re-running with the same DIDs safely refreshes. The
-  bumped `updated_at` is desired — App B's overlay picks it up.
+  bumped `updated_at` is desired — the search service's overlay picks it up.
 
 ### python `--apply` against the endpoint
 
@@ -254,7 +254,7 @@ nothing in the script can lie to the database.
 4. Aggregate the `{written, hidden, skipped, errors}` counters; print a
    summary at the end + per-PDS rollup.
 5. Stop on repeated 5xx from the endpoint or sustained `errors`.
-6. App B's overlay picks up bumped `updated_at` within ~5 min via sync —
+6. The search service's overlay picks up bumped `updated_at` within ~5 min via sync —
    ranking improves live during the run.
 
 ### tests for the endpoint (bun test against in-memory shape)
@@ -278,7 +278,7 @@ nothing in the script can lie to the database.
 - **Rate limit on bsky** during `--apply`. Mitigation: 5-concurrent, 200 ms
   pacing, and the existing `bulk-enrich.py` has handled this scale.
 - **Turso write contention** during `--apply`. Mitigation: WRITE_BATCH=25,
-  short transactions; the App B sync is read-mostly and re-reads cleanly.
+  short transactions; the search service sync is read-mostly and re-reads cleanly.
 - **Discovery overload**: phase B may insert thousands of *new* DIDs that
   weren't in our DB (good — that's the firehose-gap fix). Mitigation:
   these go through the same ingest path; the snapshot rebuild later picks

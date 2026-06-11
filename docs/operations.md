@@ -53,8 +53,9 @@ The `waow.tech` zone's **Browser Cache TTL** setting was `14400` (4 hours, a
 legacy CF default), which **overrides** the worker's `max-age` — the served
 header became `max-age=14400` and stale results persisted on the edge per-POP
 for up to 4h. Symptom: a just-applied moderation change (e.g. a domain block)
-keeps showing in the UI long after the DB + App B are correct; `curl` of a
-cache-busted URL returns the fresh value but the cached query URL does not.
+keeps showing in the UI long after Turso + the search service are correct;
+`curl` of a cache-busted URL returns the fresh value but the cached query URL
+does not.
 
 **Fix (live):** Browser Cache TTL set to **0 = "Respect Existing Headers"**
 (Caching → Configuration), so the worker's `max-age=60` is honored. After

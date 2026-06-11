@@ -104,7 +104,7 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
 
     // USE_PREFIX_INDEX routes /search to the precomputed prefix index; unset
     // keeps the FTS path. Same response shape either way. On index-path error
-    // we 500/503 so the worker falls back to its bsky backstop.
+    // we 500/503 so the worker falls back to its configured fallback path.
     const search_result = if (std.c.getenv("USE_PREFIX_INDEX") != null)
         index_search.run(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer)
     else

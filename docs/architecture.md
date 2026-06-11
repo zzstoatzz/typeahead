@@ -66,7 +66,7 @@ It:
 1. exports the Turso database
 2. builds a SQLite snapshot with `prefix_top_base` and `actor_compact_base`
 3. writes a manifest with size, sha256, versions, counts, and source watermark
-4. uploads `index.db` and `latest.json` to Cloudflare R2
+4. uploads `index.db` and the configured channel manifest to Cloudflare R2
 5. exits
 
 The builder can use large temporary disk during construction, but the shipped
@@ -100,7 +100,8 @@ For a query:
 2. derive bounded lookup keys:
    - `e:` exact handle
    - `h:` handle prefix
-   - `n:` display-name token prefix
+   - `n:` display-name keys: Latin token prefixes plus CJK bigrams / leading
+     unigram for Japanese/CJK typeahead
    - `d:` domain suffix / subdomain search
 3. read matching DID lists from the attached snapshot
 4. merge live overlay additions and suppressions

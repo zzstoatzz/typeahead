@@ -21,7 +21,7 @@ one command each; `just perf` runs them all in order. Results land in
 | --- | --- | --- |
 | `just smoke` | **correctness gate** — response shape, ranking position, moderation, admin CRUD | all checks pass (non-zero exit on any failure) |
 | `just bench` | **edge latency** — the worker + 60s CF cache, what users actually feel | warm p50 ≲ 60ms (cache hit); cold p50 faster than bluesky; mean overlap with bsky ≳ 75% |
-| `just bench-search` | **engine latency** — the search service alone (App B), bypassing the edge cache | cold p50 ~100–150ms on the 256MB box; should beat bluesky's ~300ms |
+| `just bench-search` | **engine latency** — the search service alone, bypassing the edge cache | warm p50 ≲ 100ms; cold varied-prefix queries should stay in the low hundreds of ms and beat bluesky's ~300ms |
 | `just bench-ranking` | **ranking quality** — canonical query set vs bluesky as oracle, with `/debug/search` score breakdowns | structural criteria pass; parity criteria are aspirational (see below) |
 | `just index-status` | **corpus scale** — `build_id`, `actor_count`, `prefix_count`, `normalize_version` | actor_count tracks the live corpus; build_id matches the deployed snapshot |
 

@@ -23,7 +23,7 @@ curl "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=na
   of truth for actors, moderation overrides, and tombstones.
 - **snapshot builder**: same Zig binary, `MODE=indexer`, run as an ephemeral Fly
   job. It exports Turso, builds a precomputed prefix-index SQLite snapshot, and
-  publishes `index.db` + `latest.json` to Cloudflare R2.
+  publishes `index.db` + a channel manifest to Cloudflare R2.
 - **search service**: same Zig binary, `typeahead-search`. It downloads and
   verifies snapshots from R2, attaches them read-only, tails Turso into a local
   actor replica, projects live changes into an overlay, and serves `/search`
@@ -72,8 +72,8 @@ credentials are provided as Fly/Worker secrets in production.
 
 ```bash
 just deploy-worker    # edge worker to Cloudflare (manual; CI auto-deploy needs CLOUDFLARE_API_TOKEN set)
-just deploy-ingest    # ingest service  (App A, fly.toml)
-just deploy-search    # search service  (App B, fly.search.toml)
+just deploy-ingest    # ingest service  (fly.toml)
+just deploy-search    # search service  (fly.search.toml)
 ```
 
 The snapshot builder is launched as a one-off Fly machine from

@@ -15,11 +15,11 @@ deploy-worker url="https://typeahead.waow.tech":
 deploy-worker-only:
     npx wrangler deploy
 
-# deploy the ingest service (App A: jetstream -> worker)
+# deploy the ingest service (Jetstream -> worker admin ingest)
 deploy-ingest:
     cd services && fly deploy -c fly.toml
 
-# deploy the search service (App B: snapshot+overlay serving). prod read path.
+# deploy the search service (snapshot + overlay serving). prod read path.
 deploy-search:
     cd services && fly deploy -c fly.search.toml
 
@@ -29,7 +29,7 @@ deploy-search:
 #
 #   just smoke          correctness gate (shape, ranking, moderation, admin)
 #   just bench          edge latency — what users feel (worker + CF cache)
-#   just bench-search   engine latency — the query engine alone (App B, no cache)
+#   just bench-search   engine latency — the query engine alone (search service, no cache)
 #   just bench-ranking  ranking quality vs bluesky oracle (acceptance-gated)
 #   just index-status   corpus scale (actor_count, prefix_count, build_id)
 #   just perf           run all of the above in sequence
@@ -46,7 +46,7 @@ alias prod-smoke := smoke
 bench *ARGS:
     ./scripts/bench.py {{ARGS}}
 
-# engine latency — search service direct, bypassing the edge cache (App B; stress off by default)
+# engine latency — search service direct, bypassing the edge cache (stress off by default)
 bench-search url=SEARCH_URL *ARGS:
     ./scripts/bench.py --url {{url}} --appb-direct --no-stress {{ARGS}}
 
@@ -75,9 +75,9 @@ indexer-build-staging branch="cjk-search":
       INDEX_STAGING_NAME="{{branch}}" \
       MODE=indexer zig build run
 
-# dry-run the prioritized enrichment walk (A: follows, B: indie PDS hop, C: followers)
-# reads TURSO_URL/TURSO_AUTH_TOKEN from .env if present for the dedup query.
-# `--apply` is NOT yet implemented — wait until the /admin/enrich-profiles endpoint ships.
+# dry-run or apply the prioritized enrichment walk (A: follows, B: indie PDS hop, C: followers).
+# reads TURSO_URL/TURSO_AUTH_TOKEN from .env for the dedup query; --apply posts DID batches
+# to /admin/enrich-profiles and should always be paired with --max-targets.
 enrich-plan *ARGS:
     ./scripts/prioritized-enrich.py {{ARGS}}
 

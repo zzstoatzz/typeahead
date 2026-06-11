@@ -1,16 +1,18 @@
-# i18n: Japanese / CJK search — design plan
+# i18n: Japanese / CJK search
 
-Status: **proposal** (not yet built). Supersedes the "non-Latin dropped"
-KNOWN LIMITATION in `services/src/index/normalize.zig`.
+Status: **implemented in code** via `normalize.VERSION = "v2-cjk-bigram"`.
+This document is the design record and rollout rationale for the CJK index
+version.
 
 ## Why
 
 A large share of the atmosphere is Japanese (bsky alone skews heavily JP).
-Today `normalize.zig` folds only ASCII + Latin-1 + Latin Extended-A and
-**drops everything else** — so a display name `佐藤太郎` produces the empty
-string, emits no `n:` keys, and `q=日本` normalizes to `""` → `{"actors":[]}`.
-That's a whole-population blind spot. We need to index Japanese (Han +
-kana) — and structure it to extend to other CJK/scripts later.
+Before `v2-cjk-bigram`, `normalize.zig` folded only ASCII + Latin-1 + Latin
+Extended-A and **dropped everything else** — so a display name `佐藤太郎`
+produced the empty string, emitted no `n:` keys, and `q=日本` normalized to
+`""` → `{"actors":[]}`. That was a whole-population blind spot. The v2 index
+preserves and indexes Japanese (Han + kana) while leaving room to extend to
+other CJK/scripts later.
 
 ## Reality check (so we set the right bar)
 
@@ -42,7 +44,7 @@ exactly like multi-word Latin queries.
 - Non-Japanese scripts beyond CJK ideographs + kana (Arabic, Hebrew,
   Hangul, Thai…) — design leaves room, but Japanese-first.
 
-## Pipeline changes
+## Pipeline changes implemented
 
 ### Phase 0 — measure (DONE 2026-05-26)
 Windowed sample of 56,000 non-empty `display_name`s across 8 rowid windows
@@ -71,7 +73,7 @@ Keep **all** existing Latin behavior. Add, before the fold table:
 - **Preserve** Han + Hiragana codepoints in the normalized UTF-8 output
   (stop dropping them). Voiced-mark/combining handled by the width/NFKC step.
 
-`VERSION` → e.g. `"v2-cjk-bigram"`. This is **load-bearing**: indexer and
+`VERSION` is `"v2-cjk-bigram"`. This is **load-bearing**: indexer and
 serving must produce identical output; the snapshot loader already refuses
 a snapshot whose `index_meta.normalize_version` ≠ the running binary's
 `VERSION`, which is exactly the guard that prevents a half-migrated state.
@@ -147,7 +149,8 @@ bigrams.
 5. **Quality-floor gating:** **NONE.** Phase 0 showed +0.7% emissions —
    nothing to gate. Index all CJK names (bigrams + leading unigram).
 
-Phase 0 is done; all decisions are locked. **Ready for implementation.**
+Phase 0 is done; all decisions are locked and implemented in the shared
+normalization/key-derivation path.
 
 ## Hubble-informed guardrails (Codex)
 Hubble is a whole-atmosphere sync/mirroring substrate, **not** a replacement

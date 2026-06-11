@@ -82,8 +82,9 @@ export function docsPage(): string {
       collections — profiles, posts, likes, and follows — so any account that creates or
       interacts with content gets discovered automatically. for accounts that predate the index
       or haven't been seen yet, search queries trigger a throttled backfill from the bluesky API
-      to fill gaps on demand. searches use FTS5 prefix matching against handles and display names,
-      with results edge-cached for 60s.
+      to fill gaps on demand. searches are served from a precomputed prefix index plus a live
+      overlay for recent deletes, moderation changes, renames, and new accounts, with results
+      edge-cached for 60s.
     </p>
 
     <h2>the change</h2>

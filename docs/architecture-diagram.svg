@@ -26,7 +26,7 @@
   <text class="title" x="34" y="44">typeahead.waow.tech — architecture</text>
   <rect x="34" y="62" width="1262" height="46" rx="10" fill="#fef9c3" stroke="#eab308" stroke-width="1.4"/>
   <text class="thesisB" x="50" y="82">The whole design in one line:</text>
-  <text class="thesis" x="218" y="82">a search <tspan font-weight="700">never scans the corpus</tspan>. It's bounded point-lookups into a precomputed snapshot plus a small live-overlay</text>
+  <text class="thesis" x="248" y="82">a search <tspan font-weight="700">never scans the corpus</tspan>. It's bounded point-lookups into a precomputed snapshot plus a small live-overlay</text>
   <text class="thesis" x="50" y="99">merge — independent of the 5.9 M-actor corpus size. Bluesky is rollback-only.</text>
 
   <g transform="translate(0,120)">
@@ -75,7 +75,7 @@
     <text class="ttl" x="1090" y="272" text-anchor="middle">Cloudflare R2</text>
     <text class="sm"  x="1090" y="290" text-anchor="middle">index snapshot</text>
     <text class="sm"  x="1090" y="307" text-anchor="middle">builds/&lt;id&gt;/index.db</text>
-    <text class="sm"  x="1090" y="324" text-anchor="middle">+ manifest · latest.json</text>
+    <text class="sm"  x="1090" y="324" text-anchor="middle">+ channel manifest</text>
 
     <!-- ③ SERVE -->
     <rect x="34" y="468" width="152" height="64" rx="10" fill="#f1f5f9" stroke="#64748b" stroke-width="1.5"/>
@@ -134,7 +134,7 @@
 
     <path d="M1090,330 L1090,378" fill="none" stroke="#334155" stroke-width="1.6" marker-end="url(#arr)"/>
     <text class="lbl" x="1104" y="348" text-anchor="start">snapshot promotion:</text>
-    <text class="lbl" x="1104" y="362" text-anchor="start">poll latest.json → download</text>
+    <text class="lbl" x="1104" y="362" text-anchor="start">poll channel manifest → download</text>
 
     <path d="M760,190 C 688,300 688,420 720,470" fill="none" stroke="#0d9488" stroke-width="1.8" marker-end="url(#arr)"/>
     <text class="lbl" x="648" y="356" text-anchor="middle" fill="#0d9488">sync deltas →</text>
