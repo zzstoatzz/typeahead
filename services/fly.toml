@@ -20,6 +20,9 @@ primary_region = 'ewr'
 [processes]
   app = './typeahead-ingester'
 
+[[restart]]
+  policy = 'always'
+
 [http_service]
   internal_port = 8080
   force_https = true

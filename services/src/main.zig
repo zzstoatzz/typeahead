@@ -64,8 +64,8 @@ fn jetstreamThread(args: JetstreamArgs) void {
         args.local_db,
         args.identity_pool,
     ) catch |err| {
-        log.err("handler init failed: {}", .{err});
-        return;
+        log.err("handler init failed: {}, exiting for restart", .{err});
+        std.process.exit(1);
     };
     defer handler.deinit();
 
@@ -85,6 +85,10 @@ fn jetstreamThread(args: JetstreamArgs) void {
     client.subscribe(&handler) catch |err| {
         log.err("jetstream subscribe failed: {}", .{err});
     };
+    // subscribe reconnects internally and only returns on cancellation or a
+    // terminal error — either way this role is over, so let fly restart us.
+    log.err("jetstream subscription ended, exiting for restart", .{});
+    std.process.exit(1);
 }
 
 fn setSocketTimeout(fd: std.posix.fd_t, secs: u32) !void {
@@ -272,6 +276,10 @@ pub fn main() !void {
             .identity_pool = &identity_pool,
         }}) catch |err| {
             log.err("jetstream task failed: {}", .{err});
+        };
+
+        tasks.concurrent(io, ingest.watchdogLoop, .{}) catch |err| {
+            log.err("watchdog task failed to start: {}", .{err});
         };
     }
 

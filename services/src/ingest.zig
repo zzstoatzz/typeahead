@@ -11,6 +11,7 @@ const HttpTransport = zat.HttpTransport;
 const LocalDb = @import("db/LocalDb.zig");
 const BloomFilter = @import("bloom.zig").BloomFilter;
 const identity = @import("identity.zig");
+const logfire = @import("logfire");
 
 const log = std.log.scoped(.ingester);
 
@@ -26,6 +27,36 @@ fn timestamp() i64 {
 pub const MAX_BATCH: usize = 100;
 const BLOOM_BITS: usize = 10_000_000; // ~1.2MB fixed
 const BLOOM_HASHES: usize = 7;
+
+// liveness watchdog. a wedged process looks healthy from the outside while
+// ingesting nothing — process-wide TLS rot + a black-holed websocket silently
+// dropped 13 days of firehose (2026-05-29 → 06-12). exiting instead lets fly
+// restart us; resume-from-cursor makes that lossless within jetstream's
+// ~25h replay window.
+const WATCHDOG_STALL_SECS: i64 = 10 * 60;
+const WATCHDOG_MAX_CONSECUTIVE_FAILURES: u32 = 60; // ≥5min at the 5s retry cadence
+const HEARTBEAT_INTERVAL_SECS: i64 = 60;
+
+pub var last_event_at: std.atomic.Value(i64) = .init(0);
+pub var last_flush_ok_at: std.atomic.Value(i64) = .init(0);
+
+pub fn watchdogLoop() void {
+    const boot = timestamp();
+    last_event_at.store(boot, .monotonic);
+    last_flush_ok_at.store(boot, .monotonic);
+    while (true) {
+        io.sleep(std.Io.Duration.fromSeconds(60), .awake) catch {};
+        const now = timestamp();
+        const event_age = now - last_event_at.load(.monotonic);
+        const flush_age = now - last_flush_ok_at.load(.monotonic);
+        if (event_age >= WATCHDOG_STALL_SECS or flush_age >= WATCHDOG_STALL_SECS) {
+            log.err("watchdog: stalled (last event {d}s ago, last ok flush {d}s ago), exiting for restart", .{
+                event_age, flush_age,
+            });
+            std.process.exit(1);
+        }
+    }
+}
 
 pub const Config = struct {
     worker_url: []const u8,
@@ -69,6 +100,8 @@ pub const IngestHandler = struct {
     total_deleted: u64 = 0,
     last_flush: i64 = 0,
     retry_after: i64 = 0, // timestamp before which we skip flush attempts
+    consecutive_failures: u32 = 0,
+    last_heartbeat: i64 = 0,
 
     pub fn init(
         allocator: Allocator,
@@ -117,6 +150,7 @@ pub const IngestHandler = struct {
         self.pending_cursor = event.timeUs();
 
         const now = timestamp();
+        last_event_at.store(now, .monotonic);
         // drop incoming events if buffers are backed up (persistent failure)
         const MAX_BACKLOG = MAX_BATCH * 10;
         if (self.buffer.items.len >= MAX_BACKLOG or self.delete_buffer.items.len >= MAX_BACKLOG) {
@@ -426,10 +460,29 @@ pub const IngestHandler = struct {
         }
 
         if (any_failure) {
+            self.consecutive_failures += 1;
+            if (self.consecutive_failures >= WATCHDOG_MAX_CONSECUTIVE_FAILURES) {
+                log.err("watchdog: {d} consecutive flush failures, exiting for restart", .{
+                    self.consecutive_failures,
+                });
+                std.process.exit(1);
+            }
             self.retry_after = timestamp() + 5;
-        } else if (self.buffer.items.len == 0 and self.delete_buffer.items.len == 0) {
-            self.flushed_cursor = self.pending_cursor;
-            _ = self.arena.reset(.retain_capacity);
+        } else {
+            self.consecutive_failures = 0;
+            const now = timestamp();
+            last_flush_ok_at.store(now, .monotonic);
+            if (now - self.last_heartbeat >= HEARTBEAT_INTERVAL_SECS) {
+                self.last_heartbeat = now;
+                const span = logfire.span("ingest.heartbeat", .{});
+                defer span.end();
+                span.setAttribute("total_ingested", self.total_ingested);
+                span.setAttribute("total_deleted", self.total_deleted);
+            }
+            if (self.buffer.items.len == 0 and self.delete_buffer.items.len == 0) {
+                self.flushed_cursor = self.pending_cursor;
+                _ = self.arena.reset(.retain_capacity);
+            }
         }
     }
 };
