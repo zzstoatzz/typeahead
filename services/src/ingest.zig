@@ -22,7 +22,13 @@ fn timestamp() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
 }
 
-pub const MAX_BATCH: usize = 100;
+// per-flush event cap. each flush POST blocks the consumer loop for one
+// worker round-trip, so batch size bounds catch-up throughput: at 100 the
+// US-evening firehose outran the consumer (0.94× real-time) and the backlog
+// grew. the worker accepts 10k/POST and runs the batch as one Turso
+// transaction — keep this well under bulk-backfill sizes (500+ full upserts
+// observably block Turso reads); replay batches are mostly bare-DID no-ops.
+pub const MAX_BATCH: usize = 300;
 const BLOOM_BITS: usize = 10_000_000; // ~1.2MB fixed
 const BLOOM_HASHES: usize = 7;
 
