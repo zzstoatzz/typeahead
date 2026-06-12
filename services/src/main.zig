@@ -246,8 +246,12 @@ pub fn main() !void {
         const config = ingest.getConfig();
         log.info("typeahead ingester → {s}", .{config.worker_url});
 
+        // keep-alive matters here: flushes run every ≤5s and a cold TLS
+        // handshake per POST (~150-400ms) blocks the jetstream consumer loop —
+        // at peak firehose rate that pushed catch-up below 1× real-time.
+        // stale-connection failures are covered by flush retry + the watchdog.
         transport = HttpTransport.init(io, allocator);
-        transport.keep_alive = false;
+        transport.keep_alive = true;
         have_transport = true;
 
         // identity resolution pool: jetstream #identity events omit the handle
