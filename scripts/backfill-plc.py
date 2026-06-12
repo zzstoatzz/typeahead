@@ -43,6 +43,9 @@ INGEST_BATCH = 100  # events per /admin/ingest POST (full upserts — keep Turso
 INGEST_PAUSE = 0.25  # seconds between ingest POSTs
 EXPORT_PAUSE = 0.25  # seconds between export pages (politeness + rate limits)
 STATE_FILE = "scripts/.backfill-plc-state.json"
+# cloudflare Browser Integrity Check on waow.tech 403s the default
+# python-urllib UA on non-/xrpc/ paths; a Mozilla-prefixed UA passes
+USER_AGENT = "Mozilla/5.0 (compatible; typeahead-backfill/1.0)"
 
 DIM = "\033[2m"
 RESET = "\033[0m"
@@ -69,7 +72,10 @@ def _urlopen_with_retry(req, *, timeout=30, attempts=6):
 
 def export_page(after: str) -> list[dict]:
     qs = urllib.parse.urlencode({"count": PAGE_SIZE, "after": after})
-    req = urllib.request.Request(f"{PLC_EXPORT}?{qs}", headers={"Accept": "application/jsonl"})
+    req = urllib.request.Request(
+        f"{PLC_EXPORT}?{qs}",
+        headers={"Accept": "application/jsonl", "User-Agent": USER_AGENT},
+    )
     raw = _urlopen_with_retry(req).decode()
     return [json.loads(line) for line in raw.splitlines() if line.strip()]
 
@@ -93,6 +99,7 @@ def post_admin(path: str, payload: dict, secret: str) -> dict:
         headers={
             "Authorization": f"Bearer {secret}",
             "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
         },
     )
     return json.loads(_urlopen_with_retry(req, timeout=60))
