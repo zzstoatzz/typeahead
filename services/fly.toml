@@ -14,6 +14,10 @@ primary_region = 'ewr'
   destination = '/data'
 
 [env]
+  # Role: jetstream ingest only. The full-corpus Turso→local sync belongs to
+  # the search app (fly.search.toml) — running it here starved the ingest
+  # loop during the 2026-06-12 catch-up and serves no consumer on this box.
+  ENABLE_SYNC = '0'
   TYPEAHEAD_URL = 'https://typeahead.waow.tech'
   SQLITE_TMPDIR = '/data/tmp'
 
