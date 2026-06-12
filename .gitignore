@@ -10,3 +10,4 @@ zig-pkg/
 .codex/
 scripts/bench-results.json
 __pycache__/
+.logfire/
