@@ -52,7 +52,6 @@ const JetstreamArgs = struct {
     allocator: Allocator,
     config: ingest.Config,
     transport: *HttpTransport,
-    local_db: ?*LocalDb,
     identity_pool: ?*identity.Pool,
 };
 
@@ -61,7 +60,6 @@ fn jetstreamThread(args: JetstreamArgs) void {
         args.allocator,
         args.config,
         args.transport,
-        args.local_db,
         args.identity_pool,
     ) catch |err| {
         log.err("handler init failed: {}, exiting for restart", .{err});
@@ -107,33 +105,38 @@ pub fn main() !void {
         .async_limit = std.Io.Limit.limited(8), // bounded HTTP handler pool
     });
 
-    // Process-role selection. `MODE=indexer` runs the offline snapshot
-    // builder against Turso and exits — used as a fly process group on
-    // the typeahead-indexer machine. Unset = existing serving + sync +
-    // jetstream behavior.
-    if (cGetenv("MODE")) |mode| {
-        if (mem.eql(u8, mode, "indexer")) {
-            // Logfire stays unconfigured here — indexer is a short-lived
-            // offline job, std.log to stderr is enough for now. Wire spans
-            // later if cadence-wise insight matters.
-            log.info("MODE=indexer — running snapshot builder", .{});
-            return index_builder.run(allocator);
-        }
-        log.warn("MODE='{s}' unrecognized; falling through to serving role", .{mode});
-    }
+    // Process role — explicit and required, no default. A role running on the
+    // wrong box is invisible until it competes for resources: the ingester ran
+    // the search app's full-corpus sync for months because roles used to
+    // default all-on (found 2026-06-12, mid-incident).
+    //   ingester — jetstream → worker, owns Turso schema migrations
+    //   search   — Turso → local replica sync + HTTP search + index promote
+    //   indexer  — offline snapshot builder, runs once and exits
+    const Role = enum { ingester, search, indexer };
+    const role: Role = blk: {
+        const mode = cGetenv("MODE") orelse {
+            log.err("MODE not set — must be one of: ingester, search, indexer", .{});
+            return error.RoleRequired;
+        };
+        break :blk std.meta.stringToEnum(Role, mode) orelse {
+            log.err("MODE='{s}' unrecognized — must be one of: ingester, search, indexer", .{mode});
+            return error.RoleRequired;
+        };
+    };
 
-    // role flags — defaults preserve current all-in-one behavior
-    const enable_jetstream = envFlag("ENABLE_JETSTREAM", true);
-    const enable_sync = envFlag("ENABLE_SYNC", true);
-    const enable_schema_migrations = envFlag("ENABLE_SCHEMA_MIGRATIONS", true);
+    if (role == .indexer) {
+        // Logfire stays unconfigured here — indexer is a short-lived
+        // offline job, std.log to stderr is enough for now. Wire spans
+        // later if cadence-wise insight matters.
+        log.info("MODE=indexer — running snapshot builder", .{});
+        return index_builder.run(allocator);
+    }
 
     // service_name distinguishes app A vs app B in logfire traces.
     // Fly injects FLY_APP_NAME so the two apps tag distinctly without manual config.
-    const service_name = cGetenv("FLY_APP_NAME") orelse "typeahead-ingester";
+    const service_name = cGetenv("FLY_APP_NAME") orelse "typeahead-dev";
 
-    log.info("role: jetstream={} sync={} schema={} service_name={s}", .{
-        enable_jetstream, enable_sync, enable_schema_migrations, service_name,
-    });
+    log.info("role: {s} service_name={s}", .{ @tagName(role), service_name });
 
     _ = logfire.configure(.{
         .service_name = service_name,
@@ -143,22 +146,22 @@ pub fn main() !void {
         log.err("logfire configure failed: {}", .{err});
     };
 
-    // open local SQLite (optional — graceful degradation if no volume)
+    // local SQLite is the search role's serving replica. the ingester has no
+    // local consumer and doesn't open one — its HTTP listener serves the
+    // health-only fallback.
     var local_db = LocalDb.init(allocator);
     var local_db_ptr: ?*LocalDb = null;
-    local_db.open() catch |err| {
-        log.warn("local db failed to open: {}, search will be unavailable", .{err});
-    };
-    if (local_db.conn != null) {
-        local_db_ptr = &local_db;
-    }
     defer local_db.deinit();
-
-    // A search service without a local DB is not a service. Fail boot loudly
-    // rather than serving 503s indefinitely.
-    if (enable_sync and local_db_ptr == null) {
-        log.err("ENABLE_SYNC=1 but local DB unavailable — aborting boot", .{});
-        return error.LocalDbRequired;
+    if (role == .search) {
+        local_db.open() catch |err| {
+            log.err("local db failed to open: {} — search role requires it, aborting boot", .{err});
+            return err;
+        };
+        if (local_db.conn == null) {
+            log.err("local db unavailable — search role requires it, aborting boot", .{});
+            return error.LocalDbRequired;
+        }
+        local_db_ptr = &local_db;
     }
 
     // start HTTP server FIRST so Fly proxy doesn't timeout
@@ -188,7 +191,7 @@ pub fn main() !void {
     // turso assuming the schema exists. On baselined prod this is a few sub-
     // second SELECTs + INSERT OR IGNORE; on a fresh DB it creates everything
     // from migration 001. The search service must NOT run these.
-    if (enable_schema_migrations) {
+    if (role == .ingester) {
         var schema_client = TursoClient.init(allocator) catch |err| {
             log.err("turso client init for schema failed: {}, aborting boot", .{err});
             return err;
@@ -205,7 +208,7 @@ pub fn main() !void {
     var tasks: std.Io.Group = .init;
 
     // start sync (background — turso → local SQLite)
-    if (enable_sync) {
+    if (role == .search) {
         const db = local_db_ptr.?; // guaranteed non-null by check above
         tasks.concurrent(io, sync.syncLoop, .{ allocator, db }) catch |err| {
             log.err("sync task failed: {}", .{err});
@@ -216,7 +219,7 @@ pub fn main() !void {
     // Off by default; the search service opts in via ENABLE_INDEX_PROMOTE=1 once R2 creds are
     // set. Does not touch the live /search path (that's gated separately by
     // USE_PREFIX_INDEX) — it only keeps a validated snapshot attached.
-    if (enable_sync and envFlag("ENABLE_INDEX_PROMOTE", false)) {
+    if (role == .search and envFlag("ENABLE_INDEX_PROMOTE", false)) {
         const db = local_db_ptr.?;
         tasks.concurrent(io, promote_runner.watchLoop, .{ allocator, db }) catch |err| {
             log.err("promote watcher task failed: {}", .{err});
@@ -237,7 +240,7 @@ pub fn main() !void {
     var have_identity_pool = false;
     defer if (have_identity_pool) identity_pool.deinit();
 
-    if (enable_jetstream) {
+    if (role == .ingester) {
         // Reading TYPEAHEAD_URL/TYPEAHEAD_SECRET here (not unconditionally at
         // top of main) so the search service can come up without them.
         const config = ingest.getConfig();
@@ -272,7 +275,6 @@ pub fn main() !void {
             .allocator = allocator,
             .config = config,
             .transport = &transport,
-            .local_db = local_db_ptr,
             .identity_pool = &identity_pool,
         }}) catch |err| {
             log.err("jetstream task failed: {}", .{err});

@@ -17,10 +17,8 @@ primary_region = 'ewr'
   destination = '/data'
 
 [env]
-  # Role: sync-only + HTTP search. No jetstream → no need for TYPEAHEAD_URL/SECRET.
-  ENABLE_JETSTREAM = '0'
-  ENABLE_SCHEMA_MIGRATIONS = '0'
-  ENABLE_SYNC = '1'
+  # Role: sync from Turso + HTTP search. No jetstream → no need for TYPEAHEAD_URL/SECRET.
+  MODE = 'search'
 
   # Prefix-index promote watcher: poll R2 latest.json, validate, ATTACH as
   # `idx`. Does NOT change the live /search path (that's a separate flag) —

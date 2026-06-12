@@ -1,5 +1,4 @@
 //! Jetstream event handler: buffers actor events, flushes batches to worker
-//! Dual-writes profile/identity events to local SQLite for immediate search
 
 const std = @import("std");
 const io = std.Options.debug_io;
@@ -8,7 +7,6 @@ const json = std.json;
 const Allocator = mem.Allocator;
 const zat = @import("zat");
 const HttpTransport = zat.HttpTransport;
-const LocalDb = @import("db/LocalDb.zig");
 const BloomFilter = @import("bloom.zig").BloomFilter;
 const identity = @import("identity.zig");
 const logfire = @import("logfire");
@@ -84,7 +82,6 @@ pub const IngestHandler = struct {
     allocator: Allocator,
     config: Config,
     transport: *HttpTransport,
-    local_db: ?*LocalDb,
     /// nullable so unit tests / minimal modes can run without it.
     /// in production main wires this to a pool with N concurrent slingshot workers.
     identity_pool: ?*identity.Pool,
@@ -107,14 +104,12 @@ pub const IngestHandler = struct {
         allocator: Allocator,
         config: Config,
         transport: *HttpTransport,
-        local_db: ?*LocalDb,
         identity_pool: ?*identity.Pool,
     ) !IngestHandler {
         return .{
             .allocator = allocator,
             .config = config,
             .transport = transport,
-            .local_db = local_db,
             .identity_pool = identity_pool,
             .buffer = .empty,
             .delete_buffer = .empty,
@@ -208,9 +203,6 @@ pub const IngestHandler = struct {
                 }
             }
 
-            // dual-write to local SQLite (profile events have searchable data)
-            self.writeToLocal(event);
-
             // ingester only sees self-labels from profile records — it can never
             // correctly determine hidden. let refreshModeration cron handle it.
 
@@ -232,24 +224,19 @@ pub const IngestHandler = struct {
         // jetstream's #identity event has `handle` as a spec-optional field; in
         // practice the bsky relay omits it on every event. so we always enqueue
         // the DID for slingshot resolution via the identity pool, and *also* take
-        // the event handle as a hint for the local dual-write path if it happens
-        // to be present (rare, but harmless).
+        // the event handle as a hint if it happens to be present (rare, but harmless).
         if (self.identity_pool) |pool| {
             if (identity.Did.fromSlice(id.did)) |did| {
                 _ = pool.offer(io, did); // best-effort; drop count tracked on pool
             }
         }
 
-        // if (rare) the event included a non-invalid handle, also drive the
-        // immediate dual-write so fly local picks up the change without waiting
-        // for slingshot → worker → next sync.
         if (id.handle) |h| {
             if (!mem.eql(u8, h, "handle.invalid")) {
                 const event = ActorEvent{
                     .did = self.dupe(id.did) orelse return,
                     .handle = self.dupe(h),
                 };
-                self.writeToLocal(event);
                 self.buffer.append(self.allocator, event) catch return;
             }
         }
@@ -258,138 +245,7 @@ pub const IngestHandler = struct {
     fn handleAccount(self: *IngestHandler, acct: zat.jetstream.AccountEvent) void {
         if (!acct.active) {
             const did = self.dupe(acct.did) orelse return;
-
-            // dual-write: delete from local + FTS (skip if sync holds the lock)
-            if (self.local_db) |db| {
-                if (db.mutex.tryLock()) {
-                    defer db.mutex.unlock(io);
-                    if (db.getConn()) |c| {
-                        // FTS5 special delete: read old values before removing
-                        var old_handle_buf: [256]u8 = undefined;
-                        var old_name_buf: [512]u8 = undefined;
-                        var old_handle: ?[]const u8 = null;
-                        var old_name: ?[]const u8 = null;
-                        if (c.row("SELECT handle, display_name FROM actors WHERE did = ?", .{did})) |maybe_row| {
-                            if (maybe_row) |r| {
-                                defer r.deinit();
-                                const h = r.text(0);
-                                const n = r.text(1);
-                                if (h.len > 0 and h.len <= old_handle_buf.len) {
-                                    @memcpy(old_handle_buf[0..h.len], h);
-                                    old_handle = old_handle_buf[0..h.len];
-                                }
-                                if (n.len > 0 and n.len <= old_name_buf.len) {
-                                    @memcpy(old_name_buf[0..n.len], n);
-                                    old_name = old_name_buf[0..n.len];
-                                }
-                            }
-                        } else |_| {}
-
-                        c.exec("DELETE FROM actors WHERE did = ?", .{did}) catch {};
-
-                        if (old_handle) |oh| {
-                            c.exec(
-                                \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
-                                \\VALUES('delete', ?, ?, ?)
-                            , .{ did, oh, old_name orelse "" }) catch {};
-                        }
-                    }
-                }
-            }
-
             self.delete_buffer.append(self.allocator, did) catch return;
-        }
-    }
-
-    /// Dual-write to local SQLite for immediate search availability.
-    /// Uses tryLock to avoid blocking ingester when sync holds the write lock.
-    /// Per-row FTS maintenance for handle/identity changes; sync does bulk rebuilds for Turso-sourced changes.
-    fn writeToLocal(self: *IngestHandler, event: ActorEvent) void {
-        const db = self.local_db orelse return;
-        if (!db.isReady()) return;
-
-        const conn = db.getConn() orelse return;
-
-        if (!db.mutex.tryLock()) return; // sync thread has the lock, skip
-        defer db.mutex.unlock(io);
-
-        // only write if we have searchable data (handle or display_name)
-        const has_handle = event.handle != null and event.handle.?.len > 0;
-        const has_name = event.display_name != null and event.display_name.?.len > 0;
-        if (!has_handle and !has_name) return;
-
-        // snapshot old FTS values before upsert (for FTS5 special delete)
-        var old_handle_buf: [256]u8 = undefined;
-        var old_name_buf: [512]u8 = undefined;
-        var old_handle: ?[]const u8 = null;
-        var old_name: ?[]const u8 = null;
-        if (has_handle) {
-            if (conn.row("SELECT handle, display_name FROM actors WHERE did = ?", .{event.did})) |maybe_row| {
-                if (maybe_row) |r| {
-                    defer r.deinit();
-                    const h = r.text(0);
-                    const n = r.text(1);
-                    if (h.len > 0 and h.len <= old_handle_buf.len) {
-                        @memcpy(old_handle_buf[0..h.len], h);
-                        old_handle = old_handle_buf[0..h.len];
-                    }
-                    if (n.len > 0 and n.len <= old_name_buf.len) {
-                        @memcpy(old_name_buf[0..n.len], n);
-                        old_name = old_name_buf[0..n.len];
-                    }
-                }
-            } else |_| {}
-        }
-
-        // upsert actor
-        conn.exec(
-            \\INSERT INTO actors (did, handle, display_name, avatar_url)
-            \\VALUES (?, ?, ?, ?)
-            \\ON CONFLICT(did) DO UPDATE SET
-            \\  handle = COALESCE(NULLIF(excluded.handle, ''), actors.handle),
-            \\  display_name = COALESCE(NULLIF(excluded.display_name, ''), actors.display_name),
-            \\  avatar_url = COALESCE(NULLIF(excluded.avatar_url, ''), actors.avatar_url)
-        , .{
-            event.did,
-            event.handle orelse "",
-            event.display_name orelse "",
-            event.avatar_cid orelse "",
-        }) catch return;
-
-        // read final merged values post-upsert — the event may lack fields
-        // that COALESCE preserved, and FTS must match what's in `actors`.
-        var final_handle_buf: [256]u8 = undefined;
-        var final_name_buf: [512]u8 = undefined;
-        var final_handle: []const u8 = "";
-        var final_name: []const u8 = "";
-        if (conn.row("SELECT handle, display_name FROM actors WHERE did = ?", .{event.did})) |maybe_row| {
-            if (maybe_row) |r| {
-                defer r.deinit();
-                const h = r.text(0);
-                const n = r.text(1);
-                if (h.len > 0 and h.len <= final_handle_buf.len) {
-                    @memcpy(final_handle_buf[0..h.len], h);
-                    final_handle = final_handle_buf[0..h.len];
-                }
-                if (n.len > 0 and n.len <= final_name_buf.len) {
-                    @memcpy(final_name_buf[0..n.len], n);
-                    final_name = final_name_buf[0..n.len];
-                }
-            }
-        } else |_| return;
-
-        // per-row FTS maintenance: delete old entry, insert new one with merged values
-        if (old_handle) |oh| {
-            conn.exec(
-                \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
-                \\VALUES('delete', ?, ?, ?)
-            , .{ event.did, oh, old_name orelse "" }) catch {};
-        }
-        if (final_handle.len > 0) {
-            conn.exec(
-                \\INSERT INTO actors_fts (did, handle, display_name)
-                \\VALUES (?, ?, ?)
-            , .{ event.did, final_handle, final_name }) catch {};
         }
     }
 
