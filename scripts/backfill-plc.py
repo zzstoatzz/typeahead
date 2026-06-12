@@ -157,6 +157,14 @@ def main() -> None:
     ap.add_argument("--until", required=True, help="window end, ISO 8601")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--resume", action="store_true", help=f"continue from {STATE_FILE}")
+    ap.add_argument(
+        "--genesis-only",
+        action="store_true",
+        help="only ingest account creations (prev == null) + tombstones. "
+        "skips handle-change/rotation upserts — each worker POST costs seconds of "
+        "Turso write time, and non-genesis churn is ~16x the volume while handle "
+        "changes self-heal via future jetstream identity events.",
+    )
     args = ap.parse_args()
 
     secret = os.environ.get("ADMIN_SECRET", "")
@@ -191,12 +199,12 @@ def main() -> None:
             operation = op.get("operation") or {}
             if operation.get("type") == "plc_tombstone":
                 sink.add_delete(did)
-            else:
+            elif not args.genesis_only or operation.get("prev") is None:
                 sink.add(did, handle_from_op(op))
         sink.flush()
         with open(STATE_FILE, "w") as f:
             json.dump({"cursor": cursor}, f)
-        if pages % 25 == 0:
+        if pages % 10 == 0:
             print(f"{DIM}{pages} pages | {ops_seen} ops | {sink.sent} ingested | "
                   f"{sink.tombstoned} tombstoned | at {cursor}{RESET}")
         time.sleep(EXPORT_PAUSE)
