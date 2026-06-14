@@ -78,13 +78,18 @@ export function docsPage(): string {
       <a href="#response-comparison">response comparison</a> below).
     </p>
     <p>
-      the index is built from a few <a href="https://docs.bsky.app/blog/jetstream">jetstream</a>
-      collections — profiles, posts, likes, and follows — so any account that creates or
-      interacts with content gets discovered automatically. for accounts that predate the index
-      or haven't been seen yet, search queries trigger a throttled backfill from the bluesky API
-      to fill gaps on demand. searches are served from a precomputed prefix index plus a live
-      overlay for recent deletes, moderation changes, renames, and new accounts, with results
-      edge-cached for 60s.
+      accounts are discovered straight from the atproto firehose via
+      <a href="https://docs.bsky.app/blog/jetstream">jetstream</a> — anyone who creates a profile,
+      posts, likes, or follows is picked up automatically, across bluesky and other atproto apps.
+      accounts that predate the index or haven't posted yet can be surfaced on demand
+      (see <a href="#request-indexing">request indexing</a> below).
+    </p>
+    <p>
+      every search is served entirely from our own data: a precomputed prefix-index snapshot
+      merged with a live overlay for recent renames, deletes, moderation changes, and brand-new
+      accounts, then edge-cached for 60s. no request does work proportional to the full corpus
+      (millions of actors), and bluesky is never in the request path — it's a rollback-only kill
+      switch, not a fallback.
     </p>
 
     <h2>the change</h2>
@@ -203,7 +208,7 @@ export function docsPage(): string {
   avatar_url: actor.avatar ?? <span class="kw">null</span>,
 }));</code></pre>
 
-    <h2>request indexing</h2>
+    <h2 id="request-indexing">request indexing</h2>
     <p>
       if someone isn't showing up in results, you (or your users) can request indexing from the
       <a href="/">homepage</a>. newly created accounts are picked up automatically via jetstream,
