@@ -181,33 +181,47 @@ def main() -> None:
     sink = Sink(secret, args.dry_run)
     pages = ops_seen = 0
     done = False
+    fails = 0  # consecutive page failures — bail only after many, so one bad
+              # page or hiccup can't silently kill a multi-hour run
     while not done:
-        page = export_page(cursor)
-        if not page:
-            break
-        pages += 1
-        for op in page:
-            created = op.get("createdAt", "")
-            if created > args.until:
-                done = True
+        # each page is wrapped: any exception (bad op, network exhaustion,
+        # flush error) logs, backs off, and retries from the last checkpointed
+        # cursor. flushes + checkpoint are per-page, so retry is idempotent.
+        try:
+            page = export_page(cursor)
+            if not page:
                 break
-            cursor = created
-            did = op.get("did", "")
-            if not did.startswith("did:plc:"):
-                continue
-            ops_seen += 1
-            operation = op.get("operation") or {}
-            if operation.get("type") == "plc_tombstone":
-                sink.add_delete(did)
-            elif not args.genesis_only or operation.get("prev") is None:
-                sink.add(did, handle_from_op(op))
-        sink.flush()
-        with open(STATE_FILE, "w") as f:
-            json.dump({"cursor": cursor}, f)
-        if pages % 10 == 0:
-            print(f"{DIM}{pages} pages | {ops_seen} ops | {sink.sent} ingested | "
-                  f"{sink.tombstoned} tombstoned | at {cursor}{RESET}")
-        time.sleep(EXPORT_PAUSE)
+            pages += 1
+            for op in page:
+                created = op.get("createdAt", "")
+                if created > args.until:
+                    done = True
+                    break
+                did = op.get("did", "")
+                if not did.startswith("did:plc:"):
+                    cursor = created
+                    continue
+                ops_seen += 1
+                operation = op.get("operation") or {}
+                if operation.get("type") == "plc_tombstone":
+                    sink.add_delete(did)
+                elif not args.genesis_only or operation.get("prev") is None:
+                    sink.add(did, handle_from_op(op))
+                cursor = created  # advance only after the op is safely buffered
+            sink.flush()
+            with open(STATE_FILE, "w") as f:
+                json.dump({"cursor": cursor}, f)
+            fails = 0
+            if pages % 10 == 0:
+                print(f"{DIM}{pages} pages | {ops_seen} ops | {sink.sent} ingested | "
+                      f"{sink.tombstoned} tombstoned | at {cursor}{RESET}", flush=True)
+            time.sleep(EXPORT_PAUSE)
+        except Exception as e:  # noqa: BLE001 — survival over precision in a long batch
+            fails += 1
+            print(f"page error at {cursor} (fail {fails}): {e!r}", file=sys.stderr, flush=True)
+            if fails >= 20:
+                raise
+            time.sleep(min(2 ** fails, 60))
 
     sink.flush()
     print(f"done: {ops_seen} ops across {pages} pages → "
