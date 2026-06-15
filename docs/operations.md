@@ -108,3 +108,31 @@ machine launched without per-run env — can never clobber prod. Read by
 - **Production promote**: `INDEX_CHANNEL=prod INDEX_ALLOW_PROD=1`. Declaring
   `prod` alone is **not enough** — the arming flag is the second key. Without
   it the build refuses to publish and stays on disk for a retry.
+
+## Recurring snapshot rebuilds (self-sustaining, 2026-06-15)
+
+The overlay stays bounded only if the snapshot is rebuilt routinely (a 19-day
+gap let `prefix_overlay` bloat to 7.9M rows → `q=bsky` 210s). This is now a
+**fly daily-scheduled machine**, not a manual chore:
+
+```sh
+# build+push the current image
+cd services && fly deploy -c fly.indexer.toml --build-only --push   # prints image ref
+
+# one-time volume (≥4× snapshot; ~8.6GB snapshot → 50GB)
+fly volumes create typeahead_indexer_data --size 50 --region iad -a typeahead-indexer -y
+
+# daily scheduled prod build+promote (machine 'index-rebuild-daily')
+fly machine run <image-ref> -a typeahead-indexer \
+  --schedule daily --volume typeahead_indexer_data:/data \
+  --vm-memory 2048 --vm-cpus 4 --vm-cpu-kind shared --region iad \
+  --env MODE=indexer --env INDEX_CHANNEL=prod --env INDEX_ALLOW_PROD=1 --env INDEX_BUILD_ROOT=/data
+```
+
+App B (`typeahead-search`, `ENABLE_INDEX_PROMOTE=1`) polls `latest.json` and
+auto-adopts the new build — so scheduled build + existing auto-promote = the
+snapshot self-refreshes daily and the overlay stays ~1 day small. To run an
+off-cycle rebuild now: `fly machine start <id of index-rebuild-daily>`. Do NOT
+`fly deploy` this app as a service (loop-rebuilds); the scheduled machine is the
+only thing that should run it. Remaining defense-in-depth (not yet done): cap the
+overlay read in `overlayPrefixRows`, and alert on snapshot age / overlay size.
