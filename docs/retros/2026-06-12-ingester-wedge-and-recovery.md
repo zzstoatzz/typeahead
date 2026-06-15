@@ -80,6 +80,21 @@ no freshness alert → 13-day wedge. (2) "catch-up beats realtime" — no cursor
 alert → silent slowdown. (3) "overlay stays small (snapshot fresh)" — no
 staleness alert, no defensive cap → 210s. Same failure, three times.
 
+**Important correction (don't soften this):** the overlay bloat was NOT an
+unforeseen design gap. The May rearchitecture doc
+(`2026-05-25-typeahead-rearchitecture-notes.md`) designed the rebuild cadence as
+the overlay-bounding mechanism — overlay holds only deltas newer than the
+snapshot watermark, "compacted on promotion," with principle #6 "Some Lag Is
+Fine, Permanent Drift Is Not (self-correcting convergence)." It then listed
+**"Schedule and monitor recurring index builds"** explicitly under *Remaining
+Work* ("not blockers for cutover, but important"), alongside "Ensure R2 tokens do
+not expire" and "Keep measuring sync lag and overlay advancement." So this was a
+**known, written-down, deliberately-deferred post-cutover task that was never
+closed.** ~3 weeks later it failed exactly as the absence of it predicts. The
+overlay-read `LIMIT` is the one genuinely-new gap (the design assumed the overlay
+stays small via cadence, so never specified a per-key read bound). The lesson is
+about *closing deferred-but-required operational TODOs*, not about foresight.
+
 ## What went wrong in the *response* — the floundering
 
 The user's actual complaint. Honest accounting:
