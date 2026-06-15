@@ -60,6 +60,26 @@ open:** decouple the reader from the flusher (reader fills a queue, writer
 drains it) so a POST never stalls firehose reads. See
 `memory/project_ingester_throughput.md`.
 
+### 3. Surfaced during recovery — overlay bloat from a stale snapshot (q=bsky 210s)
+
+While health-checking, `q=bsky` was found to take **210s on App B / 500 on the
+worker**, while every other query was sub-second. Verified mechanism: prefix
+search reads, per key, `prefix_top_base` (snapshot, capped 100) ∪ `prefix_overlay`
+(live changes since the snapshot). But `overlayPrefixRows` is
+`SELECT ... FROM prefix_overlay WHERE key = ?` with **no LIMIT**, and the overlay
+updater inserts one row per (key, changed-DID) with **no per-key cap** (the
+`overlay_top_n:100` caps only the snapshot build). The serving snapshot was
+**19 days stale** (built May 27, never rebuilt — rebuilds were never automated),
+so the `bsky` key — which nearly every `*.bsky.social` account maps to —
+accumulated millions of overlay rows, and the request read all of them. A
+serving-invariant violation, invisible until the overlay bloated.
+
+This is the **third instance of one root shape**: a load-bearing invariant
+assumed but neither enforced in code nor monitored. (1) "ingester stays alive" —
+no freshness alert → 13-day wedge. (2) "catch-up beats realtime" — no cursor-lag
+alert → silent slowdown. (3) "overlay stays small (snapshot fresh)" — no
+staleness alert, no defensive cap → 210s. Same failure, three times.
+
 ## What went wrong in the *response* — the floundering
 
 The user's actual complaint. Honest accounting:
@@ -95,8 +115,17 @@ The user's actual complaint. Honest accounting:
 - [ ] **Freshness alert on the data, not just the heartbeat** — alert when
       `max(ingest cursor)` lags real time beyond a threshold, so a *slow* ingester
       (not just a dead one) pages before the gap nears the replay window.
+- [ ] **Cap the overlay read** — `overlayPrefixRows` needs a score-ordered
+      `LIMIT` (preserving op=0 suppressions) so a stale snapshot degrades
+      gracefully instead of 210s. The actual cure for the q=bsky failure mode.
+- [ ] **Automate the snapshot rebuild cadence** — scheduled rebuild so the overlay
+      window stays short by design; rebuilds were never automated (last May 27).
+- [ ] **Alert on snapshot age / overlay size** — page before users hit slowness.
+- [ ] **Add a high-cardinality prefix (q=bsky) latency check to the bench/smoke**
+      append-only query set — so a bloated overlay fails the gate, not found by luck.
 - [x] Liveness watchdog + heartbeat absence alert (shipped 2026-06-12).
 - [x] Pin jetstream host; drop community mirrors (shipped 2026-06-15).
+- [ ] Snapshot rebuild + promote to clear the 19-day staleness (queued after backfill).
 - **Process lessons (the point of this retro):**
   - When something "can't keep up," classify **receive-bound vs write-bound
     first** (`pending` + batch fullness tell you) before optimizing any layer.
