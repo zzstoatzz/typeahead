@@ -22,13 +22,15 @@ fn timestamp() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
 }
 
-// per-flush event cap. each flush POST blocks the consumer loop for one
-// worker round-trip, so batch size bounds catch-up throughput: at 100 the
-// US-evening firehose outran the consumer (0.94× real-time) and the backlog
-// grew. the worker accepts 10k/POST and runs the batch as one Turso
-// transaction — keep this well under bulk-backfill sizes (500+ full upserts
-// observably block Turso reads); replay batches are mostly bare-DID no-ops.
-pub const MAX_BATCH: usize = 300;
+// per-flush event cap. the flush POST is SYNCHRONOUS — it blocks the jetstream
+// read loop for one worker round-trip (~1-2s), so catch-up throughput is
+// MAX_BATCH / flush_time. at 300 the consumer capped at ~0.8x of peak firehose
+// even on a fast host and the gap ran to ~3h (2026-06-15); 1500 lifts the
+// ceiling well above realtime so the backlog drains. the worker accepts
+// 10k/POST as one Turso transaction; catch-up batches are mostly bare-DID
+// INSERT OR IGNORE (light locks). PROPER fix is decoupling the read loop from
+// the flusher so POSTs don't stall reads — this is the stopgap.
+pub const MAX_BATCH: usize = 1500;
 const BLOOM_BITS: usize = 10_000_000; // ~1.2MB fixed
 const BLOOM_HASHES: usize = 7;
 

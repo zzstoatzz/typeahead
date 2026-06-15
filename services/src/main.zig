@@ -76,6 +76,18 @@ fn jetstreamThread(args: JetstreamArgs) void {
             "sh.tangled.actor.profile",
             "site.standard.*",
         },
+        // Prefer our own jetstream, then the official bsky instances. The zat
+        // default rotates through 12 hosts including community mirrors; a
+        // reconnect landed us on a slow mirror (fire.hose.cam) that dribbled
+        // the catch-up replay at <1x and the gap ran to ~3h (2026-06-15).
+        // Drop the mirrors entirely.
+        .hosts = &.{
+            "jetstream.waow.tech",
+            "jetstream1.us-east.bsky.network",
+            "jetstream2.us-east.bsky.network",
+            "jetstream1.us-west.bsky.network",
+            "jetstream2.us-west.bsky.network",
+        },
         .cursor = ingest.fetchCursor(args.transport, args.config),
     });
     defer client.deinit();
