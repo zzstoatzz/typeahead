@@ -126,7 +126,9 @@ fly volumes create typeahead_indexer_data --size 50 --region iad -a typeahead-in
 fly machine run <image-ref> -a typeahead-indexer \
   --schedule daily --volume typeahead_indexer_data:/data \
   --vm-memory 2048 --vm-cpus 4 --vm-cpu-kind shared --region iad \
-  --env MODE=indexer --env INDEX_CHANNEL=prod --env INDEX_ALLOW_PROD=1 --env INDEX_BUILD_ROOT=/data
+  --env MODE=indexer --env INDEX_CHANNEL=prod --env INDEX_ALLOW_PROD=1 --env INDEX_BUILD_ROOT=/data \
+  --env INDEX_SAMPLE_LIMIT=0   # CRITICAL: 0 = full corpus. omitting it defaults to a 1000-actor
+                               # SAMPLE build, which ActorCountFloor correctly rejects (never promotes).
 ```
 
 App B (`typeahead-search`, `ENABLE_INDEX_PROMOTE=1`) polls `latest.json` and
