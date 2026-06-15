@@ -133,8 +133,11 @@ The user's actual complaint. Honest accounting:
 - [ ] **Cap the overlay read** — `overlayPrefixRows` needs a score-ordered
       `LIMIT` (preserving op=0 suppressions) so a stale snapshot degrades
       gracefully instead of 210s. The actual cure for the q=bsky failure mode.
-- [ ] **Automate the snapshot rebuild cadence** — scheduled rebuild so the overlay
-      window stays short by design; rebuilds were never automated (last May 27).
+- [x] **Automate the snapshot rebuild cadence** — DONE 2026-06-15: fly
+      daily-scheduled machine `index-rebuild-daily` (typeahead-indexer) builds +
+      prod-promotes daily; App B auto-adopts. Closes the rearchitecture doc's
+      deferred "schedule and monitor recurring index builds" TODO. See
+      `docs/operations.md`.
 - [ ] **Alert on snapshot age / overlay size** — page before users hit slowness.
 - [ ] **Add a high-cardinality prefix (q=bsky) latency check to the bench/smoke**
       append-only query set — so a bloated overlay fails the gate, not found by luck.
