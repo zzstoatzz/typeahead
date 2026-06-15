@@ -121,6 +121,15 @@ pub fn initOverlay(conn: zqlite.Conn) !void {
         \\CREATE INDEX IF NOT EXISTS idx_prefix_overlay_updated_at
         \\  ON prefix_overlay(updated_at)
     , .{});
+    // backs the bounded overlay read: `WHERE key=? ORDER BY op ASC, score DESC
+    // LIMIT n`. op ASC keeps suppressions (op=0) first so the cap never drops a
+    // suppression before an addition; score DESC takes the top additions. Without
+    // this an uncapped read on a hot key (e.g. h:bsky with a stale snapshot)
+    // returned millions of rows → 210s (2026-06-15).
+    try conn.exec(
+        \\CREATE INDEX IF NOT EXISTS idx_prefix_overlay_key_op_score
+        \\  ON prefix_overlay(key, op, score DESC)
+    , .{});
     try conn.exec(
         \\CREATE INDEX IF NOT EXISTS idx_actor_overlay_updated_at
         \\  ON actor_overlay(updated_at)
