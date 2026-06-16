@@ -97,23 +97,8 @@ fn basePrefixDids(arena: Allocator, lease: LocalDb.ReadLease, key: []const u8) !
     return &.{};
 }
 
-// Bounded overlay read. The merge only needs the suppressions (op=0, which
-// remove base DIDs — at most ~base-size relevant) plus the top additions (op=1
-// by score; the final combine caps at HYDRATE_CAP anyway). `ORDER BY op ASC,
-// score DESC` (backed by idx_prefix_overlay_key_op_score) keeps every
-// suppression ahead of any addition, so the cap never drops an op=0 before an
-// op=1. Moderation safety does NOT depend on this being complete — hydrate
-// suppresses hidden/tombstoned via actor_overlay independently. Worst case from
-// the cap is minor rename-staleness on a hot key, healed by the next snapshot.
-// Without it, an uncapped read on a hot key (h:bsky, stale snapshot) returned
-// millions of rows → 210s (2026-06-15).
-const OVERLAY_READ_CAP = 500;
-
 fn overlayPrefixRows(arena: Allocator, lease: LocalDb.ReadLease, key: []const u8) ![]merge.OverlayEntry {
-    var rows = try lease.query(
-        "SELECT did, score, op FROM prefix_overlay WHERE key = ? ORDER BY op ASC, score DESC LIMIT ?",
-        .{ key, OVERLAY_READ_CAP },
-    );
+    var rows = try lease.query("SELECT did, score, op FROM prefix_overlay WHERE key = ?", .{key});
     defer rows.deinit();
     var out: std.ArrayListUnmanaged(merge.OverlayEntry) = .empty;
     while (rows.next()) |row| {
