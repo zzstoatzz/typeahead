@@ -132,7 +132,12 @@ The user's actual complaint. Honest accounting:
       (not just a dead one) pages before the gap nears the replay window.
 - [ ] **Cap the overlay read** — `overlayPrefixRows` needs a score-ordered
       `LIMIT` (preserving op=0 suppressions) so a stale snapshot degrades
-      gracefully instead of 210s. The actual cure for the q=bsky failure mode.
+      gracefully instead of 210s. A first attempt (commit d8427ec) was REVERTED
+      (2cd3242, 2026-06-16): its supporting `CREATE INDEX` ran in `LocalDb.open()`
+      before the HTTP listener and blocked App B boot on the bloated table. Re-do
+      with the index built OFF the boot path (background, post-listen) before any
+      redeploy. Not urgent — the daily rebuild + overlay-prune keeps q=bsky fast;
+      this is defense-in-depth for the prune-lag window.
 - [x] **Automate the snapshot rebuild cadence** — DONE 2026-06-15: fly
       daily-scheduled machine `index-rebuild-daily` (typeahead-indexer) builds +
       prod-promotes daily; App B auto-adopts. Closes the rearchitecture doc's
