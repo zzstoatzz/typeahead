@@ -16,7 +16,6 @@ primary_region = 'ewr'
 [env]
   MODE = 'ingester'
   TYPEAHEAD_URL = 'https://typeahead.waow.tech'
-  SQLITE_TMPDIR = '/data/tmp'
 
 [processes]
   app = './typeahead-ingester'

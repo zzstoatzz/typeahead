@@ -11,3 +11,4 @@ zig-pkg/
 scripts/bench-results.json
 __pycache__/
 .logfire/
+scripts/.backfill-plc-state.json

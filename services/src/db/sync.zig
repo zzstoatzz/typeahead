@@ -933,9 +933,8 @@ fn snapshotOldFtsRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
 }
 
 /// Per-row incremental apply: snapshot old FTS values, INSERT OR REPLACE the
-/// actor, then FTS5 special-delete the old entry and insert the new one.
-/// Mirrors the per-row maintenance pattern in ingest.zig::writeToLocal so the
-/// local FTS table stays consistent without periodic full rebuilds.
+/// actor, then FTS5 special-delete the old entry and insert the new one. Keeps
+/// the local FTS table consistent without periodic full rebuilds.
 /// `caller` is just for log context ("incremental" vs other future callers).
 fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8, octx: ?OverlayCtx) !void {
     const did = row.text(Col.did);

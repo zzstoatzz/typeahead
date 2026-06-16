@@ -5,7 +5,7 @@ README.md has the architecture; this file is the operational contract for assess
 
 ## the serving invariant
 
-No request does work proportional to the actor corpus (~6M actors). The request path
+No request does work proportional to the actor corpus (~8M actors). The request path
 reads a small set of precomputed prefix keys, merges the live overlay, hydrates a capped
 list, and returns JSON. Any change that introduces corpus-proportional work on the request
 or cron path is a regression — that exact mistake froze /stats once (full-scan `COUNT(*)`

@@ -57,13 +57,15 @@ just test-services      # cd services && zig build test --summary all
 cd services && zig build run
 ```
 
-The default Zig run mode is the long-running service binary. Fly config controls
-the role:
+The one binary picks its role from the **required `MODE` env var** (no default —
+boot fails without it), set per app in fly config:
 
-- ingest service: Jetstream on, sync/search off as configured in `fly.toml`
-- search service: Jetstream off, sync + index promotion + prefix search on in
-  `fly.search.toml`
-- snapshot builder: `MODE=indexer` in `fly.indexer.toml`
+- `MODE=ingester` (`fly.toml`): consume Jetstream, batch actor updates to the
+  worker, run Turso schema migrations. Does NOT keep a local replica.
+- `MODE=search` (`fly.search.toml`): sync Turso → local replica, promote/attach
+  prefix-index snapshots, serve `/search` from snapshot + overlay.
+- `MODE=indexer` (`fly.indexer.toml`): offline snapshot build, then exit. Runs as
+  an ephemeral / `--schedule daily` Fly machine, not a long-running service.
 
 The ingest service requires `TYPEAHEAD_URL` and `TYPEAHEAD_SECRET`. R2 and Turso
 credentials are provided as Fly/Worker secrets in production.
