@@ -32,37 +32,35 @@ export async function handleIngest(
     return json({ error: "batch too large (max 10000)" }, 400);
   }
 
-  // batch upsert — bare-DID events use INSERT OR IGNORE (0 Turso writes for known actors),
-  // profile/identity events use full UPSERT with COALESCE to preserve existing fields
-  const stmts = events.map((e) => {
+  // Every event starts with an `INSERT OR IGNORE INTO actors(did)` PROBE: it's
+  // a no-op write for a known actor, and changes===1 iff the actor is genuinely
+  // new — regardless of whether it's bare or profile-bearing. We count new
+  // actors from the probes so `actors_total` / the deltas chart stay accurate
+  // for ALL new actors (the old code only counted bare-DID inserts, so every
+  // actor first seen via a profile/identity event — and the whole PLC backfill —
+  // silently undercounted; fixed 2026-06-17). Profile/identity events then get
+  // a follow-up UPDATE to set fields (COALESCE preserves existing values).
+  // The UPDATE also resets profile_checked_at to 0 so the cron's cold-floor pool
+  // picks the actor up next tick to refresh appview aggregates (followers/qs)
+  // the firehose can't carry — the "firehose-triggered enqueue".
+  const stmts: ReturnType<typeof db.prepare>[] = [];
+  const probeIdx: number[] = []; // result index of each event's INSERT OR IGNORE probe
+  for (const e of events) {
+    probeIdx.push(stmts.length);
+    stmts.push(db.prepare("INSERT OR IGNORE INTO actors (did) VALUES (?1)").bind(e.did));
     const isBareDID = !e.handle && !e.display_name && !e.avatar_cid;
-    if (isBareDID) {
-      return db.prepare(
-        "INSERT OR IGNORE INTO actors (did) VALUES (?1)"
-      ).bind(e.did);
+    if (!isBareDID) {
+      stmts.push(db.prepare(
+        `UPDATE actors SET
+           handle = COALESCE(NULLIF(?2, ''), handle),
+           display_name = COALESCE(NULLIF(?3, ''), display_name),
+           avatar_url = COALESCE(NULLIF(?4, ''), avatar_url),
+           updated_at = unixepoch(),
+           profile_checked_at = 0
+         WHERE did = ?1`
+      ).bind(e.did, e.handle || '', e.display_name || '', e.avatar_cid || ''));
     }
-    const avatarCid = e.avatar_cid || null;
-    // profile/identity-bearing events: also reset profile_checked_at to 0 so
-    // the cron's cold-floor pool picks this actor up on the very next tick
-    // and refreshes the appview aggregates (followers / qs) that firehose
-    // can never carry. This is the "firehose-triggered enqueue" the priority
-    // selector relies on.
-    return db.prepare(
-      `INSERT INTO actors (did, handle, display_name, avatar_url, updated_at, profile_checked_at)
-       VALUES (?1, ?2, ?3, ?4, unixepoch(), 0)
-       ON CONFLICT(did) DO UPDATE SET
-         handle = COALESCE(NULLIF(?2, ''), actors.handle),
-         display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
-         avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
-         updated_at = unixepoch(),
-         profile_checked_at = 0`
-    ).bind(
-      e.did,
-      e.handle || '',
-      e.display_name || '',
-      avatarCid || ''
-    );
-  });
+  }
 
   let batchResults: { results: unknown[]; meta: { changes: number } }[];
   try {
@@ -72,12 +70,10 @@ export async function handleIngest(
     return json({ error: e?.message || "db batch failed" }, 500);
   }
 
-  // count newly inserted bare DIDs (changes === 1 means INSERT succeeded, not IGNORE'd)
+  // count ALL genuinely-new actors (probe changes===1 = inserted, not IGNORE'd)
   let newActors = 0;
-  for (let i = 0; i < events.length; i++) {
-    const e = events[i];
-    const isBareDID = !e.handle && !e.display_name && !e.avatar_cid;
-    if (isBareDID && batchResults[i]?.meta.changes === 1) newActors++;
+  for (const i of probeIdx) {
+    if (batchResults[i]?.meta.changes === 1) newActors++;
   }
   if (newActors > 0) {
     ctx.waitUntil(recordActorDelta(db, { actors: newActors }));
