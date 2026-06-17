@@ -41,19 +41,46 @@ Snapshot 2026-06-17 (Fly only ≈ **$43.82/mo**; Turso is separate, ~$30/mo Scal
 | `typeahead-backfill` | 0.96 | leftover from the Jun PLC backfill | stopped machines |
 | `typeahead-refresh-handles` | 0.96 | superseded by the worker refresh cron | stopped machines |
 
-**Levers, by size:**
-1. **Indexer 100GB volume (~$15/mo)** — biggest single waste. The daily build needs ~70GB
-   peak but the volume sits idle ~22h/day. Real fix: trigger the build as an EPHEMERAL
-   `fly machine run` (create machine+volume, build, destroy) instead of a `--schedule` machine
-   with a persistent volume — saves ~$13/mo but needs the worker cron (or a job) to do the
-   create→build→destroy daily. Cheap-but-marginal alternative: destroy+recreate the volume at
-   ~80GB (can't shrink in place) → ~$3/mo. Don't touch while a build is running.
-2. **App B (search) 4cpu/2GB → 2cpu (~$6/mo)** — the 4 CPUs were for cold prefix queries +
-   resync; the 60s edge cache absorbs most cold hits. Test: drop to 2cpu, measure cold-query
-   p50 on uncached prefixes, revert if it regresses. (50GB volume must stay — ≥4× snapshot.)
-3. **Turso ~$30/mo (separate provider, not in the table)** — the single biggest spend overall.
-   The Scaler tier was sized for corpus reads, but the serving invariant + edge cache mean the
-   request path barely reads Turso. Check actual usage vs tier limits before downgrading.
+### reading actual utilization (do this before resizing — don't guess)
+
+**Fly Prometheus** (same data as the Fly Grafana). The macaroon needs the `FlyV1` prefix,
+NOT `Bearer`, and the org slug in the path:
+```bash
+T=$(fly auth token)
+PROM(){ curl -s -H "Authorization: FlyV1 $T" \
+  "https://api.fly.io/prometheus/personal/api/v1/query" --data-urlencode "query=$1"; }
+# mem used %, peak 3d:   max by(app)(max_over_time((1-fly_instance_memory_mem_available/fly_instance_memory_mem_total)[3d:5m])*100)
+# load avg, peak 3d:     max by(app)(max_over_time(fly_instance_load_average[3d:5m]))   # vs cpu count
+# cpu throttle (>0=starved): max by(app)(max_over_time(fly_instance_cpu_throttle[3d:5m]))
+# disk used GB:          (fly_instance_filesystem_blocks - fly_instance_filesystem_blocks_free)*fly_instance_filesystem_block_size/1e9
+```
+**Turso**: `turso db inspect typeahead` → storage / rows read / rows written (current period) / sync GB.
+
+### measured utilization — 2026-06-17 (3d window)
+
+| service | mem (avg/peak) | load (avg/peak, vs cpus) | disk used | verdict |
+|---|---|---|---|---|
+| `typeahead-search` 4cpu/2GB/50GB | 18% / **73%** | 0.51 / **9.55** (4cpu, throttled) | 40 / 50 GB | bursty, NOT over-provisioned — 4cpu earns its keep on promote/resync/cold spikes |
+| `typeahead-indexer` 4cpu/2GB/100GB | 17% / 34% | 0.78 / 3.23 (build) | **65.5** / 100 GB | machine fine; build is CPU-heavy, mem-light. Cost = the volume. |
+| `typeahead-ingester` 1cpu/256MB/10GB | ~16% / ~31% | **0.01 / 0.22** | **0** / 10 GB | idle; 10GB volume is empty dead weight |
+
+**Turso** (Scaler $30/mo: 100B reads, 100M writes, 24GB): **4.3GB storage (18%), 17B reads (17%),
+55M writes (55%)**, 16GB embedded sync. Writes are the binding constraint → can't drop below
+Scaler without cutting write volume first. NOT over-provisioned.
+
+**Levers, re-ranked by the data:**
+1. **Indexer volume** — build peaks at **65.5GB**, so the 100GB has ~35GB slack but can't go
+   below ~70GB. Two options: (a) ephemeral per-build (`fly machine run` create→build→destroy
+   daily, needs a trigger) → ~$13/mo; (b) shrink to 80GB (destroy+recreate, can't shrink in
+   place) → ~$3/mo. Don't touch mid-build.
+2. **Ingester 10GB volume — empty (0 used).** Remove the `[mounts]` + destroy the volume →
+   ~$1.5/mo. Clean win.
+3. **App B 4cpu→2cpu (~$6/mo) — a TRADEOFF, not free.** Idle on average but load peaks 9.55
+   and it's already CPU-throttled at peak; 2cpu would slow the daily promote / resync / cold
+   queries. Only if those slower bursts are acceptable.
+4. **Turso ~$30/mo** — biggest single line but ~half-utilized on writes; not cuttable without
+   reducing write/read volume (optimization work, not a knob). Earlier "over-provisioned" guess
+   was WRONG.
 - Fly figures are **estimates** from machine inventory — reconcile against the Fly dashboard.
 
 ## changelog
