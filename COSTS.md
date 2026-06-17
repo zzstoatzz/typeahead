@@ -7,30 +7,35 @@
 
 ## self-reported actual monthly cost (authoritative — read THIS, not the auto-estimate)
 
-**≈ $76/mo** as of 2026-06-17: **Fly ≈ $46 + Turso $30** (+ Cloudflare, see below).
+**≈ $46/mo** as of 2026-06-17 — typeahead's **dedicated** spend only (the Fly apps + its own
+R2 snapshot storage). Shared org infra (Turso, the Cloudflare plan) is **deliberately NOT
+counted here** — see below — so the per-project tracker doesn't double-count it across projects.
 
-The auto-estimate at https://hub.waow.tech (from `my-prefect-server`) is a **compute-only
-lower bound** — its Fly connector counts only `cpus × $1.94 + RAM_GB × $5.00` and **omits
-volumes entirely**, and it bills scheduled machines at whatever state they're in *at snapshot
-time* (so it counted the daily indexer at full price while a build happened to be running).
-This file corrects both. **For typeahead's true cost, trust the table below over the tracker.**
+The auto-estimate at https://hub.waow.tech (from `my-prefect-server`) is a **compute-only lower
+bound** — its Fly connector counts only `cpus × $1.94 + RAM_GB × $5.00`, **omits volumes
+entirely**, and bills scheduled machines at whatever state they're in *at snapshot time* (it
+counted the daily indexer at full price while a build happened to be running). This file
+corrects both. **For typeahead's true cost, trust the table below over the tracker.**
 
-| service | shape | compute/mo | volume/mo | **true/mo** |
+| service (dedicated) | shape | compute/mo | volume/mo | **true/mo** |
 |---|---|---|---|---|
 | `typeahead-search` | 4cpu/2GB always-on + 50GB | $17.76 | $7.50 | **$25.26** |
 | `typeahead-indexer` | 4cpu/2GB scheduled (~90min/day) + 100GB | ~$1.11 | $15.00 | **~$16.11** |
 | `typeahead-ingester` | 1cpu/256MB always-on + 10GB (empty) | $3.19 | $1.50 | **$4.69** |
-| `typeahead-backfill` | destroyed 2026-06-17 | — | — | **$0** |
-| `typeahead-refresh-handles` | destroyed 2026-06-17 | — | — | **$0** |
-| **Fly subtotal** | | | | **~$46.06** |
-| **Turso** | Scaler tier (corpus reads/writes) | | | **$30.00** |
-| **Cloudflare** | worker + KV + R2 snapshots | | | **~$5 (unverified)** |
+| `typeahead-backfill` / `typeahead-refresh-handles` | destroyed 2026-06-17 | — | — | **$0** |
+| R2 snapshot storage | ~10GB index.db + a few builds | | | **~$0.20** |
+| **TOTAL (attributed to typeahead)** | | | | **≈ $46.26/mo** |
+
+**Shared org infra — NOT attributed to typeahead (avoid double-counting):**
+- **Turso** — a single Scaler plan (~$30/mo) shared across MANY of nate's projects; typeahead is
+  one tenant DB on it (4.3GB storage, 55% of the plan's writes — see utilization). Counted once
+  at the org level, not here.
+- **Cloudflare** — Workers Paid / KV are a shared account plan, not a typeahead line item. Only
+  typeahead-marginal CF cost (R2 storage above) is attributed; it's trivial and within plan.
 
 Rates used (Fly, 2026): shared vCPU **$1.94**/mo, RAM **$5.00**/GB/mo, volume **$0.15**/GB/mo
 (volumes bill prorated for the time they exist — key to the indexer plan below). Scheduled
-machine compute = full-rate × duty cycle (~6% for a 90-min/day build). Cloudflare is not yet
-measured — Workers Paid is $5/mo flat if on that plan; R2 storage for snapshots is trivial
-(~$0.20). **TODO: verify the CF line.**
+machine compute = full-rate × duty cycle (~6% for a 90-min/day build).
 
 The auto-estimate command (lower bound, compute-only) is still useful as a drift signal:
 ```bash
@@ -76,7 +81,9 @@ Scaler without cutting write volume first. NOT over-provisioned.
 2. **Ingester 10GB volume — empty (0 used).** Remove the `[mounts]` + destroy the volume → ~$1.5/mo.
 3. **App B 4cpu→2cpu = only ~$3.88/mo** (RAM is $10 of the $17.76 and can't drop — mem peaks 73%),
    AND it's a burst tradeoff (load peaks 9.55, already throttled). Small + risky; skip unless desperate.
-4. **Turso $30/mo** — ~half-utilized on writes (55%); not cuttable without reducing write volume.
+4. **Turso — shared org plan, not typeahead's line to cut here.** typeahead uses 55% of the
+   shared plan's writes though, so trimming its write volume (batch upserts, refresh less) buys
+   the ORG headroom / defers a tier bump — track that at the org level, not in this $46.
 - The hub.waow.tech auto-estimate is compute-only — the table above is the real number.
 
 ## changelog
@@ -88,3 +95,6 @@ Scaler without cutting write volume first. NOT over-provisioned.
 - **2026-06-17** — corrected the cost to self-reported truth (~$76/mo: Fly ~$46 + Turso $30 + CF): the
   auto-estimator is compute-only and omits volumes + mis-times scheduled machines. Indexer's real
   cost is its 100GB volume (~$15), not compute. Next: ephemeral indexer volume (the ~$14 lever).
+- **2026-06-17** — scoped the total to typeahead's DEDICATED spend (~$46/mo, Fly + R2). Turso
+  (shared ~$30 Scaler plan) and the Cloudflare plan are SHARED across projects — excluded here so
+  the per-project tracker doesn't double-count them.
