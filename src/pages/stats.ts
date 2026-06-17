@@ -26,8 +26,12 @@ export function statsPage(d: StatsData): string {
   // on click; here we render the 7d view so the page is correct without JS.
   const sorted = [...d.rows].reverse(); // oldest first
   const sw = 600, sh = 80;
-  const BUCKETS_7D = 2016; // 5-min buckets in 7 days
-  const spark7 = sorted.slice(Math.max(0, sorted.length - BUCKETS_7D));
+  // Window by TIME, not bucket count: metric buckets are 5-min (hour*300 = unix
+  // seconds) and SPARSE (only buckets with a search exist, ~64/day not 288), so
+  // "last N buckets" ≠ "last N days". The old count-based slice made 30d == all
+  // whenever total buckets < the 30d count, and made 7d span ~31 days.
+  const nowSec = Math.floor(Date.now() / 1000);
+  const spark7 = sorted.filter((r) => r.hour * 300 >= nowSec - 7 * 86400);
   const counts = spark7.map((r) => r.searches);
   const sparkMax = Math.max(...counts, 1);
   const step = counts.length > 1 ? sw / (counts.length - 1) : 0;
@@ -42,6 +46,7 @@ export function statsPage(d: StatsData): string {
   // sparkline redraw. cache_hits included so "total" matches the SSR formula.
   const sparkJson = JSON.stringify(
     sorted.map((r) => ({
+      hour: r.hour,
       time: new Date(r.hour * 300_000).toISOString().slice(0, 16) + "Z",
       searches: r.searches,
     }))
@@ -610,7 +615,10 @@ export function statsPage(d: StatsData): string {
     /* --- searches: one range selector drives BOTH the total and the sparkline --- */
     const sparkData = ${sparkJson};    // {time, searches}, oldest first, ALL buckets
     const allMetrics = ${metricsJson}; // {hour, searches, cache_hits}, same order
-    const SEARCH_BUCKETS = { '7d': 2016, '30d': 8640 }; // 5-min buckets; missing key (all) = everything
+    // window by TIME (bucket is 5-min; hour*300 = unix seconds), not bucket
+    // count — buckets are sparse so count-based slicing made 30d == all.
+    const SEARCH_SECS = { '7d': 604800, '30d': 2592000 }; // missing key (all) = everything
+    const NOW_SEC = Math.floor(Date.now() / 1000);
     const RANGE_LABEL = { '7d': '7 days', '30d': '30 days', 'all': 'all time' };
     const SPARK_W = ${sw}, SPARK_H = ${sh};
 
@@ -621,16 +629,16 @@ export function statsPage(d: StatsData): string {
     const sparkTip = document.getElementById('spark-tip');
     let sparkView = sparkData; // the currently-shown slice; the tooltip reads this
 
-    function sliceTail(arr, range) {
-      const n = SEARCH_BUCKETS[range];
-      return n == null ? arr : arr.slice(Math.max(0, arr.length - n));
+    function sliceWindow(arr, range) {
+      const secs = SEARCH_SECS[range];
+      return secs == null ? arr : arr.filter(r => r.hour * 300 >= NOW_SEC - secs);
     }
     function totalForRange(range) {
-      return sliceTail(allMetrics, range).reduce((s, r) => s + r.searches + (r.cache_hits || 0), 0);
+      return sliceWindow(allMetrics, range).reduce((s, r) => s + r.searches + (r.cache_hits || 0), 0);
     }
     function drawSpark(range) {
       if (!sparkPoly) return;
-      sparkView = sliceTail(sparkData, range);
+      sparkView = sliceWindow(sparkData, range);
       const counts = sparkView.map(r => r.searches);
       const max = Math.max(...counts, 1);
       const step = counts.length > 1 ? SPARK_W / (counts.length - 1) : 0;
