@@ -22,8 +22,17 @@ const log = std.log.scoped(.r2);
 extern "c" fn setenv(name: [*:0]const u8, value: [*:0]const u8, overwrite: c_int) c_int;
 extern "c" fn unsetenv(name: [*:0]const u8) c_int;
 
-const RCLONE = "/usr/local/bin/rclone";
 const CONFIG_PATH = "/tmp/rclone-r2.conf";
+
+/// rclone binary path, resolved at runtime so the host decides where rclone
+/// lives — `INDEX_RCLONE_BIN` if set, else a bare "rclone" (PATH-searched).
+/// The Fly image has it at /usr/local/bin; a home box may have it under
+/// ~/.local/bin. Baking an absolute path here broke the home-box build, so
+/// don't: let the env (or PATH) say where it is.
+fn rcloneBin() []const u8 {
+    if (std.c.getenv("INDEX_RCLONE_BIN")) |p| return std.mem.span(p);
+    return "rclone";
+}
 
 pub const Error = error{ MissingR2Config, RcloneFailed };
 
@@ -104,7 +113,7 @@ pub fn upload(gpa: Allocator, cfg: Config, local_path: []const u8, object_key: [
     const remote = try std.fmt.allocPrint(gpa, "r2:{s}/{s}", .{ cfg.bucket, object_key });
     defer gpa.free(remote);
     log.info("rclone upload {s} -> {s}", .{ local_path, remote });
-    try run(&.{ RCLONE, "--config", cfg.config_path, "copyto", local_path, remote });
+    try run(&.{ rcloneBin(), "--config", cfg.config_path, "copyto", local_path, remote });
 }
 
 /// Download r2:<bucket>/<object_key> → local_path.
@@ -112,7 +121,7 @@ pub fn download(gpa: Allocator, cfg: Config, object_key: []const u8, local_path:
     const remote = try std.fmt.allocPrint(gpa, "r2:{s}/{s}", .{ cfg.bucket, object_key });
     defer gpa.free(remote);
     log.info("rclone download {s} -> {s}", .{ remote, local_path });
-    try run(&.{ RCLONE, "--config", cfg.config_path, "copyto", remote, local_path });
+    try run(&.{ rcloneBin(), "--config", cfg.config_path, "copyto", remote, local_path });
 }
 
 const testing = std.testing;
