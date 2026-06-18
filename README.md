@@ -21,9 +21,13 @@ curl "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=na
   batches actor updates to the worker.
 - **source DB**: [Turso](https://turso.tech) / libSQL. It is the durable source
   of truth for actors, moderation overrides, and tombstones.
-- **snapshot builder**: same Zig binary, `MODE=indexer`, run as an ephemeral Fly
-  job. It exports Turso, builds a precomputed prefix-index SQLite snapshot, and
-  publishes `index.db` + a channel manifest to Cloudflare R2.
+- **snapshot builder**: same Zig binary, `MODE=indexer`, run as a scheduled batch
+  job on the home box (heavypad) via a Prefect deployment (`typeahead-index` in
+  the `my-prefect-server` repo), **not** on Fly. It exports Turso, builds a
+  precomputed prefix-index SQLite snapshot, and publishes `index.db` + a channel
+  manifest to Cloudflare R2. Pure batch — no ingress, no SLA; a late/failed run
+  just leaves the prior snapshot serving. (`fly.indexer.toml` is retained as a
+  rollback path.)
 - **search service**: same Zig binary, `typeahead-search`. It downloads and
   verifies snapshots from R2, attaches them read-only, tails Turso into a local
   actor replica, projects live changes into an overlay, and serves `/search`
@@ -64,8 +68,10 @@ boot fails without it), set per app in fly config:
   worker, run Turso schema migrations. Does NOT keep a local replica.
 - `MODE=search` (`fly.search.toml`): sync Turso → local replica, promote/attach
   prefix-index snapshots, serve `/search` from snapshot + overlay.
-- `MODE=indexer` (`fly.indexer.toml`): offline snapshot build, then exit. Runs as
-  an ephemeral / `--schedule daily` Fly machine, not a long-running service.
+- `MODE=indexer`: offline snapshot build, then exit. Runs on the home box
+  (heavypad) as the scheduled `typeahead-index` Prefect deployment, every 3 days.
+  `fly.indexer.toml` still describes the role and is the rollback path (launch a
+  one-off Fly machine), but the home box is the primary builder.
 
 The ingest service requires `TYPEAHEAD_URL` and `TYPEAHEAD_SECRET`. R2 and Turso
 credentials are provided as Fly/Worker secrets in production.
@@ -78,6 +84,10 @@ just deploy-ingest    # ingest service  (fly.toml)
 just deploy-search    # search service  (fly.search.toml)
 ```
 
-The snapshot builder is launched as a one-off Fly machine from
-`services/fly.indexer.toml` (`just indexer-build-staging` for an isolated
-staging build); it is not a long-running service. See `docs/operations.md`.
+The snapshot builder runs on the home box (heavypad) as the `typeahead-index`
+Prefect deployment (`my-prefect-server` repo), scheduled every 3 days — reads
+Turso, builds, uploads to R2, exits. Host prereqs (zig + rclone) come from
+`deploy/home-indexer/install.sh`. For a one-off / rollback build you can still
+launch a Fly machine from `services/fly.indexer.toml` (`just
+indexer-build-staging` for an isolated staging build). See `docs/operations.md`
+and `docs/ephemeral-indexer-plan.md`.

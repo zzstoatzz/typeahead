@@ -58,7 +58,15 @@ regression is pinned). Extend it, don't prune it.
 
 - `just deploy-worker` — `wrangler deploy` **then** the smoke suite. A deploy that breaks
   shape, ranking, or the admin API fails loudly here. `deploy-worker-only` is the escape hatch.
-- `just deploy-search` / `just deploy-ingest` — the Zig fly roles.
+- `just deploy-search` / `just deploy-ingest` — the Zig fly roles (ingest + search).
+- **the snapshot builder (`MODE=indexer`) is NOT a Fly deploy.** It runs on the home box
+  (heavypad) as the `typeahead-index` Prefect deployment in the `my-prefect-server` repo,
+  scheduled every 3 days (09:00 UTC): reads Turso → builds the prefix-index snapshot →
+  uploads to R2 → App B promotes. To change it, edit `flows/typeahead_index.py` /
+  `prefect.yaml` there and redeploy (note: activating/altering its schedule needs a
+  delete+recreate of the deployment — prefect 3.7.2 won't overwrite an existing schedule).
+  `services/fly.indexer.toml` is retained only as a manual rollback path. Host prereqs:
+  `deploy/home-indexer/install.sh`. See `docs/ephemeral-indexer-plan.md`.
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
 
