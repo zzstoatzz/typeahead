@@ -599,7 +599,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     var ov_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer ov_arena.deinit();
 
-    // buffer: subtract 300s to catch stragglers (matches leaflet-search)
+    // buffer: subtract 300s to catch stragglers (matches pub-search)
     const since_ts = last_sync_ts - 300;
     var since_buf: [20]u8 = undefined;
     const since_str = std.fmt.bufPrint(&since_buf, "{d}", .{since_ts}) catch return;
