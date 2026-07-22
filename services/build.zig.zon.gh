@@ -16,8 +16,8 @@
             .hash = "zat-0.3.0-alpha.15-5PuC7nVhBQCJEzz9LuzSbtLb68Wd0x_yjDgTP3EqV8dH",
         },
         .zqlite = .{
-            .url = "https://github.com/karlseguin/zqlite.zig/archive/refs/heads/master.tar.gz",
-            .hash = "zqlite-0.0.1-RWLaY64xnAAxsD2YNT8QqPMJUuaFv2GOzFRR4aGypJv3",
+            .url = "https://github.com/karlseguin/zqlite.zig/archive/a9c1cd3657315306856ddf4a8a28a11b10fd5a9d.tar.gz",
+            .hash = "zqlite-0.0.1-RWLaYyc7nABTzVzEpEMPi3qD8xJHi0a2ycNgL73XyEdt",
         },
         .logfire = .{
             .url = "https://github.com/zzstoatzz/logfire-zig/archive/refs/tags/v0.1.0.tar.gz",

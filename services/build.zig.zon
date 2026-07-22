@@ -9,8 +9,8 @@
             .hash = "zat-0.3.8-5PuC7glgCgCVn18R0k6AuXiNok-jjqDRGgaBFj5JsI_N",
         },
         .zqlite = .{
-            .url = "https://github.com/karlseguin/zqlite.zig/archive/refs/heads/master.tar.gz",
-            .hash = "zqlite-0.0.1-RWLaY64xnAAxsD2YNT8QqPMJUuaFv2GOzFRR4aGypJv3",
+            .url = "https://github.com/karlseguin/zqlite.zig/archive/a9c1cd3657315306856ddf4a8a28a11b10fd5a9d.tar.gz",
+            .hash = "zqlite-0.0.1-RWLaYyc7nABTzVzEpEMPi3qD8xJHi0a2ycNgL73XyEdt",
         },
         .logfire = .{
             .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/1ed66749bb5910d07586f6aa8641682f6b154928",
