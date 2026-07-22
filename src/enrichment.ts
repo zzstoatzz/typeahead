@@ -100,7 +100,8 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
             await db.prepare(
               `UPDATE actors SET handle = COALESCE(NULLIF(?1, ''), handle),
                  pds = COALESCE(NULLIF(?2, ''), pds),
-                 identity_checked_at = unixepoch()
+                 identity_checked_at = unixepoch(),
+                 updated_at = unixepoch()
                WHERE did = ?3`
             ).bind(identity.handle || '', identity.pds || '', did).run();
             if (identity.handle) resolved++;
@@ -144,7 +145,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
             const identity: SlingshotResponse = await res.json();
             if (identity.pds) {
               await db.prepare(
-                "UPDATE actors SET pds = ?1, identity_checked_at = unixepoch() WHERE did = ?2"
+                "UPDATE actors SET pds = ?1, identity_checked_at = unixepoch(), updated_at = unixepoch() WHERE did = ?2"
               ).bind(identity.pds, did).run();
               filled++;
             } else {
@@ -211,7 +212,8 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
                    follows_count = COALESCE(NULLIF(?10, 0), follows_count),
                    posts_count = COALESCE(NULLIF(?11, 0), posts_count),
                    quality_score = COALESCE(NULLIF(?12, 0), quality_score),
-                   profile_checked_at = unixepoch()
+                   profile_checked_at = unixepoch(),
+                   updated_at = unixepoch()
                  WHERE did = ?1`
               ).bind(
                 p.did, f.handle, f.displayName,
@@ -258,7 +260,8 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
                          labels = ?4, hidden = ?5,
                          created_at = COALESCE(NULLIF(?6, ''), created_at),
                          associated = COALESCE(NULLIF(?7, '{}'), associated),
-                         profile_checked_at = unixepoch()
+                         profile_checked_at = unixepoch(),
+                         updated_at = unixepoch()
                        WHERE did = ?1`
                     ).bind(r.did, f.displayName, f.avatarCid, f.labels, f.hidden, f.createdAt, f.associated)
                   );

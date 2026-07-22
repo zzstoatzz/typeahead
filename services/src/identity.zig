@@ -48,7 +48,7 @@ pub const Did = struct {
 
 pub const Resolver = struct {
     allocator: Allocator,
-    transport: HttpTransport,
+    io: Io,
     worker_url: []const u8,
     worker_secret: []const u8,
 
@@ -58,19 +58,15 @@ pub const Resolver = struct {
         worker_url: []const u8,
         worker_secret: []const u8,
     ) Resolver {
-        var transport = HttpTransport.init(io, allocator);
-        transport.keep_alive = true; // we'll make many calls to slingshot
         return .{
             .allocator = allocator,
-            .transport = transport,
+            .io = io,
             .worker_url = worker_url,
             .worker_secret = worker_secret,
         };
     }
 
-    pub fn deinit(self: *Resolver) void {
-        self.transport.deinit();
-    }
+    pub fn deinit(_: *Resolver) void {}
 
     /// poolio process function — called per dequeued Did.
     /// Signature matches poolio.Pool(Did, Resolver).ProcessFn.
@@ -78,7 +74,15 @@ pub const Resolver = struct {
         _ = io;
         const did_slice = did.slice();
 
-        const resolved = self.resolveSlingshot(did_slice) catch |err| {
+        // Pool workers share Resolver as their context. std.http.Client is not
+        // safe to use concurrently, so each worker invocation owns its client.
+        // Identity resolution is only two requests and they target different
+        // hosts, making cross-request keep-alive useless here anyway.
+        var transport = HttpTransport.init(self.io, self.allocator);
+        transport.keep_alive = false;
+        defer transport.deinit();
+
+        const resolved = self.resolveSlingshot(&transport, did_slice) catch |err| {
             log.warn("slingshot {s}: {s}", .{ did_slice, @errorName(err) });
             return;
         } orelse return; // unresolvable right now — cron will retry
@@ -88,7 +92,7 @@ pub const Resolver = struct {
         // jetstream/atproto convention: failed validation surfaces as "handle.invalid"
         if (mem.eql(u8, resolved.handle, "handle.invalid")) return;
 
-        self.postIdentity(did_slice, resolved.handle) catch |err| {
+        self.postIdentity(&transport, did_slice, resolved.handle) catch |err| {
             log.warn("post identity {s}: {s}", .{ did_slice, @errorName(err) });
         };
     }
@@ -97,11 +101,11 @@ pub const Resolver = struct {
         handle: []const u8, // owned, free with self.allocator
     };
 
-    fn resolveSlingshot(self: *Resolver, did: []const u8) !?Resolved {
+    fn resolveSlingshot(self: *Resolver, transport: *HttpTransport, did: []const u8) !?Resolved {
         var url_buf: [512]u8 = undefined;
         const url = try std.fmt.bufPrint(&url_buf, "{s}?identifier={s}", .{ SLINGSHOT_URL, did });
 
-        const result = try self.transport.fetch(.{ .url = url });
+        const result = try transport.fetch(.{ .url = url });
         defer self.allocator.free(result.body);
 
         if (result.status != .ok) return null;
@@ -120,7 +124,7 @@ pub const Resolver = struct {
         return .{ .handle = try self.allocator.dupe(u8, handle_str) };
     }
 
-    fn postIdentity(self: *Resolver, did: []const u8, handle: []const u8) !void {
+    fn postIdentity(self: *Resolver, transport: *HttpTransport, did: []const u8, handle: []const u8) !void {
         var output: std.Io.Writer.Allocating = .init(self.allocator);
         defer output.deinit();
 
@@ -139,7 +143,7 @@ pub const Resolver = struct {
         var auth_buf: [256]u8 = undefined;
         const auth = try std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.worker_secret});
 
-        const result = try self.transport.fetch(.{
+        const result = try transport.fetch(.{
             .url = url,
             .method = .POST,
             .payload = output.written(),

@@ -131,6 +131,13 @@ describe("refreshModeration advances the freshness cursor", () => {
       c.binds.includes(DID));
   }
 
+  function materialUpdateAdvancesReplica(calls: { sql: string; binds: any[]; method: string }[]): boolean {
+    return calls.some((c) =>
+      c.method === "batch" &&
+      c.sql.includes("handle = COALESCE") &&
+      c.sql.includes("updated_at = unixepoch()"));
+  }
+
   test("CHANGED profile: cursor advances for the actor", async () => {
     const row = staleRow(488.98);
     const { db, calls } = mockDb(row);
@@ -143,6 +150,7 @@ describe("refreshModeration advances the freshness cursor", () => {
     });
     await refreshModeration(db, {} as any);
     expect(cursorAdvances(calls)).toBe(true);
+    expect(materialUpdateAdvancesReplica(calls)).toBe(true);
   });
 
   test("UNCHANGED profile: cursor STILL advances (the starvation bug)", async () => {
@@ -161,5 +169,6 @@ describe("refreshModeration advances the freshness cursor", () => {
     // even though nothing changed, we must record that we checked it — else the
     // priority pool re-selects this same row forever and never walks onward.
     expect(cursorAdvances(calls)).toBe(true);
+    expect(materialUpdateAdvancesReplica(calls)).toBe(false);
   });
 });
