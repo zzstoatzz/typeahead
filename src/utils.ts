@@ -92,6 +92,26 @@ export interface ProfileFields {
   qualityScore: number;
 }
 
+export interface AuthorityScoreBreakdown {
+  score: number;
+  followersInfluence: number;
+  postsInfluence: number;
+  followerFollowRatioBonus: number;
+  matureAccountBonus: number;
+  freshness: {
+    ageDays: number | null;
+    bucket: "unknown" | "<24h" | "<72h" | "mature";
+    penalty: number;
+    note: string;
+  };
+  inputs: {
+    followersCount: number;
+    followsCount: number;
+    postsCount: number;
+    createdAt?: string;
+  };
+}
+
 /**
  * Authority/quality score — our own ranking signal computed from the data we have.
  * Not bsky's pagerank, but a defensible proxy that promotes real accounts over
@@ -106,34 +126,77 @@ export interface ProfileFields {
  * Search uses this as the dominant non-lexical signal so popular accounts win
  * lexical ties without unrelated accounts surfacing.
  */
+export function computeAuthorityScoreBreakdown(p: {
+  followersCount: number;
+  followsCount: number;
+  postsCount: number;
+  createdAt?: string;
+}, nowMs = Date.now()): AuthorityScoreBreakdown {
+  const f = Math.max(0, Number(p.followersCount) || 0);
+  const fw = Math.max(0, Number(p.followsCount) || 0);
+  const pc = Math.max(0, Number(p.postsCount) || 0);
+
+  const followersInfluence = Math.log10(f + 1) * 100;
+  const postsInfluence = Math.log10(pc + 1) * 20;
+  let followerFollowRatioBonus = 0;
+  let matureAccountBonus = 0;
+  let freshnessPenalty = 0;
+  let ageDays: number | null = null;
+  let bucket: AuthorityScoreBreakdown["freshness"]["bucket"] = "unknown";
+
+  if (f > 100 && fw > 0) {
+    const ratio = f / fw;
+    if (ratio > 10) followerFollowRatioBonus += 50;
+    if (ratio > 100) followerFollowRatioBonus += 100;
+  }
+
+  if (p.createdAt) {
+    const t = Date.parse(p.createdAt);
+    if (!Number.isNaN(t)) {
+      ageDays = (nowMs - t) / 86400000;
+      if (ageDays < 1) {
+        bucket = "<24h";
+        freshnessPenalty = -100;
+      } else if (ageDays < 3) {
+        bucket = "<72h";
+        freshnessPenalty = -50;
+      } else {
+        bucket = "mature";
+      }
+      if (ageDays > 365) matureAccountBonus += 30;
+      if (ageDays > 365 * 3) matureAccountBonus += 30;
+    }
+  }
+
+  const score = Math.max(0, followersInfluence + postsInfluence + followerFollowRatioBonus + matureAccountBonus + freshnessPenalty);
+  return {
+    score: Math.round(score * 100) / 100,
+    followersInfluence: Math.round(followersInfluence * 100) / 100,
+    postsInfluence: Math.round(postsInfluence * 100) / 100,
+    followerFollowRatioBonus,
+    matureAccountBonus,
+    freshness: {
+      ageDays: ageDays === null ? null : Math.round(ageDays * 100) / 100,
+      bucket,
+      penalty: freshnessPenalty,
+      note: "Fresh accounts are penalized: -100 for <24h old, -50 for <72h old. Scores are floored at 0.",
+    },
+    inputs: {
+      followersCount: f,
+      followsCount: fw,
+      postsCount: pc,
+      ...(p.createdAt ? { createdAt: p.createdAt } : {}),
+    },
+  };
+}
+
 export function computeAuthorityScore(p: {
   followersCount: number;
   followsCount: number;
   postsCount: number;
   createdAt?: string;
 }): number {
-  const f = Math.max(0, Number(p.followersCount) || 0);
-  const fw = Math.max(0, Number(p.followsCount) || 0);
-  const pc = Math.max(0, Number(p.postsCount) || 0);
-
-  let score = Math.log10(f + 1) * 100 + Math.log10(pc + 1) * 20;
-
-  if (f > 100 && fw > 0) {
-    const ratio = f / fw;
-    if (ratio > 10) score += 50;
-    if (ratio > 100) score += 100;
-  }
-
-  if (p.createdAt) {
-    const t = Date.parse(p.createdAt);
-    if (!Number.isNaN(t)) {
-      const ageDays = (Date.now() - t) / 86400000;
-      if (ageDays > 365) score += 30;
-      if (ageDays > 365 * 3) score += 30;
-    }
-  }
-
-  return Math.round(score * 100) / 100;
+  return computeAuthorityScoreBreakdown(p).score;
 }
 
 export function extractProfileFields(

@@ -161,6 +161,18 @@ export function docsPage(): string {
       <li><strong>CORS</strong> — enabled, so browser-based apps can call it directly</li>
     </ul>
 
+    <h2>inspect ranking</h2>
+    <p>
+      if a result looks surprising, use the <a href="/reputation">ranking report</a>.
+      it shows the stored ranking score, the score if recalculated now, percentile among
+      visible scored actors, and a few example query positions.
+    </p>
+    <p>
+      ranking score and visibility are separate. follower/post/age signals affect the score;
+      fresh accounts are penalized while very new. moderation labels, domain blocks, and
+      overrides decide whether an actor can appear at all.
+    </p>
+
     <h2 id="moderation">moderation</h2>
     <p>
       atproto is a network, not a single app. bluesky PBC runs the largest appview and applies its

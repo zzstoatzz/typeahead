@@ -201,4 +201,11 @@ pub const migrations = [_]zug.Migration{
             "CREATE INDEX IF NOT EXISTS idx_actors_avatar_empty ON actors(avatar_url) WHERE avatar_url = ''",
         },
     },
+    .{
+        .id = "005_quality_score_visible_scored_index",
+        .name = "index visible scored actors for ranking percentiles",
+        .statements = &.{
+            "CREATE INDEX IF NOT EXISTS idx_actors_visible_quality_score ON actors(quality_score) WHERE handle != '' AND hidden = 0 AND quality_score > 0",
+        },
+    },
 };

@@ -9,8 +9,10 @@ import { handleIngest } from "./handlers/ingest";
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
 import { handleGetProfiles } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
+import { handleReputation } from "./handlers/reputation";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
+import { reputationPage } from "./pages/reputation";
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
@@ -46,6 +48,9 @@ export default {
     if (pathname === "/docs" && request.method === "GET") {
       return html(docsPage());
     }
+    if (pathname === "/reputation" && request.method === "GET") {
+      return html(reputationPage());
+    }
     if (pathname === "/admin/cursor" && request.method === "GET") {
       return handleCursor(request, env);
     }
@@ -57,6 +62,10 @@ export default {
 
     if (pathname === "/stats" && request.method === "GET") {
       return handleStats(request, db, env, ctx);
+    }
+
+    if (pathname === "/debug/reputation" && request.method === "GET") {
+      return handleReputation(request, db);
     }
 
     if (pathname === "/request-indexing" && request.method === "POST") {
