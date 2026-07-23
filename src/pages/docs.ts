@@ -124,7 +124,9 @@ export function docsPage(): string {
   { headers: { <span class="str">'X-Client'</span>: <span class="str">'my-app.example.com'</span> } }
 );</code></pre>
     <p>
-      use your domain or app name — whatever you want to be identified as.
+      ideally use your domain — the <a href="/stats">stats page</a> links each source
+      to <code>https://&lt;your-value&gt;</code>, so a domain gives you a working link
+      (a bare app name works too, it just won't link anywhere).
       browser-based apps will also be identified automatically via the <code>Origin</code> header,
       but <code>X-Client</code> is preferred since it works everywhere (server-side, CLI, native apps).
     </p>
