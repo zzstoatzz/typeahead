@@ -52,7 +52,13 @@ export function statsPage(d: StatsData): string {
     }))
   );
   const metricsJson = JSON.stringify(
-    sorted.map((r) => ({ hour: r.hour, searches: r.searches, cache_hits: r.cache_hits ?? 0 }))
+    sorted.map((r) => ({
+      hour: r.hour,
+      searches: r.searches,
+      cache_hits: r.cache_hits ?? 0,
+      total_ms: r.total_ms ?? 0,
+      cache_ms: r.cache_ms ?? 0,
+    }))
   );
 
   const snapshotJson = JSON.stringify(d.snapshots);
@@ -218,7 +224,14 @@ export function statsPage(d: StatsData): string {
     <p class="subtitle">index health and search activity</p>
 
     <div class="chart-wrap">
-      <h2>actors indexed</h2>
+      <div class="ranged-header">
+        <h2>actors indexed</h2>
+        <span class="range-btns" id="trend-range">
+          <button data-range="7d">7d</button>
+          <button data-range="30d">30d</button>
+          <button data-range="all" class="active">all</button>
+        </span>
+      </div>
       ${d.snapshots.length > 1
         ? `<canvas id="trend"></canvas>`
         : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
@@ -250,7 +263,15 @@ export function statsPage(d: StatsData): string {
     </div>
 
     <div class="sparkline-wrap">
-      <h2 id="spark-label">searches / 5 min (7 days)</h2>
+      <div class="ranged-header">
+        <h2 id="spark-label">searches / 5 min</h2>
+        <span class="range-btns" id="searches-range">
+          <button data-range="24h">24h</button>
+          <button data-range="7d" class="active">7d</button>
+          <button data-range="30d">30d</button>
+          <button data-range="all">all</button>
+        </span>
+      </div>
       ${counts.length > 1
         ? `<svg viewBox="0 0 ${sw} ${sh}" preserveAspectRatio="none" id="spark">
             <polyline points="${sparkPoints}" id="spark-poly" />
@@ -259,19 +280,19 @@ export function statsPage(d: StatsData): string {
     </div>
     <div class="summary summary-2">
       <div class="metric">
-        <div class="metric-head">
-          <div class="label">total searches</div>
-          <span class="range-btns" id="searches-range">
-            <button data-range="7d" class="active">7d</button>
-            <button data-range="30d">30d</button>
-            <button data-range="all">all</button>
-          </span>
-        </div>
+        <div class="label" id="searches-label">total searches (7 days)</div>
         <div class="value" id="searches-value">${initialTotal.toLocaleString()}</div>
       </div>
       <div class="metric">
-        <div class="label" data-tip="last 24h — cached (edge) vs uncached (fly replica)">avg latency</div>
-        <div class="value" style="font-size:1.3rem">${d.avgCacheLatency > 0 ? `${d.avgCacheLatency.toFixed(1)} ms <span style="opacity:.4;font-size:.85rem">cached</span> · ` : ''}${d.avgLatency.toFixed(0)} ms${d.avgCacheLatency > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : ''}</div>
+        <div class="metric-head">
+          <div class="label" data-tip="cached (edge) vs uncached (fly replica)">avg latency</div>
+          <span class="range-btns" id="latency-range">
+            <button data-range="24h" class="active">24h</button>
+            <button data-range="7d">7d</button>
+            <button data-range="30d">30d</button>
+          </span>
+        </div>
+        <div class="value" style="font-size:1.3rem" id="latency-value">${d.avgCacheLatency > 0 ? `${d.avgCacheLatency.toFixed(1)} ms <span style="opacity:.4;font-size:.85rem">cached</span> · ` : ''}${d.avgLatency.toFixed(0)} ms${d.avgCacheLatency > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : ''}</div>
       </div>
     </div>
 
@@ -311,9 +332,26 @@ export function statsPage(d: StatsData): string {
     }
 
     /* --- actors indexed trend chart --- */
-    const snaps = ${snapshotJson};
+    const allSnaps = ${snapshotJson};
+    let snaps = allSnaps; // the currently-shown window; chart + hover read this
+    let trendFitY = false;
     const canvas = document.getElementById('trend');
     const chartTip = document.getElementById('chart-tip');
+    const TREND_MS = { '7d': 604800000, '30d': 2592000000 }; // missing key (all) = everything
+
+    function applyTrendRange(range) {
+      document.querySelectorAll('#trend-range button').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+      const ms = TREND_MS[range];
+      const sliced = ms == null ? allSnaps : allSnaps.filter(s => s.ts >= Date.now() - ms);
+      snaps = sliced.length >= 2 ? sliced : allSnaps;
+      trendFitY = ms != null; // windowed views fit the y-axis so growth is visible
+      drawChart(null);
+    }
+
+    document.getElementById('trend-range')?.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-range]');
+      if (btn) applyTrendRange(btn.dataset.range);
+    });
 
     function drawChart(hoverIdx) {
       if (!canvas || snaps.length < 2) return;
@@ -328,9 +366,15 @@ export function statsPage(d: StatsData): string {
       const cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
       const n = snaps.length;
 
-      let yMax = 0;
-      for (const s of snaps) { if (s.total > yMax) yMax = s.total; }
-      yMax = yMax * 1.08 || 1;
+      let yMax = 0, yMin = Infinity;
+      for (const s of snaps) {
+        if (s.total > yMax) yMax = s.total;
+        if (s.with_avatars < yMin) yMin = s.with_avatars;
+      }
+      if (!trendFitY || !isFinite(yMin)) yMin = 0;
+      const ySpan = (yMax - yMin) || 1;
+      yMax = yMax + ySpan * 0.08;
+      yMin = trendFitY ? Math.max(0, yMin - ySpan * 0.08) : 0;
 
       // x is mapped by ACTUAL TIME, not array index — snapshots are not evenly
       // spaced (irregular hourly gaps + outage gaps), and the date axis below is
@@ -339,7 +383,7 @@ export function statsPage(d: StatsData): string {
       const tNms = snaps[n - 1].ts;
       const span = (tNms - t0ms) || 1;
       const toX = ts => pad.l + ((ts - t0ms) / span) * cw;
-      const toY = v => pad.t + ch - (v / yMax) * ch;
+      const toY = v => pad.t + ch - ((v - yMin) / (yMax - yMin)) * ch;
 
       const series = [
         { key: 'with_avatars', color: COLORS.avatars },
@@ -617,9 +661,12 @@ export function statsPage(d: StatsData): string {
     const allMetrics = ${metricsJson}; // {hour, searches, cache_hits}, same order
     // window by TIME (bucket is 5-min; hour*300 = unix seconds), not bucket
     // count — buckets are sparse so count-based slicing made 30d == all.
-    const SEARCH_SECS = { '7d': 604800, '30d': 2592000 }; // missing key (all) = everything
+    const SEARCH_SECS = { '24h': 86400, '7d': 604800, '30d': 2592000 }; // missing key (all) = everything
     const NOW_SEC = Math.floor(Date.now() / 1000);
-    const RANGE_LABEL = { '7d': '7 days', '30d': '30 days', 'all': 'all time' };
+    const RANGE_LABEL = { '24h': '24 hours', '7d': '7 days', '30d': '30 days', 'all': 'all time' };
+    // long windows aggregate 5-min buckets so the line stays readable
+    const AGG_SECS = { '30d': 3600, 'all': 21600 };
+    const AGG_LABEL = { 300: '5 min', 3600: 'hour', 21600: '6 h' };
     const SPARK_W = ${sw}, SPARK_H = ${sh};
 
     const searchesValue = document.getElementById('searches-value');
@@ -636,20 +683,57 @@ export function statsPage(d: StatsData): string {
     function totalForRange(range) {
       return sliceWindow(allMetrics, range).reduce((s, r) => s + r.searches + (r.cache_hits || 0), 0);
     }
+    function aggregate(arr, aggSecs) {
+      if (aggSecs === 300) return arr;
+      const buckets = new Map();
+      for (const r of arr) {
+        const key = Math.floor((r.hour * 300) / aggSecs);
+        buckets.set(key, (buckets.get(key) || 0) + r.searches);
+      }
+      return [...buckets.entries()].sort((a, b) => a[0] - b[0]).map(([key, searches]) => ({
+        hour: (key * aggSecs) / 300,
+        time: new Date(key * aggSecs * 1000).toISOString().slice(0, 16) + 'Z',
+        searches,
+      }));
+    }
     function drawSpark(range) {
       if (!sparkPoly) return;
-      sparkView = sliceWindow(sparkData, range);
+      const aggSecs = AGG_SECS[range] || 300;
+      sparkView = aggregate(sliceWindow(sparkData, range), aggSecs);
       const counts = sparkView.map(r => r.searches);
       const max = Math.max(...counts, 1);
       const step = counts.length > 1 ? SPARK_W / (counts.length - 1) : 0;
       sparkPoly.setAttribute('points', counts.map((c, i) => (i * step).toFixed(1) + ',' + (SPARK_H - (c / max) * SPARK_H).toFixed(1)).join(' '));
-      if (sparkLabel) sparkLabel.textContent = 'searches / 5 min (' + (RANGE_LABEL[range] || range) + ')';
+      if (sparkLabel) sparkLabel.textContent = 'searches / ' + AGG_LABEL[aggSecs] + ' (' + (RANGE_LABEL[range] || range) + ')';
     }
     function applyRange(range) {
       document.querySelectorAll('#searches-range button').forEach(b => b.classList.toggle('active', b.dataset.range === range));
       if (searchesValue) searchesValue.textContent = totalForRange(range).toLocaleString();
+      const searchesLabel = document.getElementById('searches-label');
+      if (searchesLabel) searchesLabel.textContent = 'total searches (' + (RANGE_LABEL[range] || range) + ')';
       drawSpark(range);
     }
+
+    /* --- avg latency: independent range selector --- */
+    const latencyValue = document.getElementById('latency-value');
+    function applyLatencyRange(range) {
+      document.querySelectorAll('#latency-range button').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+      if (!latencyValue) return;
+      const win = sliceWindow(allMetrics, range);
+      let searches = 0, totalMs = 0, cacheHits = 0, cacheMs = 0;
+      for (const r of win) {
+        searches += r.searches; totalMs += r.total_ms || 0;
+        cacheHits += r.cache_hits || 0; cacheMs += r.cache_ms || 0;
+      }
+      const cold = searches > 0 ? totalMs / searches : 0;
+      const cached = cacheHits > 0 ? cacheMs / cacheHits : 0;
+      latencyValue.innerHTML = (cached > 0 ? cached.toFixed(1) + ' ms <span style="opacity:.4;font-size:.85rem">cached</span> · ' : '')
+        + cold.toFixed(0) + ' ms' + (cached > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : '');
+    }
+    document.getElementById('latency-range')?.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-range]');
+      if (btn) applyLatencyRange(btn.dataset.range);
+    });
 
     document.getElementById('searches-range')?.addEventListener('click', e => {
       const btn = e.target.closest('button[data-range]');
