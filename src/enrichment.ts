@@ -46,18 +46,31 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
   // "all" for our current age. lets the /stats range selector compute true totals.
   // snapshots: hourly. 5000 covers ~7 months.
   // deltas: 5-min, 288 = 24h (used to stitch trend chart tail).
-  const [metricsRes, snapshotRes, deltasRes] = await db.batch([
+  // traffic: last 30d of per-domain 5-min buckets, rolled up to hourly.
+  // bounded by hours × active domains (≤720 × ~dozens), NOT the corpus.
+  const trafficSince = Math.floor(Date.now() / 300_000) - 30 * 288;
+  const [metricsRes, snapshotRes, deltasRes, trafficRes] = await db.batch([
     db.prepare("SELECT hour, searches, total_ms, cache_hits, cache_ms FROM metrics ORDER BY hour DESC LIMIT 100000"),
     db.prepare("SELECT hour, total, with_handles, with_avatars, hidden FROM snapshots ORDER BY hour ASC LIMIT 5000"),
     db.prepare("SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket DESC LIMIT 288"),
+    db.prepare(
+      `SELECT bucket / 12 AS hour, domain, SUM(hits) AS hits
+       FROM traffic_buckets WHERE bucket >= ?1
+       GROUP BY bucket / 12, domain ORDER BY hour ASC`
+    ).bind(trafficSince),
   ], "read");
 
   await env.KV.put("stats_data", JSON.stringify({
     metrics: metricsRes.results ?? [],
     snapshots: snapshotRes.results ?? [],
     deltas: deltasRes.results ?? [],
+    traffic_series: trafficRes.results ?? [],
     materialized_at: Date.now(),
   }));
+
+  // retention: drop per-domain buckets older than 90d (PK-prefix range delete)
+  const pruneBefore = Math.floor(Date.now() / 300_000) - 90 * 288;
+  await db.prepare("DELETE FROM traffic_buckets WHERE bucket < ?1").bind(pruneBefore).run();
 }
 
 /** lease-coordinated, two-phase enrichment: slingshot identity + getProfiles batch.

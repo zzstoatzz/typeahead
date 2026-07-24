@@ -18,6 +18,7 @@ export interface StatsData {
   avatarPct: string;
   snapshots: SnapshotPoint[];
   trafficSources: { domain: string; hits: number }[];
+  trafficSeries: { hour: number; domain: string; hits: number }[];
 }
 
 export function statsPage(d: StatsData): string {
@@ -70,6 +71,15 @@ export function statsPage(d: StatsData): string {
   const pieSlice = d.trafficSources.slice(0, PIE_TOP_N);
   const trafficJson = JSON.stringify(pieSlice);
   const trafficGrandTotal = trafficTotal;
+  // per-domain hourly series, only for domains shown in the pie (compact form:
+  // domain -> [[hour, hits], ...])
+  const pieDomains = new Set(pieSlice.map((r) => r.domain));
+  const seriesByDomain: Record<string, [number, number][]> = {};
+  for (const r of d.trafficSeries) {
+    if (!pieDomains.has(r.domain)) continue;
+    (seriesByDomain[r.domain] ??= []).push([r.hour, r.hits]);
+  }
+  const trafficSeriesJson = JSON.stringify(seriesByDomain);
 
   const pieLegendHtml = pieSlice.map((r, i) => {
     const color = SPECIAL_DOMAINS[r.domain] ?? PIE_COLORS[i % PIE_COLORS.length];
@@ -164,6 +174,9 @@ export function statsPage(d: StatsData): string {
     .pie-legend span { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4; }
     .legend-link { color: #888; text-decoration: none; border-bottom: 1px dotted #444; }
     .legend-link:hover { color: #ccc; border-bottom-color: #888; }
+    .traffic-series { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #1a1a1a; }
+    .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: #555; margin-bottom: 0.5rem; }
+    #tseries polyline { fill: none; stroke: #4a9; stroke-width: 1.5; transition: stroke 0.15s; }
     .pie-tip { display: none; position: fixed; background: rgba(17, 17, 17, 0.95);
                border: 1px solid #333; border-radius: 6px; padding: 0.5rem 0.7rem;
                font-size: 0.72rem; color: #ccc; pointer-events: none; z-index: 50;
@@ -301,6 +314,13 @@ export function statsPage(d: StatsData): string {
       ${d.trafficSources.length > 0
         ? `<canvas id="pie"></canvas>
            <div class="pie-legend">${pieLegendHtml}</div>
+           <div class="traffic-series">
+             <h2 id="tseries-label">traffic over time — all sources</h2>
+             <svg viewBox="0 0 600 60" preserveAspectRatio="none" id="tseries">
+               <polyline points="" id="tseries-poly" />
+             </svg>
+             <div id="tseries-empty" style="display:none;color:#444;font-size:0.75rem;padding:0.8rem 0;text-align:center">collecting data — hourly per-app history starts July 2026</div>
+           </div>
            ${d.trafficSources.length > PIE_TOP_N
               ? `<div class="ts-summary">top ${PIE_TOP_N} above · all ${d.trafficSources.length} sources below</div>`
               : ''}
@@ -538,6 +558,46 @@ export function statsPage(d: StatsData): string {
     const pieCanvas = document.getElementById('pie');
     const pieTip = document.getElementById('pie-tip');
 
+    /* --- per-app traffic history: pie hover drives this line --- */
+    const trafficSeries = ${trafficSeriesJson}; // domain -> [[hour, hits], ...]
+    const tseriesPoly = document.getElementById('tseries-poly');
+    const tseriesLabel = document.getElementById('tseries-label');
+    const tseriesEl = document.getElementById('tseries');
+    const tseriesEmpty = document.getElementById('tseries-empty');
+
+    function seriesFor(domain) {
+      if (domain != null) return trafficSeries[domain] || [];
+      // all sources: sum per hour across domains
+      const sums = new Map();
+      for (const dom in trafficSeries) {
+        for (const [h, hits] of trafficSeries[dom]) sums.set(h, (sums.get(h) || 0) + hits);
+      }
+      return [...sums.entries()].sort((a, b) => a[0] - b[0]);
+    }
+    function showSeries(domain, color) {
+      if (!tseriesPoly) return;
+      const raw = seriesFor(domain);
+      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time — ' + (domain || 'all sources');
+      if (raw.length < 2) {
+        if (tseriesEl) tseriesEl.style.display = 'none';
+        if (tseriesEmpty) tseriesEmpty.style.display = 'block';
+        return;
+      }
+      if (tseriesEl) tseriesEl.style.display = 'block';
+      if (tseriesEmpty) tseriesEmpty.style.display = 'none';
+      // fill hour gaps with 0 so quiet periods read as quiet, not skipped
+      const h0 = raw[0][0], hN = raw[raw.length - 1][0];
+      const byHour = new Map(raw);
+      const counts = [];
+      for (let h = h0; h <= hN && counts.length <= 24 * 31; h++) counts.push(byHour.get(h) || 0);
+      const max = Math.max(...counts, 1);
+      const step = counts.length > 1 ? 600 / (counts.length - 1) : 0;
+      tseriesPoly.setAttribute('points', counts.map((c, i) => (i * step).toFixed(1) + ',' + (60 - (c / max) * 60).toFixed(1)).join(' '));
+      tseriesPoly.setAttribute('stroke', color || '#4a9');
+      tseriesPoly.style.stroke = color || '#4a9';
+    }
+    showSeries(null);
+
     if (pieCanvas && traffic.length > 0) {
       const pieTotal = traffic.reduce((s, r) => s + r.hits, 0);
 
@@ -634,6 +694,8 @@ export function statsPage(d: StatsData): string {
         if (idx !== hoverIdx) {
           hoverIdx = idx;
           drawPie();
+          if (idx >= 0) showSeries(segments[idx].domain, segments[idx].color);
+          else showSeries(null);
         }
         if (idx >= 0) {
           const seg = segments[idx];
@@ -650,9 +712,9 @@ export function statsPage(d: StatsData): string {
       }
 
       pieCanvas.addEventListener('mousemove', e => pieHover(e.clientX, e.clientY));
-      pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; });
+      pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; showSeries(null); });
       pieCanvas.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; pieHover(t.clientX, t.clientY); });
-      pieCanvas.addEventListener('touchend', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; });
+      pieCanvas.addEventListener('touchend', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; showSeries(null); });
       window.addEventListener('resize', () => drawPie());
     }
 

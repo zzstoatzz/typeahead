@@ -81,11 +81,17 @@ export async function recordTrafficSource(db: TursoDB, request: Request): Promis
   if (domain === "localhost" || domain.startsWith("127.") || domain === "[::1]") {
     domain = "unknown";
   }
-  await db.prepare(
-    `INSERT INTO traffic_sources (domain, hits)
-     VALUES (?1, 1)
-     ON CONFLICT(domain) DO UPDATE SET hits = hits + 1`
-  )
-    .bind(domain)
-    .run();
+  const bucket = Math.floor(Date.now() / 300_000);
+  await db.batch([
+    db.prepare(
+      `INSERT INTO traffic_sources (domain, hits)
+       VALUES (?1, 1)
+       ON CONFLICT(domain) DO UPDATE SET hits = hits + 1`
+    ).bind(domain),
+    db.prepare(
+      `INSERT INTO traffic_buckets (bucket, domain, hits)
+       VALUES (?1, ?2, 1)
+       ON CONFLICT(bucket, domain) DO UPDATE SET hits = hits + 1`
+    ).bind(bucket, domain),
+  ]);
 }
