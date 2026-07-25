@@ -1,4 +1,5 @@
 import { FAVICON } from "../types";
+import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
 
 export interface SnapshotPoint {
   ts: number;  // millisecond timestamp
@@ -107,147 +108,137 @@ export function statsPage(d: StatsData): string {
   }).join('');
 
   return `<!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>typeahead — stats</title>
   ${FAVICON}
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e0e0e0;
-           display: flex; justify-content: center; padding: 2rem 1rem; min-height: 100vh; }
+  ${THEME_HEAD}
+  <style>${THEME_CSS}
+    body { display: flex; justify-content: center;
+           padding: calc(1.5rem + env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom)); }
     .container { max-width: 620px; width: 100%; }
-    .header { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
-    h1 { font-size: 1.1rem; font-weight: 400; color: #888; }
-    h1 strong { color: #e0e0e0; }
-    .subtitle { font-size: 0.8rem; color: #555; margin-bottom: 1.5rem; }
+    .header { display: flex; align-items: baseline; justify-content: space-between; gap: 0.4rem; margin-bottom: 0.4rem; }
+    h1 { font-size: 1.1rem; font-weight: 400; color: var(--muted); }
+    .subtitle { font-size: 0.8rem; color: var(--dim); margin-bottom: 1.5rem; }
 
-    .chart-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
-                  padding: 0.9rem; margin-bottom: 1.5rem; position: relative; }
-    .chart-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
+    .chart-wrap, .sparkline-wrap, .pie-wrap {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+      padding: 1rem; margin-bottom: 1.25rem; position: relative; }
+    .chart-wrap h2, .sparkline-wrap h2, .pie-wrap h2 {
+      font-size: 0.75rem; font-weight: 400; color: var(--muted); margin-bottom: 0.6rem; }
     .ranged-header { display: flex; justify-content: space-between; align-items: center;
-                     margin-bottom: 0.6rem; }
+                     flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.6rem; }
     .ranged-header h2 { margin-bottom: 0; }
-    .range-btns { display: inline-flex; gap: 0.15rem; }
-    .range-btns button { background: transparent; border: 1px solid #222; color: #666;
-                         padding: 0.15rem 0.45rem; font-size: 0.65rem; cursor: pointer;
-                         border-radius: 3px; font-family: inherit; }
-    .range-btns button:hover { color: #aaa; border-color: #333; }
-    .range-btns button.active { background: #1a1a1a; color: #ccc; border-color: #333; }
+    .range-btns { display: inline-flex; gap: 0.2rem; }
+    .range-btns button { background: transparent; border: 1px solid var(--line); color: var(--dim);
+                         padding: 0.35rem 0.65rem; font-size: 0.72rem; cursor: pointer;
+                         border-radius: 6px; font-family: inherit; min-height: 34px; }
+    .range-btns button:hover { color: var(--muted); border-color: var(--line-2); }
+    .range-btns button.active { background: var(--panel-2); color: var(--text); border-color: var(--line-2); }
     #trend { width: 100%; height: 200px; display: block; touch-action: none; }
-    .legend { display: flex; gap: 1.2rem; margin-top: 0.6rem; font-size: 0.7rem; color: #888; }
+    .legend { display: flex; gap: 1.2rem; margin-top: 0.6rem; font-size: 0.7rem; color: var(--muted); }
     .legend span { display: flex; align-items: center; gap: 0.35rem; }
     .ldot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .chart-tip { display: none; position: fixed; background: rgba(17, 17, 17, 0.95);
-                 border: 1px solid #333; border-radius: 6px; padding: 0.5rem 0.7rem;
-                 font-size: 0.72rem; color: #ccc; pointer-events: none; z-index: 50;
-                 line-height: 1.6; white-space: nowrap;
-                 box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-    .ct-time { color: #666; font-size: 0.65rem; }
+    .chart-tip, .pie-tip, .spark-tip {
+      display: none; position: fixed; background: var(--tip-bg);
+      border: 1px solid var(--line-2); border-radius: 8px; padding: 0.5rem 0.7rem;
+      font-size: 0.72rem; color: var(--text); pointer-events: none; z-index: 50;
+      line-height: 1.6; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.35); }
+    .ct-time { color: var(--dim); font-size: 0.65rem; }
     .ct-row { display: flex; align-items: center; gap: 0.35rem; }
     .ct-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 
-    .sparkline-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
-                      padding: 0.9rem; margin-bottom: 1.5rem; }
-    .sparkline-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
     svg { width: 100%; height: auto; }
-    polyline { fill: none; stroke: #4a9; stroke-width: 1.5; }
+    polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 
-    .summary { display: grid; gap: 0.8rem; margin-bottom: 1.5rem; }
+    .summary { display: grid; gap: 0.8rem; margin-bottom: 1.25rem; }
     .summary-2 { grid-template-columns: repeat(2, 1fr); }
     .summary-3 { grid-template-columns: repeat(3, 1fr); }
-    .metric { background: #111; border: 1px solid #222; border-radius: 6px; padding: 0.7rem 0.9rem; }
+    .metric { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem 0.9rem; }
     .metric .metric-head { display: flex; justify-content: space-between; align-items: center;
-                           gap: 0.5rem; margin-bottom: 0.2rem; }
+                           flex-wrap: wrap; gap: 0.4rem 0.5rem; margin-bottom: 0.2rem; }
     .metric .metric-head .label { margin-bottom: 0; }
-    .metric .label { font-size: 0.7rem; color: #555; margin-bottom: 0.2rem; }
-    .metric .label[data-tip] { cursor: default; position: relative; border-bottom: 1px dotted #444; display: inline-block; }
-    .metric .label[data-tip]:hover::after {
+    .metric .label { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.2rem; }
+    .metric .label[data-tip] { cursor: default; position: relative; border-bottom: 1px dotted var(--faint); display: inline-block; }
+    .metric .label[data-tip]:hover::after, .metric .label[data-tip]:focus::after {
       content: attr(data-tip); position: absolute; left: 0; top: 1.6em; width: 200px;
-      padding: 0.4rem 0.5rem; background: #1a1a1a; border: 1px solid #333; border-radius: 4px;
-      font-size: 0.95em; color: #999; line-height: 1.4; z-index: 20; white-space: normal;
+      padding: 0.4rem 0.5rem; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 6px;
+      font-size: 0.95em; color: var(--muted); line-height: 1.4; z-index: 20; white-space: normal;
     }
-    .metric .value { font-size: 1.1rem; color: #ccc; }
-    .spark-tip { display: none; position: fixed; background: #1a1a1a; border: 1px solid #333;
-                 border-radius: 4px; padding: 0.4rem 0.6rem; font-size: 0.75rem; color: #ccc;
-                 pointer-events: none; z-index: 50; }
+    .metric .value { font-size: 1.15rem; color: var(--text); }
 
-    .pie-wrap { background: #111; border: 1px solid #222; border-radius: 6px;
-                padding: 0.9rem; margin-bottom: 1.5rem; }
-    .pie-wrap h2 { font-size: 0.75rem; font-weight: 400; color: #555; margin-bottom: 0.6rem; }
     #pie { display: block; margin: 0 auto; width: 280px; height: 280px; touch-action: none; }
     .pie-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.7rem;
-                  font-size: 0.7rem; color: #888; justify-content: center; }
-    .pie-legend span { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4; }
-    .legend-link { color: #888; text-decoration: none; border-bottom: 1px dotted #444; }
-    .legend-link:hover { color: #ccc; border-bottom-color: #888; }
-    .traffic-series { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #1a1a1a; }
-    .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: #555; margin-bottom: 0; }
+                  font-size: 0.7rem; color: var(--muted); justify-content: center; }
+    .pie-legend span { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4;
+                       padding: 0.25rem 0.1rem; }
+    .legend-link { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--faint); }
+    .legend-link:hover { color: var(--text); border-bottom-color: var(--muted); }
+    .traffic-series { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+    .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
     .traffic-series .ranged-header { margin-bottom: 0.5rem; }
-    #tseries { cursor: crosshair; }
-    #tseries polyline { fill: none; stroke: #4a9; stroke-width: 1.5; transition: stroke 0.15s;
-                        vector-effect: non-scaling-stroke; }
-    #tseries-dot { fill: #fff; stroke: #4a9; stroke-width: 1.5; }
-    #tseries-clear { background: #1a1a1a; border: 1px solid #333; color: #999;
-                     padding: 0.15rem 0.5rem; font-size: 0.65rem; cursor: pointer;
-                     border-radius: 3px; font-family: inherit; }
-    #tseries-clear:hover { color: #ccc; }
-    .tseries-axis { display: flex; justify-content: space-between; font-size: 0.62rem;
-                    color: #444; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
-    .tseries-hint { font-size: 0.62rem; color: #3a3a3a; margin-top: 0.4rem; text-align: center; }
+    #tseries { cursor: crosshair; touch-action: pan-y; }
+    #tseries polyline { transition: stroke 0.15s; vector-effect: non-scaling-stroke; }
+    #tseries-dot { fill: var(--bright); stroke: var(--accent); stroke-width: 1.5; }
+    #tseries-clear { background: var(--panel-2); border: 1px solid var(--line-2); color: var(--muted);
+                     padding: 0.35rem 0.65rem; font-size: 0.72rem; cursor: pointer;
+                     border-radius: 6px; font-family: inherit; min-height: 34px; }
+    #tseries-clear:hover { color: var(--text); }
+    .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
+                    color: var(--dim); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+    .tseries-hint { font-size: 0.65rem; color: var(--faint); margin-top: 0.5rem; text-align: center; }
     .pie-legend span[data-domain] { cursor: pointer; }
-    .pie-legend span.sel { color: #ddd; }
-    .pie-legend span.sel .ldot { outline: 1.5px solid #fff; outline-offset: 1px; }
+    .pie-legend span.sel { color: var(--bright); }
+    .pie-legend span.sel .ldot { outline: 1.5px solid var(--bright); outline-offset: 1px; }
     .ts-table tbody tr[data-domain] { cursor: pointer; }
-    .ts-table tbody tr[data-domain]:hover td { background: #141414; }
-    .ts-table tbody tr.sel td { background: #14201b; }
-    .pie-tip { display: none; position: fixed; background: rgba(17, 17, 17, 0.95);
-               border: 1px solid #333; border-radius: 6px; padding: 0.5rem 0.7rem;
-               font-size: 0.72rem; color: #ccc; pointer-events: none; z-index: 50;
-               white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .ts-table tbody tr[data-domain]:hover td { background: var(--hover); }
+    .ts-table tbody tr.sel td { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
 
-    .ts-table-wrap { margin-top: 1rem; max-height: 240px; overflow-y: auto;
+    .ts-table-wrap { margin-top: 1rem; max-height: 280px; overflow-y: auto;
                      -webkit-overflow-scrolling: touch;
-                     border: 1px solid #1f1f1f; border-radius: 4px; }
+                     border: 1px solid var(--line); border-radius: 8px; }
     .ts-table-wrap::-webkit-scrollbar { width: 8px; }
-    .ts-table-wrap::-webkit-scrollbar-track { background: #0a0a0a; }
-    .ts-table-wrap::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+    .ts-table-wrap::-webkit-scrollbar-track { background: var(--bg); }
+    .ts-table-wrap::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
     .ts-table { width: 100%; border-collapse: collapse; font-size: 0.72rem;
-                color: #aaa; table-layout: fixed; }
-    .ts-table thead th { position: sticky; top: 0; background: #161616; color: #666;
+                color: var(--text); table-layout: fixed; }
+    .ts-table thead th { position: sticky; top: 0; background: var(--panel-2); color: var(--dim);
                          font-weight: 400; text-align: left; padding: 0.45rem 0.7rem;
-                         border-bottom: 1px solid #222; font-size: 0.68rem;
+                         border-bottom: 1px solid var(--line); font-size: 0.68rem;
                          text-transform: uppercase; letter-spacing: 0.04em; }
-    .ts-table td { padding: 0.35rem 0.7rem; border-bottom: 1px solid #181818; }
+    .ts-table td { padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--line); }
     .ts-table tr:last-child td { border-bottom: none; }
-    .ts-rank { color: #555; width: 2.2rem; }
+    .ts-rank { color: var(--dim); width: 2.2rem; }
     .ts-domain { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .ts-domain a { display: inline-block; max-width: 100%;
                    overflow: hidden; text-overflow: ellipsis;
                    white-space: nowrap; vertical-align: bottom; }
-    .ts-hits { text-align: right; font-variant-numeric: tabular-nums; color: #ccc;
+    .ts-hits { text-align: right; font-variant-numeric: tabular-nums; color: var(--text);
                width: 4.5rem; }
-    .ts-pct { text-align: right; font-variant-numeric: tabular-nums; color: #888;
+    .ts-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted);
               width: 3.2rem; }
-    .ts-summary { font-size: 0.7rem; color: #555; margin-top: 0.6rem; text-align: center; }
+    .ts-summary { font-size: 0.7rem; color: var(--dim); margin-top: 0.6rem; text-align: center; }
 
-    footer { padding-top: 1.5rem; border-top: 1px solid #1a1a1a; font-size: 0.7rem;
-             color: #444; display: flex; justify-content: center; gap: 0.4rem; }
-    footer a { color: #555; text-decoration: none; }
-    footer a:hover { color: #888; }
+    footer { padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: 0.7rem;
+             color: var(--faint); display: flex; align-items: center; justify-content: center;
+             flex-wrap: wrap; gap: 0.4rem 0.6rem; }
+    footer a { color: var(--dim); text-decoration: none; padding: 0.35rem 0.15rem; }
+    footer a:hover { color: var(--muted); }
 
     @media (max-width: 640px) {
-      body { padding: 1.5rem 0.75rem; }
-      #trend { height: 160px; }
+      body { padding-left: 0.75rem; padding-right: 0.75rem; }
+      #trend { height: 170px; }
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
-      .summary-3 { grid-template-columns: 1fr 1fr; }
-      #pie { width: 220px; height: 220px; }
-      .pie-legend { gap: 0.4rem 0.7rem; font-size: 0.65rem; }
-      .ts-table-wrap { max-height: 280px; }
-      .ts-table { font-size: 0.68rem; }
+      .summary-2, .summary-3 { grid-template-columns: 1fr 1fr; }
+      #pie { width: 230px; height: 230px; }
+      .pie-legend { gap: 0.3rem 0.6rem; font-size: 0.68rem; }
+      #spark, #tseries { height: 72px; }
+      .ts-table-wrap { max-height: 320px; }
+      .ts-table { font-size: 0.7rem; }
       .ts-table thead th { padding: 0.4rem 0.5rem; font-size: 0.62rem; }
-      .ts-table td { padding: 0.32rem 0.5rem; }
+      .ts-table td { padding: 0.5rem 0.5rem; }
       .ts-rank { width: 1.8rem; }
       .ts-hits { width: 3.6rem; }
       .ts-pct { width: 2.8rem; }
@@ -257,7 +248,7 @@ export function statsPage(d: StatsData): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1><a href="/" style="color:inherit;text-decoration:none"><strong>typeahead</strong></a> stats</h1>
+      <h1><a href="/" class="wordmark">typeahead</a> stats</h1>
     </div>
     <p class="subtitle">index health and search activity</p>
 
@@ -287,15 +278,15 @@ export function statsPage(d: StatsData): string {
 
     <div class="summary summary-3">
       <div class="metric">
-        <div class="label" data-tip="% of indexed actors with a resolved handle (vs bare DID only)">handle coverage</div>
+        <div class="label" tabindex="0" data-tip="% of indexed actors with a resolved handle (vs bare DID only)">handle coverage</div>
         <div class="value">${d.handlePct}%</div>
       </div>
       <div class="metric">
-        <div class="label" data-tip="% of indexed actors with a profile image">avatar coverage</div>
+        <div class="label" tabindex="0" data-tip="% of indexed actors with a profile image">avatar coverage</div>
         <div class="value">${d.avatarPct}%</div>
       </div>
       <div class="metric">
-        <div class="label" data-tip="actors hidden by bluesky moderation (!hide, !takedown, spam)">hidden by moderation</div>
+        <div class="label" tabindex="0" data-tip="actors hidden by bluesky moderation (!hide, !takedown, spam)">hidden by moderation</div>
         <div class="value">${d.hiddenCount.toLocaleString()}</div>
       </div>
     </div>
@@ -323,7 +314,7 @@ export function statsPage(d: StatsData): string {
       </div>
       <div class="metric">
         <div class="metric-head">
-          <div class="label" data-tip="cached (edge) vs uncached (fly replica)">avg latency</div>
+          <div class="label" tabindex="0" data-tip="cached (edge) vs uncached (fly replica)">avg latency</div>
           <span class="range-btns" id="latency-range">
             <button data-range="24h" class="active">24h</button>
             <button data-range="7d">7d</button>
@@ -356,7 +347,7 @@ export function statsPage(d: StatsData): string {
                <circle id="tseries-dot" r="2.5" style="display:none" />
              </svg>
              <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
-             <div class="tseries-hint">click a slice, legend entry, or table row to pin an app &middot; hover the line for details</div>
+             <div class="tseries-hint">tap a slice, legend entry, or table row to pin an app &middot; trace the line for details</div>
              <div id="tseries-empty" style="display:none;color:#444;font-size:0.75rem;padding:0.8rem 0;text-align:center">collecting data &mdash; hourly per-app history began 2026-07-24</div>
            </div>
            ${d.trafficSources.length > PIE_TOP_N
@@ -377,6 +368,8 @@ export function statsPage(d: StatsData): string {
 
     <footer>
       <a href="/">&larr; home</a>
+      · <a href="/docs">docs</a>
+      <button class="theme-btn" id="theme-toggle" type="button">theme: auto</button>
     </footer>
   </div>
   <div class="spark-tip" id="spark-tip"></div>
@@ -690,28 +683,35 @@ export function statsPage(d: StatsData): string {
       });
     });
 
-    // hover the line itself: crosshair dot + timestamp/value tooltip
+    // trace the line: crosshair dot + timestamp/value tooltip (mouse or finger)
+    function tseriesTrace(clientX, clientY) {
+      if (!tsView) return;
+      const rect = tseriesEl.getBoundingClientRect();
+      const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const idx = Math.round(frac * (tsView.counts.length - 1));
+      const c = tsView.counts[idx];
+      if (tseriesDot) {
+        tseriesDot.setAttribute('cx', (idx * tsView.step).toFixed(1));
+        tseriesDot.setAttribute('cy', tsView.toY(c).toFixed(1));
+        tseriesDot.style.display = 'block';
+      }
+      sparkTip.textContent = fmtSec(tsView.t0Sec + idx * tsView.stepSec, true) + ' UTC — ' + c + (c === 1 ? ' hit' : ' hits');
+      sparkTip.style.display = 'block';
+      // keep the tip above the finger/cursor and inside the viewport
+      const tx = Math.min(clientX + 12, window.innerWidth - sparkTip.offsetWidth - 8);
+      sparkTip.style.left = Math.max(8, tx) + 'px';
+      sparkTip.style.top = (clientY - 40) + 'px';
+    }
+    function tseriesTraceEnd() {
+      sparkTip.style.display = 'none';
+      if (tseriesDot) tseriesDot.style.display = 'none';
+    }
     if (tseriesEl) {
-      tseriesEl.addEventListener('mousemove', e => {
-        if (!tsView) return;
-        const rect = tseriesEl.getBoundingClientRect();
-        const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-        const idx = Math.round(frac * (tsView.counts.length - 1));
-        const c = tsView.counts[idx];
-        if (tseriesDot) {
-          tseriesDot.setAttribute('cx', (idx * tsView.step).toFixed(1));
-          tseriesDot.setAttribute('cy', tsView.toY(c).toFixed(1));
-          tseriesDot.style.display = 'block';
-        }
-        sparkTip.textContent = fmtSec(tsView.t0Sec + idx * tsView.stepSec, true) + ' UTC — ' + c + (c === 1 ? ' hit' : ' hits');
-        sparkTip.style.display = 'block';
-        sparkTip.style.left = (e.clientX + 12) + 'px';
-        sparkTip.style.top = (e.clientY - 28) + 'px';
-      });
-      tseriesEl.addEventListener('mouseleave', () => {
-        sparkTip.style.display = 'none';
-        if (tseriesDot) tseriesDot.style.display = 'none';
-      });
+      tseriesEl.addEventListener('mousemove', e => tseriesTrace(e.clientX, e.clientY));
+      tseriesEl.addEventListener('mouseleave', tseriesTraceEnd);
+      tseriesEl.addEventListener('touchstart', e => { const t = e.touches[0]; tseriesTrace(t.clientX, t.clientY); }, { passive: true });
+      tseriesEl.addEventListener('touchmove', e => { const t = e.touches[0]; tseriesTrace(t.clientX, t.clientY); }, { passive: true });
+      tseriesEl.addEventListener('touchend', tseriesTraceEnd);
     }
     showSeries(null);
 
@@ -925,26 +925,32 @@ export function statsPage(d: StatsData): string {
       if (btn) applyRange(btn.dataset.range);
     });
 
+    function sparkTrace(clientX, clientY) {
+      const rect = spark.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const idx = Math.min(Math.round(x / rect.width * (sparkView.length - 1)), sparkView.length - 1);
+      if (idx >= 0 && sparkView[idx]) {
+        const sc = sparkView[idx].searches;
+        sparkTip.textContent = sparkView[idx].time + ' — ' + sc + (sc === 1 ? ' search' : ' searches');
+        sparkTip.style.display = 'block';
+        const tx = Math.min(clientX + 12, window.innerWidth - sparkTip.offsetWidth - 8);
+        sparkTip.style.left = Math.max(8, tx) + 'px';
+        sparkTip.style.top = (clientY - 40) + 'px';
+      }
+    }
     if (spark) {
-      spark.addEventListener('mousemove', e => {
-        const rect = spark.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const idx = Math.min(Math.round(x / rect.width * (sparkView.length - 1)), sparkView.length - 1);
-        if (idx >= 0 && sparkView[idx]) {
-          const sc = sparkView[idx].searches;
-          sparkTip.textContent = sparkView[idx].time + ' — ' + sc + (sc === 1 ? ' search' : ' searches');
-          sparkTip.style.display = 'block';
-          sparkTip.style.left = (e.clientX + 12) + 'px';
-          sparkTip.style.top = (e.clientY - 28) + 'px';
-        }
-      });
+      spark.addEventListener('mousemove', e => sparkTrace(e.clientX, e.clientY));
       spark.addEventListener('mouseleave', () => { sparkTip.style.display = 'none'; });
+      spark.addEventListener('touchstart', e => { const t = e.touches[0]; sparkTrace(t.clientX, t.clientY); }, { passive: true });
+      spark.addEventListener('touchmove', e => { const t = e.touches[0]; sparkTrace(t.clientX, t.clientY); }, { passive: true });
+      spark.addEventListener('touchend', () => { sparkTip.style.display = 'none'; });
     }
 
     // default 7d: SSR already renders the 7d view; this makes the JS slice the
     // single source of truth so server + client always agree, and primes
     // sparkView for the tooltip.
     applyRange('7d');
+    ${THEME_SCRIPT}
   </script>
 </body>
 </html>`;

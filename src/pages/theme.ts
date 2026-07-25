@@ -1,0 +1,90 @@
+// shared visual identity for all typeahead pages.
+// tokens + theme boot live here so home/stats/docs render one coherent system.
+
+export const THEME_HEAD = `<meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0a0b0a" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f2f3ef" media="(prefers-color-scheme: light)">
+  <script>(function(){try{var t=localStorage.getItem('ta.theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(_){}})()</script>`;
+
+export const THEME_CSS = `
+    :root {
+      --bg: #0a0b0a; --panel: #101211; --panel-2: #161917; --hover: #1a1d1b;
+      --line: #212523; --line-2: #2b302d;
+      --text: #d9dedb; --bright: #f2f5f3; --muted: #8a938e; --dim: #59615c; --faint: #3d423f;
+      --accent: #44aa99; --accent-dim: #2c6e63; --blue: #58a6ff; --violet: #bc8cff;
+      --amber: #e5a04b; --red: #e06c75;
+      --tip-bg: rgba(16, 18, 17, 0.96);
+      color-scheme: dark;
+    }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg: #f2f3ef; --panel: #fafbf8; --panel-2: #eceee8; --hover: #e6e8e2;
+        --line: #d8dbd3; --line-2: #c8ccc3;
+        --text: #2c322e; --bright: #131614; --muted: #5d665f; --dim: #8a938c; --faint: #b4bab2;
+        --accent: #14795f; --accent-dim: #4c9c88; --blue: #2465c2; --violet: #7a4bc9;
+        --amber: #a86a1c; --red: #b13540;
+        --tip-bg: rgba(250, 251, 248, 0.97);
+        color-scheme: light;
+      }
+    }
+    :root[data-theme="light"] {
+      --bg: #f2f3ef; --panel: #fafbf8; --panel-2: #eceee8; --hover: #e6e8e2;
+      --line: #d8dbd3; --line-2: #c8ccc3;
+      --text: #2c322e; --bright: #131614; --muted: #5d665f; --dim: #8a938c; --faint: #b4bab2;
+      --accent: #14795f; --accent-dim: #4c9c88; --blue: #2465c2; --violet: #7a4bc9;
+      --amber: #a86a1c; --red: #b13540;
+      --tip-bg: rgba(250, 251, 248, 0.97);
+      color-scheme: light;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6;
+      min-height: 100vh; -webkit-tap-highlight-color: transparent;
+    }
+    button, a { touch-action: manipulation; }
+    a:focus-visible, button:focus-visible, [tabindex]:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+    }
+    ::selection { background: var(--accent); color: var(--bg); }
+    /* signature: the wordmark carries a live caret — search happens at the caret */
+    .wordmark { color: var(--bright); font-weight: 700; text-decoration: none; }
+    .wordmark::after {
+      content: ""; display: inline-block; width: 0.5em; height: 1em; margin-left: 0.12em;
+      background: var(--accent); vertical-align: text-bottom;
+      animation: caret-blink 1.1s steps(1) infinite;
+    }
+    @keyframes caret-blink { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .wordmark::after { animation: none; }
+      * { transition: none !important; }
+    }
+    .theme-btn {
+      background: none; border: 1px solid var(--line); border-radius: 6px; color: var(--dim);
+      font: inherit; font-size: 0.7rem; padding: 0.3rem 0.6rem; cursor: pointer;
+      min-height: 32px;
+    }
+    .theme-btn:hover { color: var(--muted); border-color: var(--line-2); }
+`;
+
+// cycles system → dark → light; expects a button with id="theme-toggle"
+export const THEME_SCRIPT = `
+    (function() {
+      var btn = document.getElementById('theme-toggle');
+      if (!btn) return;
+      function current() { try { return localStorage.getItem('ta.theme') || 'system'; } catch (_) { return 'system'; } }
+      function label(mode) { return { system: 'theme: auto', dark: 'theme: dark', light: 'theme: light' }[mode]; }
+      function apply(mode) {
+        if (mode === 'dark' || mode === 'light') document.documentElement.dataset.theme = mode;
+        else delete document.documentElement.dataset.theme;
+        btn.textContent = label(mode);
+      }
+      btn.addEventListener('click', function() {
+        var next = { system: 'dark', dark: 'light', light: 'system' }[current()];
+        try { next === 'system' ? localStorage.removeItem('ta.theme') : localStorage.setItem('ta.theme', next); } catch (_) {}
+        apply(next);
+      });
+      apply(current());
+    })();
+`;

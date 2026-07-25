@@ -1,67 +1,65 @@
 import { FAVICON } from "../types";
+import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
 
 export function docsPage(): string {
   return `<!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>typeahead — switching from bluesky</title>
   ${FAVICON}
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: system-ui, sans-serif; background: #0a0a0a; color: #e0e0e0;
-           display: flex; justify-content: center; padding: 2rem 1rem; min-height: 100vh; }
+  ${THEME_HEAD}
+  <style>${THEME_CSS}
+    body { display: flex; justify-content: center;
+           padding: calc(1.5rem + env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom)); }
     .container { max-width: 620px; width: 100%; }
     .header { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
-    h1 { font-size: 1.1rem; font-weight: 400; color: #888; }
-    h1 strong { color: #e0e0e0; }
-    .subtitle { font-size: 0.8rem; color: #555; margin-bottom: 1.5rem; }
-    h2 { font-size: 0.85rem; font-weight: 600; color: #ccc; margin: 1.5rem 0 0.6rem; }
-    h3 { font-size: 0.8rem; font-weight: 600; color: #aaa; margin: 1.2rem 0 0.5rem; }
-    p, li { font-size: 0.8rem; color: #999; line-height: 1.6; }
+    h1 { font-size: 1.1rem; font-weight: 400; color: var(--muted); }
+    .subtitle { font-size: 0.8rem; color: var(--dim); margin-bottom: 1.5rem; }
+    h2 { font-size: 0.85rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.6rem; }
+    h3 { font-size: 0.8rem; font-weight: 600; color: var(--muted); margin: 1.2rem 0 0.5rem; }
+    p, li { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
     p { margin-bottom: 0.7rem; }
     ul { margin: 0 0 0.7rem 1.2rem; }
     li { margin-bottom: 0.3rem; }
-    code { font-family: ui-monospace, monospace; font-size: 0.75rem; background: #1a1a1a;
-           border: 1px solid #222; border-radius: 3px; padding: 0.1rem 0.35rem; color: #ccc; }
-    pre { background: #111; border: 1px solid #222; border-radius: 6px; padding: 0.8rem;
-          overflow-x: auto; margin-bottom: 0.7rem; }
-    pre code { background: none; border: none; padding: 0; font-size: 0.72rem; color: #bbb; }
-    .diff-add { color: #4a9; }
-    .diff-del { color: #a55; }
-    .kw { color: #c678dd; }
-    .str { color: #98c379; }
-    .fn { color: #61afef; }
-    .cm { color: #5c6370; font-style: italic; }
-    .op { color: #abb2bf; }
-    .callout { background: #111; border: 1px solid #222; border-left: 3px solid #4a9;
-               border-radius: 6px; padding: 0.7rem 0.9rem; margin-bottom: 1rem;
-               font-size: 0.78rem; color: #999; line-height: 1.6; }
-    .callout strong { color: #ccc; }
-    .callout.warn { border-left-color: #b98a3e; }
+    code { font-size: 0.75rem; background: var(--panel-2);
+           border: 1px solid var(--line); border-radius: 4px; padding: 0.1rem 0.35rem; color: var(--text); }
+    pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 0.8rem;
+          overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.7rem; }
+    pre code { background: none; border: none; padding: 0; font-size: 0.72rem; color: var(--text); }
+    .diff-add { color: var(--accent); }
+    .diff-del { color: var(--red); }
+    .kw { color: var(--violet); }
+    .str { color: var(--accent); }
+    .fn { color: var(--blue); }
+    .cm { color: var(--dim); font-style: italic; }
+    .op { color: var(--muted); }
+    .callout { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent);
+               border-radius: 8px; padding: 0.7rem 0.9rem; margin-bottom: 1rem;
+               font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
+    .callout strong { color: var(--text); }
+    .callout.warn { border-left-color: var(--amber); }
     table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.75rem; }
-    th { text-align: left; color: #666; font-weight: 400; padding: 0.4rem 0.6rem;
-         border-bottom: 1px solid #222; }
-    td { padding: 0.4rem 0.6rem; border-bottom: 1px solid #1a1a1a; color: #999; }
+    th { text-align: left; color: var(--dim); font-weight: 400; padding: 0.4rem 0.6rem;
+         border-bottom: 1px solid var(--line); }
+    td { padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--line); color: var(--muted); }
     td code { font-size: 0.7rem; }
-    .yes { color: #4a9; }
-    .no { color: #666; }
-    footer { padding-top: 1.5rem; border-top: 1px solid #1a1a1a; font-size: 0.7rem;
-             color: #444; display: flex; justify-content: center; gap: 0.4rem; }
-    footer a { color: #555; text-decoration: none; }
-    footer a:hover { color: #888; }
-    a { color: #58a6ff; text-decoration: none; }
+    .yes { color: var(--accent); }
+    .no { color: var(--dim); }
+    footer { padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: 0.7rem;
+             color: var(--faint); display: flex; align-items: center; justify-content: center;
+             flex-wrap: wrap; gap: 0.4rem 0.6rem; }
+    footer a { color: var(--dim); text-decoration: none; padding: 0.35rem 0.15rem; }
+    footer a:hover { color: var(--muted); }
+    a { color: var(--blue); text-decoration: none; }
     a:hover { text-decoration: underline; }
-    @media (max-width: 640px) {
-      body { padding: 1.5rem 0.75rem; }
-    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1><a href="/" style="color:inherit;text-decoration:none"><strong>typeahead</strong></a> docs</h1>
+      <h1><a href="/" class="wordmark">typeahead</a> docs</h1>
     </div>
     <p class="subtitle">switching from the bluesky typeahead API</p>
 
@@ -232,8 +230,10 @@ export function docsPage(): string {
     <footer>
       <a href="/">&larr; home</a>
       · <a href="/stats">stats</a>
+      <button class="theme-btn" id="theme-toggle" type="button">theme: auto</button>
     </footer>
   </div>
+  <script>${THEME_SCRIPT}</script>
 </body>
 </html>`;
 }
