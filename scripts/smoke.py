@@ -249,7 +249,11 @@ def test_moderation_filtering(base_url: str):
     print("\n--- !no-unauthenticated inclusion ---")
     found = find_noauth_actor(base_url)
     if not found:
-        check("found a !no-unauthenticated actor to verify", False, "couldn't find one — skipping")
+        # depends on bsky's search surfacing a labeled actor for our fixed
+        # queries — absence is external noise, not a regression, so don't
+        # fail the deploy gate over it. a found-but-hidden actor still FAILs
+        # inside find_noauth_actor.
+        print(f"  [{SKIP}] skipped (bsky returned no !no-unauthenticated actor to verify against)")
 
 
 def find_noauth_actor(base_url: str) -> bool:
