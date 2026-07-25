@@ -6,6 +6,10 @@ export interface Env {
   TURSO_URL: string;
   TURSO_AUTH_TOKEN: string;
   SEARCH_BACKEND_URL?: string;
+  /// DID of the service's own atproto account (@typeahead.waow.tech).
+  /// served at /.well-known/atproto-did for handle verification; the
+  /// _lexicon DNS record points here so the service owns its lexicons.
+  SERVICE_DID?: string;
   /// Emergency kill switch: when set (any non-empty value), the search
   /// handler bypasses everything (ingester, Turso, cache) and proxies
   /// directly to Bluesky's public typeahead API. Flip via:

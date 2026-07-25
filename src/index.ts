@@ -46,6 +46,14 @@ export default {
     if (pathname === "/" && request.method === "GET") {
       return html(indexPage());
     }
+    // atproto handle verification for the service's own account
+    // (SERVICE_DID is a wrangler var; set once the account exists)
+    if (pathname === "/.well-known/atproto-did" && request.method === "GET") {
+      if (!env.SERVICE_DID) return new Response("not found", { status: 404 });
+      return new Response(env.SERVICE_DID, {
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" },
+      });
+    }
     if (pathname === "/llms.txt" && request.method === "GET") {
       return new Response(llmsTxt(), {
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...CORS_HEADERS },

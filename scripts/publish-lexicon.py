@@ -1,17 +1,21 @@
 # /// script
 # requires-python = ">=3.11"
 # ///
-"""publish the lexicon schema record so tech.waow.typeahead.* NSIDs resolve.
+"""publish the lexicon schema records so tech.waow.typeahead.* NSIDs resolve.
 
-writes a com.atproto.lexicon.schema record (rkey = NSID) to the authority DID's
-repo. the authority DID is whatever _lexicon.typeahead.waow.tech points at —
-currently did:plc:xbtmt2zjwlrfegqvch7fboei (zzstoatzz.io, pds.zzstoatzz.io).
+writes each lexicons/*.json as a com.atproto.lexicon.schema record (rkey = NSID)
+into the SERVICE account's repo — the @typeahead.waow.tech account, which is
+what the _lexicon.typeahead.waow.tech DNS TXT record points at. the service owns
+its lexicons; no personal account is involved.
 
 usage:
-    ATP_PASSWORD=<app-password> uv run scripts/publish-lexicon.py
+    ATP_IDENTIFIER=typeahead.waow.tech ATP_PASSWORD=<app-password> \
+        uv run scripts/publish-lexicon.py
 
-idempotent: putRecord overwrites the existing record, so re-run after editing
-lexicons/*.json to republish.
+optional env:
+    ATP_PDS  — PDS base URL (default https://pds.zzstoatzz.io)
+
+idempotent: putRecord overwrites, so re-run after editing lexicons/*.json.
 """
 
 import json
@@ -20,8 +24,7 @@ import pathlib
 import sys
 import urllib.request
 
-PDS = "https://pds.zzstoatzz.io"
-HANDLE = "zzstoatzz.io"
+PDS = os.environ.get("ATP_PDS", "https://pds.zzstoatzz.io")
 LEXICON_DIR = pathlib.Path(__file__).parent.parent / "lexicons"
 
 
@@ -37,11 +40,12 @@ def xrpc(path: str, body: dict, token: str | None = None) -> dict:
 
 
 def main() -> None:
+    identifier = os.environ.get("ATP_IDENTIFIER")
     password = os.environ.get("ATP_PASSWORD")
-    if not password:
-        sys.exit("set ATP_PASSWORD (an app password for zzstoatzz.io)")
+    if not identifier or not password:
+        sys.exit("set ATP_IDENTIFIER (the service account handle/DID) and ATP_PASSWORD")
 
-    session = xrpc("com.atproto.server.createSession", {"identifier": HANDLE, "password": password})
+    session = xrpc("com.atproto.server.createSession", {"identifier": identifier, "password": password})
     did, token = session["did"], session["accessJwt"]
     print(f"authenticated as {did}")
 
@@ -56,6 +60,8 @@ def main() -> None:
             "record": record,
         }, token)
         print(f"published {nsid} -> {result['uri']}")
+
+    print("\nif this DID differs from the _lexicon.typeahead.waow.tech TXT record, update DNS.")
 
 
 if __name__ == "__main__":
