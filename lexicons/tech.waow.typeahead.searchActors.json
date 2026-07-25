@@ -4,20 +4,21 @@
   "defs": {
     "main": {
       "type": "query",
-      "description": "Prefix search for atproto actors, ordered for typeahead use. Served entirely from a community-run index; unauthenticated.",
+      "description": "Prefix search for atproto actors, ordered for typeahead use. Served entirely from a community-run index (https://typeahead.waow.tech); unauthenticated, CORS-enabled, results edge-cached for 60s. Also served at app.bsky.actor.searchActorsTypeahead as a drop-in migration alias with an identical response.",
       "parameters": {
         "type": "params",
         "required": ["q"],
         "properties": {
           "q": {
             "type": "string",
-            "description": "Search prefix; matched against handles and display names."
+            "description": "Search prefix; matched case-insensitively against handles and display names (CJK display names are matched via bigrams)."
           },
           "limit": {
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "default": 10
+            "default": 10,
+            "description": "Maximum number of actors to return."
           }
         }
       },
@@ -29,6 +30,7 @@
           "properties": {
             "actors": {
               "type": "array",
+              "description": "Matching actors, best match first. Ranking blends prefix quality with a stored popularity score; actors hidden by moderation are excluded.",
               "items": { "type": "ref", "ref": "#actorBasic" }
             }
           }
@@ -37,16 +39,43 @@
     },
     "actorBasic": {
       "type": "object",
-      "description": "Basic actor profile. Matches the shape of app.bsky.actor.defs#profileViewBasic minus the authenticated viewer state.",
+      "description": "Basic actor profile. Matches the shape of app.bsky.actor.defs#profileViewBasic minus the authenticated viewer state, so results are interchangeable with bluesky's for unauthenticated use.",
       "required": ["did", "handle"],
       "properties": {
-        "did": { "type": "string", "format": "did" },
-        "handle": { "type": "string", "format": "handle" },
-        "displayName": { "type": "string", "maxGraphemes": 64, "maxLength": 640 },
-        "avatar": { "type": "string", "format": "uri" },
-        "associated": { "type": "unknown" },
-        "labels": { "type": "unknown" },
-        "createdAt": { "type": "string", "format": "datetime" }
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "The actor's decentralized identifier."
+        },
+        "handle": {
+          "type": "string",
+          "format": "handle",
+          "description": "The actor's current handle, e.g. zzstoatzz.io."
+        },
+        "displayName": {
+          "type": "string",
+          "maxGraphemes": 64,
+          "maxLength": 640,
+          "description": "Self-declared display name from the actor's profile record; absent if unset."
+        },
+        "avatar": {
+          "type": "string",
+          "format": "uri",
+          "description": "Avatar image URL — usually a bluesky CDN URL, but may point directly at the actor's PDS blob endpoint for accounts bluesky's CDN no longer serves."
+        },
+        "associated": {
+          "type": "unknown",
+          "description": "Pass-through of app.bsky.actor.defs#profileAssociated as last seen from the actor's profile (lists, feedgens, starter packs, chat settings); absent if never observed."
+        },
+        "labels": {
+          "type": "unknown",
+          "description": "Pass-through of the actor's com.atproto.label.defs#label array (self-labels and moderation-service labels) as last seen; may be empty."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Account creation time as reported by the actor's profile view; absent if unknown."
+        }
       }
     }
   }
