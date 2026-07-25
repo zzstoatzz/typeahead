@@ -71,31 +71,32 @@ export function statsPage(d: StatsData): string {
   const pieSlice = d.trafficSources.slice(0, PIE_TOP_N);
   const trafficJson = JSON.stringify(pieSlice);
   const trafficGrandTotal = trafficTotal;
-  // per-domain hourly series, only for domains shown in the pie (compact form:
-  // domain -> [[hour, hits], ...])
-  const pieDomains = new Set(pieSlice.map((r) => r.domain));
+  // per-domain hourly series for every recorded domain (bounded: ~50 domains ×
+  // ≤720 hourly rows), compact form: domain -> [[hour, hits], ...]
   const seriesByDomain: Record<string, [number, number][]> = {};
   for (const r of d.trafficSeries) {
-    if (!pieDomains.has(r.domain)) continue;
     (seriesByDomain[r.domain] ??= []).push([r.hour, r.hits]);
   }
   const trafficSeriesJson = JSON.stringify(seriesByDomain);
+
+  // domains come from caller-controlled headers (X-Client/Origin) — escape them
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   const pieLegendHtml = pieSlice.map((r, i) => {
     const color = SPECIAL_DOMAINS[r.domain] ?? PIE_COLORS[i % PIE_COLORS.length];
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
     const label = r.domain in SPECIAL_DOMAINS
-      ? r.domain
-      : `<a href="https://${r.domain}" target="_blank" rel="noopener" class="legend-link">${r.domain}</a>`;
-    return `<span><span class="ldot" style="background:${color}"></span>${label} (${pct}%)</span>`;
+      ? esc(r.domain)
+      : `<a href="https://${esc(r.domain)}" target="_blank" rel="noopener" class="legend-link">${esc(r.domain)}</a>`;
+    return `<span data-domain="${esc(r.domain)}"><span class="ldot" style="background:${color}"></span>${label} (${pct}%)</span>`;
   }).join('');
 
   const trafficTableRows = d.trafficSources.map((r, i) => {
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
     const label = r.domain in SPECIAL_DOMAINS
-      ? r.domain
-      : `<a href="https://${r.domain}" target="_blank" rel="noopener" class="legend-link">${r.domain}</a>`;
-    return `<tr><td class="ts-rank">${i + 1}</td><td class="ts-domain">${label}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td></tr>`;
+      ? esc(r.domain)
+      : `<a href="https://${esc(r.domain)}" target="_blank" rel="noopener" class="legend-link">${esc(r.domain)}</a>`;
+    return `<tr data-domain="${esc(r.domain)}"><td class="ts-rank">${i + 1}</td><td class="ts-domain">${label}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td></tr>`;
   }).join('');
 
   return `<!doctype html>
@@ -175,8 +176,25 @@ export function statsPage(d: StatsData): string {
     .legend-link { color: #888; text-decoration: none; border-bottom: 1px dotted #444; }
     .legend-link:hover { color: #ccc; border-bottom-color: #888; }
     .traffic-series { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #1a1a1a; }
-    .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: #555; margin-bottom: 0.5rem; }
-    #tseries polyline { fill: none; stroke: #4a9; stroke-width: 1.5; transition: stroke 0.15s; }
+    .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: #555; margin-bottom: 0; }
+    .traffic-series .ranged-header { margin-bottom: 0.5rem; }
+    #tseries { cursor: crosshair; }
+    #tseries polyline { fill: none; stroke: #4a9; stroke-width: 1.5; transition: stroke 0.15s;
+                        vector-effect: non-scaling-stroke; }
+    #tseries-dot { fill: #fff; stroke: #4a9; stroke-width: 1.5; }
+    #tseries-clear { background: #1a1a1a; border: 1px solid #333; color: #999;
+                     padding: 0.15rem 0.5rem; font-size: 0.65rem; cursor: pointer;
+                     border-radius: 3px; font-family: inherit; }
+    #tseries-clear:hover { color: #ccc; }
+    .tseries-axis { display: flex; justify-content: space-between; font-size: 0.62rem;
+                    color: #444; margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
+    .tseries-hint { font-size: 0.62rem; color: #3a3a3a; margin-top: 0.4rem; text-align: center; }
+    .pie-legend span[data-domain] { cursor: pointer; }
+    .pie-legend span.sel { color: #ddd; }
+    .pie-legend span.sel .ldot { outline: 1.5px solid #fff; outline-offset: 1px; }
+    .ts-table tbody tr[data-domain] { cursor: pointer; }
+    .ts-table tbody tr[data-domain]:hover td { background: #141414; }
+    .ts-table tbody tr.sel td { background: #14201b; }
     .pie-tip { display: none; position: fixed; background: rgba(17, 17, 17, 0.95);
                border: 1px solid #333; border-radius: 6px; padding: 0.5rem 0.7rem;
                font-size: 0.72rem; color: #ccc; pointer-events: none; z-index: 50;
@@ -315,11 +333,17 @@ export function statsPage(d: StatsData): string {
         ? `<canvas id="pie"></canvas>
            <div class="pie-legend">${pieLegendHtml}</div>
            <div class="traffic-series">
-             <h2 id="tseries-label">traffic over time — all sources</h2>
-             <svg viewBox="0 0 600 60" preserveAspectRatio="none" id="tseries">
+             <div class="ranged-header">
+               <h2 id="tseries-label">traffic over time — all sources</h2>
+               <button id="tseries-clear" style="display:none">&times; all sources</button>
+             </div>
+             <svg viewBox="0 0 600 90" preserveAspectRatio="none" id="tseries">
                <polyline points="" id="tseries-poly" />
+               <circle id="tseries-dot" r="2.5" style="display:none" />
              </svg>
-             <div id="tseries-empty" style="display:none;color:#444;font-size:0.75rem;padding:0.8rem 0;text-align:center">collecting data — hourly per-app history starts July 2026</div>
+             <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
+             <div class="tseries-hint">click a slice, legend entry, or table row to pin an app &middot; hover the line for details</div>
+             <div id="tseries-empty" style="display:none;color:#444;font-size:0.75rem;padding:0.8rem 0;text-align:center">collecting data &mdash; hourly per-app history began 2026-07-24</div>
            </div>
            ${d.trafficSources.length > PIE_TOP_N
               ? `<div class="ts-summary">top ${PIE_TOP_N} above · all ${d.trafficSources.length} sources below</div>`
@@ -558,43 +582,99 @@ export function statsPage(d: StatsData): string {
     const pieCanvas = document.getElementById('pie');
     const pieTip = document.getElementById('pie-tip');
 
-    /* --- per-app traffic history: pie hover drives this line --- */
+    /* --- per-app traffic history: click pins a domain, hover the line for detail --- */
     const trafficSeries = ${trafficSeriesJson}; // domain -> [[hour, hits], ...]
     const tseriesPoly = document.getElementById('tseries-poly');
+    const tseriesDot = document.getElementById('tseries-dot');
     const tseriesLabel = document.getElementById('tseries-label');
     const tseriesEl = document.getElementById('tseries');
     const tseriesEmpty = document.getElementById('tseries-empty');
+    const tseriesClear = document.getElementById('tseries-clear');
+    const tseriesT0 = document.getElementById('tseries-t0');
+    const tseriesT1 = document.getElementById('tseries-t1');
+    const TS_W = 600, TS_H = 90, TS_PAD = 5;
+    let pinnedDomain = null;   // click-selected; survives pie mouse-out
+    let tsView = null;         // {h0, counts, color} — the line hover reads this
 
+    const SPECIAL_SERIES = { unknown: '#555', homepage: '#666' };
+    function domainColor(domain) {
+      if (domain == null) return '#4a9';
+      if (SPECIAL_SERIES[domain]) return SPECIAL_SERIES[domain];
+      const idx = traffic.findIndex(r => r.domain === domain);
+      return idx >= 0 ? PIE_COLORS[idx % PIE_COLORS.length] : '#4a9';
+    }
     function seriesFor(domain) {
       if (domain != null) return trafficSeries[domain] || [];
-      // all sources: sum per hour across domains
       const sums = new Map();
       for (const dom in trafficSeries) {
         for (const [h, hits] of trafficSeries[dom]) sums.set(h, (sums.get(h) || 0) + hits);
       }
       return [...sums.entries()].sort((a, b) => a[0] - b[0]);
     }
-    function showSeries(domain, color) {
+    function fmtHour(h) {
+      return new Date(h * 3600000).toISOString().slice(5, 16).replace('T', ' ') + 'Z';
+    }
+    function showSeries(domain) {
       if (!tseriesPoly) return;
       const raw = seriesFor(domain);
-      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time — ' + (domain || 'all sources');
-      if (raw.length < 2) {
-        if (tseriesEl) tseriesEl.style.display = 'none';
-        if (tseriesEmpty) tseriesEmpty.style.display = 'block';
-        return;
-      }
-      if (tseriesEl) tseriesEl.style.display = 'block';
-      if (tseriesEmpty) tseriesEmpty.style.display = 'none';
+      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time — ' + (domain || 'all sources') + ' · hourly';
+      const empty = raw.length < 2;
+      if (tseriesEl) tseriesEl.style.display = empty ? 'none' : 'block';
+      if (tseriesEmpty) tseriesEmpty.style.display = empty ? 'block' : 'none';
+      if (empty) { tsView = null; if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
       // fill hour gaps with 0 so quiet periods read as quiet, not skipped
       const h0 = raw[0][0], hN = raw[raw.length - 1][0];
       const byHour = new Map(raw);
       const counts = [];
       for (let h = h0; h <= hN && counts.length <= 24 * 31; h++) counts.push(byHour.get(h) || 0);
       const max = Math.max(...counts, 1);
-      const step = counts.length > 1 ? 600 / (counts.length - 1) : 0;
-      tseriesPoly.setAttribute('points', counts.map((c, i) => (i * step).toFixed(1) + ',' + (60 - (c / max) * 60).toFixed(1)).join(' '));
-      tseriesPoly.setAttribute('stroke', color || '#4a9');
-      tseriesPoly.style.stroke = color || '#4a9';
+      const color = domainColor(domain);
+      const step = counts.length > 1 ? TS_W / (counts.length - 1) : 0;
+      const toY = c => TS_PAD + (1 - c / max) * (TS_H - 2 * TS_PAD);
+      tseriesPoly.setAttribute('points', counts.map((c, i) => (i * step).toFixed(1) + ',' + toY(c).toFixed(1)).join(' '));
+      tseriesPoly.style.stroke = color;
+      if (tseriesDot) { tseriesDot.style.display = 'none'; tseriesDot.style.stroke = color; }
+      if (tseriesT0) tseriesT0.textContent = fmtHour(h0);
+      if (tseriesT1) tseriesT1.textContent = fmtHour(hN + 1);
+      tsView = { h0, counts, max, step, toY };
+    }
+    function applySelection(domain) {
+      pinnedDomain = domain;
+      if (tseriesClear) tseriesClear.style.display = domain != null ? 'inline-block' : 'none';
+      document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el =>
+        el.classList.toggle('sel', el.dataset.domain === domain));
+      showSeries(domain);
+    }
+    tseriesClear?.addEventListener('click', () => applySelection(null));
+    document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('a')) return; // domain links still navigate
+        applySelection(pinnedDomain === el.dataset.domain ? null : el.dataset.domain);
+      });
+    });
+
+    // hover the line itself: crosshair dot + timestamp/value tooltip
+    if (tseriesEl) {
+      tseriesEl.addEventListener('mousemove', e => {
+        if (!tsView) return;
+        const rect = tseriesEl.getBoundingClientRect();
+        const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const idx = Math.round(frac * (tsView.counts.length - 1));
+        const c = tsView.counts[idx];
+        if (tseriesDot) {
+          tseriesDot.setAttribute('cx', (idx * tsView.step).toFixed(1));
+          tseriesDot.setAttribute('cy', tsView.toY(c).toFixed(1));
+          tseriesDot.style.display = 'block';
+        }
+        sparkTip.textContent = fmtHour(tsView.h0 + idx) + ' — ' + c + (c === 1 ? ' hit' : ' hits');
+        sparkTip.style.display = 'block';
+        sparkTip.style.left = (e.clientX + 12) + 'px';
+        sparkTip.style.top = (e.clientY - 28) + 'px';
+      });
+      tseriesEl.addEventListener('mouseleave', () => {
+        sparkTip.style.display = 'none';
+        if (tseriesDot) tseriesDot.style.display = 'none';
+      });
     }
     showSeries(null);
 
@@ -694,8 +774,8 @@ export function statsPage(d: StatsData): string {
         if (idx !== hoverIdx) {
           hoverIdx = idx;
           drawPie();
-          if (idx >= 0) showSeries(segments[idx].domain, segments[idx].color);
-          else showSeries(null);
+          // hover previews the history only while nothing is pinned
+          if (pinnedDomain == null) showSeries(idx >= 0 ? segments[idx].domain : null);
         }
         if (idx >= 0) {
           const seg = segments[idx];
@@ -712,9 +792,15 @@ export function statsPage(d: StatsData): string {
       }
 
       pieCanvas.addEventListener('mousemove', e => pieHover(e.clientX, e.clientY));
-      pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; showSeries(null); });
+      pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinnedDomain == null) showSeries(null); });
       pieCanvas.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; pieHover(t.clientX, t.clientY); });
-      pieCanvas.addEventListener('touchend', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; showSeries(null); });
+      pieCanvas.addEventListener('touchend', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinnedDomain == null) showSeries(null); });
+      pieCanvas.addEventListener('click', e => {
+        const idx = hitTest(e.clientX, e.clientY);
+        if (idx < 0) return;
+        const dom = segments[idx].domain;
+        applySelection(pinnedDomain === dom ? null : dom);
+      });
       window.addEventListener('resize', () => drawPie());
     }
 
