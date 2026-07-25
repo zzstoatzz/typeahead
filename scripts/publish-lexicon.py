@@ -61,6 +61,19 @@ def main() -> None:
         }, token)
         print(f"published {nsid} -> {result['uri']}")
 
+    # garden.lexicon.example records feed lexicon.garden's Examples tab.
+    # rkey = filename stem so re-runs overwrite instead of duplicating.
+    for path in sorted((LEXICON_DIR / "examples").glob("*.json")):
+        record = json.loads(path.read_text())
+        record.setdefault("createdAt", "2026-07-25T00:00:00.000Z")
+        result = xrpc("com.atproto.repo.putRecord", {
+            "repo": did,
+            "collection": "garden.lexicon.example",
+            "rkey": path.stem,
+            "record": record,
+        }, token)
+        print(f"published example {path.stem} -> {result['uri']}")
+
     print("\nif this DID differs from the _lexicon.typeahead.waow.tech TXT record, update DNS.")
 
 

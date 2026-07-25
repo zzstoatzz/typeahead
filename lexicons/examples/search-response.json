@@ -1,0 +1,41 @@
+{
+  "$type": "garden.lexicon.example",
+  "lexicon": "tech.waow.typeahead.searchActors",
+  "description": "Full response for GET /xrpc/tech.waow.typeahead.searchActors?q=zzstoatzz&limit=2 — exact-handle match ranked first, then other prefix matches.",
+  "value": {
+    "actors": [
+      {
+        "did": "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "handle": "zzstoatzz.io",
+        "displayName": "nate",
+        "avatar": "https://pds.zzstoatzz.io/xrpc/com.atproto.sync.getBlob?did=did:plc:xbtmt2zjwlrfegqvch7fboei&cid=bafkreidsppzvcystsy2g3m6rut2zyuvdzsyjvm2m2stjjxydfy7jfv2v54",
+        "associated": {
+          "lists": 4,
+          "feedgens": 3,
+          "starterPacks": 3,
+          "chat": { "allowIncoming": "all", "allowGroupInvites": "all" },
+          "activitySubscription": { "allowSubscriptions": "followers" }
+        },
+        "labels": [],
+        "createdAt": "2024-10-17T22:23:42.606Z"
+      },
+      {
+        "did": "did:plc:65sucjiel52gefhcdcypynsr",
+        "handle": "phi.zzstoatzz.io",
+        "displayName": "ϕ",
+        "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:65sucjiel52gefhcdcypynsr/bafkreigipzdpd2gx7otqdlhtcdom45ol7esfe25any5vqrk7kdtmohi2ae",
+        "associated": { "feedgens": 2, "activitySubscription": { "allowSubscriptions": "followers" } },
+        "labels": [
+          {
+            "src": "did:plc:65sucjiel52gefhcdcypynsr",
+            "uri": "at://did:plc:65sucjiel52gefhcdcypynsr/app.bsky.actor.profile/self",
+            "cid": "bafyreidvy4hbd46alju5uxh6h7kc7av3l6rzofut3xg7nf3jr7k6ntrhdm",
+            "val": "bot",
+            "cts": "1970-01-01T00:00:00.000Z"
+          }
+        ],
+        "createdAt": "2025-03-17T06:18:35.045Z"
+      }
+    ]
+  }
+}

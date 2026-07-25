@@ -1,0 +1,9 @@
+{
+  "$type": "garden.lexicon.example",
+  "lexicon": "tech.waow.typeahead.searchActors#actorBasic",
+  "description": "Minimal actor — only the required fields. Typical of an account discovered via the firehose that has never written a profile record: no display name, avatar, or aggregates yet.",
+  "value": {
+    "did": "did:plc:ewvi7nxzyoun6zhxrhs64oiz",
+    "handle": "atproto.com"
+  }
+}
