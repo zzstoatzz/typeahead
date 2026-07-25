@@ -42,6 +42,7 @@ export function indexPage(): string {
       min-height: 48px;
     }
     input:focus { border-color: var(--accent-dim); }
+    input { caret-color: var(--accent); }
     input::placeholder { color: var(--dim); }
     .results { position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px;
                background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px;
@@ -154,6 +155,14 @@ export function indexPage(): string {
     });
     document.addEventListener('click', e => { if (!e.target.closest('.search-wrap')) results.classList.remove('show'); });
     q.addEventListener('focus', () => { if (results.innerHTML) results.classList.add('show'); });
+
+    // caret handoff: while any text field holds the real caret, the wordmark's rests
+    const wordmark = document.querySelector('.wordmark');
+    document.querySelectorAll('input').forEach(el => {
+      el.addEventListener('focus', () => wordmark.classList.add('quiet'));
+      el.addEventListener('blur', () => wordmark.classList.remove('quiet'));
+    });
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') wordmark.classList.add('quiet');
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
     // request indexing form

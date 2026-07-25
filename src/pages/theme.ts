@@ -56,6 +56,9 @@ export const THEME_CSS = `
       animation: caret-blink 1.1s steps(1) infinite;
     }
     @keyframes caret-blink { 50% { opacity: 0; } }
+    /* one caret of attention: while the user holds a real text caret, the
+       wordmark's goes quiet and steady — it hands off rather than compete */
+    .wordmark.quiet::after { animation: none; opacity: 0.3; }
     @media (prefers-reduced-motion: reduce) {
       .wordmark::after { animation: none; }
       * { transition: none !important; }
