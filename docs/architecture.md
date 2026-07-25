@@ -2,7 +2,8 @@
 
 `typeahead.waow.tech` is an independent atproto actor typeahead service. It
 serves the Bluesky-compatible
-`app.bsky.actor.searchActorsTypeahead` route from our own index; Bluesky is a
+`tech.waow.typeahead.searchActors` route (and its `app.bsky.actor.searchActorsTypeahead`
+compat alias) from our own index; Bluesky is a
 rollback-only kill switch.
 
 The current design has three flows:
@@ -25,7 +26,7 @@ See also:
 
 The Cloudflare Worker in `src/` is the public edge:
 
-- exposes the XRPC-compatible typeahead endpoint
+- exposes the typeahead endpoint: canonical `tech.waow.typeahead.searchActors` + bsky-compat alias (one handler, shared cache)
 - caches search responses at the edge for 60 seconds
 - accepts ingest batches on the admin path
 - owns the Turso fallback path

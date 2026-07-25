@@ -1,6 +1,11 @@
 # typeahead — agent guide
 
-Community actor search for atproto; a drop-in for `app.bsky.actor.searchActorsTypeahead`.
+Community actor search for atproto. Canonical endpoint: `tech.waow.typeahead.searchActors`
+(self-owned lexicon, `lexicons/`); `app.bsky.actor.searchActorsTypeahead` is served forever as
+the drop-in migration alias — the two must stay byte-identical (smoke enforces this).
+When endpoints change, update ALL public docs together: `/docs`, `/llms.txt` (src/pages/llms.ts),
+README.md, homepage API chip. Service identity: @typeahead.waow.tech
+(`did:plc:y6kywgnb7xletjpa5hhxmd4k`); lexicon publishing via `scripts/publish-lexicon.py`.
 README.md has the architecture; this file is the operational contract for assessing the system.
 
 ## the serving invariant

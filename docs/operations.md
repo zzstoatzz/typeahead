@@ -138,3 +138,19 @@ off-cycle rebuild now: `fly machine start <id of index-rebuild-daily>`. Do NOT
 `fly deploy` this app as a service (loop-rebuilds); the scheduled machine is the
 only thing that should run it. Remaining defense-in-depth (not yet done): cap the
 overlay read in `overlayPrefixRows`, and alert on snapshot age / overlay size.
+
+## service identity & lexicons (2026-07-25)
+
+The service has its own atproto account: **@typeahead.waow.tech** =
+`did:plc:y6kywgnb7xletjpa5hhxmd4k`, currently hosted on the bsky PDS
+(migratable later; only the DID doc's service entry changes).
+
+- handle verification: `_atproto.typeahead.waow.tech` TXT (CF zone waow.tech) +
+  the worker serving `/.well-known/atproto-did` from the `SERVICE_DID` wrangler var.
+- lexicon authority: `_lexicon.typeahead.waow.tech` TXT → the service DID; schema
+  records live in its repo under `com.atproto.lexicon.schema` (rkey = NSID).
+- to edit/add lexicons: change `lexicons/*.json`, then
+  `ATP_PDS=https://bsky.social ATP_IDENTIFIER=typeahead.waow.tech ATP_PASSWORD=$ATPROTO_PASSWORD uv run scripts/publish-lexicon.py`
+  (`ATPROTO_PASSWORD` is in the gitignored `.env`; source it, don't read it).
+- endpoint changes must update `/docs`, `/llms.txt`, README.md, and the homepage
+  API chip together; smoke asserts canonical/alias equivalence.
