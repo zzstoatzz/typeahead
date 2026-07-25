@@ -19,6 +19,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.request
 import urllib.error
 
@@ -249,46 +250,56 @@ def test_moderation_filtering(base_url: str):
     print("\n--- !no-unauthenticated inclusion ---")
     found = find_noauth_actor(base_url)
     if not found:
-        # depends on bsky's search surfacing a labeled actor for our fixed
-        # queries — absence is external noise, not a regression, so don't
-        # fail the deploy gate over it. a found-but-hidden actor still FAILs
-        # inside find_noauth_actor.
-        print(f"  [{SKIP}] skipped (bsky returned no !no-unauthenticated actor to verify against)")
+        # every fixture failed live validation — the fixture list needs
+        # refreshing (see NOAUTH_FIXTURES), which is our problem, so FAIL.
+        check("found a !no-unauthenticated actor to verify", False,
+              "all fixtures stale — refresh NOAUTH_FIXTURES")
+
+
+# known !no-unauthenticated accounts, validated live against bsky before use so
+# a removed label can never false-fail us. dynamic discovery via searchActors is
+# impossible: bsky's unauthenticated search excludes labeled actors entirely
+# (getProfile still shows them). refresh candidates with:
+#   turso db shell typeahead "SELECT did, handle FROM actors WHERE labels LIKE
+#     '%no-unauthenticated%' AND hidden = 0 ORDER BY followers_count DESC LIMIT 8"
+NOAUTH_FIXTURES = [
+    "did:plc:vc7f4oafdgxsihk4cry2xpze",  # jcsalterego.bsky.social
+    "did:plc:3ijusmsw4eizbtvn3k263rhv",  # philinvestigates.com
+    "did:plc:5hwy5afvfhonj6mrpcxm3rfy",  # emily.gorcen.ski
+    "did:plc:nehcwc3ng5igejopsi5fnqrr",  # alexanderchee.bsky.social
+]
+
+
+def _verify_noauth_inclusion(base_url: str, handle: str) -> bool:
+    """given a confirmed-labeled handle, check it appears in OUR results.
+    returns True if a verdict was reached (pass or fail recorded)."""
+    for attempt in range(3):  # our endpoint erroring is retryable, not a verdict
+        our_data, _ = fetch(f"{base_url}{XRPC_PATH}?q={handle}&limit=10")
+        if our_data and "_error" not in our_data:
+            our_handles = {a.get("handle") for a in our_data.get("actors", [])}
+            check(f"!no-unauthenticated actor @{handle} visible in search",
+                  handle in our_handles, "" if handle in our_handles else "not found in results")
+            return True
+        time.sleep(1)
+    return False
+
+
+def _has_noauth_label(actor: dict) -> bool:
+    return any(
+        l.get("val") == "!no-unauthenticated" and not l.get("neg")
+        for l in actor.get("labels", [])
+    )
 
 
 def find_noauth_actor(base_url: str) -> bool:
-    """find an actor with !no-unauthenticated and verify they ARE included in our results."""
-    for q in ["alex", "sam", "chris", "jordan"]:
-        bsky_data, _ = fetch(f"{BSKY_PUBLIC}/xrpc/app.bsky.actor.searchActors?q={q}&limit=25")
-        if not bsky_data or "_error" in bsky_data:
-            continue
-
-        for actor in bsky_data.get("actors", []):
-            labels = actor.get("labels", [])
-            has_noauth = any(
-                l.get("val") == "!no-unauthenticated" and not l.get("neg")
-                for l in labels
-            )
-            if not has_noauth:
-                continue
-
-            handle = actor.get("handle", "")
-            if not handle:
-                continue
-
-            # this actor has !no-unauthenticated — check they ARE in our results
-            our_data, _ = fetch(f"{base_url}{XRPC_PATH}?q={handle}&limit=10")
-            if not our_data or "_error" in our_data:
-                continue
-
-            our_handles = {a.get("handle") for a in our_data.get("actors", [])}
-            if handle in our_handles:
-                check(f"!no-unauthenticated actor @{handle} visible in search", True)
-                return True
-            else:
-                check(f"!no-unauthenticated actor @{handle} visible in search", False, "not found in results")
-                return True
-
+    """verify a known !no-unauthenticated actor IS included in our results.
+    fixtures are validated live (label still applied per getProfile) before use."""
+    for did in NOAUTH_FIXTURES:
+        profile, _ = fetch(f"{BSKY_PUBLIC}/xrpc/app.bsky.actor.getProfile?actor={did}")
+        if not profile or "_error" in profile or not _has_noauth_label(profile):
+            continue  # label removed or lookup failed — fixture is stale, try the next
+        if _verify_noauth_inclusion(base_url, profile.get("handle", "")):
+            return True
     return False
 
 
