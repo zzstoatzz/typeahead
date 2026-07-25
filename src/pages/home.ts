@@ -116,7 +116,7 @@ export function indexPage(): string {
 
     <div class="api">
       <span class="method">GET</span>
-      <span class="path">/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10</span>
+      <span class="path">/xrpc/tech.waow.typeahead.searchActors?q=...&amp;limit=10</span>
     </div>
 
     <footer>
@@ -136,7 +136,7 @@ export function indexPage(): string {
       if (v.length < 2) { results.classList.remove('show'); return; }
       timer = setTimeout(async () => {
         try {
-          const r = await fetch('/xrpc/app.bsky.actor.searchActorsTypeahead?q=' + encodeURIComponent(v) + '&limit=8');
+          const r = await fetch('/xrpc/tech.waow.typeahead.searchActors?q=' + encodeURIComponent(v) + '&limit=8');
           const data = await r.json();
           const actors = data.actors || [];
           if (actors.length === 0) {

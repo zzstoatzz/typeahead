@@ -1,0 +1,53 @@
+{
+  "lexicon": 1,
+  "id": "tech.waow.typeahead.searchActors",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Prefix search for atproto actors, ordered for typeahead use. Served entirely from a community-run index; unauthenticated.",
+      "parameters": {
+        "type": "params",
+        "required": ["q"],
+        "properties": {
+          "q": {
+            "type": "string",
+            "description": "Search prefix; matched against handles and display names."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 10
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["actors"],
+          "properties": {
+            "actors": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#actorBasic" }
+            }
+          }
+        }
+      }
+    },
+    "actorBasic": {
+      "type": "object",
+      "description": "Basic actor profile. Matches the shape of app.bsky.actor.defs#profileViewBasic minus the authenticated viewer state.",
+      "required": ["did", "handle"],
+      "properties": {
+        "did": { "type": "string", "format": "did" },
+        "handle": { "type": "string", "format": "handle" },
+        "displayName": { "type": "string", "maxGraphemes": 64, "maxLength": 640 },
+        "avatar": { "type": "string", "format": "uri" },
+        "associated": { "type": "unknown" },
+        "labels": { "type": "unknown" },
+        "createdAt": { "type": "string", "format": "datetime" }
+      }
+    }
+  }
+}

@@ -64,7 +64,9 @@ export function docsPage(): string {
     <p class="subtitle">switching from the bluesky typeahead API</p>
 
     <div class="callout">
-      <strong>tl;dr</strong> — replace <code>public.api.bsky.app</code> with <code>typeahead.waow.tech</code>.
+      <strong>tl;dr</strong> — migrating? replace <code>public.api.bsky.app</code> with
+      <code>typeahead.waow.tech</code> and you're done. building something new? use the
+      canonical endpoint: <code>/xrpc/tech.waow.typeahead.searchActors</code>.
     </div>
 
     <h2>what this is</h2>
@@ -90,8 +92,26 @@ export function docsPage(): string {
       switch, not a fallback.
     </p>
 
-    <h2>the change</h2>
-    <p>replace the base URL. everything else stays the same:</p>
+    <h2>the endpoint</h2>
+    <p>
+      the canonical endpoint lives under our own
+      <a href="https://atproto.com/specs/lexicon">lexicon</a> namespace
+      (<a href="https://tangled.org/zzstoatzz.io/typeahead/blob/main/lexicons/tech.waow.typeahead.searchActors.json">schema</a>):
+    </p>
+    <pre><code>GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=...&amp;limit=10</code></pre>
+    <p>
+      same params (<code>q</code>, <code>limit</code> 1–100) and the same
+      <code>{ "actors": [...] }</code> response as the bluesky-compatible alias below.
+      prefer this path for new integrations — <code>app.bsky.*</code> names belong to
+      bluesky's lexicons, and this service isn't bluesky.
+      there's also a machine-readable summary at <a href="/llms.txt">/llms.txt</a>.
+    </p>
+
+    <h2>switching from bluesky</h2>
+    <p>
+      the alias <code>/xrpc/app.bsky.actor.searchActorsTypeahead</code> behaves identically
+      and is kept indefinitely, so migrating is just a base-URL swap:
+    </p>
     <pre><code><span class="diff-del">- https://public.api.bsky.app</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10
 <span class="diff-add">+ https://typeahead.waow.tech</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10</code></pre>
 

@@ -12,6 +12,7 @@ import { handleStats } from "./handlers/stats";
 import { handleReputation } from "./handlers/reputation";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
+import { llmsTxt } from "./pages/llms";
 import { reputationPage } from "./pages/reputation";
 
 export default {
@@ -44,6 +45,11 @@ export default {
 
     if (pathname === "/" && request.method === "GET") {
       return html(indexPage());
+    }
+    if (pathname === "/llms.txt" && request.method === "GET") {
+      return new Response(llmsTxt(), {
+        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...CORS_HEADERS },
+      });
     }
     if (pathname === "/docs" && request.method === "GET") {
       return html(docsPage());
@@ -82,7 +88,8 @@ export default {
     }
 
     if (
-      pathname === "/xrpc/app.bsky.actor.searchActorsTypeahead" &&
+      (pathname === "/xrpc/tech.waow.typeahead.searchActors" ||
+        pathname === "/xrpc/app.bsky.actor.searchActorsTypeahead") &&
       request.method === "GET"
     ) {
       const ip = clientIP(request);

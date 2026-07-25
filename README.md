@@ -1,12 +1,16 @@
 # typeahead
 
-community actor search for [atproto](https://atproto.com). aims to be a drop-in replacement for `app.bsky.actor.searchActorsTypeahead` — same endpoint path and query params, returns the full `profileViewBasic` surface minus `viewer` (`did`, `handle`, `displayName`, `avatar`, `associated`, `labels`, `createdAt`).
+community actor search for [atproto](https://atproto.com). returns the full `profileViewBasic` surface minus `viewer` (`did`, `handle`, `displayName`, `avatar`, `associated`, `labels`, `createdAt`).
 
-**live:** https://typeahead.waow.tech
+**live:** https://typeahead.waow.tech · machine-readable summary at [/llms.txt](https://typeahead.waow.tech/llms.txt)
+
+canonical endpoint (self-owned [lexicon](lexicons/tech.waow.typeahead.searchActors.json)):
 
 ```bash
-curl "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=10"
+curl "https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&limit=10"
 ```
+
+also served at `/xrpc/app.bsky.actor.searchActorsTypeahead` as a drop-in alias for migrating off bluesky's appview — identical params and response, kept indefinitely.
 
 ## stack
 

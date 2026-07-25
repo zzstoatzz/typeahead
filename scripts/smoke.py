@@ -74,6 +74,30 @@ def test_response_shape(base_url: str):
         check("did starts with did:", a.get("did", "").startswith("did:"))
 
 
+def test_canonical_endpoint(base_url: str):
+    """the self-owned NSID must serve the identical response as the bsky-compat alias."""
+    print("\n--- canonical endpoint ---")
+    native, _ = fetch(f"{base_url}/xrpc/tech.waow.typeahead.searchActors?q=zzstoatzz&limit=5")
+    alias, _ = fetch(f"{base_url}{XRPC_PATH}?q=zzstoatzz&limit=5")
+    check("canonical returns valid JSON", native is not None and "_error" not in native and "_http_error" not in native)
+    if not native or "_error" in native or "_http_error" in native:
+        return
+    check("canonical has actors array", isinstance(native.get("actors"), list))
+    if alias and "_error" not in alias and "_http_error" not in alias:
+        native_dids = [a.get("did") for a in native.get("actors", [])]
+        alias_dids = [a.get("did") for a in alias.get("actors", [])]
+        check("canonical matches alias results", native_dids == alias_dids,
+              f"native={native_dids[:3]} alias={alias_dids[:3]}")
+
+    try:
+        req = urllib.request.Request(f"{base_url}/llms.txt", headers={"User-Agent": "typeahead-smoke/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            llms = resp.read().decode("utf-8")
+    except Exception:
+        llms = ""
+    check("llms.txt documents the canonical endpoint", "tech.waow.typeahead.searchActors" in llms)
+
+
 def test_known_handle(base_url: str):
     print("\n--- known handle ---")
     data, _ = fetch(f"{base_url}{XRPC_PATH}?q=zzstoatzz&limit=10")
@@ -440,6 +464,7 @@ def main():
     print(f"typeahead: {args.url}")
 
     test_response_shape(args.url)
+    test_canonical_endpoint(args.url)
     test_known_handle(args.url)
     test_prefix_match(args.url)
     test_ranking(args.url)
