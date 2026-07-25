@@ -19,6 +19,7 @@ export interface StatsData {
   snapshots: SnapshotPoint[];
   trafficSources: { domain: string; hits: number }[];
   trafficSeries: { hour: number; domain: string; hits: number }[];
+  trafficSeries5m: { bucket: number; domain: string; hits: number }[];
 }
 
 export function statsPage(d: StatsData): string {
@@ -78,6 +79,12 @@ export function statsPage(d: StatsData): string {
     (seriesByDomain[r.domain] ??= []).push([r.hour, r.hits]);
   }
   const trafficSeriesJson = JSON.stringify(seriesByDomain);
+  // raw 5-min buckets (last 48h) for the 24h view
+  const seriesByDomain5m: Record<string, [number, number][]> = {};
+  for (const r of d.trafficSeries5m) {
+    (seriesByDomain5m[r.domain] ??= []).push([r.bucket, r.hits]);
+  }
+  const trafficSeries5mJson = JSON.stringify(seriesByDomain5m);
 
   // domains come from caller-controlled headers (X-Client/Origin) — escape them
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -335,7 +342,14 @@ export function statsPage(d: StatsData): string {
            <div class="traffic-series">
              <div class="ranged-header">
                <h2 id="tseries-label">traffic over time — all sources</h2>
-               <button id="tseries-clear" style="display:none">&times; all sources</button>
+               <span style="display:inline-flex;gap:0.35rem;align-items:center">
+                 <button id="tseries-clear" style="display:none">&times; all sources</button>
+                 <span class="range-btns" id="tseries-range">
+                   <button data-range="24h">24h</button>
+                   <button data-range="7d" class="active">7d</button>
+                   <button data-range="30d">30d</button>
+                 </span>
+               </span>
              </div>
              <svg viewBox="0 0 600 90" preserveAspectRatio="none" id="tseries">
                <polyline points="" id="tseries-poly" />
@@ -583,7 +597,8 @@ export function statsPage(d: StatsData): string {
     const pieTip = document.getElementById('pie-tip');
 
     /* --- per-app traffic history: click pins a domain, hover the line for detail --- */
-    const trafficSeries = ${trafficSeriesJson}; // domain -> [[hour, hits], ...]
+    const trafficSeries = ${trafficSeriesJson};     // hourly, 30d: domain -> [[hour, hits], ...]
+    const trafficSeries5m = ${trafficSeries5mJson}; // 5-min, 48h: domain -> [[bucket, hits], ...]
     const tseriesPoly = document.getElementById('tseries-poly');
     const tseriesDot = document.getElementById('tseries-dot');
     const tseriesLabel = document.getElementById('tseries-label');
@@ -603,30 +618,44 @@ export function statsPage(d: StatsData): string {
       const idx = traffic.findIndex(r => r.domain === domain);
       return idx >= 0 ? PIE_COLORS[idx % PIE_COLORS.length] : '#4a9';
     }
-    function seriesFor(domain) {
-      if (domain != null) return trafficSeries[domain] || [];
+    let tsRange = '7d';
+    // range picks both the window and the finest data that stays readable
+    const TS_RANGES = { '24h': { secs: 86400, stepSec: 300, grain: '5 min' },
+                        '7d':  { secs: 604800, stepSec: 3600, grain: 'hourly' },
+                        '30d': { secs: 2592000, stepSec: 3600, grain: 'hourly' } };
+    function seriesFor(domain, stepSec) {
+      const source = stepSec === 300 ? trafficSeries5m : trafficSeries;
+      if (domain != null) return source[domain] || [];
       const sums = new Map();
-      for (const dom in trafficSeries) {
-        for (const [h, hits] of trafficSeries[dom]) sums.set(h, (sums.get(h) || 0) + hits);
+      for (const dom in source) {
+        for (const [t, hits] of source[dom]) sums.set(t, (sums.get(t) || 0) + hits);
       }
       return [...sums.entries()].sort((a, b) => a[0] - b[0]);
     }
-    function fmtHour(h) {
-      return new Date(h * 3600000).toISOString().slice(5, 16).replace('T', ' ') + 'Z';
+    const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function fmtSec(sec, withTime) {
+      const t = new Date(sec * 1000);
+      const day = MON[t.getUTCMonth()] + ' ' + t.getUTCDate();
+      if (!withTime) return day;
+      const hh = String(t.getUTCHours()).padStart(2, '0');
+      const mm = String(t.getUTCMinutes()).padStart(2, '0');
+      return day + ' ' + hh + ':' + mm;
     }
     function showSeries(domain) {
       if (!tseriesPoly) return;
-      const raw = seriesFor(domain);
-      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time — ' + (domain || 'all sources') + ' · hourly';
+      const cfg = TS_RANGES[tsRange];
+      const nowUnit = Math.floor(Date.now() / 1000 / cfg.stepSec);
+      const raw = seriesFor(domain, cfg.stepSec).filter(([t]) => t >= nowUnit - cfg.secs / cfg.stepSec);
+      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time — ' + (domain || 'all sources') + ' · ' + cfg.grain;
       const empty = raw.length < 2;
       if (tseriesEl) tseriesEl.style.display = empty ? 'none' : 'block';
       if (tseriesEmpty) tseriesEmpty.style.display = empty ? 'block' : 'none';
       if (empty) { tsView = null; if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
-      // fill hour gaps with 0 so quiet periods read as quiet, not skipped
-      const h0 = raw[0][0], hN = raw[raw.length - 1][0];
-      const byHour = new Map(raw);
+      // fill gaps with 0 so quiet periods read as quiet, not skipped
+      const t0 = raw[0][0], tN = raw[raw.length - 1][0];
+      const byUnit = new Map(raw);
       const counts = [];
-      for (let h = h0; h <= hN && counts.length <= 24 * 31; h++) counts.push(byHour.get(h) || 0);
+      for (let t = t0; t <= tN && counts.length <= 800; t++) counts.push(byUnit.get(t) || 0);
       const max = Math.max(...counts, 1);
       const color = domainColor(domain);
       const step = counts.length > 1 ? TS_W / (counts.length - 1) : 0;
@@ -634,10 +663,18 @@ export function statsPage(d: StatsData): string {
       tseriesPoly.setAttribute('points', counts.map((c, i) => (i * step).toFixed(1) + ',' + toY(c).toFixed(1)).join(' '));
       tseriesPoly.style.stroke = color;
       if (tseriesDot) { tseriesDot.style.display = 'none'; tseriesDot.style.stroke = color; }
-      if (tseriesT0) tseriesT0.textContent = fmtHour(h0);
-      if (tseriesT1) tseriesT1.textContent = fmtHour(hN + 1);
-      tsView = { h0, counts, max, step, toY };
+      const showClock = cfg.secs <= 604800;
+      if (tseriesT0) tseriesT0.textContent = fmtSec(t0 * cfg.stepSec, showClock);
+      if (tseriesT1) tseriesT1.textContent = fmtSec((tN + 1) * cfg.stepSec, showClock);
+      tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, counts, max, step, toY };
     }
+    document.getElementById('tseries-range')?.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-range]');
+      if (!btn) return;
+      tsRange = btn.dataset.range;
+      document.querySelectorAll('#tseries-range button').forEach(b => b.classList.toggle('active', b.dataset.range === tsRange));
+      showSeries(pinnedDomain);
+    });
     function applySelection(domain) {
       pinnedDomain = domain;
       if (tseriesClear) tseriesClear.style.display = domain != null ? 'inline-block' : 'none';
@@ -666,7 +703,7 @@ export function statsPage(d: StatsData): string {
           tseriesDot.setAttribute('cy', tsView.toY(c).toFixed(1));
           tseriesDot.style.display = 'block';
         }
-        sparkTip.textContent = fmtHour(tsView.h0 + idx) + ' — ' + c + (c === 1 ? ' hit' : ' hits');
+        sparkTip.textContent = fmtSec(tsView.t0Sec + idx * tsView.stepSec, true) + ' UTC — ' + c + (c === 1 ? ' hit' : ' hits');
         sparkTip.style.display = 'block';
         sparkTip.style.left = (e.clientX + 12) + 'px';
         sparkTip.style.top = (e.clientY - 28) + 'px';

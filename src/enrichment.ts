@@ -49,7 +49,8 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
   // traffic: last 30d of per-domain 5-min buckets, rolled up to hourly.
   // bounded by hours × active domains (≤720 × ~dozens), NOT the corpus.
   const trafficSince = Math.floor(Date.now() / 300_000) - 30 * 288;
-  const [metricsRes, snapshotRes, deltasRes, trafficRes] = await db.batch([
+  const traffic5mSince = Math.floor(Date.now() / 300_000) - 2 * 288; // raw 5-min, last 48h
+  const [metricsRes, snapshotRes, deltasRes, trafficRes, traffic5mRes] = await db.batch([
     db.prepare("SELECT hour, searches, total_ms, cache_hits, cache_ms FROM metrics ORDER BY hour DESC LIMIT 100000"),
     db.prepare("SELECT hour, total, with_handles, with_avatars, hidden FROM snapshots ORDER BY hour ASC LIMIT 5000"),
     db.prepare("SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket DESC LIMIT 288"),
@@ -58,6 +59,10 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
        FROM traffic_buckets WHERE bucket >= ?1
        GROUP BY bucket / 12, domain ORDER BY hour ASC`
     ).bind(trafficSince),
+    db.prepare(
+      `SELECT bucket, domain, hits FROM traffic_buckets
+       WHERE bucket >= ?1 ORDER BY bucket ASC`
+    ).bind(traffic5mSince),
   ], "read");
 
   await env.KV.put("stats_data", JSON.stringify({
@@ -65,6 +70,7 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
     snapshots: snapshotRes.results ?? [],
     deltas: deltasRes.results ?? [],
     traffic_series: trafficRes.results ?? [],
+    traffic_series_5m: traffic5mRes.results ?? [],
     materialized_at: Date.now(),
   }));
 

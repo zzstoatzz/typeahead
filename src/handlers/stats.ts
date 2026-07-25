@@ -23,6 +23,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
     snapshots: { hour: number; total: number; with_handles: number; with_avatars: number; hidden: number }[];
     deltas: { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
     traffic_series?: { hour: number; domain: string; hits: number }[];
+    traffic_series_5m?: { bucket: number; domain: string; hits: number }[];
     materialized_at: number;
   } | null;
 
@@ -99,7 +100,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   const tProcess = performance.now();
 
-  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficSeries: kvData?.traffic_series ?? [] });
+  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [] });
 
   const tRender = performance.now();
 
