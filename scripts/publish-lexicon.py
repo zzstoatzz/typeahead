@@ -12,8 +12,8 @@ usage:
     ATP_IDENTIFIER=typeahead.waow.tech ATP_PASSWORD=<app-password> \
         uv run scripts/publish-lexicon.py
 
-optional env:
-    ATP_PDS  — PDS base URL (default https://pds.zzstoatzz.io)
+required env:
+    ATP_PDS  — base URL of whichever PDS hosts the service account
 
 idempotent: putRecord overwrites, so re-run after editing lexicons/*.json.
 """
@@ -24,7 +24,7 @@ import pathlib
 import sys
 import urllib.request
 
-PDS = os.environ.get("ATP_PDS", "https://pds.zzstoatzz.io")
+PDS = os.environ.get("ATP_PDS") or sys.exit("set ATP_PDS to the service account's PDS base URL")
 LEXICON_DIR = pathlib.Path(__file__).parent.parent / "lexicons"
 
 
