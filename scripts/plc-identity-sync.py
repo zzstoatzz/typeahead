@@ -49,7 +49,6 @@ leaving the field empty.
 
 import argparse
 import gzip
-import io
 import json
 import os
 import sys
@@ -175,224 +174,61 @@ def fetch_bundles(dest: str) -> None:
         )
 
 
-def load_need(which: str) -> dict[str, tuple]:
-    """Which DIDs still need handle/pds, read from Turso's `GET /dump`.
+def load_need(which: str, page: int) -> dict[str, tuple]:
+    """Which DIDs still need handle/pds, via rowid keyset pagination.
 
-    Paginating this over /v2/pipeline does not work at this size: 100k-row pages
-    time out against the live instance, and smaller pages mean hundreds of
-    round trips competing with the ingester for the same single writer. /dump is
-    ONE streaming request for the whole database (~6.7 MB/s measured), so the
-    cost is linear, restartable, and does not hold a read transaction open per
-    page.
+    Three details, each worth a measurement:
 
-    Parsed line-wise rather than buffered — the dump is GBs and we only need one
-    column triple per row.
+    1. `COLLATE NOCASE` on the handle predicate. `idx_actors_handle` is declared
+       COLLATE NOCASE, so a plain `handle = ''` cannot use it and degrades to a
+       table scan. With the collation the plan is
+       `SEARCH actors USING INDEX idx_actors_handle (handle=? AND rowid>?)`.
+       Measured: 25s+/page without, ~11s per 10k page with.
+    2. Keyset on `rowid`, matching services/src/db/sync.zig. Ordering by `did`
+       forces a sort of the whole matching set per page; rowid is the index's
+       own secondary key, so it is free.
+    3. Page size 10k. Measured 585 rows/s at 2k, 905 at 10k, 741 at 25k — the
+       round trip dominates below 10k and the response size above it.
+
+    An earlier revision used 100k `did`-ordered pages, timed out, concluded
+    "pagination does not work", and switched to streaming GET /dump — which
+    starved the ingest write path enough to trip the watchdog ("last ok flush
+    637s ago", forced restart, 2026-07-28). The query was wrong, not the
+    approach.
     """
-    url = TURSO_URL.replace("libsql://", "https://").rstrip("/")
-    req = urllib.request.Request(url + "/dump", headers={"Authorization": f"Bearer {TURSO_TOKEN}"})
+    where = {
+        "handle": "handle = '' COLLATE NOCASE",
+        "pds": "pds = ''",
+        "both": "handle = '' COLLATE NOCASE OR pds = ''",
+    }[which]
+    if which != "handle":
+        print(
+            f"  NOTE: `{which}` has no supporting index — this scans the table. "
+            "Expect hours, not minutes.",
+            file=sys.stderr,
+        )
     need: dict[str, tuple] = {}
-    seen = 0
-    cols: list[str] = []
-    pending_ddl: list[str] | None = None
-    i_did = i_handle = i_pds = -1
+    last = 0
+    pages = 0
     t = time.time()
-    print(f"streaming turso dump to find DIDs needing {which}…", file=sys.stderr)
-    with urllib.request.urlopen(req, timeout=3600) as r:
-        for raw in io.TextIOWrapper(r, encoding="utf-8", errors="replace"):
-            if pending_ddl is not None:
-                pending_ddl.append(raw)
-                if raw.rstrip().endswith(";"):
-                    ddl = "".join(pending_ddl)
-                    pending_ddl = None
-                    cols = _parse_columns(ddl)
-                    i_did, i_handle = cols.index("did"), cols.index("handle")
-                    i_pds = cols.index("pds")
-                    print(f"  schema: {len(cols)} cols, pds at {i_pds}", file=sys.stderr)
-                continue
-            if not cols and raw.startswith("CREATE TABLE IF NOT EXISTS actors"):
-                # the dump wraps DDL across lines, so buffer to the terminating ";"
-                pending_ddl = [raw]
-                if not raw.rstrip().endswith(";"):
-                    continue
-                # Column ORDER is read from the dump, never hardcoded: `pds` was
-                # added by a later ALTER and sits at index 6 today, but a future
-                # migration would silently shift it and we would start reading
-                # the wrong column into a field we then write back.
-                cols = _parse_columns("".join(pending_ddl or [raw]))
-                pending_ddl = None
-                i_did, i_handle = cols.index("did"), cols.index("handle")
-                i_pds = cols.index("pds")
-                print(f"  schema: {len(cols)} cols, pds at {i_pds}", file=sys.stderr)
-                continue
-            if not raw.startswith("INSERT INTO actors VALUES("):
-                continue
-            if i_did < 0:
-                raise RuntimeError("actors INSERTs appeared before its CREATE TABLE")
-            seen += 1
-            body = raw[len("INSERT INTO actors VALUES("):]
-            # Fast reject. Most rows are fully resolved, and for --need handle a
-            # non-empty handle is decidable from the first two fields alone —
-            # no need to walk the tuple. DIDs never contain a quote, so the
-            # second field starts right after the did's closing quote.
-            if which == "handle":
-                if body.startswith("'"):
-                    q = body.find("'", 1)
-                    if q != -1 and not body.startswith(",''", q + 1):
-                        continue
-            parts = _split_sql_values(body, limit=max(i_handle, i_pds) + 1)
-            if len(parts) <= i_handle:
-                continue
-            did, handle = parts[i_did], parts[i_handle]
-            pds = parts[i_pds] if len(parts) > i_pds else ""
-            want = (which in ("handle", "both") and not handle) or (
-                which in ("pds", "both") and not pds
-            )
-            if want:
-                need[did] = (None, None, None)  # (createdAt, handle, pds)
-            if seen % 1_000_000 == 0:
-                print(f"  scanned {seen:,} rows, {len(need):,} need work", file=sys.stderr)
-    print(f"dump scan: {seen:,} actor rows in {time.time()-t:.0f}s", file=sys.stderr)
-    return need
-
-
-def _parse_columns(create_sql: str) -> list[str]:
-    """Column names in declaration order from a CREATE TABLE line."""
-    # Strip line comments FIRST, per line. Doing it per comma-segment loses any
-    # column that follows a commented line: `avatar_url ... -- ... ` runs to the
-    # newline and swallows `updated_at`, which silently shifts every later index
-    # and would have made this read `hidden` as `pds`.
-    create_sql = "\n".join(ln.split("--")[0] for ln in create_sql.splitlines())
-    inner = create_sql[create_sql.index("(") + 1:]
-    cols, depth, cur = [], 0, []
-    for ch in inner:
-        if ch == "(":
-            depth += 1
-        elif ch == ")":
-            if depth == 0:
-                break
-            depth -= 1
-        if ch == "," and depth == 0:
-            cols.append("".join(cur))
-            cur = []
-        else:
-            cur.append(ch)
-    cols.append("".join(cur))
-    out = []
-    for c in cols:
-        c = c.strip()
-        if not c:
-            continue
-        name = c.split()[0].strip('"`[]')
-        if name.upper() in ("PRIMARY", "UNIQUE", "CHECK", "FOREIGN", "CONSTRAINT"):
-            continue
-        out.append(name)
-    return out
-
-
-def _split_sql_values(body: str, limit: int | None = None) -> list[str]:
-    """Split a SQLite dump VALUES(...) tuple, honoring '' escapes.
-
-    `limit` stops after that many fields. The actors table has 18 columns but
-    the highest one we read is `pds` at 6, and this runs per row over ~9.2M
-    rows — parsing the other 11 fields was most of the cost.
-    """
-    out: list[str] = []
-    i, n = 0, len(body)
-    while i < n:
-        if limit is not None and len(out) >= limit:
+    print(f"loading DIDs needing {which} (rowid keyset, page={page})…", file=sys.stderr)
+    while True:
+        rows = turso(
+            f"SELECT rowid, did FROM actors WHERE ({where}) AND rowid > ?1 "
+            "ORDER BY rowid LIMIT ?2",
+            [last, page],
+        )
+        if not rows:
             break
-        if body[i] == "'":
-            i += 1
-            buf = []
-            while i < n:
-                if body[i] == "'":
-                    if i + 1 < n and body[i + 1] == "'":
-                        buf.append("'")
-                        i += 2
-                        continue
-                    i += 1
-                    break
-                buf.append(body[i])
-                i += 1
-            out.append("".join(buf))
-        elif body[i] in ",)":
-            if body[i] == ")":
-                break
-            i += 1
-        else:
-            j = i
-            while j < n and body[j] not in ",)":
-                j += 1
-            out.append(body[i:j].strip())
-            i = j
-    return out
-
-
-def scrape_tail(dest: str) -> int:
-    """Write weekly bundles for the weeks the public host has not published.
-
-    `allegedly bundle` does this better, but it pulls in native-tls -> openssl
-    and therefore needs libssl-dev + root on the host. The unpublished tail is
-    where every recently-created account lives, so making it depend on a sudo
-    step means the common case silently degrades. This path needs nothing but
-    python and produces byte-compatible `<WEEK>.jsonl.gz` files, so a later
-    `allegedly bundle` run simply skips what is already on disk.
-
-    Stops ~73h short of now for the same reason Allegedly does: PLC operations
-    can still be invalidated inside that window, so bundling them would freeze
-    a value that is not yet final. The firehose #identity events cover it.
-    """
-    os.makedirs(dest, exist_ok=True)
-    cutoff = (int(time.time()) - 73 * 3600) // WEEK * WEEK
-    have = {int(n.split(".")[0]) for n in os.listdir(dest) if n.endswith(".jsonl.gz")}
-    todo = [w for w in range(1668643200 // WEEK * WEEK, cutoff, WEEK) if w not in have]
-    if not todo:
-        print("tail: nothing to scrape", file=sys.stderr)
-        return 0
-    print(f"tail: scraping {len(todo)} unpublished week(s) from plc.directory", file=sys.stderr)
-    written = 0
-    for w in todo:
-        after = _iso(w)
-        end = _iso(w + WEEK)
-        path = os.path.join(dest, f"{w}.jsonl.gz")
-        tmp = path + ".part"
-        n = 0
-        cursor = after
-        with gzip.open(tmp, "wt") as out:
-            while True:
-                u = f"https://plc.directory/export?count=1000&after={cursor}"
-                req = urllib.request.Request(u, headers={"User-Agent": "typeahead-plc-sync"})
-                for attempt in range(4):
-                    try:
-                        body = urllib.request.urlopen(req, timeout=120).read().decode()
-                        break
-                    except Exception as e:
-                        if attempt == 3:
-                            raise
-                        time.sleep(2 ** attempt * 5)
-                lines = [ln for ln in body.strip().split("\n") if ln]
-                if not lines:
-                    break
-                stop = False
-                for ln in lines:
-                    created = json.loads(ln).get("createdAt", "")
-                    if created >= end:
-                        stop = True
-                        break
-                    out.write(ln + "\n")
-                    n += 1
-                    cursor = created
-                if stop or len(lines) < 1000:
-                    break
-        os.rename(tmp, path)
-        written += 1
-        print(f"  + {w} ({_iso(w)[:10]}): {n:,} ops", file=sys.stderr)
-    return written
-
-
-def _iso(ts: int) -> str:
-    import datetime
-    return datetime.datetime.fromtimestamp(ts, datetime.UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        for rowid, did in rows:
+            need[did] = (None, None, None)  # (createdAt, handle, pds)
+        last = int(rows[-1][0])
+        pages += 1
+        if pages % 10 == 0:
+            rate = len(need) / max(time.time() - t, 1)
+            print(f"  {len(need):,} ({rate:.0f}/s)", file=sys.stderr)
+    print(f"need: {len(need):,} DIDs in {time.time()-t:.0f}s", file=sys.stderr)
+    return need
 
 
 def iter_ops(stream, local_dir: str | None):
@@ -422,10 +258,10 @@ def main() -> int:
     ap.add_argument("--from-dir", action="store_true", help="read bundles directly instead of stdin")
     ap.add_argument("--apply", action="store_true", help="write to turso (default: dry run)")
     ap.add_argument("--batch", type=int, default=1000, help="updates per turso transaction")
-    ap.add_argument("--need", choices=("handle", "pds", "both"), default="both",
+    ap.add_argument("--need", choices=("handle", "pds", "both"), default="handle",
                     help="which backlog to target")
     ap.add_argument("--page", type=int, default=10000,
-                    help="rows per keyset page; 100k timed out against live turso")
+                    help="rows per keyset page; 905 rows/s measured at 10k")
     ap.add_argument("--pace-ms", type=int, default=50,
                     help="sleep between write transactions; Turso is single-writer "
                          "and the live ingester shares it")
@@ -445,7 +281,7 @@ def main() -> int:
     # Only track DIDs we actually need. The whole network is ~23M DIDs; holding
     # every one would cost several GB for no benefit. Restricting to rows that
     # are missing a field keeps the working set proportional to the backlog.
-    need = load_need(args.need)
+    need = load_need(args.need, args.page)
     print(f"need: {len(need):,} DIDs", file=sys.stderr)
     if not need:
         return 0
