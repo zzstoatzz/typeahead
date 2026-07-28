@@ -436,6 +436,12 @@ def main() -> int:
     if args.scrape_tail:
         scrape_tail(args.dest)
 
+    # Checked here rather than at first use: the bundle stages above need no
+    # credentials, so an unset TURSO_URL would otherwise surface as a urllib
+    # traceback after a multi-hour download.
+    if not TURSO_URL or not TURSO_TOKEN:
+        sys.exit("TURSO_URL / TURSO_AUTH_TOKEN not set (source .env)")
+
     # Only track DIDs we actually need. The whole network is ~23M DIDs; holding
     # every one would cost several GB for no benefit. Restricting to rows that
     # are missing a field keeps the working set proportional to the backlog.
