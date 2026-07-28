@@ -328,6 +328,73 @@ def _split_sql_values(body: str, limit: int | None = None) -> list[str]:
     return out
 
 
+def scrape_tail(dest: str) -> int:
+    """Write weekly bundles for the weeks the public host has not published.
+
+    `allegedly bundle` does this better, but it pulls in native-tls -> openssl
+    and therefore needs libssl-dev + root on the host. The unpublished tail is
+    where every recently-created account lives, so making it depend on a sudo
+    step means the common case silently degrades. This path needs nothing but
+    python and produces byte-compatible `<WEEK>.jsonl.gz` files, so a later
+    `allegedly bundle` run simply skips what is already on disk.
+
+    Stops ~73h short of now for the same reason Allegedly does: PLC operations
+    can still be invalidated inside that window, so bundling them would freeze
+    a value that is not yet final. The firehose #identity events cover it.
+    """
+    os.makedirs(dest, exist_ok=True)
+    cutoff = (int(time.time()) - 73 * 3600) // WEEK * WEEK
+    have = {int(n.split(".")[0]) for n in os.listdir(dest) if n.endswith(".jsonl.gz")}
+    todo = [w for w in range(1668643200 // WEEK * WEEK, cutoff, WEEK) if w not in have]
+    if not todo:
+        print("tail: nothing to scrape", file=sys.stderr)
+        return 0
+    print(f"tail: scraping {len(todo)} unpublished week(s) from plc.directory", file=sys.stderr)
+    written = 0
+    for w in todo:
+        after = _iso(w)
+        end = _iso(w + WEEK)
+        path = os.path.join(dest, f"{w}.jsonl.gz")
+        tmp = path + ".part"
+        n = 0
+        cursor = after
+        with gzip.open(tmp, "wt") as out:
+            while True:
+                u = f"https://plc.directory/export?count=1000&after={cursor}"
+                req = urllib.request.Request(u, headers={"User-Agent": "typeahead-plc-sync"})
+                for attempt in range(4):
+                    try:
+                        body = urllib.request.urlopen(req, timeout=120).read().decode()
+                        break
+                    except Exception as e:
+                        if attempt == 3:
+                            raise
+                        time.sleep(2 ** attempt * 5)
+                lines = [ln for ln in body.strip().split("\n") if ln]
+                if not lines:
+                    break
+                stop = False
+                for ln in lines:
+                    created = json.loads(ln).get("createdAt", "")
+                    if created >= end:
+                        stop = True
+                        break
+                    out.write(ln + "\n")
+                    n += 1
+                    cursor = created
+                if stop or len(lines) < 1000:
+                    break
+        os.rename(tmp, path)
+        written += 1
+        print(f"  + {w} ({_iso(w)[:10]}): {n:,} ops", file=sys.stderr)
+    return written
+
+
+def _iso(ts: int) -> str:
+    import datetime
+    return datetime.datetime.fromtimestamp(ts, datetime.UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
 def iter_ops(stream, local_dir: str | None):
     """Yield PLC op dicts, either from stdin (allegedly backfill) or by reading
     the gzipped bundles directly — the latter so this script is useful before
@@ -349,6 +416,9 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dest", default="./plc-weekly", help="bundle directory")
     ap.add_argument("--fetch", action="store_true", help="download published bundles first")
+    ap.add_argument("--scrape-tail", action="store_true",
+                    help="bundle the weeks the public host has not published "
+                         "(pure-python stand-in for `allegedly bundle`)")
     ap.add_argument("--from-dir", action="store_true", help="read bundles directly instead of stdin")
     ap.add_argument("--apply", action="store_true", help="write to turso (default: dry run)")
     ap.add_argument("--batch", type=int, default=1000, help="updates per turso transaction")
@@ -363,6 +433,8 @@ def main() -> int:
 
     if args.fetch:
         fetch_bundles(args.dest)
+    if args.scrape_tail:
+        scrape_tail(args.dest)
 
     # Only track DIDs we actually need. The whole network is ~23M DIDs; holding
     # every one would cost several GB for no benefit. Restricting to rows that

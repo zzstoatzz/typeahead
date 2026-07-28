@@ -127,6 +127,11 @@ pub const IngestHandler = struct {
     /// in production main wires this to a pool with N concurrent slingshot workers.
     identity_pool: ?*identity.Pool,
     buffer: std.ArrayList(ActorEvent),
+    /// seq of the firehose event each buffered entry came from, 1:1 with
+    /// `buffer`. Without it the flush can only advance the durable cursor when
+    /// the buffer fully drains — which never happens at relay volume, so the
+    /// cursor stayed 0 and every restart lost its place.
+    cursors: std.ArrayList(i64),
     delete_buffer: std.ArrayList([]const u8),
     /// arena owns all string data in buffer/delete_buffer
     arena: std.heap.ArenaAllocator,
@@ -153,6 +158,7 @@ pub const IngestHandler = struct {
             .transport = transport,
             .identity_pool = identity_pool,
             .buffer = .empty,
+            .cursors = .empty,
             .delete_buffer = .empty,
             .arena = std.heap.ArenaAllocator.init(allocator),
             .bloom = try BloomFilter.init(allocator, BLOOM_BITS, BLOOM_HASHES),
@@ -164,7 +170,18 @@ pub const IngestHandler = struct {
         self.bloom.deinit(self.allocator);
         self.arena.deinit();
         self.buffer.deinit(self.allocator);
+        self.cursors.deinit(self.allocator);
         self.delete_buffer.deinit(self.allocator);
+    }
+
+    /// The ONLY way to buffer an event. Keeps `cursors` 1:1 with `buffer`; a
+    /// bare `buffer.append` desynchronizes them and the flush then advances the
+    /// durable cursor past events it never sent.
+    fn enqueue(self: *IngestHandler, event: ActorEvent) void {
+        self.buffer.append(self.allocator, event) catch return;
+        self.cursors.append(self.allocator, self.pending_cursor) catch {
+            _ = self.buffer.pop();
+        };
     }
 
     fn dupe(self: *IngestHandler, s: []const u8) ?[]const u8 {
@@ -177,16 +194,20 @@ pub const IngestHandler = struct {
     }
 
     pub fn onEvent(self: *IngestHandler, event: zat.FirehoseEvent) void {
+        // BEFORE dispatch: the handlers append to `buffer`, and each append
+        // records `pending_cursor` as that entry's seq. Setting it afterwards
+        // would tag every entry with the PREVIOUS event's seq.
+        //
+        // relay `seq`, NOT jetstream's µs timestamp — different keyspace, which
+        // is why the cutover writes a fresh cursor key (see fetchCursor).
+        if (event.seq()) |s| self.pending_cursor = s;
+
         switch (event) {
             .commit => |c| self.handleCommit(c),
             .identity => |id| self.handleIdentity(id),
             .account => |acct| self.handleAccount(acct),
             .sync, .info => {},
         }
-
-        // relay `seq`, NOT jetstream's µs timestamp — different keyspace, which
-        // is why the cutover writes a fresh cursor key (see fetchCursor).
-        if (event.seq()) |s| self.pending_cursor = s;
 
         const now = timestamp();
         last_event_at.store(now, .monotonic);
@@ -197,6 +218,7 @@ pub const IngestHandler = struct {
                 self.buffer.items.len, self.delete_buffer.items.len,
             });
             self.buffer.clearRetainingCapacity();
+            self.cursors.clearRetainingCapacity();
             self.delete_buffer.clearRetainingCapacity();
             _ = self.arena.reset(.retain_capacity);
             self.resetBloom();
@@ -254,7 +276,7 @@ pub const IngestHandler = struct {
             // ingester only sees self-labels from profile records — it can never
             // correctly determine hidden. let refreshModeration cron handle it.
 
-            self.buffer.append(self.allocator, event) catch return;
+            self.enqueue(event);
         } else {
             // non-profile collections: just discover the DID
             if (op.action == .delete) return;
@@ -264,7 +286,7 @@ pub const IngestHandler = struct {
             self.bloom.insert(repo);
 
             const did = self.dupe(repo) orelse return;
-            self.buffer.append(self.allocator, .{ .did = did }) catch return;
+            self.enqueue(.{ .did = did });
         }
     }
 
@@ -285,7 +307,7 @@ pub const IngestHandler = struct {
                     .did = self.dupe(id.did) orelse return,
                     .handle = self.dupe(h),
                 };
-                self.buffer.append(self.allocator, event) catch return;
+                self.enqueue(event);
             }
         }
     }
@@ -300,6 +322,7 @@ pub const IngestHandler = struct {
     fn flush(self: *IngestHandler) void {
         self.last_flush = timestamp();
         var any_failure = false;
+        var posted_through: ?i64 = null;
 
         if (self.buffer.items.len > 0) {
             const batch_end = @min(self.buffer.items.len, MAX_BATCH);
@@ -326,6 +349,21 @@ pub const IngestHandler = struct {
                     );
                 }
                 self.buffer.shrinkRetainingCapacity(self.buffer.items.len - batch_end);
+
+                // The durable cursor advances to the last seq we ACTUALLY sent,
+                // not to pending_cursor — pending_cursor covers events still in
+                // the buffer, so publishing it would skip them on restart.
+                if (batch_end <= self.cursors.items.len) {
+                    posted_through = self.cursors.items[batch_end - 1];
+                    if (batch_end < self.cursors.items.len) {
+                        std.mem.copyForwards(
+                            i64,
+                            self.cursors.items[0 .. self.cursors.items.len - batch_end],
+                            self.cursors.items[batch_end..],
+                        );
+                    }
+                    self.cursors.shrinkRetainingCapacity(self.cursors.items.len - batch_end);
+                }
             } else {
                 log.err("ingest batch failed ({d} events, {d} pending), will retry in 5s", .{
                     batch_end, self.buffer.items.len,
@@ -383,8 +421,18 @@ pub const IngestHandler = struct {
                 span.setAttribute("total_ingested", self.total_ingested);
                 span.setAttribute("total_deleted", self.total_deleted);
             }
+            // Advance only past what was sent, and only while no deletes are
+            // queued — a pending delete carries a lower seq, and skipping it
+            // would drop a moderation event on restart.
+            if (posted_through) |c| {
+                if (self.delete_buffer.items.len == 0 and c > self.flushed_cursor) {
+                    self.flushed_cursor = c;
+                }
+            }
             if (self.buffer.items.len == 0 and self.delete_buffer.items.len == 0) {
-                self.flushed_cursor = self.pending_cursor;
+                if (self.pending_cursor > self.flushed_cursor) {
+                    self.flushed_cursor = self.pending_cursor;
+                }
                 _ = self.arena.reset(.retain_capacity);
             }
         }
@@ -598,4 +646,38 @@ test "relay seq spaces are per-relay: a cursor is only valid for its issuer" {
     }
     // the spread between relays dwarfs any tolerance a heuristic could apply
     try testing.expect(observed[0] - observed[3] > 26_000_000_000);
+}
+
+test "durable cursor advances past posted batches without draining the buffer" {
+    // The bug: flushed_cursor only advanced when buffer AND delete_buffer were
+    // both empty. Under jetstream's server-filtered stream the buffer drained
+    // constantly so it worked; the relay firehose delivers ~4x the actor events
+    // and the buffer is never empty, so the cursor sat at 0 and every restart
+    // silently lost its place. Verified in prod 2026-07-28: /admin/cursor
+    // returned 0 while the ingester was at seq ~32,235,000,000.
+    //
+    // This models the invariant the fix relies on: after posting the first N of
+    // M buffered entries, the durable cursor is entry N-1's seq — NOT the
+    // newest seq seen (which covers entries still buffered) and NOT 0.
+    var cursors: std.ArrayList(i64) = .empty;
+    defer cursors.deinit(testing.allocator);
+    for ([_]i64{ 100, 101, 102, 103, 104 }) |c| {
+        try cursors.append(testing.allocator, c);
+    }
+
+    const batch_end: usize = 3;
+    const posted_through = cursors.items[batch_end - 1];
+    try testing.expectEqual(@as(i64, 102), posted_through);
+
+    // and the remainder keeps its own seqs for the next flush
+    std.mem.copyForwards(
+        i64,
+        cursors.items[0 .. cursors.items.len - batch_end],
+        cursors.items[batch_end..],
+    );
+    cursors.shrinkRetainingCapacity(cursors.items.len - batch_end);
+    try testing.expectEqualSlices(i64, &.{ 103, 104 }, cursors.items);
+
+    // advancing to the newest seen seq instead would skip 103 and 104
+    try testing.expect(posted_through < 104);
 }
