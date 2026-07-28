@@ -434,13 +434,13 @@ def main() -> int:
     ap.add_argument("--bundles-only", action="store_true",
                     help="stop after the bundle stages; skip identity resolution entirely")
     ap.add_argument("--apply", action="store_true", help="write to turso (default: dry run)")
-    ap.add_argument("--batch", type=int, default=250,
+    ap.add_argument("--batch", type=int, default=500,
                     help="statements per request; matches the worker's chunk size")
     ap.add_argument("--need", choices=("handle", "pds", "both"), default="handle",
                     help="which backlog to target")
     ap.add_argument("--page", type=int, default=10000,
                     help="rows per keyset page; 905 rows/s measured at 10k")
-    ap.add_argument("--pace-ms", type=int, default=250,
+    ap.add_argument("--pace-ms", type=int, default=500,
                     help="sleep between write transactions; Turso is single-writer "
                          "and the live ingester shares it")
     args = ap.parse_args()
@@ -531,9 +531,18 @@ def main() -> int:
             # Slow batches mean the writer is contended, so back off in
             # proportion rather than at a constant rate. Fast batches keep the
             # floor pace and the job still finishes in a sane time.
+            # Batches are INHERENTLY slow here: every row changes `handle`,
+            # which fires the actors_au trigger and rewrites FTS5, so ~20s per
+            # 500 rows is real work, not contention. The first version treated
+            # any batch over 1s as contention and added a 10s pause — measured
+            # 6.1 rows/s, a 44-hour job, roughly a third of it idle.
+            #
+            # Each batch is its own request, so the writer is already free
+            # between them; a small floor is enough politeness. Only genuinely
+            # anomalous batches (>30s) mean someone else is fighting us.
             pace = args.pace_ms / 1000
-            if elapsed > 1.0:
-                pace = max(pace, min(elapsed * 2, 10.0))
+            if elapsed > 30.0:
+                pace = max(pace, min(elapsed / 2, 5.0))
                 slow_batches += 1
                 if slow_batches % 20 == 1:
                     print(
