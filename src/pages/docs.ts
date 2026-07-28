@@ -78,9 +78,10 @@ export function docsPage(): string {
       <a href="#response-comparison">response comparison</a> below).
     </p>
     <p>
-      accounts are discovered straight from the atproto firehose via
-      <a href="https://docs.bsky.app/blog/jetstream">jetstream</a> — anyone who creates a profile,
-      posts, likes, or follows is picked up automatically, across bluesky and other atproto apps.
+      accounts are discovered straight from the relay firehose
+      (<a href="https://atproto.com/specs/event-stream">com.atproto.sync.subscribeRepos</a>) —
+      anyone who creates a profile, posts, likes, or follows is picked up automatically,
+      wherever their PDS is hosted.
       accounts that predate the index or haven't posted yet can be surfaced on demand
       (see <a href="#request-indexing">request indexing</a> below).
     </p>
@@ -243,8 +244,8 @@ export function docsPage(): string {
     <h2 id="request-indexing">request indexing</h2>
     <p>
       if someone isn't showing up in results, you (or your users) can request indexing from the
-      <a href="/">homepage</a>. newly created accounts are picked up automatically via jetstream,
-      but accounts created before the index existed may need a manual nudge.
+      <a href="/">homepage</a>. newly created accounts are picked up automatically from the relay
+      firehose, but accounts created before the index existed may need a manual nudge.
     </p>
 
     <footer>

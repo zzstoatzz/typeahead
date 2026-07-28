@@ -256,6 +256,8 @@ def main() -> int:
                     help="bundle the weeks the public host has not published "
                          "(pure-python stand-in for `allegedly bundle`)")
     ap.add_argument("--from-dir", action="store_true", help="read bundles directly instead of stdin")
+    ap.add_argument("--bundles-only", action="store_true",
+                    help="stop after the bundle stages; skip identity resolution entirely")
     ap.add_argument("--apply", action="store_true", help="write to turso (default: dry run)")
     ap.add_argument("--batch", type=int, default=1000, help="updates per turso transaction")
     ap.add_argument("--need", choices=("handle", "pds", "both"), default="handle",
@@ -271,6 +273,11 @@ def main() -> int:
         fetch_bundles(args.dest)
     if args.scrape_tail:
         scrape_tail(args.dest)
+
+    # Bundle stages are separable so an orchestrator can run them as their own
+    # retryable steps without paying for the identity phase each time.
+    if args.bundles_only:
+        return 0
 
     # Checked here rather than at first use: the bundle stages above need no
     # credentials, so an unset TURSO_URL would otherwise surface as a urllib

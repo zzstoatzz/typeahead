@@ -48,14 +48,14 @@ fn envFlag(name: [*:0]const u8, default: bool) bool {
     return true;
 }
 
-const JetstreamArgs = struct {
+const FirehoseArgs = struct {
     allocator: Allocator,
     config: ingest.Config,
     transport: *HttpTransport,
     identity_pool: ?*identity.Pool,
 };
 
-fn jetstreamThread(args: JetstreamArgs) void {
+fn firehoseThread(args: FirehoseArgs) void {
     var handler = ingest.IngestHandler.init(
         args.allocator,
         args.config,
@@ -75,6 +75,7 @@ fn jetstreamThread(args: JetstreamArgs) void {
     //
     // There is no wantedCollections equivalent here; the allowlist moved into
     // ingest.wantedCollection and every frame is now decoded before filtering.
+    //
     // ONE host, deliberately. zat's default_hosts lists four relays, but
     // northamerica/europe/asia.firehose.network are INDEPENDENT relays with
     // independent `seq` spaces (separate operators, separate A records) — not
@@ -121,7 +122,7 @@ pub fn main() !void {
     // wrong box is invisible until it competes for resources: the ingester ran
     // the search app's full-corpus sync for months because roles used to
     // default all-on (found 2026-06-12, mid-incident).
-    //   ingester — jetstream → worker, owns Turso schema migrations
+    //   ingester — relay firehose → worker, owns Turso schema migrations
     //   search   — Turso → local replica sync + HTTP search + index promote
     //   indexer  — offline snapshot builder, runs once and exits
     const Role = enum { ingester, search, indexer };
@@ -199,7 +200,7 @@ pub fn main() !void {
         .flags = 0,
     }, null);
 
-    // Run Turso schema migrations BEFORE spawning sync/jetstream — sync queries
+    // Run Turso schema migrations BEFORE spawning sync/firehose — sync queries
     // turso assuming the schema exists. On baselined prod this is a few sub-
     // second SELECTs + INSERT OR IGNORE; on a fresh DB it creates everything
     // from migration 001. The search service must NOT run these.
@@ -238,7 +239,7 @@ pub fn main() !void {
         };
     }
 
-    // jetstream-only state (transport, resolver, identity pool) — declared at
+    // firehose-only state (transport, resolver, identity pool) — declared at
     // outer scope so the spawned task's pointers stay valid for main()'s lifetime
     var transport: HttpTransport = undefined;
     var have_transport = false;
@@ -259,14 +260,14 @@ pub fn main() !void {
         log.info("typeahead ingester → {s}", .{config.worker_url});
 
         // keep-alive matters here: flushes run every ≤5s and a cold TLS
-        // handshake per POST (~150-400ms) blocks the jetstream consumer loop —
+        // handshake per POST (~150-400ms) blocks the firehose consumer loop —
         // at peak firehose rate that pushed catch-up below 1× real-time.
         // stale-connection failures are covered by flush retry + the watchdog.
         transport = HttpTransport.init(io, allocator);
         transport.keep_alive = true;
         have_transport = true;
 
-        // identity resolution pool: jetstream #identity events omit the handle
+        // identity resolution pool: #identity events omit the handle
         // in practice, so we slingshot-resolve each one and POST to the worker.
         resolver = identity.Resolver.init(allocator, io, config.worker_url, config.secret);
         have_resolver = true;
@@ -287,13 +288,13 @@ pub fn main() !void {
             return err;
         };
 
-        tasks.concurrent(io, jetstreamThread, .{JetstreamArgs{
+        tasks.concurrent(io, firehoseThread, .{FirehoseArgs{
             .allocator = allocator,
             .config = config,
             .transport = &transport,
             .identity_pool = &identity_pool,
         }}) catch |err| {
-            log.err("jetstream task failed: {}", .{err});
+            log.err("firehose task failed: {}", .{err});
         };
 
         tasks.concurrent(io, ingest.watchdogLoop, .{}) catch |err| {

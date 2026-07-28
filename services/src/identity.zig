@@ -1,6 +1,6 @@
-//! Identity resolution for DIDs received from jetstream #identity events.
+//! Identity resolution for DIDs received from relay firehose #identity events.
 //!
-//! Background: jetstream's `#identity` event has `handle` as a spec-optional field
+//! Background: the `#identity` event has `handle` as a spec-optional field
 //! ("validated or passed-through from an upstream source"). In practice the bsky
 //! relay omits it entirely on every event we've sampled. So the ingester forwards
 //! every identity-event DID to this resolver, which:

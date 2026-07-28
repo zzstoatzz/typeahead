@@ -88,7 +88,7 @@ export async function handleIngest(
     }
   }
 
-  // Best-effort activity bump: tag actors that produced any jetstream event in
+  // Best-effort activity bump: tag actors that produced any firehose event in
   // the last hour. Guarded by a 1h threshold so a hot actor causes at most one
   // row write per hour even if they generate hundreds of events. Ranking only
   // needs hour granularity ("active recently" vs "dormant for months").

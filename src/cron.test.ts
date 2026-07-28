@@ -6,7 +6,7 @@ import { extractProfileFields } from "./utils";
 // labels === f.labels` only, freezing avatar / display_name / follower
 // counts / quality_score forever for any actor whose moderation state
 // was stable — i.e. nearly every actor. Especially bad for third-party-PDS
-// accounts whose firehose commits don't reach jetstream (pckt.blog →
+// accounts whose firehose commits the appview never indexed (pckt.blog →
 // pds.pckt.cafe). This cron is their ONLY refresh path; the predicate
 // must compare every materialized field so a real profile change forces
 // a write.

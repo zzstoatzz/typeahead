@@ -17,7 +17,7 @@
 //!     + avatar               150   has avatar
 //!     + has_display_name     100   has display name
 //!     + has_created_at       100   has indexedAt-ish created_at
-//!     + recent_activity       75   jetstream event within 30 days
+//!     + recent_activity       75   firehose event within 30 days
 //!     - no_avatar_no_name  -1200   neither avatar nor display name
 //!     - suspicious_numbered -900   handle matches "<word>[-_]?<digits>"
 //!     - repeated_tokens     -900   display name has the same token >= 3 times

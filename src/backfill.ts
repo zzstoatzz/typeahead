@@ -29,7 +29,7 @@ export async function backfillFromBsky(
     const known = new Set((existing.results || []).map(r => r.did));
 
     // upsert all — fills in missing actors AND enriches existing ones
-    // (e.g. actors ingested via Jetstream that lack avatar/displayName)
+    // (e.g. actors ingested via the firehose that lack avatar/displayName)
     const overrides = await getOverrides(db, actors.map((a) => a.did));
     const blockedDomains = await getBlockedDomains(db);
     const stmts = actors.map((a) => {
