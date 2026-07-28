@@ -103,14 +103,35 @@ def _turso_once(sql: str, args: list | None = None) -> list[list]:
     return [[c.get("value") for c in row] for row in res["response"]["result"]["rows"]]
 
 
-def turso_batch(statements: list[tuple[str, list]]) -> None:
+def turso_batch(statements: list[tuple[str, list]], tries: int = 5) -> None:
     """Many statements, ONE round trip, NO explicit transaction.
+
+    Retries with backoff. Reads already did; writes did not, and that asymmetry
+    cost a run: after 496s building the need-set and 1118s scanning 86.9M ops to
+    resolve 986,836 DIDs, ONE read-timeout in the write loop discarded all of
+    it (2026-07-28). Every statement here is an idempotent COALESCE UPDATE, so
+    replaying a batch is always safe.
 
     Turso gives a transaction a 5-second window to complete; wrapping a thousand
     UPDATEs in BEGIN/COMMIT reliably exceeds it and the whole batch rolls back.
     Letting each statement autocommit keeps the single round trip, and because
     every UPDATE here is idempotent, a batch that dies halfway leaves resumable
     progress rather than nothing."""
+    for attempt in range(tries):
+        try:
+            return _turso_batch_once(statements)
+        except Exception as e:
+            if attempt == tries - 1:
+                raise
+            delay = 2**attempt * 5
+            print(
+                f"  write batch failed ({type(e).__name__}), retry {attempt + 1}/{tries - 1} in {delay}s",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+
+
+def _turso_batch_once(statements: list[tuple[str, list]]) -> None:
     url = TURSO_URL.replace("libsql://", "https://").rstrip("/")
     reqs = []
     for sql, args in statements:
@@ -124,7 +145,7 @@ def turso_batch(statements: list[tuple[str, list]]) -> None:
         data=json.dumps({"requests": reqs}).encode(),
         headers={"Authorization": f"Bearer {TURSO_TOKEN}", "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=180) as r:
+    with urllib.request.urlopen(req, timeout=300) as r:
         payload = json.load(r)
     for res in payload.get("results", []):
         if res.get("type") == "error":
