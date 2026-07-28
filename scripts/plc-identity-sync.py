@@ -434,12 +434,13 @@ def main() -> int:
     ap.add_argument("--bundles-only", action="store_true",
                     help="stop after the bundle stages; skip identity resolution entirely")
     ap.add_argument("--apply", action="store_true", help="write to turso (default: dry run)")
-    ap.add_argument("--batch", type=int, default=1000, help="updates per turso transaction")
+    ap.add_argument("--batch", type=int, default=250,
+                    help="statements per request; matches the worker's chunk size")
     ap.add_argument("--need", choices=("handle", "pds", "both"), default="handle",
                     help="which backlog to target")
     ap.add_argument("--page", type=int, default=10000,
                     help="rows per keyset page; 905 rows/s measured at 10k")
-    ap.add_argument("--pace-ms", type=int, default=50,
+    ap.add_argument("--pace-ms", type=int, default=250,
                     help="sleep between write transactions; Turso is single-writer "
                          "and the live ingester shares it")
     args = ap.parse_args()
@@ -511,17 +512,36 @@ def main() -> int:
     )
     pending: list[tuple[str, list]] = []
     written = 0
+    slow_batches = 0
     t_write = time.time()
     for did, (_, handle, pds) in resolved.items():
         pending.append((sql, [did, handle or "", pds or ""]))
         if len(pending) >= args.batch:
+            t_batch = time.time()
             turso_batch(pending)
+            elapsed = time.time() - t_batch
             written += len(pending)
             pending = []
-            # yield the writer. without this a multi-million-row backfill
-            # monopolizes the single writer and stalls live ingest.
-            if args.pace_ms:
-                time.sleep(args.pace_ms / 1000)
+            # ADAPTIVE yield. A fixed 50ms sleep was not backpressure: on
+            # 2026-07-28 this job saturated Turso's single writer, the live
+            # ingester's flushes began timing out, and its 5s retry of an
+            # oversized batch turned that into a self-sustaining wedge —
+            # ~25 minutes with no writes reaching the corpus.
+            #
+            # Slow batches mean the writer is contended, so back off in
+            # proportion rather than at a constant rate. Fast batches keep the
+            # floor pace and the job still finishes in a sane time.
+            pace = args.pace_ms / 1000
+            if elapsed > 1.0:
+                pace = max(pace, min(elapsed * 2, 10.0))
+                slow_batches += 1
+                if slow_batches % 20 == 1:
+                    print(
+                        f"  writer contended ({elapsed:.1f}s/batch) — backing off to {pace:.1f}s",
+                        file=sys.stderr,
+                    )
+            if pace:
+                time.sleep(pace)
             if written % 100_000 == 0:
                 rate = written / max(time.time() - t_write, 1)
                 print(f"  wrote {written:,} ({rate:.0f}/s)", file=sys.stderr)
