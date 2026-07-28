@@ -24,36 +24,16 @@ export interface StatsData {
 }
 
 export function statsPage(d: StatsData): string {
-  // The total-searches metric AND the sparkline both default to the 7d window
-  // and share one range selector (7d/30d/all). The JS re-slices the same data
-  // on click; here we render the 7d view so the page is correct without JS.
   const sorted = [...d.rows].reverse(); // oldest first
-  const sw = 600, sh = 80;
   // Window by TIME, not bucket count: metric buckets are 5-min (hour*300 = unix
   // seconds) and SPARSE (only buckets with a search exist, ~64/day not 288), so
-  // "last N buckets" ≠ "last N days". The old count-based slice made 30d == all
-  // whenever total buckets < the 30d count, and made 7d span ~31 days.
+  // "last N buckets" ≠ "last N days".
   const nowSec = Math.floor(Date.now() / 1000);
-  const spark7 = sorted.filter((r) => r.hour * 300 >= nowSec - 7 * 86400);
-  const counts = spark7.map((r) => r.searches);
-  const sparkMax = Math.max(...counts, 1);
-  const step = counts.length > 1 ? sw / (counts.length - 1) : 0;
-  const sparkPoints = counts
-    .map((c, i) => `${(i * step).toFixed(1)},${(sh - (c / sparkMax) * sh).toFixed(1)}`)
-    .join(" ");
-  // initial total matches the default (7d) window, so the rendered value agrees
-  // with the active button on load (previously this showed the all-time sum
-  // under a "7d"-active button).
-  const initialTotal = spark7.reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
-  // full data (all buckets, oldest first) for the client range selector +
-  // sparkline redraw. cache_hits included so "total" matches the SSR formula.
-  const sparkJson = JSON.stringify(
-    sorted.map((r) => ({
-      hour: r.hour,
-      time: new Date(r.hour * 300_000).toISOString().slice(0, 16) + "Z",
-      searches: r.searches,
-    }))
-  );
+  // SSR renders the 7d view so the page is correct without JS and the value
+  // agrees with the active button on load.
+  const initialTotal = sorted
+    .filter((r) => r.hour * 300 >= nowSec - 7 * 86400)
+    .reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
   const metricsJson = JSON.stringify(
     sorted.map((r) => ({
       hour: r.hour,
@@ -123,10 +103,10 @@ export function statsPage(d: StatsData): string {
     h1 { font-size: 1.1rem; font-weight: 400; color: var(--muted); }
     .subtitle { font-size: 0.8rem; color: var(--dim); margin-bottom: 1.5rem; }
 
-    .chart-wrap, .sparkline-wrap, .pie-wrap {
+    .chart-wrap, .activity-wrap, .pie-wrap {
       background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
       padding: 1rem; margin-bottom: 1.25rem; position: relative; }
-    .chart-wrap h2, .sparkline-wrap h2, .pie-wrap h2 {
+    .chart-wrap h2, .activity-wrap h2, .pie-wrap h2 {
       font-size: 0.75rem; font-weight: 400; color: var(--muted); margin-bottom: 0.6rem; }
     .ranged-header { display: flex; justify-content: space-between; align-items: center;
                      flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.6rem; }
@@ -141,7 +121,7 @@ export function statsPage(d: StatsData): string {
     .legend { display: flex; gap: 1.2rem; margin-top: 0.6rem; font-size: 0.7rem; color: var(--muted); }
     .legend span { display: flex; align-items: center; gap: 0.35rem; }
     .ldot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .chart-tip, .pie-tip, .spark-tip {
+    .chart-tip, .pie-tip, .series-tip {
       display: none; position: fixed; background: var(--tip-bg);
       border: 1px solid var(--line-2); border-radius: 8px; padding: 0.5rem 0.7rem;
       font-size: 0.72rem; color: var(--text); pointer-events: none; z-index: 50;
@@ -154,6 +134,10 @@ export function statsPage(d: StatsData): string {
     polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; }
 
     .summary { display: grid; gap: 0.8rem; margin-bottom: 1.25rem; }
+    /* metrics nested in the activity card: the card already provides the
+       border and padding, so don't draw a second frame inside it. */
+    .activity-wrap .summary { margin-bottom: 0; }
+    .activity-wrap .metric { border: none; padding: 0; background: none; }
     .summary-2 { grid-template-columns: repeat(2, 1fr); }
     .summary-3 { grid-template-columns: repeat(3, 1fr); }
     .metric { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem 0.9rem; }
@@ -234,7 +218,7 @@ export function statsPage(d: StatsData): string {
       .summary-2, .summary-3 { grid-template-columns: 1fr 1fr; }
       #pie { width: 230px; height: 230px; }
       .pie-legend { gap: 0.3rem 0.6rem; font-size: 0.68rem; }
-      #spark, #tseries { height: 72px; }
+      #tseries { height: 72px; }
       .ts-table-wrap { max-height: 320px; }
       .ts-table { font-size: 0.7rem; }
       .ts-table thead th { padding: 0.4rem 0.5rem; font-size: 0.62rem; }
@@ -291,37 +275,29 @@ export function statsPage(d: StatsData): string {
       </div>
     </div>
 
-    <div class="sparkline-wrap">
+    <!-- ONE window control for the whole activity section. There used to be
+         three independent ones (searches sparkline, latency, traffic series)
+         plus a duplicate line chart: "searches / 5 min" and "traffic over time"
+         both plotted volume over time, and the donut's total was computed over
+         a different window than the searches count sitting next to it. -->
+    <div class="activity-wrap">
       <div class="ranged-header">
-        <h2 id="spark-label">searches / 5 min</h2>
-        <span class="range-btns" id="searches-range">
+        <h2>activity</h2>
+        <span class="range-btns" id="activity-range">
           <button data-range="24h">24h</button>
           <button data-range="7d" class="active">7d</button>
           <button data-range="30d">30d</button>
-          <button data-range="all">all</button>
         </span>
       </div>
-      ${counts.length > 1
-        ? `<svg viewBox="0 0 ${sw} ${sh}" preserveAspectRatio="none" id="spark">
-            <polyline points="${sparkPoints}" id="spark-poly" />
-          </svg>`
-        : `<div style="color:#444;font-size:0.8rem;padding:1rem 0;text-align:center">no data yet</div>`}
-    </div>
-    <div class="summary summary-2">
-      <div class="metric">
-        <div class="label" id="searches-label">total searches (7 days)</div>
-        <div class="value" id="searches-value">${initialTotal.toLocaleString()}</div>
-      </div>
-      <div class="metric">
-        <div class="metric-head">
-          <div class="label" tabindex="0" data-tip="cached (edge) vs uncached (fly replica)">avg latency</div>
-          <span class="range-btns" id="latency-range">
-            <button data-range="24h" class="active">24h</button>
-            <button data-range="7d">7d</button>
-            <button data-range="30d">30d</button>
-          </span>
+      <div class="summary summary-2">
+        <div class="metric">
+          <div class="label" id="searches-label">total searches (7 days)</div>
+          <div class="value" id="searches-value">${initialTotal.toLocaleString()}</div>
         </div>
-        <div class="value" style="font-size:1.3rem" id="latency-value">${d.avgCacheLatency > 0 ? `${d.avgCacheLatency.toFixed(1)} ms <span style="opacity:.4;font-size:.85rem">cached</span> · ` : ''}${d.avgLatency.toFixed(0)} ms${d.avgCacheLatency > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : ''}</div>
+        <div class="metric">
+          <div class="label" tabindex="0" data-tip="cached (edge) vs uncached (fly replica)">avg latency</div>
+          <div class="value" style="font-size:1.3rem" id="latency-value">${d.avgCacheLatency > 0 ? `${d.avgCacheLatency.toFixed(1)} ms <span style="opacity:.4;font-size:.85rem">cached</span> · ` : ''}${d.avgLatency.toFixed(0)} ms${d.avgCacheLatency > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : ''}</div>
+        </div>
       </div>
     </div>
 
@@ -333,14 +309,7 @@ export function statsPage(d: StatsData): string {
            <div class="traffic-series">
              <div class="ranged-header">
                <h2 id="tseries-label">traffic over time — all sources</h2>
-               <span style="display:inline-flex;gap:0.35rem;align-items:center">
-                 <button id="tseries-clear" style="display:none">&times; all sources</button>
-                 <span class="range-btns" id="tseries-range">
-                   <button data-range="24h">24h</button>
-                   <button data-range="7d" class="active">7d</button>
-                   <button data-range="30d">30d</button>
-                 </span>
-               </span>
+               <button id="tseries-clear" style="display:none">&times; all sources</button>
              </div>
              <svg viewBox="0 0 600 90" preserveAspectRatio="none" id="tseries">
                <polyline points="" id="tseries-poly" />
@@ -372,7 +341,7 @@ export function statsPage(d: StatsData): string {
       <button class="theme-btn" id="theme-toggle" type="button">theme: auto</button>
     </footer>
   </div>
-  <div class="spark-tip" id="spark-tip"></div>
+  <div class="series-tip" id="series-tip"></div>
   <script>
     const COLORS = { total: '#4a9', handles: '#58a6ff', avatars: '#bc8cff' };
 
@@ -661,13 +630,12 @@ export function statsPage(d: StatsData): string {
       if (tseriesT1) tseriesT1.textContent = fmtSec((tN + 1) * cfg.stepSec, showClock);
       tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, counts, max, step, toY };
     }
-    document.getElementById('tseries-range')?.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-range]');
-      if (!btn) return;
-      tsRange = btn.dataset.range;
-      document.querySelectorAll('#tseries-range button').forEach(b => b.classList.toggle('active', b.dataset.range === tsRange));
+    // driven by the shared #activity-range, not a selector of its own
+    window.__setTsRange = (range) => {
+      if (!TS_RANGES[range]) return;
+      tsRange = range;
       showSeries(pinnedDomain);
-    });
+    };
     function applySelection(domain) {
       pinnedDomain = domain;
       if (tseriesClear) tseriesClear.style.display = domain != null ? 'inline-block' : 'none';
@@ -695,15 +663,15 @@ export function statsPage(d: StatsData): string {
         tseriesDot.setAttribute('cy', tsView.toY(c).toFixed(1));
         tseriesDot.style.display = 'block';
       }
-      sparkTip.textContent = fmtSec(tsView.t0Sec + idx * tsView.stepSec, true) + ' UTC — ' + c + (c === 1 ? ' hit' : ' hits');
-      sparkTip.style.display = 'block';
+      seriesTip.textContent = fmtSec(tsView.t0Sec + idx * tsView.stepSec, true) + ' UTC — ' + c + (c === 1 ? ' hit' : ' hits');
+      seriesTip.style.display = 'block';
       // keep the tip above the finger/cursor and inside the viewport
-      const tx = Math.min(clientX + 12, window.innerWidth - sparkTip.offsetWidth - 8);
-      sparkTip.style.left = Math.max(8, tx) + 'px';
-      sparkTip.style.top = (clientY - 40) + 'px';
+      const tx = Math.min(clientX + 12, window.innerWidth - seriesTip.offsetWidth - 8);
+      seriesTip.style.left = Math.max(8, tx) + 'px';
+      seriesTip.style.top = (clientY - 40) + 'px';
     }
     function tseriesTraceEnd() {
-      sparkTip.style.display = 'none';
+      seriesTip.style.display = 'none';
       if (tseriesDot) tseriesDot.style.display = 'none';
     }
     if (tseriesEl) {
@@ -841,8 +809,7 @@ export function statsPage(d: StatsData): string {
       window.addEventListener('resize', () => drawPie());
     }
 
-    /* --- searches: one range selector drives BOTH the total and the sparkline --- */
-    const sparkData = ${sparkJson};    // {time, searches}, oldest first, ALL buckets
+    /* --- activity: one range selector drives searches, latency, and the series --- */
     const allMetrics = ${metricsJson}; // {hour, searches, cache_hits}, same order
     // window by TIME (bucket is 5-min; hour*300 = unix seconds), not bucket
     // count — buckets are sparse so count-based slicing made 30d == all.
@@ -852,104 +819,54 @@ export function statsPage(d: StatsData): string {
     // long windows aggregate 5-min buckets so the line stays readable
     const AGG_SECS = { '30d': 3600, 'all': 21600 };
     const AGG_LABEL = { 300: '5 min', 3600: 'hour', 21600: '6 h' };
-    const SPARK_W = ${sw}, SPARK_H = ${sh};
 
     const searchesValue = document.getElementById('searches-value');
-    const spark = document.getElementById('spark');
-    const sparkPoly = document.getElementById('spark-poly');
-    const sparkLabel = document.getElementById('spark-label');
-    const sparkTip = document.getElementById('spark-tip');
-    let sparkView = sparkData; // the currently-shown slice; the tooltip reads this
+    const searchesLabel = document.getElementById('searches-label');
+    const latencyValue = document.getElementById('latency-value');
 
     function sliceWindow(arr, range) {
       const secs = SEARCH_SECS[range];
       return secs == null ? arr : arr.filter(r => r.hour * 300 >= NOW_SEC - secs);
     }
-    function totalForRange(range) {
-      return sliceWindow(allMetrics, range).reduce((s, r) => s + r.searches + (r.cache_hits || 0), 0);
-    }
-    function aggregate(arr, aggSecs) {
-      if (aggSecs === 300) return arr;
-      const buckets = new Map();
-      for (const r of arr) {
-        const key = Math.floor((r.hour * 300) / aggSecs);
-        buckets.set(key, (buckets.get(key) || 0) + r.searches);
-      }
-      return [...buckets.entries()].sort((a, b) => a[0] - b[0]).map(([key, searches]) => ({
-        hour: (key * aggSecs) / 300,
-        time: new Date(key * aggSecs * 1000).toISOString().slice(0, 16) + 'Z',
-        searches,
-      }));
-    }
-    function drawSpark(range) {
-      if (!sparkPoly) return;
-      const aggSecs = AGG_SECS[range] || 300;
-      sparkView = aggregate(sliceWindow(sparkData, range), aggSecs);
-      const counts = sparkView.map(r => r.searches);
-      const max = Math.max(...counts, 1);
-      const step = counts.length > 1 ? SPARK_W / (counts.length - 1) : 0;
-      sparkPoly.setAttribute('points', counts.map((c, i) => (i * step).toFixed(1) + ',' + (SPARK_H - (c / max) * SPARK_H).toFixed(1)).join(' '));
-      if (sparkLabel) sparkLabel.textContent = 'searches / ' + AGG_LABEL[aggSecs] + ' (' + (RANGE_LABEL[range] || range) + ')';
-    }
-    function applyRange(range) {
-      document.querySelectorAll('#searches-range button').forEach(b => b.classList.toggle('active', b.dataset.range === range));
-      if (searchesValue) searchesValue.textContent = totalForRange(range).toLocaleString();
-      const searchesLabel = document.getElementById('searches-label');
-      if (searchesLabel) searchesLabel.textContent = 'total searches (' + (RANGE_LABEL[range] || range) + ')';
-      drawSpark(range);
-    }
 
-    /* --- avg latency: independent range selector --- */
-    const latencyValue = document.getElementById('latency-value');
-    function applyLatencyRange(range) {
-      document.querySelectorAll('#latency-range button').forEach(b => b.classList.toggle('active', b.dataset.range === range));
-      if (!latencyValue) return;
+    /* ONE handler for the whole activity section. Previously total searches,
+       avg latency, and the traffic chart each had their own selector, so the
+       page could show 24h latency next to a 7d search count next to a 30d
+       chart — three windows, no indication they differed. */
+    function applyActivityRange(range) {
+      document.querySelectorAll('#activity-range button')
+        .forEach(b => b.classList.toggle('active', b.dataset.range === range));
       const win = sliceWindow(allMetrics, range);
+      const label = RANGE_LABEL[range] || range;
+
       let searches = 0, totalMs = 0, cacheHits = 0, cacheMs = 0;
       for (const r of win) {
         searches += r.searches; totalMs += r.total_ms || 0;
         cacheHits += r.cache_hits || 0; cacheMs += r.cache_ms || 0;
       }
-      const cold = searches > 0 ? totalMs / searches : 0;
-      const cached = cacheHits > 0 ? cacheMs / cacheHits : 0;
-      latencyValue.innerHTML = (cached > 0 ? cached.toFixed(1) + ' ms <span style="opacity:.4;font-size:.85rem">cached</span> · ' : '')
-        + cold.toFixed(0) + ' ms' + (cached > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : '');
-    }
-    document.getElementById('latency-range')?.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-range]');
-      if (btn) applyLatencyRange(btn.dataset.range);
-    });
+      if (searchesValue) searchesValue.textContent = (searches + cacheHits).toLocaleString();
+      if (searchesLabel) searchesLabel.textContent = 'total searches (' + label + ')';
 
-    document.getElementById('searches-range')?.addEventListener('click', e => {
-      const btn = e.target.closest('button[data-range]');
-      if (btn) applyRange(btn.dataset.range);
-    });
-
-    function sparkTrace(clientX, clientY) {
-      const rect = spark.getBoundingClientRect();
-      const x = clientX - rect.left;
-      const idx = Math.min(Math.round(x / rect.width * (sparkView.length - 1)), sparkView.length - 1);
-      if (idx >= 0 && sparkView[idx]) {
-        const sc = sparkView[idx].searches;
-        sparkTip.textContent = sparkView[idx].time + ' — ' + sc + (sc === 1 ? ' search' : ' searches');
-        sparkTip.style.display = 'block';
-        const tx = Math.min(clientX + 12, window.innerWidth - sparkTip.offsetWidth - 8);
-        sparkTip.style.left = Math.max(8, tx) + 'px';
-        sparkTip.style.top = (clientY - 40) + 'px';
+      if (latencyValue) {
+        const cold = searches > 0 ? totalMs / searches : 0;
+        const cached = cacheHits > 0 ? cacheMs / cacheHits : 0;
+        latencyValue.innerHTML =
+          (cached > 0 ? cached.toFixed(1) + ' ms <span style="opacity:.4;font-size:.85rem">cached</span> · ' : '')
+          + cold.toFixed(0) + ' ms'
+          + (cached > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : '');
       }
-    }
-    if (spark) {
-      spark.addEventListener('mousemove', e => sparkTrace(e.clientX, e.clientY));
-      spark.addEventListener('mouseleave', () => { sparkTip.style.display = 'none'; });
-      spark.addEventListener('touchstart', e => { const t = e.touches[0]; sparkTrace(t.clientX, t.clientY); }, { passive: true });
-      spark.addEventListener('touchmove', e => { const t = e.touches[0]; sparkTrace(t.clientX, t.clientY); }, { passive: true });
-      spark.addEventListener('touchend', () => { sparkTip.style.display = 'none'; });
+
+      window.__setTsRange?.(range);
     }
 
-    // default 7d: SSR already renders the 7d view; this makes the JS slice the
-    // single source of truth so server + client always agree, and primes
-    // sparkView for the tooltip.
-    applyRange('7d');
+    document.getElementById('activity-range')?.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-range]');
+      if (btn) applyActivityRange(btn.dataset.range);
+    });
+
+    // default 7d: SSR renders the 7d view; this makes the JS slice the single
+    // source of truth so server and client always agree.
+    applyActivityRange('7d');
     ${THEME_SCRIPT}
   </script>
 </body>
