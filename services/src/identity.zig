@@ -88,17 +88,22 @@ pub const Resolver = struct {
         } orelse return; // unresolvable right now — cron will retry
 
         defer self.allocator.free(resolved.handle);
+        defer if (resolved.pds) |p| self.allocator.free(p);
 
         // jetstream/atproto convention: failed validation surfaces as "handle.invalid"
         if (mem.eql(u8, resolved.handle, "handle.invalid")) return;
 
-        self.postIdentity(&transport, did_slice, resolved.handle) catch |err| {
+        self.postIdentity(&transport, did_slice, resolved.handle, resolved.pds) catch |err| {
             log.warn("post identity {s}: {s}", .{ did_slice, @errorName(err) });
         };
     }
 
     const Resolved = struct {
         handle: []const u8, // owned, free with self.allocator
+        /// slingshot returns this in the same response the handle came from.
+        /// It used to be dropped on the floor, which left the enrichment cron
+        /// backfilling pds one DID at a time — 9.3M rows deep at 500/run.
+        pds: ?[]const u8 = null, // owned, free with self.allocator
     };
 
     fn resolveSlingshot(self: *Resolver, transport: *HttpTransport, did: []const u8) !?Resolved {
@@ -121,10 +126,17 @@ pub const Resolver = struct {
         };
         if (handle_str.len == 0) return null;
 
-        return .{ .handle = try self.allocator.dupe(u8, handle_str) };
+        var pds_owned: ?[]const u8 = null;
+        if (parsed.value.object.get("pds")) |pds_node| {
+            if (pds_node == .string and pds_node.string.len > 0) {
+                pds_owned = try self.allocator.dupe(u8, pds_node.string);
+            }
+        }
+
+        return .{ .handle = try self.allocator.dupe(u8, handle_str), .pds = pds_owned };
     }
 
-    fn postIdentity(self: *Resolver, transport: *HttpTransport, did: []const u8, handle: []const u8) !void {
+    fn postIdentity(self: *Resolver, transport: *HttpTransport, did: []const u8, handle: []const u8, pds: ?[]const u8) !void {
         var output: std.Io.Writer.Allocating = .init(self.allocator);
         defer output.deinit();
 
@@ -133,8 +145,8 @@ pub const Resolver = struct {
             .options = .{ .emit_null_optional_fields = false },
         };
 
-        const event = ingest.ActorEvent{ .did = did, .handle = handle };
-        // single-event batch, no cursor (we don't want to clobber jetstream's cursor)
+        const event = ingest.ActorEvent{ .did = did, .handle = handle, .pds = pds };
+        // single-event batch, no cursor (we don't want to clobber the relay cursor)
         try jw.write(.{ .events = &[_]ingest.ActorEvent{event} });
 
         var url_buf: [512]u8 = undefined;

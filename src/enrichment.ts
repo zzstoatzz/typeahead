@@ -1,6 +1,6 @@
 import type { Stmt, TursoDB } from "./db";
-import type { Env, SlingshotResponse } from "./types";
-import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL } from "./types";
+import type { Env } from "./types";
+import { BSKY_GET_PROFILES_URL } from "./types";
 import { extractProfileFields, fetchProfileFromPds } from "./utils";
 import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 
@@ -79,8 +79,14 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
   await db.prepare("DELETE FROM traffic_buckets WHERE bucket < ?1").bind(pruneBefore).run();
 }
 
-/** lease-coordinated, two-phase enrichment: slingshot identity + getProfiles batch.
- *  returns { resolved, enriched } counts for delta tracking. */
+/** 25 DIDs per getProfiles call, so this is 100 requests per run. The old
+ *  per-DID path could only afford 500; batching is what makes a real limit
+ *  affordable, and the backlog is what makes it necessary. */
+const IDENTITY_LIMIT = 2500;
+
+/** Lease-coordinated enrichment. Both phases now batch through getProfiles;
+ *  the per-DID slingshot paths they replaced could not drain their backlogs.
+ *  Returns { resolved, enriched } counts for delta tracking. */
 export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: number; enriched: number }> {
   // lease via KV — 30s TTL, skip if another run is active
   const existing = await env.KV.get("enrich_lock");
@@ -91,45 +97,65 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
   let totalEnriched = 0;
 
   try {
-    // phase 1: identity resolution via slingshot
+    // phase 1: identity resolution, 25 DIDs per request via getProfiles.
+    //
+    // This was one slingshot call PER DID, capped at 500/run — 500/hour against
+    // a backlog that reached 1,311,817 rows on 2026-07-28, i.e. ~109 days to
+    // drain, with every row at identity_checked_at=0 so the ORDER BY tiebreak
+    // was arbitrary and a given DID might never surface. getProfiles takes 25
+    // per call at ~154 DIDs/s with a 96% hit rate (measured against that real
+    // backlog) and returns handle, display name, avatar and counts in the same
+    // response, so it feeds phase 2 as well.
+    //
+    // The ~4% getProfiles cannot resolve are accounts the appview never indexed
+    // — self-hosted PDSes, the birds.place class. They fall through to
+    // scripts/plc-identity-sync.py, which reads the PLC log directly.
     const { results: identityRows } = await db.prepare(
       `SELECT did FROM actors
        WHERE handle = '' AND identity_checked_at < unixepoch() - 3600
-       ORDER BY identity_checked_at ASC LIMIT 500`
+       ORDER BY identity_checked_at ASC LIMIT ${IDENTITY_LIMIT}`
     ).all<{ did: string }>();
 
     if (identityRows && identityRows.length > 0) {
       let resolved = 0;
-      const BATCH = 20;
-      for (let i = 0; i < identityRows.length; i += BATCH) {
-        const batch = identityRows.slice(i, i + BATCH);
-        await Promise.all(batch.map(async ({ did }) => {
-          try {
-            const res = await fetch(
-              `${SLINGSHOT_URL}?identifier=${encodeURIComponent(did)}`
-            );
-            if (!res.ok) {
-              // mark attempt so we back off for 1hr
-              await db.prepare(
-                "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
-              ).bind(did).run();
-              return;
-            }
-            const identity: SlingshotResponse = await res.json();
-            await db.prepare(
-              `UPDATE actors SET handle = COALESCE(NULLIF(?1, ''), handle),
-                 pds = COALESCE(NULLIF(?2, ''), pds),
-                 identity_checked_at = unixepoch(),
-                 updated_at = unixepoch()
-               WHERE did = ?3`
-            ).bind(identity.handle || '', identity.pds || '', did).run();
-            if (identity.handle) resolved++;
-          } catch {
-            await db.prepare(
-              "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
-            ).bind(did).run().catch(() => {});
+      for (let i = 0; i < identityRows.length; i += 25) {
+        const batch = identityRows.slice(i, i + 25);
+        const params = batch.map((r) => `actors=${encodeURIComponent(r.did)}`).join("&");
+        const stmts: Stmt[] = [];
+        try {
+          if (i > 0) await new Promise((r) => setTimeout(r, 100));
+          const res = await fetch(`${BSKY_GET_PROFILES_URL}?${params}`);
+          if (res.status === 429) {
+            console.log(JSON.stringify({ event: "enrich_identity", status: "rate_limited", resolved }));
+            break;
           }
-        }));
+          if (res.ok) {
+            const data: any = await res.json();
+            for (const p of data.profiles || []) {
+              if (!p.handle || p.handle === "handle.invalid") continue;
+              stmts.push(
+                db.prepare(
+                  `UPDATE actors SET handle = ?2,
+                     identity_checked_at = unixepoch(), updated_at = unixepoch()
+                   WHERE did = ?1`
+                ).bind(p.did, p.handle)
+              );
+              resolved++;
+            }
+          }
+        } catch {
+          // fall through — the stamp below still applies so we back off
+        }
+        // stamp every DID in the batch, resolved or not, so a permanently
+        // unresolvable DID cannot pin the queue and starve the rest.
+        for (const { did } of batch) {
+          stmts.push(
+            db.prepare(
+              "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1 AND handle = ''"
+            ).bind(did)
+          );
+        }
+        if (stmts.length > 0) await db.batch(stmts);
       }
       totalResolved = resolved;
       if (resolved > 0) {
@@ -137,52 +163,14 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
       }
     }
 
-    // phase 1b: backfill PDS for actors that have handles but no PDS
-    const { results: pdsRows } = await db.prepare(
-      `SELECT did FROM actors
-       WHERE handle != '' AND pds = ''
-         AND identity_checked_at < unixepoch() - 86400
-       ORDER BY identity_checked_at ASC LIMIT 500`
-    ).all<{ did: string }>();
-
-    if (pdsRows && pdsRows.length > 0) {
-      let filled = 0;
-      const BATCH = 20;
-      for (let i = 0; i < pdsRows.length; i += BATCH) {
-        const batch = pdsRows.slice(i, i + BATCH);
-        await Promise.all(batch.map(async ({ did }) => {
-          try {
-            const res = await fetch(
-              `${SLINGSHOT_URL}?identifier=${encodeURIComponent(did)}`
-            );
-            if (!res.ok) {
-              await db.prepare(
-                "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
-              ).bind(did).run();
-              return;
-            }
-            const identity: SlingshotResponse = await res.json();
-            if (identity.pds) {
-              await db.prepare(
-                "UPDATE actors SET pds = ?1, identity_checked_at = unixepoch(), updated_at = unixepoch() WHERE did = ?2"
-              ).bind(identity.pds, did).run();
-              filled++;
-            } else {
-              await db.prepare(
-                "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
-              ).bind(did).run();
-            }
-          } catch {
-            await db.prepare(
-              "UPDATE actors SET identity_checked_at = unixepoch() WHERE did = ?1"
-            ).bind(did).run().catch(() => {});
-          }
-        }));
-      }
-      if (filled > 0) {
-        console.log(JSON.stringify({ event: "enrich_pds", filled, checked: pdsRows.length }));
-      }
-    }
+    // phase 1b (per-DID slingshot pds backfill) is DELETED, not disabled.
+    // It resolved one DID per request at 500/run against a 9,315,512-row
+    // backlog — 212 years to drain, so it was never going to converge and its
+    // presence disguised that. pds now arrives two ways instead:
+    //   - new actors: the ingester's slingshot pool already resolves pds
+    //     alongside handle and now posts it (services/src/identity.zig).
+    //   - the historical backlog: scripts/plc-identity-sync.py, which reads the
+    //     PLC log in bulk rather than one HTTP request per DID.
 
     // phase 2: profile + labels enrichment via getProfiles batch
     // targets actors missing avatar OR labels — one API call per 25 actors

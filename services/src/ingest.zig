@@ -1,4 +1,10 @@
-//! Jetstream event handler: buffers actor events, flushes batches to worker
+//! Relay firehose event handler: buffers actor events, flushes batches to worker.
+//!
+//! Consumes com.atproto.sync.subscribeRepos directly rather than jetstream.
+//! jetstream is a lossy projection of the relay: pds.zat.dev repos were absent
+//! from a 7-day jetstream replay (0 events, 6/6 repos) while the relay was
+//! rev-current with that PDS and re-emitted its commits live (verified
+//! 2026-07-28). The loss is silent and partial, so it cannot be spot-checked.
 
 const std = @import("std");
 const io = std.Options.debug_io;
@@ -78,12 +84,39 @@ pub fn getConfig() Config {
     };
 }
 
+/// The relay firehose has no server-side collection filter (jetstream's
+/// wantedCollections has no equivalent), so the allowlist moves client-side and
+/// every frame is decoded before it can be discarded.
+pub fn wantedCollection(collection: []const u8) bool {
+    const exact = [_][]const u8{
+        "app.bsky.actor.profile",
+        "app.bsky.feed.post",
+        "app.bsky.feed.like",
+        "app.bsky.graph.follow",
+        "sh.tangled.actor.profile",
+    };
+    for (exact) |e| if (mem.eql(u8, collection, e)) return true;
+    return mem.startsWith(u8, collection, "site.standard.");
+}
+
+/// Render a profile record's avatar blob ref as the base32 CID string the rest
+/// of the system stores. DAG-CBOR carries the ref as a real CID (tag 42), where
+/// jetstream handed us a pre-rendered `ref.$link` string — so this transform is
+/// new with the firehose cutover and is the one that can silently produce wrong
+/// avatars rather than failing loudly.
+pub fn avatarCidOf(allocator: Allocator, record: zat.cbor.Value) ?[]const u8 {
+    const avatar = record.get("avatar") orelse return null;
+    const cid = avatar.getCid("ref") orelse return null;
+    return zat.multibase.encode(allocator, .base32lower, cid.raw) catch null;
+}
+
 /// an actor event to POST to the worker
 pub const ActorEvent = struct {
     did: []const u8,
     handle: ?[]const u8 = null,
     display_name: ?[]const u8 = null,
     avatar_cid: ?[]const u8 = null,
+    pds: ?[]const u8 = null,
 };
 
 pub const IngestHandler = struct {
@@ -143,14 +176,17 @@ pub const IngestHandler = struct {
         self.bloom.reset();
     }
 
-    pub fn onEvent(self: *IngestHandler, event: zat.JetstreamEvent) void {
+    pub fn onEvent(self: *IngestHandler, event: zat.FirehoseEvent) void {
         switch (event) {
             .commit => |c| self.handleCommit(c),
             .identity => |id| self.handleIdentity(id),
             .account => |acct| self.handleAccount(acct),
+            .sync, .info => {},
         }
 
-        self.pending_cursor = event.timeUs();
+        // relay `seq`, NOT jetstream's µs timestamp — different keyspace, which
+        // is why the cutover writes a fresh cursor key (see fetchCursor).
+        if (event.seq()) |s| self.pending_cursor = s;
 
         const now = timestamp();
         last_event_at.store(now, .monotonic);
@@ -181,35 +217,39 @@ pub const IngestHandler = struct {
     }
 
     pub fn onError(_: *IngestHandler, err: anyerror) void {
-        log.err("jetstream: {s}", .{@errorName(err)});
+        log.err("firehose: {s}", .{@errorName(err)});
     }
 
     pub fn onConnect(_: *IngestHandler, host: []const u8) void {
         log.info("connected to {s}", .{host});
     }
 
-    fn handleCommit(self: *IngestHandler, c: zat.jetstream.CommitEvent) void {
-        if (mem.eql(u8, c.collection, "app.bsky.actor.profile") or
-            mem.eql(u8, c.collection, "sh.tangled.actor.profile"))
+    /// one firehose commit carries many ops, unlike jetstream's one-op events.
+    fn handleCommit(self: *IngestHandler, c: zat.firehose.CommitEvent) void {
+        for (c.ops) |op| {
+            if (!wantedCollection(op.collection)) continue;
+            self.handleOp(c.repo, op);
+        }
+    }
+
+    fn handleOp(self: *IngestHandler, repo: []const u8, op: zat.firehose.RepoOp) void {
+        if (mem.eql(u8, op.collection, "app.bsky.actor.profile") or
+            mem.eql(u8, op.collection, "sh.tangled.actor.profile"))
         {
             // rich extraction from profile records (bsky and tangled)
-            if (c.operation != .create and c.operation != .update) return;
+            if (op.action != .create and op.action != .update) return;
 
-            const record = c.record orelse return;
+            const record = op.record orelse return;
 
-            const did = self.dupe(c.did) orelse return;
+            const did = self.dupe(repo) orelse return;
             var event = ActorEvent{ .did = did };
 
             // bsky profiles have displayName; tangled profiles don't
-            if (zat.json.getString(record, "displayName")) |name| {
+            if (record.getString("displayName")) |name| {
                 event.display_name = self.dupe(name);
             }
 
-            if (zat.json.getPath(record, "avatar")) |avatar| {
-                if (zat.json.getString(avatar, "ref.$link")) |cid| {
-                    event.avatar_cid = self.dupe(cid);
-                }
-            }
+            event.avatar_cid = avatarCidOf(self.arena.allocator(), record);
 
             // ingester only sees self-labels from profile records — it can never
             // correctly determine hidden. let refreshModeration cron handle it.
@@ -217,18 +257,18 @@ pub const IngestHandler = struct {
             self.buffer.append(self.allocator, event) catch return;
         } else {
             // non-profile collections: just discover the DID
-            if (c.operation == .delete) return;
+            if (op.action == .delete) return;
 
             // dedup: skip if bloom filter says we've seen this DID recently
-            if (self.bloom.contains(c.did)) return;
-            self.bloom.insert(c.did);
+            if (self.bloom.contains(repo)) return;
+            self.bloom.insert(repo);
 
-            const did = self.dupe(c.did) orelse return;
+            const did = self.dupe(repo) orelse return;
             self.buffer.append(self.allocator, .{ .did = did }) catch return;
         }
     }
 
-    fn handleIdentity(self: *IngestHandler, id: zat.jetstream.IdentityEvent) void {
+    fn handleIdentity(self: *IngestHandler, id: zat.firehose.IdentityEvent) void {
         // jetstream's #identity event has `handle` as a spec-optional field; in
         // practice the bsky relay omits it on every event. so we always enqueue
         // the DID for slingshot resolution via the identity pool, and *also* take
@@ -250,7 +290,7 @@ pub const IngestHandler = struct {
         }
     }
 
-    fn handleAccount(self: *IngestHandler, acct: zat.jetstream.AccountEvent) void {
+    fn handleAccount(self: *IngestHandler, acct: zat.firehose.AccountEvent) void {
         if (!acct.active) {
             const did = self.dupe(acct.did) orelse return;
             self.delete_buffer.append(self.allocator, did) catch return;
@@ -434,10 +474,30 @@ fn fetchCursorOnce(transport: *HttpTransport, config: Config) ?i64 {
     };
 }
 
+/// A relay `seq` is a small monotonic counter (~8.5e8 as of 2026-07). Jetstream's
+/// cursor was a µs timestamp (~1.78e15). During the jetstream→relay cutover a
+/// jetstream-era ingester can still be writing µs values into the shared cursor
+/// key, so a stale one must be rejected rather than replayed: subscribing at a
+/// seq six orders of magnitude in the future yields an empty stream, and the
+/// watchdog would read that as a dead upstream instead of a bad cursor.
+/// Rejecting means "start live", which is safe — the refresh cron re-covers
+/// anything missed.
+pub const MAX_PLAUSIBLE_RELAY_SEQ: i64 = 1_000_000_000_000; // 1e12
+
+pub fn plausibleRelayCursor(cursor: ?i64) ?i64 {
+    const c = cursor orelse return null;
+    if (c <= 0 or c >= MAX_PLAUSIBLE_RELAY_SEQ) return null;
+    return c;
+}
+
 pub fn fetchCursor(transport: *HttpTransport, config: Config) ?i64 {
     const backoff = [_]u64{ 1, 3, 10 };
     for (backoff, 0..) |delay, attempt| {
-        if (fetchCursorOnce(transport, config)) |cursor| return cursor;
+        if (fetchCursorOnce(transport, config)) |cursor| {
+            if (plausibleRelayCursor(cursor)) |ok| return ok;
+            log.warn("rejecting implausible relay cursor {d} (jetstream-era µs value?), starting live", .{cursor});
+            return null;
+        }
         log.warn("cursor fetch failed (attempt {d}/3), retrying in {d}s", .{ attempt + 1, delay });
         io.sleep(.{ .nanoseconds = delay * std.time.ns_per_s }, .real) catch {};
     }
@@ -455,4 +515,87 @@ pub fn getRssKB() u64 {
     _ = it.next(); // size
     const rss_pages = std.fmt.parseInt(u64, it.next() orelse return 0, 10) catch return 0;
     return rss_pages * 4;
+}
+
+const testing = std.testing;
+
+test "wantedCollection: allowlist survives the loss of jetstream's server-side filter" {
+    try testing.expect(wantedCollection("app.bsky.actor.profile"));
+    try testing.expect(wantedCollection("app.bsky.feed.post"));
+    try testing.expect(wantedCollection("app.bsky.feed.like"));
+    try testing.expect(wantedCollection("app.bsky.graph.follow"));
+    try testing.expect(wantedCollection("sh.tangled.actor.profile"));
+    // jetstream expressed this as the wildcard "site.standard.*"
+    try testing.expect(wantedCollection("site.standard.profile"));
+    try testing.expect(wantedCollection("site.standard.anything.else"));
+
+    try testing.expect(!wantedCollection("site.standard"));
+    try testing.expect(!wantedCollection("app.bsky.feed.repost"));
+    try testing.expect(!wantedCollection("com.atproto.lexicon.schema"));
+    try testing.expect(!wantedCollection(""));
+}
+
+test "avatarCidOf renders a DAG-CBOR blob ref to the stored base32 CID" {
+    const allocator = testing.allocator;
+    // zzstoatzz.io's real avatar CID as of 2026-07-28. cbor.Cid.raw holds the
+    // CID bytes with the 0x00 identity-multibase prefix already stripped, so a
+    // decode → wrap → encode round-trip must reproduce the string exactly. A
+    // regression here yields a plausible-looking but wrong avatar URL.
+    const want = "bafkreiegehiwbazkkpp5nucenajtdjwinxrrnz7ukawpqnudbr47f44zhq";
+    const raw = try zat.multibase.decode(allocator, want);
+    defer allocator.free(raw);
+
+    const record = zat.cbor.Value{ .map = &.{
+        .{ .key = "displayName", .value = .{ .text = "nate" } },
+        .{ .key = "avatar", .value = .{ .map = &.{
+            .{ .key = "$type", .value = .{ .text = "blob" } },
+            .{ .key = "ref", .value = .{ .cid = .{ .raw = raw } } },
+            .{ .key = "mimeType", .value = .{ .text = "image/jpeg" } },
+        } } },
+    } };
+
+    const got = avatarCidOf(allocator, record) orelse return error.NoAvatar;
+    defer allocator.free(@constCast(got));
+    try testing.expectEqualStrings(want, got);
+
+    try testing.expectEqualStrings("nate", record.getString("displayName").?);
+}
+
+test "avatarCidOf returns null when the profile has no avatar" {
+    const record = zat.cbor.Value{ .map = &.{
+        .{ .key = "displayName", .value = .{ .text = "nate" } },
+    } };
+    try testing.expect(avatarCidOf(testing.allocator, record) == null);
+}
+
+test "plausibleRelayCursor rejects a jetstream-era µs cursor" {
+    // the exact value /admin/cursor served mid-cutover on 2026-07-28, written by
+    // a still-running jetstream ingester after the worker switched keys
+    try testing.expect(plausibleRelayCursor(1785217869995374) == null);
+    try testing.expect(plausibleRelayCursor(null) == null);
+    try testing.expect(plausibleRelayCursor(0) == null);
+    try testing.expect(plausibleRelayCursor(-1) == null);
+
+    // real relay seqs (~8.5e8 in 2026-07) pass through untouched
+    try testing.expectEqual(@as(?i64, 853_602_603), plausibleRelayCursor(853_602_603));
+    try testing.expectEqual(@as(?i64, 1), plausibleRelayCursor(1));
+}
+
+test "relay seq spaces are per-relay: a cursor is only valid for its issuer" {
+    // Measured 2026-07-28, first seq from each host in zat's default_hosts:
+    //   bsky.network                    32_234_719_514
+    //   northamerica.firehose.network    7_620_802_119
+    //   europe.firehose.network          7_032_143_016
+    //   asia.firehose.network            5_581_515_167
+    // These are independent relays, not mirrors. The ingester failed over to
+    // asia and wrote 5_581_374_644 into the cursor key while pinned-in-config
+    // to bsky — resuming that against bsky would skip ~26.6 BILLION events.
+    // All four are individually "plausible", which is exactly why the range
+    // guard cannot catch this and why the client must pin to one host.
+    const observed = [_]i64{ 32_234_719_514, 7_620_802_119, 7_032_143_016, 5_581_515_167 };
+    for (observed) |s| {
+        try testing.expect(plausibleRelayCursor(s) != null);
+    }
+    // the spread between relays dwarfs any tolerance a heuristic could apply
+    try testing.expect(observed[0] - observed[3] > 26_000_000_000);
 }

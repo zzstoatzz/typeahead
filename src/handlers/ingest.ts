@@ -48,17 +48,18 @@ export async function handleIngest(
   for (const e of events) {
     probeIdx.push(stmts.length);
     stmts.push(db.prepare("INSERT OR IGNORE INTO actors (did) VALUES (?1)").bind(e.did));
-    const isBareDID = !e.handle && !e.display_name && !e.avatar_cid;
+    const isBareDID = !e.handle && !e.display_name && !e.avatar_cid && !e.pds;
     if (!isBareDID) {
       stmts.push(db.prepare(
         `UPDATE actors SET
            handle = COALESCE(NULLIF(?2, ''), handle),
            display_name = COALESCE(NULLIF(?3, ''), display_name),
            avatar_url = COALESCE(NULLIF(?4, ''), avatar_url),
+           pds = COALESCE(NULLIF(?5, ''), pds),
            updated_at = unixepoch(),
            profile_checked_at = 0
          WHERE did = ?1`
-      ).bind(e.did, e.handle || '', e.display_name || '', e.avatar_cid || ''));
+      ).bind(e.did, e.handle || '', e.display_name || '', e.avatar_cid || '', e.pds || ''));
     }
   }
 
@@ -81,7 +82,7 @@ export async function handleIngest(
 
   if (cursor !== undefined) {
     try {
-      await env.KV.put("jetstream_cursor", String(cursor));
+      await env.KV.put("relay_cursor", String(cursor));
     } catch {
       // best-effort — don't fail the ingest if KV write fails (e.g. quota)
     }

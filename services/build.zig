@@ -93,6 +93,27 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_index_tests = b.addRunArtifact(index_tests);
+
+    // Ingest tests. Rooted at src/ingest.zig so the firehose decode path
+    // (collection allowlist, DAG-CBOR avatar CID rendering) is covered — both
+    // are new with the jetstream→relay cutover and both fail silently.
+    const ingest_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/ingest.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "zat", .module = zat.module("zat") },
+                .{ .name = "logfire", .module = logfire.module("logfire") },
+                .{ .name = "zug", .module = zug.module("zug") },
+                .{ .name = "poolio", .module = poolio.module("poolio") },
+            },
+        }),
+    });
+    const run_ingest_tests = b.addRunArtifact(ingest_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_index_tests.step);
+    test_step.dependOn(&run_ingest_tests.step);
 }

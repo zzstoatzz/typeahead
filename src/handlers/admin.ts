@@ -76,7 +76,11 @@ export async function handleCursor(
     return json({ error: "unauthorized" }, 401);
   }
 
-  const cursor = await env.KV.get("jetstream_cursor");
+  // relay_cursor holds a relay `seq`, not jetstream's µs timestamp. The keys are
+  // deliberately separate: feeding the old µs value to subscribeRepos would
+  // request a sequence ~7 orders of magnitude in the future. A missing key means
+  // "start live", which is the intended state on first boot after the cutover.
+  const cursor = await env.KV.get("relay_cursor");
   return json({ cursor: cursor ? Number(cursor) : null });
 }
 
@@ -483,7 +487,7 @@ export async function handleEnrichProfiles(
 
   // build upsert stmts via the canonical extractProfileFields path. PDS is
   // intentionally NOT in the SET — bsky's getProfiles doesn't return it, and
-  // we'd rather preserve any existing value than zero it; backfill-pds.py is
+  // we'd rather preserve any existing value than zero it; scripts/plc-identity-sync.py is
   // the separate concern for filling PDS.
   const stmts: Stmt[] = [];
   let hiddenCount = 0;

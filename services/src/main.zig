@@ -67,37 +67,37 @@ fn jetstreamThread(args: JetstreamArgs) void {
     };
     defer handler.deinit();
 
-    var client = zat.JetstreamClient.init(io, args.allocator, .{
-        .wanted_collections = &.{
-            "app.bsky.actor.profile",
-            "app.bsky.feed.post",
-            "app.bsky.feed.like",
-            "app.bsky.graph.follow",
-            "sh.tangled.actor.profile",
-            "site.standard.*",
-        },
-        // Prefer our own jetstream, then the official bsky instances. The zat
-        // default rotates through 12 hosts including community mirrors; a
-        // reconnect landed us on a slow mirror (fire.hose.cam) that dribbled
-        // the catch-up replay at <1x and the gap ran to ~3h (2026-06-15).
-        // Drop the mirrors entirely.
-        .hosts = &.{
-            "jetstream.waow.tech",
-            "jetstream1.us-east.bsky.network",
-            "jetstream2.us-east.bsky.network",
-            "jetstream1.us-west.bsky.network",
-            "jetstream2.us-west.bsky.network",
-        },
+    // Relay firehose, not jetstream. jetstream is a lossy projection: a 7-day
+    // replay returned 0 events for all 6 pds.zat.dev repos while the relay was
+    // rev-current with that PDS and re-emitted its commits live within seconds
+    // (verified 2026-07-28). The loss is silent and partial — most hosts look
+    // fine — so it cannot be detected by spot-checking.
+    //
+    // There is no wantedCollections equivalent here; the allowlist moved into
+    // ingest.wantedCollection and every frame is now decoded before filtering.
+    // ONE host, deliberately. zat's default_hosts lists four relays, but
+    // northamerica/europe/asia.firehose.network are INDEPENDENT relays with
+    // independent `seq` spaces (separate operators, separate A records) — not
+    // mirrors. A relay seq is only meaningful to the relay that issued it, so
+    // failing over mid-stream and resuming a stored cursor against a different
+    // relay lands at an arbitrary point: silent skip or enormous replay.
+    //
+    // This is a REGRESSION RISK INTRODUCED BY THE CUTOVER, not a pre-existing
+    // one: jetstream's cursor was a µs timestamp, which is host-independent, so
+    // rotating hosts there was safe. Multi-host resume would require a cursor
+    // per host; pinning is the cheaper correct answer until that's worth it.
+    var client = zat.FirehoseClient.init(io, args.allocator, .{
+        .hosts = &.{"bsky.network"},
         .cursor = ingest.fetchCursor(args.transport, args.config),
     });
     defer client.deinit();
 
     client.subscribe(&handler) catch |err| {
-        log.err("jetstream subscribe failed: {}", .{err});
+        log.err("firehose subscribe failed: {}", .{err});
     };
     // subscribe reconnects internally and only returns on cancellation or a
     // terminal error — either way this role is over, so let fly restart us.
-    log.err("jetstream subscription ended, exiting for restart", .{});
+    log.err("firehose subscription ended, exiting for restart", .{});
     std.process.exit(1);
 }
 

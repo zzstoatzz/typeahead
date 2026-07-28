@@ -15,7 +15,7 @@ deploy-worker url="https://typeahead.waow.tech":
 deploy-worker-only:
     npx wrangler deploy
 
-# deploy the ingest service (Jetstream -> worker admin ingest)
+# deploy the ingest service (relay subscribeRepos -> worker admin ingest)
 deploy-ingest:
     cd services && fly deploy -c fly.toml
 

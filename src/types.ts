@@ -35,6 +35,9 @@ export interface IngestEvent {
   handle?: string;
   display_name?: string;
   avatar_cid?: string;
+  /** resolved alongside handle by the ingester's slingshot pool — carrying it
+   *  here is what retired the enrichment cron's per-DID pds backfill. */
+  pds?: string;
 }
 
 export interface SlingshotResponse {

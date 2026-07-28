@@ -874,7 +874,7 @@ Existing and future backfill paths:
 | Path | Destination | Frequency | How the index sees it |
 |---|---|---|---|
 | `scripts/bulk-enrich.py` (getProfiles) | worker → Turso `actors` | one-shot / nightly | local sync picks up updated rows → overlay updater diffs prefixes → next rebuild folds into base |
-| `scripts/backfill-pds.py` (slingshot PDS) | worker → Turso `actors.pds` | one-shot | same path; PDS is a column, doesn't change prefix keys, overlay just updates blob |
+| `scripts/plc-identity-sync.py` (PLC bundles → handle + pds) | worker → Turso `actors.handle`/`actors.pds` | one-shot | handle changes prefix keys, so the overlay re-derives them; pds is blob-only |
 | AccountTakedown PDS-direct enrichment | worker → Turso `actors` | continuous (cron) | same path |
 | follow graph backfill (Track 2) | ingester-local `follows` table | phased (sample → broad) | pagerank job reads `follows`, writes scores back to Turso `actors.quality_score` → same path as above |
 | handle rename event | jetstream → worker → Turso | continuous | overlay diff produces `op=0` rows for stale prefixes (set-diff via deriveAllUnique) |
