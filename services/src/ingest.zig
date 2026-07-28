@@ -36,7 +36,18 @@ fn timestamp() i64 {
 // 10k/POST as one Turso transaction; catch-up batches are mostly bare-DID
 // INSERT OR IGNORE (light locks). PROPER fix is decoupling the read loop from
 // the flusher so POSTs don't stall reads — this is the stopgap.
-pub const MAX_BATCH: usize = 1500;
+// 1500 was tuned for jetstream's server-FILTERED stream. The relay firehose
+// delivers ~4x the actor events, and each POST now fans into several sequential
+// Turso transactions worker-side (250 statements each, to stay inside Turso's
+// 5s transaction window). At 1500 the whole request outran Cloudflare's origin
+// timeout, 524'd, and the ingester retried the same oversized batch every 5s —
+// a self-sustaining wedge that kept Turso's single writer busy even after the
+// job that triggered it was killed (2026-07-28: writes down ~25min, cursor
+// frozen, watchdog restarts that could not clear it).
+//
+// 400 keeps one POST comfortably inside the timeout. Throughput is fine because
+// flushes are far more frequent than the old 5s cadence.
+pub const MAX_BATCH: usize = 400;
 const BLOOM_BITS: usize = 10_000_000; // ~1.2MB fixed
 const BLOOM_HASHES: usize = 7;
 
