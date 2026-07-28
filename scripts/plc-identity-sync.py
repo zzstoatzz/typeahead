@@ -32,9 +32,10 @@ it is simply not published yet. Fill it locally before backfilling:
 
     allegedly bundle --dest ./weekly --after 2025-09-18T00:00:00Z
 
-`bundle` skips weeks already on disk (without --clobber), so seeding ./weekly
-from the published host first means only the tail is scraped from
-plc.directory. `bundle` also deliberately stops ~73h short of now, since PLC ops
+`allegedly bundle` does NOT skip weeks already on disk — it opens targets with
+File::create_new and PANICS with EEXIST (exit 101) on the first collision, and
+its default --after is PLC genesis. Always pass --after set past the newest
+bundle present. This script's own --scrape-tail does skip, by design. `bundle` also deliberately stops ~73h short of now, since PLC ops
 can still be invalidated inside that window; the firehose #identity events the
 ingester consumes cover the remainder.
 
