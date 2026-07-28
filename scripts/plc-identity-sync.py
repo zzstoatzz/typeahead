@@ -250,8 +250,11 @@ def verify_bundles(dest: str, delete: bool = True) -> int:
             continue
         path = os.path.join(dest, name)
         try:
-            with gzip.open(path, "rb") as f:
-                while f.read(1 << 20):
+            with gzip.open(path, "rt") as f:
+                # gzip framing AND value validity, via the same format-agnostic
+                # reader — a line-based check calls every allegedly-written
+                # bundle corrupt because they carry no newlines.
+                for _ in _iter_json_values(f):
                     pass
         except Exception as e:
             bad += 1
@@ -262,21 +265,139 @@ def verify_bundles(dest: str, delete: bool = True) -> int:
     return bad
 
 
+def _iso(ts: int) -> str:
+    import datetime
+
+    return datetime.datetime.fromtimestamp(ts, datetime.UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def scrape_tail(dest: str) -> int:
+    """Write weekly bundles for the weeks the public host has not published.
+
+    `allegedly bundle` does this better and is preferred, but it needs a rust
+    toolchain plus vendored openssl. The unpublished tail is where every
+    recently-created account lives, so this must not be gated on host setup.
+    Output is byte-compatible, so a later `allegedly bundle` skips what is here.
+
+    Stops ~73h short of now for the same reason Allegedly does: PLC ops can be
+    invalidated inside that window, so bundling them freezes a non-final value.
+    """
+    os.makedirs(dest, exist_ok=True)
+    cutoff = (int(time.time()) - 73 * 3600) // WEEK * WEEK
+    have = {
+        int(n.split(".")[0])
+        for n in os.listdir(dest)
+        if n.endswith(".jsonl.gz") and n.split(".")[0].isdigit()
+    }
+    todo = [w for w in range(1668643200 // WEEK * WEEK, cutoff, WEEK) if w not in have]
+    if not todo:
+        print("tail: nothing to scrape", file=sys.stderr)
+        return 0
+    print(f"tail: scraping {len(todo)} unpublished week(s) from plc.directory", file=sys.stderr)
+    written = 0
+    for w in todo:
+        end = _iso(w + WEEK)
+        path = os.path.join(dest, f"{w}.jsonl.gz")
+        tmp = path + ".part"
+        n = 0
+        cursor = _iso(w)
+        # .part + rename: unlike allegedly, never leave a partial file under the
+        # real name where a later run would mistake it for a complete week.
+        with gzip.open(tmp, "wt") as out:
+            while True:
+                u = f"https://plc.directory/export?count=1000&after={cursor}"
+                req = urllib.request.Request(u, headers={"User-Agent": "typeahead-plc-sync"})
+                body = None
+                for attempt in range(4):
+                    try:
+                        body = urllib.request.urlopen(req, timeout=120).read().decode()
+                        break
+                    except Exception:
+                        if attempt == 3:
+                            raise
+                        time.sleep(2**attempt * 5)
+                lines = [ln for ln in body.strip().split("\n") if ln]
+                if not lines:
+                    break
+                stop = False
+                for ln in lines:
+                    created = json.loads(ln).get("createdAt", "")
+                    if created >= end:
+                        stop = True
+                        break
+                    out.write(ln + "\n")
+                    n += 1
+                    cursor = created
+                if stop or len(lines) < 1000:
+                    break
+        os.rename(tmp, path)
+        written += 1
+        print(f"  + {w} ({_iso(w)[:10]}): {n:,} ops", file=sys.stderr)
+    return written
+
+
+def _iter_json_values(fh, chunk=1 << 20):
+    """Yield JSON values from a stream of them, JSONL **or** concatenated.
+
+    The two bundle sources disagree on format and the filename lies about it:
+      - plc.t3.storage.dev publishes true JSONL (newline per op)
+      - `allegedly bundle` writes serde_json::to_string(&op) with NO separator
+        (weekly.rs:172), so a whole week is ONE ~950MB "line" of back-to-back
+        objects — still named .jsonl.gz
+
+    Line-based reading therefore worked on 149 published bundles and failed on
+    all 26 allegedly-written ones ("Extra data: line 1 column 706"). raw_decode
+    handles both, and reading in chunks means a 950MB single-line file never
+    has to be materialized as one string.
+    """
+    dec = json.JSONDecoder()
+    buf = ""
+    while True:
+        data = fh.read(chunk)
+        if not data:
+            break
+        buf += data
+        idx = 0
+        while True:
+            while idx < len(buf) and buf[idx].isspace():
+                idx += 1
+            if idx >= len(buf):
+                break
+            try:
+                obj, end = dec.raw_decode(buf, idx)
+            except ValueError:
+                break  # object straddles the chunk boundary — wait for more
+            yield obj
+            idx = end
+        buf = buf[idx:]
+    idx = 0
+    while idx < len(buf):
+        while idx < len(buf) and buf[idx].isspace():
+            idx += 1
+        if idx >= len(buf):
+            break
+        obj, end = dec.raw_decode(buf, idx)
+        yield obj
+        idx = end
+
+
 def iter_ops(stream, local_dir: str | None):
-    """Yield PLC op dicts, either from stdin (allegedly backfill) or by reading
-    the gzipped bundles directly — the latter so this script is useful before
-    anyone installs a Rust toolchain."""
+    """Yield PLC op dicts from the bundle cache (or stdin).
+
+    A corrupt bundle is skipped, not fatal: these come from a third-party host
+    and a local scraper, and one bad file killed a run that had already spent
+    770s building the need-set (2026-07-28). Failures are reported so corruption
+    stays visible rather than silently tolerated.
+    """
     if local_dir:
-        names = sorted(n for n in os.listdir(local_dir) if n.endswith(".jsonl.gz"))
-        for n in names:
-            with gzip.open(os.path.join(local_dir, n), "rt") as f:
-                for line in f:
-                    if line.strip():
-                        yield json.loads(line)
+        for n in sorted(x for x in os.listdir(local_dir) if x.endswith(".jsonl.gz")):
+            try:
+                with gzip.open(os.path.join(local_dir, n), "rt") as f:
+                    yield from _iter_json_values(f)
+            except Exception as e:
+                print(f"  skipping unreadable bundle {n}: {type(e).__name__}", file=sys.stderr)
     else:
-        for line in stream:
-            if line.strip():
-                yield json.loads(line)
+        yield from _iter_json_values(stream)
 
 
 def main() -> int:
