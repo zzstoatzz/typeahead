@@ -232,6 +232,36 @@ def load_need(which: str, page: int) -> dict[str, tuple]:
     return need
 
 
+def verify_bundles(dest: str, delete: bool = True) -> int:
+    """Drop truncated bundles so a later run re-scrapes them.
+
+    `allegedly bundle` streams gzip directly into the final `<WEEK>.jsonl.gz`
+    (weekly.rs: File::create_new, no temp+rename), so a killed or crashed run
+    leaves a truncated file that is indistinguishable from a complete one by
+    name or listing. Worse, --after is computed from the newest bundle present,
+    so a truncated newest week would be treated as done and never refetched —
+    a permanent silent gap in exactly the recent window we care most about.
+
+    A truncated gzip stream fails decompression, so testing is cheap and exact.
+    """
+    bad = 0
+    for name in sorted(os.listdir(dest)):
+        if not name.endswith(".jsonl.gz"):
+            continue
+        path = os.path.join(dest, name)
+        try:
+            with gzip.open(path, "rb") as f:
+                while f.read(1 << 20):
+                    pass
+        except Exception as e:
+            bad += 1
+            print(f"  TRUNCATED {name}: {type(e).__name__}", file=sys.stderr)
+            if delete:
+                os.remove(path)
+    print(f"bundle check: {bad} truncated{' (removed)' if delete and bad else ''}", file=sys.stderr)
+    return bad
+
+
 def iter_ops(stream, local_dir: str | None):
     """Yield PLC op dicts, either from stdin (allegedly backfill) or by reading
     the gzipped bundles directly — the latter so this script is useful before
@@ -257,6 +287,8 @@ def main() -> int:
                     help="bundle the weeks the public host has not published "
                          "(pure-python stand-in for `allegedly bundle`)")
     ap.add_argument("--from-dir", action="store_true", help="read bundles directly instead of stdin")
+    ap.add_argument("--verify-bundles", action="store_true",
+                    help="gzip-test the bundle cache and remove truncated files")
     ap.add_argument("--bundles-only", action="store_true",
                     help="stop after the bundle stages; skip identity resolution entirely")
     ap.add_argument("--apply", action="store_true", help="write to turso (default: dry run)")
@@ -272,6 +304,8 @@ def main() -> int:
 
     if args.fetch:
         fetch_bundles(args.dest)
+    if args.verify_bundles:
+        verify_bundles(args.dest)
     if args.scrape_tail:
         scrape_tail(args.dest)
 
