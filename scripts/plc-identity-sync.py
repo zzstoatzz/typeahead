@@ -503,22 +503,33 @@ def main() -> int:
         print("(dry run — pass --apply to write)", file=sys.stderr)
         return 0
 
-    # COALESCE(NULLIF(...)) so a NULL/empty from PLC never clobbers a good value
-    # that getProfiles or the firehose already supplied.
+    # ONE statement per batch, not one per row.
+    #
+    # Writing 500 separate UPDATEs per request measured 6.1 rows/s -> a 44-hour
+    # job. Each row still fires the actors_au trigger (handle changes => FTS5
+    # rewrite), which is irreducible, but the per-statement protocol and
+    # planning overhead was paid 500 times per request for no reason.
+    # json_each turns the batch into a single statement over a JSON array.
+    #
+    # COALESCE(NULLIF(...)) so an empty value from PLC never clobbers something
+    # getProfiles or the firehose already supplied.
     sql = (
-        "UPDATE actors SET handle = COALESCE(NULLIF(?2,''), handle), "
-        "pds = COALESCE(NULLIF(?3,''), pds), identity_checked_at = unixepoch(), "
-        "updated_at = unixepoch() WHERE did = ?1"
+        "UPDATE actors SET "
+        "handle = COALESCE(NULLIF(j.value ->> '$.h', ''), handle), "
+        "pds = COALESCE(NULLIF(j.value ->> '$.p', ''), pds), "
+        "identity_checked_at = unixepoch(), updated_at = unixepoch() "
+        "FROM json_each(?1) AS j WHERE actors.did = j.value ->> '$.d'"
     )
-    pending: list[tuple[str, list]] = []
+
+    pending: list[dict] = []
     written = 0
     slow_batches = 0
     t_write = time.time()
     for did, (_, handle, pds) in resolved.items():
-        pending.append((sql, [did, handle or "", pds or ""]))
+        pending.append({"d": did, "h": handle or "", "p": pds or ""})
         if len(pending) >= args.batch:
             t_batch = time.time()
-            turso_batch(pending)
+            turso_batch([(sql, [json.dumps(pending)])])
             elapsed = time.time() - t_batch
             written += len(pending)
             pending = []
@@ -555,7 +566,7 @@ def main() -> int:
                 rate = written / max(time.time() - t_write, 1)
                 print(f"  wrote {written:,} ({rate:.0f}/s)", file=sys.stderr)
     if pending:
-        turso_batch(pending)
+        turso_batch([(sql, [json.dumps(pending)])])
         written += len(pending)
     print(
         f"applied {written:,} identity updates in {time.time()-t_write:.0f}s",
