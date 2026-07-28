@@ -79,19 +79,29 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
   await db.prepare("DELETE FROM traffic_buckets WHERE bucket < ?1").bind(pruneBefore).run();
 }
 
-/** 25 DIDs per getProfiles call, so this is 100 requests per run. The old
- *  per-DID path could only afford 500; batching is what makes a real limit
- *  affordable, and the backlog is what makes it necessary. */
-const IDENTITY_LIMIT = 2500;
+/** 25 DIDs per getProfiles call, so this is 200 requests per run.
+ *
+ *  Sized against ARRIVALS, not the backlog. The relay firehose discovers ~2,900
+ *  new accounts/hour network-wide; at the previous 2,500/run this cron ran just
+ *  under that and the handle backlog grew rather than shrank (1,312,203 →
+ *  1,314,130 over 8h on 2026-07-28). 5,000 clears arrivals with room to spare.
+ *
+ *  Draining the ~1.3M historical backlog is NOT this job — that is
+ *  scripts/plc-identity-sync.py, which does it in one pass from the PLC log. */
+const IDENTITY_LIMIT = 5000;
 
 /** Lease-coordinated enrichment. Both phases now batch through getProfiles;
  *  the per-DID slingshot paths they replaced could not drain their backlogs.
  *  Returns { resolved, enriched } counts for delta tracking. */
 export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: number; enriched: number }> {
   // lease via KV — 30s TTL, skip if another run is active
+  // TTL must exceed the real run duration or the lock silently stops working.
+  // At 30s it already did: phase 1 alone is ~200 requests and outlives it.
+  // Hourly cron means nothing else contends today, but a manual
+  // /admin/enrich-profiles during a run would have.
   const existing = await env.KV.get("enrich_lock");
   if (existing) return { resolved: 0, enriched: 0 };
-  await env.KV.put("enrich_lock", "1", { expirationTtl: 30 });
+  await env.KV.put("enrich_lock", "1", { expirationTtl: 300 });
 
   let totalResolved = 0;
   let totalEnriched = 0;
