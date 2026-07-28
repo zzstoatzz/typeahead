@@ -23,6 +23,22 @@ export interface StatsData {
   trafficSeries5m: { bucket: number; domain: string; hits: number }[];
 }
 
+/** cached/cold latency as two atomic pairs.
+ *
+ *  This was one inline string — "6.2 ms <span>cached</span> · 173 ms
+ *  <span>cold</span>" — so at narrow widths the last tag wrapped by itself and
+ *  the card rendered a lone orphaned "cold" on its own line. Each number+tag is
+ *  now one nowrap unit, so they either sit on one line or wrap as whole pairs.
+ */
+function latencyHtml(cached: number, cold: number): string {
+  const pair = (n: string, tag: string) =>
+    `<span class="lat-pair"><span class="lat-n">${n}</span><span class="lat-t">${tag}</span></span>`;
+  const parts = [];
+  if (cached > 0) parts.push(pair(`${cached.toFixed(1)} ms`, "cached"));
+  parts.push(pair(`${cold.toFixed(0)} ms`, "cold"));
+  return parts.join('<span class="lat-sep">·</span>');
+}
+
 export function statsPage(d: StatsData): string {
   const sorted = [...d.rows].reverse(); // oldest first
   // Window by TIME, not bucket count: metric buckets are 5-min (hour*300 = unix
@@ -145,6 +161,12 @@ export function statsPage(d: StatsData): string {
                            flex-wrap: wrap; gap: 0.4rem 0.5rem; margin-bottom: 0.2rem; }
     .metric .metric-head .label { margin-bottom: 0; }
     .metric .label { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.2rem; }
+    /* latency renders as atomic number+tag pairs so a tag can never orphan onto
+       its own line the way "cold" did. */
+    .value.latency { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem; font-size: 1.3rem; }
+    .lat-pair { display: inline-flex; align-items: baseline; gap: 0.28rem; white-space: nowrap; }
+    .lat-t { opacity: 0.4; font-size: 0.85rem; }
+    .lat-sep { opacity: 0.3; }
     .metric .label[data-tip] { cursor: default; position: relative; border-bottom: 1px dotted var(--faint); display: inline-block; }
     .metric .label[data-tip]:hover::after, .metric .label[data-tip]:focus::after {
       content: attr(data-tip); position: absolute; left: 0; top: 1.6em; width: 200px;
@@ -163,6 +185,16 @@ export function statsPage(d: StatsData): string {
     .traffic-series { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
     .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
     .traffic-series .ranged-header { margin-bottom: 0.5rem; }
+    /* The plot RESERVES its height so swapping the chart for the empty state
+       cannot move the page. Previously the empty state was content-sized while
+       the svg was responsive (viewBox 600x90, height:auto), so hovering a domain
+       with no traffic in the window made everything below lurch up. */
+    .tseries-plot { position: relative; aspect-ratio: 600 / 90; }
+    .tseries-plot > svg, .tseries-plot > #tseries-empty {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+    }
+    #tseries-empty { display: flex; align-items: center; justify-content: center;
+                     color: var(--faint); font-size: 0.75rem; text-align: center; }
     #tseries { cursor: crosshair; touch-action: pan-y; }
     #tseries polyline { transition: stroke 0.15s; vector-effect: non-scaling-stroke; }
     #tseries-dot { fill: var(--bright); stroke: var(--accent); stroke-width: 1.5; }
@@ -218,7 +250,7 @@ export function statsPage(d: StatsData): string {
       .summary-2, .summary-3 { grid-template-columns: 1fr 1fr; }
       #pie { width: 230px; height: 230px; }
       .pie-legend { gap: 0.3rem 0.6rem; font-size: 0.68rem; }
-      #tseries { height: 72px; }
+      .tseries-plot { aspect-ratio: auto; height: 72px; }
       .ts-table-wrap { max-height: 320px; }
       .ts-table { font-size: 0.7rem; }
       .ts-table thead th { padding: 0.4rem 0.5rem; font-size: 0.62rem; }
@@ -287,6 +319,7 @@ export function statsPage(d: StatsData): string {
           <button data-range="24h">24h</button>
           <button data-range="7d" class="active">7d</button>
           <button data-range="30d">30d</button>
+          <button data-range="all">all</button>
         </span>
       </div>
       <div class="summary summary-2">
@@ -296,8 +329,26 @@ export function statsPage(d: StatsData): string {
         </div>
         <div class="metric">
           <div class="label" tabindex="0" data-tip="cached (edge) vs uncached (fly replica)">avg latency</div>
-          <div class="value" style="font-size:1.3rem" id="latency-value">${d.avgCacheLatency > 0 ? `${d.avgCacheLatency.toFixed(1)} ms <span style="opacity:.4;font-size:.85rem">cached</span> · ` : ''}${d.avgLatency.toFixed(0)} ms${d.avgCacheLatency > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : ''}</div>
+          <div class="value latency" id="latency-value">${latencyHtml(d.avgCacheLatency, d.avgLatency)}</div>
         </div>
+      </div>
+      <!-- the series lives INSIDE this card, directly under the control that
+           drives it. It used to sit below the donut, several hundred pixels from
+           a selector that silently governed it. -->
+      <div class="traffic-series">
+        <div class="ranged-header">
+          <h2 id="tseries-label">traffic over time — all sources</h2>
+          <button id="tseries-clear" style="display:none">&times; all sources</button>
+        </div>
+        <div class="tseries-plot">
+          <svg viewBox="0 0 600 90" preserveAspectRatio="none" id="tseries">
+            <polyline points="" id="tseries-poly" />
+            <circle id="tseries-dot" r="2.5" style="display:none" />
+          </svg>
+          <div id="tseries-empty" style="display:none">no traffic in this window</div>
+        </div>
+        <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
+        <div class="tseries-hint">tap a slice or table row below to pin an app &middot; trace the line for details</div>
       </div>
     </div>
 
@@ -306,19 +357,6 @@ export function statsPage(d: StatsData): string {
       ${d.trafficSources.length > 0
         ? `<canvas id="pie"></canvas>
            <div class="pie-legend">${pieLegendHtml}</div>
-           <div class="traffic-series">
-             <div class="ranged-header">
-               <h2 id="tseries-label">traffic over time — all sources</h2>
-               <button id="tseries-clear" style="display:none">&times; all sources</button>
-             </div>
-             <svg viewBox="0 0 600 90" preserveAspectRatio="none" id="tseries">
-               <polyline points="" id="tseries-poly" />
-               <circle id="tseries-dot" r="2.5" style="display:none" />
-             </svg>
-             <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
-             <div class="tseries-hint">tap a slice, legend entry, or table row to pin an app &middot; trace the line for details</div>
-             <div id="tseries-empty" style="display:none;color:#444;font-size:0.75rem;padding:0.8rem 0;text-align:center">collecting data &mdash; hourly per-app history began 2026-07-24</div>
-           </div>
            ${d.trafficSources.length > PIE_TOP_N
               ? `<div class="ts-summary">top ${PIE_TOP_N} above · all ${d.trafficSources.length} sources below</div>`
               : ''}
@@ -584,7 +622,12 @@ export function statsPage(d: StatsData): string {
     // range picks both the window and the finest data that stays readable
     const TS_RANGES = { '24h': { secs: 86400, stepSec: 300, grain: '5 min' },
                         '7d':  { secs: 604800, stepSec: 3600, grain: 'hourly' },
-                        '30d': { secs: 2592000, stepSec: 3600, grain: 'hourly' } };
+                        '30d': { secs: 2592000, stepSec: 3600, grain: 'hourly' },
+                        // per-domain history is only retained for 30d, so "all"
+                        // is the widest series that exists. The metrics beside
+                        // it DO go back further, so the label says so instead of
+                        // quietly implying they match.
+                        'all': { secs: 2592000, stepSec: 3600, grain: 'hourly', capped: true } };
     function seriesFor(domain, stepSec) {
       const source = stepSec === 300 ? trafficSeries5m : trafficSeries;
       if (domain != null) return source[domain] || [];
@@ -608,10 +651,14 @@ export function statsPage(d: StatsData): string {
       const cfg = TS_RANGES[tsRange];
       const nowUnit = Math.floor(Date.now() / 1000 / cfg.stepSec);
       const raw = seriesFor(domain, cfg.stepSec).filter(([t]) => t >= nowUnit - cfg.secs / cfg.stepSec);
-      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time — ' + (domain || 'all sources') + ' · ' + cfg.grain;
+      // capped = the window asked for more than per-domain history holds
+      // (traffic_buckets began 2026-07-24). Say "last 30d" rather than let the
+      // chart imply it covers the same span as the numbers above it.
+      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time — '
+        + (domain || 'all sources') + ' · ' + cfg.grain + (cfg.capped ? ' · last 30d' : '');
       const empty = raw.length < 2;
       if (tseriesEl) tseriesEl.style.display = empty ? 'none' : 'block';
-      if (tseriesEmpty) tseriesEmpty.style.display = empty ? 'block' : 'none';
+      if (tseriesEmpty) tseriesEmpty.style.display = empty ? 'flex' : 'none';
       if (empty) { tsView = null; if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
       // fill gaps with 0 so quiet periods read as quiet, not skipped
       const t0 = raw[0][0], tN = raw[raw.length - 1][0];
@@ -850,10 +897,11 @@ export function statsPage(d: StatsData): string {
       if (latencyValue) {
         const cold = searches > 0 ? totalMs / searches : 0;
         const cached = cacheHits > 0 ? cacheMs / cacheHits : 0;
-        latencyValue.innerHTML =
-          (cached > 0 ? cached.toFixed(1) + ' ms <span style="opacity:.4;font-size:.85rem">cached</span> · ' : '')
-          + cold.toFixed(0) + ' ms'
-          + (cached > 0 ? ' <span style="opacity:.4;font-size:.85rem">cold</span>' : '');
+        const pair = (n, t) => '<span class="lat-pair"><span class="lat-n">' + n + '</span><span class="lat-t">' + t + '</span></span>';
+        const parts = [];
+        if (cached > 0) parts.push(pair(cached.toFixed(1) + ' ms', 'cached'));
+        parts.push(pair(cold.toFixed(0) + ' ms', 'cold'));
+        latencyValue.innerHTML = parts.join('<span class="lat-sep">·</span>');
       }
 
       window.__setTsRange?.(range);
