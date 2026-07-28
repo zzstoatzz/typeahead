@@ -230,7 +230,16 @@ def load_need(which: str) -> dict[str, tuple]:
                 raise RuntimeError("actors INSERTs appeared before its CREATE TABLE")
             seen += 1
             body = raw[len("INSERT INTO actors VALUES("):]
-            parts = _split_sql_values(body)
+            # Fast reject. Most rows are fully resolved, and for --need handle a
+            # non-empty handle is decidable from the first two fields alone —
+            # no need to walk the tuple. DIDs never contain a quote, so the
+            # second field starts right after the did's closing quote.
+            if which == "handle":
+                if body.startswith("'"):
+                    q = body.find("'", 1)
+                    if q != -1 and not body.startswith(",''", q + 1):
+                        continue
+            parts = _split_sql_values(body, limit=max(i_handle, i_pds) + 1)
             if len(parts) <= i_handle:
                 continue
             did, handle = parts[i_did], parts[i_handle]
@@ -280,12 +289,18 @@ def _parse_columns(create_sql: str) -> list[str]:
     return out
 
 
-def _split_sql_values(body: str) -> list[str]:
-    """Split a SQLite dump VALUES(...) tuple, honoring '' escapes. Values we care
-    about are all TEXT; anything else is returned raw and ignored by callers."""
+def _split_sql_values(body: str, limit: int | None = None) -> list[str]:
+    """Split a SQLite dump VALUES(...) tuple, honoring '' escapes.
+
+    `limit` stops after that many fields. The actors table has 18 columns but
+    the highest one we read is `pds` at 6, and this runs per row over ~9.2M
+    rows — parsing the other 11 fields was most of the cost.
+    """
     out: list[str] = []
     i, n = 0, len(body)
     while i < n:
+        if limit is not None and len(out) >= limit:
+            break
         if body[i] == "'":
             i += 1
             buf = []

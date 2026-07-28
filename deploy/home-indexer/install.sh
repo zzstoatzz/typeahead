@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# host prereqs for running the typeahead snapshot builder (MODE=indexer) on the
-# home box (heavypad) as a Prefect home-pool batch job. Installs the same Zig +
-# rclone versions the Fly Dockerfile pins, to ~/.local/bin (on the worker PATH).
-# Idempotent: re-running upgrades/repins in place.
+# host prereqs for the typeahead batch jobs that run on the home box (heavypad)
+# as Prefect home-pool deployments:
+#   - typeahead-index         (MODE=indexer snapshot builder) -> zig, rclone
+#   - typeahead-plc-identity  (bulk DID identity from the PLC log) -> allegedly
+# Installs the same Zig + rclone versions the Fly Dockerfile pins, to
+# ~/.local/bin (on the worker PATH). Idempotent: re-running upgrades in place.
 set -euo pipefail
 
 ZIG_VERSION=0.16.0
@@ -38,7 +40,28 @@ else
   echo "rclone $RCLONE_VERSION already present"
 fi
 
+# --- allegedly (microcosm PLC tooling; scrapes the weekly bundles the public
+# host has not published yet) ---
+# Optional but load-bearing for recent accounts: plc.t3.storage.dev publishes
+# bundles only through 2025-09-18, and the unpublished tail is precisely where
+# newly-created accounts live. Without this, typeahead-plc-identity still runs
+# but cannot resolve anything created since that date, and says so in its logs.
+if ! command -v allegedly >/dev/null 2>&1; then
+  if command -v cargo >/dev/null 2>&1; then
+    echo "installing allegedly ..."
+    cargo install allegedly
+  else
+    echo "WARNING: cargo not found — skipping allegedly."
+    echo "  typeahead-plc-identity will run against published bundles only,"
+    echo "  leaving accounts created after 2025-09-18 unresolved."
+    echo "  install rust (https://rustup.rs) then re-run this script."
+  fi
+else
+  echo "allegedly already present"
+fi
+
 echo "--- versions ---"
 "$BIN/zig" version
 "$BIN/rclone" version | head -1
+command -v allegedly >/dev/null 2>&1 && allegedly --version || echo "allegedly: not installed"
 echo "done. ensure $BIN is on the worker PATH (it already is for the home-pool unit)."
