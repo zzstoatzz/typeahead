@@ -63,9 +63,25 @@ export async function handleIngest(
     }
   }
 
-  let batchResults: { results: unknown[]; meta: { changes: number } }[];
+  // Chunked, because db.batch() runs its statements in ONE transaction and
+  // Turso gives a transaction a 5-second window. A 1500-event flush is up to
+  // 3000 statements, which blows that window and — since Turso is single-writer
+  // — wedges every other writer behind it. Symptom on 2026-07-28 after the relay
+  // cutover raised event volume ~4x: ingester flushes went from ~5s to ~90s,
+  // pending climbed past 11k, and a ONE-event POST to this endpoint timed out at
+  // 60s while reads stayed at 0.5s. /request-indexing (a homepage feature) was
+  // down with it.
+  //
+  // Same total work, several small transactions instead of one huge one, so
+  // other writers can interleave. Results are concatenated in order because
+  // probeIdx indexes into the flattened list.
+  const BATCH_STATEMENTS = 250;
+  const batchResults: { results: unknown[]; meta: { changes: number } }[] = [];
   try {
-    batchResults = await db.batch(stmts);
+    for (let i = 0; i < stmts.length; i += BATCH_STATEMENTS) {
+      const chunk = await db.batch(stmts.slice(i, i + BATCH_STATEMENTS));
+      batchResults.push(...chunk);
+    }
   } catch (e: any) {
     console.log(JSON.stringify({ event: "ingest_error", error: e?.message, count: events.length }));
     return json({ error: e?.message || "db batch failed" }, 500);
