@@ -317,6 +317,11 @@ def scrape_tail(dest: str) -> int:
     if not todo:
         print("tail: nothing to scrape", file=sys.stderr)
         return 0
+    # plc.directory rate-limits to 500 requests / 5 min, i.e. one per 600ms.
+    # allegedly's --upstream-throttle-ms default documents exactly this; match
+    # it rather than eat 429s.
+    THROTTLE = 0.6
+    last_req = 0.0
     print(f"tail: scraping {len(todo)} unpublished week(s) from plc.directory", file=sys.stderr)
     written = 0
     for w in todo:
@@ -334,6 +339,10 @@ def scrape_tail(dest: str) -> int:
                 body = None
                 for attempt in range(4):
                     try:
+                        wait = THROTTLE - (time.time() - last_req)
+                        if wait > 0:
+                            time.sleep(wait)
+                        last_req = time.time()
                         body = urllib.request.urlopen(req, timeout=120).read().decode()
                         break
                     except Exception:
