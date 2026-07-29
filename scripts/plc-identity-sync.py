@@ -295,9 +295,12 @@ def _iso(ts: int) -> str:
 def scrape_tail(dest: str) -> int:
     """Write weekly bundles for the weeks the public host has not published.
 
-    `allegedly bundle` does this better and is preferred, but it needs a rust
-    toolchain plus vendored openssl. The unpublished tail is where every
-    recently-created account lives, so this must not be gated on host setup.
+    This is now the PREFERRED tail scraper, not the fallback. `allegedly bundle`
+    hung indefinitely on a socket read twice (2026-07-28 dc4cce22 for 3h07m,
+    2026-07-29 a8af8f5e for 7.5h) — 0.15% CPU, zero bytes written, same call
+    both times. It has no read timeout. This path sets an explicit 120s timeout
+    per request with retries, and writes .part + rename so a kill never leaves a
+    file that looks complete.
     Output is byte-compatible, so a later `allegedly bundle` skips what is here.
 
     Stops ~73h short of now for the same reason Allegedly does: PLC ops can be
