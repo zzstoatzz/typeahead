@@ -253,7 +253,7 @@ def load_need(which: str, page: int) -> dict[str, tuple]:
     return need
 
 
-def verify_bundles(dest: str, delete: bool = True) -> int:
+def verify_bundles(dest: str, delete: bool = True, newest: int = 3) -> int:
     """Drop truncated bundles so a later run re-scrapes them.
 
     `allegedly bundle` streams gzip directly into the final `<WEEK>.jsonl.gz`
@@ -263,10 +263,17 @@ def verify_bundles(dest: str, delete: bool = True) -> int:
     so a truncated newest week would be treated as done and never refetched —
     a permanent silent gap in exactly the recent window we care most about.
 
-    A truncated gzip stream fails decompression, so testing is cheap and exact.
+    Only the NEWEST few files are checked by default. Truncation can only happen
+    to the bundle being written when a run dies, and fully parsing the whole
+    cache costs minutes of CPU over ~46GB for no added safety — the first
+    version did exactly that and burned 100% CPU before scraping anything.
+    Pass newest=0 to check everything.
     """
     bad = 0
-    for name in sorted(os.listdir(dest)):
+    names = sorted(n for n in os.listdir(dest) if n.endswith(".jsonl.gz"))
+    if newest:
+        names = sorted(names, key=lambda n: os.path.getmtime(os.path.join(dest, n)))[-newest:]
+    for name in names:
         if not name.endswith(".jsonl.gz"):
             continue
         path = os.path.join(dest, name)
@@ -282,7 +289,7 @@ def verify_bundles(dest: str, delete: bool = True) -> int:
             print(f"  TRUNCATED {name}: {type(e).__name__}", file=sys.stderr)
             if delete:
                 os.remove(path)
-    print(f"bundle check: {bad} truncated{' (removed)' if delete and bad else ''}", file=sys.stderr)
+    print(f"bundle check: {len(names)} checked, {bad} truncated{' (removed)' if delete and bad else ''}", file=sys.stderr)
     return bad
 
 
