@@ -36,8 +36,11 @@ also served at `/xrpc/app.bsky.actor.searchActorsTypeahead` as a drop-in alias f
   verifies snapshots from R2, attaches them read-only, tails Turso into a local
   actor replica, projects live changes into an overlay, and serves `/search`
   from bounded point lookups. Local FTS is disabled here.
-- **identity**: [slingshot](https://microcosm.blue) for on-demand handle
-  resolution.
+- **identity**: three paths, in cost order. `getProfiles` (25 DIDs per call) in
+  the hourly cron resolves most of them; [slingshot](https://microcosm.blue)
+  resolves single DIDs from firehose `#identity` events; and a weekly job reads
+  the PLC log in bulk for accounts the appview cannot see — self-hosted PDSes.
+  See [docs/discovery-and-identity.md](docs/discovery-and-identity.md).
 
 The serving invariant: no request does work proportional to the actor corpus.
 The request path reads a small set of precomputed prefix keys, merges the live

@@ -61,3 +61,45 @@ Each row change fires the `actors_au` trigger and rewrites FTS5, which is the
 irreducible cost; everything around it is not.
 
 Pace writes adaptively. Turso is single-writer and the live ingester shares it.
+
+## reading the numbers
+
+`SELECT COUNT(*) FROM actors WHERE handle = '' COLLATE NOCASE` is the health
+metric. It is **not** a backlog. Split it before reacting:
+
+```sql
+-- never attempted: fresh firehose arrivals waiting on the hourly cron
+SELECT COUNT(*) FROM actors
+ WHERE handle = '' COLLATE NOCASE AND identity_checked_at = 0;
+
+-- attempted and still unresolved: the genuinely hard ones
+SELECT COUNT(*) FROM actors
+ WHERE handle = '' COLLATE NOCASE AND identity_checked_at > 0;
+```
+
+The first number is a **working set**, not a problem. The firehose discovers
+~2,900 accounts/hour and stamps them as bare DIDs; enrichment phase 1 resolves up
+to `IDENTITY_LIMIT` per hourly tick. A steady value of a few thousand is the
+system working. It only matters if it grows across many hours.
+
+The second number is the real floor: deactivated accounts, `handle.invalid`,
+and `did:web` accounts that are not in PLC at all. Expect low thousands.
+
+## what fixes what
+
+| symptom | cause | what to do |
+| --- | --- | --- |
+| never-attempted count growing over many hours | phase 1 not keeping pace with arrivals | raise `IDENTITY_LIMIT`, or check for 429s from `getProfiles` |
+| attempted count growing | accounts the appview cannot see | the weekly PLC job covers these |
+| hour missing from `snapshots` | cron did not fire, or a step failed | compare `cron_last_attempt` in KV — it is written before any step |
+| ingester `pending` climbing | worker writes are slow or failing | check Turso write latency; see the single-writer note below |
+
+## the constraint behind most incidents here
+
+Turso is **single-writer**, and the live ingester shares it with every batch job.
+Any bulk write must batch (one statement per batch, not per row) and pace against
+observed latency. A job that saturates the writer starves ingestion, and the
+ingester's retries can keep it saturated after the job stops.
+
+If Turso becomes unresponsive during maintenance work, the workload is the cause.
+Stop the job first, then confirm.
