@@ -196,12 +196,22 @@ export function statsPage(d: StatsData): string {
     #tseries-empty { display: flex; align-items: center; justify-content: center;
                      color: var(--faint); font-size: 0.75rem; text-align: center; }
     #tseries { cursor: crosshair; touch-action: pan-y; }
-    #tseries polyline { transition: stroke 0.15s; vector-effect: non-scaling-stroke; }
-    #tseries-dot { fill: var(--bright); stroke: var(--accent); stroke-width: 1.5; }
-    #tseries-clear { background: var(--panel-2); border: 1px solid var(--line-2); color: var(--muted);
-                     padding: 0.35rem 0.65rem; font-size: 0.72rem; cursor: pointer;
-                     border-radius: 6px; font-family: inherit; min-height: 34px; }
-    #tseries-clear:hover { color: var(--text); }
+    #tseries polyline { vector-effect: non-scaling-stroke; fill: none; stroke-width: 1.5; }
+    /* the fat transparent twin under each line is the click/tap target — a
+       1.5px stroke is unhittable, especially with a finger */
+    #tseries polyline.hit { stroke-width: 12; stroke: transparent; cursor: pointer; }
+    #tseries polyline.baseline { stroke-dasharray: 3 3; stroke-width: 1; opacity: 0.75; }
+    #tseries-guide { stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
+    #tseries-dots circle { fill: var(--bg); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+    #tseries-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
+    .ts-chip { display: inline-flex; align-items: center; gap: 0.4rem;
+               background: var(--panel-2); border: 1px solid var(--line-2); color: var(--text);
+               padding: 0.35rem 0.5rem 0.35rem 0.6rem; font-size: 0.72rem; cursor: pointer;
+               border-radius: 999px; font-family: inherit; min-height: 34px; }
+    .ts-chip .x { color: var(--faint); font-size: 0.95rem; line-height: 1; }
+    .ts-chip:hover { border-color: var(--line); }
+    .ts-chip:hover .x { color: var(--text); }
+    .ts-chip .ldot.dash { background: none !important; border: 1.5px dashed var(--dim); }
     .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
                     color: var(--dim); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
     .tseries-hint { font-size: 0.65rem; color: var(--faint); margin-top: 0.5rem; text-align: center; }
@@ -338,17 +348,18 @@ export function statsPage(d: StatsData): string {
       <div class="traffic-series">
         <div class="ranged-header">
           <h2 id="tseries-label">traffic over time — all sources</h2>
-          <button id="tseries-clear" style="display:none">&times; all sources</button>
+          <div id="tseries-chips"></div>
         </div>
         <div class="tseries-plot">
           <svg viewBox="0 0 600 90" preserveAspectRatio="none" id="tseries">
-            <polyline points="" id="tseries-poly" />
-            <circle id="tseries-dot" r="2.5" style="display:none" />
+            <g id="tseries-lines"></g>
+            <line id="tseries-guide" y1="0" y2="90" style="display:none" />
+            <g id="tseries-dots"></g>
           </svg>
           <div id="tseries-empty" style="display:none">no traffic in this window</div>
         </div>
         <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
-        <div class="tseries-hint">tap a slice or table row below to pin an app &middot; trace the line for details</div>
+        <div class="tseries-hint" id="tseries-hint">tap a slice or table row below to pin an app &middot; shift-click to compare several &middot; trace the line for details</div>
       </div>
     </div>
 
@@ -599,17 +610,24 @@ export function statsPage(d: StatsData): string {
     /* --- per-app traffic history: click pins a domain, hover the line for detail --- */
     const trafficSeries = ${trafficSeriesJson};     // hourly, 30d: domain -> [[hour, hits], ...]
     const trafficSeries5m = ${trafficSeries5mJson}; // 5-min, 48h: domain -> [[bucket, hits], ...]
-    const tseriesPoly = document.getElementById('tseries-poly');
-    const tseriesDot = document.getElementById('tseries-dot');
+    const tseriesLines = document.getElementById('tseries-lines');
+    const tseriesDots = document.getElementById('tseries-dots');
+    const tseriesGuide = document.getElementById('tseries-guide');
+    const tseriesChips = document.getElementById('tseries-chips');
     const tseriesLabel = document.getElementById('tseries-label');
     const tseriesEl = document.getElementById('tseries');
     const tseriesEmpty = document.getElementById('tseries-empty');
-    const tseriesClear = document.getElementById('tseries-clear');
+    // never declared before, so every trace threw ReferenceError and the tooltip
+    // never appeared — an id with a hyphen gets no implicit global
+    const seriesTip = document.getElementById('series-tip');
     const tseriesT0 = document.getElementById('tseries-t0');
     const tseriesT1 = document.getElementById('tseries-t1');
     const TS_W = 600, TS_H = 90, TS_PAD = 5;
-    let pinnedDomain = null;   // click-selected; survives pie mouse-out
-    let tsView = null;         // {h0, counts, color} — the line hover reads this
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    let pinned = [];           // click-selected domains, in selection order
+    let hovered = null;        // pie-hover preview; only active while nothing is pinned
+    let showBaseline = true;   // the dotted all-sources line, for relative scale
+    let tsView = null;         // {t0Sec, stepSec, step, toY, series[]} — the trace reads this
 
     const SPECIAL_SERIES = { unknown: '#555', homepage: '#666' };
     function domainColor(domain) {
@@ -646,55 +664,129 @@ export function statsPage(d: StatsData): string {
       const mm = String(t.getUTCMinutes()).padStart(2, '0');
       return day + ' ' + hh + ':' + mm;
     }
-    function showSeries(domain) {
-      if (!tseriesPoly) return;
+    // What gets drawn, in draw order. With nothing pinned that's just the total.
+    // With apps pinned the total becomes a dashed reference line, because an app
+    // series read alone has no sense of scale — 40 hits/hr looks identical
+    // whether it's most of the traffic or a rounding error. It is dismissable
+    // (click the line or its chip) since it also compresses everything under it.
+    function activeSpecs() {
+      if (pinned.length === 0) {
+        return hovered != null
+          ? [{ domain: hovered, name: hovered, color: domainColor(hovered) }]
+          : [{ domain: null, name: 'all sources', color: domainColor(null) }];
+      }
+      const specs = pinned.map(d => ({ domain: d, name: d, color: domainColor(d) }));
+      if (showBaseline) specs.unshift({ domain: null, name: 'all sources', color: 'var(--dim)', baseline: true });
+      return specs;
+    }
+    function showSeries() {
+      if (!tseriesLines) return;
       const cfg = TS_RANGES[tsRange];
       const nowUnit = Math.floor(Date.now() / 1000 / cfg.stepSec);
-      const raw = seriesFor(domain, cfg.stepSec).filter(([t]) => t >= nowUnit - cfg.secs / cfg.stepSec);
+      const minUnit = nowUnit - cfg.secs / cfg.stepSec;
+      const specs = activeSpecs();
+      const raws = specs.map(s => seriesFor(s.domain, cfg.stepSec).filter(([t]) => t >= minUnit));
       // capped = the window asked for more than per-domain history holds
       // (traffic_buckets began 2026-07-24). Say "last 30d" rather than let the
       // chart imply it covers the same span as the numbers above it.
-      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time — '
-        + (domain || 'all sources') + ' · ' + cfg.grain + (cfg.capped ? ' · last 30d' : '');
-      const empty = raw.length < 2;
+      // pinned domains are named by their chips, so the heading doesn't repeat them
+      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time'
+        + (pinned.length ? '' : (hovered != null ? ' — ' + hovered : ' — all sources'))
+        + ' · ' + cfg.grain + (cfg.capped ? ' · last 30d' : '');
+      renderChips();
+      const nonEmpty = raws.filter(r => r.length > 0);
+      const empty = nonEmpty.length === 0 || Math.max(...raws.map(r => r.length)) < 2;
       if (tseriesEl) tseriesEl.style.display = empty ? 'none' : 'block';
       if (tseriesEmpty) tseriesEmpty.style.display = empty ? 'flex' : 'none';
+      tseriesLines.replaceChildren();
       if (empty) { tsView = null; if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
-      // fill gaps with 0 so quiet periods read as quiet, not skipped
-      const t0 = raw[0][0], tN = raw[raw.length - 1][0];
-      const byUnit = new Map(raw);
-      const counts = [];
-      for (let t = t0; t <= tN && counts.length <= 800; t++) counts.push(byUnit.get(t) || 0);
-      const max = Math.max(...counts, 1);
-      const color = domainColor(domain);
-      const step = counts.length > 1 ? TS_W / (counts.length - 1) : 0;
+      // ONE grid for every line — a shared t0/tN and a shared max. Per-series
+      // extents would put two lines on silently different axes, which is worse
+      // than not drawing the comparison at all.
+      const t0 = Math.min(...nonEmpty.map(r => r[0][0]));
+      const tN = Math.max(...nonEmpty.map(r => r[r.length - 1][0]));
+      const nPts = Math.min(tN - t0 + 1, 800);
+      const series = specs.map((s, i) => {
+        const byUnit = new Map(raws[i]);
+        const counts = [];
+        // fill gaps with 0 so quiet periods read as quiet, not skipped
+        for (let k = 0; k < nPts; k++) counts.push(byUnit.get(t0 + k) || 0);
+        return { ...s, counts };
+      });
+      const max = Math.max(1, ...series.map(s => Math.max(...s.counts)));
+      const step = nPts > 1 ? TS_W / (nPts - 1) : 0;
       const toY = c => TS_PAD + (1 - c / max) * (TS_H - 2 * TS_PAD);
-      tseriesPoly.setAttribute('points', counts.map((c, i) => (i * step).toFixed(1) + ',' + toY(c).toFixed(1)).join(' '));
-      tseriesPoly.style.stroke = color;
-      if (tseriesDot) { tseriesDot.style.display = 'none'; tseriesDot.style.stroke = color; }
+      for (const s of series) {
+        const pts = s.counts.map((c, i) => (i * step).toFixed(1) + ',' + toY(c).toFixed(1)).join(' ');
+        if (s.baseline) {
+          const hit = document.createElementNS(SVGNS, 'polyline');
+          hit.setAttribute('points', pts);
+          hit.setAttribute('class', 'hit');
+          hit.addEventListener('click', e => { e.stopPropagation(); showBaseline = false; showSeries(); });
+          tseriesLines.appendChild(hit);
+        }
+        const line = document.createElementNS(SVGNS, 'polyline');
+        line.setAttribute('points', pts);
+        if (s.baseline) line.setAttribute('class', 'baseline');
+        line.style.stroke = s.color;
+        line.style.pointerEvents = 'none';
+        tseriesLines.appendChild(line);
+      }
       const showClock = cfg.secs <= 604800;
       if (tseriesT0) tseriesT0.textContent = fmtSec(t0 * cfg.stepSec, showClock);
       if (tseriesT1) tseriesT1.textContent = fmtSec((tN + 1) * cfg.stepSec, showClock);
-      tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, counts, max, step, toY };
+      tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, step, toY, series };
+    }
+    function chip(name, color, dashed, onClear) {
+      const b = document.createElement('button');
+      b.className = 'ts-chip';
+      b.title = 'remove from chart';
+      const dot = document.createElement('span');
+      dot.className = 'ldot' + (dashed ? ' dash' : '');
+      if (!dashed) dot.style.background = color;
+      const label = document.createElement('span');
+      label.textContent = name;              // domains are caller-controlled — never innerHTML
+      const x = document.createElement('span');
+      x.className = 'x';
+      x.textContent = '×';
+      b.append(dot, label, x);
+      b.addEventListener('click', onClear);
+      return b;
+    }
+    function renderChips() {
+      if (!tseriesChips) return;
+      tseriesChips.replaceChildren();
+      if (pinned.length === 0) return;       // unfiltered: nothing to clear
+      if (showBaseline) {
+        tseriesChips.appendChild(chip('all sources', null, true, () => { showBaseline = false; showSeries(); }));
+      }
+      for (const d of pinned) {
+        tseriesChips.appendChild(chip(d, domainColor(d), false, () => applySelection(d, true)));
+      }
     }
     // driven by the shared #activity-range, not a selector of its own
     window.__setTsRange = (range) => {
       if (!TS_RANGES[range]) return;
       tsRange = range;
-      showSeries(pinnedDomain);
+      showSeries();
     };
-    function applySelection(domain) {
-      pinnedDomain = domain;
-      if (tseriesClear) tseriesClear.style.display = domain != null ? 'inline-block' : 'none';
+    // plain click REPLACES the selection, shift/meta/ctrl-click toggles one in or
+    // out. Making plain click additive is how these controls end up accumulating
+    // selections nobody asked for.
+    function applySelection(domain, additive) {
+      if (domain == null) pinned = [];
+      else if (!additive) pinned = pinned.length === 1 && pinned[0] === domain ? [] : [domain];
+      else if (pinned.includes(domain)) pinned = pinned.filter(d => d !== domain);
+      else pinned = [...pinned, domain];
+      if (pinned.length === 0) showBaseline = true;  // fresh start next time
       document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el =>
-        el.classList.toggle('sel', el.dataset.domain === domain));
-      showSeries(domain);
+        el.classList.toggle('sel', pinned.includes(el.dataset.domain)));
+      showSeries();
     }
-    tseriesClear?.addEventListener('click', () => applySelection(null));
     document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target.closest('a')) return; // domain links still navigate
-        applySelection(pinnedDomain === el.dataset.domain ? null : el.dataset.domain);
+        applySelection(el.dataset.domain, e.shiftKey || e.metaKey || e.ctrlKey);
       });
     });
 
@@ -703,14 +795,44 @@ export function statsPage(d: StatsData): string {
       if (!tsView) return;
       const rect = tseriesEl.getBoundingClientRect();
       const frac = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-      const idx = Math.round(frac * (tsView.counts.length - 1));
-      const c = tsView.counts[idx];
-      if (tseriesDot) {
-        tseriesDot.setAttribute('cx', (idx * tsView.step).toFixed(1));
-        tseriesDot.setAttribute('cy', tsView.toY(c).toFixed(1));
-        tseriesDot.style.display = 'block';
+      const nPts = tsView.series[0].counts.length;
+      const idx = Math.round(frac * (nPts - 1));
+      // one dot per line, one row per line — reading a value off the wrong
+      // series is the obvious way a multi-line chart misleads
+      tseriesDots.replaceChildren();
+      const rows = [];
+      for (const s of tsView.series) {
+        const c = s.counts[idx];
+        const dot = document.createElementNS(SVGNS, 'circle');
+        dot.setAttribute('r', '2.5');
+        dot.setAttribute('cx', (idx * tsView.step).toFixed(1));
+        dot.setAttribute('cy', tsView.toY(c).toFixed(1));
+        dot.style.stroke = s.color;
+        tseriesDots.appendChild(dot);
+        rows.push({ name: s.name, color: s.color, c, baseline: s.baseline });
       }
-      seriesTip.textContent = fmtSec(tsView.t0Sec + idx * tsView.stepSec, true) + ' UTC — ' + c + (c === 1 ? ' hit' : ' hits');
+      if (tseriesGuide) {
+        tseriesGuide.setAttribute('x1', (idx * tsView.step).toFixed(1));
+        tseriesGuide.setAttribute('x2', (idx * tsView.step).toFixed(1));
+        tseriesGuide.style.display = 'block';
+      }
+      seriesTip.replaceChildren();
+      const when = document.createElement('div');
+      when.className = 'ct-time';
+      when.textContent = fmtSec(tsView.t0Sec + idx * tsView.stepSec, true) + ' UTC';
+      seriesTip.appendChild(when);
+      for (const r of rows) {
+        const row = document.createElement('div');
+        row.className = 'ct-row';
+        const dot = document.createElement('span');
+        dot.className = 'ct-dot';
+        dot.style.background = r.color;
+        if (r.baseline) { dot.style.background = 'none'; dot.style.border = '1.5px dashed var(--dim)'; }
+        const txt = document.createElement('span');
+        txt.textContent = (rows.length > 1 ? r.name + ' — ' : '') + r.c + (r.c === 1 ? ' hit' : ' hits');
+        row.append(dot, txt);
+        seriesTip.appendChild(row);
+      }
       seriesTip.style.display = 'block';
       // keep the tip above the finger/cursor and inside the viewport
       const tx = Math.min(clientX + 12, window.innerWidth - seriesTip.offsetWidth - 8);
@@ -719,7 +841,8 @@ export function statsPage(d: StatsData): string {
     }
     function tseriesTraceEnd() {
       seriesTip.style.display = 'none';
-      if (tseriesDot) tseriesDot.style.display = 'none';
+      if (tseriesDots) tseriesDots.replaceChildren();
+      if (tseriesGuide) tseriesGuide.style.display = 'none';
     }
     if (tseriesEl) {
       tseriesEl.addEventListener('mousemove', e => tseriesTrace(e.clientX, e.clientY));
@@ -728,7 +851,7 @@ export function statsPage(d: StatsData): string {
       tseriesEl.addEventListener('touchmove', e => { const t = e.touches[0]; tseriesTrace(t.clientX, t.clientY); }, { passive: true });
       tseriesEl.addEventListener('touchend', tseriesTraceEnd);
     }
-    showSeries(null);
+    showSeries();
 
     if (pieCanvas && traffic.length > 0) {
       const pieTotal = traffic.reduce((s, r) => s + r.hits, 0);
@@ -827,7 +950,7 @@ export function statsPage(d: StatsData): string {
           hoverIdx = idx;
           drawPie();
           // hover previews the history only while nothing is pinned
-          if (pinnedDomain == null) showSeries(idx >= 0 ? segments[idx].domain : null);
+          if (pinned.length === 0) { hovered = idx >= 0 ? segments[idx].domain : null; showSeries(); }
         }
         if (idx >= 0) {
           const seg = segments[idx];
@@ -844,14 +967,15 @@ export function statsPage(d: StatsData): string {
       }
 
       pieCanvas.addEventListener('mousemove', e => pieHover(e.clientX, e.clientY));
-      pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinnedDomain == null) showSeries(null); });
+      pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinned.length === 0) { hovered = null; showSeries(); } });
       pieCanvas.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; pieHover(t.clientX, t.clientY); });
-      pieCanvas.addEventListener('touchend', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinnedDomain == null) showSeries(null); });
+      pieCanvas.addEventListener('touchend', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinned.length === 0) { hovered = null; showSeries(); } });
       pieCanvas.addEventListener('click', e => {
         const idx = hitTest(e.clientX, e.clientY);
         if (idx < 0) return;
         const dom = segments[idx].domain;
-        applySelection(pinnedDomain === dom ? null : dom);
+        hovered = null;
+        applySelection(dom, e.shiftKey || e.metaKey || e.ctrlKey);
       });
       window.addEventListener('resize', () => drawPie());
     }
