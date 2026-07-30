@@ -69,6 +69,41 @@ const trailing_col: usize = Col.quality_score + 1;
 
 const BATCH_SIZE = 2000;
 const SYNC_INTERVAL_S = 300; // 5 minutes
+
+// Liveness watchdog, mirroring the ingester's.
+//
+// On 2026-07-28 the sync loop stopped making progress and stayed stopped for
+// 48 hours. It did not crash and did not log: syncLoop catches every error and
+// continues, so a hang INSIDE incrementalSync (a Turso read that never returns)
+// is indistinguishable from a healthy idle loop. The service kept answering
+// /health with ready=true and kept serving the attached snapshot, so from the
+// outside nothing was wrong — meanwhile sync_lag_s climbed to 175,469 and every
+// newly indexed actor was invisible to search.
+//
+// The 6h self-heal in incrementalSync cannot help, because the loop that
+// evaluates it is the loop that is stuck. Exiting lets fly restart us, which is
+// exactly how the same failure was handled for the ingester (2026-05-29).
+//
+// Fed by any forward progress — each bulk batch as well as a completed
+// incremental pass — so a multi-hour resync does not trip it.
+const SYNC_STALL_SECS: i64 = 20 * 60;
+pub var last_progress_at: std.atomic.Value(i64) = .init(0);
+
+pub fn noteProgress() void {
+    last_progress_at.store(timestamp(), .monotonic);
+}
+
+pub fn watchdogLoop() void {
+    last_progress_at.store(timestamp(), .monotonic);
+    while (true) {
+        io.sleep(std.Io.Duration.fromSeconds(60), .awake) catch {};
+        const age = timestamp() - last_progress_at.load(.monotonic);
+        if (age >= SYNC_STALL_SECS) {
+            log.err("sync watchdog: no progress in {d}s, exiting for restart", .{age});
+            std.process.exit(1);
+        }
+    }
+}
 const TOMBSTONE_RETENTION_S = 7 * 24 * 3600; // 7 days — must match cron.ts pruning
 
 /// Full sync: fetch all searchable actors from Turso using keyset pagination.
@@ -220,6 +255,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
         last_rowid = result.rows[result.rows.len - 1].int(trailing_col);
 
         // high-frequency batch progress — keep on stderr only
+        noteProgress();
         log.info("batch: {d} rows, rowid={d}, total={d} | fetch={d}ms apply={d}ms", .{
             result.rows.len, last_rowid, actor_count,
             t1 - t0,         t2 - t1,
@@ -447,6 +483,7 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
         last_rowid = result.rows[result.rows.len - 1].int(trailing_col);
         batch_num += 1;
 
+        noteProgress();
         log.info("resync: batch {d}: {d} rows, rowid={d}, total={d} | fetch={d}ms apply={d}ms", .{
             batch_num, result.rows.len, last_rowid, actor_count,
             t1 - t0,   t2 - t1,
@@ -853,6 +890,10 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
         incrementalSync(&turso, local) catch |err| {
             log.err("periodic sync failed: {}", .{err});
         };
+        // a completed pass is progress even when it applied nothing; a FAILED
+        // pass counts too — the watchdog is for silence, and a loop that errors
+        // every 5 minutes is loud enough to alert on separately
+        noteProgress();
     }
 }
 

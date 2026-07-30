@@ -226,6 +226,10 @@ pub fn main() !void {
         tasks.concurrent(io, sync.syncLoop, .{ allocator, db }) catch |err| {
             log.err("sync task failed: {}", .{err});
         };
+        // a wedged sync loop looks identical to a healthy one from outside
+        tasks.concurrent(io, sync.watchdogLoop, .{}) catch |err| {
+            log.err("sync watchdog failed to start: {}", .{err});
+        };
     }
 
     // start prefix-index promote watcher (background — R2 latest.json → ATTACH).
