@@ -7,7 +7,20 @@ const EDGE_CACHE_TTL = 60; // seconds
 
 export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: ExecutionContext): Promise<Response> {
   const cache = caches.default;
-  const cacheKey = new Request(new URL("/stats", request.url).href);
+  // The key used to be a bare "/stats", discarding the query — so every shared
+  // comparison URL collapsed onto one cache entry and a crawler unfurling
+  // ?apps=a,b got whatever generic page happened to be cached. Normalise the
+  // two params that change the render and key on those, so unknown junk
+  // (?utm_source=…) still shares an entry instead of fragmenting the cache.
+  const reqUrl = new URL(request.url);
+  const apps = (reqUrl.searchParams.get("apps") ?? "")
+    .split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8);
+  const range = ["24h", "7d", "30d", "all"].includes(reqUrl.searchParams.get("range") ?? "")
+    ? reqUrl.searchParams.get("range")! : "7d";
+  const norm = new URL("/stats", request.url);
+  if (apps.length) norm.searchParams.set("apps", apps.join(","));
+  if (range !== "7d") norm.searchParams.set("range", range);
+  const cacheKey = new Request(norm.href);
   const cached = await cache.match(cacheKey);
   if (cached) {
     const resp = new Response(cached.body, cached);
@@ -100,7 +113,8 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   const tProcess = performance.now();
 
-  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [] });
+  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [],
+    view: { apps, range, origin: reqUrl.origin } });
 
   const tRender = performance.now();
 

@@ -9,6 +9,7 @@ import { handleIngest } from "./handlers/ingest";
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
 import { handleGetProfiles } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
+import { handleOgImage } from "./handlers/og";
 import { handleReputation } from "./handlers/reputation";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
@@ -63,6 +64,9 @@ export default {
       return new Response(llmsTxt(), {
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...CORS_HEADERS },
       });
+    }
+    if (pathname === "/og-image" && request.method === "GET") {
+      return handleOgImage(request, env);
     }
     if (pathname === "/docs" && request.method === "GET") {
       return html(docsPage());

@@ -12,6 +12,7 @@
     "wrangler": "^4"
   },
   "dependencies": {
-    "@libsql/client": "^0.17.0"
+    "@libsql/client": "^0.17.0",
+    "workers-og": "^0.0.27"
   }
 }

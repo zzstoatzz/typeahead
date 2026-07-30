@@ -1,5 +1,5 @@
 import { FAVICON } from "../types";
-import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
+import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, ogTags } from "./theme";
 
 export function docsPage(): string {
   return `<!doctype html>
@@ -7,7 +7,7 @@ export function docsPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>typeahead — switching from bluesky</title>
+  ${ogTags({ title: "typeahead — docs", description: "Point your app at typeahead in one line. Migration guide for app.bsky.actor.searchActorsTypeahead, plus the canonical tech.waow.typeahead.searchActors endpoint.", path: "/docs" })}
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}

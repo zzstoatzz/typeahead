@@ -22,6 +22,8 @@ export interface StatsData {
   trafficSources: { domain: string; hits: number }[];
   trafficSeries: { hour: number; domain: string; hits: number }[];
   trafficSeries5m: { bucket: number; domain: string; hits: number }[];
+  /** view restored from the query string — drives the link preview */
+  view?: { apps: string[]; range: string; origin: string };
 }
 
 /** cached/cold latency as two atomic pairs.
@@ -38,6 +40,73 @@ function latencyHtml(cached: number, cold: number): string {
   if (cached > 0) parts.push(pair(`${cached.toFixed(1)} ms`, "cached"));
   parts.push(pair(`${cold.toFixed(0)} ms`, "cold"));
   return parts.join('<span class="lat-sep">·</span>');
+}
+
+/** Link-preview metadata that describes THIS view, not the page in general.
+ *
+ *  A shared comparison is only worth sharing if the unfurl says what is being
+ *  compared, so the title and description are built from the same numbers the
+ *  chart draws, and the card image is handed the same params.
+ */
+function ogTags(d: StatsData): string {
+  const view = d.view ?? { apps: [], range: '7d', origin: 'https://typeahead.waow.tech' };
+  const RANGE_SECS: Record<string, number> = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 };
+  const RANGE_WORDS: Record<string, string> = { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' };
+  const secs = RANGE_SECS[view.range] ?? RANGE_SECS['7d']!;
+  const cutoff = Math.floor(Date.now() / 1000 / 3600) - secs / 3600;
+
+  const by = new Map<string, number>();
+  let all = 0;
+  for (const r of d.trafficSeries) {
+    if (r.hour < cutoff) continue;
+    by.set(r.domain, (by.get(r.domain) ?? 0) + r.hits);
+    all += r.hits;
+  }
+  const apps = view.apps.filter(a => by.has(a));
+
+  const q = new URLSearchParams();
+  if (apps.length) q.set('apps', apps.join(','));
+  if (view.range !== '7d') q.set('range', view.range);
+  const qs = q.toString();
+  const pageUrl = view.origin + '/stats' + (qs ? '?' + qs : '');
+  const imgUrl = view.origin + '/og-image' + (qs ? '?' + qs : '');
+
+  let title: string, desc: string;
+  if (apps.length) {
+    const rows = apps.map(a => ({ a, hits: by.get(a) ?? 0 })).sort((x, y) => y.hits - x.hits);
+    title = rows.map(r => r.a).join(' vs ') + ' · typeahead traffic';
+    const parts = rows.map(r =>
+      `${r.a} ${r.hits.toLocaleString('en-US')}` + (all > 0 ? ` (${((r.hits / all) * 100).toFixed(1)}%)` : ''));
+    const lead = rows.length >= 2 && rows[1]!.hits > 0
+      ? ` — ${rows[0]!.a} leads ${(rows[0]!.hits / rows[1]!.hits < 10
+          ? (rows[0]!.hits / rows[1]!.hits).toFixed(2) : Math.round(rows[0]!.hits / rows[1]!.hits))}×`
+      : '';
+    desc = `search traffic over the ${RANGE_WORDS[view.range] ?? RANGE_WORDS['7d']}: ${parts.join(' · ')}${lead}`;
+  } else {
+    title = 'typeahead — stats';
+    desc = `${d.total.toLocaleString('en-US')} actors indexed, ${d.handlePct}% with a resolved handle. Live traffic, latency and coverage for community actor search on atproto.`;
+  }
+
+  const m = (p: string, c: string) => `<meta property="${p}" content="${esc(c)}">`;
+  const nm = (p: string, c: string) => `<meta name="${p}" content="${esc(c)}">`;
+  return [
+    nm('description', desc),
+    m('og:type', 'website'),
+    m('og:site_name', 'typeahead'),
+    m('og:title', title),
+    m('og:description', desc),
+    m('og:url', pageUrl),
+    m('og:image', imgUrl),
+    m('og:image:width', '1200'),
+    m('og:image:height', '630'),
+    m('og:image:alt', title),
+    nm('twitter:card', 'summary_large_image'),
+    nm('twitter:title', title),
+    nm('twitter:description', desc),
+    nm('twitter:image', imgUrl),
+    `<link rel="canonical" href="${esc(pageUrl)}">`,
+    `<title>${esc(title)}</title>`,
+  ].join('\n  ');
 }
 
 export function statsPage(d: StatsData): string {
@@ -150,7 +219,7 @@ export function statsPage(d: StatsData): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>typeahead — stats</title>
+  ${ogTags(d)}
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}

@@ -1,5 +1,5 @@
 import { FAVICON } from "../types";
-import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
+import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, ogTags } from "./theme";
 
 export function indexPage(): string {
   return `<!doctype html>
@@ -7,7 +7,7 @@ export function indexPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>typeahead</title>
+  ${ogTags({ title: "typeahead — community actor search for atproto", description: "Fast handle and display-name search across the whole atproto network, not just one appview. A drop-in replacement for bluesky’s typeahead endpoint.", path: "/" })}
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}

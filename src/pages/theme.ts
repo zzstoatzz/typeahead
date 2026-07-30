@@ -89,3 +89,27 @@ export const THEME_SCRIPT = `
       apply(current());
     })();
 `;
+
+/** Static link-preview tags for the pages whose content doesn't vary.
+ *  /stats builds its own, because its preview describes the selected view. */
+export function ogTags(o: { title: string; description: string; path: string }): string {
+  const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const base = "https://typeahead.waow.tech";
+  const img = base + "/og-image";
+  return [
+    `<title>${esc(o.title)}</title>`,
+    `<meta name="description" content="${esc(o.description)}">`,
+    `<meta property="og:type" content="website">`,
+    `<meta property="og:site_name" content="typeahead">`,
+    `<meta property="og:title" content="${esc(o.title)}">`,
+    `<meta property="og:description" content="${esc(o.description)}">`,
+    `<meta property="og:url" content="${esc(base + o.path)}">`,
+    `<meta property="og:image" content="${img}">`,
+    `<meta property="og:image:width" content="1200">`,
+    `<meta property="og:image:height" content="630">`,
+    `<meta name="twitter:card" content="summary_large_image">`,
+    `<meta name="twitter:title" content="${esc(o.title)}">`,
+    `<meta name="twitter:description" content="${esc(o.description)}">`,
+    `<meta name="twitter:image" content="${img}">`,
+  ].join("\n  ");
+}

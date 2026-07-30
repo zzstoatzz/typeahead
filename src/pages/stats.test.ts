@@ -77,3 +77,40 @@ describe("domain escaping", () => {
     expect(html).toContain("&quot;&gt;&lt;/script&gt;");
   });
 });
+
+describe("link previews", () => {
+  const series = [
+    { hour: Math.floor(Date.now() / 3_600_000), domain: "alpha.app", hits: 900 },
+    { hour: Math.floor(Date.now() / 3_600_000), domain: "beta.app", hits: 300 },
+  ];
+  const withView = (apps: string[]) => statsPage({
+    total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+    handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [],
+    trafficSeries: series, trafficSeries5m: [],
+    view: { apps, range: "7d", origin: "https://typeahead.waow.tech" },
+  } as StatsData);
+
+  test("a shared comparison names what is being compared", () => {
+    const html = withView(["alpha.app", "beta.app"]);
+    expect(html).toContain('<meta property="og:title" content="alpha.app vs beta.app · typeahead traffic">');
+    expect(html).toContain("alpha.app 900 (75.0%)");
+    expect(html).toContain("alpha.app leads 3.00×");
+  });
+
+  test("the card image is handed the same params as the page", () => {
+    expect(withView(["alpha.app", "beta.app"]))
+      .toContain('content="https://typeahead.waow.tech/og-image?apps=alpha.app%2Cbeta.app"');
+  });
+
+  test("apps with no traffic in the window are dropped, not previewed as zero", () => {
+    const html = withView(["alpha.app", "ghost.app"]);
+    expect(html).not.toContain("ghost.app");
+    expect(html).toContain('content="alpha.app · typeahead traffic">');
+  });
+
+  test("unfiltered falls back to describing the service", () => {
+    const html = withView([]);
+    expect(html).toContain('<meta property="og:title" content="typeahead — stats">');
+    expect(html).toContain("99.9% with a resolved handle");
+  });
+});
