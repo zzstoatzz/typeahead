@@ -62,8 +62,14 @@ export function statsPage(d: StatsData): string {
 
   const snapshotJson = JSON.stringify(d.snapshots);
 
-  const PIE_COLORS = ['#4a9', '#58a6ff', '#bc8cff', '#e5a04b', '#e06c75', '#56b6c2', '#c678dd', '#98c379', '#d19a66'];
-  const SPECIAL_DOMAINS: Record<string, string> = { unknown: '#555', homepage: '#666' };
+  const PIE_COLORS = [
+    // Ordered so adjacent slices never sit next to a neighbour on the wheel —
+    // the old set had two violets and two ambers that read as the same colour on
+    // a 90px line. Mid-tone rather than pastel or deep, since the page renders
+    // on both a light and a dark background.
+    '#14b8a6', '#3b82f6', '#a855f7', '#f59e0b', '#f43f5e', '#06b6d4', '#65a30d', '#f97316', '#ec4899',
+  ];
+  const SPECIAL_DOMAINS: Record<string, string> = { unknown: '#94a3b8', homepage: '#64748b' };
   const PIE_TOP_N = 12;
   const trafficTotal = d.trafficSources.reduce((s, r) => s + r.hits, 0);
   const pieSlice = d.trafficSources.slice(0, PIE_TOP_N);
@@ -189,7 +195,7 @@ export function statsPage(d: StatsData): string {
        cannot move the page. Previously the empty state was content-sized while
        the svg was responsive (viewBox 600x90, height:auto), so hovering a domain
        with no traffic in the window made everything below lurch up. */
-    .tseries-plot { position: relative; aspect-ratio: 600 / 90; }
+    .tseries-plot { position: relative; aspect-ratio: 600 / 135; }
     .tseries-plot > svg, .tseries-plot > #tseries-empty {
       position: absolute; inset: 0; width: 100%; height: 100%;
     }
@@ -212,9 +218,17 @@ export function statsPage(d: StatsData): string {
     .ts-chip:hover { border-color: var(--line); }
     .ts-chip:hover .x { color: var(--text); }
     .ts-chip .ldot.dash { background: none !important; border: 1.5px dashed var(--dim); }
+    .ts-chip.preview { background: transparent; border-style: dashed; color: var(--muted);
+                       cursor: default; pointer-events: none; }
     .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
                     color: var(--dim); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
-    .tseries-hint { font-size: 0.65rem; color: var(--faint); margin-top: 0.5rem; text-align: center; }
+    .tseries-foot { display: flex; align-items: center; justify-content: space-between;
+                    gap: 0.5rem; margin-top: 0.5rem; }
+    .tseries-hint { font-size: 0.65rem; color: var(--faint); }
+    #tseries-export { background: transparent; border: 1px solid var(--line); color: var(--dim);
+                      padding: 0.3rem 0.55rem; font-size: 0.65rem; cursor: pointer;
+                      border-radius: 6px; font-family: inherit; white-space: nowrap; }
+    #tseries-export:hover { color: var(--text); border-color: var(--line-2); }
     .pie-legend span[data-domain] { cursor: pointer; }
     .pie-legend span.sel { color: var(--bright); }
     .pie-legend span.sel .ldot { outline: 1.5px solid var(--bright); outline-offset: 1px; }
@@ -351,15 +365,18 @@ export function statsPage(d: StatsData): string {
           <div id="tseries-chips"></div>
         </div>
         <div class="tseries-plot">
-          <svg viewBox="0 0 600 90" preserveAspectRatio="none" id="tseries">
+          <svg viewBox="0 0 600 135" preserveAspectRatio="none" id="tseries">
             <g id="tseries-lines"></g>
-            <line id="tseries-guide" y1="0" y2="90" style="display:none" />
+            <line id="tseries-guide" y1="0" y2="135" style="display:none" />
             <g id="tseries-dots"></g>
           </svg>
           <div id="tseries-empty" style="display:none">no traffic in this window</div>
         </div>
         <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
-        <div class="tseries-hint" id="tseries-hint">tap a slice or table row below to pin an app &middot; shift-click to compare several &middot; trace the line for details</div>
+        <div class="tseries-foot">
+          <span class="tseries-hint">click to pin &middot; shift-click to compare</span>
+          <button id="tseries-export" title="download the plotted series as CSV">export csv</button>
+        </div>
       </div>
     </div>
 
@@ -601,7 +618,7 @@ export function statsPage(d: StatsData): string {
     }
 
     /* --- traffic sources pie chart --- */
-    const PIE_COLORS = ['#4a9', '#58a6ff', '#bc8cff', '#e5a04b', '#e06c75', '#56b6c2', '#c678dd', '#98c379', '#d19a66'];
+    const PIE_COLORS = ${JSON.stringify(PIE_COLORS)};
     const traffic = ${trafficJson};
     const trafficGrandTotal = ${trafficGrandTotal};
     const pieCanvas = document.getElementById('pie');
@@ -622,14 +639,14 @@ export function statsPage(d: StatsData): string {
     const seriesTip = document.getElementById('series-tip');
     const tseriesT0 = document.getElementById('tseries-t0');
     const tseriesT1 = document.getElementById('tseries-t1');
-    const TS_W = 600, TS_H = 90, TS_PAD = 5;
+    const TS_W = 600, TS_H = 135, TS_PAD = 6;
     const SVGNS = 'http://www.w3.org/2000/svg';
     let pinned = [];           // click-selected domains, in selection order
     let hovered = null;        // pie-hover preview; only active while nothing is pinned
     let showBaseline = true;   // the dotted all-sources line, for relative scale
     let tsView = null;         // {t0Sec, stepSec, step, toY, series[]} — the trace reads this
 
-    const SPECIAL_SERIES = { unknown: '#555', homepage: '#666' };
+    const SPECIAL_SERIES = ${JSON.stringify(SPECIAL_DOMAINS)};
     function domainColor(domain) {
       if (domain == null) return '#4a9';
       if (SPECIAL_SERIES[domain]) return SPECIAL_SERIES[domain];
@@ -686,13 +703,11 @@ export function statsPage(d: StatsData): string {
       const minUnit = nowUnit - cfg.secs / cfg.stepSec;
       const specs = activeSpecs();
       const raws = specs.map(s => seriesFor(s.domain, cfg.stepSec).filter(([t]) => t >= minUnit));
-      // capped = the window asked for more than per-domain history holds
-      // (traffic_buckets began 2026-07-24). Say "last 30d" rather than let the
-      // chart imply it covers the same span as the numbers above it.
-      // pinned domains are named by their chips, so the heading doesn't repeat them
-      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time'
-        + (pinned.length ? '' : (hovered != null ? ' — ' + hovered : ' — all sources'))
-        + ' · ' + cfg.grain + (cfg.capped ? ' · last 30d' : '');
+      // Deliberately short: what is plotted is named by the chips, and the true
+      // span is printed on the axis below. This used to append the domain, "all
+      // sources", and "· last 30d" — enough text to overflow the header on a
+      // phone to say what two other elements already said.
+      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time · ' + cfg.grain;
       renderChips();
       const nonEmpty = raws.filter(r => r.length > 0);
       const empty = nonEmpty.length === 0 || Math.max(...raws.map(r => r.length)) < 2;
@@ -746,17 +761,28 @@ export function statsPage(d: StatsData): string {
       if (!dashed) dot.style.background = color;
       const label = document.createElement('span');
       label.textContent = name;              // domains are caller-controlled — never innerHTML
-      const x = document.createElement('span');
-      x.className = 'x';
-      x.textContent = '×';
-      b.append(dot, label, x);
-      b.addEventListener('click', onClear);
+      b.append(dot, label);
+      if (onClear) {
+        const x = document.createElement('span');
+        x.className = 'x';
+        x.textContent = '×';
+        b.appendChild(x);
+        b.addEventListener('click', onClear);
+      }
       return b;
     }
     function renderChips() {
       if (!tseriesChips) return;
       tseriesChips.replaceChildren();
-      if (pinned.length === 0) return;       // unfiltered: nothing to clear
+      if (pinned.length === 0) {
+        // hover preview: name the line without pretending it's a filter
+        if (hovered != null) {
+          const c = chip(hovered, domainColor(hovered), false, null);
+          c.classList.add('preview');
+          tseriesChips.appendChild(c);
+        }
+        return;
+      }
       if (showBaseline) {
         tseriesChips.appendChild(chip('all sources', null, true, () => { showBaseline = false; showSeries(); }));
       }
@@ -764,6 +790,25 @@ export function statsPage(d: StatsData): string {
         tseriesChips.appendChild(chip(d, domainColor(d), false, () => applySelection(d, true)));
       }
     }
+    // Exports exactly what is plotted — same window, same grain, same series,
+    // including the dashed total when it's shown. A CSV that quietly differed
+    // from the chart above it would be worse than no export at all.
+    function exportCsv() {
+      if (!tsView) return;
+      const q = v => /[",\\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+      const lines = [['time_utc', ...tsView.series.map(s => q(s.name))].join(',')];
+      for (let i = 0; i < tsView.series[0].counts.length; i++) {
+        const t = new Date((tsView.t0Sec + i * tsView.stepSec) * 1000).toISOString().replace('.000Z', 'Z');
+        lines.push([t, ...tsView.series.map(s => s.counts[i])].join(','));
+      }
+      const url = URL.createObjectURL(new Blob([lines.join('\\n') + '\\n'], { type: 'text/csv' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'typeahead-traffic-' + tsRange + '.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    document.getElementById('tseries-export')?.addEventListener('click', exportCsv);
     // driven by the shared #activity-range, not a selector of its own
     window.__setTsRange = (range) => {
       if (!TS_RANGES[range]) return;
@@ -856,7 +901,7 @@ export function statsPage(d: StatsData): string {
     if (pieCanvas && traffic.length > 0) {
       const pieTotal = traffic.reduce((s, r) => s + r.hits, 0);
 
-      const SPECIAL = { unknown: '#555', homepage: '#666' };
+      const SPECIAL = ${JSON.stringify(SPECIAL_DOMAINS)};
       function getColor(i) {
         return SPECIAL[traffic[i].domain] || PIE_COLORS[i % PIE_COLORS.length];
       }
