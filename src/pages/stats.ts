@@ -225,10 +225,34 @@ export function statsPage(d: StatsData): string {
     .tseries-foot { display: flex; align-items: center; justify-content: space-between;
                     gap: 0.5rem; margin-top: 0.5rem; }
     .tseries-hint { font-size: 0.65rem; color: var(--faint); }
-    #tseries-export { background: transparent; border: 1px solid var(--line); color: var(--dim);
-                      padding: 0.3rem 0.55rem; font-size: 0.65rem; cursor: pointer;
-                      border-radius: 6px; font-family: inherit; white-space: nowrap; }
-    #tseries-export:hover { color: var(--text); border-color: var(--line-2); }
+    .ts-menu-wrap { position: relative; flex-shrink: 0; }
+    #tseries-menu-btn { background: transparent; border: 1px solid var(--line); color: var(--dim);
+                        padding: 0.2rem 0.5rem 0.35rem; font-size: 0.8rem; line-height: 1; cursor: pointer;
+                        border-radius: 6px; font-family: inherit; min-height: 28px; }
+    #tseries-menu-btn:hover, #tseries-menu-btn[aria-expanded="true"] { color: var(--text); border-color: var(--line-2); }
+    .ts-menu { position: absolute; right: 0; bottom: calc(100% + 0.3rem); z-index: 40;
+               background: var(--tip-bg); border: 1px solid var(--line-2); border-radius: 8px;
+               padding: 0.25rem; display: flex; flex-direction: column; min-width: 140px;
+               box-shadow: 0 4px 12px rgba(0,0,0,0.35); }
+    .ts-menu[hidden] { display: none; }
+    .ts-menu button { background: transparent; border: 0; color: var(--muted); text-align: left;
+                      padding: 0.5rem 0.6rem; font-size: 0.7rem; font-family: inherit;
+                      cursor: pointer; border-radius: 5px; white-space: nowrap; }
+    .ts-menu button:hover { background: var(--hover); color: var(--text); }
+    /* the integral row — area under each curve over the plotted window */
+    .tseries-totals { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem;
+                      font-size: 0.68rem; color: var(--muted); margin-top: 0.5rem; }
+    .tseries-totals:empty { display: none; }
+    .tseries-totals .sig { color: var(--dim); font-size: 0.85rem; cursor: default;
+                           position: relative; border-bottom: 1px dotted var(--faint); }
+    .tseries-totals .sig:hover::after, .tseries-totals .sig:focus::after {
+      content: attr(data-tip); position: absolute; left: 0; top: 1.8em; width: 190px;
+      background: var(--tip-bg); border: 1px solid var(--line-2); border-radius: 6px;
+      padding: 0.45rem 0.6rem; font-size: 0.65rem; color: var(--muted); z-index: 30; line-height: 1.5; }
+    .tseries-totals .tot { display: inline-flex; align-items: baseline; gap: 0.3rem; }
+    .tseries-totals .tot b { font-weight: 400; color: var(--text); font-variant-numeric: tabular-nums; }
+    .tseries-totals .tot .pct { color: var(--faint); }
+    .tseries-totals .lead { color: var(--text); }
     .pie-legend span[data-domain] { cursor: pointer; }
     .pie-legend span.sel { color: var(--bright); }
     .pie-legend span.sel .ldot { outline: 1.5px solid var(--bright); outline-offset: 1px; }
@@ -373,9 +397,17 @@ export function statsPage(d: StatsData): string {
           <div id="tseries-empty" style="display:none">no traffic in this window</div>
         </div>
         <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
+        <div class="tseries-totals" id="tseries-totals"></div>
         <div class="tseries-foot">
           <span class="tseries-hint">click to pin &middot; shift-click to compare</span>
-          <button id="tseries-export" title="download the plotted series as CSV">export csv</button>
+          <div class="ts-menu-wrap">
+            <button id="tseries-menu-btn" aria-haspopup="menu" aria-expanded="false" title="chart actions">&hellip;</button>
+            <div class="ts-menu" id="tseries-menu" role="menu" hidden>
+              <button role="menuitem" data-act="copy">copy image</button>
+              <button role="menuitem" data-act="png">download png</button>
+              <button role="menuitem" data-act="csv">download csv</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -637,6 +669,9 @@ export function statsPage(d: StatsData): string {
     // never declared before, so every trace threw ReferenceError and the tooltip
     // never appeared — an id with a hyphen gets no implicit global
     const seriesTip = document.getElementById('series-tip');
+    const tseriesTotals = document.getElementById('tseries-totals');
+    const menuBtn = document.getElementById('tseries-menu-btn');
+    const tsMenu = document.getElementById('tseries-menu');
     const tseriesT0 = document.getElementById('tseries-t0');
     const tseriesT1 = document.getElementById('tseries-t1');
     const TS_W = 600, TS_H = 135, TS_PAD = 6;
@@ -714,7 +749,7 @@ export function statsPage(d: StatsData): string {
       if (tseriesEl) tseriesEl.style.display = empty ? 'none' : 'block';
       if (tseriesEmpty) tseriesEmpty.style.display = empty ? 'flex' : 'none';
       tseriesLines.replaceChildren();
-      if (empty) { tsView = null; if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
+      if (empty) { tsView = null; renderTotals(); if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
       // ONE grid for every line — a shared t0/tN and a shared max. Per-series
       // extents would put two lines on silently different axes, which is worse
       // than not drawing the comparison at all.
@@ -751,6 +786,7 @@ export function statsPage(d: StatsData): string {
       if (tseriesT0) tseriesT0.textContent = fmtSec(t0 * cfg.stepSec, showClock);
       if (tseriesT1) tseriesT1.textContent = fmtSec((tN + 1) * cfg.stepSec, showClock);
       tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, step, toY, series };
+      renderTotals();
     }
     function chip(name, color, dashed, onClear) {
       const b = document.createElement('button');
@@ -790,6 +826,156 @@ export function statsPage(d: StatsData): string {
         tseriesChips.appendChild(chip(d, domainColor(d), false, () => applySelection(d, true)));
       }
     }
+    // The area under each curve. Buckets are counts per fixed-width interval, so
+    // the integral over the window is just their sum — no trapezoid needed, and
+    // pretending otherwise would invent precision the data doesn't have.
+    function renderTotals() {
+      if (!tseriesTotals) return;
+      tseriesTotals.replaceChildren();
+      if (!tsView || pinned.length === 0) return;
+      const t0u = tsView.t0Sec / tsView.stepSec, n = tsView.series[0].counts.length;
+      // measured over the same window even when the baseline line is hidden,
+      // so dismissing it doesn't silently change what the percentages mean
+      const all = seriesFor(null, tsView.stepSec)
+        .filter(([t]) => t >= t0u && t < t0u + n).reduce((s, r) => s + r[1], 0);
+      const apps = tsView.series.filter(s => !s.baseline)
+        .map(s => ({ name: s.name, color: s.color, sum: s.counts.reduce((a, b) => a + b, 0) }))
+        .sort((a, b) => b.sum - a.sum);
+      const sig = document.createElement('span');
+      sig.className = 'sig';
+      sig.tabIndex = 0;
+      sig.textContent = '∫';
+      sig.dataset.tip = 'area under each curve — total hits over the window shown';
+      tseriesTotals.appendChild(sig);
+      for (const a of apps) {
+        const el = document.createElement('span');
+        el.className = 'tot';
+        const dot = document.createElement('span');
+        dot.className = 'ldot';
+        dot.style.background = a.color;
+        const name = document.createElement('span');
+        name.textContent = a.name;
+        const num = document.createElement('b');
+        num.textContent = a.sum.toLocaleString();
+        el.append(dot, name, num);
+        if (all > 0) {
+          const pct = document.createElement('span');
+          pct.className = 'pct';
+          pct.textContent = '(' + (a.sum / all * 100).toFixed(1) + '%)';
+          el.appendChild(pct);
+        }
+        tseriesTotals.appendChild(el);
+      }
+      if (apps.length >= 2 && apps[0].sum > 0) {
+        const lead = document.createElement('span');
+        lead.className = 'lead';
+        const r = apps[1].sum > 0 ? apps[0].sum / apps[1].sum : Infinity;
+        lead.textContent = apps[1].sum === 0
+          ? apps[0].name + ' only'
+          : apps[0].name + ' leads ' + (r < 10 ? r.toFixed(2) : Math.round(r)) + '×';
+        tseriesTotals.appendChild(lead);
+      }
+    }
+
+    function cssColor(v) {
+      const m = /^var\\((--[\\w-]+)\\)$/.exec(v);
+      return m ? getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim() : v;
+    }
+    // Drawn from tsView rather than rasterising the live SVG: the SVG takes its
+    // dash pattern, widths and colours from page CSS, none of which survives
+    // serialisation, and a shared image wants a title and legend anyway.
+    function renderCard() {
+      if (!tsView) return null;
+      const css = getComputedStyle(document.documentElement);
+      const v = n => css.getPropertyValue(n).trim();
+      const font = getComputedStyle(document.body).fontFamily;
+      const apps = tsView.series;
+      const W = 680, PAD = 24, PLOT_T = 82, PLOT_H = 150;
+      const rank = apps.filter(a => !a.baseline)
+        .map(a => ({ name: a.name, sum: a.counts.reduce((x, c) => x + c, 0) }))
+        .sort((a, b) => b.sum - a.sum);
+      const leadLine = rank.length >= 2 && rank[0].sum > 0 && rank[1].sum > 0
+        ? rank[0].name + ' leads ' + (r => r < 10 ? r.toFixed(2) : Math.round(r))(rank[0].sum / rank[1].sum) + '×'
+        : null;
+      const H = PLOT_T + PLOT_H + 34 + apps.length * 20 + (leadLine ? 22 : 0) + 16;
+      const s = 2;
+      const cv = document.createElement('canvas');
+      cv.width = W * s; cv.height = H * s;
+      const g = cv.getContext('2d');
+      g.scale(s, s);
+      g.fillStyle = v('--panel') || v('--bg');
+      g.fillRect(0, 0, W, H);
+      g.font = '15px ' + font;
+      g.fillStyle = v('--text');
+      g.fillText('typeahead · traffic over time', PAD, 36);
+      g.font = '11px ' + font;
+      g.fillStyle = v('--dim');
+      g.fillText(tseriesLabel.textContent.replace('traffic over time · ', '')
+        + ' · ' + tseriesT0.textContent + ' → ' + tseriesT1.textContent + ' UTC', PAD, 56);
+      const n = apps[0].counts.length;
+      const max = Math.max(1, ...apps.map(a => Math.max(...a.counts)));
+      const plotW = W - PAD * 2, step = n > 1 ? plotW / (n - 1) : 0;
+      const y = c => PLOT_T + (1 - c / max) * PLOT_H;
+      g.strokeStyle = v('--line');
+      g.lineWidth = 1;
+      g.beginPath(); g.moveTo(PAD, y(0)); g.lineTo(W - PAD, y(0)); g.stroke();
+      for (const a of apps) {
+        g.beginPath();
+        a.counts.forEach((c, i) => i ? g.lineTo(PAD + i * step, y(c)) : g.moveTo(PAD, y(c)));
+        g.strokeStyle = cssColor(a.color);
+        g.lineWidth = a.baseline ? 1 : 1.5;
+        g.setLineDash(a.baseline ? [3, 3] : []);
+        g.stroke();
+      }
+      g.setLineDash([]);
+      let ly = PLOT_T + PLOT_H + 30;
+      g.font = '11px ' + font;
+      for (const a of apps) {
+        const sum = a.counts.reduce((x, c) => x + c, 0);
+        g.beginPath(); g.arc(PAD + 4, ly - 4, 4, 0, Math.PI * 2);
+        if (a.baseline) {           // hollow + dashed, same as the line it labels
+          g.strokeStyle = cssColor(a.color); g.lineWidth = 1.5; g.setLineDash([2, 2]); g.stroke(); g.setLineDash([]);
+        } else { g.fillStyle = cssColor(a.color); g.fill(); }
+        g.fillStyle = v('--muted');
+        g.fillText(a.name, PAD + 16, ly);
+        g.fillStyle = v('--text');
+        g.fillText(sum.toLocaleString() + ' hits', PAD + 220, ly);
+        ly += 20;
+      }
+      if (leadLine) {
+        g.fillStyle = v('--dim');
+        g.fillText('∫ ' + leadLine, PAD, ly + 6);
+      }
+      return cv;
+    }
+    function cardBlob() {
+      const cv = renderCard();
+      return cv && new Promise(res => cv.toBlob(res, 'image/png'));
+    }
+    function download(blob, name) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; a.click();
+      // revoking in the same tick has historically raced the download start
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    }
+    function fileName(ext) { return 'typeahead-traffic-' + tsRange + '.' + ext; }
+    async function copyImage() {
+      const blob = await cardBlob();
+      if (!blob) return;
+      // clipboard image write needs a secure context and isn't in every browser;
+      // fall back to a download rather than failing silently
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        flashMenu('copied');
+      } catch { download(blob, fileName('png')); }
+    }
+    function flashMenu(msg) {
+      if (!menuBtn) return;
+      const prev = menuBtn.textContent;
+      menuBtn.textContent = msg;
+      setTimeout(() => { menuBtn.textContent = prev; }, 1200);
+    }
     // Exports exactly what is plotted — same window, same grain, same series,
     // including the dashed total when it's shown. A CSV that quietly differed
     // from the chart above it would be worse than no export at all.
@@ -801,14 +987,27 @@ export function statsPage(d: StatsData): string {
         const t = new Date((tsView.t0Sec + i * tsView.stepSec) * 1000).toISOString().replace('.000Z', 'Z');
         lines.push([t, ...tsView.series.map(s => s.counts[i])].join(','));
       }
-      const url = URL.createObjectURL(new Blob([lines.join('\\n') + '\\n'], { type: 'text/csv' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'typeahead-traffic-' + tsRange + '.csv';
-      a.click();
-      URL.revokeObjectURL(url);
+      download(new Blob([lines.join('\\n') + '\\n'], { type: 'text/csv' }), fileName('csv'));
     }
-    document.getElementById('tseries-export')?.addEventListener('click', exportCsv);
+    const ACTIONS = {
+      copy: copyImage,
+      png: async () => { const b = await cardBlob(); if (b) download(b, fileName('png')); },
+      csv: exportCsv,
+    };
+    function setMenu(open) {
+      if (!tsMenu) return;
+      tsMenu.hidden = !open;
+      menuBtn.setAttribute('aria-expanded', String(open));
+    }
+    menuBtn?.addEventListener('click', e => { e.stopPropagation(); setMenu(tsMenu.hidden); });
+    tsMenu?.addEventListener('click', e => {
+      const act = e.target.dataset?.act;
+      if (!act) return;
+      setMenu(false);
+      ACTIONS[act]();
+    });
+    document.addEventListener('click', () => setMenu(false));
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
     // driven by the shared #activity-range, not a selector of its own
     window.__setTsRange = (range) => {
       if (!TS_RANGES[range]) return;
