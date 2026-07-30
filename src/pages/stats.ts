@@ -219,7 +219,12 @@ export function statsPage(d: StatsData): string {
     }
     .metric .value { font-size: 1.15rem; color: var(--text); }
 
-    #pie { display: block; margin: 0 auto; width: 280px; height: 280px; touch-action: none; }
+    /* cursor:pointer is not decoration here — iOS Safari only synthesises a
+       click on a non-interactive element that looks clickable. The legend and
+       the table rows both carry it, which is exactly why they worked on a phone
+       and the donut did not. */
+    #pie { display: block; margin: 0 auto; width: 280px; height: 280px;
+           touch-action: none; cursor: pointer; }
     .pie-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.7rem;
                   font-size: 0.7rem; color: var(--muted); justify-content: center; }
     .pie-legend span[data-domain] { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4;
@@ -1287,13 +1292,16 @@ export function statsPage(d: StatsData): string {
         return -1;
       }
 
-      function pieHover(clientX, clientY) {
+      function pieHover(clientX, clientY, isTouch) {
         const idx = hitTest(clientX, clientY);
         if (idx !== hoverIdx) {
           hoverIdx = idx;
           drawPie();
-          // hover previews the history only while nothing is pinned
-          if (pinned.length === 0) { hovered = idx >= 0 ? segments[idx].domain : null; showSeries(); }
+          // Hover previews the history — but only for a real pointer. A finger
+          // does not hover, and previewing on touch was actively misleading:
+          // dragging across the donut swapped a preview chip in and out, which
+          // looks exactly like selecting and then losing the selection.
+          if (!isTouch && pinned.length === 0) { hovered = idx >= 0 ? segments[idx].domain : null; showSeries(); }
         }
         if (idx >= 0) {
           const seg = segments[idx];
@@ -1309,11 +1317,46 @@ export function statsPage(d: StatsData): string {
         }
       }
 
-      pieCanvas.addEventListener('mousemove', e => pieHover(e.clientX, e.clientY));
+      pieCanvas.addEventListener('mousemove', e => pieHover(e.clientX, e.clientY, false));
       pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinned.length === 0) { hovered = null; showSeries(); } });
-      pieCanvas.addEventListener('touchmove', e => { e.preventDefault(); const t = e.touches[0]; pieHover(t.clientX, t.clientY); });
-      pieCanvas.addEventListener('touchend', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinned.length === 0) { hovered = null; showSeries(); } });
+
+      /* Selecting from the donut is handled on touchend, not left to the click
+         the browser may or may not synthesise afterwards. The legend and table
+         are ordinary elements; this is a canvas, and it was the one surface
+         where a tap did nothing — you could only ever move the hover preview
+         around, which read as "it keeps replacing my selection".
+         tapHandledAt swallows the synthetic click if it does arrive, so a
+         single tap can never toggle twice. */
+      let tapStart = null, tapHandledAt = 0;
+      pieCanvas.addEventListener('touchstart', e => {
+        const t = e.touches[0];
+        tapStart = { x: t.clientX, y: t.clientY, at: Date.now() };
+      }, { passive: true });
+      pieCanvas.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const t = e.touches[0];
+        // a drag is tracing the chart, not choosing a slice
+        if (tapStart && Math.hypot(t.clientX - tapStart.x, t.clientY - tapStart.y) > 10) tapStart = null;
+        pieHover(t.clientX, t.clientY, true);
+      });
+      pieCanvas.addEventListener('touchend', e => {
+        hoverIdx = -1; drawPie(); pieTip.style.display = 'none';
+        const t = e.changedTouches && e.changedTouches[0];
+        if (tapStart && t && Date.now() - tapStart.at < 700) {
+          const idx = hitTest(t.clientX, t.clientY);
+          tapStart = null;
+          if (idx >= 0) {
+            hovered = null;
+            tapHandledAt = Date.now();
+            applySelection(segments[idx].domain);
+            return;
+          }
+        }
+        tapStart = null;
+        if (pinned.length === 0) { hovered = null; showSeries(); }
+      });
       pieCanvas.addEventListener('click', e => {
+        if (Date.now() - tapHandledAt < 700) return; // already handled as a tap
         const idx = hitTest(e.clientX, e.clientY);
         if (idx < 0) return;
         const dom = segments[idx].domain;
