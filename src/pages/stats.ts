@@ -403,6 +403,7 @@ export function statsPage(d: StatsData): string {
           <div class="ts-menu-wrap">
             <button id="tseries-menu-btn" aria-haspopup="menu" aria-expanded="false" title="chart actions">&hellip;</button>
             <div class="ts-menu" id="tseries-menu" role="menu" hidden>
+              <button role="menuitem" data-act="link">copy link to this view</button>
               <button role="menuitem" data-act="copy">copy image</button>
               <button role="menuitem" data-act="png">download png</button>
               <button role="menuitem" data-act="csv">download csv</button>
@@ -772,7 +773,7 @@ export function statsPage(d: StatsData): string {
           const hit = document.createElementNS(SVGNS, 'polyline');
           hit.setAttribute('points', pts);
           hit.setAttribute('class', 'hit');
-          hit.addEventListener('click', e => { e.stopPropagation(); showBaseline = false; showSeries(); });
+          hit.addEventListener('click', e => { e.stopPropagation(); showBaseline = false; showSeries(); syncUrl(); });
           tseriesLines.appendChild(hit);
         }
         const line = document.createElementNS(SVGNS, 'polyline');
@@ -820,7 +821,7 @@ export function statsPage(d: StatsData): string {
         return;
       }
       if (showBaseline) {
-        tseriesChips.appendChild(chip('all sources', null, true, () => { showBaseline = false; showSeries(); }));
+        tseriesChips.appendChild(chip('all sources', null, true, () => { showBaseline = false; showSeries(); syncUrl(); }));
       }
       for (const d of pinned) {
         tseriesChips.appendChild(chip(d, domainColor(d), false, () => applySelection(d, true)));
@@ -990,6 +991,10 @@ export function statsPage(d: StatsData): string {
       download(new Blob([lines.join('\\n') + '\\n'], { type: 'text/csv' }), fileName('csv'));
     }
     const ACTIONS = {
+      link: async () => {
+        try { await navigator.clipboard.writeText(location.href); flashMenu('copied'); }
+        catch { flashMenu('copy failed'); }
+      },
       copy: copyImage,
       png: async () => { const b = await cardBlob(); if (b) download(b, fileName('png')); },
       csv: exportCsv,
@@ -1008,11 +1013,46 @@ export function statsPage(d: StatsData): string {
     });
     document.addEventListener('click', () => setMenu(false));
     document.addEventListener('keydown', e => { if (e.key === 'Escape') setMenu(false); });
+    /* --- the view is addressable: ?apps=a,b&range=7d&total=0 ---
+       Query params, not path segments: this is a filter over one page, not a
+       different resource, and /stats/:app would have to invent an encoding for
+       "two apps, 30 days, no baseline". replaceState rather than pushState so a
+       shared link is always the current view without burying the previous page
+       under one history entry per click. */
+    // Snapshot the incoming query BEFORE anything writes to it: initialising the
+    // range calls syncUrl(), which with nothing pinned yet would delete ?apps=
+    // out of the URL a moment before restore tried to read it.
+    const BOOT = new URLSearchParams(location.search);
+    window.__boot = BOOT;
+    function syncUrl() {
+      const p = new URLSearchParams(location.search);
+      if (pinned.length) p.set('apps', pinned.join(',')); else p.delete('apps');
+      if (tsRange === '7d') p.delete('range'); else p.set('range', tsRange);
+      if (pinned.length && !showBaseline) p.set('total', '0'); else p.delete('total');
+      const q = p.toString();
+      history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash);
+    }
+    // Only domains we actually hold a series for. A link naming a domain that
+    // has since aged out of traffic_buckets would otherwise render a chip
+    // pointing at an empty line.
+    const KNOWN = new Set([...Object.keys(trafficSeries), ...Object.keys(trafficSeries5m)]);
+    window.__restoreView = () => {
+      const p = BOOT;
+      const apps = (p.get('apps') || '').split(',').map(s => s.trim()).filter(s => KNOWN.has(s));
+      if (!apps.length) { syncUrl(); return; }
+      pinned = [...new Set(apps)];
+      showBaseline = p.get('total') !== '0';
+      document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el =>
+        el.classList.toggle('sel', pinned.includes(el.dataset.domain)));
+      showSeries();
+      syncUrl();
+    };
     // driven by the shared #activity-range, not a selector of its own
     window.__setTsRange = (range) => {
       if (!TS_RANGES[range]) return;
       tsRange = range;
       showSeries();
+      syncUrl();
     };
     // plain click REPLACES the selection, shift/meta/ctrl-click toggles one in or
     // out. Making plain click additive is how these controls end up accumulating
@@ -1026,6 +1066,7 @@ export function statsPage(d: StatsData): string {
       document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el =>
         el.classList.toggle('sel', pinned.includes(el.dataset.domain)));
       showSeries();
+      syncUrl();
     }
     document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => {
       el.addEventListener('click', e => {
@@ -1281,8 +1322,14 @@ export function statsPage(d: StatsData): string {
     });
 
     // default 7d: SSR renders the 7d view; this makes the JS slice the single
-    // source of truth so server and client always agree.
-    applyActivityRange('7d');
+    // source of truth so server and client always agree. ?range= overrides it —
+    // validated against the buttons that exist, so a hand-edited link falls back
+    // to the default instead of rendering an undefined window.
+    const wantRange = window.__boot?.get('range');
+    const hasRange = !!document.querySelector('#activity-range button[data-range="' + CSS.escape(wantRange || '') + '"]');
+    applyActivityRange(hasRange ? wantRange : '7d');
+    // after the range, so restoring apps plots against the right window
+    window.__restoreView?.();
     ${THEME_SCRIPT}
   </script>
 </body>
