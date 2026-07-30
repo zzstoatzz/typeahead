@@ -262,6 +262,7 @@ export function statsPage(d: StatsData): string {
     .ts-chip:hover { border-color: var(--line); }
     .ts-chip:hover .x { color: var(--text); }
     .ts-chip .ldot.dash { background: none !important; border: 1.5px dashed var(--dim); }
+    .ts-chip.clear { color: var(--muted); background: transparent; padding: 0.35rem 0.7rem; }
     .ts-chip.preview { background: transparent; border-style: dashed; color: var(--muted);
                        cursor: default; pointer-events: none; }
     .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
@@ -270,15 +271,6 @@ export function statsPage(d: StatsData): string {
                     gap: 0.5rem; margin-top: 0.5rem; }
     .tseries-hint { font-size: 0.65rem; color: var(--faint); }
     .ts-foot-btns { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
-    /* sticky shift: touch has no modifier key, so multi-select needs a mode.
-       A held toggle rather than an accumulating tap, so nobody collects a
-       selection they didn't ask for. */
-    #tseries-compare { background: transparent; border: 1px solid var(--line); color: var(--dim);
-                       padding: 0.3rem 0.55rem; font-size: 0.65rem; cursor: pointer;
-                       border-radius: 6px; font-family: inherit; min-height: 34px; white-space: nowrap; }
-    #tseries-compare:hover { color: var(--text); border-color: var(--line-2); }
-    #tseries-compare[aria-pressed="true"] { background: var(--panel-2); color: var(--text);
-                                            border-color: var(--accent); }
     .ts-menu-wrap { position: relative; flex-shrink: 0; }
     #tseries-menu-btn { background: transparent; border: 1px solid var(--line); color: var(--dim);
                         padding: 0.2rem 0.5rem 0.35rem; font-size: 0.8rem; line-height: 1; cursor: pointer;
@@ -450,9 +442,8 @@ export function statsPage(d: StatsData): string {
         <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
         <div class="tseries-totals" id="tseries-totals"></div>
         <div class="tseries-foot">
-          <span class="tseries-hint" id="tseries-hint">tap to pin</span>
+          <span class="tseries-hint" id="tseries-hint">tap a source below to add or remove it</span>
           <div class="ts-foot-btns">
-          <button id="tseries-compare" aria-pressed="false" title="add each tap to the chart instead of replacing">compare</button>
           <div class="ts-menu-wrap">
             <button id="tseries-menu-btn" aria-haspopup="menu" aria-expanded="false" title="chart actions">&hellip;</button>
             <div class="ts-menu" id="tseries-menu" role="menu" hidden>
@@ -726,7 +717,6 @@ export function statsPage(d: StatsData): string {
     const seriesTip = document.getElementById('series-tip');
     const tseriesTotals = document.getElementById('tseries-totals');
     const menuBtn = document.getElementById('tseries-menu-btn');
-    const compareBtn = document.getElementById('tseries-compare');
     const tseriesHint = document.getElementById('tseries-hint');
     const tsMenu = document.getElementById('tseries-menu');
     const tseriesT0 = document.getElementById('tseries-t0');
@@ -880,7 +870,15 @@ export function statsPage(d: StatsData): string {
         tseriesChips.appendChild(chip('all sources', null, true, () => { showBaseline = false; showSeries(); syncUrl(); }));
       }
       for (const d of pinned) {
-        tseriesChips.appendChild(chip(d, domainColor(d), false, () => applySelection(d, true)));
+        tseriesChips.appendChild(chip(d, domainColor(d), false, () => applySelection(d)));
+      }
+      // with every tap additive, there has to be one obvious way back to nothing
+      if (pinned.length >= 2) {
+        const clear = document.createElement('button');
+        clear.className = 'ts-chip clear';
+        clear.textContent = 'clear';
+        clear.addEventListener('click', () => applySelection(null));
+        tseriesChips.appendChild(clear);
       }
     }
     // The area under each curve. Buckets are counts per fixed-width interval, so
@@ -1110,26 +1108,16 @@ export function statsPage(d: StatsData): string {
       showSeries();
       syncUrl();
     };
-    /* Plain click REPLACES the selection; shift/meta/ctrl-click toggles one in
-       or out. Making plain click additive is how these controls end up
-       accumulating selections nobody asked for.
-
-       Touch has no modifier key, so "compare" is a sticky shift: while it is on,
-       every tap toggles. It stays on until turned off — a one-shot would make
-       building a three-app comparison three trips to the button. */
-    let compareMode = false;
-    function additive(e) {
-      return compareMode || e.shiftKey || e.metaKey || e.ctrlKey;
-    }
-    function setCompare(on) {
-      compareMode = on;
-      compareBtn?.setAttribute('aria-pressed', String(on));
-      if (tseriesHint) tseriesHint.textContent = on ? 'tap to add or remove' : 'tap to pin';
-    }
-    compareBtn?.addEventListener('click', () => setCompare(!compareMode));
-    function applySelection(domain, additive) {
+    /* Every tap TOGGLES. No modes, no modifier keys.
+       This was "plain click replaces, shift-click adds", with a "compare" button
+       standing in for shift on touch. It failed for the reason modes usually
+       fail: the indicator sat in the chart header while the thing you tap is a
+       screen-length below it, so you could not see which mode you were in — and
+       re-tapping a selected source silently removed it. Toggling always is what
+       a chart legend does everywhere else, it needs nothing held or discovered,
+       and every accumulation is visible in the chips and one tap to undo. */
+    function applySelection(domain) {
       if (domain == null) pinned = [];
-      else if (!additive) pinned = pinned.length === 1 && pinned[0] === domain ? [] : [domain];
       else if (pinned.includes(domain)) pinned = pinned.filter(d => d !== domain);
       else pinned = [...pinned, domain];
       if (pinned.length === 0) showBaseline = true;  // fresh start next time
@@ -1141,7 +1129,7 @@ export function statsPage(d: StatsData): string {
     document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target.closest('a')) return; // domain links still navigate
-        applySelection(el.dataset.domain, additive(e));
+        applySelection(el.dataset.domain);
       });
     });
 
@@ -1330,7 +1318,7 @@ export function statsPage(d: StatsData): string {
         if (idx < 0) return;
         const dom = segments[idx].domain;
         hovered = null;
-        applySelection(dom, additive(e));
+        applySelection(dom);
       });
       window.addEventListener('resize', () => drawPie());
     }
