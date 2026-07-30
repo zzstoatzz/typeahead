@@ -50,6 +50,24 @@ Resolving one DID per HTTP request does not work at corpus scale.
 Every equality query on `actors.handle` needs `COLLATE NOCASE` or it scans the
 table. Keyset on `rowid`, not `did`.
 
+## handles go stale, and only one thing looks for it
+
+Paths 1-3 all select on **absence** — `handle = ''`. None of them verifies a
+handle we already hold, so a rename we miss is permanent: the actor stays
+searchable under a name they no longer use, and is not findable under the one
+they do.
+
+Measured 2026-07-30 by sampling 1,000 actors against `getProfiles`: 7 of 727
+verifiable handles were wrong (~1%, so roughly 100k corpus-wide). All seven were
+bsky-hosted, so this is not the jetstream gap — it is renames that predate the
+`#identity` fix (2026-05-11) plus any missed during an ingester outage.
+
+`plc-identity-sync.py --reconcile-handles` repairs them, weekly, as a stage of
+the PLC job. PLC finds candidates for free (the bundles are already on disk);
+only the candidates cost an API call. **PLC's `alsoKnownAs` is never written** —
+it is a claim by the DID, and a handle is only real once the domain points back.
+The appview performs that check, so the appview's answer is what lands.
+
 ## the PLC bulk path
 
 The PLC log is the authoritative source for handle and pds, and both appear on
