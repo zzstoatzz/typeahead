@@ -870,6 +870,52 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
 }
 
 /// Background sync loop: full sync on boot, then incremental every 5 min
+/// Pull ONE actor from Turso by DID and apply it immediately.
+///
+/// The replica is a lagging copy, so an explicit "index this account" request
+/// was only visible after the next 5-minute sync — and when that sync wedged
+/// (2026-07-28) it was invisible for two days. Someone who deliberately asks us
+/// to index an account should not be told to come back later.
+///
+/// Takes only a DID: the row is read from Turso, which is the authority, so
+/// this cannot be used to inject or overwrite anything with attacker-chosen
+/// values. Worst case is a forced re-read of a row that already exists.
+///
+/// Idempotent against the sync loop — same upsert-by-did and the same overlay
+/// projection, so a later incremental pass simply writes the same state again.
+pub fn refreshOne(allocator: Allocator, local: *LocalDb, did: []const u8) !bool {
+    var turso = try TursoClient.init(allocator);
+    defer turso.deinit();
+
+    var result = try turso.query(
+        "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE did = ?1 AND handle != ''",
+        &.{did},
+    );
+    defer result.deinit();
+    if (result.rows.len == 0) return false;
+
+    const conn = local.getConn() orelse return error.NoConn;
+    const overlay_watermark: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
+
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+
+    local.lock();
+    defer local.unlock();
+
+    const row = result.rows[0];
+    const ua = row.int(trailing_col);
+    const octx: ?OverlayCtx = if (overlay_watermark > 0 and ua > overlay_watermark)
+        .{ .arena = arena.allocator(), .updated_at = ua }
+    else
+        null;
+    try applyActorUpdate(conn, row, "refresh_one", octx);
+    log.info("refresh_one: applied {s} (updated_at={d}, overlay={s})", .{
+        did, ua, if (octx != null) "yes" else "no",
+    });
+    return true;
+}
+
 pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
     log.info("sync loop started", .{});
     var turso = TursoClient.init(allocator) catch |err| {

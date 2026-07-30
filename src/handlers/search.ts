@@ -114,7 +114,15 @@ export async function handleSearch(
   // interleaved merge below has real candidates to pick from.
   const ftsQuery = `"${term}"*`;
   const overfetch = Math.min(limit * 5, 50);
-  const [exactRes, prefixRes, ftsRes] = await db.batch([
+  // Bounded, like the backend hop above it.
+  //
+  // This path now runs whenever the replica answers empty, not just when it is
+  // unreachable — so a slow Turso is on the hot path for every miss. During the
+  // 2026-07-30 resync that meant a 45s hang on a query the replica simply did
+  // not have yet. Answering "nothing found" quickly beats answering correctly
+  // eventually: the caller is a typeahead, and the next keystroke is 200ms away.
+  const FALLBACK_BUDGET_MS = 2500;
+  const batch = db.batch([
     db.prepare(
       `SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
        FROM actors WHERE handle = ?1 COLLATE NOCASE AND hidden = 0 LIMIT 1`
@@ -133,6 +141,20 @@ export async function handleSearch(
        LIMIT ?2`
     ).bind(ftsQuery, overfetch),
   ], "read");
+
+  let exactRes, prefixRes, ftsRes;
+  try {
+    [exactRes, prefixRes, ftsRes] = await Promise.race([
+      batch,
+      new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error("turso_fallback_timeout")), FALLBACK_BUDGET_MS)),
+    ]);
+  } catch (e: any) {
+    console.log(JSON.stringify({ event: "search_fallback_timeout", term, error: e?.message }));
+    // deliberately NOT cached — a timeout is a transient property of the
+    // moment, and caching it would pin an empty answer for 60s
+    return json({ actors: [] });
+  }
 
   // Sort prefix by handle length (shortest first) for the shortest-handle bias.
   // We dropped ORDER BY length(handle) from the SQL to avoid Turso's full-scan

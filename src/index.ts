@@ -114,7 +114,7 @@ export default {
           return json({ error: "slow down — try again in a minute." }, 429);
         }
       }
-      return handleRequestIndexing(request, db, env);
+      return handleRequestIndexing(request, db, env, ctx);
     }
 
     if (

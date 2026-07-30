@@ -97,6 +97,7 @@ export async function handleRequestIndexing(
   request: Request,
   db: TursoDB,
   env: Env,
+  ctx: ExecutionContext,
 ): Promise<Response> {
   const url = new URL(request.url);
   const identifier =
@@ -160,11 +161,38 @@ export async function handleRequestIndexing(
     .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore)
     .run();
 
+  // Push it into the search replica NOW rather than waiting for the next sync
+  // tick. Turso is the authority and the row is already committed above; this
+  // just tells the replica to pick that one row up immediately, so someone who
+  // explicitly asked us to index an account can find it seconds later instead
+  // of up to 5 minutes — or, when sync stalls, not at all (2026-07-28: 48h).
+  //
+  // Fire-and-forget: the sync loop is still the mechanism of record, so a
+  // failure here costs freshness, never correctness.
+  ctx.waitUntil(pushToReplica(env, identity.did));
+
   return json({
     handle: identity.handle,
     did: identity.did,
     ...(f.hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
   });
+}
+
+async function pushToReplica(env: Env, did: string): Promise<void> {
+  if (!env.SEARCH_BACKEND_URL || !env.ADMIN_SECRET) return;
+  try {
+    const r = await fetch(
+      `${env.SEARCH_BACKEND_URL}/admin/refresh?did=${encodeURIComponent(did)}`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.ADMIN_SECRET}` },
+        signal: AbortSignal.timeout(5000),
+      },
+    );
+    console.log(JSON.stringify({ event: "replica_push", did, status: r.status }));
+  } catch (e: any) {
+    console.log(JSON.stringify({ event: "replica_push_failed", did, error: e?.message }));
+  }
 }
 
 function authCheck(request: Request, env: Env): Response | null {

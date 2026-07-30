@@ -13,6 +13,12 @@ const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 const promote_runner = @import("index/promote_runner.zig");
 const index_search = @import("index/index_search.zig");
+const sync = @import("db/sync.zig");
+
+fn cGetenv(name: [*:0]const u8) ?[]const u8 {
+    const v = std.c.getenv(name) orelse return null;
+    return mem.span(v);
+}
 
 const log = std.log.scoped(.server);
 
@@ -68,9 +74,57 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_poo
         try handleIndexStatus(request, local_db);
     } else if (mem.eql(u8, path, "/debug/index")) {
         try handleDebugIndex(request, target, local_db);
+    } else if (mem.eql(u8, path, "/admin/refresh")) {
+        try handleAdminRefresh(request, target, local_db);
     } else {
         try sendJson(request, .not_found, "{\"error\":\"not found\"}");
     }
+}
+
+/// Apply one actor from Turso right now, so an explicit index request does not
+/// have to wait for the next sync tick (or, when sync wedges, for days).
+///
+/// Fails closed: without ADMIN_SECRET set there is no way in. The DID is the
+/// only input and the data comes from Turso, so a leaked secret buys a forced
+/// re-read of a row, not the ability to write one.
+fn handleAdminRefresh(request: *http.Server.Request, target: []const u8, local_db: *LocalDb) !void {
+    const secret = cGetenv("ADMIN_SECRET") orelse {
+        try sendJson(request, .service_unavailable, "{\"error\":\"ADMIN_SECRET not configured\"}");
+        return;
+    };
+
+    var authed = false;
+    var it = request.iterateHeaders();
+    while (it.next()) |h| {
+        if (std.ascii.eqlIgnoreCase(h.name, "authorization")) {
+            const prefix = "Bearer ";
+            if (h.value.len > prefix.len and mem.eql(u8, h.value[0..prefix.len], prefix) and
+                mem.eql(u8, h.value[prefix.len..], secret)) authed = true;
+        }
+    }
+    if (!authed) {
+        try sendJson(request, .unauthorized, "{\"error\":\"unauthorized\"}");
+        return;
+    }
+
+    const raw_did = parseQueryParam(target, "did") orelse {
+        try sendJson(request, .bad_request, "{\"error\":\"missing did parameter\"}");
+        return;
+    };
+    var decode_buf: [256]u8 = undefined;
+    const did = percentDecode(raw_did, &decode_buf) orelse raw_did;
+
+    const applied = sync.refreshOne(std.heap.page_allocator, local_db, did) catch |err| {
+        log.err("admin refresh failed for {s}: {}", .{ did, err });
+        try sendJson(request, .internal_server_error, "{\"error\":\"refresh failed\"}");
+        return;
+    };
+
+    var buf: [128]u8 = undefined;
+    const body = std.fmt.bufPrint(&buf, "{{\"ok\":true,\"applied\":{s}}}", .{
+        if (applied) "true" else "false",
+    }) catch "{\"ok\":true}";
+    try sendJson(request, .ok, body);
 }
 
 fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *LocalDb) !void {
