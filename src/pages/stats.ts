@@ -47,20 +47,45 @@ export function statsPage(d: StatsData): string {
   const nowSec = Math.floor(Date.now() / 1000);
   // SSR renders the 7d view so the page is correct without JS and the value
   // agrees with the active button on load.
-  const initialTotal = sorted
-    .filter((r) => r.hour * 300 >= nowSec - 7 * 86400)
-    .reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
-  const metricsJson = JSON.stringify(
-    sorted.map((r) => ({
-      hour: r.hour,
-      searches: r.searches,
-      cache_hits: r.cache_hits ?? 0,
-      total_ms: r.total_ms ?? 0,
-      cache_ms: r.cache_ms ?? 0,
-    }))
-  );
+  // Aggregate the metric buckets HERE, not in the browser.
+  //
+  // The client only ever reduced this array to four numbers per range — it is
+  // never plotted. Shipping every 5-minute bucket to do that made the buckets
+  // 72% of a 1 MB page (762 KB, ~19k rows) and put the page's weight on a curve
+  // that grows with the site's age: the query is LIMIT 100000, so left alone it
+  // heads for several MB. Sixteen numbers instead.
+  const ACTIVITY_SECS: Record<string, number | null> =
+    { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': null };
+  const activity: Record<string, { searches: number; cacheHits: number; totalMs: number; cacheMs: number }> = {};
+  for (const [range, secs] of Object.entries(ACTIVITY_SECS)) {
+    const a = { searches: 0, cacheHits: 0, totalMs: 0, cacheMs: 0 };
+    for (const r of sorted) {
+      // buckets are 5-min (hour * 300 = unix seconds) and SPARSE — only buckets
+      // with a search exist — so windows are by TIME, never by bucket count
+      if (secs !== null && r.hour * 300 < nowSec - secs) continue;
+      a.searches += r.searches;
+      a.cacheHits += r.cache_hits ?? 0;
+      a.totalMs += r.total_ms ?? 0;
+      a.cacheMs += r.cache_ms ?? 0;
+    }
+    activity[range] = a;
+  }
+  const activityJson = JSON.stringify(activity);
+  // SSR renders the 7d view so the page is correct without JS and the value
+  // agrees with the active button on load.
+  const initialTotal = activity['7d']!.searches + activity['7d']!.cacheHits;
 
-  const snapshotJson = JSON.stringify(d.snapshots);
+  // The trend chart plots these, so unlike the metrics they cannot collapse to
+  // a scalar — but 5000 hourly points render into ~620px, so most were being
+  // thrown away at draw time anyway. Keep every hour for the last 30 days (the
+  // two windowed views), then every 24th sample beyond it for "all". Real
+  // samples, never averages, so a hover still reports a value that existed.
+  const HOURLY_KEEP_MS = 30 * 86400_000;
+  const cutoff = Date.now() - HOURLY_KEEP_MS;
+  const lastIdx = d.snapshots.length - 1;
+  const thinned = d.snapshots.filter((s, i) =>
+    s.ts >= cutoff || i % 24 === 0 || i === lastIdx);
+  const snapshotJson = JSON.stringify(thinned);
 
   const PIE_COLORS = [
     // Ordered so adjacent slices never sit next to a neighbour on the wheel —
@@ -1266,11 +1291,9 @@ export function statsPage(d: StatsData): string {
     }
 
     /* --- activity: one range selector drives searches, latency, and the series --- */
-    const allMetrics = ${metricsJson}; // {hour, searches, cache_hits}, same order
+    const ACTIVITY = ${activityJson}; // per-range totals, aggregated server-side
     // window by TIME (bucket is 5-min; hour*300 = unix seconds), not bucket
     // count — buckets are sparse so count-based slicing made 30d == all.
-    const SEARCH_SECS = { '24h': 86400, '7d': 604800, '30d': 2592000 }; // missing key (all) = everything
-    const NOW_SEC = Math.floor(Date.now() / 1000);
     const RANGE_LABEL = { '24h': '24 hours', '7d': '7 days', '30d': '30 days', 'all': 'all time' };
     // long windows aggregate 5-min buckets so the line stays readable
     const AGG_SECS = { '30d': 3600, 'all': 21600 };
@@ -1280,11 +1303,6 @@ export function statsPage(d: StatsData): string {
     const searchesLabel = document.getElementById('searches-label');
     const latencyValue = document.getElementById('latency-value');
 
-    function sliceWindow(arr, range) {
-      const secs = SEARCH_SECS[range];
-      return secs == null ? arr : arr.filter(r => r.hour * 300 >= NOW_SEC - secs);
-    }
-
     /* ONE handler for the whole activity section. Previously total searches,
        avg latency, and the traffic chart each had their own selector, so the
        page could show 24h latency next to a 7d search count next to a 30d
@@ -1292,14 +1310,8 @@ export function statsPage(d: StatsData): string {
     function applyActivityRange(range) {
       document.querySelectorAll('#activity-range button')
         .forEach(b => b.classList.toggle('active', b.dataset.range === range));
-      const win = sliceWindow(allMetrics, range);
       const label = RANGE_LABEL[range] || range;
-
-      let searches = 0, totalMs = 0, cacheHits = 0, cacheMs = 0;
-      for (const r of win) {
-        searches += r.searches; totalMs += r.total_ms || 0;
-        cacheHits += r.cache_hits || 0; cacheMs += r.cache_ms || 0;
-      }
+      const { searches, cacheHits, totalMs, cacheMs } = ACTIVITY[range] || ACTIVITY['all'];
       if (searchesValue) searchesValue.textContent = (searches + cacheHits).toLocaleString();
       if (searchesLabel) searchesLabel.textContent = 'total searches (' + label + ')';
 

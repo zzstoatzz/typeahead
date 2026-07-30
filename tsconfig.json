@@ -1,0 +1,20 @@
+{
+  // The worker is bundled by esbuild (via wrangler) and tests run under bun.
+  // BOTH strip types without checking them, so nothing here affects the build —
+  // this config exists purely so `just typecheck` has something to enforce.
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["es2022"],
+    "types": ["@cloudflare/workers-types", "bun-types"],
+    "strict": true,
+    "noUncheckedIndexedAccess": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*.ts"]
+}

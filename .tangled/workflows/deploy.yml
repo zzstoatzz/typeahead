@@ -20,5 +20,6 @@ steps:
     command: |
       set -euo pipefail
       bun install
+      bunx tsc --noEmit
       bun test
       bunx wrangler deploy --dry-run

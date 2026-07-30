@@ -1,11 +1,26 @@
 set dotenv-filename := ".dev.vars"
 
+# typecheck the worker. NOTHING else checks types: wrangler bundles with esbuild
+# and tests run under bun, and both strip types without looking at them. Run this
+# before deploying, or a type error ships silently.
+typecheck:
+    bunx tsc --noEmit
+
+# worker unit tests
+test:
+    bun test
+
+# what CI runs, locally
+check: typecheck test
+    bunx wrangler deploy --dry-run
+
 # run the zig unit tests for the services (ingester/search/indexer)
 test-services:
     cd services && zig build test --summary all
 
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech":
+    bunx tsc --noEmit
     npx wrangler deploy
     @echo "--- waiting for edge propagation before smoke ---"
     sleep 5
