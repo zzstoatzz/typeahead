@@ -1,5 +1,6 @@
 import { FAVICON } from "../types";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
+import { escHtml as esc } from "../utils";
 
 export interface SnapshotPoint {
   ts: number;  // millisecond timestamp
@@ -121,9 +122,6 @@ export function statsPage(d: StatsData): string {
     (seriesByDomain5m[r.domain] ??= []).push([r.bucket, r.hits]);
   }
   const trafficSeries5mJson = jsonScript(seriesByDomain5m);
-
-  // domains come from caller-controlled headers (X-Client/Origin) — escape them
-  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   // The domain NAME is not a link.
   //
@@ -270,6 +268,9 @@ export function statsPage(d: StatsData): string {
     .ts-chip.clear { color: var(--muted); background: transparent; padding: 0.35rem 0.7rem; }
     .ts-chip.preview { background: transparent; border-style: dashed; color: var(--muted);
                        cursor: default; pointer-events: none; }
+    .empty-card { color: var(--dim); font-size: 0.8rem; padding: 2rem 0; text-align: center; }
+    .pie-cta { margin-top: 0.6rem; font-size: 0.7rem; color: var(--dim); text-align: center; }
+    .pie-cta a { color: var(--blue); text-decoration: none; }
     .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
                     color: var(--dim); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
     .tseries-foot { display: flex; align-items: center; justify-content: space-between;
@@ -374,13 +375,13 @@ export function statsPage(d: StatsData): string {
         </span>
       </div>
       ${d.snapshots.length > 1
-        ? `<canvas id="trend"></canvas>`
-        : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
+        ? `<canvas id="trend" role="img" aria-label="actors indexed over time"></canvas>`
+        : `<div class="empty-card">collecting data — check back soon</div>`}
       <div class="legend">
         ${[
-          { color: '#4a9', label: `total (${d.total.toLocaleString()})`, value: d.total },
-          { color: '#bc8cff', label: 'with avatars', value: d.snapshots[d.snapshots.length - 1]?.with_avatars ?? 0 },
-          { color: '#58a6ff', label: 'with handles', value: d.snapshots[d.snapshots.length - 1]?.with_handles ?? 0 },
+          { color: 'var(--accent)', label: `total (${d.total.toLocaleString()})`, value: d.total },
+          { color: 'var(--violet)', label: 'with avatars', value: d.snapshots[d.snapshots.length - 1]?.with_avatars ?? 0 },
+          { color: 'var(--blue)', label: 'with handles', value: d.snapshots[d.snapshots.length - 1]?.with_handles ?? 0 },
         ].sort((a, b) => b.value - a.value)
          .map(r => `<span><span class="ldot" style="background:${r.color}"></span> ${r.label}</span>`)
          .join('\n        ')}
@@ -466,7 +467,7 @@ export function statsPage(d: StatsData): string {
     <div class="pie-wrap">
       <h2>traffic sources</h2>
       ${d.trafficSources.length > 0
-        ? `<canvas id="pie"></canvas>
+        ? `<canvas id="pie" role="img" aria-label="traffic sources by app"></canvas>
            <div class="pie-legend">${pieLegendHtml}</div>
            ${d.trafficSources.length > PIE_TOP_N
               ? `<div class="ts-summary">top ${PIE_TOP_N} above · all ${d.trafficSources.length} sources below</div>`
@@ -477,9 +478,9 @@ export function statsPage(d: StatsData): string {
                <tbody>${trafficTableRows}</tbody>
              </table>
            </div>`
-        : `<div style="color:#444;font-size:0.8rem;padding:2rem 0;text-align:center">collecting data — check back soon</div>`}
-      <div style="margin-top:0.6rem;font-size:0.7rem;color:#555;text-align:center">
-        want to show up here? <a href="/docs" style="color:#58a6ff;text-decoration:none">switch from bluesky&rsquo;s typeahead &rarr;</a>
+        : `<div class="empty-card">collecting data — check back soon</div>`}
+      <div class="pie-cta">
+        want to show up here? <a href="/docs">switch from bluesky&rsquo;s typeahead &rarr;</a>
       </div>
     </div>
     <div class="pie-tip" id="pie-tip"></div>
@@ -492,7 +493,19 @@ export function statsPage(d: StatsData): string {
   </div>
   <div class="series-tip" id="series-tip"></div>
   <script>
-    const COLORS = { total: '#4a9', handles: '#58a6ff', avatars: '#bc8cff' };
+    /* Canvas cannot take a CSS variable, so theme tokens are resolved here and
+       re-read on every draw. Everything below used to be literal hex — which is
+       why the axis labels and the donut's centre text were near-invisible in
+       light mode, and why the trend series drifted out of step with the palette. */
+    function cssColor(v) {
+      const m = /^var\((--[\w-]+)\)$/.exec(v);
+      return m ? tok(m[1], v) : v;
+    }
+    function tok(name, fallback) {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      return v || fallback;
+    }
+    const COLORS = { total: 'var(--accent)', handles: 'var(--blue)', avatars: 'var(--violet)' };
 
     function fmtNum(n) {
       if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
@@ -570,19 +583,19 @@ export function statsPage(d: StatsData): string {
 
         // glow
         ctx.save(); trace();
-        ctx.shadowColor = s.color; ctx.shadowBlur = 18;
-        ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.07;
+        ctx.shadowColor = cssColor(s.color); ctx.shadowBlur = 18;
+        ctx.strokeStyle = cssColor(s.color); ctx.lineWidth = 2; ctx.globalAlpha = 0.07;
         ctx.stroke(); ctx.restore();
 
         // medium glow
         ctx.save(); trace();
-        ctx.shadowColor = s.color; ctx.shadowBlur = 6;
-        ctx.strokeStyle = s.color; ctx.lineWidth = 1; ctx.globalAlpha = 0.15;
+        ctx.shadowColor = cssColor(s.color); ctx.shadowBlur = 6;
+        ctx.strokeStyle = cssColor(s.color); ctx.lineWidth = 1; ctx.globalAlpha = 0.15;
         ctx.stroke(); ctx.restore();
 
         // core line
         trace();
-        ctx.strokeStyle = s.color;
+        ctx.strokeStyle = cssColor(s.color);
         ctx.lineWidth = 1.2; ctx.globalAlpha = 0.55;
         ctx.stroke(); ctx.globalAlpha = 1;
       }
@@ -591,11 +604,11 @@ export function statsPage(d: StatsData): string {
       {
         const axisY = H - pad.b;
         ctx.beginPath(); ctx.moveTo(pad.l, axisY); ctx.lineTo(W - pad.r, axisY);
-        ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1;
+        ctx.strokeStyle = tok('--line'); ctx.lineWidth = 1;
         ctx.stroke();
 
         ctx.font = '10px system-ui, sans-serif';
-        ctx.fillStyle = '#555'; ctx.textAlign = 'center';
+        ctx.fillStyle = tok('--dim'); ctx.textAlign = 'center';
         const spanDays = span / 86400000;
 
         // walk midnights
@@ -611,7 +624,7 @@ export function statsPage(d: StatsData): string {
           const x = pad.l + frac * cw;
           if (x >= pad.l && x <= W - pad.r && x - prevX >= minGap) {
             ctx.beginPath(); ctx.moveTo(x, axisY); ctx.lineTo(x, axisY + 4);
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1; ctx.stroke();
+            ctx.strokeStyle = tok('--line-2'); ctx.lineWidth = 1; ctx.stroke();
             const label = spanDays > 14
               ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' })
               : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -628,16 +641,16 @@ export function statsPage(d: StatsData): string {
       if (hoverIdx != null && hoverIdx >= 0 && hoverIdx < n) {
         const x = toX(snaps[hoverIdx].ts);
         ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H - pad.b);
-        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.strokeStyle = tok('--line-2');
         ctx.lineWidth = 1; ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
 
         const snap = snaps[hoverIdx];
         for (const s of series) {
           const y = toY(snap[s.key]);
           ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
-          ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.9; ctx.fill();
+          ctx.fillStyle = tok('--panel'); ctx.globalAlpha = 0.9; ctx.fill();
           ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2);
-          ctx.strokeStyle = s.color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8;
+          ctx.strokeStyle = cssColor(s.color); ctx.lineWidth = 1.5; ctx.globalAlpha = 0.8;
           ctx.stroke(); ctx.globalAlpha = 1;
         }
       }
@@ -735,10 +748,10 @@ export function statsPage(d: StatsData): string {
 
     const SPECIAL_SERIES = ${jsonScript(SPECIAL_DOMAINS)};
     function domainColor(domain) {
-      if (domain == null) return '#4a9';
+      if (domain == null) return tok('--accent');
       if (SPECIAL_SERIES[domain]) return SPECIAL_SERIES[domain];
       const idx = traffic.findIndex(r => r.domain === domain);
-      return idx >= 0 ? PIE_COLORS[idx % PIE_COLORS.length] : '#4a9';
+      return idx >= 0 ? PIE_COLORS[idx % PIE_COLORS.length] : tok('--accent');
     }
     let tsRange = '7d';
     // range picks both the window and the finest data that stays readable
@@ -1258,13 +1271,13 @@ export function statsPage(d: StatsData): string {
 
         // center text
         pctx.globalAlpha = 1;
-        pctx.fillStyle = '#888';
+        pctx.fillStyle = tok('--muted');
         pctx.font = '600 ' + (outerR * 0.22) + 'px system-ui, sans-serif';
         pctx.textAlign = 'center';
         pctx.textBaseline = 'middle';
         pctx.fillText(fmtNum(pieTotal), cx, cy - outerR * 0.06);
         pctx.font = (outerR * 0.11) + 'px system-ui, sans-serif';
-        pctx.fillStyle = '#555';
+        pctx.fillStyle = tok('--dim');
         pctx.fillText('hits', cx, cy + outerR * 0.14);
       }
 

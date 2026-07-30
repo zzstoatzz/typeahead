@@ -6,6 +6,18 @@ export const THEME_HEAD = `<meta name="color-scheme" content="dark light">
   <meta name="theme-color" content="#f2f3ef" media="(prefers-color-scheme: light)">
   <script>(function(){try{var t=localStorage.getItem('ta.theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(_){}})()</script>`;
 
+// The light palette is needed in two places CSS cannot share a block across —
+// the prefers-color-scheme query and the explicit [data-theme="light"] override.
+// Written once here so the two can never drift apart.
+const LIGHT_TOKENS = `
+        --bg: #f2f3ef; --panel: #fafbf8; --panel-2: #eceee8; --hover: #e6e8e2;
+        --line: #d8dbd3; --line-2: #c8ccc3;
+        --text: #2c322e; --bright: #131614; --muted: #5d665f; --dim: #8a938c; --faint: #b4bab2;
+        --accent: #14795f; --accent-dim: #4c9c88; --blue: #2465c2; --violet: #7a4bc9;
+        --amber: #a86a1c; --red: #b13540;
+        --tip-bg: rgba(250, 251, 248, 0.97);
+        color-scheme: light;`;
+
 export const THEME_CSS = `
     :root {
       --bg: #0a0b0a; --panel: #101211; --panel-2: #161917; --hover: #1a1d1b;
@@ -17,24 +29,10 @@ export const THEME_CSS = `
       color-scheme: dark;
     }
     @media (prefers-color-scheme: light) {
-      :root:not([data-theme="dark"]) {
-        --bg: #f2f3ef; --panel: #fafbf8; --panel-2: #eceee8; --hover: #e6e8e2;
-        --line: #d8dbd3; --line-2: #c8ccc3;
-        --text: #2c322e; --bright: #131614; --muted: #5d665f; --dim: #8a938c; --faint: #b4bab2;
-        --accent: #14795f; --accent-dim: #4c9c88; --blue: #2465c2; --violet: #7a4bc9;
-        --amber: #a86a1c; --red: #b13540;
-        --tip-bg: rgba(250, 251, 248, 0.97);
-        color-scheme: light;
+      :root:not([data-theme="dark"]) {${LIGHT_TOKENS}
       }
     }
-    :root[data-theme="light"] {
-      --bg: #f2f3ef; --panel: #fafbf8; --panel-2: #eceee8; --hover: #e6e8e2;
-      --line: #d8dbd3; --line-2: #c8ccc3;
-      --text: #2c322e; --bright: #131614; --muted: #5d665f; --dim: #8a938c; --faint: #b4bab2;
-      --accent: #14795f; --accent-dim: #4c9c88; --blue: #2465c2; --violet: #7a4bc9;
-      --amber: #a86a1c; --red: #b13540;
-      --tip-bg: rgba(250, 251, 248, 0.97);
-      color-scheme: light;
+    :root[data-theme="light"] {${LIGHT_TOKENS}
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }

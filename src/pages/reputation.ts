@@ -1,49 +1,43 @@
 import { FAVICON } from "../types";
+import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
 
 export function reputationPage(): string {
   return `<!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ranking report · typeahead</title>
   ${FAVICON}
-  <style>
+  ${THEME_HEAD}
+  <style>${THEME_CSS}
+    /* This page had its own palette — a second, dark-only design system with
+       different token names (--text-bright vs --bright, --border vs --line), so
+       it ignored the theme toggle and drifted from every other page. The names
+       are kept as aliases onto the shared tokens; the values live in theme.ts. */
     :root {
-      --bg: #050505;
-      --bg-subtle: #0d0d0d;
-      --bg-hover: #141414;
-      --border: #1d1d1d;
-      --border-focus: #2a2a2a;
-      --text: #ccc;
-      --text-bright: #fff;
-      --text-secondary: #888;
-      --text-dim: #666;
-      --text-muted: #444;
-      --accent: #2a9d5c;
-      --accent-dim: #1b7340;
-      --gold: #d9a441;
-      --red: #c0563f;
-      --blue: #60a5fa;
+      --bg-subtle: var(--panel);
+      --bg-hover: var(--hover);
+      --border: var(--line);
+      --border-focus: var(--line-2);
+      --text-bright: var(--bright);
+      --text-secondary: var(--muted);
+      --text-dim: var(--dim);
+      --text-muted: var(--faint);
+      --gold: var(--amber);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       background:
-        radial-gradient(circle at 18% 8%, rgba(42, 157, 92, 0.08), transparent 23rem),
-        radial-gradient(circle at 92% 18%, rgba(217, 164, 65, 0.05), transparent 20rem),
+        radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 23rem),
+        radial-gradient(circle at 92% 18%, color-mix(in srgb, var(--amber) 6%, transparent), transparent 20rem),
         var(--bg);
-      color: var(--text);
-      min-height: 100vh;
       padding: 1.25rem 1rem 4rem;
-      font-size: 14px;
-      line-height: 1.6;
     }
     body::before {
       content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+        linear-gradient(color-mix(in srgb, var(--text) 4%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--text) 3%, transparent) 1px, transparent 1px);
       background-size: 44px 44px;
       mask-image: linear-gradient(to bottom, rgba(0,0,0,0.65), transparent 78%);
     }
@@ -84,7 +78,7 @@ export function reputationPage(): string {
     button:hover { background: var(--accent); }
     button:disabled { opacity: 0.55; cursor: default; }
 
-    .lf-typeahead-dropdown {
+    .ta-typeahead-dropdown {
       position: absolute; top: calc(100% + 6px); left: 0; right: 0; display: none; z-index: 20;
       border: 1px solid var(--border-focus); border-radius: 12px;
       background: color-mix(in srgb, var(--bg-subtle) 86%, transparent);
@@ -93,21 +87,21 @@ export function reputationPage(): string {
       box-shadow: 0 18px 42px -22px rgba(0, 0, 0, 0.9);
       overflow: hidden;
     }
-    .lf-typeahead-dropdown.open { display: block; }
-    .lf-typeahead-item {
+    .ta-typeahead-dropdown.open { display: block; }
+    .ta-typeahead-item {
       display: flex; align-items: center; gap: 0.65rem; padding: 0.62rem 0.72rem;
       cursor: pointer; border-bottom: 1px solid var(--border);
     }
-    .lf-typeahead-item:last-child { border-bottom: none; }
-    .lf-typeahead-item:hover, .lf-typeahead-item.active { background: rgba(42, 157, 92, 0.1); }
-    .lf-typeahead-avatar {
+    .ta-typeahead-item:last-child { border-bottom: none; }
+    .ta-typeahead-item:hover, .ta-typeahead-item.active { background: rgba(42, 157, 92, 0.1); }
+    .ta-typeahead-avatar {
       width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
       background: var(--bg-hover); border: 1px solid var(--border-focus);
     }
-    .lf-typeahead-avatar-ph { display: inline-block; }
-    .lf-typeahead-text { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
-    .lf-typeahead-handle { color: var(--text-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .lf-typeahead-name { color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ta-typeahead-avatar-ph { display: inline-block; }
+    .ta-typeahead-text { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+    .ta-typeahead-handle { color: var(--text-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ta-typeahead-name { color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .status {
       color: var(--text-secondary); margin-top: 1rem; border: 1px solid var(--border);
@@ -256,9 +250,11 @@ export function reputationPage(): string {
       <a href="/">home</a>
       · <a href="/stats">stats</a>
       · <a href="/docs">docs</a>
+      <button class="theme-btn" id="theme-toggle" type="button">theme: auto</button>
     </footer>
   </div>
   <script>
+    ${THEME_SCRIPT}
     const form = document.getElementById('form');
     const actor = document.getElementById('actor');
     const out = document.getElementById('out');
@@ -317,7 +313,7 @@ export function reputationPage(): string {
 
     function setupHandleTypeahead(input, onPick) {
       const dd = document.createElement('div');
-      dd.className = 'lf-typeahead-dropdown';
+      dd.className = 'ta-typeahead-dropdown';
       dd.setAttribute('role', 'listbox');
       input.parentNode.appendChild(dd);
       let timer = null, items = [], sel = -1, last = '';
@@ -325,12 +321,12 @@ export function reputationPage(): string {
       function hide() { dd.classList.remove('open'); dd.innerHTML = ''; items = []; sel = -1; }
       function renderItems() {
         dd.innerHTML = items.map((a, i) => {
-          const dn = a.displayName ? '<span class="lf-typeahead-name">' + esc(a.displayName) + '</span>' : '';
+          const dn = a.displayName ? '<span class="ta-typeahead-name">' + esc(a.displayName) + '</span>' : '';
           const av = a.avatar
-            ? '<img class="lf-typeahead-avatar" src="' + esc(a.avatar) + '" loading="lazy" alt="">'
-            : '<span class="lf-typeahead-avatar lf-typeahead-avatar-ph"></span>';
-          return '<div class="lf-typeahead-item' + (i === sel ? ' active' : '') + '" data-i="' + i + '" role="option">' +
-            av + '<div class="lf-typeahead-text"><span class="lf-typeahead-handle">@' + esc(a.handle) + '</span>' + dn + '</div></div>';
+            ? '<img class="ta-typeahead-avatar" src="' + esc(a.avatar) + '" loading="lazy" alt="">'
+            : '<span class="ta-typeahead-avatar ta-typeahead-avatar-ph"></span>';
+          return '<div class="ta-typeahead-item' + (i === sel ? ' active' : '') + '" data-i="' + i + '" role="option">' +
+            av + '<div class="ta-typeahead-text"><span class="ta-typeahead-handle">@' + esc(a.handle) + '</span>' + dn + '</div></div>';
         }).join('');
         dd.classList.toggle('open', items.length > 0);
       }
@@ -340,7 +336,7 @@ export function reputationPage(): string {
         if (q === last) return;
         last = q;
         try {
-          const r = await fetch('/xrpc/app.bsky.actor.searchActorsTypeahead?q=' + encodeURIComponent(q) + '&limit=8', {
+          const r = await fetch('/xrpc/tech.waow.typeahead.searchActors?q=' + encodeURIComponent(q) + '&limit=8', {
             headers: { 'X-Client': 'typeahead/reputation' },
           });
           const d = r.ok ? await r.json() : null;
@@ -368,7 +364,7 @@ export function reputationPage(): string {
         else if (e.key === 'Escape') hide();
       });
       dd.addEventListener('mousedown', (e) => {
-        const item = e.target.closest('.lf-typeahead-item');
+        const item = e.target.closest('.ta-typeahead-item');
         if (!item) return;
         e.preventDefault();
         choose(Number(item.getAttribute('data-i')));
