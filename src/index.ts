@@ -10,6 +10,7 @@ import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet
 import { handleGetProfiles } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { handleOgImage } from "./handlers/og";
+import { handleFreshness, measureFreshness } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
@@ -32,6 +33,15 @@ export default {
       ["materializeStats", () => materializeStats(db, env)],
       ["refreshModeration", () => refreshModeration(db, env)],
       ["enrichActors", () => enrichActors(db, env)],
+      // Runs LAST and deliberately never throws: this is the check that would
+      // have caught 2026-07-28. It logs loudly rather than fixing anything,
+      // because the repair (restart the search service) is not the worker's to
+      // make — but "nothing was watching" must never be the story again.
+      ["freshness", async () => {
+        const f = await measureFreshness(env);
+        console.log(JSON.stringify({ event: f.stale ? "freshness_stale" : "freshness_ok", ...f }));
+        await env.KV.put("freshness", JSON.stringify({ ...f, at: Date.now() })).catch(() => {});
+      }],
     ];
     for (const [name, fn] of steps) {
       try {
@@ -64,6 +74,9 @@ export default {
       return new Response(llmsTxt(), {
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...CORS_HEADERS },
       });
+    }
+    if (pathname === "/health/freshness" && request.method === "GET") {
+      return handleFreshness(env);
     }
     if (pathname === "/og-image" && request.method === "GET") {
       return handleOgImage(request, env);

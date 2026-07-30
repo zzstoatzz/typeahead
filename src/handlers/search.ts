@@ -71,6 +71,25 @@ export async function handleSearch(
       if (backendRes.ok) {
         const body = await backendRes.text();
 
+        // An EMPTY result from the replica falls through to Turso.
+        //
+        // The replica is a lagging copy: an actor written to Turso is invisible
+        // to it until the next sync tick, and if that sync stalls, invisible for
+        // as long as the stall lasts (2026-07-28: 48 hours). Turso is the
+        // authority and always has the row, so when the fast path finds nothing
+        // it is worth paying for the slow path before answering "no such actor".
+        //
+        // Only on empty, so the common case still costs one backend hop. A
+        // genuinely unmatched query pays the Turso round trip once per 60s
+        // cache window, since the empty answer is cached like any other.
+        let empty = false;
+        try {
+          empty = (JSON.parse(body).actors ?? []).length === 0;
+        } catch {
+          empty = false;   // unparseable is the backend's problem, not a miss
+        }
+        if (empty) throw new Error("backend_empty");
+
         ctx.waitUntil(Promise.all([
           recordMetric(db, Date.now() - t0),
           recordTrafficSource(db, request),
@@ -87,7 +106,7 @@ export async function handleSearch(
         return response;
       }
     } catch {
-      // fall through to turso
+      // unreachable backend, timeout, or an empty result — Turso answers
     }
   }
 

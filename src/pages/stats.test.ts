@@ -94,9 +94,12 @@ describe("link previews", () => {
     const html = withView(["alpha.app", "beta.app"]);
     expect(html).toContain('<meta property="og:title" content="alpha.app vs beta.app · typeahead traffic">');
     expect(html).toContain("alpha.app 900 (75.0%)");
-    // a ratio, not a ranking — request volume isn't proportional to adoption
-    expect(html).toContain("alpha.app 3.00× beta.app by request volume");
-    expect(html).not.toContain("leads");
+    // a ratio, not a ranking — request volume isn't proportional to adoption.
+    // Scoped to the meta tag: the word appears in a source comment explaining
+    // exactly this change, and asserting on the whole document catches that.
+    const desc = html.match(/<meta property="og:description" content="([^"]*)"/)?.[1] ?? "";
+    expect(desc).toContain("alpha.app 3.00× beta.app by request volume");
+    expect(desc).not.toContain("leads");
   });
 
   test("the card image is handed the same params as the page", () => {
