@@ -250,6 +250,16 @@ export function statsPage(d: StatsData): string {
     .tseries-foot { display: flex; align-items: center; justify-content: space-between;
                     gap: 0.5rem; margin-top: 0.5rem; }
     .tseries-hint { font-size: 0.65rem; color: var(--faint); }
+    .ts-foot-btns { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
+    /* sticky shift: touch has no modifier key, so multi-select needs a mode.
+       A held toggle rather than an accumulating tap, so nobody collects a
+       selection they didn't ask for. */
+    #tseries-compare { background: transparent; border: 1px solid var(--line); color: var(--dim);
+                       padding: 0.3rem 0.55rem; font-size: 0.65rem; cursor: pointer;
+                       border-radius: 6px; font-family: inherit; min-height: 28px; white-space: nowrap; }
+    #tseries-compare:hover { color: var(--text); border-color: var(--line-2); }
+    #tseries-compare[aria-pressed="true"] { background: var(--panel-2); color: var(--text);
+                                            border-color: var(--accent); }
     .ts-menu-wrap { position: relative; flex-shrink: 0; }
     #tseries-menu-btn { background: transparent; border: 1px solid var(--line); color: var(--dim);
                         padding: 0.2rem 0.5rem 0.35rem; font-size: 0.8rem; line-height: 1; cursor: pointer;
@@ -424,7 +434,9 @@ export function statsPage(d: StatsData): string {
         <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
         <div class="tseries-totals" id="tseries-totals"></div>
         <div class="tseries-foot">
-          <span class="tseries-hint">click to pin &middot; shift-click to compare</span>
+          <span class="tseries-hint" id="tseries-hint">tap to pin</span>
+          <div class="ts-foot-btns">
+          <button id="tseries-compare" aria-pressed="false" title="add each tap to the chart instead of replacing">compare</button>
           <div class="ts-menu-wrap">
             <button id="tseries-menu-btn" aria-haspopup="menu" aria-expanded="false" title="chart actions">&hellip;</button>
             <div class="ts-menu" id="tseries-menu" role="menu" hidden>
@@ -433,6 +445,7 @@ export function statsPage(d: StatsData): string {
               <button role="menuitem" data-act="png">download png</button>
               <button role="menuitem" data-act="csv">download csv</button>
             </div>
+          </div>
           </div>
         </div>
       </div>
@@ -697,6 +710,8 @@ export function statsPage(d: StatsData): string {
     const seriesTip = document.getElementById('series-tip');
     const tseriesTotals = document.getElementById('tseries-totals');
     const menuBtn = document.getElementById('tseries-menu-btn');
+    const compareBtn = document.getElementById('tseries-compare');
+    const tseriesHint = document.getElementById('tseries-hint');
     const tsMenu = document.getElementById('tseries-menu');
     const tseriesT0 = document.getElementById('tseries-t0');
     const tseriesT1 = document.getElementById('tseries-t1');
@@ -1079,9 +1094,23 @@ export function statsPage(d: StatsData): string {
       showSeries();
       syncUrl();
     };
-    // plain click REPLACES the selection, shift/meta/ctrl-click toggles one in or
-    // out. Making plain click additive is how these controls end up accumulating
-    // selections nobody asked for.
+    /* Plain click REPLACES the selection; shift/meta/ctrl-click toggles one in
+       or out. Making plain click additive is how these controls end up
+       accumulating selections nobody asked for.
+
+       Touch has no modifier key, so "compare" is a sticky shift: while it is on,
+       every tap toggles. It stays on until turned off — a one-shot would make
+       building a three-app comparison three trips to the button. */
+    let compareMode = false;
+    function additive(e) {
+      return compareMode || e.shiftKey || e.metaKey || e.ctrlKey;
+    }
+    function setCompare(on) {
+      compareMode = on;
+      compareBtn?.setAttribute('aria-pressed', String(on));
+      if (tseriesHint) tseriesHint.textContent = on ? 'tap to add or remove' : 'tap to pin';
+    }
+    compareBtn?.addEventListener('click', () => setCompare(!compareMode));
     function applySelection(domain, additive) {
       if (domain == null) pinned = [];
       else if (!additive) pinned = pinned.length === 1 && pinned[0] === domain ? [] : [domain];
@@ -1096,7 +1125,7 @@ export function statsPage(d: StatsData): string {
     document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target.closest('a')) return; // domain links still navigate
-        applySelection(el.dataset.domain, e.shiftKey || e.metaKey || e.ctrlKey);
+        applySelection(el.dataset.domain, additive(e));
       });
     });
 
@@ -1285,7 +1314,7 @@ export function statsPage(d: StatsData): string {
         if (idx < 0) return;
         const dom = segments[idx].domain;
         hovered = null;
-        applySelection(dom, e.shiftKey || e.metaKey || e.ctrlKey);
+        applySelection(dom, additive(e));
       });
       window.addEventListener('resize', () => drawPie());
     }
