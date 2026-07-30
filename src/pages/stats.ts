@@ -256,7 +256,17 @@ export function statsPage(d: StatsData): string {
     #tseries polyline.baseline { stroke-dasharray: 3 3; stroke-width: 1; opacity: 0.75; }
     #tseries-guide { stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
     #tseries-dots circle { fill: var(--bg); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-    #tseries-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: flex-end; }
+    /* Reserves one chip row at all times. Without it, hovering the donut (which
+       shows a preview chip) or making a first selection grew the header by a
+       row and shoved the chart down — the chart appeared to jump while the
+       pointer was nowhere near it. */
+    /* flex-basis 0, so the row never gets pushed under the heading by its own
+       content — that wrap was the chart "jumping" when a chip appeared. It still
+       reserves one row height at all times, which covers the donut's hover
+       preview and any single selection. */
+    #tseries-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
+                     min-height: 34px; flex: 1 1 0; min-width: 0; margin-left: auto;
+                     justify-content: flex-end; }
     .ts-chip { display: inline-flex; align-items: center; gap: 0.4rem;
                background: var(--panel-2); border: 1px solid var(--line-2); color: var(--text);
                padding: 0.35rem 0.5rem 0.35rem 0.6rem; font-size: 0.72rem; cursor: pointer;
@@ -292,9 +302,12 @@ export function statsPage(d: StatsData): string {
                       cursor: pointer; border-radius: 5px; white-space: nowrap; }
     .ts-menu button:hover { background: var(--hover); color: var(--text); }
     /* the integral row — area under each curve over the plotted window */
+    /* One line, always. It used to wrap — so a long domain, or a second
+       selection, silently changed the height of everything below the chart.
+       Overflow scrolls sideways instead of growing downward. */
     .tseries-totals { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem;
-                      font-size: 0.68rem; color: var(--muted); margin-top: 0.5rem; }
-    .tseries-totals:empty { display: none; }
+                      font-size: 0.68rem; color: var(--muted); margin-top: 0.5rem;
+                      min-height: 1.5em; }
     .tseries-totals .sig { color: var(--dim); font-size: 0.85rem; cursor: default;
                            position: relative; border-bottom: 1px dotted var(--faint); }
     .tseries-totals .sig:hover::after, .tseries-totals .sig:focus::after {
@@ -341,6 +354,9 @@ export function statsPage(d: StatsData): string {
     footer a:hover { color: var(--muted); }
 
     @media (max-width: 640px) {
+      /* narrow: the heading alone nearly fills the line, so the chips get their
+         own row rather than fighting it for space */
+      #tseries-chips { flex-basis: 100%; }
       body { padding-left: 0.75rem; padding-right: 0.75rem; }
       #trend { height: 170px; }
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
@@ -905,14 +921,17 @@ export function statsPage(d: StatsData): string {
     function renderTotals() {
       if (!tseriesTotals) return;
       tseriesTotals.replaceChildren();
-      if (!tsView || pinned.length === 0) return;
+      if (!tsView) return;
       const t0u = tsView.t0Sec / tsView.stepSec, n = tsView.series[0].counts.length;
       // measured over the same window even when the baseline line is hidden,
       // so dismissing it doesn't silently change what the percentages mean
       const all = seriesFor(null, tsView.stepSec)
         .filter(([t]) => t >= t0u && t < t0u + n).reduce((s, r) => s + r[1], 0);
-      const apps = tsView.series.filter(s => !s.baseline)
-        .map(s => ({ name: s.name, color: s.color, sum: s.counts.reduce((a, b) => a + b, 0) }))
+      // unfiltered, the one series IS the total — report it rather than leaving
+      // a reserved-but-blank row
+      const apps = tsView.series.filter(s => pinned.length === 0 || !s.baseline)
+        .map(s => ({ name: s.name, color: s.color, isTotal: s.domain == null,
+                     sum: s.counts.reduce((a, b) => a + b, 0) }))
         .sort((a, b) => b.sum - a.sum);
       const sig = document.createElement('span');
       sig.className = 'sig';
@@ -931,7 +950,7 @@ export function statsPage(d: StatsData): string {
         const num = document.createElement('b');
         num.textContent = a.sum.toLocaleString();
         el.append(dot, name, num);
-        if (all > 0) {
+        if (all > 0 && !a.isTotal) {   // "100%" of itself says nothing
           const pct = document.createElement('span');
           pct.className = 'pct';
           pct.textContent = '(' + (a.sum / all * 100).toFixed(1) + '%)';
