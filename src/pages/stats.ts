@@ -78,8 +78,8 @@ function ogTags(d: StatsData): string {
     const parts = rows.map(r =>
       `${r.a} ${r.hits.toLocaleString('en-US')}` + (all > 0 ? ` (${((r.hits / all) * 100).toFixed(1)}%)` : ''));
     const lead = rows.length >= 2 && rows[1]!.hits > 0
-      ? ` — ${rows[0]!.a} leads ${(rows[0]!.hits / rows[1]!.hits < 10
-          ? (rows[0]!.hits / rows[1]!.hits).toFixed(2) : Math.round(rows[0]!.hits / rows[1]!.hits))}×`
+      ? ` — ${rows[0]!.a} ${(rows[0]!.hits / rows[1]!.hits < 10
+          ? (rows[0]!.hits / rows[1]!.hits).toFixed(2) : Math.round(rows[0]!.hits / rows[1]!.hits))}× ${rows[1]!.a} by request volume`
       : '';
     desc = `search traffic over the ${RANGE_WORDS[view.range] ?? RANGE_WORDS['7d']}: ${parts.join(' · ')}${lead}`;
   } else {
@@ -1006,7 +1006,8 @@ export function statsPage(d: StatsData): string {
       sig.className = 'sig';
       sig.tabIndex = 0;
       sig.textContent = '∫';
-      sig.dataset.tip = 'area under each curve — total hits over the window shown';
+      sig.dataset.tip = 'area under each curve — total requests over the window shown. '
+        + 'requests, not users: apps call the endpoint at different rates.';
       tseriesTotals.appendChild(sig);
       for (const a of apps) {
         const el = document.createElement('span');
@@ -1027,13 +1028,16 @@ export function statsPage(d: StatsData): string {
         }
         tseriesTotals.appendChild(el);
       }
-      if (apps.length >= 2 && apps[0].sum > 0) {
+      // A ratio, stated as a ratio. This said "X leads Y", which frames request
+      // volume as a scoreboard — but an app that calls the endpoint on every
+      // keystroke, or retries a bad auth flow, generates more requests without
+      // more people using it. The number is real; the ranking it implied wasn't.
+      if (apps.length >= 2 && apps[0].sum > 0 && apps[1].sum > 0) {
         const lead = document.createElement('span');
         lead.className = 'lead';
-        const r = apps[1].sum > 0 ? apps[0].sum / apps[1].sum : Infinity;
-        lead.textContent = apps[1].sum === 0
-          ? apps[0].name + ' only'
-          : apps[0].name + ' leads ' + (r < 10 ? r.toFixed(2) : Math.round(r)) + '×';
+        const r = apps[0].sum / apps[1].sum;
+        lead.textContent = apps[0].name + ' ' + (r < 10 ? r.toFixed(2) : Math.round(r))
+          + '× ' + apps[1].name + ' by request volume';
         tseriesTotals.appendChild(lead);
       }
     }
@@ -1056,7 +1060,8 @@ export function statsPage(d: StatsData): string {
         .map(a => ({ name: a.name, sum: a.counts.reduce((x, c) => x + c, 0) }))
         .sort((a, b) => b.sum - a.sum);
       const leadLine = rank.length >= 2 && rank[0].sum > 0 && rank[1].sum > 0
-        ? rank[0].name + ' leads ' + (r => r < 10 ? r.toFixed(2) : Math.round(r))(rank[0].sum / rank[1].sum) + '×'
+        ? rank[0].name + ' ' + (r => r < 10 ? r.toFixed(2) : Math.round(r))(rank[0].sum / rank[1].sum)
+          + '× ' + rank[1].name + ' by request volume'
         : null;
       const H = PLOT_T + PLOT_H + 34 + apps.length * 20 + (leadLine ? 22 : 0) + 16;
       const s = 2;

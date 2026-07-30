@@ -94,7 +94,9 @@ describe("link previews", () => {
     const html = withView(["alpha.app", "beta.app"]);
     expect(html).toContain('<meta property="og:title" content="alpha.app vs beta.app · typeahead traffic">');
     expect(html).toContain("alpha.app 900 (75.0%)");
-    expect(html).toContain("alpha.app leads 3.00×");
+    // a ratio, not a ranking — request volume isn't proportional to adoption
+    expect(html).toContain("alpha.app 3.00× beta.app by request volume");
+    expect(html).not.toContain("leads");
   });
 
   test("the card image is handed the same params as the page", () => {

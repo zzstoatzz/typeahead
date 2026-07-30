@@ -66,23 +66,32 @@ const n = (v: number) => v.toLocaleString("en-US");
  *
  * satori resolves a column whose content exceeds the fixed 630px by SHRINKING
  * its children rather than clipping, and a shrunk-to-zero row draws on top of
- * the next one. The first version of this card overlapped its own title with
- * its subtitle for exactly that reason. Heights below are budgeted to fit. */
+ * the next one. An earlier version overlapped its own title with its subtitle
+ * for exactly that reason. Heights below are budgeted to fit. */
 function row(h: number, style: string, inner: string): string {
   return `<div style="display:flex;height:${h}px;flex-shrink:0;${style}">${inner}</div>`;
 }
+const rule = `<div style="display:flex;height:1px;flex-shrink:0;background:${LINE}"></div>`;
 
-function shell(inner: string): string {
-  return `<div style="display:flex;flex-direction:column;width:${W}px;height:${H}px;background:${BG};padding:56px 72px;font-family:'JetBrains Mono'">
-    ${row(44, "align-items:center;gap:14px", `
-      <div style="display:flex;font-size:34px;color:${BRIGHT};font-weight:700">typeahead</div>
-      <div style="display:flex;width:16px;height:32px;background:${ACCENT}"></div>`)}
-    ${inner}
-    ${row(30, `margin-top:auto;font-size:22px;color:${DIM};align-items:flex-end`, "typeahead.waow.tech")}
+/** The page is panels on a dark field, hairline rules, one mono face, and a
+ *  caret after the wordmark. The card is the same, at poster size. */
+function shell(inner: string, right: string): string {
+  return `<div style="display:flex;width:${W}px;height:${H}px;background:${BG};padding:44px;font-family:'JetBrains Mono'">
+    <div style="display:flex;flex-direction:column;width:100%;height:100%;background:${PANEL};border:1px solid ${LINE};border-radius:18px;padding:44px 52px">
+      ${row(46, "align-items:center", `
+        <div style="display:flex;font-size:32px;color:${BRIGHT};font-weight:700">typeahead</div>
+        <div style="display:flex;width:15px;height:30px;margin-left:12px;background:${ACCENT}"></div>
+        <div style="display:flex;margin-left:auto;font-size:24px;color:${DIM}">${right}</div>`)}
+      ${rule}
+      ${inner}
+      ${rule}
+      ${row(46, "align-items:center", `
+        <div style="display:flex;font-size:22px;color:${DIM}">typeahead.waow.tech</div>`)}
+    </div>
   </div>`;
 }
 
-/** the comparison card: one bar per selected app, shared scale */
+/** one bar per app, on a shared scale */
 function comparison(apps: string[], series: Series, range: string, order: string[]): string {
   const secs = RANGE_SECS[range] ?? RANGE_SECS['7d']!;
   const { by, all } = totals(series, secs);
@@ -91,50 +100,45 @@ function comparison(apps: string[], series: Series, range: string, order: string
   const rows = ranked.map((d, i) => ({ domain: d, hits: by.get(d) ?? 0, color: colors[i]! }));
   const max = Math.max(1, ...rows.map(r => r.hits));
 
-  const bars = rows.map(r => {
-    const pct = all > 0 ? ((r.hits / all) * 100).toFixed(1) : '0.0';
-    return `<div style="display:flex;flex-direction:column;height:70px;flex-shrink:0">
-      ${row(36, "align-items:center;gap:14px", `
-        <div style="display:flex;width:18px;height:18px;border-radius:9px;background:${r.color};flex-shrink:0"></div>
-        <div style="display:flex;font-size:30px;color:${TEXT}">${esc(r.domain)}</div>
-        <div style="display:flex;margin-left:auto;font-size:30px;color:${BRIGHT}">${n(r.hits)}</div>
-        <div style="display:flex;font-size:26px;color:${DIM};width:110px;justify-content:flex-end">${pct}%</div>`)}
-      <div style="display:flex;width:100%;height:16px;flex-shrink:0;background:${PANEL};border-radius:8px">
-        <div style="display:flex;width:${Math.max(2, Math.round((r.hits / max) * 100))}%;height:16px;background:${r.color};border-radius:8px"></div>
-      </div>
-    </div>`;
-  }).join("");
+  // long domains shrink rather than wrap — a wrap has nowhere to go
+  const longest = Math.max(...rows.map(r => r.domain.length));
+  const nameSize = longest > 22 ? 28 : longest > 16 ? 32 : 36;
 
-  // the same statement the page makes under its chart
-  let lead = "";
+  const bars = rows.map(r => `<div style="display:flex;flex-direction:column;height:${rows.length > 2 ? 92 : 116}px;flex-shrink:0;justify-content:center">
+      ${row(44, "align-items:center", `
+        <div style="display:flex;width:16px;height:16px;border-radius:8px;background:${r.color};flex-shrink:0"></div>
+        <div style="display:flex;margin-left:16px;font-size:${nameSize}px;color:${TEXT}">${esc(r.domain)}</div>
+        <div style="display:flex;margin-left:auto;font-size:${nameSize}px;color:${BRIGHT}">${n(r.hits)}</div>
+        <div style="display:flex;width:130px;justify-content:flex-end;font-size:24px;color:${DIM}">${all > 0 ? ((r.hits / all) * 100).toFixed(1) : '0.0'}%</div>`)}
+      <div style="display:flex;width:100%;height:12px;flex-shrink:0;background:${BG};border-radius:6px">
+        <div style="display:flex;width:${Math.max(2, Math.round((r.hits / max) * 100))}%;height:12px;background:${r.color};border-radius:6px"></div>
+      </div>
+    </div>`).join("");
+
+  // a ratio of request volume, which is not a ranking of the apps producing it
+  let ratio = "";
   if (rows.length >= 2 && rows[0]!.hits > 0 && rows[1]!.hits > 0) {
     const r = rows[0]!.hits / rows[1]!.hits;
-    lead = `${rows[0]!.domain} leads ${r < 10 ? r.toFixed(2) : Math.round(r)}×`;
+    ratio = `${rows[0]!.domain} ${r < 10 ? r.toFixed(2) : Math.round(r)}\u00d7 ${rows[1]!.domain}`;
   }
 
-  // the title is the one variable-width thing here; cap it so three long
-  // domains cannot force a wrap the fixed height has no room for
-  const heading = rows.map(r => r.domain).join("  vs  ");
-  const headSize = heading.length > 34 ? 32 : heading.length > 24 ? 38 : 44;
-
-  return `<div style="display:flex;flex-direction:column;flex-shrink:0;padding-top:26px">
-    ${row(headSize + 12, `font-size:${headSize}px;color:${BRIGHT};align-items:center`, esc(heading))}
-    ${row(34, `font-size:26px;color:${MUTED};align-items:center`, `search traffic · ${RANGE_LABEL[range] ?? RANGE_LABEL['7d']}`)}
-    <div style="display:flex;flex-direction:column;gap:14px;padding-top:22px;flex-shrink:0">${bars}</div>
-    ${lead ? row(52, `margin-top:18px;border-top:1px solid ${LINE};font-size:28px;color:${TEXT};align-items:flex-end`, `∫ ${esc(lead)}`) : ""}
+  return `<div style="display:flex;flex-direction:column;flex:1;justify-content:center;padding:8px 0">
+    ${bars}
+    ${ratio ? row(46, `align-items:center;font-size:24px;color:${MUTED}`,
+      `<div style="display:flex;color:${DIM};margin-right:12px">\u222b</div>${esc(ratio)} by request volume`) : ""}
   </div>`;
 }
 
-/** the default card: what the service is, and how big the index is */
+/** the default card: what this is, and how big the index is */
 function overview(total: number, handlePct: string): string {
   const stat = (v: string, label: string) => `<div style="display:flex;flex-direction:column;flex-shrink:0">
-      ${row(70, `font-size:56px;color:${ACCENT};align-items:center`, v)}
-      ${row(34, `font-size:26px;color:${MUTED};align-items:center`, label)}
+      ${row(72, `font-size:58px;color:${ACCENT};align-items:center`, v)}
+      ${row(34, `font-size:24px;color:${MUTED};align-items:center`, label)}
     </div>`;
-  return `<div style="display:flex;flex-direction:column;flex-shrink:0;padding-top:44px">
-    ${row(66, `font-size:52px;color:${BRIGHT};align-items:center`, "community actor search")}
-    ${row(66, `font-size:52px;color:${BRIGHT};align-items:center`, "for atproto")}
-    <div style="display:flex;gap:70px;padding-top:48px;flex-shrink:0">
+  return `<div style="display:flex;flex-direction:column;flex:1;justify-content:center">
+    ${row(68, `font-size:52px;color:${BRIGHT};align-items:center`, "community actor search")}
+    ${row(68, `font-size:52px;color:${BRIGHT};align-items:center`, "for atproto")}
+    <div style="display:flex;gap:80px;padding-top:44px;flex-shrink:0">
       ${stat(n(total), "actors indexed")}
       ${stat(handlePct + "%", "with a resolved handle")}
     </div>
@@ -172,17 +176,20 @@ export async function handleOgImage(request: Request, env: Env): Promise<Respons
   const known = new Set(series.map(r => r.domain));
   const wanted = apps.filter(a => known.has(a));
 
-  let body: string;
+  let body: string, right: string;
   if (wanted.length > 0) {
-    body = comparison(wanted, series, RANGE_SECS[range] ? range : "7d", order);
+    const r = RANGE_SECS[range] ? range : "7d";
+    body = comparison(wanted, series, r, order);
+    right = "requests \u00b7 " + (RANGE_LABEL[r] ?? RANGE_LABEL['7d']);
   } else {
     const last = kv?.snapshots?.[kv.snapshots.length - 1];
     const total = last?.total ?? 0;
     const pct = last && last.total > 0 ? ((last.with_handles / last.total) * 100).toFixed(1) : "0";
     body = overview(total, pct);
+    right = "";   // the headline below already says it
   }
 
-  return new ImageResponse(shell(body), {
+  return new ImageResponse(shell(body, right), {
     width: W,
     height: H,
     fonts: [{ name: "JetBrains Mono", data: await jetbrainsMono(), style: "normal" }],
