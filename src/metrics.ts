@@ -81,6 +81,13 @@ export async function recordTrafficSource(db: TursoDB, request: Request): Promis
   if (domain === "localhost" || domain.startsWith("127.") || domain === "[::1]") {
     domain = "unknown";
   }
+  // X-Client is a raw request header — arbitrary bytes, any length, chosen by
+  // the caller. It gets stored, then rendered on /stats. The renderer escapes
+  // it, but this is the layer that decides what may enter the corpus at all:
+  // anything that is not hostname-shaped is not a traffic source.
+  if (!/^[a-zA-Z0-9._:\-\[\]]{1,64}$/.test(domain)) {
+    domain = "unknown";
+  }
   const bucket = Math.floor(Date.now() / 300_000);
   await db.batch([
     db.prepare(

@@ -70,7 +70,15 @@ export function statsPage(d: StatsData): string {
     }
     activity[range] = a;
   }
-  const activityJson = JSON.stringify(activity);
+  // Inlining JSON into a <script> is not the same as serialising it. JSON.stringify
+  // does NOT escape "</script>", so a single "<" in attacker-controlled data closes
+  // the element and everything after it is parsed as HTML. Domains reach this page
+  // straight from the X-Client / Origin request headers, which made this a stored
+  // XSS: one request with X-Client: </script><script>... and the payload ran for
+  // every visitor to /stats. Escaping "<" is enough and keeps the value valid JSON.
+  const jsonScript = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
+
+  const activityJson = jsonScript(activity);
   // SSR renders the 7d view so the page is correct without JS and the value
   // agrees with the active button on load.
   const initialTotal = activity['7d']!.searches + activity['7d']!.cacheHits;
@@ -85,7 +93,7 @@ export function statsPage(d: StatsData): string {
   const lastIdx = d.snapshots.length - 1;
   const thinned = d.snapshots.filter((s, i) =>
     s.ts >= cutoff || i % 24 === 0 || i === lastIdx);
-  const snapshotJson = JSON.stringify(thinned);
+  const snapshotJson = jsonScript(thinned);
 
   const PIE_COLORS = [
     // Ordered so adjacent slices never sit next to a neighbour on the wheel —
@@ -98,7 +106,7 @@ export function statsPage(d: StatsData): string {
   const PIE_TOP_N = 12;
   const trafficTotal = d.trafficSources.reduce((s, r) => s + r.hits, 0);
   const pieSlice = d.trafficSources.slice(0, PIE_TOP_N);
-  const trafficJson = JSON.stringify(pieSlice);
+  const trafficJson = jsonScript(pieSlice);
   const trafficGrandTotal = trafficTotal;
   // per-domain hourly series for every recorded domain (bounded: ~50 domains ×
   // ≤720 hourly rows), compact form: domain -> [[hour, hits], ...]
@@ -106,32 +114,37 @@ export function statsPage(d: StatsData): string {
   for (const r of d.trafficSeries) {
     (seriesByDomain[r.domain] ??= []).push([r.hour, r.hits]);
   }
-  const trafficSeriesJson = JSON.stringify(seriesByDomain);
+  const trafficSeriesJson = jsonScript(seriesByDomain);
   // raw 5-min buckets (last 48h) for the 24h view
   const seriesByDomain5m: Record<string, [number, number][]> = {};
   for (const r of d.trafficSeries5m) {
     (seriesByDomain5m[r.domain] ??= []).push([r.bucket, r.hits]);
   }
-  const trafficSeries5mJson = JSON.stringify(seriesByDomain5m);
+  const trafficSeries5mJson = jsonScript(seriesByDomain5m);
 
   // domains come from caller-controlled headers (X-Client/Origin) — escape them
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+  // The domain NAME is not a link.
+  //
+  // It used to be an <a target="_blank">, and the selection handler skips
+  // anchors so the link could still navigate — which meant the largest part of
+  // every legend entry and table row did not select. With a mouse you can aim
+  // at the percentage; with a thumb you land on the name and get sent to the
+  // app's website. Selecting is the primary action here, so the whole entry
+  // selects and navigation moves to its own explicit ↗ target.
+  const visit = (domain: string) => domain in SPECIAL_DOMAINS ? ''
+    : `<a href="https://${esc(domain)}" target="_blank" rel="noopener" class="visit" title="open ${esc(domain)}" aria-label="open ${esc(domain)}">↗</a>`;
+
   const pieLegendHtml = pieSlice.map((r, i) => {
     const color = SPECIAL_DOMAINS[r.domain] ?? PIE_COLORS[i % PIE_COLORS.length];
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
-    const label = r.domain in SPECIAL_DOMAINS
-      ? esc(r.domain)
-      : `<a href="https://${esc(r.domain)}" target="_blank" rel="noopener" class="legend-link">${esc(r.domain)}</a>`;
-    return `<span data-domain="${esc(r.domain)}"><span class="ldot" style="background:${color}"></span>${label} (${pct}%)</span>`;
+    return `<span data-domain="${esc(r.domain)}"><span class="ldot" style="background:${color}"></span>${esc(r.domain)} (${pct}%)</span>`;
   }).join('');
 
   const trafficTableRows = d.trafficSources.map((r, i) => {
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
-    const label = r.domain in SPECIAL_DOMAINS
-      ? esc(r.domain)
-      : `<a href="https://${esc(r.domain)}" target="_blank" rel="noopener" class="legend-link">${esc(r.domain)}</a>`;
-    return `<tr data-domain="${esc(r.domain)}"><td class="ts-rank">${i + 1}</td><td class="ts-domain">${label}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td></tr>`;
+    return `<tr data-domain="${esc(r.domain)}"><td class="ts-rank">${i + 1}</td><td class="ts-domain">${esc(r.domain)}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td><td class="ts-visit">${visit(r.domain)}</td></tr>`;
   }).join('');
 
   return `<!doctype html>
@@ -209,10 +222,16 @@ export function statsPage(d: StatsData): string {
     #pie { display: block; margin: 0 auto; width: 280px; height: 280px; touch-action: none; }
     .pie-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.7rem;
                   font-size: 0.7rem; color: var(--muted); justify-content: center; }
-    .pie-legend span { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4;
-                       padding: 0.25rem 0.1rem; }
-    .legend-link { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--faint); }
-    .legend-link:hover { color: var(--text); border-bottom-color: var(--muted); }
+    .pie-legend span[data-domain] { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4;
+                       padding: 0.35rem 0.5rem; border-radius: 999px; min-height: 30px;
+                       border: 1px solid transparent; }
+    .pie-legend span.sel { border-color: var(--line-2); background: var(--panel-2); }
+    /* the only navigation affordance left; sized as a real touch target so it
+       is hittable without being easy to hit by accident */
+    .visit { color: var(--faint); text-decoration: none; padding: 0 0.35rem;
+             display: inline-block; min-width: 24px; text-align: center; }
+    .visit:hover { color: var(--accent); }
+    .ts-visit { width: 2rem; text-align: right; padding-left: 0 !important; }
     .traffic-series { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
     .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
     .traffic-series .ranged-header { margin-bottom: 0.5rem; }
@@ -311,9 +330,6 @@ export function statsPage(d: StatsData): string {
     .ts-table tr:last-child td { border-bottom: none; }
     .ts-rank { color: var(--dim); width: 2.2rem; }
     .ts-domain { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ts-domain a { display: inline-block; max-width: 100%;
-                   overflow: hidden; text-overflow: ellipsis;
-                   white-space: nowrap; vertical-align: bottom; }
     .ts-hits { text-align: right; font-variant-numeric: tabular-nums; color: var(--text);
                width: 4.5rem; }
     .ts-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted);
@@ -461,7 +477,7 @@ export function statsPage(d: StatsData): string {
               : ''}
            <div class="ts-table-wrap">
              <table class="ts-table">
-               <thead><tr><th>#</th><th>domain</th><th style="text-align:right">hits</th><th style="text-align:right">%</th></tr></thead>
+               <thead><tr><th>#</th><th>domain</th><th style="text-align:right">hits</th><th style="text-align:right">%</th><th></th></tr></thead>
                <tbody>${trafficTableRows}</tbody>
              </table>
            </div>`
@@ -689,7 +705,7 @@ export function statsPage(d: StatsData): string {
     }
 
     /* --- traffic sources pie chart --- */
-    const PIE_COLORS = ${JSON.stringify(PIE_COLORS)};
+    const PIE_COLORS = ${jsonScript(PIE_COLORS)};
     const traffic = ${trafficJson};
     const trafficGrandTotal = ${trafficGrandTotal};
     const pieCanvas = document.getElementById('pie');
@@ -722,7 +738,7 @@ export function statsPage(d: StatsData): string {
     let showBaseline = true;   // the dotted all-sources line, for relative scale
     let tsView = null;         // {t0Sec, stepSec, step, toY, series[]} — the trace reads this
 
-    const SPECIAL_SERIES = ${JSON.stringify(SPECIAL_DOMAINS)};
+    const SPECIAL_SERIES = ${jsonScript(SPECIAL_DOMAINS)};
     function domainColor(domain) {
       if (domain == null) return '#4a9';
       if (SPECIAL_SERIES[domain]) return SPECIAL_SERIES[domain];
@@ -1195,7 +1211,7 @@ export function statsPage(d: StatsData): string {
     if (pieCanvas && traffic.length > 0) {
       const pieTotal = traffic.reduce((s, r) => s + r.hits, 0);
 
-      const SPECIAL = ${JSON.stringify(SPECIAL_DOMAINS)};
+      const SPECIAL = ${jsonScript(SPECIAL_DOMAINS)};
       function getColor(i) {
         return SPECIAL[traffic[i].domain] || PIE_COLORS[i % PIE_COLORS.length];
       }
