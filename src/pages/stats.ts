@@ -275,14 +275,14 @@ export function statsPage(d: StatsData): string {
        selection they didn't ask for. */
     #tseries-compare { background: transparent; border: 1px solid var(--line); color: var(--dim);
                        padding: 0.3rem 0.55rem; font-size: 0.65rem; cursor: pointer;
-                       border-radius: 6px; font-family: inherit; min-height: 28px; white-space: nowrap; }
+                       border-radius: 6px; font-family: inherit; min-height: 34px; white-space: nowrap; }
     #tseries-compare:hover { color: var(--text); border-color: var(--line-2); }
     #tseries-compare[aria-pressed="true"] { background: var(--panel-2); color: var(--text);
                                             border-color: var(--accent); }
     .ts-menu-wrap { position: relative; flex-shrink: 0; }
     #tseries-menu-btn { background: transparent; border: 1px solid var(--line); color: var(--dim);
                         padding: 0.2rem 0.5rem 0.35rem; font-size: 0.8rem; line-height: 1; cursor: pointer;
-                        border-radius: 6px; font-family: inherit; min-height: 28px; }
+                        border-radius: 6px; font-family: inherit; min-height: 34px; min-width: 34px; }
     #tseries-menu-btn:hover, #tseries-menu-btn[aria-expanded="true"] { color: var(--text); border-color: var(--line-2); }
     .ts-menu { position: absolute; right: 0; bottom: calc(100% + 0.3rem); z-index: 40;
                background: var(--tip-bg); border: 1px solid var(--line-2); border-radius: 8px;
