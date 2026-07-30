@@ -1,6 +1,8 @@
 # typeahead — agent guide
 
-Community actor search for atproto. Canonical endpoint: `tech.waow.typeahead.searchActors`
+Community actor search for atproto. Discovery is the relay firehose
+(`com.atproto.sync.subscribeRepos`), NOT jetstream — see `docs/discovery-and-identity.md`.
+Canonical endpoint: `tech.waow.typeahead.searchActors`
 (self-owned lexicon, `lexicons/`); `app.bsky.actor.searchActorsTypeahead` is served forever as
 the drop-in migration alias — the two must stay byte-identical (smoke enforces this).
 When endpoints change, update ALL public docs together: `/docs`, `/llms.txt` (src/pages/llms.ts),
@@ -68,10 +70,13 @@ regression is pinned). Extend it, don't prune it.
   (heavypad) as the `typeahead-index` Prefect deployment in the `my-prefect-server` repo,
   scheduled every 3 days (09:00 UTC): reads Turso → builds the prefix-index snapshot →
   uploads to R2 → App B promotes. To change it, edit `flows/typeahead_index.py` /
-  `prefect.yaml` there and redeploy (note: activating/altering its schedule needs a
-  delete+recreate of the deployment — prefect 3.7.2 won't overwrite an existing schedule).
-  `services/fly.indexer.toml` is retained only as a manual rollback path. Host prereqs:
-  `deploy/home-indexer/install.sh`. See `docs/ephemeral-indexer-plan.md`.
+  `prefect.yaml` there and redeploy. `prefect.yaml` IS authoritative for schedules —
+  each deploy replaces them. `services/fly.indexer.toml` is retained only as a manual
+  rollback path. Host prereqs: `deploy/home-indexer/install.sh`.
+  See `docs/ephemeral-indexer-plan.md`.
+- **`typeahead-plc-identity`** — the other heavypad Prefect deployment, weekly
+  (Mon 05:00 UTC). Bulk DID -> handle/pds from the PLC log, for what `getProfiles`
+  cannot see. See `docs/discovery-and-identity.md`.
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
 
@@ -79,6 +84,10 @@ regression is pinned). Extend it, don't prune it.
 
 - worker tests: `bun test`. zig tests: `just test-services` (or `cd services && zig build test`).
 - never run work proportional to the corpus on the request/cron path (see the invariant above).
+- every equality query on `actors.handle` needs `COLLATE NOCASE`, or it scans the whole
+  table — `idx_actors_handle` is declared with that collation. Paginate on `rowid`.
+- Turso is single-writer and the live ingester shares it. Bulk writes must batch (one
+  statement per batch, not per row) and pace against observed latency.
 - ranking is by the stored `actors.quality_score`, not live followers; writes that touch
   aggregate counts must keep `quality_score` consistent with them (see the clobber regression
   guarded in `bench.py` + `smoke.py`).
