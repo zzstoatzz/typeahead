@@ -80,8 +80,16 @@ export async function handleCursor(
   // deliberately separate: feeding the old µs value to subscribeRepos would
   // request a sequence ~7 orders of magnitude in the future. A missing key means
   // "start live", which is the intended state on first boot after the cutover.
-  const cursor = await env.KV.get("relay_cursor");
-  return json({ cursor: cursor ? Number(cursor) : null });
+  const [cursor, cronAttempt] = await Promise.all([
+    env.KV.get("relay_cursor"),
+    env.KV.get("cron_last_attempt"),
+  ]);
+  // cron_last_attempt distinguishes "the schedule did not fire" from "a step
+  // failed" when an hour is missing from `snapshots`.
+  return json({
+    cursor: cursor ? Number(cursor) : null,
+    cron_last_attempt: cronAttempt ? Number(cronAttempt) : null,
+  });
 }
 
 /** resolve a handle or DID via slingshot, then upsert into the active DB */

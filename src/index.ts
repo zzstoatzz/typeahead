@@ -18,6 +18,11 @@ import { reputationPage } from "./pages/reputation";
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     const db = await getDb(env);
+    // Record the ATTEMPT before any work. Without this a missing snapshot row is
+    // ambiguous: it could mean the cron never fired (Cloudflare schedules are
+    // best-effort) or that recordSnapshot itself failed. Those need different
+    // fixes, and there was no way to tell them apart after the fact.
+    await env.KV.put("cron_last_attempt", String(Date.now())).catch(() => {});
     // isolate each step: a slow/failing one (e.g. recordSnapshot when the table
     // grew past a cheap COUNT) must never take down the rest — that cascade is
     // what froze the /stats page from 2026-05-18.

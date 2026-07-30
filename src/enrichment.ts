@@ -20,7 +20,13 @@ export async function recordSnapshot(db: TursoDB): Promise<void> {
   const [totalRes, hiddenRes, emptyHandlesRes, emptyAvatarsRes] = await db.batch([
     db.prepare("SELECT value AS n FROM counters WHERE name = 'actors_total'"),
     db.prepare("SELECT COUNT(*) AS n FROM actors WHERE hidden != 0"),
-    db.prepare("SELECT COUNT(*) AS n FROM actors WHERE handle = ''"),
+    // COLLATE NOCASE or this is a SCAN of all ~10.6M index entries instead of a
+    // SEARCH: idx_actors_handle is declared COLLATE NOCASE, so a binary-equality
+    // predicate cannot seek it and falls back to idx_actors_enrich_identity as a
+    // covering scan. Cheap when idle, but it is the most expensive query in the
+    // hourly cron and the first to time out under write contention — which
+    // fails the step and leaves that hour with no snapshot row.
+    db.prepare("SELECT COUNT(*) AS n FROM actors WHERE handle = '' COLLATE NOCASE"),
     db.prepare("SELECT COUNT(*) AS n FROM actors WHERE avatar_url = ''"),
   ], "read");
 
