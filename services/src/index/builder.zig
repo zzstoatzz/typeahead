@@ -458,6 +458,24 @@ fn randomHex4(io_: std.Io, buf: *[4]u8) void {
 pub fn run(allocator: Allocator) !void {
     const cfg = readConfigFromEnv();
 
+    // Republish a build that is already on disk.
+    //
+    // uploadArtifacts writes the latest pointer LAST, so a failure part-way
+    // leaves the artifact uploaded and unreferenced — the safe outcome, but
+    // recovering it meant rebuilding the whole snapshot and re-uploading 12.4GB
+    // over a home connection to fix a 300-byte manifest. The comment above the
+    // failure path always claimed "a retry/manual upload can still promote it";
+    // this is that path.
+    if (cGetenv("INDEX_PUBLISH_ONLY")) |dir| {
+        const bid = std.fs.path.basename(dir);
+        const build_id = if (std.mem.startsWith(u8, bid, "build-")) bid["build-".len..] else bid;
+        const db_path = try std.fmt.allocPrint(allocator, "{s}/index.db", .{dir});
+        defer allocator.free(db_path);
+        log.info("INDEX_PUBLISH_ONLY={s} — skipping build, republishing build_id={s}", .{ dir, build_id });
+        const channel = parseChannel(cGetenv("INDEX_CHANNEL"));
+        return uploadArtifacts(allocator, channel, build_id, db_path, dir);
+    }
+
     var stats: BuildStats = .{ .build_start_ms = nowMs() };
     log.info("indexer start: sample_limit={d} top_n=({d}/{d}/{d})", .{
         cfg.sample_limit, cfg.top_n_short, cfg.top_n_medium, cfg.top_n_long,
@@ -697,8 +715,19 @@ pub fn run(allocator: Allocator) !void {
     const channel = parseChannel(cGetenv("INDEX_CHANNEL"));
     switch (channel) {
         .local => log.info("channel=local — R2 upload skipped; build on disk at {s}", .{build_dir}),
-        .staging, .prod => uploadArtifacts(allocator, channel, build_id, db_path, build_dir) catch |err|
-            log.err("R2 upload failed ({s}); build retained on disk at {s}", .{ @errorName(err), build_dir }),
+        // Propagate, do not swallow.
+        //
+        // This used to `catch |err| log.err(...)` and fall through, so the
+        // process exited 0 and the orchestrator recorded a Completed run. On
+        // 2026-07-31 a 12.4GB index.db uploaded fine and the tiny manifest.json
+        // 403'd, and the flow reported success — a build that never promoted,
+        // indistinguishable from one that did. The build is still retained on
+        // disk for INDEX_PUBLISH_ONLY; what changes is that the run now fails.
+        .staging, .prod => uploadArtifacts(allocator, channel, build_id, db_path, build_dir) catch |err| {
+            log.err("R2 upload failed ({s}); build retained on disk at {s} — " ++
+                "republish with INDEX_PUBLISH_ONLY={s}", .{ @errorName(err), build_dir, build_dir });
+            return err;
+        },
     }
 }
 
