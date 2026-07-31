@@ -10,7 +10,7 @@ import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet
 import { handleGetProfiles } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { handleOgImage } from "./handlers/og";
-import { handleFreshness, measureFreshness } from "./handlers/freshness";
+import { handleFreshness, measureFreshness, notifyFreshnessChange } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
@@ -40,6 +40,8 @@ export default {
       ["freshness", async () => {
         const f = await measureFreshness(env);
         console.log(JSON.stringify({ event: f.stale ? "freshness_stale" : "freshness_ok", ...f }));
+        // notify BEFORE storing: the notifier compares against the previous run
+        await notifyFreshnessChange(env, f);
         await env.KV.put("freshness", JSON.stringify({ ...f, at: Date.now() })).catch(() => {});
       }],
     ];

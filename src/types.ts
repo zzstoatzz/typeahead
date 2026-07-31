@@ -17,6 +17,12 @@ export interface Env {
   /// Turn off with:
   ///   bunx wrangler secret delete EMERGENCY_PROXY_BSKY
   EMERGENCY_PROXY_BSKY?: string;
+  /// Discord-compatible webhook. When set, the hourly cron posts here on a
+  /// freshness STATE CHANGE (ok -> stale, stale -> ok). Set via:
+  ///   bunx wrangler secret put ALERT_WEBHOOK_URL
+  /// Independent of Logfire on purpose: the 48h wedge on 2026-07-28 went
+  /// unnoticed partly because the search service exported no telemetry at all.
+  ALERT_WEBHOOK_URL?: string;
 }
 
 export interface ActorRow {

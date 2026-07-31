@@ -108,8 +108,65 @@ export async function measureFreshness(env: Env): Promise<Freshness> {
   return out;
 }
 
-/** public, cheap, cacheable — so an uptime check can watch it without a token */
+/** The uptime-monitor surface. Public, no auth, no dependencies of its own.
+ *
+ *  200 = the serving path is current. 503 = it is not, with `reasons` saying
+ *  why. That is the whole contract, so any monitor that understands HTTP status
+ *  can watch it — deliberately not routed through Logfire, because the 48-hour
+ *  wedge on 2026-07-28 was invisible partly because this service exported no
+ *  telemetry at all.
+ *
+ *  no-store: a monitor must see the current state, never an edge-cached one.
+ */
 export async function handleFreshness(env: Env): Promise<Response> {
   const f = await measureFreshness(env);
-  return json(f, f.stale ? 503 : 200);
+  return json(f, f.stale ? 503 : 200, {
+    "Cache-Control": "no-store",
+    // some monitors alert on a body match rather than a status code
+    "X-Freshness": f.stale ? "stale" : "fresh",
+  });
+}
+
+/** Post to the webhook only when the state CHANGES.
+ *
+ *  Hourly "still broken" messages train you to ignore the channel, and a
+ *  channel you ignore is the same as no alerting — which is what we had.
+ *  Mirrors Logfire's has_matches_changed semantics, but depends on nothing
+ *  except the webhook itself.
+ */
+export async function notifyFreshnessChange(env: Env, f: Freshness): Promise<void> {
+  if (!env.ALERT_WEBHOOK_URL) return;
+
+  let wasStale: boolean | null = null;
+  try {
+    const prev = await env.KV.get("freshness", "json") as { stale?: boolean } | null;
+    wasStale = prev && typeof prev.stale === "boolean" ? prev.stale : null;
+  } catch { /* no prior state — treat as a change only if stale */ }
+
+  if (wasStale === f.stale) return;                 // no change
+  if (wasStale === null && !f.stale) return;        // first run and healthy
+
+  const lag = f.replica_lag_s === null ? "?" : `${Math.round(f.replica_lag_s / 60)}m`;
+  const snap = f.snapshot_age_s === null ? "?" : `${Math.round(f.snapshot_age_s / 3600)}h`;
+  const content = f.stale
+    ? [
+        "**typeahead: serving is stale**",
+        "```",
+        f.reasons.join("\n") || "unknown",
+        "```",
+        `replica lag ${lag} · snapshot ${snap} · probe ${f.probe_ok ? "ok" : "FAILING"}`,
+        "https://typeahead.waow.tech/health/freshness",
+      ].join("\n")
+    : `**typeahead: serving is fresh again** — replica lag ${lag}, snapshot ${snap}`;
+
+  try {
+    await fetch(env.ALERT_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+      signal: AbortSignal.timeout(5000),
+    });
+  } catch (e: any) {
+    console.log(JSON.stringify({ event: "freshness_notify_failed", error: e?.message }));
+  }
 }

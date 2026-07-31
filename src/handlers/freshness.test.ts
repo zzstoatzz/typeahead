@@ -1,5 +1,5 @@
 import { describe, expect, test, afterEach } from "bun:test";
-import { measureFreshness } from "./freshness";
+import { measureFreshness, notifyFreshnessChange } from "./freshness";
 import type { Env } from "../types";
 
 const realFetch = globalThis.fetch;
@@ -65,5 +65,59 @@ describe("freshness", () => {
     const f = await measureFreshness(env);
     expect(f.ok).toBe(false);
     expect(f.reasons.join(" ")).toContain("unreachable");
+  });
+});
+
+describe("freshness notification", () => {
+  const calls: any[] = [];
+  const kvWith = (prev: any) => ({
+    get: async () => prev,
+  }) as unknown as KVNamespace;
+  const envWith = (prev: any) => ({
+    SEARCH_BACKEND_URL: "https://backend.test",
+    ALERT_WEBHOOK_URL: "https://hook.test/x",
+    KV: kvWith(prev),
+  } as unknown as Env);
+
+  const capture = () => {
+    calls.length = 0;
+    globalThis.fetch = (async (_u: any, init: any) => {
+      calls.push(JSON.parse(init.body).content);
+      return new Response("{}", { status: 200 });
+    }) as any;
+  };
+
+  const F = (stale: boolean) => ({
+    ok: !stale, stale, replica_lag_s: stale ? 3600 : 60, snapshot_age_s: 7200,
+    build_id: "b1-x", probe_ok: true, reasons: stale ? ["replica 3600s behind turso"] : [],
+  });
+
+  test("fires when it goes stale", async () => {
+    capture();
+    await notifyFreshnessChange(envWith({ stale: false }), F(true) as any);
+    expect(calls.length).toBe(1);
+    expect(calls[0]).toContain("serving is stale");
+  });
+
+  test("fires once on recovery, not on every healthy run", async () => {
+    capture();
+    await notifyFreshnessChange(envWith({ stale: true }), F(false) as any);
+    expect(calls[0]).toContain("fresh again");
+    capture();
+    await notifyFreshnessChange(envWith({ stale: false }), F(false) as any);
+    expect(calls.length).toBe(0);          // steady healthy -> silent
+  });
+
+  test("does not repeat while it stays broken", async () => {
+    capture();
+    await notifyFreshnessChange(envWith({ stale: true }), F(true) as any);
+    expect(calls.length).toBe(0);
+  });
+
+  test("silent when no webhook is configured", async () => {
+    capture();
+    const env = { SEARCH_BACKEND_URL: "x", KV: kvWith(null) } as unknown as Env;
+    await notifyFreshnessChange(env, F(true) as any);
+    expect(calls.length).toBe(0);
   });
 });
