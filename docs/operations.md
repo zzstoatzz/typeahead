@@ -154,3 +154,48 @@ The service has its own atproto account: **@typeahead.waow.tech** =
   (`ATPROTO_PASSWORD` is in the gitignored `.env`; source it, don't read it).
 - endpoint changes must update `/docs`, `/llms.txt`, README.md, and the homepage
   API chip together; smoke asserts canonical/alias equivalence.
+
+## freshness: what to check when someone says "it's not showing up" (2026-07-31)
+
+`GET /health/freshness` — public, no token, 503 when anything is wrong:
+
+```
+{"ok":true,"stale":false,"replica_lag_s":37,"snapshot_age_s":19357,
+ "build_id":"...","probe_ok":true,"reasons":[]}
+```
+
+It reports replica lag, snapshot age, and a live query through the real serving
+path. Check it **before** Logfire or fly logs — it needs neither, which matters
+because the search service exported no telemetry at all until 2026-07-31.
+
+Thresholds: replica lag warns at 10 min, stale at 30 min (sync runs every 5 min,
+edge cache is 60s). Snapshot stale at 4 days against a 3-day rebuild cadence.
+
+The three layers and how to check each:
+
+| layer | check | healthy |
+|---|---|---|
+| relay → Turso | `fly logs -a typeahead-ingester --no-tail` | `+N actors ... pending: 0`, cursor advancing |
+| Turso → replica | `/health/freshness` → `replica_lag_s` | < 600s |
+| snapshot | `/index/status` → `build_id` | age < 3 days |
+
+If the replica is behind and no `sync.*` spans are arriving, the sync loop is
+wedged: the watchdog exits the process within 20 min so fly restarts it. A
+manual `fly machine restart -a typeahead-search` is safe — search keeps serving
+from the attached snapshot and the worker falls back to Turso.
+
+## how a request-indexing lands (2026-07-31)
+
+Measured 1.3–6.4s end to end, of which 80–86% is the single-row Turso UPSERT
+contending with the live ingester. Searchable ~0.16s after that write returns.
+
+The worker POSTs the row it just wrote to the search service's
+`/admin/refresh`, which applies it to the replica and projects it into the
+overlay immediately — the overlay being the design's live-update channel. It
+sends the **row**, not a DID: an earlier version had the search service re-read
+the row from Turso, which put the fast path through the most contended
+component in the system (measured: 28s for an indexed point lookup while a bulk
+job ran).
+
+Fire-and-forget. The 5-minute sync remains the mechanism of record, so a failed
+push costs freshness for one actor, never correctness.

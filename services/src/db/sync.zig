@@ -870,30 +870,49 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
 }
 
 /// Background sync loop: full sync on boot, then incremental every 5 min
-/// Pull ONE actor from Turso by DID and apply it immediately.
+/// A row assembled from JSON rather than read back out of Turso.
 ///
-/// The replica is a lagging copy, so an explicit "index this account" request
-/// was only visible after the next 5-minute sync — and when that sync wedged
-/// (2026-07-28) it was invisible for two days. Someone who deliberately asks us
-/// to index an account should not be told to come back later.
-///
-/// Takes only a DID: the row is read from Turso, which is the authority, so
-/// this cannot be used to inject or overwrite anything with attacker-chosen
-/// values. Worst case is a forced re-read of a row that already exists.
-///
-/// Idempotent against the sync loop — same upsert-by-did and the same overlay
-/// projection, so a later incremental pass simply writes the same state again.
-pub fn refreshOne(allocator: Allocator, local: *LocalDb, did: []const u8) !bool {
-    var turso = try TursoClient.init(allocator);
-    defer turso.deinit();
+/// applyActorUpdate takes `anytype` and only ever calls .text/.int/.float, so
+/// the identical write + overlay projection the sync loop uses works unchanged
+/// on a row handed to us over HTTP. No duplicated insert logic, no second
+/// projection implementation to drift.
+pub const InlineRow = struct {
+    vals: [14][]const u8,
+    ints: [5]i64 = .{0} ** 5,
+    qs: f64 = 0,
 
-    var result = try turso.query(
-        "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE did = ?1 AND handle != ''",
-        &.{did},
-    );
-    defer result.deinit();
-    if (result.rows.len == 0) return false;
+    pub fn text(self: *const InlineRow, i: usize) []const u8 {
+        return self.vals[i];
+    }
+    pub fn int(self: *const InlineRow, i: usize) i64 {
+        return switch (i) {
+            Col.hidden => self.ints[0],
+            Col.followers_count => self.ints[1],
+            Col.follows_count => self.ints[2],
+            Col.posts_count => self.ints[3],
+            Col.last_activity_at => self.ints[4],
+            else => 0,
+        };
+    }
+    pub fn float(self: *const InlineRow, i: usize) f64 {
+        return if (i == Col.quality_score) self.qs else 0;
+    }
+};
 
+/// Apply one actor the caller already has, immediately.
+///
+/// The point of this path is that an explicit "index this account" must not
+/// wait for the next 5-minute sync tick. The first version took only a DID and
+/// re-read the row FROM TURSO, which put the fast path through the slowest,
+/// most contended component in the system: measured 2026-07-31, an indexed
+/// point lookup took 28s while a bulk job was running, so "instant" became
+/// "hung". The worker already holds the row — it wrote it moments earlier — so
+/// it sends the row and nothing here touches Turso at all.
+///
+/// Writes into the overlay, which is the design's live-update channel: the
+/// snapshot is a periodic base and the overlay carries everything newer.
+/// Idempotent against the sync loop, which will later write the same state.
+pub fn applyInline(local: *LocalDb, row: *const InlineRow, updated_at: i64) !void {
     const conn = local.getConn() orelse return error.NoConn;
     const overlay_watermark: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
 
@@ -903,17 +922,24 @@ pub fn refreshOne(allocator: Allocator, local: *LocalDb, did: []const u8) !bool 
     local.lock();
     defer local.unlock();
 
-    const row = result.rows[0];
-    const ua = row.int(trailing_col);
-    const octx: ?OverlayCtx = if (overlay_watermark > 0 and ua > overlay_watermark)
-        .{ .arena = arena.allocator(), .updated_at = ua }
+    // Project unless the attached snapshot already covers this timestamp. A
+    // freshly-indexed actor is always newer than the base, so in practice this
+    // is always on; the guard exists so a replayed old row cannot re-add a
+    // prefix the base already accounts for.
+    const octx: ?OverlayCtx = if (overlay_watermark > 0 and updated_at > overlay_watermark)
+        .{ .arena = arena.allocator(), .updated_at = updated_at }
     else
         null;
-    try applyActorUpdate(conn, row, "refresh_one", octx);
-    log.info("refresh_one: applied {s} (updated_at={d}, overlay={s})", .{
-        did, ua, if (octx != null) "yes" else "no",
+
+    conn.exec("BEGIN", .{}) catch {};
+    applyActorUpdate(conn, row, "inline", octx) catch |err| {
+        conn.exec("ROLLBACK", .{}) catch {};
+        return err;
+    };
+    conn.exec("COMMIT", .{}) catch {};
+    log.info("inline: applied {s} (overlay={s})", .{
+        row.text(Col.did), if (octx != null) "yes" else "no",
     });
-    return true;
 }
 
 pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {

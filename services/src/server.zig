@@ -81,13 +81,20 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_poo
     }
 }
 
-/// Apply one actor from Turso right now, so an explicit index request does not
-/// have to wait for the next sync tick (or, when sync wedges, for days).
+/// Apply one actor the caller already has — the fast path for an explicit
+/// "index this account".
 ///
-/// Fails closed: without ADMIN_SECRET set there is no way in. The DID is the
-/// only input and the data comes from Turso, so a leaked secret buys a forced
-/// re-read of a row, not the ability to write one.
+/// Takes the whole row in the body instead of a DID. The DID-only version made
+/// this service read the row back out of Turso, so the fast path depended on
+/// the slowest component: with a bulk job running, an indexed point lookup
+/// measured 28s and this endpoint simply hung. The worker wrote the row a
+/// moment earlier and can just send it.
+///
+/// Accepting values from the caller grants no new privilege: the same
+/// ADMIN_SECRET already authorises /admin/ingest on the worker to write
+/// arbitrary actor rows into Turso, which the sync loop then copies here.
 fn handleAdminRefresh(request: *http.Server.Request, target: []const u8, local_db: *LocalDb) !void {
+    _ = target;
     const secret = cGetenv("ADMIN_SECRET") orelse {
         try sendJson(request, .service_unavailable, "{\"error\":\"ADMIN_SECRET not configured\"}");
         return;
@@ -107,24 +114,98 @@ fn handleAdminRefresh(request: *http.Server.Request, target: []const u8, local_d
         return;
     }
 
-    const raw_did = parseQueryParam(target, "did") orelse {
-        try sendJson(request, .bad_request, "{\"error\":\"missing did parameter\"}");
+    var body_buf: [16 * 1024]u8 = undefined;
+    const body = readBody(request, &body_buf) catch {
+        try sendJson(request, .bad_request, "{\"error\":\"could not read body\"}");
         return;
     };
-    var decode_buf: [256]u8 = undefined;
-    const did = percentDecode(raw_did, &decode_buf) orelse raw_did;
 
-    const applied = sync.refreshOne(std.heap.page_allocator, local_db, did) catch |err| {
+    const gpa = std.heap.page_allocator;
+    var parsed = json.parseFromSlice(json.Value, gpa, body, .{}) catch {
+        try sendJson(request, .bad_request, "{\"error\":\"invalid json\"}");
+        return;
+    };
+    defer parsed.deinit();
+    const obj = switch (parsed.value) {
+        .object => |o| o,
+        else => {
+            try sendJson(request, .bad_request, "{\"error\":\"expected an object\"}");
+            return;
+        },
+    };
+
+    const str = struct {
+        fn get(o: json.ObjectMap, key: []const u8, dflt: []const u8) []const u8 {
+            const v = o.get(key) orelse return dflt;
+            return switch (v) { .string => |x| x, else => dflt };
+        }
+    }.get;
+    const num = struct {
+        fn get(o: json.ObjectMap, key: []const u8) i64 {
+            const v = o.get(key) orelse return 0;
+            return switch (v) {
+                .integer => |x| x,
+                .float => |x| @intFromFloat(x),
+                .bool => |x| @intFromBool(x),
+                else => 0,
+            };
+        }
+    }.get;
+    const flt = struct {
+        fn get(o: json.ObjectMap, key: []const u8) f64 {
+            const v = o.get(key) orelse return 0;
+            return switch (v) {
+                .float => |x| x,
+                .integer => |x| @floatFromInt(x),
+                else => 0,
+            };
+        }
+    }.get;
+
+    const did = str(obj, "did", "");
+    const handle = str(obj, "handle", "");
+    if (did.len == 0 or handle.len == 0) {
+        // a handle-less actor is not searchable and must not enter the overlay
+        try sendJson(request, .bad_request, "{\"error\":\"did and handle are required\"}");
+        return;
+    }
+
+    var row = sync.InlineRow{ .vals = .{
+        did, handle,
+        str(obj, "display_name", ""),
+        str(obj, "avatar_url", ""),
+        "", // hidden — read via int()
+        str(obj, "labels", "[]"),
+        str(obj, "created_at", ""),
+        str(obj, "associated", "{}"),
+        str(obj, "pds", ""),
+        "", "", "", "", "",
+    } };
+    row.ints = .{
+        num(obj, "hidden"),          num(obj, "followers_count"),
+        num(obj, "follows_count"),   num(obj, "posts_count"),
+        num(obj, "last_activity_at"),
+    };
+    row.qs = flt(obj, "quality_score");
+
+    const updated_at = blk: {
+        const v = num(obj, "updated_at");
+        break :blk if (v > 0) v else @as(i64, @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s)));
+    };
+
+    sync.applyInline(local_db, &row, updated_at) catch |err| {
         log.err("admin refresh failed for {s}: {}", .{ did, err });
-        try sendJson(request, .internal_server_error, "{\"error\":\"refresh failed\"}");
+        try sendJson(request, .internal_server_error, "{\"error\":\"apply failed\"}");
         return;
     };
+    try sendJson(request, .ok, "{\"ok\":true,\"applied\":true}");
+}
 
-    var buf: [128]u8 = undefined;
-    const body = std.fmt.bufPrint(&buf, "{{\"ok\":true,\"applied\":{s}}}", .{
-        if (applied) "true" else "false",
-    }) catch "{\"ok\":true}";
-    try sendJson(request, .ok, body);
+fn readBody(request: *http.Server.Request, buf: []u8) ![]const u8 {
+    var transfer_buf: [4096]u8 = undefined;
+    const reader = request.readerExpectNone(&transfer_buf);
+    const n = try reader.readSliceShort(buf);
+    return buf[0..n];
 }
 
 fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *LocalDb) !void {

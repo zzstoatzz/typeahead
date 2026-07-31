@@ -109,6 +109,13 @@ export async function handleRequestIndexing(
     return json({ error: "enter a handle or DID to request indexing." }, 400);
   }
 
+  // Phase timings, reported as Server-Timing. This endpoint's latency has
+  // ranged 0.83s-7.11s in measurement and the variance is not in one obvious
+  // place; guessing at it produced two wrong fixes already.
+  const t: Record<string, number> = {};
+  let mark = Date.now();
+  const lap = (name: string) => { t[name] = Date.now() - mark; mark = Date.now(); };
+
   // resolve via slingshot
   const res = await fetch(
     `${SLINGSHOT_URL}?identifier=${encodeURIComponent(identifier)}`
@@ -118,6 +125,7 @@ export async function handleRequestIndexing(
   }
 
   const identity: SlingshotResponse = await res.json();
+  lap("slingshot");
 
   // fetch profile from public API for display name + avatar + labels + metadata
   let f = {
@@ -125,11 +133,14 @@ export async function handleRequestIndexing(
     followersCount: 0, followsCount: 0, postsCount: 0, qualityScore: 0,
   };
   const override = await getOverride(db, identity.did);
+  lap("override");
   const domainBlocked = isDomainBlocked(identity.handle || "", await getBlockedDomains(db));
+  lap("blocked_domains");
   try {
     const profileRes = await fetch(
       `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(identity.did)}`
     );
+    lap("bsky_profile");
     if (profileRes.ok) {
       f = extractProfileFields(await profileRes.json(), override, domainBlocked);
     } else if (override === 'show' && identity.pds) {
@@ -160,6 +171,7 @@ export async function handleRequestIndexing(
   )
     .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore)
     .run();
+  lap("turso_write");
 
   // Push it into the search replica NOW rather than waiting for the next sync
   // tick. Turso is the authority and the row is already committed above; this
@@ -169,29 +181,62 @@ export async function handleRequestIndexing(
   //
   // Fire-and-forget: the sync loop is still the mechanism of record, so a
   // failure here costs freshness, never correctness.
-  ctx.waitUntil(pushToReplica(env, identity.did));
+  ctx.waitUntil(pushToReplica(env, {
+    did: identity.did,
+    handle: identity.handle,
+    display_name: f.displayName,
+    avatar_url: f.avatarCid,
+    hidden: f.hidden,
+    labels: f.labels,
+    created_at: f.createdAt,
+    associated: f.associated,
+    pds: identity.pds || "",
+    followers_count: f.followersCount,
+    follows_count: f.followsCount,
+    posts_count: f.postsCount,
+    quality_score: f.qualityScore,
+    updated_at: Math.floor(Date.now() / 1000),
+  }));
 
+  const timing = Object.entries(t).map(([k, v]) => `${k};dur=${v}`).join(", ");
   return json({
     handle: identity.handle,
     did: identity.did,
     ...(f.hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
-  });
+  }, 200, { "Server-Timing": timing });
 }
 
-async function pushToReplica(env: Env, did: string): Promise<void> {
+/** Hand the search replica the row we just wrote, so it is searchable now.
+ *
+ *  Sends the ROW, not just the DID. The first version sent a DID and made the
+ *  search service read it back out of Turso — which routed the fast path
+ *  through the most contended component in the system. Measured 2026-07-31
+ *  with a bulk job running: an indexed point lookup took 28s and this hung.
+ *  We already have every field; there is nothing to look up.
+ *
+ *  Fire-and-forget. The 5-minute sync remains the mechanism of record, so a
+ *  failure here costs freshness for one actor, never correctness.
+ */
+async function pushToReplica(env: Env, row: Record<string, unknown>): Promise<void> {
   if (!env.SEARCH_BACKEND_URL || !env.ADMIN_SECRET) return;
+  const t0 = Date.now();
   try {
-    const r = await fetch(
-      `${env.SEARCH_BACKEND_URL}/admin/refresh?did=${encodeURIComponent(did)}`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${env.ADMIN_SECRET}` },
-        signal: AbortSignal.timeout(5000),
+    const r = await fetch(`${env.SEARCH_BACKEND_URL}/admin/refresh`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.ADMIN_SECRET}`,
+        "Content-Type": "application/json",
       },
-    );
-    console.log(JSON.stringify({ event: "replica_push", did, status: r.status }));
+      body: JSON.stringify(row),
+      signal: AbortSignal.timeout(5000),
+    });
+    console.log(JSON.stringify({
+      event: "replica_push", did: row.did, status: r.status, ms: Date.now() - t0,
+    }));
   } catch (e: any) {
-    console.log(JSON.stringify({ event: "replica_push_failed", did, error: e?.message }));
+    console.log(JSON.stringify({
+      event: "replica_push_failed", did: row.did, error: e?.message, ms: Date.now() - t0,
+    }));
   }
 }
 

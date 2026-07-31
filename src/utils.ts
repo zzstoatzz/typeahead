@@ -9,8 +9,8 @@ export function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function json(data: unknown, status = 200): Response {
-  return Response.json(data, { status, headers: CORS_HEADERS });
+export function json(data: unknown, status = 200, extra?: Record<string, string>): Response {
+  return Response.json(data, { status, headers: { ...CORS_HEADERS, ...(extra ?? {}) } });
 }
 
 export function avatarUrl(did: string, cidOrUrl: string, pds?: string): string {
