@@ -54,7 +54,6 @@ import json
 import os
 import sys
 import time
-import urllib.parse
 import urllib.request
 
 TURSO_URL = os.environ.get("TURSO_URL", "")
@@ -254,66 +253,6 @@ def load_need(which: str, page: int) -> dict[str, tuple]:
     return need
 
 
-def load_stored_handles(page: int) -> dict[str, str]:
-    """Every DID we hold a handle for, as did -> handle.
-
-    Same keyset shape as load_need, but it deliberately loads the WHOLE corpus
-    rather than a backlog, because the thing being looked for is a handle that
-    is present and wrong. ~11M entries costs a few GB of RAM — fine on the home
-    box, which peaks far higher during an index build, and this runs weekly.
-    """
-    out: dict[str, str] = {}
-    last = 0
-    t = time.time()
-    print(f"loading stored handles (rowid keyset, page={page})…", file=sys.stderr)
-    while True:
-        rows = turso(
-            "SELECT rowid, did, handle FROM actors WHERE handle != '' COLLATE NOCASE "
-            "AND rowid > ?1 ORDER BY rowid LIMIT ?2",
-            [last, page],
-        )
-        if not rows:
-            break
-        for rowid, did, handle in rows:
-            out[did] = handle
-        last = int(rows[-1][0])
-        if len(out) % (page * 20) < page:
-            print(f"  {len(out):,} ({len(out)/max(time.time()-t,1):.0f}/s)", file=sys.stderr)
-    print(f"stored handles: {len(out):,} in {time.time()-t:.0f}s", file=sys.stderr)
-    return out
-
-
-def confirm_handles(dids: list[str], pace_ms: int = 200) -> dict[str, str]:
-    """Ask the appview what these DIDs' handles actually are, 25 at a time.
-
-    PLC is used only to FIND candidates, never to write one. alsoKnownAs is a
-    claim by the DID; a handle is only real once the domain points back, and the
-    appview is what performs that bidirectional check. Writing PLC's claim
-    directly would let anyone rename themselves in our index by editing their
-    own DID document.
-    """
-    out: dict[str, str] = {}
-    for i in range(0, len(dids), 25):
-        batch = dids[i:i + 25]
-        qs = "&".join("actors=" + urllib.parse.quote(d) for d in batch)
-        try:
-            with urllib.request.urlopen(
-                "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?" + qs, timeout=20
-            ) as r:
-                data = json.load(r)
-        except Exception as e:
-            print(f"  getProfiles failed ({e}); skipping batch", file=sys.stderr)
-            continue
-        for p in data.get("profiles", []):
-            h = p.get("handle", "")
-            if h and h != "handle.invalid":
-                out[p["did"]] = h
-        if i and i % 2500 == 0:
-            print(f"  confirmed {len(out):,}/{i:,}", file=sys.stderr)
-        time.sleep(pace_ms / 1000)
-    return out
-
-
 def verify_bundles(dest: str, delete: bool = True, newest: int = 3) -> int:
     """Drop truncated bundles so a later run re-scrapes them.
 
@@ -501,102 +440,6 @@ def iter_ops(stream, local_dir: str | None):
         yield from _iter_json_values(stream)
 
 
-def reconcile_handles(args) -> int:
-    """Repair handles that are present and WRONG.
-
-    Every other identity path in this system selects on ABSENCE — enrichment
-    phase 1 on `handle = \'\'`, this script\'s own --need modes, the same again in
-    the plc job. Nothing verifies a handle once we have one, so a rename we miss
-    for any reason is permanent: the actor stays searchable only under a name
-    they no longer use, and is not findable under the one they do.
-
-    Measured 2026-07-30 by sampling 1,000 actors against getProfiles: 7 of 727
-    verifiable handles were wrong, ~1%, so roughly 100k actors corpus-wide. All
-    seven were bsky-hosted, so this is not the jetstream gap — it is renames
-    that predate the #identity fix (2026-05-11) plus any missed during an
-    ingester outage.
-
-    Detection is free: the PLC bundles are already on disk for the fill pass,
-    and give an authoritative current handle for every did:plc. Only the
-    candidates — thousands, not millions — cost an API call, and only the
-    appview\'s answer is ever written.
-    """
-    stored = load_stored_handles(args.page)
-    if not stored:
-        return 0
-
-    seen = candidates = 0
-    newest: dict[str, tuple[str, str]] = {}   # did -> (createdAt, plc_handle)
-    t0 = time.time()
-    for op in iter_ops(sys.stdin, args.dest if args.from_dir else None):
-        seen += 1
-        if seen % 2_000_000 == 0:
-            print(f"  scanned {seen:,} ops, {len(newest):,} candidates, {time.time()-t0:.0f}s",
-                  file=sys.stderr)
-        did = op.get("did")
-        ours = stored.get(did)
-        if ours is None:
-            continue
-        aka = ((op.get("operation") or {}).get("alsoKnownAs")) or []
-        if not aka or not aka[0].startswith("at://"):
-            continue
-        plc_handle = aka[0][5:]
-        created = op.get("createdAt") or ""
-        prev = newest.get(did)
-        if plc_handle.lower() == ours.lower():
-            # Agrees. Only DISAGREEING dids are kept, so the working set stays
-            # proportional to the damage rather than to the corpus — but a later
-            # agreeing op has to be able to cancel an earlier disagreeing one,
-            # or every actor who has ever renamed looks stale forever and burns
-            # an API call proving otherwise.
-            if prev is not None and created > prev[0]:
-                del newest[did]
-            continue
-        if prev is None or created > prev[0]:
-            newest[did] = (created, plc_handle)
-
-    # a DID whose LATEST op agrees with us is not a candidate, even if an
-    # earlier op disagreed — that is just its rename history
-    cands = {d: h for d, (_, h) in newest.items() if h.lower() != stored[d].lower()}
-    candidates = len(cands)
-    print(f"scanned {seen:,} ops in {time.time()-t0:.0f}s; {candidates:,} candidate "
-          f"mismatches of {len(stored):,} stored handles "
-          f"({candidates/max(len(stored),1)*100:.2f}%)", file=sys.stderr)
-    if not candidates:
-        return 0
-
-    confirmed = confirm_handles(list(cands), args.pace_ms)
-    # write only what the appview confirms AND still differs from what we hold
-    writes = {d: h for d, h in confirmed.items()
-              if d in stored and h.lower() != stored[d].lower()}
-    print(f"appview knew {len(confirmed):,}; {len(writes):,} confirmed stale", file=sys.stderr)
-
-    if not args.apply:
-        for d, h in list(writes.items())[:15]:
-            print(f"  {d}  {stored[d]}  ->  {h}")
-        print("(dry run — pass --apply to write)", file=sys.stderr)
-        return 0
-
-    # handle only: this pass knows nothing about pds and must not blank it
-    sql = ("UPDATE actors SET handle = j.value ->> \'$.h\', "
-           "identity_checked_at = unixepoch(), updated_at = unixepoch() "
-           "FROM json_each(?1) AS j WHERE actors.did = j.value ->> \'$.d\'")
-    pending, written = [], 0
-    for did, handle in writes.items():
-        pending.append({"d": did, "h": handle})
-        if len(pending) >= args.batch:
-            turso_batch([(sql, [json.dumps(pending)])])
-            written += len(pending)
-            pending = []
-            print(f"  written {written:,}/{len(writes):,}", file=sys.stderr)
-            time.sleep(args.pace_ms / 1000)
-    if pending:
-        turso_batch([(sql, [json.dumps(pending)])])
-        written += len(pending)
-    print(f"repaired {written:,} stale handles", file=sys.stderr)
-    return 0
-
-
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dest", default="./plc-weekly", help="bundle directory")
@@ -612,9 +455,6 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="write to turso (default: dry run)")
     ap.add_argument("--batch", type=int, default=500,
                     help="statements per request; matches the worker's chunk size")
-    ap.add_argument("--reconcile-handles", action="store_true",
-                    help="find handles we hold that are WRONG (renames we missed) and "
-                         "repair them; detection via PLC, every write confirmed by the appview")
     ap.add_argument("--need", choices=("handle", "pds", "both"), default="handle",
                     help="which backlog to target")
     ap.add_argument("--page", type=int, default=10000,
@@ -641,9 +481,6 @@ def main() -> int:
     # traceback after a multi-hour download.
     if not TURSO_URL or not TURSO_TOKEN:
         sys.exit("TURSO_URL / TURSO_AUTH_TOKEN not set (source .env)")
-
-    if args.reconcile_handles:
-        return reconcile_handles(args)
 
     # Only track DIDs we actually need. The whole network is ~23M DIDs; holding
     # every one would cost several GB for no benefit. Restricting to rows that
