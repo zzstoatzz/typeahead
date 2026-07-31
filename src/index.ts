@@ -10,7 +10,7 @@ import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet
 import { handleGetProfiles } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { handleOgImage } from "./handlers/og";
-import { handleFreshness, measureFreshness, notifyFreshnessChange } from "./handlers/freshness";
+import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
@@ -76,6 +76,16 @@ export default {
       return new Response(llmsTxt(), {
         headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...CORS_HEADERS },
       });
+    }
+    // Exercise the alert path on demand and report exactly what the webhook
+    // said. Without this, a failed notification is invisible until the next
+    // real incident — which is the thing the alerting exists to prevent.
+    if (pathname === "/admin/test-alert" && request.method === "POST") {
+      if (request.headers.get("Authorization") !== `Bearer ${env.ADMIN_SECRET}`) {
+        return json({ error: "unauthorized" }, 401);
+      }
+      const r = await postWebhook(env, "**typeahead: alert path test** — ignore me");
+      return json(r, r.ok ? 200 : 500);
     }
     if (pathname === "/health/freshness" && request.method === "GET") {
       return handleFreshness(env);

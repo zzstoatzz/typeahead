@@ -159,14 +159,30 @@ export async function notifyFreshnessChange(env: Env, f: Freshness): Promise<voi
       ].join("\n")
     : `**typeahead: serving is fresh again** — replica lag ${lag}, snapshot ${snap}`;
 
+  await postWebhook(env, content);
+}
+
+/** Returns what actually happened, so a failure is observable rather than
+ *  swallowed. Discord answers 204 on success and puts the reason in the body
+ *  on rejection — both worth surfacing. */
+export async function postWebhook(env: Env, content: string): Promise<{ ok: boolean; status: number | null; body: string }> {
+  if (!env.ALERT_WEBHOOK_URL) return { ok: false, status: null, body: "ALERT_WEBHOOK_URL not set" };
+  // a secret pasted with a trailing newline produces an opaque fetch failure
+  const url = env.ALERT_WEBHOOK_URL.trim();
   try {
-    await fetch(env.ALERT_WEBHOOK_URL, {
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
       signal: AbortSignal.timeout(5000),
     });
+    const body = await r.text().catch(() => "");
+    const out = { ok: r.ok, status: r.status, body: body.slice(0, 300) };
+    console.log(JSON.stringify({ event: "freshness_notify", ...out }));
+    return out;
   } catch (e: any) {
-    console.log(JSON.stringify({ event: "freshness_notify_failed", error: e?.message }));
+    const out = { ok: false, status: null, body: String(e?.message ?? e).slice(0, 300) };
+    console.log(JSON.stringify({ event: "freshness_notify_failed", ...out }));
+    return out;
   }
 }
