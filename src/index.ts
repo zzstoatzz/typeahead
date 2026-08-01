@@ -29,14 +29,21 @@ export default {
     // grew past a cheap COUNT) must never take down the rest — that cascade is
     // what froze the /stats page from 2026-05-18.
     const steps: [string, () => Promise<unknown>][] = [
-      ["recordSnapshot", () => recordSnapshot(db)],
-      ["materializeStats", () => materializeStats(db, env)],
-      ["refreshModeration", () => refreshModeration(db, env)],
-      ["enrichActors", () => enrichActors(db, env)],
-      // Runs LAST and deliberately never throws: this is the check that would
-      // have caught 2026-07-28. It logs loudly rather than fixing anything,
-      // because the repair (restart the search service) is not the worker's to
-      // make — but "nothing was watching" must never be the story again.
+      // FIRST, deliberately.
+      //
+      // This is three HTTP calls, and it is the check that exists to catch the
+      // system failing silently. Last in the chain it took ~7 minutes to run
+      // (measured 2026-07-31: cron at 18:00:51, freshness at 18:07:51) and any
+      // hang in enrichActors — the heavy step, up to 5000 DIDs through
+      // getProfiles — meant it never ran at all. A watchdog positioned behind
+      // the thing most likely to wedge is not a watchdog.
+      //
+      // It also measures a more honest number here: the steady state left by
+      // the previous hour, rather than the replica moments after this cron
+      // wrote a batch into it.
+      //
+      // It never fixes anything — the repair (restart the search service) is
+      // not the worker's to make. It reports, and something else acts.
       ["freshness", async () => {
         const f = await measureFreshness(env);
         console.log(JSON.stringify({ event: f.stale ? "freshness_stale" : "freshness_ok", ...f }));
@@ -44,6 +51,10 @@ export default {
         await notifyFreshnessChange(env, f);
         await env.KV.put("freshness", JSON.stringify({ ...f, at: Date.now() })).catch(() => {});
       }],
+      ["recordSnapshot", () => recordSnapshot(db)],
+      ["materializeStats", () => materializeStats(db, env)],
+      ["refreshModeration", () => refreshModeration(db, env)],
+      ["enrichActors", () => enrichActors(db, env)],
     ];
     for (const [name, fn] of steps) {
       try {
