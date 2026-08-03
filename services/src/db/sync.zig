@@ -67,7 +67,7 @@ fn localFtsEnabled() bool {
 /// index of the first column appended after actor_cols (rowid or updated_at)
 const trailing_col: usize = Col.quality_score + 1;
 
-const BATCH_SIZE = 2000;
+const BATCH_SIZE = 500;
 const SYNC_INTERVAL_S = 300; // 5 minutes
 
 // Liveness watchdog, mirroring the ingester's.
@@ -221,7 +221,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
 
         // fetch from turso (no lock held)
         var result = turso.query(
-            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000",
+            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 500",
             &.{rowid_str},
         ) catch |err| {
             log.err("turso query failed at rowid {d}: {}", .{ last_rowid, err });
@@ -439,7 +439,7 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
         const t0 = milliTimestamp();
 
         var result = turso.query(
-            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000",
+            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 500",
             &.{rowid_str},
         ) catch |err| {
             log.err("resync: turso query failed at rowid {d}: {}", .{ last_rowid, err });
@@ -661,9 +661,9 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 &.{cursor_ts};
 
             const sql = if (cursor_did_len > 0)
-                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND (updated_at > ?1 OR (updated_at = ?2 AND did > ?3)) ORDER BY updated_at, did LIMIT 2000"
+                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND (updated_at > ?1 OR (updated_at = ?2 AND did > ?3)) ORDER BY updated_at, did LIMIT 500"
             else
-                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 2000";
+                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500";
 
             log.info("incremental: querying updated actors (cursor_ts={s})", .{cursor_ts});
             const q_span = logfire.span("sync.query.updated", .{});
@@ -721,6 +721,22 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             if (last_did.len > 0 and last_did.len <= cursor_did_buf.len) {
                 @memcpy(cursor_did_buf[0..last_did.len], last_did);
                 cursor_did_len = last_did.len;
+            }
+
+            // persist progress per page: "all updates <= last_ua_int are
+            // applied" holds because the keyset is ordered by updated_at.
+            // Without this, a page whose fetch wedges (2026-08-03: the read
+            // of a >1MiB response hung forever; watchdog restarts replayed
+            // the cycle from the same watermark and re-wedged on the same
+            // page) turns into an infinite restart loop. With it, each
+            // watchdog cycle advances at least one page.
+            {
+                local.lock();
+                defer local.unlock();
+                conn.exec(
+                    "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)",
+                    .{ua_str},
+                ) catch {};
             }
 
             // safety: stop if batch was less than full (we've drained)
