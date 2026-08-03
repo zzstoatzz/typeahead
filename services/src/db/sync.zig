@@ -438,11 +438,31 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
         const q_span = logfire.span("sync.query.resync_batch", .{});
         const t0 = milliTimestamp();
 
-        var result = turso.query(
-            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 500",
-            &.{rowid_str},
-        ) catch |err| {
-            log.err("resync: turso query failed at rowid {d}: {}", .{ last_rowid, err });
+        // Retry transient failures instead of aborting: a multi-hour resync
+        // sees the occasional turso hiccup (~1 query in thousands, observed
+        // 2026-08-03), and aborting discards hours of progress with no
+        // watermark — the next cycle then starts another doomed resync,
+        // forever. Three attempts with backoff outlives a hiccup; a real
+        // outage still aborts.
+        var result = blk: {
+            var attempt: usize = 0;
+            while (true) {
+                const r = turso.query(
+                    "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 500",
+                    &.{rowid_str},
+                ) catch |err| {
+                    attempt += 1;
+                    if (attempt >= 3) {
+                        log.err("resync: turso query failed at rowid {d} after {d} attempts: {}", .{ last_rowid, attempt, err });
+                        break :blk null;
+                    }
+                    log.warn("resync: turso query failed at rowid {d} (attempt {d}): {} — retrying", .{ last_rowid, attempt, err });
+                    io.sleep(.{ .nanoseconds = @as(u64, 2000) * attempt * std.time.ns_per_ms }, .real) catch {};
+                    continue;
+                };
+                break :blk r;
+            }
+        } orelse {
             q_span.setStatus(.@"error", "query failed");
             q_span.end();
             had_turso_error = true;
