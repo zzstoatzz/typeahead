@@ -67,7 +67,11 @@ fn localFtsEnabled() bool {
 /// index of the first column appended after actor_cols (rowid or updated_at)
 const trailing_col: usize = Col.quality_score + 1;
 
-const BATCH_SIZE = 500;
+// incremental page size: 500 keeps responses ~300KB (the 2026-08-03 wedge
+// bit on a 1.1MiB incremental page). resync/bootstrap keep 2000-row pages —
+// they pushed thousands of 1.1MiB pages clean, and 4x the round trips turns
+// a ~1h disaster-recovery resync into ~4h (observed 2026-08-03).
+const BATCH_SIZE = 500; // (resync/bootstrap SQL uses LIMIT 2000 inline; drain check there is rows.len == 0)
 const SYNC_INTERVAL_S = 300; // 5 minutes
 
 // Liveness watchdog, mirroring the ingester's.
@@ -221,7 +225,7 @@ fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wi
 
         // fetch from turso (no lock held)
         var result = turso.query(
-            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 500",
+            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000",
             &.{rowid_str},
         ) catch |err| {
             log.err("turso query failed at rowid {d}: {}", .{ last_rowid, err });
@@ -448,7 +452,7 @@ fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void
             var attempt: usize = 0;
             while (true) {
                 const r = turso.query(
-                    "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 500",
+                    "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000",
                     &.{rowid_str},
                 ) catch |err| {
                     attempt += 1;
