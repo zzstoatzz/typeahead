@@ -132,9 +132,32 @@ fn executeRaw(self: *TursoClient, sql: []const u8, args: []const []const u8) ![]
     return self.doRequest(body);
 }
 
+/// Read deadline for one turso round trip. 2026-08-04 kernel-stack capture
+/// proved a fetch can block in tcp_recvmsg indefinitely when the flow stalls
+/// mid-response (stdlib http has no timeouts); the sync loop then wedges for
+/// a full watchdog cycle. Generous vs the observed p99 (~15s cold) so it only
+/// fires on genuinely dead flows.
+const FETCH_DEADLINE_MS: u64 = 60_000;
+
+const FetchOut = struct {
+    done: std.atomic.Value(bool) = .init(false),
+    result: anyerror![]const u8 = error.HttpError,
+};
+
+fn fetchTask(self: *TursoClient, url: []const u8, auth: []const u8, payload: []const u8, out: *FetchOut) void {
+    out.result = self.rawFetch(url, auth, payload);
+    out.done.store(true, .release);
+}
+
 /// POST a fully-built hrana v2 pipeline JSON body. Shared between the
 /// string-only `executeRaw` and the typed `execRuntime`/`queryRuntime`
 /// paths so the HTTP / mutex / error handling stays one place.
+///
+/// The fetch runs in a concurrent task so this caller can enforce
+/// FETCH_DEADLINE_MS: on expiry, Future.cancel interrupts the task at its
+/// next cancelation point — including a recv blocked on a stalled flow —
+/// and the caller returns error.FetchTimeout (retryable; the next attempt
+/// opens a fresh connection since keep_alive=false).
 fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
     self.mutex.lockUncancelable(io);
     defer self.mutex.unlock(io);
@@ -147,6 +170,30 @@ fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.token}) catch
         return error.AuthTooLong;
 
+    var out: FetchOut = .{};
+    var future = std.Io.concurrent(io, fetchTask, .{ self, url, auth, body, &out }) catch {
+        // no concurrency available — degrade to the undeadlined direct call
+        return self.rawFetch(url, auth, body);
+    };
+
+    var waited_ms: u64 = 0;
+    while (!out.done.load(.acquire) and waited_ms < FETCH_DEADLINE_MS) {
+        io.sleep(.{ .nanoseconds = 100 * std.time.ns_per_ms }, .real) catch {};
+        waited_ms += 100;
+    }
+
+    if (!out.done.load(.acquire)) {
+        log.err("turso fetch exceeded {d}ms deadline; canceling stalled request", .{FETCH_DEADLINE_MS});
+        future.cancel(io);
+        if (!out.done.load(.acquire)) return error.FetchTimeout;
+        return out.result catch error.FetchTimeout;
+    }
+
+    future.await(io);
+    return out.result;
+}
+
+fn rawFetch(self: *TursoClient, url: []const u8, auth: []const u8, payload: []const u8) ![]const u8 {
     var response_body: std.Io.Writer.Allocating = .init(self.allocator);
     errdefer response_body.deinit();
 
@@ -157,7 +204,7 @@ fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
             .content_type = .{ .override = "application/json" },
             .authorization = .{ .override = auth },
         },
-        .payload = body,
+        .payload = payload,
         .response_writer = &response_body.writer,
         .keep_alive = false,
     }) catch |err| {
