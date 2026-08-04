@@ -267,8 +267,12 @@ def test_request_indexing(base_url: str):
     data, _ = fetch(f"{base_url}/request-indexing", method="POST")
     check("POST empty returns 400", data is not None and data.get("_http_error") == 400, f"got {data}")
 
-    # POST with valid handle should return JSON with handle/did/hidden
-    data, _ = fetch(f"{base_url}/request-indexing?handle=zzstoatzz.io", method="POST")
+    # POST with valid handle should return JSON with handle/did/hidden.
+    # 60s timeout: the synchronous turso upsert queues behind the ingester's
+    # batch transactions and spikes 10-45s under firehose floods (measured
+    # 2026-08-04, server-timing turso_write;dur=10178). that variance is the
+    # endpoint's documented behavior, not a regression for this gate to catch.
+    data, _ = fetch(f"{base_url}/request-indexing?handle=zzstoatzz.io", method="POST", timeout=60)
     if not data or "_error" in data or "_http_error" in data:
         check("POST valid handle", False, f"got {data}")
     else:
