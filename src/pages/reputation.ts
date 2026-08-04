@@ -11,233 +11,166 @@ export function reputationPage(): string {
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}
-    /* This page had its own palette — a second, dark-only design system with
-       different token names (--text-bright vs --bright, --border vs --line), so
-       it ignored the theme toggle and drifted from every other page. The names
-       are kept as aliases onto the shared tokens; the values live in theme.ts. */
-    :root {
-      --bg-subtle: var(--panel);
-      --bg-hover: var(--hover);
-      --border: var(--line);
-      --border-focus: var(--line-2);
-      --text-bright: var(--bright);
-      --text-secondary: var(--muted);
-      --text-dim: var(--dim);
-      --text-muted: var(--faint);
-      --gold: var(--amber);
-    }
-    body {
-      background:
-        radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 23rem),
-        radial-gradient(circle at 92% 18%, color-mix(in srgb, var(--amber) 6%, transparent), transparent 20rem),
-        var(--bg);
-      padding: 1.25rem 1rem 4rem;
-    }
-    body::before {
-      content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image:
-        linear-gradient(color-mix(in srgb, var(--text) 4%, transparent) 1px, transparent 1px),
-        linear-gradient(90deg, color-mix(in srgb, var(--text) 3%, transparent) 1px, transparent 1px);
-      background-size: 44px 44px;
-      mask-image: linear-gradient(to bottom, rgba(0,0,0,0.65), transparent 78%);
-    }
-    .container { max-width: 720px; margin: 0 auto; position: relative; z-index: 1; }
+    body { display: flex; justify-content: center;
+           padding: calc(1.5rem + env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom)); }
+    .container { max-width: 620px; width: 100%; }
+    .header { display: flex; align-items: baseline; justify-content: space-between; gap: 0.4rem; margin-bottom: 0.4rem; }
+    h1 { font-size: 1.1rem; font-weight: 400; color: var(--muted); }
+    .toplinks { font-size: 0.75rem; color: var(--faint); display: flex; gap: 0.45rem; }
+    .toplinks a { color: var(--dim); text-decoration: none; }
+    .toplinks a:hover { color: var(--muted); }
+    .subtitle { font-size: 0.8rem; color: var(--dim); margin-bottom: 1.5rem; }
     a { color: var(--accent-dim); text-decoration: none; }
     a:hover { color: var(--accent); }
-    .topbar {
-      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-      margin-bottom: 1.8rem;
-    }
-    .brand { display: flex; align-items: baseline; gap: 0.55rem; min-width: 0; }
-    .brand a { color: var(--text-bright); font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
-    .brand a:hover { color: var(--accent); }
-    .brand .tag {
-      color: var(--text-dim); border: 1px solid var(--border-focus); border-radius: 999px;
-      padding: 0.08rem 0.45rem; font-size: 11px; white-space: nowrap;
-    }
-    .toplinks { display: flex; align-items: center; gap: 0.55rem; color: var(--text-muted); font-size: 12px; }
-    .toplinks a { color: var(--text-dim); }
-    .toplinks a:hover { color: var(--accent); }
 
-    .entry { margin-bottom: 1rem; }
-    .lead { font-size: 24px; color: var(--text-bright); line-height: 1.18; margin-bottom: 0.5rem; letter-spacing: -0.03em; max-width: 14ch; }
-    .sub { color: var(--text-secondary); margin-bottom: 1rem; max-width: 58ch; }
-    form { display: flex; gap: 0.5rem; }
+    form { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
     .ta-wrap { position: relative; flex: 1; min-width: 0; }
     input {
-      width: 100%; min-width: 0; font-family: inherit; font-size: 16px;
-      padding: 0.72rem 0.85rem; background: color-mix(in srgb, var(--bg-subtle) 86%, transparent);
-      border: 1px solid var(--border); border-radius: 8px; color: var(--text-bright);
+      width: 100%; min-width: 0; padding: 0.7rem 0.9rem; background: var(--panel);
+      border: 1px solid var(--line-2); border-radius: 8px; color: var(--text);
+      font-size: 16px; font-family: inherit; outline: none; min-height: 48px;
+      caret-color: var(--accent);
     }
-    input:focus { outline: none; border-color: var(--accent-dim); box-shadow: 0 0 0 3px rgba(42, 157, 92, 0.12); }
-    input::placeholder { color: var(--text-muted); }
-    button {
-      font: inherit; padding: 0.72rem 1rem; cursor: pointer;
-      background: var(--accent-dim); color: #fff; border: none; border-radius: 8px;
+    input:focus { border-color: var(--accent-dim); }
+    input::placeholder { color: var(--dim); }
+    button[type="submit"] {
+      padding: 0.6rem 1.1rem; background: var(--panel-2); border: 1px solid var(--line-2);
+      border-radius: 8px; color: var(--text); font: inherit; font-size: 0.85rem; cursor: pointer;
+      min-height: 48px;
     }
-    button:hover { background: var(--accent); }
-    button:disabled { opacity: 0.55; cursor: default; }
+    button[type="submit"]:hover { background: var(--hover); border-color: var(--accent-dim); }
+    button:disabled { opacity: 0.5; cursor: default; }
 
     .ta-typeahead-dropdown {
-      position: absolute; top: calc(100% + 6px); left: 0; right: 0; display: none; z-index: 20;
-      border: 1px solid var(--border-focus); border-radius: 12px;
-      background: color-mix(in srgb, var(--bg-subtle) 86%, transparent);
-      backdrop-filter: blur(16px) saturate(150%);
-      -webkit-backdrop-filter: blur(16px) saturate(150%);
-      box-shadow: 0 18px 42px -22px rgba(0, 0, 0, 0.9);
-      overflow: hidden;
+      position: absolute; top: 100%; left: 0; right: 0; margin-top: 4px; display: none; z-index: 20;
+      background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px;
+      max-height: min(300px, 45vh); overflow-y: auto;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.25);
     }
     .ta-typeahead-dropdown.open { display: block; }
     .ta-typeahead-item {
-      display: flex; align-items: center; gap: 0.65rem; padding: 0.62rem 0.72rem;
-      cursor: pointer; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.8rem;
+      min-height: 48px; cursor: pointer; font-size: 0.85rem;
     }
-    .ta-typeahead-item:last-child { border-bottom: none; }
-    .ta-typeahead-item:hover, .ta-typeahead-item.active { background: rgba(42, 157, 92, 0.1); }
+    .ta-typeahead-item:hover, .ta-typeahead-item.active { background: var(--hover); }
     .ta-typeahead-avatar {
-      width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
-      background: var(--bg-hover); border: 1px solid var(--border-focus);
+      width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: 0 0 auto;
+      background: var(--panel-2);
     }
     .ta-typeahead-avatar-ph { display: inline-block; }
-    .ta-typeahead-text { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
-    .ta-typeahead-handle { color: var(--text-bright); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .ta-typeahead-name { color: var(--text-dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ta-typeahead-text { min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+    .ta-typeahead-handle { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ta-typeahead-name { color: var(--dim); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .status {
-      color: var(--text-secondary); margin-top: 1rem; border: 1px solid var(--border);
-      border-radius: 12px; background: rgba(13, 13, 13, 0.72); padding: 1rem;
-      backdrop-filter: blur(14px) saturate(140%);
+      color: var(--muted); border: 1px solid var(--line); border-radius: 10px;
+      background: var(--panel); padding: 0.9rem 1rem; font-size: 0.85rem;
     }
-    .status.err { color: #e0a293; border-color: rgba(192, 86, 63, 0.35); background: rgba(40, 14, 10, 0.5); }
+    .status .stage { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+    .status .elapsed { color: var(--faint); font-size: 0.72rem; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .status .stage-note { color: var(--dim); font-size: 0.75rem; margin-top: 0.3rem; }
+    .status.err { color: var(--red); border-left: 2px solid var(--red); }
 
-    .who {
-      display: flex; align-items: center; gap: 0.9rem; margin: 1.35rem 0 0.9rem;
-      min-height: 64px;
-    }
+    .who { display: flex; align-items: center; gap: 0.9rem; margin: 1.35rem 0 0.9rem; min-height: 56px; }
     .who-avatar {
-      width: 60px; height: 60px; border-radius: 50%; flex: 0 0 auto; overflow: hidden;
-      background: var(--bg-hover); border: 1px solid var(--border-focus);
+      width: 52px; height: 52px; border-radius: 50%; flex: 0 0 auto; overflow: hidden;
+      background: var(--panel-2); border: 1px solid var(--line);
       display: inline-flex; align-items: center; justify-content: center;
     }
     .who-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .ini { font-size: 22px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; }
+    .ini { font-size: 20px; color: var(--muted); text-transform: uppercase; font-weight: 700; }
     .who-text { min-width: 0; }
-    .who-name { color: var(--text-bright); font-size: 18px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
-    .who-handle { color: var(--text-secondary); overflow-wrap: anywhere; }
-    .who-tag { color: var(--text-dim); font-size: 12px; margin-top: 0.15rem; }
+    .who-name { color: var(--bright); font-size: 1rem; font-weight: 700; line-height: 1.25; overflow-wrap: anywhere; }
+    .who-handle { color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
+    .who-tag { color: var(--dim); font-size: 0.72rem; margin-top: 0.15rem; overflow-wrap: anywhere; }
 
-    .cards { display: flex; flex-direction: column; gap: 0.85rem; }
-    .card {
-      border: 1px solid var(--border-focus); border-radius: 14px;
-      background: color-mix(in srgb, var(--bg-subtle) 62%, transparent);
-      backdrop-filter: blur(16px) saturate(150%);
-      -webkit-backdrop-filter: blur(16px) saturate(150%);
-      box-shadow: inset 0 1px 0 0 rgba(255,255,255,0.06), 0 12px 34px -14px rgba(0,0,0,0.75);
-      padding: 1.1rem 1.15rem; opacity: 0; transform: translateY(8px);
-      animation: rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
-    .card:nth-child(2) { animation-delay: 0.05s; }
-    .card:nth-child(3) { animation-delay: 0.1s; }
-    .card:nth-child(4) { animation-delay: 0.15s; }
-    @keyframes rise { to { opacity: 1; transform: none; } }
+    .cards { display: grid; gap: 1.25rem; }
+    .card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 1rem; }
     .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.75rem; }
-    .card-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+    .card-label { font-size: 0.75rem; font-weight: 400; color: var(--muted); }
     .badge {
-      font-size: 12px; color: var(--text-secondary); border: 1px solid var(--border-focus);
+      font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line-2);
       border-radius: 999px; padding: 0.12rem 0.52rem; white-space: nowrap;
     }
-    .badge.good { color: var(--accent); border-color: rgba(42, 157, 92, 0.55); }
-    .badge.warn { color: var(--gold); border-color: rgba(217, 164, 65, 0.55); }
-    .badge.bad { color: #e0a293; border-color: rgba(192, 86, 63, 0.6); }
+    .badge.good { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+    .badge.warn { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, transparent); }
+    .badge.bad { color: var(--red); border-color: color-mix(in srgb, var(--red) 45%, transparent); }
     .metric { display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap; }
     .metric .num {
-      font-size: 42px; line-height: 1; color: var(--accent); font-weight: 800;
-      letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
+      font-size: 2rem; line-height: 1; color: var(--accent); font-weight: 700;
+      letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
     }
-    .metric .unit { color: var(--text-secondary); }
-    .card-sub { color: var(--text-secondary); margin-top: 0.65rem; font-size: 13px; }
-    .card-sub .hi { color: var(--text-bright); }
+    .metric .unit { color: var(--muted); font-size: 0.8rem; }
+    .card-sub { color: var(--muted); margin-top: 0.65rem; font-size: 0.8rem; }
+    .card-sub .hi { color: var(--text); }
     .score-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.85rem; }
-    .mini {
-      border-top: 1px solid var(--border); padding-top: 0.7rem;
-    }
-    .mini-label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; }
-    .mini-value { color: var(--text-bright); font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .mini { border-top: 1px solid var(--line); padding-top: 0.7rem; }
+    .mini-label { color: var(--dim); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; }
+    .mini-value { color: var(--text); font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
     .bars { display: grid; gap: 0.55rem; }
     .bar-row { display: grid; grid-template-columns: 9.5rem 1fr 4.6rem; gap: 0.7rem; align-items: center; }
-    .bar-label { color: var(--text-secondary); font-size: 13px; }
-    .bar { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--border); }
+    .bar-label { color: var(--muted); font-size: 0.8rem; }
+    .bar { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
     .bar span { display: block; height: 100%; min-width: 1px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
-    .bar.penalty span { background: linear-gradient(90deg, #7f2f24, var(--red)); }
-    .bar-val { text-align: right; color: var(--text-bright); font-variant-numeric: tabular-nums; font-size: 13px; }
+    .bar.penalty span { background: var(--red); opacity: 0.75; }
+    .bar-val { text-align: right; color: var(--text); font-variant-numeric: tabular-nums; font-size: 0.8rem; }
 
     .checks { display: grid; gap: 0.55rem; }
     .check {
       display: grid; grid-template-columns: 1.2rem 1fr; gap: 0.55rem; align-items: start;
-      padding-top: 0.58rem; border-top: 1px solid var(--border);
+      padding-top: 0.58rem; border-top: 1px solid var(--line);
     }
     .check:first-child { padding-top: 0; border-top: none; }
-    .mark { color: var(--accent); font-weight: 800; }
+    .mark { color: var(--accent); font-weight: 700; }
     .mark.bad { color: var(--red); }
-    .mark.warn { color: var(--gold); }
-    .check-title { color: var(--text-bright); }
-    .check-note { color: var(--text-dim); font-size: 12px; }
+    .mark.warn { color: var(--amber); }
+    .check-title { color: var(--text); font-size: 0.85rem; }
+    .check-note { color: var(--dim); font-size: 0.75rem; overflow-wrap: anywhere; }
 
     .queries { display: grid; gap: 0.55rem; }
     .query {
       display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: center;
-      padding-top: 0.58rem; border-top: 1px solid var(--border);
+      padding-top: 0.58rem; border-top: 1px solid var(--line);
     }
     .query:first-child { padding-top: 0; border-top: none; }
-    .q-name { color: var(--text-bright); overflow-wrap: anywhere; }
-    .q-kind { color: var(--text-dim); font-size: 12px; }
-    .rank { color: var(--gold); font-weight: 800; }
+    .q-name { color: var(--text); font-size: 0.85rem; overflow-wrap: anywhere; }
+    .q-kind { color: var(--dim); font-size: 0.72rem; }
+    .rank { color: var(--amber); font-weight: 700; font-variant-numeric: tabular-nums; }
     .rank.missing { color: var(--red); }
-    details { margin-top: 0.85rem; color: var(--text-dim); }
-    summary { cursor: pointer; color: var(--text-secondary); }
+    details { margin-top: 0.85rem; color: var(--dim); font-size: 0.8rem; }
+    summary { cursor: pointer; color: var(--muted); }
     pre {
-      margin-top: 0.6rem; background: rgba(0,0,0,0.32); border: 1px solid var(--border);
-      border-radius: 10px; padding: 0.85rem; overflow: auto; color: #aaa; font-size: 12px; line-height: 1.45;
+      margin-top: 0.6rem; background: var(--bg); border: 1px solid var(--line);
+      border-radius: 8px; padding: 0.85rem; overflow: auto; color: var(--muted);
+      font-size: 0.72rem; line-height: 1.45;
     }
-    footer {
-      padding-top: 1.5rem; margin-top: 1.5rem; border-top: 1px solid var(--border);
-      font-size: 12px; color: var(--text-muted); display: flex; justify-content: center; gap: 0.4rem;
-    }
-    footer a { color: var(--text-dim); }
-    footer a:hover { color: var(--accent); }
-    @media (max-width: 680px) {
-      body { padding: 1rem 0.75rem 3rem; }
-      .topbar { align-items: flex-start; }
-      .toplinks { flex-wrap: wrap; justify-content: flex-end; }
-      .lead { font-size: 22px; max-width: none; }
-      form { flex-direction: column; }
+    footer { padding-top: 1.5rem; margin-top: 1.5rem; border-top: 1px solid var(--line);
+             font-size: 0.7rem; color: var(--faint); display: flex; align-items: center;
+             justify-content: center; flex-wrap: wrap; gap: 0.4rem 0.6rem; }
+    footer a { color: var(--dim); }
+    footer a:hover { color: var(--muted); }
+    footer .theme-btn { margin-left: 0.4rem; }
+    @media (max-width: 560px) {
       .score-pair { grid-template-columns: 1fr; }
       .bar-row { grid-template-columns: 1fr 4.4rem; }
       .bar { grid-column: 1 / -1; grid-row: 2; }
-      .query { grid-template-columns: 1fr; gap: 0.2rem; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .card { animation: none; opacity: 1; transform: none; }
+      form { flex-direction: column; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="topbar">
-      <div class="brand">
-        <a href="/">typeahead</a>
-        <span class="tag">ranking report</span>
-      </div>
+    <div class="header">
+      <h1><a href="/" class="wordmark">typeahead</a> ranking report</h1>
       <nav class="toplinks" aria-label="site links">
         <a href="/stats">stats</a>
         <span>·</span>
         <a href="/docs">docs</a>
       </nav>
     </div>
+    <p class="subtitle">why an actor ranks where it does — score inputs, visibility gates, and live search positions</p>
     <div class="entry">
-      <div class="lead">inspect an actor's search ranking</div>
-      <div class="sub">A plain-language readout of ranking inputs, visibility gates, and example search positions.</div>
       <form id="form">
         <div class="ta-wrap">
           <input id="actor" name="actor" placeholder="enter a handle or DID" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
@@ -290,13 +223,42 @@ export function reputationPage(): string {
       return encodeURIComponent(v).replace(/%3A/gi, ':');
     }
 
+    // staged progress: named after what the backend actually does, advanced on
+    // a timer since the report is a single request. the percentile pass (two
+    // COUNT scans over every visible scored actor) dominates the wait.
+    const STAGES = [
+      { at: 0,     text: 'resolving actor...',                        note: '' },
+      { at: 700,   text: 'reading the stored row + moderation state...', note: '' },
+      { at: 2000,  text: 'running live sample searches...',           note: 'exact handle, display name, and prefix lookups' },
+      { at: 4500,  text: 'ranking against every visible scored actor...', note: 'two index scans over the whole corpus — this is the slow part' },
+      { at: 12000, text: 'still scanning...',                          note: 'the percentile pass covers millions of rows; hang tight' },
+    ];
+    let stageTimer = null;
+    function startStages() {
+      const t0 = Date.now();
+      const tick = () => {
+        const ms = Date.now() - t0;
+        let cur = STAGES[0];
+        for (const st of STAGES) if (ms >= st.at) cur = st;
+        out.innerHTML = '<div class="status"><div class="stage"><span>' + esc(cur.text) +
+          '</span><span class="elapsed">' + (ms / 1000).toFixed(1) + 's</span></div>' +
+          (cur.note ? '<div class="stage-note">' + esc(cur.note) + '</div>' : '') + '</div>';
+      };
+      tick();
+      stageTimer = setInterval(tick, 250);
+    }
+    function stopStages() {
+      if (stageTimer) { clearInterval(stageTimer); stageTimer = null; }
+    }
+
     async function load(val) {
       go.disabled = true;
       go.textContent = '...';
-      out.innerHTML = '<div class="status">reading the index...</div>';
+      startStages();
       try {
         const res = await fetch('/debug/reputation?actor=' + encodeURIComponent(val));
         const data = await res.json();
+        stopStages();
         if (!res.ok) {
           out.innerHTML = '<div class="status err">' + esc(data.error || 'request failed') + '</div>';
           return;
@@ -306,6 +268,7 @@ export function reputationPage(): string {
       } catch {
         out.innerHTML = '<div class="status err">network error.</div>';
       } finally {
+        stopStages();
         go.disabled = false;
         go.textContent = 'inspect';
       }
@@ -387,7 +350,7 @@ export function reputationPage(): string {
           '<div class="who-text">' +
             '<div class="who-name">' + esc(d.actor.displayName || d.actor.handle) + '</div>' +
             '<div class="who-handle">@' + esc(d.actor.handle) + '</div>' +
-            '<div class="who-tag">' + esc(shortDid(d.actor.did)) + (d.actor.createdAt ? ' · created ' + esc(dateShort(d.actor.createdAt)) : '') + '</div>' +
+            '<div class="who-tag">' + esc(d.actor.did) + (d.actor.createdAt ? ' · created ' + esc(dateShort(d.actor.createdAt)) : '') + '</div>' +
           '</div>' +
         '</div>' +
         '<div class="cards">' +
@@ -411,14 +374,14 @@ export function reputationPage(): string {
             '<div class="card-sub"><span class="hi">' + num(b.inputs.followersCount) + '</span> followers, ' +
               '<span class="hi">' + num(b.inputs.postsCount) + '</span> posts, and an account age of ' +
               '<span class="hi">' + (b.freshness.ageDays == null ? 'unknown' : num(b.freshness.ageDays) + ' days') + '</span>. ' +
-              'New accounts are penalized before they have history: <24h is -100, <72h is -50. Older accounts can receive a maturity bonus.</div>') +
+              'new accounts are penalized before they have history: <24h is -100, <72h is -50. older accounts can receive a maturity bonus.</div>') +
           card('visibility gates', statusBadge(hidden ? 'bad' : 'good', hidden ? 'hidden' : 'can appear'),
             '<div class="checks">' +
-              info('Separate from ranking', 'These checks decide whether the actor is allowed to appear. They do not add to or subtract from the ranking score.') +
-              check(!d.moderation.hiddenStored, 'Stored visibility', d.moderation.hiddenStored ? 'The actors row is currently marked hidden.' : 'The actors row is currently visible.') +
-              check(!d.moderation.hiddenComputed, 'Moderation result', gateCopy(d)) +
-              check(d.indexing.shouldBeInPrefixIndex, 'Prefix lookup eligibility', d.indexing.shouldBeInPrefixIndex ? 'Handle is present and the actor is allowed into prefix lookup.' : 'Hidden actors or actors without handles are excluded from prefix lookup.') +
-              check(d.indexing.exactHandleLookupFindsIt, 'Exact handle lookup', d.indexing.exactHandleLookupFindsIt ? 'A direct handle lookup resolves to this DID.' : 'The exact handle path does not currently return this actor.') +
+              info('separate from ranking', 'these checks decide whether the actor is allowed to appear — they never add to or subtract from the score.') +
+              check(!d.moderation.hiddenStored, 'stored visibility', d.moderation.hiddenStored ? 'the actors row is currently marked hidden.' : 'the actors row is currently visible.') +
+              check(!d.moderation.hiddenComputed, 'moderation result', gateCopy(d)) +
+              check(d.indexing.shouldBeInPrefixIndex, 'prefix lookup eligibility', d.indexing.shouldBeInPrefixIndex ? 'handle is present and the actor is allowed into prefix lookup.' : 'hidden actors or actors without handles are excluded from prefix lookup.') +
+              check(d.indexing.exactHandleLookupFindsIt, 'exact handle lookup', d.indexing.exactHandleLookupFindsIt ? 'a direct handle lookup resolves to this DID.' : 'the exact handle path does not currently return this actor.') +
             '</div>') +
           card('example searches', statusBadge(exact.found ? 'good' : 'warn', exact.found ? 'exact works' : 'not found'),
             '<div class="queries">' +
@@ -428,10 +391,10 @@ export function reputationPage(): string {
             '</div>') +
           card('stored data freshness', statusBadge('good', 'timestamps'),
             '<div class="checks">' +
-              info('Row updated', d.indexing.updatedAt ? dateTime(d.indexing.updatedAt) : 'unknown') +
-              info('Profile checked', d.indexing.profileCheckedAt ? dateTime(d.indexing.profileCheckedAt) : 'never') +
+              info('row updated', d.indexing.updatedAt ? dateTime(d.indexing.updatedAt) : 'unknown') +
+              info('profile checked', d.indexing.profileCheckedAt ? dateTime(d.indexing.profileCheckedAt) : 'never') +
               info('PDS', d.actor.pds || 'unknown') +
-              info('Labels', d.moderation.labels.length ? d.moderation.labels.map(l => l.val).join(', ') : 'none') +
+              info('labels', d.moderation.labels.length ? d.moderation.labels.map(l => l.val).join(', ') : 'none') +
             '</div>' +
             '<details><summary>raw report</summary><pre>' + esc(JSON.stringify(d, null, 2)) + '</pre></details>') +
         '</div>';
@@ -461,11 +424,11 @@ export function reputationPage(): string {
         (found ? '#' + p.position : 'not top 50') + '</div></div>';
     }
     function gateCopy(d) {
-      if (d.moderation.override) return 'Override is ' + d.moderation.override.action + (d.moderation.override.reason ? ': ' + d.moderation.override.reason : '.');
-      if (d.moderation.domainBlocked) return 'Blocked by domain rule for ' + d.moderation.domainBlocked.domain + '.';
+      if (d.moderation.override) return 'override is ' + d.moderation.override.action + (d.moderation.override.reason ? ': ' + d.moderation.override.reason : '.');
+      if (d.moderation.domainBlocked) return 'blocked by domain rule for ' + d.moderation.domainBlocked.domain + '.';
       const active = d.moderation.labels.filter(l => l.activeSearchHide).map(l => l.val);
-      if (active.length) return 'Active search-hide label: ' + active.join(', ') + '.';
-      return 'No active hide labels, domain block, or override is hiding it.';
+      if (active.length) return 'active search-hide label: ' + active.join(', ') + '.';
+      return 'no active hide labels, domain block, or override is hiding it.';
     }
     function avatar(a) {
       if (a.avatar) return '<img src="' + esc(a.avatar) + '" alt="">';
@@ -473,15 +436,14 @@ export function reputationPage(): string {
     }
 
     function scoreSummary(d, p, stale) {
-      const stored = 'Search uses the stored score: ' + num(d.score.stored) + '.';
+      const stored = 'search uses the stored score: ' + num(d.score.stored) + '.';
       const freshness = stale
-        ? ' Recalculation differs by ' + signed(d.score.staleDelta) + ', so enrichment has not written the newest value yet.'
-        : ' It matches the current formula.';
-      if (!p || p.percentile == null) return stored + freshness + ' No percentile yet because this actor has no positive stored score.';
-      return stored + freshness + ' That ranks #' + numInt(p.rank) + ' of ' + numInt(p.total) +
+        ? ' recalculation differs by ' + signed(d.score.staleDelta) + ', so enrichment has not written the newest value yet.'
+        : ' it matches the current formula.';
+      if (!p || p.percentile == null) return stored + freshness + ' no percentile yet because this actor has no positive stored score.';
+      return stored + freshness + ' that ranks #' + numInt(p.rank) + ' of ' + numInt(p.total) +
         ' visible scored actors, above ' + num(p.percentile) + '% of them.';
     }
-    function shortDid(did) { return did ? did.slice(0, 12) + '...' + did.slice(-5) : ''; }
     function dateShort(s) { const d = new Date(s); return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
     function dateTime(s) { const d = new Date(s); return Number.isNaN(d.getTime()) ? s : d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
     function num(n) { return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
