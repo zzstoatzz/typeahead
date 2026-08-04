@@ -10,6 +10,11 @@ README.md, homepage API chip. Service identity: @typeahead.waow.tech
 (`did:plc:y6kywgnb7xletjpa5hhxmd4k`); lexicon publishing via `scripts/publish-lexicon.py`.
 README.md has the architecture; this file is the operational contract for assessing the system.
 
+**Before starting new work, read `docs/open-work.md`** — the durable list of
+started-but-unfinished work, written to be actionable without conversation
+history. Finish or extend an entry before opening a new front; delete entries
+when done (git is the archive); add an entry the moment you defer something.
+
 ## the serving invariant
 
 No request does work proportional to the actor corpus (~8M actors). The request path
