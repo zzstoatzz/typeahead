@@ -144,7 +144,7 @@ export function indexPage(): string {
           } else {
             results.innerHTML = actors.map(a =>
               '<div class="result">' +
-              (a.avatar ? '<img src="' + a.avatar + '" alt="">' : '<div class="placeholder"></div>') +
+              (a.avatar ? '<img src="' + a.avatar + '"' + (a.avatarFallback ? ' data-fb="' + a.avatarFallback + '" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=\'\'}"' : '') + ' alt="">' : '<div class="placeholder"></div>') +
               '<div class="info"><div class="name">' + esc(a.displayName || a.handle) + '</div>' +
               '<div class="handle">@' + esc(a.handle) + '</div></div></div>'
             ).join('');

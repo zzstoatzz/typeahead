@@ -1,5 +1,5 @@
 import type { TursoDB } from "../db";
-import { json, sanitize, computeAuthorityScoreBreakdown, avatarUrl } from "../utils";
+import { json, sanitize, computeAuthorityScoreBreakdown, avatarUrl, avatarFallbackUrl } from "../utils";
 import { BSKY_MOD_DID, MOD_HIDE_VALS, resolveHidden } from "../moderation";
 import { enrichProfileDids } from "./admin";
 import type { Env } from "../types";
@@ -244,6 +244,7 @@ export async function handleReputation(request: Request, db: TursoDB, env: Env):
       handle: row.handle,
       displayName: row.display_name,
       avatar: row.avatar_url ? avatarUrl(row.did, row.avatar_url, row.pds) : null,
+      avatarFallback: row.avatar_url ? avatarFallbackUrl(row.did, row.avatar_url, row.pds) : null,
       createdAt: row.created_at || null,
       pds: row.pds || null,
     },

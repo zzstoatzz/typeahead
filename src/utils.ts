@@ -13,12 +13,28 @@ export function json(data: unknown, status = 200, extra?: Record<string, string>
   return Response.json(data, { status, headers: { ...CORS_HEADERS, ...(extra ?? {}) } });
 }
 
-export function avatarUrl(did: string, cidOrUrl: string, pds?: string): string {
+/** Primary avatar URL: bsky's CDN for everyone. It serves any actor the
+ *  appview has ingested (the overwhelming majority, self-hosted PDSes
+ *  included), stays up, and matches what bsky's own typeahead returns —
+ *  we are a drop-in for that endpoint. The old behavior pointed non-bsky
+ *  actors at their own PDS's getBlob, which (a) broke whenever a hobbyist
+ *  box was down (evil.brookie.blog via pegasus.juli.ee, 2026-08-04) and
+ *  (b) leaked every viewer's IP to a stranger's server just for rendering
+ *  a dropdown. For actors the appview has never seen (tangled-only etc.)
+ *  the CDN 404s — that's what avatarFallbackUrl is for. */
+export function avatarUrl(did: string, cidOrUrl: string, _pds?: string): string {
   if (cidOrUrl.startsWith("https://")) return cidOrUrl;
-  if (pds && !pds.includes('.bsky.network')) {
-    return `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cidOrUrl)}`;
-  }
   return `https://cdn.bsky.app/img/avatar/plain/${did}/${cidOrUrl}`;
+}
+
+/** PDS-direct blob URL — the only avatar source for actors outside the bsky
+ *  appview. Served as an extra `avatarFallback` field; our own pages swap to
+ *  it on img error. Third-party lexicon consumers ignore unknown fields. */
+export function avatarFallbackUrl(did: string, cidOrUrl: string, pds?: string): string | null {
+  if (!pds || pds.includes(".bsky.network") || cidOrUrl.startsWith("https://")) return null;
+  const cid = extractAvatarCid(cidOrUrl);
+  if (!cid) return null;
+  return `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
 }
 
 export function extractAvatarCid(urlOrCid: string): string {

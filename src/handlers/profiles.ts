@@ -1,7 +1,7 @@
 import type { TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS } from "../types";
-import { json, avatarUrl } from "../utils";
+import { json, avatarUrl, avatarFallbackUrl } from "../utils";
 
 /** edge cache TTL for getProfiles responses, in seconds. profiles change rarely
  *  (the enrichment cron refreshes them), so a few minutes of staleness is fine and
@@ -73,6 +73,7 @@ export async function handleGetProfiles(
     handle: r.handle,
     ...(r.display_name ? { displayName: r.display_name } : {}),
     ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url, r.pds) } : {}),
+    ...(r.avatar_url && avatarFallbackUrl(r.did, r.avatar_url, r.pds) ? { avatarFallback: avatarFallbackUrl(r.did, r.avatar_url, r.pds) } : {}),
     ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
     labels: JSON.parse(r.labels || '[]'),
     ...(r.created_at ? { createdAt: r.created_at } : {}),

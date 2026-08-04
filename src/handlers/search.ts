@@ -1,7 +1,7 @@
 import type { TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
-import { json, sanitize, avatarUrl } from "../utils";
+import { json, sanitize, avatarUrl, avatarFallbackUrl } from "../utils";
 import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
 import { throttledBackfill } from "../backfill";
 
@@ -217,6 +217,7 @@ export async function handleSearch(
     handle: r.handle,
     ...(r.display_name ? { displayName: r.display_name } : {}),
     ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url, r.pds) } : {}),
+    ...(r.avatar_url && avatarFallbackUrl(r.did, r.avatar_url, r.pds) ? { avatarFallback: avatarFallbackUrl(r.did, r.avatar_url, r.pds) } : {}),
     ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
     labels: JSON.parse(r.labels || '[]'),
     ...(r.created_at ? { createdAt: r.created_at } : {}),
