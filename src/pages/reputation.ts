@@ -69,6 +69,17 @@ export function reputationPage(): string {
     .status .stage { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
     .status .elapsed { color: var(--faint); font-size: 0.72rem; font-variant-numeric: tabular-nums; flex-shrink: 0; }
     .status .stage-note { color: var(--dim); font-size: 0.75rem; margin-top: 0.3rem; }
+    /* progress carets: same blinking block as the wordmark — waiting looks
+       like typeahead thinking, not a generic ellipsis */
+    .scan-caret, .btn-caret {
+      display: inline-block; width: 0.5em; height: 1em; margin-left: 0.25em;
+      background: var(--accent); vertical-align: text-bottom;
+      animation: caret-blink 1.1s steps(1) infinite;
+    }
+    .btn-caret { margin-left: 0; }
+    @media (prefers-reduced-motion: reduce) {
+      .scan-caret, .btn-caret { animation: none; opacity: 0.5; }
+    }
     .status.err { color: var(--red); border-left: 2px solid var(--red); }
 
     .who { display: flex; align-items: center; gap: 0.9rem; margin: 1.35rem 0 0.9rem; min-height: 56px; }
@@ -227,11 +238,11 @@ export function reputationPage(): string {
     // a timer since the report is a single request. the percentile pass (two
     // COUNT scans over every visible scored actor) dominates the wait.
     const STAGES = [
-      { at: 0,     text: 'resolving actor...',                        note: '' },
-      { at: 700,   text: 'reading the stored row + moderation state...', note: '' },
-      { at: 2000,  text: 'running live sample searches...',           note: 'exact handle, display name, and prefix lookups' },
-      { at: 4500,  text: 'ranking against every visible scored actor...', note: 'two index scans over the whole corpus — this is the slow part' },
-      { at: 12000, text: 'still scanning...',                          note: 'the percentile pass covers millions of rows; hang tight' },
+      { at: 0,     text: 'resolving actor', note: '' },
+      { at: 700,   text: 'reading the stored row + moderation state', note: '' },
+      { at: 2000,  text: 'ranking sample searches', note: 'exact handle, display name, and prefix' },
+      { at: 6000,  text: 'ranking sample searches', note: 'broad terms rank every match before the cutoff — this is the slow part' },
+      { at: 20000, text: 'still ranking sample searches', note: 'short or common name tokens can take a while; hang tight' },
     ];
     let stageTimer = null;
     function startStages() {
@@ -241,7 +252,7 @@ export function reputationPage(): string {
         let cur = STAGES[0];
         for (const st of STAGES) if (ms >= st.at) cur = st;
         out.innerHTML = '<div class="status"><div class="stage"><span>' + esc(cur.text) +
-          '</span><span class="elapsed">' + (ms / 1000).toFixed(1) + 's</span></div>' +
+          '<span class="scan-caret"></span></span><span class="elapsed">' + (ms / 1000).toFixed(1) + 's</span></div>' +
           (cur.note ? '<div class="stage-note">' + esc(cur.note) + '</div>' : '') + '</div>';
       };
       tick();
@@ -253,7 +264,7 @@ export function reputationPage(): string {
 
     async function load(val) {
       go.disabled = true;
-      go.textContent = '...';
+      go.innerHTML = '<span class="btn-caret"></span>';
       startStages();
       try {
         const res = await fetch('/debug/reputation?actor=' + encodeURIComponent(val));
