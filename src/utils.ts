@@ -23,15 +23,23 @@ export function json(data: unknown, status = 200, extra?: Record<string, string>
  *  a dropdown. For actors the appview has never seen (tangled-only etc.)
  *  the CDN 404s — that's what avatarFallbackUrl is for. */
 export function avatarUrl(did: string, cidOrUrl: string, _pds?: string): string {
-  if (cidOrUrl.startsWith("https://")) return cidOrUrl;
-  return `https://cdn.bsky.app/img/avatar/plain/${did}/${cidOrUrl}`;
+  // rows store either a bare CID or a full URL (older PDS-fallback enrichment
+  // stored complete getBlob URLs) — extract the CID from any shape and rebuild
+  // the CDN form, so historic pegasus-style rows get the CDN too.
+  const cid = extractAvatarCid(cidOrUrl);
+  if (cid) return `https://cdn.bsky.app/img/avatar/plain/${did}/${cid}`;
+  return cidOrUrl;
 }
 
 /** PDS-direct blob URL — the only avatar source for actors outside the bsky
  *  appview. Served as an extra `avatarFallback` field; our own pages swap to
  *  it on img error. Third-party lexicon consumers ignore unknown fields. */
 export function avatarFallbackUrl(did: string, cidOrUrl: string, pds?: string): string | null {
-  if (!pds || pds.includes(".bsky.network") || cidOrUrl.startsWith("https://")) return null;
+  // a stored non-CDN https URL IS a pds-direct source — keep it verbatim
+  if (cidOrUrl.startsWith("https://")) {
+    return cidOrUrl.includes("cdn.bsky.app") ? null : cidOrUrl;
+  }
+  if (!pds || pds.includes(".bsky.network")) return null;
   const cid = extractAvatarCid(cidOrUrl);
   if (!cid) return null;
   return `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
