@@ -297,7 +297,7 @@ export function reputationPage(): string {
         dd.innerHTML = items.map((a, i) => {
           const dn = a.displayName ? '<span class="ta-typeahead-name">' + esc(a.displayName) + '</span>' : '';
           const av = a.avatar
-            ? '<img class="ta-typeahead-avatar" src="' + esc(a.avatar) + '"' + (a.avatarFallback ? ' data-fb="' + esc(a.avatarFallback) + '" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=\'\'}"' : '') + ' loading="lazy" alt="">'
+            ? '<img class="ta-typeahead-avatar" src="' + esc(a.avatar) + '"' + (a.avatarFallback ? ' data-fb="' + esc(a.avatarFallback) + '" onerror="this.onerror=null;if(this.dataset.fb)this.src=this.dataset.fb"' : '') + ' loading="lazy" alt="">'
             : '<span class="ta-typeahead-avatar ta-typeahead-avatar-ph"></span>';
           return '<div class="ta-typeahead-item' + (i === sel ? ' active' : '') + '" data-i="' + i + '" role="option">' +
             av + '<div class="ta-typeahead-text"><span class="ta-typeahead-handle">@' + esc(a.handle) + '</span>' + dn + '</div></div>';
@@ -443,7 +443,7 @@ export function reputationPage(): string {
       return 'no active hide labels, domain block, or override is hiding it.';
     }
     function avatar(a) {
-      if (a.avatar) return '<img src="' + esc(a.avatar) + '"' + (a.avatarFallback ? ' data-fb="' + esc(a.avatarFallback) + '" onerror="if(this.dataset.fb){this.src=this.dataset.fb;this.dataset.fb=\'\'}"' : '') + ' alt="">';
+      if (a.avatar) return '<img src="' + esc(a.avatar) + '"' + (a.avatarFallback ? ' data-fb="' + esc(a.avatarFallback) + '" onerror="this.onerror=null;if(this.dataset.fb)this.src=this.dataset.fb"' : '') + ' alt="">';
       return '<span class="ini">' + esc((a.handle || '?').charAt(0)) + '</span>';
     }
 

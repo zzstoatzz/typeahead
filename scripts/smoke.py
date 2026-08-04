@@ -58,6 +58,35 @@ def fetch(url: str, timeout: int = 15, method: str = "GET") -> tuple[dict | None
         return {"_error": str(e)}, {}
 
 
+
+def test_page_scripts(base_url: str):
+    """every HTML page's inline <script> must parse — a template-literal
+    escaping slip ships a SyntaxError that kills the whole page silently
+    (2026-08-04: both / and /reputation dead, API smoke all green)."""
+    import re
+    import subprocess
+    print("\n--- page script syntax ---")
+    for path in ("/", "/reputation", "/stats", "/docs"):
+        try:
+            req = urllib.request.Request(base_url + path, headers={"User-Agent": "typeahead-smoke/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                html = resp.read().decode()
+        except Exception as e:
+            check(f"{path} fetch", False, str(e)[:60])
+            continue
+        scripts = re.findall(r"<script>(.*?)</script>", html, re.S)
+        ok = True
+        detail = ""
+        for i, body in enumerate(scripts):
+            r = subprocess.run(["node", "--check", "-"], input=body.encode(),
+                               capture_output=True, timeout=20)
+            if r.returncode != 0:
+                ok = False
+                detail = r.stderr.decode().strip().splitlines()[-1][:80] if r.stderr else f"script {i} failed"
+                break
+        check(f"{path} inline scripts parse ({len(scripts)})", ok, detail)
+
+
 def test_response_shape(base_url: str):
     print("\n--- response shape ---")
     data, _ = fetch(f"{base_url}{XRPC_PATH}?q=test&limit=3")
@@ -483,6 +512,8 @@ def main():
     else:
         print(f"\n--- mod_overrides admin API ---")
         print(f"  [{SKIP}] skipped (use --secret or set TYPEAHEAD_SECRET)")
+
+    test_page_scripts(args.url)
 
     if args.compare:
         test_comparison(args.url, args.queries)
