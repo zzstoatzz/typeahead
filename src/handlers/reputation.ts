@@ -114,100 +114,38 @@ async function scorePercentile(db: TursoDB, score: number): Promise<ScorePercent
   };
 }
 
-async function mergedFallbackPosition(
-  db: TursoDB,
+
+
+/** Sample position via the real search engine (bounded prefix-index lookups,
+ *  ms-fast) instead of recreating search as raw SQL — the FTS recreation
+ *  ranked every match before LIMIT and took 55-85s for short/common tokens,
+ *  blowing past the edge request limit entirely (2026-08-04). An 8s timebox
+ *  keeps a slow engine from wedging the report; timeouts read as unranked. */
+async function liveSearchPosition(
+  searchBase: string | undefined,
   termRaw: string,
   did: string,
   limit = 50,
 ): Promise<{ query: string; found: boolean; position: number | null; matchedBy: string | null }> {
-  const term = sanitize(termRaw);
-  if (!term) return { query: termRaw, found: false, position: null, matchedBy: null };
-
-  const ftsQuery = `"${term}"*`;
-  const overfetch = Math.min(limit * 5, 250);
-  const [exactRes, prefixRes, ftsRes] = await db.batch([
-    db.prepare(
-      `SELECT did, handle, display_name
-       FROM actors WHERE handle = ?1 COLLATE NOCASE AND hidden = 0 LIMIT 1`
-    ).bind(term),
-    db.prepare(
-      `SELECT did, handle, display_name
-       FROM actors WHERE handle LIKE ?1 COLLATE NOCASE AND handle != ?2 COLLATE NOCASE AND hidden = 0
-       LIMIT ?3`
-    ).bind(term + "%", term, overfetch),
-    db.prepare(
-      `SELECT a.did, a.handle, a.display_name
-       FROM actors_fts
-       JOIN actors a ON a.rowid = actors_fts.rowid
-       WHERE actors_fts MATCH ?1 AND a.handle != '' AND a.hidden = 0
-       ORDER BY rank
-       LIMIT ?2`
-    ).bind(ftsQuery, overfetch),
-  ], "read");
-
-  const exactRows = (exactRes.results as SearchCandidate[]) || [];
-  const prefixRows = ((prefixRes.results as SearchCandidate[]) || [])
-    .slice()
-    .sort((a, b) => a.handle.length - b.handle.length);
-  const prefixDids = new Set(prefixRows.map((r) => r.did));
-  const ftsRows = ((ftsRes.results as SearchCandidate[]) || [])
-    .filter((r) => !prefixDids.has(r.did));
-
-  const seen = new Set<string>();
-  const merged: { row: SearchCandidate; matchedBy: string }[] = [];
-  for (const row of exactRows) {
-    if (seen.has(row.did)) continue;
-    seen.add(row.did);
-    merged.push({ row, matchedBy: "exact_handle" });
-    if (merged.length >= limit) break;
+  const term = String(termRaw || "").trim();
+  const miss = { query: term, found: false, position: null, matchedBy: null };
+  if (!term || !searchBase) return miss;
+  try {
+    const res = await fetch(
+      searchBase.replace(/\/$/, "") + "/search?q=" + encodeURIComponent(term) + "&limit=" + limit,
+      { signal: AbortSignal.timeout(8000), headers: { "X-Client": "typeahead/reputation" } },
+    );
+    if (!res.ok) return miss;
+    const data = (await res.json()) as { actors?: { did: string }[] };
+    const idx = (data.actors || []).findIndex((a) => a.did === did);
+    if (idx < 0) return miss;
+    return { query: term, found: true, position: idx + 1, matchedBy: "live search" };
+  } catch {
+    return { query: term, found: false, position: null, matchedBy: "timed out" };
   }
-
-  let pi = 0, fi = 0;
-  let takePrefix = true;
-  while (merged.length < limit && (pi < prefixRows.length || fi < ftsRows.length)) {
-    let row: SearchCandidate | null = null;
-    let matchedBy = "prefix";
-    if (takePrefix) {
-      while (pi < prefixRows.length && seen.has(prefixRows[pi].did)) pi++;
-      if (pi < prefixRows.length) {
-        row = prefixRows[pi++];
-        matchedBy = "handle_prefix";
-      } else {
-        while (fi < ftsRows.length && seen.has(ftsRows[fi].did)) fi++;
-        if (fi < ftsRows.length) {
-          row = ftsRows[fi++];
-          matchedBy = "fts";
-        }
-      }
-    } else {
-      while (fi < ftsRows.length && seen.has(ftsRows[fi].did)) fi++;
-      if (fi < ftsRows.length) {
-        row = ftsRows[fi++];
-        matchedBy = "fts";
-      } else {
-        while (pi < prefixRows.length && seen.has(prefixRows[pi].did)) pi++;
-        if (pi < prefixRows.length) {
-          row = prefixRows[pi++];
-          matchedBy = "handle_prefix";
-        }
-      }
-    }
-    if (!row) break;
-    seen.add(row.did);
-    merged.push({ row, matchedBy });
-    takePrefix = !takePrefix;
-  }
-
-  const idx = merged.findIndex((r) => r.row.did === did);
-  return {
-    query: term,
-    found: idx >= 0,
-    position: idx >= 0 ? idx + 1 : null,
-    matchedBy: idx >= 0 ? merged[idx].matchedBy : null,
-  };
 }
 
-export async function handleReputation(request: Request, db: TursoDB): Promise<Response> {
+export async function handleReputation(request: Request, db: TursoDB, env: { SEARCH_BACKEND_URL?: string }): Promise<Response> {
   const url = new URL(request.url);
   const actor = (url.searchParams.get("actor") || url.searchParams.get("handle") || url.searchParams.get("did") || "").trim();
   if (!actor) return json({ error: "actor query param required" }, 400);
@@ -247,10 +185,11 @@ export async function handleReputation(request: Request, db: TursoDB): Promise<R
 
   const storedScore = Number(row.quality_score) || 0;
   const handlePrefix = row.handle.split(".")[0] || row.handle.slice(0, 3);
+  const searchBase = env.SEARCH_BACKEND_URL;
   const [exactHandle, displayName, handlePrefixPosition, exactHandleExists, percentile] = await Promise.all([
-    mergedFallbackPosition(db, row.handle, row.did),
-    row.display_name ? mergedFallbackPosition(db, row.display_name, row.did) : Promise.resolve({ query: "", found: false, position: null, matchedBy: null }),
-    handlePrefix ? mergedFallbackPosition(db, handlePrefix, row.did) : Promise.resolve({ query: "", found: false, position: null, matchedBy: null }),
+    liveSearchPosition(searchBase, row.handle, row.did),
+    row.display_name ? liveSearchPosition(searchBase, row.display_name, row.did) : Promise.resolve({ query: "", found: false, position: null, matchedBy: null }),
+    handlePrefix ? liveSearchPosition(searchBase, handlePrefix, row.did) : Promise.resolve({ query: "", found: false, position: null, matchedBy: null }),
     db.prepare(
       "SELECT did FROM actors WHERE handle = ?1 COLLATE NOCASE AND hidden = 0 LIMIT 1"
     ).bind(row.handle).first<{ did: string }>(),

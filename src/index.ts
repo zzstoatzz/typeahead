@@ -124,7 +124,7 @@ export default {
     }
 
     if (pathname === "/debug/reputation" && request.method === "GET") {
-      return handleReputation(request, db);
+      return handleReputation(request, db, env);
     }
 
     if (pathname === "/request-indexing" && request.method === "POST") {
