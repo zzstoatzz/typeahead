@@ -153,8 +153,8 @@ missing coverage only where a firing would be actionable.
 
 ---
 
-*Cross-repo note: the PrefectHQ/prefect branch `enforce-cancellation-under-force`
-(cancel-≠-crash upstream fix, tests green) sits unpushed in
-~/github.com/PrefectHQ/prefect awaiting the operator's go — tracked here
-because ln's force-guard (`prefect-server` 3242906) is deliberately marked
-"pending upstream" against it.*
+*Cross-repo note: the cancel-≠-crash upstream fix is draft PR
+[PrefectHQ/prefect#22717](https://github.com/PrefectHQ/prefect/pull/22717)
+(rebased + 544 tests green, 2026-08-04). When it lands, port the merged
+semantics verbatim into ln and drop the "pending upstream" marker on
+`prefect-server` commit 3242906's force-guard.*
