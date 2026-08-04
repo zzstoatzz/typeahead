@@ -171,9 +171,13 @@ fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
         return error.AuthTooLong;
 
     var out: FetchOut = .{};
-    var future = std.Io.concurrent(io, fetchTask, .{ self, url, auth, body, &out }) catch {
-        // no concurrency available — degrade to the undeadlined direct call
-        return self.rawFetch(url, auth, body);
+    var future = std.Io.concurrent(io, fetchTask, .{ self, url, auth, body, &out }) catch |err| {
+        // pool exhaustion is OUR resource problem — fail the query (callers
+        // retry with backoff) rather than quietly degrading to an undeadlined
+        // fetch that can block forever, which is the exact hang this deadline
+        // exists to prevent.
+        log.err("turso fetch: no concurrency available ({s}); failing for retry", .{@errorName(err)});
+        return error.ConcurrencyUnavailable;
     };
 
     var waited_ms: u64 = 0;

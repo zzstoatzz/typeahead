@@ -164,26 +164,41 @@ export async function handleReputation(request: Request, db: TursoDB, env: Env):
 
   // On-view enrichment: an actor someone is literally looking at is the best
   // possible enrichment candidate (same demand-driven principle as 59f6e39's
-  // immediate request-indexing). One DID = one getProfiles call, and the
-  // write stamps profile_checked_at so repeat views don't re-trigger.
-  // Best-effort: a failed enrich falls back to the stale row.
+  // immediate request-indexing). Best-effort: failures fall back to the
+  // stale row, with a labeled log line (never a silent collapsing catch).
+  //
+  // Concurrency: the conditional stamp below is an optimistic claim — turso's
+  // single writer guarantees exactly one concurrent viewer gets changes=1 and
+  // does the fetch; the rest proceed with the stale row and see fresh data on
+  // their next view. The claim also stamps dead DIDs (bsky_404) out of the
+  // queue up front, so an unresolvable actor costs one fetch ever instead of
+  // one per view. Named tradeoff: a winner that dies mid-enrich leaves the
+  // actor stamped-but-empty — the same exposure the cron's stamp-first
+  // identity path accepts, for the same queue-pinning reason.
   let enrichedOnView = false;
   if (!row.profile_checked_at) {
     try {
-      const r = await enrichProfileDids(db, env, [row.did]);
-      if (r.written > 0) {
-        const fresh = await db.prepare(
-          `SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds,
-                  followers_count, follows_count, posts_count, quality_score, updated_at, profile_checked_at
-           FROM actors WHERE did = ?1 LIMIT 1`
-        ).bind(row.did).first<ReputationActorRow>();
-        if (fresh) {
-          Object.assign(row, fresh);
-          enrichedOnView = true;
+      const claim = await db.prepare(
+        "UPDATE actors SET profile_checked_at = unixepoch() WHERE did = ?1 AND profile_checked_at = 0"
+      ).bind(row.did).run();
+      if ((claim.meta?.changes ?? 0) === 1) {
+        const r = await enrichProfileDids(db, env, [row.did]);
+        if (r.written > 0) {
+          const fresh = await db.prepare(
+            `SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds,
+                    followers_count, follows_count, posts_count, quality_score, updated_at, profile_checked_at
+             FROM actors WHERE did = ?1 LIMIT 1`
+          ).bind(row.did).first<ReputationActorRow>();
+          if (fresh) {
+            Object.assign(row, fresh);
+            enrichedOnView = true;
+          }
+        } else if (r.errors.length > 0) {
+          console.log(JSON.stringify({ event: "enrich_on_view_miss", did: row.did, reason: r.errors[0]?.reason }));
         }
       }
-    } catch {
-      // report proceeds on the stale row
+    } catch (e) {
+      console.log(JSON.stringify({ event: "enrich_on_view_failed", did: row.did, error: String(e).slice(0, 120) }));
     }
   }
 
