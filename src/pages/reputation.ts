@@ -402,6 +402,7 @@ export function reputationPage(): string {
             '</div>') +
           card('stored data freshness', statusBadge('good', 'timestamps'),
             '<div class="checks">' +
+              (d.indexing.enrichedOnView ? info('enriched on view', 'this actor had never been profile-enriched — the report fetched its profile just now.') : '') +
               info('row updated', d.indexing.updatedAt ? dateTime(d.indexing.updatedAt) : 'unknown') +
               info('profile checked', d.indexing.profileCheckedAt ? dateTime(d.indexing.profileCheckedAt) : 'never') +
               info('PDS', d.actor.pds || 'unknown') +

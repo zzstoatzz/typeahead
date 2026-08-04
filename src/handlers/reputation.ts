@@ -1,6 +1,8 @@
 import type { TursoDB } from "../db";
 import { json, sanitize, computeAuthorityScoreBreakdown, avatarUrl } from "../utils";
 import { BSKY_MOD_DID, MOD_HIDE_VALS, resolveHidden } from "../moderation";
+import { enrichProfileDids } from "./admin";
+import type { Env } from "../types";
 
 interface ReputationActorRow {
   did: string;
@@ -145,7 +147,7 @@ async function liveSearchPosition(
   }
 }
 
-export async function handleReputation(request: Request, db: TursoDB, env: { SEARCH_BACKEND_URL?: string }): Promise<Response> {
+export async function handleReputation(request: Request, db: TursoDB, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const actor = (url.searchParams.get("actor") || url.searchParams.get("handle") || url.searchParams.get("did") || "").trim();
   if (!actor) return json({ error: "actor query param required" }, 400);
@@ -159,6 +161,31 @@ export async function handleReputation(request: Request, db: TursoDB, env: { SEA
   ).bind(actor).first<ReputationActorRow>();
 
   if (!row) return json({ error: "actor not found" }, 404);
+
+  // On-view enrichment: an actor someone is literally looking at is the best
+  // possible enrichment candidate (same demand-driven principle as 59f6e39's
+  // immediate request-indexing). One DID = one getProfiles call, and the
+  // write stamps profile_checked_at so repeat views don't re-trigger.
+  // Best-effort: a failed enrich falls back to the stale row.
+  let enrichedOnView = false;
+  if (!row.profile_checked_at) {
+    try {
+      const r = await enrichProfileDids(db, env, [row.did]);
+      if (r.written > 0) {
+        const fresh = await db.prepare(
+          `SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds,
+                  followers_count, follows_count, posts_count, quality_score, updated_at, profile_checked_at
+           FROM actors WHERE did = ?1 LIMIT 1`
+        ).bind(row.did).first<ReputationActorRow>();
+        if (fresh) {
+          Object.assign(row, fresh);
+          enrichedOnView = true;
+        }
+      }
+    } catch {
+      // report proceeds on the stale row
+    }
+  }
 
   const labels = parseLabels(row.labels);
   const override = await db.prepare(
@@ -228,6 +255,7 @@ export async function handleReputation(request: Request, db: TursoDB, env: { SEA
       } : null,
     },
     indexing: {
+      enrichedOnView,
       updatedAt: toIsoSeconds(row.updated_at),
       profileCheckedAt: toIsoSeconds(row.profile_checked_at),
       shouldBeInPrefixIndex: Boolean(row.handle && !effectiveHidden),

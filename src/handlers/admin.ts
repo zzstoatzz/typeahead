@@ -523,7 +523,18 @@ export async function handleEnrichProfiles(
   }
   const bad = dids.find((d) => typeof d !== "string" || !(d as string).startsWith("did:"));
   if (bad !== undefined) return json({ error: `invalid DID shape: ${String(bad).slice(0, 80)}` }, 400);
-  const didList = dids as string[];
+
+  return json(await enrichProfileDids(db, env, dids as string[]));
+}
+
+/** The canonical enrichment core, callable in-worker (reputation's on-view
+ *  enrichment) as well as via the authed HTTP surface above. One DID list in,
+ *  getProfiles + extractProfileFields + resolveHidden + guarded upsert out. */
+export async function enrichProfileDids(
+  db: TursoDB,
+  env: Env,
+  didList: string[],
+): Promise<{ ok: true; requested: number; profiles_found: number; written: number; hidden: number; errors: EnrichError[] }> {
 
   // batch-fetch the moderation inputs ONCE per request (caller pattern from
   // enrichment/cron). Overrides + blocked_domains scope the resolveHidden.
@@ -622,12 +633,12 @@ export async function handleEnrichProfiles(
     }
   }
 
-  return json({
+  return {
     ok: true,
     requested: didList.length,
     profiles_found: fetched.size,
     written,
     hidden: hiddenCount,
     errors,
-  });
+  };
 }
