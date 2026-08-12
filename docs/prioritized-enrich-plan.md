@@ -284,6 +284,36 @@ nothing in the script can lie to the database.
   these go through the same ingest path; the snapshot rebuild later picks
   them up. Until rebuild, overlay carries them.
 
+## coverage gaps this plan does not close
+
+**The never-enriched tail.** ~55% of the corpus (~6M actors, PLC-backfill and
+firehose era) sits at `profile_checked_at = 0`, tied for the hourly cron's
+200/run cold floor — a natural drain measured in years (2026-08-04, by rowid
+sampling; 100% of rowid ranges 8M+ were unchecked). These actors are
+handle-searchable but render with no avatar, no display name, score 0. The
+demand-driven hooks (reputation-on-view, request-indexing) heal only what
+people happen to look at. The paced writer for this is the
+`typeahead-enrich-backfill` Prefect deployment in my-prefect-server
+(registered, unscheduled, concurrency 1; dry-run validated on 100 actors).
+
+That flow currently **reimplements** the score formula and hide-only
+moderation in python — exactly the drift this doc's `POST /admin/enrich-profiles`
+endpoint exists to prevent, as its own docstring says. It should become a pure
+orchestrator: keep the Turso rowid-paging and `bsky_404` stamping, POST batches
+of ≤100 DIDs to the endpoint, delete the ported formula. That's blocked only on
+registering the worker's `ADMIN_SECRET` as a Prefect Secret block — the value
+isn't readable back out of wrangler, so it's an operator step.
+
+**Actors the appview has never seen.** Every enrichment path here goes through
+bsky's `getProfiles`, so tangled-only and PDS-only accounts get `bsky_404` and
+stay skeletal forever. `fetchProfileFromPds` (`src/utils.ts`) already handles
+this correctly — it normalizes blob avatars to CIDs — but it's only reachable
+when a mod override is `show`. Whether `bsky_404` + a known PDS should trigger
+it in `enrichProfileDids` is an open call: it's bounded (one `getRecord` per
+404-actor), but a PDS profile carries no follower/post counts, so it must go
+through the same countless-profile guard or it will clobber `quality_score`
+to 0 — see the clobber regression pinned in `bench.py` and `smoke.py`.
+
 ## decisions deferred
 
 - **Phase C.5 — engaged-network tier** (people who liked/replied/quoted/

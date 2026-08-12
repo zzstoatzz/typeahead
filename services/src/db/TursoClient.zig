@@ -137,6 +137,13 @@ fn executeRaw(self: *TursoClient, sql: []const u8, args: []const []const u8) ![]
 /// mid-response (stdlib http has no timeouts); the sync loop then wedges for
 /// a full watchdog cycle. Generous vs the observed p99 (~15s cold) so it only
 /// fires on genuinely dead flows.
+///
+/// The concurrent-task + deadline + `Future.cancel` shape below is worth
+/// copying, not just reading: any zig service using stdlib http against a
+/// remote has this exposure. pub-search's `backend/src/db/Client.zig` and its
+/// builder still do (its 2026-08-03 `verify_remote` hang was this class,
+/// bounded today only by watchdogs). If a third consumer shows up, this
+/// belongs in a shared zat helper.
 const FETCH_DEADLINE_MS: u64 = 60_000;
 
 const FetchOut = struct {

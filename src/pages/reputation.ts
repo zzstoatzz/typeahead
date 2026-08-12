@@ -237,6 +237,12 @@ export function reputationPage(): string {
     // staged progress: named after what the backend actually does, advanced on
     // a timer since the report is a single request. the percentile pass (two
     // COUNT scans over every visible scored actor) dominates the wait.
+    //
+    // these thresholds are stale: they were tuned when sample-search ranking
+    // was the slow part, and since those positions moved to the live search
+    // engine the wait is sub-second, so the later stages barely render. it's
+    // harmless copy, not a bug — but if you're in here anyway, re-tune against
+    // observed p95 or collapse it to a single "building report" state.
     const STAGES = [
       { at: 0,     text: 'resolving actor', note: '' },
       { at: 700,   text: 'reading the stored row + moderation state', note: '' },

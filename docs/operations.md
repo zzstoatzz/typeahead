@@ -199,3 +199,28 @@ job ran).
 
 Fire-and-forget. The 5-minute sync remains the mechanism of record, so a failed
 push costs freshness for one actor, never correctness.
+
+**Under firehose floods that write can queue behind the ingester's batch
+transactions** — Turso is single-writer. Measured `turso_write;dur=10178`
+(2026-08-04), with spikes past 45s; the smoke gate allows 60s for this check,
+which is calibration, not a fix. The write stays synchronous on purpose: the
+response says "indexed", and that has to be true (59f6e39). Moving it off the
+response path reintroduces the untruthful-"indexed" failure mode; splitting the
+response into "accepted, landing now" changes the UX contract. Revisit only if
+user-facing timeouts actually appear — the endpoint's `Server-Timing` header
+attributes the phases, so you'll be able to tell.
+
+## alerting: overlaps and gaps (reviewed 2026-08-04)
+
+Four systems page independently — logfire freshness, the typeahead freshness
+bot, prefect crash automation, pub-search watchdog. Known state:
+
+- **overlapping**: logfire and the typeahead bot both page on replica
+  staleness, so one condition produces two pages.
+- **uncovered**: enrichment queue depth, and the smoke gate's page-script
+  check failing outside a deploy.
+
+Fixed already: pub-search freshness threshold 30m→60m (overnight publish gaps),
+cancel-≠-crash orchestration, the typeahead sync-stall class. The principle to
+hold when adding one: **one page per signal, and every page actionable** — add
+coverage only where a firing would change what you do.
