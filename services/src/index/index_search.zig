@@ -43,11 +43,46 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
         return;
     }
 
+    const lease = try local.checkoutRead();
+    defer lease.release();
+
+    const candidates = try execute(arena, lease, norm, null);
+
+    var jw: json.Stringify = .{ .writer = writer };
+    try jw.beginObject();
+    try jw.objectField("actors");
+    try jw.beginArray();
+    const n = @min(limit, candidates.len);
+    for (candidates[0..n]) |*c| try searchmod.writeActor(&jw, c);
+    try jw.endArray();
+    try jw.endObject();
+}
+
+/// What the serving pipeline did with a query. Filled only when `/debug/search`
+/// asks for it — the point is that the explanation comes from the SAME code
+/// path that answered `/search`, not a parallel scorer that can drift out of
+/// agreement with it.
+pub const Trace = struct {
+    pub const KeyStat = struct { key: []const u8, base: usize, overlay: usize };
+
+    keys: []KeyStat = &.{},
+    mode: merge.Mode = .union_any,
+    merged: usize = 0,
+    exact_hits: usize = 0,
+};
+
+/// normalize'd query → ranked candidates. The single implementation behind both
+/// `/search` and `/debug/search`.
+fn execute(
+    arena: Allocator,
+    lease: LocalDb.ReadLease,
+    norm: []const u8,
+    trace: ?*Trace,
+) ![]searchmod.Candidate {
     const keys = try prefixes.queryKeys(arena, norm);
     const mode = merge.modeForQuery(norm);
 
-    const lease = try local.checkoutRead();
-    defer lease.release();
+    var key_stats: std.ArrayListUnmanaged(Trace.KeyStat) = .empty;
 
     // Per-key base ∪ overlay sets; capture the exact-handle (e:) hits WITH their
     // score so we can hard-promote them — and re-inject them if the score cap
@@ -66,22 +101,80 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
             }
         }
         try keysets.append(arena, .{ .base = base, .overlay = ov });
+        if (trace != null) try key_stats.append(arena, .{ .key = key, .base = base.len, .overlay = ov.len });
     }
 
     var merged = try merge.combine(arena, keysets.items, mode, HYDRATE_CAP);
     if (exact.count() > 0) merged = try promoteExact(arena, merged, exact);
 
-    const candidates = try hydrate(arena, lease, merged);
+    if (trace) |t| t.* = .{
+        .keys = key_stats.items,
+        .mode = mode,
+        .merged = merged.len,
+        .exact_hits = exact.count(),
+    };
+
+    return hydrate(arena, lease, merged);
+}
+
+/// `/debug/search` for the index engine: the served ranking, plus the key-level
+/// reachability facts that explain it (per-key list sizes, merge mode, the
+/// HYDRATE_CAP survivors). A candidate absent from every key's top-N list is
+/// unreachable at ANY score — that is the answer this endpoint exists to give.
+pub fn debug(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, writer: anytype) !void {
+    var arena_state = std.heap.ArenaAllocator.init(allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
+    const term = searchmod.sanitize(raw_query);
+    const norm = if (term.len == 0) "" else try normalize.query(arena, term);
 
     var jw: json.Stringify = .{ .writer = writer };
-    try jw.beginObject();
-    try jw.objectField("actors");
-    try jw.beginArray();
+    if (norm.len == 0) {
+        try jw.write(Report{ .q = raw_query, .normalized = norm });
+        return;
+    }
+
+    const lease = try local.checkoutRead();
+    defer lease.release();
+
+    var trace: Trace = .{};
+    const candidates = try execute(arena, lease, norm, &trace);
+
     const n = @min(limit, candidates.len);
-    for (candidates[0..n]) |*c| try searchmod.writeActor(&jw, c);
-    try jw.endArray();
-    try jw.endObject();
+    const rows = try arena.alloc(Report.Row, n);
+    for (candidates[0..n], rows) |*c, *r| r.* = .{
+        .did = c.did,
+        .handle = c.handle,
+        .display_name = c.display_name,
+        .score = c.quality_score,
+    };
+
+    try jw.write(Report{
+        .q = raw_query,
+        .normalized = norm,
+        .mode = @tagName(trace.mode),
+        .exact_hits = trace.exact_hits,
+        .merged = trace.merged,
+        .keys = trace.keys,
+        .candidates = rows,
+    });
 }
+
+/// The `/debug/search` response for the index engine.
+const Report = struct {
+    const Row = struct { did: []const u8, handle: []const u8, display_name: []const u8, score: f64 };
+
+    engine: []const u8 = "index",
+    q: []const u8,
+    normalized: []const u8,
+    mode: []const u8 = "",
+    hydrate_cap: usize = HYDRATE_CAP,
+    exact_hits: usize = 0,
+    merged: usize = 0,
+    keys: []const Trace.KeyStat = &.{},
+    candidates: []const Row = &.{},
+};
 
 /// Decode prefix_top_base.dids for one key into scored DIDs. DIDs are duped
 /// into the arena (the blob is freed when the row iterator closes).

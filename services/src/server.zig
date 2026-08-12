@@ -289,7 +289,15 @@ fn handleDebugSearch(request: *http.Server.Request, target: []const u8, local_db
     var output: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
     defer output.deinit();
 
-    search.debugSearch(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch |err| {
+    // Must follow the SAME env switch as /search. A debug view of the engine
+    // that isn't answering requests is worse than none: it explains a ranking
+    // nobody sees (2026-08-12 — `q='fig ('` ranked #1 here while /search, on
+    // the index path, didn't return it at all).
+    const debug_result = if (std.c.getenv("USE_PREFIX_INDEX") != null)
+        index_search.debug(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer)
+    else
+        search.debugSearch(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer);
+    debug_result catch |err| {
         if (err == error.PoolExhausted) {
             try sendJson(request, .service_unavailable, "{\"error\":\"read pool exhausted\"}");
             return;
