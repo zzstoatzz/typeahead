@@ -10,10 +10,12 @@ README.md, homepage API chip. Service identity: @typeahead.waow.tech
 (`did:plc:y6kywgnb7xletjpa5hhxmd4k`); lexicon publishing via `scripts/publish-lexicon.py`.
 README.md has the architecture; this file is the operational contract for assessing the system.
 
-**Before starting new work, read `docs/open-work.md`** — the durable list of
-started-but-unfinished work, written to be actionable without conversation
-history. Finish or extend an entry before opening a new front; delete entries
-when done (git is the archive); add an entry the moment you defer something.
+**Before starting new work, read the git history** — `git log --oneline -30`,
+then `git log -p` on anything that looks related. Commits are the record of
+what is in flight: they carry the date, the reasoning, and the code together,
+and they cannot drift from the tree the way a hand-maintained TODO list does.
+Prefer them over any doc that claims to describe current state; when a doc and
+the history disagree, the history is right and the doc needs fixing.
 
 ## the serving invariant
 

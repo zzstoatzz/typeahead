@@ -786,11 +786,20 @@ network. bsky's full follow graph is multi-TB; we're not there.
 
 ## backfill
 
-continuous updates land via jetstream (worker already receives the events
-— just needs to forward them to ingester via existing /admin/ingest path,
-ingester writes to local `follows` table).
+continuous updates come off the relay firehose the ingester already consumes
+(`com.atproto.sync.subscribeRepos`): `app.bsky.graph.follow` records arrive in
+the same commit stream as the profile records, so this is a new record-type
+branch in the ingester writing to a local `follows` table — not a new
+subscription and not a worker round trip.
 
-history is missing for follows that pre-date our jetstream subscription.
+  NOTE (2026-08-12): this section originally routed follows through jetstream
+  and the worker's /admin/ingest. That premise died on 2026-07-28 when we cut
+  jetstream for the relay firehose — jetstream is a silently partial projection
+  and drops records the relay carries (see docs/discovery-and-identity.md).
+  A follow graph built on it would be quietly incomplete, which is the worst
+  possible input to an authority score.
+
+history is missing for follows that pre-date our firehose subscription.
 get it via `com.atproto.repo.listRecords` on each indexed actor:
 
 ```
@@ -877,8 +886,8 @@ Existing and future backfill paths:
 | `scripts/plc-identity-sync.py` (PLC bundles → handle + pds) | worker → Turso `actors.handle`/`actors.pds` | one-shot | handle changes prefix keys, so the overlay re-derives them; pds is blob-only |
 | AccountTakedown PDS-direct enrichment | worker → Turso `actors` | continuous (cron) | same path |
 | follow graph backfill (Track 2) | ingester-local `follows` table | phased (sample → broad) | pagerank job reads `follows`, writes scores back to Turso `actors.quality_score` → same path as above |
-| handle rename event | jetstream → worker → Turso | continuous | overlay diff produces `op=0` rows for stale prefixes (set-diff via deriveAllUnique) |
-| account deletion (tombstone) | jetstream → worker → Turso | continuous | `actor_overlay.blob = NULL` tombstone + `prefix_overlay op=0` for every prefix the actor used to occupy |
+| handle rename event | relay firehose → ingester → Turso | continuous | overlay diff produces `op=0` rows for stale prefixes (set-diff via deriveAllUnique) |
+| account deletion (tombstone) | relay firehose → ingester → Turso | continuous | `actor_overlay.blob = NULL` tombstone + `prefix_overlay op=0` for every prefix the actor used to occupy |
 
 **Invariants the backfill contract relies on:**
 
