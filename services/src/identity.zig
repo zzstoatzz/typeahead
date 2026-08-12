@@ -110,7 +110,10 @@ pub const Resolver = struct {
         var url_buf: [512]u8 = undefined;
         const url = try std.fmt.bufPrint(&url_buf, "{s}?identifier={s}", .{ SLINGSHOT_URL, did });
 
-        const result = try transport.fetch(.{ .url = url });
+        const result = try transport.fetch(.{
+            .url = url,
+            .extra_headers = &.{.{ .name = "user-agent", .value = "typeahead (zzstoatzz.io)" }},
+        });
         defer self.allocator.free(result.body);
 
         if (result.status != .ok) return null;

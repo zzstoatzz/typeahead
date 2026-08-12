@@ -1,6 +1,6 @@
 import type { Stmt, TursoDB } from "../db";
 import type { Env, SlingshotResponse } from "../types";
-import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL } from "../types";
+import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL, MICROCOSM_UA } from "../types";
 import { clientIP, json, extractProfileFields, fetchProfileFromPds } from "../utils";
 import { getOverride, getOverrides, resolveHidden, isDomainBlocked, getBlockedDomains } from "../moderation";
 import { recordActorDelta } from "../metrics";
@@ -118,7 +118,8 @@ export async function handleRequestIndexing(
 
   // resolve via slingshot
   const res = await fetch(
-    `${SLINGSHOT_URL}?identifier=${encodeURIComponent(identifier)}`
+    `${SLINGSHOT_URL}?identifier=${encodeURIComponent(identifier)}`,
+    { headers: { "User-Agent": MICROCOSM_UA } }
   );
   if (!res.ok) {
     return json({ error: `could not resolve "${identifier}". check that it's a valid handle or DID.` }, 404);

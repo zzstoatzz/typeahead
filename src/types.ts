@@ -58,6 +58,9 @@ export const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client",
 };
 
+/** microcosm.blue etiquette: identify the project + contact on api requests */
+export const MICROCOSM_UA = "typeahead (zzstoatzz.io)";
+
 export const SLINGSHOT_URL =
   "https://slingshot.microcosm.blue/xrpc/blue.microcosm.identity.resolveMiniDoc";
 

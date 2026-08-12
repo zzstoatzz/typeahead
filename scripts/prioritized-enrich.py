@@ -59,7 +59,7 @@ RESET = "\033[0m"
 
 
 def http_get_json(url: str, timeout: float = 15.0) -> dict | None:
-    req = urllib.request.Request(url, headers={"User-Agent": "typeahead-enrich-dryrun/0.1"})
+    req = urllib.request.Request(url, headers={"User-Agent": "typeahead (zzstoatzz.io)"})
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode("utf-8"))
