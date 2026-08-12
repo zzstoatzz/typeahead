@@ -60,7 +60,7 @@ RESET = "\033[0m"
 # guard against the same bug forever.
 RANKING_CORPUS = [
     "fig",              # display-name match dominates bsky top
-    "fig (",            # punctuation must not collapse to "fig"
+    "fig (",            # punctuation must collapse CONSISTENTLY: same set as "fig"
     "fig aka",          # multi-token display-name
     "phil",             # bad-example.com has phil in display name
     "zzstoatzz",        # known handle prefix
@@ -449,6 +449,8 @@ def acceptance_checks(results: list[RankingResult]) -> list[str]:
     # has to consciously add or remove an entry, not silently soften.
     PARITY_QUERIES = {"fig", "phil", "nate", "alex", "bob", "aoc", "car"}
 
+    by_query = {r.query: r for r in results}
+
     for r in results:
         # ── structural ──
         if r.ours_status != 200:
@@ -460,9 +462,33 @@ def acceptance_checks(results: list[RankingResult]) -> list[str]:
             if top != "zzstoatzz.io":
                 failures.append(f"[structural] zzstoatzz.io not rank 1 for q={r.query!r} (got {top!r})")
 
-        if r.query in ("fig (", "fig aka"):
+        # Display-name reachability. `bad-example.com` is named "fig (aka:[phil])",
+        # so a multi-token display-name query must find it: `n:fig ∩ n:aka`
+        # intersects to exactly that actor. This is the assertion with teeth —
+        # if display-name tokens stop being indexed or intersect breaks, it fires.
+        if r.query == "fig aka":
             if not any(a.get("handle", "").lower() == "bad-example.com" for a in r.ours_actors):
                 failures.append(f"[structural] bad-example.com missing from ours top {len(r.ours_actors)} for q={r.query!r}")
+
+        # `fig (` asserted bad-example.com in the top 8 until 2026-08-12. That
+        # was an FTS-era assertion: it needed `raw_phrase_prefix_name` to score
+        # the raw string, and the prefix index deliberately dropped per-request
+        # lexical scoring ("just has-all-tokens + authority ranking" —
+        # docs/typeahead-index-design.md). `(` is a separator in normalize.query,
+        # so `fig (` IS `fig`, and a 458-score actor loses that union to
+        # high-authority fig* accounts by design. Ranking quality is Track 2
+        # (pagerank → quality_score), not a lexical-weight knob.
+        #
+        # What punctuation must still guarantee is that it collapses
+        # CONSISTENTLY — a normalize or key-generation drift that made `fig (`
+        # diverge from `fig` is a real bug, and this catches it.
+        if r.query == "fig (":
+            plain = by_query.get("fig")
+            if plain and r.ours_handles != plain.ours_handles:
+                failures.append(
+                    f"[structural] q='fig (' diverged from q='fig' — punctuation must "
+                    f"normalize away (got {r.ours_handles[:3]} vs {plain.ours_handles[:3]})"
+                )
 
         # ── parity ──
         if r.query in PARITY_QUERIES:
@@ -692,18 +718,37 @@ def print_ranking_results(results: list[RankingResult]) -> None:
         if r.debug:
             cands = (r.debug.get("candidates") or [])[:8]
             if cands:
-                print(f"  {BOLD}score breakdown (top 8 candidates from /debug/search){RESET}")
-                for i, c in enumerate(cands, 1):
-                    handle = (c.get("handle") or "?")[:36]
-                    score = int(c.get("score", 0))
-                    src = c.get("source", "?")
-                    f_count = c.get("followers", 0)
-                    p_count = c.get("posts", 0)
-                    br = c.get("breakdown") or {}
-                    print(
-                        f"    {i:2d}. {handle:36s}  score={score:>7d}  src={src:<6s}  "
-                        f"f={f_count} p={p_count}  | {_fmt_breakdown(br)}"
+                # Two engines, two explanations. The index path ranks on authority
+                # alone (docs/typeahead-index-design.md), so there are no lexical
+                # components to print — what explains a result there is which keys
+                # were consulted and how deep their top-N lists go. Rendering the
+                # FTS fields against an index response printed "(no signal)" for
+                # every row, which reads like a broken scorer rather than a
+                # different one.
+                if r.debug.get("engine") == "index":
+                    keys = " ".join(
+                        f"{k['key']}={k['base']}+{k['overlay']}" for k in (r.debug.get("keys") or [])
                     )
+                    print(f"  {BOLD}index path{RESET}  norm={r.debug.get('normalized')!r}  "
+                          f"mode={r.debug.get('mode')}  merged={r.debug.get('merged')}"
+                          f"/{r.debug.get('hydrate_cap')}  keys: {keys}")
+                    for i, c in enumerate(cands, 1):
+                        handle = (c.get("handle") or "?")[:36]
+                        name = (c.get("display_name") or "")[:30]
+                        print(f"    {i:2d}. {handle:36s}  authority={int(c.get('score', 0)):>6d}  {name}")
+                else:
+                    print(f"  {BOLD}score breakdown (top 8 candidates from /debug/search){RESET}")
+                    for i, c in enumerate(cands, 1):
+                        handle = (c.get("handle") or "?")[:36]
+                        score = int(c.get("score", 0))
+                        src = c.get("source", "?")
+                        f_count = c.get("followers", 0)
+                        p_count = c.get("posts", 0)
+                        br = c.get("breakdown") or {}
+                        print(
+                            f"    {i:2d}. {handle:36s}  score={score:>7d}  src={src:<6s}  "
+                            f"f={f_count} p={p_count}  | {_fmt_breakdown(br)}"
+                        )
 
 
 def print_stress_table(results: list[StressResult]):
