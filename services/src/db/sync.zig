@@ -46,6 +46,16 @@ fn bootstrapPauseMs() u32 {
     return std.fmt.parseInt(u32, v, 10) catch 0;
 }
 
+/// Keyset page ≥2 of the incremental drain. The `updated_at >= ?1` anchor is
+/// load-bearing: it gives the planner an index SEARCH on
+/// idx_actors_updated_at even with bound params. The plain OR keyset form
+/// `(updated_at > ? OR (updated_at = ? AND did > ?))` degrades to a full
+/// index SCAN of the ~8M-row corpus when the values are parameters — that
+/// scan blew the 60s fetch deadline on every page-2 query and starved the
+/// drain to one page per cycle (Aug 3–14 2026 staleness incident). Guarded
+/// by the planner test at the bottom of this file.
+const incremental_paged_sql = "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at >= ?1 AND (updated_at > ?1 OR did > ?2) ORDER BY updated_at, did LIMIT 500";
+
 /// Max acceptable replica lag before incremental self-heals via a bulk resync.
 /// Default 6h: well under tombstone retention, comfortably above a healthy
 /// incremental cadence. Tunable via SYNC_MAX_LAG_S.
@@ -675,17 +685,21 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         @memcpy(cursor_ts_buf[0..since_str.len], since_str);
         var cursor_ts: []const u8 = cursor_ts_buf[0..since_str.len];
         var cursor_did_len: usize = 0;
+        // one retry per incremental pass: a single transient turso failure
+        // shouldn't abort the whole drain (each aborted pass caps catch-up at
+        // one page per cycle)
+        var page_retries: u2 = 1;
 
         while (true) {
             const cursor_did: []const u8 = if (cursor_did_len > 0) cursor_did_buf[0..cursor_did_len] else "";
 
             const args: []const []const u8 = if (cursor_did_len > 0)
-                &.{ cursor_ts, cursor_ts, cursor_did }
+                &.{ cursor_ts, cursor_did }
             else
                 &.{cursor_ts};
 
             const sql = if (cursor_did_len > 0)
-                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND (updated_at > ?1 OR (updated_at = ?2 AND did > ?3)) ORDER BY updated_at, did LIMIT 500"
+                incremental_paged_sql
             else
                 "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500";
 
@@ -694,6 +708,13 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
 
             var result = turso.query(sql, args) catch |err| {
                 log.err("incremental query failed: {}", .{err});
+                if (page_retries > 0) {
+                    page_retries -= 1;
+                    log.info("incremental: retrying page after {s}", .{@errorName(err)});
+                    q_span.setStatus(.@"error", "query failed; retrying");
+                    q_span.end();
+                    continue;
+                }
                 q_span.setStatus(.@"error", "query failed");
                 q_span.end();
                 had_turso_error = true;
@@ -1192,4 +1213,56 @@ fn updateActorCount(conn: zqlite.Conn) void {
             .{count_str},
         ) catch {};
     }
+}
+
+// ─── tests ────────────────────────────────────────────────────────────────
+
+// Regression guard for the Aug 3–14 2026 staleness incident. Turso's
+// server-side planner degraded the plain OR keyset form to a full index
+// SCAN when the values were bound params; stock local SQLite plans both
+// forms fine, so the live planner guard is smoke.py's turso EXPLAIN check.
+// Here we pin the seek-friendly `updated_at >= ?1` anchor shape and verify
+// the query stays valid + SEARCHable against the mirrored schema.
+test "incremental paged keyset query keeps its seek anchor and plans as SEARCH" {
+    try std.testing.expect(std.mem.indexOf(u8, incremental_paged_sql, "updated_at >= ?1") != null);
+    const testing = std.testing;
+    const conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+
+    // mirror the remote actors schema (columns referenced by actor_cols)
+    // and the composite index the keyset walk relies on
+    try conn.exec(
+        \\CREATE TABLE actors (
+        \\  did TEXT PRIMARY KEY,
+        \\  handle TEXT NOT NULL DEFAULT '',
+        \\  display_name TEXT DEFAULT '',
+        \\  avatar_url TEXT DEFAULT '',
+        \\  updated_at INTEGER NOT NULL DEFAULT 0,
+        \\  hidden INTEGER NOT NULL DEFAULT 0,
+        \\  labels TEXT NOT NULL DEFAULT '[]',
+        \\  created_at TEXT DEFAULT '',
+        \\  associated TEXT DEFAULT '{}',
+        \\  pds TEXT DEFAULT '',
+        \\  followers_count INTEGER DEFAULT 0,
+        \\  follows_count INTEGER DEFAULT 0,
+        \\  posts_count INTEGER DEFAULT 0,
+        \\  last_activity_at INTEGER DEFAULT 0,
+        \\  quality_score REAL DEFAULT 0
+        \\)
+    , .{});
+    try conn.exec("CREATE INDEX idx_actors_updated_at ON actors(updated_at, did)", .{});
+
+    var rows = try conn.rows(
+        "EXPLAIN QUERY PLAN " ++ incremental_paged_sql,
+        .{ "1786740000", "did:plc:aaaa" },
+    );
+    defer rows.deinit();
+
+    var saw_search = false;
+    while (rows.next()) |row| {
+        const detail = row.text(3);
+        try testing.expect(std.mem.indexOf(u8, detail, "SCAN") == null);
+        if (std.mem.indexOf(u8, detail, "SEARCH") != null) saw_search = true;
+    }
+    try testing.expect(saw_search);
 }

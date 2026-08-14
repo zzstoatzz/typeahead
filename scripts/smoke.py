@@ -480,6 +480,54 @@ def test_comparison(base_url: str, queries: list[str]):
         )
 
 
+def test_sync_keyset_plan():
+    """The sync drain's paged keyset query must plan as an index SEARCH on
+    Turso *with bound parameters*. The plain OR keyset form planned fine with
+    literals but degraded to a full index SCAN of the ~8M-row corpus when the
+    values arrived as hrana params, blowing the 60s fetch deadline on every
+    page-2 query (Aug 3-14 2026 staleness incident). Stock local SQLite plans
+    both forms fine, so only a live EXPLAIN against Turso can catch it."""
+    print("\n--- turso keyset query plan ---")
+    turso_url = os.environ.get("TURSO_URL", "")
+    token = os.environ.get("TURSO_AUTH_TOKEN", "")
+    if not turso_url or not token:
+        print(f"  [{SKIP}] skipped (set TURSO_URL + TURSO_AUTH_TOKEN)")
+        return
+    if turso_url.startswith("libsql://"):
+        turso_url = "https://" + turso_url.removeprefix("libsql://")
+
+    sql = (
+        "EXPLAIN QUERY PLAN SELECT did FROM actors WHERE handle != '' "
+        "AND updated_at >= ?1 AND (updated_at > ?1 OR did > ?2) "
+        "ORDER BY updated_at, did LIMIT 500"
+    )
+    body = json.dumps({
+        "requests": [
+            {"type": "execute", "stmt": {"sql": sql, "args": [
+                {"type": "text", "value": "1786740000"},
+                {"type": "text", "value": "did:plc:aaaa"},
+            ]}},
+            {"type": "close"},
+        ]
+    }).encode()
+    try:
+        req = urllib.request.Request(
+            f"{turso_url}/v2/pipeline", data=body, method="POST",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            result = json.loads(resp.read())
+        rows = result["results"][0]["response"]["result"]["rows"]
+        details = [r[3]["value"] for r in rows]
+    except Exception as e:
+        check("keyset plan fetch", False, str(e))
+        return
+    plan = "; ".join(details)
+    check("keyset page query is an index SEARCH (not SCAN)",
+          any("SEARCH" in d for d in details) and not any("SCAN" in d for d in details),
+          plan)
+
+
 def main():
     parser = argparse.ArgumentParser(description="typeahead smoke tests")
     parser.add_argument("--url", required=True, help="typeahead service URL")
@@ -518,6 +566,7 @@ def main():
         print(f"  [{SKIP}] skipped (use --secret or set TYPEAHEAD_SECRET)")
 
     test_page_scripts(args.url)
+    test_sync_keyset_plan()
 
     if args.compare:
         test_comparison(args.url, args.queries)

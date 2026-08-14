@@ -18,4 +18,5 @@ comptime {
     _ = @import("index/promote_runner.zig");
     _ = @import("index/r2.zig");
     _ = @import("index/builder.zig");
+    _ = @import("db/sync.zig");
 }

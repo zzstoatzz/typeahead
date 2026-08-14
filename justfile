@@ -54,7 +54,7 @@ SEARCH_URL := "https://typeahead-search.fly.dev"
 
 # correctness gate against the public API (shape, ranking, moderation, admin)
 smoke url=WORKER_URL:
-    ./scripts/smoke.py --url {{url}}
+    sh -c 'set -a; [ -f .env ] && . ./.env; set +a; ./scripts/smoke.py --url {{url}}'
 alias prod-smoke := smoke
 
 # edge latency + coverage + fields + stress, against the prod worker (what users feel)
