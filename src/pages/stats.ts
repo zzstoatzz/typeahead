@@ -192,16 +192,14 @@ export function statsPage(d: StatsData): string {
   }
   const trafficSeries5mJson = jsonScript(seriesByDomain5m);
 
-  // The domain NAME is not a link.
-  //
-  // It used to be an <a target="_blank">, and the selection handler skips
+  // It used to be that NO name was a link, because the selection handler skips
   // anchors so the link could still navigate — which meant the largest part of
-  // every legend entry and table row did not select. With a mouse you can aim
-  // at the percentage; with a thumb you land on the name and get sent to the
-  // app's website. Selecting is the primary action here, so the whole entry
-  // selects and navigation moves to its own explicit ↗ target.
-  const visit = (domain: string) => domain in SPECIAL_DOMAINS ? ''
-    : `<a href="https://${esc(domain)}" target="_blank" rel="noopener" class="visit" title="open ${esc(domain)}" aria-label="open ${esc(domain)}">↗</a>`;
+  // every legend entry and table row did not select. The split that survives:
+  // in the TABLE the name is a link again (the row still selects via the rank,
+  // hits, and % cells — the selection handler skips anchors); in the LEGEND
+  // the whole entry stays a selection target, since it has no other surface.
+  const nameLink = (domain: string) => domain in SPECIAL_DOMAINS ? esc(domain)
+    : `<a href="https://${esc(domain)}" target="_blank" rel="noopener" class="legend-link">${esc(domain)}</a>`;
 
   const pieLegendHtml = pieSlice.map((r, i) => {
     const color = SPECIAL_DOMAINS[r.domain] ?? PIE_COLORS[i % PIE_COLORS.length];
@@ -211,7 +209,7 @@ export function statsPage(d: StatsData): string {
 
   const trafficTableRows = d.trafficSources.map((r, i) => {
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
-    return `<tr data-domain="${esc(r.domain)}"><td class="ts-rank">${i + 1}</td><td class="ts-domain">${esc(r.domain)}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td><td class="ts-visit">${visit(r.domain)}</td></tr>`;
+    return `<tr data-domain="${esc(r.domain)}"><td class="ts-rank">${i + 1}</td><td class="ts-domain">${nameLink(r.domain)}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td></tr>`;
   }).join('');
 
   return `<!doctype html>
@@ -300,10 +298,7 @@ export function statsPage(d: StatsData): string {
     .pie-legend span.sel { border-color: var(--line-2); background: var(--panel-2); }
     /* the only navigation affordance left; sized as a real touch target so it
        is hittable without being easy to hit by accident */
-    .visit { color: var(--faint); text-decoration: none; padding: 0 0.35rem;
              display: inline-block; min-width: 24px; text-align: center; }
-    .visit:hover { color: var(--accent); }
-    .ts-visit { width: 2rem; text-align: right; padding-left: 0 !important; }
     .traffic-series { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
     .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
     .traffic-series .ranged-header { margin-bottom: 0.5rem; }
@@ -410,6 +405,8 @@ export function statsPage(d: StatsData): string {
     .ts-table tr:last-child td { border-bottom: none; }
     .ts-rank { color: var(--dim); width: 2.2rem; }
     .ts-domain { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .legend-link { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--faint); }
+    .legend-link:hover { color: var(--text); border-bottom-color: var(--muted); }
     .ts-hits { text-align: right; font-variant-numeric: tabular-nums; color: var(--text);
                width: 4.5rem; }
     .ts-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted);
@@ -559,7 +556,7 @@ export function statsPage(d: StatsData): string {
               : ''}
            <div class="ts-table-wrap">
              <table class="ts-table">
-               <thead><tr><th>#</th><th>domain</th><th style="text-align:right">hits</th><th style="text-align:right">%</th><th></th></tr></thead>
+               <thead><tr><th>#</th><th>domain</th><th style="text-align:right">hits</th><th style="text-align:right">%</th></tr></thead>
                <tbody>${trafficTableRows}</tbody>
              </table>
            </div>`
@@ -892,7 +889,9 @@ export function statsPage(d: StatsData): string {
       // span is printed on the axis below. This used to append the domain, "all
       // sources", and "· last 30d" — enough text to overflow the header on a
       // phone to say what two other elements already said.
-      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time · ' + cfg.grain;
+      // "all" is silently identical to 30d without the cap note — per-app
+      // history only goes back 30 days while the metrics beside it go further.
+      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time · ' + cfg.grain + (cfg.capped ? ' · 30d retained' : '');
       renderChips();
       const nonEmpty = raws.filter(r => r.length > 0);
       const empty = nonEmpty.length === 0 || Math.max(...raws.map(r => r.length)) < 2;

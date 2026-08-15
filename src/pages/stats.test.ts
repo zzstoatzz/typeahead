@@ -24,11 +24,11 @@ function tableRow(html: string, domain: string): string {
 }
 
 describe("traffic source selection targets", () => {
-  // Regression: the domain name was an <a target="_blank">, and the click
-  // handler skips anchors so links could still navigate. That made the largest
-  // part of every legend entry and row unselectable — on touch, where the thumb
-  // lands on the name, multi-select was effectively unreachable and taps opened
-  // the app's website instead.
+  // The split contract (2026-08-15): in the TABLE the domain name is a link to
+  // the app's site — the row still selects via the rank/hits/% cells because
+  // the click handler skips anchors. In the LEGEND the whole entry stays a
+  // selection target (it has no other tappable surface), so the name there is
+  // NOT a link.
   const html = page(["plyr.fm", "unknown"]);
 
   test("the legend entry is not a link", () => {
@@ -37,16 +37,16 @@ describe("traffic source selection targets", () => {
     expect(entry).not.toContain("<a ");
   });
 
-  test("the table row's domain cell is not a link", () => {
+  test("the table row's domain name links to the app's site", () => {
     const cell = tableRow(html, "plyr.fm").match(/<td class="ts-domain">.*?<\/td>/s)?.[0] ?? "";
-    expect(cell).toContain("plyr.fm");
-    expect(cell).not.toContain("<a ");
+    expect(cell).toContain('href="https://plyr.fm"');
+    expect(cell).toContain('target="_blank"');
   });
 
-  test("navigation stays available as its own target", () => {
+  test("the row keeps non-anchor cells to select by", () => {
     const row = tableRow(html, "plyr.fm");
-    expect(row).toContain('class="visit"');
-    expect(row).toContain('href="https://plyr.fm"');
+    expect(row).toContain('class="ts-hits"');
+    expect(row).toContain('class="ts-pct"');
   });
 
   test("synthetic buckets get no outbound link", () => {

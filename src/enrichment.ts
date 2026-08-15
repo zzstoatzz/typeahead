@@ -107,7 +107,9 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
   // /admin/enrich-profiles during a run would have.
   const existing = await env.KV.get("enrich_lock");
   if (existing) return { resolved: 0, enriched: 0 };
-  await env.KV.put("enrich_lock", "1", { expirationTtl: 300 });
+  // 900s: both phases are now 200 getProfiles calls each (~500ms/call with the
+  // pacing gap) plus the budgeted PDS fallbacks — a full run can pass 5 minutes.
+  await env.KV.put("enrich_lock", "1", { expirationTtl: 900 });
 
   let totalResolved = 0;
   let totalEnriched = 0;
@@ -190,18 +192,32 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
 
     // phase 2: profile + labels enrichment via getProfiles batch
     // targets actors missing avatar OR labels — one API call per 25 actors
+    //
+    // Sized against ARRIVALS like phase 1: the firehose discovers ~2,900 new
+    // actors/hour and every one of them enters this cohort (avatar_url='',
+    // labels='[]'). At the previous 250/run the backlog GREW ~2,650/hour by
+    // construction — by 2026-08-15 several million actors had never been
+    // profile-checked, which is what a 61.9%-and-flat avatar coverage and a
+    // near-zero hidden count on /stats actually measured. avatar coverage
+    // among CHECKED actors is ~95%.
     const { results: profileRows } = await db.prepare(
       `SELECT did, handle, pds FROM actors
        WHERE handle != ''
          AND (avatar_url = '' OR labels = '[]' OR created_at = '')
          AND profile_checked_at < unixepoch() - 3600
-       ORDER BY profile_checked_at ASC LIMIT 250`
+       ORDER BY profile_checked_at ASC LIMIT 5000`
     ).all<{ did: string; handle: string; pds: string }>();
 
     if (profileRows && profileRows.length > 0) {
       const overrides = await getOverrides(db, profileRows.map((r) => r.did));
       const blockedDomains = await getBlockedDomains(db);
       let enriched = 0;
+      // The PDS fallback costs up to two EXTRA fetches per DID getProfiles
+      // didn't return, and the never-checked backlog is dead-account-heavy —
+      // uncapped it could add thousands of serial requests per run. Budgeted:
+      // past the cap, unreturned DIDs just get profile_checked_at stamped and
+      // the fallback catches them on a later pass.
+      let pdsFallbackBudget = 100;
       for (let i = 0; i < profileRows.length; i += 25) {
         const batch = profileRows.slice(i, i + 25);
         const params = batch.map((r) => `actors=${encodeURIComponent(r.did)}`).join("&");
@@ -251,7 +267,7 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
           for (const r of batch) {
             if (returned.has(r.did)) continue;
             const override = overrides.get(r.did) ?? null;
-            if (r.pds && (override === 'show' || !override)) {
+            if (r.pds && (override === 'show' || !override) && pdsFallbackBudget-- > 0) {
               // non-bsky PDS (e.g. tngl.sh): always try PDS fallback directly
               const isNonBsky = !r.pds.includes('.bsky.network');
               let tryPds = isNonBsky;
