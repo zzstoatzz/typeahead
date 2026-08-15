@@ -24,7 +24,7 @@ deploy-worker url="https://typeahead.waow.tech":
     npx wrangler deploy
     @echo "--- waiting for edge propagation before smoke ---"
     sleep 5
-    ./scripts/smoke.py --url {{url}}
+    just smoke {{url}}
 
 # deploy the worker WITHOUT the post-deploy smoke gate (escape hatch)
 deploy-worker-only:
