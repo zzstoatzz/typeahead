@@ -56,7 +56,17 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
   // bounded by hours × active domains (≤720 × ~dozens), NOT the corpus.
   const trafficSince = Math.floor(Date.now() / 300_000) - 30 * 288;
   const traffic5mSince = Math.floor(Date.now() / 300_000) - 2 * 288; // raw 5-min, last 48h
-  const [metricsRes, snapshotRes, deltasRes, trafficRes, traffic5mRes] = await db.batch([
+
+  // per-app history is INDEFINITE: 5-min buckets roll up into traffic_daily
+  // before the 90d prune (below), so resolution decays — 5-min for 48h,
+  // hourly for 30d, daily forever — but no app's history is ever dropped.
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS traffic_daily (
+       day INTEGER NOT NULL, domain TEXT NOT NULL, hits INTEGER NOT NULL,
+       PRIMARY KEY (day, domain)) WITHOUT ROWID`
+  ).run();
+
+  const [metricsRes, snapshotRes, deltasRes, trafficRes, traffic5mRes, trafficDailyRes] = await db.batch([
     db.prepare("SELECT hour, searches, total_ms, cache_hits, cache_ms FROM metrics ORDER BY hour DESC LIMIT 100000"),
     db.prepare("SELECT hour, total, with_handles, with_avatars, hidden FROM snapshots ORDER BY hour ASC LIMIT 5000"),
     db.prepare("SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket DESC LIMIT 288"),
@@ -69,6 +79,17 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
       `SELECT bucket, domain, hits FROM traffic_buckets
        WHERE bucket >= ?1 ORDER BY bucket ASC`
     ).bind(traffic5mSince),
+    // full history at daily grain: rolled-up past (traffic_daily) + the live
+    // bucket window rolled up on the fly. Bounded by days × active domains,
+    // NOT the corpus.
+    db.prepare(
+      `SELECT day, domain, SUM(hits) AS hits FROM (
+         SELECT day, domain, hits FROM traffic_daily
+         UNION ALL
+         SELECT bucket / 288 AS day, domain, SUM(hits) AS hits
+           FROM traffic_buckets GROUP BY bucket / 288, domain
+       ) GROUP BY day, domain ORDER BY day ASC`
+    ),
   ], "read");
 
   await env.KV.put("stats_data", JSON.stringify({
@@ -77,12 +98,25 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
     deltas: deltasRes.results ?? [],
     traffic_series: trafficRes.results ?? [],
     traffic_series_5m: traffic5mRes.results ?? [],
+    traffic_daily: trafficDailyRes.results ?? [],
     materialized_at: Date.now(),
   }));
 
-  // retention: drop per-domain buckets older than 90d (PK-prefix range delete)
+  // retention: roll buckets older than 90d into traffic_daily, THEN drop them —
+  // one batch (= one transaction), so a bucket is never deleted unrolled and
+  // never rolled twice. hits = hits + excluded.hits is safe for the same
+  // reason: the source rows are gone the moment the transaction lands.
   const pruneBefore = Math.floor(Date.now() / 300_000) - 90 * 288;
-  await db.prepare("DELETE FROM traffic_buckets WHERE bucket < ?1").bind(pruneBefore).run();
+  await db.batch([
+    db.prepare(
+      `INSERT INTO traffic_daily (day, domain, hits)
+       SELECT bucket / 288 AS day, domain, SUM(hits) AS hits
+         FROM traffic_buckets WHERE bucket < ?1
+        GROUP BY bucket / 288, domain
+       ON CONFLICT(day, domain) DO UPDATE SET hits = hits + excluded.hits`
+    ).bind(pruneBefore),
+    db.prepare("DELETE FROM traffic_buckets WHERE bucket < ?1").bind(pruneBefore),
+  ]);
 }
 
 /** 25 DIDs per getProfiles call, so this is 200 requests per run.

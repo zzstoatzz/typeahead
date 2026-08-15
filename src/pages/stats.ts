@@ -22,6 +22,7 @@ export interface StatsData {
   trafficSources: { domain: string; hits: number }[];
   trafficSeries: { hour: number; domain: string; hits: number }[];
   trafficSeries5m: { bucket: number; domain: string; hits: number }[];
+  trafficDaily: { day: number; domain: string; hits: number }[];
   /** view restored from the query string — drives the link preview */
   view?: { apps: string[]; range: string; origin: string };
 }
@@ -191,6 +192,13 @@ export function statsPage(d: StatsData): string {
     (seriesByDomain5m[r.domain] ??= []).push([r.bucket, r.hits]);
   }
   const trafficSeries5mJson = jsonScript(seriesByDomain5m);
+  // daily grain, full history — this is why "all" has no cap: resolution
+  // decays with age (5-min → hourly → daily) but no app's history is dropped
+  const seriesByDomainDaily: Record<string, [number, number][]> = {};
+  for (const r of d.trafficDaily) {
+    (seriesByDomainDaily[r.domain] ??= []).push([r.day, r.hits]);
+  }
+  const trafficSeriesDailyJson = jsonScript(seriesByDomainDaily);
 
   // It used to be that NO name was a link, because the selection handler skips
   // anchors so the link could still navigate — which meant the largest part of
@@ -807,6 +815,7 @@ export function statsPage(d: StatsData): string {
     /* --- per-app traffic history: click pins a domain, hover the line for detail --- */
     const trafficSeries = ${trafficSeriesJson};     // hourly, 30d: domain -> [[hour, hits], ...]
     const trafficSeries5m = ${trafficSeries5mJson}; // 5-min, 48h: domain -> [[bucket, hits], ...]
+    const trafficSeriesDaily = ${trafficSeriesDailyJson}; // daily, full history: domain -> [[day, hits], ...]
     const tseriesLines = document.getElementById('tseries-lines');
     const tseriesDots = document.getElementById('tseries-dots');
     const tseriesGuide = document.getElementById('tseries-guide');
@@ -842,13 +851,17 @@ export function statsPage(d: StatsData): string {
     const TS_RANGES = { '24h': { secs: 86400, stepSec: 300, grain: '5 min' },
                         '7d':  { secs: 604800, stepSec: 3600, grain: 'hourly' },
                         '30d': { secs: 2592000, stepSec: 3600, grain: 'hourly' },
-                        // per-domain history is only retained for 30d, so "all"
-                        // is the widest series that exists. The metrics beside
-                        // it DO go back further, so the label says so instead of
-                        // quietly implying they match.
-                        'all': { secs: 2592000, stepSec: 3600, grain: 'hourly', capped: true } };
+                        // no window and no cap: daily rollups are kept forever
+                        // (resolution decays with age, history never drops)
+                        'all': { secs: null, stepSec: 86400, grain: 'daily' } };
+    // KV materializes hourly; until the first run ships traffic_daily, "all"
+    // falls back to the hourly series so the chart is never empty
+    if (Object.keys(trafficSeriesDaily).length === 0) {
+      TS_RANGES['all'] = { secs: 2592000, stepSec: 3600, grain: 'hourly' };
+    }
     function seriesFor(domain, stepSec) {
-      const source = stepSec === 300 ? trafficSeries5m : trafficSeries;
+      const source = stepSec === 300 ? trafficSeries5m
+                   : stepSec === 86400 ? trafficSeriesDaily : trafficSeries;
       if (domain != null) return source[domain] || [];
       const sums = new Map();
       for (const dom in source) {
@@ -884,16 +897,14 @@ export function statsPage(d: StatsData): string {
       if (!tseriesLines) return;
       const cfg = TS_RANGES[tsRange];
       const nowUnit = Math.floor(Date.now() / 1000 / cfg.stepSec);
-      const minUnit = nowUnit - cfg.secs / cfg.stepSec;
+      const minUnit = cfg.secs == null ? -Infinity : nowUnit - cfg.secs / cfg.stepSec;
       const specs = activeSpecs();
       const raws = specs.map(s => seriesFor(s.domain, cfg.stepSec).filter(([t]) => t >= minUnit));
       // Deliberately short: what is plotted is named by the chips, and the true
       // span is printed on the axis below. This used to append the domain, "all
       // sources", and "· last 30d" — enough text to overflow the header on a
       // phone to say what two other elements already said.
-      // "all" is silently identical to 30d without the cap note — per-app
-      // history only goes back 30 days while the metrics beside it go further.
-      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time · ' + cfg.grain + (cfg.capped ? ' · 30d retained' : '');
+      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time · ' + cfg.grain;
       renderChips();
       const nonEmpty = raws.filter(r => r.length > 0);
       const empty = nonEmpty.length === 0 || Math.max(...raws.map(r => r.length)) < 2;
@@ -1201,7 +1212,7 @@ export function statsPage(d: StatsData): string {
     // Only domains we actually hold a series for. A link naming a domain that
     // has since aged out of traffic_buckets would otherwise render a chip
     // pointing at an empty line.
-    const KNOWN = new Set([...Object.keys(trafficSeries), ...Object.keys(trafficSeries5m)]);
+    const KNOWN = new Set([...Object.keys(trafficSeries), ...Object.keys(trafficSeries5m), ...Object.keys(trafficSeriesDaily)]);
     window.__restoreView = () => {
       const p = BOOT;
       const apps = (p.get('apps') || '').split(',').map(s => s.trim()).filter(s => KNOWN.has(s));

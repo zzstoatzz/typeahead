@@ -37,6 +37,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
     deltas: { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
     traffic_series?: { hour: number; domain: string; hits: number }[];
     traffic_series_5m?: { bucket: number; domain: string; hits: number }[];
+    traffic_daily?: { day: number; domain: string; hits: number }[];
     materialized_at: number;
   } | null;
 
@@ -113,7 +114,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   const tProcess = performance.now();
 
-  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [],
+  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [], trafficDaily: kvData?.traffic_daily ?? [],
     view: { apps, range, origin: reqUrl.origin } });
 
   const tRender = performance.now();

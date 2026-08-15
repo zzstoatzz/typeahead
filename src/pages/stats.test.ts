@@ -7,7 +7,7 @@ function page(domains: string[]): string {
     avgLatency: 0, avgCacheLatency: 0, handlePct: "0", avatarPct: "0",
     snapshots: [],
     trafficSources: domains.map((domain, i) => ({ domain, hits: 100 - i })),
-    trafficSeries: [], trafficSeries5m: [],
+    trafficSeries: [], trafficSeries5m: [], trafficDaily: [],
   };
   return statsPage(d);
 }
@@ -91,7 +91,7 @@ describe("link previews", () => {
   const withView = (apps: string[]) => statsPage({
     total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
     handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [],
-    trafficSeries: series, trafficSeries5m: [],
+    trafficSeries: series, trafficSeries5m: [], trafficDaily: [],
     view: { apps, range: "7d", origin: "https://typeahead.waow.tech" },
   } as StatsData);
 
