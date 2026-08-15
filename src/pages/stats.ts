@@ -198,7 +198,9 @@ export function statsPage(d: StatsData): string {
   // in the TABLE the name is a link again (the row still selects via the rank,
   // hits, and % cells — the selection handler skips anchors); in the LEGEND
   // the whole entry stays a selection target, since it has no other surface.
-  const nameLink = (domain: string) => domain in SPECIAL_DOMAINS ? esc(domain)
+  // Only dotted hostnames link: X-Client values can be bare app names
+  // ("pckt", "lazurite") and https://pckt is not a place.
+  const nameLink = (domain: string) => domain in SPECIAL_DOMAINS || !domain.includes('.') ? esc(domain)
     : `<a href="https://${esc(domain)}" target="_blank" rel="noopener" class="legend-link">${esc(domain)}</a>`;
 
   const pieLegendHtml = pieSlice.map((r, i) => {

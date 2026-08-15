@@ -49,6 +49,11 @@ describe("traffic source selection targets", () => {
     expect(row).toContain('class="ts-pct"');
   });
 
+  test("bare app names (no dot) get no outbound link", () => {
+    const html2 = page(["pckt"]);
+    expect(tableRow(html2, "pckt")).not.toContain("<a ");
+  });
+
   test("synthetic buckets get no outbound link", () => {
     // "unknown"/"homepage" are attribution buckets, not hostnames
     expect(tableRow(html, "unknown")).not.toContain("<a ");
