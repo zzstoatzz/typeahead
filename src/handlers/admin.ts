@@ -93,6 +93,35 @@ export async function handleCursor(
 }
 
 /** resolve a handle or DID via slingshot, then upsert into the active DB */
+/** A valid PDS that never announced itself is invisible to the relay, so its
+ *  accounts never reach the firehose — for us or ANY consumer (hey.pds.zat.dev,
+ *  2026-08-15: PLC knew the account, no relay had ever crawled the host, and
+ *  the weekly PLC sync only updates existing rows so nothing would ever have
+ *  discovered it). Whoever lands on request-indexing from a self-hosted PDS is
+ *  exactly that case, so announce their host to the relay while we index them.
+ *  KV-memoized per host (7d) so the relay probe doesn't run per request. */
+async function announceHostToRelay(pdsUrl: string, env: Env): Promise<void> {
+  try {
+    const hostname = new URL(pdsUrl).hostname;
+    if (hostname.endsWith(".bsky.network")) return; // mothership: always crawled
+    if (await env.KV.get(`relay_crawl:${hostname}`)) return;
+    const status = await fetch(
+      `https://bsky.network/xrpc/com.atproto.sync.getHostStatus?hostname=${encodeURIComponent(hostname)}`
+    );
+    if (!status.ok) {
+      await fetch("https://bsky.network/xrpc/com.atproto.sync.requestCrawl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hostname }),
+      });
+      console.log(JSON.stringify({ event: "relay_request_crawl", hostname }));
+    }
+    await env.KV.put(`relay_crawl:${hostname}`, "1", { expirationTtl: 7 * 86400 });
+  } catch {
+    // best-effort — the relay announce is a favor, never a dependency
+  }
+}
+
 export async function handleRequestIndexing(
   request: Request,
   db: TursoDB,
@@ -174,6 +203,9 @@ export async function handleRequestIndexing(
     .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore)
     .run();
   lap("turso_write");
+
+  // fire-and-forget: fix the upstream invisibility too (see announceHostToRelay)
+  if (identity.pds) ctx.waitUntil(announceHostToRelay(identity.pds, env));
 
   // Push it into the search replica NOW rather than waiting for the next sync
   // tick. Turso is the authority and the row is already committed above; this
