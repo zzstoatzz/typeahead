@@ -114,7 +114,12 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
       if (!res.ok) continue;
 
       const data: any = await res.json();
-      const profiles: any[] = data.profiles || [];
+      // a 200 without a profiles array is an infra fault, not "nobody exists" —
+      // treating it as empty would feed every empty-handle DID in the batch to
+      // the dead-actor DELETE below (the account-info lesson: distinguish
+      // protocol-level absence from infrastructure failure).
+      if (!Array.isArray(data?.profiles)) continue;
+      const profiles: any[] = data.profiles;
       checked += profiles.length;
 
       // build a lookup of current DB state for this batch

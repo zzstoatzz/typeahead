@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { computeAuthorityScore, computeAuthorityScoreBreakdown } from "./utils";
+import { computeAuthorityScore, computeAuthorityScoreBreakdown, pdsOrigin } from "./utils";
 
 const NOW = Date.parse("2026-06-25T00:00:00.000Z");
 
@@ -39,4 +39,24 @@ test("computeAuthorityScoreBreakdown floors fresh-account penalties at zero", ()
   }, NOW);
   expect(b.score).toBe(0);
   expect(b.freshness.penalty).toBe(-100);
+});
+
+// pdsOrigin: the pds column is actor-controlled (their own identity doc) —
+// anything we fetch from or hand to clients must be a plain https origin.
+test("pdsOrigin accepts a plain https origin", () => {
+  expect(pdsOrigin("https://pds.zat.dev")).toBe("https://pds.zat.dev");
+  expect(pdsOrigin("https://pds.zat.dev/")).toBe("https://pds.zat.dev");
+  expect(pdsOrigin("https://pds.example.com:8443")).toBe("https://pds.example.com:8443");
+});
+
+test("pdsOrigin rejects non-https, credentials, paths, and single-label hosts", () => {
+  expect(pdsOrigin("http://pds.zat.dev")).toBeNull();
+  expect(pdsOrigin("ftp://pds.zat.dev")).toBeNull();
+  expect(pdsOrigin("https://user:pw@pds.zat.dev")).toBeNull();
+  expect(pdsOrigin("https://pds.zat.dev/xrpc/evil?x=1")).toBeNull();
+  expect(pdsOrigin("https://pds.zat.dev/?q=1")).toBeNull();
+  expect(pdsOrigin("https://pds.zat.dev/#f")).toBeNull();
+  expect(pdsOrigin("https://localhost")).toBeNull();
+  expect(pdsOrigin("not a url")).toBeNull();
+  expect(pdsOrigin("")).toBeNull();
 });

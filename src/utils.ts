@@ -40,9 +40,30 @@ export function avatarFallbackUrl(did: string, cidOrUrl: string, pds?: string): 
     return cidOrUrl.includes("cdn.bsky.app") ? null : cidOrUrl;
   }
   if (!pds || pds.includes(".bsky.network")) return null;
+  const origin = pdsOrigin(pds);
+  if (!origin) return null;
   const cid = extractAvatarCid(cidOrUrl);
   if (!cid) return null;
-  return `${pds}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
+  return `${origin}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(cid)}`;
+}
+
+/** Normalize an actor-controlled PDS value to a plain https origin, or null.
+ *  The pds column comes from the actor's own identity doc (PLC/did:web), so
+ *  anything built from it — fetch targets in enrichment, blob URLs handed to
+ *  clients — must not smuggle credentials, paths, or non-https schemes, and
+ *  single-label hosts (localhost, internal names) are rejected outright. */
+export function pdsOrigin(pds: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(pds);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:") return null;
+  if (u.username || u.password) return null;
+  if ((u.pathname !== "/" && u.pathname !== "") || u.search || u.hash) return null;
+  if (!u.hostname.includes(".")) return null;
+  return u.origin;
 }
 
 export function extractAvatarCid(urlOrCid: string): string {
@@ -60,11 +81,13 @@ export function extractAvatarCid(urlOrCid: string): string {
 /** fetch profile directly from an actor's PDS — tries bsky profile first, then tangled.
  *  returns bare CID for avatar (not full URL) — caller reconstructs at query time via pds column. */
 export async function fetchProfileFromPds(did: string, pds: string): Promise<any | null> {
+  const origin = pdsOrigin(pds);
+  if (!origin) return null;
   const collections = ['app.bsky.actor.profile', 'sh.tangled.actor.profile'];
   for (const collection of collections) {
     try {
       const res = await fetch(
-        `${pds}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${collection}&rkey=self`
+        `${origin}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(did)}&collection=${collection}&rkey=self`
       );
       if (!res.ok) continue;
       const data: any = await res.json();

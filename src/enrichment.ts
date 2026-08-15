@@ -265,7 +265,10 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
           if (!res.ok) continue;
 
           const data: any = await res.json();
-          const profiles: any[] = data.profiles || [];
+          // 200 without a profiles array = infra fault; skip rather than treat
+          // the whole batch as unreturned (burns PDS-fallback budget for nothing)
+          if (!Array.isArray(data?.profiles)) continue;
+          const profiles: any[] = data.profiles;
 
           const stmts: Stmt[] = [];
           const returned = new Set<string>();

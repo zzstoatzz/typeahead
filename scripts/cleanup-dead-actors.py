@@ -140,12 +140,17 @@ def fetch_profiles(dids):
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            return json.loads(resp.read()).get("profiles", [])
+            profiles = json.loads(resp.read()).get("profiles")
+            # a 200 without a profiles array is an infra fault, not "all dead"
+            return profiles if isinstance(profiles, list) else "error"
     except urllib.error.HTTPError as e:
         if e.code == 429: return "rate_limited"
-        return []
+        return "error"
     except Exception:
-        return []
+        # NEVER return [] on failure: the caller reads "not in the response"
+        # as "dead -> DELETE", so an appview outage mid-run would mass-delete
+        # live actors. Absence is only meaningful in a successful response.
+        return "error"
 
 
 def main():
@@ -212,6 +217,11 @@ def main():
                         print("  still limited, skipping batch")
                         checked += len(batch_dids)
                         continue
+
+                if result == "error":
+                    # fetch failed — no evidence either way; skip without deleting
+                    print(f"\n  fetch failed for batch of {len(batch_dids)}, skipping (no deletes)")
+                    continue
 
                 checked += len(batch_dids)
                 returned = {p["did"]: p for p in result}
