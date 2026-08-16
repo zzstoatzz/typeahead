@@ -7,7 +7,7 @@ export function docsPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  ${ogTags({ title: "typeahead — docs", description: "Point your app at typeahead in one line. Migration guide for app.bsky.actor.searchActorsTypeahead, plus the canonical tech.waow.typeahead.searchActors endpoint.", path: "/docs" })}
+  ${ogTags({ title: "typeahead — docs", description: "Point your app at typeahead in one line. The canonical tech.waow.typeahead.searchActors endpoint, plus a drop-in app.bsky.actor.searchActorsTypeahead alias for migrating off bluesky.", path: "/docs" })}
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}
@@ -61,21 +61,23 @@ export function docsPage(): string {
     <div class="header">
       <h1><a href="/" class="wordmark">typeahead</a> docs</h1>
     </div>
-    <p class="subtitle">switching from the bluesky typeahead API</p>
+    <p class="subtitle">community actor search for atproto</p>
 
     <div class="callout">
-      <strong>tl;dr</strong> — migrating? replace <code>public.api.bsky.app</code> with
-      <code>typeahead.waow.tech</code> and you're done. building something new? use the
-      canonical endpoint: <code>/xrpc/tech.waow.typeahead.searchActors</code>.
+      <strong>tl;dr</strong> — use
+      <code>/xrpc/tech.waow.typeahead.searchActors</code> on <code>typeahead.waow.tech</code>.
+      migrating from bluesky's typeahead? just swap the base URL — your existing
+      <code>app.bsky.*</code> path keeps working (see
+      <a href="#switching-from-bluesky">switching from bluesky</a>).
     </div>
 
     <h2>what this is</h2>
     <p>
       typeahead is a community-run actor search for <a href="https://atproto.com">atproto</a>,
-      aiming to be a drop-in replacement for bluesky's
-      <code>app.bsky.actor.searchActorsTypeahead</code> endpoint. the endpoint path and query
-      params are identical; the response shape is compatible but slimmer (see
-      <a href="#response-comparison">response comparison</a> below).
+      served under its own lexicon. it covers everything bluesky's
+      <code>app.bsky.actor.searchActorsTypeahead</code> does — same query params, compatible
+      but slimmer response (see <a href="#response-comparison">response comparison</a> below) —
+      without bluesky in the request path.
     </p>
     <p>
       accounts are discovered from the relay's event stream
@@ -102,17 +104,18 @@ export function docsPage(): string {
     </p>
     <pre><code>GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=...&amp;limit=10</code></pre>
     <p>
-      same params (<code>q</code>, <code>limit</code> 1–100) and the same
-      <code>{ "actors": [...] }</code> response as the bluesky-compatible alias below.
-      prefer this path for new integrations — <code>app.bsky.*</code> names belong to
-      bluesky's lexicons, and this service isn't bluesky.
-      there's also a machine-readable summary at <a href="/llms.txt">/llms.txt</a>.
+      params are <code>q</code> and <code>limit</code> (1–100), returning
+      <code>{ "actors": [...] }</code>. this is the endpoint to use —
+      <code>app.bsky.*</code> names belong to bluesky's lexicons, and this service isn't
+      bluesky. there's also a machine-readable summary at <a href="/llms.txt">/llms.txt</a>.
     </p>
 
-    <h2>switching from bluesky</h2>
+    <h2 id="switching-from-bluesky">switching from bluesky</h2>
     <p>
-      the alias <code>/xrpc/app.bsky.actor.searchActorsTypeahead</code> behaves identically
-      and is kept indefinitely, so migrating is just a base-URL swap:
+      for backwards compatibility, the bluesky path
+      <code>/xrpc/app.bsky.actor.searchActorsTypeahead</code> is served as an alias — it behaves
+      identically to the canonical endpoint and is kept indefinitely, so migrating an existing
+      integration is just a base-URL swap:
     </p>
     <pre><code><span class="diff-del">- https://public.api.bsky.app</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10
 <span class="diff-add">+ https://typeahead.waow.tech</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10</code></pre>
@@ -131,7 +134,8 @@ export function docsPage(): string {
 
     <p>
       extracting the base URL into a constant (or env var) makes it easy to switch back
-      if you ever need to.
+      if you ever need to. once you're settled, consider moving the path to the canonical
+      <code>tech.waow.typeahead.searchActors</code> too — the response is identical.
     </p>
 
     <h2>identify your app</h2>
@@ -140,7 +144,7 @@ export function docsPage(): string {
       <a href="/stats">traffic stats</a> instead of as "unknown":
     </p>
     <pre><code><span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
-  <span class="str">\`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>,
+  <span class="str">\`\${TYPEAHEAD_URL}/xrpc/tech.waow.typeahead.searchActors?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>,
   { headers: { <span class="str">'X-Client'</span>: <span class="str">'my-app.example.com'</span> } }
 );</code></pre>
     <p>
