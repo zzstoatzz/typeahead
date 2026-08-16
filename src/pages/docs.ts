@@ -78,11 +78,12 @@ export function docsPage(): string {
       <a href="#response-comparison">response comparison</a> below).
     </p>
     <p>
-      accounts are discovered straight from the relay firehose
+      accounts are discovered from the relay's event stream
       (<a href="https://atproto.com/specs/event-stream">com.atproto.sync.subscribeRepos</a>) —
-      anyone who creates a profile, posts, likes, or follows is picked up automatically,
-      wherever their PDS is hosted.
-      accounts that predate the index or haven't posted yet can be surfaced on demand
+      the relay announces every new identity and handle change, and we also pick up anyone
+      who writes a profile, post, like, or follow, wherever their PDS is hosted.
+      accounts that predate the index and have been quiet since, or whose PDS the relay
+      doesn't crawl, can be surfaced on demand
       (see <a href="#request-indexing">request indexing</a> below).
     </p>
     <p>
@@ -244,8 +245,9 @@ export function docsPage(): string {
     <h2 id="request-indexing">request indexing</h2>
     <p>
       if someone isn't showing up in results, you (or your users) can request indexing from the
-      <a href="/">homepage</a>. newly created accounts are picked up automatically from the relay
-      firehose, but accounts created before the index existed may need a manual nudge.
+      <a href="/">homepage</a>. newly created accounts are picked up automatically from the
+      relay's event stream, but accounts created before the index existed — or hosted on a PDS
+      the relay doesn't crawl — may need a manual nudge.
     </p>
 
     <footer>

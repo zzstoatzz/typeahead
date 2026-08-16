@@ -67,7 +67,7 @@ fn firehoseThread(args: FirehoseArgs) void {
     };
     defer handler.deinit();
 
-    // Relay firehose, not jetstream. jetstream is a lossy projection: a 7-day
+    // The relay's firehose, not jetstream. jetstream is a lossy projection: a 7-day
     // replay returned 0 events for all 6 pds.zat.dev repos while the relay was
     // rev-current with that PDS and re-emitted its commits live within seconds
     // (verified 2026-07-28). The loss is silent and partial — most hosts look
@@ -122,7 +122,7 @@ pub fn main() !void {
     // wrong box is invisible until it competes for resources: the ingester ran
     // the search app's full-corpus sync for months because roles used to
     // default all-on (found 2026-06-12, mid-incident).
-    //   ingester — relay firehose → worker, owns Turso schema migrations
+    //   ingester — relay's firehose → worker, owns Turso schema migrations
     //   search   — Turso → local replica sync + HTTP search + index promote
     //   indexer  — offline snapshot builder, runs once and exits
     const Role = enum { ingester, search, indexer };

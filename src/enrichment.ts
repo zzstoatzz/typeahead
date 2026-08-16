@@ -121,7 +121,7 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
 
 /** 25 DIDs per getProfiles call, so this is 200 requests per run.
  *
- *  Sized against ARRIVALS, not the backlog. The relay firehose discovers ~2,900
+ *  Sized against ARRIVALS, not the backlog. The relay's firehose discovers ~2,900
  *  new accounts/hour network-wide; at the previous 2,500/run this cron ran just
  *  under that and the handle backlog grew rather than shrank (1,312,203 →
  *  1,314,130 over 8h on 2026-07-28). 5,000 clears arrivals with room to spare.

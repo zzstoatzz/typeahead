@@ -1,6 +1,6 @@
 # typeahead — agent guide
 
-Community actor search for atproto. Discovery is the relay firehose
+Community actor search for atproto. Discovery is the relay's firehose
 (`com.atproto.sync.subscribeRepos`), NOT jetstream — see `docs/discovery-and-identity.md`.
 Canonical endpoint: `tech.waow.typeahead.searchActors`
 (self-owned lexicon, `lexicons/`); `app.bsky.actor.searchActorsTypeahead` is served forever as

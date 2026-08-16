@@ -8,7 +8,7 @@ A PDS is a PDS. No code path branches on where an account is hosted. Hosts diffe
 by measurable properties — account count, whether they answer `describeServer` —
 never by identity.
 
-## discovery: the relay firehose
+## discovery: the relay's firehose
 
 The ingester reads `com.atproto.sync.subscribeRepos` from the relay
 (`services/src/main.zig`), not jetstream.

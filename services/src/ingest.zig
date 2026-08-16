@@ -1,4 +1,4 @@
-//! Relay firehose event handler: buffers actor events, flushes batches to worker.
+//! The relay's firehose event handler: buffers actor events, flushes batches to worker.
 //!
 //! Consumes com.atproto.sync.subscribeRepos directly rather than jetstream.
 //! jetstream is a lossy projection of the relay: pds.zat.dev repos were absent
@@ -36,7 +36,7 @@ fn timestamp() i64 {
 // 10k/POST as one Turso transaction; catch-up batches are mostly bare-DID
 // INSERT OR IGNORE (light locks). PROPER fix is decoupling the read loop from
 // the flusher so POSTs don't stall reads — this is the stopgap.
-// 1500 was tuned for jetstream's server-FILTERED stream. The relay firehose
+// 1500 was tuned for jetstream's server-FILTERED stream. The relay's firehose
 // delivers ~4x the actor events, and each POST now fans into several sequential
 // Turso transactions worker-side (250 statements each, to stay inside Turso's
 // 5s transaction window). At 1500 the whole request outran Cloudflare's origin
@@ -95,7 +95,7 @@ pub fn getConfig() Config {
     };
 }
 
-/// The relay firehose has no server-side collection filter (jetstream's
+/// The relay's firehose has no server-side collection filter (jetstream's
 /// wantedCollections has no equivalent), so the allowlist moves client-side and
 /// every frame is decoded before it can be discarded.
 pub fn wantedCollection(collection: []const u8) bool {
@@ -662,7 +662,7 @@ test "relay seq spaces are per-relay: a cursor is only valid for its issuer" {
 test "durable cursor advances past posted batches without draining the buffer" {
     // The bug: flushed_cursor only advanced when buffer AND delete_buffer were
     // both empty. Under jetstream's server-filtered stream the buffer drained
-    // constantly so it worked; the relay firehose delivers ~4x the actor events
+    // constantly so it worked; the relay's firehose delivers ~4x the actor events
     // and the buffer is never empty, so the cursor sat at 0 and every restart
     // silently lost its place. Verified in prod 2026-07-28: /admin/cursor
     // returned 0 while the ingester was at seq ~32,235,000,000.

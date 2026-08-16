@@ -8,7 +8,7 @@ rollback-only kill switch.
 
 The current design has three flows:
 
-1. **Continuous ingest** keeps Turso up to date from the relay firehose.
+1. **Continuous ingest** keeps Turso up to date from the relay's firehose.
 2. **Periodic offline builds** turn Turso into a precomputed SQLite prefix-index
    snapshot and publish it to R2.
 3. **Bounded serving** answers requests from an attached snapshot plus a live
@@ -37,7 +37,7 @@ Normal production traffic now flows through the search service, not Bluesky.
 ### Ingest service
 
 `typeahead-ingester` runs the Zig service binary from `services/` in its
-continuous ingest role. It reads the relay firehose, resolves identities, batches actor
+continuous ingest role. It reads the relay's firehose, resolves identities, batches actor
 updates, and POSTs them to the worker's admin ingest endpoint. The worker writes
 the canonical rows to Turso.
 

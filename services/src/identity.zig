@@ -1,4 +1,4 @@
-//! Identity resolution for DIDs received from relay firehose #identity events.
+//! Identity resolution for DIDs received from relay's firehose #identity events.
 //!
 //! Background: the `#identity` event has `handle` as a spec-optional field
 //! ("validated or passed-through from an upstream source"). In practice the bsky

@@ -21,7 +21,7 @@ also served at `/xrpc/app.bsky.actor.searchActorsTypeahead` as a drop-in alias f
   endpoint, Turso fallback, and the Bluesky rollback kill switch.
 - **ingest service**: [Zig](https://ziglang.org) on [Fly.io](https://fly.io),
   `typeahead-ingester`. It streams profiles, posts, likes, and follows via
-  the relay firehose ([`com.atproto.sync.subscribeRepos`](https://atproto.com/specs/event-stream)), resolves identities, and
+  the relay's firehose ([`com.atproto.sync.subscribeRepos`](https://atproto.com/specs/event-stream)), resolves identities, and
   batches actor updates to the worker.
 - **source DB**: [Turso](https://turso.tech) / libSQL. It is the durable source
   of truth for actors, moderation overrides, and tombstones.
@@ -71,7 +71,7 @@ cd services && zig build run
 The one binary picks its role from the **required `MODE` env var** (no default —
 boot fails without it), set per app in fly config:
 
-- `MODE=ingester` (`fly.toml`): consume the relay firehose, batch actor updates to the
+- `MODE=ingester` (`fly.toml`): consume the relay's firehose, batch actor updates to the
   worker, run Turso schema migrations. Does NOT keep a local replica.
 - `MODE=search` (`fly.search.toml`): sync Turso → local replica, promote/attach
   prefix-index snapshots, serve `/search` from snapshot + overlay.
