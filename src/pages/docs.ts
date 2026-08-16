@@ -134,8 +134,10 @@ export function docsPage(): string {
 
     <p>
       extracting the base URL into a constant (or env var) makes it easy to switch back
-      if you ever need to. once you're settled, consider moving the path to the canonical
-      <code>tech.waow.typeahead.searchActors</code> too — the response is identical.
+      if you ever need to. that rollback only works while you're on the alias path —
+      bluesky doesn't serve <code>tech.waow.typeahead.searchActors</code>. once you no
+      longer need the escape hatch, move the path to the canonical endpoint too — the
+      response is identical.
     </p>
 
     <h2>identify your app</h2>
@@ -144,7 +146,7 @@ export function docsPage(): string {
       <a href="/stats">traffic stats</a> instead of as "unknown":
     </p>
     <pre><code><span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
-  <span class="str">\`\${TYPEAHEAD_URL}/xrpc/tech.waow.typeahead.searchActors?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>,
+  <span class="str">\`https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>,
   { headers: { <span class="str">'X-Client'</span>: <span class="str">'my-app.example.com'</span> } }
 );</code></pre>
     <p>
