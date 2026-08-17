@@ -10,8 +10,6 @@ canonical endpoint (self-owned [lexicon](lexicons/tech.waow.typeahead.searchActo
 curl "https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&limit=10"
 ```
 
-`q` is a prefix matched against handles and display names — or a full DID (`did:plc:…` / `did:web:…`), which performs an exact lookup and returns that actor alone.
-
 also served at `/xrpc/app.bsky.actor.searchActorsTypeahead` as a drop-in alias for migrating off bluesky's appview — identical params and response, kept indefinitely.
 
 ## stack

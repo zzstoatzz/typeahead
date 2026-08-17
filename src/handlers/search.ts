@@ -5,25 +5,6 @@ import { json, sanitize, avatarUrl, avatarFallbackUrl } from "../utils";
 import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
 import { throttledBackfill } from "../backfill";
 
-// Must agree with isDid() in services/src/index/index_search.zig — the worker
-// gates exposure, the search service resolves the lookup.
-export function isDidTerm(term: string): boolean {
-  return /^did:(plc|web):\S+$/.test(term);
-}
-
-function actorView(r: ActorRow) {
-  return {
-    did: r.did,
-    handle: r.handle,
-    ...(r.display_name ? { displayName: r.display_name } : {}),
-    ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url, r.pds) } : {}),
-    ...(r.avatar_url && avatarFallbackUrl(r.did, r.avatar_url, r.pds) ? { avatarFallback: avatarFallbackUrl(r.did, r.avatar_url, r.pds) } : {}),
-    ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
-    labels: JSON.parse(r.labels || '[]'),
-    ...(r.created_at ? { createdAt: r.created_at } : {}),
-  };
-}
-
 export async function handleSearch(
   request: Request,
   db: TursoDB,
@@ -45,14 +26,6 @@ export async function handleSearch(
   const limit = limitParam;
   const term = sanitize(q);
   if (!term) {
-    return json({ actors: [] });
-  }
-
-  // DID-query search: the backend resolves did:plc:/did:web: terms via its
-  // hydrate path. The capability lives there; the OFF switch lives here, at
-  // the layer with no-redeploy config (see DID_SEARCH_DISABLED in types.ts).
-  const didTerm = isDidTerm(term);
-  if (didTerm && env.DID_SEARCH_DISABLED) {
     return json({ actors: [] });
   }
 
@@ -137,6 +110,10 @@ export async function handleSearch(
     }
   }
 
+  // fallback: 3-tier ranking via turso. Overfetch prefix + FTS so the
+  // interleaved merge below has real candidates to pick from.
+  const ftsQuery = `"${term}"*`;
+  const overfetch = Math.min(limit * 5, 50);
   // Bounded, like the backend hop above it.
   //
   // This path now runs whenever the replica answers empty, not just when it is
@@ -145,41 +122,6 @@ export async function handleSearch(
   // not have yet. Answering "nothing found" quickly beats answering correctly
   // eventually: the caller is a typeahead, and the next keystroke is 200ms away.
   const FALLBACK_BUDGET_MS = 2500;
-
-  // DID fallback: the prefix/FTS tiers below can't match a DID, so the Turso
-  // authority check is a single primary-key read.
-  if (didTerm) {
-    let row: ActorRow | null = null;
-    try {
-      row = await Promise.race([
-        db.prepare(
-          `SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
-           FROM actors WHERE did = ?1 AND hidden = 0 LIMIT 1`
-        ).bind(term).first<ActorRow>(),
-        new Promise<never>((_, rej) =>
-          setTimeout(() => rej(new Error("turso_fallback_timeout")), FALLBACK_BUDGET_MS)),
-      ]);
-    } catch (e: any) {
-      console.log(JSON.stringify({ event: "search_fallback_timeout", term, error: e?.message }));
-      return json({ actors: [] });
-    }
-
-    ctx.waitUntil(Promise.all([
-      recordMetric(db, Date.now() - t0),
-      recordTrafficSource(db, request),
-    ]));
-
-    const response = json({ actors: row ? [actorView(row)] : [] });
-    const cacheable = new Response(response.clone().body, response);
-    cacheable.headers.set("Cache-Control", "public, max-age=60");
-    ctx.waitUntil(cache.put(cacheKey, cacheable));
-    return response;
-  }
-
-  // fallback: 3-tier ranking via turso. Overfetch prefix + FTS so the
-  // interleaved merge below has real candidates to pick from.
-  const ftsQuery = `"${term}"*`;
-  const overfetch = Math.min(limit * 5, 50);
   const batch = db.batch([
     db.prepare(
       `SELECT did, handle, display_name, avatar_url, labels, created_at, associated, pds
@@ -270,7 +212,16 @@ export async function handleSearch(
     takePrefix = !takePrefix;
   }
 
-  const actors = merged.map(actorView);
+  const actors = merged.map((r) => ({
+    did: r.did,
+    handle: r.handle,
+    ...(r.display_name ? { displayName: r.display_name } : {}),
+    ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url, r.pds) } : {}),
+    ...(r.avatar_url && avatarFallbackUrl(r.did, r.avatar_url, r.pds) ? { avatarFallback: avatarFallbackUrl(r.did, r.avatar_url, r.pds) } : {}),
+    ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
+    labels: JSON.parse(r.labels || '[]'),
+    ...(r.created_at ? { createdAt: r.created_at } : {}),
+  }));
 
   // --- backfill: remove this block once at parity with Bluesky ---
   const hasGaps = actors.length < limit || actors.some((a) => !a.avatar);

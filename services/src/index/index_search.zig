@@ -37,16 +37,16 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     defer arena_state.deinit();
     const arena = arena_state.allocator();
 
+    const norm = try normalize.query(arena, term);
+    if (norm.len == 0) {
+        try writer.writeAll("{\"actors\":[]}");
+        return;
+    }
+
     const lease = try local.checkoutRead();
     defer lease.release();
 
-    const candidates = if (isDid(term))
-        try hydrate(arena, lease, &.{.{ .did = term, .score = 0 }})
-    else blk: {
-        const norm = try normalize.query(arena, term);
-        if (norm.len == 0) break :blk &[_]searchmod.Candidate{};
-        break :blk try execute(arena, lease, norm, null);
-    };
+    const candidates = try execute(arena, lease, norm, null);
 
     var jw: json.Stringify = .{ .writer = writer };
     try jw.beginObject();
@@ -56,17 +56,6 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     for (candidates[0..n]) |*c| try searchmod.writeActor(&jw, c);
     try jw.endArray();
     try jw.endObject();
-}
-
-/// A query that IS a DID skips key derivation and merge entirely: the DID goes
-/// straight to hydrate(), so overlay-wins, tombstones, hidden flags, and the
-/// live-actors safety belt apply exactly as they do for prefix results. Checked
-/// on the sanitized term BEFORE normalize (which would mangle the colons).
-fn isDid(term: []const u8) bool {
-    if (!std.mem.startsWith(u8, term, "did:plc:") and !std.mem.startsWith(u8, term, "did:web:"))
-        return false;
-    if (term.len == "did:plc:".len) return false;
-    return std.mem.indexOfScalar(u8, term, ' ') == null;
 }
 
 /// What the serving pipeline did with a query. Filled only when `/debug/search`
@@ -138,24 +127,6 @@ pub fn debug(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit
     const arena = arena_state.allocator();
 
     const term = searchmod.sanitize(raw_query);
-
-    if (isDid(term)) {
-        const lease = try local.checkoutRead();
-        defer lease.release();
-        const candidates = try hydrate(arena, lease, &.{.{ .did = term, .score = 0 }});
-        const n = @min(limit, candidates.len);
-        const rows = try arena.alloc(Report.Row, n);
-        for (candidates[0..n], rows) |*c, *r| r.* = .{
-            .did = c.did,
-            .handle = c.handle,
-            .display_name = c.display_name,
-            .score = c.quality_score,
-        };
-        var jw: json.Stringify = .{ .writer = writer };
-        try jw.write(Report{ .q = raw_query, .normalized = term, .mode = "did", .merged = n, .candidates = rows });
-        return;
-    }
-
     const norm = if (term.len == 0) "" else try normalize.query(arena, term);
 
     var jw: json.Stringify = .{ .writer = writer };
@@ -407,16 +378,6 @@ test "promoteExact re-injects an exact hit the score cap evicted" {
     try testing.expectEqualStrings("bailey", out[0].did); // hard win, despite score 0
     try testing.expectEqualStrings("tok1", out[1].did);
     try testing.expectEqualStrings("tok2", out[2].did);
-}
-
-test "isDid: accepts plc/web DIDs, rejects handles and phrases" {
-    try testing.expect(isDid("did:plc:xbtmt2zjwlrfegqvch7fboei"));
-    try testing.expect(isDid("did:web:zzstoatzz.io"));
-    try testing.expect(!isDid("did:key:zQ3sh")); // unsupported method
-    try testing.expect(!isDid("zzstoatzz.io"));
-    try testing.expect(!isDid("did:plc:abc def")); // internal space → ordinary query
-    try testing.expect(!isDid("did:plc:")); // empty method-specific id
-    try testing.expect(!isDid(""));
 }
 
 test "inClause builds the right placeholder count" {

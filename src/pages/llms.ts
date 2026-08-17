@@ -9,8 +9,7 @@ experimental: may break or disappear — don't depend on it for anything critica
 
 GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=<prefix>&limit=10
 
-- q: required. search prefix, matched against handles and display names. a full DID
-  (did:plc:… or did:web:…) instead performs an exact lookup and returns that actor alone.
+- q: required. search prefix, matched against handles and display names.
 - limit: 1-100, default 10.
 - response: { "actors": [ { did, handle, displayName?, avatar?, associated?, labels?, createdAt? } ] }
   (the shape of app.bsky.actor.defs#profileViewBasic minus the authenticated "viewer" field)

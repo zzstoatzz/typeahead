@@ -100,7 +100,7 @@ export function indexPage(): string {
     <section>
       <label for="q">try it</label>
       <div class="search-wrap">
-        <input id="q" placeholder="search handles or DIDs..." autocomplete="off" autofocus>
+        <input id="q" placeholder="search handles..." autocomplete="off" autofocus>
         <div class="results" id="results"></div>
       </div>
     </section>
