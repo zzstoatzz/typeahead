@@ -234,6 +234,13 @@ export async function enrichActors(db: TursoDB, env: Env): Promise<{ resolved: n
     // profile-checked, which is what a 61.9%-and-flat avatar coverage and a
     // near-zero hidden count on /stats actually measured. avatar coverage
     // among CHECKED actors is ~95%.
+    //
+    // Draining that multi-million backlog is NOT this job. At 5,000/run the
+    // cron nets ~2,100/hour over arrivals — months to converge, and only if
+    // every run completes (a single 429 forfeits the rest of the run). The
+    // backlog path is scripts/bulk-enrich.py, run off-worker; this cron's
+    // honest contract is keeping pace with arrivals so the backlog never
+    // grows again.
     const { results: profileRows } = await db.prepare(
       `SELECT did, handle, pds FROM actors
        WHERE handle != ''

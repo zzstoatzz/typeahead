@@ -91,6 +91,12 @@ regression is pinned). Extend it, don't prune it.
 
 - worker tests: `bun test`. zig tests: `just test-services` (or `cd services && zig build test`).
 - never run work proportional to the corpus on the request/cron path (see the invariant above).
+- **the cron contract**: every cron selector must be an index SEARCH (smoke's
+  `test_cron_selector_plans` EXPLAIN-guards this live against Turso), every batch size must
+  state what it honestly covers against measured arrival rates (~2,900 new actors/hour), and
+  the cron NEVER claims to drain a corpus-scale backlog — backlogs belong to the bulk paths
+  (`scripts/bulk-enrich.py` for profiles, `scripts/plc-identity-sync.py` for identity), run
+  off-worker. A cron sized within ~2× of arrivals is treading water, not draining.
 - every equality query on `actors.handle` needs `COLLATE NOCASE`, or it scans the whole
   table — `idx_actors_handle` is declared with that collation. Paginate on `rowid`.
 - Turso is single-writer and the live ingester shares it. Bulk writes must batch (one

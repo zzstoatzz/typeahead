@@ -99,8 +99,8 @@ describe("refreshModeration advances the freshness cursor", () => {
         bind(...args: any[]) { s.binds = args; return s; },
         async all() {
           calls.push({ sql, binds: s.binds, method: "all" });
-          if (sql.includes("ORDER BY (unixepoch()")) return { results: [row] };      // priority pool
-          return { results: [] };                                                    // floor pool, overrides, domains
+          if (sql.includes("ORDER BY quality_score DESC")) return { results: [row] }; // quality walk
+          return { results: [] };                                                    // event queue, overrides, domains
         },
         async run() { calls.push({ sql, binds: s.binds, method: "run" }); return { meta: { changes: 1 } }; },
         async first() { return null; },
@@ -117,6 +117,18 @@ describe("refreshModeration advances the freshness cursor", () => {
       } as any,
       calls,
     };
+  }
+
+  // KV mock capturing cursor movement
+  function mockEnv(cursor: string | null = null) {
+    const kv = {
+      puts: [] as { key: string; value: string }[],
+      deletes: [] as string[],
+      async get(_key: string) { return cursor; },
+      async put(key: string, value: string) { kv.puts.push({ key, value }); },
+      async delete(key: string) { kv.deletes.push(key); },
+    };
+    return { env: { KV: kv } as any, kv };
   }
 
   function mockGetProfiles(profile: any) {
@@ -148,7 +160,7 @@ describe("refreshModeration advances the freshness cursor", () => {
       labels: [], createdAt: "2024-01-01T00:00:00.000Z", associated: {},
       followersCount: 3041, followsCount: 100, postsCount: 500,
     });
-    await refreshModeration(db, {} as any);
+    await refreshModeration(db, mockEnv().env);
     expect(cursorAdvances(calls)).toBe(true);
     expect(materialUpdateAdvancesReplica(calls)).toBe(true);
   });
@@ -165,10 +177,79 @@ describe("refreshModeration advances the freshness cursor", () => {
     const row = staleRow(f.qualityScore); // align score so identical holds
     const { db, calls } = mockDb(row);
     mockGetProfiles(profile);
-    await refreshModeration(db, {} as any);
+    await refreshModeration(db, mockEnv().env);
     // even though nothing changed, we must record that we checked it — else the
-    // priority pool re-selects this same row forever and never walks onward.
+    // event queue re-selects this same row forever and never drains.
     expect(cursorAdvances(calls)).toBe(true);
     expect(materialUpdateAdvancesReplica(calls)).toBe(false);
   });
+});
+
+// THE CRON CONTRACT: selection must be O(batch) and index-served — never a
+// full-corpus scan or sort. The previous selector ran two full-table ORDER BY
+// scans over ~11M rows every hour; these tests pin the replacement's shape.
+describe("refreshModeration quality-walk cursor", () => {
+  const origFetch = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = origFetch; });
+
+  function scanTrap() {
+    // db that returns empty pools and captures the walk SQL
+    const sqls: string[] = [];
+    const stmt = (sql: string) => {
+      const s: any = {
+        sql,
+        bind() { return s; },
+        async all() { sqls.push(sql); return { results: [] }; },
+        async run() { return { meta: { changes: 0 } }; },
+      };
+      return s;
+    };
+    return { db: { prepare: stmt, async batch() { return []; } } as any, sqls };
+  }
+
+  test("keyset cursor is inlined as literals, not bound params (Turso plan degradation)", async () => {
+    const { db, sqls } = scanTrap();
+    const { env } = mockEnvWithCursor(JSON.stringify({ qs: 123.45, rowid: 678 }));
+    await refreshModeration(db, env);
+    const walk = sqls.find((s) => s.includes("ORDER BY quality_score DESC"))!;
+    expect(walk).toContain("quality_score < 123.45");
+    expect(walk).toContain("rowid < 678");
+    expect(walk).not.toContain("?2"); // keyset values never arrive as params
+  });
+
+  test("a poisoned cursor cannot inject SQL — non-numeric values are dropped", async () => {
+    const { db, sqls } = scanTrap();
+    const { env } = mockEnvWithCursor(JSON.stringify({ qs: "1; DROP TABLE actors", rowid: 678 }));
+    await refreshModeration(db, env);
+    const walk = sqls.find((s) => s.includes("ORDER BY quality_score DESC"))!;
+    expect(walk).not.toContain("DROP");
+    expect(walk).not.toContain("quality_score <"); // no keyset at all — walk restarts from top
+  });
+
+  test("short walk page wraps the cursor (pool exhausted)", async () => {
+    const { db } = scanTrap();
+    const kvOps: string[] = [];
+    const env = {
+      KV: {
+        async get() { return JSON.stringify({ qs: 0.01, rowid: 1 }); },
+        async put(key: string) { kvOps.push(`put:${key}`); },
+        async delete(key: string) { kvOps.push(`delete:${key}`); },
+      },
+    } as any;
+    await refreshModeration(db, env);
+    expect(kvOps).toContain("delete:mod_walk_cursor");
+    expect(kvOps).not.toContain("put:mod_walk_cursor");
+  });
+
+  function mockEnvWithCursor(cursor: string) {
+    return {
+      env: {
+        KV: {
+          async get() { return cursor; },
+          async put() {},
+          async delete() {},
+        },
+      } as any,
+    };
+  }
 });

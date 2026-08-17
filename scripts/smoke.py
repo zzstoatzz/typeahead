@@ -528,6 +528,61 @@ def test_sync_keyset_plan():
           plan)
 
 
+def test_cron_selector_plans():
+    """THE CRON CONTRACT: every cron selector must plan as an index SEARCH on
+    Turso, never a corpus scan. The moderation-refresh selector used to run two
+    full-table ORDER BY scans over ~11M rows every hour; these EXPLAINs pin its
+    replacement (quality-keyset walk + firehose event queue, src/cron.ts) to
+    the indexes that serve them. Like test_sync_keyset_plan, only a live
+    EXPLAIN against Turso is trustworthy — local SQLite plans differently."""
+    print("\n--- turso cron selector plans ---")
+    turso_url = os.environ.get("TURSO_URL", "")
+    token = os.environ.get("TURSO_AUTH_TOKEN", "")
+    if not turso_url or not token:
+        print(f"  [{SKIP}] skipped (set TURSO_URL + TURSO_AUTH_TOKEN)")
+        return
+    if turso_url.startswith("libsql://"):
+        turso_url = "https://" + turso_url.removeprefix("libsql://")
+
+    selectors = {
+        # quality walk: keyset literals inlined exactly as src/cron.ts builds them
+        "quality walk uses idx_actors_visible_quality_score": (
+            "EXPLAIN QUERY PLAN SELECT did FROM actors "
+            "WHERE handle != '' AND hidden = 0 AND quality_score > 0 "
+            "AND (quality_score < 123.45 OR (quality_score = 123.45 AND rowid < 678)) "
+            "ORDER BY quality_score DESC, rowid DESC LIMIT 800"
+        ),
+        "event queue uses idx_actors_refresh_queue": (
+            "EXPLAIN QUERY PLAN SELECT did FROM actors "
+            "WHERE profile_checked_at = 0 AND handle != '' "
+            "ORDER BY updated_at DESC LIMIT 200"
+        ),
+    }
+    for label, sql in selectors.items():
+        body = json.dumps({
+            "requests": [
+                {"type": "execute", "stmt": {"sql": sql}},
+                {"type": "close"},
+            ]
+        }).encode()
+        try:
+            req = urllib.request.Request(
+                f"{turso_url}/v2/pipeline", data=body, method="POST",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                result = json.loads(resp.read())
+            rows = result["results"][0]["response"]["result"]["rows"]
+            details = [r[3]["value"] for r in rows]
+        except Exception as e:
+            check(f"{label} (plan fetch)", False, str(e))
+            continue
+        plan = "; ".join(details)
+        check(label,
+              any("SEARCH" in d for d in details) and not any("SCAN" in d for d in details),
+              plan)
+
+
 def main():
     parser = argparse.ArgumentParser(description="typeahead smoke tests")
     parser.add_argument("--url", required=True, help="typeahead service URL")
@@ -567,6 +622,7 @@ def main():
 
     test_page_scripts(args.url)
     test_sync_keyset_plan()
+    test_cron_selector_plans()
 
     if args.compare:
         test_comparison(args.url, args.queries)

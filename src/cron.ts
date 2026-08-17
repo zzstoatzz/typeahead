@@ -34,51 +34,85 @@ export function isProfileIdentical(
   );
 }
 
-/** refresh moderation labels, walking the full index over multiple cron runs */
+/** refresh moderation labels and profile aggregates for a bounded batch.
+ *
+ *  THE CRON CONTRACT (see CLAUDE.md): every selector here must be an index
+ *  SEARCH, never a corpus scan, and every batch size must state what it can
+ *  honestly cover. The previous two-pool selector broke both rules: it ran
+ *  two full-table ORDER BY scans over ~11M rows every hour to pick 1,000, and
+ *  its doc claimed it was "walking the full index over multiple cron runs" —
+ *  at 24k actors/day against an 11M corpus growing 70k/day, that walk was
+ *  never going to happen. What it could honestly do is what this now says
+ *  it does:
+ *
+ *  QUALITY WALK (800/run): a keyset cursor (KV `mod_walk_cursor`) stepping
+ *    down idx_actors_visible_quality_score. The scored-visible pool — every
+ *    actor a search can actually surface with ranking weight — measured
+ *    41,355 rows on 2026-08-16, so a full sweep completes in ~52 runs:
+ *    every rankable actor's labels/avatar/counts re-checked every ~2-3 days,
+ *    deterministically, with the sweep position observable in KV. The keyset
+ *    values are inlined as numeric literals, NOT bound params — the OR-keyset
+ *    shape degrades to a full index scan on Turso when the values arrive as
+ *    hrana params (the Aug 2026 staleness incident; smoke EXPLAIN-guards it).
+ *
+ *  EVENT QUEUE (200/run): actors the firehose re-touched — handlers/ingest.ts
+ *    resets profile_checked_at=0 on profile/identity events so appview
+ *    aggregates get re-fetched. Served newest-activity-first by the partial
+ *    index idx_actors_refresh_queue. The same index also holds the historical
+ *    never-checked backlog (profile_checked_at=0 since insert); reading DESC
+ *    means live activity always wins, and draining that backlog is explicitly
+ *    NOT this job — it belongs to scripts/bulk-enrich.py, run off-worker.
+ *
+ *  Score-0 / hidden actors outside both queues are reached on firehose
+ *  activity (event queue) or by bulk runs — the cron makes no pretense of
+ *  touching all 11M rows on any schedule. */
 export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
-  // Two-pool selector — replaces the old rowid cursor that took ~245 days to
-  // walk the corpus and treated viral handles the same as 2022-dormant ones.
-  //
-  //   PRIORITY POOL (800/run): ORDER BY staleness × value × activity DESC.
-  //     - staleness: now - profile_checked_at (NULL → very stale)
-  //     - value:     log(1 + quality_score), so popular accounts refresh more
-  //     - activity:  recent firehose touch via last_activity_at boosts further
-  //   COLD FLOOR    (200/run): ORDER BY profile_checked_at ASC NULLS FIRST.
-  //     Guarantees the long tail gets touched without starving on score=0
-  //     accounts that never get a priority bump. Also picks up actors whose
-  //     firehose enqueue set profile_checked_at=0 (see handlers/ingest.ts).
-  //
-  // Per Turso Scaler (100B reads/mo): one full scan per tick ~ 6M reads × 24/day
-  // × 30 = 4.3B/mo ≈ 4% of budget. Will add a functional index later.
-  const PRIORITY_N = 800;
-  const FLOOR_N = 200;
-
-  const priorityRows = (await db.prepare(
-    `SELECT rowid, did, handle, hidden, labels, pds,
+  const WALK_N = 800;
+  const EVENT_N = 200;
+  const ACTOR_COLS = `rowid, did, handle, hidden, labels, pds,
             display_name, avatar_url, created_at, associated,
-            followers_count, follows_count, posts_count, quality_score
-     FROM actors
-     ORDER BY (unixepoch() - COALESCE(profile_checked_at, 0))
-              * (1.0 + ln(1.0 + COALESCE(quality_score, 0)))
-              * (CASE WHEN last_activity_at > unixepoch() - 86400 THEN 3.0
-                      WHEN last_activity_at > unixepoch() - 604800 THEN 1.5
-                      ELSE 1.0 END)
-              DESC
-     LIMIT ?1`
-  ).bind(PRIORITY_N).all<ActorRow>()).results ?? [];
+            followers_count, follows_count, posts_count, quality_score`;
 
-  const floorRows = (await db.prepare(
-    `SELECT rowid, did, handle, hidden, labels, pds,
-            display_name, avatar_url, created_at, associated,
-            followers_count, follows_count, posts_count, quality_score
-     FROM actors
-     ORDER BY COALESCE(profile_checked_at, 0) ASC
-     LIMIT ?1`
-  ).bind(FLOOR_N).all<ActorRow>()).results ?? [];
+  let cursor: { qs: number; rowid: number } | null = null;
+  try {
+    cursor = JSON.parse((await env.KV.get("mod_walk_cursor")) || "null");
+  } catch {}
+  const qs = Number(cursor?.qs);
+  const rid = Number(cursor?.rowid);
+  const keyset = Number.isFinite(qs) && Number.isFinite(rid)
+    ? `AND (quality_score < ${qs} OR (quality_score = ${qs} AND rowid < ${rid}))`
+    : "";
+  // predicates must match idx_actors_visible_quality_score's WHERE clause
+  // exactly or the partial index is unusable and this reverts to a scan.
+  const walkRows = (await db.prepare(
+    `SELECT ${ACTOR_COLS} FROM actors
+     WHERE handle != '' AND hidden = 0 AND quality_score > 0 ${keyset}
+     ORDER BY quality_score DESC, rowid DESC
+     LIMIT ${WALK_N}`
+  ).all<ActorRow>()).results ?? [];
 
-  // dedup: priority pool wins (cold floor is a backstop, not a duplicate-fetcher).
-  const seen = new Set(priorityRows.map((r) => r.did));
-  const results = [...priorityRows, ...floorRows.filter((r) => !seen.has(r.did))];
+  if (walkRows.length < WALK_N) {
+    // pool exhausted — wrap to the top next run
+    await env.KV.delete("mod_walk_cursor").catch(() => {});
+  } else {
+    const last = walkRows[walkRows.length - 1];
+    await env.KV.put(
+      "mod_walk_cursor",
+      JSON.stringify({ qs: last.quality_score, rowid: last.rowid })
+    ).catch(() => {});
+  }
+
+  const eventRows = (await db.prepare(
+    `SELECT ${ACTOR_COLS} FROM actors
+     WHERE profile_checked_at = 0 AND handle != ''
+     ORDER BY updated_at DESC
+     LIMIT ?1`
+  ).bind(EVENT_N).all<ActorRow>()).results ?? [];
+
+  // dedup: event queue wins — a firehose-touched actor is fresher signal than
+  // its scheduled sweep slot, and the walk cursor has already moved past it.
+  const seen = new Set(eventRows.map((r) => r.did));
+  const results = [...eventRows, ...walkRows.filter((r) => !seen.has(r.did))];
 
   if (results.length === 0) {
     console.log(JSON.stringify({ event: "moderation_refresh", status: "empty" }));
@@ -244,7 +278,8 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   console.log(JSON.stringify({
     event: "moderation_refresh",
     checked, changed, skipped, deleted,
-    priority: priorityRows.length, floor: floorRows.length,
+    walk: walkRows.length, events: eventRows.length,
+    walk_cursor_qs: walkRows.length === WALK_N ? walkRows[walkRows.length - 1].quality_score : null,
     ms: Date.now() - t0,
   }));
 }
