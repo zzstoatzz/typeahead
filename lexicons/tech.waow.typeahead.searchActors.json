@@ -11,7 +11,7 @@
         "properties": {
           "q": {
             "type": "string",
-            "description": "Search prefix; matched case-insensitively against handles and display names (CJK display names are matched via bigrams)."
+            "description": "Search prefix; matched case-insensitively against handles and display names (CJK display names are matched via bigrams). A full DID (did:plc:… or did:web:…) instead performs an exact lookup and returns that actor alone."
           },
           "limit": {
             "type": "integer",

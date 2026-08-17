@@ -151,6 +151,35 @@ def test_prefix_match(base_url: str):
     check("prefix 'zzst' finds zzstoatzz.io", "zzstoatzz.io" in handles, f"got {handles[:5]}")
 
 
+def test_did_search(base_url: str):
+    """q=<did> resolves that exact actor at rank 1 via the hydrate path.
+
+    Asserts the ENABLED behavior on purpose: a deploy with DID_SEARCH_DISABLED
+    accidentally set fails here instead of silently shipping the feature dark.
+    (validated live 2026-08-16: this DID resolves to zzstoatzz.io)
+    """
+    print("\n--- DID search ---")
+    did = "did:plc:xbtmt2zjwlrfegqvch7fboei"  # zzstoatzz.io
+    data, _ = fetch(f"{base_url}{XRPC_PATH}?q={did}&limit=10")
+    if not data or "_error" in data or "_http_error" in data:
+        check("fetch succeeded", False)
+        return
+
+    actors = data.get("actors", [])
+    check("DID query returns exactly one actor", len(actors) == 1, f"got {len(actors)}")
+    if actors:
+        check("DID query rank 1 is that actor", actors[0].get("did") == did,
+              f"got {actors[0].get('did')}")
+        check("DID query hydrates the handle", actors[0].get("handle") == "zzstoatzz.io",
+              f"got {actors[0].get('handle')}")
+
+    unknown = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa"
+    data, _ = fetch(f"{base_url}{XRPC_PATH}?q={unknown}&limit=10")
+    check("unknown DID returns empty actors (200)",
+          data is not None and "_http_error" not in data and data.get("actors") == [],
+          f"got {data}")
+
+
 def test_ranking(base_url: str):
     """popularity ranking — a high-follower account must rank above low-follower
     namesakes that share its prefix. Guards the quality_score-clobber class of
@@ -613,6 +642,7 @@ def main():
     test_canonical_endpoint(args.url)
     test_known_handle(args.url)
     test_prefix_match(args.url)
+    test_did_search(args.url)
     test_ranking(args.url)
     test_cors(args.url)
     test_deprecated_param(args.url)

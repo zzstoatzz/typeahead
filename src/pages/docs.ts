@@ -105,7 +105,10 @@ export function docsPage(): string {
     <pre><code>GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=...&amp;limit=10</code></pre>
     <p>
       params are <code>q</code> and <code>limit</code> (1–100), returning
-      <code>{ "actors": [...] }</code>. this is the endpoint to use —
+      <code>{ "actors": [...] }</code>. <code>q</code> is a prefix matched against
+      handles and display names — or a full DID (<code>did:plc:…</code> /
+      <code>did:web:…</code>), which performs an exact lookup and returns that
+      actor alone. this is the endpoint to use —
       <code>app.bsky.*</code> names belong to bluesky's lexicons, and this service isn't
       bluesky. there's also a machine-readable summary at <a href="/llms.txt">/llms.txt</a>.
     </p>

@@ -17,6 +17,13 @@ export interface Env {
   /// Turn off with:
   ///   bunx wrangler secret delete EMERGENCY_PROXY_BSKY
   EMERGENCY_PROXY_BSKY?: string;
+  /// Kill switch for DID-query search (q=did:plc:… / did:web:…). When set
+  /// (any non-empty value), DID-shaped queries return {actors:[]} without
+  /// reaching the backend — same no-redeploy pattern as EMERGENCY_PROXY_BSKY:
+  ///   bunx wrangler secret put DID_SEARCH_DISABLED
+  ///   bunx wrangler secret delete DID_SEARCH_DISABLED
+  /// The 60s edge cache means a flip takes up to a minute to fully apply.
+  DID_SEARCH_DISABLED?: string;
   /// Discord-compatible webhook. When set, the hourly cron posts here on a
   /// freshness STATE CHANGE (ok -> stale, stale -> ok). Set via:
   ///   bunx wrangler secret put ALERT_WEBHOOK_URL
