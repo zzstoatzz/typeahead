@@ -33,7 +33,7 @@ BSKY = "https://public.api.bsky.app/xrpc"
 SLINGSHOT = "https://slingshot.microcosm.blue/xrpc"
 CONSTELLATION = "https://constellation.microcosm.blue/xrpc"
 
-# mega-PDS hosts to defer to background bulk-enrich (substring match on the PDS
+# mega-PDS hosts to defer to the typeahead-enrich-backfill deployment (substring match on the PDS
 # URL). these have thousands–millions of accounts and don't belong in phase B.
 MEGA_PDS_MARKERS = ("bsky.network", "brid.gy", "blacksky.community")
 

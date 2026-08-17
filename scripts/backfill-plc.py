@@ -17,7 +17,8 @@ checkpoints the export cursor after every flush; --resume re-walks from the
 checkpoint (overlap is idempotent). known gap: did:web actors never appear
 in PLC and need manual indexing.
 
-new accounts land with empty profiles; run scripts/bulk-enrich.py afterwards
+new accounts land with empty profiles; the typeahead-enrich-backfill Prefect
+deployment hydrates them on its daily schedule
 to hydrate display names / avatars via getProfiles.
 
 usage:
@@ -229,7 +230,7 @@ def main() -> None:
     if args.dry_run:
         print("(dry run — nothing written)")
     else:
-        print("next: scripts/bulk-enrich.py to hydrate profiles "
+        print("next: typeahead-enrich-backfill (Prefect, daily) hydrates profiles "
               "(avatar_url='' targets the new rows)")
 
 

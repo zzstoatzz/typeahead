@@ -61,7 +61,8 @@ export function isProfileIdentical(
  *    index idx_actors_refresh_queue. The same index also holds the historical
  *    never-checked backlog (profile_checked_at=0 since insert); reading DESC
  *    means live activity always wins, and draining that backlog is explicitly
- *    NOT this job — it belongs to scripts/bulk-enrich.py, run off-worker.
+ *    NOT this job — it belongs to the typeahead-enrich-backfill Prefect
+ *    deployment (my-prefect-server repo, daily on heavypad).
  *
  *  Score-0 / hidden actors outside both queues are reached on firehose
  *  activity (event queue) or by bulk runs — the cron makes no pretense of
