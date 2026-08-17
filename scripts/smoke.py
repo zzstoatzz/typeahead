@@ -544,21 +544,30 @@ def test_cron_selector_plans():
     if turso_url.startswith("libsql://"):
         turso_url = "https://" + turso_url.removeprefix("libsql://")
 
+    # each selector must be served by its named index with the ORDER BY coming
+    # from index order (no temp b-tree — a sort spill means the LIMIT no longer
+    # bounds the work and the whole matching set gets materialized). The event
+    # queue legitimately plans as `SCAN ... USING INDEX`: SQLite says SCAN when
+    # there is no constraint on the index's key column, but the partial index
+    # predicate does the filtering and LIMIT + index order cap it at 200
+    # entries. The dangerous plan is a scan of the TABLE or the wrong index.
     selectors = {
         # quality walk: keyset literals inlined exactly as src/cron.ts builds them
         "quality walk uses idx_actors_visible_quality_score": (
             "EXPLAIN QUERY PLAN SELECT did FROM actors "
             "WHERE handle != '' AND hidden = 0 AND quality_score > 0 "
             "AND (quality_score < 123.45 OR (quality_score = 123.45 AND rowid < 678)) "
-            "ORDER BY quality_score DESC, rowid DESC LIMIT 800"
+            "ORDER BY quality_score DESC, rowid DESC LIMIT 800",
+            "idx_actors_visible_quality_score",
         ),
         "event queue uses idx_actors_refresh_queue": (
             "EXPLAIN QUERY PLAN SELECT did FROM actors "
             "WHERE profile_checked_at = 0 AND handle != '' "
-            "ORDER BY updated_at DESC LIMIT 200"
+            "ORDER BY updated_at DESC LIMIT 200",
+            "idx_actors_refresh_queue",
         ),
     }
-    for label, sql in selectors.items():
+    for label, (sql, index_name) in selectors.items():
         body = json.dumps({
             "requests": [
                 {"type": "execute", "stmt": {"sql": sql}},
@@ -579,7 +588,8 @@ def test_cron_selector_plans():
             continue
         plan = "; ".join(details)
         check(label,
-              any("SEARCH" in d for d in details) and not any("SCAN" in d for d in details),
+              any(f"USING INDEX {index_name}" in d for d in details)
+              and not any("TEMP B-TREE" in d.upper() for d in details),
               plan)
 
 
