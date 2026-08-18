@@ -98,6 +98,15 @@ pub fn getConfig() Config {
 /// The relay's firehose has no server-side collection filter (jetstream's
 /// wantedCollections has no equivalent), so the allowlist moves client-side and
 /// every frame is decoded before it can be discarded.
+/// Which firehose collections cause us to discover an actor.
+///
+/// TODO: this list is hardcoded, so onboarding an app is a code change and a
+/// deploy — and until that happens its users are discoverable ONLY via
+/// `#identity`. That is not a theoretical gap: birds.place users write nothing
+/// but `place.birds.*`, so before this entry existed the commit path could not
+/// see them at all, and an actor whose `#identity` was missed had no second
+/// chance. Worth moving to config (or dropping the allowlist for a deny-list of
+/// known-spam collections) rather than growing this by hand.
 pub fn wantedCollection(collection: []const u8) bool {
     const exact = [_][]const u8{
         "app.bsky.actor.profile",
@@ -107,7 +116,13 @@ pub fn wantedCollection(collection: []const u8) bool {
         "sh.tangled.actor.profile",
     };
     for (exact) |e| if (mem.eql(u8, collection, e)) return true;
-    return mem.startsWith(u8, collection, "site.standard.");
+
+    const prefixes = [_][]const u8{
+        "site.standard.",
+        "place.birds.",
+    };
+    for (prefixes) |pre| if (mem.startsWith(u8, collection, pre)) return true;
+    return false;
 }
 
 /// Render a profile record's avatar blob ref as the base32 CID string the rest
@@ -578,6 +593,12 @@ pub fn getRssKB() u64 {
 
 const testing = std.testing;
 
+// identity.zig is only reachable through this file, and `zig build test` roots the
+// ingest suite here — without this reference its tests are silently never run.
+test {
+    _ = @import("identity.zig");
+}
+
 test "wantedCollection: allowlist survives the loss of jetstream's server-side filter" {
     try testing.expect(wantedCollection("app.bsky.actor.profile"));
     try testing.expect(wantedCollection("app.bsky.feed.post"));
@@ -592,6 +613,16 @@ test "wantedCollection: allowlist survives the loss of jetstream's server-side f
     try testing.expect(!wantedCollection("app.bsky.feed.repost"));
     try testing.expect(!wantedCollection("com.atproto.lexicon.schema"));
     try testing.expect(!wantedCollection(""));
+}
+
+test "wantedCollection: birds.place records discover their actor" {
+    // Regression: a birds.place user writes only `place.birds.*`, so with this
+    // missing the commit path never saw them and discovery rested entirely on a
+    // single `#identity` event — which, when slingshot failed, was dropped.
+    try std.testing.expect(wantedCollection("place.birds.sighting"));
+    try std.testing.expect(wantedCollection("place.birds.profile"));
+    try std.testing.expect(!wantedCollection("place.birdsomething.else"));
+    try std.testing.expect(!wantedCollection("com.example.spam"));
 }
 
 test "avatarCidOf renders a DAG-CBOR blob ref to the stored base32 CID" {

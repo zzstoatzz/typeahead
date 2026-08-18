@@ -327,7 +327,13 @@ pub fn main() !void {
             // bounded pool — inline fallback under load (graceful degradation)
             tasks.async(io, server.handleConnection, .{ stream, db, id_pool_arg });
         } else {
-            // no local DB — just serve health
+            // No local DB (the ingester role). This branch used to answer EVERY
+            // path with 503 "search unavailable" — /health included — so the
+            // identity pool's accepted/dropped/processed/queued counters were
+            // computed, attached to a span, and readable by nobody. A DID
+            // silently dropped by the resolver had no observable signal at all;
+            // that is how birdlover.selfhosted.social went missing unnoticed.
+            // /health is now served here; everything else still 503s.
             var read_buffer: [1024]u8 = undefined;
             var write_buffer: [1024]u8 = undefined;
             var reader = stream.reader(io, &read_buffer);
@@ -337,12 +343,35 @@ pub fn main() !void {
                 stream.close(io);
                 continue;
             };
-            request.respond("{\"error\":\"search unavailable\"}", .{
-                .status = .service_unavailable,
-                .extra_headers = &.{
-                    .{ .name = "content-type", .value = "application/json" },
-                },
-            }) catch {};
+
+            const target = request.head.target;
+            const path = if (std.mem.indexOfScalar(u8, target, '?')) |qi| target[0..qi] else target;
+
+            if (std.mem.eql(u8, path, "/health")) {
+                var buf: [512]u8 = undefined;
+                const body = if (id_pool_arg) |pool| blk: {
+                    const ic = pool.counters(io);
+                    break :blk std.fmt.bufPrint(&buf,
+                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d}}}}}
+                    , .{ ingest.getRssKB(), ic.accepted, ic.dropped, ic.processed, ic.queued }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
+                } else std.fmt.bufPrint(&buf,
+                    \\{{"status":"ok","role":"ingester","rss_kb":{d}}}
+                , .{ingest.getRssKB()}) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
+
+                request.respond(body, .{
+                    .status = .ok,
+                    .extra_headers = &.{
+                        .{ .name = "content-type", .value = "application/json" },
+                    },
+                }) catch {};
+            } else {
+                request.respond("{\"error\":\"search unavailable\"}", .{
+                    .status = .service_unavailable,
+                    .extra_headers = &.{
+                        .{ .name = "content-type", .value = "application/json" },
+                    },
+                }) catch {};
+            }
             stream.close(io);
         }
     }

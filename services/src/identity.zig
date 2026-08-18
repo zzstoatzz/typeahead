@@ -8,8 +8,10 @@
 //!   2. POSTs {did, handle} back to the cloudflare worker's /admin/ingest
 //!   3. lets the worker's existing COALESCE-or-overwrite upsert do the rest
 //!
-//! Best-effort: failures are logged and dropped. The hourly enrichActors cron is
-//! the safety net for anything this misses (e.g. slingshot outage windows).
+//! A resolution failure never drops the DID: we still POST the bare DID so the row
+//! exists, because the hourly enrichIdentity cron retries `WHERE handle = ''` and can
+//! only ever see actors that are already rows. Dropping here made an account with a
+//! wedged .well-known permanently invisible (birdlover.selfhosted.social, 2026-08-18).
 
 const std = @import("std");
 const Io = std.Io;
@@ -82,20 +84,40 @@ pub const Resolver = struct {
         transport.keep_alive = false;
         defer transport.deinit();
 
-        const resolved = self.resolveSlingshot(&transport, did_slice) catch |err| {
+        const maybe = self.resolveSlingshot(&transport, did_slice) catch |err| blk: {
             log.warn("slingshot {s}: {s}", .{ did_slice, @errorName(err) });
-            return;
-        } orelse return; // unresolvable right now — cron will retry
+            break :blk null;
+        };
 
-        defer self.allocator.free(resolved.handle);
-        defer if (resolved.pds) |p| self.allocator.free(p);
+        // An unresolvable handle must not drop the DID. enrichIdentity's retry
+        // drain selects `WHERE handle = ''`, so it can only retry a row that
+        // already exists — a DID dropped here is invisible forever, leaving only
+        // a log line to say it was ever seen. Recording the bare DID is what makes
+        // that cron the safety net this file's header claims it is.
+        defer if (maybe) |r| {
+            self.allocator.free(r.handle);
+            if (r.pds) |pds| self.allocator.free(pds);
+        };
 
-        // jetstream/atproto convention: failed validation surfaces as "handle.invalid"
-        if (mem.eql(u8, resolved.handle, "handle.invalid")) return;
-
-        self.postIdentity(&transport, did_slice, resolved.handle, resolved.pds) catch |err| {
+        const event = eventFor(did_slice, maybe);
+        self.postIdentity(&transport, event) catch |err| {
             log.warn("post identity {s}: {s}", .{ did_slice, @errorName(err) });
         };
+    }
+
+    /// The row we record for a DID, given whatever slingshot could tell us.
+    ///
+    /// Split out from `process` so the "never drop the DID" rule is testable
+    /// without HTTP: an unresolvable or unvalidated handle still yields an event
+    /// carrying the DID, which `/admin/ingest` turns into a bare
+    /// `INSERT OR IGNORE INTO actors (did)`. That row lands in enrichIdentity's
+    /// `WHERE handle = ''` drain; without it the actor is never retried at all.
+    fn eventFor(did: []const u8, resolved: ?Resolved) ingest.ActorEvent {
+        const r = resolved orelse return .{ .did = did };
+        // atproto convention: failed validation surfaces as "handle.invalid".
+        // Keep the DID and any pds we learned; let the cron retry the handle.
+        if (mem.eql(u8, r.handle, "handle.invalid")) return .{ .did = did, .pds = r.pds };
+        return .{ .did = did, .handle = r.handle, .pds = r.pds };
     }
 
     const Resolved = struct {
@@ -139,7 +161,7 @@ pub const Resolver = struct {
         return .{ .handle = try self.allocator.dupe(u8, handle_str), .pds = pds_owned };
     }
 
-    fn postIdentity(self: *Resolver, transport: *HttpTransport, did: []const u8, handle: []const u8, pds: ?[]const u8) !void {
+    fn postIdentity(self: *Resolver, transport: *HttpTransport, event: ingest.ActorEvent) !void {
         var output: std.Io.Writer.Allocating = .init(self.allocator);
         defer output.deinit();
 
@@ -148,7 +170,6 @@ pub const Resolver = struct {
             .options = .{ .emit_null_optional_fields = false },
         };
 
-        const event = ingest.ActorEvent{ .did = did, .handle = handle, .pds = pds };
         // single-event batch, no cursor (we don't want to clobber the relay cursor)
         try jw.write(.{ .events = &[_]ingest.ActorEvent{event} });
 
@@ -175,3 +196,35 @@ pub const Resolver = struct {
 
 /// Convenience alias — the poolio instantiation used throughout the ingester.
 pub const Pool = poolio.Pool(Did, Resolver);
+
+const testing = std.testing;
+
+test "eventFor: unresolvable handle still records the DID" {
+    // Regression: this returned nothing, so a DID whose handle could not be
+    // resolved never became a row — and enrichIdentity, which retries
+    // `WHERE handle = ''`, only ever sees rows. birdlover.selfhosted.social sat
+    // in the relay with a healthy repo and was absent from the corpus entirely.
+    const event = Resolver.eventFor("did:plc:iu2klrrbxplyyqgltk7sg5l3", null);
+    try testing.expectEqualStrings("did:plc:iu2klrrbxplyyqgltk7sg5l3", event.did);
+    try testing.expect(event.handle == null);
+    try testing.expect(event.pds == null);
+}
+
+test "eventFor: handle.invalid records the DID and keeps the pds" {
+    const event = Resolver.eventFor("did:plc:abc", .{
+        .handle = "handle.invalid",
+        .pds = "https://selfhosted.social",
+    });
+    try testing.expectEqualStrings("did:plc:abc", event.did);
+    try testing.expect(event.handle == null);
+    try testing.expectEqualStrings("https://selfhosted.social", event.pds.?);
+}
+
+test "eventFor: a resolved handle is passed through intact" {
+    const event = Resolver.eventFor("did:plc:abc", .{
+        .handle = "birdlover.waow.tech",
+        .pds = "https://selfhosted.social",
+    });
+    try testing.expectEqualStrings("birdlover.waow.tech", event.handle.?);
+    try testing.expectEqualStrings("https://selfhosted.social", event.pds.?);
+}
