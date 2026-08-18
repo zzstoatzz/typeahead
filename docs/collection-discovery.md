@@ -83,6 +83,28 @@ deciding who exists.
   collections is easier to operate than allow-by-enumeration, and it fails in the
   direction we can see.
 
+## the same bug one layer down: what we *read*, not just who we admit
+
+`handleOp` extracts `displayName` from exactly two collections — `app.bsky.actor.profile`
+and `sh.tangled.actor.profile`. Every other collection, `place.birds.profile` included,
+falls to the bare-DID branch. So a birds.place user who fills in a display name has it
+carried past us on the firehose and dropped, and then renders in search as a bare handle.
+We are not missing the data; we are discarding it.
+
+Note what this is NOT an argument for: birds.place should not write an
+`app.bsky.actor.profile` to work around it. That would be an app writing into a namespace
+it does not own, on scopes it never requested. The app is behaving correctly; the index is
+the thing that is wrong.
+
+The complication, and why this is not just `endsWith(".profile")`: display names sourced
+from bsky and tangled inherit moderation we already lean on. Accepting `displayName` from
+any app's profile record opens a write path for arbitrary apps to set names in our index.
+The current two-collection list is accidentally acting as a spam control, and removing it
+without putting authority/reputation in its place trades one failure for a worse one.
+
+So: same authority question as above, applied to extraction rather than admission. Whatever
+answers "whose records make an actor real" should also answer "whose records may name one."
+
 ## open questions
 
 - Do we admit the actor on first sight of an unresolved authority and reconcile
