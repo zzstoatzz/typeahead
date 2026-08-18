@@ -107,6 +107,7 @@ pub fn getConfig() Config {
 /// see them at all, and an actor whose `#identity` was missed had no second
 /// chance. Worth moving to config (or dropping the allowlist for a deny-list of
 /// known-spam collections) rather than growing this by hand.
+/// Design sketch — published lexicons as the signal: docs/collection-discovery.md
 pub fn wantedCollection(collection: []const u8) bool {
     const exact = [_][]const u8{
         "app.bsky.actor.profile",
