@@ -117,6 +117,66 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
     ).bind(pruneBefore),
     db.prepare("DELETE FROM traffic_buckets WHERE bucket < ?1").bind(pruneBefore),
   ]);
+
+  await materializeRequests(db, env);
+}
+
+/** request_buckets → KV `request_data`: every answer the worker gave, by
+ *  app × endpoint × status. Same shape and retention ladder as traffic:
+ *  5-min for 48h, hourly for 30d, daily forever (request_daily). Bounded by
+ *  time × (active apps × endpoints × statuses), NOT the corpus — endpoint is a
+ *  fixed label set (see endpointLabel) and status is an HTTP code. Its own KV
+ *  key so stats_data's size is unchanged by this. */
+export async function materializeRequests(db: TursoDB, env: Env): Promise<void> {
+  const nowBucket = Math.floor(Date.now() / 300_000);
+  const hourlySince = nowBucket - 30 * 288;
+  const fiveMinSince = nowBucket - 2 * 288;
+
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS request_daily (
+       day INTEGER NOT NULL, domain TEXT NOT NULL, endpoint TEXT NOT NULL,
+       status INTEGER NOT NULL, hits INTEGER NOT NULL,
+       PRIMARY KEY (day, domain, endpoint, status)) WITHOUT ROWID`
+  ).run();
+
+  const [hourlyRes, fiveMinRes, dailyRes] = await db.batch([
+    db.prepare(
+      `SELECT bucket / 12 AS hour, domain, endpoint, status, SUM(hits) AS hits
+       FROM request_buckets WHERE bucket >= ?1
+       GROUP BY bucket / 12, domain, endpoint, status ORDER BY hour ASC`
+    ).bind(hourlySince),
+    db.prepare(
+      `SELECT bucket, domain, endpoint, status, hits FROM request_buckets
+       WHERE bucket >= ?1 ORDER BY bucket ASC`
+    ).bind(fiveMinSince),
+    db.prepare(
+      `SELECT day, domain, endpoint, status, SUM(hits) AS hits FROM (
+         SELECT day, domain, endpoint, status, hits FROM request_daily
+         UNION ALL
+         SELECT bucket / 288 AS day, domain, endpoint, status, SUM(hits) AS hits
+           FROM request_buckets GROUP BY bucket / 288, domain, endpoint, status
+       ) GROUP BY day, domain, endpoint, status ORDER BY day ASC`
+    ),
+  ], "read");
+
+  await env.KV.put("request_data", JSON.stringify({
+    series: hourlyRes.results ?? [],
+    series_5m: fiveMinRes.results ?? [],
+    daily: dailyRes.results ?? [],
+    materialized_at: Date.now(),
+  }));
+
+  const pruneBefore = nowBucket - 90 * 288;
+  await db.batch([
+    db.prepare(
+      `INSERT INTO request_daily (day, domain, endpoint, status, hits)
+       SELECT bucket / 288 AS day, domain, endpoint, status, SUM(hits) AS hits
+         FROM request_buckets WHERE bucket < ?1
+        GROUP BY bucket / 288, domain, endpoint, status
+       ON CONFLICT(day, domain, endpoint, status) DO UPDATE SET hits = hits + excluded.hits`
+    ).bind(pruneBefore),
+    db.prepare("DELETE FROM request_buckets WHERE bucket < ?1").bind(pruneBefore),
+  ]);
 }
 
 /** 25 DIDs per getProfiles call, so this is 200 requests per run.

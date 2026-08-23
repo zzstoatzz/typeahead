@@ -3,6 +3,7 @@ import { CORS_HEADERS } from "./types";
 import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
 import { recordSnapshot, materializeStats, enrichActors } from "./enrichment";
+import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
@@ -69,135 +70,153 @@ export default {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
-
-    const { pathname } = new URL(request.url);
-
-    if (pathname === "/" && request.method === "GET") {
-      return html(indexPage());
+    // Count every answer, including the ones that are not a Response at all:
+    // an uncaught throw is what Cloudflare turns into a 1101/500 at the edge,
+    // and it was invisible to anything we own for at least a day (2026-08-23).
+    // Rethrown unchanged — this hook observes, it does not handle.
+    let status = 500;
+    try {
+      const response = await route(request, env, ctx);
+      status = response.status;
+      return response;
+    } finally {
+      const endpoint = endpointLabel(new URL(request.url).pathname);
+      const domain = trafficDomain(request);
+      ctx.waitUntil(
+        getDb(env).then((db) => recordRequest(db, domain, endpoint, status)).catch(() => {}),
+      );
     }
-    // atproto handle verification for the service's own account
-    // (SERVICE_DID is a wrangler var; set once the account exists)
-    if (pathname === "/.well-known/atproto-did" && request.method === "GET") {
-      if (!env.SERVICE_DID) return new Response("not found", { status: 404 });
-      return new Response(env.SERVICE_DID, {
-        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" },
-      });
-    }
-    if (pathname === "/llms.txt" && request.method === "GET") {
-      return new Response(llmsTxt(), {
-        headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...CORS_HEADERS },
-      });
-    }
-    // Exercise the alert path on demand and report exactly what the webhook
-    // said. Without this, a failed notification is invisible until the next
-    // real incident — which is the thing the alerting exists to prevent.
-    if (pathname === "/admin/test-alert" && request.method === "POST") {
-      if (request.headers.get("Authorization") !== `Bearer ${env.ADMIN_SECRET}`) {
-        return json({ error: "unauthorized" }, 401);
-      }
-      const r = await postWebhook(env, "**typeahead: alert path test** — ignore me");
-      return json(r, r.ok ? 200 : 500);
-    }
-    if (pathname === "/health/freshness" && request.method === "GET") {
-      return handleFreshness(env);
-    }
-    if (pathname === "/og-image" && request.method === "GET") {
-      return handleOgImage(request, env);
-    }
-    if (pathname === "/docs" && request.method === "GET") {
-      return html(docsPage());
-    }
-    if (pathname === "/reputation" && request.method === "GET") {
-      return html(reputationPage());
-    }
-    if (pathname === "/admin/cursor" && request.method === "GET") {
-      return handleCursor(request, env);
-    }
-    if (pathname === "/request-indexing" && request.method === "GET") {
-      return new Response(null, { status: 302, headers: { Location: "/" } });
-    }
-
-    const db = await getDb(env);
-
-    if (pathname === "/stats" && request.method === "GET") {
-      return handleStats(request, db, env, ctx);
-    }
-
-    if (pathname === "/debug/reputation" && request.method === "GET") {
-      return handleReputation(request, db, env);
-    }
-
-    if (pathname === "/request-indexing" && request.method === "POST") {
-      const isAdmin = request.headers.get("Authorization") === `Bearer ${env.ADMIN_SECRET}`;
-      if (!isAdmin) {
-        const ip = clientIP(request);
-        const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
-        if (!success) {
-          console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
-          return json({ error: "slow down — try again in a minute." }, 429);
-        }
-      }
-      return handleRequestIndexing(request, db, env, ctx);
-    }
-
-    if (
-      (pathname === "/xrpc/tech.waow.typeahead.searchActors" ||
-        pathname === "/xrpc/app.bsky.actor.searchActorsTypeahead") &&
-      request.method === "GET"
-    ) {
-      const ip = clientIP(request);
-      const { success } = await env.RATE_LIMITER.limit({ key: ip });
-      if (!success) {
-        console.log(JSON.stringify({ event: "rate_limited", endpoint: "/search", ip }));
-        return json({ error: "rate limited" }, 429);
-      }
-      return handleSearch(request, db, env, ctx);
-    }
-
-    if (
-      pathname === "/xrpc/app.bsky.actor.getProfiles" &&
-      request.method === "GET"
-    ) {
-      const ip = clientIP(request);
-      const { success } = await env.RATE_LIMITER.limit({ key: ip });
-      if (!success) {
-        return json({ error: "rate limited" }, 429);
-      }
-      return handleGetProfiles(request, db, env, ctx);
-    }
-
-    if (pathname === "/admin/ingest" && request.method === "POST") {
-      return handleIngest(request, db, env, ctx);
-    }
-
-    if (pathname === "/admin/delete" && request.method === "POST") {
-      return handleDelete(request, db, env, ctx);
-    }
-
-    if (pathname === "/admin/mod-override" && request.method === "POST") {
-      return handleModOverrideSet(request, db, env);
-    }
-    if (pathname === "/admin/mod-override" && request.method === "DELETE") {
-      return handleModOverrideDelete(request, db, env);
-    }
-    if (pathname === "/admin/mod-overrides" && request.method === "GET") {
-      return handleModOverrideList(request, db, env);
-    }
-
-    if (pathname === "/admin/domain-block" && request.method === "POST") {
-      return handleDomainBlockSet(request, db, env, ctx);
-    }
-    if (pathname === "/admin/domain-block" && request.method === "DELETE") {
-      return handleDomainBlockDelete(request, db, env, ctx);
-    }
-    if (pathname === "/admin/domain-blocks" && request.method === "GET") {
-      return handleDomainBlockList(request, db, env);
-    }
-
-    if (pathname === "/admin/enrich-profiles" && request.method === "POST") {
-      return handleEnrichProfiles(request, db, env);
-    }
-
-    return json({ error: "not found" }, 404);
   },
 };
+
+async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const { pathname } = new URL(request.url);
+
+  if (pathname === "/" && request.method === "GET") {
+    return html(indexPage());
+  }
+  // atproto handle verification for the service's own account
+  // (SERVICE_DID is a wrangler var; set once the account exists)
+  if (pathname === "/.well-known/atproto-did" && request.method === "GET") {
+    if (!env.SERVICE_DID) return new Response("not found", { status: 404 });
+    return new Response(env.SERVICE_DID, {
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=300" },
+    });
+  }
+  if (pathname === "/llms.txt" && request.method === "GET") {
+    return new Response(llmsTxt(), {
+      headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "public, max-age=3600", ...CORS_HEADERS },
+    });
+  }
+  // Exercise the alert path on demand and report exactly what the webhook
+  // said. Without this, a failed notification is invisible until the next
+  // real incident — which is the thing the alerting exists to prevent.
+  if (pathname === "/admin/test-alert" && request.method === "POST") {
+    if (request.headers.get("Authorization") !== `Bearer ${env.ADMIN_SECRET}`) {
+      return json({ error: "unauthorized" }, 401);
+    }
+    const r = await postWebhook(env, "**typeahead: alert path test** — ignore me");
+    return json(r, r.ok ? 200 : 500);
+  }
+  if (pathname === "/health/freshness" && request.method === "GET") {
+    return handleFreshness(env);
+  }
+  if (pathname === "/og-image" && request.method === "GET") {
+    return handleOgImage(request, env);
+  }
+  if (pathname === "/docs" && request.method === "GET") {
+    return html(docsPage());
+  }
+  if (pathname === "/reputation" && request.method === "GET") {
+    return html(reputationPage());
+  }
+  if (pathname === "/admin/cursor" && request.method === "GET") {
+    return handleCursor(request, env);
+  }
+  if (pathname === "/request-indexing" && request.method === "GET") {
+    return new Response(null, { status: 302, headers: { Location: "/" } });
+  }
+
+  const db = await getDb(env);
+
+  if (pathname === "/stats" && request.method === "GET") {
+    return handleStats(request, db, env, ctx);
+  }
+
+  if (pathname === "/debug/reputation" && request.method === "GET") {
+    return handleReputation(request, db, env);
+  }
+
+  if (pathname === "/request-indexing" && request.method === "POST") {
+    const isAdmin = request.headers.get("Authorization") === `Bearer ${env.ADMIN_SECRET}`;
+    if (!isAdmin) {
+      const ip = clientIP(request);
+      const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
+      if (!success) {
+        console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
+        return json({ error: "slow down — try again in a minute." }, 429);
+      }
+    }
+    return handleRequestIndexing(request, db, env, ctx);
+  }
+
+  if (
+    (pathname === "/xrpc/tech.waow.typeahead.searchActors" ||
+      pathname === "/xrpc/app.bsky.actor.searchActorsTypeahead") &&
+    request.method === "GET"
+  ) {
+    const ip = clientIP(request);
+    const { success } = await env.RATE_LIMITER.limit({ key: ip });
+    if (!success) {
+      console.log(JSON.stringify({ event: "rate_limited", endpoint: "/search", ip }));
+      return json({ error: "rate limited" }, 429);
+    }
+    return handleSearch(request, db, env, ctx);
+  }
+
+  if (
+    pathname === "/xrpc/app.bsky.actor.getProfiles" &&
+    request.method === "GET"
+  ) {
+    const ip = clientIP(request);
+    const { success } = await env.RATE_LIMITER.limit({ key: ip });
+    if (!success) {
+      return json({ error: "rate limited" }, 429);
+    }
+    return handleGetProfiles(request, db, env, ctx);
+  }
+
+  if (pathname === "/admin/ingest" && request.method === "POST") {
+    return handleIngest(request, db, env, ctx);
+  }
+
+  if (pathname === "/admin/delete" && request.method === "POST") {
+    return handleDelete(request, db, env, ctx);
+  }
+
+  if (pathname === "/admin/mod-override" && request.method === "POST") {
+    return handleModOverrideSet(request, db, env);
+  }
+  if (pathname === "/admin/mod-override" && request.method === "DELETE") {
+    return handleModOverrideDelete(request, db, env);
+  }
+  if (pathname === "/admin/mod-overrides" && request.method === "GET") {
+    return handleModOverrideList(request, db, env);
+  }
+
+  if (pathname === "/admin/domain-block" && request.method === "POST") {
+    return handleDomainBlockSet(request, db, env, ctx);
+  }
+  if (pathname === "/admin/domain-block" && request.method === "DELETE") {
+    return handleDomainBlockDelete(request, db, env, ctx);
+  }
+  if (pathname === "/admin/domain-blocks" && request.method === "GET") {
+    return handleDomainBlockList(request, db, env);
+  }
+
+  if (pathname === "/admin/enrich-profiles" && request.method === "POST") {
+    return handleEnrichProfiles(request, db, env);
+  }
+
+  return json({ error: "not found" }, 404);
+}

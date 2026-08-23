@@ -56,8 +56,12 @@ export async function recordActorDelta(
   await db.batch(stmts);
 }
 
-/** fire-and-forget: increment cumulative hit counter per client identity */
-export async function recordTrafficSource(db: TursoDB, request: Request): Promise<void> {
+/** which app a request came from: X-Client > Origin > Referer (self → homepage) > unknown.
+ *  X-Client is a raw request header — arbitrary bytes, any length, chosen by
+ *  the caller. It gets stored, then rendered on /stats. The renderer escapes
+ *  it, but this is the layer that decides what may enter the corpus at all:
+ *  anything that is not hostname-shaped is not a traffic source. */
+export function trafficDomain(request: Request): string {
   const client = request.headers.get("X-Client");
   const origin = request.headers.get("Origin");
   const referer = request.headers.get("Referer");
@@ -67,7 +71,7 @@ export async function recordTrafficSource(db: TursoDB, request: Request): Promis
   if (client) {
     domain = client;
   } else if (origin) {
-    domain = new URL(origin).hostname;
+    try { domain = new URL(origin).hostname; } catch { domain = "unknown"; }
   } else if (referer) {
     try {
       const refHost = new URL(referer).hostname;
@@ -81,13 +85,15 @@ export async function recordTrafficSource(db: TursoDB, request: Request): Promis
   if (domain === "localhost" || domain.startsWith("127.") || domain === "[::1]") {
     domain = "unknown";
   }
-  // X-Client is a raw request header — arbitrary bytes, any length, chosen by
-  // the caller. It gets stored, then rendered on /stats. The renderer escapes
-  // it, but this is the layer that decides what may enter the corpus at all:
-  // anything that is not hostname-shaped is not a traffic source.
   if (!/^[a-zA-Z0-9._:\-\[\]]{1,64}$/.test(domain)) {
     domain = "unknown";
   }
+  return domain;
+}
+
+/** fire-and-forget: increment cumulative hit counter per client identity */
+export async function recordTrafficSource(db: TursoDB, request: Request): Promise<void> {
+  const domain = trafficDomain(request);
   const bucket = Math.floor(Date.now() / 300_000);
   await db.batch([
     db.prepare(
@@ -101,4 +107,44 @@ export async function recordTrafficSource(db: TursoDB, request: Request): Promis
        ON CONFLICT(bucket, domain) DO UPDATE SET hits = hits + 1`
     ).bind(bucket, domain),
   ]);
+}
+
+/** the label a request is counted under in request_buckets. Coarse on purpose:
+ *  the set must stay small and fixed so bucket × domain × endpoint × status is
+ *  bounded by configuration, not by what callers send. Unknown paths all land
+ *  in "other" — a 404 probe must never mint a new endpoint. */
+export function endpointLabel(pathname: string): string {
+  if (pathname === "/xrpc/tech.waow.typeahead.searchActors" ||
+      pathname === "/xrpc/app.bsky.actor.searchActorsTypeahead") return "search";
+  if (pathname === "/xrpc/app.bsky.actor.getProfiles") return "getProfiles";
+  if (pathname === "/request-indexing") return "request-indexing";
+  if (pathname === "/admin/ingest") return "admin/ingest";
+  if (pathname === "/admin/delete") return "admin/delete";
+  if (pathname.startsWith("/admin/")) return "admin";
+  if (pathname.startsWith("/health/")) return "health";
+  if (pathname.startsWith("/debug/")) return "debug";
+  if (pathname === "/" || pathname === "/stats" || pathname === "/docs" ||
+      pathname === "/reputation" || pathname === "/llms.txt" ||
+      pathname === "/og-image" || pathname === "/.well-known/atproto-did") return "page";
+  return "other";
+}
+
+/** fire-and-forget: one row per 5-min bucket × app × endpoint × status, for
+ *  EVERY request the worker answers (not just search cache misses, which is
+ *  all traffic_buckets sees). This is the only place non-2xx responses are
+ *  counted anywhere we own. */
+export async function recordRequest(
+  db: TursoDB,
+  domain: string,
+  endpoint: string,
+  status: number,
+): Promise<void> {
+  const bucket = Math.floor(Date.now() / 300_000);
+  await db.prepare(
+    `INSERT INTO request_buckets (bucket, domain, endpoint, status, hits)
+     VALUES (?1, ?2, ?3, ?4, 1)
+     ON CONFLICT(bucket, domain, endpoint, status) DO UPDATE SET hits = hits + 1`
+  )
+    .bind(bucket, domain, endpoint, status)
+    .run();
 }
