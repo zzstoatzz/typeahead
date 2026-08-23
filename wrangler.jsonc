@@ -4,6 +4,7 @@
   "compatibility_date": "2024-12-01",
   "compatibility_flags": ["nodejs_compat"],
   "triggers": { "crons": ["0 * * * *"] },
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
   "vars": {
     "SERVICE_DID": "did:plc:y6kywgnb7xletjpa5hhxmd4k"
   },
