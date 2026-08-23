@@ -89,13 +89,16 @@ describe("link previews", () => {
     { hour: Math.floor(Date.now() / 3_600_000), domain: "alpha.app", hits: 900 },
     { hour: Math.floor(Date.now() / 3_600_000), domain: "beta.app", hits: 300 },
   ];
-  const withView = (apps: string[]) => statsPage({
-    total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
-    handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [],
-    trafficSeries: series, trafficSeries5m: [], trafficDaily: [],
-    requestSeries: [], requestSeries5m: [], requestDaily: [],
-    view: { apps, range: "7d", origin: "https://typeahead.waow.tech" },
-  } as StatsData);
+  const withView = (apps: string[]) => {
+    const d: StatsData = {
+      total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+      handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [],
+      trafficSeries: series, trafficSeries5m: [], trafficDaily: [],
+      requestSeries: [], requestSeries5m: [], requestDaily: [],
+      view: { apps, range: "7d", origin: "https://typeahead.waow.tech" },
+    };
+    return statsPage(d);
+  };
 
   test("a shared comparison names what is being compared", () => {
     const html = withView(["alpha.app", "beta.app"]);

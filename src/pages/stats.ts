@@ -54,9 +54,12 @@ function latencyHtml(cached: number, cold: number): string {
  */
 function ogTags(d: StatsData): string {
   const view = d.view ?? { apps: [], range: '7d', origin: 'https://typeahead.waow.tech' };
-  const RANGE_SECS: Record<string, number> = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 };
-  const RANGE_WORDS: Record<string, string> = { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' };
-  const secs = RANGE_SECS[view.range] ?? RANGE_SECS['7d']!;
+  const RANGE_SECS = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 } as const;
+  const RANGE_WORDS = { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' } as const;
+  type Range = keyof typeof RANGE_SECS;
+  const isRange = (r: string): r is Range => Object.hasOwn(RANGE_SECS, r);
+  const range: Range = isRange(view.range) ? view.range : '7d';
+  const secs = RANGE_SECS[range];
   const cutoff = Math.floor(Date.now() / 1000 / 3600) - secs / 3600;
 
   const by = new Map<string, number>();
@@ -85,7 +88,7 @@ function ogTags(d: StatsData): string {
       ? ` — ${rows[0]!.a} ${(rows[0]!.hits / rows[1]!.hits < 10
           ? (rows[0]!.hits / rows[1]!.hits).toFixed(2) : Math.round(rows[0]!.hits / rows[1]!.hits))}× ${rows[1]!.a} by request volume`
       : '';
-    desc = `search traffic over the ${RANGE_WORDS[view.range] ?? RANGE_WORDS['7d']}: ${parts.join(' · ')}${lead}`;
+    desc = `search traffic over the ${RANGE_WORDS[range]}: ${parts.join(' · ')}${lead}`;
   } else {
     title = 'typeahead — stats';
     desc = `${d.total.toLocaleString('en-US')} actors indexed, ${d.handlePct}% with a resolved handle. Live traffic, latency and coverage for community actor search on atproto.`;
@@ -128,8 +131,7 @@ export function statsPage(d: StatsData): string {
   // 72% of a 1 MB page (762 KB, ~19k rows) and put the page's weight on a curve
   // that grows with the site's age: the query is LIMIT 100000, so left alone it
   // heads for several MB. Sixteen numbers instead.
-  const ACTIVITY_SECS: Record<string, number | null> =
-    { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': null };
+  const ACTIVITY_SECS = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': null } as const;
   const activity: Record<string, { searches: number; cacheHits: number; totalMs: number; cacheMs: number }> = {};
   for (const [range, secs] of Object.entries(ACTIVITY_SECS)) {
     const a = { searches: 0, cacheHits: 0, totalMs: 0, cacheMs: 0 };
@@ -150,7 +152,7 @@ export function statsPage(d: StatsData): string {
   // straight from the X-Client / Origin request headers, which made this a stored
   // XSS: one request with X-Client: </script><script>... and the payload ran for
   // every visitor to /stats. Escaping "<" is enough and keeps the value valid JSON.
-  const jsonScript = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
+  const jsonScript = <T extends object>(v: T) => JSON.stringify(v).replace(/</g, "\\u003c");
 
   const activityJson = jsonScript(activity);
   // SSR renders the 7d view so the page is correct without JS and the value
@@ -176,7 +178,8 @@ export function statsPage(d: StatsData): string {
     // on both a light and a dark background.
     '#14b8a6', '#3b82f6', '#a855f7', '#f59e0b', '#f43f5e', '#06b6d4', '#65a30d', '#f97316', '#ec4899',
   ];
-  const SPECIAL_DOMAINS: Record<string, string> = { unknown: '#94a3b8', homepage: '#64748b' };
+  const SPECIAL_DOMAINS = { unknown: '#94a3b8', homepage: '#64748b' } satisfies Record<string, string>;
+  const isSpecial = (d: string): d is keyof typeof SPECIAL_DOMAINS => Object.hasOwn(SPECIAL_DOMAINS, d);
   const PIE_TOP_N = 12;
   const trafficTotal = d.trafficSources.reduce((s, r) => s + r.hits, 0);
   const pieSlice = d.trafficSources.slice(0, PIE_TOP_N);
@@ -209,10 +212,11 @@ export function statsPage(d: StatsData): string {
   // grain, so the chart reads them through the same code path.
   const statusClass = (code: number) => `${Math.floor(code / 100)}xx`;
   type Grain = Record<string, [number, number][]>;
+  type RequestGrains = { endpoint: Grain; status: Grain };
   const sliceRequests = <R extends { domain: string; endpoint: string; status: number; hits: number }>(
     rows: R[], t: (r: R) => number,
-  ): { endpoint: Grain; status: Grain } => {
-    const out = { endpoint: {} as Grain, status: {} as Grain };
+  ): RequestGrains => {
+    const out: RequestGrains = { endpoint: {}, status: {} };
     const acc = { endpoint: new Map<string, Map<number, number>>(), status: new Map<string, Map<number, number>>() };
     for (const r of rows) {
       for (const [dim, key] of [["endpoint", r.endpoint], ["status", statusClass(r.status)]] as const) {
@@ -240,11 +244,11 @@ export function statsPage(d: StatsData): string {
   // the whole entry stays a selection target, since it has no other surface.
   // Only dotted hostnames link: X-Client values can be bare app names
   // ("pckt", "lazurite") and https://pckt is not a place.
-  const nameLink = (domain: string) => domain in SPECIAL_DOMAINS || !domain.includes('.') ? esc(domain)
+  const nameLink = (domain: string) => isSpecial(domain) || !domain.includes('.') ? esc(domain)
     : `<a href="https://${esc(domain)}" target="_blank" rel="noopener" class="legend-link">${esc(domain)}</a>`;
 
   const pieLegendHtml = pieSlice.map((r, i) => {
-    const color = SPECIAL_DOMAINS[r.domain] ?? PIE_COLORS[i % PIE_COLORS.length];
+    const color = isSpecial(r.domain) ? SPECIAL_DOMAINS[r.domain] : PIE_COLORS[i % PIE_COLORS.length];
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
     return `<span data-domain="${esc(r.domain)}"><span class="ldot" style="background:${color}"></span>${esc(r.domain)} (${pct}%)</span>`;
   }).join('');
@@ -634,7 +638,7 @@ export function statsPage(d: StatsData): string {
        why the axis labels and the donut's centre text were near-invisible in
        light mode, and why the trend series drifted out of step with the palette. */
     function cssColor(v) {
-      const m = /^var\((--[\w-]+)\)$/.exec(v);
+      const m = /^var\\((--[\\w-]+)\\)$/.exec(v);
       return m ? tok(m[1], v) : v;
     }
     function tok(name, fallback) {

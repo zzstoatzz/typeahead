@@ -11,12 +11,13 @@ test:
     bun test
 
 # oxlint with the anti-slop plugin (tools/oxlint/anti-slop, shared with plyr.fm
-# and doodl). Not yet in `check` — the existing source has findings to clear first.
+# and doodl). Zero findings is the bar; never disable a rule to get there.
 lint:
-    bunx oxlint src
+    bunx oxlint --deny-warnings src
+
 
 # what CI runs, locally
-check: typecheck test
+check: typecheck lint test
     bunx wrangler deploy --dry-run
 
 # run the zig unit tests for the services (ingester/search/indexer)

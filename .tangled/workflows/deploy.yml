@@ -21,5 +21,6 @@ steps:
       set -euo pipefail
       bun install
       bunx tsc --noEmit
+      bunx oxlint --deny-warnings src
       bun test
       bunx wrangler deploy --dry-run

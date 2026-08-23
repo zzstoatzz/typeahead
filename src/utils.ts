@@ -9,8 +9,8 @@ export function escHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function json(data: unknown, status = 200, extra?: Record<string, string>): Response {
-  return Response.json(data, { status, headers: { ...CORS_HEADERS, ...(extra ?? {}) } });
+export function json<T extends object>(data: T, status = 200, extra?: Record<string, string>): Response {
+  return Response.json(data, { status, headers: { ...CORS_HEADERS, ...extra } });
 }
 
 /** Primary avatar URL: bsky's CDN for everyone. It serves any actor the
@@ -98,7 +98,7 @@ export async function fetchProfileFromPds(did: string, pds: string): Promise<any
         did,
         handle: '',
         displayName: val.displayName || '',
-        avatar: val.avatar?.ref?.$link || val.avatar?.ref?.['$link'] || '',
+        avatar: val.avatar?.ref?.$link || '',
         labels: [],
         createdAt: val.createdAt || '',
         associated: {},
@@ -110,14 +110,26 @@ export async function fetchProfileFromPds(did: string, pds: string): Promise<any
   return null;
 }
 
+/** `app.bsky.actor.defs#profileAssociated` as bsky sends it (all fields optional). */
+export interface ProfileAssociated {
+  lists?: number | null;
+  feedgens?: number | null;
+  starterPacks?: number | null;
+  labeler?: boolean | null;
+  chat?: { allowIncoming: string } | null;
+  activitySubscription?: { allowSubscriptions: string } | null;
+}
+
 /** strip zero/false fields from associated object to match bsky's typeahead shape */
-export function cleanAssociated(assoc: any): Record<string, unknown> {
-  if (!assoc || typeof assoc !== 'object') return {};
-  const clean: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(assoc)) {
-    if (v === 0 || v === false || v === null || v === undefined) continue;
-    clean[k] = v;
-  }
+export function cleanAssociated(assoc: ProfileAssociated | null | undefined): ProfileAssociated {
+  const clean: ProfileAssociated = {};
+  if (!assoc) return clean;
+  if (assoc.lists) clean.lists = assoc.lists;
+  if (assoc.feedgens) clean.feedgens = assoc.feedgens;
+  if (assoc.starterPacks) clean.starterPacks = assoc.starterPacks;
+  if (assoc.labeler) clean.labeler = assoc.labeler;
+  if (assoc.chat) clean.chat = assoc.chat;
+  if (assoc.activitySubscription) clean.activitySubscription = assoc.activitySubscription;
   return clean;
 }
 
@@ -216,6 +228,13 @@ export function computeAuthorityScoreBreakdown(p: {
   }
 
   const score = Math.max(0, followersInfluence + postsInfluence + followerFollowRatioBonus + matureAccountBonus + freshnessPenalty);
+  const inputs: AuthorityScoreBreakdown["inputs"] = {
+    followersCount: f,
+    followsCount: fw,
+    postsCount: pc,
+  };
+  if (p.createdAt) inputs.createdAt = p.createdAt;
+
   return {
     score: Math.round(score * 100) / 100,
     followersInfluence: Math.round(followersInfluence * 100) / 100,
@@ -228,12 +247,7 @@ export function computeAuthorityScoreBreakdown(p: {
       penalty: freshnessPenalty,
       note: "Fresh accounts are penalized: -100 for <24h old, -50 for <72h old. Scores are floored at 0.",
     },
-    inputs: {
-      followersCount: f,
-      followsCount: fw,
-      postsCount: pc,
-      ...(p.createdAt ? { createdAt: p.createdAt } : {}),
-    },
+    inputs,
   };
 }
 
@@ -307,11 +321,10 @@ export function extractProfileFields(
  * preserved characters don't break the FTS MATCH syntax.
  */
 export function sanitize(q: string): string {
-  return q.replace(/[\\%_"\x00-\x1f\x7f]/g, "").trim();
+  return q.replace(/[\\%_"\p{Cc}]/gu, "").trim();
 }
 
-export function html(body: string, extra?: Record<string, string> | number, status = 200): Response {
-  if (typeof extra === "number") { status = extra; extra = undefined; }
+export function html(body: string, extra?: Record<string, string>, status = 200): Response {
   return new Response(body, {
     status,
     headers: { "Content-Type": "text/html; charset=utf-8", ...CORS_HEADERS, ...extra },

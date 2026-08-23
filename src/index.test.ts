@@ -1,4 +1,6 @@
 import { test, expect, mock } from "bun:test";
+import type { InValue } from "@libsql/client/web";
+import type { Env } from "./types";
 
 // The request recorder wraps the router: every answer is counted under its
 // real status, and an UNCAUGHT throw — what the edge reports as 1101/500 —
@@ -12,14 +14,14 @@ const recorded: { domain: string; endpoint: string; status: number }[] = [];
 // Every client records request_buckets upserts; everything else is a no-op.
 mock.module("@libsql/client/web", () => ({
   createClient: () => ({
-    async execute({ sql, args }: { sql: string; args: any[] }) {
+    async execute({ sql, args }: { sql: string; args: InValue[] }) {
       if (/INSERT INTO request_buckets/.test(sql)) {
         const [, domain, endpoint, status] = args;
-        recorded.push({ domain, endpoint, status });
+        recorded.push({ domain: String(domain), endpoint: String(endpoint), status: Number(status) });
       }
       return { rows: [], rowsAffected: 1 };
     },
-    async batch(stmts: any[]) { return stmts.map(() => ({ rows: [], rowsAffected: 1 })); },
+    async batch(stmts: unknown[]) { return stmts.map(() => ({ rows: [], rowsAffected: 1 })); },
   }),
 }));
 const realStats = await import("./handlers/stats");
@@ -29,11 +31,20 @@ mock.module("./handlers/stats", () => ({
 }));
 
 const worker = (await import("./index")).default;
-const ENV: any = { TURSO_URL: "https://example.turso.io", TURSO_AUTH_TOKEN: "t" };
+function fakeEnv(fields: { TURSO_URL: string; TURSO_AUTH_TOKEN: string }): Env {
+  // SAFETY: the routes exercised here (404, OPTIONS, the throwing /stats) read
+  // only the Turso credentials off Env, and the libsql client is mocked above.
+  return fields as Env;
+}
+const ENV = fakeEnv({ TURSO_URL: "https://example.turso.io", TURSO_AUTH_TOKEN: "t" });
 
 function ctx() {
   const tasks: Promise<unknown>[] = [];
-  return { ctx: { waitUntil: (p: Promise<unknown>) => tasks.push(p), passThroughOnException() {} } as any, tasks };
+  const c = { waitUntil: (p: Promise<unknown>) => { tasks.push(p); }, passThroughOnException() {} };
+  // SAFETY: the worker's fetch handler uses the context only via waitUntil and
+  // passThroughOnException; the runtime-owned members (exports, props, tracing)
+  // are never read.
+  return { ctx: c as ExecutionContext, tasks };
 }
 
 test("records the real status of a served response", async () => {

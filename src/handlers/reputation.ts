@@ -1,5 +1,5 @@
 import type { TursoDB } from "../db";
-import { json, sanitize, computeAuthorityScoreBreakdown, avatarUrl, avatarFallbackUrl } from "../utils";
+import { json, computeAuthorityScoreBreakdown, avatarUrl, avatarFallbackUrl } from "../utils";
 import { BSKY_MOD_DID, MOD_HIDE_VALS, resolveHidden } from "../moderation";
 import { enrichProfileDids } from "./admin";
 import type { Env } from "../types";
@@ -20,12 +20,6 @@ interface ReputationActorRow {
   quality_score: number;
   updated_at: number;
   profile_checked_at: number;
-}
-
-interface SearchCandidate {
-  did: string;
-  handle: string;
-  display_name: string;
 }
 
 interface ScorePercentile {
@@ -138,7 +132,7 @@ async function liveSearchPosition(
       { signal: AbortSignal.timeout(8000), headers: { "X-Client": "typeahead/reputation" } },
     );
     if (!res.ok) return miss;
-    const data = (await res.json()) as { actors?: { did: string }[] };
+    const data = await res.json<{ actors?: { did: string }[] }>();
     const idx = (data.actors || []).findIndex((a) => a.did === did);
     if (idx < 0) return miss;
     return { query: term, found: true, position: idx + 1, matchedBy: "live search" };
@@ -205,7 +199,7 @@ export async function handleReputation(request: Request, db: TursoDB, env: Env):
   const labels = parseLabels(row.labels);
   const override = await db.prepare(
     "SELECT action, reason, created_at FROM mod_overrides WHERE did = ?1"
-  ).bind(row.did).first<{ action: string; reason: string; created_at: number }>();
+  ).bind(row.did).first<{ action: "show" | "hide"; reason: string; created_at: number }>();
   const blockedDomain = await db.prepare(
     `SELECT domain, reason, created_at FROM blocked_domains
      WHERE lower(?1) = domain OR lower(?1) LIKE '%.' || domain
@@ -214,7 +208,7 @@ export async function handleReputation(request: Request, db: TursoDB, env: Env):
   const effectiveHidden = resolveHidden({
     labels,
     handle: row.handle,
-    override: override?.action as "show" | "hide" | null | undefined,
+    override: override?.action,
     domainBlocked: Boolean(blockedDomain),
   });
 

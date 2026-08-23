@@ -1,7 +1,19 @@
 import type { TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS } from "../types";
-import { json, avatarUrl, avatarFallbackUrl } from "../utils";
+import { json, avatarUrl, avatarFallbackUrl, type ProfileAssociated } from "../utils";
+
+/** one actor in the response, keys in the order the wire contract serializes them */
+interface ActorView {
+  did: string;
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+  avatarFallback?: string;
+  associated?: ProfileAssociated;
+  labels?: unknown[];
+  createdAt?: string;
+}
 
 /** edge cache TTL for getProfiles responses, in seconds. profiles change rarely
  *  (the enrichment cron refreshes them), so a few minutes of staleness is fine and
@@ -68,16 +80,19 @@ export async function handleGetProfiles(
      FROM actors WHERE (${conditions.join(" OR ")}) AND hidden = 0`
   ).bind(...binds).all<ActorRow>();
 
-  const profiles = (results || []).map((r) => ({
-    did: r.did,
-    handle: r.handle,
-    ...(r.display_name ? { displayName: r.display_name } : {}),
-    ...(r.avatar_url ? { avatar: avatarUrl(r.did, r.avatar_url, r.pds) } : {}),
-    ...(r.avatar_url && avatarFallbackUrl(r.did, r.avatar_url, r.pds) ? { avatarFallback: avatarFallbackUrl(r.did, r.avatar_url, r.pds) } : {}),
-    ...(r.associated && r.associated !== '{}' ? { associated: JSON.parse(r.associated) } : {}),
-    labels: JSON.parse(r.labels || '[]'),
-    ...(r.created_at ? { createdAt: r.created_at } : {}),
-  }));
+  const profiles = (results || []).map((r) => {
+    const view: ActorView = { did: r.did, handle: r.handle };
+    if (r.display_name) view.displayName = r.display_name;
+    if (r.avatar_url) {
+      view.avatar = avatarUrl(r.did, r.avatar_url, r.pds);
+      const fallback = avatarFallbackUrl(r.did, r.avatar_url, r.pds);
+      if (fallback) view.avatarFallback = fallback;
+    }
+    if (r.associated && r.associated !== '{}') view.associated = JSON.parse(r.associated);
+    view.labels = JSON.parse(r.labels || '[]');
+    if (r.created_at) view.createdAt = r.created_at;
+    return view;
+  });
 
   const response = new Response(JSON.stringify({ profiles }), {
     headers: {

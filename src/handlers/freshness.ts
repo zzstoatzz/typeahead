@@ -22,6 +22,11 @@ const STALE_LAG_S = 30 * 60;
 const SNAPSHOT_STALE_S = 4 * 24 * 3600;
 const PROBE_HANDLE = "zzstoatzz.io";
 
+/** what the search service answers on /health, /index/status and /search */
+type HealthBody = { ready?: boolean; sync_lag_s?: number };
+type IndexStatusBody = { build_id?: string };
+type SearchBody = { actors?: { handle?: string }[]; results?: { handle?: string }[] };
+
 export type Freshness = {
   ok: boolean;
   stale: boolean;
@@ -51,22 +56,26 @@ export async function measureFreshness(env: Env): Promise<Freshness> {
     return out;
   }
 
-  const get = async (path: string): Promise<any | null> => {
+  const get = async <T>(path: string): Promise<T | null> => {
     try {
       const r = await fetch(base + path, { signal: AbortSignal.timeout(5000) });
-      return r.ok ? await r.json() : null;
+      return r.ok ? await r.json<T>() : null;
     } catch {
       return null;
     }
   };
 
-  const [health, index] = await Promise.all([get("/health"), get("/index/status")]);
+  const [health, index] = await Promise.all([
+    get<HealthBody>("/health"),
+    get<IndexStatusBody>("/index/status"),
+  ]);
 
   if (!health) {
     out.ok = false;
     out.reasons.push("search service /health unreachable");
   } else {
-    out.replica_lag_s = typeof health.sync_lag_s === "number" ? health.sync_lag_s : null;
+    const lag = health.sync_lag_s;
+    out.replica_lag_s = lag !== undefined && Number.isFinite(lag) ? lag : null;
     if (health.ready === false) {
       out.ok = false;
       out.reasons.push("search service not ready");
@@ -94,10 +103,10 @@ export async function measureFreshness(env: Env): Promise<Freshness> {
   // failure on its first run, because that account has never been indexed. This
   // one is the same handle smoke.py asserts must rank first for its own query,
   // so if it ever stops being present, that is a real finding either way.
-  const probe = await get(`/search?q=${encodeURIComponent(PROBE_HANDLE)}&limit=5`);
+  const probe = await get<SearchBody>(`/search?q=${encodeURIComponent(PROBE_HANDLE)}&limit=5`);
   if (probe) {
     const actors = probe.actors ?? probe.results ?? [];
-    out.probe_ok = actors.some((a: any) => a.handle === PROBE_HANDLE);
+    out.probe_ok = actors.some((a) => a.handle === PROBE_HANDLE);
     if (!out.probe_ok) {
       out.ok = false;
       out.reasons.push(`serving path cannot find ${PROBE_HANDLE}`);
@@ -139,8 +148,8 @@ export async function notifyFreshnessChange(env: Env, f: Freshness): Promise<voi
 
   let wasStale: boolean | null = null;
   try {
-    const prev = await env.KV.get("freshness", "json") as { stale?: boolean } | null;
-    wasStale = prev && typeof prev.stale === "boolean" ? prev.stale : null;
+    const prev = await env.KV.get<{ stale?: boolean }>("freshness", "json");
+    wasStale = prev?.stale === true || prev?.stale === false ? prev.stale : null;
   } catch { /* no prior state — treat as a change only if stale */ }
 
   if (wasStale === f.stale) return;                 // no change

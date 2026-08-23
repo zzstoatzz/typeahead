@@ -20,10 +20,13 @@ const BG = "#0a0b0a", PANEL = "#101211", LINE = "#212523";
 const TEXT = "#d9dedb", BRIGHT = "#f2f5f3", MUTED = "#8a938e", DIM = "#59615c";
 const ACCENT = "#44aa99";
 const PIE_COLORS = ['#14b8a6', '#3b82f6', '#a855f7', '#f59e0b', '#f43f5e', '#06b6d4', '#65a30d', '#f97316', '#ec4899'];
-const SPECIAL: Record<string, string> = { unknown: '#94a3b8', homepage: '#64748b' };
+const SPECIAL = { unknown: '#94a3b8', homepage: '#64748b' } satisfies Record<string, string>;
+const isSpecial = (d: string): d is keyof typeof SPECIAL => Object.hasOwn(SPECIAL, d);
 
-const RANGE_SECS: Record<string, number> = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 };
-const RANGE_LABEL: Record<string, string> = { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' };
+const RANGE_SECS = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 } as const;
+const RANGE_LABEL = { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' } as const;
+type Range = keyof typeof RANGE_SECS;
+const isRange = (r: string): r is Range => Object.hasOwn(RANGE_SECS, r);
 
 type Series = { hour: number; domain: string; hits: number }[];
 
@@ -42,7 +45,7 @@ function totals(series: Series, secs: number) {
 
 /** the page's colour for a domain — its rank position, wrapped into the palette */
 function colorFor(domain: string, order: string[]): string {
-  if (SPECIAL[domain]) return SPECIAL[domain]!;
+  if (isSpecial(domain)) return SPECIAL[domain];
   const i = order.indexOf(domain);
   return PIE_COLORS[(i < 0 ? 0 : i) % PIE_COLORS.length]!;
 }
@@ -92,8 +95,8 @@ function shell(inner: string, right: string): string {
 }
 
 /** one bar per app, on a shared scale */
-function comparison(apps: string[], series: Series, range: string, order: string[]): string {
-  const secs = RANGE_SECS[range] ?? RANGE_SECS['7d']!;
+function comparison(apps: string[], series: Series, range: Range, order: string[]): string {
+  const secs = RANGE_SECS[range];
   const { by, all } = totals(series, secs);
   const ranked = [...apps].sort((a, b) => (by.get(b) ?? 0) - (by.get(a) ?? 0));
   const colors = distinctColors(ranked, order);
@@ -167,7 +170,7 @@ export async function handleOgImage(request: Request, env: Env): Promise<Respons
 
   const series = kv?.traffic_series ?? [];
   // slice order fixes the palette, exactly as the page assigns it
-  const order = [...totals(series, RANGE_SECS['30d']!).by.entries()]
+  const order = [...totals(series, RANGE_SECS['30d']).by.entries()]
     .sort((a, b) => b[1] - a[1]).map(([d]) => d);
 
   const known = new Set(series.map(r => r.domain));
@@ -175,9 +178,9 @@ export async function handleOgImage(request: Request, env: Env): Promise<Respons
 
   let body: string, right: string;
   if (wanted.length > 0) {
-    const r = RANGE_SECS[range] ? range : "7d";
+    const r: Range = isRange(range) ? range : "7d";
     body = comparison(wanted, series, r, order);
-    right = "requests \u00b7 " + (RANGE_LABEL[r] ?? RANGE_LABEL['7d']);
+    right = "requests \u00b7 " + RANGE_LABEL[r];
   } else {
     const last = kv?.snapshots?.[kv.snapshots.length - 1];
     const total = last?.total ?? 0;

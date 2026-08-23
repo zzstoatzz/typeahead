@@ -257,7 +257,24 @@ export async function handleRequestIndexing(
  *  Fire-and-forget. The 5-minute sync remains the mechanism of record, so a
  *  failure here costs freshness for one actor, never correctness.
  */
-async function pushToReplica(env: Env, row: Record<string, unknown>): Promise<void> {
+interface ReplicaRow {
+  did: string;
+  handle: string;
+  display_name: string;
+  avatar_url: string;
+  hidden: number;
+  labels: string;
+  created_at: string;
+  associated: string;
+  pds: string;
+  followers_count: number;
+  follows_count: number;
+  posts_count: number;
+  quality_score: number;
+  updated_at: number;
+}
+
+async function pushToReplica(env: Env, row: ReplicaRow): Promise<void> {
   if (!env.SEARCH_BACKEND_URL || !env.ADMIN_SECRET) return;
   const t0 = Date.now();
   try {
@@ -546,25 +563,38 @@ export async function handleEnrichProfiles(
   const denied = authCheck(request, env);
   if (denied) return denied;
 
-  let body: { dids?: unknown };
+  let raw: { dids?: unknown };
   try {
-    body = await request.json();
+    raw = await request.json();
   } catch {
     return json({ error: "invalid json" }, 400);
   }
 
-  const dids = body.dids;
-  if (!Array.isArray(dids)) return json({ error: "body.dids must be an array of DIDs" }, 400);
-  if (dids.length === 0) {
+  const parsed = parseEnrichBody(raw);
+  if ("error" in parsed) return json({ error: parsed.error }, 400);
+  if (parsed.body.dids.length === 0) {
     return json({ ok: true, requested: 0, profiles_found: 0, written: 0, hidden: 0, errors: [] });
   }
-  if (dids.length > ENRICH_MAX_DIDS) {
-    return json({ error: `max ${ENRICH_MAX_DIDS} DIDs per request, got ${dids.length}` }, 400);
-  }
-  const bad = dids.find((d) => typeof d !== "string" || !(d as string).startsWith("did:"));
-  if (bad !== undefined) return json({ error: `invalid DID shape: ${String(bad).slice(0, 80)}` }, 400);
 
-  return json(await enrichProfileDids(db, env, dids as string[]));
+  return json(await enrichProfileDids(db, env, parsed.body.dids));
+}
+
+interface EnrichBody {
+  dids: string[];
+}
+
+function parseEnrichBody(raw: { dids?: unknown }): { body: EnrichBody } | { error: string } {
+  const dids = raw.dids;
+  if (!Array.isArray(dids)) return { error: "body.dids must be an array of DIDs" };
+  if (dids.length > ENRICH_MAX_DIDS) {
+    return { error: `max ${ENRICH_MAX_DIDS} DIDs per request, got ${dids.length}` };
+  }
+  const valid = dids.filter((d): d is string => d === String(d) && d.startsWith("did:"));
+  if (valid.length !== dids.length) {
+    const bad = dids.find((d) => !valid.includes(d));
+    return { error: `invalid DID shape: ${String(bad).slice(0, 80)}` };
+  }
+  return { body: { dids: valid } };
 }
 
 /** The canonical enrichment core, callable in-worker (reputation's on-view

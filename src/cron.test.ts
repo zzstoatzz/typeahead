@@ -1,6 +1,29 @@
 import { describe, test, expect, afterEach } from "bun:test";
 import { isProfileIdentical, refreshModeration } from "./cron";
 import { extractProfileFields } from "./utils";
+import type { Env } from "./types";
+import type { SqlValue, Stmt, TursoDB } from "./db";
+
+type Call = { sql: string; binds: SqlValue[]; method: string };
+type FakeStmt = Stmt & { sql: string; binds: SqlValue[] };
+
+/** the slice of KVNamespace refreshModeration consumes: the mod_walk_cursor key */
+type CursorKv = {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string): Promise<void>;
+  delete(key: string): Promise<void>;
+};
+
+function envWithKv(kv: CursorKv): Env {
+  // SAFETY: refreshModeration touches Env only through KV.get/put/delete on
+  // the walk cursor, which CursorKv covers; no other binding is read.
+  return { KV: kv } as Env;
+}
+
+const realFetch = globalThis.fetch;
+function installFetch(fake: () => Promise<Response>): void {
+  globalThis.fetch = Object.assign(fake, { preconnect: realFetch.preconnect });
+}
 
 // regression: refreshModeration used to skip on `hidden === f.hidden &&
 // labels === f.labels` only, freezing avatar / display_name / follower
@@ -91,59 +114,60 @@ describe("refreshModeration advances the freshness cursor", () => {
   }
 
   // capturing mock db: routes SELECTs by SQL, records every statement issued.
-  function mockDb(row: any) {
-    const calls: { sql: string; binds: any[]; method: string }[] = [];
-    function stmt(sql: string) {
-      const s: any = {
-        sql, binds: [] as any[],
-        bind(...args: any[]) { s.binds = args; return s; },
-        async all() {
+  function mockDb(row: ReturnType<typeof staleRow>) {
+    const calls: Call[] = [];
+    function stmt(sql: string): FakeStmt {
+      const s: FakeStmt = {
+        sql, binds: [],
+        bind(...args) { s.binds = args; return s; },
+        async all<T>() {
           calls.push({ sql, binds: s.binds, method: "all" });
-          if (sql.includes("ORDER BY quality_score DESC")) return { results: [row] }; // quality walk
-          return { results: [] };                                                    // event queue, overrides, domains
+          // SAFETY: same contract as Stmt.all — T is the caller's declaration of
+          // the columns its SELECT projects, and the quality walk selects ACTOR_COLS,
+          // which is exactly the shape staleRow() builds.
+          const walkPage = [row] as T[];
+          if (sql.includes("ORDER BY quality_score DESC")) return { results: walkPage }; // quality walk
+          return { results: [] };                                                       // event queue, overrides, domains
         },
         async run() { calls.push({ sql, binds: s.binds, method: "run" }); return { meta: { changes: 1 } }; },
         async first() { return null; },
       };
       return s;
     }
-    return {
-      db: {
-        prepare: (sql: string) => stmt(sql),
-        async batch(stmts: any[]) {
-          for (const st of stmts) calls.push({ sql: st.sql, binds: st.binds ?? [], method: "batch" });
-          return stmts.map(() => ({ meta: { changes: 1 } }));
-        },
-      } as any,
-      calls,
+    const db: TursoDB = {
+      prepare: (sql: string) => stmt(sql),
+      async batch(stmts: FakeStmt[]) {
+        for (const st of stmts) calls.push({ sql: st.sql, binds: st.binds, method: "batch" });
+        return stmts.map(() => ({ results: [], meta: { changes: 1 } }));
+      },
     };
+    return { db, calls };
   }
 
   // KV mock capturing cursor movement
   function mockEnv(cursor: string | null = null) {
+    const puts: { key: string; value: string }[] = [];
+    const deletes: string[] = [];
     const kv = {
-      puts: [] as { key: string; value: string }[],
-      deletes: [] as string[],
+      puts, deletes,
       async get(_key: string) { return cursor; },
       async put(key: string, value: string) { kv.puts.push({ key, value }); },
       async delete(key: string) { kv.deletes.push(key); },
     };
-    return { env: { KV: kv } as any, kv };
+    return { env: envWithKv(kv), kv };
   }
 
-  function mockGetProfiles(profile: any) {
-    globalThis.fetch = (async () => ({
-      status: 200, ok: true, json: async () => ({ profiles: [profile] }),
-    })) as any;
+  function mockGetProfiles(profile: ReturnType<typeof makeProfile> & { did: string }) {
+    installFetch(async () => Response.json({ profiles: [profile] }));
   }
 
-  function cursorAdvances(calls: { sql: string; binds: any[]; method: string }[]): boolean {
+  function cursorAdvances(calls: Call[]): boolean {
     return calls.some((c) =>
       /UPDATE actors SET profile_checked_at = unixepoch\(\) WHERE did IN/.test(c.sql) &&
       c.binds.includes(DID));
   }
 
-  function materialUpdateAdvancesReplica(calls: { sql: string; binds: any[]; method: string }[]): boolean {
+  function materialUpdateAdvancesReplica(calls: Call[]): boolean {
     return calls.some((c) =>
       c.method === "batch" &&
       c.sql.includes("handle = COALESCE") &&
@@ -195,16 +219,17 @@ describe("refreshModeration quality-walk cursor", () => {
   function scanTrap() {
     // db that returns empty pools and captures the walk SQL
     const sqls: string[] = [];
-    const stmt = (sql: string) => {
-      const s: any = {
-        sql,
+    const stmt = (sql: string): Stmt => {
+      const s: Stmt = {
         bind() { return s; },
         async all() { sqls.push(sql); return { results: [] }; },
+        async first() { return null; },
         async run() { return { meta: { changes: 0 } }; },
       };
       return s;
     };
-    return { db: { prepare: stmt, async batch() { return []; } } as any, sqls };
+    const db: TursoDB = { prepare: stmt, async batch() { return []; } };
+    return { db, sqls };
   }
 
   test("keyset cursor is inlined as literals, not bound params (Turso plan degradation)", async () => {
@@ -229,13 +254,11 @@ describe("refreshModeration quality-walk cursor", () => {
   test("short walk page wraps the cursor (pool exhausted)", async () => {
     const { db } = scanTrap();
     const kvOps: string[] = [];
-    const env = {
-      KV: {
-        async get() { return JSON.stringify({ qs: 0.01, rowid: 1 }); },
-        async put(key: string) { kvOps.push(`put:${key}`); },
-        async delete(key: string) { kvOps.push(`delete:${key}`); },
-      },
-    } as any;
+    const env = envWithKv({
+      async get() { return JSON.stringify({ qs: 0.01, rowid: 1 }); },
+      async put(key: string) { kvOps.push(`put:${key}`); },
+      async delete(key: string) { kvOps.push(`delete:${key}`); },
+    });
     await refreshModeration(db, env);
     expect(kvOps).toContain("delete:mod_walk_cursor");
     expect(kvOps).not.toContain("put:mod_walk_cursor");
@@ -243,13 +266,11 @@ describe("refreshModeration quality-walk cursor", () => {
 
   function mockEnvWithCursor(cursor: string) {
     return {
-      env: {
-        KV: {
-          async get() { return cursor; },
-          async put() {},
-          async delete() {},
-        },
-      } as any,
+      env: envWithKv({
+        async get() { return cursor; },
+        async put() {},
+        async delete() {},
+      }),
     };
   }
 });
