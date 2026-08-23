@@ -902,11 +902,16 @@ export function statsPage(d: StatsData): string {
       status:   { all: 'all requests', title: 'requests by status',   hint: 'tap a status class to add or remove it' },
     };
     const ENDPOINT_ORDER = ['search', 'getProfiles', 'request-indexing', 'page', 'admin/ingest', 'admin/delete', 'admin', 'health', 'debug', 'other'];
-    const ENDPOINT_COLORS = { search: '#14b8a6', getProfiles: '#3b82f6', 'request-indexing': '#a855f7', page: '#06b6d4',
-                              'admin/ingest': '#f59e0b', 'admin/delete': '#f97316', admin: '#ec4899', health: '#65a30d',
-                              debug: '#94a3b8', other: '#64748b' };
+    // Okabe–Ito: distinguishable under deuteranopia/protanopia/tritanopia and
+    // on both backgrounds. Hue is still not the only cue — status lines also
+    // carry a dash pattern (below), and every tooltip row and total is named.
+    const ENDPOINT_COLORS = { search: '#009E73', getProfiles: '#0072B2', 'request-indexing': '#CC79A7', page: '#56B4E9',
+                              'admin/ingest': '#E69F00', 'admin/delete': '#D55E00', admin: '#8c8c8c', health: '#F0E442',
+                              debug: '#b0b0b0', other: '#666666' };
     const STATUS_ORDER = ['2xx', '3xx', '4xx', '5xx'];
-    const STATUS_COLORS = { '2xx': 'var(--accent)', '3xx': 'var(--blue)', '4xx': 'var(--amber)', '5xx': 'var(--red)' };
+    const STATUS_COLORS = { '2xx': '#009E73', '3xx': '#56B4E9', '4xx': '#E69F00', '5xx': '#D55E00' };
+    // solid / dotted / dashed / dash-dot: tells 4xx from 5xx without colour
+    const STATUS_DASH = { '2xx': '', '3xx': '1.5 3', '4xx': '6 3', '5xx': '8 3 2 3' };
     function dimMap(stepSec) {
       const g = stepSec === 300 ? requestSeries.m5 : stepSec === 86400 ? requestSeries.daily : requestSeries.hourly;
       return (g && g[tsDim]) || {};
@@ -1029,6 +1034,7 @@ export function statsPage(d: StatsData): string {
         const line = document.createElementNS(SVGNS, 'polyline');
         line.setAttribute('points', pts);
         if (s.baseline) line.setAttribute('class', 'baseline');
+        else if (tsDim === 'status' && STATUS_DASH[s.domain]) line.setAttribute('stroke-dasharray', STATUS_DASH[s.domain]);
         line.style.stroke = s.color;
         line.style.pointerEvents = 'none';
         tseriesLines.appendChild(line);
@@ -1433,7 +1439,9 @@ export function statsPage(d: StatsData): string {
         dot.style.background = r.color;
         if (r.baseline) { dot.style.background = 'none'; dot.style.border = '1.5px dashed var(--dim)'; }
         const txt = document.createElement('span');
-        txt.textContent = (rows.length > 1 ? r.name + ' — ' : '') + r.c + (r.c === 1 ? ' hit' : ' hits');
+        // always named: a lone dot beside a number says nothing about WHICH line
+        // it is, and the user reading this may not see the dot's colour at all
+        txt.textContent = r.name + ' — ' + r.c + (r.c === 1 ? ' hit' : ' hits');
         row.append(dot, txt);
         seriesTip.appendChild(row);
       }
