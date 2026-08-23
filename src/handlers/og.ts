@@ -1,5 +1,5 @@
 import { ImageResponse } from "workers-og";
-import type { Env } from "../types";
+import type { Env, StatsKvData } from "../types";
 import { escHtml as esc } from "../utils";
 
 /** Link-preview card for /stats.
@@ -163,10 +163,7 @@ export async function handleOgImage(request: Request, env: Env): Promise<Respons
   const apps = (url.searchParams.get("apps") ?? "")
     .split(",").map(s => s.trim()).filter(Boolean).slice(0, 3); // 3 bars is the height budget
 
-  const kv = await env.KV.get("stats_data", "json") as {
-    snapshots?: { total: number; with_handles: number }[];
-    traffic_series?: Series;
-  } | null;
+  const kv = await env.KV.get<StatsKvData>("stats_data", "json");
 
   const series = kv?.traffic_series ?? [];
   // slice order fixes the palette, exactly as the page assigns it

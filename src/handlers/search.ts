@@ -1,4 +1,4 @@
-import type { TursoDB } from "../db";
+import { rowsAs, type TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
 import { json, sanitize, avatarUrl, avatarFallbackUrl } from "../utils";
@@ -159,10 +159,10 @@ export async function handleSearch(
   // Sort prefix by handle length (shortest first) for the shortest-handle bias.
   // We dropped ORDER BY length(handle) from the SQL to avoid Turso's full-scan
   // sort; doing it in JS over <= 50 rows is cheap.
-  const prefixRows = ((prefixRes.results as ActorRow[]) || [])
+  const prefixRows = rowsAs<ActorRow>(prefixRes.results)
     .slice()
     .sort((a, b) => a.handle.length - b.handle.length);
-  const exactRows = (exactRes.results as ActorRow[]) || [];
+  const exactRows = rowsAs<ActorRow>(exactRes.results);
 
   // Dedupe FTS candidates against the prefix candidate pool. Without this,
   // FTS rank tends to return the same short-handle rows the prefix tier
@@ -170,7 +170,7 @@ export async function handleSearch(
   // matches (e.g. bad-example.com / "fig (aka:[phil])" for q=fig) never
   // contribute to the response.
   const prefixDids = new Set(prefixRows.map((r) => r.did));
-  const ftsRows = ((ftsRes.results as ActorRow[]) || [])
+  const ftsRows = rowsAs<ActorRow>(ftsRes.results)
     .filter((r) => !prefixDids.has(r.did));
 
   // Interleave prefix and FTS so display-name-only matches surface even when

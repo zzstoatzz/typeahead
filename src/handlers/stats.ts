@@ -1,5 +1,5 @@
 import type { TursoDB } from "../db";
-import type { Env } from "../types";
+import type { Env, RequestKvData, StatsKvData } from "../types";
 import { html } from "../utils";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
 
@@ -31,20 +31,10 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const t0 = performance.now();
 
   // materialized data from KV (written by cron) — never hits turso
-  const [kvData, reqData] = await Promise.all([env.KV.get("stats_data", "json"), env.KV.get("request_data", "json")]) as [{
-    metrics: { hour: number; searches: number; total_ms: number; cache_hits: number; cache_ms: number }[];
-    snapshots: { hour: number; total: number; with_handles: number; with_avatars: number; hidden: number }[];
-    deltas: { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
-    traffic_series?: { hour: number; domain: string; hits: number }[];
-    traffic_series_5m?: { bucket: number; domain: string; hits: number }[];
-    traffic_daily?: { day: number; domain: string; hits: number }[];
-    materialized_at: number;
-  } | null, {
-    series?: { hour: number; domain: string; endpoint: string; status: number; hits: number }[];
-    series_5m?: { bucket: number; domain: string; endpoint: string; status: number; hits: number }[];
-    daily?: { day: number; domain: string; endpoint: string; status: number; hits: number }[];
-    materialized_at: number;
-  } | null];
+  const [kvData, reqData] = await Promise.all([
+    env.KV.get<StatsKvData>("stats_data", "json"),
+    env.KV.get<RequestKvData>("request_data", "json"),
+  ]);
 
   // traffic sources: live from turso. exclude:
   //  - internal probes (bench, cf-migration-*, migration-*)

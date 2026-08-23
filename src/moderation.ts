@@ -46,9 +46,9 @@ export function shouldHide(labels?: any[]): boolean {
 export async function getOverride(db: TursoDB, did: string): Promise<'show' | 'hide' | null> {
   const row = await db.prepare(
     "SELECT action FROM mod_overrides WHERE did = ?1"
-  ).bind(did).first<{ action: string }>();
+  ).bind(did).first<{ action: 'show' | 'hide' }>();
   if (!row) return null;
-  return row.action as 'show' | 'hide';
+  return row.action;
 }
 
 /** batch-fetch overrides for a list of DIDs */
@@ -58,9 +58,9 @@ export async function getOverrides(db: TursoDB, dids: string[]): Promise<Map<str
   const placeholders = dids.map(() => '?').join(',');
   const { results } = await db.prepare(
     `SELECT did, action FROM mod_overrides WHERE did IN (${placeholders})`
-  ).bind(...dids).all<{ did: string; action: string }>();
+  ).bind(...dids).all<{ did: string; action: 'show' | 'hide' }>();
   for (const r of results || []) {
-    map.set(r.did, r.action as 'show' | 'hide');
+    map.set(r.did, r.action);
   }
   return map;
 }
@@ -105,10 +105,10 @@ export function resolveHidden(opts: {
   override?: 'show' | 'hide' | null;
   domainBlocked?: boolean;
 }): 0 | 1 {
-  let hidden = shouldHide(opts.labels) ? 1 : 0;
+  let hidden: 0 | 1 = shouldHide(opts.labels) ? 1 : 0;
   if (hasExplicitSlur(opts.handle || "")) hidden = 1;
   if (opts.domainBlocked) hidden = 1;
   if (opts.override === "show") hidden = 0;
   if (opts.override === "hide") hidden = 1;
-  return hidden as 0 | 1;
+  return hidden;
 }

@@ -85,7 +85,7 @@ export function trafficDomain(request: Request): string {
   if (domain === "localhost" || domain.startsWith("127.") || domain === "[::1]") {
     domain = "unknown";
   }
-  if (!/^[a-zA-Z0-9._:\-\[\]]{1,64}$/.test(domain)) {
+  if (!/^[a-zA-Z0-9._:[\]-]{1,64}$/.test(domain)) {
     domain = "unknown";
   }
   return domain;

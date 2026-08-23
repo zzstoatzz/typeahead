@@ -29,7 +29,7 @@ export default {
     // isolate each step: a slow/failing one (e.g. recordSnapshot when the table
     // grew past a cheap COUNT) must never take down the rest — that cascade is
     // what froze the /stats page from 2026-05-18.
-    const steps: [string, () => Promise<unknown>][] = [
+    const steps: [string, () => Promise<void>][] = [
       // FIRST, deliberately.
       //
       // This is three HTTP calls, and it is the check that exists to catch the
@@ -55,7 +55,7 @@ export default {
       ["recordSnapshot", () => recordSnapshot(db)],
       ["materializeStats", () => materializeStats(db, env)],
       ["refreshModeration", () => refreshModeration(db, env)],
-      ["enrichActors", () => enrichActors(db, env)],
+      ["enrichActors", async () => { await enrichActors(db, env); }],
     ];
     for (const [name, fn] of steps) {
       try {

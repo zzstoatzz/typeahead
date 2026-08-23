@@ -25,6 +25,25 @@ export interface Env {
   ALERT_WEBHOOK_URL?: string;
 }
 
+/** KV `stats_data`, written hourly by materializeStats */
+export interface StatsKvData {
+  metrics: { hour: number; searches: number; total_ms: number; cache_hits: number; cache_ms: number }[];
+  snapshots: { hour: number; total: number; with_handles: number; with_avatars: number; hidden: number }[];
+  deltas: { bucket: number; actors_delta: number; handles_delta: number; avatars_delta: number }[];
+  traffic_series?: { hour: number; domain: string; hits: number }[];
+  traffic_series_5m?: { bucket: number; domain: string; hits: number }[];
+  traffic_daily?: { day: number; domain: string; hits: number }[];
+  materialized_at: number;
+}
+
+/** KV `request_data`, written hourly by materializeRequests */
+export interface RequestKvData {
+  series?: { hour: number; domain: string; endpoint: string; status: number; hits: number }[];
+  series_5m?: { bucket: number; domain: string; endpoint: string; status: number; hits: number }[];
+  daily?: { day: number; domain: string; endpoint: string; status: number; hits: number }[];
+  materialized_at: number;
+}
+
 export interface ActorRow {
   did: string;
   handle: string;
