@@ -49,36 +49,23 @@ export function tursoDb(client: Client): TursoDB {
   };
 }
 
-let cachedKey: string | undefined;
-let cachedClient: Client | undefined;
-let cachedDb: TursoDB | undefined;
-let initPromise: Promise<TursoDB> | undefined;
-
-/** lazy singleton — reuses the client across requests within a worker isolate */
-export function getDb(env: Env): Promise<TursoDB> {
-  const key = `${env.TURSO_URL}::${env.TURSO_AUTH_TOKEN}`;
-
-  if (cachedDb && cachedKey === key) return Promise.resolve(cachedDb);
-  if (initPromise && cachedKey === key) return initPromise;
-
-  cachedKey = key;
-  initPromise = (async () => {
-    const client = createClient({
-      url: env.TURSO_URL,
-      authToken: env.TURSO_AUTH_TOKEN,
-    });
-    const db = tursoDb(client);
-    cachedClient = client;
-    cachedDb = db;
-    return db;
-  })().catch((err) => {
-    if (cachedKey === key) {
-      cachedClient = undefined;
-      cachedDb = undefined;
-      initPromise = undefined;
-    }
-    throw err;
-  });
-
-  return initPromise;
+/** One client PER CALL — deliberately not a singleton.
+ *
+ *  @libsql/client wraps every execute/batch in a shared promise-limit(20).
+ *  Cached across requests, that limiter became the one piece of state every
+ *  request in an isolate shared: a request canceled mid-query (client
+ *  disconnect, ~1/min on /admin/ingest) never settles its slot, so capacity
+ *  shrank over the isolate's life until calls started queueing — and a
+ *  request queued behind ANOTHER request's I/O has no pending I/O of its own,
+ *  which the runtime reads as "will never generate a response" and answers
+ *  with a 1101. That was 8–35%/hour of /admin/ingest for at least a day
+ *  (2026-08-23), isolate-bound, and gone the minute a deploy recycled them.
+ *
+ *  createClient is a plain object over the platform fetch; there is no
+ *  connection to reuse at this layer, so per-request costs nothing. */
+export async function getDb(env: Env): Promise<TursoDB> {
+  return tursoDb(createClient({
+    url: env.TURSO_URL,
+    authToken: env.TURSO_AUTH_TOKEN,
+  }));
 }

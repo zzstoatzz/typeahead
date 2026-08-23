@@ -46,7 +46,13 @@ export async function handleDelete(
       db.prepare("DELETE FROM actors WHERE did = ?1").bind(did),
       db.prepare("INSERT OR REPLACE INTO tombstones (did, deleted_at) VALUES (?1, unixepoch())").bind(did),
     ]);
-    const batchResults = await db.batch(stmts);
+    let batchResults: Awaited<ReturnType<typeof db.batch>>;
+    try {
+      batchResults = await db.batch(stmts);
+    } catch (e: any) {
+      console.log(JSON.stringify({ event: "delete_error", error: e?.message, count: dids.length, deleted: actualDeletes }));
+      return json({ error: e?.message || "db batch failed", deleted: actualDeletes }, 500);
+    }
     actualDeletes += batchResults
       .filter((_, j) => j % 2 === 0)
       .reduce((s, r) => s + r.meta.changes, 0);

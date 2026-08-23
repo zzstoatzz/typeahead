@@ -7,32 +7,29 @@ import { test, expect, mock } from "bun:test";
 // day with nothing we own counting it.
 
 const recorded: { domain: string; endpoint: string; status: number }[] = [];
-const fakeDb = {
-  prepare(sql: string) {
-    const s: any = {
-      bind(...a: any[]) { s.binds = a; return s; },
-      async run() {
-        if (/INSERT INTO request_buckets/.test(sql)) {
-          const [, domain, endpoint, status] = s.binds;
-          recorded.push({ domain, endpoint, status });
-        }
-        return { meta: { changes: 1 } };
-      },
-    };
-    return s;
-  },
-};
-// bun's module mocks are process-wide, so spread the real modules and override
-// only what this file needs — other test files import these too.
-const realDb = await import("./db");
+// bun's module mocks are process-wide: mock the libsql client factory (the
+// lowest layer) rather than ./db, so db.test.ts still exercises the real getDb.
+// Every client records request_buckets upserts; everything else is a no-op.
+mock.module("@libsql/client/web", () => ({
+  createClient: () => ({
+    async execute({ sql, args }: { sql: string; args: any[] }) {
+      if (/INSERT INTO request_buckets/.test(sql)) {
+        const [, domain, endpoint, status] = args;
+        recorded.push({ domain, endpoint, status });
+      }
+      return { rows: [], rowsAffected: 1 };
+    },
+    async batch(stmts: any[]) { return stmts.map(() => ({ rows: [], rowsAffected: 1 })); },
+  }),
+}));
 const realStats = await import("./handlers/stats");
-mock.module("./db", () => ({ ...realDb, getDb: async () => fakeDb }));
 mock.module("./handlers/stats", () => ({
   ...realStats,
   handleStats: async () => { throw new Error("boom"); },
 }));
 
 const worker = (await import("./index")).default;
+const ENV: any = { TURSO_URL: "https://example.turso.io", TURSO_AUTH_TOKEN: "t" };
 
 function ctx() {
   const tasks: Promise<unknown>[] = [];
@@ -42,7 +39,7 @@ function ctx() {
 test("records the real status of a served response", async () => {
   recorded.length = 0;
   const { ctx: c, tasks } = ctx();
-  const res = await worker.fetch(new Request("https://typeahead.waow.tech/nope", { headers: { "X-Client": "plyr.fm" } }), {} as any, c);
+  const res = await worker.fetch(new Request("https://typeahead.waow.tech/nope", { headers: { "X-Client": "plyr.fm" } }), ENV, c);
   expect(res.status).toBe(404);
   await Promise.all(tasks);
   expect(recorded).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404 }]);
@@ -51,7 +48,7 @@ test("records the real status of a served response", async () => {
 test("an uncaught throw is counted as 500 and still propagates", async () => {
   recorded.length = 0;
   const { ctx: c, tasks } = ctx();
-  await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), {} as any, c)).rejects.toThrow("boom");
+  await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), ENV, c)).rejects.toThrow("boom");
   await Promise.all(tasks);
   expect(recorded).toEqual([{ domain: "unknown", endpoint: "page", status: 500 }]);
 });
@@ -59,7 +56,7 @@ test("an uncaught throw is counted as 500 and still propagates", async () => {
 test("OPTIONS preflights are answered without being counted", async () => {
   recorded.length = 0;
   const { ctx: c, tasks } = ctx();
-  const res = await worker.fetch(new Request("https://typeahead.waow.tech/xrpc/x", { method: "OPTIONS" }), {} as any, c);
+  const res = await worker.fetch(new Request("https://typeahead.waow.tech/xrpc/x", { method: "OPTIONS" }), ENV, c);
   expect(res.status).toBe(204);
   await Promise.all(tasks);
   expect(recorded).toEqual([]);
