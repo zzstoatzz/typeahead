@@ -161,3 +161,30 @@ describe("request slices", () => {
     expect(html).toContain('<button data-dim="status">status</button>');
   });
 });
+
+// A half-deleted rule left `display: inline-block; …; }` with no selector in
+// the stylesheet; the parser ate it AND the next rule (.traffic-series), which
+// silently lost its margin and separator for weeks. Every chunk between closing
+// braces must open exactly one block.
+test("stylesheet has no orphaned declarations", () => {
+  const html = page(["a.app"]);
+  const css = html.slice(html.indexOf("<style>") + 7, html.indexOf("</style>"))
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+  let depth = 0, chunk = "";
+  const bad: string[] = [];
+  for (const ch of css) {
+    if (ch === "{") depth++;
+    if (ch === "}") {
+      depth--;
+      if (depth === 0) {
+        const opens = (chunk.match(/\{/g) ?? []).length;
+        if (opens === 0) bad.push(chunk.trim().slice(0, 80));
+        chunk = "";
+        continue;
+      }
+    }
+    chunk += ch;
+  }
+  expect(bad).toEqual([]);
+  expect(depth).toBe(0);
+});

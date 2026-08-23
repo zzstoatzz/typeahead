@@ -338,10 +338,7 @@ export function statsPage(d: StatsData): string {
                        padding: 0.35rem 0.5rem; border-radius: 999px; min-height: 30px;
                        border: 1px solid transparent; }
     .pie-legend span.sel { border-color: var(--line-2); background: var(--panel-2); }
-    /* the only navigation affordance left; sized as a real touch target so it
-       is hittable without being easy to hit by accident */
-             display: inline-block; min-width: 24px; text-align: center; }
-    .traffic-series { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+    .traffic-series { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
     .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
     .traffic-series .ranged-header { margin-bottom: 0.5rem; }
     /* The plot RESERVES its height so swapping the chart for the empty state
