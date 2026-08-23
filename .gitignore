@@ -6,7 +6,8 @@ zig-cache/
 zig-pkg/
 .dev.vars
 .env
-.claude/
+.claude/*
+!.claude/skills/
 .codex/
 scripts/bench-results.json
 __pycache__/

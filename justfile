@@ -10,6 +10,11 @@ typecheck:
 test:
     bun test
 
+# oxlint with the anti-slop plugin (tools/oxlint/anti-slop, shared with plyr.fm
+# and doodl). Not yet in `check` — the existing source has findings to clear first.
+lint:
+    bunx oxlint src
+
 # what CI runs, locally
 check: typecheck test
     bunx wrangler deploy --dry-run
