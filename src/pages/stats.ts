@@ -370,9 +370,13 @@ export function statsPage(d: StatsData): string {
        content — that wrap was the chart "jumping" when a chip appeared. It still
        reserves one row height at all times, which covers the donut's hover
        preview and any single selection. */
-    #tseries-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
-                     min-height: 34px; flex: 1 1 0; min-width: 0; margin-left: auto;
-                     justify-content: flex-end; }
+    /* always its own full-width row under the title, in EVERY view — the row
+       used to sit beside the title in one view and below it in the others, so
+       switching views threw the view switch from one side of the card to the
+       other. Same place, same shape, whatever is selected. */
+    #tseries-chips { display: flex; flex-wrap: wrap; gap: 0.5rem 0.45rem; align-items: center;
+                     min-height: 34px; flex-basis: 100%; min-width: 0;
+                     justify-content: flex-start; margin: 0.15rem 0 0.35rem; }
     .ts-chip { display: inline-flex; align-items: center; gap: 0.4rem;
                background: var(--panel-2); border: 1px solid var(--line-2); color: var(--text);
                padding: 0.35rem 0.5rem 0.35rem 0.6rem; font-size: 0.72rem; cursor: pointer;
@@ -390,11 +394,7 @@ export function statsPage(d: StatsData): string {
     .ts-chip.pick:hover { color: var(--text); border-color: var(--line-2); }
     .ts-chip.pick .ldot { opacity: 0.55; }
     .dim-btns button { padding: 0.25rem 0.5rem; font-size: 0.66rem; min-height: 28px; }
-    #tseries-dim { margin-left: 0.35rem; }
-    /* the picker views list every line as a chip: that row gets its own line,
-       left-aligned under the title, instead of squeezing beside it */
-    .traffic-series[data-dim="endpoint"] #tseries-chips,
-    .traffic-series[data-dim="status"] #tseries-chips { flex-basis: 100%; justify-content: flex-start; }
+    #tseries-dim { margin-left: auto; }
     .empty-card { color: var(--dim); font-size: 0.8rem; padding: 2rem 0; text-align: center; }
     .pie-cta { margin-top: 0.6rem; font-size: 0.7rem; color: var(--dim); text-align: center; }
     .pie-cta a { color: var(--blue); text-decoration: none; }
@@ -475,8 +475,6 @@ export function statsPage(d: StatsData): string {
     @media (max-width: 640px) {
       /* narrow: the heading alone nearly fills the line, so the chips get their
          own row rather than fighting it for space */
-      #tseries-chips { flex-basis: 100%; }
-      #tseries-dim { margin-left: auto; }
       body { padding-left: 0.75rem; padding-right: 0.75rem; }
       #trend { height: 170px; }
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
@@ -1073,11 +1071,25 @@ export function statsPage(d: StatsData): string {
         if (pinned.length && showBaseline) {
           tseriesChips.appendChild(chip(DIMS[tsDim].all, null, true, () => { showBaseline = false; showSeries(); syncUrl(); }));
         }
-        for (const k of dimKeys()) {
+        const keys = dimKeys();
+        for (const k of keys) {
           const sel = pinned.includes(k);
           const c = chip(k, keyColor(k), false, () => applySelection(k));
           if (!sel) { c.classList.add('pick'); c.title = 'add to chart'; c.querySelector('.x').textContent = '+'; }
           tseriesChips.appendChild(c);
+        }
+        if (pinned.length >= 2) {
+          const clear = document.createElement('button');
+          clear.className = 'ts-chip clear';
+          clear.textContent = 'clear';
+          clear.addEventListener('click', () => applySelection(null));
+          tseriesChips.appendChild(clear);
+        } else if (pinned.length === 0 && keys.length >= 2) {
+          const all = document.createElement('button');
+          all.className = 'ts-chip clear';
+          all.textContent = 'select all';
+          all.addEventListener('click', () => { pinned = keys.slice(); showBaseline = true; showSeries(); syncUrl(); });
+          tseriesChips.appendChild(all);
         }
         return;
       }
@@ -1316,7 +1328,16 @@ export function statsPage(d: StatsData): string {
       // pinned keys live under 'apps' for sources (shared links predate the other
       // views) and 'sel' otherwise, so a link never restores an endpoint as an app
       p.delete('apps'); p.delete('sel');
-      if (pinned.length) p.set(tsDim === 'source' ? 'apps' : 'sel', pinned.join(','));
+      if (tsDim === 'source') {
+        if (pinned.length) p.set('apps', pinned.join(','));
+      } else {
+        // default (everything on) is the bare URL; '-' is the one state that
+        // needs a marker: nothing pinned, just the total
+        const keys = dimKeys();
+        const allOn = pinned.length === keys.length && keys.every(k => pinned.includes(k));
+        if (pinned.length === 0) p.set('sel', '-');
+        else if (!allOn) p.set('sel', pinned.join(','));
+      }
       if (tsRange === '7d') p.delete('range'); else p.set('range', tsRange);
       if (pinned.length && !showBaseline) p.set('total', '0'); else p.delete('total');
       const q = p.toString();
@@ -1333,7 +1354,10 @@ export function statsPage(d: StatsData): string {
         tsDim = view;
         setActiveDimBtn();
         const keys = dimKeys();
-        pinned = [...new Set((p.get('sel') || '').split(',').map(s => s.trim()).filter(s => keys.includes(s)))];
+        const sel = p.get('sel');
+        pinned = sel == null ? keys.slice()
+               : sel === '-' ? []
+               : [...new Set(sel.split(',').map(s => s.trim()).filter(s => keys.includes(s)))];
         showBaseline = p.get('total') !== '0';
         showSeries();
         syncUrl();
@@ -1372,7 +1396,9 @@ export function statsPage(d: StatsData): string {
     function setDim(dim) {
       if (!DIMS[dim] || dim === tsDim) return;
       tsDim = dim;
-      pinned = []; hovered = null; showBaseline = true;
+      // the picker views start with every line ON — the first thing you see is
+      // the whole breakdown, and 'clear' is one tap if you want to pick instead
+      pinned = dim === 'source' ? [] : dimKeys(); hovered = null; showBaseline = true;
       document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => el.classList.remove('sel'));
       setActiveDimBtn();
       showSeries();
