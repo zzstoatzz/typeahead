@@ -23,6 +23,9 @@ export interface StatsData {
   trafficSeries: { hour: number; domain: string; hits: number }[];
   trafficSeries5m: { bucket: number; domain: string; hits: number }[];
   trafficDaily: { day: number; domain: string; hits: number }[];
+  requestSeries: { hour: number; domain: string; endpoint: string; status: number; hits: number }[];
+  requestSeries5m: { bucket: number; domain: string; endpoint: string; status: number; hits: number }[];
+  requestDaily: { day: number; domain: string; endpoint: string; status: number; hits: number }[];
   /** view restored from the query string — drives the link preview */
   view?: { apps: string[]; range: string; origin: string };
 }
@@ -200,6 +203,35 @@ export function statsPage(d: StatsData): string {
   }
   const trafficSeriesDailyJson = jsonScript(seriesByDomainDaily);
 
+  // request_buckets, summed down to the two other ways of slicing the same
+  // volume: by endpoint (all apps, all statuses) and by status class (all
+  // apps, all endpoints). Same compact shape as the traffic maps, one per
+  // grain, so the chart reads them through the same code path.
+  const statusClass = (code: number) => `${Math.floor(code / 100)}xx`;
+  type Grain = Record<string, [number, number][]>;
+  const sliceRequests = <R extends { domain: string; endpoint: string; status: number; hits: number }>(
+    rows: R[], t: (r: R) => number,
+  ): { endpoint: Grain; status: Grain } => {
+    const out = { endpoint: {} as Grain, status: {} as Grain };
+    const acc = { endpoint: new Map<string, Map<number, number>>(), status: new Map<string, Map<number, number>>() };
+    for (const r of rows) {
+      for (const [dim, key] of [["endpoint", r.endpoint], ["status", statusClass(r.status)]] as const) {
+        const m = acc[dim].get(key) ?? new Map<number, number>();
+        m.set(t(r), (m.get(t(r)) ?? 0) + r.hits);
+        acc[dim].set(key, m);
+      }
+    }
+    for (const dim of ["endpoint", "status"] as const) {
+      for (const [key, m] of acc[dim]) out[dim][key] = [...m.entries()].sort((a, b) => a[0] - b[0]);
+    }
+    return out;
+  };
+  const requestSeriesJson = jsonScript({
+    hourly: sliceRequests(d.requestSeries, (r) => r.hour),
+    m5: sliceRequests(d.requestSeries5m, (r) => r.bucket),
+    daily: sliceRequests(d.requestDaily, (r) => r.day),
+  });
+
   // It used to be that NO name was a link, because the selection handler skips
   // anchors so the link could still navigate — which meant the largest part of
   // every legend entry and table row did not select. The split that survives:
@@ -352,6 +384,17 @@ export function statsPage(d: StatsData): string {
     .ts-chip.clear { color: var(--muted); background: transparent; padding: 0.35rem 0.7rem; }
     .ts-chip.preview { background: transparent; border-style: dashed; color: var(--muted);
                        cursor: default; pointer-events: none; }
+    /* an available-but-unselected line. Same chip, quieter: the endpoint and
+       status views have no legend below to tap, so the chip row IS the picker */
+    .ts-chip.pick { background: transparent; border-color: var(--line); color: var(--muted); }
+    .ts-chip.pick:hover { color: var(--text); border-color: var(--line-2); }
+    .ts-chip.pick .ldot { opacity: 0.55; }
+    .dim-btns button { padding: 0.25rem 0.5rem; font-size: 0.66rem; min-height: 28px; }
+    #tseries-dim { margin-left: 0.35rem; }
+    /* the picker views list every line as a chip: that row gets its own line,
+       left-aligned under the title, instead of squeezing beside it */
+    .traffic-series[data-dim="endpoint"] #tseries-chips,
+    .traffic-series[data-dim="status"] #tseries-chips { flex-basis: 100%; justify-content: flex-start; }
     .empty-card { color: var(--dim); font-size: 0.8rem; padding: 2rem 0; text-align: center; }
     .pie-cta { margin-top: 0.6rem; font-size: 0.7rem; color: var(--dim); text-align: center; }
     .pie-cta a { color: var(--blue); text-decoration: none; }
@@ -433,6 +476,7 @@ export function statsPage(d: StatsData): string {
       /* narrow: the heading alone nearly fills the line, so the chips get their
          own row rather than fighting it for space */
       #tseries-chips { flex-basis: 100%; }
+      #tseries-dim { margin-left: auto; }
       body { padding-left: 0.75rem; padding-right: 0.75rem; }
       #trend { height: 170px; }
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
@@ -527,6 +571,11 @@ export function statsPage(d: StatsData): string {
       <div class="traffic-series">
         <div class="ranged-header">
           <h2 id="tseries-label">traffic over time — all sources</h2>
+          <span class="range-btns dim-btns" id="tseries-dim" aria-label="slice by">
+            <button data-dim="source" class="active">source</button>
+            <button data-dim="endpoint">endpoint</button>
+            <button data-dim="status">status</button>
+          </span>
           <div id="tseries-chips"></div>
         </div>
         <div class="tseries-plot">
@@ -816,6 +865,10 @@ export function statsPage(d: StatsData): string {
     const trafficSeries = ${trafficSeriesJson};     // hourly, 30d: domain -> [[hour, hits], ...]
     const trafficSeries5m = ${trafficSeries5mJson}; // 5-min, 48h: domain -> [[bucket, hits], ...]
     const trafficSeriesDaily = ${trafficSeriesDailyJson}; // daily, full history: domain -> [[day, hits], ...]
+    // the same volume sliced two other ways (every request the worker answered,
+    // not just search cache misses): {hourly,m5,daily} -> {endpoint,status} -> key -> [[t, hits], ...]
+    const requestSeries = ${requestSeriesJson};
+    const tseriesDim = document.getElementById('tseries-dim');
     const tseriesLines = document.getElementById('tseries-lines');
     const tseriesDots = document.getElementById('tseries-dots');
     const tseriesGuide = document.getElementById('tseries-guide');
@@ -838,6 +891,39 @@ export function statsPage(d: StatsData): string {
     let hovered = null;        // pie-hover preview; only active while nothing is pinned
     let showBaseline = true;   // the dotted all-sources line, for relative scale
     let tsView = null;         // {t0Sec, stepSec, step, toY, series[]} — the trace reads this
+    // which way the volume is sliced. 'source' is the original per-app chart
+    // (search cache misses, from traffic_buckets); the other two read
+    // request_buckets, which counts every answer the worker gave — so their
+    // total is larger and includes the ingester's own admin traffic.
+    let tsDim = 'source';
+    const DIMS = {
+      source:   { all: 'all sources',  title: 'traffic over time',  hint: 'tap a source below to add or remove it' },
+      endpoint: { all: 'all requests', title: 'requests by endpoint', hint: 'tap an endpoint to add or remove it' },
+      status:   { all: 'all requests', title: 'requests by status',   hint: 'tap a status class to add or remove it' },
+    };
+    const ENDPOINT_ORDER = ['search', 'getProfiles', 'request-indexing', 'page', 'admin/ingest', 'admin/delete', 'admin', 'health', 'debug', 'other'];
+    const ENDPOINT_COLORS = { search: '#14b8a6', getProfiles: '#3b82f6', 'request-indexing': '#a855f7', page: '#06b6d4',
+                              'admin/ingest': '#f59e0b', 'admin/delete': '#f97316', admin: '#ec4899', health: '#65a30d',
+                              debug: '#94a3b8', other: '#64748b' };
+    const STATUS_ORDER = ['2xx', '3xx', '4xx', '5xx'];
+    const STATUS_COLORS = { '2xx': 'var(--accent)', '3xx': 'var(--blue)', '4xx': 'var(--amber)', '5xx': 'var(--red)' };
+    function dimMap(stepSec) {
+      const g = stepSec === 300 ? requestSeries.m5 : stepSec === 86400 ? requestSeries.daily : requestSeries.hourly;
+      return (g && g[tsDim]) || {};
+    }
+    // every key this dim can plot, in a fixed order — the chip row is built from this
+    function dimKeys() {
+      const present = new Set();
+      for (const g of ['hourly', 'm5', 'daily']) for (const k in ((requestSeries[g] || {})[tsDim] || {})) present.add(k);
+      const order = tsDim === 'status' ? STATUS_ORDER : ENDPOINT_ORDER;
+      return [...order.filter(k => present.has(k)), ...[...present].filter(k => !order.includes(k)).sort()];
+    }
+    function keyColor(key) {
+      if (tsDim === 'source') return domainColor(key);
+      if (key == null) return tok('--accent');
+      const table = tsDim === 'status' ? STATUS_COLORS : ENDPOINT_COLORS;
+      return table[key] || '#94a3b8';
+    }
 
     const SPECIAL_SERIES = ${jsonScript(SPECIAL_DOMAINS)};
     function domainColor(domain) {
@@ -860,7 +946,8 @@ export function statsPage(d: StatsData): string {
       TS_RANGES['all'] = { secs: 2592000, stepSec: 3600, grain: 'hourly' };
     }
     function seriesFor(domain, stepSec) {
-      const source = stepSec === 300 ? trafficSeries5m
+      const source = tsDim !== 'source' ? dimMap(stepSec)
+                   : stepSec === 300 ? trafficSeries5m
                    : stepSec === 86400 ? trafficSeriesDaily : trafficSeries;
       if (domain != null) return source[domain] || [];
       const sums = new Map();
@@ -884,13 +971,14 @@ export function statsPage(d: StatsData): string {
     // whether it's most of the traffic or a rounding error. It is dismissable
     // (click the line or its chip) since it also compresses everything under it.
     function activeSpecs() {
+      const all = DIMS[tsDim].all;
       if (pinned.length === 0) {
-        return hovered != null
+        return hovered != null && tsDim === 'source'
           ? [{ domain: hovered, name: hovered, color: domainColor(hovered) }]
-          : [{ domain: null, name: 'all sources', color: domainColor(null) }];
+          : [{ domain: null, name: all, color: keyColor(null) }];
       }
-      const specs = pinned.map(d => ({ domain: d, name: d, color: domainColor(d) }));
-      if (showBaseline) specs.unshift({ domain: null, name: 'all sources', color: 'var(--dim)', baseline: true });
+      const specs = pinned.map(d => ({ domain: d, name: d, color: keyColor(d) }));
+      if (showBaseline) specs.unshift({ domain: null, name: all, color: 'var(--dim)', baseline: true });
       return specs;
     }
     function showSeries() {
@@ -904,7 +992,8 @@ export function statsPage(d: StatsData): string {
       // span is printed on the axis below. This used to append the domain, "all
       // sources", and "· last 30d" — enough text to overflow the header on a
       // phone to say what two other elements already said.
-      if (tseriesLabel) tseriesLabel.textContent = 'traffic over time · ' + cfg.grain;
+      if (tseriesLabel) tseriesLabel.textContent = DIMS[tsDim].title + ' · ' + cfg.grain;
+      if (tseriesHint) tseriesHint.textContent = DIMS[tsDim].hint;
       renderChips();
       const nonEmpty = raws.filter(r => r.length > 0);
       const empty = nonEmpty.length === 0 || Math.max(...raws.map(r => r.length)) < 2;
@@ -972,6 +1061,20 @@ export function statsPage(d: StatsData): string {
     function renderChips() {
       if (!tseriesChips) return;
       tseriesChips.replaceChildren();
+      if (tsDim !== 'source') {
+        // no legend below to tap in these views, so the row lists every line
+        // this slice can draw: selected ones solid with an ×, the rest quiet
+        if (pinned.length && showBaseline) {
+          tseriesChips.appendChild(chip(DIMS[tsDim].all, null, true, () => { showBaseline = false; showSeries(); syncUrl(); }));
+        }
+        for (const k of dimKeys()) {
+          const sel = pinned.includes(k);
+          const c = chip(k, keyColor(k), false, () => applySelection(k));
+          if (!sel) { c.classList.add('pick'); c.title = 'add to chart'; c.querySelector('.x').textContent = '+'; }
+          tseriesChips.appendChild(c);
+        }
+        return;
+      }
       if (pinned.length === 0) {
         // hover preview: name the line without pretending it's a filter
         if (hovered != null) {
@@ -1085,10 +1188,10 @@ export function statsPage(d: StatsData): string {
       g.fillRect(0, 0, W, H);
       g.font = '15px ' + font;
       g.fillStyle = v('--text');
-      g.fillText('typeahead · traffic over time', PAD, 36);
+      g.fillText('typeahead · ' + DIMS[tsDim].title, PAD, 36);
       g.font = '11px ' + font;
       g.fillStyle = v('--dim');
-      g.fillText(tseriesLabel.textContent.replace('traffic over time · ', '')
+      g.fillText(tseriesLabel.textContent.replace(DIMS[tsDim].title + ' · ', '')
         + ' · ' + tseriesT0.textContent + ' → ' + tseriesT1.textContent + ' UTC', PAD, 56);
       const n = apps[0].counts.length;
       const max = Math.max(1, ...apps.map(a => Math.max(...a.counts)));
@@ -1203,7 +1306,11 @@ export function statsPage(d: StatsData): string {
     window.__boot = BOOT;
     function syncUrl() {
       const p = new URLSearchParams(location.search);
-      if (pinned.length) p.set('apps', pinned.join(',')); else p.delete('apps');
+      if (tsDim === 'source') p.delete('view'); else p.set('view', tsDim);
+      // pinned keys live under 'apps' for sources (shared links predate the other
+      // views) and 'sel' otherwise, so a link never restores an endpoint as an app
+      p.delete('apps'); p.delete('sel');
+      if (pinned.length) p.set(tsDim === 'source' ? 'apps' : 'sel', pinned.join(','));
       if (tsRange === '7d') p.delete('range'); else p.set('range', tsRange);
       if (pinned.length && !showBaseline) p.set('total', '0'); else p.delete('total');
       const q = p.toString();
@@ -1215,6 +1322,17 @@ export function statsPage(d: StatsData): string {
     const KNOWN = new Set([...Object.keys(trafficSeries), ...Object.keys(trafficSeries5m), ...Object.keys(trafficSeriesDaily)]);
     window.__restoreView = () => {
       const p = BOOT;
+      const view = p.get('view');
+      if (DIMS[view] && view !== 'source') {
+        tsDim = view;
+        setActiveDimBtn();
+        const keys = dimKeys();
+        pinned = [...new Set((p.get('sel') || '').split(',').map(s => s.trim()).filter(s => keys.includes(s)))];
+        showBaseline = p.get('total') !== '0';
+        showSeries();
+        syncUrl();
+        return;
+      }
       const apps = (p.get('apps') || '').split(',').map(s => s.trim()).filter(s => KNOWN.has(s));
       if (!apps.length) { syncUrl(); return; }
       pinned = [...new Set(apps)];
@@ -1239,6 +1357,25 @@ export function statsPage(d: StatsData): string {
        re-tapping a selected source silently removed it. Toggling always is what
        a chart legend does everywhere else, it needs nothing held or discovered,
        and every accumulation is visible in the chips and one tap to undo. */
+    const tseriesWrap = document.querySelector('.traffic-series');
+    function setActiveDimBtn() {
+      if (tseriesWrap) tseriesWrap.dataset.dim = tsDim;
+      if (!tseriesDim) return;
+      tseriesDim.querySelectorAll('button[data-dim]').forEach(b => b.classList.toggle('active', b.dataset.dim === tsDim));
+    }
+    function setDim(dim) {
+      if (!DIMS[dim] || dim === tsDim) return;
+      tsDim = dim;
+      pinned = []; hovered = null; showBaseline = true;
+      document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => el.classList.remove('sel'));
+      setActiveDimBtn();
+      showSeries();
+      syncUrl();
+    }
+    if (tseriesDim) tseriesDim.addEventListener('click', e => {
+      const b = e.target.closest('button[data-dim]');
+      if (b) setDim(b.dataset.dim);
+    });
     function applySelection(domain) {
       if (domain == null) pinned = [];
       else if (pinned.includes(domain)) pinned = pinned.filter(d => d !== domain);
@@ -1252,6 +1389,7 @@ export function statsPage(d: StatsData): string {
     document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => {
       el.addEventListener('click', e => {
         if (e.target.closest('a')) return; // domain links still navigate
+        setDim('source');                  // a source tap is a source-view action
         applySelection(el.dataset.domain);
       });
     });

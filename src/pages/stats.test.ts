@@ -8,6 +8,7 @@ function page(domains: string[]): string {
     snapshots: [],
     trafficSources: domains.map((domain, i) => ({ domain, hits: 100 - i })),
     trafficSeries: [], trafficSeries5m: [], trafficDaily: [],
+    requestSeries: [], requestSeries5m: [], requestDaily: [],
   };
   return statsPage(d);
 }
@@ -92,6 +93,7 @@ describe("link previews", () => {
     total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
     handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [],
     trafficSeries: series, trafficSeries5m: [], trafficDaily: [],
+    requestSeries: [], requestSeries5m: [], requestDaily: [],
     view: { apps, range: "7d", origin: "https://typeahead.waow.tech" },
   } as StatsData);
 
@@ -122,5 +124,40 @@ describe("link previews", () => {
     const html = withView([]);
     expect(html).toContain('<meta property="og:title" content="typeahead — stats">');
     expect(html).toContain("99.9% with a resolved handle");
+  });
+});
+
+describe("request slices", () => {
+  const h = Math.floor(Date.now() / 3_600_000);
+  const html = statsPage({
+    total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+    handlePct: "0", avatarPct: "0", snapshots: [], trafficSources: [],
+    trafficSeries: [], trafficSeries5m: [], trafficDaily: [],
+    requestSeries: [
+      { hour: h, domain: "northsky.app", endpoint: "search", status: 200, hits: 10 },
+      { hour: h, domain: "plyr.fm", endpoint: "search", status: 429, hits: 2 },
+      { hour: h, domain: "unknown", endpoint: "admin/ingest", status: 500, hits: 7 },
+    ],
+    requestSeries5m: [], requestDaily: [],
+  });
+  const script = html.slice(html.indexOf("const requestSeries = ") + "const requestSeries = ".length);
+  const data = JSON.parse(script.slice(0, script.indexOf(";\n")));
+
+  test("the same volume is summed down to endpoint and status-class maps", () => {
+    // endpoint view: apps and statuses collapse
+    expect(data.hourly.endpoint.search).toEqual([[h, 12]]);
+    expect(data.hourly.endpoint["admin/ingest"]).toEqual([[h, 7]]);
+    // status view: endpoints and apps collapse, codes roll up to their class
+    expect(data.hourly.status["2xx"]).toEqual([[h, 10]]);
+    expect(data.hourly.status["4xx"]).toEqual([[h, 2]]);
+    expect(data.hourly.status["5xx"]).toEqual([[h, 7]]);
+    expect(data.m5).toEqual({ endpoint: {}, status: {} });
+  });
+
+  test("the view switch is rendered with the source view active", () => {
+    expect(html).toContain('id="tseries-dim"');
+    expect(html).toContain('<button data-dim="source" class="active">source</button>');
+    expect(html).toContain('<button data-dim="endpoint">endpoint</button>');
+    expect(html).toContain('<button data-dim="status">status</button>');
   });
 });
