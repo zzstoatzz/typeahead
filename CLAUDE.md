@@ -101,6 +101,11 @@ regression is pinned). Extend it, don't prune it.
   table — `idx_actors_handle` is declared with that collation. Paginate on `rowid`.
 - Turso is single-writer and the live ingester shares it. Bulk writes must batch (one
   statement per batch, not per row) and pace against observed latency.
+- traffic stats: `traffic_buckets` counts search cache-misses by app; `request_buckets` counts
+  EVERY answer the worker gives (app × endpoint × status, router wrapper in `src/index.ts`) and
+  feeds the `source · endpoint · status` views on /stats. `endpointLabel` is a fixed label set —
+  unknown paths must collapse to `other`, never mint a new endpoint. Check `/stats?view=status`
+  first when something smells; a 16% 500-rate on `/admin/ingest` was invisible before this.
 - ranking is by the stored `actors.quality_score`, not live followers; writes that touch
   aggregate counts must keep `quality_score` consistent with them (see the clobber regression
   guarded in `bench.py` + `smoke.py`).
