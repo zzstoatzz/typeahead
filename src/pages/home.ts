@@ -22,14 +22,6 @@ export function indexPage(): string {
     h1 { font-size: 1.15rem; font-weight: 400; color: var(--muted); }
     .src { font-size: 0.75em; color: var(--dim); text-decoration: none; margin-left: 0.3em; }
     .src:hover { color: var(--muted); }
-    .experimental { font-size: 0.55em; color: var(--amber); opacity: 0.75; cursor: default;
-                    position: relative; vertical-align: super; line-height: 1; margin-left: 0.3em; }
-    .experimental:hover::after, .experimental:focus::after {
-      content: "this is experimental and may break or disappear — don't depend on it for anything critical";
-      position: absolute; left: 0; top: 1.4em; width: 220px; padding: 0.5rem;
-      background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 6px;
-      font-size: 1.4em; color: var(--muted); line-height: 1.4; z-index: 20; white-space: normal;
-    }
     .subtitle { font-size: 0.8rem; color: var(--dim); margin-bottom: 2rem; }
     .subtitle a { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--faint); }
     .subtitle a:hover { color: var(--muted); }
@@ -93,7 +85,7 @@ export function indexPage(): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1><a href="/" class="wordmark">typeahead</a><sup class="experimental" tabindex="0">*experimental</sup> <a href="https://tangled.org/zzstoatzz.io/typeahead" class="src" target="_blank" rel="noopener">[src]</a></h1>
+      <h1><a href="/" class="wordmark">typeahead</a> <a href="https://tangled.org/zzstoatzz.io/typeahead" class="src" target="_blank" rel="noopener">[src]</a></h1>
     </div>
     <p class="subtitle">community actor search for <a href="https://atproto.com" target="_blank" rel="noopener">atproto</a></p>
 

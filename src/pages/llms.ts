@@ -3,7 +3,6 @@ export function llmsTxt(): string {
   return `# typeahead
 
 community-run actor search for atproto (https://atproto.com). unauthenticated, CORS-enabled.
-experimental: may break or disappear — don't depend on it for anything critical.
 
 ## canonical endpoint
 
