@@ -7,24 +7,18 @@
 
 ## self-reported actual monthly cost (authoritative — read THIS, not the auto-estimate)
 
-**≈ $46/mo** as of 2026-06-17 — typeahead's **dedicated** spend only (the Fly apps + its own
+**≈ $33/mo** as of 2026-08-29 — typeahead's **dedicated** spend only (the Fly apps + its own
 R2 snapshot storage). Shared org infra (Turso, the Cloudflare plan) is **deliberately NOT
 counted here** — see below — so the per-project tracker doesn't double-count it across projects.
-
-The auto-estimate at https://hub.waow.tech (from `my-prefect-server`) is a **compute-only lower
-bound** — its Fly connector counts only `cpus × $1.94 + RAM_GB × $5.00`, **omits volumes
-entirely**, and bills scheduled machines at whatever state they're in *at snapshot time* (it
-counted the daily indexer at full price while a build happened to be running). This file
-corrects both. **For typeahead's true cost, trust the table below over the tracker.**
+Target after `docs/replica-removal-plan.md` completes: **≈ $22/mo**.
 
 | service (dedicated) | shape | compute/mo | volume/mo | **true/mo** |
 |---|---|---|---|---|
-| `typeahead-search` | 4cpu/2GB always-on + 50GB | $17.76 | $7.50 | **$25.26** |
-| `typeahead-indexer` | 4cpu/2GB scheduled (~90min/day) + 100GB | ~$1.11 | $15.00 | **~$16.11** |
-| `typeahead-ingester` | 1cpu/256MB always-on + 10GB (empty) | $3.19 | $1.50 | **$4.69** |
-| `typeahead-backfill` / `typeahead-refresh-handles` | destroyed 2026-06-17 | — | — | **$0** |
-| R2 snapshot storage | ~10GB index.db + a few builds | | | **~$0.20** |
-| **TOTAL (attributed to typeahead)** | | | | **≈ $46.26/mo** |
+| `typeahead-search` | 4cpu/2GB always-on + **100GB** (was 50GB; filled 2026-08-28) | $17.76 | $15.00 | **$32.76** |
+| `typeahead-indexer` (Fly) | app has no machines/volumes since the indexer moved to heavypad | $0 | $0 | **$0** |
+| `typeahead-ingester` | 1cpu/256MB always-on, no volume (2026-08-29) | $3.19 | $0 | **$3.19** |
+| R2 snapshot storage | ~13.5GB per build × retained builds | | | **~$0.2/build** |
+| **TOTAL (attributed to typeahead)** | | | | **≈ $36/mo + R2** |
 
 **Shared org infra — NOT attributed to typeahead (avoid double-counting):**
 - **Turso** — a single Scaler plan (~$30/mo) shared across MANY of nate's projects; typeahead is
@@ -87,6 +81,12 @@ Scaler without cutting write volume first. NOT over-provisioned.
 - The hub.waow.tech auto-estimate is compute-only — the table above is the real number.
 
 ## changelog
+- **2026-08-29** — measured again (14d Fly Prometheus + logfire) for `docs/replica-removal-plan.md`.
+  Ingester right-sized 2cpu/512MB → 1cpu/256MB and its empty 10GB volume destroyed (−$4.69).
+  The `typeahead-indexer` Fly app turned out to be already empty (the $16 line above was stale).
+  Search volume had to grow 50 → 100GB (+$7.50) after the 08-28 disk-full; the plan takes it
+  back to 60GB once the Turso replica is gone, and right-sizes search compute after two weeks
+  of post-change metrics.
 - **2026-06-17** — initial cost notice; 5 service(s) attributed here.
 - **2026-06-17** — trimmed ~$5/mo: ingester right-sized 2cpu/512MB → 1cpu/256MB (ingest-only,
   no local replica since the MODE refactor); destroyed leftover machines on `typeahead-backfill`
