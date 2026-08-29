@@ -46,7 +46,8 @@ worked — the volume was simply outgrown, on schedule.
 | 08-28 21:03 | Snapshot `b1787907716-dcb8` attached, sentinel 5/5. `q=nate` served from the index. `just smoke`: all checks passed. Resync apply time drops 67 s → ~7 s per 2000-row batch the moment the download stops — the slowness was disk IO contention with rclone, not the WAL. At ~7 s × ~5,700 batches the resync completes on its own; `/health/freshness` stays `stale` until then. |
 
 | 08-28 ~21:25 → 08-29 01:40 | **Restart loop, unnoticed for 4 h.** `adoptIfPresent` runs `compactOverlay` right after attach; it held the write mutex for one DELETE over the whole sync-derived overlay (tens of millions of prefix rows after 3 days). The resync's batch 2 blocked on `local.lock()`; the sync watchdog saw no progress for 20 min and exited; fly restarted; compaction started over. Logfire shows the same 4-span sequence every 21 min. Search kept serving from the attached snapshot throughout, so nothing user-visible — but the replica could never catch up. |
-| 08-29 01:5x | `762fe39`: compaction in 20k-row chunks, mutex released between chunks, progress logged. Deployed to search. |
+| 08-29 01:49 | `762fe39` (v58): compaction in 20k-row chunks, mutex released between chunks. Deadlock gone — but the compactor re-locked immediately, so the resync won the mutex only every ~50 chunks (batch 2 waited 371 s). Compaction rate ~4.8k rows/s, >16M rows and still counting. |
+| 08-29 02:45 | `f6e7cd0` (v59): compaction skips chunks while the replica is not ready (resync in flight) and yields 50 ms between chunks. Resync at ~6.5 s/batch; compaction resumes when the replica is ready. |
 
 ## Root causes
 
@@ -103,9 +104,11 @@ logs start / every 50 chunks / done. Rule worth keeping: **no unbounded
 statement under the write mutex** — anything proportional to the overlay or
 the corpus must chunk and yield.
 
-**Still open:** the watchdog should count compaction as progress (or the
-promote runner should defer `compactOverlay` while a resync is in flight).
-The chunking removes the deadlock; it does not make the two cooperate.
+**Also shipped (`f6e7cd0`):** compaction defers entirely while the replica
+is not ready and yields between chunks — chunking removed the deadlock, the
+deferral made the two cooperate. Still open: an overlay this large (16M+ rows
+≤ watermark) says the overlay grew unbounded during the outage; worth a
+size gauge in `/index/status`.
 
 ### 5. Restarting without reading the resync progress first
 
