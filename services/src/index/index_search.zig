@@ -336,12 +336,16 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
         // safety belt: must exist and not be hidden in the live actors table.
         // Checked AFTER the overlay/blob checks so belt_dropped measures only
         // what the belt alone catches.
+        // Each drop is logged with its DID so the case can be replayed against
+        // Turso/overlay — the span only carries counts.
         const lh = live_hidden.get(d.did) orelse {
             stats.belt_dropped += 1;
+            log.warn("belt dropped {s}: missing from actors (hydrated from {s})", .{ d.did, if (from_overlay) "overlay" else "base" });
             continue;
         };
         if (lh) {
             stats.belt_dropped += 1;
+            log.warn("belt dropped {s}: hidden in actors (hydrated from {s})", .{ d.did, if (from_overlay) "overlay" else "base" });
             continue;
         }
         if (from_overlay) stats.hydrated_overlay += 1 else stats.hydrated_base += 1;

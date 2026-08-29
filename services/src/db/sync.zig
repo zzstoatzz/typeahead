@@ -671,6 +671,11 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     // changes NEWER than the base get projected (older state is already baked
     // in). 0 = no snapshot attached → overlay projection is skipped entirely.
     const overlay_watermark: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
+    // rows applied to the replica but NOT projected into the overlay because
+    // their timestamp is at or below the attached snapshot's watermark. The
+    // snapshot should already reflect them; if this is ever non-zero the
+    // replica and overlay can disagree, which is what the hydrate belt catches.
+    var projection_skipped: usize = 0;
     var ov_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer ov_arena.deinit();
 
@@ -746,6 +751,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                         .{ .arena = ov_arena.allocator(), .updated_at = ua }
                     else
                         null;
+                    if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
                     applyActorUpdate(conn, row, "incremental", octx) catch {
                         error_count += 1;
                         continue;
@@ -827,6 +833,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                     .{ .arena = ov_arena.allocator(), .updated_at = ua }
                 else
                     null;
+                if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
                 applyActorDelete(conn, did, "incremental.cleared", octx) catch {
                     error_count += 1;
                     continue;
@@ -872,6 +879,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                     .{ .arena = ov_arena.allocator(), .updated_at = del_at }
                 else
                     null;
+                if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
                 applyActorDelete(conn, did, "incremental.tombstone", octx) catch {
                     error_count += 1;
                     continue;
@@ -942,6 +950,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     span.setAttribute("updated", @as(i64, @intCast(updated)));
     span.setAttribute("deleted", @as(i64, @intCast(deleted)));
     span.setAttribute("cleared", @as(i64, @intCast(cleared)));
+    span.setAttribute("projection_skipped", @as(i64, @intCast(projection_skipped)));
 }
 
 /// Background sync loop: full sync on boot, then incremental every 5 min
