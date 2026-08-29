@@ -12,6 +12,8 @@ curl "https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&l
 
 also served at `/xrpc/app.bsky.actor.searchActorsTypeahead` as a drop-in alias for migrating off bluesky's appview — identical params and response, kept indefinitely.
 
+profile cards for picked actors: `/xrpc/app.bsky.actor.getProfiles?actors=…` (≤25) and `/xrpc/app.bsky.actor.getProfile?actor=…` — displayName, description, avatar, banner, follower/follows/posts counts (bsky-sourced, omitted until enriched), labels, createdAt, indexedAt. no viewer state.
+
 ## stack
 
 ![typeahead architecture](docs/architecture-diagram.png)

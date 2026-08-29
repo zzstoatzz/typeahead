@@ -31,6 +31,12 @@ export function avatarUrl(did: string, cidOrUrl: string, _pds?: string): string 
   return cidOrUrl;
 }
 
+export function bannerUrl(did: string, cidOrUrl: string): string {
+  const cid = extractAvatarCid(cidOrUrl);
+  if (cid) return `https://cdn.bsky.app/img/banner/plain/${did}/${cid}`;
+  return cidOrUrl;
+}
+
 /** PDS-direct blob URL — the only avatar source for actors outside the bsky
  *  appview. Served as an extra `avatarFallback` field; our own pages swap to
  *  it on img error. Third-party lexicon consumers ignore unknown fields. */
@@ -141,6 +147,8 @@ export interface ProfileFields {
   handle: string;
   displayName: string;
   avatarCid: string;
+  description: string;
+  bannerCid: string;
   labels: string;
   hidden: number;
   createdAt: string;
@@ -296,6 +304,8 @@ export function extractProfileFields(
     handle: profile.handle || '',
     displayName: profile.displayName || '',
     avatarCid,
+    description: profile.description || '',
+    bannerCid: extractAvatarCid(profile.banner || ''),
     labels: JSON.stringify(profile.labels || []),
     hidden,
     createdAt,

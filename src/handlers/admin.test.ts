@@ -54,6 +54,16 @@ test("extractProfileFields: populated profile writes counts + qualityScore", () 
   expect(f.qualityScore).toBeGreaterThan(500);
 });
 
+test("extractProfileFields: description + banner CID come through", () => {
+  const f = extractProfileFields({
+    did: "did:plc:x", handle: "x.test", description: "hello",
+    banner: "https://cdn.bsky.app/img/banner/plain/did:plc:x/bafkreibanner@jpeg",
+    followersCount: 1, followsCount: 1, postsCount: 1,
+  });
+  expect(f.description).toBe("hello");
+  expect(f.bannerCid).toBe("bafkreibanner");
+});
+
 test("extractProfileFields: countless profile → qualityScore 0 (no age-bonus clobber)", () => {
   // A getProfiles response that omits aggregate counts (transient appview gap)
   // must NOT score the account on age alone. The age-only 30/60 is non-zero, so

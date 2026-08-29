@@ -208,4 +208,15 @@ pub const migrations = [_]zug.Migration{
             "CREATE INDEX IF NOT EXISTS idx_actors_visible_quality_score ON actors(quality_score) WHERE handle != '' AND hidden = 0 AND quality_score > 0",
         },
     },
+    // profile-card fields served by getProfiles. Turso-only by design: neither
+    // LocalDb.actor_cols nor the snapshot builder select them, so App B's
+    // replica and the index don't grow.
+    .{
+        .id = "006_profile_card_fields",
+        .name = "description + banner_url on actors for getProfiles",
+        .statements = &.{
+            "ALTER TABLE actors ADD COLUMN description TEXT DEFAULT ''",
+            "ALTER TABLE actors ADD COLUMN banner_url TEXT DEFAULT ''",
+        },
+    },
 };

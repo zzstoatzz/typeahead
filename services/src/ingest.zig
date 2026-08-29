@@ -132,8 +132,13 @@ pub fn wantedCollection(collection: []const u8) bool {
 /// new with the firehose cutover and is the one that can silently produce wrong
 /// avatars rather than failing loudly.
 pub fn avatarCidOf(allocator: Allocator, record: zat.cbor.Value) ?[]const u8 {
-    const avatar = record.get("avatar") orelse return null;
-    const cid = avatar.getCid("ref") orelse return null;
+    return blobCidOf(allocator, record, "avatar");
+}
+
+/// Same rendering for any blob-valued profile field (`avatar`, `banner`).
+pub fn blobCidOf(allocator: Allocator, record: zat.cbor.Value, key: []const u8) ?[]const u8 {
+    const blob = record.get(key) orelse return null;
+    const cid = blob.getCid("ref") orelse return null;
     return zat.multibase.encode(allocator, .base32lower, cid.raw) catch null;
 }
 
@@ -143,6 +148,8 @@ pub const ActorEvent = struct {
     handle: ?[]const u8 = null,
     display_name: ?[]const u8 = null,
     avatar_cid: ?[]const u8 = null,
+    description: ?[]const u8 = null,
+    banner_cid: ?[]const u8 = null,
     pds: ?[]const u8 = null,
 };
 
@@ -299,6 +306,10 @@ pub const IngestHandler = struct {
             }
 
             event.avatar_cid = avatarCidOf(self.arena.allocator(), record);
+            if (record.getString("description")) |d| {
+                event.description = self.dupe(d);
+            }
+            event.banner_cid = blobCidOf(self.arena.allocator(), record, "banner");
 
             // ingester only sees self-labels from profile records — it can never
             // correctly determine hidden. let refreshModeration cron handle it.
@@ -650,6 +661,27 @@ test "avatarCidOf renders a DAG-CBOR blob ref to the stored base32 CID" {
     try testing.expectEqualStrings(want, got);
 
     try testing.expectEqualStrings("nate", record.getString("displayName").?);
+}
+
+test "blobCidOf reads the banner ref with the same rendering as the avatar" {
+    const allocator = testing.allocator;
+    const want = "bafkreiegehiwbazkkpp5nucenajtdjwinxrrnz7ukawpqnudbr47f44zhq";
+    const raw = try zat.multibase.decode(allocator, want);
+    defer allocator.free(raw);
+
+    const record = zat.cbor.Value{ .map = &.{
+        .{ .key = "description", .value = .{ .text = "hi" } },
+        .{ .key = "banner", .value = .{ .map = &.{
+            .{ .key = "$type", .value = .{ .text = "blob" } },
+            .{ .key = "ref", .value = .{ .cid = .{ .raw = raw } } },
+        } } },
+    } };
+
+    const got = blobCidOf(allocator, record, "banner") orelse return error.NoBanner;
+    defer allocator.free(@constCast(got));
+    try testing.expectEqualStrings(want, got);
+    try testing.expect(avatarCidOf(allocator, record) == null);
+    try testing.expectEqualStrings("hi", record.getString("description").?);
 }
 
 test "avatarCidOf returns null when the profile has no avatar" {

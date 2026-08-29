@@ -8,6 +8,7 @@ import { recordActorDelta } from "./metrics";
 type CurRow = {
   handle: string; hidden: number; labels: string;
   display_name: string; avatar_url: string; created_at: string; associated: string;
+  description: string; banner_url: string;
   followers_count: number; follows_count: number; posts_count: number; quality_score: number;
 };
 
@@ -25,6 +26,8 @@ export function isProfileIdentical(
     cur.handle === f.handle &&
     cur.display_name === f.displayName &&
     cur.avatar_url === f.avatarCid &&
+    cur.description === f.description &&
+    cur.banner_url === f.bannerCid &&
     cur.created_at === f.createdAt &&
     cur.associated === f.associated &&
     cur.followers_count === f.followersCount &&
@@ -71,7 +74,7 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   const WALK_N = 800;
   const EVENT_N = 200;
   const ACTOR_COLS = `rowid, did, handle, hidden, labels, pds,
-            display_name, avatar_url, created_at, associated,
+            display_name, avatar_url, created_at, associated, description, banner_url,
             followers_count, follows_count, posts_count, quality_score`;
 
   let cursor: { qs: number; rowid: number } | null = null;
@@ -182,10 +185,13 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
                follows_count = COALESCE(NULLIF(?10, 0), follows_count),
                posts_count = COALESCE(NULLIF(?11, 0), posts_count),
                quality_score = COALESCE(NULLIF(?12, 0), quality_score),
+               description = COALESCE(NULLIF(?13, ''), description),
+               banner_url = COALESCE(NULLIF(?14, ''), banner_url),
                updated_at = unixepoch()
              WHERE did = ?2`
           ).bind(f.hidden, p.did, f.handle, f.displayName, f.avatarCid, f.labels,
-            f.createdAt, f.associated, f.followersCount, f.followsCount, f.postsCount, f.qualityScore)
+            f.createdAt, f.associated, f.followersCount, f.followsCount, f.postsCount, f.qualityScore,
+            f.description, f.bannerCid)
         );
       }
       if (stmts.length > 0) {
@@ -226,9 +232,11 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
                      labels = ?5,
                      created_at = COALESCE(NULLIF(?6, ''), created_at),
                      associated = COALESCE(NULLIF(?7, '{}'), associated),
+                     description = COALESCE(NULLIF(?8, ''), description),
+                     banner_url = COALESCE(NULLIF(?9, ''), banner_url),
                      updated_at = unixepoch()
                    WHERE did = ?2`
-                ).bind(f.hidden, r.did, f.displayName, f.avatarCid, f.labels, f.createdAt, f.associated)
+                ).bind(f.hidden, r.did, f.displayName, f.avatarCid, f.labels, f.createdAt, f.associated, f.description, f.bannerCid)
               );
               returnedDids.add(r.did); // don't delete this actor
             }

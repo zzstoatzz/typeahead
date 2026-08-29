@@ -103,6 +103,23 @@ def test_response_shape(base_url: str):
         check("did starts with did:", a.get("did", "").startswith("did:"))
 
 
+def test_profiles_shape(base_url: str):
+    print("\n--- getProfiles / getProfile ---")
+    data, _ = fetch(f"{base_url}/xrpc/app.bsky.actor.getProfiles?actors=zzstoatzz.io")
+    profiles = (data or {}).get("profiles") or []
+    check("getProfiles returns zzstoatzz.io", bool(profiles) and profiles[0].get("handle") == "zzstoatzz.io")
+    if profiles:
+        p = profiles[0]
+        check("profile has description", isinstance(p.get("description"), str) and p["description"] != "")
+        check("profile has banner", str(p.get("banner", "")).startswith("https://cdn.bsky.app/img/banner/"))
+        check("profile has followersCount", isinstance(p.get("followersCount"), int) and p["followersCount"] > 0)
+        check("profile has indexedAt", str(p.get("indexedAt", "")).endswith("Z"))
+    single, _ = fetch(f"{base_url}/xrpc/app.bsky.actor.getProfile?actor=zzstoatzz.io")
+    check("getProfile unwraps the same view", bool(single) and single.get("did") == (profiles[0].get("did") if profiles else None))
+    missing, status = fetch(f"{base_url}/xrpc/app.bsky.actor.getProfile?actor=definitely-not-a-real-handle.invalid")
+    check("getProfile missing actor → 400", status == 400)
+
+
 def test_canonical_endpoint(base_url: str):
     """the self-owned NSID must serve the identical response as the bsky-compat alias."""
     print("\n--- canonical endpoint ---")
@@ -611,6 +628,7 @@ def main():
 
     test_response_shape(args.url)
     test_canonical_endpoint(args.url)
+    test_profiles_shape(args.url)
     test_known_handle(args.url)
     test_prefix_match(args.url)
     test_ranking(args.url)

@@ -116,7 +116,8 @@ export async function recordTrafficSource(db: TursoDB, request: Request): Promis
 export function endpointLabel(pathname: string): string {
   if (pathname === "/xrpc/tech.waow.typeahead.searchActors" ||
       pathname === "/xrpc/app.bsky.actor.searchActorsTypeahead") return "search";
-  if (pathname === "/xrpc/app.bsky.actor.getProfiles") return "getProfiles";
+  if (pathname === "/xrpc/app.bsky.actor.getProfiles" ||
+      pathname === "/xrpc/app.bsky.actor.getProfile") return "getProfiles";
   if (pathname === "/request-indexing") return "request-indexing";
   if (pathname === "/admin/ingest") return "admin/ingest";
   if (pathname === "/admin/delete") return "admin/delete";

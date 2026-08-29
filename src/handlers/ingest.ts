@@ -48,7 +48,7 @@ export async function handleIngest(
   for (const e of events) {
     probeIdx.push(stmts.length);
     stmts.push(db.prepare("INSERT OR IGNORE INTO actors (did) VALUES (?1)").bind(e.did));
-    const isBareDID = !e.handle && !e.display_name && !e.avatar_cid && !e.pds;
+    const isBareDID = !e.handle && !e.display_name && !e.avatar_cid && !e.pds && !e.description && !e.banner_cid;
     if (!isBareDID) {
       stmts.push(db.prepare(
         `UPDATE actors SET
@@ -56,10 +56,12 @@ export async function handleIngest(
            display_name = COALESCE(NULLIF(?3, ''), display_name),
            avatar_url = COALESCE(NULLIF(?4, ''), avatar_url),
            pds = COALESCE(NULLIF(?5, ''), pds),
+           description = COALESCE(NULLIF(?6, ''), description),
+           banner_url = COALESCE(NULLIF(?7, ''), banner_url),
            updated_at = unixepoch(),
            profile_checked_at = 0
          WHERE did = ?1`
-      ).bind(e.did, e.handle || '', e.display_name || '', e.avatar_cid || '', e.pds || ''));
+      ).bind(e.did, e.handle || '', e.display_name || '', e.avatar_cid || '', e.pds || '', e.description || '', e.banner_cid || ''));
     }
   }
 

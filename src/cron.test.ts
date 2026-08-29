@@ -42,6 +42,8 @@ const baseRow = {
   avatar_url: "bafkreicxfuixp6jfteqimt5kwanw2lp24cqocrbchih7c2arosujkoomla",
   created_at: "2024-01-01T00:00:00.000Z",
   associated: "{}",
+  description: "",
+  banner_url: "",
   followers_count: 100,
   follows_count: 50,
   posts_count: 200,
@@ -108,6 +110,7 @@ describe("refreshModeration advances the freshness cursor", () => {
       rowid: 1, did: DID, handle: "germnetwork.com", hidden: 0, labels: "[]",
       pds: "", display_name: "Germ Network", avatar_url: "bafOLDcid",
       created_at: "2024-01-01T00:00:00.000Z", associated: "{}",
+      description: "", banner_url: "",
       followers_count: 3041, follows_count: 100, posts_count: 500,
       quality_score: qualityScore,
     };

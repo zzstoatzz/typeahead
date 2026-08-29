@@ -180,6 +180,23 @@ export function docsPage(): string {
       surface minus <code>viewer</code>.
     </div>
 
+    <h2 id="profiles">profiles</h2>
+    <p>
+      once a user picks an actor, render a card without a second trip to bluesky.
+      <code>app.bsky.actor.getProfiles</code> (up to 25 <code>actors</code>) and
+      <code>app.bsky.actor.getProfile</code> (one <code>actor</code>) serve the profile-card
+      subset of <code>profileViewDetailed</code>: <code>displayName</code>, <code>description</code>,
+      <code>avatar</code>, <code>banner</code>, <code>followersCount</code> / <code>followsCount</code> /
+      <code>postsCount</code>, <code>associated</code>, <code>labels</code>, <code>createdAt</code>,
+      and <code>indexedAt</code> (when our row was last written).
+    </p>
+    <pre><code>GET https://typeahead.waow.tech/xrpc/app.bsky.actor.getProfile?actor=zzstoatzz.io</code></pre>
+    <p>
+      counts come from the bluesky appview via enrichment and are <em>omitted</em>, not zero,
+      until that path has seen the actor. viewer state, verification, and live status are not
+      served — they need the caller's social graph, which typeahead does not hold.
+    </p>
+
     <h2>operational notes</h2>
     <ul>
       <li><strong>rate limited</strong> — 60 req/min per IP</li>

@@ -27,6 +27,17 @@ kept indefinitely. new integrations should prefer the canonical endpoint.
 - set an X-Client header (ideally your domain, e.g. "my-app.example.com") so your app is
   attributed on https://typeahead.waow.tech/stats.
 
+## profiles
+
+GET https://typeahead.waow.tech/xrpc/app.bsky.actor.getProfiles?actors=<did-or-handle>&actors=...   (max 25)
+GET https://typeahead.waow.tech/xrpc/app.bsky.actor.getProfile?actor=<did-or-handle>
+
+a profile-card subset of app.bsky.actor.defs#profileViewDetailed: did, handle, displayName,
+description, avatar, banner, followersCount, followsCount, postsCount, associated, labels,
+createdAt, indexedAt. counts are sourced from the bluesky appview by the enrichment path and
+are omitted (not zero) until that path has seen the actor. no viewer state, verification, or
+status — those need the caller's graph, which typeahead does not hold. edge-cached 5 minutes.
+
 ## other endpoints
 
 - POST https://typeahead.waow.tech/request-indexing?handle=<handle-or-did> — surface an account

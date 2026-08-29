@@ -8,7 +8,7 @@ import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
-import { handleGetProfiles } from "./handlers/profiles";
+import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { handleOgImage } from "./handlers/og";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
@@ -184,6 +184,18 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
       return json({ error: "rate limited" }, 429);
     }
     return handleGetProfiles(request, db, env, ctx);
+  }
+
+  if (
+    pathname === "/xrpc/app.bsky.actor.getProfile" &&
+    request.method === "GET"
+  ) {
+    const ip = clientIP(request);
+    const { success } = await env.RATE_LIMITER.limit({ key: ip });
+    if (!success) {
+      return json({ error: "rate limited" }, 429);
+    }
+    return handleGetProfile(request, db, env, ctx);
   }
 
   if (pathname === "/admin/ingest" && request.method === "POST") {

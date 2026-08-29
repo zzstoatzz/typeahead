@@ -55,11 +55,24 @@ export interface ActorRow {
   pds: string;
 }
 
+/** getProfiles row: ActorRow plus the Turso-only profile-card columns. */
+export interface ProfileRow extends ActorRow {
+  description: string;
+  banner_url: string;
+  followers_count: number;
+  follows_count: number;
+  posts_count: number;
+  profile_checked_at: number;
+  updated_at: number;
+}
+
 export interface IngestEvent {
   did: string;
   handle?: string;
   display_name?: string;
   avatar_cid?: string;
+  description?: string;
+  banner_cid?: string;
   /** resolved alongside handle by the ingester's slingshot pool — carrying it
    *  here is what retired the enrichment cron's per-DID pds backfill. */
   pds?: string;
