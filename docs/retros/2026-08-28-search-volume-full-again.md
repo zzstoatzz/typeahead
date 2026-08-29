@@ -45,6 +45,9 @@ worked — the volume was simply outgrown, on schedule.
 | 08-28 20:43 | Extended again to 100 GB for headroom (resync builds an ~11 GB `actors_stage`). |
 | 08-28 21:03 | Snapshot `b1787907716-dcb8` attached, sentinel 5/5. `q=nate` served from the index. `just smoke`: all checks passed. Resync apply time drops 67 s → ~7 s per 2000-row batch the moment the download stops — the slowness was disk IO contention with rclone, not the WAL. At ~7 s × ~5,700 batches the resync completes on its own; `/health/freshness` stays `stale` until then. |
 
+| 08-28 ~21:25 → 08-29 01:40 | **Restart loop, unnoticed for 4 h.** `adoptIfPresent` runs `compactOverlay` right after attach; it held the write mutex for one DELETE over the whole sync-derived overlay (tens of millions of prefix rows after 3 days). The resync's batch 2 blocked on `local.lock()`; the sync watchdog saw no progress for 20 min and exited; fly restarted; compaction started over. Logfire shows the same 4-span sequence every 21 min. Search kept serving from the attached snapshot throughout, so nothing user-visible — but the replica could never catch up. |
+| 08-29 01:5x | `762fe39`: compaction in 20k-row chunks, mutex released between chunks, progress logged. Deployed to search. |
+
 ## Root causes
 
 ### 1. A known capacity cliff with no alarm and no owner
@@ -85,7 +88,26 @@ search service's own `/health`, which fly and the worker read, still lies.
 **Fix (open):** `ready` should be false when no snapshot is attached AND the
 local-db read path last errored.
 
-### 4. Restarting without reading the resync progress first
+### 4. An unbounded critical section, invisible until the corpus made it long
+
+`compactOverlay` was one DELETE under the write mutex. Correct, and fast
+enough on a routine 3-day overlay. After an outage the overlay is the whole
+delta, and "fast enough" became 20+ minutes — longer than the watchdog's
+patience — while every other writer waited. The watchdog then did exactly
+its job and made things worse: it turned one slow compaction into an infinite
+sequence of partial ones.
+
+**Fix (shipped, `762fe39`):** `compactChunk` deletes ≤20k rows per call by
+primary key; `LocalDb.compactOverlay` loops, unlocking between chunks, and
+logs start / every 50 chunks / done. Rule worth keeping: **no unbounded
+statement under the write mutex** — anything proportional to the overlay or
+the corpus must chunk and yield.
+
+**Still open:** the watchdog should count compaction as progress (or the
+promote runner should defer `compactOverlay` while a resync is in flight).
+The chunking removes the deadlock; it does not make the two cooperate.
+
+### 5. Restarting without reading the resync progress first
 
 Operator error, mine. The 10:21 boot had been resyncing for 10 hours and was
 ~93 % done. `fly logs --no-tail | grep resync` before the restart would have
