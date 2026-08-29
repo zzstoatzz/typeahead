@@ -116,8 +116,8 @@ def test_profiles_shape(base_url: str):
         check("profile has indexedAt", str(p.get("indexedAt", "")).endswith("Z"))
     single, _ = fetch(f"{base_url}/xrpc/app.bsky.actor.getProfile?actor=zzstoatzz.io")
     check("getProfile unwraps the same view", bool(single) and single.get("did") == (profiles[0].get("did") if profiles else None))
-    missing, status = fetch(f"{base_url}/xrpc/app.bsky.actor.getProfile?actor=definitely-not-a-real-handle.invalid")
-    check("getProfile missing actor → 400", status == 400)
+    missing, _ = fetch(f"{base_url}/xrpc/app.bsky.actor.getProfile?actor=definitely-not-a-real-handle.invalid")
+    check("getProfile missing actor → 400", (missing or {}).get("_http_error") == 400)
 
 
 def test_canonical_endpoint(base_url: str):
