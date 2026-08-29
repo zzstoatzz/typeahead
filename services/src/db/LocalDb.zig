@@ -337,6 +337,15 @@ pub fn compactOverlay(self: *LocalDb, new_watermark: i64) void {
     var chunks: u64 = 0;
     log.info("overlay compaction started (watermark {d})", .{new_watermark});
     while (true) {
+        // compaction is an optimization (rows ≤ watermark are shadowed by the
+        // base); a resync is not. While the replica is rebuilding (not ready)
+        // stay off the write mutex entirely so the resync owns it, and between
+        // chunks yield long enough for a waiting sync batch to win the lock —
+        // an immediate re-lock starved the resync to one batch per ~6 min.
+        if (!self.isReady()) {
+            io.sleep(.{ .nanoseconds = 5 * std.time.ns_per_s }, .real) catch {};
+            continue;
+        }
         self.mutex.lockUncancelable(io);
         const deleted = overlay.compactChunk(c, new_watermark) catch |err| {
             self.mutex.unlock(io);
@@ -347,6 +356,7 @@ pub fn compactOverlay(self: *LocalDb, new_watermark: i64) void {
         if (deleted == 0) break;
         total += deleted;
         chunks += 1;
+        io.sleep(.{ .nanoseconds = 50 * std.time.ns_per_ms }, .real) catch {};
         if (chunks % 50 == 0) {
             log.info("overlay compaction: {d} rows in {d}ms", .{ total, milliTimestamp() - t0 });
         }
