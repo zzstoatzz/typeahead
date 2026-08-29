@@ -39,8 +39,11 @@ Ship together; nothing here changes what users see.
    was invisible.
 3. **Compact on every incremental pass**, chunked, not only at promote — so the
    overlay never ratchets. (Prunes rows ≤ the *attached* watermark; safe today.)
-4. **Watchdog long-phase budget**: resync's post-load DDL and compaction report
-   a phase; the watchdog allows 60 min for a named long phase, 20 min otherwise.
+4. ~~Watchdog long-phase budget~~ — scoped down after reading the code: the
+   resync path writes straight into live `actors` (no staging swap, no DDL, FTS
+   rebuild skipped under `ENABLE_LOCAL_FTS=0`), so it has no silent finishing
+   phase; only the fresh-volume bootstrap builds indexes, and phase 3 deletes
+   it. Compaction now feeds the watchdog per chunk instead.
 
 Verify: a promote cycle (3 days) with the gauge flat after compaction, zero
 watchdog restarts, `belt_disagreements` observed.

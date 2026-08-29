@@ -188,7 +188,7 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
     try std.Io.Dir.renameAbsolute(part, target, io);
     try db.swapSnapshot(target);
     // Prune sync overlay rows the new base now covers (operator rows survive).
-    db.compactOverlay(m.source_watermark);
+    _ = db.compactOverlay(m.source_watermark, null, null);
     log.info("promoted build {s} → {s}", .{ m.active_build, target });
 }
 
@@ -219,7 +219,7 @@ fn adoptIfPresent(arena: Allocator, db: *LocalDb, idx_dir: []const u8, m: promot
         }
         if (adopt) {
             try db.swapSnapshot(path);
-            db.compactOverlay(m.source_watermark);
+            _ = db.compactOverlay(m.source_watermark, null, null);
             log.info("adopted on-disk snapshot {s} (build {s}, no download)", .{ path, m.active_build });
             return true;
         }
@@ -308,6 +308,23 @@ pub fn writeStatus(arena: Allocator, db: *LocalDb, jw: anytype) !void {
     try jw.write(db.attachedMetaInt(schema.meta.actor_count));
     try jw.objectField("prefix_count");
     try jw.write(db.attachedMetaInt(schema.meta.prefix_count));
+
+    // overlay gauge: how much lives above the base, and whether the last
+    // compaction finished. A growing actor count with complete=0 is the
+    // ratchet that put the box in a restart loop for ten days (2026-08-19..29).
+    try jw.objectField("overlay_actor_rows");
+    try jw.write(db.overlayActorRows());
+    try jw.objectField("overlay_compact");
+    try jw.beginObject();
+    try jw.objectField("deleted");
+    try jw.write(db.syncMetaInt("overlay_compact_deleted"));
+    try jw.objectField("ms");
+    try jw.write(db.syncMetaInt("overlay_compact_ms"));
+    try jw.objectField("complete");
+    try jw.write(db.syncMetaInt("overlay_compact_complete") == 1);
+    try jw.objectField("at");
+    try jw.write(db.syncMetaInt("overlay_compact_at"));
+    try jw.endObject();
 
     try jw.endObject();
 }

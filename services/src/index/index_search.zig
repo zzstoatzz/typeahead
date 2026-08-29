@@ -20,6 +20,7 @@ const pack = @import("pack.zig");
 const prefixes = @import("prefixes.zig");
 const normalize = @import("normalize.zig");
 
+const logfire = @import("logfire");
 const log = std.log.scoped(.index_search);
 
 /// Max candidates carried from merge into hydrate. The final `limit` (≤100)
@@ -46,7 +47,22 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     const lease = try local.checkoutRead();
     defer lease.release();
 
-    const candidates = try execute(arena, lease, norm, null);
+    var trace: Trace = .{};
+    const span = logfire.span("search", .{});
+    defer span.end();
+    const candidates = try execute(arena, lease, norm, &trace);
+    span.setAttribute("q_len", @as(i64, @intCast(norm.len)));
+    span.setAttribute("keys", @as(i64, @intCast(trace.keys.len)));
+    span.setAttribute("merged", @as(i64, @intCast(trace.merged)));
+    span.setAttribute("exact_hits", @as(i64, @intCast(trace.exact_hits)));
+    span.setAttribute("hydrated_overlay", @as(i64, @intCast(trace.hydrated_overlay)));
+    span.setAttribute("hydrated_base", @as(i64, @intCast(trace.hydrated_base)));
+    span.setAttribute("tombstoned", @as(i64, @intCast(trace.tombstoned)));
+    span.setAttribute("overlay_hidden", @as(i64, @intCast(trace.overlay_hidden)));
+    span.setAttribute("blob_hidden", @as(i64, @intCast(trace.blob_hidden)));
+    span.setAttribute("not_found", @as(i64, @intCast(trace.not_found)));
+    span.setAttribute("belt_dropped", @as(i64, @intCast(trace.belt_dropped)));
+    span.setAttribute("results", @as(i64, @intCast(@min(limit, candidates.len))));
 
     var jw: json.Stringify = .{ .writer = writer };
     try jw.beginObject();
@@ -69,6 +85,16 @@ pub const Trace = struct {
     mode: merge.Mode = .union_any,
     merged: usize = 0,
     exact_hits: usize = 0,
+    /// hydrate outcomes. `belt_dropped` counts candidates that passed every
+    /// overlay/blob check and were dropped ONLY by the live `actors` belt —
+    /// the number that decides whether the replica can go (docs/replica-removal-plan.md).
+    hydrated_overlay: usize = 0,
+    hydrated_base: usize = 0,
+    tombstoned: usize = 0,
+    overlay_hidden: usize = 0,
+    blob_hidden: usize = 0,
+    not_found: usize = 0,
+    belt_dropped: usize = 0,
 };
 
 /// normalize'd query → ranked candidates. The single implementation behind both
@@ -107,14 +133,14 @@ fn execute(
     var merged = try merge.combine(arena, keysets.items, mode, HYDRATE_CAP);
     if (exact.count() > 0) merged = try promoteExact(arena, merged, exact);
 
-    if (trace) |t| t.* = .{
-        .keys = key_stats.items,
-        .mode = mode,
-        .merged = merged.len,
-        .exact_hits = exact.count(),
-    };
+    if (trace) |t| {
+        t.keys = key_stats.items;
+        t.mode = mode;
+        t.merged = merged.len;
+        t.exact_hits = exact.count();
+    }
 
-    return hydrate(arena, lease, merged);
+    return hydrate(arena, lease, merged, trace);
 }
 
 /// `/debug/search` for the index engine: the served ranking, plus the key-level
@@ -232,7 +258,7 @@ fn promoteExact(arena: Allocator, merged: []merge.Scored, exact: std.StringHashM
 /// base; NULL overlay blob = global tombstone (suppress); overlay/base hidden
 /// suppress; and the live `actors` table is a safety belt (skip DIDs that are
 /// missing or hidden there) while overlay correctness is still being earned.
-fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Scored) ![]searchmod.Candidate {
+fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Scored, trace: ?*Trace) ![]searchmod.Candidate {
     if (dids.len == 0) return &.{};
 
     var did_list = try arena.alloc([]const u8, dids.len);
@@ -277,24 +303,48 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
         }
     }
 
+    var stats: Trace = .{};
     var out: std.ArrayListUnmanaged(searchmod.Candidate) = .empty;
     for (dids) |d| {
         var blob: ?[]const u8 = null;
+        var from_overlay = false;
         if (ov_map.get(d.did)) |oa| {
-            if (oa.blob == null) continue; // tombstone → global suppress
-            if (oa.hidden) continue; // overlay-hidden → suppress
+            if (oa.blob == null) {
+                stats.tombstoned += 1;
+                continue; // tombstone → global suppress
+            }
+            if (oa.hidden) {
+                stats.overlay_hidden += 1;
+                continue; // overlay-hidden → suppress
+            }
             blob = oa.blob;
+            from_overlay = true;
         } else if (base_map.get(d.did)) |b| {
             blob = b;
         }
-        if (blob == null) continue; // not found in overlay or base
-
-        // safety belt: must exist and not be hidden in the live actors table
-        const lh = live_hidden.get(d.did) orelse continue;
-        if (lh) continue;
+        if (blob == null) {
+            stats.not_found += 1;
+            continue; // not found in overlay or base
+        }
 
         const ac = pack.unpackActor(blob.?) catch continue;
-        if (ac.hidden) continue; // moderation baked into the blob
+        if (ac.hidden) {
+            stats.blob_hidden += 1;
+            continue; // moderation baked into the blob
+        }
+
+        // safety belt: must exist and not be hidden in the live actors table.
+        // Checked AFTER the overlay/blob checks so belt_dropped measures only
+        // what the belt alone catches.
+        const lh = live_hidden.get(d.did) orelse {
+            stats.belt_dropped += 1;
+            continue;
+        };
+        if (lh) {
+            stats.belt_dropped += 1;
+            continue;
+        }
+        if (from_overlay) stats.hydrated_overlay += 1 else stats.hydrated_base += 1;
 
         try out.append(arena, .{
             .did = d.did,
@@ -312,6 +362,15 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
             .quality_score = d.score,
             .source = .prefix,
         });
+    }
+    if (trace) |t| {
+        t.hydrated_overlay = stats.hydrated_overlay;
+        t.hydrated_base = stats.hydrated_base;
+        t.tombstoned = stats.tombstoned;
+        t.overlay_hidden = stats.overlay_hidden;
+        t.blob_hidden = stats.blob_hidden;
+        t.not_found = stats.not_found;
+        t.belt_dropped = stats.belt_dropped;
     }
     return out.toOwnedSlice(arena);
 }

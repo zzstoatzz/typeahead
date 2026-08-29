@@ -101,6 +101,10 @@ const SYNC_INTERVAL_S = 300; // 5 minutes
 // Fed by any forward progress — each bulk batch as well as a completed
 // incremental pass — so a multi-hour resync does not trip it.
 const SYNC_STALL_SECS: i64 = 20 * 60;
+/// overlay compaction chunks per incremental pass (~7s each on the fly volume
+/// at 20k rows: ≈ 12 min worst case, inside one watchdog window even without
+/// the per-chunk progress note).
+const INCREMENTAL_COMPACT_CHUNKS: u64 = 100;
 pub var last_progress_at: std.atomic.Value(i64) = .init(0);
 
 pub fn noteProgress() void {
@@ -923,6 +927,16 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         log.info("incremental: done (updated={d}, cleared={d}, deleted={d})", .{
             updated, cleared, deleted,
         });
+    }
+
+    // Prune overlay rows the attached base already covers, a bounded slice per
+    // pass, so the overlay never ratchets up to a compaction longer than the
+    // watchdog (the 2026-08-19..29 loop). Each chunk feeds the watchdog.
+    const attached_wm: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
+    if (attached_wm > 0) {
+        const r = local.compactOverlay(attached_wm, INCREMENTAL_COMPACT_CHUNKS, noteProgress);
+        span.setAttribute("compact_deleted", @as(i64, @intCast(r.deleted)));
+        span.setAttribute("compact_complete", r.complete);
     }
 
     span.setAttribute("updated", @as(i64, @intCast(updated)));

@@ -330,19 +330,27 @@ pub fn attachedBuildId(self: *LocalDb, gpa: Allocator) !?[]const u8 {
 /// Prune sync-derived overlay rows the freshly-promoted base now covers
 /// (updated_at ≤ new_watermark). Operator rows (source=1) survive. Writes via
 /// the write conn under the write mutex; best-effort (logged, not fatal).
-pub fn compactOverlay(self: *LocalDb, new_watermark: i64) void {
-    const c = self.conn orelse return;
+pub const CompactResult = struct { deleted: u64, chunks: u64, complete: bool };
+
+/// Prune sync-derived overlay rows the attached base now covers
+/// (updated_at ≤ watermark). Operator rows (source=1) survive. Runs in
+/// COMPACT_CHUNK steps under the write mutex, yielding between them; skips
+/// entirely while the replica is not ready (a resync owns the mutex).
+/// `max_chunks` bounds one call so a caller with a liveness budget (the sync
+/// loop) can compact a little every pass instead of ratcheting; `on_chunk`
+/// lets it feed its watchdog. Results are recorded in sync_meta for
+/// /index/status. Best-effort: failures are logged, never fatal.
+pub fn compactOverlay(self: *LocalDb, new_watermark: i64, max_chunks: ?u64, on_chunk: ?*const fn () void) CompactResult {
+    const c = self.conn orelse return .{ .deleted = 0, .chunks = 0, .complete = false };
     const t0 = milliTimestamp();
     var total: u64 = 0;
     var chunks: u64 = 0;
-    log.info("overlay compaction started (watermark {d})", .{new_watermark});
+    var complete = false;
+    log.info("overlay compaction started (watermark {d}, max_chunks {?d})", .{ new_watermark, max_chunks });
     while (true) {
-        // compaction is an optimization (rows ≤ watermark are shadowed by the
-        // base); a resync is not. While the replica is rebuilding (not ready)
-        // stay off the write mutex entirely so the resync owns it, and between
-        // chunks yield long enough for a waiting sync batch to win the lock —
-        // an immediate re-lock starved the resync to one batch per ~6 min.
+        if (max_chunks) |m| if (chunks >= m) break;
         if (!self.isReady()) {
+            if (max_chunks != null) break;
             io.sleep(.{ .nanoseconds = 5 * std.time.ns_per_s }, .real) catch {};
             continue;
         }
@@ -350,18 +358,70 @@ pub fn compactOverlay(self: *LocalDb, new_watermark: i64) void {
         const deleted = overlay.compactChunk(c, new_watermark) catch |err| {
             self.mutex.unlock(io);
             log.warn("overlay compaction failed after {d} rows: {}", .{ total, err });
-            return;
+            break;
         };
         self.mutex.unlock(io);
-        if (deleted == 0) break;
+        if (deleted == 0) {
+            complete = true;
+            break;
+        }
         total += deleted;
         chunks += 1;
-        io.sleep(.{ .nanoseconds = 50 * std.time.ns_per_ms }, .real) catch {};
+        if (on_chunk) |f| f();
         if (chunks % 50 == 0) {
             log.info("overlay compaction: {d} rows in {d}ms", .{ total, milliTimestamp() - t0 });
         }
+        io.sleep(.{ .nanoseconds = 50 * std.time.ns_per_ms }, .real) catch {};
     }
-    log.info("overlay compaction done: {d} rows in {d}ms", .{ total, milliTimestamp() - t0 });
+    const ms = milliTimestamp() - t0;
+    log.info("overlay compaction {s}: {d} rows in {d}ms", .{ if (complete) "done" else "paused", total, ms });
+    self.recordCompaction(c, total, ms, complete);
+    return .{ .deleted = total, .chunks = chunks, .complete = complete };
+}
+
+fn recordCompaction(self: *LocalDb, c: zqlite.Conn, deleted: u64, ms: i64, complete: bool) void {
+    self.mutex.lockUncancelable(io);
+    defer self.mutex.unlock(io);
+    var b1: [24]u8 = undefined;
+    var b2: [24]u8 = undefined;
+    var b3: [24]u8 = undefined;
+    const d = std.fmt.bufPrint(&b1, "{d}", .{deleted}) catch "0";
+    const m = std.fmt.bufPrint(&b2, "{d}", .{ms}) catch "0";
+    const at = std.fmt.bufPrint(&b3, "{d}", .{@divFloor(milliTimestamp(), 1000)}) catch "0";
+    c.exec("INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('overlay_compact_deleted', ?)", .{d}) catch {};
+    c.exec("INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('overlay_compact_ms', ?)", .{m}) catch {};
+    c.exec("INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('overlay_compact_complete', ?)", .{if (complete) "1" else "0"}) catch {};
+    c.exec("INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('overlay_compact_at', ?)", .{at}) catch {};
+}
+
+/// A sync_meta value as an integer, 0 when absent. Read on the meta conn so
+/// /index/status never touches the read pool.
+pub fn syncMetaInt(self: *LocalDb, key: []const u8) i64 {
+    self.meta_mu.lockUncancelable(io);
+    defer self.meta_mu.unlock(io);
+    const c = self.meta_conn orelse return 0;
+    const row = c.row("SELECT value FROM sync_meta WHERE key = ?", .{key}) catch return 0;
+    if (row) |r| {
+        defer r.deinit();
+        return std.fmt.parseInt(i64, r.text(0), 10) catch 0;
+    }
+    return 0;
+}
+
+/// Rows in actor_overlay — one per actor touched since the last full
+/// compaction, so it is bounded by "actors changed", not by the corpus.
+/// (prefix_overlay is deliberately NOT counted: it is many rows per actor and
+/// a count over it exceeded 110s on 2026-08-29.)
+pub fn overlayActorRows(self: *LocalDb) i64 {
+    self.meta_mu.lockUncancelable(io);
+    defer self.meta_mu.unlock(io);
+    const c = self.meta_conn orelse return -1;
+    const row = c.row("SELECT count(*) FROM actor_overlay", .{}) catch return -1;
+    if (row) |r| {
+        defer r.deinit();
+        return r.int(0);
+    }
+    return -1;
 }
 
 /// Path of the currently-attached snapshot file, or null. Only the promote
