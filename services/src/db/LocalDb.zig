@@ -328,11 +328,26 @@ pub fn attachedBuildId(self: *LocalDb, gpa: Allocator) !?[]const u8 {
 /// the write conn under the write mutex; best-effort (logged, not fatal).
 pub fn compactOverlay(self: *LocalDb, new_watermark: i64) void {
     const c = self.conn orelse return;
-    self.mutex.lockUncancelable(io);
-    defer self.mutex.unlock(io);
-    overlay.compact(c, new_watermark) catch |err| {
-        log.warn("overlay compaction failed: {}", .{err});
-    };
+    const t0 = std.time.milliTimestamp();
+    var total: u64 = 0;
+    var chunks: u64 = 0;
+    log.info("overlay compaction started (watermark {d})", .{new_watermark});
+    while (true) {
+        self.mutex.lockUncancelable(io);
+        const deleted = overlay.compactChunk(c, new_watermark) catch |err| {
+            self.mutex.unlock(io);
+            log.warn("overlay compaction failed after {d} rows: {}", .{ total, err });
+            return;
+        };
+        self.mutex.unlock(io);
+        if (deleted == 0) break;
+        total += deleted;
+        chunks += 1;
+        if (chunks % 50 == 0) {
+            log.info("overlay compaction: {d} rows in {d}ms", .{ total, std.time.milliTimestamp() - t0 });
+        }
+    }
+    log.info("overlay compaction done: {d} rows in {d}ms", .{ total, std.time.milliTimestamp() - t0 });
 }
 
 /// Path of the currently-attached snapshot file, or null. Only the promote

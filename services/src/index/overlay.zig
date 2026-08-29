@@ -162,12 +162,36 @@ fn upsertPrefix(conn: zqlite.Conn, key: []const u8, did: []const u8, score: f32,
     );
 }
 
-/// Compaction: drop sync-derived overlay rows at or below the new snapshot
-/// watermark (the base now reflects them). Operator rows (source=1) survive —
-/// a manual hide/show must not vanish on promote. Called from swapSnapshot.
+/// Rows deleted per compactChunk call. Bounds how long the caller holds the
+/// write mutex: a full-overlay compaction after a long sync outage is tens of
+/// millions of prefix rows, and holding the mutex across all of them blocked
+/// the resync's next batch until the sync watchdog killed the process —
+/// which restarted the compaction from scratch, forever (2026-08-28).
+pub const COMPACT_CHUNK: u32 = 20_000;
+
+/// One bounded step of compaction: drop up to COMPACT_CHUNK sync-derived
+/// overlay rows at or below the new snapshot watermark (the base now
+/// reflects them). Operator rows (source=1) survive — a manual hide/show
+/// must not vanish on promote. Returns rows deleted; 0 means done. The
+/// caller loops, releasing the write mutex between calls.
+pub fn compactChunk(conn: zqlite.Conn, new_watermark: i64) !u32 {
+    try conn.exec(
+        \\DELETE FROM prefix_overlay WHERE (key, did) IN (
+        \\  SELECT key, did FROM prefix_overlay WHERE source = 0 AND updated_at <= ? LIMIT ?)
+    , .{ new_watermark, COMPACT_CHUNK });
+    const prefix_deleted: u32 = @intCast(conn.changes());
+    try conn.exec(
+        \\DELETE FROM actor_overlay WHERE did IN (
+        \\  SELECT did FROM actor_overlay WHERE source = 0 AND updated_at <= ? LIMIT ?)
+    , .{ new_watermark, COMPACT_CHUNK });
+    return prefix_deleted + @as(u32, @intCast(conn.changes()));
+}
+
+/// Full compaction in one call — for callers that own the connection outright
+/// (tests, tooling). Production goes through LocalDb.compactOverlay so the
+/// write mutex is released between chunks.
 pub fn compact(conn: zqlite.Conn, new_watermark: i64) !void {
-    try conn.exec("DELETE FROM prefix_overlay WHERE source = 0 AND updated_at <= ?", .{new_watermark});
-    try conn.exec("DELETE FROM actor_overlay WHERE source = 0 AND updated_at <= ?", .{new_watermark});
+    while (try compactChunk(conn, new_watermark) > 0) {}
 }
 
 // ─── tests ───────────────────────────────────────────────────────────────
@@ -344,4 +368,36 @@ test "compact prunes sync rows ≤ watermark but keeps operator + newer rows" {
     try testing.expectEqual(@as(?i64, null), try prefixOp(conn, "h:a", "d1")); // sync ≤200 pruned
     try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "h:b", "d2")); // sync >200 kept
     try testing.expectEqual(@as(?i64, 0), try prefixOp(conn, "h:c", "d3")); // operator kept despite ≤200
+}
+
+test "compactChunk is bounded and converges across an overlay larger than one chunk" {
+    const conn = try memConn();
+    defer conn.close();
+
+    const n: u32 = COMPACT_CHUNK * 2 + 7;
+    try conn.exec("BEGIN", .{});
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        var key_buf: [32]u8 = undefined;
+        const key = try std.fmt.bufPrint(&key_buf, "h:{d}", .{i});
+        try conn.exec("INSERT INTO prefix_overlay (key,did,score,op,updated_at,source) VALUES (?, 'd', 1, 1, 100, 0)", .{key});
+    }
+    try conn.exec("INSERT INTO prefix_overlay (key,did,score,op,updated_at,source) VALUES ('keep','d', 1, 1, 100, 1)", .{});
+    try conn.exec("INSERT INTO actor_overlay (did,blob,hidden,updated_at,source) VALUES ('a1', x'00', 0, 100, 0)", .{});
+    try conn.exec("COMMIT", .{});
+
+    const first = try compactChunk(conn, 200);
+    try testing.expectEqual(COMPACT_CHUNK + 1, first); // one chunk of prefixes + the lone actor row
+
+    var total: u32 = first;
+    var rounds: u32 = 1;
+    while (true) {
+        const d = try compactChunk(conn, 200);
+        if (d == 0) break;
+        total += d;
+        rounds += 1;
+    }
+    try testing.expectEqual(n + 1, total);
+    try testing.expectEqual(@as(u32, 3), rounds);
+    try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "keep", "d"));
 }
