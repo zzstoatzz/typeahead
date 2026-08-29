@@ -26,6 +26,10 @@ const READ_POOL_DEFAULT_SIZE: usize = 4;
 const READ_WAIT_DEFAULT_MS: u64 = 250;
 const READ_TICK_MS: u64 = 5;
 
+fn milliTimestamp() i64 {
+    return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_ms));
+}
+
 conn: ?zqlite.Conn = null,
 
 /// Pool of read-only connections handed out one-per-request. Each slot
@@ -328,7 +332,7 @@ pub fn attachedBuildId(self: *LocalDb, gpa: Allocator) !?[]const u8 {
 /// the write conn under the write mutex; best-effort (logged, not fatal).
 pub fn compactOverlay(self: *LocalDb, new_watermark: i64) void {
     const c = self.conn orelse return;
-    const t0 = std.time.milliTimestamp();
+    const t0 = milliTimestamp();
     var total: u64 = 0;
     var chunks: u64 = 0;
     log.info("overlay compaction started (watermark {d})", .{new_watermark});
@@ -344,10 +348,10 @@ pub fn compactOverlay(self: *LocalDb, new_watermark: i64) void {
         total += deleted;
         chunks += 1;
         if (chunks % 50 == 0) {
-            log.info("overlay compaction: {d} rows in {d}ms", .{ total, std.time.milliTimestamp() - t0 });
+            log.info("overlay compaction: {d} rows in {d}ms", .{ total, milliTimestamp() - t0 });
         }
     }
-    log.info("overlay compaction done: {d} rows in {d}ms", .{ total, std.time.milliTimestamp() - t0 });
+    log.info("overlay compaction done: {d} rows in {d}ms", .{ total, milliTimestamp() - t0 });
 }
 
 /// Path of the currently-attached snapshot file, or null. Only the promote
