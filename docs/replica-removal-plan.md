@@ -61,9 +61,14 @@ watchdog restarts, `belt_disagreements` observed.
 `snapshotOldActorRow` (`sync.zig:1074`) reads `actor_overlay.blob`, falling
 back to `idx.actor_compact_base.blob`, *instead of* `actors`. The replica stays;
 the hydrate belt stays. Add a temporary comparison: when both sources exist and
-disagree, log + count. Verify: one full promote cycle with zero disagreements
-and rename/hide/unhide smoke checks (`request-indexing` an actor, rename via
-`/admin/refresh`, see prefix keys move). Rollback: one-line source switch.
+disagree, log + count. Verify: rename/hide/unhide exercise — **run 2026-08-31 (yeadog test account), all
+four legs pass**: display rename projected (`n:` overlay inserts), mod-override
+hide suppressed from serving, unhide restored, and the restore suppressed the
+old display's keys (op=1 → op=0 for every `n:zzstoatzztest*` key) via the NEW
+overlay-then-base old-row source. Residue: yeadog's Turso `display_name` keeps
+the test value (his real profile has none, and every upsert COALESCE-keeps
+non-empty values); serving is unaffected. Remaining: one clean promote cycle
+(2026-09-03). Rollback: one-line source switch.
 
 ## phase 3 — cut the replica
 
