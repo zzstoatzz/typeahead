@@ -123,3 +123,15 @@ If the search box kept **snapshot + overlay only**:
   different phase.
 - Confirm the bsky backstop behaviour in the worker when the engine 500s —
   on 08-28 it returned `[]`, which is the worst of both.
+
+## addendum 2026-08-31 — phase 2's first day settled the old-row question
+
+The verifier (`snapshotOldVerified`) compared overlay-then-base against the
+replica for every projected row. All three disagreement classes, traced to
+ground truth, came out the same way: **the replica was the wrong source**.
+Replica-missing rows (handle-flap) were the belt drops suppressing live
+actors; source-empty rows had no serving presence so an empty old row is
+correct; differing rows need the BASE's stale representation to suppress the
+keys the base actually serves — the replica's fresher values would miss them.
+The comparison designed to earn trust in the new source ended up indicting
+the old one in every class.

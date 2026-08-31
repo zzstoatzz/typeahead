@@ -67,13 +67,27 @@ and rename/hide/unhide smoke checks (`request-indexing` an actor, rename via
 
 ## phase 3 — cut the replica
 
-Gate (revised 2026-08-31 after the first phase-2 data): mismatches are
-classified. `mismatch_source_empty` and `mismatch_differs` — the classes that
-would indict the overlay/base source — must stay ~0 across a promote cycle.
-`mismatch_replica_empty` (the replica lost a row the base/overlay serves;
-116/1368 rows in the first verified pass, the handle-flap class) indicts the
-REPLICA, not the source — it is the same defect the belt drops exposed
-(the belt was suppressing live actors), and counts as evidence FOR the cut.
+Gate (re-revised 2026-08-31, after tracing each class to ground truth):
+the mismatch counters turned out to measure how often the REPLICA would have
+mis-projected, not whether the new source errs. Projection's job is to
+suppress stale keys **that exist in serving**, so the correct old row is by
+construction the base/overlay representation:
+
+- `replica_empty` (116 in the first pass): replica lost rows serving has
+  (handle-flap) — the class behind the belt drops suppressing live actors.
+- `source_empty` (traced: did:plc:2kji4vm4ftowkwevmznx5bzv): serving never had
+  the actor (in Turso + replica, absent from base and overlay until this very
+  update projected it) — empty old is correct; the replica's answer would emit
+  suppressions for keys that do not exist in serving.
+- `differs` (traced: did:plc:b3bal4vwdhg5c54imx5izbkh): the base serves the
+  OLD representation's tokens; suppressing them requires the base's values.
+  The replica's fresher values would miss them — the replica-as-source was
+  leaving stale prefix entries in this class.
+
+The functional gate for phase 3 is therefore: `projection_skipped = 0`,
+`belt_dropped` trending to 0 under the new source, the rename/hide/unhide
+smoke checks passing, and one clean promote cycle on v64+. The counters stay
+as telemetry, not as a zero-target.
 
 - sync loop becomes: watermark = attached snapshot's `source_watermark` (or the
   last applied `updated_at` in `sync_meta`), page Turso `updated_at > watermark`,
