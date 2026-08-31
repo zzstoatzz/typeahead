@@ -12,6 +12,7 @@ const LocalDb = @import("LocalDb.zig");
 const Col = LocalDb.Col;
 const overlay = @import("../index/overlay.zig");
 const index_schema = @import("../index/schema.zig");
+const pack = @import("../index/pack.zig");
 
 const log = std.log.scoped(.sync);
 
@@ -21,6 +22,9 @@ const log = std.log.scoped(.sync);
 const OverlayCtx = struct {
     arena: Allocator,
     updated_at: i64,
+    /// for reading the old row from overlay-then-base through a read lease
+    /// (the `idx` snapshot is attached only to read-pool conns).
+    local: *LocalDb,
 };
 
 fn timestamp() i64 {
@@ -748,7 +752,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 for (result.rows) |row| {
                     const ua = row.int(trailing_col);
                     const octx: ?OverlayCtx = if (overlay_watermark > 0 and ua > overlay_watermark)
-                        .{ .arena = ov_arena.allocator(), .updated_at = ua }
+                        .{ .arena = ov_arena.allocator(), .updated_at = ua, .local = local }
                     else
                         null;
                     if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
@@ -830,7 +834,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 const did = row.text(0);
                 const ua = row.int(1);
                 const octx: ?OverlayCtx = if (overlay_watermark > 0 and ua > overlay_watermark)
-                    .{ .arena = ov_arena.allocator(), .updated_at = ua }
+                    .{ .arena = ov_arena.allocator(), .updated_at = ua, .local = local }
                 else
                     null;
                 if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
@@ -876,7 +880,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 const did = row.text(0);
                 const del_at = row.int(1);
                 const octx: ?OverlayCtx = if (overlay_watermark > 0 and del_at > overlay_watermark)
-                    .{ .arena = ov_arena.allocator(), .updated_at = del_at }
+                    .{ .arena = ov_arena.allocator(), .updated_at = del_at, .local = local }
                 else
                     null;
                 if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
@@ -951,6 +955,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     span.setAttribute("deleted", @as(i64, @intCast(deleted)));
     span.setAttribute("cleared", @as(i64, @intCast(cleared)));
     span.setAttribute("projection_skipped", @as(i64, @intCast(projection_skipped)));
+    span.setAttribute("old_row_mismatches", @as(i64, @intCast(old_row_mismatches.swap(0, .monotonic))));
 }
 
 /// Background sync loop: full sync on boot, then incremental every 5 min
@@ -1011,7 +1016,7 @@ pub fn applyInline(local: *LocalDb, row: *const InlineRow, updated_at: i64) !voi
     // is always on; the guard exists so a replayed old row cannot re-add a
     // prefix the base already accounts for.
     const octx: ?OverlayCtx = if (overlay_watermark > 0 and updated_at > overlay_watermark)
-        .{ .arena = arena.allocator(), .updated_at = updated_at }
+        .{ .arena = arena.allocator(), .updated_at = updated_at, .local = local }
     else
         null;
 
@@ -1111,6 +1116,82 @@ fn snapshotOldActorRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void
     } else |_| {}
 }
 
+/// Phase 2 of docs/replica-removal-plan.md: old handle/display from the
+/// overlay blob, falling back to the attached base blob — the same bytes
+/// serving uses — instead of the `actors` replica. Goes through a read lease
+/// because only read-pool conns have the snapshot attached. Returns false
+/// when no lease or no row was found (caller falls back to `actors`).
+/// A NULL overlay blob (tombstone) yields an empty old row: there are no
+/// live prefix keys to diff away for a tombstoned actor.
+fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldFtsRow) bool {
+    const lease = local.checkoutRead() catch return false;
+    defer lease.release();
+
+    // u16-length-prefixed fields; real blobs are well under this (labels/associated JSON included)
+    var blob_buf: [16384]u8 = undefined;
+    var blob: ?[]const u8 = null;
+    var tombstone = false;
+    {
+        var rows = lease.query("SELECT blob FROM actor_overlay WHERE did = ?", .{did}) catch return false;
+        defer rows.deinit();
+        if (rows.next()) |row| {
+            if (row.nullableBlob(0)) |b| {
+                if (b.len > blob_buf.len) return false;
+                @memcpy(blob_buf[0..b.len], b);
+                blob = blob_buf[0..b.len];
+            } else tombstone = true;
+        }
+    }
+    if (tombstone) return true;
+    if (blob == null) {
+        var rows = lease.query("SELECT blob FROM idx.actor_compact_base WHERE did = ?", .{did}) catch return false;
+        defer rows.deinit();
+        if (rows.next()) |row| {
+            const b = row.blob(0);
+            if (b.len > blob_buf.len) return false;
+            @memcpy(blob_buf[0..b.len], b);
+            blob = blob_buf[0..b.len];
+        }
+    }
+    const b = blob orelse return true; // in neither overlay nor base: new actor, no old keys
+    const ac = pack.unpackActor(b) catch return false;
+    if (ac.handle.len > 0 and ac.handle.len <= out.handle_buf.len) {
+        @memcpy(out.handle_buf[0..ac.handle.len], ac.handle);
+        out.handle = out.handle_buf[0..ac.handle.len];
+    }
+    if (ac.display.len > 0 and ac.display.len <= out.name_buf.len) {
+        @memcpy(out.name_buf[0..ac.display.len], ac.display);
+        out.name = out.name_buf[0..ac.display.len];
+    }
+    return true;
+}
+
+/// Old rows where overlay/base and the `actors` replica disagreed — must stay
+/// 0 for a promote cycle before phase 3 cuts the replica. Reported per
+/// incremental pass as `old_row_mismatches`.
+pub var old_row_mismatches: std.atomic.Value(u64) = .init(0);
+
+/// Old-row source with verification: overlay-then-base is primary; the
+/// `actors` replica is read alongside and any disagreement is counted and
+/// logged (with the DID) — the phase-3 gate. Falls back to the replica when
+/// the lease path is unavailable.
+fn snapshotOldVerified(local: *LocalDb, conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
+    if (!snapshotOldFromOverlayBase(local, did, out)) {
+        snapshotOldActorRow(conn, did, out);
+        return;
+    }
+    var replica: OldFtsRow = .{};
+    snapshotOldActorRow(conn, did, &replica);
+    const h_ok = std.mem.eql(u8, out.handle orelse "", replica.handle orelse "");
+    const n_ok = std.mem.eql(u8, out.name orelse "", replica.name orelse "");
+    if (!h_ok or !n_ok) {
+        _ = old_row_mismatches.fetchAdd(1, .monotonic);
+        logfire.warn("old-row mismatch for {s}: overlay/base=({s},{s}) actors=({s},{s})", .{
+            did, out.handle orelse "", out.name orelse "", replica.handle orelse "", replica.name orelse "",
+        });
+    }
+}
+
 fn snapshotOldFtsRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
     if (conn.row("SELECT handle, display_name FROM actors_fts WHERE did = ?", .{did})) |maybe| {
         if (maybe) |r| {
@@ -1144,8 +1225,8 @@ fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8, octx: ?
     var old: OldFtsRow = .{};
     if (fts) {
         snapshotOldFtsRow(conn, did, &old);
-    } else if (octx != null) {
-        snapshotOldActorRow(conn, did, &old);
+    } else if (octx) |ctx| {
+        snapshotOldVerified(ctx.local, conn, did, &old);
     }
 
     try insertActorRow(conn, "INSERT OR REPLACE INTO actors", row);
@@ -1198,8 +1279,8 @@ fn applyActorDelete(conn: zqlite.Conn, did: []const u8, caller: []const u8, octx
     var old: OldFtsRow = .{};
     if (fts) {
         snapshotOldFtsRow(conn, did, &old);
-    } else if (octx != null) {
-        snapshotOldActorRow(conn, did, &old);
+    } else if (octx) |ctx| {
+        snapshotOldVerified(ctx.local, conn, did, &old);
     }
 
     try conn.exec("DELETE FROM actors WHERE did = ?", .{did});
