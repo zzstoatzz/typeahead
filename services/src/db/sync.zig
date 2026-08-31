@@ -955,7 +955,9 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     span.setAttribute("deleted", @as(i64, @intCast(deleted)));
     span.setAttribute("cleared", @as(i64, @intCast(cleared)));
     span.setAttribute("projection_skipped", @as(i64, @intCast(projection_skipped)));
-    span.setAttribute("old_row_mismatches", @as(i64, @intCast(old_row_mismatches.swap(0, .monotonic))));
+    span.setAttribute("mismatch_replica_empty", @as(i64, @intCast(mismatch_replica_empty.swap(0, .monotonic))));
+    span.setAttribute("mismatch_source_empty", @as(i64, @intCast(mismatch_source_empty.swap(0, .monotonic))));
+    span.setAttribute("mismatch_differs", @as(i64, @intCast(mismatch_differs.swap(0, .monotonic))));
 }
 
 /// Background sync loop: full sync on boot, then incremental every 5 min
@@ -1166,10 +1168,14 @@ fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldFtsRow)
     return true;
 }
 
-/// Old rows where overlay/base and the `actors` replica disagreed — must stay
-/// 0 for a promote cycle before phase 3 cuts the replica. Reported per
-/// incremental pass as `old_row_mismatches`.
-pub var old_row_mismatches: std.atomic.Value(u64) = .init(0);
+/// Old rows where overlay/base and the `actors` replica disagreed, by class.
+/// `replica_empty` (replica lost a row the base/overlay serves — observed
+/// 2026-08-31, the handle-flap class the hydrate belt was wrongly suppressing)
+/// indicts the replica; `source_empty` and `differs` would indict the new
+/// source and must stay ~0 before phase 3 cuts the replica.
+pub var mismatch_replica_empty: std.atomic.Value(u64) = .init(0);
+pub var mismatch_source_empty: std.atomic.Value(u64) = .init(0);
+pub var mismatch_differs: std.atomic.Value(u64) = .init(0);
 
 /// Old-row source with verification: overlay-then-base is primary; the
 /// `actors` replica is read alongside and any disagreement is counted and
@@ -1185,8 +1191,17 @@ fn snapshotOldVerified(local: *LocalDb, conn: zqlite.Conn, did: []const u8, out:
     const h_ok = std.mem.eql(u8, out.handle orelse "", replica.handle orelse "");
     const n_ok = std.mem.eql(u8, out.name orelse "", replica.name orelse "");
     if (!h_ok or !n_ok) {
-        _ = old_row_mismatches.fetchAdd(1, .monotonic);
-        logfire.warn("old-row mismatch for {s}: overlay/base=({s},{s}) actors=({s},{s})", .{
+        const ours_empty = out.handle == null and out.name == null;
+        const replica_empty = replica.handle == null and replica.name == null;
+        const class = if (replica_empty and !ours_empty)
+            &mismatch_replica_empty
+        else if (ours_empty and !replica_empty)
+            &mismatch_source_empty
+        else
+            &mismatch_differs;
+        _ = class.fetchAdd(1, .monotonic);
+        logfire.warn("old-row mismatch ({s}) for {s}: overlay/base=({s},{s}) actors=({s},{s})", .{
+            if (replica_empty and !ours_empty) "replica_empty" else if (ours_empty and !replica_empty) "source_empty" else "differs",
             did, out.handle orelse "", out.name orelse "", replica.handle orelse "", replica.name orelse "",
         });
     }

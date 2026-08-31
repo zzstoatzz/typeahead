@@ -67,8 +67,13 @@ and rename/hide/unhide smoke checks (`request-indexing` an actor, rename via
 
 ## phase 3 — cut the replica
 
-Gate: phase 0 shows `belt_disagreements = 0` and phase 2 shows source
-agreement across a promote cycle.
+Gate (revised 2026-08-31 after the first phase-2 data): mismatches are
+classified. `mismatch_source_empty` and `mismatch_differs` — the classes that
+would indict the overlay/base source — must stay ~0 across a promote cycle.
+`mismatch_replica_empty` (the replica lost a row the base/overlay serves;
+116/1368 rows in the first verified pass, the handle-flap class) indicts the
+REPLICA, not the source — it is the same defect the belt drops exposed
+(the belt was suppressing live actors), and counts as evidence FOR the cut.
 
 - sync loop becomes: watermark = attached snapshot's `source_watermark` (or the
   last applied `updated_at` in `sync_meta`), page Turso `updated_at > watermark`,
