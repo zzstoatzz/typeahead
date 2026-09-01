@@ -62,6 +62,7 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     span.setAttribute("blob_hidden", @as(i64, @intCast(trace.blob_hidden)));
     span.setAttribute("not_found", @as(i64, @intCast(trace.not_found)));
     span.setAttribute("belt_dropped", @as(i64, @intCast(trace.belt_dropped)));
+    if (trace.belt_did) |bd| span.setAttribute("belt_did", bd);
     span.setAttribute("results", @as(i64, @intCast(@min(limit, candidates.len))));
 
     var jw: json.Stringify = .{ .writer = writer };
@@ -95,6 +96,9 @@ pub const Trace = struct {
     blob_hidden: usize = 0,
     not_found: usize = 0,
     belt_dropped: usize = 0,
+    /// last belt-dropped DID this request (attr on the search span — the zig
+    /// logfire client exports spans only, so log lines are not durable).
+    belt_did: ?[]const u8 = null,
 };
 
 /// normalize'd query → ranked candidates. The single implementation behind both
@@ -340,12 +344,14 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
         // Turso/overlay — the span only carries counts.
         const lh = live_hidden.get(d.did) orelse {
             stats.belt_dropped += 1;
-            logfire.warn("belt dropped {s}: missing from actors (hydrated from {s})", .{ d.did, if (from_overlay) "overlay" else "base" });
+            stats.belt_did = d.did;
+            log.warn("belt dropped {s}: missing from actors (hydrated from {s})", .{ d.did, if (from_overlay) "overlay" else "base" });
             continue;
         };
         if (lh) {
             stats.belt_dropped += 1;
-            logfire.warn("belt dropped {s}: hidden in actors (hydrated from {s})", .{ d.did, if (from_overlay) "overlay" else "base" });
+            stats.belt_did = d.did;
+            log.warn("belt dropped {s}: hidden in actors (hydrated from {s})", .{ d.did, if (from_overlay) "overlay" else "base" });
             continue;
         }
         if (from_overlay) stats.hydrated_overlay += 1 else stats.hydrated_base += 1;
@@ -375,6 +381,7 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
         t.blob_hidden = stats.blob_hidden;
         t.not_found = stats.not_found;
         t.belt_dropped = stats.belt_dropped;
+        t.belt_did = stats.belt_did;
     }
     return out.toOwnedSlice(arena);
 }

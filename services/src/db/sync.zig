@@ -958,6 +958,11 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     span.setAttribute("mismatch_replica_empty", @as(i64, @intCast(mismatch_replica_empty.swap(0, .monotonic))));
     span.setAttribute("mismatch_source_empty", @as(i64, @intCast(mismatch_source_empty.swap(0, .monotonic))));
     span.setAttribute("mismatch_differs", @as(i64, @intCast(mismatch_differs.swap(0, .monotonic))));
+    const class_names = [_][]const u8{ "sample_replica_empty", "sample_source_empty", "sample_differs" };
+    for (class_names, 0..) |name, i| {
+        const n = mismatch_sample_len[i].swap(0, .monotonic);
+        if (n > 0) span.setAttribute(name, mismatch_sample_buf[i][0..n]);
+    }
 }
 
 /// Background sync loop: full sync on boot, then incremental every 5 min
@@ -1176,6 +1181,16 @@ fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldFtsRow)
 pub var mismatch_replica_empty: std.atomic.Value(u64) = .init(0);
 pub var mismatch_source_empty: std.atomic.Value(u64) = .init(0);
 pub var mismatch_differs: std.atomic.Value(u64) = .init(0);
+/// one sample DID per class per pass (span attrs; log lines are not durable)
+var mismatch_sample_buf: [3][64]u8 = undefined;
+var mismatch_sample_len: [3]std.atomic.Value(usize) = .{ .init(0), .init(0), .init(0) };
+
+fn noteMismatchSample(class_idx: usize, did: []const u8) void {
+    if (mismatch_sample_len[class_idx].load(.monotonic) != 0) return;
+    const n = @min(did.len, mismatch_sample_buf[class_idx].len);
+    @memcpy(mismatch_sample_buf[class_idx][0..n], did[0..n]);
+    mismatch_sample_len[class_idx].store(n, .monotonic);
+}
 
 /// Old-row source with verification: overlay-then-base is primary; the
 /// `actors` replica is read alongside and any disagreement is counted and
@@ -1193,13 +1208,14 @@ fn snapshotOldVerified(local: *LocalDb, conn: zqlite.Conn, did: []const u8, out:
     if (!h_ok or !n_ok) {
         const ours_empty = out.handle == null and out.name == null;
         const replica_empty = replica.handle == null and replica.name == null;
-        const class = if (replica_empty and !ours_empty)
-            &mismatch_replica_empty
-        else if (ours_empty and !replica_empty)
-            &mismatch_source_empty
-        else
-            &mismatch_differs;
+        const class_idx: usize = if (replica_empty and !ours_empty) 0 else if (ours_empty and !replica_empty) 1 else 2;
+        const class = switch (class_idx) {
+            0 => &mismatch_replica_empty,
+            1 => &mismatch_source_empty,
+            else => &mismatch_differs,
+        };
         _ = class.fetchAdd(1, .monotonic);
+        noteMismatchSample(class_idx, did);
         logfire.warn("old-row mismatch ({s}) for {s}: overlay/base=({s},{s}) actors=({s},{s})", .{
             if (replica_empty and !ours_empty) "replica_empty" else if (ours_empty and !replica_empty) "source_empty" else "differs",
             did, out.handle orelse "", out.name orelse "", replica.handle orelse "", replica.name orelse "",
