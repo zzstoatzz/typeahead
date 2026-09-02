@@ -77,7 +77,15 @@ non-empty values); serving is unaffected. Remaining: one clean promote cycle
 4.99M rows finished `complete:true` in three bounded passes, zero watchdog
 restarts, freshness fresh throughout. (The indexer cron is `0 9 */3 * *` —
 day-of-month divisible by 3 — so 08-31 and 09-01 were consecutive builds.)
-Code written 2026-09-02; deploy pending review.
+**Cut over 2026-09-02 06:24 UTC** with zero engine downtime: a second machine
+was cloned onto a fresh 60 GB volume (cordoned, image swapped to the phase-3
+build), it downloaded + attached the snapshot in 20 min from boot, replayed
+the 19 h since the snapshot watermark in 47 min (314,968 rows, 118 cleared,
+4,421 tombstoned, no errors), answered identically to the old box, passed
+`just smoke` alone, and then the old machine + 100 GB volume were destroyed.
+So a fresh box recovers from R2 in ≈ 20 min + ≈ 2.5 min per hour of lag —
+the earlier "≈ 30 min for 3 days" undercounted the daily write volume
+(the nightly enrichment run alone is ~250k rows).
 
 Gate (re-revised 2026-08-31, after tracing each class to ground truth):
 the mismatch counters turned out to measure how often the REPLICA would have
@@ -121,11 +129,8 @@ What shipped (`services/`):
 - past tombstone retention (7 d) the pass logs a warning and continues: a
   deletion older than the watermark is baked out by the next promote.
 
-Still to do at deploy time:
-
-- volume: Fly can't shrink. Clone the machine onto a new 60 GB volume,
-  cordon it until the snapshot download makes it ready, uncordon, destroy the
-  old machine + 100 GB volume. **−$6/mo.**
+- volume: now 60 GB (`vol_v3gd76k83q1q1qw4`), machine `search-phase3`.
+  **−$6/mo, done.**
 
 Verify: `just smoke`, `just bench-ranking`, `just bench-search`; kill the
 machine mid-replay and confirm it resumes from the persisted watermark;
