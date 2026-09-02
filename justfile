@@ -67,9 +67,10 @@ alias prod-smoke := smoke
 bench *ARGS:
     ./scripts/bench.py {{ARGS}}
 
-# engine latency — search service direct, bypassing the edge cache (stress off by default)
-bench-search url=SEARCH_URL *ARGS:
-    ./scripts/bench.py --url {{url}} --appb-direct --no-stress {{ARGS}}
+# engine latency — search service direct, bypassing the edge cache (stress off by default).
+# extra flags pass through; a trailing `--url X` overrides the default target.
+bench-search *ARGS:
+    ./scripts/bench.py --url {{SEARCH_URL}} --appb-direct --no-stress {{ARGS}}
 
 # ranking quality vs bluesky oracle (+ /debug/search breakdowns); exits non-zero on acceptance failure
 bench-ranking url=SEARCH_URL:

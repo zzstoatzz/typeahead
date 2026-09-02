@@ -40,7 +40,8 @@ one command each; `just perf` runs them all in order. Results land in
 | `just index-status` | **corpus scale** — `build_id`, `actor_count`, `prefix_count`, `normalize_version` | actor_count tracks the live corpus; build_id matches the deployed snapshot |
 
 Defaults target prod (`typeahead.waow.tech`) and the search service
-(`typeahead-search.fly.dev`); pass a `url=` to point elsewhere. Add `--quick` /
+(`typeahead-search.fly.dev`); `smoke`/`bench-ranking`/`index-status` take a
+positional url, `bench`/`bench-search` take `--url X`. Add `--quick` /
 `--no-stress` to `bench`/`bench-search` for a fast pass. `bench-search` skips stress by
 default so it doesn't hammer the single fly box.
 
