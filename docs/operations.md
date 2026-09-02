@@ -212,6 +212,32 @@ response into "accepted, landing now" changes the UX contract. Revisit only if
 user-facing timeouts actually appear — the endpoint's `Server-Timing` header
 attributes the phases, so you'll be able to tell.
 
+## observability: what the zig services emit (2026-09-02)
+
+Both fly roles use [logfire-zig](https://tangled.org/zzstoatzz.io/logfire-zig)
+≥ 0.3.0, wired the way its README prescribes and which other repos
+(find-bufo next) should copy:
+
+- `pub const std_options = .{ .logFn = logfire.logFn }` in `main.zig`: every
+  `std.log.*` line ships to logfire as a log record carrying the current
+  span's trace/span id, `code.module.name` (the std.log scope, e.g. `sync`),
+  and `severity_text` — AND still reaches stderr, so `fly logs` is unchanged.
+  Before this, logs were stderr-only and lost after ~100 lines.
+- every span is published as a **pending span** at start, so a 10-minute
+  `sync.incremental` pass is visible in the live view from second one.
+- `span.setStatus(.@"error", …)` stamps `logfire.level_num = 17`; errored
+  spans render red.
+- `logfire.flush()` runs before every `std.process.exit` (both watchdogs, the
+  firehose exit) and `pub const panic = std.debug.FullPanic(logfire.panicFn)`
+  ships a panic's message. Without these the last 500 ms of telemetry — the
+  interesting part — died with the process.
+- resource: `service.name` = fly app, `service.version` = `FLY_IMAGE_REF`
+  (the deployed image), `deployment.environment.name` = production.
+
+Query shape: logs are `records` rows with `kind = 'log'`; join to spans on
+`trace_id`. Pending spans have `attributes->>'logfire.span_type' = 'pending_span'`
+and are replaced in the UI by the real span; filter them out of counts.
+
 ## alerting: overlaps and gaps (reviewed 2026-08-04)
 
 Four systems page independently — logfire freshness, the typeahead freshness

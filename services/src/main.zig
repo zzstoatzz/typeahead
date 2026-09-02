@@ -24,6 +24,15 @@ var app_threaded_io: std.Io.Threaded = undefined;
 pub const std_options_debug_threaded_io: ?*std.Io.Threaded = &app_threaded_io;
 const io = std.Options.debug_io;
 
+// every std.log.* call ships to logfire as a log record under the current
+// span (and still reaches stderr for `fly logs`); a panic's message is
+// flushed before the process dies. docs/operations.md "observability".
+pub const std_options: std.Options = .{
+    .log_level = .info,
+    .logFn = logfire.logFn,
+};
+pub const panic = std.debug.FullPanic(logfire.panicFn);
+
 const SOCKET_TIMEOUT_SECS = 5;
 
 // graceful shutdown: SIGTERM → close listening socket → accept breaks → drain tasks
@@ -54,6 +63,7 @@ fn firehoseThread(args: FirehoseArgs) void {
         args.identity_pool,
     ) catch |err| {
         log.err("handler init failed: {}, exiting for restart", .{err});
+        logfire.flush();
         std.process.exit(1);
     };
     defer handler.deinit();
@@ -90,6 +100,7 @@ fn firehoseThread(args: FirehoseArgs) void {
     // subscribe reconnects internally and only returns on cancellation or a
     // terminal error — either way this role is over, so let fly restart us.
     log.err("firehose subscription ended, exiting for restart", .{});
+    logfire.flush();
     std.process.exit(1);
 }
 
@@ -142,13 +153,17 @@ pub fn main() !void {
 
     log.info("role: {s} service_name={s}", .{ @tagName(role), service_name });
 
+    // service.version is the deployed image ref (fly sets FLY_IMAGE_REF), so
+    // a regression in logfire can be tied to a deploy without a build step
     _ = logfire.configure(.{
         .service_name = service_name,
-        .service_version = "0.1.0",
-        .environment = cGetenv("FLY_APP_NAME") orelse "development",
+        .service_version = cGetenv("FLY_IMAGE_REF") orelse "dev",
+        .environment = if (cGetenv("FLY_APP_NAME") != null) "production" else "development",
     }) catch |err| {
         log.err("logfire configure failed: {}", .{err});
     };
+    // SIGTERM drain below ends with this; watchdog exits flush on their own
+    defer logfire.shutdown();
 
     // local SQLite holds the search role's overlay + sync state (the snapshot
     // is attached to it). the ingester has no local consumer and doesn't open

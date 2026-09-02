@@ -106,6 +106,7 @@ pub fn watchdogLoop() void {
         const age = timestamp() - last_progress_at.load(.monotonic);
         if (age >= SYNC_STALL_SECS) {
             log.err("sync watchdog: no progress in {d}s, exiting for restart", .{age});
+            logfire.flush();
             std.process.exit(1);
         }
     }

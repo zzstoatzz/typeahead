@@ -13,8 +13,8 @@
             .hash = "zqlite-0.0.1-RWLaYyc7nABTzVzEpEMPi3qD8xJHi0a2ycNgL73XyEdt",
         },
         .logfire = .{
-            .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/1ed66749bb5910d07586f6aa8641682f6b154928",
-            .hash = "logfire_zig-0.1.0-x2yDLr5wAADNrQCuIHDTBMgyrohjJkhSSXvJRuWU5SPv",
+            .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/501495da9894.tar.gz",
+            .hash = "logfire_zig-0.3.0-x2yDLuLJAABDVIfK6_HFOqw0ErlZDr-ls8Q-QRG4J7qf",
         },
         .zug = .{
             .url = "https://tangled.org/zzstoatzz.io/zug/archive/v0.1.2-alpha.0.tar.gz",

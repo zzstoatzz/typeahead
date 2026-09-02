@@ -76,6 +76,7 @@ pub fn watchdogLoop() void {
             log.err("watchdog: stalled (last event {d}s ago, last ok flush {d}s ago), exiting for restart", .{
                 event_age, flush_age,
             });
+            logfire.flush();
             std.process.exit(1);
         }
     }
@@ -445,6 +446,7 @@ pub const IngestHandler = struct {
                 log.err("watchdog: {d} consecutive flush failures, exiting for restart", .{
                     self.consecutive_failures,
                 });
+                logfire.flush();
                 std.process.exit(1);
             }
             self.retry_after = timestamp() + 5;
