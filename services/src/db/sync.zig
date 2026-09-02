@@ -1,5 +1,13 @@
-//! Sync from Turso to local SQLite
-//! Full sync on startup, incremental sync every 5 minutes
+//! Turso → overlay projection.
+//!
+//! The search box holds the prefix-index snapshot (base, attached read-only as
+//! `idx`) plus the live overlay. Every 5 minutes this loop pages Turso for rows
+//! whose `updated_at` is newer than the watermark, projects each one into the
+//! overlay, and persists the watermark per page. Recovery from any outage is
+//! "replay rows newer than the attached snapshot" — bounded by the promote
+//! cadence, resumable by construction. There is no local copy of the corpus:
+//! docs/replica-removal-plan.md phase 3 removed the `actors` replica whose
+//! 11-hour resyncs produced the 2026-07/08 retros.
 
 const std = @import("std");
 const mem = std.mem;
@@ -9,45 +17,48 @@ const logfire = @import("logfire");
 const Allocator = std.mem.Allocator;
 const TursoClient = @import("TursoClient.zig");
 const LocalDb = @import("LocalDb.zig");
-const Col = LocalDb.Col;
 const overlay = @import("../index/overlay.zig");
 const index_schema = @import("../index/schema.zig");
 const pack = @import("../index/pack.zig");
 
 const log = std.log.scoped(.sync);
 
-/// Per-row overlay-projection context, passed into applyActorUpdate/Delete
-/// when a delta is newer than the attached snapshot watermark. `arena` is
-/// reset by the caller after each row; `updated_at` is the source timestamp.
+/// column list for the Turso actor rows this loop reads
+pub const actor_cols = "did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score";
+
+/// named column indexes matching actor_cols order
+pub const Col = struct {
+    pub const did: usize = 0;
+    pub const handle: usize = 1;
+    pub const display_name: usize = 2;
+    pub const avatar_url: usize = 3;
+    pub const hidden: usize = 4;
+    pub const labels: usize = 5;
+    pub const created_at: usize = 6;
+    pub const associated: usize = 7;
+    pub const pds: usize = 8;
+    pub const followers_count: usize = 9;
+    pub const follows_count: usize = 10;
+    pub const posts_count: usize = 11;
+    pub const last_activity_at: usize = 12;
+    pub const quality_score: usize = 13;
+};
+
+/// index of the first column appended after actor_cols (updated_at)
+const trailing_col: usize = Col.quality_score + 1;
+
+/// Per-row projection context. `arena` is reset by the caller after each row;
+/// `updated_at` is the source timestamp; `local` is for reading the old row
+/// from overlay-then-base through a read lease (only read-pool conns have the
+/// `idx` snapshot attached).
 const OverlayCtx = struct {
     arena: Allocator,
     updated_at: i64,
-    /// for reading the old row from overlay-then-base through a read lease
-    /// (the `idx` snapshot is attached only to read-pool conns).
     local: *LocalDb,
 };
 
 fn timestamp() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
-}
-
-fn milliTimestamp() i64 {
-    return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_ms));
-}
-
-fn cGetenv(name: [*:0]const u8) ?[]const u8 {
-    if (std.c.getenv(name)) |p| return mem.span(p);
-    return null;
-}
-
-/// Read SYNC_BOOTSTRAP_PAUSE_MS — sleep this many ms between Turso fetch
-/// batches during full bootstrap/resync. Defaults to 0 (no pause, fastest).
-/// Set to 100-500ms when bootstrap risks competing with live Turso reads
-/// from the worker's fallback path. The trade-off is bootstrap takes longer
-/// to complete but live traffic stays responsive.
-fn bootstrapPauseMs() u32 {
-    const v = cGetenv("SYNC_BOOTSTRAP_PAUSE_MS") orelse return 0;
-    return std.fmt.parseInt(u32, v, 10) catch 0;
 }
 
 /// Keyset page ≥2 of the incremental drain. The `updated_at >= ?1` anchor is
@@ -58,52 +69,25 @@ fn bootstrapPauseMs() u32 {
 /// scan blew the 60s fetch deadline on every page-2 query and starved the
 /// drain to one page per cycle (Aug 3–14 2026 staleness incident). Guarded
 /// by the planner test at the bottom of this file.
-const incremental_paged_sql = "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at >= ?1 AND (updated_at > ?1 OR did > ?2) ORDER BY updated_at, did LIMIT 500";
+const incremental_paged_sql = "SELECT " ++ actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at >= ?1 AND (updated_at > ?1 OR did > ?2) ORDER BY updated_at, did LIMIT 500";
+const incremental_first_sql = "SELECT " ++ actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500";
 
-/// Max acceptable replica lag before incremental self-heals via a bulk resync.
-/// Default 6h: well under tombstone retention, comfortably above a healthy
-/// incremental cadence. Tunable via SYNC_MAX_LAG_S.
-fn maxLagS() i64 {
-    const v = cGetenv("SYNC_MAX_LAG_S") orelse return 6 * 3600;
-    return std.fmt.parseInt(i64, v, 10) catch 6 * 3600;
-}
-
-/// Whether to maintain the local actors_fts table. The prefix-index serving
-/// path does NOT use FTS (only the snapshot + actors for the moderation belt),
-/// so the search service sets ENABLE_LOCAL_FTS=0 — the per-row FTS delete-old
-/// was the incremental bottleneck (orphan rows → failing deletes → can't keep
-/// up). Default on so non-search roles keep the old local FTS tables if needed.
-fn localFtsEnabled() bool {
-    const v = cGetenv("ENABLE_LOCAL_FTS") orelse return true;
-    return !std.mem.eql(u8, v, "0");
-}
-
-/// index of the first column appended after actor_cols (rowid or updated_at)
-const trailing_col: usize = Col.quality_score + 1;
-
-// incremental page size: 500 keeps responses ~300KB (the 2026-08-03 wedge
-// bit on a 1.1MiB incremental page). resync/bootstrap keep 2000-row pages —
-// they pushed thousands of 1.1MiB pages clean, and 4x the round trips turns
-// a ~1h disaster-recovery resync into ~4h (observed 2026-08-03).
-const BATCH_SIZE = 500; // (resync/bootstrap SQL uses LIMIT 2000 inline; drain check there is rows.len == 0)
-const SYNC_INTERVAL_S = 300; // 5 minutes
+// 500-row pages keep responses ~300KB (the 2026-08-03 wedge bit on a 1.1MiB page).
+const BATCH_SIZE = 500;
+const SYNC_INTERVAL_S = 300;
+/// Turso prunes tombstones after this long (must match cron.ts). A watermark
+/// older than this can miss deletions until the next promote bakes them in.
+const TOMBSTONE_RETENTION_S = 7 * 24 * 3600;
 
 // Liveness watchdog, mirroring the ingester's.
 //
 // On 2026-07-28 the sync loop stopped making progress and stayed stopped for
 // 48 hours. It did not crash and did not log: syncLoop catches every error and
 // continues, so a hang INSIDE incrementalSync (a Turso read that never returns)
-// is indistinguishable from a healthy idle loop. The service kept answering
-// /health with ready=true and kept serving the attached snapshot, so from the
-// outside nothing was wrong — meanwhile sync_lag_s climbed to 175,469 and every
-// newly indexed actor was invisible to search.
+// is indistinguishable from a healthy idle loop. Exiting lets fly restart us,
+// which is exactly how the same failure was handled for the ingester.
 //
-// The 6h self-heal in incrementalSync cannot help, because the loop that
-// evaluates it is the loop that is stuck. Exiting lets fly restart us, which is
-// exactly how the same failure was handled for the ingester (2026-05-29).
-//
-// Fed by any forward progress — each bulk batch as well as a completed
-// incremental pass — so a multi-hour resync does not trip it.
+// Fed by every applied page, every compaction chunk, and every completed pass.
 const SYNC_STALL_SECS: i64 = 20 * 60;
 /// overlay compaction chunks per incremental pass (~7s each on the fly volume
 /// at 20k rows: ≈ 12 min worst case, inside one watchdog window even without
@@ -126,488 +110,48 @@ pub fn watchdogLoop() void {
         }
     }
 }
-const TOMBSTONE_RETENTION_S = 7 * 24 * 3600; // 7 days — must match cron.ts pruning
 
-/// Full sync: fetch all searchable actors from Turso using keyset pagination.
-/// Does NOT run stale cleanup — that's handled by incremental sync (tombstones +
-/// "became unsearchable" queries). This avoids races with the dual-write path.
-/// When `wipe` is true, deletes all local data first (used by stale rebuild path).
-pub fn fullSync(turso: *TursoClient, local: *LocalDb, wipe: bool) !void {
-    const span = logfire.span("sync.full", .{});
-    defer span.end();
+/// Where a pass starts reading Turso from. The attached snapshot already
+/// carries every row at or below its watermark, so a persisted `last_sync`
+/// behind it (a long outage, a fresh volume) resumes at the snapshot instead of
+/// paging rows the base will only skip.
+fn resumePoint(last_sync: i64, snapshot_watermark: i64) i64 {
+    return @max(last_sync, snapshot_watermark);
+}
 
-    const conn = local.getConn() orelse {
-        span.setStatus(.@"error", "LocalNotOpen");
-        return error.LocalNotOpen;
+fn readLastSync(local: *LocalDb, conn: zqlite.Conn) i64 {
+    const s = logfire.span("sync.read_last_sync", .{});
+    defer s.end();
+    local.lock();
+    defer local.unlock();
+    const row = conn.row("SELECT value FROM sync_meta WHERE key = 'last_sync'", .{}) catch {
+        s.setStatus(.@"error", "query failed");
+        return 0;
     };
-
-    // check if a previous full sync completed successfully
-    const was_completed = blk: {
-        local.lock();
-        defer local.unlock();
-        const row = conn.row(
-            "SELECT value FROM sync_meta WHERE key = 'sync_complete'",
-            .{},
-        ) catch break :blk false;
-        if (row) |r| {
-            defer r.deinit();
-            break :blk std.mem.eql(u8, r.text(0), "1");
-        }
-        break :blk false;
-    };
-
-    if (wipe or !was_completed) {
-        log.info("full_sync: taking bootstrap path (wipe={}, was_completed={})", .{ wipe, was_completed });
-        span.setAttribute("mode", "bootstrap");
-        return fullSyncBootstrap(turso, local, conn, wipe);
+    if (row) |r| {
+        defer r.deinit();
+        const val = r.text(0);
+        const ts = if (val.len == 0) 0 else std.fmt.parseInt(i64, val, 10) catch 0;
+        s.setAttribute("last_sync", ts);
+        s.setStatus(.ok, null);
+        return ts;
     }
-
-    // re-sync path: previous sync completed, keep serving while re-syncing
-    log.info("full_sync: taking resync path", .{});
-    local.setReady(true);
-    span.setAttribute("mode", "resync");
-    return fullSyncResync(turso, local, conn);
+    s.setStatus(.ok, null);
+    return 0;
 }
 
-/// Bootstrap path: load into staging tables (no indexes), build indexes in bulk,
-/// then atomically swap into place. Live schema is never in a degraded state.
-fn fullSyncBootstrap(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn, wipe: bool) !void {
-    const span = logfire.span("sync.bootstrap", .{});
-    defer span.end();
-
-    const total_t0 = milliTimestamp();
-    local.setReady(false);
-
-    // close read connection during bootstrap — not serving traffic,
-    // avoids WAL reader lock interference with DDL/index builds
-    local.closeReadConn();
-    errdefer local.reopenReadConn() catch {};
-
-    if (wipe) {
-        local.lock();
-        defer local.unlock();
-        conn.exec("DELETE FROM sync_meta", .{}) catch {};
-    }
-
-    // clean up any leftover staging tables from a previous failed attempt
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec("DROP TABLE IF EXISTS actors_fts_stage", .{}) catch {};
-        conn.exec("DROP TABLE IF EXISTS actors_stage", .{}) catch {};
-    }
-
-    // create staging table — no PK, no indexes for fast sequential appends
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec(
-            \\CREATE TABLE actors_stage (
-            \\  did TEXT NOT NULL,
-            \\  handle TEXT NOT NULL DEFAULT '',
-            \\  display_name TEXT DEFAULT '',
-            \\  avatar_url TEXT DEFAULT '',
-            \\  hidden INTEGER NOT NULL DEFAULT 0,
-            \\  labels TEXT NOT NULL DEFAULT '[]',
-            \\  created_at TEXT DEFAULT '',
-            \\  associated TEXT DEFAULT '{}',
-            \\  pds TEXT DEFAULT '',
-            \\  followers_count INTEGER NOT NULL DEFAULT 0,
-            \\  follows_count INTEGER NOT NULL DEFAULT 0,
-            \\  posts_count INTEGER NOT NULL DEFAULT 0,
-            \\  last_activity_at INTEGER NOT NULL DEFAULT 0,
-            \\  quality_score REAL NOT NULL DEFAULT 0
-            \\)
-        , .{}) catch |err| {
-            span.recordError(err);
-            return err;
-        };
-    }
-
-    // keyset pagination: fetch rows WHERE rowid > last_rowid ORDER BY rowid
-    var actor_count: usize = 0;
-    var error_count: usize = 0;
-    var last_rowid: i64 = 0;
-    var had_turso_error = false;
-    const load_t0 = milliTimestamp();
-    const pause_ms = bootstrapPauseMs();
-    if (pause_ms > 0) {
-        log.info("bootstrap: pacing with {d}ms pause between batches", .{pause_ms});
-    }
-
-    while (true) {
-        var rowid_buf: [20]u8 = undefined;
-        const rowid_str = std.fmt.bufPrint(&rowid_buf, "{d}", .{last_rowid}) catch break;
-
-        const t0 = milliTimestamp();
-
-        // fetch from turso (no lock held)
-        var result = turso.query(
-            "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000",
-            &.{rowid_str},
-        ) catch |err| {
-            log.err("turso query failed at rowid {d}: {}", .{ last_rowid, err });
-            had_turso_error = true;
-            break;
-        };
-        defer result.deinit();
-
-        const t1 = milliTimestamp();
-
-        if (result.rows.len == 0) break;
-
-        // write batch to staging table — no indexes, fast sequential appends
-        {
-            local.lock();
-            defer local.unlock();
-            conn.exec("BEGIN", .{}) catch {};
-            for (result.rows) |row| {
-                insertActorRow(conn, "INSERT INTO actors_stage", row) catch |err| {
-                    log.err("insert actor failed: {}", .{err});
-                    error_count += 1;
-                    continue;
-                };
-                actor_count += 1;
-            }
-            conn.exec("COMMIT", .{}) catch {};
-        }
-
-        const t2 = milliTimestamp();
-
-        last_rowid = result.rows[result.rows.len - 1].int(trailing_col);
-
-        // high-frequency batch progress — keep on stderr only
-        noteProgress();
-        log.info("batch: {d} rows, rowid={d}, total={d} | fetch={d}ms apply={d}ms", .{
-            result.rows.len, last_rowid, actor_count,
-            t1 - t0,         t2 - t1,
-        });
-
-        if (pause_ms > 0) {
-            io.sleep(.{ .nanoseconds = @as(u64, pause_ms) * std.time.ns_per_ms }, .real) catch {};
-        }
-    }
-
-    if (had_turso_error or error_count > 0) {
-        span.setAttribute("error_count", @as(i64, @intCast(error_count)));
-        span.setStatus(.@"error", "bootstrap incomplete");
-        // clean up staging table
-        {
-            local.lock();
-            defer local.unlock();
-            conn.exec("DROP TABLE IF EXISTS actors_stage", .{}) catch {};
-        }
-        // restore read connection so health endpoint works
-        local.reopenReadConn() catch {};
-        return;
-    }
-
-    const load_ms = milliTimestamp() - load_t0;
-
-    // checkpoint WAL before heavy DDL — clean slate for index builds
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec("PRAGMA wal_checkpoint(TRUNCATE)", .{}) catch {};
-    }
-
-    // build indexes on staging table
-    const idx_did_t0 = milliTimestamp();
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec("CREATE UNIQUE INDEX idx_stage_did ON actors_stage(did)", .{}) catch |err| {
-            span.recordError(err);
-            conn.exec("DROP TABLE IF EXISTS actors_stage", .{}) catch {};
-            return err;
-        };
-    }
-    const idx_did_ms = milliTimestamp() - idx_did_t0;
-
-    const idx_handle_t0 = milliTimestamp();
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec("CREATE INDEX idx_stage_handle ON actors_stage(handle COLLATE NOCASE)", .{}) catch |err| {
-            span.recordError(err);
-            conn.exec("DROP TABLE IF EXISTS actors_stage", .{}) catch {};
-            return err;
-        };
-    }
-    const idx_handle_ms = milliTimestamp() - idx_handle_t0;
-
-    // swap actors table first, then build FTS with final name.
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec("BEGIN", .{}) catch {};
-        conn.exec("DROP TABLE IF EXISTS actors_fts", .{}) catch {};
-        conn.exec("DROP TABLE IF EXISTS actors", .{}) catch {};
-        conn.exec("ALTER TABLE actors_stage RENAME TO actors", .{}) catch |err| {
-            span.recordError(err);
-            conn.exec("ROLLBACK", .{}) catch {};
-            return err;
-        };
-        conn.exec("COMMIT", .{}) catch |err| {
-            span.recordError(err);
-            return err;
-        };
-    }
-
-    // build FTS with its final name — no rename needed. Skipped when
-    // ENABLE_LOCAL_FTS=0 (prefix-index serving doesn't use FTS).
-    var fts_create_ms: i64 = 0;
-    var fts_pop_ms: i64 = 0;
-    if (localFtsEnabled()) {
-        const fts_create_t0 = milliTimestamp();
-        {
-            local.lock();
-            defer local.unlock();
-            conn.exec(
-                \\CREATE VIRTUAL TABLE actors_fts USING fts5(
-                \\  did UNINDEXED, handle, display_name,
-                \\  tokenize='unicode61 remove_diacritics 2'
-                \\)
-            , .{}) catch |err| {
-                span.recordError(err);
-                return err;
-            };
-        }
-        fts_create_ms = milliTimestamp() - fts_create_t0;
-
-        const fts_pop_t0 = milliTimestamp();
-        {
-            local.lock();
-            defer local.unlock();
-            conn.exec(
-                \\INSERT INTO actors_fts (did, handle, display_name)
-                \\SELECT did, handle, display_name FROM actors WHERE handle != ''
-            , .{}) catch |err| {
-                span.recordError(err);
-                return err;
-            };
-        }
-        fts_pop_ms = milliTimestamp() - fts_pop_t0;
-    } else {
-        log.info("bootstrap: FTS disabled (ENABLE_LOCAL_FTS=0), skipping FTS build", .{});
-    }
-
-    // post-swap: optimize, record completion + actor count, checkpoint
-    {
-        local.lock();
-        defer local.unlock();
-        conn.exec("PRAGMA optimize", .{}) catch {};
-
-        var ts_buf: [20]u8 = undefined;
-        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{timestamp()}) catch "0";
-        conn.exec(
-            "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)",
-            .{ts_str},
-        ) catch {};
-        conn.exec(
-            "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('sync_complete', '1')",
-            .{},
-        ) catch {};
-
-        var count_buf: [20]u8 = undefined;
-        const count_str = std.fmt.bufPrint(&count_buf, "{d}", .{actor_count}) catch "0";
-        conn.exec(
-            "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('actor_count', ?)",
-            .{count_str},
-        ) catch {};
-
-        conn.exec("PRAGMA wal_checkpoint(PASSIVE)", .{}) catch {};
-    }
-
-    const total_ms = milliTimestamp() - total_t0;
-
-    // reopen read connection before serving traffic
-    local.reopenReadConn() catch {};
-
-    local.setReady(true);
-    span.setAttribute("actors", @as(i64, @intCast(actor_count)));
-    span.setAttribute("load_ms", load_ms);
-    span.setAttribute("idx_did_ms", idx_did_ms);
-    span.setAttribute("idx_handle_ms", idx_handle_ms);
-    span.setAttribute("fts_create_ms", fts_create_ms);
-    span.setAttribute("fts_populate_ms", fts_pop_ms);
-    span.setAttribute("total_ms", total_ms);
-    span.setStatus(.ok, null);
+fn writeLastSync(local: *LocalDb, conn: zqlite.Conn, ts: i64) void {
+    local.lock();
+    defer local.unlock();
+    var buf: [20]u8 = undefined;
+    const s = std.fmt.bufPrint(&buf, "{d}", .{ts}) catch return;
+    conn.exec("INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)", .{s}) catch {};
 }
 
-/// Re-sync path: previous sync completed, update live table directly.
-/// Only processes actors that may have changed — index maintenance cost is negligible.
-fn fullSyncResync(turso: *TursoClient, local: *LocalDb, conn: zqlite.Conn) !void {
-    const span = logfire.span("sync.resync", .{});
-    defer span.end();
-
-    log.info("resync: starting full table resync", .{});
-
-    var actor_count: usize = 0;
-    var error_count: usize = 0;
-    var last_rowid: i64 = 0;
-    var had_turso_error = false;
-    var batch_num: usize = 0;
-    const pause_ms = bootstrapPauseMs();
-    if (pause_ms > 0) {
-        log.info("resync: pacing with {d}ms pause between batches", .{pause_ms});
-    }
-
-    while (true) {
-        var rowid_buf: [20]u8 = undefined;
-        const rowid_str = std.fmt.bufPrint(&rowid_buf, "{d}", .{last_rowid}) catch break;
-
-        const q_span = logfire.span("sync.query.resync_batch", .{});
-        const t0 = milliTimestamp();
-
-        // Retry transient failures instead of aborting: a multi-hour resync
-        // sees the occasional turso hiccup (~1 query in thousands, observed
-        // 2026-08-03), and aborting discards hours of progress with no
-        // watermark — the next cycle then starts another doomed resync,
-        // forever. Three attempts with backoff outlives a hiccup; a real
-        // outage still aborts.
-        var result = blk: {
-            var attempt: usize = 0;
-            while (true) {
-                const r = turso.query(
-                    "SELECT " ++ LocalDb.actor_cols ++ ", rowid FROM actors WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000",
-                    &.{rowid_str},
-                ) catch |err| {
-                    attempt += 1;
-                    if (attempt >= 3) {
-                        log.err("resync: turso query failed at rowid {d} after {d} attempts: {}", .{ last_rowid, attempt, err });
-                        break :blk null;
-                    }
-                    log.warn("resync: turso query failed at rowid {d} (attempt {d}): {} — retrying", .{ last_rowid, attempt, err });
-                    io.sleep(.{ .nanoseconds = @as(u64, 2000) * attempt * std.time.ns_per_ms }, .real) catch {};
-                    continue;
-                };
-                break :blk r;
-            }
-        } orelse {
-            q_span.setStatus(.@"error", "query failed");
-            q_span.end();
-            had_turso_error = true;
-            break;
-        };
-        defer result.deinit();
-
-        const t1 = milliTimestamp();
-        q_span.setAttribute("rows", @as(i64, @intCast(result.rows.len)));
-        q_span.setAttribute("fetch_ms", t1 - t0);
-        q_span.setStatus(.ok, null);
-        q_span.end();
-
-        if (result.rows.len == 0) break;
-
-        {
-            const a_span = logfire.span("sync.apply.resync_batch", .{});
-            defer a_span.end();
-
-            local.lock();
-            defer local.unlock();
-            conn.exec("BEGIN", .{}) catch {};
-            for (result.rows) |row| {
-                insertActorRow(conn, "INSERT OR REPLACE INTO actors", row) catch |err| {
-                    log.err("resync: insert actor failed: {}", .{err});
-                    error_count += 1;
-                    continue;
-                };
-                actor_count += 1;
-            }
-            conn.exec("COMMIT", .{}) catch {};
-
-            a_span.setAttribute("rows", @as(i64, @intCast(result.rows.len)));
-            a_span.setStatus(.ok, null);
-        }
-
-        const t2 = milliTimestamp();
-        last_rowid = result.rows[result.rows.len - 1].int(trailing_col);
-        batch_num += 1;
-
-        noteProgress();
-        log.info("resync: batch {d}: {d} rows, rowid={d}, total={d} | fetch={d}ms apply={d}ms", .{
-            batch_num, result.rows.len, last_rowid, actor_count,
-            t1 - t0,   t2 - t1,
-        });
-
-        if (pause_ms > 0) {
-            io.sleep(.{ .nanoseconds = @as(u64, pause_ms) * std.time.ns_per_ms }, .real) catch {};
-        }
-    }
-
-    if (had_turso_error or error_count > 0) {
-        span.setAttribute("error_count", @as(i64, @intCast(error_count)));
-        span.setStatus(.@"error", "resync incomplete");
-        log.err("resync: incomplete (actors={d}, errors={d})", .{ actor_count, error_count });
-        return;
-    }
-
-    // rebuild FTS from scratch (skipped when ENABLE_LOCAL_FTS=0 — the prefix
-    // index path doesn't use FTS, and per-row FTS maintenance was the sync
-    // bottleneck on the search service).
-    if (localFtsEnabled()) {
-        log.info("resync: download complete ({d} actors), rebuilding FTS", .{actor_count});
-        const fts_span = logfire.span("sync.fts_rebuild", .{});
-        defer fts_span.end();
-
-        local.lock();
-        defer local.unlock();
-        conn.exec("DROP TABLE IF EXISTS actors_fts", .{}) catch {};
-        conn.exec(
-            \\CREATE VIRTUAL TABLE actors_fts USING fts5(
-            \\  did UNINDEXED, handle, display_name,
-            \\  tokenize='unicode61 remove_diacritics 2'
-            \\)
-        , .{}) catch |err| {
-            fts_span.recordError(err);
-        };
-        conn.exec(
-            \\INSERT INTO actors_fts (did, handle, display_name)
-            \\SELECT did, handle, display_name FROM actors WHERE handle != ''
-        , .{}) catch |err| {
-            fts_span.recordError(err);
-        };
-        fts_span.setAttribute("actors", @as(i64, @intCast(actor_count)));
-        log.info("resync: FTS rebuild complete", .{});
-    } else {
-        log.info("resync: download complete ({d} actors), FTS disabled (skipped)", .{actor_count});
-    }
-
-    // record sync time + mark complete + actor count
-    {
-        local.lock();
-        defer local.unlock();
-        var ts_buf: [20]u8 = undefined;
-        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{timestamp()}) catch "0";
-        conn.exec(
-            "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)",
-            .{ts_str},
-        ) catch {};
-        conn.exec(
-            "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('sync_complete', '1')",
-            .{},
-        ) catch {};
-
-        var count_buf: [20]u8 = undefined;
-        const count_str = std.fmt.bufPrint(&count_buf, "{d}", .{actor_count}) catch "0";
-        conn.exec(
-            "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('actor_count', ?)",
-            .{count_str},
-        ) catch {};
-
-        conn.exec("PRAGMA wal_checkpoint(PASSIVE)", .{}) catch {};
-    }
-
-    local.setReady(true);
-    span.setAttribute("actors", @as(i64, @intCast(actor_count)));
-    span.setStatus(.ok, null);
-    log.info("resync: complete ({d} actors)", .{actor_count});
-}
-
-/// Incremental sync: fetch actors updated since last sync + tombstones.
-/// Uses keyset pagination on (updated_at, did) to drain all updates.
-/// Only advances watermark when all turso queries succeed and all local writes succeed.
+/// One pass: page Turso rows newer than the watermark into the overlay, then
+/// the actors that became unsearchable and the tombstones. Only advances the
+/// watermark to "now" when every query and write succeeded; page progress is
+/// persisted as it goes.
 pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     const span = logfire.span("sync.incremental", .{});
     defer span.end();
@@ -617,78 +161,40 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         return error.LocalNotOpen;
     };
 
-    // get last sync time
-    const last_sync_ts = blk: {
-        const s = logfire.span("sync.read_last_sync", .{});
-        defer s.end();
-        local.lock();
-        defer local.unlock();
-        const row = conn.row(
-            "SELECT value FROM sync_meta WHERE key = 'last_sync'",
-            .{},
-        ) catch {
-            s.setStatus(.@"error", "query failed");
-            break :blk @as(i64, 0);
-        };
-        if (row) |r| {
-            defer r.deinit();
-            const val = r.text(0);
-            const ts = if (val.len == 0) 0 else std.fmt.parseInt(i64, val, 10) catch 0;
-            s.setAttribute("last_sync", ts);
-            s.setStatus(.ok, null);
-            break :blk ts;
-        }
-        s.setStatus(.ok, null);
-        break :blk @as(i64, 0);
-    };
-
-    log.info("incremental: last_sync={d}", .{last_sync_ts});
-
-    if (last_sync_ts == 0) {
-        log.info("incremental: no last_sync, falling back to full sync", .{});
-        span.setAttribute("fallback", "full_sync");
-        return fullSync(turso, local, false);
+    // Deltas are gated on the attached snapshot's watermark: only rows NEWER
+    // than the base get projected (older state is already baked in). No
+    // snapshot → nothing to project into; the promote watcher is fetching one.
+    const snapshot_wm: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
+    if (snapshot_wm == 0) {
+        log.info("incremental: no snapshot attached, waiting for promote", .{});
+        span.setAttribute("skipped", "no_snapshot");
+        span.setStatus(.ok, null);
+        return;
     }
 
-    // if last sync is older than tombstone retention, local data is too stale
-    // to trust incremental tombstones — wipe and rebootstrap.
+    const last_sync_ts = readLastSync(local, conn);
+    const from = resumePoint(last_sync_ts, snapshot_wm);
+    log.info("incremental: last_sync={d} snapshot_watermark={d} from={d}", .{ last_sync_ts, snapshot_wm, from });
+    span.setAttribute("from", from);
+
     const now = timestamp();
-    if (now - last_sync_ts > TOMBSTONE_RETENTION_S) {
-        log.info("incremental: stale ({d}s old), falling back to full sync with wipe", .{now - last_sync_ts});
-        span.setAttribute("fallback", "stale_wipe");
-        return fullSync(turso, local, true);
+    if (now - from > TOMBSTONE_RETENTION_S) {
+        log.warn("incremental: watermark is {d}s old, past tombstone retention — deletions before it are only recovered by the next promote", .{now - from});
+        span.setAttribute("past_tombstone_retention", true);
     }
 
-    // self-healing convergence: if lag exceeds SYNC_MAX_LAG_S, the per-row
-    // incremental drain is too slow to catch up — do a bulk resync (keeps
-    // serving, rebuilds FTS clean, resets the watermark to now) instead of
-    // grinding. Keeps the replica from drifting permanently.
-    if (now - last_sync_ts > maxLagS()) {
-        log.info("incremental: lag {d}s exceeds max {d}s, self-healing via bulk resync", .{ now - last_sync_ts, maxLagS() });
-        span.setAttribute("fallback", "lag_resync");
-        return fullSync(turso, local, false);
-    }
-
-    local.setReady(true);
-
-    // Overlay projection: gate deltas on the attached snapshot watermark — only
-    // changes NEWER than the base get projected (older state is already baked
-    // in). 0 = no snapshot attached → overlay projection is skipped entirely.
-    const overlay_watermark: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
-    // rows applied to the replica but NOT projected into the overlay because
-    // their timestamp is at or below the attached snapshot's watermark. The
-    // snapshot should already reflect them; if this is ever non-zero the
-    // replica and overlay can disagree, which is what the hydrate belt catches.
+    // rows read from Turso but NOT projected because their timestamp is at or
+    // below the snapshot watermark — the base already reflects them. Non-zero
+    // only right after a promote whose watermark passed `last_sync`.
     var projection_skipped: usize = 0;
     var ov_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer ov_arena.deinit();
 
     // buffer: subtract 300s to catch stragglers (matches pub-search)
-    const since_ts = last_sync_ts - 300;
+    const since_ts = from - 300;
     var since_buf: [20]u8 = undefined;
     const since_str = std.fmt.bufPrint(&since_buf, "{d}", .{since_ts}) catch return;
 
-    // fetch updated searchable actors — keyset pagination to drain all
     var updated: usize = 0;
     var error_count: usize = 0;
     var had_turso_error = false;
@@ -698,23 +204,14 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         @memcpy(cursor_ts_buf[0..since_str.len], since_str);
         var cursor_ts: []const u8 = cursor_ts_buf[0..since_str.len];
         var cursor_did_len: usize = 0;
-        // one retry per incremental pass: a single transient turso failure
-        // shouldn't abort the whole drain (each aborted pass caps catch-up at
-        // one page per cycle)
+        // one retry per pass: a single transient turso failure shouldn't abort
+        // the whole drain (each aborted pass caps catch-up at one page per cycle)
         var page_retries: u2 = 1;
 
         while (true) {
             const cursor_did: []const u8 = if (cursor_did_len > 0) cursor_did_buf[0..cursor_did_len] else "";
-
-            const args: []const []const u8 = if (cursor_did_len > 0)
-                &.{ cursor_ts, cursor_did }
-            else
-                &.{cursor_ts};
-
-            const sql = if (cursor_did_len > 0)
-                incremental_paged_sql
-            else
-                "SELECT " ++ LocalDb.actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500";
+            const args: []const []const u8 = if (cursor_did_len > 0) &.{ cursor_ts, cursor_did } else &.{cursor_ts};
+            const sql = if (cursor_did_len > 0) incremental_paged_sql else incremental_first_sql;
 
             log.info("incremental: querying updated actors (cursor_ts={s})", .{cursor_ts});
             const q_span = logfire.span("sync.query.updated", .{});
@@ -741,7 +238,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
 
             if (result.rows.len == 0) break;
 
-            log.info("incremental: applying {d} updated actors", .{result.rows.len});
+            log.info("incremental: projecting {d} updated actors", .{result.rows.len});
             {
                 const a_span = logfire.span("sync.apply.updated", .{});
                 defer a_span.end();
@@ -751,16 +248,15 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                 conn.exec("BEGIN", .{}) catch {};
                 for (result.rows) |row| {
                     const ua = row.int(trailing_col);
-                    const octx: ?OverlayCtx = if (overlay_watermark > 0 and ua > overlay_watermark)
-                        .{ .arena = ov_arena.allocator(), .updated_at = ua, .local = local }
-                    else
-                        null;
-                    if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
-                    applyActorUpdate(conn, row, "incremental", octx) catch {
+                    if (ua <= snapshot_wm) {
+                        projection_skipped += 1;
+                        continue;
+                    }
+                    projectRow(conn, row, .{ .arena = ov_arena.allocator(), .updated_at = ua, .local = local }) catch {
                         error_count += 1;
                         continue;
                     };
-                    if (octx != null) _ = ov_arena.reset(.retain_capacity);
+                    _ = ov_arena.reset(.retain_capacity);
                     updated += 1;
                 }
                 conn.exec("COMMIT", .{}) catch {};
@@ -773,10 +269,8 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             const last_ua_int = last_row.int(trailing_col);
             const last_did = last_row.text(Col.did);
 
-            // serialize updated_at integer to string for next query
             const ua_str = std.fmt.bufPrint(&cursor_ts_buf, "{d}", .{last_ua_int}) catch break;
             cursor_ts = ua_str;
-
             if (last_did.len > 0 and last_did.len <= cursor_did_buf.len) {
                 @memcpy(cursor_did_buf[0..last_did.len], last_did);
                 cursor_did_len = last_did.len;
@@ -789,21 +283,14 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             // the cycle from the same watermark and re-wedged on the same
             // page) turns into an infinite restart loop. With it, each
             // watchdog cycle advances at least one page.
-            {
-                local.lock();
-                defer local.unlock();
-                conn.exec(
-                    "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)",
-                    .{ua_str},
-                ) catch {};
-            }
+            writeLastSync(local, conn, last_ua_int);
+            noteProgress();
 
-            // safety: stop if batch was less than full (we've drained)
             if (result.rows.len < BATCH_SIZE) break;
         }
     }
 
-    // fetch actors that became unsearchable (handle cleared)
+    // actors that became unsearchable (handle cleared)
     var cleared: usize = 0;
     unsearchable: {
         log.info("incremental: querying unsearchable actors", .{});
@@ -831,25 +318,23 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             defer local.unlock();
             conn.exec("BEGIN", .{}) catch {};
             for (result.rows) |row| {
-                const did = row.text(0);
                 const ua = row.int(1);
-                const octx: ?OverlayCtx = if (overlay_watermark > 0 and ua > overlay_watermark)
-                    .{ .arena = ov_arena.allocator(), .updated_at = ua, .local = local }
-                else
-                    null;
-                if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
-                applyActorDelete(conn, did, "incremental.cleared", octx) catch {
+                if (ua <= snapshot_wm) {
+                    projection_skipped += 1;
+                    continue;
+                }
+                projectRemoval(conn, row.text(0), "incremental.cleared", .{ .arena = ov_arena.allocator(), .updated_at = ua, .local = local }) catch {
                     error_count += 1;
                     continue;
                 };
-                if (octx != null) _ = ov_arena.reset(.retain_capacity);
+                _ = ov_arena.reset(.retain_capacity);
                 cleared += 1;
             }
             conn.exec("COMMIT", .{}) catch {};
         }
     }
 
-    // fetch tombstones
+    // tombstones
     var deleted: usize = 0;
     tombstone: {
         log.info("incremental: querying tombstones", .{});
@@ -877,33 +362,23 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             defer local.unlock();
             conn.exec("BEGIN", .{}) catch {};
             for (tomb_result.rows) |row| {
-                const did = row.text(0);
                 const del_at = row.int(1);
-                const octx: ?OverlayCtx = if (overlay_watermark > 0 and del_at > overlay_watermark)
-                    .{ .arena = ov_arena.allocator(), .updated_at = del_at, .local = local }
-                else
-                    null;
-                if (overlay_watermark > 0 and octx == null) projection_skipped += 1;
-                applyActorDelete(conn, did, "incremental.tombstone", octx) catch {
+                if (del_at <= snapshot_wm) {
+                    projection_skipped += 1;
+                    continue;
+                }
+                projectRemoval(conn, row.text(0), "incremental.tombstone", .{ .arena = ov_arena.allocator(), .updated_at = del_at, .local = local }) catch {
                     error_count += 1;
                     continue;
                 };
-                if (octx != null) _ = ov_arena.reset(.retain_capacity);
+                _ = ov_arena.reset(.retain_capacity);
                 deleted += 1;
             }
             conn.exec("COMMIT", .{}) catch {};
         }
     }
 
-    // FTS is maintained per-row above via applyActorUpdate / applyActorDelete.
-    // No bulk rebuild — that pattern (drop + recreate + insert ~6M rows) took
-    // 15-20 min on a 256MB VM and left the live FTS empty for that entire
-    // window, breaking display-name search ~80% of the time in steady state.
-    // Bootstrap / resync still do bulk builds (against staging, while ready=false)
-    // and LocalDb.checkAndRepair detects a broken FTS on startup and triggers
-    // a fresh bootstrap as recovery.
-
-    // only advance watermark when everything succeeded
+    // only advance the watermark to now when everything succeeded
     const had_error = had_turso_error or error_count > 0;
     if (had_error) {
         span.setAttribute("error_count", @as(i64, @intCast(error_count)));
@@ -912,66 +387,42 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             updated, cleared, deleted, error_count,
         });
     } else {
-        local.lock();
-        defer local.unlock();
-        var ts_buf: [20]u8 = undefined;
-        const ts_str = std.fmt.bufPrint(&ts_buf, "{d}", .{timestamp()}) catch "0";
-        conn.exec(
-            "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('last_sync', ?)",
-            .{ts_str},
-        ) catch {};
-
-        // refresh cached actor count when data changed
-        if (updated > 0 or deleted > 0 or cleared > 0) {
-            updateActorCount(conn);
+        writeLastSync(local, conn, timestamp());
+        {
+            local.lock();
+            defer local.unlock();
+            // TRUNCATE (not PASSIVE): the read pool nearly always has at least
+            // one slot active under live load, and PASSIVE never reclaims frames
+            // while a reader exists — WAL grows unbounded (we observed 748MB
+            // bloat in ~16min, dragging per-query latency from <50ms to >1s).
+            // TRUNCATE waits up to the writer's busy_timeout for readers to
+            // release their snapshots, then truncates the WAL file to zero.
+            // If it can't (sustained read pressure), it returns busy without
+            // throwing; we'll retry next cycle.
+            conn.exec("PRAGMA wal_checkpoint(TRUNCATE)", .{}) catch {};
         }
-
-        // TRUNCATE (not PASSIVE): the read pool nearly always has at least
-        // one slot active under live load, and PASSIVE never reclaims frames
-        // while a reader exists — WAL grows unbounded (we observed 748MB
-        // bloat in ~16min, dragging per-query latency from <50ms to >1s).
-        // TRUNCATE waits up to the writer's busy_timeout for readers to
-        // release their snapshots, then truncates the WAL file to zero.
-        // If it can't (sustained read pressure), it returns busy without
-        // throwing; we'll retry next cycle.
-        conn.exec("PRAGMA wal_checkpoint(TRUNCATE)", .{}) catch {};
         span.setStatus(.ok, null);
-        log.info("incremental: done (updated={d}, cleared={d}, deleted={d})", .{
-            updated, cleared, deleted,
-        });
+        log.info("incremental: done (updated={d}, cleared={d}, deleted={d})", .{ updated, cleared, deleted });
     }
 
     // Prune overlay rows the attached base already covers, a bounded slice per
     // pass, so the overlay never ratchets up to a compaction longer than the
     // watchdog (the 2026-08-19..29 loop). Each chunk feeds the watchdog.
-    const attached_wm: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
-    if (attached_wm > 0) {
-        const r = local.compactOverlay(attached_wm, INCREMENTAL_COMPACT_CHUNKS, noteProgress);
-        span.setAttribute("compact_deleted", @as(i64, @intCast(r.deleted)));
-        span.setAttribute("compact_complete", r.complete);
-    }
+    const r = local.compactOverlay(snapshot_wm, INCREMENTAL_COMPACT_CHUNKS, noteProgress);
+    span.setAttribute("compact_deleted", @as(i64, @intCast(r.deleted)));
+    span.setAttribute("compact_complete", r.complete);
 
     span.setAttribute("updated", @as(i64, @intCast(updated)));
     span.setAttribute("deleted", @as(i64, @intCast(deleted)));
     span.setAttribute("cleared", @as(i64, @intCast(cleared)));
     span.setAttribute("projection_skipped", @as(i64, @intCast(projection_skipped)));
-    span.setAttribute("mismatch_replica_empty", @as(i64, @intCast(mismatch_replica_empty.swap(0, .monotonic))));
-    span.setAttribute("mismatch_source_empty", @as(i64, @intCast(mismatch_source_empty.swap(0, .monotonic))));
-    span.setAttribute("mismatch_differs", @as(i64, @intCast(mismatch_differs.swap(0, .monotonic))));
-    const class_names = [_][]const u8{ "sample_replica_empty", "sample_source_empty", "sample_differs" };
-    for (class_names, 0..) |name, i| {
-        const n = mismatch_sample_len[i].swap(0, .monotonic);
-        if (n > 0) span.setAttribute(name, mismatch_sample_buf[i][0..n]);
-    }
 }
 
-/// Background sync loop: full sync on boot, then incremental every 5 min
 /// A row assembled from JSON rather than read back out of Turso.
 ///
-/// applyActorUpdate takes `anytype` and only ever calls .text/.int/.float, so
-/// the identical write + overlay projection the sync loop uses works unchanged
-/// on a row handed to us over HTTP. No duplicated insert logic, no second
-/// projection implementation to drift.
+/// projectRow takes `anytype` and only ever calls .text/.int/.float, so the
+/// identical overlay projection the sync loop uses works unchanged on a row
+/// handed to us over HTTP. No second projection implementation to drift.
 pub const InlineRow = struct {
     vals: [14][]const u8,
     ints: [5]i64 = .{0} ** 5,
@@ -1005,12 +456,19 @@ pub const InlineRow = struct {
 /// "hung". The worker already holds the row — it wrote it moments earlier — so
 /// it sends the row and nothing here touches Turso at all.
 ///
-/// Writes into the overlay, which is the design's live-update channel: the
-/// snapshot is a periodic base and the overlay carries everything newer.
-/// Idempotent against the sync loop, which will later write the same state.
+/// Idempotent against the sync loop, which will later project the same state.
 pub fn applyInline(local: *LocalDb, row: *const InlineRow, updated_at: i64) !void {
     const conn = local.getConn() orelse return error.NoConn;
-    const overlay_watermark: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
+    const snapshot_wm: i64 = @intCast(local.attachedMetaInt(index_schema.meta.source_watermark));
+    if (snapshot_wm == 0) return error.NoSnapshot;
+
+    // A freshly-indexed actor is always newer than the base, so in practice
+    // this is always on; the guard exists so a replayed old row cannot re-add
+    // a prefix the base already accounts for.
+    if (updated_at <= snapshot_wm) {
+        log.info("inline: {s} at {d} is not newer than the snapshot ({d}); nothing to project", .{ row.text(Col.did), updated_at, snapshot_wm });
+        return;
+    }
 
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -1018,24 +476,13 @@ pub fn applyInline(local: *LocalDb, row: *const InlineRow, updated_at: i64) !voi
     local.lock();
     defer local.unlock();
 
-    // Project unless the attached snapshot already covers this timestamp. A
-    // freshly-indexed actor is always newer than the base, so in practice this
-    // is always on; the guard exists so a replayed old row cannot re-add a
-    // prefix the base already accounts for.
-    const octx: ?OverlayCtx = if (overlay_watermark > 0 and updated_at > overlay_watermark)
-        .{ .arena = arena.allocator(), .updated_at = updated_at, .local = local }
-    else
-        null;
-
     conn.exec("BEGIN", .{}) catch {};
-    applyActorUpdate(conn, row, "inline", octx) catch |err| {
+    projectRow(conn, row, .{ .arena = arena.allocator(), .updated_at = updated_at, .local = local }) catch |err| {
         conn.exec("ROLLBACK", .{}) catch {};
         return err;
     };
     conn.exec("COMMIT", .{}) catch {};
-    log.info("inline: applied {s} (overlay={s})", .{
-        row.text(Col.did), if (octx != null) "yes" else "no",
-    });
+    log.info("inline: projected {s}", .{row.text(Col.did)});
 }
 
 pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
@@ -1046,12 +493,18 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
     };
     defer turso.deinit();
 
-    // initial sync (full or incremental depending on state)
+    // Nothing to project into until the promote watcher has attached a
+    // snapshot (a fresh volume downloads one first, ~15 min). Keep the
+    // watchdog fed while waiting: this is expected idleness, not a wedge.
+    while (!local.isReady()) {
+        noteProgress();
+        io.sleep(.{ .nanoseconds = 5 * std.time.ns_per_s }, .real) catch {};
+    }
+
     incrementalSync(&turso, local) catch |err| {
         log.err("initial sync failed: {}", .{err});
     };
 
-    // periodic incremental sync
     while (true) {
         io.sleep(.{ .nanoseconds = SYNC_INTERVAL_S * std.time.ns_per_s }, .real) catch {};
 
@@ -1065,72 +518,29 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
     }
 }
 
-/// Insert actor row into a table. `prefix` is the INSERT clause, e.g.
-/// "INSERT INTO actors_stage" or "INSERT OR REPLACE INTO actors".
-fn insertActorRow(conn: zqlite.Conn, comptime prefix: []const u8, row: anytype) !void {
-    conn.exec(prefix ++ " (" ++ LocalDb.actor_cols ++ ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", .{
-        row.text(Col.did),
-        row.text(Col.handle),
-        row.text(Col.display_name),
-        row.text(Col.avatar_url),
-        row.int(Col.hidden),
-        row.text(Col.labels),
-        row.text(Col.created_at),
-        row.text(Col.associated),
-        row.text(Col.pds),
-        row.int(Col.followers_count),
-        row.int(Col.follows_count),
-        row.int(Col.posts_count),
-        row.int(Col.last_activity_at),
-        row.float(Col.quality_score),
-    }) catch |err| return err;
-}
-
-/// Snapshot of (handle, display_name) from `actors` for a DID, used to
-/// drive FTS5 special-delete before the row is upserted/removed.
-const OldFtsRow = struct {
+/// Old (handle, display_name) of an actor as serving currently knows it —
+/// the values whose prefix keys a projection must suppress.
+const OldRow = struct {
     handle_buf: [256]u8 = undefined,
     name_buf: [512]u8 = undefined,
     handle: ?[]const u8 = null,
     name: ?[]const u8 = null,
 };
 
-/// Snapshot must come from `actors_fts` (not `actors`) because the FTS5
-/// special-delete `INSERT INTO ft(ft, did, handle, display_name) VALUES('delete', ...)`
-/// requires the EXACT tuple currently in the FTS table. Reading from
-/// `actors` can produce a stale snapshot (prior sync already updated the
-/// row but FTS rebuild failed silently), so the delete-old never matches
-/// and the FTS table accumulates orphan rows — causing the hundreds-per-
-/// cycle "FTS delete-old failed" warnings we saw on the search service.
-/// Old handle/display from the `actors` row being replaced — the correct
-/// source for overlay old-prefix derivation, and FTS-independent (works when
-/// ENABLE_LOCAL_FTS=0). Shares OldFtsRow's buffers.
-fn snapshotOldActorRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
-    if (conn.row("SELECT handle, display_name FROM actors WHERE did = ?", .{did})) |maybe| {
-        if (maybe) |r| {
-            defer r.deinit();
-            const h = r.text(0);
-            const n = r.text(1);
-            if (h.len > 0 and h.len <= out.handle_buf.len) {
-                @memcpy(out.handle_buf[0..h.len], h);
-                out.handle = out.handle_buf[0..h.len];
-            }
-            if (n.len > 0 and n.len <= out.name_buf.len) {
-                @memcpy(out.name_buf[0..n.len], n);
-                out.name = out.name_buf[0..n.len];
-            }
-        }
-    } else |_| {}
-}
-
-/// Phase 2 of docs/replica-removal-plan.md: old handle/display from the
-/// overlay blob, falling back to the attached base blob — the same bytes
-/// serving uses — instead of the `actors` replica. Goes through a read lease
-/// because only read-pool conns have the snapshot attached. Returns false
-/// when no lease or no row was found (caller falls back to `actors`).
-/// A NULL overlay blob (tombstone) yields an empty old row: there are no
-/// live prefix keys to diff away for a tombstoned actor.
-fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldFtsRow) bool {
+/// Old handle/display from the overlay blob, falling back to the attached
+/// base blob — the same bytes serving uses, so the keys diffed away are
+/// exactly the keys that exist. Goes through a read lease because only
+/// read-pool conns have the snapshot attached. A NULL overlay blob
+/// (tombstone) or an actor in neither table yields an empty old row: there
+/// are no live prefix keys to diff away. Returns false only when the lookup
+/// itself failed (no lease, oversized blob), in which case the caller
+/// projects with an empty old row and the stale keys wait for the next
+/// promote to bake them out.
+///
+/// Phase 2 of docs/replica-removal-plan.md ran this alongside the `actors`
+/// replica for two days; every disagreement class traced to the replica being
+/// the wrong source (docs/search-replica-research.md, addendum).
+fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldRow) bool {
     const lease = local.checkoutRead() catch return false;
     defer lease.release();
 
@@ -1160,7 +570,7 @@ fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldFtsRow)
             blob = blob_buf[0..b.len];
         }
     }
-    const b = blob orelse return true; // in neither overlay nor base: new actor, no old keys
+    const b = blob orelse return true;
     const ac = pack.unpackActor(b) catch return false;
     if (ac.handle.len > 0 and ac.handle.len <= out.handle_buf.len) {
         @memcpy(out.handle_buf[0..ac.handle.len], ac.handle);
@@ -1173,184 +583,49 @@ fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldFtsRow)
     return true;
 }
 
-/// Old rows where overlay/base and the `actors` replica disagreed, by class.
-/// `replica_empty` (replica lost a row the base/overlay serves — observed
-/// 2026-08-31, the handle-flap class the hydrate belt was wrongly suppressing)
-/// indicts the replica; `source_empty` and `differs` would indict the new
-/// source and must stay ~0 before phase 3 cuts the replica.
-pub var mismatch_replica_empty: std.atomic.Value(u64) = .init(0);
-pub var mismatch_source_empty: std.atomic.Value(u64) = .init(0);
-pub var mismatch_differs: std.atomic.Value(u64) = .init(0);
-/// one sample DID per class per pass (span attrs; log lines are not durable)
-var mismatch_sample_buf: [3][64]u8 = undefined;
-var mismatch_sample_len: [3]std.atomic.Value(usize) = .{ .init(0), .init(0), .init(0) };
-
-fn noteMismatchSample(class_idx: usize, did: []const u8) void {
-    if (mismatch_sample_len[class_idx].load(.monotonic) != 0) return;
-    const n = @min(did.len, mismatch_sample_buf[class_idx].len);
-    @memcpy(mismatch_sample_buf[class_idx][0..n], did[0..n]);
-    mismatch_sample_len[class_idx].store(n, .monotonic);
-}
-
-/// Old-row source with verification: overlay-then-base is primary; the
-/// `actors` replica is read alongside and any disagreement is counted and
-/// logged (with the DID) — the phase-3 gate. Falls back to the replica when
-/// the lease path is unavailable.
-fn snapshotOldVerified(local: *LocalDb, conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
-    if (!snapshotOldFromOverlayBase(local, did, out)) {
-        snapshotOldActorRow(conn, did, out);
-        return;
-    }
-    var replica: OldFtsRow = .{};
-    snapshotOldActorRow(conn, did, &replica);
-    const h_ok = std.mem.eql(u8, out.handle orelse "", replica.handle orelse "");
-    const n_ok = std.mem.eql(u8, out.name orelse "", replica.name orelse "");
-    if (!h_ok or !n_ok) {
-        const ours_empty = out.handle == null and out.name == null;
-        const replica_empty = replica.handle == null and replica.name == null;
-        const class_idx: usize = if (replica_empty and !ours_empty) 0 else if (ours_empty and !replica_empty) 1 else 2;
-        const class = switch (class_idx) {
-            0 => &mismatch_replica_empty,
-            1 => &mismatch_source_empty,
-            else => &mismatch_differs,
-        };
-        _ = class.fetchAdd(1, .monotonic);
-        noteMismatchSample(class_idx, did);
-        logfire.warn("old-row mismatch ({s}) for {s}: overlay/base=({s},{s}) actors=({s},{s})", .{
-            if (replica_empty and !ours_empty) "replica_empty" else if (ours_empty and !replica_empty) "source_empty" else "differs",
-            did, out.handle orelse "", out.name orelse "", replica.handle orelse "", replica.name orelse "",
-        });
-    }
-}
-
-fn snapshotOldFtsRow(conn: zqlite.Conn, did: []const u8, out: *OldFtsRow) void {
-    if (conn.row("SELECT handle, display_name FROM actors_fts WHERE did = ?", .{did})) |maybe| {
-        if (maybe) |r| {
-            defer r.deinit();
-            const h = r.text(0);
-            const n = r.text(1);
-            if (h.len > 0 and h.len <= out.handle_buf.len) {
-                @memcpy(out.handle_buf[0..h.len], h);
-                out.handle = out.handle_buf[0..h.len];
-            }
-            if (n.len > 0 and n.len <= out.name_buf.len) {
-                @memcpy(out.name_buf[0..n.len], n);
-                out.name = out.name_buf[0..n.len];
-            }
-        }
-    } else |_| {}
-}
-
-/// Per-row incremental apply: snapshot old FTS values, INSERT OR REPLACE the
-/// actor, then FTS5 special-delete the old entry and insert the new one. Keeps
-/// the local FTS table consistent without periodic full rebuilds.
-/// `caller` is just for log context ("incremental" vs other future callers).
-fn applyActorUpdate(conn: zqlite.Conn, row: anytype, caller: []const u8, octx: ?OverlayCtx) !void {
+/// Project one updated actor into the overlay, inside the caller's
+/// transaction on the write conn. `row` only needs .text/.int/.float.
+fn projectRow(conn: zqlite.Conn, row: anytype, ctx: OverlayCtx) !void {
     const did = row.text(Col.did);
-    const new_handle = row.text(Col.handle);
-    const new_name = row.text(Col.display_name);
-    const fts = localFtsEnabled();
-
-    // Old handle/display: from actors_fts when maintaining FTS (its tuple is
-    // needed for the special-delete), else from `actors` for the overlay diff.
-    var old: OldFtsRow = .{};
-    if (fts) {
-        snapshotOldFtsRow(conn, did, &old);
-    } else if (octx) |ctx| {
-        snapshotOldVerified(ctx.local, conn, did, &old);
+    var old: OldRow = .{};
+    if (!snapshotOldFromOverlayBase(ctx.local, did, &old)) {
+        log.warn("old-row lookup failed for {s}; projecting without suppression", .{did});
     }
-
-    try insertActorRow(conn, "INSERT OR REPLACE INTO actors", row);
-
-    if (fts) {
-        if (old.handle) |oh| {
-            conn.exec(
-                \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
-                \\VALUES('delete', ?, ?, ?)
-            , .{ did, oh, old.name orelse "" }) catch |err| {
-                log.warn("{s}: FTS delete-old failed for {s}: {}", .{ caller, did, err });
-            };
-        }
-        if (new_handle.len > 0) {
-            conn.exec(
-                \\INSERT INTO actors_fts (did, handle, display_name)
-                \\VALUES (?, ?, ?)
-            , .{ did, new_handle, new_name }) catch |err| {
-                log.warn("{s}: FTS insert-new failed for {s}: {}", .{ caller, did, err });
-            };
-        }
-    }
-
-    // Overlay projection (same transaction as the actor write). Best-effort:
-    // the live-actors safety belt still gives serving correct moderation if a
-    // projection fails; base still serves the actor either way.
-    if (octx) |ctx| {
-        overlay.projectUpdate(ctx.arena, conn, .{
-            .did = did,
-            .handle = new_handle,
-            .display_name = new_name,
-            .avatar_url = row.text(Col.avatar_url),
-            .labels = row.text(Col.labels),
-            .associated = row.text(Col.associated),
-            .pds = row.text(Col.pds),
-            .created_at = row.text(Col.created_at),
-            .hidden = row.int(Col.hidden) != 0,
-            .quality_score = @floatCast(row.float(Col.quality_score)),
-        }, old.handle orelse "", old.name orelse "", ctx.updated_at) catch |err| {
-            log.warn("{s}: overlay projectUpdate failed for {s}: {}", .{ caller, did, err });
-        };
-    }
+    try overlay.projectUpdate(ctx.arena, conn, .{
+        .did = did,
+        .handle = row.text(Col.handle),
+        .display_name = row.text(Col.display_name),
+        .avatar_url = row.text(Col.avatar_url),
+        .labels = row.text(Col.labels),
+        .associated = row.text(Col.associated),
+        .pds = row.text(Col.pds),
+        .created_at = row.text(Col.created_at),
+        .hidden = row.int(Col.hidden) != 0,
+        .quality_score = @floatCast(row.float(Col.quality_score)),
+    }, old.handle orelse "", old.name orelse "", ctx.updated_at);
 }
 
-/// Per-row incremental remove: snapshot old FTS values, DELETE the actor
-/// row, then FTS5 special-delete the old entry. Used for both the "became
-/// unsearchable" and "tombstoned" paths.
-fn applyActorDelete(conn: zqlite.Conn, did: []const u8, caller: []const u8, octx: ?OverlayCtx) !void {
-    const fts = localFtsEnabled();
-    var old: OldFtsRow = .{};
-    if (fts) {
-        snapshotOldFtsRow(conn, did, &old);
-    } else if (octx) |ctx| {
-        snapshotOldVerified(ctx.local, conn, did, &old);
+/// Global tombstone in the overlay so serving suppresses the actor
+/// immediately. Used for both "became unsearchable" and "tombstoned".
+fn projectRemoval(conn: zqlite.Conn, did: []const u8, caller: []const u8, ctx: OverlayCtx) !void {
+    var old: OldRow = .{};
+    if (!snapshotOldFromOverlayBase(ctx.local, did, &old)) {
+        log.warn("{s}: old-row lookup failed for {s}; tombstoning without suppression", .{ caller, did });
     }
-
-    try conn.exec("DELETE FROM actors WHERE did = ?", .{did});
-
-    if (fts) {
-        if (old.handle) |oh| {
-            conn.exec(
-                \\INSERT INTO actors_fts(actors_fts, did, handle, display_name)
-                \\VALUES('delete', ?, ?, ?)
-            , .{ did, oh, old.name orelse "" }) catch |err| {
-                log.warn("{s}: FTS delete failed for {s}: {}", .{ caller, did, err });
-            };
-        }
-    }
-
-    // Global tombstone in the overlay so index serving suppresses the actor
-    // immediately (same transaction as the row delete).
-    if (octx) |ctx| {
-        overlay.projectDelete(ctx.arena, conn, did, old.handle orelse "", old.name orelse "", ctx.updated_at) catch |err| {
-            log.warn("{s}: overlay projectDelete failed for {s}: {}", .{ caller, did, err });
-        };
-    }
-}
-
-/// Update cached actor count in sync_meta (avoids COUNT(*) on health checks)
-fn updateActorCount(conn: zqlite.Conn) void {
-    const row = conn.row("SELECT COUNT(*) FROM actors WHERE handle != ''", .{}) catch return;
-    if (row) |r| {
-        defer r.deinit();
-        var buf: [20]u8 = undefined;
-        const count_str = std.fmt.bufPrint(&buf, "{d}", .{r.int(0)}) catch return;
-        conn.exec(
-            "INSERT OR REPLACE INTO sync_meta (key, value) VALUES ('actor_count', ?)",
-            .{count_str},
-        ) catch {};
-    }
+    try overlay.projectDelete(ctx.arena, conn, did, old.handle orelse "", old.name orelse "", ctx.updated_at);
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────
+
+test "resumePoint never starts behind the attached snapshot" {
+    const t = std.testing;
+    // fresh volume: no last_sync → replay from the snapshot watermark
+    try t.expectEqual(@as(i64, 1_788_000_000), resumePoint(0, 1_788_000_000));
+    // long outage: last_sync behind the snapshot → the base already has those rows
+    try t.expectEqual(@as(i64, 1_788_000_000), resumePoint(1_787_000_000, 1_788_000_000));
+    // steady state: last_sync ahead of the snapshot → resume where we left off
+    try t.expectEqual(@as(i64, 1_788_500_000), resumePoint(1_788_500_000, 1_788_000_000));
+}
 
 // Regression guard for the Aug 3–14 2026 staleness incident. Turso's
 // server-side planner degraded the plain OR keyset form to a full index

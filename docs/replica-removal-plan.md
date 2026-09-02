@@ -72,6 +72,13 @@ non-empty values); serving is unaffected. Remaining: one clean promote cycle
 
 ## phase 3 — cut the replica
 
+**Gate met 2026-09-01** — the promote cycle on v65 was clean: `projection_skipped`
+0 across 259 passes, `belt_dropped` 0 over 3,070 searches, compaction of
+4.99M rows finished `complete:true` in three bounded passes, zero watchdog
+restarts, freshness fresh throughout. (The indexer cron is `0 9 */3 * *` —
+day-of-month divisible by 3 — so 08-31 and 09-01 were consecutive builds.)
+Code written 2026-09-02; deploy pending review.
+
 Gate (re-revised 2026-08-31, after tracing each class to ground truth):
 the mismatch counters turned out to measure how often the REPLICA would have
 mis-projected, not whether the new source errs. Projection's job is to
@@ -94,20 +101,31 @@ The functional gate for phase 3 is therefore: `projection_skipped = 0`,
 smoke checks passing, and one clean promote cycle on v64+. The counters stay
 as telemetry, not as a zero-target.
 
-- sync loop becomes: watermark = attached snapshot's `source_watermark` (or the
-  last applied `updated_at` in `sync_meta`), page Turso `updated_at > watermark`,
-  project into overlay, persist watermark per page. No `actors` table, no
-  `actors_stage`, no resync path, no FTS engine (`search.zig`, `ENABLE_LOCAL_FTS`,
-  `/debug/fts`), no `SYNC_MAX_LAG_S` self-heal.
-- boot with no snapshot: adopt on disk or download; then replay. First-boot
-  cost ≈ download (~15 min) + rows since watermark (≈ 300k over 3 days ≈ 30 min).
-- `/health`: `ready` = snapshot attached AND sentinel query returns rows;
-  `sync_lag_s` = now − last applied `updated_at`; actor count =
-  `index_meta.actor_count` + overlay upserts. `/health/freshness` unchanged in
-  contract.
-- drop the hydrate belt (its data source is gone; the overlay/blob check remains).
-- volume: Fly can't shrink. Create a 60 GB volume, deploy against it (data is
-  rebuildable from R2), destroy the 100 GB one. **−$6/mo.**
+What shipped (`services/`):
+
+- sync loop: start = `max(sync_meta.last_sync, snapshot source_watermark)`
+  (`resumePoint`, unit-tested), page Turso `updated_at > start − 300s`, project
+  into the overlay with the old row from overlay-then-base, persist the
+  watermark per page. Deleted: the `actors`/`actors_fts`/`actors_stage` tables,
+  bootstrap, resync, the FTS engine (`search.zig` keeps only the response
+  shape), `/debug/fts`, the hydrate belt, `ENABLE_LOCAL_FTS`, `USE_PREFIX_INDEX`,
+  `SYNC_MAX_LAG_S`, `SYNC_BOOTSTRAP_PAUSE_MS`, `ENABLE_INDEX_PROMOTE` (the
+  watcher is now unconditional for the search role). ~900 lines net.
+- boot: the sync loop waits (feeding the watchdog) until the promote watcher
+  has attached a snapshot — adopted from disk or downloaded. A volume that
+  still carries the replica drops those tables and VACUUMs on first open.
+- `/health`: `ready` = a validated snapshot is attached (the sentinel runs
+  before every attach); `actors` = the attached snapshot's `index_meta`
+  count; `sync_lag_s` unchanged (now − last successful pass).
+  `/health/freshness` unchanged in contract.
+- past tombstone retention (7 d) the pass logs a warning and continues: a
+  deletion older than the watermark is baked out by the next promote.
+
+Still to do at deploy time:
+
+- volume: Fly can't shrink. Clone the machine onto a new 60 GB volume,
+  cordon it until the snapshot download makes it ready, uncordon, destroy the
+  old machine + 100 GB volume. **−$6/mo.**
 
 Verify: `just smoke`, `just bench-ranking`, `just bench-search`; kill the
 machine mid-replay and confirm it resumes from the persisted watermark;

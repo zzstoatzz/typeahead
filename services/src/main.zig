@@ -39,15 +39,6 @@ fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     return null;
 }
 
-/// Parse a boolean env flag. Defaults to true (preserves existing behavior
-/// when var is unset). "0", "false", "no", "off" → false; anything else → true.
-fn envFlag(name: [*:0]const u8, default: bool) bool {
-    const v = cGetenv(name) orelse return default;
-    if (mem.eql(u8, v, "0") or mem.eql(u8, v, "false") or
-        mem.eql(u8, v, "no") or mem.eql(u8, v, "off")) return false;
-    return true;
-}
-
 const FirehoseArgs = struct {
     allocator: Allocator,
     config: ingest.Config,
@@ -123,7 +114,7 @@ pub fn main() !void {
     // the search app's full-corpus sync for months because roles used to
     // default all-on (found 2026-06-12, mid-incident).
     //   ingester — relay's firehose → worker, owns Turso schema migrations
-    //   search   — Turso → local replica sync + HTTP search + index promote
+    //   search   — snapshot promote + Turso → overlay projection + HTTP search
     //   indexer  — offline snapshot builder, runs once and exits
     const Role = enum { ingester, search, indexer };
     const role: Role = blk: {
@@ -159,9 +150,9 @@ pub fn main() !void {
         log.err("logfire configure failed: {}", .{err});
     };
 
-    // local SQLite is the search role's serving replica. the ingester has no
-    // local consumer and doesn't open one — its HTTP listener serves the
-    // health-only fallback.
+    // local SQLite holds the search role's overlay + sync state (the snapshot
+    // is attached to it). the ingester has no local consumer and doesn't open
+    // one — its HTTP listener serves the health-only fallback.
     var local_db = LocalDb.init(allocator);
     var local_db_ptr: ?*LocalDb = null;
     defer local_db.deinit();
@@ -220,7 +211,7 @@ pub fn main() !void {
     // .async (bounded pool, inline fallback) for HTTP handlers
     var tasks: std.Io.Group = .init;
 
-    // start sync (background — turso → local SQLite)
+    // start sync (background — turso → overlay projection)
     if (role == .search) {
         const db = local_db_ptr.?; // guaranteed non-null by check above
         tasks.concurrent(io, sync.syncLoop, .{ allocator, db }) catch |err| {
@@ -233,10 +224,9 @@ pub fn main() !void {
     }
 
     // start prefix-index promote watcher (background — R2 latest.json → ATTACH).
-    // Off by default; the search service opts in via ENABLE_INDEX_PROMOTE=1 once R2 creds are
-    // set. Does not touch the live /search path (that's gated separately by
-    // USE_PREFIX_INDEX) — it only keeps a validated snapshot attached.
-    if (role == .search and envFlag("ENABLE_INDEX_PROMOTE", false)) {
+    // Not optional: an attached, validated snapshot is what makes the search
+    // role ready, and the sync loop waits on it before projecting anything.
+    if (role == .search) {
         const db = local_db_ptr.?;
         tasks.concurrent(io, promote_runner.watchLoop, .{ allocator, db }) catch |err| {
             log.err("promote watcher task failed: {}", .{err});

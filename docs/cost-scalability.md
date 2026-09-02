@@ -97,7 +97,7 @@ emissions, needed a 100 GB scratch volume, though the served artifact only grew
 | **Account deletion** | ✅ overlay tombstone suppresses on next sync (proven) |
 | **Moderation hide/show** | ✅ `mod-override` → `actors.hidden` → sync → overlay → suppressed in ~2.5 min (proven hide *and* restore) |
 | **Override workflow** | `POST /admin/mod-override {did, action:'hide'\|'show'}` (Bearer `ADMIN_SECRET`); overlay `source=operator` reserved so direct operator overrides survive snapshot promotion (not yet wired) |
-| **Freshness** | sync lag oscillates <5 min; self-heals via bulk resync if lag > `SYNC_MAX_LAG_S` (6 h); `/health` exposes `sync_lag_s` |
+| **Freshness** | sync lag oscillates <5 min; any gap is recovered by replaying Turso rows newer than the persisted watermark (no bulk resync path exists since phase 3 of `replica-removal-plan.md`); `/health` exposes `sync_lag_s` |
 
 ### Maintenance gaps (none block serving; all needed to be "boring")
 

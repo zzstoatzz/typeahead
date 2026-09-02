@@ -1,7 +1,7 @@
 //! Local SQLite state using zqlite.
-//! The search role keeps a Turso actor replica, live overlay tables, and an
-//! attached read-only prefix-index snapshot. Older FTS helpers remain for roles
-//! that still need local FTS maintenance.
+//! The search role keeps the live overlay tables and sync metadata here, with
+//! the read-only prefix-index snapshot ATTACHed as `idx` on every read conn.
+//! Serving = snapshot + overlay; there is no local copy of the corpus.
 
 const std = @import("std");
 const io = std.Options.debug_io;
@@ -58,27 +58,6 @@ path: []const u8 = "",
 /// swapSnapshot, which rebuilds the read pool so all conns attach atomically.
 snapshot_path: ?[]const u8 = null,
 
-/// column list for full actor row queries (sync + search)
-pub const actor_cols = "did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score";
-
-/// named column indexes matching actor_cols order
-pub const Col = struct {
-    pub const did: usize = 0;
-    pub const handle: usize = 1;
-    pub const display_name: usize = 2;
-    pub const avatar_url: usize = 3;
-    pub const hidden: usize = 4;
-    pub const labels: usize = 5;
-    pub const created_at: usize = 6;
-    pub const associated: usize = 7;
-    pub const pds: usize = 8;
-    pub const followers_count: usize = 9;
-    pub const follows_count: usize = 10;
-    pub const posts_count: usize = 11;
-    pub const last_activity_at: usize = 12;
-    pub const quality_score: usize = 13;
-};
-
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     if (std.c.getenv(name)) |p| return std.mem.span(p);
     return null;
@@ -100,35 +79,38 @@ pub fn init(allocator: Allocator) LocalDb {
     return .{ .allocator = allocator };
 }
 
-/// Clean up leftover staging tables from interrupted bootstrap.
-/// Called during open so sync starts clean.
-fn cleanupStagingTables(self: *LocalDb) void {
-    const c = self.conn orelse return;
-    c.exec("DROP TABLE IF EXISTS actors_fts_stage", .{}) catch {};
-    c.exec("DROP TABLE IF EXISTS actors_stage", .{}) catch {};
-}
+/// Tables the pre-phase-3 search role kept: the 11 GB `actors` replica, its
+/// FTS shadow, and the resync staging tables. A volume that predates the cut
+/// still carries them; drop them and VACUUM so the file shrinks to the
+/// overlay. VACUUM copies only live pages, so its cost scales with the
+/// overlay, not with the 11 GB being discarded. No-op on a fresh volume.
+const replica_tables = [_][]const u8{ "actors", "actors_fts", "actors_stage", "actors_fts_stage" };
 
-/// Verify FTS5 table is functional. If broken (e.g. from a failed RENAME),
-/// drop it and recreate empty — sync will repopulate it.
-fn repairFtsIfBroken(self: *LocalDb) void {
+fn dropReplicaTables(self: *LocalDb) void {
     const c = self.conn orelse return;
-    // probe: try a simple MATCH query — if shadow tables are broken this errors
-    const row = c.row("SELECT did FROM actors_fts WHERE actors_fts MATCH '\"test\"*' LIMIT 1", .{}) catch {
-        log.warn("FTS5 table broken, dropping and recreating", .{});
-        c.exec("DROP TABLE IF EXISTS actors_fts", .{}) catch {};
-        c.exec(
-            \\CREATE VIRTUAL TABLE actors_fts USING fts5(
-            \\  did UNINDEXED, handle, display_name,
-            \\  tokenize='unicode61 remove_diacritics 2'
-            \\)
-        , .{}) catch {};
-        // clear sync state so fullSync rebuilds FTS
-        c.exec("DELETE FROM sync_meta WHERE key = 'sync_complete'", .{}) catch {};
-        c.exec("DELETE FROM sync_meta WHERE key = 'last_sync'", .{}) catch {};
-        log.info("FTS5 repaired, sync will rebuild on next run", .{});
+    var dropped: usize = 0;
+    for (replica_tables) |name| {
+        const row = c.row("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", .{name}) catch continue;
+        const present = row != null;
+        if (row) |r| r.deinit();
+        if (!present) continue;
+        var sql_buf: [64]u8 = undefined;
+        const sql = std.fmt.bufPrint(&sql_buf, "DROP TABLE IF EXISTS {s}", .{name}) catch continue;
+        c.exec(sql, .{}) catch |err| {
+            log.warn("drop {s} failed: {}", .{ name, err });
+            continue;
+        };
+        dropped += 1;
+        log.info("dropped replica table {s}", .{name});
+    }
+    if (dropped == 0) return;
+    const t0 = milliTimestamp();
+    log.info("vacuum after dropping {d} replica tables", .{dropped});
+    c.exec("VACUUM", .{}) catch |err| {
+        log.warn("vacuum failed: {} (space is reclaimed on the next successful one)", .{err});
         return;
     };
-    if (row) |r| r.deinit();
+    log.info("vacuum done in {d}ms", .{milliTimestamp() - t0});
 }
 
 pub fn open(self: *LocalDb) !void {
@@ -165,11 +147,9 @@ fn openDb(self: *LocalDb, path_env: []const u8) !void {
     _ = self.conn.?.exec("PRAGMA cache_size=-20000", .{}) catch {}; // 20MB page cache
     _ = self.conn.?.exec("PRAGMA mmap_size=268435456", .{}) catch {}; // 256MB
 
+    self.dropReplicaTables();
     try self.openReadPool(path);
-
-    self.cleanupStagingTables();
     try self.createSchema();
-    self.repairFtsIfBroken();
     log.info("initialized", .{});
 }
 
@@ -309,6 +289,9 @@ pub fn swapSnapshot(self: *LocalDb, new_path: []const u8) !void {
     };
 
     if (old) |o| self.allocator.free(o);
+    // ready = a validated snapshot is attached. Serving has no other
+    // prerequisite: the overlay is always present, and an empty one is correct.
+    self.setReady(true);
     log.info("snapshot attached: {s}", .{new_path});
 }
 
@@ -327,15 +310,12 @@ pub fn attachedBuildId(self: *LocalDb, gpa: Allocator) !?[]const u8 {
     return null;
 }
 
-/// Prune sync-derived overlay rows the freshly-promoted base now covers
-/// (updated_at ≤ new_watermark). Operator rows (source=1) survive. Writes via
-/// the write conn under the write mutex; best-effort (logged, not fatal).
 pub const CompactResult = struct { deleted: u64, chunks: u64, complete: bool };
 
 /// Prune sync-derived overlay rows the attached base now covers
 /// (updated_at ≤ watermark). Operator rows (source=1) survive. Runs in
 /// COMPACT_CHUNK steps under the write mutex, yielding between them; skips
-/// entirely while the replica is not ready (a resync owns the mutex).
+/// entirely while no snapshot is attached (nothing covers those rows yet).
 /// `max_chunks` bounds one call so a caller with a liveness budget (the sync
 /// loop) can compact a little every pass instead of ratcheting; `on_chunk`
 /// lets it feed its watchdog. Results are recorded in sync_meta for
@@ -457,50 +437,6 @@ pub fn setReady(self: *LocalDb, ready: bool) void {
 
 fn createSchema(self: *LocalDb) !void {
     const c = self.conn orelse return error.NotOpen;
-
-    c.exec(
-        \\CREATE TABLE IF NOT EXISTS actors (
-        \\  did TEXT PRIMARY KEY,
-        \\  handle TEXT NOT NULL DEFAULT '',
-        \\  display_name TEXT DEFAULT '',
-        \\  avatar_url TEXT DEFAULT '',
-        \\  hidden INTEGER NOT NULL DEFAULT 0,
-        \\  labels TEXT NOT NULL DEFAULT '[]',
-        \\  created_at TEXT DEFAULT '',
-        \\  associated TEXT DEFAULT '{}',
-        \\  pds TEXT DEFAULT '',
-        \\  followers_count INTEGER NOT NULL DEFAULT 0,
-        \\  follows_count INTEGER NOT NULL DEFAULT 0,
-        \\  posts_count INTEGER NOT NULL DEFAULT 0,
-        \\  last_activity_at INTEGER NOT NULL DEFAULT 0,
-        \\  quality_score REAL NOT NULL DEFAULT 0
-        \\)
-    , .{}) catch |err| {
-        log.err("failed to create actors table: {}", .{err});
-        return err;
-    };
-
-    // in-place column adds for existing deployments. All allowed to fail silently
-    // (column already present is the common case).
-    c.exec("ALTER TABLE actors ADD COLUMN pds TEXT DEFAULT ''", .{}) catch {};
-    c.exec("ALTER TABLE actors ADD COLUMN followers_count INTEGER NOT NULL DEFAULT 0", .{}) catch {};
-    c.exec("ALTER TABLE actors ADD COLUMN follows_count INTEGER NOT NULL DEFAULT 0", .{}) catch {};
-    c.exec("ALTER TABLE actors ADD COLUMN posts_count INTEGER NOT NULL DEFAULT 0", .{}) catch {};
-    c.exec("ALTER TABLE actors ADD COLUMN last_activity_at INTEGER NOT NULL DEFAULT 0", .{}) catch {};
-    c.exec("ALTER TABLE actors ADD COLUMN quality_score REAL NOT NULL DEFAULT 0", .{}) catch {};
-
-    c.exec("CREATE INDEX IF NOT EXISTS idx_actors_handle ON actors(handle COLLATE NOCASE)", .{}) catch {};
-
-    // standalone FTS5 (not content-synced — avoids rowid tracking complexity with INSERT OR REPLACE)
-    c.exec(
-        \\CREATE VIRTUAL TABLE IF NOT EXISTS actors_fts USING fts5(
-        \\  did UNINDEXED, handle, display_name,
-        \\  tokenize='unicode61 remove_diacritics 2'
-        \\)
-    , .{}) catch |err| {
-        log.err("failed to create actors_fts: {}", .{err});
-        return err;
-    };
 
     c.exec(
         \\CREATE TABLE IF NOT EXISTS sync_meta (
@@ -659,26 +595,9 @@ pub fn unlock(self: *LocalDb) void {
     self.mutex.unlock(io);
 }
 
-/// Get cached actor count from sync_meta. Uses the dedicated meta conn
-/// (NOT the read pool) so /health stays responsive even when /search is
-/// saturating the pool.
-pub fn countActors(self: *LocalDb) u64 {
-    self.meta_mu.lockUncancelable(io);
-    defer self.meta_mu.unlock(io);
-
-    const c = self.meta_conn orelse return 0;
-    const row = c.row("SELECT value FROM sync_meta WHERE key = 'actor_count'", .{}) catch return 0;
-    if (row) |r| {
-        defer r.deinit();
-        const val = r.text(0);
-        return std.fmt.parseInt(u64, val, 10) catch 0;
-    }
-    return 0;
-}
-
 /// Seconds since the last successful incremental sync watermark, or -1 if
 /// unknown. Surfaced on /health as a staleness SLO: a growing value means
-/// the local replica is drifting from Turso (moderation/profile get stale).
+/// the overlay is drifting from Turso (moderation/profile get stale).
 pub fn syncLagSeconds(self: *LocalDb, now_unix: i64) i64 {
     self.meta_mu.lockUncancelable(io);
     defer self.meta_mu.unlock(io);

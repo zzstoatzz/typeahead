@@ -99,9 +99,9 @@ fn sweepStalePartials(arena: Allocator, idx_dir: []const u8) void {
     }
 }
 
-/// Poll loop. Spawned as a concurrent task by main.zig when the serving role
-/// has ENABLE_INDEX_PROMOTE=1. Never returns; checkOnce failures are logged
-/// and retried on the next tick rather than tearing down the task.
+/// Poll loop. Spawned as a concurrent task by main.zig for the search role.
+/// Never returns; checkOnce failures are logged and retried on the next tick
+/// rather than tearing down the task.
 pub fn watchLoop(gpa: Allocator, db: *LocalDb) void {
     const interval_s = pollIntervalSecs();
     log.info("promote watcher started: poll every {d}s", .{interval_s});
@@ -292,8 +292,9 @@ fn probeHydrate(snap: zqlite.Conn, did: []const u8) bool {
 pub fn writeStatus(arena: Allocator, db: *LocalDb, jw: anytype) !void {
     try jw.beginObject();
 
+    // always on: the promote watcher is how the search role becomes ready
     try jw.objectField("promote_enabled");
-    try jw.write(cGetenv("ENABLE_INDEX_PROMOTE") != null);
+    try jw.write(true);
 
     try jw.objectField("attached");
     try jw.write(db.snapshotPath() != null);

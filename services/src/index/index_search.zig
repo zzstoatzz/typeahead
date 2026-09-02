@@ -1,11 +1,11 @@
-//! Index-backed `/search` (Milestone B). Serves from the ATTACHed prefix
-//! snapshot + the live overlay, behind USE_PREFIX_INDEX. Response shape is
-//! byte-identical to the FTS path (reuses search.Candidate + search.writeActor).
+//! Index-backed `/search`. Serves from the ATTACHed prefix snapshot + the
+//! live overlay. Response shape is the public typeahead shape
+//! (search.Candidate + search.writeActor).
 //!
 //! Flow: normalize → queryKeys → per-key (base prefix_top_base ∪ prefix_overlay)
 //! → merge (union single-token / intersect multi-token) → exact-handle
-//! promotion → hydrate (overlay actor wins; tombstone/hidden suppress; live
-//! `actors` safety belt) → response.
+//! promotion → hydrate (overlay actor wins; tombstone/hidden suppress) →
+//! response.
 //!
 //! Errors propagate to the caller, which maps them to 500/503 so the worker
 //! falls back to its bsky backstop — never silently serve a wrong/empty page.
@@ -61,8 +61,6 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     span.setAttribute("overlay_hidden", @as(i64, @intCast(trace.overlay_hidden)));
     span.setAttribute("blob_hidden", @as(i64, @intCast(trace.blob_hidden)));
     span.setAttribute("not_found", @as(i64, @intCast(trace.not_found)));
-    span.setAttribute("belt_dropped", @as(i64, @intCast(trace.belt_dropped)));
-    if (trace.belt_did) |bd| span.setAttribute("belt_did", bd);
     span.setAttribute("results", @as(i64, @intCast(@min(limit, candidates.len))));
 
     var jw: json.Stringify = .{ .writer = writer };
@@ -86,19 +84,13 @@ pub const Trace = struct {
     mode: merge.Mode = .union_any,
     merged: usize = 0,
     exact_hits: usize = 0,
-    /// hydrate outcomes. `belt_dropped` counts candidates that passed every
-    /// overlay/blob check and were dropped ONLY by the live `actors` belt —
-    /// the number that decides whether the replica can go (docs/replica-removal-plan.md).
+    /// hydrate outcomes
     hydrated_overlay: usize = 0,
     hydrated_base: usize = 0,
     tombstoned: usize = 0,
     overlay_hidden: usize = 0,
     blob_hidden: usize = 0,
     not_found: usize = 0,
-    belt_dropped: usize = 0,
-    /// last belt-dropped DID this request (attr on the search span — the zig
-    /// logfire client exports spans only, so log lines are not durable).
-    belt_did: ?[]const u8 = null,
 };
 
 /// normalize'd query → ranked candidates. The single implementation behind both
@@ -260,8 +252,8 @@ fn promoteExact(arena: Allocator, merged: []merge.Scored, exact: std.StringHashM
 
 /// Hydrate merged DIDs into presentable Candidates. Overlay actor wins over
 /// base; NULL overlay blob = global tombstone (suppress); overlay/base hidden
-/// suppress; and the live `actors` table is a safety belt (skip DIDs that are
-/// missing or hidden there) while overlay correctness is still being earned.
+/// suppress. Moderation is carried by the overlay row and the packed blob —
+/// there is no second source to consult.
 fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Scored, trace: ?*Trace) ![]searchmod.Candidate {
     if (dids.len == 0) return &.{};
 
@@ -296,17 +288,6 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
         }
     }
 
-    // 3. safety belt: live actors existence + hidden.
-    var live_hidden: std.StringHashMapUnmanaged(bool) = .empty;
-    {
-        const sql = try inClause(arena, "SELECT did, hidden FROM actors WHERE did IN (", did_list.len);
-        var rows = try lease.queryTextList(sql, did_list);
-        defer rows.deinit();
-        while (rows.next()) |row| {
-            try live_hidden.put(arena, try arena.dupe(u8, row.text(0)), row.int(1) != 0);
-        }
-    }
-
     var stats: Trace = .{};
     var out: std.ArrayListUnmanaged(searchmod.Candidate) = .empty;
     for (dids) |d| {
@@ -337,23 +318,6 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
             continue; // moderation baked into the blob
         }
 
-        // safety belt: must exist and not be hidden in the live actors table.
-        // Checked AFTER the overlay/blob checks so belt_dropped measures only
-        // what the belt alone catches.
-        // Each drop is logged with its DID so the case can be replayed against
-        // Turso/overlay — the span only carries counts.
-        const lh = live_hidden.get(d.did) orelse {
-            stats.belt_dropped += 1;
-            stats.belt_did = d.did;
-            log.warn("belt dropped {s}: missing from actors (hydrated from {s})", .{ d.did, if (from_overlay) "overlay" else "base" });
-            continue;
-        };
-        if (lh) {
-            stats.belt_dropped += 1;
-            stats.belt_did = d.did;
-            log.warn("belt dropped {s}: hidden in actors (hydrated from {s})", .{ d.did, if (from_overlay) "overlay" else "base" });
-            continue;
-        }
         if (from_overlay) stats.hydrated_overlay += 1 else stats.hydrated_base += 1;
 
         try out.append(arena, .{
@@ -380,8 +344,6 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
         t.overlay_hidden = stats.overlay_hidden;
         t.blob_hidden = stats.blob_hidden;
         t.not_found = stats.not_found;
-        t.belt_dropped = stats.belt_dropped;
-        t.belt_did = stats.belt_did;
     }
     return out.toOwnedSlice(arena);
 }

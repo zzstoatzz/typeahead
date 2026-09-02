@@ -35,9 +35,10 @@ profile cards for picked actors: `/xrpc/app.bsky.actor.getProfiles?actors=…` (
   just leaves the prior snapshot serving. (`fly.indexer.toml` is retained as a
   rollback path.)
 - **search service**: same Zig binary, `typeahead-search`. It downloads and
-  verifies snapshots from R2, attaches them read-only, tails Turso into a local
-  actor replica, projects live changes into an overlay, and serves `/search`
-  from bounded point lookups. Local FTS is disabled here.
+  verifies snapshots from R2, attaches them read-only, projects Turso changes
+  newer than the snapshot into a local overlay, and serves `/search` from
+  bounded point lookups over the two. It holds no copy of the corpus:
+  recovery is "attach the snapshot, replay rows since its watermark".
 - **identity**: three paths, in cost order. `getProfiles` (25 DIDs per call) in
   the hourly cron resolves most of them; [slingshot](https://microcosm.blue)
   resolves single DIDs from firehose `#identity` events; and a weekly job reads
@@ -74,9 +75,9 @@ The one binary picks its role from the **required `MODE` env var** (no default �
 boot fails without it), set per app in fly config:
 
 - `MODE=ingester` (`fly.toml`): consume the relay's firehose, batch actor updates to the
-  worker, run Turso schema migrations. Does NOT keep a local replica.
-- `MODE=search` (`fly.search.toml`): sync Turso → local replica, promote/attach
-  prefix-index snapshots, serve `/search` from snapshot + overlay.
+  worker, run Turso schema migrations. No local state.
+- `MODE=search` (`fly.search.toml`): promote/attach prefix-index snapshots,
+  project Turso → overlay, serve `/search` from snapshot + overlay.
 - `MODE=indexer`: offline snapshot build, then exit. Runs on the home box
   (heavypad) as the scheduled `typeahead-index` Prefect deployment, every 3 days.
   `fly.indexer.toml` still describes the role and is the rollback path (launch a

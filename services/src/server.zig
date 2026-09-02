@@ -8,11 +8,11 @@ const json = std.json;
 const io = std.Options.debug_io;
 const logfire = @import("logfire");
 const LocalDb = @import("db/LocalDb.zig");
-const search = @import("search.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 const promote_runner = @import("index/promote_runner.zig");
 const index_search = @import("index/index_search.zig");
+const index_schema = @import("index/schema.zig");
 const sync = @import("db/sync.zig");
 
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
@@ -68,8 +68,6 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_poo
         try handleDebugSearch(request, target, local_db);
     } else if (mem.eql(u8, path, "/health")) {
         try handleHealth(request, local_db, identity_pool);
-    } else if (mem.eql(u8, path, "/debug/fts")) {
-        try handleDebugFts(request, target, local_db);
     } else if (mem.eql(u8, path, "/index/status")) {
         try handleIndexStatus(request, local_db);
     } else if (mem.eql(u8, path, "/debug/index")) {
@@ -237,14 +235,9 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
     var output: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
     defer output.deinit();
 
-    // USE_PREFIX_INDEX routes /search to the precomputed prefix index; unset
-    // keeps the FTS path. Same response shape either way. On index-path error
-    // we 500/503 so the worker falls back to its configured fallback path.
-    const search_result = if (std.c.getenv("USE_PREFIX_INDEX") != null)
-        index_search.run(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer)
-    else
-        search.search(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer);
-    search_result catch |err| {
+    // On engine error we 500/503 so the worker falls back to its configured
+    // fallback path — never silently serve a wrong/empty page.
+    index_search.run(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch |err| {
         if (err == error.PoolExhausted) {
             try sendJson(request, .service_unavailable, "{\"error\":\"read pool exhausted\"}");
             return;
@@ -289,15 +282,10 @@ fn handleDebugSearch(request: *http.Server.Request, target: []const u8, local_db
     var output: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
     defer output.deinit();
 
-    // Must follow the SAME env switch as /search. A debug view of the engine
-    // that isn't answering requests is worse than none: it explains a ranking
-    // nobody sees (2026-08-12 — `q='fig ('` ranked #1 here while /search, on
-    // the index path, didn't return it at all).
-    const debug_result = if (std.c.getenv("USE_PREFIX_INDEX") != null)
-        index_search.debug(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer)
-    else
-        search.debugSearch(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer);
-    debug_result catch |err| {
+    // The same engine that answers /search. A debug view of a different
+    // engine explains a ranking nobody sees (2026-08-12 — `q='fig ('` ranked
+    // #1 in the old FTS debug path while /search didn't return it at all).
+    index_search.debug(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch |err| {
         if (err == error.PoolExhausted) {
             try sendJson(request, .service_unavailable, "{\"error\":\"read pool exhausted\"}");
             return;
@@ -319,8 +307,10 @@ fn handleHealth(request: *http.Server.Request, local_db: *LocalDb, identity_pool
     const span = logfire.span("http.health", .{});
     defer span.end();
 
+    // ready = a validated snapshot is attached; actors = that snapshot's
+    // count (the overlay above it is reported on /index/status).
     const ready = local_db.isReady();
-    const actors = local_db.countActors();
+    const actors = local_db.attachedMetaInt(index_schema.meta.actor_count);
     const rss = ingest.getRssKB();
     const now_unix: i64 = @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
     const sync_lag = local_db.syncLagSeconds(now_unix);
@@ -446,36 +436,6 @@ fn hexVal(c: u8) ?u4 {
     };
 }
 
-/// Debug endpoint: compare actors vs actors_fts for a DID
-/// Usage: /debug/fts?did=did:plc:xxx
-fn handleDebugFts(request: *http.Server.Request, target: []const u8, local_db: *LocalDb) !void {
-    const did = parseQueryParam(target, "did") orelse {
-        try sendJson(request, .bad_request, "{\"error\":\"missing did parameter\"}");
-        return;
-    };
-
-    var decode_buf: [512]u8 = undefined;
-    const term = percentDecode(did, &decode_buf) orelse did;
-
-    var out: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
-    defer out.deinit();
-    var jw: json.Stringify = .{ .writer = &out.writer };
-
-    try jw.beginObject();
-
-    // actors table row
-    try jw.objectField("actors");
-    try writeDebugRow(&jw, local_db, "SELECT did, handle, display_name FROM actors WHERE did = ?", term);
-
-    // FTS table row for same DID
-    try jw.objectField("fts");
-    try writeDebugRow(&jw, local_db, "SELECT did, handle, display_name FROM actors_fts WHERE did = ?", term);
-
-    try jw.endObject();
-
-    try sendJson(request, .ok, out.written());
-}
-
 fn handleIndexStatus(request: *http.Server.Request, local_db: *LocalDb) !void {
     var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena_state.deinit();
@@ -510,28 +470,3 @@ fn handleDebugIndex(request: *http.Server.Request, target: []const u8, local_db:
     try sendJson(request, .ok, out.written());
 }
 
-fn writeDebugRow(jw: anytype, local_db: *LocalDb, comptime sql: []const u8, param: []const u8) !void {
-    const lease = local_db.checkoutRead() catch {
-        try jw.write("error");
-        return;
-    };
-    defer lease.release();
-
-    var rows = lease.query(sql, .{param}) catch {
-        try jw.write("error");
-        return;
-    };
-    defer rows.deinit();
-    if (rows.next()) |row| {
-        try jw.beginObject();
-        try jw.objectField("did");
-        try jw.write(row.text(0));
-        try jw.objectField("handle");
-        try jw.write(row.text(1));
-        try jw.objectField("display_name");
-        try jw.write(row.text(2));
-        try jw.endObject();
-    } else {
-        try jw.write(null);
-    }
-}

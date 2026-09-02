@@ -164,11 +164,11 @@ The service has its own atproto account: **@typeahead.waow.tech** =
  "build_id":"...","probe_ok":true,"reasons":[]}
 ```
 
-It reports replica lag, snapshot age, and a live query through the real serving
-path. Check it **before** Logfire or fly logs — it needs neither, which matters
+It reports overlay lag (`replica_lag_s`, the field name predates the replica's
+removal), snapshot age, and a live query through the real serving path. Check it **before** Logfire or fly logs — it needs neither, which matters
 because the search service exported no telemetry at all until 2026-07-31.
 
-Thresholds: replica lag warns at 10 min, stale at 30 min (sync runs every 5 min,
+Thresholds: overlay lag warns at 10 min, stale at 30 min (sync runs every 5 min,
 edge cache is 60s). Snapshot stale at 4 days against a 3-day rebuild cadence.
 
 The three layers and how to check each:
@@ -176,13 +176,15 @@ The three layers and how to check each:
 | layer | check | healthy |
 |---|---|---|
 | relay → Turso | `fly logs -a typeahead-ingester --no-tail` | `+N actors ... pending: 0`, cursor advancing |
-| Turso → replica | `/health/freshness` → `replica_lag_s` | < 600s |
+| Turso → overlay | `/health/freshness` → `replica_lag_s` | < 600s |
 | snapshot | `/index/status` → `build_id` | age < 3 days |
 
-If the replica is behind and no `sync.*` spans are arriving, the sync loop is
+If the overlay is behind and no `sync.*` spans are arriving, the sync loop is
 wedged: the watchdog exits the process within 20 min so fly restarts it. A
-manual `fly machine restart -a typeahead-search` is safe — search keeps serving
-from the attached snapshot and the worker falls back to Turso.
+manual `fly machine restart -a typeahead-search` is safe — on boot the service
+re-adopts the on-disk snapshot and resumes projecting from the persisted
+watermark (`sync_meta.last_sync`, advanced per page); the worker's backstop
+covers the seconds in between.
 
 ## how a request-indexing lands (2026-07-31)
 
@@ -190,8 +192,8 @@ Measured 1.3–6.4s end to end, of which 80–86% is the single-row Turso UPSERT
 contending with the live ingester. Searchable ~0.16s after that write returns.
 
 The worker POSTs the row it just wrote to the search service's
-`/admin/refresh`, which applies it to the replica and projects it into the
-overlay immediately — the overlay being the design's live-update channel. It
+`/admin/refresh`, which projects it into the overlay immediately — the overlay
+being the design's live-update channel. It
 sends the **row**, not a DID: an earlier version had the search service re-read
 the row from Turso, which put the fast path through the most contended
 component in the system (measured: 28s for an indexed point lookup while a bulk

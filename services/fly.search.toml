@@ -1,8 +1,10 @@
 # fly.toml app configuration for typeahead-search.
 #
-# This is the read replica + HTTP search service: a clone of the ingester
-# binary configured to ONLY sync from Turso → local SQLite and serve /search.
-# It does NOT consume jetstream and does NOT run Turso schema migrations.
+# The HTTP search service: the same binary as the ingester, in MODE=search.
+# It attaches the prefix-index snapshot promoted from R2, projects Turso
+# changes newer than that snapshot into a local overlay, and serves /search
+# from the two. No local copy of the corpus. It does NOT consume the firehose
+# and does NOT run Turso schema migrations.
 #
 # Worker's SEARCH_BACKEND_URL points here after the cutover.
 
@@ -17,29 +19,12 @@ primary_region = 'ewr'
   destination = '/data'
 
 [env]
-  # Role: sync from Turso + HTTP search. No jetstream → no need for TYPEAHEAD_URL/SECRET.
+  # Role: snapshot promote + Turso → overlay projection + HTTP search.
+  # No firehose → no need for TYPEAHEAD_URL/SECRET.
   MODE = 'search'
 
-  # Prefix-index promote watcher: poll R2 latest.json, validate, ATTACH as
-  # `idx`. Does NOT change the live /search path (that's a separate flag) —
-  # only keeps a validated snapshot attached + queryable via /index/status.
-  ENABLE_INDEX_PROMOTE = '1'
+  # Where the promote watcher keeps the A/B snapshot slots + latest.json.
   INDEX_BUILD_ROOT = '/data'
-
-  # The prefix-index serving path doesn't use FTS — only the snapshot + the
-  # actors table (moderation belt). Maintaining actors_fts per-row was the
-  # incremental bottleneck (orphan rows → failing delete-old → couldn't keep
-  # up). Off here; the ingest service keeps the default.
-  ENABLE_LOCAL_FTS = '0'
-
-  # Serve /search from the precomputed prefix index.
-  USE_PREFIX_INDEX = '1'
-
-  # Bootstrap politeness: pace Turso reads so the initial sync doesn't
-  # starve worker fallback queries on the same Turso DB. ~200ms between
-  # 2k-row batches drops effective rate from ~2000/s to ~1500/s — bootstrap
-  # finishes in ~70min instead of ~50min, but live traffic stays responsive.
-  SYNC_BOOTSTRAP_PAUSE_MS = '200'
 
   SQLITE_TMPDIR = '/data/tmp'
 
@@ -65,7 +50,6 @@ primary_region = 'ewr'
   # RAM proportional to the working set; revisit at 10x corpus.)
   memory = '2048mb'
   cpu_kind = 'shared'
-  # 4 CPUs: the 5.9M-row resync + cold prefix-index queries are CPU-bound on
-  # 1 shared CPU (resync ~3-4h, cold queries ~300-500ms). Production-grade for
-  # a live search backend.
+  # 4 CPUs sized for the retired replica resync; docs/replica-removal-plan.md
+  # phase 4 revisits this after two weeks of post-cut metrics.
   cpus = 4
