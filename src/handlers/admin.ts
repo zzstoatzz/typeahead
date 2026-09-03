@@ -1,7 +1,8 @@
 import type { Stmt, TursoDB } from "../db";
 import type { Env, SlingshotResponse } from "../types";
 import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL, MICROCOSM_UA } from "../types";
-import { clientIP, json, extractProfileFields, fetchProfileFromPds } from "../utils";
+import { clientIP, json, extractProfileFields, fetchProfileFromBlacksky, fetchProfileFromPds } from "../utils";
+import type { ProfileSource } from "../utils";
 import { getOverride, getOverrides, resolveHidden, isDomainBlocked, getBlockedDomains } from "../moderation";
 import { recordActorDelta } from "../metrics";
 
@@ -172,6 +173,7 @@ export async function handleRequestIndexing(
   lap("override");
   const domainBlocked = isDomainBlocked(identity.handle || "", await getBlockedDomains(db));
   lap("blocked_domains");
+  let source: ProfileSource = 'bsky';
   try {
     const profileRes = await fetch(
       `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(identity.did)}`
@@ -180,16 +182,20 @@ export async function handleRequestIndexing(
     if (profileRes.ok) {
       f = extractProfileFields(await profileRes.json(), override, domainBlocked);
     } else if (override === 'show' && identity.pds) {
-      const pdsProfile = await fetchProfileFromPds(identity.did, identity.pds);
-      if (pdsProfile) f = extractProfileFields(pdsProfile, override, domainBlocked);
+      // same order as the cron's takedown path: Blacksky's appview (has
+      // counts), then the PDS record (has none)
+      const blacksky = await fetchProfileFromBlacksky(identity.did);
+      source = blacksky ? 'blacksky' : 'pds';
+      const profile = blacksky ?? await fetchProfileFromPds(identity.did, identity.pds);
+      if (profile) f = extractProfileFields(profile, override, domainBlocked);
     }
   } catch {
     // profile enrichment is best-effort
   }
 
   await db.prepare(
-    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, quality_score, description, banner_url, profile_checked_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, unixepoch(), unixepoch())
+    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, quality_score, description, banner_url, profile_source, profile_checked_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, unixepoch(), unixepoch())
      ON CONFLICT(did) DO UPDATE SET
        handle = ?2,
        display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
@@ -205,10 +211,11 @@ export async function handleRequestIndexing(
        quality_score = COALESCE(NULLIF(?13, 0), actors.quality_score),
        description = COALESCE(NULLIF(?14, ''), actors.description),
        banner_url = COALESCE(NULLIF(?15, ''), actors.banner_url),
+       profile_source = ?16,
        profile_checked_at = unixepoch(),
        updated_at = unixepoch()`
   )
-    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore, f.description, f.bannerCid)
+    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore, f.description, f.bannerCid, source)
     .run();
   lap("turso_write");
 

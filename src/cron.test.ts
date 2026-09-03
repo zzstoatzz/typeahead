@@ -21,7 +21,7 @@ function envWithKv(kv: CursorKv): Env {
 }
 
 const realFetch = globalThis.fetch;
-function installFetch(fake: () => Promise<Response>): void {
+function installFetch(fake: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): void {
   globalThis.fetch = Object.assign(fake, { preconnect: realFetch.preconnect });
 }
 
@@ -44,6 +44,7 @@ const baseRow = {
   associated: "{}",
   description: "",
   banner_url: "",
+  profile_source: "bsky",
   followers_count: 100,
   follows_count: 50,
   posts_count: 200,
@@ -89,6 +90,69 @@ describe("isProfileIdentical", () => {
     const f = extractProfileFields(makeProfile({ followersCount: 250 }));
     expect(isProfileIdentical(baseRow, f)).toBe(false);
   });
+
+  test("a different profile source forces a write even when every field matches", () => {
+    const f = extractProfileFields(makeProfile());
+    expect(isProfileIdentical(baseRow, f, "bsky")).toBe(true);
+    expect(isProfileIdentical(baseRow, f, "blacksky")).toBe(false);
+  });
+});
+
+// Bluesky answers AccountTakedown for some accounts it will not serve; the
+// Blacksky appview still serves them, counts included. The cron must take
+// those counts (so the account keeps a rank) and record where they came from.
+describe("refreshModeration takes counts from the Blacksky appview on a Bluesky takedown", () => {
+  const origFetch = globalThis.fetch;
+  afterEach(() => { globalThis.fetch = origFetch; });
+
+  const DID = "did:plc:link";
+
+  test("takedown → blacksky profile → UPDATE with counts and profile_source='blacksky'", async () => {
+    const row = {
+      rowid: 1, did: DID, handle: "spacelawshitpost.me", hidden: 0, labels: "[]",
+      pds: "https://blacksky.app", display_name: "Łink", avatar_url: "bafOLD",
+      created_at: "", associated: "{}", description: "", banner_url: "", profile_source: "pds",
+      followers_count: 0, follows_count: 0, posts_count: 0, quality_score: 0,
+    };
+    const calls: Call[] = [];
+    const stmt = (sql: string): FakeStmt => {
+      const s: FakeStmt = {
+        sql, binds: [],
+        bind(...args) { s.binds = args; return s; },
+        async all<T>() {
+          calls.push({ sql, binds: s.binds, method: "all" });
+          // SAFETY: the quality walk selects ACTOR_COLS, which is the shape `row` builds
+          return sql.includes("ORDER BY quality_score DESC") ? { results: [row] as T[] } : { results: [] };
+        },
+        async run() { calls.push({ sql, binds: s.binds, method: "run" }); return { meta: { changes: 1 } }; },
+        async first() { return null; },
+      };
+      return s;
+    };
+    const db: TursoDB = {
+      prepare: stmt,
+      async batch(stmts: FakeStmt[]) {
+        for (const st of stmts) calls.push({ sql: st.sql, binds: st.binds, method: "batch" });
+        return stmts.map(() => ({ results: [], meta: { changes: 1 } }));
+      },
+    };
+    installFetch(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("app.bsky.actor.getProfiles")) return Response.json({ profiles: [] });
+      if (url.startsWith("https://public.api.bsky.app/") && url.includes("getProfile?"))
+        return Response.json({ error: "AccountTakedown", message: "Account has been suspended" }, { status: 400 });
+      if (url.startsWith("https://api.blacksky.community/"))
+        return Response.json({ did: DID, handle: "spacelawshitpost.me", displayName: "Łink. ⁂", labels: [], followersCount: 25783, followsCount: 2204, postsCount: 63554, createdAt: "2023-04-01T00:00:00.000Z", associated: {} });
+      throw new Error("unexpected fetch " + url);
+    });
+    await refreshModeration(db, envWithKv({ async get() { return null; }, async put() {}, async delete() {} }));
+    const update = calls.find((c) => c.method === "batch" && c.sql.includes("profile_source = ?14"));
+    expect(update).toBeDefined();
+    expect(update!.binds).toContain("blacksky");
+    expect(update!.binds).toContain(25783);
+    // the takedown did not turn into a delete
+    expect(calls.some((c) => c.sql.startsWith("DELETE FROM actors"))).toBe(false);
+  });
 });
 
 // regression: refreshModeration never advanced profile_checked_at — not on the
@@ -110,7 +174,7 @@ describe("refreshModeration advances the freshness cursor", () => {
       rowid: 1, did: DID, handle: "germnetwork.com", hidden: 0, labels: "[]",
       pds: "", display_name: "Germ Network", avatar_url: "bafOLDcid",
       created_at: "2024-01-01T00:00:00.000Z", associated: "{}",
-      description: "", banner_url: "",
+      description: "", banner_url: "", profile_source: "bsky",
       followers_count: 3041, follows_count: 100, posts_count: 500,
       quality_score: qualityScore,
     };

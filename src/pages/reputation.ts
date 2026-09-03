@@ -420,7 +420,7 @@ export function reputationPage(): string {
               (stale ? ' · recalculation differs by ' + signed(d.score.staleDelta) : ''),
             statusBadge(stale ? 'warn' : 'good', stale ? 'pending write' : 'current'), false,
             '<div class="metric"><span class="num">' + num(d.score.computedNow) + '</span><span class="unit">score if recalculated now</span></div>' +
-            '<div class="card-sub">' + esc(scoreSummary(d, pct, stale)) + '</div>' +
+            '<div class="card-sub">' + esc(scoreSummary(d, pct, stale)) + (d.indexing.profileSource === 'blacksky' ? " counts come from Blacksky's appview because Bluesky refuses this profile." : '') + '</div>' +
             '<div class="score-pair">' +
               mini('stored score', num(d.score.stored)) +
               mini('snapshot actors', pct.rank == null ? 'n/a' : '#' + numInt(pct.rank) + ' of ' + numInt(pct.total)) +
@@ -452,6 +452,7 @@ export function reputationPage(): string {
               info('row updated', d.indexing.updatedAt ? dateTime(d.indexing.updatedAt) : 'unknown') +
               info('profile checked', d.indexing.profileCheckedAt ? dateTime(d.indexing.profileCheckedAt) : 'never') +
               info('PDS', d.actor.pds || 'unknown') +
+              info('profile source', sourceCopy(d.indexing.profileSource)) +
             '</div>' +
             '<details class="raw"><summary>raw report</summary><pre>' + esc(JSON.stringify(d, null, 2)) + '</pre></details>') +
         '</div>';
@@ -462,6 +463,12 @@ export function reputationPage(): string {
     function sec(kind, label, line, state, open, body) {
       return '<details class="sec ' + kind + '"' + (open ? ' open' : '') + '><summary><span class="kicker">' + esc(label) + '</span><span class="sec-line">' + line + '</span>' +
         '<span class="sec-end">' + state + '<span class="sec-chev">▶</span></span></summary><div class="sec-body">' + body + '</div></details>';
+    }
+    function sourceCopy(src) {
+      if (src === 'blacksky') return "Blacksky's appview (api.blacksky.community): Bluesky refuses this profile, so counts and rank come from there and run lower than Bluesky's for the same audience.";
+      if (src === 'pds') return 'the PDS record only: Bluesky refuses this profile and Blacksky has none, so there are no follower or post counts.';
+      if (src === 'bsky') return "Bluesky's public appview.";
+      return 'not recorded yet (written before sources were tracked).';
     }
     function gateShort(d) {
       if (d.moderation.override) return 'admin override: ' + d.moderation.override.action;

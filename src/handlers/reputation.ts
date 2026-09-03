@@ -21,6 +21,7 @@ interface ReputationActorRow {
   quality_score: number;
   updated_at: number;
   profile_checked_at: number;
+  profile_source: string;
 }
 
 interface ScorePercentile {
@@ -123,7 +124,7 @@ export async function handleReputation(request: Request, db: TursoDB, env: Env):
 
   const row = await db.prepare(
     `SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds,
-            followers_count, follows_count, posts_count, quality_score, updated_at, profile_checked_at
+            followers_count, follows_count, posts_count, quality_score, updated_at, profile_checked_at, profile_source, profile_source
      FROM actors
      WHERE did = ?1 OR handle = ?1 COLLATE NOCASE
      LIMIT 1`
@@ -249,6 +250,8 @@ export async function handleReputation(request: Request, db: TursoDB, env: Env):
       enrichedOnView,
       updatedAt: toIsoSeconds(row.updated_at),
       profileCheckedAt: toIsoSeconds(row.profile_checked_at),
+      // 'bsky' | 'blacksky' | 'pds' | '' (written before the column existed)
+      profileSource: row.profile_source || "",
       shouldBeInPrefixIndex: Boolean(row.handle && !effectiveHidden),
       exactHandleLookupFindsIt: exactHandleExists?.did === row.did,
       exactHandleLookupDid: exactHandleExists?.did ?? null,

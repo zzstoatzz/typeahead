@@ -212,6 +212,25 @@ response into "accepted, landing now" changes the UX contract. Revisit only if
 user-facing timeouts actually appear — the endpoint's `Server-Timing` header
 attributes the phases, so you'll be able to tell.
 
+## profile sources: Bluesky, then Blacksky's appview, then the PDS (2026-09-03)
+
+Bluesky's appview answers `AccountTakedown` for accounts it has suspended
+and serves nothing about them. Blacksky's appview
+(`api.blacksky.community`, `did:web:api.blacksky.community`) indexes the
+whole network, answers without auth, and keeps serving those accounts,
+counts included; the PDS record has name, avatar and description but no
+counts. Enrichment (cron + request-indexing) now goes Bluesky → Blacksky →
+PDS and writes which one won into `actors.profile_source`
+(`bsky` | `blacksky` | `pds`; `''` = written before 2026-09-03).
+
+Why the column exists: Blacksky's follower counts run lower than Bluesky's
+for the same account (2,083 vs 2,531 for zzstoatzz.io; 88k vs 130k for
+jcsalterego) because it indexes a narrower follow graph, so a
+`quality_score` is only comparable with its source known. The report shows
+it under "stored data" and on the ranking line. Policy unchanged: a Bluesky
+takedown does not hide an account here (the PDS fallback always worked that
+way); it just no longer zeroes its rank.
+
 ## /reputation: moderation status across labelers (2026-09-03)
 
 `/reputation?actor=…` now answers "what do the moderation services say about

@@ -1,7 +1,8 @@
 import type { Stmt, TursoDB } from "./db";
 import type { Env } from "./types";
 import { BSKY_GET_PROFILES_URL } from "./types";
-import { extractProfileFields, fetchProfileFromPds } from "./utils";
+import { extractProfileFields, fetchProfileFromBlacksky, fetchProfileFromPds } from "./utils";
+import type { ProfileSource } from "./utils";
 import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 import { recordActorDelta } from "./metrics";
 
@@ -10,6 +11,7 @@ type CurRow = {
   display_name: string; avatar_url: string; created_at: string; associated: string;
   description: string; banner_url: string;
   followers_count: number; follows_count: number; posts_count: number; quality_score: number;
+  profile_source: string;
 };
 
 type ActorRow = CurRow & {
@@ -19,8 +21,10 @@ type ActorRow = CurRow & {
 export function isProfileIdentical(
   cur: CurRow,
   f: ReturnType<typeof extractProfileFields>,
+  source: ProfileSource = 'bsky',
 ): boolean {
   return (
+    cur.profile_source === source &&
     cur.hidden === f.hidden &&
     cur.labels === f.labels &&
     cur.handle === f.handle &&
@@ -75,7 +79,7 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
   const EVENT_N = 200;
   const ACTOR_COLS = `rowid, did, handle, hidden, labels, pds,
             display_name, avatar_url, created_at, associated, description, banner_url,
-            followers_count, follows_count, posts_count, quality_score`;
+            followers_count, follows_count, posts_count, quality_score, profile_source`;
 
   let cursor: { qs: number; rowid: number } | null = null;
   try {
@@ -187,6 +191,7 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
                quality_score = COALESCE(NULLIF(?12, 0), quality_score),
                description = COALESCE(NULLIF(?13, ''), description),
                banner_url = COALESCE(NULLIF(?14, ''), banner_url),
+               profile_source = 'bsky',
                updated_at = unixepoch()
              WHERE did = ?2`
           ).bind(f.hidden, p.did, f.handle, f.displayName, f.avatarCid, f.labels,
@@ -219,11 +224,16 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
             } catch {}
           }
           if (isTakedown) {
-            const pdsProfile = await fetchProfileFromPds(r.did, r.pds);
-            if (pdsProfile) {
-              const f = extractProfileFields(pdsProfile, override, isDomainBlocked(r.handle || "", blockedDomains));
+            // Bluesky refuses the profile. The Blacksky appview still serves it,
+            // counts included, so the account keeps a rank; the PDS record is
+            // the last resort and carries no counts. The row remembers which.
+            const blacksky = await fetchProfileFromBlacksky(r.did);
+            const source: ProfileSource = blacksky ? 'blacksky' : 'pds';
+            const profile = blacksky ?? await fetchProfileFromPds(r.did, r.pds);
+            if (profile) {
+              const f = extractProfileFields(profile, override, isDomainBlocked(r.handle || "", blockedDomains));
               const cur = current.get(r.did);
-              if (cur && cur.hidden === f.hidden && cur.labels === f.labels) continue;
+              if (cur && isProfileIdentical(cur, f, source)) { returnedDids.add(r.did); continue; }
               pdsStmts.push(
                 db.prepare(
                   `UPDATE actors SET hidden = ?1,
@@ -234,9 +244,15 @@ export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
                      associated = COALESCE(NULLIF(?7, '{}'), associated),
                      description = COALESCE(NULLIF(?8, ''), description),
                      banner_url = COALESCE(NULLIF(?9, ''), banner_url),
+                     followers_count = COALESCE(NULLIF(?10, 0), followers_count),
+                     follows_count = COALESCE(NULLIF(?11, 0), follows_count),
+                     posts_count = COALESCE(NULLIF(?12, 0), posts_count),
+                     quality_score = COALESCE(NULLIF(?13, 0), quality_score),
+                     profile_source = ?14,
                      updated_at = unixepoch()
                    WHERE did = ?2`
-                ).bind(f.hidden, r.did, f.displayName, f.avatarCid, f.labels, f.createdAt, f.associated, f.description, f.bannerCid)
+                ).bind(f.hidden, r.did, f.displayName, f.avatarCid, f.labels, f.createdAt, f.associated, f.description, f.bannerCid,
+                  f.followersCount, f.followsCount, f.postsCount, f.qualityScore, source)
               );
               returnedDids.add(r.did); // don't delete this actor
             }

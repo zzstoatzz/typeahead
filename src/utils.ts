@@ -84,6 +84,33 @@ export function extractAvatarCid(urlOrCid: string): string {
   return match?.[1] ?? '';
 }
 
+/** Blacksky's appview (did:web:api.blacksky.community). It indexes the whole
+ *  network, answers getProfile without auth, and keeps serving accounts
+ *  Bluesky's appview refuses with AccountTakedown — so it is the only place
+ *  a Bluesky-banned, Blacksky-hosted account's follower and post counts can
+ *  be read from (Łink, 2026-09-03: 25.8k followers there, 0 here). Its
+ *  follower counts run lower than Bluesky's for the same account (it indexes
+ *  a narrower follow graph), which is why rows carry `profile_source`. */
+export const BLACKSKY_APPVIEW = 'https://api.blacksky.community';
+
+/** which appview or record a row's profile fields were last written from */
+export type ProfileSource = 'bsky' | 'blacksky' | 'pds';
+
+/** the Blacksky appview's profileViewDetailed for `did`, or null if it has none */
+export async function fetchProfileFromBlacksky(did: string): Promise<any | null> {
+  try {
+    const res = await fetch(
+      `${BLACKSKY_APPVIEW}/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(did)}`,
+      { signal: AbortSignal.timeout(5000) },
+    );
+    if (!res.ok) return null;
+    const profile: any = await res.json();
+    return profile?.did === did ? profile : null;
+  } catch {
+    return null;
+  }
+}
+
 /** fetch profile directly from an actor's PDS — tries bsky profile first, then tangled.
  *  returns bare CID for avatar (not full URL) — caller reconstructs at query time via pds column. */
 export async function fetchProfileFromPds(did: string, pds: string): Promise<any | null> {

@@ -219,4 +219,16 @@ pub const migrations = [_]zug.Migration{
             "ALTER TABLE actors ADD COLUMN banner_url TEXT DEFAULT ''",
         },
     },
+    // Which appview a row's profile fields were last written from: 'bsky',
+    // 'blacksky' (Bluesky answered AccountTakedown; Blacksky's appview still
+    // serves the profile, counts included) or 'pds' (record only, no counts).
+    // Follower counts differ between appviews, so a rank is only comparable
+    // with its source known. Turso-only, like 006.
+    .{
+        .id = "007_profile_source",
+        .name = "profile_source on actors",
+        .statements = &.{
+            "ALTER TABLE actors ADD COLUMN profile_source TEXT NOT NULL DEFAULT ''",
+        },
+    },
 };
