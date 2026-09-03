@@ -17,6 +17,22 @@ interface ActorView {
   createdAt?: string;
 }
 
+/** Largest `limit` for which an empty engine answer is re-asked of Turso.
+ *
+ *  The Turso fallback is a full-corpus FTS query, the one corpus-proportional
+ *  read left on the request path. A person typing a handle asks for 8-10 rows
+ *  and deserves that second look when the engine has nothing yet. A bulk
+ *  client asking for 100 rows per rare keyword is not looking for one actor
+ *  that might be seconds old, and one nightly job doing exactly that (200
+ *  Belgian-vocabulary searches in two minutes, 2026-08-17 onward) put every
+ *  other user's median wall time from 282 ms to 1.4 s while it ran.
+ *  docs/operations.md "unattributed bulk clients". */
+export const TURSO_FALLBACK_MAX_LIMIT = 25;
+
+export function tursoFallbackOnEmpty(limit: number): boolean {
+  return limit <= TURSO_FALLBACK_MAX_LIMIT;
+}
+
 export async function handleSearch(
   request: Request,
   db: TursoDB,
@@ -100,7 +116,7 @@ export async function handleSearch(
         } catch {
           empty = false;   // unparseable is the backend's problem, not a miss
         }
-        if (empty) throw new Error("backend_empty");
+        if (empty && tursoFallbackOnEmpty(limit)) throw new Error("backend_empty");
 
         ctx.waitUntil(Promise.all([
           recordMetric(db, Date.now() - t0),

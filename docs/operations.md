@@ -212,6 +212,37 @@ response into "accepted, landing now" changes the UX contract. Revisit only if
 user-facing timeouts actually appear — the endpoint's `Server-Timing` header
 attributes the phases, so you'll be able to tell.
 
+## unattributed bulk clients: the 03:00 UTC spike (2026-09-03)
+
+The daily spike in the `unknown` source on `/stats` is one `node` script on a
+Vultr VPS (`45.63.115.226`, FR) that fires ~200 `searchActorsTypeahead`
+requests with `limit=100` at 03:00 UTC, every night since 2026-08-17, all
+Belgian vocabulary (`Wallonie`, `Eupen`, `chicon`, `asbl`, `guindaille`…) —
+someone assembling a Belgian account list by keyword. No `X-Client`, `Origin`
+or `Referer`, so it cannot be attributed. Found via Workers Logs grouped by
+`cf-connecting-ip` + `user-agent` (the `/stats` counters have no per-client
+detail by design).
+
+What it cost: the engine was fine (179 searches, p50 7 ms). The worker was
+not: a quarter of the burst hit the 60/min per-IP limiter, the rest ran 7–20 s
+of wall time, and *other* users' median wall time went from 282 ms to 1.4 s
+for those two minutes. Two reasons — every cache miss writes a stats row to
+Turso in `waitUntil`, and every **empty** engine answer falls through to a
+full-corpus Turso FTS query, which rare keywords trigger constantly.
+
+**Decision (2026-09-03): the empty-result Turso fallback only runs for
+`limit ≤ 25`** (`TURSO_FALLBACK_MAX_LIMIT` in `src/handlers/search.ts`).
+A person typing a handle asks for ~10 rows and keeps the second look for an
+actor the engine hasn't projected yet; a 100-row keyword sweep takes the
+engine's answer as final. Nothing changes for browsers or for any client
+using the default limit; the bot still gets answered. Not chosen: putting
+unattributed clients on the strict limiter (would break real integrations
+that never set headers) and leaving it (the fallback is the one
+corpus-proportional read on the request path, and this let a stranger
+schedule it). If a client with a legitimate need for `limit>25` plus the
+Turso second look appears, it should identify itself with `X-Client` and we
+can allowlist by app.
+
 ## observability: what the zig services emit (2026-09-02)
 
 Both fly roles use [logfire-zig](https://tangled.org/zzstoatzz.io/logfire-zig)
