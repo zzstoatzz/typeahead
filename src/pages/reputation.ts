@@ -250,12 +250,6 @@ export function reputationPage(): string {
       inspect(picked.did || picked.handle);
     });
 
-    const initialActor = params.get('actor') || params.get('handle') || params.get('did');
-    if (initialActor) {
-      actor.value = initialActor;
-      load(initialActor);
-    }
-
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const val = actor.value.trim().replace(/^@/, '');
@@ -544,6 +538,14 @@ export function reputationPage(): string {
     function numInt(n) { return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 }); }
     function signed(n) { return (n > 0 ? '+' : '') + num(n); }
     function esc(s) { const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML; }
+    // deep links load LAST: every top-level const/let above must exist before
+    // load() runs, or the page throws in the temporal dead zone and shows
+    // nothing (2026-09-03, twice). reputation.test.ts pins this order.
+    const initialActor = params.get('actor') || params.get('handle') || params.get('did');
+    if (initialActor) {
+      actor.value = initialActor;
+      load(initialActor);
+    }
   </script>
 </body>
 </html>`;
