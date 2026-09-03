@@ -389,7 +389,7 @@ export function reputationPage(): string {
         : verdict('good', 'search', 'visible', exact.found ? 'exact handle ranks #' + exact.position : 'exact handle not in top 50');
       const verdictMod = appliedCount
         ? verdict('warn', 'moderation', appliedCount + ' label' + (appliedCount === 1 ? '' : 's'), 'from ' + applied.map(l => l.name).join(', '))
-        : verdict(down.length ? 'warn' : 'good', 'moderation', 'no labels', (m.labelers.length - down.length) + ' of ' + m.labelers.length + ' services answered');
+        : verdict('good', 'moderation', 'no labels', (m.labelers.length - down.length) + ' of ' + m.labelers.length + ' services answered');
       const verdictRank = pct.percentile == null
         ? verdict('na', 'ranking', d.score.stored > 0 ? 'score ' + num(d.score.stored) : 'unscored', pct.percentile == null && d.score.stored > 0 ? 'percentile not available yet' : 'no positive stored score')
         : verdict('good', 'ranking', 'top ' + num(pct.topPercent) + '%', 'score ' + num(d.score.stored) + ' · #' + numInt(pct.rank) + ' of ' + numInt(pct.total));
@@ -503,7 +503,7 @@ export function reputationPage(): string {
       const applied = m.labelers.reduce((n, l) => n + l.labels.length, 0);
       const down = m.labelers.filter(l => l.status !== 'ok').length;
       if (applied) return statusBadge('warn', applied + ' label' + (applied === 1 ? '' : 's') + ' applied');
-      return statusBadge(down ? 'warn' : 'good', down ? 'clean · ' + down + ' unreachable' : 'no labels');
+      return statusBadge('good', down ? 'no labels · ' + down + ' unreachable' : 'no labels');
     }
     function labelerRow(l) {
       const what = l.status !== 'ok' ? '<span class="lab-none">did not answer</span>'
