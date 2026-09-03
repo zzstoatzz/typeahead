@@ -96,8 +96,12 @@ regression is pinned). Extend it, don't prune it.
   `test_cron_selector_plans` EXPLAIN-guards this live against Turso), every batch size must
   state what it honestly covers against measured arrival rates (~2,900 new actors/hour), and
   the cron NEVER claims to drain a corpus-scale backlog — backlogs belong to the bulk paths
-  (the `typeahead-enrich-backfill` Prefect deployment for profiles, `typeahead-plc-identity`
-  for identity — both on heavypad, defined in the `my-prefect-server` repo), run off-worker. A cron sized within ~2× of arrivals is treading water, not draining.
+  (the `typeahead-enrich-backfill` Prefect deployment for profiles, `typeahead-identity-hourly`
+  for new actors' handles, `typeahead-plc-identity` weekly for what the appview cannot see —
+  all on heavypad, defined in the `my-prefect-server` repo), run off-worker. Since 2026-09-03
+  the worker cron does NO enrichment at all: freshness, stats, and the moderation refresh
+  only, inside a 12-minute budget (`CRON_BUDGET_MS`) so the 15-minute wall kill — which took
+  120 of 140 runs, silently — cannot recur. Every run logs `cron_done` with per-phase ms.
 - every equality query on `actors.handle` needs `COLLATE NOCASE`, or it scans the whole
   table — `idx_actors_handle` is declared with that collation. Paginate on `rowid`.
 - Turso is single-writer and the live ingester shares it. Bulk writes must batch (one

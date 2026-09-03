@@ -212,6 +212,30 @@ response into "accepted, landing now" changes the UX contract. Revisit only if
 user-facing timeouts actually appear — the endpoint's `Server-Timing` header
 attributes the phases, so you'll be able to tell.
 
+## the worker cron was being killed every hour (found 2026-09-03)
+
+Workers Logs, 08-27..09-03: 140 scheduled runs, 120 ended `exceededWallTime`
+(Cloudflare's 15-minute limit), 20 completed. CPU per run < 1 s; the rest was
+waiting on the appview and Turso. Phase order was freshness → snapshot →
+stats → refreshModeration (~8 min, ~1,000 rows) → enrichActors (identity
+5,000 + profile 5,000 DIDs), so the last phase got ~7 minutes of a job sized
+for 40, and the kill was invisible: not an exception, so `cron_step_failed`
+never fired. Partial batches persisted, so it degraded rather than broke,
+for weeks.
+
+What changed:
+- `enrichActors` is gone from the worker. Handles for new actors are
+  `typeahead-identity-hourly` on heavypad (:20 past the hour, 6,000 DIDs,
+  40-minute budget); profiles were already `typeahead-enrich-backfill` there
+  (daily, 3.5 h, ~215k rows/run). The worker keeps freshness, stats, and the
+  moderation refresh.
+- the step loop has a 12-minute budget (`CRON_BUDGET_MS`): a step only starts
+  with time left, and every run logs `cron_done` with per-phase milliseconds
+  or `cron_budget_exhausted` naming what it skipped. Silence is no longer an
+  outcome.
+- the backfill's Turso calls retry with backoff (2 of 10 daily runs had died
+  on one `ReadTimeout` from the shared single writer).
+
 ## profile sources: Bluesky, then Blacksky's appview, then the PDS (2026-09-03)
 
 Bluesky's appview answers `AccountTakedown` for accounts it has suspended

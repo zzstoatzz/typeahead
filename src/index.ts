@@ -2,7 +2,7 @@ import type { Env } from "./types";
 import { CORS_HEADERS } from "./types";
 import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
-import { recordSnapshot, materializeStats, enrichActors } from "./enrichment";
+import { recordSnapshot, materializeStats } from "./enrichment";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
@@ -17,6 +17,12 @@ import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
 import { llmsTxt } from "./pages/llms";
 import { reputationPage } from "./pages/reputation";
+
+/** Cloudflare kills a scheduled invocation at 15 minutes of wall time, with
+ *  no exception and no log. A step is only started while this much of the
+ *  run is left, so every run ends with a `cron_done` line — or a
+ *  `cron_budget_exhausted` one naming what was skipped. */
+export const CRON_BUDGET_MS = 12 * 60 * 1000;
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
@@ -35,9 +41,9 @@ export default {
       // This is three HTTP calls, and it is the check that exists to catch the
       // system failing silently. Last in the chain it took ~7 minutes to run
       // (measured 2026-07-31: cron at 18:00:51, freshness at 18:07:51) and any
-      // hang in enrichActors — the heavy step, up to 5000 DIDs through
-      // getProfiles — meant it never ran at all. A watchdog positioned behind
-      // the thing most likely to wedge is not a watchdog.
+      // hang in the enrichment step that used to follow (up to 5000 DIDs
+      // through getProfiles) meant it never ran at all. A watchdog positioned
+      // behind the thing most likely to wedge is not a watchdog.
       //
       // It also measures a more honest number here: the steady state left by
       // the previous hour, rather than the replica moments after this cron
@@ -55,15 +61,31 @@ export default {
       ["recordSnapshot", () => recordSnapshot(db)],
       ["materializeStats", () => materializeStats(db, env)],
       ["refreshModeration", () => refreshModeration(db, env)],
-      ["enrichActors", async () => { await enrichActors(db, env); }],
+      // no enrichment here. The identity + profile passes that used to run
+      // last were killed by the 15-minute wall in 120 of 140 runs
+      // (2026-08-27..09-03), silently: a wall kill is not an exception, so
+      // cron_step_failed never fired. They live on heavypad now
+      // (typeahead-identity-hourly, typeahead-enrich-backfill), where an
+      // hour is an hour.
     ];
+    const t_run = Date.now();
+    const phases: Record<string, number> = {};
     for (const [name, fn] of steps) {
+      const elapsed = Date.now() - t_run;
+      if (elapsed > CRON_BUDGET_MS) {
+        // say so, loudly: skipping is the honest alternative to being killed
+        console.log(JSON.stringify({ event: "cron_budget_exhausted", skipped: name, elapsed_ms: elapsed, phases }));
+        break;
+      }
+      const t0 = Date.now();
       try {
         await fn();
       } catch (e: any) {
         console.log(JSON.stringify({ event: "cron_step_failed", step: name, error: e?.message }));
       }
+      phases[name] = Date.now() - t0;
     }
+    console.log(JSON.stringify({ event: "cron_done", elapsed_ms: Date.now() - t_run, phases }));
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
