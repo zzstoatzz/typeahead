@@ -178,6 +178,9 @@ const BuildStats = struct {
     /// v2-cjk snapshots so a CJK-blind build can't silently attach.
     cjk_key_count: usize = 0,
     cjk_actor_count: usize = 0,
+    /// quality_score of every actor written, for the quantile summary. ~44 MB
+    /// at 11M actors; the build box has headroom and this runs once a build.
+    scores: std.ArrayListUnmanaged(f32) = .empty,
     build_start_ms: i64 = 0,
     build_end_ms: i64 = 0,
     /// max(updated_at) seen in Turso actors at build start. Persisted to
@@ -477,6 +480,7 @@ pub fn run(allocator: Allocator) !void {
     }
 
     var stats: BuildStats = .{ .build_start_ms = nowMs() };
+    defer stats.scores.deinit(allocator);
     log.info("indexer start: sample_limit={d} top_n=({d}/{d}/{d})", .{
         cfg.sample_limit, cfg.top_n_short, cfg.top_n_medium, cfg.top_n_long,
     });
@@ -651,7 +655,7 @@ pub fn run(allocator: Allocator) !void {
     deleteStagingFiles(build_dir);
     {
         const t = nowMs();
-        try writeMeta(conn, build_id, cfg, &stats);
+        try writeMeta(allocator, conn, build_id, cfg, &stats);
         stats.phases.meta_ms = nowMs() - t;
     }
 
@@ -971,6 +975,7 @@ fn processActorRow(ctx: *StreamCtx, row: anytype) !void {
     try ctx.stmt_actor.stepToCompletion();
     ctx.stats.phases.actor_insert_ms += nowMs() - t_actor;
     ctx.stats.actor_count += 1;
+    try ctx.stats.scores.append(ctx.gpa, @floatCast(quality_score));
 
     const t_derive = nowMs();
     const norm_handle = try normalize.handle(aa, raw_handle);
@@ -1286,6 +1291,7 @@ fn writeGroup(
 }
 
 fn writeMeta(
+    gpa: Allocator,
     conn: zqlite.Conn,
     build_id: []const u8,
     cfg: Config,
@@ -1308,6 +1314,43 @@ fn writeMeta(
     try schema.setMeta(conn, schema.meta.prefix_count, try std.fmt.bufPrint(&buf, "{d}", .{stats.prefix_key_count}));
     try schema.setMeta(conn, schema.meta.cjk_key_count, try std.fmt.bufPrint(&buf, "{d}", .{stats.cjk_key_count}));
     try schema.setMeta(conn, schema.meta.cjk_actor_count, try std.fmt.bufPrint(&buf, "{d}", .{stats.cjk_actor_count}));
+
+    const quantiles_json = try scoreQuantilesJson(gpa, stats.scores.items);
+    defer gpa.free(quantiles_json);
+    try schema.setMeta(conn, schema.meta.score_quantiles, quantiles_json);
+}
+
+/// p0..p100 of `scores` as a JSON array (sorted in place). Empty input gives
+/// `[]`, which the reader treats as "no percentile available".
+fn scoreQuantilesJson(allocator: std.mem.Allocator, scores: []f32) ![]u8 {
+    std.mem.sort(f32, scores, {}, std.sort.asc(f32));
+    var out: std.Io.Writer.Allocating = .init(allocator);
+    errdefer out.deinit();
+    try out.writer.writeByte('[');
+    if (scores.len > 0) {
+        var p: usize = 0;
+        while (p <= 100) : (p += 1) {
+            const idx = @min(scores.len - 1, (scores.len - 1) * p / 100);
+            if (p > 0) try out.writer.writeByte(',');
+            try out.writer.print("{d:.2}", .{scores[idx]});
+        }
+    }
+    try out.writer.writeByte(']');
+    return out.toOwnedSlice();
+}
+
+test "scoreQuantilesJson: 101 points, monotone, empty is []" {
+    const t = std.testing;
+    var scores = [_]f32{ 5, 1, 4, 2, 3 };
+    const json = try scoreQuantilesJson(t.allocator, &scores);
+    defer t.allocator.free(json);
+    try t.expect(std.mem.startsWith(u8, json, "[1.00,"));
+    try t.expect(std.mem.endsWith(u8, json, ",5.00]"));
+    try t.expectEqual(@as(usize, 101), std.mem.count(u8, json, ",") + 1);
+    var none = [_]f32{};
+    const empty = try scoreQuantilesJson(t.allocator, &none);
+    defer t.allocator.free(empty);
+    try t.expectEqualStrings("[]", empty);
 }
 
 // ─── tests ───────────────────────────────────────────────────────────────

@@ -310,6 +310,15 @@ pub fn writeStatus(arena: Allocator, db: *LocalDb, jw: anytype) !void {
     try jw.objectField("prefix_count");
     try jw.write(db.attachedMetaInt(schema.meta.prefix_count));
 
+    // p0..p100 of quality_score in the attached build, so the worker's
+    // reputation page computes a percentile without a corpus COUNT(*)
+    try jw.objectField("score_quantiles");
+    if (try db.attachedMetaText(arena, schema.meta.score_quantiles)) |q| {
+        try jw.beginWriteRaw();
+        try jw.writer.writeAll(q);
+        jw.endWriteRaw();
+    } else try jw.write(null);
+
     // overlay gauge: how much lives above the base, and whether the last
     // compaction finished. A growing actor count with complete=0 is the
     // ratchet that put the box in a restart loop for ten days (2026-08-19..29).

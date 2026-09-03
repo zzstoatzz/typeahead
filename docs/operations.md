@@ -212,6 +212,39 @@ response into "accepted, landing now" changes the UX contract. Revisit only if
 user-facing timeouts actually appear — the endpoint's `Server-Timing` header
 attributes the phases, so you'll be able to tell.
 
+## /reputation: moderation status across labelers (2026-09-03)
+
+`/reputation?actor=…` now answers "what do the moderation services say about
+this account" next to "why does it rank here". Three facts shaped it:
+
+- **the labels typeahead stores are partial by construction.** They come
+  from the unauthenticated appview (`getProfiles`), which reports only
+  self-labels and Bluesky's own moderation service. The page says so next to
+  them (`storedLabelsSource`).
+- **the appview cannot be asked for third-party labels without auth.**
+  `atproto-accept-labelers` is ignored on `public.api.bsky.app` (verified: a
+  Blacksky-labeled account came back label-free however the header was set).
+  So the page asks each labeler directly on its own
+  `com.atproto.label.queryLabels` endpoint, resolved from the labeler's DID
+  document, 3 s timeout each, in parallel, per report. Nothing is stored;
+  nothing touches the search path.
+- **the labeler list is discovered, not typed.** `scripts/discover-labelers.py`
+  searches the appview and keeps accounts it flags `associated.labeler`,
+  filtered to moderation-type names with ≥ 50 subscribers, plus the appview
+  operators' services pinned regardless (Bluesky, Blacksky, Northsky,
+  Eurosky — Eurosky's has 2 subscribers and may not answer). Output is
+  `src/labelers.json`; rerun the script to refresh, commit the diff.
+
+Negations are resolved client-side (latest record per `val` wins, `neg`
+withdraws, expired labels drop) — `applyLabelHistory` in `src/labelers.ts`.
+
+The same change removed the page's two `COUNT(*)` queries over the visible
+corpus (the last corpus-proportional read on a request path). The snapshot
+builder now writes p0..p100 of `quality_score` into `index_meta`
+(`score_quantiles`), `/index/status` exposes them, and the percentile is a
+lookup in 101 numbers. Until the first build after 2026-09-03 promotes, the
+page says "percentile unavailable".
+
 ## unattributed bulk clients: the 03:00 UTC spike (2026-09-03)
 
 The daily spike in the `unknown` source on `/stats` is one `node` script on a

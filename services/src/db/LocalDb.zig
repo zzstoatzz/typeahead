@@ -411,6 +411,21 @@ pub fn snapshotPath(self: *LocalDb) ?[]const u8 {
     return self.snapshot_path;
 }
 
+/// Text-valued `index_meta` key from the attached snapshot, or null if no
+/// snapshot is attached / the key is missing. Caller owns the slice.
+pub fn attachedMetaText(self: *LocalDb, gpa: Allocator, key: []const u8) !?[]const u8 {
+    if (self.snapshot_path == null) return null;
+    self.meta_mu.lockUncancelable(io);
+    defer self.meta_mu.unlock(io);
+    const c = self.meta_conn orelse return null;
+    const row = c.row("SELECT value FROM idx.index_meta WHERE key = ?", .{key}) catch return null;
+    if (row) |r| {
+        defer r.deinit();
+        return try gpa.dupe(u8, r.text(0));
+    }
+    return null;
+}
+
 /// Integer-valued `index_meta` key from the attached snapshot, or 0 if no
 /// snapshot is attached / the key is missing. Used to feed the previous
 /// build's actor/prefix counts into the promote sanity floors.

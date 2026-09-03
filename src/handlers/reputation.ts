@@ -1,4 +1,5 @@
 import type { TursoDB } from "../db";
+import { percentileFromQuantiles, queryLabelers } from "../labelers";
 import { json, computeAuthorityScoreBreakdown, avatarUrl, avatarFallbackUrl } from "../utils";
 import { BSKY_MOD_DID, MOD_HIDE_VALS, resolveHidden } from "../moderation";
 import { enrichProfileDids } from "./admin";
@@ -23,7 +24,7 @@ interface ReputationActorRow {
 }
 
 interface ScorePercentile {
-  cohort: "visible_scored";
+  cohort: "snapshot_actors";
   percentile: number | null;
   topPercent: number | null;
   rank: number | null;
@@ -57,66 +58,40 @@ function moderationLabels(labels: any[]) {
   }));
 }
 
-async function scorePercentile(db: TursoDB, score: number): Promise<ScorePercentile> {
-  if (score <= 0) {
-    return {
-      cohort: "visible_scored",
-      percentile: null,
-      topPercent: null,
-      rank: null,
-      total: 0,
-      above: 0,
-      belowOrEqual: 0,
-      note: "Percentile is only computed for actors with a positive stored quality_score.",
-    };
-  }
+/** Percentile from the attached snapshot's p0..p100 quantiles (`/index/status`).
+ *  The previous version ran two COUNT(*) queries over the visible corpus per
+ *  report; the quantiles are computed once per build, off the request path. */
+async function scorePercentile(searchBase: string | undefined, score: number): Promise<ScorePercentile> {
+  const none = (note: string): ScorePercentile => ({
+    cohort: "snapshot_actors", percentile: null, topPercent: null, rank: null, total: 0, above: 0, belowOrEqual: 0, note,
+  });
+  if (score <= 0) return none("Percentile is only computed for actors with a positive stored quality_score.");
+  if (!searchBase) return none("Percentile unavailable: no search backend configured.");
 
-  let row: { total: number } | null = null;
-  let aboveRow: { above: number } | null = null;
+  let status: { score_quantiles?: number[] | null; actor_count?: number } | null = null;
   try {
-    row = await db.prepare(
-      "SELECT COUNT(*) AS total FROM actors INDEXED BY idx_actors_visible_quality_score WHERE handle != '' AND hidden = 0 AND quality_score > 0"
-    ).first<{ total: number }>();
-    aboveRow = await db.prepare(
-      "SELECT COUNT(*) AS above FROM actors INDEXED BY idx_actors_visible_quality_score WHERE handle != '' AND hidden = 0 AND quality_score > 0 AND quality_score > ?1"
-    ).bind(score).first<{ above: number }>();
-  } catch {
-    return {
-      cohort: "visible_scored",
-      percentile: null,
-      topPercent: null,
-      rank: null,
-      total: 0,
-      above: 0,
-      belowOrEqual: 0,
-      note: "Percentile unavailable: the visible quality_score index is not present yet.",
-    };
+    const r = await fetch(`${searchBase}/index/status`, { signal: AbortSignal.timeout(2000) });
+    if (r.ok) status = await r.json();
+  } catch { /* the note below says so */ }
+  const quantiles = status?.score_quantiles ?? null;
+  const total = Number(status?.actor_count) || 0;
+  const p = quantiles ? percentileFromQuantiles(score, quantiles) : null;
+  if (p === null || total === 0) {
+    return none("Percentile unavailable: the attached snapshot predates score quantiles (they arrive with the next index build).");
   }
-
-  const total = Number(row?.total) || 0;
-  const above = Number(aboveRow?.above) || 0;
-  const belowOrEqual = Math.max(0, total - above);
-  const percentile = total > 0 ? Math.round((belowOrEqual / total) * 10000) / 100 : null;
-  const topPercent = total > 0 ? Math.round(((above + 1) / total) * 10000) / 100 : null;
+  const above = Math.round(total * (100 - p) / 100);
   return {
-    cohort: "visible_scored",
-    percentile,
-    topPercent,
-    rank: total > 0 ? above + 1 : null,
+    cohort: "snapshot_actors",
+    percentile: p,
+    topPercent: Math.max(0.01, Math.round((100 - p) * 100) / 100),
+    rank: above + 1,
     total,
     above,
-    belowOrEqual,
-    note: "Percentile is among visible actors with a positive stored quality_score, not every actor in the corpus.",
+    belowOrEqual: total - above,
+    note: "Percentile band among the actors in the attached index snapshot (visible at build time), to the nearest whole percent.",
   };
 }
 
-
-
-/** Sample position via the real search engine (bounded prefix-index lookups,
- *  ms-fast) instead of recreating search as raw SQL — the FTS recreation
- *  ranked every match before LIMIT and took 55-85s for short/common tokens,
- *  blowing past the edge request limit entirely (2026-08-04). An 8s timebox
- *  keeps a slow engine from wedging the report; timeouts read as unranked. */
 async function liveSearchPosition(
   searchBase: string | undefined,
   termRaw: string,
@@ -222,14 +197,15 @@ export async function handleReputation(request: Request, db: TursoDB, env: Env):
   const storedScore = Number(row.quality_score) || 0;
   const handlePrefix = row.handle.split(".")[0] || row.handle.slice(0, 3);
   const searchBase = env.SEARCH_BACKEND_URL;
-  const [exactHandle, displayName, handlePrefixPosition, exactHandleExists, percentile] = await Promise.all([
+  const [exactHandle, displayName, handlePrefixPosition, exactHandleExists, percentile, labelers] = await Promise.all([
     liveSearchPosition(searchBase, row.handle, row.did),
     row.display_name ? liveSearchPosition(searchBase, row.display_name, row.did) : Promise.resolve({ query: "", found: false, position: null, matchedBy: null }),
     handlePrefix ? liveSearchPosition(searchBase, handlePrefix, row.did) : Promise.resolve({ query: "", found: false, position: null, matchedBy: null }),
     db.prepare(
       "SELECT did FROM actors WHERE handle = ?1 COLLATE NOCASE AND hidden = 0 LIMIT 1"
     ).bind(row.handle).first<{ did: string }>(),
-    scorePercentile(db, storedScore),
+    scorePercentile(searchBase, storedScore),
+    queryLabelers(row.did),
   ]);
 
   return json({
@@ -250,6 +226,11 @@ export async function handleReputation(request: Request, db: TursoDB, env: Env):
       breakdown: computed,
     },
     moderation: {
+      // what THIS service decided and why, then what each moderation labeler
+      // says right now. The stored labels are only what the unauthenticated
+      // appview reports: self-labels plus Bluesky's own moderation service.
+      storedLabelsSource: "self-labels + Bluesky Moderation Service, as the unauthenticated appview reports them",
+      labelers,
       hiddenStored: Boolean(row.hidden),
       hiddenComputed: Boolean(effectiveHidden),
       labels: moderationLabels(labels),

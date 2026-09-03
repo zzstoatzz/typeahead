@@ -7,7 +7,7 @@ export function reputationPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ranking report · typeahead</title>
+  <title>ranking &amp; moderation report · typeahead</title>
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}
@@ -122,6 +122,11 @@ export function reputationPage(): string {
     .bars { display: grid; gap: 0.55rem; }
     .bar-row { display: grid; grid-template-columns: 9.5rem 1fr 4.6rem; gap: 0.7rem; align-items: center; }
     .bar-label { color: var(--muted); font-size: 0.8rem; }
+    .labelers { display: flex; flex-direction: column; border-top: 1px solid var(--line); margin-top: 0.6rem; }
+    .labeler { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
+    .lab-vals { display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: flex-end; }
+    .lab { font-size: 0.72rem; padding: 0.1rem 0.45rem; border-radius: 999px; background: var(--amber-soft, rgba(168,106,28,0.15)); color: var(--amber, #a86a1c); }
+    .lab-none { font-size: 0.75rem; color: var(--dim); }
     .bar { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
     .bar span { display: block; height: 100%; min-width: 1px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
     .bar.penalty span { background: var(--red); opacity: 0.75; }
@@ -173,14 +178,14 @@ export function reputationPage(): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1><a href="/" class="wordmark">typeahead</a> ranking report</h1>
+      <h1><a href="/" class="wordmark">typeahead</a> ranking &amp; moderation report</h1>
       <nav class="toplinks" aria-label="site links">
         <a href="/stats">stats</a>
         <span>·</span>
         <a href="/docs">docs</a>
       </nav>
     </div>
-    <p class="subtitle">why an actor ranks where it does — score inputs, visibility gates, and live search positions</p>
+    <p class="subtitle">why an actor ranks where it does, and what each moderation service says about it — score inputs, visibility gates, labels, live search positions</p>
     <div class="entry">
       <form id="form">
         <div class="ta-wrap">
@@ -400,6 +405,15 @@ export function reputationPage(): string {
               check(d.indexing.shouldBeInPrefixIndex, 'prefix lookup eligibility', d.indexing.shouldBeInPrefixIndex ? 'handle is present and the actor is allowed into prefix lookup.' : 'hidden actors or actors without handles are excluded from prefix lookup.') +
               check(d.indexing.exactHandleLookupFindsIt, 'exact handle lookup', d.indexing.exactHandleLookupFindsIt ? 'a direct handle lookup resolves to this DID.' : 'the exact handle path does not currently return this actor.') +
             '</div>') +
+          card('moderation status', moderationBadge(d.moderation),
+            '<div class="checks">' +
+              info('what typeahead decided', (hidden ? 'hidden from search. ' : 'shown in search. ') + gateCopy(d)) +
+              info('labels typeahead holds', (d.moderation.labels.length ? d.moderation.labels.map(l => l.val).join(', ') : 'none') +
+                ' — ' + d.moderation.storedLabelsSource + '.') +
+            '</div>' +
+            '<div class="labelers">' + d.moderation.labelers.map(labelerRow).join('') + '</div>' +
+            '<div class="card-sub">each moderation service is asked directly (com.atproto.label.queryLabels) when this report loads; nothing here is stored. ' +
+              'a labeler only affects people who subscribe to it, except where an appview runs it. list: scripts/discover-labelers.py.</div>') +
           card('example searches', statusBadge(exact.found ? 'good' : 'warn', exact.found ? 'exact works' : 'not found'),
             '<div class="queries">' +
               queryRow('exact handle', exact) +
@@ -440,6 +454,18 @@ export function reputationPage(): string {
       return '<div class="query"><div><div class="q-name">' + esc(p && p.query ? p.query : label) + '</div><div class="q-kind">' +
         esc(label + (p && p.matchedBy ? ' · ' + p.matchedBy : '')) + '</div></div><div class="rank ' + (found ? '' : 'missing') + '">' +
         (found ? '#' + p.position : 'not top 50') + '</div></div>';
+    }
+    function moderationBadge(m) {
+      const applied = m.labelers.reduce((n, l) => n + l.labels.length, 0);
+      const down = m.labelers.filter(l => l.status !== 'ok').length;
+      if (applied) return statusBadge('warn', applied + ' label' + (applied === 1 ? '' : 's') + ' applied');
+      return statusBadge(down ? 'warn' : 'good', down ? 'clean · ' + down + ' unreachable' : 'no labels');
+    }
+    function labelerRow(l) {
+      const what = l.status !== 'ok' ? '<span class="lab-none">did not answer</span>'
+        : l.labels.length ? l.labels.map(x => '<span class="lab">' + esc(x.val) + '</span>').join(' ')
+        : '<span class="lab-none">none</span>';
+      return '<div class="labeler"><div><div class="q-name">' + esc(l.name) + '</div><div class="q-kind">@' + esc(l.handle) + '</div></div><div class="lab-vals">' + what + '</div></div>';
     }
     function gateCopy(d) {
       if (d.moderation.override) return 'override is ' + d.moderation.override.action + (d.moderation.override.reason ? ': ' + d.moderation.override.reason : '.');

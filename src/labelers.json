@@ -1,0 +1,86 @@
+[
+  {
+    "did": "did:plc:ar7c4by46qjdydhdevvrndac",
+    "handle": "moderation.bsky.app",
+    "name": "Bluesky Moderation Service",
+    "endpoint": "https://mod.bsky.app",
+    "followers": 38035
+  },
+  {
+    "did": "did:plc:d2mkddsbmnrgr3domzg5qexf",
+    "handle": "moderation.blacksky.app",
+    "name": "Blacksky Moderation",
+    "endpoint": "https://mod.blackskyweb.xyz",
+    "followers": 14714
+  },
+  {
+    "did": "did:plc:fmug4zegnl7lf6ljp7aokpeh",
+    "handle": "moderation.medsky.network",
+    "name": "Medsky Moderation",
+    "endpoint": "https://labels.medsky.social",
+    "followers": 1328
+  },
+  {
+    "did": "did:plc:uac6er53o2pvr5y2qmvaf7hw",
+    "handle": "pef-moderation.org",
+    "name": "Public Education Forum Moderation",
+    "endpoint": "https://ozone.pef-moderation.org",
+    "followers": 848
+  },
+  {
+    "did": "did:plc:r55ow3tocux5kafs5dq445fy",
+    "handle": "moderation-de.bsky.app",
+    "name": "Bluesky Moderation Service (Germany)",
+    "endpoint": "https://mod-de.bsky.app",
+    "followers": 373
+  },
+  {
+    "did": "did:plc:gqq67nt6m4tdloyvociw7ikr",
+    "handle": "moderation.latinsky.app",
+    "name": "Latinsky Moderation",
+    "endpoint": "https://ozone.latinsky.app",
+    "followers": 316
+  },
+  {
+    "did": "did:plc:ekitcvx7uwnauoqy5oest3hm",
+    "handle": "moderation-br.bsky.app",
+    "name": "Bluesky Moderation Service (Brazil)",
+    "endpoint": "https://mod-br.bsky.app",
+    "followers": 308
+  },
+  {
+    "did": "did:plc:cnn3jrtucivembf66xe6fdfs",
+    "handle": "moderation.moe",
+    "name": "Moe Moderation \ud83c\udf80",
+    "endpoint": "https://ozone.moderation.moe",
+    "followers": 112
+  },
+  {
+    "did": "did:plc:5o2g6wwchb3tgwrhl2atauzu",
+    "handle": "moderation.tripazeada.club",
+    "name": "Moderation Tripazeada",
+    "endpoint": "https://ozone.triis.lol",
+    "followers": 110
+  },
+  {
+    "did": "did:plc:cquoj7aozvmkud2gifeinkda",
+    "handle": "moderation-tr.bsky.app",
+    "name": "Bluesky Moderation Service (Turkey)",
+    "endpoint": "https://mod-tr.bsky.app",
+    "followers": 102
+  },
+  {
+    "did": "did:plc:p2cxrw3ank4dzs55mpm6ohq4",
+    "handle": "moderation.northsky.social",
+    "name": "Northsky Moderation",
+    "endpoint": "https://ozone.northsky.social",
+    "followers": 66
+  },
+  {
+    "did": "did:plc:h5cmg4t64mj4pxmqaiaoam7c",
+    "handle": "ozone.eurosky.social",
+    "name": "Eurosky Moderation Service",
+    "endpoint": "https://ozone.eurosky.network",
+    "followers": 2
+  }
+]

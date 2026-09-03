@@ -48,6 +48,10 @@ pub const meta = struct {
     pub const prefix_count = "prefix_count"; // distinct keys in prefix_top_base
     pub const cjk_key_count = "cjk_key_count"; // v2+ : CJK n: keys emitted
     pub const cjk_actor_count = "cjk_actor_count"; // v2+ : actors with ≥1 CJK key
+    /// JSON array of 101 quality_score quantiles (p0..p100) over the actors
+    /// in this build, so a percentile is a binary search over 101 numbers
+    /// instead of a COUNT(*) over the corpus on the request path.
+    pub const score_quantiles = "score_quantiles";
 };
 
 /// Create snapshot tables on the indexer's per-build DB. Idempotent.
