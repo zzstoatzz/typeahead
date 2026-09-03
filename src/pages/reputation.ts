@@ -97,48 +97,39 @@ export function reputationPage(): string {
     .who-handle { color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
     .who-tag { color: var(--dim); font-size: 0.72rem; margin-top: 0.15rem; overflow-wrap: anywhere; }
 
-    /* verdict strip: the three answers most people came for, readable at a glance */
-    .verdicts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
-    .verdict { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 0.7rem 0.8rem; border-top: 3px solid var(--line-2); min-width: 0; }
-    .verdict.good { border-top-color: var(--accent); }
-    .verdict.warn { border-top-color: var(--amber); }
-    .verdict.bad { border-top-color: var(--red); }
-    .verdict.na { border-top-color: var(--line-2); }
-    .v-label { color: var(--dim); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; }
-    .v-value { color: var(--bright); font-size: 1.05rem; font-weight: 700; line-height: 1.2; margin-top: 0.15rem; overflow-wrap: anywhere; }
-    .verdict.good .v-value { color: var(--accent); }
-    .verdict.warn .v-value { color: var(--amber); }
-    .verdict.bad .v-value { color: var(--red); }
-    .v-sub { color: var(--muted); font-size: 0.72rem; margin-top: 0.2rem; }
+    /* state is a 6px dot plus the word, never a stripe, a pill or a tinted edge */
+    .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--dim); vertical-align: middle; margin-right: 0.45rem;
+           box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); color: var(--dim); }
+    .good { color: var(--accent); } .good .dot, .dot.good { background: var(--accent); color: var(--accent); }
+    .warn { color: var(--amber); } .warn .dot, .dot.warn { background: var(--amber); color: var(--amber); }
+    .bad { color: var(--red); } .bad .dot, .dot.bad { background: var(--red); color: var(--red); }
+    .na { color: var(--muted); } .na .dot, .dot.na { background: var(--faint); color: var(--faint); }
+    .kicker { color: var(--dim); font-size: 0.66rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.11em; }
+    .state { font-size: 0.78rem; white-space: nowrap; }
 
-    /* sections: closed by default, one line each; the rail color names the topic */
-    .secs { display: grid; gap: 0.55rem; }
-    .sec { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); border-left: 4px solid var(--rail, var(--line-2)); margin-top: 0; }
-    .sec-rank { --rail: var(--accent); }
-    .sec-vis { --rail: var(--blue); }
-    .sec-mod { --rail: var(--amber); }
-    .sec-search { --rail: var(--violet); }
-    .sec-data { --rail: var(--line-2); }
-    .sec > summary { list-style: none; display: grid; grid-template-columns: auto 1fr auto; gap: 0.7rem; align-items: center; padding: 0.75rem 0.9rem; cursor: pointer; color: var(--text); font-size: 0.85rem; min-height: 48px; }
+    /* verdicts: one quiet row of three answers, divided by hairlines, no boxes */
+    .verdicts { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 1.1rem; }
+    .verdict { padding: 0.8rem 0.9rem 0.85rem; min-width: 0; }
+    .verdict + .verdict { border-left: 1px solid var(--line); }
+    .v-value { color: var(--bright); font-size: 1rem; font-weight: 700; line-height: 1.25; margin-top: 0.3rem; overflow-wrap: anywhere; }
+    .v-sub { color: var(--muted); font-size: 0.74rem; margin-top: 0.2rem; }
+
+    /* sections: hairline cards, closed by default, one line each */
+    .secs { display: grid; gap: 0.5rem; }
+    .sec { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin-top: 0; }
+    .sec > summary { list-style: none; display: grid; grid-template-columns: 7.5rem 1fr auto; gap: 0.8rem; align-items: center; padding: 0.8rem 0.95rem; cursor: pointer; color: var(--text); font-size: 0.85rem; min-height: 48px; }
     .sec > summary::-webkit-details-marker { display: none; }
-    .sec > summary:hover { background: var(--hover); border-radius: 0 10px 10px 0; }
+    .sec > summary:hover .sec-line { color: var(--text); }
     .sec[open] > summary { border-bottom: 1px solid var(--line); }
-    .sec-label { color: var(--rail, var(--muted)); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
-    .sec-data .sec-label { color: var(--muted); }
     .sec-line { color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
     .sec-line .hi { color: var(--text); }
-    .sec-chev { color: var(--faint); font-size: 0.75rem; transition: transform 0.15s; }
+    .sec-end { display: flex; align-items: center; gap: 0.7rem; }
+    .sec-chev { color: var(--faint); font-size: 0.7rem; transition: transform 0.15s; }
     .sec[open] .sec-chev { transform: rotate(90deg); }
-    .sec-body { padding: 0.9rem; }
+    @media (prefers-reduced-motion: reduce) { .sec-chev { transition: none; } }
+    .sec-body { padding: 0.95rem; }
     .card-sub { color: var(--muted); margin-top: 0.65rem; font-size: 0.8rem; }
     .card-sub .hi { color: var(--text); }
-    .badge {
-      font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line-2);
-      border-radius: 999px; padding: 0.12rem 0.52rem; white-space: nowrap;
-    }
-    .badge.good { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
-    .badge.warn { color: var(--amber); border-color: color-mix(in srgb, var(--amber) 45%, transparent); }
-    .badge.bad { color: var(--red); border-color: color-mix(in srgb, var(--red) 45%, transparent); }
     .metric { display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap; }
     .metric .num {
       font-size: 2rem; line-height: 1; color: var(--accent); font-weight: 700;
@@ -153,10 +144,9 @@ export function reputationPage(): string {
     .bars { display: grid; gap: 0.55rem; }
     .bar-row { display: grid; grid-template-columns: 9.5rem 1fr 4.6rem; gap: 0.7rem; align-items: center; }
     .bar-label { color: var(--muted); font-size: 0.8rem; }
-    .labelers { display: flex; flex-direction: column; border-top: 1px solid var(--line); margin-top: 0.6rem; }
-    .labeler { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; padding: 0.45rem 0; border-bottom: 1px solid var(--line); }
-    .lab-vals { display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: flex-end; }
-    .lab { font-size: 0.72rem; padding: 0.1rem 0.45rem; border-radius: 999px; background: var(--amber-soft, rgba(168,106,28,0.15)); color: var(--amber, #a86a1c); }
+    .labelers { display: flex; flex-direction: column; margin-top: 0.75rem; border-top: 1px solid var(--line); }
+    .labeler { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+    .lab-vals { text-align: right; font-size: 0.8rem; color: var(--amber); overflow-wrap: anywhere; }
     .lab-none { font-size: 0.75rem; color: var(--dim); }
     .bar { height: 8px; background: var(--bg); border-radius: 999px; overflow: hidden; border: 1px solid var(--line); }
     .bar span { display: block; height: 100%; min-width: 1px; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); }
@@ -200,8 +190,9 @@ export function reputationPage(): string {
     footer .theme-btn { margin-left: 0.4rem; }
     @media (max-width: 560px) {
       .verdicts { grid-template-columns: 1fr; }
+      .verdict + .verdict { border-left: 0; border-top: 1px solid var(--line); }
       .sec > summary { grid-template-columns: 1fr auto; }
-      .sec-label { grid-column: 1 / -1; }
+      .sec > summary .kicker { grid-column: 1 / -1; }
       .score-pair { grid-template-columns: 1fr; }
       .bar-row { grid-template-columns: 1fr 4.4rem; }
       .bar { grid-column: 1 / -1; grid-row: 2; }
@@ -466,11 +457,11 @@ export function reputationPage(): string {
         '</div>';
     }
     function verdict(kind, label, value, sub) {
-      return '<div class="verdict ' + kind + '"><div class="v-label">' + esc(label) + '</div><div class="v-value">' + esc(value) + '</div><div class="v-sub">' + esc(sub) + '</div></div>';
+      return '<div class="verdict"><div class="kicker">' + esc(label) + '</div><div class="v-value"><span class="dot ' + kind + '"></span>' + esc(value) + '</div><div class="v-sub">' + esc(sub) + '</div></div>';
     }
-    function sec(kind, label, line, badge, open, body) {
-      return '<details class="sec ' + kind + '"' + (open ? ' open' : '') + '><summary><span class="sec-label">' + esc(label) + '</span><span class="sec-line">' + line + '</span>' +
-        '<span>' + badge + ' <span class="sec-chev">▸</span></span></summary><div class="sec-body">' + body + '</div></details>';
+    function sec(kind, label, line, state, open, body) {
+      return '<details class="sec ' + kind + '"' + (open ? ' open' : '') + '><summary><span class="kicker">' + esc(label) + '</span><span class="sec-line">' + line + '</span>' +
+        '<span class="sec-end">' + state + '<span class="sec-chev">▶</span></span></summary><div class="sec-body">' + body + '</div></details>';
     }
     function gateShort(d) {
       if (d.moderation.override) return 'admin override: ' + d.moderation.override.action;
@@ -479,7 +470,7 @@ export function reputationPage(): string {
       if (active.length) return 'label ' + active.join(', ');
       return 'stored row marked hidden';
     }
-    function statusBadge(kind, text) { return '<span class="badge ' + kind + '">' + esc(text) + '</span>'; }
+    function statusBadge(kind, text) { return '<span class="state ' + kind + '"><span class="dot"></span>' + esc(text) + '</span>'; }
     function mini(label, value) { return '<div class="mini"><div class="mini-label">' + esc(label) + '</div><div class="mini-value">' + esc(value) + '</div></div>'; }
     function bar(label, val, max, cls) {
       return '<div class="bar-row"><div class="bar-label">' + esc(label) + '</div><div class="bar ' + (cls || '') + '"><span style="width:' +
@@ -507,7 +498,7 @@ export function reputationPage(): string {
     }
     function labelerRow(l) {
       const what = l.status !== 'ok' ? '<span class="lab-none">did not answer</span>'
-        : l.labels.length ? l.labels.map(x => '<span class="lab">' + esc(x.val) + '</span>').join(' ')
+        : l.labels.length ? l.labels.map(x => esc(x.val)).join(' · ')
         : '<span class="lab-none">none</span>';
       return '<div class="labeler"><div><div class="q-name">' + esc(l.name) + '</div><div class="q-kind">@' + esc(l.handle) + '</div></div><div class="lab-vals">' + what + '</div></div>';
     }
