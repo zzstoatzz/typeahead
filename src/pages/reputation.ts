@@ -1,7 +1,9 @@
 import { FAVICON } from "../types";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
+import { LABELERS } from "../labelers";
 
 export function reputationPage(): string {
+  const LABELER_COUNT = LABELERS.length;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -95,10 +97,41 @@ export function reputationPage(): string {
     .who-handle { color: var(--muted); font-size: 0.85rem; overflow-wrap: anywhere; }
     .who-tag { color: var(--dim); font-size: 0.72rem; margin-top: 0.15rem; overflow-wrap: anywhere; }
 
-    .cards { display: grid; gap: 1.25rem; }
-    .card { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 1rem; }
-    .card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.75rem; }
-    .card-label { font-size: 0.75rem; font-weight: 400; color: var(--muted); }
+    /* verdict strip: the three answers most people came for, readable at a glance */
+    .verdicts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
+    .verdict { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); padding: 0.7rem 0.8rem; border-top: 3px solid var(--line-2); min-width: 0; }
+    .verdict.good { border-top-color: var(--accent); }
+    .verdict.warn { border-top-color: var(--amber); }
+    .verdict.bad { border-top-color: var(--red); }
+    .verdict.na { border-top-color: var(--line-2); }
+    .v-label { color: var(--dim); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .v-value { color: var(--bright); font-size: 1.05rem; font-weight: 700; line-height: 1.2; margin-top: 0.15rem; overflow-wrap: anywhere; }
+    .verdict.good .v-value { color: var(--accent); }
+    .verdict.warn .v-value { color: var(--amber); }
+    .verdict.bad .v-value { color: var(--red); }
+    .v-sub { color: var(--muted); font-size: 0.72rem; margin-top: 0.2rem; }
+
+    /* sections: closed by default, one line each; the rail color names the topic */
+    .secs { display: grid; gap: 0.55rem; }
+    .sec { border: 1px solid var(--line); border-radius: 10px; background: var(--panel); border-left: 4px solid var(--rail, var(--line-2)); margin-top: 0; }
+    .sec-rank { --rail: var(--accent); }
+    .sec-vis { --rail: var(--blue); }
+    .sec-mod { --rail: var(--amber); }
+    .sec-search { --rail: var(--violet); }
+    .sec-data { --rail: var(--line-2); }
+    .sec > summary { list-style: none; display: grid; grid-template-columns: auto 1fr auto; gap: 0.7rem; align-items: center; padding: 0.75rem 0.9rem; cursor: pointer; color: var(--text); font-size: 0.85rem; min-height: 48px; }
+    .sec > summary::-webkit-details-marker { display: none; }
+    .sec > summary:hover { background: var(--hover); border-radius: 0 10px 10px 0; }
+    .sec[open] > summary { border-bottom: 1px solid var(--line); }
+    .sec-label { color: var(--rail, var(--muted)); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+    .sec-data .sec-label { color: var(--muted); }
+    .sec-line { color: var(--muted); font-size: 0.8rem; overflow-wrap: anywhere; }
+    .sec-line .hi { color: var(--text); }
+    .sec-chev { color: var(--faint); font-size: 0.75rem; transition: transform 0.15s; }
+    .sec[open] .sec-chev { transform: rotate(90deg); }
+    .sec-body { padding: 0.9rem; }
+    .card-sub { color: var(--muted); margin-top: 0.65rem; font-size: 0.8rem; }
+    .card-sub .hi { color: var(--text); }
     .badge {
       font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line-2);
       border-radius: 999px; padding: 0.12rem 0.52rem; white-space: nowrap;
@@ -112,8 +145,6 @@ export function reputationPage(): string {
       letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
     }
     .metric .unit { color: var(--muted); font-size: 0.8rem; }
-    .card-sub { color: var(--muted); margin-top: 0.65rem; font-size: 0.8rem; }
-    .card-sub .hi { color: var(--text); }
     .score-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.85rem; }
     .mini { border-top: 1px solid var(--line); padding-top: 0.7rem; }
     .mini-label { color: var(--dim); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.07em; }
@@ -154,8 +185,8 @@ export function reputationPage(): string {
     .q-kind { color: var(--dim); font-size: 0.72rem; }
     .rank { color: var(--amber); font-weight: 700; font-variant-numeric: tabular-nums; }
     .rank.missing { color: var(--red); }
-    details { margin-top: 0.85rem; color: var(--dim); font-size: 0.8rem; }
-    summary { cursor: pointer; color: var(--muted); }
+    details.raw { margin-top: 0.85rem; color: var(--dim); font-size: 0.8rem; }
+    details.raw summary { cursor: pointer; color: var(--muted); }
     pre {
       margin-top: 0.6rem; background: var(--bg); border: 1px solid var(--line);
       border-radius: 8px; padding: 0.85rem; overflow: auto; color: var(--muted);
@@ -168,6 +199,9 @@ export function reputationPage(): string {
     footer a:hover { color: var(--muted); }
     footer .theme-btn { margin-left: 0.4rem; }
     @media (max-width: 560px) {
+      .verdicts { grid-template-columns: 1fr; }
+      .sec > summary { grid-template-columns: 1fr auto; }
+      .sec-label { grid-column: 1 / -1; }
       .score-pair { grid-template-columns: 1fr; }
       .bar-row { grid-template-columns: 1fr 4.4rem; }
       .bar { grid-column: 1 / -1; grid-row: 2; }
@@ -239,32 +273,16 @@ export function reputationPage(): string {
       return encodeURIComponent(v).replace(/%3A/gi, ':');
     }
 
-    // staged progress: named after what the backend actually does, advanced on
-    // a timer since the report is a single request. the percentile pass (two
-    // COUNT scans over every visible scored actor) dominates the wait.
-    //
-    // these thresholds are stale: they were tuned when sample-search ranking
-    // was the slow part, and since those positions moved to the live search
-    // engine the wait is sub-second, so the later stages barely render. it's
-    // harmless copy, not a bug — but if you're in here anyway, re-tune against
-    // observed p95 or collapse it to a single "building report" state.
-    const STAGES = [
-      { at: 0,     text: 'resolving actor', note: '' },
-      { at: 700,   text: 'reading the stored row + moderation state', note: '' },
-      { at: 2000,  text: 'ranking sample searches', note: 'exact handle, display name, and prefix' },
-      { at: 6000,  text: 'ranking sample searches', note: 'broad terms rank every match before the cutoff — this is the slow part' },
-      { at: 20000, text: 'still ranking sample searches', note: 'short or common name tokens can take a while; hang tight' },
-    ];
+    // one honest waiting state: the report is a single request whose time is
+    // the labeler fan-out (a few seconds worst case), not a pipeline of stages
+    const LABELER_COUNT = ${LABELER_COUNT};
     let stageTimer = null;
     function startStages() {
       const t0 = Date.now();
       const tick = () => {
         const ms = Date.now() - t0;
-        let cur = STAGES[0];
-        for (const st of STAGES) if (ms >= st.at) cur = st;
-        out.innerHTML = '<div class="status"><div class="stage"><span>' + esc(cur.text) +
-          '<span class="scan-caret"></span></span><span class="elapsed">' + (ms / 1000).toFixed(1) + 's</span></div>' +
-          (cur.note ? '<div class="stage-note">' + esc(cur.note) + '</div>' : '') + '</div>';
+        out.innerHTML = '<div class="status"><div class="stage"><span>asking the index and ' + LABELER_COUNT + ' moderation services' +
+          '<span class="scan-caret"></span></span><span class="elapsed">' + (ms / 1000).toFixed(1) + 's</span></div></div>';
       };
       tick();
       stageTimer = setInterval(tick, 250);
@@ -359,13 +377,29 @@ export function reputationPage(): string {
 
     function render(d) {
       const b = d.score.breakdown;
-      const hidden = d.moderation.hiddenComputed || d.moderation.hiddenStored;
+      const m = d.moderation;
+      const hidden = m.hiddenComputed || m.hiddenStored;
       const stale = Math.abs(d.score.staleDelta) >= 0.01;
       const exact = d.sampleQueryPositions.exactHandle;
       const display = d.sampleQueryPositions.displayName;
       const prefix = d.sampleQueryPositions.handlePrefix;
       const maxPart = Math.max(b.followersInfluence, b.postsInfluence, b.followerFollowRatioBonus, b.matureAccountBonus, 1);
       const pct = d.score.percentile || {};
+      const applied = m.labelers.filter(l => l.labels.length);
+      const appliedCount = applied.reduce((n, l) => n + l.labels.length, 0);
+      const down = m.labelers.filter(l => l.status !== 'ok');
+      const ownLabels = m.labels.map(l => l.val);
+
+      const verdictSearch = hidden
+        ? verdict('bad', 'search', 'hidden', gateShort(d))
+        : verdict('good', 'search', 'visible', exact.found ? 'exact handle ranks #' + exact.position : 'exact handle not in top 50');
+      const verdictMod = appliedCount
+        ? verdict('warn', 'moderation', appliedCount + ' label' + (appliedCount === 1 ? '' : 's'), 'from ' + applied.map(l => l.name).join(', '))
+        : verdict(down.length ? 'warn' : 'good', 'moderation', 'no labels', (m.labelers.length - down.length) + ' of ' + m.labelers.length + ' services answered');
+      const verdictRank = pct.percentile == null
+        ? verdict('na', 'ranking', d.score.stored > 0 ? 'score ' + num(d.score.stored) : 'unscored', pct.percentile == null && d.score.stored > 0 ? 'percentile not available yet' : 'no positive stored score')
+        : verdict('good', 'ranking', 'top ' + num(pct.topPercent) + '%', 'score ' + num(d.score.stored) + ' · #' + numInt(pct.rank) + ' of ' + numInt(pct.total));
+
       out.innerHTML =
         '<div class="who">' +
           '<div class="who-avatar">' + avatar(d.actor) + '</div>' +
@@ -375,18 +409,40 @@ export function reputationPage(): string {
             '<div class="who-tag">' + esc(d.actor.did) + (d.actor.createdAt ? ' · created ' + esc(dateShort(d.actor.createdAt)) : '') + '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="cards">' +
-          card('ranking score', statusBadge(stale ? 'warn' : 'good', stale ? 'pending write' : 'current'),
+        '<div class="verdicts">' + verdictSearch + verdictMod + verdictRank + '</div>' +
+        '<div class="secs">' +
+          sec('sec-vis', 'visibility', hidden ? 'hidden from search — ' + gateShort(d) : 'allowed to appear; ' + (d.indexing.shouldBeInPrefixIndex ? 'in prefix lookup' : 'not in prefix lookup'),
+            statusBadge(hidden ? 'bad' : 'good', hidden ? 'hidden' : 'can appear'), hidden,
+            '<div class="checks">' +
+              info('separate from ranking', 'these checks decide whether the actor is allowed to appear — they never add to or subtract from the score.') +
+              check(!m.hiddenStored, 'stored visibility', m.hiddenStored ? 'the actors row is currently marked hidden.' : 'the actors row is currently visible.') +
+              check(!m.hiddenComputed, 'moderation result', gateCopy(d)) +
+              check(d.indexing.shouldBeInPrefixIndex, 'prefix lookup eligibility', d.indexing.shouldBeInPrefixIndex ? 'handle is present and the actor is allowed into prefix lookup.' : 'hidden actors or actors without handles are excluded from prefix lookup.') +
+              check(d.indexing.exactHandleLookupFindsIt, 'exact handle lookup', d.indexing.exactHandleLookupFindsIt ? 'a direct handle lookup resolves to this DID.' : 'the handle is not currently resolvable to this DID via exact lookup.') +
+            '</div>') +
+          sec('sec-mod', 'moderation', appliedCount
+              ? applied.map(l => '<span class="hi">' + esc(l.name) + '</span>: ' + l.labels.map(x => x.val).join(', ')).join(' · ')
+              : 'no labels from ' + (m.labelers.length - down.length) + ' moderation services' + (down.length ? ' (' + down.length + ' did not answer)' : ''),
+            moderationBadge(m), appliedCount > 0,
+            '<div class="checks">' +
+              info('labels typeahead holds', (ownLabels.length ? ownLabels.join(', ') : 'none') + ' — ' + m.storedLabelsSource + '.') +
+            '</div>' +
+            '<div class="labelers">' + m.labelers.map(labelerRow).join('') + '</div>' +
+            '<div class="card-sub">each service is asked directly (com.atproto.label.queryLabels) when this report loads; nothing here is stored. ' +
+              'a labeler only affects people who subscribe to it, except where an appview runs it.</div>') +
+          sec('sec-rank', 'ranking', 'stored score <span class="hi">' + num(d.score.stored) + '</span>' +
+              (pct.percentile == null ? '' : ', top ' + num(pct.topPercent) + '% of ' + numInt(pct.total)) +
+              (stale ? ' · recalculation differs by ' + signed(d.score.staleDelta) : ''),
+            statusBadge(stale ? 'warn' : 'good', stale ? 'pending write' : 'current'), false,
             '<div class="metric"><span class="num">' + num(d.score.computedNow) + '</span><span class="unit">score if recalculated now</span></div>' +
             '<div class="card-sub">' + esc(scoreSummary(d, pct, stale)) + '</div>' +
             '<div class="score-pair">' +
               mini('stored score', num(d.score.stored)) +
-              mini('scored actors', pct.rank == null ? 'n/a' : '#' + numInt(pct.rank) + ' of ' + numInt(pct.total)) +
+              mini('snapshot actors', pct.rank == null ? 'n/a' : '#' + numInt(pct.rank) + ' of ' + numInt(pct.total)) +
               mini('top band', pct.topPercent == null ? 'not available' : 'top ' + num(pct.topPercent) + '%') +
               mini('recalc delta', signed(d.score.staleDelta)) +
-            '</div>') +
-          card('score ingredients', statusBadge('good', 'ranking only'),
-            '<div class="bars">' +
+            '</div>' +
+            '<div class="bars" style="margin-top:0.9rem">' +
               bar('followers', b.followersInfluence, maxPart) +
               bar('posts', b.postsInfluence, maxPart) +
               bar('follow ratio', b.followerFollowRatioBonus, maxPart) +
@@ -397,43 +453,37 @@ export function reputationPage(): string {
               '<span class="hi">' + num(b.inputs.postsCount) + '</span> posts, and an account age of ' +
               '<span class="hi">' + (b.freshness.ageDays == null ? 'unknown' : num(b.freshness.ageDays) + ' days') + '</span>. ' +
               'new accounts are penalized before they have history: <24h is -100, <72h is -50. older accounts can receive a maturity bonus.</div>') +
-          card('visibility gates', statusBadge(hidden ? 'bad' : 'good', hidden ? 'hidden' : 'can appear'),
-            '<div class="checks">' +
-              info('separate from ranking', 'these checks decide whether the actor is allowed to appear — they never add to or subtract from the score.') +
-              check(!d.moderation.hiddenStored, 'stored visibility', d.moderation.hiddenStored ? 'the actors row is currently marked hidden.' : 'the actors row is currently visible.') +
-              check(!d.moderation.hiddenComputed, 'moderation result', gateCopy(d)) +
-              check(d.indexing.shouldBeInPrefixIndex, 'prefix lookup eligibility', d.indexing.shouldBeInPrefixIndex ? 'handle is present and the actor is allowed into prefix lookup.' : 'hidden actors or actors without handles are excluded from prefix lookup.') +
-              check(d.indexing.exactHandleLookupFindsIt, 'exact handle lookup', d.indexing.exactHandleLookupFindsIt ? 'a direct handle lookup resolves to this DID.' : 'the exact handle path does not currently return this actor.') +
-            '</div>') +
-          card('moderation status', moderationBadge(d.moderation),
-            '<div class="checks">' +
-              info('what typeahead decided', (hidden ? 'hidden from search. ' : 'shown in search. ') + gateCopy(d)) +
-              info('labels typeahead holds', (d.moderation.labels.length ? d.moderation.labels.map(l => l.val).join(', ') : 'none') +
-                ' — ' + d.moderation.storedLabelsSource + '.') +
-            '</div>' +
-            '<div class="labelers">' + d.moderation.labelers.map(labelerRow).join('') + '</div>' +
-            '<div class="card-sub">each moderation service is asked directly (com.atproto.label.queryLabels) when this report loads; nothing here is stored. ' +
-              'a labeler only affects people who subscribe to it, except where an appview runs it. list: scripts/discover-labelers.py.</div>') +
-          card('example searches', statusBadge(exact.found ? 'good' : 'warn', exact.found ? 'exact works' : 'not found'),
+          sec('sec-search', 'live searches', [exact, display, prefix].filter(p => p && p.query).map(p => '<span class="hi">' + esc(p.query) + '</span> ' + (p.found ? '#' + p.position : 'not top 50')).join(' · '),
+            statusBadge(exact.found ? 'good' : 'warn', exact.found ? 'exact works' : 'not found'), !exact.found,
             '<div class="queries">' +
               queryRow('exact handle', exact) +
               queryRow('display name', display) +
               queryRow('handle prefix', prefix) +
             '</div>') +
-          card('stored data freshness', statusBadge('good', 'timestamps'),
+          sec('sec-data', 'stored data', 'profile checked ' + (d.indexing.profileCheckedAt ? dateShort(d.indexing.profileCheckedAt) : 'never') + ' · row updated ' + (d.indexing.updatedAt ? dateShort(d.indexing.updatedAt) : 'unknown'),
+            '', false,
             '<div class="checks">' +
               (d.indexing.enrichedOnView ? info('enriched on view', 'this actor had never been profile-enriched — the report fetched its profile just now.') : '') +
               info('row updated', d.indexing.updatedAt ? dateTime(d.indexing.updatedAt) : 'unknown') +
               info('profile checked', d.indexing.profileCheckedAt ? dateTime(d.indexing.profileCheckedAt) : 'never') +
               info('PDS', d.actor.pds || 'unknown') +
-              info('labels', d.moderation.labels.length ? d.moderation.labels.map(l => l.val).join(', ') : 'none') +
             '</div>' +
-            '<details><summary>raw report</summary><pre>' + esc(JSON.stringify(d, null, 2)) + '</pre></details>') +
+            '<details class="raw"><summary>raw report</summary><pre>' + esc(JSON.stringify(d, null, 2)) + '</pre></details>') +
         '</div>';
     }
-
-    function card(label, badge, body) {
-      return '<section class="card"><div class="card-head"><span class="card-label">' + esc(label) + '</span>' + badge + '</div>' + body + '</section>';
+    function verdict(kind, label, value, sub) {
+      return '<div class="verdict ' + kind + '"><div class="v-label">' + esc(label) + '</div><div class="v-value">' + esc(value) + '</div><div class="v-sub">' + esc(sub) + '</div></div>';
+    }
+    function sec(kind, label, line, badge, open, body) {
+      return '<details class="sec ' + kind + '"' + (open ? ' open' : '') + '><summary><span class="sec-label">' + esc(label) + '</span><span class="sec-line">' + line + '</span>' +
+        '<span>' + badge + ' <span class="sec-chev">▸</span></span></summary><div class="sec-body">' + body + '</div></details>';
+    }
+    function gateShort(d) {
+      if (d.moderation.override) return 'admin override: ' + d.moderation.override.action;
+      if (d.moderation.domainBlocked) return 'domain rule for ' + d.moderation.domainBlocked.domain;
+      const active = d.moderation.labels.filter(l => l.activeSearchHide).map(l => l.val);
+      if (active.length) return 'label ' + active.join(', ');
+      return 'stored row marked hidden';
     }
     function statusBadge(kind, text) { return '<span class="badge ' + kind + '">' + esc(text) + '</span>'; }
     function mini(label, value) { return '<div class="mini"><div class="mini-label">' + esc(label) + '</div><div class="mini-value">' + esc(value) + '</div></div>'; }
