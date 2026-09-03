@@ -238,6 +238,7 @@ export function reputationPage(): string {
   </div>
   <script>
     ${THEME_SCRIPT}
+    const LABELER_COUNT = ${LABELER_COUNT};
     const form = document.getElementById('form');
     const actor = document.getElementById('actor');
     const out = document.getElementById('out');
@@ -275,7 +276,6 @@ export function reputationPage(): string {
 
     // one honest waiting state: the report is a single request whose time is
     // the labeler fan-out (a few seconds worst case), not a pipeline of stages
-    const LABELER_COUNT = ${LABELER_COUNT};
     let stageTimer = null;
     function startStages() {
       const t0 = Date.now();
