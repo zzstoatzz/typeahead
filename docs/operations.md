@@ -318,6 +318,16 @@ not. The fallback's reason (a lagging replica) has been gone since the
 box's overlay synchronously. Turso still answers when the engine is
 unreachable; it no longer answers when the engine says "no such actor".
 
+**Same day, second decision: Turso-on-unreachable is also opt-in
+(`TURSO_FALLBACK_ON_UNREACHABLE=1`), off by default.** Twenty minutes after
+the first fix the search box panicked and restarted (15 s to adopt its
+on-disk snapshot). In those 15 s every query went to the full-corpus Turso
+path, Turso hit its connection limit again (119 errors, 83 timeouts), and
+the ingester overflowed its backlog again. The engine is one machine; while
+it is down the worker answers `{actors: []}` uncached and the next keystroke
+reaches the restarted engine. Regression test: `index.test.ts` "an
+unreachable engine answers empty without touching Turso".
+
 The earlier decision it replaces (2026-09-03): the fallback only ran for
 `limit ≤ 25` (`TURSO_FALLBACK_MAX_LIMIT` in `src/handlers/search.ts`).
 A person typing a handle asks for ~10 rows and keeps the second look for an

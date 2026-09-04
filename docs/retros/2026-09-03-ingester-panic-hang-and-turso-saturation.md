@@ -33,6 +33,8 @@ Both were invisible from the outside. Health said ready, searches answered.
 | 09-04 19:19–19:21 | ingester: `ingest batch failed ... will retry`, then `backlog overflow (4000 ingest), dropping oldest events` |
 | 09-04 19:25 | worker deployed with the empty-result Turso fallback off (`5272752`); worker errors go to zero, ingester flushes clean |
 | 09-04 19:32 | ingester redeployed on logfire-zig 0.3.2 (bounded flush, stderr-first panic) |
+| 09-04 19:43:06 | search box panics with the same `reached unreachable code`; aborts (exit 134), Fly restarts it, ready at 19:43:21. Worker sends every query to Turso for those 15 s: 119 connection-limit errors, 83 timeouts; ingester backlog overflows 19:43:35–19:43:47 |
+| 09-04 19:5x | worker deployed with Turso-on-unreachable off too; engine-down now answers empty |
 
 ## Root causes
 
@@ -79,7 +81,7 @@ ingester's writes, so the ingester lost the fight.
 - [x] logfire-zig 0.3.2: `flush()`/`shutdown()` bounded to 3 s per provider; `panicFn` prints message + stack trace to stderr first, flushes within 1.5 s, aborts; re-entrant panic falls through — `a57fc0e`
 - [x] services on 0.3.2 — `5103f96`; ingester redeployed 09-04
 - [ ] search box redeploy on 0.3.2 once the burst subsides (a single-machine restart under this load would push every query to the unreachable-engine Turso fallback)
-- [ ] the unreachable-engine fallback has the same shape as the empty-result one: under load, a search-box restart re-saturates Turso. Bound it (circuit-break after N failures per isolate, or answer empty) before phase 4 resizes the box
+- [x] the unreachable-engine fallback has the same shape as the empty-result one — proven 19:43 UTC when the search box panicked (same `unreachable`, exit 134, back in 15 s) and Turso saturated again for those 15 s. Now opt-in (`TURSO_FALLBACK_ON_UNREACHABLE=1`), default answers empty
 - [ ] per-request Turso writes: `recordRequest` + `recordMetric` + `recordTrafficSource` are 2 connections per cache miss. Coalesce per isolate (Durable Object, or a KV-batched counter flushed by the cron) so counters cannot compete with ingest writes
 - [ ] find the `unreachable`: the next panic will print its trace. Until then, the site is unknown (not in the ingester's own code; zat 0.4.0's are guarded)
 - [ ] dropped events (19:21 UTC window): the relay cursor advanced past them. Recover via the PLC identity job for new DIDs; profiles come back through enrichment. Not a full recovery — record what the next `typeahead-plc-identity` run finds

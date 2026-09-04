@@ -9,19 +9,24 @@ import type { Env } from "./types";
 // day with nothing we own counting it.
 
 const recorded: { domain: string; endpoint: string; status: number }[] = [];
+const executed: string[] = [];
 // bun's module mocks are process-wide: mock the libsql client factory (the
 // lowest layer) rather than ./db, so db.test.ts still exercises the real getDb.
 // Every client records request_buckets upserts; everything else is a no-op.
 mock.module("@libsql/client/web", () => ({
   createClient: () => ({
     async execute({ sql, args }: { sql: string; args: InValue[] }) {
+      executed.push(sql);
       if (/INSERT INTO request_buckets/.test(sql)) {
         const [, domain, endpoint, status] = args;
         recorded.push({ domain: String(domain), endpoint: String(endpoint), status: Number(status) });
       }
       return { rows: [], rowsAffected: 1 };
     },
-    async batch(stmts: unknown[]) { return stmts.map(() => ({ rows: [], rowsAffected: 1 })); },
+    async batch(stmts: { sql?: string }[]) {
+      for (const st of stmts) executed.push(String(st.sql ?? ""));
+      return stmts.map(() => ({ rows: [], rowsAffected: 1 }));
+    },
   }),
 }));
 const realStats = await import("./handlers/stats");
@@ -31,11 +36,16 @@ mock.module("./handlers/stats", () => ({
 }));
 
 const worker = (await import("./index")).default;
-function fakeEnv(fields: { TURSO_URL: string; TURSO_AUTH_TOKEN: string }): Env {
-  // SAFETY: the routes exercised here (404, OPTIONS, the throwing /stats) read
-  // only the Turso credentials off Env, and the libsql client is mocked above.
+function fakeEnv(fields: Partial<Env> & { TURSO_URL: string; TURSO_AUTH_TOKEN: string }): Env {
+  // SAFETY: the routes exercised here (404, OPTIONS, the throwing /stats, the
+  // search route with a dead engine) read only the fields each test passes,
+  // and the libsql client is mocked above.
   return fields as Env;
 }
+
+// SAFETY: bun has no `caches` global; the search handler reads only
+// `caches.default.match` and `.put`, which this stub provides.
+const cacheHost = globalThis as { caches?: { default: { match(): Promise<undefined>; put(): Promise<void> } } };
 const ENV = fakeEnv({ TURSO_URL: "https://example.turso.io", TURSO_AUTH_TOKEN: "t" });
 
 function ctx() {
@@ -71,4 +81,37 @@ test("OPTIONS preflights are answered without being counted", async () => {
   expect(res.status).toBe(204);
   await Promise.all(tasks);
   expect(recorded).toEqual([]);
+});
+
+// The engine is one machine and restarts in ~15 s. While it is down the
+// worker must answer empty, not re-ask Turso for every query: on 2026-09-04
+// one such restart under a viral burst put Turso over its connection limit
+// and the ingester dropped events. Turso-on-unreachable is opt-in.
+test("an unreachable engine answers empty without touching Turso", async () => {
+  recorded.length = 0;
+  executed.length = 0;
+  const realFetch = globalThis.fetch;
+  const realCaches = cacheHost.caches;
+  const refuse = async () => { throw new Error("connect ECONNREFUSED"); };
+  globalThis.fetch = Object.assign(refuse, { preconnect: realFetch.preconnect });
+  cacheHost.caches = { default: { match: async () => undefined, put: async () => {} } };
+  try {
+    const env = fakeEnv({
+      ...ENV,
+      SEARCH_BACKEND_URL: "https://engine.invalid",
+      RATE_LIMITER: { limit: async () => ({ success: true }) },
+    });
+    const { ctx: c, tasks } = ctx();
+    const res = await worker.fetch(
+      new Request("https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&limit=8", { headers: { "X-Client": "plyr.fm" } }),
+      env, c,
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json<unknown>()).toEqual({ actors: [] });
+    await Promise.all(tasks);
+    expect(executed.filter((sql) => /FROM actors/i.test(sql))).toEqual([]);
+  } finally {
+    globalThis.fetch = realFetch;
+    cacheHost.caches = realCaches;
+  }
 });

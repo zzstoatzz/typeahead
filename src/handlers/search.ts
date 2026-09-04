@@ -45,6 +45,18 @@ export function tursoFallbackOnEmpty(limit: number, enabled: boolean): boolean {
   return enabled && limit <= TURSO_FALLBACK_MAX_LIMIT;
 }
 
+/** Whether an unreachable or erroring engine sends the query to Turso.
+ *
+ *  Off unless `TURSO_FALLBACK_ON_UNREACHABLE=1`. The engine is one machine
+ *  that adopts its on-disk snapshot in ~15 s after a restart; during the
+ *  2026-09-04 burst one such restart routed every query to the full-corpus
+ *  Turso path for those 15 s, which was enough to put Turso over its
+ *  connection limit and make the ingester drop events. An empty answer for
+ *  15 s costs a typeahead nothing it will remember. */
+export function tursoFallbackOnUnreachable(enabled: boolean): boolean {
+  return enabled;
+}
+
 export async function handleSearch(
   request: Request,
   db: TursoDB,
@@ -108,7 +120,8 @@ export async function handleSearch(
     try {
       const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}`;
       const backendRes = await fetch(backendUrl, { signal: AbortSignal.timeout(3000) });
-      if (backendRes.ok) {
+      if (!backendRes.ok) throw new Error(`backend_${backendRes.status}`);
+      {
         const body = await backendRes.text();
 
         // An EMPTY result from the replica falls through to Turso.
@@ -145,8 +158,15 @@ export async function handleSearch(
 
         return response;
       }
-    } catch {
-      // unreachable backend, timeout, or an empty result — Turso answers
+    } catch (e: unknown) {
+      const reason = e instanceof Error ? e.message : String(e);
+      if (reason !== "backend_empty" && !tursoFallbackOnUnreachable(env.TURSO_FALLBACK_ON_UNREACHABLE === "1")) {
+        console.log(JSON.stringify({ event: "search_backend_unreachable", term, error: reason }));
+        // not cached: the engine restarts in ~15 s and the next keystroke
+        // should reach it, not a pinned empty answer
+        return json({ actors: [] });
+      }
+      // opted in: Turso answers below
     }
   }
 

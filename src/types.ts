@@ -9,6 +9,9 @@ export interface Env {
   /// "1" re-asks Turso when the engine answers empty (limit ≤ 25 only).
   /// Off by default since 2026-09-04: see tursoFallbackOnEmpty.
   TURSO_FALLBACK_ON_EMPTY?: string;
+  /// "1" sends the query to Turso when the engine is unreachable or errors.
+  /// Off by default since 2026-09-04: see tursoFallbackOnUnreachable.
+  TURSO_FALLBACK_ON_UNREACHABLE?: string;
   /// DID of the service's own atproto account (@typeahead.waow.tech).
   /// served at /.well-known/atproto-did for handle verification; the
   /// _lexicon DNS record points here so the service owns its lexicons.
