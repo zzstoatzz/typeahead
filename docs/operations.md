@@ -306,8 +306,20 @@ for those two minutes. Two reasons — every cache miss writes a stats row to
 Turso in `waitUntil`, and every **empty** engine answer falls through to a
 full-corpus Turso FTS query, which rare keywords trigger constantly.
 
-**Decision (2026-09-03): the empty-result Turso fallback only runs for
-`limit ≤ 25`** (`TURSO_FALLBACK_MAX_LIMIT` in `src/handlers/search.ts`).
+**Decision (2026-09-04): the empty-result Turso fallback is OFF unless the
+worker has `TURSO_FALLBACK_ON_EMPTY=1`**, and even then only for `limit ≤ 25`.
+During the 2026-09-04 viral burst (~20x engine volume) the fallback alone put
+Turso over its connection limit — 1,310 worker requests failed with
+"Database connections limit exceeded" and 967 more timed out in 90 minutes —
+and the ingester's `/admin/ingest` writes failed behind it until its backlog
+overflowed and dropped events. Serving stayed 2xx throughout; discovery did
+not. The fallback's reason (a lagging replica) has been gone since the
+2026-09-02 replica removal: request-indexing pushes the row into the search
+box's overlay synchronously. Turso still answers when the engine is
+unreachable; it no longer answers when the engine says "no such actor".
+
+The earlier decision it replaces (2026-09-03): the fallback only ran for
+`limit ≤ 25` (`TURSO_FALLBACK_MAX_LIMIT` in `src/handlers/search.ts`).
 A person typing a handle asks for ~10 rows and keeps the second look for an
 actor the engine hasn't projected yet; a 100-row keyword sweep takes the
 engine's answer as final. Nothing changes for browsers or for any client

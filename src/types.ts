@@ -6,6 +6,9 @@ export interface Env {
   TURSO_URL: string;
   TURSO_AUTH_TOKEN: string;
   SEARCH_BACKEND_URL?: string;
+  /// "1" re-asks Turso when the engine answers empty (limit ≤ 25 only).
+  /// Off by default since 2026-09-04: see tursoFallbackOnEmpty.
+  TURSO_FALLBACK_ON_EMPTY?: string;
   /// DID of the service's own atproto account (@typeahead.waow.tech).
   /// served at /.well-known/atproto-did for handle verification; the
   /// _lexicon DNS record points here so the service owns its lexicons.

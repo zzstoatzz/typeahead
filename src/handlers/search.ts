@@ -29,8 +29,20 @@ interface ActorView {
  *  docs/operations.md "unattributed bulk clients". */
 export const TURSO_FALLBACK_MAX_LIMIT = 25;
 
-export function tursoFallbackOnEmpty(limit: number): boolean {
-  return limit <= TURSO_FALLBACK_MAX_LIMIT;
+/** Off unless `TURSO_FALLBACK_ON_EMPTY=1` is set on the worker.
+ *
+ *  2026-09-04: an adopter went viral, engine volume rose 20x, and every empty
+ *  engine answer became a full-corpus FTS query holding a Turso connection for
+ *  up to 2.5 s. Turso hit its connection limit (1,310 requests in 90 min),
+ *  the ingester's /admin/ingest writes failed behind it, and its backlog
+ *  overflowed — search traffic dropped discovery events. The reason the
+ *  fallback existed (a lagging replica) is gone since 2026-09-02: the search
+ *  box has no replica, and request-indexing pushes the row into its overlay
+ *  synchronously (`admin.ts` → `/admin/refresh`). Turso still answers when
+ *  the engine is unreachable; it no longer answers when the engine says no.
+ *  docs/operations.md "unattributed bulk clients". */
+export function tursoFallbackOnEmpty(limit: number, enabled: boolean): boolean {
+  return enabled && limit <= TURSO_FALLBACK_MAX_LIMIT;
 }
 
 export async function handleSearch(
@@ -116,7 +128,7 @@ export async function handleSearch(
         } catch {
           empty = false;   // unparseable is the backend's problem, not a miss
         }
-        if (empty && tursoFallbackOnEmpty(limit)) throw new Error("backend_empty");
+        if (empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1")) throw new Error("backend_empty");
 
         ctx.waitUntil(Promise.all([
           recordMetric(db, Date.now() - t0),
