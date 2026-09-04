@@ -90,6 +90,51 @@ concentrates. The `d:` domain-suffix keys were the first taste of this (+69%
 emissions, needed a 100 GB scratch volume, though the served artifact only grew
 +0.9% thanks to top-N capping).
 
+## Scalability under traffic (measured 2026-09-04)
+
+The 10× table above is about the *corpus*. Traffic is the other axis, and the
+first real burst answered it: an adopter (`bsky38.com`) went viral on
+2026-09-04 and search volume at the engine rose ~20× inside 30 minutes.
+Measured from logfire `search` spans on the search box (4 shared vCPU / 2 GB,
+60 GB volume, no replica):
+
+| 15-min window (UTC) | searches | p50 | p95 | max | errors |
+|---|---|---|---|---|---|
+| 16:45 (baseline) | 163 | 4 ms | 18 ms | 22 ms | 0 |
+| 17:30 | 1,705 | 4 ms | 17 ms | 95 ms | 0 |
+| 17:45 | 3,496 | 3 ms | 14 ms | 25 ms | 0 |
+| 18:00 | 3,459 | 3 ms | 12 ms | 45 ms | 0 |
+
+Around it: worker answers 5,868 × 2xx / 2 × 4xx / 0 × 5xx over the hour;
+Fly 1-hour peaks of load 0.21 (on 4 CPUs), memory 19%, CPU throttle 0; sync
+lag held at ~5 min and incremental passes kept running through the burst.
+Latency went *down* under load (prefix pages warming in page cache).
+
+What this says about cost:
+
+- **Serving traffic is not what the 4 vCPUs are for.** A burst 20× over
+  baseline used a fifth of one CPU. The `replica-removal-plan.md` phase-4
+  question ("does the box need 4 cpu / 2 GB?") should be answered by promote
+  and compaction bursts, not by search load — search load is noise.
+- **Cache-hit ratio was not measured here.** The worker-side counts come from
+  the KV-materialized `request_buckets` series, which the hourly cron
+  publishes, so they lag the engine's spans by up to an hour and the two
+  cannot be compared bucket for bucket. Typeahead traffic is mostly unique
+  prefixes, so plan on the engine seeing most of a burst; the 60 s edge cache
+  is a latency feature, not a capacity one.
+- **Turso does not see search traffic at all.** Since 2026-09-02 the engine
+  reads Turso only through the sync's paged incremental queries. The Turso
+  empty-result fallback in the worker is the one path that scales with
+  traffic, and it is capped at `limit ≤ 25` (`docs/operations.md`).
+- **Per-IP rate limit (60/min) did not fire** because the traffic came from
+  many browsers, not one server. A server-side adopter at this volume would
+  hit it; that is a docs/adoption conversation, not a capacity one.
+
+Headroom estimate from these numbers: roughly another order of magnitude in
+search rate before CPU on the current box is a question — and at that point
+the cheaper answer is a second small search machine, not a bigger one, since
+the snapshot is read-only and replicas are trivial (download + attach).
+
 ## Operational realities (does it respect the network?)
 
 | Concern | State |

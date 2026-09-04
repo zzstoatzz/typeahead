@@ -141,6 +141,11 @@ machine mid-replay and confirm it resumes from the persisted watermark;
 If 14-day peak mem < 50% of 1 GB and load peak < 2: `shared-cpu-2x`/1 GB.
 Promote (download + attach + compaction) is the burst to watch. **−$8.88/mo.**
 
+Evidence so far: the 2026-09-04 viral burst (~20× search volume) peaked at
+load 0.21 / mem 19% — search traffic is not the sizing input. See
+`cost-scalability.md` → "Scalability under traffic". The remaining unknown is
+the first promote on the replica-less box (2026-09-04 09:00 UTC build).
+
 ## phase 5 — R2 retention + COSTS.md
 
 Keep the two most recent builds; delete the rest from the indexer flow after a
