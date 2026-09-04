@@ -27,6 +27,7 @@ If you're unsure whether it clears the bar, it probably does. Bias toward writin
 
 ## entries
 
+- [2026-09-03 — ingester alive-but-dead 22 h; viral burst saturated Turso through the worker](2026-09-03-ingester-panic-hang-and-turso-saturation.md)
 - [2026-08-28 — search volume full again, empty results for ~3 days](2026-08-28-search-volume-full-again.md)
 - [2026-07-28 — search replica sync wedge, 48.7h silent](2026-07-28-search-replica-sync-wedge.md)
 - [2026-06-12 — ingester wedge, recovery, throughput root cause](2026-06-12-ingester-wedge-and-recovery.md)
