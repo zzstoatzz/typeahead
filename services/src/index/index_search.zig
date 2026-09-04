@@ -27,6 +27,30 @@ const log = std.log.scoped(.index_search);
 /// trims after moderation filtering drops tombstoned/hidden rows.
 const HYDRATE_CAP = 50;
 
+/// One `search` span per query is the whole logfire bill: 37,769 of 38,000
+/// records in the 2026-09-04 burst's peak hours were this span, at p50 3 ms,
+/// duplicating counts the worker's request_buckets already keep. Head-sample
+/// 1 in N and stamp `sample_rate` so `count(*) * sample_rate` still gives
+/// volume; slow searches log regardless, so the tail is never lost.
+pub const search_span_sample_rate: u32 = 10;
+pub const slow_search_ms: i64 = 100;
+var search_seq = std.atomic.Value(u32).init(0);
+
+fn sampleSearch(seq: u32) bool {
+    return seq % search_span_sample_rate == 0;
+}
+
+fn sampledSearchSpan() logfire.Span {
+    if (sampleSearch(search_seq.fetchAdd(1, .monotonic))) {
+        return logfire.span("search", .{ .sample_rate = @as(i64, search_span_sample_rate) });
+    }
+    return .{ .inner = null, .parent_context = null };
+}
+
+fn milliTimestamp() i64 {
+    return @intCast(@divFloor(std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds, std.time.ns_per_ms));
+}
+
 pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, writer: anytype) !void {
     const term = searchmod.sanitize(raw_query);
     if (term.len == 0) {
@@ -48,8 +72,13 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     defer lease.release();
 
     var trace: Trace = .{};
-    const span = logfire.span("search", .{});
+    const t0 = milliTimestamp();
+    const span = sampledSearchSpan();
     defer span.end();
+    defer {
+        const elapsed = milliTimestamp() - t0;
+        if (elapsed >= slow_search_ms) log.warn("slow search: {d} ms (q_len={d} keys={d} merged={d})", .{ elapsed, norm.len, trace.keys.len, trace.merged });
+    }
     const candidates = try execute(arena, lease, norm, &trace);
     span.setAttribute("q_len", @as(i64, @intCast(norm.len)));
     span.setAttribute("keys", @as(i64, @intCast(trace.keys.len)));
@@ -417,4 +446,15 @@ test "inClause builds the right placeholder count" {
     defer arena.deinit();
     const sql = try inClause(arena.allocator(), "SELECT did FROM t WHERE did IN (", 3);
     try testing.expectEqualStrings("SELECT did FROM t WHERE did IN (?,?,?)", sql);
+}
+
+test "search spans are head-sampled 1 in N" {
+    var sampled: u32 = 0;
+    var seq: u32 = 0;
+    while (seq < search_span_sample_rate * 3) : (seq += 1) {
+        if (sampleSearch(seq)) sampled += 1;
+    }
+    try std.testing.expectEqual(@as(u32, 3), sampled);
+    try std.testing.expect(sampleSearch(0));
+    try std.testing.expect(!sampleSearch(1));
 }

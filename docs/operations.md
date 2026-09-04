@@ -354,6 +354,15 @@ Both fly roles use [logfire-zig](https://tangled.org/zzstoatzz.io/logfire-zig)
   Before this, logs were stderr-only and lost after ~100 lines.
 - every span is published as a **pending span** at start, so a 10-minute
   `sync.incremental` pass is visible in the live view from second one.
+- **the `search` span is head-sampled 1 in 10** (`search_span_sample_rate`
+  in `index_search.zig`), stamped `sample_rate=10` so `count(*) * sample_rate`
+  is still the volume. Decided 2026-09-04: during the viral burst the search
+  box shipped 19k records in one hour, 99% of them this span at p50 3 ms,
+  duplicating what `request_buckets` already counts. Baseline was ~10–20k
+  records a *day*; a sustained burst would have been ~14M a month. Searches
+  at or above `slow_search_ms` (100) log a warning regardless of sampling, so
+  the tail is never lost; errors log regardless too. Volume check:
+  `SELECT date_trunc('day', start_timestamp), count(*) FROM records GROUP BY 1`.
 - `span.setStatus(.@"error", …)` stamps `logfire.level_num = 17`; errored
   spans render red.
 - `logfire.flush()` runs before every `std.process.exit` (both watchdogs, the
