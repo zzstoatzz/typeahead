@@ -1,12 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { statsPage, type StatsData } from "./stats";
 
-function page(domains: string[]): string {
+function page(domains: string[], trafficAll?: StatsData["trafficAll"]): string {
+  const trafficSources = domains.map((domain, i) => ({ domain, hits: 100 - i }));
   const d: StatsData = {
     total: 100, hiddenCount: 0, rows: [], totalSearches: 0,
     avgLatency: 0, avgCacheLatency: 0, handlePct: "0", avatarPct: "0",
     snapshots: [],
-    trafficSources: domains.map((domain, i) => ({ domain, hits: 100 - i })),
+    trafficSources,
+    trafficAll: trafficAll ?? { domains: trafficSources.length, hits: trafficSources.reduce((s, r) => s + r.hits, 0) },
     trafficSeries: [], trafficSeries5m: [], trafficDaily: [],
     requestSeries: [], requestSeries5m: [], requestDaily: [],
   };
@@ -92,7 +94,7 @@ describe("link previews", () => {
   const withView = (apps: string[]) => {
     const d: StatsData = {
       total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
-      handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [],
+      handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
       trafficSeries: series, trafficSeries5m: [], trafficDaily: [],
       requestSeries: [], requestSeries5m: [], requestDaily: [],
       view: { apps, range: "7d", origin: "https://typeahead.waow.tech" },
@@ -134,7 +136,7 @@ describe("request slices", () => {
   const h = Math.floor(Date.now() / 3_600_000);
   const html = statsPage({
     total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
-    handlePct: "0", avatarPct: "0", snapshots: [], trafficSources: [],
+    handlePct: "0", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
     trafficSeries: [], trafficSeries5m: [], trafficDaily: [],
     requestSeries: [
       { hour: h, domain: "northsky.app", endpoint: "search", status: 200, hits: 10 },
@@ -190,4 +192,35 @@ test("stylesheet has no orphaned declarations", () => {
   }
   expect(bad).toEqual([]);
   expect(depth).toBe(0);
+});
+
+describe("everything else", () => {
+  // The ring and every percentage divide by the WHOLE traffic_sources table.
+  // Sources beyond the top 12 are one neutral slice, listed in the legend
+  // but never selectable: it is not an app, so it has no data-domain.
+  const twelve = Array.from({ length: 12 }, (_, i) => `app${i}.test`);
+
+  test("the tail beyond the top 12 is drawn as one slice and named in the legend", () => {
+    // twelve listed sources sum to 100+99+...+89 = 1134; the table holds 40 more
+    // sources and 2000 hits in total, so 866 hits are "everything else"
+    const html = page(twelve, { domains: 52, hits: 2000 });
+    expect(html).toContain('"domain":"everything else","hits":866,"rest":true');
+    const start = html.indexOf('<div class="pie-legend">');
+    const legend = html.slice(start, html.indexOf("</div>", start));
+    expect(legend).toContain("everything else · 40 sources (43.3%)");
+    expect(legend).not.toContain('data-domain="everything else"');
+  });
+
+  test("percentages divide by the whole table, not the rows fetched", () => {
+    const html = page(twelve, { domains: 52, hits: 2000 });
+    // app0.test has 100 hits: 5.0% of 2000, which would be 8.8% of the 1134 listed
+    expect(legendEntry(html, "app0.test")).toContain("(5.0%)");
+    expect(html).toContain("top 12 named above · 12 of 52 sources below");
+  });
+
+  test("no rest slice when the ring already holds everything", () => {
+    const html = page(["plyr.fm", "unknown"]);
+    expect(html).not.toContain("everything else");
+    expect(html).not.toContain('"rest":true');
+  });
 });

@@ -20,6 +20,8 @@ export interface StatsData {
   avatarPct: string;
   snapshots: SnapshotPoint[];
   trafficSources: { domain: string; hits: number }[];
+  /** the whole traffic_sources table, so the pie can draw what the ranked rows leave out */
+  trafficAll: { domains: number; hits: number };
   trafficSeries: { hour: number; domain: string; hits: number }[];
   trafficSeries5m: { bucket: number; domain: string; hits: number }[];
   trafficDaily: { day: number; domain: string; hits: number }[];
@@ -181,10 +183,24 @@ export function statsPage(d: StatsData): string {
   const SPECIAL_DOMAINS = { unknown: '#94a3b8', homepage: '#64748b' } satisfies Record<string, string>;
   const isSpecial = (d: string): d is keyof typeof SPECIAL_DOMAINS => Object.hasOwn(SPECIAL_DOMAINS, d);
   const PIE_TOP_N = 12;
-  const trafficTotal = d.trafficSources.reduce((s, r) => s + r.hits, 0);
+  // Every percentage on the page divides by the WHOLE table, and the ring
+  // draws the whole table too: the top N as named slices plus one neutral
+  // "everything else" slice for the rest. Before 2026-09-04 the ring held
+  // only the top 12 and the legend divided by the 50 rows fetched, so the
+  // largest slice read as 50.7% of the ring, was labelled 44.5%, and was
+  // 43.6% of all traffic. The rest slice is not a source: it carries no
+  // data-domain, so it cannot be pinned onto the per-app history.
+  const trafficListed = d.trafficSources.reduce((s, r) => s + r.hits, 0);
+  const trafficGrandTotal = Math.max(d.trafficAll.hits, trafficListed);
   const pieSlice = d.trafficSources.slice(0, PIE_TOP_N);
-  const trafficJson = jsonScript(pieSlice);
-  const trafficGrandTotal = trafficTotal;
+  const pieShown = pieSlice.reduce((s, r) => s + r.hits, 0);
+  const restHits = trafficGrandTotal - pieShown;
+  const restDomains = Math.max(d.trafficAll.domains, d.trafficSources.length) - pieSlice.length;
+  const rest = restHits > 0 && restDomains > 0 ? { hits: restHits, domains: restDomains } : null;
+  const REST_LABEL = 'everything else';
+  const trafficJson = jsonScript(rest
+    ? [...pieSlice, { domain: REST_LABEL, hits: rest.hits, rest: true }]
+    : pieSlice);
   // per-domain hourly series for every recorded domain (bounded: ~50 domains ×
   // ≤720 hourly rows), compact form: domain -> [[hour, hits], ...]
   const seriesByDomain: Record<string, [number, number][]> = {};
@@ -251,7 +267,9 @@ export function statsPage(d: StatsData): string {
     const color = isSpecial(r.domain) ? SPECIAL_DOMAINS[r.domain] : PIE_COLORS[i % PIE_COLORS.length];
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
     return `<span data-domain="${esc(r.domain)}"><span class="ldot" style="background:${color}"></span>${esc(r.domain)} (${pct}%)</span>`;
-  }).join('');
+  }).join('') + (rest
+    ? `<span class="rest"><span class="ldot rest-dot"></span>${REST_LABEL} · ${rest.domains} sources (${((rest.hits / trafficGrandTotal) * 100).toFixed(1)}%)</span>`
+    : '');
 
   const trafficTableRows = d.trafficSources.map((r, i) => {
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
@@ -437,6 +455,8 @@ export function statsPage(d: StatsData): string {
     .tseries-totals .tot .pct { color: var(--faint); }
     .tseries-totals .lead { color: var(--text); }
     .pie-legend span[data-domain] { cursor: pointer; }
+    .pie-legend span.rest { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4; color: var(--muted); }
+    .pie-legend .rest-dot { background: var(--faint); }
     .pie-legend span.sel { color: var(--bright); }
     .pie-legend span.sel .ldot { outline: 1.5px solid var(--bright); outline-offset: 1px; }
     .ts-table tbody tr[data-domain] { cursor: pointer; }
@@ -609,8 +629,8 @@ export function statsPage(d: StatsData): string {
       ${d.trafficSources.length > 0
         ? `<canvas id="pie" role="img" aria-label="traffic sources by app"></canvas>
            <div class="pie-legend">${pieLegendHtml}</div>
-           ${d.trafficSources.length > PIE_TOP_N
-              ? `<div class="ts-summary">top ${PIE_TOP_N} above · all ${d.trafficSources.length} sources below</div>`
+           ${rest
+              ? `<div class="ts-summary">top ${PIE_TOP_N} named above · ${d.trafficSources.length} of ${Math.max(d.trafficAll.domains, d.trafficSources.length)} sources below</div>`
               : ''}
            <div class="ts-table-wrap">
              <table class="ts-table">
@@ -1497,6 +1517,7 @@ export function statsPage(d: StatsData): string {
 
       const SPECIAL = ${jsonScript(SPECIAL_DOMAINS)};
       function getColor(i) {
+        if (traffic[i].rest) return tok('--faint', '#b4bab2');
         return SPECIAL[traffic[i].domain] || PIE_COLORS[i % PIE_COLORS.length];
       }
 
@@ -1505,7 +1526,7 @@ export function statsPage(d: StatsData): string {
       let angle = -Math.PI / 2;
       for (let i = 0; i < traffic.length; i++) {
         const sweep = (traffic[i].hits / pieTotal) * Math.PI * 2;
-        segments.push({ start: angle, end: angle + sweep, color: getColor(i), domain: traffic[i].domain, hits: traffic[i].hits });
+        segments.push({ start: angle, end: angle + sweep, color: getColor(i), domain: traffic[i].domain, hits: traffic[i].hits, rest: !!traffic[i].rest });
         angle += sweep;
       }
 
@@ -1592,7 +1613,7 @@ export function statsPage(d: StatsData): string {
           // does not hover, and previewing on touch was actively misleading:
           // dragging across the donut swapped a preview chip in and out, which
           // looks exactly like selecting and then losing the selection.
-          if (!isTouch && pinned.length === 0) { hovered = idx >= 0 ? segments[idx].domain : null; showSeries(); }
+          if (!isTouch && pinned.length === 0) { hovered = idx >= 0 && !segments[idx].rest ? segments[idx].domain : null; showSeries(); }
         }
         if (idx >= 0) {
           const seg = segments[idx];
@@ -1636,7 +1657,7 @@ export function statsPage(d: StatsData): string {
         if (tapStart && t && Date.now() - tapStart.at < 700) {
           const idx = hitTest(t.clientX, t.clientY);
           tapStart = null;
-          if (idx >= 0) {
+          if (idx >= 0 && !segments[idx].rest) {
             hovered = null;
             tapHandledAt = Date.now();
             applySelection(segments[idx].domain);
@@ -1649,7 +1670,7 @@ export function statsPage(d: StatsData): string {
       pieCanvas.addEventListener('click', e => {
         if (Date.now() - tapHandledAt < 700) return; // already handled as a tap
         const idx = hitTest(e.clientX, e.clientY);
-        if (idx < 0) return;
+        if (idx < 0 || segments[idx].rest) return;
         const dom = segments[idx].domain;
         hovered = null;
         applySelection(dom);

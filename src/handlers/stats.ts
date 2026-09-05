@@ -1,4 +1,4 @@
-import type { TursoDB } from "../db";
+import { rowsAs, type TursoDB } from "../db";
 import type { Env, RequestKvData, StatsKvData } from "../types";
 import { html } from "../utils";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
@@ -40,9 +40,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   //  - internal probes (bench, cf-migration-*, migration-*)
   //  - dev tunnels (trycloudflare, ngrok variants)
   //  - rfc1918 / loopback IPs
-  const trafficRes = await db.prepare(
-    `SELECT domain, hits FROM traffic_sources
-     WHERE domain != 'bench'
+  const trafficWhere = `WHERE domain != 'bench'
        AND domain NOT IN ('cf-migration-verify', 'cf-migration-baseline',
                           'migration-check', 'migration-debug')
        AND domain NOT LIKE '%.trycloudflare.com'
@@ -51,15 +49,21 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
        AND domain NOT LIKE '%.ngrok-free.app'
        AND domain NOT LIKE '192.168.%'
        AND domain NOT LIKE '10.%.%.%'
-       AND domain NOT LIKE '127.%'
-     ORDER BY hits DESC LIMIT 50`
-  ).all<{ domain: string; hits: number }>();
+       AND domain NOT LIKE '127.%'`;
+  // the ranked rows the page lists, and the whole table's total so the pie
+  // can draw what the rows leave out. traffic_sources is one row per source
+  // (174 on 2026-09-04), so the aggregate is not corpus-proportional.
+  const [trafficRes, trafficAllRes] = await db.batch([
+    db.prepare(`SELECT domain, hits FROM traffic_sources ${trafficWhere} ORDER BY hits DESC LIMIT 50`),
+    db.prepare(`SELECT count(*) AS domains, coalesce(sum(hits), 0) AS hits FROM traffic_sources ${trafficWhere}`),
+  ], "read");
 
   const tQuery = performance.now();
 
   const rows = kvData?.metrics ?? [];
   const dbSnapshots = kvData?.snapshots ?? [];
-  const trafficSources = trafficRes.results ?? [];
+  const trafficSources = rowsAs<{ domain: string; hits: number }>(trafficRes.results);
+  const trafficAll = rowsAs<{ domains: number; hits: number }>(trafficAllRes.results)[0] ?? { domains: 0, hits: 0 };
   const deltas = [...(kvData?.deltas ?? [])].reverse();
 
   // build snapshot points with timestamps
@@ -109,7 +113,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   const tProcess = performance.now();
 
-  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [], trafficDaily: kvData?.traffic_daily ?? [],
+  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficAll, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [], trafficDaily: kvData?.traffic_daily ?? [],
     requestSeries: reqData?.series ?? [], requestSeries5m: reqData?.series_5m ?? [], requestDaily: reqData?.daily ?? [],
     view: { apps, range, origin: reqUrl.origin } });
 
