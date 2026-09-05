@@ -197,7 +197,8 @@ test("stylesheet has no orphaned declarations", () => {
 describe("everything else", () => {
   // The ring and every percentage divide by the WHOLE traffic_sources table.
   // Sources beyond the top 12 are one neutral slice, listed in the legend
-  // but never selectable: it is not an app, so it has no data-domain.
+  // and selectable like any source: its history is the sum of every source
+  // the pie does not name, computed on the client.
   const twelve = Array.from({ length: 12 }, (_, i) => `app${i}.test`);
 
   test("the tail beyond the top 12 is drawn as one slice and named in the legend", () => {
@@ -208,7 +209,8 @@ describe("everything else", () => {
     const start = html.indexOf('<div class="pie-legend">');
     const legend = html.slice(start, html.indexOf("</div>", start));
     expect(legend).toContain("everything else · 40 sources (43.3%)");
-    expect(legend).not.toContain('data-domain="everything else"');
+    expect(legend).toContain('data-domain="everything else"');
+    expect(html).not.toContain('<tr data-domain="everything else"');
   });
 
   test("percentages divide by the whole table, not the rows fetched", () => {
@@ -220,7 +222,8 @@ describe("everything else", () => {
 
   test("no rest slice when the ring already holds everything", () => {
     const html = page(["plyr.fm", "unknown"]);
-    expect(html).not.toContain("everything else");
+    expect(html).not.toContain('data-domain="everything else"');
     expect(html).not.toContain('"rest":true');
+    expect(html).not.toContain("ts-summary\">");
   });
 });
