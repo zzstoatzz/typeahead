@@ -74,13 +74,16 @@ As of September 6, 2026:
   in the [recovery closeout](docs/retros/2026-09-05-ingester-recovery-closeout.md).
 - Bulk profile enrichment is paused following writer contention. A guarded
   workflow is prepared locally in `my-prefect-server`; it is not deployed.
-- The bounded lookup and ranking index are deployed only to an isolated
-  **shadow canary**. The ten-minute pilot passed 18/18 live-query comparisons
-  (plus two earlier live samples); admission is paused and its machine stopped.
-  Public answers still use the existing implementation. All 36 full-overlay
-  query cases (11.16M prefix rows) and 108 concurrent-update comparisons pass.
-  The index adds 543 MiB and increases projection write work; it is not yet
-  approved for the serving machine. See the [evaluation](docs/evals/bounded-overlay.md)
+- The bounded overlay lookup went live on the serving machine on
+  2026-09-09 05:34 UTC: it was on main and shipped with the deadman exit-path
+  deploy, ahead of the staged rollout the canary was preparing. `/debug/search`
+  reports `overlay_bounded: true` on union keys. Before that it had passed the
+  shadow canary's 18/18 live-query comparisons, all 36 full-overlay query cases
+  (11.16M prefix rows) and 108 concurrent-update comparisons. The ranking
+  index is NOT installed in production: it adds 543 MiB and increases
+  projection write work, and without it SQLite still visits and sorts every
+  matching prefix row before the bound applies. The canary machine is stopped
+  with its volume attached. See the [evaluation](docs/evals/bounded-overlay.md)
   and [canary limits and rollback](ops/canary/README.md).
 
 These are dated observations, not configuration sources. Fly role configs live in
