@@ -8,6 +8,7 @@ export function indexPage(): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   ${ogTags({ title: "typeahead — community actor search for atproto", description: "Fast handle and display-name search across the whole atproto network, not just one appview. A drop-in replacement for bluesky’s typeahead endpoint.", path: "/" })}
+  <link rel="help" href="/llms.txt" type="text/plain" title="API and integration guide for agents">
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}
@@ -18,10 +19,12 @@ export function indexPage(): string {
       max-width: 460px; width: 100%;
       padding: max(env(safe-area-inset-top), 12vh) 1.25rem calc(2rem + env(safe-area-inset-bottom));
     }
-    .header { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
+    .header { display: flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.75rem; margin-bottom: 0.4rem; }
+    .resource-links { display: flex; align-items: center; gap: 0.55rem; }
+    .resource-links a { font-size: 0.75rem; color: var(--muted); text-decoration: none; padding: 0.65rem 0; }
+    .resource-links a:hover { color: var(--bright); }
+    .header .theme-btn { margin-left: auto; min-width: 44px; min-height: 44px; padding: 0; border: 0; background: none; font-size: 1.15rem; color: var(--muted); }
     h1 { font-size: 1.15rem; font-weight: 400; color: var(--muted); }
-    .src { font-size: 0.75em; color: var(--dim); text-decoration: none; margin-left: 0.3em; }
-    .src:hover { color: var(--muted); }
     .subtitle { font-size: 0.8rem; color: var(--dim); margin-bottom: 2rem; }
     .subtitle a { color: var(--dim); text-decoration: none; border-bottom: 1px dotted var(--faint); }
     .subtitle a:hover { color: var(--muted); }
@@ -77,16 +80,23 @@ export function indexPage(): string {
     footer { padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: 0.7rem;
              color: var(--faint); display: flex; align-items: center; justify-content: center;
              flex-wrap: wrap; gap: 0.4rem 0.6rem; }
-    footer a { color: var(--dim); text-decoration: none; padding: 0.35rem 0.15rem; }
+    footer a { color: var(--muted); text-decoration: none; padding: 0.35rem 0.15rem; }
     footer a:hover { color: var(--muted); }
-    footer .theme-btn { margin-left: 0.4rem; }
+    @media (max-width: 360px) {
+      .header .resource-links { order: 2; flex-basis: 100%; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1><a href="/" class="wordmark">typeahead</a> <a href="https://tangled.org/zzstoatzz.io/typeahead" class="src" target="_blank" rel="noopener">[src]</a></h1>
-    </div>
+    <header class="header">
+      <h1><a href="/" class="wordmark">typeahead</a></h1>
+      <nav class="resource-links" aria-label="Project resources">
+        <a href="https://tangled.org/zzstoatzz.io/typeahead" aria-label="Source code" target="_blank" rel="noopener">[src]</a>
+        <a href="/llms.txt" title="API and integration guide for agents" aria-label="llms.txt — API and integration guide for agents">[llms.txt]</a>
+      </nav>
+      <button class="theme-btn" id="theme-toggle" data-compact type="button" aria-label="Theme: system. Switch to dark.">◐</button>
+    </header>
     <p class="subtitle">community actor search for <a href="https://atproto.com" target="_blank" rel="noopener">atproto</a></p>
 
     <section>
@@ -112,10 +122,9 @@ export function indexPage(): string {
     </div>
 
     <footer>
-      by <a href="https://bsky.app/profile/zzstoatzz.io" target="_blank" rel="noopener">@zzstoatzz.io</a>
+      by <a href="https://waow.tech/">waow.tech</a>
       · <a href="/stats">stats</a>
       · <a href="/docs">docs</a>
-      <button class="theme-btn" id="theme-toggle" type="button">theme: auto</button>
     </footer>
   </div>
   <script>

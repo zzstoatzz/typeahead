@@ -79,7 +79,10 @@ export const THEME_SCRIPT = `
       function apply(mode) {
         if (mode === 'dark' || mode === 'light') document.documentElement.dataset.theme = mode;
         else delete document.documentElement.dataset.theme;
-        btn.textContent = label(mode);
+        btn.textContent = btn.hasAttribute('data-compact') ? { system: '◐', dark: '☾', light: '☀' }[mode] : label(mode);
+        var next = { system: 'dark', dark: 'light', light: 'system' }[mode];
+        btn.setAttribute('aria-label', 'Theme: ' + mode + '. Switch to ' + next + '.');
+        btn.title = 'Theme: ' + mode + ' — switch to ' + next;
       }
       btn.addEventListener('click', function() {
         var next = { system: 'dark', dark: 'light', light: 'system' }[current()];

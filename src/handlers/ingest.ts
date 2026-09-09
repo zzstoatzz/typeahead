@@ -78,6 +78,7 @@ export async function handleIngest(
   // other writers can interleave. Results are concatenated in order because
   // probeIdx indexes into the flattened list.
   const BATCH_STATEMENTS = 250;
+  const databaseStart = performance.now();
   const batchResults: { results: unknown[]; meta: { changes: number } }[] = [];
   try {
     for (let i = 0; i < stmts.length; i += BATCH_STATEMENTS) {
@@ -89,6 +90,8 @@ export async function handleIngest(
     return json({ error: e?.message || "db batch failed" }, 500);
   }
 
+  const databaseMs = performance.now() - databaseStart;
+
   // count ALL genuinely-new actors (probe changes===1 = inserted, not IGNORE'd)
   let newActors = 0;
   for (const i of probeIdx) {
@@ -98,13 +101,23 @@ export async function handleIngest(
     ctx.waitUntil(recordActorDelta(db, { actors: newActors }));
   }
 
+  const cursorStart = performance.now();
+  let cursorWritten = false;
   if (cursor !== undefined) {
     try {
       await env.KV.put("relay_cursor", String(cursor));
+      cursorWritten = true;
     } catch {
       // best-effort — don't fail the ingest if KV write fails (e.g. quota)
     }
   }
+
+  const cursorMs = performance.now() - cursorStart;
+  console.log(JSON.stringify({
+    event: "ingest_done", count: events.length, statements: stmts.length,
+    database_ms: Math.round(databaseMs), cursor_ms: Math.round(cursorMs),
+    cursor_supplied: cursor !== undefined, cursor_written: cursorWritten,
+  }));
 
   // Best-effort activity bump: tag actors that produced any firehose event in
   // the last hour. Guarded by a 1h threshold so a hot actor causes at most one
@@ -122,5 +135,7 @@ export async function handleIngest(
     );
   }
 
-  return json({ ok: true, ingested: events.length });
+  const response = json({ ok: true, ingested: events.length });
+  response.headers.set("Server-Timing", `database;dur=${databaseMs.toFixed(1)}, cursor;dur=${cursorMs.toFixed(1)}`);
+  return response;
 }
