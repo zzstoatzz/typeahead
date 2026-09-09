@@ -40,7 +40,8 @@ flowchart LR
   (not Jetstream). Profile and activity events become batched actor updates.
   Failed writes retain their queues and apply backpressure; startup resumes
   from the persisted relay cursor. Identity events enter the protected discovery
-  queue, with asynchronous resolution as an optimization.
+  queue, with asynchronous resolution as an optimization. Watchdog exits and
+  panics terminate on a deadman that does not depend on telemetry flushing.
 - **Turso:** durable actor records, moderation overrides, and tombstones.
   Ingestion, enrichment, and request accounting share its writer.
 - **Index builder:** the same Zig codebase in `MODE=indexer`, orchestrated by

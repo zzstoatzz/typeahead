@@ -16,6 +16,7 @@ const HttpTransport = zat.HttpTransport;
 const BloomFilter = @import("bloom.zig").BloomFilter;
 const identity = @import("identity.zig");
 const logfire = @import("logfire");
+const fatal = @import("fatal.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -83,8 +84,7 @@ pub fn watchdogLoop() void {
             log.err("watchdog: stalled (last event {d}s ago, last ok flush {d}s ago), exiting for restart", .{
                 event_age, flush_age,
             });
-            logfire.flush();
-            std.process.exit(1);
+            fatal.exitForRestart();
         }
     }
 }
@@ -473,8 +473,7 @@ pub const IngestHandler = struct {
                 log.err("watchdog: {d} consecutive flush failures, exiting for restart", .{
                     self.consecutive_failures,
                 });
-                logfire.flush();
-                std.process.exit(1);
+                fatal.exitForRestart();
             }
             self.retry_after = timestamp() + 5;
         } else {
@@ -977,4 +976,8 @@ test "identity with a handle queues exactly one hinted event" {
     handler.handleIdentity(.{ .seq = 1, .did = "did:plc:identity", .time = "", .handle = "example.bsky.social" });
     try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
     try testing.expectEqualStrings("example.bsky.social", handler.buffer.items[0].handle.?);
+}
+
+test {
+    _ = fatal;
 }

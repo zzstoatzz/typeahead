@@ -3,6 +3,7 @@ const mem = std.mem;
 const Allocator = mem.Allocator;
 const zat = @import("zat");
 const logfire = @import("logfire");
+const fatal = @import("fatal.zig");
 const HttpTransport = zat.HttpTransport;
 const LocalDb = @import("db/LocalDb.zig");
 const TursoClient = @import("db/TursoClient.zig");
@@ -31,7 +32,7 @@ pub const std_options: std.Options = .{
     .log_level = .info,
     .logFn = logfire.logFn,
 };
-pub const panic = std.debug.FullPanic(logfire.panicFn);
+pub const panic = std.debug.FullPanic(fatal.panicHook);
 
 const SOCKET_TIMEOUT_SECS = 5;
 
@@ -63,8 +64,7 @@ fn firehoseThread(args: FirehoseArgs) void {
         args.identity_pool,
     ) catch |err| {
         log.err("handler init failed: {}, exiting for restart", .{err});
-        logfire.flush();
-        std.process.exit(1);
+        fatal.exitForRestart();
     };
     defer handler.deinit();
 
@@ -90,8 +90,7 @@ fn firehoseThread(args: FirehoseArgs) void {
     // per host; pinning is the cheaper correct answer until that's worth it.
     const resume_cursor = ingest.fetchCursor(args.transport, args.config) orelse {
         log.err("no valid persisted relay cursor; refusing to start live and skip replay", .{});
-        logfire.flush();
-        std.process.exit(1);
+        fatal.exitForRestart();
     };
     handler.flushed_cursor = resume_cursor;
     handler.pending_cursor = resume_cursor;
@@ -107,8 +106,7 @@ fn firehoseThread(args: FirehoseArgs) void {
     // subscribe reconnects internally and only returns on cancellation or a
     // terminal error — either way this role is over, so let fly restart us.
     log.err("firehose subscription ended, exiting for restart", .{});
-    logfire.flush();
-    std.process.exit(1);
+    fatal.exitForRestart();
 }
 
 fn setSocketTimeout(fd: std.posix.fd_t, secs: u32) !void {
@@ -365,11 +363,7 @@ pub fn main() !void {
                     const ic = pool.counters(io);
                     break :blk std.fmt.bufPrint(&buf,
                         \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
-                    , .{ ingest.getRssKB(), ic.accepted, ic.dropped, ic.processed, ic.queued,
-                        ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic),
-                        if (ingest.backpressure_active.load(.monotonic)) "true" else "false",
-                        ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic),
-                        ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
+                    , .{ ingest.getRssKB(), ic.accepted, ic.dropped, ic.processed, ic.queued, ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
                 } else std.fmt.bufPrint(&buf,
                     \\{{"status":"ok","role":"ingester","rss_kb":{d}}}
                 , .{ingest.getRssKB()}) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";

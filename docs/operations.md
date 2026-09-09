@@ -365,10 +365,16 @@ Both fly roles use [logfire-zig](https://tangled.org/zzstoatzz.io/logfire-zig)
   `SELECT date_trunc('day', start_timestamp), count(*) FROM records GROUP BY 1`.
 - `span.setStatus(.@"error", …)` stamps `logfire.level_num = 17`; errored
   spans render red.
-- `logfire.flush()` runs before every `std.process.exit` (both watchdogs, the
-  firehose exit) and `pub const panic = std.debug.FullPanic(logfire.panicFn)`
-  ships a panic's message. Without these the last 500 ms of telemetry — the
-  interesting part — died with the process.
+- every fatal path goes through `services/src/fatal.zig` (2026-09-09):
+  `fatal.exitForRestart()` for both watchdogs, the firehose exit, handler init
+  and cursor failure; `pub const panic = std.debug.FullPanic(fatal.panicHook)`.
+  Each arms a raw-thread deadman BEFORE flushing, then flushes, then exits.
+  The flush ships the last 500 ms of telemetry when the exporter is healthy;
+  the deadman (5 s exit / 3 s panic) guarantees the exit when it is not.
+  otel-zig's `forceFlush` ignores its timeout at its lock and condvar waits,
+  so a panic on the export thread otherwise hangs the process forever — it did
+  so on 09-03 and again on 09-09 (see `docs/retros/`). A deadman firing prints
+  `fatal: telemetry flush did not finish within N ms` to stderr.
 - resource: `service.name` = fly app, `service.version` = `FLY_IMAGE_REF`
   (the deployed image), `deployment.environment.name` = production.
 

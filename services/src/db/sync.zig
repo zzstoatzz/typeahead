@@ -14,6 +14,7 @@ const mem = std.mem;
 const io = std.Options.debug_io;
 const zqlite = @import("zqlite");
 const logfire = @import("logfire");
+const fatal = @import("../fatal.zig");
 const Allocator = std.mem.Allocator;
 const TursoClient = @import("TursoClient.zig");
 const LocalDb = @import("LocalDb.zig");
@@ -106,8 +107,7 @@ pub fn watchdogLoop() void {
         const age = timestamp() - last_progress_at.load(.monotonic);
         if (age >= SYNC_STALL_SECS) {
             log.err("sync watchdog: no progress in {d}s, exiting for restart", .{age});
-            logfire.flush();
-            std.process.exit(1);
+            fatal.exitForRestart();
         }
     }
 }
