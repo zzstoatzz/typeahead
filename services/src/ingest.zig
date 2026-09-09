@@ -48,6 +48,7 @@ fn timestamp() i64 {
 // 400 keeps one POST comfortably inside the timeout. Throughput is fine because
 // flushes are far more frequent than the old 5s cadence.
 pub const MAX_BATCH: usize = 400;
+const MAX_BACKLOG = MAX_BATCH * 10;
 const BLOOM_BITS: usize = 10_000_000; // ~1.2MB fixed
 const BLOOM_HASHES: usize = 7;
 
@@ -59,6 +60,12 @@ const BLOOM_HASHES: usize = 7;
 const WATCHDOG_STALL_SECS: i64 = 10 * 60;
 const WATCHDOG_MAX_CONSECUTIVE_FAILURES: u32 = 60; // ≥5min at the 5s retry cadence
 const HEARTBEAT_INTERVAL_SECS: i64 = 60;
+
+pub var source_event_at: std.atomic.Value(i64) = .init(0);
+pub var queued_ingest: std.atomic.Value(usize) = .init(0);
+pub var queued_deletes: std.atomic.Value(usize) = .init(0);
+pub var backpressure_count: std.atomic.Value(u64) = .init(0);
+pub var backpressure_active: std.atomic.Value(bool) = .init(false);
 
 pub var last_event_at: std.atomic.Value(i64) = .init(0);
 pub var last_flush_ok_at: std.atomic.Value(i64) = .init(0);
@@ -237,6 +244,17 @@ pub const IngestHandler = struct {
         // is why the cutover writes a fresh cursor key (see fetchCursor).
         if (event.seq()) |s| self.pending_cursor = s;
 
+        const source_time: ?[]const u8 = switch (event) {
+            .commit => |c| c.time,
+            .identity => |id| id.time,
+            .account => |acct| acct.time,
+            .sync => |sync_event| sync_event.time,
+            .info => null,
+        };
+        if (source_time) |t| {
+            if (zat.Datetime.parse(t)) |parsed| source_event_at.store(@divFloor(parsed.micros, 1_000_000), .monotonic);
+        }
+
         switch (event) {
             .commit => |c| self.handleCommit(c),
             .identity => |id| self.handleIdentity(id),
@@ -246,29 +264,19 @@ pub const IngestHandler = struct {
 
         const now = timestamp();
         last_event_at.store(now, .monotonic);
-        // drop incoming events if buffers are backed up (persistent failure)
-        const MAX_BACKLOG = MAX_BATCH * 10;
+        self.publishQueueDepth();
+        // Block this callback before reading more frames. Keep queued writes and
+        // their cursor evidence until they succeed; the watchdog can restart
+        // from the persisted cursor if the upstream stays unavailable.
         if (self.buffer.items.len >= MAX_BACKLOG or self.delete_buffer.items.len >= MAX_BACKLOG) {
-            log.err("backlog overflow ({d} ingest, {d} delete), dropping oldest events", .{
-                self.buffer.items.len, self.delete_buffer.items.len,
-            });
-            self.buffer.clearRetainingCapacity();
-            self.cursors.clearRetainingCapacity();
-            self.delete_buffer.clearRetainingCapacity();
-            _ = self.arena.reset(.retain_capacity);
-            self.resetBloom();
-            self.flushed_cursor = self.pending_cursor;
-            self.retry_after = 0;
+            self.drainBacklog(WorkerWriter{ .transport = self.transport, .config = self.config });
+            return;
         }
 
         // respect backoff cooldown after failures
         if (now < self.retry_after) return;
 
-        const should_flush = self.buffer.items.len >= MAX_BATCH or
-            self.delete_buffer.items.len >= MAX_BATCH or
-            (now - self.last_flush >= 5 and (self.buffer.items.len > 0 or self.delete_buffer.items.len > 0));
-
-        if (should_flush) {
+        if (self.shouldFlush(now)) {
             self.flush();
         }
     }
@@ -330,23 +338,19 @@ pub const IngestHandler = struct {
     }
 
     fn handleIdentity(self: *IngestHandler, id: zat.firehose.IdentityEvent) void {
-        // jetstream's #identity event has `handle` as a spec-optional field; in
-        // practice the bsky relay omits it on every event. so we always enqueue
-        // the DID for slingshot resolution via the identity pool, and *also* take
-        // the event handle as a hint if it happens to be present (rare, but harmless).
-        if (self.identity_pool) |pool| {
-            if (identity.Did.fromSlice(id.did)) |did| {
-                _ = pool.offer(io, did); // best-effort; drop count tracked on pool
-            }
-        }
+        // Keep discovery on the cursor-protected queue even when the async
+        // resolver is full or its HTTP write fails. A bare row lets the durable
+        // handle-enrichment queue find the account later.
+        const did = self.dupe(id.did) orelse return;
+        const handle = if (id.handle) |h|
+            (if (!mem.eql(u8, h, "handle.invalid")) self.dupe(h) else null)
+        else
+            null;
+        self.enqueue(.{ .did = did, .handle = handle });
 
-        if (id.handle) |h| {
-            if (!mem.eql(u8, h, "handle.invalid")) {
-                const event = ActorEvent{
-                    .did = self.dupe(id.did) orelse return,
-                    .handle = self.dupe(h),
-                };
-                self.enqueue(event);
+        if (self.identity_pool) |pool| {
+            if (identity.Did.fromSlice(id.did)) |resolver_did| {
+                _ = pool.offer(io, resolver_did); // latency optimization; discovery is queued above
             }
         }
     }
@@ -358,20 +362,47 @@ pub const IngestHandler = struct {
         }
     }
 
+    fn shouldFlush(self: *IngestHandler, now: i64) bool {
+        return self.buffer.items.len >= MAX_BATCH or
+            self.delete_buffer.items.len >= MAX_BATCH or
+            (now - self.last_flush >= 5 and (self.buffer.items.len > 0 or self.delete_buffer.items.len > 0));
+    }
+
+    fn publishQueueDepth(self: *IngestHandler) void {
+        queued_ingest.store(self.buffer.items.len, .monotonic);
+        queued_deletes.store(self.delete_buffer.items.len, .monotonic);
+    }
+
+    fn drainBacklog(self: *IngestHandler, writer: anytype) void {
+        _ = backpressure_count.fetchAdd(1, .monotonic);
+        backpressure_active.store(true, .monotonic);
+        defer backpressure_active.store(false, .monotonic);
+        log.warn("backpressure: pausing relay consumption ({d} ingest, {d} delete)", .{
+            self.buffer.items.len, self.delete_buffer.items.len,
+        });
+        while (self.buffer.items.len > 0 or self.delete_buffer.items.len > 0) {
+            writer.waitUntil(self.retry_after);
+            self.flushWith(writer);
+        }
+        log.info("backpressure: queue drained, resuming relay consumption", .{});
+    }
+
     fn flush(self: *IngestHandler) void {
-        self.last_flush = timestamp();
+        self.flushWith(WorkerWriter{ .transport = self.transport, .config = self.config });
+    }
+
+    fn flushWith(self: *IngestHandler, writer: anytype) void {
+        defer self.publishQueueDepth();
+        // A slow HTTP request must not make the next single event immediately
+        // due. Full batches still flush immediately during catch-up.
+        defer self.last_flush = writer.now();
         var any_failure = false;
         var posted_through: ?i64 = null;
 
         if (self.buffer.items.len > 0) {
             const batch_end = @min(self.buffer.items.len, MAX_BATCH);
             const batch = self.buffer.items[0..batch_end];
-            const ok = postBatch(
-                self.transport,
-                self.config,
-                batch,
-                self.flushed_cursor,
-            );
+            const ok = writer.post(batch, self.flushed_cursor);
             if (ok) {
                 self.total_ingested += batch_end;
                 const rss = getRssKB();
@@ -393,7 +424,7 @@ pub const IngestHandler = struct {
                 // not to pending_cursor — pending_cursor covers events still in
                 // the buffer, so publishing it would skip them on restart.
                 if (batch_end <= self.cursors.items.len) {
-                    posted_through = self.cursors.items[batch_end - 1];
+                    posted_through = completedBatchCursor(self.cursors.items, batch_end);
                     if (batch_end < self.cursors.items.len) {
                         std.mem.copyForwards(
                             i64,
@@ -404,7 +435,7 @@ pub const IngestHandler = struct {
                     self.cursors.shrinkRetainingCapacity(self.cursors.items.len - batch_end);
                 }
             } else {
-                log.err("ingest batch failed ({d} events, {d} pending), will retry in 5s", .{
+                log.warn("ingest batch failed ({d} events, {d} pending), will retry in 5s", .{
                     batch_end, self.buffer.items.len,
                 });
                 any_failure = true;
@@ -414,11 +445,7 @@ pub const IngestHandler = struct {
         if (self.delete_buffer.items.len > 0) {
             const batch_end = @min(self.delete_buffer.items.len, MAX_BATCH);
             const batch = self.delete_buffer.items[0..batch_end];
-            const ok = deleteActors(
-                self.transport,
-                self.config,
-                batch,
-            );
+            const ok = writer.delete(batch);
             if (ok) {
                 self.total_deleted += batch_end;
                 log.info("-{d} moderated (total: {d})", .{
@@ -435,7 +462,7 @@ pub const IngestHandler = struct {
                     self.delete_buffer.clearRetainingCapacity();
                 }
             } else {
-                log.err("delete batch failed ({d} dids), will retry in 5s", .{batch_end});
+                log.warn("delete batch failed ({d} dids), will retry in 5s", .{batch_end});
                 any_failure = true;
             }
         }
@@ -460,6 +487,9 @@ pub const IngestHandler = struct {
                 defer span.end();
                 span.setAttribute("total_ingested", self.total_ingested);
                 span.setAttribute("total_deleted", self.total_deleted);
+                span.setAttribute("queued_ingest", self.buffer.items.len);
+                span.setAttribute("queued_deletes", self.delete_buffer.items.len);
+                span.setAttribute("backpressure_count", backpressure_count.load(.monotonic));
             }
             // Advance only past what was sent, and only while no deletes are
             // queued — a pending delete carries a lower seq, and skipping it
@@ -476,6 +506,36 @@ pub const IngestHandler = struct {
                 _ = self.arena.reset(.retain_capacity);
             }
         }
+    }
+};
+
+// A relay commit can contribute multiple entries. If a POST splits that
+// commit, resuming AFTER its seq would skip its remaining entries.
+fn completedBatchCursor(cursors: []const i64, count: usize) i64 {
+    const last = cursors[count - 1];
+    if (count < cursors.len and cursors[count] == last) return last - 1;
+    return last;
+}
+
+const WorkerWriter = struct {
+    transport: *HttpTransport,
+    config: Config,
+
+    fn post(self: WorkerWriter, events: []const ActorEvent, cursor: i64) bool {
+        return postBatch(self.transport, self.config, events, cursor);
+    }
+
+    fn delete(self: WorkerWriter, dids: []const []const u8) bool {
+        return deleteActors(self.transport, self.config, dids);
+    }
+
+    fn now(_: WorkerWriter) i64 {
+        return timestamp();
+    }
+
+    fn waitUntil(_: WorkerWriter, retry_after: i64) void {
+        const delay = retry_after - timestamp();
+        if (delay > 0) io.sleep(std.Io.Duration.fromSeconds(delay), .awake) catch {};
     }
 };
 
@@ -502,7 +562,10 @@ fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEve
         .method = .POST,
         .payload = output.written(),
         .authorization = auth,
-    }) catch return false;
+    }) catch |err| {
+        log.err("worker write transport failed: {s}", .{@errorName(err)});
+        return false;
+    };
     defer transport.allocator.free(result.body);
 
     if (result.status != .ok) {
@@ -530,7 +593,10 @@ fn deleteActors(transport: *HttpTransport, config: Config, dids: []const []const
         .method = .POST,
         .payload = output.written(),
         .authorization = auth,
-    }) catch return false;
+    }) catch |err| {
+        log.err("worker write transport failed: {s}", .{@errorName(err)});
+        return false;
+    };
     defer transport.allocator.free(result.body);
 
     return result.status == .ok;
@@ -568,8 +634,8 @@ fn fetchCursorOnce(transport: *HttpTransport, config: Config) ?i64 {
 /// key, so a stale one must be rejected rather than replayed: subscribing at a
 /// seq six orders of magnitude in the future yields an empty stream, and the
 /// watchdog would read that as a dead upstream instead of a bad cursor.
-/// Rejecting means "start live", which is safe — the refresh cron re-covers
-/// anything missed.
+/// Rejecting prevents subscription; the caller must recover a valid cursor
+/// rather than start live and silently skip the unavailable replay interval.
 pub const MAX_PLAUSIBLE_RELAY_SEQ: i64 = 1_000_000_000_000; // 1e12
 
 pub fn plausibleRelayCursor(cursor: ?i64) ?i64 {
@@ -583,7 +649,7 @@ pub fn fetchCursor(transport: *HttpTransport, config: Config) ?i64 {
     for (backoff, 0..) |delay, attempt| {
         if (fetchCursorOnce(transport, config)) |cursor| {
             if (plausibleRelayCursor(cursor)) |ok| return ok;
-            log.warn("rejecting implausible relay cursor {d} (jetstream-era µs value?), starting live", .{cursor});
+            log.warn("rejecting implausible relay cursor {d} (jetstream-era µs value?)", .{cursor});
             return null;
         }
         log.warn("cursor fetch failed (attempt {d}/3), retrying in {d}s", .{ attempt + 1, delay });
@@ -757,4 +823,158 @@ test "durable cursor advances past posted batches without draining the buffer" {
 
     // advancing to the newest seen seq instead would skip 103 and 104
     try testing.expect(posted_through < 104);
+}
+
+const TestWriter = struct {
+    failures: usize = 0,
+    delete_failures: usize = 0,
+    accepted: usize = 0,
+    deleted: usize = 0,
+    attempts: usize = 0,
+    waits: usize = 0,
+    last_cursor: i64 = 0,
+    clock: i64 = 0,
+
+    fn now(self: *TestWriter) i64 {
+        return self.clock;
+    }
+
+    fn post(self: *TestWriter, events: []const ActorEvent, cursor: i64) bool {
+        self.attempts += 1;
+        self.last_cursor = cursor;
+        if (self.failures > 0) {
+            self.failures -= 1;
+            return false;
+        }
+        self.accepted += events.len;
+        return true;
+    }
+
+    fn delete(self: *TestWriter, dids: []const []const u8) bool {
+        if (self.delete_failures > 0) {
+            self.delete_failures -= 1;
+            return false;
+        }
+        self.deleted += dids.len;
+        return true;
+    }
+
+    fn waitUntil(self: *TestWriter, _: i64) void {
+        self.waits += 1;
+    }
+};
+
+test "full backlog retries without losing events or advancing past failed writes" {
+    var transport: HttpTransport = undefined; // fake writer owns all I/O below
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    defer handler.deinit();
+    for (0..MAX_BACKLOG) |i| {
+        handler.pending_cursor = @intCast(i + 1);
+        handler.enqueue(.{ .did = "did:plc:test" });
+    }
+    var writer = TestWriter{ .failures = 2 };
+    handler.flushWith(&writer);
+    try testing.expectEqual(MAX_BACKLOG, handler.buffer.items.len);
+    try testing.expectEqual(@as(i64, 0), handler.flushed_cursor);
+    try testing.expectEqual(@as(usize, 0), writer.accepted);
+
+    handler.drainBacklog(&writer);
+    try testing.expectEqual(MAX_BACKLOG, writer.accepted);
+    try testing.expectEqual(@as(usize, 12), writer.attempts);
+    try testing.expectEqual(@as(usize, 0), handler.buffer.items.len);
+    try testing.expectEqual(@as(usize, 0), handler.cursors.items.len);
+    try testing.expectEqual(@as(i64, MAX_BACKLOG), handler.flushed_cursor);
+    // The sent cursor always describes the previous acknowledged batch.
+    try testing.expectEqual(@as(i64, MAX_BACKLOG - MAX_BATCH), writer.last_cursor);
+    try testing.expect(!backpressure_active.load(.monotonic));
+}
+
+test "failed delete holds replay cursor until the delete succeeds" {
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    defer handler.deinit();
+    handler.flushed_cursor = 10;
+    handler.pending_cursor = 12;
+    handler.enqueue(.{ .did = "did:plc:test" });
+    try handler.delete_buffer.append(testing.allocator, "did:plc:inactive");
+    var writer = TestWriter{ .delete_failures = 2 };
+    handler.flushWith(&writer);
+    try testing.expectEqual(@as(i64, 10), handler.flushed_cursor);
+    try testing.expectEqual(@as(usize, 1), handler.delete_buffer.items.len);
+    handler.drainBacklog(&writer);
+    try testing.expectEqual(@as(usize, 1), writer.accepted);
+    try testing.expectEqual(@as(usize, 1), writer.deleted);
+    try testing.expectEqual(@as(i64, 12), handler.flushed_cursor);
+}
+
+test "a split relay commit remains replayable until all its entries succeed" {
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    defer handler.deinit();
+    handler.flushed_cursor = 99;
+    handler.pending_cursor = 100;
+    for (0..MAX_BATCH + 1) |_| handler.enqueue(.{ .did = "did:plc:test" });
+    var writer = TestWriter{};
+    handler.flushWith(&writer);
+    try testing.expectEqual(@as(i64, 99), handler.flushed_cursor);
+    try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
+    writer.failures = 1;
+    handler.flushWith(&writer);
+    try testing.expectEqual(@as(i64, 99), writer.last_cursor);
+    try testing.expectEqual(@as(i64, 99), handler.flushed_cursor);
+    handler.flushWith(&writer);
+    try testing.expectEqual(@as(i64, 100), handler.flushed_cursor);
+    try testing.expectEqual(@as(usize, MAX_BATCH + 1), writer.accepted);
+}
+
+test "slow flush gives the next partial batch its full collection interval" {
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    defer handler.deinit();
+    handler.last_flush = 0;
+    handler.enqueue(.{ .did = "did:plc:test" });
+    var writer = TestWriter{ .clock = 10 }; // request finished ten seconds later
+    handler.flushWith(&writer);
+    handler.enqueue(.{ .did = "did:plc:next" });
+    try testing.expect(!handler.shouldFlush(10));
+    try testing.expect(!handler.shouldFlush(14));
+    try testing.expect(handler.shouldFlush(15));
+    for (1..MAX_BATCH) |_| handler.enqueue(.{ .did = "did:plc:next" });
+    try testing.expect(handler.shouldFlush(10));
+}
+
+test "identity discovery without a handle survives a failed write" {
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    defer handler.deinit();
+    handler.pending_cursor = 42;
+    handler.handleIdentity(.{ .seq = 42, .did = "did:plc:identity", .time = "2026-09-05T00:00:00Z" });
+    try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
+    try testing.expectEqualStrings("did:plc:identity", handler.buffer.items[0].did);
+    try testing.expect(handler.buffer.items[0].handle == null);
+    var writer = TestWriter{ .failures = 1 };
+    handler.flushWith(&writer);
+    try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
+    try testing.expectEqual(@as(i64, 0), handler.flushed_cursor);
+    handler.flushWith(&writer);
+    try testing.expectEqual(@as(usize, 1), writer.accepted);
+    try testing.expectEqual(@as(i64, 42), handler.flushed_cursor);
+}
+
+test "identity with invalid handle still queues discovery" {
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    defer handler.deinit();
+    handler.handleIdentity(.{ .seq = 1, .did = "did:plc:identity", .time = "", .handle = "handle.invalid" });
+    try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
+    try testing.expect(handler.buffer.items[0].handle == null);
+}
+
+test "identity with a handle queues exactly one hinted event" {
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    defer handler.deinit();
+    handler.handleIdentity(.{ .seq = 1, .did = "did:plc:identity", .time = "", .handle = "example.bsky.social" });
+    try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
+    try testing.expectEqualStrings("example.bsky.social", handler.buffer.items[0].handle.?);
 }

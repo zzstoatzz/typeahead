@@ -88,9 +88,16 @@ fn firehoseThread(args: FirehoseArgs) void {
     // one: jetstream's cursor was a µs timestamp, which is host-independent, so
     // rotating hosts there was safe. Multi-host resume would require a cursor
     // per host; pinning is the cheaper correct answer until that's worth it.
+    const resume_cursor = ingest.fetchCursor(args.transport, args.config) orelse {
+        log.err("no valid persisted relay cursor; refusing to start live and skip replay", .{});
+        logfire.flush();
+        std.process.exit(1);
+    };
+    handler.flushed_cursor = resume_cursor;
+    handler.pending_cursor = resume_cursor;
     var client = zat.FirehoseClient.init(io, args.allocator, .{
         .hosts = &.{"bsky.network"},
-        .cursor = ingest.fetchCursor(args.transport, args.config),
+        .cursor = resume_cursor,
     });
     defer client.deinit();
 
@@ -357,8 +364,12 @@ pub fn main() !void {
                 const body = if (id_pool_arg) |pool| blk: {
                     const ic = pool.counters(io);
                     break :blk std.fmt.bufPrint(&buf,
-                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d}}}}}
-                    , .{ ingest.getRssKB(), ic.accepted, ic.dropped, ic.processed, ic.queued }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
+                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
+                    , .{ ingest.getRssKB(), ic.accepted, ic.dropped, ic.processed, ic.queued,
+                        ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic),
+                        if (ingest.backpressure_active.load(.monotonic)) "true" else "false",
+                        ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic),
+                        ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
                 } else std.fmt.bufPrint(&buf,
                     \\{{"status":"ok","role":"ingester","rss_kb":{d}}}
                 , .{ingest.getRssKB()}) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
