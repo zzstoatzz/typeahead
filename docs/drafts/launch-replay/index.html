@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Typeahead · launch afternoon</title><link href="https://fonts.googleapis.com/css2?family=Roboto+Serif:wdth,wght@80,800;100,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"><link rel="stylesheet" href="style.css"></head><body><main>
+
+<section aria-label="Typeahead search replay">
+<div class="figure-meta"><div class="service-label">typeahead<span class="caret"></span></div>
+<div class="window-controls"><label for="window-size">View</label><select id="window-size"><option value="12">All 12 hours</option><option value="4">4 hours</option><option value="1">1 hour</option></select><select id="window-range" aria-label="Time range" hidden></select><time id="date-range"></time></div></div>
+<div class="readout"><div class="volume"><strong id="search-count">24,455</strong><span id="count-label">searches in this window</span></div><div class="speed"><strong id="speed">—</strong><span><a href="https://cloudprober.org/docs/how-to/percentiles/" target="_blank" rel="noopener noreferrer" title="95th percentile: 95% of recorded searches finish in this time or less. Learn about percentiles.">P95</a> · last 5 min</span></div><div class="empty"><strong id="empty">—</strong><span>zero matches · last 5 min</span></div></div>
+<div id="bar-tip" role="status" hidden></div><svg id="chart" role="img" aria-labelledby="chart-title"><title id="chart-title">Typeahead search volume, with no-result searches in amber, and response time, and race leaders on the same timeline.</title></svg>
+<div class="chart-legend" aria-label="Search volume legend"><span class="key"><i></i> Returned matches <i class="empty"></i> Zero matches</span></div>
+<div id="portraits" aria-label="Race leaders at three moments"></div>
+<div id="portrait-detail" aria-live="polite"></div>
+<div class="transport"><button id="play" type="button" aria-label="Replay selected window">▶ <span>Replay</span></button><label class="sr-only" for="timeline">Time in selected window</label><input id="timeline" type="range" min="0" max="1000" step="1" value="1000"><div class="play-clock"><time id="clock">19:00</time><span>UTC</span></div></div>
+<p id="sampling-note"></p>
+</section>
+
+</main><script src="main.js"></script></body></html>

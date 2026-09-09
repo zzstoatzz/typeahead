@@ -1,0 +1,20 @@
+[
+  {
+    "name": "race-search",
+    "url": "https://logfire-us.pydantic.dev/public-trace/7dd16220-300e-47e2-839e-4da3f867a2df?spanId=68a394b06b561b6e",
+    "expires": "never",
+    "verified": "Anonymous HTTP 200; response contains expected trace and span IDs"
+  },
+  {
+    "name": "late-search",
+    "url": "https://logfire-us.pydantic.dev/public-trace/d66d04cc-aeeb-4528-89e9-694dff95b4df?spanId=828db3dccaac6556",
+    "expires": "never",
+    "verified": "Anonymous HTTP 200; response contains expected trace and span IDs"
+  },
+  {
+    "name": "slow-search",
+    "url": "https://logfire-us.pydantic.dev/public-trace/da713ca0-3a96-44dd-8041-60358bf85b23?spanId=4af6e212d42e9ad4",
+    "expires": "never",
+    "verified": "Anonymous HTTP 200; response contains expected trace and span IDs"
+  }
+]

@@ -1,0 +1,159 @@
+{
+  "retrieved_at": "2026-09-05T05:58:12.949186+00:00",
+  "endpoint": "https://typeahead-search.fly.dev/debug/search",
+  "queries": [
+    {
+      "engine": "index",
+      "q": "germnetwork.com",
+      "normalized": "germnetwork.com",
+      "mode": "union_any",
+      "hydrate_cap": 50,
+      "exact_hits": 1,
+      "merged": 4,
+      "keys": [
+        {
+          "key": "h:germnetwork.com",
+          "base": 1,
+          "overlay": 0
+        },
+        {
+          "key": "e:germnetwork.com",
+          "base": 1,
+          "overlay": 0
+        },
+        {
+          "key": "d:germnetwork.com",
+          "base": 3,
+          "overlay": 0
+        },
+        {
+          "key": "n:germnetwork.com",
+          "base": 0,
+          "overlay": 0
+        }
+      ],
+      "candidates": [
+        {
+          "did": "did:plc:4yvwfwxfz5sney4twepuzdu7",
+          "handle": "germnetwork.com",
+          "display_name": "Germ Network",
+          "score": 494.25
+        },
+        {
+          "did": "did:plc:ad4m72ykh2evfdqen3qowxmg",
+          "handle": "tessa.germnetwork.com",
+          "display_name": "Tessa Brown",
+          "score": 429.07000732421875
+        },
+        {
+          "did": "did:plc:hg7e37e3kl5m5ra7udzyw6ta",
+          "handle": "anna.germnetwork.com",
+          "display_name": "anna 🍉☀️⛵",
+          "score": 379.69000244140625
+        },
+        {
+          "did": "did:plc:iex5bo3nbkkbvzo5otnfpfed",
+          "handle": "katherine.germnetwork.com",
+          "display_name": "🐣Katherine🌸",
+          "score": 343.3500061035156
+        }
+      ]
+    },
+    {
+      "engine": "index",
+      "q": "brookie.blog",
+      "normalized": "brookie.blog",
+      "mode": "union_any",
+      "hydrate_cap": 50,
+      "exact_hits": 1,
+      "merged": 2,
+      "keys": [
+        {
+          "key": "h:brookie.blog",
+          "base": 1,
+          "overlay": 0
+        },
+        {
+          "key": "e:brookie.blog",
+          "base": 1,
+          "overlay": 0
+        },
+        {
+          "key": "d:brookie.blog",
+          "base": 1,
+          "overlay": 0
+        },
+        {
+          "key": "n:brookie.blog",
+          "base": 0,
+          "overlay": 0
+        }
+      ],
+      "candidates": [
+        {
+          "did": "did:plc:v46ojbiop5ebs5h7gaomixcc",
+          "handle": "brookie.blog",
+          "display_name": "Brookie",
+          "score": 472.70001220703125
+        },
+        {
+          "did": "did:plc:xigvguflvkv2sjvh7kxq7c3x",
+          "handle": "evil.brookie.blog",
+          "display_name": "",
+          "score": 297.3299865722656
+        }
+      ]
+    },
+    {
+      "engine": "index",
+      "q": "zzstoatzz.io",
+      "normalized": "zzstoatzz.io",
+      "mode": "union_any",
+      "hydrate_cap": 50,
+      "exact_hits": 1,
+      "merged": 3,
+      "keys": [
+        {
+          "key": "h:zzstoatzz.io",
+          "base": 1,
+          "overlay": 1
+        },
+        {
+          "key": "e:zzstoatzz.io",
+          "base": 1,
+          "overlay": 1
+        },
+        {
+          "key": "d:zzstoatzz.io",
+          "base": 2,
+          "overlay": 0
+        },
+        {
+          "key": "n:zzstoatzz.io",
+          "base": 0,
+          "overlay": 0
+        }
+      ],
+      "candidates": [
+        {
+          "did": "did:plc:xbtmt2zjwlrfegqvch7fboei",
+          "handle": "zzstoatzz.io",
+          "display_name": "nate",
+          "score": 438.25
+        },
+        {
+          "did": "did:plc:65sucjiel52gefhcdcypynsr",
+          "handle": "phi.zzstoatzz.io",
+          "display_name": "ϕ",
+          "score": 276.42999267578125
+        },
+        {
+          "did": "did:plc:3cr6uc547ot7j3nysnxmnrsl",
+          "handle": "alt.zzstoatzz.io",
+          "display_name": "alt n8",
+          "score": 6.019999980926514
+        }
+      ]
+    }
+  ]
+}

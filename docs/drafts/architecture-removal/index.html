@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Typeahead · removing the replica</title>
+<link rel="stylesheet" href="style.css">
+<main class="demo" aria-label="The September 2 change to the Typeahead search box">
+  <input class="state" type="radio" name="state" id="before" checked>
+  <input class="state" type="radio" name="state" id="after">
+  <header><span class="brand">typeahead<span class="caret"></span></span><fieldset><legend class="sr-only">Compare the search architecture</legend><label for="before">Before</label><label for="after">After <span>Sep 2</span></label></fieldset></header>
+  <section class="machine" aria-label="Inside the Fly search box">
+    <div class="machine-heading"><span>SEARCH BOX <span class="location">/ FLY</span></span><span class="spec">4 shared CPUs · 2 GB RAM</span></div>
+    <div class="contents">
+      <div class="serving">
+        <div class="kept-label">Answers come from</div>
+        <div class="index card"><div class="icon" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div><h1>Prefix index</h1><p>Matching accounts, computed ahead of time</p></div><span class="check" aria-hidden="true">✓</span></div>
+        <div class="plus" aria-hidden="true">+</div>
+        <div class="overlay card"><div class="update-icon" aria-hidden="true">↳</div><div><h2>Recent updates</h2><p>The overlay</p></div><span class="check" aria-hidden="true">✓</span></div>
+      </div>
+      <div class="replica"><div class="extra-label">Also maintained</div><div class="replica-card"><span class="cut" aria-hidden="true">−</span><h2>Full actor replica</h2><div class="rows" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="machinery"><span>Bootstrap</span><span>Full resync</span><span>Local FTS code</span></div></div></div>
+    </div>
+    <div class="floor"><span class="old-copy">A second copy of the actor database.</span><span class="new-copy">Keep the index. Replay newer rows.</span></div>
+  </section>
+  <footer><div class="disk"><span class="disk-label">Provisioned disk</span><span class="disk-value"><span class="old-value">100</span><span class="new-value">60</span></span><span class="unit">GB</span><div class="disk-track" aria-hidden="true"><i></i></div></div><p class="context">Turso still keeps the actor records.<br><a href="https://tangled.org/zzstoatzz.io/typeahead/commit/c9f5196f1ca4985db69dab931deb4882abc9b63a" target="_blank" rel="noopener">The removal, in code ↗</a></p></footer>
+</main>
+</html>

@@ -1,0 +1,15 @@
+<figure class="reader-figure" id="traffic" aria-labelledby="traffic-title">
+  <header><h3 id="traffic-title">An afternoon of searches</h3><p>September 4, 2026 · two 15-minute windows</p></header>
+  <div class="comparison-head"><div><span class="period-label">Before voting</span><time>16:45–17:00 UTC</time></div><div><span class="period-label" id="period-name">Busiest window</span><time id="period-time">18:30–18:45 UTC</time></div></div>
+  <div class="comparison" aria-label="Search volume comparison">
+    <p class="measure-label">Searches in 15 minutes</p>
+    <div class="bars counts"><div class="bar-slot"><span class="bar-value">163</span><div class="bar before" style="height:2.7167%"></div></div><div class="bar-slot" id="count-slot" style="--fill:90.3833%"><span class="bar-value" id="comparison-count">5,423</span><div class="bar after" id="count-bar" style="height:90.3833%"></div></div></div>
+    <p class="comparison-caption" id="comparison-caption">About 33 times as many searches</p>
+    <p class="measure-label second-measure">Typical time inside the search engine</p>
+    <div class="time-bars"><div><strong>4.0 <span>ms</span></strong><div class="time-track"><div class="before" style="width:80.4723%"></div></div></div><div><strong id="comparison-time">3.0 <span>ms</span></strong><div class="time-track"><div class="after" id="time-bar" style="width:59.142%"></div></div></div></div>
+  </div>
+  <fieldset class="window-choice"><legend>Compare before voting with:</legend><button type="button" data-window="3" aria-pressed="false">Voting picks up <small>17:30–17:45</small></button><button type="button" data-window="7" aria-pressed="true">Busiest window <small>18:30–18:45</small></button></fieldset>
+  <p class="reader-note">More searches, with similar time spent answering each one.</p>
+  <p class="sr-only" id="comparison-announcement" aria-live="polite"></p>
+  <details><summary>About these measurements</summary><p>These count searches, not individual people. “Typical” is the median: half of searches finished faster, half slower. Engine time excludes the rest of the trip from your browser. This comparison is an observed afternoon, not a capacity test.</p><p>Source: completed Logfire search spans, before sampling was enabled. All times are UTC. The table includes every complete 15-minute window from 16:45 to 19:00.</p><div class="table-scroll"><table><caption>September 4, 2026</caption><thead><tr><th>Window starts</th><th>Searches</th><th>Median (ms)</th></tr></thead><tbody id="comparison-table"></tbody></table></div></details>
+</figure>

@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080" role="img" aria-labelledby="title desc"><title id="title">Typeahead: prepare the search, then serve it</title><desc id="desc">Clients query a Cloudflare Worker which asks a Zig search service on Fly. The search service holds an R2 snapshot and a live overlay, with no full actor replica. Relay events go through a Zig ingester and the Worker into Turso. Prefect jobs on heavypad build snapshots and enrich actors. Turso changes feed the overlay. Request counters still write to Turso.</desc>
+<defs>
+<marker id="request" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#245cba"/></marker>
+<marker id="live" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#08766c"/></marker>
+<marker id="batch" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#7450a2"/></marker>
+<marker id="quiet" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#52647a"/></marker>
+</defs>
+<rect width="1440" height="1080" fill="#f7f9fc"/>
+<style>text{font-family:Helvetica,Arial,sans-serif;fill:#152940}.small{font-size:17px;fill:#52647a}.body{font-size:20px}.name{font-size:28px;font-weight:700}.label{font-size:18px;font-weight:600}</style>
+<text x="48" y="64" class="name">typeahead, after the replica</text>
+<text x="48" y="102" class="body">Prepare the expensive work offline. Answer each keystroke with a small lookup and merge.</text>
+<text x="48" y="157" class="label" style="fill:#245cba">Serving</text>
+<rect x="48" y="190" width="220" height="180" rx="9" fill="white" stroke="#152940" stroke-width="1.5"/>
+<text x="70" y="223" class="small">Atproto apps</text>
+<text x="70" y="260" class="name">Clients</text>
+<text x="70" y="293" class="body">bsky38 · pckt</text>
+<text x="70" y="319" class="body">race38 · others</text>
+<rect x="348" y="190" width="285" height="210" rx="9" fill="white" stroke="#152940" stroke-width="1.5"/>
+<text x="370" y="223" class="small">Cloudflare</text>
+<text x="370" y="260" class="name">Edge Worker</text>
+<text x="370" y="293" class="body">XRPC + 60 s cache</text>
+<text x="370" y="319" class="body">Rate limits; ingest API</text>
+<text x="370" y="345" class="body">Counters → Turso</text>
+<rect x="773" y="190" width="590" height="210" rx="9" fill="white" stroke="#245cba" stroke-width="1.5"/>
+<text x="795" y="223" class="small">Fly / ewr     Zig · 4 shared CPUs · 2 GB</text>
+<text x="795" y="260" class="name">Search service</text>
+<text x="795" y="293" class="body"></text>
+<rect x="795" y="280" width="252" height="93" rx="5" fill="#eef3fc"/>
+<text x="813" y="311" class="label" style="fill:#245cba">Read-only snapshot</text>
+<text x="813" y="342" class="small">Precomputed top-N keys</text>
+<rect x="1065" y="280" width="276" height="93" rx="5" fill="#eaf5f2"/>
+<text x="1083" y="311" class="label" style="fill:#08766c">Live overlay</text>
+<text x="1083" y="342" class="small">Additions + suppressions</text>
+<path d="M268 250 H348" fill="none" stroke="#245cba" stroke-width="2.5" marker-end="url(#request)"/>
+<text x="286" y="232" class="small" style="fill:#245cba">q=</text>
+<path d="M633 250 H773" fill="none" stroke="#245cba" stroke-width="2.5" marker-end="url(#request)"/>
+<text x="660" y="229" class="small" style="fill:#245cba">/search</text>
+<text x="795" y="426" class="small">No full actor replica.</text>
+<text x="795" y="452" class="small">60 GB volume; bounded candidate set.</text>
+<text x="48" y="490" class="label" style="fill:#08766c">Continuous discovery &amp; freshness</text>
+<rect x="48" y="523" width="220" height="158" rx="9" fill="white" stroke="#08766c" stroke-width="1.5"/>
+<text x="70" y="556" class="small">bsky.network</text>
+<text x="70" y="593" class="name">Relay</text>
+<text x="70" y="626" class="body">subscribeRepos</text>
+<rect x="348" y="523" width="285" height="158" rx="9" fill="white" stroke="#08766c" stroke-width="1.5"/>
+<text x="370" y="556" class="small">Fly / ewr     Zig</text>
+<text x="370" y="593" class="name">Ingester</text>
+<text x="370" y="626" class="body">1 shared CPU · 256 MB</text>
+<text x="370" y="652" class="body">Stateless batches</text>
+<rect x="773" y="523" width="300" height="158" rx="9" fill="white" stroke="#08766c" stroke-width="1.5"/>
+<text x="795" y="556" class="small">Durable source</text>
+<text x="795" y="593" class="name">Turso</text>
+<text x="795" y="626" class="body">Actors + tombstones</text>
+<text x="795" y="652" class="body">Moderation + profiles</text>
+<path d="M268 602 H348" fill="none" stroke="#08766c" stroke-width="2.5" marker-end="url(#live)"/>
+<text x="279" y="580" class="small" style="fill:#08766c">events</text>
+<path d="M490 523 V400" fill="none" stroke="#08766c" stroke-width="2.5" marker-end="url(#live)"/>
+<text x="501" y="473" class="small" style="fill:#08766c">ingest</text>
+<path d="M633 346 H700 V602 H773" fill="none" stroke="#08766c" stroke-width="2.5" marker-end="url(#live)"/>
+<text x="654" y="499" class="small" style="fill:#08766c">writes</text>
+<path d="M1073 602 H1200 V373" fill="none" stroke="#08766c" stroke-width="2.5" marker-end="url(#live)"/>
+<text x="1214" y="504" class="small" style="fill:#08766c">5-minute</text>
+<text x="1214" y="531" class="small" style="fill:#08766c">delta replay</text>
+<text x="48" y="745" class="label" style="fill:#7450a2">Offline builds &amp; enrichment</text>
+<rect x="48" y="796" width="220" height="172" rx="9" fill="white" stroke="#7450a2" stroke-width="1.5"/>
+<text x="70" y="829" class="small">Appviews + PLC</text>
+<text x="70" y="866" class="name">Sources</text>
+<text x="70" y="899" class="body">Bluesky / Blacksky</text>
+<text x="70" y="925" class="body">PDS fallback; PLC</text>
+<rect x="348" y="796" width="425" height="172" rx="9" fill="white" stroke="#7450a2" stroke-width="1.5"/>
+<text x="370" y="829" class="small">Home / heavypad</text>
+<text x="370" y="866" class="name">Prefect jobs</text>
+<text x="370" y="899" class="body">Zig snapshot builder on home disk</text>
+<text x="370" y="925" class="body">Identity hourly · profiles daily</text>
+<text x="370" y="951" class="body">PLC weekly</text>
+<rect x="933" y="796" width="300" height="172" rx="9" fill="white" stroke="#7450a2" stroke-width="1.5"/>
+<text x="955" y="829" class="small">Cloudflare</text>
+<text x="955" y="866" class="name">R2 artifacts</text>
+<text x="955" y="899" class="body">index.db + manifest</text>
+<text x="955" y="925" class="body">Versioned snapshots</text>
+<path d="M268 880 H348" fill="none" stroke="#7450a2" stroke-width="2.5" marker-end="url(#batch)"/>
+<path d="M830 681 V722 H600 V796" fill="none" stroke="#7450a2" stroke-width="2.5" marker-end="url(#batch)"/>
+<text x="627" y="712" class="small" style="fill:#7450a2">export</text>
+<path d="M720 796 V753 H985 V681" fill="none" stroke="#7450a2" stroke-width="2.5" marker-end="url(#batch)"/>
+<text x="811" y="778" class="small" style="fill:#7450a2">enrich</text>
+<path d="M773 874 H933" fill="none" stroke="#7450a2" stroke-width="2.5" marker-end="url(#batch)"/>
+<text x="796" y="853" class="small" style="fill:#7450a2">publish</text>
+<path d="M1233 874 H1392 V272 H1363" fill="none" stroke="#7450a2" stroke-width="2.5" marker-end="url(#batch)"/>
+<text x="1260" y="746" class="small" style="fill:#7450a2">verify, then</text>
+<text x="1260" y="773" class="small" style="fill:#7450a2">promote</text>
+<text x="48" y="1020" class="label">Failure boundaries</text>
+<text x="242" y="1020" class="body">Late build → keep prior snapshot. Engine down → uncached empty results.</text>
+<text x="48" y="1053" class="small">Logfire observes both Fly services; Workers Logs covers the edge. Operator access to heavypad uses Tailscale.</text>
+</svg>

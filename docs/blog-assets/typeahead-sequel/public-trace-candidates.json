@@ -1,0 +1,90 @@
+[
+  {
+    "name": "race-search",
+    "trace_id": "6c45a4e1b0a662da80bad3ca0c8a34f2",
+    "span_id": "68a394b06b561b6e",
+    "ms": 3.034299,
+    "records": [
+      {
+        "service_name": "typeahead-search",
+        "span_name": "search",
+        "kind": "span",
+        "attributes": {
+          "blob_hidden": 0,
+          "exact_hits": 0,
+          "hydrated_base": 18,
+          "hydrated_overlay": 0,
+          "keys": 4,
+          "merged": 18,
+          "not_found": 0,
+          "overlay_hidden": 0,
+          "q_len": 5,
+          "results": 5,
+          "tombstoned": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "late-search",
+    "trace_id": "586f2e22728b25afb6313466e1ff0ce7",
+    "span_id": "828db3dccaac6556",
+    "ms": 2.25134,
+    "records": [
+      {
+        "service_name": "typeahead-search",
+        "span_name": "search",
+        "kind": "span",
+        "attributes": {
+          "blob_hidden": 0,
+          "exact_hits": 0,
+          "hydrated_base": 1,
+          "hydrated_overlay": 0,
+          "keys": 4,
+          "merged": 1,
+          "not_found": 0,
+          "overlay_hidden": 0,
+          "q_len": 11,
+          "results": 1,
+          "sample_rate": 10,
+          "tombstoned": 0
+        }
+      }
+    ]
+  },
+  {
+    "name": "slow-search",
+    "trace_id": "e801b394bcfedb9ef0cff5a4b234b5d3",
+    "span_id": "4af6e212d42e9ad4",
+    "ms": 565.4227539999999,
+    "records": [
+      {
+        "service_name": "typeahead-search",
+        "span_name": "slow search: 565 ms (q_len=3 keys=4 merged=50)",
+        "kind": "log",
+        "attributes": {
+          "code.module.name": "index_search"
+        }
+      },
+      {
+        "service_name": "typeahead-search",
+        "span_name": "search",
+        "kind": "span",
+        "attributes": {
+          "blob_hidden": 0,
+          "exact_hits": 0,
+          "hydrated_base": 45,
+          "hydrated_overlay": 5,
+          "keys": 4,
+          "merged": 50,
+          "not_found": 0,
+          "overlay_hidden": 0,
+          "q_len": 3,
+          "results": 5,
+          "sample_rate": 10,
+          "tombstoned": 0
+        }
+      }
+    ]
+  }
+]

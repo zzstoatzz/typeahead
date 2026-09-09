@@ -1,0 +1,11 @@
+<figure class="reader-figure name-example" id="architecture" aria-labelledby="architecture-title" data-state="original">
+  <header><h3 id="architecture-title">When someone changes their name</h3><p>A small example of the prepared index and its recent changes.</p></header>
+  <div class="index-scene">
+    <div class="prepared"><span class="layer-label">Prepared index</span><div class="index-card"><span class="card-corner" aria-hidden="true"></span><span class="entry-label">Display name</span><strong id="stored-name">Alex</strong><span class="entry-detail">Same account throughout</span><span class="index-version" id="index-version">Original index</span></div></div>
+    <div class="corrections"><span class="layer-label">Recent changes</span><div class="empty-slip" id="empty-slip">No changes to apply</div><div class="correction-slip" id="correction-slip" aria-hidden="true"><span class="entry-label">New display name</span><strong>Ari</strong><span class="replaces">replaces Alex</span></div></div>
+  </div>
+  <div class="search-outcome"><h4>What a search finds</h4><div class="result-row"><span>Search for <q>alex</q></span><span class="result-match" id="alex-result">Alex</span></div><div class="result-row"><span>Search for <q>ari</q></span><span class="result-empty" id="ari-result">No match</span></div></div>
+  <div class="example-action"><button type="button" id="name-action">Change Alex to Ari</button><button type="button" class="reset" id="name-reset" hidden>Start again</button></div>
+  <p class="explanation" id="name-explanation" aria-live="polite">Alex is in the prepared index. Try changing the display name.</p>
+  <p class="example-note">Illustrated account and simplified name matching. “Recent changes” is the overlay used by typeahead.</p>
+</figure>

@@ -1,0 +1,12 @@
+{
+  "retrieved_at": "2026-09-05T08:24:03.707298+00:00",
+  "start": "2026-09-04T17:00:00+00:00",
+  "end": "2026-09-05T05:00:00+00:00",
+  "fields": "start_timestamp, duration*1000 AS duration_ms, (attributes->>'results')::int AS results, COALESCE((attributes->>'sample_rate')::int,1) AS sample_rate",
+  "where": "service_name='typeahead-search' AND span_name='search' AND kind='span'",
+  "rows": 51003,
+  "weighted_searches": 128943,
+  "sampled_from": "2026-09-04T20:08:57.509000+00:00",
+  "verification": "All 144 five-minute counts, weighted counts, and weighted zero-match counts match independent Logfire aggregate query. Percentiles are calculated by Logfire over recorded search spans.",
+  "privacy": "No query strings, account IDs, trace IDs, or request attributes in replay export."
+}

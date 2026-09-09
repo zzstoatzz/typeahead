@@ -1,0 +1,13 @@
+{
+  "retrieved_at": "2026-09-05T07:33:21.004625+00:00",
+  "sql": "SELECT start_timestamp, duration * 1000 AS duration_ms, (attributes->>'results')::int AS results FROM records WHERE service_name='typeahead-search' AND span_name='search' AND kind='span' AND start_timestamp >= '{lo}' AND start_timestamp < '{hi}' ORDER BY start_timestamp",
+  "interval_minutes": 15,
+  "rows": 24646,
+  "zero_matches": 4735,
+  "verified": "Every five-minute search and zero-match count equals traffic-5m.json",
+  "fields": [
+    "offset_microseconds",
+    "duration_ms",
+    "results"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "query": "SELECT date_bin(INTERVAL '15 minutes', start_timestamp) AS window, count(*) AS searches, percentile_cont(0.5) WITHIN GROUP (ORDER BY duration)*1000 AS p50_ms, percentile_cont(0.95) WITHIN GROUP (ORDER BY duration)*1000 AS p95_ms FROM records WHERE span_name='search' AND kind='span' GROUP BY 1 ORDER BY 1",
+  "min_timestamp": "2026-09-04T16:45:00Z",
+  "max_timestamp": "2026-09-04T19:00:00Z",
+  "data": [
+    {
+      "window": "2026-09-04T16:45:00Z",
+      "searches": 163,
+      "p50_ms": 4.023614812500001,
+      "p95_ms": 17.986704
+    },
+    {
+      "window": "2026-09-04T17:00:00Z",
+      "searches": 100,
+      "p50_ms": 2.9867675,
+      "p95_ms": 20.027130500000002
+    },
+    {
+      "window": "2026-09-04T17:15:00Z",
+      "searches": 124,
+      "p50_ms": 4.007566291666667,
+      "p95_ms": 17.8079115
+    },
+    {
+      "window": "2026-09-04T17:30:00Z",
+      "searches": 1705,
+      "p50_ms": 3.5615873028074874,
+      "p95_ms": 16.620122741735535
+    },
+    {
+      "window": "2026-09-04T17:45:00Z",
+      "searches": 3496,
+      "p50_ms": 3.365942862142778,
+      "p95_ms": 13.678415975875602
+    },
+    {
+      "window": "2026-09-04T18:00:00Z",
+      "searches": 4076,
+      "p50_ms": 3.1115444246013126,
+      "p95_ms": 11.452792540633903
+    },
+    {
+      "window": "2026-09-04T18:15:00Z",
+      "searches": 4625,
+      "p50_ms": 3.0673288650060386,
+      "p95_ms": 9.887544257560746
+    },
+    {
+      "window": "2026-09-04T18:30:00Z",
+      "searches": 5423,
+      "p50_ms": 2.9571019235647524,
+      "p95_ms": 8.91260938234503
+    },
+    {
+      "window": "2026-09-04T18:45:00Z",
+      "searches": 4934,
+      "p50_ms": 2.893294580750481,
+      "p95_ms": 8.34266539012987
+    }
+  ]
+}

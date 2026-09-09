@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>typeahead at the race</title><style>:root{color-scheme:light;--ink:#172238;--blue:#284bd6;--old:#77869e;--teal:#096b59;--wash:#edf2ff;--paper:#fff}*{box-sizing:border-box}body{margin:0;background:white;color:var(--ink);font:19px/1.65 Georgia,serif}a{color:inherit;text-underline-offset:3px}.article{padding:0 24px 60px}.article>p,.article>h1,.article>h2{max-width:710px;margin:24px auto}.article>h1{font:650 48px/1.1 'Helvetica Neue',Arial,sans-serif;margin-top:40px}.article>h2{font:600 28px/1.3 'Helvetica Neue',Arial,sans-serif;margin-top:50px}.article code{font-size:15px}.page-header,.page-footer{max-width:710px;margin:20px auto;font:13px/1.5 'Helvetica Neue',Arial,sans-serif}.page-header{display:flex;justify-content:space-between}.reader-figure{font:16px/1.5 'Helvetica Neue',Arial,sans-serif;color:var(--ink);background:var(--paper);padding:28px;max-width:720px;margin:40px auto;isolation:isolate}.reader-figure h3{font-size:27px;line-height:1.2;letter-spacing:-.65px;margin:0 0 10px;font-weight:650}.reader-figure header>p{font-size:14px;margin:0;color:#526078;max-width:44ch}.reader-figure header{margin-bottom:28px}.reader-figure button{font:600 15px/1.3 'Helvetica Neue',Arial,sans-serif;min-height:46px;cursor:pointer;border:1px solid #a6b1c3;border-radius:7px;background:white;color:var(--ink);padding:12px 16px;touch-action:manipulation}.reader-figure button:hover{background:#edf2ff;border-color:var(--blue)}.reader-figure button:focus-visible,.reader-figure summary:focus-visible{outline:3px solid var(--blue);outline-offset:4px}.reader-figure button:disabled{cursor:wait;opacity:.65}.reader-figure [hidden]{display:none!important}.comparison-head{display:grid;grid-template-columns:1fr 1fr;gap:24px;text-align:center;border-bottom:1px solid #d8dfea;padding-bottom:17px}.period-label{display:block;font-size:16px;font-weight:650}.comparison-head time{display:block;font-size:12px;margin-top:5px;color:#536077}.comparison-head>div:last-child .period-label{color:var(--blue)}.measure-label{font-size:14px;font-weight:600;margin:22px 0 14px}.bars{height:185px;display:grid;grid-template-columns:1fr 1fr;gap:24px;border-bottom:1px solid #687894;padding:0 15px}.bar-slot{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;position:relative}.bar{width:min(104px,72%);border-radius:4px 4px 0 0;flex-shrink:0;transition:height 650ms cubic-bezier(.22,1,.36,1)}.before{background:var(--old)}.after{background:var(--blue)}.bar-value{font-size:27px;line-height:1.2;font-weight:600;font-variant-numeric:tabular-nums;position:absolute;bottom:calc(100% + 8px)}.bar-slot:first-child .bar-value{bottom:calc(2.7167% + 8px)}.bar-slot:last-child .bar-value{bottom:calc(var(--fill) + 8px);transition:bottom 650ms cubic-bezier(.22,1,.36,1);background:white;padding:0 5px}.counts{margin-top:35px}.comparison-caption{margin:12px 0 0;text-align:right;color:var(--blue);font-size:15px;font-weight:600}.second-measure{margin-top:27px}.time-bars{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:0 16px}.time-bars strong{display:block;font-size:24px;line-height:1.2;font-weight:600;font-variant-numeric:tabular-nums;margin-bottom:10px}.time-bars strong span{font-size:14px;font-weight:400}.time-track{height:10px;background:#edf0f5;border-radius:2px;overflow:hidden}.time-track>div{height:100%;transition:width 650ms cubic-bezier(.22,1,.36,1)}.window-choice{border:0;padding:0;margin:30px 0 0;display:flex;gap:10px}.window-choice legend{font-size:13px;padding:0;margin-bottom:10px}.window-choice button{flex:1;text-align:left;font-size:14px}.window-choice button small{display:block;font-size:12px;font-weight:400;margin-top:5px}.window-choice button[aria-pressed=true]{background:var(--blue);color:white;border-color:var(--blue)}.reader-note{font-size:16px;line-height:1.5;margin:21px 0 0}.reader-figure details{font-size:12px;line-height:1.6;border-top:1px solid #d8dfea;padding-top:14px;margin-top:24px;color:#45546c}.reader-figure summary{cursor:pointer;font-size:13px;color:var(--ink);width:fit-content}.reader-figure details p{margin:12px 0}.table-scroll{max-height:200px;overflow:auto}.reader-figure table{border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}.reader-figure td,.reader-figure th{text-align:right;border-bottom:1px solid #d8dfea;padding:6px}.reader-figure td:first-child,.reader-figure th:first-child{text-align:left}.reader-figure caption{text-align:left}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.index-scene{background:var(--wash);padding:24px 20px 28px;display:grid;grid-template-columns:1fr 1fr;gap:24px;position:relative;overflow:visible;margin-top:8px}.layer-label{display:block;font-size:13px;font-weight:600;margin-bottom:13px}.index-card{position:relative;background:white;border:1px solid #8b9dbd;border-radius:3px;padding:21px 16px 16px;box-shadow:0 4px 0 -1px #dbe2f0,0 4px 0 0 #8b9dbd,0 8px 0 -1px #e7ebf4,0 8px 0 0 #8b9dbd;min-height:174px}.card-corner{display:block;width:26px;height:8px;background:var(--blue);position:absolute;top:-1px;left:16px}.entry-label{display:block;font-size:11px;margin-bottom:8px;color:#526078}.index-card strong,.correction-slip strong{display:block;font-size:38px;font-weight:600;letter-spacing:-1px;line-height:1.15}.entry-detail{font-size:10px;display:block;margin-top:8px;color:#526078}.index-version{font-size:10px;display:block;margin-top:13px;border-top:1px solid #d7dfed;padding-top:9px}.corrections{position:relative}.correction-slip{position:absolute;top:33px;left:0;width:100%;z-index:3;background:#e0f3ed;border:1px solid var(--teal);border-radius:3px;padding:21px 16px 18px;min-height:149px;visibility:hidden;color:var(--teal)}.correction-slip .entry-label{color:var(--teal)}.replaces{font-size:12px;display:block;margin-top:10px}.empty-slip{font-size:13px;line-height:1.55;border:1px dashed #8b9dbd;border-radius:3px;min-height:149px;padding:20px 15px;color:#526078;display:flex;align-items:center;max-width:100%}.name-example[data-state=changed] .correction-slip{visibility:visible}.name-example[data-state=changed] .empty-slip{visibility:hidden}.name-example[data-state=changed] .index-card strong{color:#65748c;text-decoration:line-through;text-decoration-thickness:1px}.name-example[data-state=rebuilt] .index-card strong{color:var(--teal)}.search-outcome{margin:29px 0 0}.search-outcome h4{font-size:15px;margin:0 0 8px;font-weight:600}.result-row{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #d8dfea;gap:20px;padding:12px 0;font-size:14px;min-height:48px}.result-row q{font-weight:600}.result-match{font-weight:650;color:var(--teal)}.result-match:before{content:'✓';margin-right:7px}.result-empty{color:#67748a;font-size:13px}.example-action{display:flex;align-items:center;gap:10px;margin-top:25px;min-height:48px}.example-action #name-action{background:var(--blue);border-color:var(--blue);color:white}.example-action #name-action:hover{background:#1c38af}.example-action .reset{border:0;background:none;font-size:13px;padding:8px;text-decoration:underline;text-underline-offset:4px}.explanation{font-size:15px;line-height:1.6;min-height:76px;margin:18px 0 0;max-width:52ch}.example-note{font-size:11px;line-height:1.6;color:#536077;border-top:1px solid #d8dfea;padding-top:14px;margin:12px 0 0}.name-example[data-state=rebuilt] .reset{font-size:15px;padding:12px 16px;border:1px solid #a6b1c3;text-decoration:none}.name-example[data-state=rebuilt] .explanation{min-height:76px}
+@media(max-width:420px){.reader-figure{padding:22px 17px}.reader-figure h3{font-size:24px}.reader-figure header>p{font-size:13px}.comparison-head{gap:12px}.period-label{font-size:14px}.comparison-head time{font-size:11px}.bars{height:155px;gap:12px}.bar-value{font-size:24px}.time-bars{padding:0 10px;gap:25px}.window-choice button{padding:10px;font-size:13px}.index-scene{padding:20px 12px 24px;gap:16px;margin-left:-4px;margin-right:-4px}.layer-label{font-size:12px}.index-card{padding:19px 11px 12px;min-height:171px}.correction-slip{top:31px;padding:19px 11px 12px;min-height:147px}.entry-label{font-size:10px}.index-card strong,.correction-slip strong{font-size:33px}.entry-detail{font-size:9px}.empty-slip{font-size:12px;padding:15px 10px}.example-action{gap:4px}.example-action #name-action{font-size:13px;padding:12px}.example-action .reset{font-size:12px}.explanation{font-size:14px;min-height:100px}.name-example[data-state=rebuilt] .explanation{min-height:100px}.result-row{font-size:13px}.article{padding:0 14px}.page-header{padding:0 14px}.reader-note{font-size:15px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+</style></head>
+<body><header class="page-header"><a href="https://pckt.blog/b/waow-tech">waow / typeahead</a><span>Draft · September 5, 2026</span></header><main class="article"><h1>typeahead at the race</h1>
+<p>on September 4, <a href="https://bsky38.com">bsky38.com</a> opened voting for 38 influential Bluesky posters. its account picker uses <a href="https://typeahead.waow.tech">typeahead</a>, so a lot of people deciding who to vote for became a lot of people querying my little actor index.</p>
+<p>i think we held up pretty well! search volume went from 163 to 5,423 requests per 15 minutes, while the engine's median stayed around 3–4 ms. here's the afternoon, including the less flattering bits. you can scrub through it or play it back.</p>
+<figure class="reader-figure" id="traffic" aria-labelledby="traffic-title">
+  <header><h3 id="traffic-title">An afternoon of searches</h3><p>September 4, 2026 · two 15-minute windows</p></header>
+  <div class="comparison-head"><div><span class="period-label">Before voting</span><time>16:45–17:00 UTC</time></div><div><span class="period-label" id="period-name">Busiest window</span><time id="period-time">18:30–18:45 UTC</time></div></div>
+  <div class="comparison" aria-label="Search volume comparison">
+    <p class="measure-label">Searches in 15 minutes</p>
+    <div class="bars counts"><div class="bar-slot"><span class="bar-value">163</span><div class="bar before" style="height:2.7167%"></div></div><div class="bar-slot" id="count-slot" style="--fill:90.3833%"><span class="bar-value" id="comparison-count">5,423</span><div class="bar after" id="count-bar" style="height:90.3833%"></div></div></div>
+    <p class="comparison-caption" id="comparison-caption">About 33 times as many searches</p>
+    <p class="measure-label second-measure">Typical time inside the search engine</p>
+    <div class="time-bars"><div><strong>4.0 <span>ms</span></strong><div class="time-track"><div class="before" style="width:80.4723%"></div></div></div><div><strong id="comparison-time">3.0 <span>ms</span></strong><div class="time-track"><div class="after" id="time-bar" style="width:59.142%"></div></div></div></div>
+  </div>
+  <fieldset class="window-choice"><legend>Compare before voting with:</legend><button type="button" data-window="3" aria-pressed="false">Voting picks up <small>17:30–17:45</small></button><button type="button" data-window="7" aria-pressed="true">Busiest window <small>18:30–18:45</small></button></fieldset>
+  <p class="reader-note">More searches, with similar time spent answering each one.</p>
+  <p class="sr-only" id="comparison-announcement" aria-live="polite"></p>
+  <details><summary>About these measurements</summary><p>These count searches, not individual people. “Typical” is the median: half of searches finished faster, half slower. Engine time excludes the rest of the trip from your browser. This comparison is an observed afternoon, not a capacity test.</p><p>Source: completed Logfire search spans, before sampling was enabled. All times are UTC. The table includes every complete 15-minute window from 16:45 to 19:00.</p><div class="table-scroll"><table><caption>September 4, 2026</caption><thead><tr><th>Window starts</th><th>Searches</th><th>Median (ms)</th></tr></thead><tbody id="comparison-table"></tbody></table></div></details>
+</figure>
+
+
+<p>these are engine measurements from Logfire. the request still has to get from your browser through Cloudflare to Fly and back. the quieter baseline is 16:45–17:00 UTC; the 33× comparison uses that window and 18:30–18:45. the chart has finer, five-minute buckets.</p>
+<p>my <a href="https://pckt.blog/b/waow-tech/typeahead-more-like-typebehind-amirite-tzgmqge">previous post</a> was about replacing request-time full-text search with a precomputed prefix index. it had about 5.9M actors then. the snapshot we're serving now has 11.63M. same four shared CPUs and 2GB of RAM on the search machine.</p>
+<h2>how it runs now</h2>
+<p>since May, the heavy index builds have <a href="https://nate.leaflet.pub/3mrxzyhlsc22r">moved home</a>, and the search machine has shed its full actor replica. the replica had survived the first redesign, even though the new snapshot already contained what we needed to answer queries. maintaining both was expensive, and occasionally wrong.</p>
+<p>the search box now holds the snapshot plus an overlay of recent changes. below, <strong>search</strong> follows recorded queries through the index. <strong>profile update</strong> shows how a rename reaches that overlay. <strong>snapshot build</strong> follows the batch job from Turso, through heavypad, into R2 and back onto the search machine.</p>
+<figure class="reader-figure name-example" id="architecture" aria-labelledby="architecture-title" data-state="original">
+  <header><h3 id="architecture-title">When someone changes their name</h3><p>A small example of the prepared index and its recent changes.</p></header>
+  <div class="index-scene">
+    <div class="prepared"><span class="layer-label">Prepared index</span><div class="index-card"><span class="card-corner" aria-hidden="true"></span><span class="entry-label">Display name</span><strong id="stored-name">Alex</strong><span class="entry-detail">Same account throughout</span><span class="index-version" id="index-version">Original index</span></div></div>
+    <div class="corrections"><span class="layer-label">Recent changes</span><div class="empty-slip" id="empty-slip">No changes to apply</div><div class="correction-slip" id="correction-slip" aria-hidden="true"><span class="entry-label">New display name</span><strong>Ari</strong><span class="replaces">replaces Alex</span></div></div>
+  </div>
+  <div class="search-outcome"><h4>What a search finds</h4><div class="result-row"><span>Search for <q>alex</q></span><span class="result-match" id="alex-result">Alex</span></div><div class="result-row"><span>Search for <q>ari</q></span><span class="result-empty" id="ari-result">No match</span></div></div>
+  <div class="example-action"><button type="button" id="name-action">Change Alex to Ari</button><button type="button" class="reset" id="name-reset" hidden>Start again</button></div>
+  <p class="explanation" id="name-explanation" aria-live="polite">Alex is in the prepared index. Try changing the display name.</p>
+  <p class="example-note">Illustrated account and simplified name matching. “Recent changes” is the overlay used by typeahead.</p>
+</figure>
+
+
+<p>try <code>germnetwork.com</code> in the search view. the <code>d:</code> lookup finds subdomains like <code>tessa.germnetwork.com</code>, which was one of the reasons for building this index in the first place. the lists are prepared ahead of time; at request time we merge them and hydrate at most 50 candidates.</p>
+<p>updates were where keeping the replica got awkward. say someone's display name changes from Alex to Ari. we need to remove the prefixes for the name <strong>currently in our search index</strong>. a newer row in another database can tell us “Ari” and lose the information needed to remove “Alex”. reading the old value from the overlay, then the snapshot, gives us the representation we're actually replacing.</p>
+<p>Turso is still the durable store. the ingester consumes the relay's <code>subscribeRepos</code> firehose and sends batches through the Worker into Turso. search projects changes into the overlay every five minutes. request-indexing can also push a row directly into the overlay after writing it, so someone explicitly asking to be indexed doesn't have to wait for that pass.</p>
+<p>heavypad runs the builds through Prefect. it exports Turso, builds the SQLite index with Zig, and uploads it to R2. the search machine checks the new artifact before attaching it. September 4's build took about 67 minutes; a late build leaves the previous one serving. identity and profile enrichment run on heavypad too.</p>
+<h2>the remaining coupling</h2>
+<p>i'd left a fallback in the Worker that tried Turso's full-text search when the engine found nothing. it was meant to cover replica lag. the replica was gone, but the fallback was still there.</p>
+<p>under the race traffic, those queries saturated Turso and interfered with ingest writes. the backlog overflowed and events were dropped. turning the fallback off fixed that, until a search-machine restart triggered another fallback for an unreachable engine. that one is off now too. during a restart, uncached requests can get an empty answer for a few seconds.</p>
+<p>request counters still write to Turso, so there is more to separate here. and the events we dropped need partial recovery through enrichment and PLC discovery. the <a href="https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md">incident report</a> has the timeline, including a separate 22-hour ingest hang caused by an unbounded telemetry flush.</p>
+<h2>what i'm paying to keep</h2>
+<p>the served artifact is now 14GB. removing the replica let us replace the search machine's 100GB volume with a 60GB one. ingest runs on one shared CPU, 256MB, with no volume. batch compute happens at home.</p>
+<p>my May estimate was too optimistic about the serving bill staying flat as the corpus grew. index size and the memory needed to keep frequently used pages cached still grow. but this is a much more manageable setup, and i'm happy to have real traffic to measure it against.</p>
+<p>i also made <a href="https://sites.wisp.place/zzstoatzz.io/race38/">the race to 38</a>, a live tracker for the vote. its “watch your votes” picker uses the same endpoint. the original bsky38 voting site is what drove the burst above.</p>
+<p><a href="https://typeahead.waow.tech/stats">typeahead's stats</a> · <a href="https://typeahead.waow.tech/docs">API docs</a> · <a href="https://tangled.org/zzstoatzz.io/typeahead">source</a></p><footer class="page-footer"><p>Draft for editing · Data collected September 5, 2026.</p></footer></main><script>(() => {
+  // docs/blog-assets/typeahead-sequel/traffic-evidence.json
+  var traffic_evidence_default = {
+    query: "SELECT date_bin(INTERVAL '15 minutes', start_timestamp) AS window, count(*) AS searches, percentile_cont(0.5) WITHIN GROUP (ORDER BY duration)*1000 AS p50_ms, percentile_cont(0.95) WITHIN GROUP (ORDER BY duration)*1000 AS p95_ms FROM records WHERE span_name='search' AND kind='span' GROUP BY 1 ORDER BY 1",
+    min_timestamp: "2026-09-04T16:45:00Z",
+    max_timestamp: "2026-09-04T19:00:00Z",
+    data: [
+      {
+        window: "2026-09-04T16:45:00Z",
+        searches: 163,
+        p50_ms: 4.023614812500001,
+        p95_ms: 17.986704
+      },
+      {
+        window: "2026-09-04T17:00:00Z",
+        searches: 100,
+        p50_ms: 2.9867675,
+        p95_ms: 20.027130500000002
+      },
+      {
+        window: "2026-09-04T17:15:00Z",
+        searches: 124,
+        p50_ms: 4.007566291666667,
+        p95_ms: 17.8079115
+      },
+      {
+        window: "2026-09-04T17:30:00Z",
+        searches: 1705,
+        p50_ms: 3.5615873028074874,
+        p95_ms: 16.620122741735535
+      },
+      {
+        window: "2026-09-04T17:45:00Z",
+        searches: 3496,
+        p50_ms: 3.365942862142778,
+        p95_ms: 13.678415975875602
+      },
+      {
+        window: "2026-09-04T18:00:00Z",
+        searches: 4076,
+        p50_ms: 3.1115444246013126,
+        p95_ms: 11.452792540633903
+      },
+      {
+        window: "2026-09-04T18:15:00Z",
+        searches: 4625,
+        p50_ms: 3.0673288650060386,
+        p95_ms: 9.887544257560746
+      },
+      {
+        window: "2026-09-04T18:30:00Z",
+        searches: 5423,
+        p50_ms: 2.9571019235647524,
+        p95_ms: 8.91260938234503
+      },
+      {
+        window: "2026-09-04T18:45:00Z",
+        searches: 4934,
+        p50_ms: 2.893294580750481,
+        p95_ms: 8.34266539012987
+      }
+    ]
+  };
+
+  // docs/blog-assets/typeahead-sequel/interactive/dom.ts
+  function required(value) {
+    if (value == null)
+      throw new Error("An expected article element or observation is missing");
+    return value;
+  }
+  var reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  // docs/blog-assets/typeahead-sequel/interactive/traffic.ts
+  function initTraffic() {
+    const root = document.querySelector("#traffic");
+    if (!root)
+      return;
+    const baseline = required(traffic_evidence_default.data[0]);
+    const count = required(root.querySelector("#comparison-count"));
+    const countBar = required(root.querySelector("#count-bar"));
+    const time = required(root.querySelector("#comparison-time"));
+    const timeBar = required(root.querySelector("#time-bar"));
+    const caption = required(root.querySelector("#comparison-caption"));
+    const name = required(root.querySelector("#period-name"));
+    const period = required(root.querySelector("#period-time"));
+    const announcement = required(root.querySelector("#comparison-announcement"));
+    const buttons = root.querySelectorAll("[data-window]");
+    const format = (n) => n.toLocaleString("en-US");
+    for (const button of buttons)
+      button.addEventListener("click", () => {
+        const index = Number(button.dataset.window);
+        const row = required(traffic_evidence_default.data[index]);
+        count.textContent = format(row.searches);
+        countBar.style.height = `${row.searches / 6000 * 100}%`;
+        required(countBar.parentElement).style.setProperty("--fill", `${row.searches / 6000 * 100}%`);
+        time.replaceChildren(document.createTextNode(`${row.p50_ms.toFixed(1)} `));
+        const unit = document.createElement("span");
+        unit.textContent = "ms";
+        time.append(unit);
+        timeBar.style.width = `${row.p50_ms / 5 * 100}%`;
+        caption.textContent = `About ${Math.round(row.searches / baseline.searches)} times as many searches`;
+        name.textContent = index === 7 ? "Busiest window" : "Voting picks up";
+        period.textContent = index === 7 ? "18:30–18:45 UTC" : "17:30–17:45 UTC";
+        for (const item of buttons)
+          item.setAttribute("aria-pressed", String(item === button));
+        announcement.textContent = `${name.textContent}: ${format(row.searches)} searches, median ${row.p50_ms.toFixed(1)} milliseconds. Before voting: 163 searches, median 4.0 milliseconds.`;
+      });
+    const table = required(root.querySelector("#comparison-table"));
+    table.replaceChildren();
+    for (const row of traffic_evidence_default.data) {
+      const tr = document.createElement("tr");
+      for (const value of [row.window.slice(11, 16), format(row.searches), row.p50_ms.toFixed(2)]) {
+        const td = document.createElement("td");
+        td.textContent = value;
+        tr.append(td);
+      }
+      table.append(tr);
+    }
+  }
+
+  // docs/blog-assets/typeahead-sequel/interactive/architecture.ts
+  function initArchitecture() {
+    const root = document.querySelector("#architecture");
+    if (!root)
+      return;
+    const action = required(root.querySelector("#name-action"));
+    const reset = required(root.querySelector("#name-reset"));
+    const stored = required(root.querySelector("#stored-name"));
+    const version = required(root.querySelector("#index-version"));
+    const slip = required(root.querySelector("#correction-slip"));
+    const empty = required(root.querySelector("#empty-slip"));
+    const explanation = required(root.querySelector("#name-explanation"));
+    const alex = required(root.querySelector("#alex-result"));
+    const ari = required(root.querySelector("#ari-result"));
+    const card = required(root.querySelector(".index-card"));
+    let state = "original";
+    let transition;
+    let generation = 0;
+    function render() {
+      if (!root)
+        return;
+      root.dataset.state = state;
+      const changed = state !== "original";
+      const overlay = state === "changed";
+      stored.textContent = state === "rebuilt" ? "Ari" : "Alex";
+      version.textContent = state === "rebuilt" ? "Newly prepared index" : "Original index";
+      slip.setAttribute("aria-hidden", String(!overlay));
+      empty.textContent = state === "rebuilt" ? "Change included in the index" : "No changes to apply";
+      alex.textContent = changed ? "No match" : "Alex";
+      ari.textContent = changed ? "Ari" : "No match";
+      alex.className = changed ? "result-empty" : "result-match";
+      ari.className = changed ? "result-match" : "result-empty";
+      action.textContent = state === "original" ? "Change Alex to Ari" : "Build the next index";
+      action.hidden = state === "rebuilt";
+      action.disabled = false;
+      reset.hidden = state === "original";
+      explanation.textContent = state === "original" ? "Alex is in the prepared index. Try changing the display name." : state === "changed" ? "The recent change corrects the old index: Ari is findable now, and Alex no longer matches. The next build can happen later." : "The new index includes Ari. The separate correction is no longer needed, and search results stay the same.";
+    }
+    action.addEventListener("click", async () => {
+      if (state === "original") {
+        state = "changed";
+        render();
+        if (!reducedMotion.matches)
+          slip.animate([
+            { transform: "translateY(18px) rotate(3deg)", opacity: 0 },
+            { transform: "translateY(0) rotate(0)", opacity: 1 }
+          ], { duration: 420, easing: "cubic-bezier(.22,1,.36,1)" });
+        return;
+      }
+      if (state !== "changed")
+        return;
+      action.disabled = true;
+      action.textContent = "Preparing the new index…";
+      const token = ++generation;
+      if (!reducedMotion.matches) {
+        const from = slip.getBoundingClientRect();
+        const to = card.getBoundingClientRect();
+        transition = slip.animate([
+          { transform: "translate(0,0) scale(1)", opacity: 1 },
+          { transform: `translate(${to.x - from.x}px,${to.y - from.y}px) scale(.94)`, opacity: 1, offset: 0.8 },
+          { transform: `translate(${to.x - from.x}px,${to.y - from.y}px) scale(.94)`, opacity: 0 }
+        ], { duration: 900, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+        await transition.finished.catch(() => {
+          return;
+        });
+      }
+      if (token !== generation)
+        return;
+      state = "rebuilt";
+      transition?.cancel();
+      transition = undefined;
+      render();
+    });
+    reset.addEventListener("click", () => {
+      generation++;
+      transition?.cancel();
+      transition = undefined;
+      state = "original";
+      render();
+    });
+    render();
+  }
+
+  // docs/blog-assets/typeahead-sequel/interactive/main.ts
+  initTraffic();
+  initArchitecture();
+})();
+</script></body></html>
