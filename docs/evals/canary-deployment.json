@@ -1,0 +1,30 @@
+{
+  "id": "7841145a543e78",
+  "state": "stopped",
+  "image": "docker-hub-mirror.fly.io/library/python:3.11-slim-bookworm@sha256:e1bd87e167040feb40dd75b55cc857c05599a1a74bb951d0499756f0e44737b4",
+  "init": {
+    "cmd": [
+      "python3",
+      "/data/canary/server-v2.py"
+    ]
+  },
+  "restart": {
+    "policy": "no"
+  },
+  "services": null,
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 4,
+    "memory_mb": 2048
+  },
+  "mounts": [
+    {
+      "encrypted": true,
+      "path": "/data",
+      "size_gb": 60,
+      "volume": "vol_vxmxpk7qgy070gn4",
+      "name": "canary_eval_data"
+    }
+  ],
+  "verified_at": "2026-09-06T06:04:47.301648+00:00"
+}

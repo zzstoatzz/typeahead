@@ -1,0 +1,49 @@
+{
+  "prefix_rows": 11158428,
+  "actor_rows": 251841,
+  "build_id": "b1788512492-0ed0",
+  "overlay_watermark": 1788585049,
+  "index_bytes": 569638912,
+  "index_build_s": 97.663,
+  "database_file_growth_bytes": 0,
+  "query_cases": 36,
+  "plain_and_indexed_all_equal": true,
+  "fanout": {
+    "plain": {
+      "database": "plain.db",
+      "returncode": 0,
+      "wall_s": 18.453945699000087,
+      "observed_peak_wal_bytes_50ms": 43972792,
+      "peak_rss_kib": 49532,
+      "batches": {
+        "unchanged": 2.920348,
+        "rescore": 3.65721,
+        "rename": 3.676804,
+        "insert": 2.547514,
+        "delete": 3.683884
+      }
+    },
+    "ranked": {
+      "database": "ranked.db",
+      "returncode": 0,
+      "wall_s": 31.37752008700022,
+      "observed_peak_wal_bytes_50ms": 122516472,
+      "peak_rss_kib": 49432,
+      "batches": {
+        "unchanged": 4.491445,
+        "rescore": 6.902858,
+        "rename": 5.364049,
+        "insert": 7.38684,
+        "delete": 5.153839
+      }
+    }
+  },
+  "concurrent_fixed": {
+    "writer_started_before_comparison": true,
+    "writer_returncode": 0,
+    "comparison_returncode": 0,
+    "comparisons": 108,
+    "all_equal": true,
+    "peak_child_rss_kib": 125268
+  }
+}

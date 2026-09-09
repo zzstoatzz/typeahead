@@ -94,6 +94,20 @@ pub fn build(b: *std.Build) void {
     });
     const run_index_tests = b.addRunArtifact(index_tests);
 
+    // Explicit offline tool: no server, sync loop, or credentials required.
+    const evaluator = b.addExecutable(.{
+        .name = "eval-lookup",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/eval_lookup.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{.{ .name = "zqlite", .module = zqlite.module("zqlite") }},
+        }),
+    });
+    const install_evaluator = b.addInstallArtifact(evaluator, .{});
+    b.step("eval-lookup", "Build the isolated lookup comparator").dependOn(&install_evaluator.step);
+
     // Ingest tests. Rooted at src/ingest.zig so the firehose decode path
     // (collection allowlist, DAG-CBOR avatar CID rendering) is covered — both
     // are new with the jetstream→relay cutover and both fail silently.

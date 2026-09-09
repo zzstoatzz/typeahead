@@ -313,9 +313,16 @@ test "projectUpdate score-only change carries score into overlay (enrichment bug
 
     // initial project: zero-score actor (unenriched, ~99% of corpus pre-enrichment).
     try projectUpdate(arena.allocator(), conn, .{
-        .did = "did:plc:p", .handle = "pfrazee.com", .display_name = "Paul Frazee",
-        .avatar_url = "", .labels = "[]", .associated = "{}", .pds = "",
-        .created_at = "", .hidden = false, .quality_score = 0.0,
+        .did = "did:plc:p",
+        .handle = "pfrazee.com",
+        .display_name = "Paul Frazee",
+        .avatar_url = "",
+        .labels = "[]",
+        .associated = "{}",
+        .pds = "",
+        .created_at = "",
+        .hidden = false,
+        .quality_score = 0.0,
     }, "", "", 100);
     try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "h:pfrazee.com", "did:plc:p"));
 
@@ -324,9 +331,16 @@ test "projectUpdate score-only change carries score into overlay (enrichment bug
     // ranking unchanged. fixed updater upserts every common key with the
     // new score so ranking reflects the enrichment within sync's next tick.
     try projectUpdate(arena.allocator(), conn, .{
-        .did = "did:plc:p", .handle = "pfrazee.com", .display_name = "Paul Frazee",
-        .avatar_url = "", .labels = "[]", .associated = "{}", .pds = "",
-        .created_at = "", .hidden = false, .quality_score = 850.0,
+        .did = "did:plc:p",
+        .handle = "pfrazee.com",
+        .display_name = "Paul Frazee",
+        .avatar_url = "",
+        .labels = "[]",
+        .associated = "{}",
+        .pds = "",
+        .created_at = "",
+        .hidden = false,
+        .quality_score = 850.0,
     }, "pfrazee.com", "Paul Frazee", 200);
 
     const row = (try conn.row(
@@ -400,4 +414,67 @@ test "compactChunk is bounded and converges across an overlay larger than one ch
     try testing.expectEqual(n + 1, total);
     try testing.expectEqual(@as(u32, 3), rounds);
     try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "keep", "d"));
+}
+
+// Destructive only to an explicitly supplied disposable fixture. This does
+// not connect to Turso or start a server. Run separately on two identical
+// copies (one indexed) to compare actual prefix projection and commit costs.
+test "offline real actor fanout benchmark (disposable database only)" {
+    const path = std.c.getenv("TYPEAHEAD_FANOUT_SCRATCH") orelse return error.SkipZigTest;
+    const arm = std.c.getenv("TYPEAHEAD_FANOUT_ALLOW_WRITES") orelse return error.SkipZigTest;
+    if (!std.mem.eql(u8, std.mem.span(arm), "disposable-copy")) return error.SkipZigTest;
+    var conn = try zqlite.open(std.mem.span(path), zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try conn.exec("PRAGMA journal_mode=WAL", .{});
+    try conn.exec("PRAGMA synchronous=NORMAL", .{});
+    try conn.exec("PRAGMA wal_autocheckpoint=1000", .{});
+    try conn.exec("PRAGMA cache_size=-20000", .{});
+    var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var actors: std.ArrayListUnmanaged(Actor) = .empty;
+    {
+        var rows = try conn.rows("SELECT did,blob FROM actor_overlay WHERE blob IS NOT NULL ORDER BY did LIMIT 2500", .{});
+        defer rows.deinit();
+        while (rows.next()) |row| {
+            const blob = try arena.dupe(u8, row.blob(1));
+            const a = try pack.unpackActor(blob);
+            try actors.append(arena, .{
+                .did = try arena.dupe(u8, row.text(0)),
+                .handle = a.handle,
+                .display_name = a.display,
+                .avatar_url = a.avatar,
+                .labels = a.labels,
+                .associated = a.associated,
+                .pds = a.pds,
+                .created_at = a.created_at,
+                .hidden = a.hidden,
+                .quality_score = a.quality_score,
+            });
+        }
+        if (rows.err) |err| return err;
+    }
+    if (actors.items.len < 2500) return error.InsufficientRealActors;
+    for ([_][]const u8{ "unchanged", "rescore", "rename", "insert", "delete" }, 0..) |scenario, si| {
+        const start = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
+        try conn.exec("BEGIN IMMEDIATE", .{});
+        errdefer conn.exec("ROLLBACK", .{}) catch {};
+        for (actors.items[si * 500 .. (si + 1) * 500]) |original| {
+            var a = original;
+            if (si == 4) {
+                try projectDelete(arena, conn, a.did, a.handle, a.display_name, 2000000000);
+                continue;
+            }
+            if (si == 1) a.quality_score += 1;
+            if (si == 2) {
+                a.handle = try std.fmt.allocPrint(arena, "eval-{s}", .{a.handle});
+                a.display_name = try std.fmt.allocPrint(arena, "Eval {s}", .{a.display_name});
+            }
+            if (si == 3) a.did = try std.fmt.allocPrint(arena, "eval:{s}", .{a.did});
+            try projectUpdate(arena, conn, a, if (si == 3) "" else original.handle, if (si == 3) "" else original.display_name, 2000000000);
+        }
+        try conn.exec("COMMIT", .{});
+        const end = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
+        std.debug.print("FANOUT scenario={s} actors=500 committed_us={d}\n", .{ scenario, @divTrunc(end - start, 1000) });
+    }
 }

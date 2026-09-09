@@ -1,0 +1,51 @@
+{
+  "cpu": [
+    {
+      "metric": {},
+      "value": [
+        1788674161,
+        "0.2"
+      ]
+    }
+  ],
+  "throttle": [
+    {
+      "metric": {},
+      "value": [
+        1788674162,
+        "0"
+      ]
+    }
+  ],
+  "available_memory": [
+    {
+      "metric": {
+        "__name__": "fly_instance_memory_mem_available",
+        "app": "typeahead-canary",
+        "host": "ed97",
+        "instance": "7841145a543e78",
+        "region": "ewr"
+      },
+      "value": [
+        1788674163,
+        "1830961152"
+      ]
+    }
+  ],
+  "disk_available": [
+    {
+      "metric": {
+        "app": "typeahead-canary",
+        "host": "ed97",
+        "instance": "7841145a543e78",
+        "mount": "/data",
+        "region": "ewr"
+      },
+      "value": [
+        1788674164,
+        "15316426752"
+      ]
+    }
+  ],
+  "checked_at": 1788674164.38907
+}

@@ -107,7 +107,8 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
 /// path that answered `/search`, not a parallel scorer that can drift out of
 /// agreement with it.
 pub const Trace = struct {
-    pub const KeyStat = struct { key: []const u8, base: usize, overlay: usize };
+    // Counts describe rows fetched by this request, not total stored rows.
+    pub const KeyStat = struct { key: []const u8, base: usize, overlay: usize, overlay_bounded: bool = false };
 
     keys: []KeyStat = &.{},
     mode: merge.Mode = .union_any,
@@ -130,6 +131,11 @@ fn execute(
     norm: []const u8,
     trace: ?*Trace,
 ) ![]searchmod.Candidate {
+    return executeLookup(arena, lease, norm, trace, true);
+}
+
+// The unbounded instantiation is used only by differential tests.
+fn executeLookup(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, trace: ?*Trace, comptime bounded: bool) ![]searchmod.Candidate {
     const keys = try prefixes.queryKeys(arena, norm);
     const mode = merge.modeForQuery(norm);
 
@@ -144,7 +150,11 @@ fn execute(
     var keysets: std.ArrayListUnmanaged(merge.KeySet) = .empty;
     for (keys) |key| {
         const base = try basePrefixDids(arena, lease, key);
-        const ov = try overlayPrefixRows(arena, lease, key);
+        const is_exact = key.len >= 2 and key[0] == 'e' and key[1] == ':';
+        const ov = if (bounded and boundOverlay(mode, is_exact))
+            try boundedOverlayPrefixRows(arena, lease, key, base)
+        else
+            try overlayPrefixRows(arena, lease, key);
         if (key.len >= 2 and key[0] == 'e' and key[1] == ':') {
             for (base) |b| try exact.put(arena, b.did, b.score);
             for (ov) |o| {
@@ -152,7 +162,7 @@ fn execute(
             }
         }
         try keysets.append(arena, .{ .base = base, .overlay = ov });
-        if (trace != null) try key_stats.append(arena, .{ .key = key, .base = base.len, .overlay = ov.len });
+        if (trace != null) try key_stats.append(arena, .{ .key = key, .base = base.len, .overlay = ov.len, .overlay_bounded = bounded and boundOverlay(mode, is_exact) });
     }
 
     var merged = try merge.combine(arena, keysets.items, mode, HYDRATE_CAP);
@@ -167,6 +177,42 @@ fn execute(
 
     return hydrate(arena, lease, merged, trace);
 }
+
+/// Offline/shadow evaluator. Caller supplies one frozen read lease; never used
+/// by the public search handler. Public JSON and internal scores must agree.
+pub fn evaluateFrozen(arena: Allocator, lease: LocalDb.ReadLease, raw_query: []const u8) !Evaluation {
+    const norm = try normalize.query(arena, searchmod.sanitize(raw_query));
+    const start = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
+    var baseline_trace: Trace = .{};
+    var candidate_trace: Trace = .{};
+    const baseline = try executeLookup(arena, lease, norm, &baseline_trace, false);
+    const middle = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
+    const candidate = try executeLookup(arena, lease, norm, &candidate_trace, true);
+    const end = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
+    var a: std.Io.Writer.Allocating = .init(arena);
+    var b: std.Io.Writer.Allocating = .init(arena);
+    var ja: json.Stringify = .{ .writer = &a.writer };
+    var jb: json.Stringify = .{ .writer = &b.writer };
+    try ja.beginArray();
+    try jb.beginArray();
+    for (baseline) |*actor| try searchmod.writeActor(&ja, actor);
+    for (candidate) |*actor| try searchmod.writeActor(&jb, actor);
+    try ja.endArray();
+    try jb.endArray();
+    var equal = std.mem.eql(u8, a.written(), b.written());
+    if (baseline.len != candidate.len) equal = false else {
+        for (baseline, candidate) |x, y| {
+            if (x.quality_score != y.quality_score) equal = false;
+        }
+    }
+    var baseline_rows: usize = 0;
+    var candidate_rows: usize = 0;
+    for (baseline_trace.keys) |key| baseline_rows += key.overlay;
+    for (candidate_trace.keys) |key| candidate_rows += key.overlay;
+    return .{ .baseline_overlay_rows = baseline_rows, .candidate_overlay_rows = candidate_rows, .equal = equal, .baseline_us = @intCast(@divTrunc(middle - start, 1000)), .candidate_us = @intCast(@divTrunc(end - middle, 1000)), .actors = candidate.len };
+}
+
+pub const Evaluation = struct { equal: bool, baseline_us: u64, candidate_us: u64, actors: usize, baseline_overlay_rows: usize, candidate_overlay_rows: usize };
 
 /// `/debug/search` for the index engine: the served ranking, plus the key-level
 /// reachability facts that explain it (per-key list sizes, merge mode, the
@@ -252,6 +298,42 @@ fn overlayPrefixRows(arena: Allocator, lease: LocalDb.ReadLease, key: []const u8
             .op = @intCast(row.int(2)),
         });
     }
+    return out.toOwnedSlice(arena);
+}
+
+fn boundOverlay(mode: merge.Mode, is_exact: bool) bool {
+    return mode == .union_any and !is_exact;
+}
+
+/// A union's top K cannot contain an overlay addition ranked below K within
+/// its own key. Keep those K additions, plus EVERY overlay change to a base
+/// candidate: a deletion or lower score must still replace the snapshot row.
+/// Intersections and exact-handle promotion deliberately use the full lookup.
+/// Scores are stored as widened f32 by overlay.upsertPrefix, so SQLite's
+/// score/DID ordering agrees with merge.scoreDesc, including ties.
+fn boundedOverlayPrefixRows(arena: Allocator, lease: LocalDb.ReadLease, key: []const u8, base: []const merge.Scored) ![]merge.OverlayEntry {
+    // One statement keeps the additions and base corrections on the same
+    // SQLite read snapshot, even if an overlay writer commits while stepping.
+    const top_sql = std.fmt.comptimePrint(
+        "SELECT did, score, op FROM (SELECT did, score, op FROM prefix_overlay WHERE key = ? AND op = 1 ORDER BY score DESC, did ASC LIMIT {d})",
+        .{HYDRATE_CAP},
+    );
+    const sql = if (base.len == 0) top_sql else try inClause(arena, top_sql ++ " UNION ALL SELECT did, score, op FROM prefix_overlay WHERE key = ? AND did IN (", base.len);
+    const args = try arena.alloc([]const u8, if (base.len == 0) 1 else base.len + 2);
+    args[0] = key;
+    if (base.len > 0) {
+        args[1] = key;
+        for (base, 2..) |entry, i| args[i] = entry.did;
+    }
+    var out: std.ArrayListUnmanaged(merge.OverlayEntry) = .empty;
+    var rows = try lease.queryTextList(sql, args);
+    defer rows.deinit();
+    while (rows.next()) |row| try out.append(arena, .{
+        .did = try arena.dupe(u8, row.text(0)),
+        .score = @floatCast(row.float(1)),
+        .op = @intCast(row.int(2)),
+    });
+    if (rows.err()) |err| return err;
     return out.toOwnedSlice(arena);
 }
 
@@ -457,4 +539,199 @@ test "search spans are head-sampled 1 in N" {
     try std.testing.expectEqual(@as(u32, 3), sampled);
     try std.testing.expect(sampleSearch(0));
     try std.testing.expect(!sampleSearch(1));
+}
+
+test "bounded union lookup preserves deletions, lowered base scores, and score ties" {
+    const zqlite = @import("zqlite");
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try @import("schema.zig").initOverlay(conn);
+    var local = LocalDb.init(testing.allocator);
+    const lease: LocalDb.ReadLease = .{ .db = &local, .slot = 0, .conn = conn };
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const base = [_]merge.Scored{
+        .{ .did = "deleted", .score = 1000 },
+        .{ .did = "lowered", .score = 999 },
+        .{ .did = "untouched", .score = 998 },
+    };
+    for (0..200) |i| {
+        const did = try std.fmt.allocPrint(arena, "did:{d:0>4}", .{i});
+        try conn.exec("INSERT INTO prefix_overlay(key,did,score,op,updated_at) VALUES('d:bs',?,10,1,1)", .{did});
+    }
+    try conn.exec("INSERT INTO prefix_overlay(key,did,score,op,updated_at) VALUES('d:bs','deleted',0,0,1),('d:bs','lowered',0,1,1)", .{});
+    const full = try overlayPrefixRows(arena, lease, "d:bs");
+    const bounded = try boundedOverlayPrefixRows(arena, lease, "d:bs", &base);
+    try testing.expectEqual(@as(usize, 202), full.len);
+    try testing.expectEqual(@as(usize, 52), bounded.len);
+    const expected = try merge.combine(arena, &.{.{ .base = &base, .overlay = full }}, .union_any, HYDRATE_CAP);
+    const actual = try merge.combine(arena, &.{.{ .base = &base, .overlay = bounded }}, .union_any, HYDRATE_CAP);
+    try testing.expectEqual(expected.len, actual.len);
+    for (expected, actual) |e, a| {
+        try testing.expectEqualStrings(e.did, a.did);
+        try testing.expectEqual(e.score, a.score);
+    }
+    try testing.expectEqualStrings("untouched", actual[0].did);
+    try testing.expectEqualStrings("did:0000", actual[1].did);
+    try testing.expectEqualStrings("did:0048", actual[49].did);
+}
+
+test "overlay bounds never truncate intersections or exact promotion" {
+    try testing.expect(boundOverlay(.union_any, false));
+    try testing.expect(!boundOverlay(.union_any, true));
+    try testing.expect(!boundOverlay(.intersect_all, false));
+    try testing.expect(!boundOverlay(.intersect_all, true));
+}
+
+test "bounded lookup differential: seeded multi-key SQLite fixtures match full ranking" {
+    const zqlite = @import("zqlite");
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try @import("schema.zig").initOverlay(conn);
+    var local = LocalDb.init(testing.allocator);
+    const lease: LocalDb.ReadLease = .{ .db = &local, .slot = 0, .conn = conn };
+    var prng = std.Random.DefaultPrng.init(0x3850);
+    const random = prng.random();
+    for (0..160) |trial| {
+        try conn.exec("DELETE FROM prefix_overlay", .{});
+        var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+        defer arena_state.deinit();
+        const arena = arena_state.allocator();
+        var full_sets: std.ArrayListUnmanaged(merge.KeySet) = .empty;
+        var bounded_sets: std.ArrayListUnmanaged(merge.KeySet) = .empty;
+        const mode: merge.Mode = if (trial % 4 == 0) .intersect_all else .union_any;
+        for ([_][]const u8{ "h:bs", "d:bs", "n:bs", "e:bs" }) |key| {
+            var base: std.ArrayListUnmanaged(merge.Scored) = .empty;
+            for (0..240) |i| {
+                const did = try std.fmt.allocPrint(arena, "did:{d:0>4}", .{i});
+                // Repeated DIDs across keys, ties, fractional scores, empty base
+                // lists, snapshot candidates with both lowered and raised scores.
+                if (trial % 5 != 0 and random.uintLessThan(u8, 4) == 0)
+                    try base.append(arena, .{ .did = did, .score = @as(f32, @floatFromInt(random.uintLessThan(u16, 80))) / 8 });
+                if (random.uintLessThan(u8, 5) != 0) {
+                    const score: f32 = @as(f32, @floatFromInt(random.uintLessThan(u16, 80))) / 8;
+                    const op: i64 = if (random.uintLessThan(u8, 5) == 0) 0 else 1;
+                    try conn.exec("INSERT INTO prefix_overlay(key,did,score,op,updated_at) VALUES(?,?,?,?,1)", .{ key, did, @as(f64, score), op });
+                }
+            }
+            const full = try overlayPrefixRows(arena, lease, key);
+            const bounded = if (boundOverlay(mode, key[0] == 'e'))
+                try boundedOverlayPrefixRows(arena, lease, key, base.items)
+            else
+                try overlayPrefixRows(arena, lease, key);
+            try full_sets.append(arena, .{ .base = base.items, .overlay = full });
+            try bounded_sets.append(arena, .{ .base = base.items, .overlay = bounded });
+        }
+        const expected = try merge.combine(arena, full_sets.items, mode, HYDRATE_CAP);
+        const actual = try merge.combine(arena, bounded_sets.items, mode, HYDRATE_CAP);
+        try testing.expectEqual(expected.len, actual.len);
+        for (expected, actual) |e, a| {
+            try testing.expectEqualStrings(e.did, a.did);
+            try testing.expectEqual(e.score, a.score);
+        }
+    }
+}
+
+test "full pipeline differential preserves exact promotion and moderation across query shapes" {
+    const zqlite = @import("zqlite");
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try @import("schema.zig").initOverlay(conn);
+    try conn.exec("ATTACH DATABASE ':memory:' AS idx", .{});
+    try conn.exec("CREATE TABLE idx.prefix_top_base(key TEXT PRIMARY KEY,dids BLOB)", .{});
+    try conn.exec("CREATE TABLE idx.actor_compact_base(did TEXT PRIMARY KEY,blob BLOB)", .{});
+    var local = LocalDb.init(testing.allocator);
+    const lease: LocalDb.ReadLease = .{ .db = &local, .slot = 0, .conn = conn };
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    for ([_][]const u8{ "bs", "pds.dad", "nate nowack", "日本", "élo", "missing" }) |query| {
+        const norm = try normalize.query(arena, query);
+        const keys = try prefixes.queryKeys(arena, norm);
+        for (keys) |key| {
+            const exact = std.mem.startsWith(u8, key, "e:");
+            var base: std.ArrayListUnmanaged(pack.DidEntry) = .empty;
+            for (0..120) |i| {
+                const did = try std.fmt.allocPrint(arena, "did:{d:0>4}", .{i});
+                const score: f32 = @floatFromInt(i);
+                const blob = try pack.packActor(arena, .{ .hidden = i % 13 == 0, .quality_score = score, .handle = did, .display = query, .avatar = "", .labels = "[]", .pds = "", .created_at = "", .associated = "{}" });
+                if (i % 3 == 0) {
+                    try base.append(arena, .{ .did = did, .score = score });
+                    try conn.exec("INSERT OR REPLACE INTO idx.actor_compact_base VALUES(?,?)", .{ did, blob });
+                }
+                if ((!exact or i == 1) and !std.mem.eql(u8, query, "missing")) {
+                    try conn.exec("INSERT OR REPLACE INTO prefix_overlay(key,did,score,op,updated_at) VALUES(?,?,?,?,1)", .{ key, did, @as(f64, score), @as(i64, if (i % 11 == 0) 0 else 1) });
+                }
+                if (i % 7 == 0) {
+                    try conn.exec("INSERT OR REPLACE INTO actor_overlay(did,blob,hidden,updated_at) VALUES(?,NULL,0,1)", .{did});
+                } else if (i % 5 != 0) {
+                    try conn.exec("INSERT OR REPLACE INTO actor_overlay(did,blob,hidden,updated_at) VALUES(?,?,?,1)", .{ did, blob, @as(i64, if (i % 17 == 0) 1 else 0) });
+                }
+            }
+            const packed_list = try pack.packDidList(arena, if (exact or std.mem.eql(u8, query, "missing")) &.{} else base.items);
+            try conn.exec("INSERT OR REPLACE INTO idx.prefix_top_base VALUES(?,?)", .{ key, packed_list });
+        }
+        const full = try executeLookup(arena, lease, norm, null, false);
+        const bounded = try executeLookup(arena, lease, norm, null, true);
+        try testing.expectEqual(full.len, bounded.len);
+        for (full, bounded) |a, b| {
+            try testing.expectEqualStrings(a.did, b.did);
+            try testing.expectEqualStrings(a.handle, b.handle);
+            try testing.expectEqualStrings(a.display_name, b.display_name);
+            try testing.expectEqual(a.quality_score, b.quality_score);
+        }
+    }
+}
+
+// Opt-in, read-only real-data differential. Both paths use the same captured
+// overlay and immutable snapshot. Never defaults to the serving database.
+test "real data differential (explicit offline paths only)" {
+    const overlay_env = std.c.getenv("TYPEAHEAD_EVAL_OVERLAY") orelse return error.SkipZigTest;
+    const snapshot_env = std.c.getenv("TYPEAHEAD_EVAL_SNAPSHOT") orelse return error.SkipZigTest;
+    const zqlite = @import("zqlite");
+    var conn = try zqlite.open(std.mem.span(overlay_env), zqlite.OpenFlags.ReadOnly);
+    defer conn.close();
+    try conn.exec("ATTACH DATABASE ? AS idx", .{std.mem.span(snapshot_env)});
+    try conn.exec("PRAGMA query_only=ON", .{});
+    var local = LocalDb.init(testing.allocator);
+    const lease: LocalDb.ReadLease = .{ .db = &local, .slot = 0, .conn = conn };
+    for ([_][]const u8{ "bs", "nate", "nowack", "alice", "pds.dad", "zzstoatzz.io", "日本", "unlikelymissing38", "nate nowack", "bs bs", "nate nate", "ALICE" }) |query| {
+        var full_times: [7]i128 = undefined;
+        var bounded_times: [7]i128 = undefined;
+        var count: usize = 0;
+        for (0..8) |iteration| {
+            var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+            defer arena_state.deinit();
+            const arena = arena_state.allocator();
+            const norm = try normalize.query(arena, query);
+            const start = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
+            const full = try executeLookup(arena, lease, norm, null, false);
+            const middle = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
+            const bounded = try executeLookup(arena, lease, norm, null, true);
+            const end = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
+            if (iteration > 0) {
+                full_times[iteration - 1] = middle - start;
+                bounded_times[iteration - 1] = end - middle;
+            }
+            try testing.expectEqual(full.len, bounded.len);
+            count = full.len;
+            // Compare every public actor field, in order, not just DID overlap.
+            var a: std.Io.Writer.Allocating = .init(arena);
+            var b: std.Io.Writer.Allocating = .init(arena);
+            var ja: json.Stringify = .{ .writer = &a.writer };
+            var jb: json.Stringify = .{ .writer = &b.writer };
+            try ja.beginArray();
+            try jb.beginArray();
+            for (full) |*candidate| try searchmod.writeActor(&ja, candidate);
+            for (bounded) |*candidate| try searchmod.writeActor(&jb, candidate);
+            try ja.endArray();
+            try jb.endArray();
+            try testing.expectEqualStrings(a.written(), b.written());
+            for (full, bounded) |x, y| try testing.expectEqual(x.quality_score, y.quality_score);
+        }
+        std.mem.sort(i128, &full_times, {}, std.sort.asc(i128));
+        std.mem.sort(i128, &bounded_times, {}, std.sort.asc(i128));
+        std.debug.print("REAL_EVAL q={s} actors={d} full_us={d} bounded_us={d}\n", .{ query, count, @divTrunc(full_times[3], 1000), @divTrunc(bounded_times[3], 1000) });
+    }
 }

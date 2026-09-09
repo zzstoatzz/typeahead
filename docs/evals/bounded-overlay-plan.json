@@ -1,0 +1,42 @@
+{
+  "sqlite": "3.53.0",
+  "rows_in_fixture": 333000,
+  "full": {
+    "median_ms": 83.015,
+    "rows": 333000,
+    "plan": [
+      "SEARCH prefix_overlay USING PRIMARY KEY (key=?)"
+    ]
+  },
+  "bounded": {
+    "median_ms": 14.549,
+    "rows": 350,
+    "plan": [
+      "COMPOUND QUERY",
+      "LEFT-MOST SUBQUERY",
+      "CO-ROUTINE (subquery-1)",
+      "SEARCH prefix_overlay USING PRIMARY KEY (key=?)",
+      "USE TEMP B-TREE FOR ORDER BY",
+      "SCAN (subquery-1)",
+      "UNION ALL",
+      "SEARCH prefix_overlay USING PRIMARY KEY (key=? AND did=?)"
+    ]
+  },
+  "update_2000_without_index_ms": 2.671,
+  "index_build_ms": 100.636,
+  "indexed": {
+    "median_ms": 0.171,
+    "rows": 350,
+    "plan": [
+      "COMPOUND QUERY",
+      "LEFT-MOST SUBQUERY",
+      "CO-ROUTINE (subquery-1)",
+      "SEARCH prefix_overlay USING COVERING INDEX ranked (key=?)",
+      "SCAN (subquery-1)",
+      "UNION ALL",
+      "SEARCH prefix_overlay USING PRIMARY KEY (key=? AND did=?)"
+    ]
+  },
+  "update_2000_with_index_ms": 15.854,
+  "additional_index_bytes": 7725056
+}

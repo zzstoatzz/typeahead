@@ -1,0 +1,188 @@
+{
+  "captured_prefix_rows": 350163,
+  "snapshot": "b1788512492-0ed0",
+  "queries": {
+    "bs": {
+      "unindexed": {
+        "actors": 50,
+        "full_us": 1035101,
+        "bounded_us": 19975
+      },
+      "indexed": {
+        "actors": 50,
+        "full_us": 1009689,
+        "bounded_us": 1250
+      }
+    },
+    "nate": {
+      "unindexed": {
+        "actors": 50,
+        "full_us": 215,
+        "bounded_us": 438
+      },
+      "indexed": {
+        "actors": 50,
+        "full_us": 220,
+        "bounded_us": 403
+      }
+    },
+    "nowack": {
+      "unindexed": {
+        "actors": 14,
+        "full_us": 71,
+        "bounded_us": 84
+      },
+      "indexed": {
+        "actors": 14,
+        "full_us": 69,
+        "bounded_us": 74
+      }
+    },
+    "alice": {
+      "unindexed": {
+        "actors": 50,
+        "full_us": 257,
+        "bounded_us": 481
+      },
+      "indexed": {
+        "actors": 50,
+        "full_us": 254,
+        "bounded_us": 414
+      }
+    },
+    "pds.dad": {
+      "unindexed": {
+        "actors": 50,
+        "full_us": 124,
+        "bounded_us": 147
+      },
+      "indexed": {
+        "actors": 50,
+        "full_us": 124,
+        "bounded_us": 133
+      }
+    },
+    "zzstoatzz.io": {
+      "unindexed": {
+        "actors": 3,
+        "full_us": 51,
+        "bounded_us": 60
+      },
+      "indexed": {
+        "actors": 3,
+        "full_us": 50,
+        "bounded_us": 53
+      }
+    },
+    "\u65e5\u672c": {
+      "unindexed": {
+        "actors": 50,
+        "full_us": 166,
+        "bounded_us": 259
+      },
+      "indexed": {
+        "actors": 50,
+        "full_us": 165,
+        "bounded_us": 234
+      }
+    },
+    "unlikelymissing38": {
+      "unindexed": {
+        "actors": 0,
+        "full_us": 32,
+        "bounded_us": 43
+      },
+      "indexed": {
+        "actors": 0,
+        "full_us": 32,
+        "bounded_us": 37
+      }
+    },
+    "nate nowack": {
+      "unindexed": {
+        "actors": 0,
+        "full_us": 65,
+        "bounded_us": 49
+      },
+      "indexed": {
+        "actors": 0,
+        "full_us": 65,
+        "bounded_us": 49
+      }
+    },
+    "bs bs": {
+      "unindexed": {
+        "actors": 50,
+        "full_us": 348,
+        "bounded_us": 307
+      },
+      "indexed": {
+        "actors": 50,
+        "full_us": 336,
+        "bounded_us": 305
+      }
+    },
+    "nate nate": {
+      "unindexed": {
+        "actors": 50,
+        "full_us": 183,
+        "bounded_us": 159
+      },
+      "indexed": {
+        "actors": 50,
+        "full_us": 175,
+        "bounded_us": 156
+      }
+    },
+    "ALICE": {
+      "unindexed": {
+        "actors": 50,
+        "full_us": 259,
+        "bounded_us": 481
+      },
+      "indexed": {
+        "actors": 50,
+        "full_us": 256,
+        "bounded_us": 420
+      }
+    }
+  },
+  "index_microbenchmark": {
+    "sqlite": "3.37.2",
+    "rows": 350163,
+    "actors": 47,
+    "before": {
+      "top50_median_ms": 26.636261958628893,
+      "update_2000_median_ms_excluding_commit": 2.8952689608559012,
+      "plan": [
+        [
+          4,
+          0,
+          0,
+          "SEARCH prefix_overlay USING PRIMARY KEY (key=?)"
+        ],
+        [
+          24,
+          0,
+          0,
+          "USE TEMP B-TREE FOR ORDER BY"
+        ]
+      ]
+    },
+    "index_build_ms": 184.21096401289105,
+    "index_bytes": 15966208,
+    "after": {
+      "top50_median_ms": 0.03345694858580828,
+      "update_2000_median_ms_excluding_commit": 23.6296959919855,
+      "plan": [
+        [
+          5,
+          0,
+          0,
+          "SEARCH prefix_overlay USING INDEX eval_rank (key=?)"
+        ]
+      ]
+    }
+  },
+  "scope": "Selected real prefix rows plus candidate actor overlays; immutable matching snapshot. Prefix and actor captures are separate instants. Offline heavypad ReleaseFast Zig tests, not Fly HTTP latency."
+}

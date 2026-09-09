@@ -1,0 +1,138 @@
+{
+  "p95": [
+    {
+      "metric": {},
+      "value": [
+        1788674705,
+        "0.02460563380281691"
+      ]
+    }
+  ],
+  "responses": [
+    {
+      "metric": {
+        "status": "200"
+      },
+      "value": [
+        1788674705,
+        "188"
+      ]
+    }
+  ],
+  "throttle": [
+    {
+      "metric": {
+        "app": "typeahead-ingester"
+      },
+      "value": [
+        1788674706,
+        "0"
+      ]
+    },
+    {
+      "metric": {
+        "app": "typeahead-search"
+      },
+      "value": [
+        1788674706,
+        "0"
+      ]
+    }
+  ],
+  "cpu": [
+    {
+      "metric": {
+        "app": "typeahead-ingester"
+      },
+      "value": [
+        1788674707,
+        "2.159978400215998"
+      ]
+    },
+    {
+      "metric": {
+        "app": "typeahead-search"
+      },
+      "value": [
+        1788674707,
+        "2.043346955646371"
+      ]
+    }
+  ],
+  "memory": [
+    {
+      "metric": {
+        "app": "typeahead-ingester",
+        "host": "d9fa",
+        "instance": "7845636a3d0ee8",
+        "region": "ewr"
+      },
+      "value": [
+        1788674707,
+        "30.716022391013443"
+      ]
+    },
+    {
+      "metric": {
+        "app": "typeahead-search",
+        "host": "7077",
+        "instance": "867e15ce4e1148",
+        "region": "ewr"
+      },
+      "value": [
+        1788674707,
+        "26.02412890983219"
+      ]
+    }
+  ],
+  "disk": [
+    {
+      "metric": {
+        "app": "typeahead-search",
+        "host": "7077",
+        "instance": "867e15ce4e1148",
+        "mount": "/data",
+        "region": "ewr"
+      },
+      "value": [
+        1788674707,
+        "26497429504"
+      ]
+    }
+  ],
+  "https://typeahead-ingester.fly.dev/health": {
+    "status": "ok",
+    "role": "ingester",
+    "rss_kb": 12292,
+    "identity": {
+      "accepted": 7117,
+      "dropped": 0,
+      "processed": 7117,
+      "queued": 0
+    },
+    "ingest": {
+      "queued": 26,
+      "deletes_queued": 0,
+      "backpressure_active": false,
+      "backpressure_count": 0,
+      "last_write_at": 1788674706,
+      "source_event_at": 1788674707
+    }
+  },
+  "https://typeahead-search.fly.dev/health": {
+    "status": "ok",
+    "ready": true,
+    "actors": 11631204,
+    "rss_kb": 1063972,
+    "sync_lag_s": 66
+  },
+  "https://typeahead.waow.tech/health/freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 67,
+    "snapshot_age_s": 162216,
+    "build_id": "b1788512492-0ed0",
+    "probe_ok": true,
+    "reasons": []
+  }
+}
