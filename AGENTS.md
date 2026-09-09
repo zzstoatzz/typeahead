@@ -1,4 +1,25 @@
-# typeahead — agent guide
+# Typeahead — repository instructions
+
+This root `AGENTS.md` is canonical. `.claude/CLAUDE.md` symlinks here so
+Claude and other agents use the same instructions. Paths are repository-relative.
+
+## documentation is part of the change
+
+- Before changing behavior, identify affected README sections, operational docs,
+  public API docs, diagrams, and agent instructions. Update them in the same task
+  as the implementation; do not wait for Nate to notice drift.
+- Before calling a task complete, compare README.md against the final diff and
+  verified deployment state. Update it, or explicitly state why no README change
+  was needed. Architecture, runtime roles, data flow, schedules, deployment,
+  reliability, and performance guarantees all trigger this review.
+- Distinguish shipped behavior, local tested changes, experiments, and proposals.
+  A successful local test does not make a feature live. Date operational status
+  and link its evidence; do not leave historical estimates labeled current.
+- Keep the overview in README.md, detailed mechanisms in docs/, and durable rules
+  here. Link shared material rather than maintaining duplicate instructions.
+- Preserve existing user edits. Documentation checks supplement engineering
+  review; no automated check can prove a prose claim is true.
+
 
 Community actor search for atproto. Discovery is the relay's firehose
 (`com.atproto.sync.subscribeRepos`), NOT jetstream — see `docs/discovery-and-identity.md`.
@@ -14,16 +35,21 @@ README.md has the architecture; this file is the operational contract for assess
 then `git log -p` on anything that looks related. Commits are the record of
 what is in flight: they carry the date, the reasoning, and the code together,
 and they cannot drift from the tree the way a hand-maintained TODO list does.
-Prefer them over any doc that claims to describe current state; when a doc and
-the history disagree, the history is right and the doc needs fixing.
+Use history together with the working diff and verified deployment state;
+committed, locally modified, and deployed code may differ. Resolve discrepancies
+and correct the docs rather than assuming one automatically describes production.
 
 ## the serving invariant
 
-No request does work proportional to the actor corpus (~8M actors). The request path
-reads a small set of precomputed prefix keys, merges the live overlay, hydrates a capped
-list, and returns JSON. Any change that introduces corpus-proportional work on the request
-or cron path is a regression — that exact mistake froze /stats once (full-scan `COUNT(*)`
-in the hourly cron). Benchmark before declaring such work "fine".
+The target is predictable, bounded request work. The snapshot contains precomputed
+prefix lists and the merge caps hydration at 50 candidates before exact promotion.
+The deployed overlay lookup can still read every row for a matching prefix; do not
+claim constant or fully bounded work until measured and deployed. See
+[the lookup evaluation](docs/evals/bounded-overlay.md) for local experiments.
+
+Avoid corpus-proportional request work and full-scan Worker cron selectors. Full
+index builds are deliberately corpus-scale offline jobs; this is not permission
+to move that work onto the request path.
 
 ## performance & benchmarking
 
@@ -62,12 +88,16 @@ regression is pinned). Extend it, don't prune it.
 
 ### when to run what
 
-- **after any ranking / scoring / index change** → `just bench-ranking` (gate) + `just bench-search`.
+- **after any ranking / scoring / index change** → local differential tests, then
+  `just bench-ranking` + `just bench-search` against an explicit isolated target.
+  Do not load-test production by default. For an optimization, require matching
+  results against the old implementation on the same data, not just Bluesky parity.
 - **after a worker change** → `just smoke` runs automatically as the post-deploy gate of
   `just deploy-worker`; run `just bench` if the change could touch latency or caching.
 - **after a snapshot rebuild / promote** → `just index-status` to confirm the new `build_id`
   is serving, then `just bench-ranking`.
-- **periodic health** → `just perf`.
+- **periodic health** → only when requested; do not start recurring monitors
+  without authorization. `just perf` includes benchmarks, not just health probes.
 
 ## deploys (smoke-gated)
 
@@ -81,7 +111,7 @@ regression is pinned). Extend it, don't prune it.
   `prefect.yaml` there and redeploy. `prefect.yaml` IS authoritative for schedules —
   each deploy replaces them. `services/fly.indexer.toml` is retained only as a manual
   rollback path. Host prereqs: `deploy/home-indexer/install.sh`.
-  See `docs/ephemeral-indexer-plan.md`.
+  See `docs/operations.md`.
 - **`typeahead-plc-identity`** — the other heavypad Prefect deployment, weekly
   (Mon 05:00 UTC). Bulk DID -> handle/pds from the PLC log, for what `getProfiles`
   cannot see. See `docs/discovery-and-identity.md`.

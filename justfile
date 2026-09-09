@@ -45,7 +45,7 @@ deploy-search:
     cd services && fly deploy -c fly.search.toml
 
 # ─── benchmarking & health ───────────────────────────────────────────────
-# How to assess performance. Four layers, run from here. See CLAUDE.md
+# How to assess performance. Four layers, run from here. See AGENTS.md
 # "Performance & benchmarking" for what each measures and what "good" looks like.
 #
 #   just smoke          correctness gate (shape, ranking, moderation, admin)
