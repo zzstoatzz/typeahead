@@ -1,103 +1,138 @@
 # typeahead
 
-community actor search for [atproto](https://atproto.com). returns the full `profileViewBasic` surface minus `viewer` (`did`, `handle`, `displayName`, `avatar`, `associated`, `labels`, `createdAt`).
+Community actor search for [atproto](https://atproto.com).
 
-**live:** https://typeahead.waow.tech · machine-readable summary at [/llms.txt](https://typeahead.waow.tech/llms.txt)
+[Search](https://typeahead.waow.tech/) · [Stats](https://typeahead.waow.tech/stats) · [API docs](https://typeahead.waow.tech/docs) · [Machine-readable docs](https://typeahead.waow.tech/llms.txt)
 
-canonical endpoint (self-owned [lexicon](lexicons/tech.waow.typeahead.searchActors.json)):
-
-```bash
-curl "https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&limit=10"
+```sh
+curl 'https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&limit=10'
 ```
 
-also served at `/xrpc/app.bsky.actor.searchActorsTypeahead` as a drop-in alias for migrating off bluesky's appview — identical params and response, kept indefinitely.
+Returns the `profileViewBasic` fields without viewer state: `did`, `handle`,
+`displayName`, `avatar`, `associated`, `labels`, and `createdAt`. The
+[self-owned lexicon](lexicons/tech.waow.typeahead.searchActors.json) defines the
+canonical endpoint. `/xrpc/app.bsky.actor.searchActorsTypeahead` remains a
+compatible alias with identical parameters and response.
 
-profile cards for picked actors: `/xrpc/app.bsky.actor.getProfiles?actors=…` (≤25) and `/xrpc/app.bsky.actor.getProfile?actor=…` — displayName, description, avatar, banner, follower/follows/posts counts (bsky-sourced, omitted until enriched), labels, createdAt, indexedAt. no viewer state.
+Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
+or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile
+and enrichment fields; counts are omitted until enriched. No viewer state.
 
-## stack
+## How it works
 
-![typeahead architecture](docs/architecture-diagram.png)
-
-- **edge worker**: [Cloudflare Worker](https://workers.cloudflare.com) in `src/`.
-  It owns the public XRPC-compatible endpoint, 60s edge cache, admin ingest
-  endpoint, Turso fallback, and the Bluesky rollback kill switch.
-- **ingest service**: [Zig](https://ziglang.org) on [Fly.io](https://fly.io),
-  `typeahead-ingester`. It streams profiles, posts, likes, and follows via
-  the relay's firehose ([`com.atproto.sync.subscribeRepos`](https://atproto.com/specs/event-stream)), resolves identities, and
-  batches actor updates to the worker.
-- **source DB**: [Turso](https://turso.tech) / libSQL. It is the durable source
-  of truth for actors, moderation overrides, and tombstones.
-- **snapshot builder**: same Zig binary, `MODE=indexer`, run as a scheduled batch
-  job on the home box (heavypad) via a Prefect deployment (`typeahead-index` in
-  the `my-prefect-server` repo), **not** on Fly. It exports Turso, builds a
-  precomputed prefix-index SQLite snapshot, and publishes `index.db` + a channel
-  manifest to Cloudflare R2. Pure batch — no ingress, no SLA; a late/failed run
-  just leaves the prior snapshot serving. (`fly.indexer.toml` is retained as a
-  rollback path.)
-- **search service**: same Zig binary, `typeahead-search`. It downloads and
-  verifies snapshots from R2, attaches them read-only, projects Turso changes
-  newer than the snapshot into a local overlay, and serves `/search` from
-  bounded point lookups over the two. It holds no copy of the corpus:
-  recovery is "attach the snapshot, replay rows since its watermark".
-- **identity**: three paths, in cost order. `getProfiles` (25 DIDs per call) in
-  the hourly cron resolves most of them; [slingshot](https://microcosm.blue)
-  resolves single DIDs from firehose `#identity` events; and a weekly job reads
-  the PLC log in bulk for accounts the appview cannot see — self-hosted PDSes.
-  See [docs/discovery-and-identity.md](docs/discovery-and-identity.md).
-
-The serving invariant: no request does work proportional to the actor corpus.
-The request path reads a small set of precomputed prefix keys, merges the live
-overlay, hydrates a capped list of actors, and returns JSON. Bluesky is rollback
-only, not part of the normal serving path.
-
-## layout
-
-- `src/` — Cloudflare Worker.
-- `services/` — shared Zig service code. It builds three Fly roles from one
-  codebase: ingest service (`fly.toml`), search service (`fly.search.toml`),
-  and snapshot builder (`fly.indexer.toml`).
-- `scripts/` — local/ops scripts for smoke tests, benchmarks, backfills, and
-  maintenance.
-- `docs/` — architecture notes, design docs, retros, and diagrams.
-
-## dev
-
-```bash
-# worker
-bun install && bunx wrangler dev
-
-# Zig services
-just test-services      # cd services && zig build test --summary all
-cd services && zig build run
+```mermaid
+flowchart LR
+  Clients -->|search| Worker[Cloudflare Worker]
+  Relay[Bluesky relay] -->|subscribeRepos| Ingester[Fly ingester]
+  Ingester -->|batches and cursor| Worker
+  Worker -->|actor writes and accounting| Turso
+  Worker -->|cache misses| Search[Fly search]
+  Turso -->|changed rows and tombstones| Search
+  Turso -->|database export| Builder[Heavypad index builder]
+  Builder -->|index.db and manifest| R2
+  R2 -->|verified snapshot| Search
 ```
 
-The one binary picks its role from the **required `MODE` env var** (no default —
-boot fails without it), set per app in fly config:
+- **Worker:** public endpoints, a 60-second search cache, admin ingestion,
+  request accounting, and profile APIs. Turso search fallbacks are opt-in.
+  Bluesky is an explicit rollback option, not the normal search backend.
+- **Ingester:** Zig on Fly, consuming the relay's `subscribeRepos` firehose
+  (not Jetstream). Profile and activity events become batched actor updates.
+  Failed writes retain their queues and apply backpressure; startup resumes
+  from the persisted relay cursor. Identity events enter the protected discovery
+  queue, with asynchronous resolution as an optimization.
+- **Turso:** durable actor records, moderation overrides, and tombstones.
+  Ingestion, enrichment, and request accounting share its writer.
+- **Index builder:** the same Zig codebase in `MODE=indexer`, orchestrated by
+  Prefect on heavypad every three days. It exports Turso, builds prefix-to-actor
+  lists and compact profiles, and publishes a SQLite snapshot to R2. It is an
+  offline batch job; an unsuccessful build leaves the previous snapshot serving.
+- **Search:** Zig on Fly. It verifies and attaches the R2 snapshot read-only,
+  then pulls newer Turso rows into a mutable overlay approximately every five
+  minutes. Queries merge snapshot and overlay candidates, promote exact handles,
+  hydrate profiles, and apply moderation. There is no separate full actor-table
+  replica on the serving machine; the snapshot itself contains compact profiles.
+- **Maintenance:** Prefect jobs on heavypad handle identity and profile
+  enrichment, including weekly PLC processing. The hourly Worker cron handles
+  freshness, statistics, and moderation refresh—not bulk enrichment.
 
-- `MODE=ingester` (`fly.toml`): consume the relay's firehose, batch actor updates to the
-  worker, run Turso schema migrations. No local state.
-- `MODE=search` (`fly.search.toml`): promote/attach prefix-index snapshots,
-  project Turso → overlay, serve `/search` from snapshot + overlay.
-- `MODE=indexer`: offline snapshot build, then exit. Runs on the home box
-  (heavypad) as the scheduled `typeahead-index` Prefect deployment, every 3 days.
-  `fly.indexer.toml` still describes the role and is the rollback path (launch a
-  one-off Fly machine), but the home box is the primary builder.
+The snapshot precomputes search candidates, but **the deployed overlay lookup
+can still scan a large matching prefix**. Candidate hydration is capped at 50
+before exact-handle reinjection. A capped result list does not imply bounded
+SQLite work. See [architecture](docs/architecture.md) and
+[discovery and identity](docs/discovery-and-identity.md).
 
-The ingest service requires `TYPEAHEAD_URL` and `TYPEAHEAD_SECRET`. R2 and Turso
-credentials are provided as Fly/Worker secrets in production.
+## Operational status
 
-## deploy
+As of September 6, 2026:
 
-```bash
-just deploy-worker    # edge worker to Cloudflare (manual; CI auto-deploy needs CLOUDFLARE_API_TOKEN set)
-just deploy-ingest    # ingest service  (fly.toml)
-just deploy-search    # search service  (fly.search.toml)
+- Search runs on one Fly machine: 4 shared CPUs, 2 GiB RAM, and a 60 GB volume.
+  Ingester runs separately on 1 shared CPU and 256 MiB RAM.
+- The ingest retry/cursor fixes are deployed. Historical recovery restored and
+  search-verified 377 accounts; remaining historical uncertainty is documented
+  in the [recovery closeout](docs/retros/2026-09-05-ingester-recovery-closeout.md).
+- Bulk profile enrichment is paused following writer contention. A guarded
+  workflow is prepared locally in `my-prefect-server`; it is not deployed.
+- The bounded lookup and ranking index are deployed only to an isolated
+  **shadow canary**. The ten-minute pilot passed 18/18 live-query comparisons
+  (plus two earlier live samples); admission is paused and its machine stopped.
+  Public answers still use the existing implementation. All 36 full-overlay
+  query cases (11.16M prefix rows) and 108 concurrent-update comparisons pass.
+  The index adds 543 MiB and increases projection write work; it is not yet
+  approved for the serving machine. See the [evaluation](docs/evals/bounded-overlay.md)
+  and [canary limits and rollback](ops/canary/README.md).
+
+These are dated observations, not configuration sources. Fly role configs live in
+`services/`; Prefect schedules and deployment definitions live in
+[`my-prefect-server`](https://tangled.org/zzstoatzz.io/my-prefect-server).
+
+## Development
+
+```sh
+bun install
+just check             # Worker types, lint, tests, deployment dry-run
+just test-services     # Zig unit tests
+bunx wrangler dev      # local Worker
 ```
 
-The snapshot builder runs on the home box (heavypad) as the `typeahead-index`
-Prefect deployment (`my-prefect-server` repo), scheduled every 3 days — reads
-Turso, builds, uploads to R2, exits. Host prereqs (zig + rclone) come from
-`deploy/home-indexer/install.sh`. For a one-off / rollback build you can still
-launch a Fly machine from `services/fly.indexer.toml` (`just
-indexer-build-staging` for an isolated staging build). See `docs/operations.md`
-and `docs/ephemeral-indexer-plan.md`.
+The Zig binary requires `MODE=ingester`, `MODE=search`, or `MODE=indexer`.
+There is no default role. Use the role's configuration and credentials; a bare
+`zig build run` is not a configured local service.
+
+- `src/` — Worker handlers, public pages, and shared page theme.
+- `services/` — Zig ingester, search, and index builder.
+- `deploy/home-indexer/` — heavypad prerequisites.
+- `scripts/` — smoke checks, benchmarks, recovery tools, and offline experiments.
+- `ops/` — health exporter and dashboard tooling.
+- `docs/` — architecture, operations, evaluations, and dated retrospectives.
+
+Repository instructions live in [AGENTS.md](AGENTS.md).
+`.claude/CLAUDE.md` is a symlink to that same file.
+
+## Deployment and validation
+
+```sh
+just deploy-worker     # Cloudflare deploy, then smoke checks
+just deploy-ingest     # Fly ingester
+just deploy-search     # Fly search
+```
+
+These commands affect production. Search currently has a single serving machine;
+use an isolated target for performance experiments and account for availability
+before replacing it. Benchmarks and smoke scripts may default to production;
+check their target and whether they perform writes before running them.
+
+The home builder is deployed through Prefect. `services/fly.indexer.toml` remains
+an optional manual Fly rollback path, not the scheduled builder. See
+[operations](docs/operations.md).
+
+## Costs
+
+The existing [hub cost snapshot](https://hub.waow.tech/api/costs.json) reports
+project-attributed line items and their estimation basis. Turso and Cloudflare
+subscriptions are shared with other projects; their whole account invoices are
+not Typeahead's cost. [COSTS.md](COSTS.md) retains dated historical research;
+do not use its older resource sizes or totals as current estimates.
+
+Homepage navigation (deployed September 6, 2026): `[src]` and `[llms.txt]` share the project-resource row;
+theme control sits at the right, with attribution, stats and docs in the footer.

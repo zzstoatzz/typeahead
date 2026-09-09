@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: typeahead-health
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: typeahead-health}
+  template:
+    metadata:
+      labels: {app: typeahead-health}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: exporter
+          image: python:3.13-alpine
+          command: [python, -B, /app/exporter.py]
+          ports: [{name: metrics, containerPort: 9814}]
+          resources:
+            requests: {cpu: 10m, memory: 24Mi}
+            limits: {cpu: 200m, memory: 96Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          readinessProbe:
+            httpGet: {path: /healthz, port: metrics}
+          livenessProbe:
+            httpGet: {path: /healthz, port: metrics}
+          volumeMounts:
+            - {name: code, mountPath: /app, readOnly: true}
+      volumes:
+        - name: code
+          configMap: {name: typeahead-health-code}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: typeahead-health
+  namespace: monitoring
+  labels: {app: typeahead-health}
+spec:
+  selector: {app: typeahead-health}
+  ports: [{name: metrics, port: 9814, targetPort: metrics}]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: typeahead-health
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels: {app: typeahead-health}
+  endpoints:
+    - port: metrics
+      interval: 60s
+      scrapeTimeout: 15s

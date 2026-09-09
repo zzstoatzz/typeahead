@@ -1,5 +1,14 @@
 # typeahead — cost & scalability
 
+**Historical measurements:** the May cost model and September 4 initial burst
+assessment below are retained as dated research. The initial assessment missed
+Worker fallback saturation and ingest loss. Both Turso search fallbacks are now
+opt-in, request counters still write to Turso, builds run on heavypad, and the
+full actor replica is gone. Use [current architecture](architecture.md) and the
+[incident report](retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md)
+for current behavior. Do not treat the old maintenance-gap list as current.
+
+
 A data-backed read on what the post-cutover architecture costs today, where
 the cost concentrates, and how each piece behaves at 10× the corpus. Numbers
 captured 2026-05-26, just after cutover (build `b1779755831-4f10`, 5.92M

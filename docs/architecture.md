@@ -1,142 +1,124 @@
 # architecture
 
-`typeahead.waow.tech` is an independent atproto actor typeahead service. It
-serves the Bluesky-compatible
-`tech.waow.typeahead.searchActors` route (and its `app.bsky.actor.searchActorsTypeahead`
-compat alias) from our own index; Bluesky is a
-rollback-only kill switch.
+Verified against the September 2 replica removal, September 4 fallback changes,
+and live services on September 5, 2026.
 
-The current design has three flows:
+`typeahead.waow.tech` provides independent actor search for atproto. The canonical
+`tech.waow.typeahead.searchActors` endpoint and the
+`app.bsky.actor.searchActorsTypeahead` compatibility alias share a handler and
+60-second edge cache. Normal searches use our index. Bluesky remains an explicit
+emergency rollback option.
 
-1. **Continuous ingest** keeps Turso up to date from the relay's firehose.
-2. **Periodic offline builds** turn Turso into a precomputed SQLite prefix-index
-   snapshot and publish it to R2.
-3. **Bounded serving** answers requests from an attached snapshot plus a live
-   overlay. No request scans the actor corpus.
+![Current typeahead architecture](blog-assets/typeahead-sequel/architecture.png)
 
-See also:
+[Explore the animated architecture](blog-assets/typeahead-sequel/interactive/architecture-embed.html): search, profile changes, and snapshot builds, with recorded query traces.
 
-- `docs/architecture-diagram.html` / `docs/architecture-diagram.svg`
-- `docs/typeahead-index-design.md` for the longer design history
-- `docs/index-serving-impl-plan.md` for the serving-path implementation plan
+## serving
 
-## components
+Clients reach the Cloudflare Worker, which applies rate limits, checks its edge
+cache, and asks `typeahead-search` on Fly in `ewr` for `/search`. The Zig search
+service holds a read-only SQLite snapshot and a live overlay. Since September 2
+it has **no full actor replica, local FTS index, bootstrap/resync path, or replica
+hydration safety belt**.
 
-### Edge worker
+Each request normalizes the query, derives bounded prefix keys, reads
+precomputed top-N DID lists, merges overlay additions and suppressions, promotes
+exact-handle matches, and hydrates a capped candidate set from overlay first,
+then snapshot actor blobs. Keys include exact handles (`e:`), handle prefixes
+(`h:`), display-name tokens/CJK keys (`n:`), domain suffixes (`d:`), and DID lookup
+support. The active manifest specifies the index versions and caps.
 
-The Cloudflare Worker in `src/` is the public edge:
+The serving invariant is about work per engine query: no actor-corpus scan or
+request-time FTS ranking. It does not imply constant disk usage or a fixed RAM
+requirement at arbitrary corpus sizes.
 
-- exposes the typeahead endpoint: canonical `tech.waow.typeahead.searchActors` + bsky-compat alias (one handler, shared cache)
-- caches search responses at the edge for 60 seconds
-- accepts ingest batches on the admin path
-- owns the Turso fallback path
-- keeps the Bluesky emergency rollback switch available
+The Worker still writes request/traffic metrics to Turso. Thus engine search
+reads are isolated from Turso, but the overall edge service is not database-free.
+Profile lookup, admin operations, and request-indexing have their own paths.
 
-Normal production traffic now flows through the search service, not Bluesky.
+## continuous ingest and freshness
 
-### Ingest service
+`typeahead-ingester`, another role of the same Zig binary, consumes the relay's
+`com.atproto.sync.subscribeRepos` firehose. It resolves identities and batches
+updates through the Worker's admin ingest endpoint into Turso. It runs on Fly
+with one shared CPU, 256 MB, and no persistent volume.
 
-`typeahead-ingester` runs the Zig service binary from `services/` in its
-continuous ingest role. It reads the relay's firehose, resolves identities, batches actor
-updates, and POSTs them to the worker's admin ingest endpoint. The worker writes
-the canonical rows to Turso.
+Turso/libSQL is the durable source of actor state, enrichment, moderation
+overrides, and tombstones. The search service polls recent changes every five
+minutes, starting from the greater of its persisted progress and the snapshot's
+source watermark, with a 300-second overlap. It projects each page into the
+overlay and persists progress per page.
 
-The `services/` directory contains the shared Zig codebase for all Fly-side
-roles: continuous ingest, search serving, and offline snapshot building.
+To remove stale prefixes on a rename or moderation change, projection reads the
+old served representation from overlay first, then snapshot. Reading a newer
+replica row was not equivalent: it could miss the keys that serving still held.
+Deletes and hides suppress base results; restores and new actors add candidates.
+Compaction prunes covered rows in bounded chunks.
 
-### Source DB
+Request-indexing also sends the row just written to `/admin/refresh` on the
+search service. This accelerates visibility without a second Turso read there;
+periodic sync remains the recovery path if that push fails.
 
-Turso/libSQL is the durable source of truth:
+## offline builds and enrichment
 
-- actors
-- moderation overrides
-- tombstones
-- enrichment state
+Prefect's `home-pool` process worker on **heavypad** runs the snapshot builder.
+`flows/typeahead_index.py` and `prefect.yaml` in `my-prefect-server` own deployment
+and scheduling. The same Zig binary runs with `MODE=indexer`: export Turso,
+build the prefix-index SQLite artifact, write its manifest, upload to R2, exit.
+The schedule is `0 9 */3 * *` UTC: days 1, 4, 7, etc., with shorter intervals at
+some month boundaries. `services/fly.indexer.toml` is a manual rollback option,
+not the normal build host.
 
-The search service treats Turso as the replication source for its local actor
-table and live overlay. The snapshot builder treats Turso as the source for
-offline index builds.
+R2's `typeahead-index/latest.json` names the active `builds/<id>/index.db`.
+Promotion checks manifest version, size, SHA-256, schema/index versions, and
+sentinel queries before swapping the attached snapshot. A failed build or
+validation keeps the previous snapshot serving. Base freshness still needs
+monitoring; retaining an old snapshot indefinitely is not a healthy steady state.
 
-### Snapshot builder
+Other heavypad jobs resolve identities hourly (:20 UTC), enrich profiles daily
+(20:00 UTC), and process PLC identity data weekly (Monday 05:00 UTC). Profile
+sources include Bluesky, Blacksky, and PDS fallback; PLC covers identity discovery
+outside appview coverage. The Worker cron now handles freshness, stats, and
+moderation refresh inside a 12-minute budget, without profile enrichment.
 
-The snapshot builder is the same Zig binary with `MODE=indexer`, launched as an
-ephemeral Fly job from `services/fly.indexer.toml`.
+Tailscale provides operator access to heavypad. Neither interactive searches nor
+snapshot downloads traverse the home connection: clients use Cloudflare/Fly,
+and Fly downloads the published artifact from R2.
 
-It:
+## failure boundaries and recovery
 
-1. exports the Turso database
-2. builds a SQLite snapshot with `prefix_top_base` and `actor_compact_base`
-3. writes a manifest with size, sha256, versions, counts, and source watermark
-4. uploads `index.db` and the configured channel manifest to Cloudflare R2
-5. exits
+Both Worker Turso search fallbacks are **off by default**:
 
-The builder can use large temporary disk during construction, but the shipped
-artifact is a standalone SQLite file. It is not served by an always-on indexer
-machine.
+- `TURSO_FALLBACK_ON_EMPTY=1` explicitly enables the empty-result fallback,
+  subject to its small-limit guard.
+- `TURSO_FALLBACK_ON_UNREACHABLE=1` explicitly enables engine-failure fallback.
+  Normally, an unreachable engine returns `{actors: []}` **uncached**. This is
+  degraded search, not full availability; it avoids flooding the shared writer.
 
-### Search service
+These defaults followed September 4's burst, when fallback reads saturated
+Turso and caused ingest backlog overflow. Request counters remain a shared-writer
+coupling worth addressing.
 
-`typeahead-search` is the live read backend. It runs the same Zig binary with
-firehose ingest disabled and sync/index promotion enabled.
+A normal search restart re-adopts its validated on-disk snapshot and resumes
+projection. A fresh volume must download a snapshot first. The September 2
+cutover measured 20 minutes to attach plus 47 minutes to replay 19 hours of
+changes; September 4's existing-volume restart took about 15 seconds. Neither
+measurement is a general recovery-time guarantee.
 
-It maintains:
+Logfire receives Fly traces and logs; Cloudflare Workers Logs covers edge
+failures. Check `/health/freshness`, ingest cursor advancement/backlog, Worker
+errors, and Prefect completion together. Search readiness alone does not prove
+new actors are being discovered. `/health/freshness` retains the legacy field
+name `replica_lag_s`; it now measures overlay lag.
 
-- **attached snapshot**: read-only `index.db` from R2, attached under the index
-  alias and swapped only after manifest, sha256, schema, version, and sentinel
-  checks pass
-- **live overlay**: `actor_overlay` and `prefix_overlay`, projected from recent
-  Turso deltas so deletes, moderation changes, renames, new actors, and
-  operator actions take effect without waiting for the next full build
-- **actor sync replica**: local actors table used for hydration and the
-  moderation safety belt
+## observed deployment, September 5
 
-Local FTS maintenance is disabled on the search service. The request path uses
-the precomputed prefix index instead.
+- Search: one Fly machine, four shared CPUs, 2 GB RAM, 60 GB volume.
+- Ingest: one Fly machine, one shared CPU, 256 MB, no volume.
+- Snapshot: `b1788512492-0ed0`, 11,631,204 actors, 127,296,942 prefixes,
+  14,027,964,416 bytes; R2 manifest and serving build agree.
+- Latest build: September 4, 09:00–10:07 UTC, Prefect state `COMPLETED`.
 
-## request path
-
-For a query:
-
-1. normalize the input
-2. derive bounded lookup keys:
-   - `e:` exact handle
-   - `h:` handle prefix
-   - `n:` display-name keys: Latin token prefixes plus CJK bigrams / leading
-     unigram for Japanese/CJK typeahead
-   - `d:` domain suffix / subdomain search
-3. read matching DID lists from the attached snapshot
-4. merge live overlay additions and suppressions
-5. promote exact-handle matches
-6. hydrate a capped candidate set from overlay first, then the base actor blobs
-7. cross-check the local actor replica for hidden/tombstoned actors
-8. return the Bluesky-compatible `profileViewBasic` shape
-
-The important invariant is that every request performs bounded point lookups
-and a small merge. It does not do FTS, `LIKE`, `ORDER BY`, or any operation
-whose work grows with the total actor corpus.
-
-## freshness
-
-The base snapshot is periodic. Freshness between builds comes from the overlay.
-The search service tails Turso deltas and projects them into prefix/actor
-overlay tables:
-
-- deletes and account removals suppress base results
-- moderation hides suppress base results
-- restores/show operations re-add actors
-- handle/display-name changes remove old prefixes and add new prefixes
-- newly indexed actors can appear before the next full snapshot
-
-On promotion of a newer snapshot, overlay rows older than the snapshot
-watermark can be compacted away while operator rows that must survive are kept.
-
-This means staleness is self-correcting: the next snapshot refreshes the base,
-and the overlay covers the gap.
-
-## operational notes
-
-- `services/fly.toml` deploys the continuous ingest service.
-- `services/fly.search.toml` deploys the live search service.
-- `services/fly.indexer.toml` is for one-off snapshot builder machines, not a
-  daemon.
-- The public rollback is to restore the `EMERGENCY_PROXY_BSKY` Worker secret.
+For the incident and design history, see [operations](operations.md),
+[replica removal](replica-removal-plan.md), and the
+[September incident report](retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md).
