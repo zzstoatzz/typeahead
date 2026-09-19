@@ -479,6 +479,22 @@ invariants:
 
 ## serving path
 
+### queries longer than PREFIX_MAX
+
+The builder emits `h:`, `d:` and Latin `n:` keys up to `PREFIX_MAX` (16) bytes.
+`queryKeys` cuts those three lookups to the same bound (`prefixCut`) and keeps
+`e:` whole. When any ASCII run of the query is longer than the bound
+(`queryExceedsPrefixMax`), the candidates a cut key returns are a superset of
+the real matches, so `index_search.filterFullQuery` re-checks each hydrated row
+against the whole query with `matchesFullQuery` — the same rules the keys
+encode (handle prefix, exact handle, dot-boundary suffix, display run). The
+filter runs after hydration over at most `HYDRATE_CAP` rows. `/debug/search`
+reports `query_cut` and `full_query_dropped`.
+
+Until 2026-09-18 the query path emitted the uncut key, so any query longer
+than 16 characters returned nothing unless it was a whole handle (`e:`).
+Smoke pins `typeahead.waow.te` (17 chars) against this.
+
 ### multi-token semantics
 
 single-token queries: union of `h:` + `e:` + `n:<query>` candidate sets,

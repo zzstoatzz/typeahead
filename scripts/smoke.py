@@ -167,6 +167,17 @@ def test_prefix_match(base_url: str):
     handles = [a.get("handle", "") for a in actors]
     check("prefix 'zzst' finds zzstoatzz.io", "zzstoatzz.io" in handles, f"got {handles[:5]}")
 
+    # the index stores prefixes up to 16 bytes; a longer query must still
+    # resolve (2026-09-18: 17+ character queries returned nothing)
+    long_q = "typeahead.waow.te"
+    assert len(long_q) == 17
+    data, _ = fetch(f"{base_url}{XRPC_PATH}?q={long_q}&limit=10")
+    handles = [a.get("handle", "") for a in (data or {}).get("actors", [])]
+    check(f"prefix '{long_q}' (17 chars) finds typeahead.waow.tech", "typeahead.waow.tech" in handles, f"got {handles[:5]}")
+    data, _ = fetch(f"{base_url}{XRPC_PATH}?q=typeahead.waow.tx&limit=10")
+    handles = [a.get("handle", "") for a in (data or {}).get("actors", [])]
+    check("prefix 'typeahead.waow.tx' (17 chars, no such handle) finds nothing", handles == [], f"got {handles[:5]}")
+
 
 def test_ranking(base_url: str):
     """popularity ranking — a high-follower account must rank above low-follower

@@ -144,7 +144,7 @@ fn appendLatinKeys(
 ) !void {
     if (run.len == 0) return;
     if (for_query) {
-        try keys.append(arena, try formatKey(arena, .display_token, run));
+        try keys.append(arena, try formatKey(arena, .display_token, prefixCut(run)));
         return;
     }
     const max = @min(run.len, PREFIX_MAX); // Latin run is ASCII → byte == codepoint
@@ -330,13 +330,18 @@ pub fn queryKeys(arena: Allocator, normalized_query: []const u8) ![][]const u8 {
     // Single-token queries: h: and e: are real lookups. Multi-token:
     // they typically miss but we emit them anyway for compositional
     // simplicity — empty lookups cost ~nothing.
+    //
+    // The builder never emits a prefix key longer than PREFIX_MAX, so the
+    // h:/d: lookups use the query's PREFIX_MAX-cut; `e:` stays whole. A query
+    // longer than the cut needs `matchesFullQuery` on the hydrated rows.
     const has_space = std.mem.indexOfScalar(u8, normalized_query, ' ') != null;
     if (!has_space) {
-        try keys.append(arena, try formatKey(arena, .handle_prefix, normalized_query));
+        const cut = prefixCut(normalized_query);
+        try keys.append(arena, try formatKey(arena, .handle_prefix, cut));
         try keys.append(arena, try formatKey(arena, .exact_handle, normalized_query));
         // domain-suffix lookup: matches accounts under a domain the query names
         // (e.g. `germ.network` → `*.germ.network`, or `germ` → that label).
-        try keys.append(arena, try formatKey(arena, .domain_suffix, normalized_query));
+        try keys.append(arena, try formatKey(arena, .domain_suffix, cut));
     }
 
     // CJK-aware: a CJK query token yields its bigram set (intersected by the
@@ -346,6 +351,97 @@ pub fn queryKeys(arena: Allocator, normalized_query: []const u8) ![][]const u8 {
     for (tokens) |tok| try emitTokenKeys(arena, &keys, tok, true);
 
     return keys.toOwnedSlice(arena);
+}
+
+/// The longest prefix of `text` that the builder could have emitted as a key:
+/// at most PREFIX_MAX bytes, never split inside a UTF-8 sequence.
+pub fn prefixCut(text: []const u8) []const u8 {
+    if (text.len <= PREFIX_MAX) return text;
+    var end: usize = PREFIX_MAX;
+    while (end > 0 and (text[end] & 0xC0) == 0x80) end -= 1;
+    return text[0..end];
+}
+
+/// True when some lookup key for this query was cut to PREFIX_MAX, so the
+/// candidates a key returns are a superset of the real matches.
+///
+/// Only ASCII runs count: handles are ASCII, so a cut `h:`/`d:` key with
+/// non-Latin bytes could never have matched, and CJK `n:` keys are bigrams
+/// with no length cap.
+pub fn queryExceedsPrefixMax(normalized_query: []const u8) bool {
+    var it = std.mem.splitScalar(u8, normalized_query, ' ');
+    while (it.next()) |tok| {
+        if (longestLatinRun(tok) > PREFIX_MAX) return true;
+    }
+    return false;
+}
+
+fn longestLatinRun(token: []const u8) usize {
+    var best: usize = 0;
+    var cur: usize = 0;
+    for (token) |b| {
+        if (b < 0x80) {
+            cur += 1;
+            if (cur > best) best = cur;
+        } else cur = 0;
+    }
+    return best;
+}
+
+/// The serving-side complement of the PREFIX_MAX cut. Decides whether an
+/// actor (already normalized with `normalize.handle` / `normalize.display`)
+/// matches the whole query under the same rules the keys encode:
+///   single token → h: (handle starts with it), e: (equal), d: (a dot-boundary
+///                  suffix starts with it), or n: (a display run starts with it)
+///   multi token  → every token must start some display run (intersect_all)
+/// Only tokens that were actually cut are checked; the rest already matched
+/// exactly via their keys.
+pub fn matchesFullQuery(normalized_query: []const u8, normalized_handle: []const u8, normalized_display: []const u8) bool {
+    const has_space = std.mem.indexOfScalar(u8, normalized_query, ' ') != null;
+    if (!has_space) {
+        if (std.mem.startsWith(u8, normalized_handle, normalized_query)) return true;
+        if (startsDotSuffix(normalized_handle, normalized_query)) return true;
+        return tokenMatchesDisplay(normalized_query, normalized_display);
+    }
+    var it = std.mem.splitScalar(u8, normalized_query, ' ');
+    while (it.next()) |tok| {
+        if (tok.len == 0) continue;
+        if (longestLatinRun(tok) <= PREFIX_MAX) continue;
+        if (!tokenMatchesDisplay(tok, normalized_display)) return false;
+    }
+    return true;
+}
+
+fn startsDotSuffix(handle: []const u8, needle: []const u8) bool {
+    var i: usize = 0;
+    while (i < handle.len) : (i += 1) {
+        if (handle[i] != '.') continue;
+        if (std.mem.startsWith(u8, handle[i + 1 ..], needle)) return true;
+    }
+    return false;
+}
+
+/// Every Latin run of `token` longer than PREFIX_MAX must begin some Latin
+/// run of the display name. Runs shorter than that matched their key whole.
+fn tokenMatchesDisplay(token: []const u8, display: []const u8) bool {
+    var start: usize = 0;
+    var i: usize = 0;
+    while (i <= token.len) : (i += 1) {
+        const boundary = i == token.len or token[i] >= 0x80;
+        if (!boundary) continue;
+        const run = token[start..i];
+        if (run.len > PREFIX_MAX and !runStartsDisplayRun(run, display)) return false;
+        start = i + 1;
+    }
+    return true;
+}
+
+fn runStartsDisplayRun(run: []const u8, display: []const u8) bool {
+    var pos: usize = 0;
+    while (std.mem.indexOfPos(u8, display, pos, run)) |at| : (pos = at + 1) {
+        if (at == 0 or display[at - 1] == ' ' or display[at - 1] >= 0x80) return true;
+    }
+    return false;
 }
 
 // ─── tests ───────────────────────────────────────────────────────────────
@@ -707,4 +803,55 @@ test "v2: query bigrams are a subset of indexed keys (builder/query agree)" {
     for (q) |k| {
         if (std.mem.startsWith(u8, k, "n:")) try testing.expect(idx.contains(k));
     }
+}
+
+test "queryKeys: keys longer than PREFIX_MAX are cut; e: stays whole" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const keys = try queryKeys(arena.allocator(), "hq.definitelyarealcompany");
+    try testing.expectEqual(@as(usize, 4), keys.len);
+    try testing.expectEqualStrings("h:hq.definitelyare", keys[0]);
+    try testing.expectEqualStrings("e:hq.definitelyarealcompany", keys[1]);
+    try testing.expectEqualStrings("d:hq.definitelyare", keys[2]);
+    try testing.expectEqualStrings("n:hq.definitelyare", keys[3]);
+    // the cut keys are exactly what the builder emits for a matching actor
+    const emitted = try deriveAllUnique(arena.allocator(), "alice.hq.definitelyarealcompany.com", "hq.definitelyarealcompany");
+    var seen_h = false;
+    var seen_d = false;
+    var seen_n = false;
+    for (emitted) |k| {
+        if (std.mem.eql(u8, k, "h:alice.hq.definit")) seen_h = true;
+        if (std.mem.eql(u8, k, keys[2])) seen_d = true;
+        if (std.mem.eql(u8, k, keys[3])) seen_n = true;
+    }
+    try testing.expect(seen_h and seen_d and seen_n);
+}
+
+test "prefixCut never splits a UTF-8 sequence" {
+    try testing.expectEqualStrings("abc", prefixCut("abc"));
+    try testing.expectEqual(@as(usize, PREFIX_MAX), prefixCut("abcdefghijklmnopqrstuvwxyz").len);
+    const cut = prefixCut("abcdefghijklmno日本語");
+    try testing.expectEqualStrings("abcdefghijklmno", cut);
+}
+
+test "queryExceedsPrefixMax" {
+    try testing.expect(!queryExceedsPrefixMax(""));
+    try testing.expect(!queryExceedsPrefixMax("abcdefghijklmnop"));
+    try testing.expect(queryExceedsPrefixMax("abcdefghijklmnopq"));
+    try testing.expect(!queryExceedsPrefixMax("nate nowack"));
+    try testing.expect(queryExceedsPrefixMax("nate definitelyarealcompany"));
+    try testing.expect(!queryExceedsPrefixMax("日本語日本語日本語日本語日本語日本語"));
+}
+
+test "matchesFullQuery: handle prefix, exact, dot suffix, display run" {
+    const q = "hq.definitelyarealcomp";
+    try testing.expect(matchesFullQuery(q, "alice.hq.definitelyarealcompany.com", ""));
+    try testing.expect(!matchesFullQuery(q, "alice.hq.definitelyarealcorp.com", ""));
+    try testing.expect(matchesFullQuery(q, "hq.definitelyarealcompany.com", ""));
+    try testing.expect(matchesFullQuery(q, "x.y", "alice hq.definitelyarealcompany"));
+    try testing.expect(!matchesFullQuery(q, "x.y", "alicehq.definitelyarealcompany"));
+    try testing.expect(matchesFullQuery("definitelyarealcompany", "x.y", "日本definitelyarealcompany"));
+    // multi-token: only the long token is checked; the short one matched its key
+    try testing.expect(matchesFullQuery("nate definitelyarealcompany", "x.y", "n definitelyarealcompanyx"));
+    try testing.expect(!matchesFullQuery("nate definitelyarealcompany", "x.y", "nate definitelyarealcorp"));
 }

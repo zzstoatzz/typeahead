@@ -114,6 +114,10 @@ pub const Trace = struct {
     mode: merge.Mode = .union_any,
     merged: usize = 0,
     exact_hits: usize = 0,
+    /// the query was longer than PREFIX_MAX; hydrated rows were re-checked
+    /// against the whole query and `full_query_dropped` of them removed
+    query_cut: bool = false,
+    full_query_dropped: usize = 0,
     /// hydrate outcomes
     hydrated_overlay: usize = 0,
     hydrated_base: usize = 0,
@@ -175,7 +179,27 @@ fn executeLookup(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, t
         t.exact_hits = exact.count();
     }
 
-    return hydrate(arena, lease, merged, trace);
+    const hydrated = try hydrate(arena, lease, merged, trace);
+    if (!prefixes.queryExceedsPrefixMax(norm)) return hydrated;
+    return filterFullQuery(arena, norm, hydrated, trace);
+}
+
+/// The builder emits prefix keys up to PREFIX_MAX only, so a longer query
+/// looks up its cut and receives every actor under that shorter prefix. Keep
+/// only the rows that match the whole query. Runs over at most HYDRATE_CAP
+/// rows, so a long query costs the same as its 16-byte prefix plus this pass.
+fn filterFullQuery(arena: Allocator, norm: []const u8, rows: []searchmod.Candidate, trace: ?*Trace) ![]searchmod.Candidate {
+    var kept: std.ArrayListUnmanaged(searchmod.Candidate) = .empty;
+    for (rows) |c| {
+        const handle = try normalize.handle(arena, c.handle);
+        const display = try normalize.display(arena, c.display_name);
+        if (prefixes.matchesFullQuery(norm, handle, display)) try kept.append(arena, c);
+    }
+    if (trace) |t| {
+        t.query_cut = true;
+        t.full_query_dropped = rows.len - kept.items.len;
+    }
+    return kept.toOwnedSlice(arena);
 }
 
 /// Offline/shadow evaluator. Caller supplies one frozen read lease; never used
@@ -253,6 +277,8 @@ pub fn debug(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit
         .mode = @tagName(trace.mode),
         .exact_hits = trace.exact_hits,
         .merged = trace.merged,
+        .query_cut = trace.query_cut,
+        .full_query_dropped = trace.full_query_dropped,
         .keys = trace.keys,
         .candidates = rows,
     });
@@ -269,6 +295,8 @@ const Report = struct {
     hydrate_cap: usize = HYDRATE_CAP,
     exact_hits: usize = 0,
     merged: usize = 0,
+    query_cut: bool = false,
+    full_query_dropped: usize = 0,
     keys: []const Trace.KeyStat = &.{},
     candidates: []const Row = &.{},
 };
@@ -681,6 +709,81 @@ test "full pipeline differential preserves exact promotion and moderation across
             try testing.expectEqualStrings(a.display_name, b.display_name);
             try testing.expectEqual(a.quality_score, b.quality_score);
         }
+    }
+}
+
+test "queries longer than PREFIX_MAX resolve through the cut key and keep only whole-query matches" {
+    const zqlite = @import("zqlite");
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try @import("schema.zig").initOverlay(conn);
+    try conn.exec("ATTACH DATABASE ':memory:' AS idx", .{});
+    try conn.exec("CREATE TABLE idx.prefix_top_base(key TEXT PRIMARY KEY,dids BLOB)", .{});
+    try conn.exec("CREATE TABLE idx.actor_compact_base(did TEXT PRIMARY KEY,blob BLOB)", .{});
+    var local = LocalDb.init(testing.allocator);
+    const lease: LocalDb.ReadLease = .{ .db = &local, .slot = 0, .conn = conn };
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+
+    // Seed through the builder's own key derivation so index and query agree.
+    const Actor = struct { did: []const u8, handle: []const u8, display: []const u8, base: bool };
+    const actors = [_]Actor{
+        .{ .did = "did:plc:company", .handle = "alice.hq.definitelyarealcompany.com", .display = "alice", .base = true },
+        .{ .did = "did:plc:corp", .handle = "bob.hq.definitelyarealcorp.com", .display = "bob", .base = false },
+        .{ .did = "did:plc:display", .handle = "carol.example", .display = "carol definitelyarealcompanion", .base = true },
+        .{ .did = "did:web:short", .handle = "hq.definitelyarealcompany.com", .display = "", .base = false },
+    };
+    var base_lists: std.StringHashMapUnmanaged(std.ArrayListUnmanaged(pack.DidEntry)) = .empty;
+    for (actors, 0..) |a, i| {
+        const score: f32 = @floatFromInt(10 - i);
+        const nh = try normalize.handle(arena, a.handle);
+        const nd = try normalize.display(arena, a.display);
+        const blob = try pack.packActor(arena, .{ .hidden = false, .quality_score = score, .handle = a.handle, .display = a.display, .avatar = "", .labels = "[]", .pds = "", .created_at = "", .associated = "{}" });
+        if (a.base) {
+            try conn.exec("INSERT INTO idx.actor_compact_base VALUES(?,?)", .{ a.did, blob });
+        } else {
+            try conn.exec("INSERT INTO actor_overlay(did,blob,hidden,updated_at) VALUES(?,?,0,1)", .{ a.did, blob });
+        }
+        for (try prefixes.deriveAllUnique(arena, nh, nd)) |key| {
+            if (a.base) {
+                const gop = try base_lists.getOrPut(arena, key);
+                if (!gop.found_existing) gop.value_ptr.* = .empty;
+                try gop.value_ptr.append(arena, .{ .did = a.did, .score = score });
+            } else {
+                try conn.exec("INSERT INTO prefix_overlay(key,did,score,op,updated_at) VALUES(?,?,?,1,1)", .{ key, a.did, @as(f64, score) });
+            }
+        }
+    }
+    var it = base_lists.iterator();
+    while (it.next()) |e| {
+        try conn.exec("INSERT INTO idx.prefix_top_base VALUES(?,?)", .{ e.key_ptr.*, try pack.packDidList(arena, e.value_ptr.items) });
+    }
+
+    const Case = struct { q: []const u8, want: []const []const u8 };
+    const cases = [_]Case{
+        // 16 chars: the key exists as-is; both hq.* domains and the display token match
+        .{ .q = "hq.definitelyare", .want = &.{ "did:plc:company", "did:plc:corp", "did:web:short" } },
+        // 22 chars: cut to 16 for lookup, then only whole-query matches survive
+        .{ .q = "hq.definitelyarealcomp", .want = &.{ "did:plc:company", "did:web:short" } },
+        .{ .q = "hq.definitelyarealcorp", .want = &.{"did:plc:corp"} },
+        .{ .q = "definitelyarealcompanio", .want = &.{"did:plc:display"} },
+        // a whole handle longer than the cut: exact promotion still wins
+        .{ .q = "hq.definitelyarealcompany.com", .want = &.{ "did:web:short", "did:plc:company" } },
+        .{ .q = "alice.hq.definitelyarealcompany.com", .want = &.{"did:plc:company"} },
+        .{ .q = "carol definitelyarealcompanio", .want = &.{"did:plc:display"} },
+        .{ .q = "hq.definitelyarealzzz", .want = &.{} },
+    };
+    for (cases) |case| {
+        const norm = try normalize.query(arena, case.q);
+        var trace: Trace = .{};
+        const got = try executeLookup(arena, lease, norm, &trace, true);
+        try testing.expectEqual(case.want.len, got.len);
+        for (case.want, got) |w, g| try testing.expectEqualStrings(w, g.did);
+        try testing.expectEqual(case.q.len > prefixes.PREFIX_MAX, trace.query_cut);
+        const unbounded = try executeLookup(arena, lease, norm, null, false);
+        try testing.expectEqual(got.len, unbounded.len);
+        for (got, unbounded) |g, u| try testing.expectEqualStrings(g.did, u.did);
     }
 }
 

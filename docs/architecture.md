@@ -26,7 +26,10 @@ precomputed top-N DID lists, merges overlay additions and suppressions, promotes
 exact-handle matches, and hydrates a capped candidate set from overlay first,
 then snapshot actor blobs. Keys include exact handles (`e:`), handle prefixes
 (`h:`), display-name tokens/CJK keys (`n:`), domain suffixes (`d:`), and DID lookup
-support. The active manifest specifies the index versions and caps.
+support. Prefix keys are stored up to 16 bytes; a longer query looks up its cut
+and the hydrated rows are filtered against the whole query (see
+[the index design](typeahead-index-design.md#queries-longer-than-prefix_max)).
+The active manifest specifies the index versions and caps.
 
 The serving invariant is about work per engine query: no actor-corpus scan or
 request-time FTS ranking. It does not imply constant disk usage or a fixed RAM

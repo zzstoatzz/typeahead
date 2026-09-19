@@ -59,7 +59,10 @@ flowchart LR
 
 The snapshot precomputes search candidates, but **the deployed overlay lookup
 can still scan a large matching prefix**. Candidate hydration is capped at 50
-before exact-handle reinjection. A capped result list does not imply bounded
+before exact-handle reinjection. Prefix keys are stored up to 16 bytes; a longer
+query looks up its 16-byte cut and the hydrated rows are then filtered against
+the whole query, so a long query costs what its cut costs plus one pass over at
+most 50 rows. A capped result list does not imply bounded
 SQLite work. See [architecture](docs/architecture.md) and
 [discovery and identity](docs/discovery-and-identity.md).
 
