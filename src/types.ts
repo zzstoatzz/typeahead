@@ -108,4 +108,4 @@ export const BSKY_TYPEAHEAD_URL =
 export const BSKY_GET_PROFILES_URL =
   "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles";
 
-export const FAVICON = `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect x=%223%22 y=%227%22 width=%2214%22 height=%225%22 rx=%221%22 fill=%22%23288b79%22/%3E%3Cpath d=%22M5 17h10M5 23h7%22 stroke=%22%2374b9aa%22 stroke-width=%223%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M21 4h7m-3.5 0v24M21 28h7%22 fill=%22none%22 stroke=%22%232c8e78%22 stroke-width=%222.5%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">`;
+export const FAVICON = `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%226%22%20fill%3D%22%23101211%22%2F%3E%3Cpath%20d%3D%22M9%206h4v6h6v4h-6v7h6v4h-7q-3%200-3-3v-8H5v-4h4z%22%20fill%3D%22%23e8ece8%22%2F%3E%3Cpath%20d%3D%22M23%2011h5v16h-5z%22%20fill%3D%22%2344aa99%22%2F%3E%3C%2Fsvg%3E">`;
