@@ -44,8 +44,9 @@ firehose never discovers them; `getProfile` finds one only after
 a special case: "feeds a relay" is now something a host may or may not do, and
 spaces hosts (point-to-point sync, no relay) will make it common. Membership
 on such a host is often private on purpose, so bulk-indexing it into the
-public corpus is not the answer either. See
-[private directories](private-directories.md) for the proposed shape.
+public corpus is not the answer either. Decision 2026-09-18: typeahead stays
+the public-context service and private completion belongs to the org host —
+see [private directories](private-directories.md).
 
 ## identity: batch, always
 
