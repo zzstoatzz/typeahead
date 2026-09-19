@@ -34,6 +34,19 @@ Consequences:
 opaque and format varies by implementation — persist and replay what the host
 returned, never construct one.
 
+### hosts with identities but no sync stream
+
+Measured 2026-09-18: habitat's pear mints `did:web` identities, serves their
+DID documents and `/.well-known/atproto-did`, and answers `resolveHandle`, but
+exposes no `subscribeRepos`. The relay never carries these accounts, so the
+firehose never discovers them; `getProfile` finds one only after
+`/request-indexing` adds it by hand. This is a measurable host property, not
+a special case: "feeds a relay" is now something a host may or may not do, and
+spaces hosts (point-to-point sync, no relay) will make it common. Membership
+on such a host is often private on purpose, so bulk-indexing it into the
+public corpus is not the answer either. See
+[private directories](private-directories.md) for the proposed shape.
+
 ## identity: batch, always
 
 Resolving one DID per HTTP request does not work at corpus scale.
