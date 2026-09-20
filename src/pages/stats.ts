@@ -272,10 +272,21 @@ export function statsPage(d: StatsData): string {
     ? `<span class="rest" data-domain="${REST_LABEL}"><span class="ldot rest-dot"></span>${REST_LABEL} · ${rest.domains} sources (${((rest.hits / trafficGrandTotal) * 100).toFixed(1)}%)</span>`
     : '');
 
+  // Every source is in the table, but only the first page is visible at
+  // load: the rest carry a page number and `hidden`, and the button below
+  // the table reveals a page at a time. Selecting a folded source from the
+  // URL (?apps=) unfolds down to its row (see the client script).
+  const TS_PAGE = 50;
   const trafficTableRows = d.trafficSources.map((r, i) => {
     const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
-    return `<tr data-domain="${esc(r.domain)}"><td class="ts-rank">${i + 1}</td><td class="ts-domain">${nameLink(r.domain)}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td></tr>`;
+    const page = Math.floor(i / TS_PAGE);
+    const fold = page > 0 ? ` data-page="${page}" hidden` : '';
+    return `<tr data-domain="${esc(r.domain)}"${fold}><td class="ts-rank">${i + 1}</td><td class="ts-domain">${nameLink(r.domain)}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td></tr>`;
   }).join('');
+  const trafficFolded = Math.max(0, d.trafficSources.length - TS_PAGE);
+  const trafficMoreHtml = trafficFolded > 0
+    ? `<button type="button" class="ts-more" id="ts-more" data-page-size="${TS_PAGE}">show ${Math.min(TS_PAGE, trafficFolded)} more · ${trafficFolded} remaining</button>`
+    : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -487,6 +498,10 @@ export function statsPage(d: StatsData): string {
     .ts-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted);
               width: 3.2rem; }
     .ts-summary { font-size: 0.7rem; color: var(--dim); margin-top: 0.6rem; text-align: center; }
+    .ts-more { display: block; width: 100%; margin-top: 0.5rem; min-height: 34px;
+               background: transparent; border: 1px solid var(--line); border-radius: 6px;
+               color: var(--dim); font: inherit; font-size: 0.7rem; cursor: pointer; }
+    .ts-more:hover { color: var(--muted); border-color: var(--line-2); }
 
     footer { padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: 0.7rem;
              color: var(--faint); display: flex; align-items: center; justify-content: center;
@@ -631,14 +646,15 @@ export function statsPage(d: StatsData): string {
         ? `<canvas id="pie" role="img" aria-label="traffic sources by app"></canvas>
            <div class="pie-legend">${pieLegendHtml}</div>
            ${rest
-              ? `<div class="ts-summary">top ${PIE_TOP_N} named above · ${d.trafficSources.length} of ${Math.max(d.trafficAll.domains, d.trafficSources.length)} sources below</div>`
+              ? `<div class="ts-summary">top ${PIE_TOP_N} named above · ${d.trafficSources.length} sources below</div>`
               : ''}
            <div class="ts-table-wrap">
              <table class="ts-table">
                <thead><tr><th>#</th><th>domain</th><th style="text-align:right">hits</th><th style="text-align:right">%</th></tr></thead>
                <tbody>${trafficTableRows}</tbody>
              </table>
-           </div>`
+           </div>
+           ${trafficMoreHtml}`
         : `<div class="empty-card">collecting data — check back soon</div>`}
       <div class="pie-cta">
         want to show up here? <a href="/docs">switch from bluesky&rsquo;s typeahead &rarr;</a>
@@ -1395,6 +1411,7 @@ export function statsPage(d: StatsData): string {
       if (!apps.length) { syncUrl(); return; }
       pinned = [...new Set(apps)];
       showBaseline = p.get('total') !== '0';
+      unfoldTo(pinned);
       document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el =>
         el.classList.toggle('sel', pinned.includes(el.dataset.domain)));
       showSeries();
@@ -1452,6 +1469,34 @@ export function statsPage(d: StatsData): string {
         setDim('source');                  // a source tap is a source-view action
         applySelection(el.dataset.domain);
       });
+    });
+
+    /* the table past the first page is folded: rows carry data-page and
+       hidden, and each tap of the button reveals one more page. Nothing is
+       fetched — every source is already in the document — so a folded source
+       selected from the URL just needs its page (and those above it) shown. */
+    const tsMore = document.getElementById('ts-more');
+    const tsFolded = () => document.querySelectorAll('.ts-table tbody tr[data-page][hidden]');
+    function revealPage(page) {
+      document.querySelectorAll('.ts-table tbody tr[data-page]').forEach(tr => {
+        if (Number(tr.dataset.page) <= page) tr.hidden = false;
+      });
+      if (!tsMore) return;
+      const left = tsFolded().length;
+      if (left === 0) { tsMore.hidden = true; return; }
+      const size = Number(tsMore.dataset.pageSize) || 50;
+      tsMore.textContent = 'show ' + Math.min(size, left) + ' more · ' + left + ' remaining';
+    }
+    function unfoldTo(domains) {
+      let deepest = 0;
+      document.querySelectorAll('.ts-table tbody tr[data-page]').forEach(tr => {
+        if (domains.includes(tr.dataset.domain)) deepest = Math.max(deepest, Number(tr.dataset.page));
+      });
+      if (deepest > 0) revealPage(deepest);
+    }
+    if (tsMore) tsMore.addEventListener('click', () => {
+      const next = tsFolded()[0];
+      if (next) revealPage(Number(next.dataset.page));
     });
 
     // trace the line: crosshair dot + timestamp/value tooltip (mouse or finger)

@@ -217,7 +217,7 @@ describe("everything else", () => {
     const html = page(twelve, { domains: 52, hits: 2000 });
     // app0.test has 100 hits: 5.0% of 2000, which would be 8.8% of the 1134 listed
     expect(legendEntry(html, "app0.test")).toContain("(5.0%)");
-    expect(html).toContain("top 12 named above · 12 of 52 sources below");
+    expect(html).toContain("top 12 named above · 12 sources below");
   });
 
   test("no rest slice when the ring already holds everything", () => {
@@ -225,5 +225,33 @@ describe("everything else", () => {
     expect(html).not.toContain('data-domain="everything else"');
     expect(html).not.toContain('"rest":true');
     expect(html).not.toContain("ts-summary\">");
+  });
+});
+
+describe("the long tail", () => {
+  // The handler used to fetch LIMIT 50 and the page listed exactly that, so
+  // every source past rank 50 (a new adopter with ten hits, say) was invisible
+  // on /stats although it was counted. Every source is now in the document;
+  // rows past the first page are folded behind a button, not dropped.
+  const many = Array.from({ length: 130 }, (_, i) => `app${i}.test`);
+
+  test("every source is a row; rows past the first page are folded, not missing", () => {
+    const html = page(many);
+    for (const d of many) expect(html).toContain(`<tr data-domain="${d}"`);
+    expect(html).toContain('<tr data-domain="app49.test"><td');
+    expect(html).toContain('<tr data-domain="app50.test" data-page="1" hidden>');
+    expect(html).toContain('<tr data-domain="app129.test" data-page="2" hidden>');
+    expect(html).toContain('id="ts-more" data-page-size="50">show 50 more · 80 remaining</button>');
+  });
+
+  test("a last page smaller than the page size says how many it holds", () => {
+    const html = page(Array.from({ length: 62 }, (_, i) => `app${i}.test`));
+    expect(html).toContain(">show 12 more · 12 remaining</button>");
+  });
+
+  test("no button when the first page holds everything", () => {
+    const html = page(Array.from({ length: 50 }, (_, i) => `app${i}.test`));
+    expect(html).not.toContain("data-page=");
+    expect(html).not.toContain('id="ts-more"');
   });
 });

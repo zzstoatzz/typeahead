@@ -52,9 +52,12 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
        AND domain NOT LIKE '127.%'`;
   // the ranked rows the page lists, and the whole table's total so the pie
   // can draw what the rows leave out. traffic_sources is one row per source
-  // (174 on 2026-09-04), so the aggregate is not corpus-proportional.
+  // (219 on 2026-09-19), so neither query is corpus-proportional. The list
+  // was LIMIT 50 until 2026-09-19, which silently dropped every source past
+  // rank 50 from the page; the page now folds the tail behind a button
+  // instead, and the LIMIT is only a ceiling on page size.
   const [trafficRes, trafficAllRes] = await db.batch([
-    db.prepare(`SELECT domain, hits FROM traffic_sources ${trafficWhere} ORDER BY hits DESC LIMIT 50`),
+    db.prepare(`SELECT domain, hits FROM traffic_sources ${trafficWhere} ORDER BY hits DESC LIMIT 1000`),
     db.prepare(`SELECT count(*) AS domains, coalesce(sum(hits), 0) AS hits FROM traffic_sources ${trafficWhere}`),
   ], "read");
 
