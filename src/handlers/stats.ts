@@ -1,6 +1,7 @@
 import { rowsAs, type TursoDB } from "../db";
 import type { Env, RequestKvData, StatsKvData } from "../types";
 import { html } from "../utils";
+import { TRAFFIC_SOURCE_WHERE } from "../metrics";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
 
 const EDGE_CACHE_TTL = 60; // seconds
@@ -36,20 +37,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
     env.KV.get<RequestKvData>("request_data", "json"),
   ]);
 
-  // traffic sources: live from turso. exclude:
-  //  - internal probes (bench, cf-migration-*, migration-*)
-  //  - dev tunnels (trycloudflare, ngrok variants)
-  //  - rfc1918 / loopback IPs
-  const trafficWhere = `WHERE domain != 'bench'
-       AND domain NOT IN ('cf-migration-verify', 'cf-migration-baseline',
-                          'migration-check', 'migration-debug')
-       AND domain NOT LIKE '%.trycloudflare.com'
-       AND domain NOT LIKE '%.ngrok.app'
-       AND domain NOT LIKE '%.ngrok.io'
-       AND domain NOT LIKE '%.ngrok-free.app'
-       AND domain NOT LIKE '192.168.%'
-       AND domain NOT LIKE '10.%.%.%'
-       AND domain NOT LIKE '127.%'`;
+  const trafficWhere = TRAFFIC_SOURCE_WHERE;
   // the ranked rows the page lists, and the whole table's total so the pie
   // can draw what the rows leave out. traffic_sources is one row per source
   // (219 on 2026-09-19), so neither query is corpus-proportional. The list

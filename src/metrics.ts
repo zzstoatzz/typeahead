@@ -132,6 +132,21 @@ export function endpointLabel(pathname: string): string {
   return "other";
 }
 
+/** traffic_sources rows that are apps, not us: excludes internal probes
+ *  (bench, cf-migration-*, migration-*), dev tunnels, and rfc1918 / loopback
+ *  IPs. Shared by the /stats list and the hourly materialized count so the
+ *  page and the link-preview card can never disagree about what an app is. */
+export const TRAFFIC_SOURCE_WHERE = `WHERE domain != 'bench'
+       AND domain NOT IN ('cf-migration-verify', 'cf-migration-baseline',
+                          'migration-check', 'migration-debug')
+       AND domain NOT LIKE '%.trycloudflare.com'
+       AND domain NOT LIKE '%.ngrok.app'
+       AND domain NOT LIKE '%.ngrok.io'
+       AND domain NOT LIKE '%.ngrok-free.app'
+       AND domain NOT LIKE '192.168.%'
+       AND domain NOT LIKE '10.%.%.%'
+       AND domain NOT LIKE '127.%'`;
+
 /** fire-and-forget: one row per 5-min bucket × app × endpoint × status, for
  *  EVERY request the worker answers (not just search cache misses, which is
  *  all traffic_buckets sees). This is the only place non-2xx responses are

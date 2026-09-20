@@ -17,22 +17,29 @@ const kv: StatsKvData = {
   metrics: [
     { hour: nowBucket, searches: 10, total_ms: 0, cache_hits: 5, cache_ms: 0 },
     { hour: nowBucket - 3 * 288, searches: 20, total_ms: 0, cache_hits: 0, cache_ms: 0 },
-    // eight days old: outside the card's window
-    { hour: nowBucket - 8 * 288, searches: 1000, total_ms: 0, cache_hits: 1000, cache_ms: 0 },
+    { hour: nowBucket - 100 * 288, searches: 1000, total_ms: 0, cache_hits: 1000, cache_ms: 0 },
   ],
   snapshots: [
     { hour: 1, total: 1, with_handles: 1, with_avatars: 0, hidden: 0 },
     { hour: 2, total: 11_901_310, with_handles: 11_901_310, with_avatars: 8_224_000, hidden: 2_310 },
   ],
   deltas: [],
+  traffic_sources_total: 219,
   materialized_at: 0,
 };
 
-test("overviewFigures: latest snapshot, searches summed over the last seven days only", () => {
+test("overviewFigures: latest snapshot, every search ever, every app ever", () => {
   expect(overviewFigures(kv)).toEqual({
-    total: 11_901_310, withHandles: 11_901_310, withAvatars: 8_224_000, hidden: 2_310, searches7d: 35,
+    total: 11_901_310, withHandles: 11_901_310, withAvatars: 8_224_000, apps: 219, searches: 2_035,
   });
-  expect(overviewFigures(null)).toEqual({ total: 0, withHandles: 0, withAvatars: 0, hidden: 0, searches7d: 0 });
+  expect(overviewFigures(null)).toEqual({ total: 0, withHandles: 0, withAvatars: 0, apps: 0, searches: 0 });
+  // before the count is materialized, distinct app domains in the daily series stand in
+  const { traffic_sources_total: _, ...older } = kv;
+  const daily = [
+    { day: 1, domain: "plyr.fm", hits: 5 }, { day: 2, domain: "plyr.fm", hits: 5 },
+    { day: 2, domain: "haunt.app", hits: 1 }, { day: 2, domain: "unknown", hits: 9 }, { day: 2, domain: "homepage", hits: 9 },
+  ];
+  expect(overviewFigures({ ...older, traffic_daily: daily }).apps).toBe(2);
 });
 
 test("the default card carries the compact figures and does not define itself by bluesky", () => {
@@ -41,9 +48,10 @@ test("the default card carries the compact figures and does not define itself by
   expect(html).toContain("actors indexed");
   expect(html).toContain("69.1%");
   expect(html).toContain("with avatars");
-  expect(html).toContain("2,310");
-  expect(html).toContain("moderation labels");
+  expect(html).toContain("219");
+  expect(html).toContain("sources sending searches");
   expect(html).toContain("100% with handles");
-  expect(html).toContain("last 7 days");
+  expect(html).toContain("answered, all time");
+  expect(html).not.toContain("hidden");
   expect(html.toLowerCase()).not.toContain("bluesky");
 });

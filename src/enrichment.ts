@@ -1,5 +1,6 @@
 import type { TursoDB } from "./db";
 import type { Env } from "./types";
+import { TRAFFIC_SOURCE_WHERE } from "./metrics";
 
 /** record an actor-count snapshot for the current hour (idempotent).
  *
@@ -63,7 +64,7 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
        PRIMARY KEY (day, domain)) WITHOUT ROWID`
   ).run();
 
-  const [metricsRes, snapshotRes, deltasRes, trafficRes, traffic5mRes, trafficDailyRes] = await db.batch([
+  const [metricsRes, snapshotRes, deltasRes, trafficRes, traffic5mRes, trafficDailyRes, sourcesRes] = await db.batch([
     db.prepare("SELECT hour, searches, total_ms, cache_hits, cache_ms FROM metrics ORDER BY hour DESC LIMIT 100000"),
     db.prepare("SELECT hour, total, with_handles, with_avatars, hidden FROM snapshots ORDER BY hour ASC LIMIT 5000"),
     db.prepare("SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket DESC LIMIT 288"),
@@ -87,6 +88,10 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
            FROM traffic_buckets GROUP BY bucket / 288, domain
        ) GROUP BY day, domain ORDER BY day ASC`
     ),
+    // every app that has ever sent a search: one row per source, so a count
+    // is bounded by adoption, not the corpus. The link-preview card shows it.
+    db.prepare(`SELECT count(*) AS n FROM traffic_sources ${TRAFFIC_SOURCE_WHERE}
+                 AND domain NOT IN ('unknown', 'homepage')`),
   ], "read");
 
   await env.KV.put("stats_data", JSON.stringify({
@@ -96,6 +101,7 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
     traffic_series: trafficRes.results ?? [],
     traffic_series_5m: traffic5mRes.results ?? [],
     traffic_daily: trafficDailyRes.results ?? [],
+    traffic_sources_total: Number((sourcesRes.results?.[0] as { n?: number } | undefined)?.n ?? 0),
     materialized_at: Date.now(),
   }));
 

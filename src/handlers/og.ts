@@ -147,29 +147,42 @@ export interface OverviewFigures {
   total: number;
   withHandles: number;
   withAvatars: number;
-  hidden: number;
-  /** searches answered over the last seven days, cache hits included */
-  searches7d: number;
+  /** apps that have ever sent a search */
+  apps: number;
+  /** every search answered since metrics began, cache hits included */
+  searches: number;
+}
+
+function appsFromDaily(kv: StatsKvData | null): number {
+  const apps = new Set<string>();
+  for (const r of kv?.traffic_daily ?? []) {
+    if (r.domain === "unknown" || r.domain === "homepage" || r.domain === "bench") continue;
+    apps.add(r.domain);
+  }
+  return apps.size;
 }
 
 /** the figures the default card shows, from the same KV blob /stats reads */
 export function overviewFigures(kv: StatsKvData | null): OverviewFigures {
   const last = kv?.snapshots?.[kv.snapshots.length - 1];
-  // metrics rows are 5-minute buckets, newest first (see materializeStats)
-  const since = Math.floor(Date.now() / 300_000) - 7 * 288;
-  const searches7d = (kv?.metrics ?? [])
-    .filter(r => r.hour >= since)
-    .reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
+  const searches = (kv?.metrics ?? []).reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
   return {
     total: last?.total ?? 0,
     withHandles: last?.with_handles ?? 0,
     withAvatars: last?.with_avatars ?? 0,
-    hidden: last?.hidden ?? 0,
-    searches7d,
+    // until the first cron after 2026-09-20 has materialized the count, the
+    // per-domain daily series (kept since 2026-07-24) is the same data at
+    // lower fidelity — it undercounts, it never overcounts
+    apps: kv?.traffic_sources_total ?? appsFromDaily(kv),
+    searches,
   };
 }
 
 /** the default card: what this is, what makes it different, and how big it is.
+ *  Every figure is cumulative — no rolling windows, so a quiet week or a bad
+ *  ingest day never shows on the card. "hidden by moderation" was dropped on
+ *  2026-09-20: PDS-level suspensions are deletes, appview takedowns are
+ *  re-enriched unhidden, so that count measured sampling, not enforcement.
  *  Four tiles share ~1096px, so every caption is kept under 18 characters and
  *  told not to wrap: a wrapped caption draws over the next row (see row()). */
 export function overview(f: OverviewFigures): string {
@@ -185,8 +198,8 @@ export function overview(f: OverviewFigures): string {
     <div style="display:flex;gap:28px;padding-top:40px;flex-shrink:0">
       ${tile(compact(f.total), "actors indexed", handlePct + "% with handles")}
       ${tile(pct(f.withAvatars, f.total), "with avatars", compact(f.withAvatars) + " profile pics")}
-      ${tile(compact(f.hidden), "hidden", "moderation labels")}
-      ${tile(compact(f.searches7d), "searches", "last 7 days")}
+      ${tile(compact(f.apps), "apps", "sources sending searches")}
+      ${tile(compact(f.searches), "searches", "answered, all time")}
     </div>
   </div>`;
 }

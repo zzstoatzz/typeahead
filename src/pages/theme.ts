@@ -96,7 +96,7 @@ export const THEME_SCRIPT = `
 /** Link-preview cards are cached by URL at the embedding side (Bluesky, Slack,
  *  Discord all keep their own copy). Bump this whenever the card's layout
  *  changes, or the old card keeps being shown against the new copy. */
-export const CARD_VERSION = 2;
+export const CARD_VERSION = 3;
 
 /** What the card says, for readers who cannot see it. */
 export const CARD_ALT = "typeahead — community actor search for atproto, with live index figures";

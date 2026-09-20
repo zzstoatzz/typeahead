@@ -147,9 +147,12 @@ theme control sits at the right, with attribution, stats and docs in the footer.
 Link previews and app metadata (deployed September 20, 2026): every page's
 description leads with what typeahead does and where it looks, without naming
 the service it replaces. The preview card at `/og-image` (src/handlers/og.ts)
-reads the hourly stats KV blob, never Turso, and shows compact figures: actors
-indexed with handle coverage, avatar coverage, actors hidden by moderation, and
-searches over the last seven days. The mark is served at `/favicon.svg`,
+reads the hourly stats KV blob, never Turso, and shows four cumulative figures:
+actors indexed with handle coverage, avatar coverage, apps that have ever sent
+a search (a filtered `traffic_sources` count the cron materializes), and
+searches answered all time. "Hidden by moderation" was dropped the same day:
+PDS-level suspensions are deletes and appview takedowns are re-enriched
+unhidden, so that count measured refresh sampling, not enforcement. The mark is served at `/favicon.svg`,
 rasterized at `/apple-touch-icon.png`, and declared in `/site.webmanifest`.
 Embedders cache cards by URL, so `CARD_VERSION` in src/pages/theme.ts must be
 bumped whenever the card layout changes.

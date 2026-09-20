@@ -39,6 +39,9 @@ export interface StatsKvData {
   traffic_series?: { hour: number; domain: string; hits: number }[];
   traffic_series_5m?: { bucket: number; domain: string; hits: number }[];
   traffic_daily?: { day: number; domain: string; hits: number }[];
+  /** apps that have ever sent a search: traffic_sources rows minus probes,
+   *  tunnels, private IPs, and the unknown/homepage attribution buckets */
+  traffic_sources_total?: number;
   materialized_at: number;
 }
 
