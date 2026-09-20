@@ -66,6 +66,34 @@ most 50 rows. A capped result list does not imply bounded
 SQLite work. See [architecture](docs/architecture.md) and
 [discovery and identity](docs/discovery-and-identity.md).
 
+## Public pages and metadata
+
+The Worker serves the homepage (`/`), `/stats`, `/docs`, `/reputation`, and
+`/llms.txt`, all from `src/pages/` on one shared theme. Dated state:
+
+- Homepage navigation (September 6, 2026): `[src]` and `[llms.txt]` share the
+  project-resource row; the theme control sits at the right; attribution,
+  stats, and docs are in the footer.
+- Link previews (September 20, 2026): every page's description leads with what
+  typeahead does and where it looks, and does not define the service by what
+  it replaces. The card at `/og-image` (`src/handlers/og.ts`) reads the hourly
+  stats KV blob, never Turso, and shows four cumulative figures: actors indexed
+  with handle coverage, avatar coverage, apps that have ever sent a search, and
+  searches answered all time. The app count is a filtered `traffic_sources`
+  count the cron materializes as `traffic_sources_total`. Embedders cache cards
+  by URL, so `CARD_VERSION` in `src/pages/theme.ts` must be bumped whenever the
+  card changes.
+- App metadata (September 20, 2026): the mark is served at `/favicon.svg`,
+  rasterized at `/apple-touch-icon.png`, and declared in `/site.webmanifest`.
+  A `data:` favicon preceded this; crawlers and home-screen installs could not
+  read it.
+
+"Hidden by moderation" left the card on September 20, 2026. That count is
+label observations from the refresh cron, not enforcement: PDS-level
+suspensions arrive as `#account` events and are deleted, and appview takedowns
+are re-enriched visible by policy. See
+[operations](docs/operations.md#the-hidden-count-is-sampling-not-enforcement-2026-09-20).
+
 ## Operational status
 
 As of September 6, 2026:
@@ -140,19 +168,3 @@ project-attributed line items and their estimation basis. Turso and Cloudflare
 subscriptions are shared with other projects; their whole account invoices are
 not Typeahead's cost. [COSTS.md](COSTS.md) retains dated historical research;
 do not use its older resource sizes or totals as current estimates.
-
-Homepage navigation (deployed September 6, 2026): `[src]` and `[llms.txt]` share the project-resource row;
-theme control sits at the right, with attribution, stats and docs in the footer.
-
-Link previews and app metadata (deployed September 20, 2026): every page's
-description leads with what typeahead does and where it looks, without naming
-the service it replaces. The preview card at `/og-image` (src/handlers/og.ts)
-reads the hourly stats KV blob, never Turso, and shows four cumulative figures:
-actors indexed with handle coverage, avatar coverage, apps that have ever sent
-a search (a filtered `traffic_sources` count the cron materializes), and
-searches answered all time. "Hidden by moderation" was dropped the same day:
-PDS-level suspensions are deletes and appview takedowns are re-enriched
-unhidden, so that count measured refresh sampling, not enforcement. The mark is served at `/favicon.svg`,
-rasterized at `/apple-touch-icon.png`, and declared in `/site.webmanifest`.
-Embedders cache cards by URL, so `CARD_VERSION` in src/pages/theme.ts must be
-bumped whenever the card layout changes.

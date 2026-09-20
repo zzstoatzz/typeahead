@@ -233,10 +233,12 @@ export function docsPage(): string {
       still be findable — identity is not content moderation.
     </p>
     <p>
-      to support this, the index enriches banned/suspended accounts via their PDS directly
-      (using <code>com.atproto.repo.getRecord</code>), so profiles are discoverable even when
-      bluesky's API refuses to serve them. these accounts start hidden and can be explicitly
-      un-hidden via an admin override on a case-by-case basis.
+      to support this, when bluesky's API refuses to serve an account the index enriches it from
+      <a href="https://blacksky.community" target="_blank" rel="noopener">blacksky's</a> appview or
+      from its PDS directly (<code>com.atproto.repo.getRecord</code>), so the profile stays
+      discoverable. an appview takedown alone does not hide an account here; the labels above,
+      the slur filter below, and admin overrides do. accounts a PDS has suspended or deleted leave
+      the network's event stream as inactive and are removed from the index.
     </p>
     <p>
       handles containing explicit slurs are always filtered, regardless of override status. these

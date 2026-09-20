@@ -82,7 +82,11 @@ Other heavypad jobs resolve identities hourly (:20 UTC), enrich profiles daily
 (20:00 UTC), and process PLC identity data weekly (Monday 05:00 UTC). Profile
 sources include Bluesky, Blacksky, and PDS fallback; PLC covers identity discovery
 outside appview coverage. The Worker cron now handles freshness, stats, and
-moderation refresh inside a 12-minute budget, without profile enrichment.
+moderation refresh inside a 12-minute budget, without profile enrichment. Its
+stats step materializes `stats_data` in KV (hourly snapshots, 5-minute search
+metrics, per-app traffic at three grains, and the all-time app count); `/stats`
+and the `/og-image` link-preview card read that blob, never Turso, for
+corpus-scale figures.
 
 Tailscale provides operator access to heavypad. Neither interactive searches nor
 snapshot downloads traverse the home connection: clients use Cloudflare/Fly,

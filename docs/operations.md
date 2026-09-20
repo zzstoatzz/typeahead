@@ -255,6 +255,40 @@ it under "stored data" and on the ranking line. Policy unchanged: a Bluesky
 takedown does not hide an account here (the PDS fallback always worked that
 way); it just no longer zeroes its rank.
 
+## the hidden count is sampling, not enforcement (2026-09-20)
+
+`actors.hidden != 0` was 2,310 rows: 1,687 `spam`, 203 `!hide`, 410 from the
+slur regex, domain blocks, or overrides, and 10 `!takedown`. Read against
+Bluesky's daily enforcement volume that looks broken. It is not; it measures
+something narrower:
+
+- PDS-level suspensions and takedowns reach the relay as `#account` with
+  `active: false`. The ingester deletes and tombstones them
+  (`handleAccount` in `services/src/ingest.zig`). They never become hidden rows.
+- Appview takedowns (getProfiles omits the DID) are re-enriched from Blacksky
+  or the PDS record, whose labels never carry `!takedown`. By the policy above
+  they stay visible; `resolveHidden` returns 0.
+- Labels only arrive through getProfiles on the refresh cron, which walks the
+  scored-visible pool (~41k rows, 800 per run) plus 200 firehose-touched rows.
+  Nothing subscribes to the labeler stream. A `spam` label applied to a
+  zero-score account after indexing is not observed until that account posts
+  again.
+
+So the number is a lower bound on labeled rows the cron has revisited. It was
+dropped from the link-preview card that day and the `/stats` tile explains
+itself in its tip. If an enforcement figure is ever wanted, count `#account`
+deletes in a counter, or read `tombstones` (pruned after 7 days); do not
+present `hidden` as one. `profile_source` has no index; grouping on it
+full-scans 12M rows (a 60 s diagnostic timeout on 2026-09-20).
+
+The card's replacement tile is `traffic_sources_total`: `materializeStats`
+counts `traffic_sources` rows under `TRAFFIC_SOURCE_WHERE` (`src/metrics.ts`,
+shared with the `/stats` list) minus the `unknown` and `homepage` attribution
+buckets, and writes it into `stats_data`. First materialized 07:02 UTC
+2026-09-20 at 203. Before that field exists the card counts distinct app
+domains in `traffic_daily`, which undercounts (165 that morning) and never
+overcounts.
+
 ## /reputation: moderation status across labelers (2026-09-03)
 
 `/reputation?actor=…` now answers "what do the moderation services say about

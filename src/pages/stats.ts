@@ -571,7 +571,7 @@ export function statsPage(d: StatsData): string {
         <div class="value">${d.avatarPct}%</div>
       </div>
       <div class="metric">
-        <div class="label" tabindex="0" data-tip="actors hidden by bluesky moderation (!hide, !takedown, spam)">hidden by moderation</div>
+        <div class="label" tabindex="0" data-tip="indexed actors carrying a bluesky !hide, !takedown, !suspend or spam label as last observed by the refresh cron. PDS-level suspensions are deleted from the index, not hidden, so this is not an enforcement count">hidden by moderation</div>
         <div class="value">${d.hiddenCount.toLocaleString()}</div>
       </div>
     </div>
