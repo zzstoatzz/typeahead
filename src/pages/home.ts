@@ -1,5 +1,5 @@
 import { FAVICON } from "../types";
-import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, ogTags } from "./theme";
+import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, ogTags, TAGLINE } from "./theme";
 
 export function indexPage(): string {
   return `<!doctype html>
@@ -7,7 +7,7 @@ export function indexPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  ${ogTags({ title: "typeahead — community actor search for atproto", description: "Fast handle and display-name search across the whole atproto network, not just one appview. A drop-in replacement for bluesky’s typeahead endpoint.", path: "/" })}
+  ${ogTags({ title: "typeahead — community actor search for atproto", description: TAGLINE + " Discovered from the relay firehose, ranked with moderation applied, served under an open lexicon with no auth required.", path: "/" })}
   <link rel="help" href="/llms.txt" type="text/plain" title="API and integration guide for agents">
   ${FAVICON}
   ${THEME_HEAD}

@@ -108,4 +108,12 @@ export const BSKY_TYPEAHEAD_URL =
 export const BSKY_GET_PROFILES_URL =
   "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles";
 
-export const FAVICON = `<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%226%22%20fill%3D%22%23101211%22%2F%3E%3Cpath%20d%3D%22M9%206h4v6h6v4h-6v7h6v4h-7q-3%200-3-3v-8H5v-4h4z%22%20fill%3D%22%23e8ece8%22%2F%3E%3Cpath%20d%3D%22M23%2011h5v16h-5z%22%20fill%3D%22%2344aa99%22%2F%3E%3C%2Fsvg%3E">`;
+/** The mark: a lowercase t on the dark panel, with the accent block cursor
+ *  the wordmark carries on every page. Served at /favicon.svg and rasterized
+ *  for /apple-touch-icon.png; crawlers and home-screen installs cannot read a
+ *  data: URI, which is why it is a route and not an inline href. */
+export const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="#101211"/><path d="M9 6h4v6h6v4h-6v7h6v4h-7q-3 0-3-3v-8H5v-4h4z" fill="#e8ece8"/><path d="M23 11h5v16h-5z" fill="#44aa99"/></svg>`;
+
+export const FAVICON = `<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">`;

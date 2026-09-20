@@ -1,5 +1,5 @@
 import { FAVICON } from "../types";
-import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
+import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, CARD_VERSION } from "./theme";
 import { escHtml as esc } from "../utils";
 
 export interface SnapshotPoint {
@@ -78,7 +78,8 @@ function ogTags(d: StatsData): string {
   if (view.range !== '7d') q.set('range', view.range);
   const qs = q.toString();
   const pageUrl = view.origin + '/stats' + (qs ? '?' + qs : '');
-  const imgUrl = view.origin + '/og-image' + (qs ? '?' + qs : '');
+  q.set('v', String(CARD_VERSION));
+  const imgUrl = view.origin + '/og-image?' + q.toString();
 
   let title: string, desc: string;
   if (apps.length) {

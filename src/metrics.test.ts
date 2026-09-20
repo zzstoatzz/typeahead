@@ -16,6 +16,10 @@ test("endpointLabel: known routes get stable labels, everything else is 'other'"
   expect(endpointLabel("/health/freshness")).toBe("health");
   expect(endpointLabel("/")).toBe("page");
   expect(endpointLabel("/stats")).toBe("page");
+  expect(endpointLabel("/favicon.svg")).toBe("page");
+  expect(endpointLabel("/apple-touch-icon.png")).toBe("page");
+  expect(endpointLabel("/site.webmanifest")).toBe("page");
+  expect(endpointLabel("/favicon.ico")).toBe("other");
   for (const probe of ["/wp-admin", "/.env", "/xrpc/com.atproto.nope", "/admin", "/search"]) {
     expect(endpointLabel(probe)).toBe("other");
   }

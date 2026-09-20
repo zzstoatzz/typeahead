@@ -7,7 +7,7 @@ export function docsPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  ${ogTags({ title: "typeahead — docs", description: "Point your app at typeahead in one line. The canonical tech.waow.typeahead.searchActors endpoint, plus a drop-in app.bsky.actor.searchActorsTypeahead alias for migrating off bluesky.", path: "/docs" })}
+  ${ogTags({ title: "typeahead — docs", description: "Point your app at typeahead in one line. The canonical tech.waow.typeahead.searchActors endpoint, a compatible app.bsky.actor.searchActorsTypeahead alias, and profile cards without viewer state.", path: "/docs" })}
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}

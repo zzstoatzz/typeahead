@@ -1,5 +1,5 @@
 import type { Env } from "./types";
-import { CORS_HEADERS } from "./types";
+import { CORS_HEADERS, FAVICON_SVG } from "./types";
 import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
 import { recordSnapshot, materializeStats } from "./enrichment";
@@ -10,7 +10,7 @@ import { handleIngest } from "./handlers/ingest";
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
 import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
-import { handleOgImage } from "./handlers/og";
+import { handleOgImage, handleAppleTouchIcon, handleWebManifest } from "./handlers/og";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
 import { indexPage } from "./pages/home";
@@ -145,6 +145,17 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   }
   if (pathname === "/og-image" && request.method === "GET") {
     return handleOgImage(request, env);
+  }
+  if (pathname === "/favicon.svg" && request.method === "GET") {
+    return new Response(FAVICON_SVG, {
+      headers: { "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=86400" },
+    });
+  }
+  if (pathname === "/apple-touch-icon.png" && request.method === "GET") {
+    return handleAppleTouchIcon();
+  }
+  if (pathname === "/site.webmanifest" && request.method === "GET") {
+    return handleWebManifest();
   }
   if (pathname === "/docs" && request.method === "GET") {
     return html(docsPage());

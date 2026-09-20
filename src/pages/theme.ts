@@ -93,12 +93,25 @@ export const THEME_SCRIPT = `
     })();
 `;
 
+/** Link-preview cards are cached by URL at the embedding side (Bluesky, Slack,
+ *  Discord all keep their own copy). Bump this whenever the card's layout
+ *  changes, or the old card keeps being shown against the new copy. */
+export const CARD_VERSION = 2;
+
+/** What the card says, for readers who cannot see it. */
+export const CARD_ALT = "typeahead — community actor search for atproto, with live index figures";
+
+/** The one-sentence pitch every page's preview leads with. It names what the
+ *  service does and where it looks, and it does not define typeahead by what
+ *  it replaces. */
+export const TAGLINE = "Fast handle and display-name search across the whole atproto network, not just one appview.";
+
 /** Static link-preview tags for the pages whose content doesn't vary.
  *  /stats builds its own, because its preview describes the selected view. */
 export function ogTags(o: { title: string; description: string; path: string }): string {
   const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const base = "https://typeahead.waow.tech";
-  const img = base + "/og-image";
+  const img = base + "/og-image?v=" + CARD_VERSION;
   return [
     `<title>${esc(o.title)}</title>`,
     `<meta name="description" content="${esc(o.description)}">`,
@@ -110,9 +123,11 @@ export function ogTags(o: { title: string; description: string; path: string }):
     `<meta property="og:image" content="${img}">`,
     `<meta property="og:image:width" content="1200">`,
     `<meta property="og:image:height" content="630">`,
+    `<meta property="og:image:alt" content="${esc(CARD_ALT)}">`,
     `<meta name="twitter:card" content="summary_large_image">`,
     `<meta name="twitter:title" content="${esc(o.title)}">`,
     `<meta name="twitter:description" content="${esc(o.description)}">`,
     `<meta name="twitter:image" content="${img}">`,
+    `<meta name="twitter:image:alt" content="${esc(CARD_ALT)}">`,
   ].join("\n  ");
 }

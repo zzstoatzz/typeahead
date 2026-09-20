@@ -1,5 +1,6 @@
 import { ImageResponse } from "workers-og";
 import type { Env, StatsKvData } from "../types";
+import { FAVICON_SVG } from "../types";
 import { escHtml as esc } from "../utils";
 
 /** Link-preview card for /stats.
@@ -132,18 +133,60 @@ function comparison(apps: string[], series: Series, range: Range, order: string[
   </div>`;
 }
 
-/** the default card: what this is, and how big the index is */
-function overview(total: number, handlePct: string): string {
-  const stat = (v: string, label: string) => `<div style="display:flex;flex-direction:column;flex-shrink:0">
-      ${row(72, `font-size:58px;color:${ACCENT};align-items:center`, v)}
-      ${row(34, `font-size:24px;color:${MUTED};align-items:center`, label)}
+/** "11.9M" reads at thumbnail size where "11,901,310" is a grey smear.
+ *  Below ten thousand the exact figure is short enough to keep. */
+export function compact(v: number): string {
+  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (v >= 10_000) return Math.round(v / 1_000) + "K";
+  return n(v);
+}
+
+const pct = (part: number, whole: number) => whole > 0 ? ((part / whole) * 100).toFixed(1) + "%" : "0%";
+
+export interface OverviewFigures {
+  total: number;
+  withHandles: number;
+  withAvatars: number;
+  hidden: number;
+  /** searches answered over the last seven days, cache hits included */
+  searches7d: number;
+}
+
+/** the figures the default card shows, from the same KV blob /stats reads */
+export function overviewFigures(kv: StatsKvData | null): OverviewFigures {
+  const last = kv?.snapshots?.[kv.snapshots.length - 1];
+  // metrics rows are 5-minute buckets, newest first (see materializeStats)
+  const since = Math.floor(Date.now() / 300_000) - 7 * 288;
+  const searches7d = (kv?.metrics ?? [])
+    .filter(r => r.hour >= since)
+    .reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
+  return {
+    total: last?.total ?? 0,
+    withHandles: last?.with_handles ?? 0,
+    withAvatars: last?.with_avatars ?? 0,
+    hidden: last?.hidden ?? 0,
+    searches7d,
+  };
+}
+
+/** the default card: what this is, what makes it different, and how big it is.
+ *  Four tiles share ~1096px, so every caption is kept under 18 characters and
+ *  told not to wrap: a wrapped caption draws over the next row (see row()). */
+export function overview(f: OverviewFigures): string {
+  const tile = (v: string, label: string, sub: string) => `<div style="display:flex;flex-direction:column;flex:1;flex-shrink:0">
+      ${row(64, `font-size:52px;color:${ACCENT};align-items:center`, v)}
+      ${row(32, `font-size:22px;color:${TEXT};align-items:center;white-space:nowrap`, label)}
+      ${row(28, `font-size:18px;color:${DIM};align-items:center;white-space:nowrap`, sub)}
     </div>`;
+  const handlePct = f.total > 0 ? Math.round((f.withHandles / f.total) * 100) : 0;
   return `<div style="display:flex;flex-direction:column;flex:1;justify-content:center">
-    ${row(68, `font-size:52px;color:${BRIGHT};align-items:center`, "community actor search")}
-    ${row(68, `font-size:52px;color:${BRIGHT};align-items:center`, "for atproto")}
-    <div style="display:flex;gap:80px;padding-top:44px;flex-shrink:0">
-      ${stat(n(total), "actors indexed")}
-      ${stat(handlePct + "%", "with a resolved handle")}
+    ${row(60, `font-size:46px;color:${BRIGHT};align-items:center`, "community actor search for atproto")}
+    ${row(40, `font-size:23px;color:${MUTED};align-items:center`, "every actor on the network \u00b7 relay-firehose fresh \u00b7 moderation applied")}
+    <div style="display:flex;gap:28px;padding-top:40px;flex-shrink:0">
+      ${tile(compact(f.total), "actors indexed", handlePct + "% with handles")}
+      ${tile(pct(f.withAvatars, f.total), "with avatars", compact(f.withAvatars) + " profile pics")}
+      ${tile(compact(f.hidden), "hidden", "moderation labels")}
+      ${tile(compact(f.searches7d), "searches", "last 7 days")}
     </div>
   </div>`;
 }
@@ -182,10 +225,7 @@ export async function handleOgImage(request: Request, env: Env): Promise<Respons
     body = comparison(wanted, series, r, order);
     right = "requests \u00b7 " + RANGE_LABEL[r];
   } else {
-    const last = kv?.snapshots?.[kv.snapshots.length - 1];
-    const total = last?.total ?? 0;
-    const pct = last && last.total > 0 ? ((last.with_handles / last.total) * 100).toFixed(1) : "0";
-    body = overview(total, pct);
+    body = overview(overviewFigures(kv));
     right = "";   // the headline below already says it
   }
 
@@ -195,5 +235,36 @@ export async function handleOgImage(request: Request, env: Env): Promise<Respons
     fonts: [{ name: "JetBrains Mono", data: await jetbrainsMono(), style: "normal" }],
     // crawlers refetch these constantly; the underlying data only moves hourly
     headers: { "Cache-Control": "public, max-age=3600" },
+  });
+}
+
+/** iOS and Android ignore SVG icons, so the mark is rasterized once here and
+ *  cached for a day. satori drops an inline <svg> element on the floor (the
+ *  first version rendered a blank square) but embeds an <img> data URI. */
+export function handleAppleTouchIcon(): Response {
+  const src = "data:image/svg+xml;base64," + btoa(FAVICON_SVG);
+  return new ImageResponse(`<div style="display:flex;width:180px;height:180px"><img src="${src}" width="180" height="180" /></div>`, {
+    width: 180,
+    height: 180,
+    headers: { "Cache-Control": "public, max-age=86400" },
+  });
+}
+
+export function handleWebManifest(): Response {
+  const manifest = {
+    name: "typeahead",
+    short_name: "typeahead",
+    description: "community actor search for atproto",
+    start_url: "/",
+    display: "standalone",
+    background_color: BG,
+    theme_color: BG,
+    icons: [
+      { src: "/favicon.svg", sizes: "any", type: "image/svg+xml" },
+      { src: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  };
+  return new Response(JSON.stringify(manifest), {
+    headers: { "Content-Type": "application/manifest+json", "Cache-Control": "public, max-age=86400" },
   });
 }
