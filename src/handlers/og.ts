@@ -198,7 +198,7 @@ export function overview(f: OverviewFigures): string {
     <div style="display:flex;gap:28px;padding-top:40px;flex-shrink:0">
       ${tile(compact(f.total), "actors indexed", handlePct + "% with handles")}
       ${tile(pct(f.withAvatars, f.total), "with avatars", compact(f.withAvatars) + " profile pics")}
-      ${tile(compact(f.apps), "apps", "sources sending searches")}
+      ${tile(compact(f.apps), "apps", "have sent searches")}
       ${tile(compact(f.searches), "searches", "answered, all time")}
     </div>
   </div>`;

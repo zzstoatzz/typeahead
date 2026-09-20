@@ -116,7 +116,7 @@ describe("link previews", () => {
 
   test("the card image is handed the same params as the page", () => {
     expect(withView(["alpha.app", "beta.app"]))
-      .toContain('content="https://typeahead.waow.tech/og-image?apps=alpha.app%2Cbeta.app&amp;v=3"');
+      .toContain('content="https://typeahead.waow.tech/og-image?apps=alpha.app%2Cbeta.app&amp;v=4"');
   });
 
   test("apps with no traffic in the window are dropped, not previewed as zero", () => {

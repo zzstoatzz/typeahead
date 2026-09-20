@@ -49,7 +49,7 @@ test("the default card carries the compact figures and does not define itself by
   expect(html).toContain("69.1%");
   expect(html).toContain("with avatars");
   expect(html).toContain("219");
-  expect(html).toContain("sources sending searches");
+  expect(html).toContain("have sent searches");
   expect(html).toContain("100% with handles");
   expect(html).toContain("answered, all time");
   expect(html).not.toContain("hidden");
