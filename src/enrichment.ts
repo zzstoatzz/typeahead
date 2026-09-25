@@ -1,4 +1,4 @@
-import type { TursoDB } from "./db";
+import { rowsAs, type TursoDB } from "./db";
 import type { Env } from "./types";
 import { TRAFFIC_SOURCE_WHERE } from "./metrics";
 
@@ -101,7 +101,7 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
     traffic_series: trafficRes.results ?? [],
     traffic_series_5m: traffic5mRes.results ?? [],
     traffic_daily: trafficDailyRes.results ?? [],
-    traffic_sources_total: Number((sourcesRes.results?.[0] as { n?: number } | undefined)?.n ?? 0),
+    traffic_sources_total: Number(rowsAs<{ n: number }>(sourcesRes.results ?? [])[0]?.n ?? 0),
     materialized_at: Date.now(),
   }));
 
