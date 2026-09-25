@@ -87,6 +87,14 @@ had prodded. It answered seconds after the PLC op with the old handle for
 ~20–26% of handle changes (sampled 2026-09-22..24), and no later job rewrote a
 non-empty handle, so those rows stayed stale indefinitely.
 
+The backlog it left was repaired on 2026-09-25 by the one-off
+`typeahead-handle-repair` Prefect deployment (my-prefect-server 83da98a): a drift
+scan against the PLC bundles (cutoff 09-16) plus the PLC export up to the fix
+found 21,569 rows whose handle differed from the DID document; 20,305 verified
+handles were written (compare-and-set), 1,139 unverified handles were left as
+they were. Afterwards 262/265 live sampled accounts matched the appview; the
+3 misses were handles that do not currently verify at all.
+
 Every equality query on `actors.handle` needs `COLLATE NOCASE` or it scans the
 table. Keyset on `rowid`, not `did`.
 
