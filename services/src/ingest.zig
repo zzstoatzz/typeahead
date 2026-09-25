@@ -25,7 +25,7 @@ fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     return null;
 }
 
-fn timestamp() i64 {
+pub fn timestamp() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
 }
 
@@ -350,7 +350,7 @@ pub const IngestHandler = struct {
 
         if (self.identity_pool) |pool| {
             if (identity.Did.fromSlice(id.did)) |resolver_did| {
-                _ = pool.offer(io, resolver_did); // latency optimization; discovery is queued above
+                _ = pool.offer(io, .{ .did = resolver_did }); // discovery is queued above; drops show on /health
             }
         }
     }

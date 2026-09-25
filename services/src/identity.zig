@@ -1,17 +1,25 @@
-//! Identity resolution for DIDs received from relay's firehose #identity events.
+//! Identity resolution for DIDs received from the relay's firehose `#identity` events.
 //!
-//! Background: the `#identity` event has `handle` as a spec-optional field
-//! ("validated or passed-through from an upstream source"). In practice the bsky
-//! relay omits it entirely on every event we've sampled. So the ingester forwards
-//! every identity-event DID to this resolver, which:
-//!   1. resolves the authoritative handle via microcosm's slingshot
-//!   2. POSTs {did, handle} back to the cloudflare worker's /admin/ingest
-//!   3. lets the worker's existing COALESCE-or-overwrite upsert do the rest
+//! Per the sync spec, `#identity` is a prod to invalidate cached identity data:
+//! it "does not … reliably indicate what the current state of the identity is",
+//! and `handle` is optional (the bsky relay omits it on every event sampled,
+//! 21/21 on 2026-09-25). Identity is not self-certifying, so the consumer does
+//! its own resolution. For every `#identity` DID this resolver:
+//!   1. fetches the DID document from its authority (plc.directory, or the
+//!      did:web host) — never from an identity cache
+//!   2. verifies the claimed handle bidirectionally (well-known / DNS TXT must
+//!      point back at the DID)
+//!   3. POSTs {did, handle, pds} to the worker's /admin/ingest
 //!
-//! A resolution failure never drops the DID: we still POST the bare DID so the row
-//! exists, because the hourly enrichIdentity cron retries `WHERE handle = ''` and can
-//! only ever see actors that are already rows. Dropping here made an account with a
-//! wedged .well-known permanently invisible (birdlover.selfhosted.social, 2026-08-18).
+//! Until 2026-09-25 step 1 went through slingshot, a cache nobody had prodded:
+//! it answered seconds after the PLC op and wrote the OLD handle for ~20–26% of
+//! handle changes (sampled), which nothing downstream ever corrected.
+//!
+//! A handle that does not verify gets one delayed retry (a fresh custom domain
+//! can lag its DNS), then the DID and pds are written without it. A resolution
+//! failure never drops the DID: we still POST the bare DID so the row exists,
+//! because the handle-enrichment drain retries `WHERE handle = ''` and can only
+//! see rows. Dropping it made birdlover.selfhosted.social invisible (2026-08-18).
 
 const std = @import("std");
 const Io = std.Io;
@@ -25,7 +33,8 @@ const poolio = @import("poolio");
 
 const log = std.log.scoped(.identity);
 
-const SLINGSHOT_URL = "https://slingshot.microcosm.blue/xrpc/blue.microcosm.identity.resolveMiniDoc";
+/// How long an unverified handle waits before its one retry.
+pub const RETRY_DELAY_SECS: i64 = 60;
 
 /// Inline DID storage — no allocation, fits the longest realistic DID.
 /// PLC DIDs are ~32 chars; web DIDs can be longer. 96 covers everything we'll see.
@@ -48,11 +57,60 @@ pub const Did = struct {
     }
 };
 
+pub const Job = struct {
+    did: Did,
+    retried: bool = false,
+};
+
+/// Outcome counters, served on the ingester's /health.
+pub const Stats = struct {
+    verified: std.atomic.Value(u64) = .init(0),
+    unverified: std.atomic.Value(u64) = .init(0),
+    no_handle: std.atomic.Value(u64) = .init(0),
+    did_failed: std.atomic.Value(u64) = .init(0),
+    retried: std.atomic.Value(u64) = .init(0),
+    post_failed: std.atomic.Value(u64) = .init(0),
+};
+pub var stats: Stats = .{};
+
+/// What we learned about a DID, before deciding what to write.
+pub const Lookup = struct {
+    /// first alsoKnownAs entry with valid handle syntax, lowercased
+    handle: ?[]const u8 = null,
+    pds: ?[]const u8 = null,
+    /// true iff `handle` resolved back to this DID
+    verified: bool = false,
+};
+
+pub const Decision = struct {
+    event: ingest.ActorEvent,
+    retry: bool,
+};
+
+/// What to record for a DID, given its DID-doc lookup (null = the DID
+/// document could not be fetched) and whether this is already the retry.
+///
+/// Split out from `process` so the rules are testable without HTTP:
+///   - a verified handle is written, replacing whatever the row had
+///   - an unverified handle is never written; first time round we retry
+///   - the DID (and any pds) is always recorded
+pub fn decide(did: []const u8, lookup: ?Lookup, retried: bool) Decision {
+    const l = lookup orelse return .{ .event = .{ .did = did }, .retry = false };
+    if (l.handle != null and l.verified) {
+        return .{ .event = .{ .did = did, .handle = l.handle, .pds = l.pds }, .retry = false };
+    }
+    return .{
+        .event = .{ .did = did, .pds = l.pds },
+        .retry = l.handle != null and !retried,
+    };
+}
+
 pub const Resolver = struct {
     allocator: Allocator,
     io: Io,
     worker_url: []const u8,
     worker_secret: []const u8,
+    retry_pool: ?*RetryPool = null,
 
     pub fn init(
         allocator: Allocator,
@@ -70,95 +128,76 @@ pub const Resolver = struct {
 
     pub fn deinit(_: *Resolver) void {}
 
-    /// poolio process function — called per dequeued Did.
-    /// Signature matches poolio.Pool(Did, Resolver).ProcessFn.
-    pub fn process(self: *Resolver, io: Io, did: Did) void {
+    /// poolio process function — called per dequeued Job.
+    pub fn process(self: *Resolver, io: Io, job: Job) void {
         _ = io;
-        const did_slice = did.slice();
+        const did_slice = job.did.slice();
 
-        // Pool workers share Resolver as their context. std.http.Client is not
-        // safe to use concurrently, so each worker invocation owns its client.
-        // Identity resolution is only two requests and they target different
-        // hosts, making cross-request keep-alive useless here anyway.
-        var transport = HttpTransport.init(self.io, self.allocator);
-        transport.keep_alive = false;
-        defer transport.deinit();
+        var arena = std.heap.ArenaAllocator.init(self.allocator);
+        defer arena.deinit();
 
-        const maybe = self.resolveSlingshot(&transport, did_slice) catch |err| blk: {
-            log.warn("slingshot {s}: {s}", .{ did_slice, @errorName(err) });
+        const lookup = self.fetchLookup(arena.allocator(), did_slice) catch |err| blk: {
+            log.warn("resolve {s}: {s}", .{ did_slice, @errorName(err) });
+            _ = stats.did_failed.fetchAdd(1, .monotonic);
             break :blk null;
         };
 
-        // An unresolvable handle must not drop the DID. enrichIdentity's retry
-        // drain selects `WHERE handle = ''`, so it can only retry a row that
-        // already exists — a DID dropped here is invisible forever, leaving only
-        // a log line to say it was ever seen. Recording the bare DID is what makes
-        // that cron the safety net this file's header claims it is.
-        defer if (maybe) |r| {
-            self.allocator.free(r.handle);
-            if (r.pds) |pds| self.allocator.free(pds);
-        };
+        const d = decide(did_slice, lookup, job.retried);
+        if (lookup) |l| {
+            if (l.handle == null) {
+                _ = stats.no_handle.fetchAdd(1, .monotonic);
+            } else if (l.verified) {
+                _ = stats.verified.fetchAdd(1, .monotonic);
+            } else if (!d.retry) {
+                _ = stats.unverified.fetchAdd(1, .monotonic);
+                log.info("handle unverified after retry {s}: {s}", .{ did_slice, l.handle.? });
+            }
+        }
+        if (d.retry) {
+            if (self.retry_pool) |rp| {
+                const queued = rp.offer(self.io, .{
+                    .job = .{ .did = job.did, .retried = true },
+                    .due = ingest.timestamp() + RETRY_DELAY_SECS,
+                });
+                if (queued) _ = stats.retried.fetchAdd(1, .monotonic);
+            }
+        }
 
-        const event = eventFor(did_slice, maybe);
-        self.postIdentity(&transport, event) catch |err| {
+        // Pool workers share Resolver as their context. std.http.Client is not
+        // safe to use concurrently, so each worker invocation owns its client.
+        var transport = HttpTransport.init(self.io, self.allocator);
+        transport.keep_alive = false;
+        defer transport.deinit();
+        self.postIdentity(&transport, d.event) catch |err| {
+            _ = stats.post_failed.fetchAdd(1, .monotonic);
             log.warn("post identity {s}: {s}", .{ did_slice, @errorName(err) });
         };
     }
 
-    /// The row we record for a DID, given whatever slingshot could tell us.
-    ///
-    /// Split out from `process` so the "never drop the DID" rule is testable
-    /// without HTTP: an unresolvable or unvalidated handle still yields an event
-    /// carrying the DID, which `/admin/ingest` turns into a bare
-    /// `INSERT OR IGNORE INTO actors (did)`. That row lands in enrichIdentity's
-    /// `WHERE handle = ''` drain; without it the actor is never retried at all.
-    fn eventFor(did: []const u8, resolved: ?Resolved) ingest.ActorEvent {
-        const r = resolved orelse return .{ .did = did };
-        // atproto convention: failed validation surfaces as "handle.invalid".
-        // Keep the DID and any pds we learned; let the cron retry the handle.
-        if (mem.eql(u8, r.handle, "handle.invalid")) return .{ .did = did, .pds = r.pds };
-        return .{ .did = did, .handle = r.handle, .pds = r.pds };
-    }
+    /// Resolve the DID document from its authority and verify its handle.
+    /// Strings in the result are owned by `arena`.
+    fn fetchLookup(self: *Resolver, arena: Allocator, did_slice: []const u8) !Lookup {
+        const did = zat.Did.parse(did_slice) orelse return error.InvalidDid;
 
-    const Resolved = struct {
-        handle: []const u8, // owned, free with self.allocator
-        /// slingshot returns this in the same response the handle came from.
-        /// It used to be dropped on the floor, which left the enrichment cron
-        /// backfilling pds one DID at a time — 9.3M rows deep at 500/run.
-        pds: ?[]const u8 = null, // owned, free with self.allocator
-    };
+        var did_resolver = zat.DidResolver.initWithOptions(self.io, arena, .{ .keep_alive = false });
+        defer did_resolver.deinit();
+        var doc = try did_resolver.resolve(did);
+        defer doc.deinit();
 
-    fn resolveSlingshot(self: *Resolver, transport: *HttpTransport, did: []const u8) !?Resolved {
-        var url_buf: [512]u8 = undefined;
-        const url = try std.fmt.bufPrint(&url_buf, "{s}?identifier={s}", .{ SLINGSHOT_URL, did });
+        var out: Lookup = .{};
+        if (doc.pdsEndpoint()) |pds| out.pds = try arena.dupe(u8, pds);
+        const claimed = firstHandle(doc.handles) orelse return out;
+        out.handle = try std.ascii.allocLowerString(arena, claimed.str());
 
-        const result = try transport.fetch(.{
-            .url = url,
-            .extra_headers = &.{.{ .name = "user-agent", .value = "typeahead (zzstoatzz.io)" }},
-        });
-        defer self.allocator.free(result.body);
-
-        if (result.status != .ok) return null;
-
-        var parsed = json.parseFromSlice(json.Value, self.allocator, result.body, .{}) catch return null;
-        defer parsed.deinit();
-
-        if (parsed.value != .object) return null;
-        const handle_node = parsed.value.object.get("handle") orelse return null;
-        const handle_str = switch (handle_node) {
-            .string => |s| s,
-            else => return null,
+        var handle_resolver = zat.HandleResolver.init(self.io, arena);
+        handle_resolver.transport.keep_alive = false;
+        defer handle_resolver.deinit();
+        const resolved = handle_resolver.resolve(claimed) catch |err| {
+            log.debug("verify {s} -> {s}: {s}", .{ out.handle.?, did_slice, @errorName(err) });
+            return out;
         };
-        if (handle_str.len == 0) return null;
-
-        var pds_owned: ?[]const u8 = null;
-        if (parsed.value.object.get("pds")) |pds_node| {
-            if (pds_node == .string and pds_node.string.len > 0) {
-                pds_owned = try self.allocator.dupe(u8, pds_node.string);
-            }
-        }
-
-        return .{ .handle = try self.allocator.dupe(u8, handle_str), .pds = pds_owned };
+        out.verified = mem.eql(u8, resolved, did_slice);
+        return out;
     }
 
     fn postIdentity(self: *Resolver, transport: *HttpTransport, event: ingest.ActorEvent) !void {
@@ -194,37 +233,96 @@ pub const Resolver = struct {
     }
 };
 
-/// Convenience alias — the poolio instantiation used throughout the ingester.
-pub const Pool = poolio.Pool(Did, Resolver);
+/// The handle a DID document claims: its first alsoKnownAs entry that is
+/// valid handle syntax. zat strips `at://` but keeps other URI schemes, so
+/// those are skipped here by failing handle syntax.
+fn firstHandle(handles: []const []const u8) ?zat.Handle {
+    for (handles) |h| {
+        if (zat.Handle.parse(h)) |parsed| return parsed;
+    }
+    return null;
+}
+
+pub const Delayed = struct {
+    job: Job,
+    due: i64,
+};
+
+/// Holds unverified handles for RETRY_DELAY_SECS, then re-offers them to the
+/// resolver pool. Runs with one worker: every item gets the same delay, so the
+/// FIFO is already in due order and sleeping on the head is exact.
+pub const Retrier = struct {
+    pool: *Pool,
+
+    pub fn process(self: *Retrier, io: Io, item: Delayed) void {
+        const wait = item.due - ingest.timestamp();
+        if (wait > 0) io.sleep(Io.Duration.fromSeconds(wait), .awake) catch return;
+        _ = self.pool.offer(io, item.job);
+    }
+};
+
+/// Convenience aliases — the poolio instantiations used throughout the ingester.
+pub const Pool = poolio.Pool(Job, Resolver);
+pub const RetryPool = poolio.Pool(Delayed, Retrier);
 
 const testing = std.testing;
 
-test "eventFor: unresolvable handle still records the DID" {
-    // Regression: this returned nothing, so a DID whose handle could not be
-    // resolved never became a row — and enrichIdentity, which retries
+test "decide: an unreachable DID document still records the DID" {
+    // Regression: dropping here meant a DID whose identity could not be
+    // resolved never became a row — and the handle drain, which retries
     // `WHERE handle = ''`, only ever sees rows. birdlover.selfhosted.social sat
     // in the relay with a healthy repo and was absent from the corpus entirely.
-    const event = Resolver.eventFor("did:plc:iu2klrrbxplyyqgltk7sg5l3", null);
-    try testing.expectEqualStrings("did:plc:iu2klrrbxplyyqgltk7sg5l3", event.did);
-    try testing.expect(event.handle == null);
-    try testing.expect(event.pds == null);
+    const d = decide("did:plc:iu2klrrbxplyyqgltk7sg5l3", null, false);
+    try testing.expectEqualStrings("did:plc:iu2klrrbxplyyqgltk7sg5l3", d.event.did);
+    try testing.expect(d.event.handle == null);
+    try testing.expect(d.event.pds == null);
+    try testing.expect(!d.retry);
 }
 
-test "eventFor: handle.invalid records the DID and keeps the pds" {
-    const event = Resolver.eventFor("did:plc:abc", .{
-        .handle = "handle.invalid",
-        .pds = "https://selfhosted.social",
-    });
-    try testing.expectEqualStrings("did:plc:abc", event.did);
-    try testing.expect(event.handle == null);
-    try testing.expectEqualStrings("https://selfhosted.social", event.pds.?);
+test "decide: a verified handle change is written immediately" {
+    // Regression (2026-09-25): moltrust.bsky.social -> moltrust.ch was written
+    // back as the OLD handle because resolution went through a cache. The
+    // write must carry the handle the authority now claims and that verifies.
+    const d = decide("did:plc:bjrgfiemnynipuvv4h6md4qi", .{
+        .handle = "moltrust.ch",
+        .pds = "https://morel.us-east.host.bsky.network",
+        .verified = true,
+    }, false);
+    try testing.expectEqualStrings("moltrust.ch", d.event.handle.?);
+    try testing.expectEqualStrings("https://morel.us-east.host.bsky.network", d.event.pds.?);
+    try testing.expect(!d.retry);
 }
 
-test "eventFor: a resolved handle is passed through intact" {
-    const event = Resolver.eventFor("did:plc:abc", .{
-        .handle = "birdlover.waow.tech",
+test "decide: an unverified handle is not written and is retried once" {
+    const first = decide("did:plc:abc", .{
+        .handle = "new.example.com",
         .pds = "https://selfhosted.social",
-    });
-    try testing.expectEqualStrings("birdlover.waow.tech", event.handle.?);
-    try testing.expectEqualStrings("https://selfhosted.social", event.pds.?);
+        .verified = false,
+    }, false);
+    try testing.expect(first.event.handle == null);
+    try testing.expectEqualStrings("https://selfhosted.social", first.event.pds.?);
+    try testing.expect(first.retry);
+
+    const second = decide("did:plc:abc", .{
+        .handle = "new.example.com",
+        .pds = "https://selfhosted.social",
+        .verified = false,
+    }, true);
+    try testing.expect(second.event.handle == null);
+    try testing.expectEqualStrings("https://selfhosted.social", second.event.pds.?);
+    try testing.expect(!second.retry);
+}
+
+test "decide: a document without a handle records DID and pds, no retry" {
+    const d = decide("did:plc:abc", .{ .pds = "https://pds.example" }, false);
+    try testing.expect(d.event.handle == null);
+    try testing.expectEqualStrings("https://pds.example", d.event.pds.?);
+    try testing.expect(!d.retry);
+}
+
+test "firstHandle skips non-handle alsoKnownAs entries" {
+    const handles = [_][]const u8{ "https://example.com/profile", "alice.example.com" };
+    try testing.expectEqualStrings("alice.example.com", firstHandle(&handles).?.str());
+    const none = [_][]const u8{"https://example.com/profile"};
+    try testing.expect(firstHandle(&none) == null);
 }

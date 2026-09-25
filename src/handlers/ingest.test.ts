@@ -1,4 +1,5 @@
 import { test, expect } from "bun:test";
+import { Database, type SQLQueryBindings } from "bun:sqlite";
 import { handleIngest } from "./ingest";
 import type { Env, IngestEvent } from "../types";
 import type { SqlValue, Stmt, TursoDB } from "../db";
@@ -97,4 +98,63 @@ test("counts zero new when all actors already exist", async () => {
   // newActors === 0 → no counter write at all
   const counterWrite = calls.find((c) => /UPDATE counters SET value = value \+ \?1/.test(c.sql));
   expect(counterWrite).toBeUndefined();
+});
+
+// Runs handleIngest's real statements against SQLite, so the COALESCE rules are
+// exercised rather than pattern-matched. Only meta.changes is read back.
+function sqliteDb() {
+  const sqlite = new Database(":memory:");
+  sqlite.run(`CREATE TABLE actors (
+    did TEXT PRIMARY KEY, handle TEXT NOT NULL DEFAULT '', display_name TEXT DEFAULT '',
+    avatar_url TEXT DEFAULT '', pds TEXT DEFAULT '', description TEXT DEFAULT '',
+    banner_url TEXT DEFAULT '', updated_at INTEGER DEFAULT 0,
+    profile_checked_at INTEGER DEFAULT 0, last_activity_at INTEGER DEFAULT 0)`);
+  sqlite.run(`CREATE TABLE actor_deltas (bucket INTEGER PRIMARY KEY, actors_delta INTEGER DEFAULT 0,
+    handles_delta INTEGER DEFAULT 0, avatars_delta INTEGER DEFAULT 0)`);
+  sqlite.run(`CREATE TABLE counters (name TEXT PRIMARY KEY, value INTEGER)`);
+  const stmt = (sql: string): Stmt => {
+    let binds: SQLQueryBindings[] = [];
+    const s: Stmt = {
+      bind(...a) {
+        // SAFETY: SqlValue (libsql InValue) and bun's bindings agree on the
+        // primitives handleIngest binds here: strings.
+        binds = a as SQLQueryBindings[];
+        return s;
+      },
+      async all() { return { results: [] }; },
+      async first() { return null; },
+      async run() { return { meta: { changes: sqlite.prepare(sql).run(...binds).changes } }; },
+    };
+    return s;
+  };
+  const db: TursoDB = {
+    prepare: stmt,
+    async batch(stmts) {
+      const out = [];
+      for (const st of stmts) out.push({ results: [], meta: (await st.run()).meta });
+      return out;
+    },
+  };
+  const handleOf = (did: string) =>
+    sqlite.query<{ handle: string }, [string]>("SELECT handle FROM actors WHERE did = ?").get(did)?.handle;
+  return { db, handleOf };
+}
+
+test("a new handle for an existing actor replaces the old one; a bare DID keeps it", async () => {
+  // Regression (2026-09-25): handle changes on existing actors stayed stale.
+  // The ingester now posts the verified handle on every #identity; this pins
+  // that the worker's write actually replaces it rather than COALESCE-keeping.
+  const { db, handleOf } = sqliteDb();
+  const env = fakeEnv({ ADMIN_SECRET: "s3cret" });
+  const did = "did:plc:bjrgfiemnynipuvv4h6md4qi";
+
+  await handleIngest(mockReq([{ did, handle: "moltrust.bsky.social" }]), db, env, fakeCtx().ctx);
+  expect(handleOf(did)).toBe("moltrust.bsky.social");
+
+  const res = await handleIngest(mockReq([{ did, handle: "moltrust.ch" }]), db, env, fakeCtx().ctx);
+  expect(res.status).toBe(200);
+  expect(handleOf(did)).toBe("moltrust.ch");
+
+  await handleIngest(mockReq([{ did }]), db, env, fakeCtx().ctx);
+  expect(handleOf(did)).toBe("moltrust.ch");
 });

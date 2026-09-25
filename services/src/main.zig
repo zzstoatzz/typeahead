@@ -267,6 +267,11 @@ pub fn main() !void {
     var have_identity_pool = false;
     defer if (have_identity_pool) identity_pool.deinit();
 
+    var retrier: identity.Retrier = undefined;
+    var retry_pool: identity.RetryPool = undefined;
+    var have_retry_pool = false;
+    defer if (have_retry_pool) retry_pool.deinit();
+
     if (role == .ingester) {
         // Reading TYPEAHEAD_URL/TYPEAHEAD_SECRET here (not unconditionally at
         // top of main) so the search service can come up without them.
@@ -281,14 +286,14 @@ pub fn main() !void {
         transport.keep_alive = true;
         have_transport = true;
 
-        // identity resolution pool: #identity events omit the handle
-        // in practice, so we slingshot-resolve each one and POST to the worker.
+        // identity resolution pool: every #identity event is re-resolved from
+        // its DID authority and the handle verified; see identity.zig.
         resolver = identity.Resolver.init(allocator, io, config.worker_url, config.secret);
         have_resolver = true;
 
         identity_pool = identity.Pool.init(allocator, .{
             .queue_capacity = 4096,
-            .workers = 4,
+            .workers = 8,
             .ctx = &resolver,
             .process = identity.Resolver.process,
         }) catch |err| {
@@ -301,6 +306,23 @@ pub fn main() !void {
             log.err("identity pool start failed: {}", .{err});
             return err;
         };
+
+        retrier = .{ .pool = &identity_pool };
+        retry_pool = identity.RetryPool.init(allocator, .{
+            .queue_capacity = 1024,
+            .workers = 1,
+            .ctx = &retrier,
+            .process = identity.Retrier.process,
+        }) catch |err| {
+            log.err("identity retry pool init failed: {}", .{err});
+            return err;
+        };
+        have_retry_pool = true;
+        retry_pool.start(io) catch |err| {
+            log.err("identity retry pool start failed: {}", .{err});
+            return err;
+        };
+        resolver.retry_pool = &retry_pool;
 
         tasks.concurrent(io, firehoseThread, .{FirehoseArgs{
             .allocator = allocator,
@@ -358,12 +380,12 @@ pub fn main() !void {
             const path = if (std.mem.indexOfScalar(u8, target, '?')) |qi| target[0..qi] else target;
 
             if (std.mem.eql(u8, path, "/health")) {
-                var buf: [512]u8 = undefined;
+                var buf: [1024]u8 = undefined;
                 const body = if (id_pool_arg) |pool| blk: {
                     const ic = pool.counters(io);
                     break :blk std.fmt.bufPrint(&buf,
-                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
-                    , .{ ingest.getRssKB(), ic.accepted, ic.dropped, ic.processed, ic.queued, ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
+                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d},"verified":{d},"unverified":{d},"no_handle":{d},"did_failed":{d},"retried":{d},"post_failed":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
+                    , .{ ingest.getRssKB(), ic.accepted, ic.dropped, ic.processed, ic.queued, identity.stats.verified.load(.monotonic), identity.stats.unverified.load(.monotonic), identity.stats.no_handle.load(.monotonic), identity.stats.did_failed.load(.monotonic), identity.stats.retried.load(.monotonic), identity.stats.post_failed.load(.monotonic), ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
                 } else std.fmt.bufPrint(&buf,
                     \\{{"status":"ok","role":"ingester","rss_kb":{d}}}
                 , .{ingest.getRssKB()}) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
@@ -388,6 +410,7 @@ pub fn main() !void {
 
     log.info("SIGTERM received, draining tasks…", .{});
     tasks.cancel(io);
+    if (have_retry_pool) retry_pool.cancel(io);
     if (have_identity_pool) {
         log.info("draining identity resolver…", .{});
         identity_pool.shutdown(io);

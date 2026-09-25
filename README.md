@@ -40,7 +40,8 @@ flowchart LR
   (not Jetstream). Profile and activity events become batched actor updates.
   Failed writes retain their queues and apply backpressure; startup resumes
   from the persisted relay cursor. Identity events enter the protected discovery
-  queue, with asynchronous resolution as an optimization. Watchdog exits and
+  queue, and each one is re-resolved from its DID authority with the handle
+  verified both ways, so a handle change lands within seconds. Watchdog exits and
   panics terminate on a deadman that does not depend on telemetry flushing.
 - **Turso:** durable actor records, moderation overrides, and tombstones.
   Ingestion, enrichment, and request accounting share its writer.
@@ -54,7 +55,8 @@ flowchart LR
   hydrate profiles, and apply moderation. There is no separate full actor-table
   replica on the serving machine; the snapshot itself contains compact profiles.
 - **Maintenance:** Prefect jobs on heavypad handle identity and profile
-  enrichment, including weekly PLC processing. The hourly Worker cron handles
+  enrichment, including weekly PLC processing for rows with no handle yet
+  (they do not correct a stale handle; the ingester does). The hourly Worker cron handles
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
 The snapshot precomputes search candidates, but **the deployed overlay lookup

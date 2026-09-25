@@ -55,11 +55,37 @@ Resolving one DID per HTTP request does not work at corpus scale.
 1. **`getProfiles`, 25 per call** — enrichment phase 1. ~154 DIDs/s, ~96% hit
    rate, and it returns display name and avatar so it feeds phase 2 too. Sized
    against arrivals (~2,900 new accounts/hour), not against the backlog.
-2. **The ingester's slingshot pool** — resolves new DIDs from `#identity` events
-   and posts `pds` along with the handle.
+2. **The ingester's identity pool** — every `#identity` event, new DID or
+   existing (see below). Posts `pds` along with the handle.
 3. **`scripts/plc-identity-sync.py`** — bulk, authoritative, weekly. Covers the
    ~4% `getProfiles` cannot see (self-hosted PDSes) and is the only source of
-   `pds` in bulk.
+   `pds` in bulk. It selects `handle = '' OR pds = ''` only: it never corrects
+   a handle that is present but stale.
+
+## identity: handle changes are the live consumer's job
+
+`#identity` is a prod to invalidate cached identity, not data: per the sync
+spec it "does not … reliably indicate what the current state of the identity
+is", and the bsky relay omits the optional `handle` (21/21 events sampled
+2026-09-25). So for every `#identity` DID the ingester (`services/src/identity.zig`):
+
+1. fetches the DID document from its authority — `plc.directory/{did}` or the
+   `did:web` host — via `zat.DidResolver`, never from an identity cache;
+2. verifies the claimed handle resolves back to the DID (`.well-known/atproto-did`,
+   then DNS TXT) via `zat.HandleResolver`;
+3. posts `{did, handle, pds}` to `/admin/ingest`, which overwrites the row's
+   handle. An unverified handle is never written; it is retried once after 60 s
+   (a fresh custom domain can lag its DNS), then the DID and pds are written
+   without it. An unreachable DID document still records the bare DID.
+
+Outcome counters (`verified`, `unverified`, `no_handle`, `did_failed`,
+`retried`, `post_failed`, plus the pool's `dropped`) are on the ingester's
+`/health`.
+
+Until 2026-09-25 step 1 went through slingshot, an identity cache that nothing
+had prodded. It answered seconds after the PLC op with the old handle for
+~20–26% of handle changes (sampled 2026-09-22..24), and no later job rewrote a
+non-empty handle, so those rows stayed stale indefinitely.
 
 Every equality query on `actors.handle` needs `COLLATE NOCASE` or it scans the
 table. Keyset on `rowid`, not `did`.
