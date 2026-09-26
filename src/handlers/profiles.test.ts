@@ -57,6 +57,16 @@ test("profileView omits counts until the enrich path has seen the actor", () => 
   expect("postsCount" in v).toBe(false);
 });
 
+test("profileView keeps known counts while a re-check is queued", () => {
+  // Regression (2026-09-25): /admin/ingest resets profile_checked_at to 0 on
+  // every profile/identity event to queue a re-check, which hid zzstoatzz.io's
+  // stored counts for four days and failed smoke's followersCount check.
+  const v = profileView({ ...row, profile_checked_at: 0 });
+  expect(v.followersCount).toBe(2000);
+  expect(v.followsCount).toBe(500);
+  expect(v.postsCount).toBe(900);
+});
+
 test("profileView omits empty description and banner", () => {
   const v = profileView({ ...row, description: "", banner_url: "" });
   expect("description" in v).toBe(false);

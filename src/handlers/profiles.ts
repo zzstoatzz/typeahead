@@ -35,7 +35,12 @@ export function profileView(r: ProfileRow): ProfileView {
     if (fallback) view.avatarFallback = fallback;
   }
   if (r.banner_url) view.banner = bannerUrl(r.did, r.banner_url);
-  if (r.profile_checked_at > 0) {
+  // profile_checked_at = 0 also means "re-check requested": /admin/ingest resets
+  // it on every profile/identity event. Nonzero counts only ever come from the
+  // appview enrich path, so they mark an actor that path has already seen.
+  const countsKnown =
+    r.profile_checked_at > 0 || r.followers_count > 0 || r.follows_count > 0 || r.posts_count > 0;
+  if (countsKnown) {
     view.followersCount = r.followers_count;
     view.followsCount = r.follows_count;
     view.postsCount = r.posts_count;
