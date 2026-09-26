@@ -102,6 +102,16 @@ handles were written (compare-and-set), 1,139 unverified handles were left as
 they were. Afterwards 262/265 live sampled accounts matched the appview; the
 3 misses were handles that do not currently verify at all.
 
+A second run on 2026-09-26 (my-prefect-server 8abf9cc) applied the
+`handle.invalid` rule to the backlog: of 8,770 rows that differed from their
+DID document or stored `handle.invalid`, 2,029 got a verified handle back
+(mostly `handle.invalid` rows that verify again) and 1,133 whose claimed handle
+still failed after a 15-minute re-check were recorded as `handle.invalid`.
+Afterwards 0/200 sampled `handle.invalid` rows had a handle that verifies.
+A drift scan against the weekly PLC bundles alone over-reports staleness:
+accounts that changed handle after the bundle cutoff look wrong while being
+current; compare against the live DID document.
+
 Every equality query on `actors.handle` needs `COLLATE NOCASE` or it scans the
 table. Keyset on `rowid`, not `did`.
 
