@@ -267,10 +267,11 @@ pub fn main() !void {
     var have_identity_pool = false;
     defer if (have_identity_pool) identity_pool.deinit();
 
+    const retry_stages = identity.RETRY_DELAYS_SECS.len;
     var retrier: identity.Retrier = undefined;
-    var retry_pool: identity.RetryPool = undefined;
-    var have_retry_pool = false;
-    defer if (have_retry_pool) retry_pool.deinit();
+    var retry_pools: [retry_stages]identity.RetryPool = undefined;
+    var retry_pools_started: usize = 0;
+    defer for (retry_pools[0..retry_pools_started]) |*rp| rp.deinit();
 
     if (role == .ingester) {
         // Reading TYPEAHEAD_URL/TYPEAHEAD_SECRET here (not unconditionally at
@@ -308,21 +309,23 @@ pub fn main() !void {
         };
 
         retrier = .{ .pool = &identity_pool };
-        retry_pool = identity.RetryPool.init(allocator, .{
-            .queue_capacity = 1024,
-            .workers = 1,
-            .ctx = &retrier,
-            .process = identity.Retrier.process,
-        }) catch |err| {
-            log.err("identity retry pool init failed: {}", .{err});
-            return err;
-        };
-        have_retry_pool = true;
-        retry_pool.start(io) catch |err| {
-            log.err("identity retry pool start failed: {}", .{err});
-            return err;
-        };
-        resolver.retry_pool = &retry_pool;
+        for (&retry_pools, 0..) |*rp, stage| {
+            rp.* = identity.RetryPool.init(allocator, .{
+                .queue_capacity = 1024,
+                .workers = 1,
+                .ctx = &retrier,
+                .process = identity.Retrier.process,
+            }) catch |err| {
+                log.err("identity retry pool init failed: {}", .{err});
+                return err;
+            };
+            retry_pools_started += 1;
+            rp.start(io) catch |err| {
+                log.err("identity retry pool start failed: {}", .{err});
+                return err;
+            };
+            resolver.retry_pools[stage] = rp;
+        }
 
         tasks.concurrent(io, firehoseThread, .{FirehoseArgs{
             .allocator = allocator,
@@ -410,7 +413,7 @@ pub fn main() !void {
 
     log.info("SIGTERM received, draining tasks…", .{});
     tasks.cancel(io);
-    if (have_retry_pool) retry_pool.cancel(io);
+    for (retry_pools[0..retry_pools_started]) |*rp| rp.cancel(io);
     if (have_identity_pool) {
         log.info("draining identity resolver…", .{});
         identity_pool.shutdown(io);

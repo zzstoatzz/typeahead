@@ -15,8 +15,11 @@
 //! it answered seconds after the PLC op and wrote the OLD handle for ~20–26% of
 //! handle changes (sampled), which nothing downstream ever corrected.
 //!
-//! A handle that does not verify gets one delayed retry (a fresh custom domain
-//! can lag its DNS), then the DID and pds are written without it. A resolution
+//! A handle that does not verify is retried after 60 s and again after 15 min
+//! (a fresh domain can lag its DNS or well-known), then recorded as
+//! `handle.invalid` — the atproto convention the appview also serves — rather
+//! than keeping a previous handle that no longer resolves to this DID either.
+//! A failed POST to the worker is retried on the same schedule. A resolution
 //! failure never drops the DID: we still POST the bare DID so the row exists,
 //! because the handle-enrichment drain retries `WHERE handle = ''` and can only
 //! see rows. Dropping it made birdlover.selfhosted.social invisible (2026-08-18).
@@ -33,8 +36,11 @@ const poolio = @import("poolio");
 
 const log = std.log.scoped(.identity);
 
-/// How long an unverified handle waits before its one retry.
-pub const RETRY_DELAY_SECS: i64 = 60;
+/// Delay before each retry of an unverified handle (or a failed POST). Each
+/// stage has its own single-worker pool, so every queue has a uniform delay.
+pub const RETRY_DELAYS_SECS = [_]i64{ 60, 15 * 60 };
+
+pub const INVALID_HANDLE = "handle.invalid";
 
 /// Inline DID storage — no allocation, fits the longest realistic DID.
 /// PLC DIDs are ~32 chars; web DIDs can be longer. 96 covers everything we'll see.
@@ -59,7 +65,8 @@ pub const Did = struct {
 
 pub const Job = struct {
     did: Did,
-    retried: bool = false,
+    /// retries already spent; indexes RETRY_DELAYS_SECS for the next one
+    attempt: u8 = 0,
 };
 
 /// Outcome counters, served on the ingester's /health.
@@ -88,21 +95,23 @@ pub const Decision = struct {
 };
 
 /// What to record for a DID, given its DID-doc lookup (null = the DID
-/// document could not be fetched) and whether this is already the retry.
+/// document could not be fetched) and how many retries it has spent.
 ///
 /// Split out from `process` so the rules are testable without HTTP:
 ///   - a verified handle is written, replacing whatever the row had
-///   - an unverified handle is never written; first time round we retry
+///   - an unverified handle is retried while stages remain, writing only DID
+///     and pds meanwhile; once they are spent it is recorded as handle.invalid
 ///   - the DID (and any pds) is always recorded
-pub fn decide(did: []const u8, lookup: ?Lookup, retried: bool) Decision {
+pub fn decide(did: []const u8, lookup: ?Lookup, attempt: u8) Decision {
     const l = lookup orelse return .{ .event = .{ .did = did }, .retry = false };
-    if (l.handle != null and l.verified) {
+    if (l.handle == null) return .{ .event = .{ .did = did, .pds = l.pds }, .retry = false };
+    if (l.verified) {
         return .{ .event = .{ .did = did, .handle = l.handle, .pds = l.pds }, .retry = false };
     }
-    return .{
-        .event = .{ .did = did, .pds = l.pds },
-        .retry = l.handle != null and !retried,
-    };
+    if (attempt < RETRY_DELAYS_SECS.len) {
+        return .{ .event = .{ .did = did, .pds = l.pds }, .retry = true };
+    }
+    return .{ .event = .{ .did = did, .handle = INVALID_HANDLE, .pds = l.pds }, .retry = false };
 }
 
 pub const Resolver = struct {
@@ -110,7 +119,8 @@ pub const Resolver = struct {
     io: Io,
     worker_url: []const u8,
     worker_secret: []const u8,
-    retry_pool: ?*RetryPool = null,
+    /// one pool per RETRY_DELAYS_SECS stage, wired up by main
+    retry_pools: [RETRY_DELAYS_SECS.len]?*RetryPool = @splat(null),
 
     pub fn init(
         allocator: Allocator,
@@ -142,7 +152,7 @@ pub const Resolver = struct {
             break :blk null;
         };
 
-        const d = decide(did_slice, lookup, job.retried);
+        const d = decide(did_slice, lookup, job.attempt);
         if (lookup) |l| {
             if (l.handle == null) {
                 _ = stats.no_handle.fetchAdd(1, .monotonic);
@@ -150,18 +160,11 @@ pub const Resolver = struct {
                 _ = stats.verified.fetchAdd(1, .monotonic);
             } else if (!d.retry) {
                 _ = stats.unverified.fetchAdd(1, .monotonic);
-                log.info("handle unverified after retry {s}: {s}", .{ did_slice, l.handle.? });
+                log.info("handle unverified after retries {s}: {s}", .{ did_slice, l.handle.? });
             }
         }
-        if (d.retry) {
-            if (self.retry_pool) |rp| {
-                const queued = rp.offer(self.io, .{
-                    .job = .{ .did = job.did, .retried = true },
-                    .due = ingest.timestamp() + RETRY_DELAY_SECS,
-                });
-                if (queued) _ = stats.retried.fetchAdd(1, .monotonic);
-            }
-        }
+        var retry_scheduled = false;
+        if (d.retry) retry_scheduled = self.scheduleRetry(job);
 
         // Pool workers share Resolver as their context. std.http.Client is not
         // safe to use concurrently, so each worker invocation owns its client.
@@ -171,7 +174,21 @@ pub const Resolver = struct {
         self.postIdentity(&transport, d.event) catch |err| {
             _ = stats.post_failed.fetchAdd(1, .monotonic);
             log.warn("post identity {s}: {s}", .{ did_slice, @errorName(err) });
+            if (!retry_scheduled) _ = self.scheduleRetry(job);
         };
+    }
+
+    /// Queue `job` for its next retry stage; false once the stages are spent
+    /// or the stage's queue is full.
+    fn scheduleRetry(self: *Resolver, job: Job) bool {
+        if (job.attempt >= RETRY_DELAYS_SECS.len) return false;
+        const rp = self.retry_pools[job.attempt] orelse return false;
+        const queued = rp.offer(self.io, .{
+            .job = .{ .did = job.did, .attempt = job.attempt + 1 },
+            .due = ingest.timestamp() + RETRY_DELAYS_SECS[job.attempt],
+        });
+        if (queued) _ = stats.retried.fetchAdd(1, .monotonic);
+        return queued;
     }
 
     /// Resolve the DID document from its authority and verify its handle.
@@ -248,9 +265,10 @@ pub const Delayed = struct {
     due: i64,
 };
 
-/// Holds unverified handles for RETRY_DELAY_SECS, then re-offers them to the
-/// resolver pool. Runs with one worker: every item gets the same delay, so the
-/// FIFO is already in due order and sleeping on the head is exact.
+/// Holds a job until its due time, then re-offers it to the resolver pool.
+/// One pool per retry stage, each with one worker: every item in a pool has
+/// the same delay, so its FIFO is already in due order and sleeping on the
+/// head is exact.
 pub const Retrier = struct {
     pool: *Pool,
 
@@ -272,7 +290,7 @@ test "decide: an unreachable DID document still records the DID" {
     // resolved never became a row — and the handle drain, which retries
     // `WHERE handle = ''`, only ever sees rows. birdlover.selfhosted.social sat
     // in the relay with a healthy repo and was absent from the corpus entirely.
-    const d = decide("did:plc:iu2klrrbxplyyqgltk7sg5l3", null, false);
+    const d = decide("did:plc:iu2klrrbxplyyqgltk7sg5l3", null, 0);
     try testing.expectEqualStrings("did:plc:iu2klrrbxplyyqgltk7sg5l3", d.event.did);
     try testing.expect(d.event.handle == null);
     try testing.expect(d.event.pds == null);
@@ -287,34 +305,33 @@ test "decide: a verified handle change is written immediately" {
         .handle = "moltrust.ch",
         .pds = "https://morel.us-east.host.bsky.network",
         .verified = true,
-    }, false);
+    }, 0);
     try testing.expectEqualStrings("moltrust.ch", d.event.handle.?);
     try testing.expectEqualStrings("https://morel.us-east.host.bsky.network", d.event.pds.?);
     try testing.expect(!d.retry);
 }
 
-test "decide: an unverified handle is not written and is retried once" {
-    const first = decide("did:plc:abc", .{
-        .handle = "new.example.com",
-        .pds = "https://selfhosted.social",
-        .verified = false,
-    }, false);
-    try testing.expect(first.event.handle == null);
-    try testing.expectEqualStrings("https://selfhosted.social", first.event.pds.?);
-    try testing.expect(first.retry);
-
-    const second = decide("did:plc:abc", .{
-        .handle = "new.example.com",
-        .pds = "https://selfhosted.social",
-        .verified = false,
-    }, true);
-    try testing.expect(second.event.handle == null);
-    try testing.expectEqualStrings("https://selfhosted.social", second.event.pds.?);
-    try testing.expect(!second.retry);
+test "decide: an unverified handle is retried per stage, then recorded as handle.invalid" {
+    // Regression (2026-09-26): keeping the previous handle on a failed
+    // verification served a name that no longer resolves to the DID either;
+    // the appview serves handle.invalid. streetnewzvlogger.sprk.so failed its
+    // first check and verified minutes later, hence more than one stage.
+    const l: Lookup = .{ .handle = "new.example.com", .pds = "https://selfhosted.social", .verified = false };
+    var attempt: u8 = 0;
+    while (attempt < RETRY_DELAYS_SECS.len) : (attempt += 1) {
+        const d = decide("did:plc:abc", l, attempt);
+        try testing.expect(d.event.handle == null);
+        try testing.expectEqualStrings("https://selfhosted.social", d.event.pds.?);
+        try testing.expect(d.retry);
+    }
+    const last = decide("did:plc:abc", l, attempt);
+    try testing.expectEqualStrings(INVALID_HANDLE, last.event.handle.?);
+    try testing.expectEqualStrings("https://selfhosted.social", last.event.pds.?);
+    try testing.expect(!last.retry);
 }
 
 test "decide: a document without a handle records DID and pds, no retry" {
-    const d = decide("did:plc:abc", .{ .pds = "https://pds.example" }, false);
+    const d = decide("did:plc:abc", .{ .pds = "https://pds.example" }, 0);
     try testing.expect(d.event.handle == null);
     try testing.expectEqualStrings("https://pds.example", d.event.pds.?);
     try testing.expect(!d.retry);

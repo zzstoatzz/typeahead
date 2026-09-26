@@ -74,9 +74,16 @@ is", and the bsky relay omits the optional `handle` (21/21 events sampled
 2. verifies the claimed handle resolves back to the DID (`.well-known/atproto-did`,
    then DNS TXT) via `zat.HandleResolver`;
 3. posts `{did, handle, pds}` to `/admin/ingest`, which overwrites the row's
-   handle. An unverified handle is never written; it is retried once after 60 s
-   (a fresh custom domain can lag its DNS), then the DID and pds are written
-   without it. An unreachable DID document still records the bare DID.
+   handle. An unverified handle is retried after 60 s and again after 15 min
+   (a fresh domain can lag its DNS or well-known), writing only DID and pds
+   meanwhile; if it still fails it is recorded as `handle.invalid`, the atproto
+   convention the appview also serves, rather than keeping a previous handle
+   that no longer resolves to the DID either. A failed POST is retried on the
+   same schedule. An unreachable DID document still records the bare DID.
+
+`handle.invalid` rows recover when the handle verifies again: the next
+`#identity` event re-resolves them, and appview enrichment writes whatever
+handle the appview has verified.
 
 Outcome counters (`verified`, `unverified`, `no_handle`, `did_failed`,
 `retried`, `post_failed`, plus the pool's `dropped`) are on the ingester's
