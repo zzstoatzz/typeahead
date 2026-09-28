@@ -115,8 +115,9 @@ As of September 6, 2026:
   (11.16M prefix rows) and 108 concurrent-update comparisons. The ranking
   index is NOT installed in production: it adds 543 MiB and increases
   projection write work, and without it SQLite still visits and sorts every
-  matching prefix row before the bound applies. The canary machine is stopped
-  with its volume attached. See the [evaluation](docs/evals/bounded-overlay.md)
+  matching prefix row before the bound applies. The stopped canary machine and
+  its temporary 60 GB volume were deleted on 2026-09-28; evaluation evidence is preserved and the ranking-index experiment
+  remains deferred. See the [evaluation](docs/evals/bounded-overlay.md)
   and [canary limits and rollback](ops/canary/README.md).
 
 These are dated observations, not configuration sources. Fly role configs live in

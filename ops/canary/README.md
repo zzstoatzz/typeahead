@@ -1,5 +1,31 @@
 # Bounded-lookup shadow canary
 
+## Retired September 28, 2026
+
+Deleted stopped machine `7841145a543e78` and its temporary 60 GB volume
+`vol_vxmxpk7qgy070gn4` from `typeahead-canary`, removing approximately $9/month
+in provisioned-volume cost. Fly confirmed both deletions. The machine had been
+stopped since September 6; no public requests depended on it.
+
+The volume held a restored, frozen evaluation fixture and disposable write-test
+copies, not primary production data. Evaluation results, artifact hashes,
+comparator source and pilot reports remain committed in `docs/evals/` and
+`ops/canary/`. The exact on-volume fixture and runtime state were not archived.
+
+The bounded lookup shipped September 9. A September 28 read-only `bs` probe
+confirmed `overlay_bounded: true`, 59 returned `d:bs` overlay rows, and a
+follow-up HTTP 200 response in approximately 95 ms including network time.
+This is a spot check, not a latency benchmark. The separate ranking-index
+experiment remains deferred: sustained sync/write cost and memory headroom
+still need validation before promotion.
+
+The instructions and resource IDs below are historical. Resuming the experiment
+requires provisioning a new isolated fixture and machine with new expiry and
+admission limits; the old start/proxy instructions are not directly runnable.
+The empty Fly app was retained.
+
+## Historical pilot
+
 September 6, 2026 UTC: the deployed shadow pilot completed successfully.
 Admission is paused and its machine is stopped. Public search and ingestion
 deployments are unchanged. No candidate answers have been served to users.
