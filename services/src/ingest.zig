@@ -540,6 +540,19 @@ const WorkerWriter = struct {
 
 // -- HTTP client functions (worker API) --
 
+/// Every write to the worker is a JSON POST. The transport refuses a payload
+/// that names no content type (error.MissingContentType) instead of guessing
+/// one, so all three writers build their request here.
+pub fn workerPost(url: []const u8, payload: []const u8, auth: []const u8) HttpTransport.FetchOptions {
+    return .{
+        .url = url,
+        .method = .POST,
+        .payload = payload,
+        .content_type = "application/json",
+        .authorization = auth,
+    };
+}
+
 fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEvent, cursor: i64) bool {
     var output: std.Io.Writer.Allocating = .init(transport.allocator);
     defer output.deinit();
@@ -556,12 +569,7 @@ fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEve
     var auth_buf: [256]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
 
-    const result = transport.fetch(.{
-        .url = url,
-        .method = .POST,
-        .payload = output.written(),
-        .authorization = auth,
-    }) catch |err| {
+    const result = transport.fetch(workerPost(url, output.written(), auth)) catch |err| {
         log.err("worker write transport failed: {s}", .{@errorName(err)});
         return false;
     };
@@ -587,12 +595,7 @@ fn deleteActors(transport: *HttpTransport, config: Config, dids: []const []const
     var auth_buf: [256]u8 = undefined;
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{config.secret}) catch return false;
 
-    const result = transport.fetch(.{
-        .url = url,
-        .method = .POST,
-        .payload = output.written(),
-        .authorization = auth,
-    }) catch |err| {
+    const result = transport.fetch(workerPost(url, output.written(), auth)) catch |err| {
         log.err("worker write transport failed: {s}", .{@errorName(err)});
         return false;
     };
@@ -980,4 +983,14 @@ test "identity with a handle queues exactly one hinted event" {
 
 test {
     _ = fatal;
+}
+
+test "workerPost: the transport accepts the request it builds" {
+    var transport = HttpTransport.init(std.Options.debug_io, std.testing.allocator);
+    defer transport.deinit();
+    // nothing listens on port 1: getting as far as the connect is the point.
+    if (transport.fetch(workerPost("http://127.0.0.1:1/admin/ingest", "{}", "Bearer x"))) |result| {
+        std.testing.allocator.free(result.body);
+        return error.TestUnexpectedResult;
+    } else |err| try std.testing.expect(err != error.MissingContentType);
 }

@@ -235,12 +235,7 @@ pub const Resolver = struct {
         var auth_buf: [256]u8 = undefined;
         const auth = try std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.worker_secret});
 
-        const result = try transport.fetch(.{
-            .url = url,
-            .method = .POST,
-            .payload = output.written(),
-            .authorization = auth,
-        });
+        const result = try transport.fetch(ingest.workerPost(url, output.written(), auth));
         defer self.allocator.free(result.body);
 
         if (result.status != .ok) {
