@@ -14,6 +14,7 @@ const promote_runner = @import("index/promote_runner.zig");
 const index_search = @import("index/index_search.zig");
 const index_schema = @import("index/schema.zig");
 const sync = @import("db/sync.zig");
+const http_guard = @import("http_guard.zig");
 
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     const v = std.c.getenv(name) orelse return null;
@@ -42,6 +43,7 @@ pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_
             }
             return;
         };
+        if (http_guard.rejectUnframedBody(&request)) return;
 
         handleRequest(&request, local_db, identity_pool) catch |err| {
             log.err("request error: {}", .{err});

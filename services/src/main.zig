@@ -10,6 +10,7 @@ const TursoClient = @import("db/TursoClient.zig");
 const sync = @import("db/sync.zig");
 const turso_schema = @import("db/turso_schema.zig");
 const server = @import("server.zig");
+const http_guard = @import("http_guard.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 const index_builder = @import("index/builder.zig");
@@ -378,6 +379,10 @@ pub fn main() !void {
                 stream.close(io);
                 continue;
             };
+            if (http_guard.rejectUnframedBody(&request)) {
+                stream.close(io);
+                continue;
+            }
 
             const target = request.head.target;
             const path = if (std.mem.indexOfScalar(u8, target, '?')) |qi| target[0..qi] else target;
