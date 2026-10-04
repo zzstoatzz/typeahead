@@ -174,7 +174,7 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
     try promote.verifyFile(part, m.byte_size, m.sha256);
 
     // 6. open read-only, validate schema/versions/floors, then sentinel-smoke.
-    const part_z = try arena.dupeZ(u8, part);
+    const part_z = try arena.dupeSentinel(u8, part, 0);
     {
         const snap = try promote.openSnapshotReadOnly(part_z);
         defer snap.close();
@@ -200,7 +200,7 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
 fn adoptIfPresent(arena: Allocator, db: *LocalDb, idx_dir: []const u8, m: promote.Manifest) !bool {
     for ([_][]const u8{ SLOT_A, SLOT_B }) |slot| {
         const path = try std.fmt.allocPrint(arena, "{s}/{s}", .{ idx_dir, slot });
-        const path_z = try arena.dupeZ(u8, path);
+        const path_z = try arena.dupeSentinel(u8, path, 0);
         const snap = promote.openSnapshotReadOnly(path_z) catch continue; // missing/unreadable → skip
         var adopt = false;
         {

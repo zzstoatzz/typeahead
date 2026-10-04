@@ -10,9 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # prefer IPv4 — tangled.org has flaky IPv6 that truncates tarball fetches
     && echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
 
-# install zig 0.16.0 (stable)
-RUN curl -L https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz | tar -xJ -C /usr/local \
-    && ln -s /usr/local/zig-x86_64-linux-0.16.0/zig /usr/local/bin/zig
+# install zig 0.17.0 (stable)
+RUN curl -L https://ziglang.org/download/0.17.0/zig-x86_64-linux-0.17.0.tar.xz | tar -xJ -C /usr/local \
+    && ln -s /usr/local/zig-x86_64-linux-0.17.0/zig /usr/local/bin/zig
 
 # rclone (pinned) for R2 transport — handles multipart upload (>5GiB) +
 # streaming download + retries. Used by the indexer (upload) and search service

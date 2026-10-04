@@ -42,7 +42,7 @@ pub const Namespace = enum(u8) {
 /// Render a namespace + text into a freshly-allocated key string
 /// "<ns>:<text>". Caller owns the result (arena-typical).
 pub fn formatKey(arena: Allocator, ns: Namespace, text: []const u8) ![]const u8 {
-    return std.fmt.allocPrint(arena, "{c}:{s}", .{ @intFromEnum(ns), text });
+    return std.fmt.allocPrint(arena, "{c}:{s}", .{ @backingInt(ns), text });
 }
 
 /// Derive every `h:` prefix key for a normalized handle. Returns a slice

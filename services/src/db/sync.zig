@@ -426,7 +426,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
 /// handed to us over HTTP. No second projection implementation to drift.
 pub const InlineRow = struct {
     vals: [14][]const u8,
-    ints: [5]i64 = .{0} ** 5,
+    ints: [5]i64 = @splat(0),
     qs: f64 = 0,
 
     pub fn text(self: *const InlineRow, i: usize) []const u8 {

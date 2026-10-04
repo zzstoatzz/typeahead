@@ -2,27 +2,27 @@
     .name = .typeahead_ingester,
     .version = "0.0.1",
     .fingerprint = 0xc3959a06c9697d7c,
-    .minimum_zig_version = "0.16.0",
+    .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .zat = .{
-            .url = "https://tangled.org/zat.dev/zat/archive/v0.4.0.tar.gz",
-            .hash = "zat-0.4.0-5PuC7iFkDAD8OoBB-bDlexUoSI24rveRWfINE90Oxebs",
+            .url = "https://tangled.org/zat.dev/zat/archive/v0.6.0-alpha.3.tar.gz",
+            .hash = "zat-0.6.0-alpha.3-5PuC7knODAA5k6O9uVehwqDLQqwFufPmZQu3974opa_0",
         },
         .zqlite = .{
-            .url = "https://github.com/karlseguin/zqlite.zig/archive/a9c1cd3657315306856ddf4a8a28a11b10fd5a9d.tar.gz",
-            .hash = "zqlite-0.0.1-RWLaYyc7nABTzVzEpEMPi3qD8xJHi0a2ycNgL73XyEdt",
+            .url = "https://tangled.org/zzstoatzz.io/zqlite.zig/archive/f095cf2589640e9722ca8aee0daead2928a7dcac.tar.gz",
+            .hash = "zqlite-0.0.1-RWLaY-k8nADr-cpp3VIySOX2zAUPxlU3qF1kQ2T3zG23",
         },
         .logfire = .{
-            .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/v0.3.2.tar.gz",
-            .hash = "logfire_zig-0.3.2-x2yDLq3UAAAGdxfAiLaX5Ep3krjY4xC1Rm-bI1VHWcg1",
+            .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/6501065cd8102203e20b0060eab4c64929f97870.tar.gz",
+            .hash = "logfire_zig-0.3.2-x2yDLrfUAADZ4JHvkP92-0sV-ILBtiRx4_D37Wx-4ODE",
         },
         .zug = .{
-            .url = "https://tangled.org/zzstoatzz.io/zug/archive/v0.1.2-alpha.0.tar.gz",
-            .hash = "zug-0.1.2-alpha.0-h4vXbauvAAA2iBb7fFmNoqDr0SPX-98pP99OEkMHS1j9",
+            .url = "https://tangled.org/zzstoatzz.io/zug/archive/3ecbffd27a0ebebc26e56a124b4d36a8d003c7dd.tar.gz",
+            .hash = "zug-0.1.2-alpha.0-h4vXbSewAADWsV2FBFfKVjl6o3pCh20umu-wDLaDPVsj",
         },
         .poolio = .{
-            .url = "https://tangled.org/zzstoatzz.io/poolio/archive/v0.0.1-alpha.1.tar.gz",
-            .hash = "poolio-0.0.1-alpha.1-qYctK2JcAADiWqRISK92yk_GjGTVYeBEUGMrE4QtJE0N",
+            .url = "https://tangled.org/zzstoatzz.io/poolio/archive/ed65c24a3b8a6eb7b2070314c8cf04cb96ec300b.tar.gz",
+            .hash = "poolio-0.0.1-alpha.2-qYctK9tlAACCRGbHlKbpHlix6vJTn5n_-UAIlZZeUTqB",
         },
     },
     .paths = .{

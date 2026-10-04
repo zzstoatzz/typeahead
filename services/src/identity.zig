@@ -244,7 +244,7 @@ pub const Resolver = struct {
         defer self.allocator.free(result.body);
 
         if (result.status != .ok) {
-            log.warn("post identity HTTP {d}: {s}", .{ @intFromEnum(result.status), result.body });
+            log.warn("post identity HTTP {d}: {s}", .{ @backingInt(result.status), result.body });
             return error.HttpError;
         }
     }

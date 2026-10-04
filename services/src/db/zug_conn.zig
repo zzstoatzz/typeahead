@@ -32,20 +32,20 @@ pub const MigrationConn = struct {
 
     pub fn exec(self: *MigrationConn, sql: []const u8, args: anytype) !void {
         const Args = @TypeOf(args);
-        const fields = @typeInfo(Args).@"struct".fields;
-        var values: [fields.len]TursoClient.RuntimeValue = undefined;
-        inline for (fields, 0..) |f, i| {
-            values[i] = toRuntimeValue(@field(args, f.name));
+        const names = @typeInfo(Args).@"struct".field_names;
+        var values: [names.len]TursoClient.RuntimeValue = undefined;
+        inline for (names, 0..) |name, i| {
+            values[i] = toRuntimeValue(@field(args, name));
         }
         try self.client.execRuntime(sql, &values);
     }
 
     pub fn rows(self: *MigrationConn, sql: []const u8, args: anytype) !Rows {
         const Args = @TypeOf(args);
-        const fields = @typeInfo(Args).@"struct".fields;
-        var values: [fields.len]TursoClient.RuntimeValue = undefined;
-        inline for (fields, 0..) |f, i| {
-            values[i] = toRuntimeValue(@field(args, f.name));
+        const names = @typeInfo(Args).@"struct".field_names;
+        var values: [names.len]TursoClient.RuntimeValue = undefined;
+        inline for (names, 0..) |name, i| {
+            values[i] = toRuntimeValue(@field(args, name));
         }
         const result = try self.client.queryRuntime(sql, &values);
         return Rows{ .result = result, .index = 0 };

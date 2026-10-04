@@ -135,7 +135,10 @@ fn handleAdminRefresh(request: *http.Server.Request, target: []const u8, local_d
     const str = struct {
         fn get(o: json.ObjectMap, key: []const u8, dflt: []const u8) []const u8 {
             const v = o.get(key) orelse return dflt;
-            return switch (v) { .string => |x| x, else => dflt };
+            return switch (v) {
+                .string => |x| x,
+                else => dflt,
+            };
         }
     }.get;
     const num = struct {
@@ -168,20 +171,25 @@ fn handleAdminRefresh(request: *http.Server.Request, target: []const u8, local_d
         return;
     }
 
-    var row = sync.InlineRow{ .vals = .{
-        did, handle,
-        str(obj, "display_name", ""),
-        str(obj, "avatar_url", ""),
-        "", // hidden — read via int()
-        str(obj, "labels", "[]"),
-        str(obj, "created_at", ""),
-        str(obj, "associated", "{}"),
-        str(obj, "pds", ""),
-        "", "", "", "", "",
-    } };
+    var row = sync.InlineRow{
+        .vals = .{
+            did,                          handle,
+            str(obj, "display_name", ""), str(obj, "avatar_url", ""),
+            "", // hidden — read via int()
+            str(obj, "labels", "[]"),
+            str(obj, "created_at", ""),
+            str(obj, "associated", "{}"),
+            str(obj, "pds", ""),
+            "",
+            "",
+            "",
+            "",
+            "",
+        },
+    };
     row.ints = .{
-        num(obj, "hidden"),          num(obj, "followers_count"),
-        num(obj, "follows_count"),   num(obj, "posts_count"),
+        num(obj, "hidden"),           num(obj, "followers_count"),
+        num(obj, "follows_count"),    num(obj, "posts_count"),
         num(obj, "last_activity_at"),
     };
     row.qs = flt(obj, "quality_score");
@@ -469,4 +477,3 @@ fn handleDebugIndex(request: *http.Server.Request, target: []const u8, local_db:
     };
     try sendJson(request, .ok, out.written());
 }
-

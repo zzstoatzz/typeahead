@@ -568,7 +568,7 @@ fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEve
     defer transport.allocator.free(result.body);
 
     if (result.status != .ok) {
-        log.err("ingest HTTP {d}: {s}", .{ @intFromEnum(result.status), result.body });
+        log.err("ingest HTTP {d}: {s}", .{ @backingInt(result.status), result.body });
     }
 
     return result.status == .ok;

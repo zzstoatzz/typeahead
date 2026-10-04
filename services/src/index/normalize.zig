@@ -425,7 +425,7 @@ test "output capped at MAX_OUTPUT" {
     @memset(&long_input, 'a');
     const got = try query(arena.allocator(), &long_input);
     try testing.expect(got.len <= MAX_OUTPUT);
-    try testing.expectEqualSlices(u8, got, ("a" ** MAX_OUTPUT)[0..MAX_OUTPUT]);
+    try testing.expectEqualSlices(u8, got, &@as([MAX_OUTPUT]u8, @splat('a')));
 }
 
 test "idempotence: query(query(x)) == query(x)" {
