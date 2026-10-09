@@ -121,10 +121,21 @@ format before attempting the sidecar. The two isolated test objects and private
 transport configuration were removed after the drill.
 
 The separate eight-client compatibility campaign stopped at trial 6 when the
-**deployed baseline** segfaulted. Its trace enters the old fatal watchdog's
-recursive failure path; the triggering panic is not established. No CPU throttling
-occurred. This failed campaign is retained and does not qualify legacy-path
-latency. The compact-versus-SQLite campaign remains independent.
+**deployed baseline** segfaulted. Debugging established the triggering race: its
+global query-sanitization buffer was overwritten by another request during UTF-8
+decoding. The candidate already uses caller-owned buffers. Its focused check
+passed 1,000 responses across 32 clients, including 110 requests on the inline
+execution path. No CPU throttling occurred. The failed baseline campaign remains
+retained and does not qualify legacy-path latency.
+
+The 60-round mapped warm run completed on October 9. Four primary phases passed:
+restart, hot, broad, and mixed reads. Eight-client p95 remained inconclusive:
+median paired compact/legacy ratio 0.9603, upper one-sided 95% bound 1.0037
+against the required maximum 1.0. No secondary metric showed a demonstrated
+regression. This is a failed qualification gate, not production acceptance.
+The result is retained as `release-normal-pool8-mapped/gate.json` on HeavyPad;
+its input SHA-256 is
+`74b3fae4c50f6e5e602830d5ab683310e5162963ddc2fc53021ef457141e6751`.
 
 ## Scope and release structure
 
