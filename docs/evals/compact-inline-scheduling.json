@@ -432,5 +432,36 @@
   "native_client_diagnostic": {
     "evidence": "/Users/nate/.local/share/typeahead-experiments/release-qualification-20261008/inline-close-native-client.json",
     "conclusion": "Native client lowered absolute tails for both formats but did not establish compact non-regression; no failed gate was discarded."
+  },
+  "full_corpus_correctness": {
+    "passed": true,
+    "results": {
+      "baseline": {
+        "initial_responses": 8000,
+        "transition_responses": 935,
+        "concurrent_responses": 850,
+        "binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91",
+        "usage": {
+          "forced_shutdown": false,
+          "cpu_seconds": 8.778020999999999,
+          "peak_rss_bytes": 893636608,
+          "startup_ms": 5436.175246002676,
+          "overlay_bytes": 679936
+        }
+      },
+      "compact": {
+        "initial_responses": 8000,
+        "transition_responses": 935,
+        "concurrent_responses": 850,
+        "binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91",
+        "usage": {
+          "forced_shutdown": false,
+          "cpu_seconds": 43.120636000000005,
+          "peak_rss_bytes": 58617856,
+          "startup_ms": 205455.10726900102,
+          "overlay_bytes": 679936
+        }
+      }
+    }
   }
 }
