@@ -217,6 +217,24 @@ assume the current incremental cursor provides that history. If neither is
 available, use the same-watermark twin or rebuild a current legacy snapshot.
 The rollback drill must exercise this distinction explicitly.
 
+## Public XRPC compatibility
+
+Compaction is an internal storage change. Keep the existing lexicon, parameters,
+limits, actor fields, ranking, CORS, and error behavior. Both
+`tech.waow.typeahead.searchActors` and its
+`app.bsky.actor.searchActorsTypeahead` alias must remain byte-identical.
+No codec selector, artifact identity, or PDS-scoping parameter belongs in this
+rollout. PDS-scoped search requires a separate API design decision.
+
+Qualification must traverse the actual Worker handler against each isolated
+backend format. Compare cold and cached answers, reversing which alias is called
+first and using fresh local cache state so alias sharing cannot hide a backend
+mismatch. Include missing/empty queries, Unicode, exact handles, limits at and
+outside the supported boundaries, CORS, and backend-unavailable behavior. This
+complements engine differential tests; passing `/search` alone does not establish
+the public XRPC contract. Local testing must disable production database access,
+fallbacks, emergency proxying, and remote resource bindings.
+
 ## Qualification gates
 
 Before any production pointer changes:
