@@ -14,6 +14,7 @@ const log = std.log.scoped(.local_db);
 
 const LocalDb = @This();
 const FlatMap = @import("../index/flat_prefix.zig").Map;
+const FlatCache = @import("../index/flat_prefix.zig").Cache;
 
 /// One read connection per HTTP worker thread is wrong (deadlocks under
 /// concurrent /search) and a single shared one is also wrong (zqlite.Conn
@@ -41,6 +42,7 @@ conn: ?zqlite.Conn = null,
 read_conns: []?zqlite.Conn = &.{},
 prefix_map: ?FlatMap = null,
 read_slot_mu: []std.Io.Mutex = &.{},
+read_caches: []FlatCache = &.{},
 read_rr: std.atomic.Value(usize) = std.atomic.Value(usize).init(0),
 read_wait_budget_ms: u64 = READ_WAIT_DEFAULT_MS,
 
@@ -160,6 +162,8 @@ pub fn deinit(self: *LocalDb) void {
     if (self.read_conns.len > 0) {
         self.allocator.free(self.read_conns);
         self.allocator.free(self.read_slot_mu);
+        self.allocator.free(self.read_caches);
+        self.read_caches = &.{};
         self.read_conns = &.{};
         self.read_slot_mu = &.{};
     }
@@ -188,12 +192,14 @@ fn openReadPool(self: *LocalDb, path: [*:0]const u8) !void {
         const size = envUsize("READ_POOL_SIZE", READ_POOL_DEFAULT_SIZE, 1, 64);
         self.read_conns = try self.allocator.alloc(?zqlite.Conn, size);
         @memset(self.read_conns, null);
+        self.read_caches = try self.allocator.alloc(FlatCache, size);
         self.read_slot_mu = try self.allocator.alloc(std.Io.Mutex, size);
         for (self.read_slot_mu) |*mu| mu.* = std.Io.Mutex.init;
         self.read_wait_budget_ms = envU64("READ_POOL_WAIT_MS", READ_WAIT_DEFAULT_MS, 0, 5000);
         log.info("read pool: size={d} wait_budget_ms={d}", .{ size, self.read_wait_budget_ms });
     }
 
+    for (self.read_caches) |*cache| cache.clear();
     for (self.read_conns, 0..) |*slot, i| {
         slot.* = zqlite.open(path, zqlite.OpenFlags.ReadOnly) catch |err| {
             log.err("failed to open read pool conn {d}: {}", .{ i, err });
@@ -400,6 +406,7 @@ pub fn activateSnapshot(self: *LocalDb, prepared: *PreparedSnapshot) void {
     for (self.read_conns, prepared.conns) |*live, *next| std.mem.swap(?zqlite.Conn, live, next);
     std.mem.swap(?zqlite.Conn, &self.meta_conn, &prepared.meta);
     std.mem.swap(?FlatMap, &self.prefix_map, &prepared.map);
+    for (self.read_caches) |*cache| cache.clear();
     const old = self.snapshot_path;
     self.snapshot_path = prepared.path;
     prepared.path = old orelse "";
@@ -636,6 +643,7 @@ pub const ReadLease = struct {
     slot: usize,
     conn: zqlite.Conn,
     prefix_map: ?FlatMap = null,
+    prefix_cache: ?*FlatCache = null,
 
     pub fn release(self: ReadLease) void {
         self.db.read_slot_mu[self.slot].unlock(io);
@@ -650,7 +658,7 @@ pub const ReadLease = struct {
     }
 
     pub fn baseActor(self: ReadLease, arena: Allocator, did: []const u8) !?[]const u8 {
-        if (self.prefix_map) |map| return map.findTagged(arena, .actor, did);
+        if (self.prefix_map) |map| return map.findTaggedCached(arena, .actor, did, self.prefix_cache);
         var rows = try self.query("SELECT blob FROM idx.actor_compact_base WHERE did = ?", .{did});
         defer rows.deinit();
         if (rows.next()) |row| return try arena.dupe(u8, row.blob(0));
@@ -697,7 +705,7 @@ fn tryAcquireSlot(self: *LocalDb, start: usize) ?ReadLease {
         const slot = (start + i) % self.read_conns.len;
         if (self.read_slot_mu[slot].tryLock()) {
             if (self.read_conns[slot]) |conn| {
-                return .{ .db = self, .slot = slot, .conn = conn, .prefix_map = self.prefix_map };
+                return .{ .db = self, .slot = slot, .conn = conn, .prefix_map = self.prefix_map, .prefix_cache = &self.read_caches[slot] };
             }
             self.read_slot_mu[slot].unlock(io);
         }
@@ -808,6 +816,11 @@ test "unified generation admission and swap retain leased bytes and reject corru
     local.path = try std.fmt.allocPrint(arena, "{s}/overlay.db", .{directory});
     try local.openDb(local.path);
     try local.swapSnapshot(old_path);
+    for (0..local.read_conns.len) |_| {
+        const lease = try local.checkoutRead();
+        _ = (try lease.baseActor(arena, "did:arbitrary:small")).?;
+        lease.release();
+    }
     const old = try local.checkoutRead();
     var released = false;
     defer if (!released) old.release();

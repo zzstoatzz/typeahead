@@ -1,0 +1,94 @@
+{
+  "restart_sqlite_cache": {
+    "paired_median_ratio": 0.9224860475812986,
+    "paired_ratios": [
+      1.1836387288967556,
+      0.7667087425411482,
+      1.078263352621449,
+      0.7509926187500617,
+      1.1811970276006187,
+      0.6919872072789538
+    ]
+  },
+  "warm": {
+    "paired_median_ratio": 0.9470799891857795,
+    "paired_ratios": [
+      0.9704931262884892,
+      1.065111604126615,
+      1.0901699524288853,
+      0.9236668520830698,
+      0.8395410198195987,
+      0.8901314245664637
+    ]
+  },
+  "broad": {
+    "paired_median_ratio": 1.0145555801187651,
+    "paired_ratios": [
+      0.9390350679347983,
+      1.0063652641057264,
+      1.0650787378661595,
+      1.0227458961318039,
+      0.9184528524397434,
+      1.0996008297786701
+    ]
+  },
+  "concurrency8": {
+    "paired_median_ratio": 0.8164607063826907,
+    "paired_ratios": [
+      0.6831039759339017,
+      1.335017121873765,
+      0.7010097875665644,
+      0.9319116251988172,
+      0.6489345541716899,
+      1.0375481096814738
+    ]
+  },
+  "mixed_reads": {
+    "paired_median_ratio": 1.0118534195261455,
+    "paired_ratios": [
+      0.9155379220422106,
+      1.0947543343355208,
+      0.973182169628331,
+      1.0343623285801067,
+      0.9893445104721843,
+      1.0541152597912349
+    ]
+  },
+  "acceptance": false,
+  "scope": "Six-round diagnostic comparing bounded cache versus uncached reader on identical compact snapshot, not a release gate.",
+  "correctness": {
+    "baseline": {
+      "initial_responses": 8000,
+      "transition_responses": 935,
+      "concurrent_responses": 850,
+      "binary_sha256": "d5a860f1c3aa55a1e6a3abef07a521134c856dd9ec35d5b9496493f11cf5f5bc",
+      "usage": {
+        "forced_shutdown": false,
+        "cpu_seconds": 2.749186,
+        "peak_rss_bytes": 957784064,
+        "startup_ms": 5443.629176937975,
+        "overlay_bytes": 679936
+      }
+    },
+    "compact": {
+      "initial_responses": 8000,
+      "transition_responses": 935,
+      "concurrent_responses": 850,
+      "binary_sha256": "d5a860f1c3aa55a1e6a3abef07a521134c856dd9ec35d5b9496493f11cf5f5bc",
+      "usage": {
+        "forced_shutdown": false,
+        "cpu_seconds": 18.594932,
+        "peak_rss_bytes": 59236352,
+        "startup_ms": 20486.514829914086,
+        "overlay_bytes": 679936
+      }
+    }
+  },
+  "linux_tests": {
+    "index_passed": 144,
+    "index_skipped": 2,
+    "ingest_passed": 26
+  },
+  "cache_bytes_per_read_slot": 1048576,
+  "status": "Experimental; requires complete release qualification."
+}

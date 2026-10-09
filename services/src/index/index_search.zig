@@ -308,7 +308,7 @@ const Report = struct {
 /// into the arena (the blob is freed when the row iterator closes).
 fn basePrefixDids(arena: Allocator, lease: LocalDb.ReadLease, key: []const u8) ![]merge.Scored {
     if (lease.prefix_map) |map| {
-        const blob = (try map.findTagged(arena, .prefix, key)) orelse return &.{};
+        const blob = (try map.findTaggedCached(arena, .prefix, key, lease.prefix_cache)) orelse return &.{};
         var it = try pack.DidListIter.init(blob);
         const out = try arena.alloc(merge.Scored, it.remaining);
         for (out) |*item| {

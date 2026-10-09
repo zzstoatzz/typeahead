@@ -72,6 +72,13 @@ HeavyPad to cap the entire conversion at 20% of one CPU. See
 [native conversion](docs/native-compaction.md) for the format contract,
 measurements, and scheduler integration status.
 
+The experimental compact reader caches at most 128 ordinary 8 KiB pages per
+read-pool slot (1 MiB each, 8 MiB with eight slots). Each exclusive lease owns its
+slot cache; snapshot activation invalidates every slot before new leases can
+read. Oversized pages use the existing bounded scratch path. This remains
+unshipped pending the complete release gates; see
+[the diagnostic evidence](docs/evals/compact-read-cache.json).
+
 The snapshot precomputes search candidates. Union-prefix overlay additions use a
 partial `(key, score DESC, did ASC)` index and stop after the top 50, plus indexed
 corrections to snapshot candidates. Exact keys and intersections retain full

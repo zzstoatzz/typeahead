@@ -6,6 +6,25 @@ const normal_page = 8192;
 const max_extent = 16 * 1024 * 1024;
 pub const Namespace = enum(u8) { actor = 1, prefix = 2 };
 
+pub const Cache = struct {
+    pages: [128]?usize,
+    bytes: [128][normal_page]u8,
+
+    pub fn clear(self: *Cache) void {
+        self.pages = @splat(null);
+    }
+
+    fn read(self: *Cache, fd: c.fd_t, index: usize, offset: usize) ![]const u8 {
+        const slot = index % self.pages.len;
+        if (self.pages[slot] != index) {
+            self.pages[slot] = null;
+            try readExact(fd, &self.bytes[slot], offset);
+            self.pages[slot] = index;
+        }
+        return &self.bytes[slot];
+    }
+};
+
 pub const Map = struct {
     bytes: []const u8,
     file_size: usize,
@@ -132,14 +151,22 @@ pub const Map = struct {
     }
 
     pub fn findTagged(self: Map, arena: std.mem.Allocator, tag: Namespace, key: []const u8) !?[]const u8 {
+        return self.findTaggedCached(arena, tag, key, null);
+    }
+
+    pub fn findTaggedCached(self: Map, arena: std.mem.Allocator, tag: Namespace, key: []const u8, cache: ?*Cache) !?[]const u8 {
         if (key.len > max_key - 1) return error.FlatKeyTooLong;
         var tagged: [max_key]u8 = undefined;
         tagged[0] = @backingInt(tag);
         @memcpy(tagged[1..][0..key.len], key);
-        return self.find(arena, tagged[0 .. key.len + 1]);
+        return self.findCached(arena, tagged[0 .. key.len + 1], cache);
     }
 
     pub fn find(self: Map, arena: std.mem.Allocator, target: []const u8) !?[]const u8 {
+        return self.findCached(arena, target, null);
+    }
+
+    fn findCached(self: Map, arena: std.mem.Allocator, target: []const u8, cache: ?*Cache) !?[]const u8 {
         var low: usize = 0;
         var high = self.pages;
         while (low < high) {
@@ -155,6 +182,9 @@ pub const Map = struct {
         defer if (temporary) |buffer| std.heap.page_allocator.free(buffer);
         const bytes = if (self.fd) |fd| blk: {
             const size = bounds.end - bounds.start;
+            if (size == normal_page) {
+                if (cache) |cached| break :blk try cached.read(fd, page_index, bounds.start);
+            }
             const buffer = if (size <= scratch.len) scratch[0..size] else allocation: {
                 temporary = try std.heap.page_allocator.alloc(u8, size);
                 break :allocation temporary.?;
@@ -453,6 +483,18 @@ test "pread real file owns root closes fd and keeps request bytes alive" {
             @memcpy(long_key[0..2], "y:");
             large = (try map.findTagged(arena.allocator(), .prefix, &long_key)).?;
             try std.testing.expectEqual(@as(usize, 80015), large.?.len);
+        }
+        const cache = try std.testing.allocator.create(Cache);
+        defer std.testing.allocator.destroy(cache);
+        cache.clear();
+        for (0..2) |_| {
+            for (0..64) |number| {
+                var key_buffer: [32]u8 = undefined;
+                const key = try std.fmt.bufPrint(&key_buffer, "n:key{d:0>8}", .{number});
+                const expected = (try map.findTagged(arena.allocator(), .prefix, key)).?;
+                const actual = (try map.findTaggedCached(arena.allocator(), .prefix, key, cache)).?;
+                try std.testing.expectEqualSlices(u8, expected, actual);
+            }
         }
         const fd = map.fd.?;
         map.close();
