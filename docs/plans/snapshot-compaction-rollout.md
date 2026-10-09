@@ -23,6 +23,17 @@ termination before admission, with either format admitted, and during a stalled
 TCP connection. This test runs
 the real executable against local artifacts with no production database access.
 
+Linux qualification also caught `fsync` rejecting Zig's default path-only
+directory descriptor. Activation now opens a readable directory descriptor
+before syncing it. Run the Zig suite on Linux, including the real rclone cases;
+macOS alone does not exercise this distinction. `test_release_recovery.py`
+checks process-crash recovery, truncated-map fallback, newer moderation state,
+covered-overlay pruning, and refusal to serve an older-watermark fallback.
+The existing fatal-exit watchdog also requested a 64 KiB pthread stack, smaller
+than the release executable's 256 KiB static TLS segment on Linux. Its stack
+reservation is now 1 MiB so the existing deadline tests can spawn the watchdog.
+This thread is created only on the fatal-exit path.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from

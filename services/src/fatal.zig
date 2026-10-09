@@ -48,7 +48,7 @@ fn abortNow() void {
 /// start the deadman. If a thread cannot be spawned the process terminates
 /// immediately: an unarmed flush is the failure this module exists to stop.
 fn arm(deadline_ms: u64, terminate: *const fn () void) void {
-    const thread = std.Thread.spawn(.{ .stack_size = 64 * 1024 }, deadman, .{ deadline_ms, terminate }) catch |err| {
+    const thread = std.Thread.spawn(.{ .stack_size = 1024 * 1024 }, deadman, .{ deadline_ms, terminate }) catch |err| {
         std.debug.print("fatal: could not arm exit deadline ({s}); terminating now\n", .{@errorName(err)});
         terminate();
         return;

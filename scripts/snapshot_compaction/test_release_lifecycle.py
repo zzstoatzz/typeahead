@@ -40,7 +40,7 @@ class Tests(unittest.TestCase):
                     accepted = None
                     env = {k: v for k, v in os.environ.items() if not k.startswith('INDEX_R2_')}
                     env.update(MODE='search', INDEX_BUILD_ROOT=str(work), LOCAL_DB_PATH=str(work / 'overlay.db'),
-                               PORT=str(port), INDEX_POLL_SECS='86400', TURSO_URL='127.0.0.1:1',
+                               PORT=str(port), SQLITE_TMPDIR=str(work / 'tmp'), INDEX_POLL_SECS='86400', TURSO_URL='127.0.0.1:1',
                                TURSO_AUTH_TOKEN='isolated-no-access')
                     if stalled:
                         env['TURSO_URL'] = f'127.0.0.1:{upstream.getsockname()[1]}'

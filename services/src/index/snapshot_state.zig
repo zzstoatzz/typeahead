@@ -58,7 +58,7 @@ pub fn load(allocator: std.mem.Allocator, root: []const u8) !?std.json.Parsed(St
 }
 
 pub fn syncDirectory(path: []const u8) !void {
-    var dir = try std.Io.Dir.openDirAbsolute(io, path, .{});
+    var dir = try std.Io.Dir.openDirAbsolute(io, path, .{ .iterate = true });
     defer dir.close(io);
     if (fsync(dir.handle) != 0) return error.DirectorySyncFailed;
 }
