@@ -35,7 +35,7 @@ COPY .zig-pkg-vendor /root/.cache/zig/p/
 
 # -Dtarget pins the x86-64 baseline explicitly: native CPU detection breaks
 # under emulated local builds (Rosetta reports an unknown CPU model)
-RUN zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-gnu
+RUN --network=none zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-gnu
 
 # runtime stage
 FROM debian:bookworm-slim
