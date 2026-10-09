@@ -1,20 +1,6 @@
-//! Search service snapshot consumer — the live side of the promote pipeline.
-//!
-//! Polls R2 `latest.json` (a copy of the active build's manifest). When it
-//! points at a build we don't already have attached, it downloads the
-//! snapshot into the inactive A/B slot, then runs the full gate before the
-//! file is allowed to serve:
-//!
-//!   download → verifyFile (size+sha256) → validateSnapshot (schema/versions/
-//!   floors) → sentinel (real prefix→DID→hydrate smoke) → atomic rename →
-//!   LocalDb.swapSnapshot (ATTACH into the read pool)
-//!
-//! "Never attach a snapshot you can't fully validate." Any failure leaves the
-//! currently-attached snapshot in place and retries on the next poll.
-//!
-//! Disk is bounded to two files (index.A.db / index.B.db): each promote
-//! targets whichever slot is NOT currently attached, so the live file is
-//! never overwritten and the prior build stays as a rollback.
+//! Downloads and validates immutable generations, persists activation, then
+//! exchanges the read pool after outstanding leases drain. The activation
+//! record retains a same-watermark legacy twin for compact-format recovery.
 const std = @import("std");
 const zqlite = @import("zqlite");
 const Allocator = std.mem.Allocator;
@@ -27,6 +13,7 @@ const pack = @import("pack.zig");
 const prefixes = @import("prefixes.zig");
 const normalize = @import("normalize.zig");
 const LocalDb = @import("../db/LocalDb.zig");
+const state = @import("snapshot_state.zig");
 
 const log = std.log.scoped(.promote_runner);
 
@@ -125,71 +112,186 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
     var arena_state = std.heap.ArenaAllocator.init(gpa);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
-
+    const root = try std.fmt.allocPrint(arena, "{s}/index", .{indexRoot()});
+    try std.Io.Dir.createDirPath(.cwd(), io, root);
+    try recoverLocal(arena, db, root);
     const cfg = try r2.configure(arena);
-    const dir = indexRoot();
-    var idx_dir_buf: [256]u8 = undefined;
-    const idx_dir = try std.fmt.bufPrint(&idx_dir_buf, "{s}/index", .{dir});
-    std.Io.Dir.createDirPath(.cwd(), io, idx_dir) catch |err| switch (err) {
-        error.PathAlreadyExists => {},
-        else => return err,
-    };
-
-    // 0. sweep stale .part/.partial debris before we (maybe) download a new one.
-    sweepStalePartials(arena, idx_dir);
-
-    // 1. fetch latest.json (tiny; safe to re-pull every poll) and parse it.
-    const manifest_local = try std.fmt.allocPrint(arena, "{s}/{s}", .{ idx_dir, LATEST_KEY });
-    try r2.download(arena, cfg, LATEST_KEY, manifest_local);
-    const json = try readSmallFile(arena, manifest_local);
-    const parsed = try promote.parse(arena, json);
+    sweepStalePartials(arena, root);
+    const latest_key = cGetenv("INDEX_LATEST_KEY") orelse LATEST_KEY;
+    if (!promote.validObjectKey(latest_key)) return error.InvalidPointerKey;
+    const downloaded = try std.fmt.allocPrint(arena, "{s}/latest.download.part", .{root});
+    try r2.download(arena, cfg, latest_key, downloaded);
+    const parsed = try promote.parse(arena, try state.readSmall(arena, downloaded));
     defer parsed.deinit();
     const m = parsed.value;
-
-    // 2. already current? compare to the attached snapshot's build_id.
-    if (try db.attachedBuildId(arena)) |cur| {
-        if (std.mem.eql(u8, cur, m.active_build)) {
-            log.info("already on build {s}; nothing to do", .{cur});
-            return;
-        }
-        log.info("new build available: {s} (current {s})", .{ m.active_build, cur });
-    } else {
-        log.info("no snapshot attached; promoting first build {s}", .{m.active_build});
+    try promote.validateManifest(m);
+    if (!promote.validBuildId(m.active_build)) return error.InvalidBuildIdentity;
+    if (try db.attachedBuildId(arena)) |current| {
+        if (std.mem.eql(u8, current, m.active_build)) return;
+        if (m.source_watermark < @as(i64, @intCast(db.attachedMetaInt(schema.meta.source_watermark)))) return error.RollbackRequiresReplay;
     }
-
-    // 2b. fast path: if a local A/B slot already holds active_build (e.g. after
-    // a restart — snapshot_path is in-memory), adopt it without re-downloading
-    // the multi-GB artifact.
-    if (try adoptIfPresent(arena, db, idx_dir, m)) return;
-
-    // 3. pick the inactive slot so we never overwrite the live file.
-    const target = pickSlot(db.snapshotPath(), idx_dir, arena) catch return error.OutOfMemory;
-    const part = try std.fmt.allocPrint(arena, "{s}.part", .{target});
-    std.Io.Dir.deleteFile(.cwd(), io, part) catch {}; // clear any stale partial
-
-    // 4. download the snapshot into the slot's .part file.
-    try r2.download(arena, cfg, m.snapshot_url, part);
-
-    // 5. verify bytes against the manifest before we trust a single row.
-    try promote.verifyFile(part, m.byte_size, m.sha256);
-
-    // 6. open read-only, validate schema/versions/floors, then sentinel-smoke.
-    const part_z = try arena.dupeSentinel(u8, part, 0);
-    {
-        const snap = try promote.openSnapshotReadOnly(part_z);
-        defer snap.close();
-        const prev_actors = db.attachedMetaInt(schema.meta.actor_count);
-        const prev_prefix = db.attachedMetaInt(schema.meta.prefix_count);
-        try promote.validateSnapshot(arena, snap, m, prev_actors, prev_prefix);
-        try sentinelCheck(arena, snap, &COMMON_PROBES);
+    if (m.manifest_version == 1 and try adoptIfPresent(arena, db, root, m)) {
+        const location: state.Entry = .{ .manifest = m, .location = if (std.mem.endsWith(u8, (try db.snapshotPath(arena)).?, SLOT_A)) .slot_a else .slot_b };
+        try state.save(arena, root, .{ .current = location });
+        return;
     }
-
-    // 7. atomic rename .part → slot, then ATTACH-swap into the read pool.
-    try std.Io.Dir.renameAbsolute(part, target, io);
-    try db.swapSnapshot(target);
-    // Prune sync overlay rows the new base now covers (operator rows survive).
+    var prior = try state.load(arena, root);
+    defer if (prior) |*value| value.deinit();
+    const previous: ?state.Entry = if (m.legacy_twin) |twin|
+        try ensureTwin(arena, db, cfg, root, m, twin, if (prior) |value| value.value else null)
+    else if (prior) |value| value.value.current else null;
+    var prepared = try ensureGeneration(arena, db, cfg, root, m);
+    defer prepared.deinit();
+    try state.save(arena, root, .{ .current = .{ .manifest = m }, .previous = previous });
+    db.activateSnapshot(&prepared);
     _ = db.compactOverlay(m.source_watermark, null, null);
-    log.info("promoted build {s} → {s}", .{ m.active_build, target });
+    cleanupGenerations(arena, root, m.active_build, if (previous) |value| value.manifest.active_build else null) catch |err| {
+        log.warn("generation cleanup failed: {s}", .{@errorName(err)});
+    };
+}
+
+fn prepareEntry(arena: Allocator, db: *LocalDb, entry: state.Entry, root: []const u8, verify: bool) !LocalDb.PreparedSnapshot {
+    const path = try entry.path(arena, root);
+    if (verify or entry.manifest.manifest_version == 2) try promote.verifyFile(path, entry.manifest.byte_size, entry.manifest.sha256);
+    const path_z = try arena.dupeSentinel(u8, path, 0);
+    const snap = try promote.openSnapshotReadOnly(path_z);
+    defer snap.close();
+    try promote.validateSnapshot(arena, snap, entry.manifest, db.attachedMetaInt(schema.meta.actor_count), db.attachedMetaInt(schema.meta.prefix_count));
+    var prepared = try db.prepareSnapshot(path);
+    errdefer prepared.deinit();
+    if (entry.manifest.prefix_map) |map| {
+        if (prepared.map == null or prepared.map.?.file_size != map.byte_size) return error.SizeMismatch;
+    }
+    try sentinelPrepared(arena, prepared, &COMMON_PROBES);
+    return prepared;
+}
+
+fn recoverLocal(arena: Allocator, db: *LocalDb, root: []const u8) !void {
+    if ((try db.snapshotPath(arena)) != null) return;
+    const parsed = (try state.load(arena, root)) orelse return;
+    defer parsed.deinit();
+    var selected = parsed.value.current;
+    var prepared = prepareEntry(arena, db, selected, root, false) catch |err| blk: {
+        const previous = parsed.value.previous orelse return err;
+        if (!state.rollbackAllowed(selected.manifest, previous.manifest)) return error.RollbackRequiresReplay;
+        const fallback = try prepareEntry(arena, db, previous, root, false);
+        selected = previous;
+        break :blk fallback;
+    };
+    defer prepared.deinit();
+    if (!std.mem.eql(u8, selected.manifest.active_build, parsed.value.current.manifest.active_build)) try state.save(arena, root, .{ .current = selected });
+    db.activateSnapshot(&prepared);
+    _ = db.compactOverlay(selected.manifest.source_watermark, null, null);
+}
+
+fn ensureGeneration(arena: Allocator, db: *LocalDb, cfg: r2.Config, root: []const u8, m: promote.Manifest) !LocalDb.PreparedSnapshot {
+    const entry: state.Entry = .{ .manifest = m };
+    const target = try entry.path(arena, root);
+    const directory = std.fs.path.dirname(target).?;
+    const canonical = try std.json.Stringify.valueAlloc(arena, m, .{});
+    const manifest_path = try std.fmt.allocPrint(arena, "{s}/manifest.json", .{directory});
+    if (state.readSmall(arena, manifest_path)) |existing| {
+        if (!std.mem.eql(u8, existing, canonical)) return error.GenerationIdentityCollision;
+        return prepareEntry(arena, db, entry, root, true);
+    } else |err| if (err != error.FileNotFound) return err;
+    const parent = try std.fmt.allocPrint(arena, "{s}/generations", .{root});
+    try std.Io.Dir.createDirPath(.cwd(), io, parent);
+    const staging = try std.fmt.allocPrint(arena, "{s}/.staging-{s}", .{ root, m.active_build });
+    std.Io.Dir.deleteTree(.cwd(), io, staging) catch |err| if (err != error.FileNotFound) return err;
+    try std.Io.Dir.createDirPath(.cwd(), io, staging);
+    defer std.Io.Dir.deleteTree(.cwd(), io, staging) catch {};
+    const file_path = try std.fmt.allocPrint(arena, "{s}/index.db", .{staging});
+    try r2.download(arena, cfg, m.snapshot_url, file_path);
+    try promote.verifyFile(file_path, m.byte_size, m.sha256);
+    if (m.prefix_map) |map| {
+        const side = try std.fmt.allocPrint(arena, "{s}.prefix", .{file_path});
+        try r2.download(arena, cfg, map.object_key, side);
+    }
+    const path_z = try arena.dupeSentinel(u8, file_path, 0);
+    const snap = try promote.openSnapshotReadOnly(path_z);
+    defer snap.close();
+    try promote.validateSnapshot(arena, snap, m, db.attachedMetaInt(schema.meta.actor_count), db.attachedMetaInt(schema.meta.prefix_count));
+    var prepared = try db.prepareSnapshot(file_path);
+    errdefer prepared.deinit();
+    if (m.prefix_map) |map| if (prepared.map == null or prepared.map.?.file_size != map.byte_size) return error.SizeMismatch;
+    try sentinelPrepared(arena, prepared, &COMMON_PROBES);
+    const final_path = try db.allocator.dupe(u8, target);
+    errdefer db.allocator.free(final_path);
+    for ([_][]const u8{ "index.db", "index.db.prefix" }) |name| {
+        if (m.prefix_map == null and std.mem.endsWith(u8, name, ".prefix")) continue;
+        const file = try std.Io.Dir.openFileAbsolute(io, try std.fmt.allocPrint(arena, "{s}/{s}", .{ staging, name }), .{});
+        defer file.close(io);
+        try file.sync(io);
+    }
+    try state.writeFile(try std.fmt.allocPrint(arena, "{s}/manifest.json", .{staging}), canonical);
+    try state.syncDirectory(staging);
+    try std.Io.Dir.renameAbsolute(staging, directory, io);
+    try state.syncDirectory(parent);
+    try state.syncDirectory(root);
+    db.allocator.free(prepared.path);
+    prepared.path = final_path;
+    return prepared;
+}
+
+fn ensureTwin(arena: Allocator, db: *LocalDb, cfg: r2.Config, root: []const u8, m: promote.Manifest, twin: promote.LegacyTwin, prior: ?state.State) !state.Entry {
+    const downloaded = try std.fmt.allocPrint(arena, "{s}/twin.manifest.part", .{root});
+    try r2.download(arena, cfg, twin.manifest.object_key, downloaded);
+    try promote.verifyFile(downloaded, twin.manifest.byte_size, twin.manifest.sha256);
+    const legacy = try std.json.parseFromSliceLeaky(promote.Manifest, arena, try state.readSmall(arena, downloaded), .{ .ignore_unknown_fields = true });
+    try promote.validateManifest(legacy);
+    if (legacy.manifest_version != 1 or !std.mem.eql(u8, legacy.active_build, twin.build_id) or legacy.source_watermark != m.source_watermark or
+        legacy.actor_count != m.actor_count or legacy.prefix_count != m.prefix_count or
+        !std.mem.eql(u8, legacy.normalize_version, m.normalize_version) or !std.mem.eql(u8, legacy.scoring_version, m.scoring_version)) return error.InvalidLegacyTwin;
+    inline for (.{ "top_n_short", "top_n_medium", "top_n_long", "overlay_top_n", "hydrate_cap", "cjk_key_count", "cjk_actor_count" }) |field| {
+        if (@field(legacy, field) != @field(m, field)) return error.InvalidLegacyTwin;
+    }
+    if (prior) |record| {
+        if (record.current.manifest.manifest_version == 1 and std.mem.eql(u8, record.current.manifest.active_build, legacy.active_build) and
+            std.mem.eql(u8, record.current.manifest.sha256, legacy.sha256) and record.current.manifest.byte_size == legacy.byte_size)
+        {
+            var admitted = try prepareEntry(arena, db, .{ .manifest = legacy, .location = record.current.location }, root, true);
+            defer admitted.deinit();
+            return .{ .manifest = legacy, .location = record.current.location };
+        }
+    }
+    var prepared = try ensureGeneration(arena, db, cfg, root, legacy);
+    defer prepared.deinit();
+    return .{ .manifest = legacy };
+}
+
+fn sentinelPrepared(arena: Allocator, prepared: LocalDb.PreparedSnapshot, probes: []const []const u8) !void {
+    var resolved: usize = 0;
+    var hydrated = false;
+    for (probes) |query| {
+        const norm = try normalize.query(arena, query);
+        for (try prefixes.queryKeys(arena, norm)) |key| {
+            const blob = (try prepared.basePrefix(arena, key)) orelse continue;
+            var it = pack.DidListIter.init(blob) catch continue;
+            const entry = it.next() orelse continue;
+            resolved += 1;
+            if (try prepared.baseActor(arena, entry.did)) |actor| {
+                _ = pack.unpackActor(actor) catch return Error.SentinelHydrateFailed;
+                hydrated = true;
+            }
+            break;
+        }
+    }
+    if (resolved * 2 < probes.len) return Error.SentinelNoPrefixHits;
+    if (!hydrated) return Error.SentinelHydrateFailed;
+}
+
+fn cleanupGenerations(arena: Allocator, root: []const u8, current: []const u8, previous: ?[]const u8) !void {
+    const parent = try std.fmt.allocPrint(arena, "{s}/generations", .{root});
+    var dir = try std.Io.Dir.openDirAbsolute(io, parent, .{ .iterate = true });
+    defer dir.close(io);
+    var names: std.ArrayListUnmanaged([]const u8) = .empty;
+    var iterator = dir.iterate();
+    while (try iterator.next(io)) |item| {
+        if (item.kind != .directory or !promote.validBuildId(item.name) or std.mem.eql(u8, item.name, current)) continue;
+        if (previous) |p| if (std.mem.eql(u8, p, item.name)) continue;
+        try names.append(arena, try arena.dupe(u8, item.name));
+    }
+    for (names.items) |name| try std.Io.Dir.deleteTree(.cwd(), io, try std.fmt.allocPrint(arena, "{s}/{s}", .{ parent, name }));
 }
 
 /// If a local A/B slot file already holds `active_build`, validate + attach it
@@ -225,13 +327,6 @@ fn adoptIfPresent(arena: Allocator, db: *LocalDb, idx_dir: []const u8, m: promot
         }
     }
     return false;
-}
-
-/// Return the A/B slot path NOT currently attached, so a download can never
-/// clobber the live snapshot. Defaults to slot A when nothing is attached.
-fn pickSlot(current: ?[]const u8, idx_dir: []const u8, arena: Allocator) ![]const u8 {
-    const use_a = if (current) |c| !std.mem.endsWith(u8, c, SLOT_A) else true;
-    return std.fmt.allocPrint(arena, "{s}/{s}", .{ idx_dir, if (use_a) SLOT_A else SLOT_B });
 }
 
 /// Semantic smoke check on a snapshot BEFORE it's attached. Derives prefix
@@ -297,13 +392,18 @@ pub fn writeStatus(arena: Allocator, db: *LocalDb, jw: anytype) !void {
     try jw.write(true);
 
     try jw.objectField("attached");
-    try jw.write(db.snapshotPath() != null);
+    try jw.write((try db.snapshotPath(arena)) != null);
 
     try jw.objectField("snapshot_path");
-    if (db.snapshotPath()) |p| try jw.write(p) else try jw.write(null);
+    if ((try db.snapshotPath(arena))) |p| try jw.write(p) else try jw.write(null);
 
     try jw.objectField("build_id");
     if (try db.attachedBuildId(arena)) |bid| try jw.write(bid) else try jw.write(null);
+
+    try jw.objectField("snapshot_format");
+    try jw.write(if (db.attachedMetaInt("flat_prefix_version") == 5) "FLATPX05" else "sqlite");
+    try jw.objectField("source_watermark");
+    try jw.write(db.attachedMetaInt(schema.meta.source_watermark));
 
     try jw.objectField("actor_count");
     try jw.write(db.attachedMetaInt(schema.meta.actor_count));
@@ -349,7 +449,7 @@ pub fn writeProbe(arena: Allocator, db: *LocalDb, q: []const u8, jw: anytype) !v
     try jw.objectField("query");
     try jw.write(q);
 
-    if (db.snapshotPath() == null) {
+    if ((try db.snapshotPath(arena)) == null) {
         try jw.objectField("attached");
         try jw.write(false);
         try jw.endObject();
@@ -377,19 +477,21 @@ pub fn writeProbe(arena: Allocator, db: *LocalDb, q: []const u8, jw: anytype) !v
     {
         defer lease.release();
         for (keys) |k| {
-            var rows = lease.query("SELECT dids FROM idx.prefix_top_base WHERE key = ?", .{k}) catch continue;
-            defer rows.deinit();
-            if (rows.next()) |row| {
-                const blob = row.blob(0);
-                const c = pack.count(blob) catch 0;
-                if (c > 0) {
-                    top_key = k; // arena-owned (from queryKeys), safe past deinit
-                    n_dids = c;
-                    var it = pack.DidListIter.init(blob) catch break;
-                    if (it.next()) |e| sample_did = try arena.dupe(u8, e.did);
-                    break;
-                }
-            }
+            const blob = if (lease.prefix_map) |map|
+                (try map.findTagged(arena, .prefix, k)) orelse continue
+            else blk: {
+                var rows = try lease.query("SELECT dids FROM idx.prefix_top_base WHERE key = ?", .{k});
+                defer rows.deinit();
+                const row = rows.next() orelse continue;
+                break :blk try arena.dupe(u8, row.blob(0));
+            };
+            const count = try pack.count(blob);
+            if (count == 0) continue;
+            top_key = k;
+            n_dids = count;
+            var it = try pack.DidListIter.init(blob);
+            if (it.next()) |entry| sample_did = try arena.dupe(u8, entry.did);
+            break;
         }
     }
 
@@ -403,36 +505,7 @@ pub fn writeProbe(arena: Allocator, db: *LocalDb, q: []const u8, jw: anytype) !v
     try jw.endObject();
 }
 
-/// Read a small file (latest.json is <1KB) fully into an arena buffer.
-fn readSmallFile(arena: Allocator, path: []const u8) ![]u8 {
-    const f = try std.Io.Dir.openFileAbsolute(io, path, .{});
-    defer f.close(io);
-    var list: std.ArrayListUnmanaged(u8) = .empty;
-    var buf: [4096]u8 = undefined;
-    while (true) {
-        const n = f.readStreaming(io, &.{&buf}) catch |err| switch (err) {
-            error.EndOfStream => break,
-            else => return err,
-        };
-        if (n == 0) break;
-        try list.appendSlice(arena, buf[0..n]);
-    }
-    return list.items;
-}
-
-// ─── tests ───────────────────────────────────────────────────────────────
-
 const testing = std.testing;
-
-test "pickSlot toggles A/B and defaults to A" {
-    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
-    defer arena_state.deinit();
-    const a = arena_state.allocator();
-
-    try testing.expectEqualStrings("/d/index/index.A.db", try pickSlot(null, "/d/index", a));
-    try testing.expectEqualStrings("/d/index/index.B.db", try pickSlot("/d/index/index.A.db", "/d/index", a));
-    try testing.expectEqualStrings("/d/index/index.A.db", try pickSlot("/d/index/index.B.db", "/d/index", a));
-}
 
 test "isTransientArtifact matches debris, never live snapshots" {
     // debris the sweep must reclaim
@@ -498,4 +571,238 @@ test "sentinelCheck rejects an empty snapshot" {
     defer conn.close();
     try schema.initSnapshot(conn);
     try testing.expectError(Error.SentinelNoPrefixHits, sentinelCheck(a, conn, &.{"a"}));
+}
+
+extern "c" fn mkdtemp(template: [*:0]u8) ?[*:0]u8;
+extern "c" fn setenv(name: [*:0]const u8, value: [*:0]const u8, overwrite: c_int) c_int;
+extern "c" fn unsetenv(name: [*:0]const u8) c_int;
+
+fn recoveryFixture(arena: Allocator, root: []const u8, id: []const u8, watermark: i64) !promote.Manifest {
+    const directory = try std.fmt.allocPrint(arena, "{s}/generations/{s}", .{ root, id });
+    try std.Io.Dir.createDirPath(.cwd(), io, directory);
+    const path = try std.fmt.allocPrintSentinel(arena, "{s}/index.db", .{directory}, 0);
+    var m: promote.Manifest = .{
+        .manifest_version = 1,
+        .active_build = id,
+        .promoted_at = 0,
+        .snapshot_url = try std.fmt.allocPrint(arena, "builds/{s}/index.db", .{id}),
+        .byte_size = 0,
+        .sha256 = "",
+        .source_watermark = watermark,
+        .actor_count = 1,
+        .prefix_count = 5,
+        .normalize_version = normalize.VERSION,
+        .scoring_version = @import("scoring.zig").VERSION,
+        .top_n_short = 300,
+        .top_n_medium = 200,
+        .top_n_long = 100,
+        .overlay_top_n = 100,
+        .hydrate_cap = 50,
+        .builder_version = "test",
+        .cjk_key_count = promote.CJK_KEY_FLOOR,
+        .cjk_actor_count = 1,
+    };
+    {
+        const conn = try zqlite.open(path, zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+        defer conn.close();
+        try schema.initSnapshot(conn);
+        try schema.setMeta(conn, "build_id", id);
+        try schema.setMeta(conn, "normalize_version", m.normalize_version);
+        try schema.setMeta(conn, "scoring_version", m.scoring_version);
+        inline for (.{ "source_watermark", "actor_count", "prefix_count", "top_n_short", "top_n_medium", "top_n_long", "overlay_top_n", "hydrate_cap", "cjk_key_count", "cjk_actor_count" }) |field| {
+            try schema.setMeta(conn, field, try std.fmt.allocPrint(arena, "{d}", .{@field(m, field)}));
+        }
+        const did = "did:plc:recovery";
+        const actor = try pack.packActor(arena, .{ .hidden = false, .quality_score = 1, .handle = id, .display = "", .avatar = "", .labels = "[]", .pds = "", .created_at = "", .associated = "{}" });
+        try conn.exec("INSERT INTO actor_compact_base VALUES(?,?)", .{ did, zqlite.blob(actor) });
+        const posting = try pack.packDidList(arena, &.{.{ .did = did, .score = 1 }});
+        for (COMMON_PROBES) |q| {
+            const keys = try prefixes.queryKeys(arena, try normalize.query(arena, q));
+            try conn.exec("INSERT INTO prefix_top_base VALUES(?,?)", .{ keys[0], zqlite.blob(posting) });
+        }
+    }
+    var hash: [64]u8 = undefined;
+    m.byte_size = try @import("manifest.zig").sha256File(path, &hash);
+    m.sha256 = try arena.dupe(u8, &hash);
+    try state.writeFile(try std.fmt.allocPrint(arena, "{s}/manifest.json", .{directory}), try std.json.Stringify.valueAlloc(arena, m, .{}));
+    return m;
+}
+
+test "recovery ignores partial activation and refuses rollback behind pruned watermark" {
+    var directory = "/tmp/typeahead-recovery-XXXXXX".*;
+    _ = mkdtemp(&directory) orelse return error.TestDirectoryFailed;
+    defer std.Io.Dir.deleteTree(.cwd(), io, &directory) catch {};
+    var storage = std.heap.ArenaAllocator.init(testing.allocator);
+    defer storage.deinit();
+    const arena = storage.allocator();
+    const root: []const u8 = &directory;
+    const previous_env = if (cGetenv("LOCAL_DB_PATH")) |v| try arena.dupeSentinel(u8, v, 0) else null;
+    const previous_tmp = if (cGetenv("SQLITE_TMPDIR")) |v| try arena.dupeSentinel(u8, v, 0) else null;
+    defer {
+        if (previous_env) |v| {
+            _ = setenv("LOCAL_DB_PATH", v, 1);
+        } else {
+            _ = unsetenv("LOCAL_DB_PATH");
+        }
+        if (previous_tmp) |v| {
+            _ = setenv("SQLITE_TMPDIR", v, 1);
+        } else {
+            _ = unsetenv("SQLITE_TMPDIR");
+        }
+    }
+    _ = setenv("LOCAL_DB_PATH", try std.fmt.allocPrintSentinel(arena, "{s}/overlay.db", .{root}, 0), 1);
+    _ = setenv("SQLITE_TMPDIR", &directory, 1);
+    const old = try recoveryFixture(arena, root, "legacy", 100);
+    const current = try recoveryFixture(arena, root, "current", 100);
+    _ = try recoveryFixture(arena, root, "orphan", 100);
+    try state.save(arena, root, .{ .current = .{ .manifest = current }, .previous = .{ .manifest = old } });
+    try state.writeFile(try std.fmt.allocPrint(arena, "{s}/active.json.part", .{root}), "{unfinished");
+    {
+        var local = LocalDb.init(testing.allocator);
+        defer local.deinit();
+        try local.open();
+        try local.conn.?.exec("INSERT INTO actor_overlay(did,blob,hidden,updated_at,source) VALUES('newer',X'00',0,101,0)", .{});
+        try recoverLocal(arena, &local, root);
+        try testing.expectEqualStrings("current", (try local.attachedBuildId(arena)).?);
+        try testing.expectEqual(@as(i64, 1), local.overlayActorRows());
+        try cleanupGenerations(arena, root, "current", "legacy");
+        try testing.expectError(error.FileNotFound, state.readSmall(arena, try std.fmt.allocPrint(arena, "{s}/generations/orphan/manifest.json", .{root})));
+    }
+    try state.writeFile(try std.fmt.allocPrint(arena, "{s}/generations/current/index.db", .{root}), "broken");
+    {
+        var local = LocalDb.init(testing.allocator);
+        defer local.deinit();
+        try local.open();
+        try recoverLocal(arena, &local, root);
+        try testing.expectEqualStrings("legacy", (try local.attachedBuildId(arena)).?);
+        try testing.expectEqual(@as(i64, 1), local.overlayActorRows());
+        var saved = (try state.load(arena, root)).?;
+        defer saved.deinit();
+        try testing.expectEqualStrings("legacy", saved.value.current.manifest.active_build);
+    }
+    var future = current;
+    future.source_watermark = 101;
+    try state.save(arena, root, .{ .current = .{ .manifest = future }, .previous = .{ .manifest = old } });
+    {
+        var local = LocalDb.init(testing.allocator);
+        defer local.deinit();
+        try local.open();
+        try testing.expectError(error.RollbackRequiresReplay, recoverLocal(arena, &local, root));
+        try testing.expect((try local.snapshotPath(arena)) == null);
+        try testing.expectEqual(@as(i64, 1), local.overlayActorRows());
+    }
+}
+
+test "real rclone transport admits immutable generation and rejects corrupt replacement" {
+    if (cGetenv("TYPEAHEAD_TEST_RCLONE") == null) return error.SkipZigTest;
+    var directory = "/tmp/typeahead-transport-XXXXXX".*;
+    _ = mkdtemp(&directory) orelse return error.TestDirectoryFailed;
+    defer std.Io.Dir.deleteTree(.cwd(), io, &directory) catch {};
+    var storage = std.heap.ArenaAllocator.init(testing.allocator);
+    defer storage.deinit();
+    const arena = storage.allocator();
+    const root = try std.fmt.allocPrint(arena, "{s}/local", .{directory});
+    const remote = try std.fmt.allocPrint(arena, "{s}/remote", .{directory});
+    try std.Io.Dir.createDirPath(.cwd(), io, root);
+    var m = try recoveryFixture(arena, remote, "test-build", 100);
+    m.snapshot_url = "generations/test-build/index.db";
+    const config = try std.fmt.allocPrint(arena, "{s}/rclone.conf", .{directory});
+    try state.writeFile(config, "[r2]\ntype = local\n");
+    var local = LocalDb.init(testing.allocator);
+    defer local.deinit();
+    const overlay = try std.fmt.allocPrintSentinel(arena, "{s}/overlay.db", .{directory}, 0);
+    const conn = try zqlite.open(overlay, zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    conn.close();
+    local.path = overlay;
+    const cfg: r2.Config = .{ .bucket = remote, .config_path = config };
+    {
+        var admitted = try ensureGeneration(arena, &local, cfg, root, m);
+        defer admitted.deinit();
+        try testing.expectEqualStrings("test-build", (try pack.unpackActor((try admitted.baseActor(arena, "did:plc:recovery")).?)).handle);
+        try testing.expect(std.mem.indexOf(u8, admitted.path, "/generations/test-build/") != null);
+    }
+    {
+        var admitted = try ensureGeneration(arena, &local, cfg, root, m);
+        defer admitted.deinit();
+        try sentinelPrepared(arena, admitted, &COMMON_PROBES);
+    }
+    var collision = m;
+    collision.source_watermark += 1;
+    try testing.expectError(error.GenerationIdentityCollision, ensureGeneration(arena, &local, cfg, root, collision));
+    var bad = try recoveryFixture(arena, remote, "corrupt", 100);
+    bad.snapshot_url = "generations/corrupt/index.db";
+    try state.writeFile(try std.fmt.allocPrint(arena, "{s}/{s}", .{ remote, bad.snapshot_url }), "truncated");
+    try testing.expectError(error.SizeMismatch, ensureGeneration(arena, &local, cfg, root, bad));
+    try testing.expectError(error.FileNotFound, state.readSmall(arena, try std.fmt.allocPrint(arena, "{s}/generations/corrupt/manifest.json", .{root})));
+    try testing.expectError(error.FileNotFound, state.readSmall(arena, try std.fmt.allocPrint(arena, "{s}/.staging-corrupt/index.db", .{root})));
+}
+
+test "compact pair transport rejects missing and mismatched maps and recovers through verified twin" {
+    const remote = cGetenv("TYPEAHEAD_TEST_PAIR_ROOT") orelse return error.SkipZigTest;
+    var directory = "/tmp/typeahead-pair-XXXXXX".*;
+    _ = mkdtemp(&directory) orelse return error.TestDirectoryFailed;
+    defer std.Io.Dir.deleteTree(.cwd(), io, &directory) catch {};
+    var storage = std.heap.ArenaAllocator.init(testing.allocator);
+    defer storage.deinit();
+    const arena = storage.allocator();
+    const root: []const u8 = &directory;
+    const previous_env = if (cGetenv("LOCAL_DB_PATH")) |v| try arena.dupeSentinel(u8, v, 0) else null;
+    const previous_tmp = if (cGetenv("SQLITE_TMPDIR")) |v| try arena.dupeSentinel(u8, v, 0) else null;
+    defer {
+        if (previous_env) |v| {
+            _ = setenv("LOCAL_DB_PATH", v, 1);
+        } else {
+            _ = unsetenv("LOCAL_DB_PATH");
+        }
+        if (previous_tmp) |v| {
+            _ = setenv("SQLITE_TMPDIR", v, 1);
+        } else {
+            _ = unsetenv("SQLITE_TMPDIR");
+        }
+    }
+    _ = setenv("LOCAL_DB_PATH", try std.fmt.allocPrintSentinel(arena, "{s}/overlay.db", .{root}, 0), 1);
+    _ = setenv("SQLITE_TMPDIR", &directory, 1);
+    const config = try std.fmt.allocPrint(arena, "{s}/rclone.conf", .{root});
+    try state.writeFile(config, "[r2]\ntype = local\n");
+    const cfg: r2.Config = .{ .bucket = remote, .config_path = config };
+    const parsed = try promote.parse(arena, try state.readSmall(arena, try std.fmt.allocPrint(arena, "{s}/builds/compact/manifest.json", .{remote})));
+    defer parsed.deinit();
+    const m = parsed.value;
+    try promote.validateManifest(m);
+    var twin: state.Entry = undefined;
+    {
+        var local = LocalDb.init(testing.allocator);
+        defer local.deinit();
+        try local.open();
+        twin = try ensureTwin(arena, &local, cfg, root, m, m.legacy_twin.?, null);
+        var prepared = try ensureGeneration(arena, &local, cfg, root, m);
+        defer prepared.deinit();
+        try state.save(arena, root, .{ .current = .{ .manifest = m }, .previous = twin });
+        local.activateSnapshot(&prepared);
+        const lease = try local.checkoutRead();
+        defer lease.release();
+        try testing.expectEqualStrings("recovery.test", (try pack.unpackActor((try lease.baseActor(arena, "did:plc:recovery")).?)).handle);
+    }
+    const map_path = try std.fmt.allocPrint(arena, "{s}/generations/compact/index.db.prefix", .{root});
+    const map_bytes = try state.readSmall(arena, map_path);
+    try std.Io.Dir.deleteFileAbsolute(io, map_path);
+    {
+        var local = LocalDb.init(testing.allocator);
+        defer local.deinit();
+        try local.open();
+        try testing.expectError(error.FlatOpenFailed, prepareEntry(arena, &local, .{ .manifest = m }, root, true));
+        try recoverLocal(arena, &local, root);
+        try testing.expectEqualStrings("legacy", (try local.attachedBuildId(arena)).?);
+    }
+    map_bytes[map_bytes.len - 1] ^= 1;
+    try state.writeFile(map_path, map_bytes);
+    try state.save(arena, root, .{ .current = .{ .manifest = m }, .previous = twin });
+    {
+        var local = LocalDb.init(testing.allocator);
+        defer local.deinit();
+        try local.open();
+        try testing.expectError(error.FlatDigestMismatch, prepareEntry(arena, &local, .{ .manifest = m }, root, true));
+        try recoverLocal(arena, &local, root);
+        try testing.expectEqualStrings("legacy", (try local.attachedBuildId(arena)).?);
+    }
 }

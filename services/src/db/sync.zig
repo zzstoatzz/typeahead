@@ -545,33 +545,26 @@ fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldRow) bo
     const lease = local.checkoutRead() catch return false;
     defer lease.release();
 
-    // u16-length-prefixed fields; real blobs are well under this (labels/associated JSON included)
-    var blob_buf: [16384]u8 = undefined;
+    var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena_state.deinit();
+    return oldFromLease(arena_state.allocator(), lease, did, out);
+}
+
+fn oldFromLease(arena: std.mem.Allocator, lease: LocalDb.ReadLease, did: []const u8, out: *OldRow) bool {
     var blob: ?[]const u8 = null;
-    var tombstone = false;
     {
         var rows = lease.query("SELECT blob FROM actor_overlay WHERE did = ?", .{did}) catch return false;
         defer rows.deinit();
         if (rows.next()) |row| {
             if (row.nullableBlob(0)) |b| {
-                if (b.len > blob_buf.len) return false;
-                @memcpy(blob_buf[0..b.len], b);
-                blob = blob_buf[0..b.len];
-            } else tombstone = true;
+                if (b.len > 16384) return false;
+                blob = arena.dupe(u8, b) catch return false;
+            } else return true;
         }
     }
-    if (tombstone) return true;
-    if (blob == null) {
-        var rows = lease.query("SELECT blob FROM idx.actor_compact_base WHERE did = ?", .{did}) catch return false;
-        defer rows.deinit();
-        if (rows.next()) |row| {
-            const b = row.blob(0);
-            if (b.len > blob_buf.len) return false;
-            @memcpy(blob_buf[0..b.len], b);
-            blob = blob_buf[0..b.len];
-        }
-    }
+    if (blob == null) blob = lease.baseActor(arena, did) catch return false;
     const b = blob orelse return true;
+    if (b.len > 16384) return false;
     const ac = pack.unpackActor(b) catch return false;
     if (ac.handle.len > 0 and ac.handle.len <= out.handle_buf.len) {
         @memcpy(out.handle_buf[0..ac.handle.len], ac.handle);
@@ -582,6 +575,49 @@ fn snapshotOldFromOverlayBase(local: *LocalDb, did: []const u8, out: *OldRow) bo
         out.name = out.name_buf[0..ac.display.len];
     }
     return true;
+}
+
+test "unified base old actor suppresses renamed prefixes and preserves large sync limit" {
+    const bytes = @embedFile("../index/unified_fixture.bin");
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(bytes, &digest, .{});
+    const hex = std.fmt.bytesToHex(digest, .lower);
+    const map = try @import("../index/flat_prefix.zig").Map.validate(bytes, &hex);
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try @import("../index/schema.zig").initOverlay(conn);
+    var local = LocalDb.init(std.testing.allocator);
+    const lease: LocalDb.ReadLease = .{ .db = &local, .slot = 0, .conn = conn, .prefix_map = map };
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var old: OldRow = .{};
+    try std.testing.expect(oldFromLease(arena, lease, "did:arbitrary:small", &old));
+    try std.testing.expectEqualStrings("old.example", old.handle.?);
+    try overlay.projectUpdate(arena, conn, .{
+        .did = "did:arbitrary:small",
+        .handle = "new.example",
+        .display_name = "New Name",
+        .avatar_url = "",
+        .labels = "[]",
+        .associated = "{}",
+        .pds = "",
+        .created_at = "",
+        .hidden = false,
+        .quality_score = 2,
+    }, old.handle.?, old.name.?, 2);
+    const suppressed = (try conn.row("SELECT op FROM prefix_overlay WHERE key='h:old' AND did='did:arbitrary:small'", .{})).?;
+    defer suppressed.deinit();
+    try std.testing.expectEqual(@as(i64, 0), suppressed.int(0));
+    old = .{};
+    try std.testing.expect(oldFromLease(arena, lease, "did:arbitrary:small", &old));
+    try std.testing.expectEqualStrings("new.example", old.handle.?);
+    old = .{};
+    try std.testing.expect(!oldFromLease(arena, lease, "did:web:custom.example/path", &old));
+    try conn.exec("UPDATE actor_overlay SET blob=NULL WHERE did='did:arbitrary:small'", .{});
+    old = .{};
+    try std.testing.expect(oldFromLease(arena, lease, "did:arbitrary:small", &old));
+    try std.testing.expect(old.handle == null);
 }
 
 /// Project one updated actor into the overlay, inside the caller's

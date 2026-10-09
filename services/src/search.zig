@@ -122,10 +122,7 @@ pub fn writeActor(jw: anytype, c: *const Candidate) !void {
 /// contain these characters; stripping them silently turns "fig (aka:[phil])"
 /// into "fig akaphil" and makes the query useless.
 /// Mirrors the worker's sanitize() in src/utils.ts.
-/// Uses a static buffer — safe for single query at a time per thread.
-var sanitize_buf: [512]u8 = undefined;
-
-pub fn sanitize(input: []const u8) []const u8 {
+pub fn sanitize(input: []const u8, sanitize_buf: *[512]u8) []const u8 {
     var out: usize = 0;
     for (input) |c| {
         if (out >= sanitize_buf.len) break;

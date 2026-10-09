@@ -13,6 +13,7 @@ const overlay = @import("../index/overlay.zig");
 const log = std.log.scoped(.local_db);
 
 const LocalDb = @This();
+const FlatMap = @import("../index/flat_prefix.zig").Map;
 
 /// One read connection per HTTP worker thread is wrong (deadlocks under
 /// concurrent /search) and a single shared one is also wrong (zqlite.Conn
@@ -38,6 +39,7 @@ conn: ?zqlite.Conn = null,
 /// from READ_POOL_SIZE env var (default 4) so we can tune without a
 /// recompile when load characteristics change.
 read_conns: []?zqlite.Conn = &.{},
+prefix_map: ?FlatMap = null,
 read_slot_mu: []std.Io.Mutex = &.{},
 read_rr: std.atomic.Value(usize) = std.atomic.Value(usize).init(0),
 read_wait_budget_ms: u64 = READ_WAIT_DEFAULT_MS,
@@ -172,6 +174,16 @@ pub fn deinit(self: *LocalDb) void {
 /// will reject it. `busy_timeout` is small because we want to fail fast
 /// to a higher-level fallback rather than block on a stuck writer.
 fn openReadPool(self: *LocalDb, path: [*:0]const u8) !void {
+    errdefer {
+        for (self.read_conns) |*slot| {
+            if (slot.*) |c| c.close();
+            slot.* = null;
+        }
+        if (self.meta_conn) |c| c.close();
+        self.meta_conn = null;
+        if (self.prefix_map) |dict| dict.close();
+        self.prefix_map = null;
+    }
     if (self.read_conns.len == 0) {
         const size = envUsize("READ_POOL_SIZE", READ_POOL_DEFAULT_SIZE, 1, 64);
         self.read_conns = try self.allocator.alloc(?zqlite.Conn, size);
@@ -196,7 +208,75 @@ fn openReadPool(self: *LocalDb, path: [*:0]const u8) !void {
         return err;
     };
     applyReadPragmas(self.meta_conn.?);
-    if (self.snapshot_path) |sp| try attachSnapshot(self.meta_conn.?, sp);
+    if (self.snapshot_path) |sp| {
+        try attachSnapshot(self.meta_conn.?, sp);
+        self.prefix_map = try loadPrefixMap(self.allocator, self.meta_conn.?, sp);
+    }
+}
+
+pub const PreparedSnapshot = struct {
+    allocator: Allocator,
+    map: ?FlatMap = null,
+    conns: []?zqlite.Conn,
+    meta: ?zqlite.Conn = null,
+    path: []const u8,
+
+    pub fn basePrefix(self: PreparedSnapshot, arena: Allocator, key: []const u8) !?[]const u8 {
+        if (self.map) |map| return map.findTagged(arena, .prefix, key);
+        const row = (try self.meta.?.row("SELECT dids FROM idx.prefix_top_base WHERE key=?", .{key})) orelse return null;
+        defer row.deinit();
+        return try arena.dupe(u8, row.blob(0));
+    }
+
+    pub fn baseActor(self: PreparedSnapshot, arena: Allocator, did: []const u8) !?[]const u8 {
+        if (self.map) |map| return map.findTagged(arena, .actor, did);
+        const row = (try self.meta.?.row("SELECT blob FROM idx.actor_compact_base WHERE did=?", .{did})) orelse return null;
+        defer row.deinit();
+        return try arena.dupe(u8, row.blob(0));
+    }
+
+    pub fn deinit(self: *PreparedSnapshot) void {
+        for (self.conns) |conn| if (conn) |c| c.close();
+        self.allocator.free(self.conns);
+        if (self.meta) |c| c.close();
+        if (self.map) |map| map.close();
+        self.allocator.free(self.path);
+        self.* = undefined;
+    }
+};
+
+fn loadPrefixMap(allocator: Allocator, conn: zqlite.Conn, path: []const u8) !?FlatMap {
+    const marker = (try conn.row("SELECT value FROM idx.index_meta WHERE key='flat_prefix_version'", .{})) orelse return null;
+    defer marker.deinit();
+    const digest = (try conn.row("SELECT value FROM idx.index_meta WHERE key='flat_prefix_sha256'", .{})) orelse return error.MissingFlatDigest;
+    defer digest.deinit();
+    return try FlatMap.open(allocator, path, digest.text(0));
+}
+
+pub fn prepareSnapshot(self: *LocalDb, snapshot: []const u8) !PreparedSnapshot {
+    const path = try self.allocator.dupeSentinel(u8, self.path, 0);
+    defer self.allocator.free(path);
+    const destination = try self.allocator.dupe(u8, snapshot);
+    errdefer self.allocator.free(destination);
+    const conns = try self.allocator.alloc(?zqlite.Conn, self.read_conns.len);
+    @memset(conns, null);
+    var prepared: PreparedSnapshot = .{ .allocator = self.allocator, .path = destination, .conns = conns };
+    errdefer {
+        for (prepared.conns) |conn| if (conn) |c| c.close();
+        self.allocator.free(prepared.conns);
+        if (prepared.meta) |c| c.close();
+        if (prepared.map) |map| map.close();
+    }
+    prepared.meta = try zqlite.open(path, zqlite.OpenFlags.ReadOnly);
+    applyReadPragmas(prepared.meta.?);
+    try attachSnapshot(prepared.meta.?, snapshot);
+    prepared.map = try loadPrefixMap(self.allocator, prepared.meta.?, snapshot);
+    for (prepared.conns) |*conn| {
+        conn.* = try zqlite.open(path, zqlite.OpenFlags.ReadOnly);
+        applyReadPragmas(conn.*.?);
+        try attachSnapshot(conn.*.?, snapshot);
+    }
+    return prepared;
 }
 
 /// ATTACH the immutable snapshot as `idx` on a read conn. Bound parameter
@@ -208,6 +288,41 @@ fn attachSnapshot(c: zqlite.Conn, path: []const u8) !void {
         log.err("ATTACH snapshot failed ({s}): {}", .{ path, err });
         return err;
     };
+
+    try validateSnapshotFormat(c);
+}
+
+fn validateSnapshotFormat(c: zqlite.Conn) !void {
+    const flat = blk: {
+        if (try c.row("SELECT value FROM idx.index_meta WHERE key='flat_prefix_version'", .{})) |row| {
+            defer row.deinit();
+            if (!std.mem.eql(u8, row.text(0), "5")) return error.UnsupportedFlatSnapshotVersion;
+            break :blk true;
+        }
+        break :blk false;
+    };
+    const shape = (try c.row("SELECT type FROM idx.sqlite_master WHERE name='prefix_top_base'", .{})) orelse return error.InvalidFlatSnapshotSchema;
+    defer shape.deinit();
+    if (!std.mem.eql(u8, shape.text(0), if (flat) "view" else "table")) return error.InvalidFlatSnapshotSchema;
+    if (flat) {
+        const actor = (try c.row("SELECT type FROM idx.sqlite_master WHERE name='actor_compact_base'", .{})) orelse return error.InvalidFlatSnapshotSchema;
+        defer actor.deinit();
+        if (!std.mem.eql(u8, actor.text(0), "view")) return error.InvalidFlatSnapshotSchema;
+        inline for (.{
+            "SELECT key,dids FROM idx.prefix_top_base LIMIT 1",
+            "SELECT did,blob FROM idx.actor_compact_base LIMIT 1",
+        }) |sql| {
+            if (c.row(sql, .{}) catch return error.InvalidFlatSnapshotSchema) |row| {
+                row.deinit();
+                return error.InvalidFlatSnapshotSchema;
+            }
+        }
+        inline for (.{ "prefix_top_base", "actor_compact_base" }) |table| {
+            const columns = (try c.row("SELECT count(*) FROM pragma_table_info(?, 'idx')", .{table})).?;
+            defer columns.deinit();
+            if (columns.int(0) != 2) return error.InvalidFlatSnapshotSchema;
+        }
+    }
 }
 
 fn applyReadPragmas(c: zqlite.Conn) void {
@@ -236,6 +351,8 @@ pub fn closeReadConn(self: *LocalDb) void {
     }
     if (self.meta_conn) |c| c.close();
     self.meta_conn = null;
+    if (self.prefix_map) |dict| dict.close();
+    self.prefix_map = null;
 
     self.meta_mu.unlock(io);
     for (self.read_slot_mu) |*mu| mu.unlock(io);
@@ -263,44 +380,39 @@ pub fn reopenReadConn(self: *LocalDb) !void {
     try self.openReadPool(path);
 }
 
-/// Atomically swap the ATTACHed prefix-index snapshot to `new_path`. Rebuilds
-/// the read pool (close → set path → reopen) so every conn attaches the new
-/// file in lockstep. The caller MUST have already verified + validated the
-/// file (promote.zig) — this only does the attach. On reopen failure the swap
-/// reverts to the prior snapshot so the pool never lands fully wedged.
-///
-/// Brief unavailability window during the rebuild (same as bootstrap's
-/// close/reopen): a concurrent checkoutRead observes null slots and fails
-/// fast to 503. Swaps are rare (per build, every 6-12h), so this is fine.
+/// Snapshot paths and their sidecars must stay immutable; callers serialize publishers.
+/// Prepare and validate the candidate while old leases remain available, then rebuild
+/// the pool. A failed preparation leaves the current generation untouched.
 pub fn swapSnapshot(self: *LocalDb, new_path: []const u8) !void {
-    const dup = try self.allocator.dupe(u8, new_path);
+    var prepared = try self.prepareSnapshot(new_path);
+    defer prepared.deinit();
+    self.activateSnapshot(&prepared);
+}
+
+pub fn activateSnapshot(self: *LocalDb, prepared: *PreparedSnapshot) void {
+    std.debug.assert(prepared.conns.len == self.read_conns.len);
+    for (self.read_slot_mu) |*mu| mu.lockUncancelable(io);
+    self.meta_mu.lockUncancelable(io);
+    defer {
+        self.meta_mu.unlock(io);
+        for (self.read_slot_mu) |*mu| mu.unlock(io);
+    }
+    for (self.read_conns, prepared.conns) |*live, *next| std.mem.swap(?zqlite.Conn, live, next);
+    std.mem.swap(?zqlite.Conn, &self.meta_conn, &prepared.meta);
+    std.mem.swap(?FlatMap, &self.prefix_map, &prepared.map);
     const old = self.snapshot_path;
-
-    self.closeReadConn();
-    self.snapshot_path = dup;
-    self.reopenReadConn() catch |err| {
-        log.err("snapshot swap failed: {}; reverting to prior snapshot", .{err});
-        self.allocator.free(dup);
-        self.snapshot_path = old;
-        self.reopenReadConn() catch |rerr| {
-            log.err("revert reopen also failed: {}", .{rerr});
-        };
-        return err;
-    };
-
-    if (old) |o| self.allocator.free(o);
-    // ready = a validated snapshot is attached. Serving has no other
-    // prerequisite: the overlay is always present, and an empty one is correct.
+    self.snapshot_path = prepared.path;
+    prepared.path = old orelse "";
     self.setReady(true);
-    log.info("snapshot attached: {s}", .{new_path});
+    log.info("snapshot attached: {s}", .{self.snapshot_path.?});
 }
 
 /// build_id of the currently-attached snapshot, or null if none attached.
 /// Caller owns the returned slice. Used by the /index/status debug endpoint.
 pub fn attachedBuildId(self: *LocalDb, gpa: Allocator) !?[]const u8 {
-    if (self.snapshot_path == null) return null;
     self.meta_mu.lockUncancelable(io);
     defer self.meta_mu.unlock(io);
+    if (self.snapshot_path == null) return null;
     const c = self.meta_conn orelse return null;
     const row = c.row("SELECT value FROM idx.index_meta WHERE key = 'build_id'", .{}) catch return null;
     if (row) |r| {
@@ -404,19 +516,18 @@ pub fn overlayActorRows(self: *LocalDb) i64 {
     return -1;
 }
 
-/// Path of the currently-attached snapshot file, or null. Only the promote
-/// watcher mutates snapshot_path (via swapSnapshot) and only it reads this,
-/// so no lock is needed. Used to pick the inactive A/B slot to download into.
-pub fn snapshotPath(self: *LocalDb) ?[]const u8 {
-    return self.snapshot_path;
+pub fn snapshotPath(self: *LocalDb, allocator: Allocator) !?[]const u8 {
+    self.meta_mu.lockUncancelable(io);
+    defer self.meta_mu.unlock(io);
+    return if (self.snapshot_path) |path| try allocator.dupe(u8, path) else null;
 }
 
 /// Text-valued `index_meta` key from the attached snapshot, or null if no
 /// snapshot is attached / the key is missing. Caller owns the slice.
 pub fn attachedMetaText(self: *LocalDb, gpa: Allocator, key: []const u8) !?[]const u8 {
-    if (self.snapshot_path == null) return null;
     self.meta_mu.lockUncancelable(io);
     defer self.meta_mu.unlock(io);
+    if (self.snapshot_path == null) return null;
     const c = self.meta_conn orelse return null;
     const row = c.row("SELECT value FROM idx.index_meta WHERE key = ?", .{key}) catch return null;
     if (row) |r| {
@@ -430,9 +541,9 @@ pub fn attachedMetaText(self: *LocalDb, gpa: Allocator, key: []const u8) !?[]con
 /// snapshot is attached / the key is missing. Used to feed the previous
 /// build's actor/prefix counts into the promote sanity floors.
 pub fn attachedMetaInt(self: *LocalDb, key: []const u8) u64 {
-    if (self.snapshot_path == null) return 0;
     self.meta_mu.lockUncancelable(io);
     defer self.meta_mu.unlock(io);
+    if (self.snapshot_path == null) return 0;
     const c = self.meta_conn orelse return 0;
     const row = c.row("SELECT value FROM idx.index_meta WHERE key = ?", .{key}) catch return 0;
     if (row) |r| {
@@ -524,6 +635,7 @@ pub const ReadLease = struct {
     db: *LocalDb,
     slot: usize,
     conn: zqlite.Conn,
+    prefix_map: ?FlatMap = null,
 
     pub fn release(self: ReadLease) void {
         self.db.read_slot_mu[self.slot].unlock(io);
@@ -535,6 +647,14 @@ pub const ReadLease = struct {
             return e;
         };
         return .{ .inner = rows };
+    }
+
+    pub fn baseActor(self: ReadLease, arena: Allocator, did: []const u8) !?[]const u8 {
+        if (self.prefix_map) |map| return map.findTagged(arena, .actor, did);
+        var rows = try self.query("SELECT blob FROM idx.actor_compact_base WHERE did = ?", .{did});
+        defer rows.deinit();
+        if (rows.next()) |row| return try arena.dupe(u8, row.blob(0));
+        return null;
     }
 
     /// SELECT with runtime SQL + runtime-sized list of text bind values.
@@ -577,7 +697,7 @@ fn tryAcquireSlot(self: *LocalDb, start: usize) ?ReadLease {
         const slot = (start + i) % self.read_conns.len;
         if (self.read_slot_mu[slot].tryLock()) {
             if (self.read_conns[slot]) |conn| {
-                return .{ .db = self, .slot = slot, .conn = conn };
+                return .{ .db = self, .slot = slot, .conn = conn, .prefix_map = self.prefix_map };
             }
             self.read_slot_mu[slot].unlock(io);
         }
@@ -625,4 +745,119 @@ pub fn syncLagSeconds(self: *LocalDb, now_unix: i64) i64 {
         return now_unix - last;
     }
     return -1;
+}
+
+test "flat format admission rejects missing and unknown markers and permits legacy" {
+    var c = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer c.close();
+    try c.exec("ATTACH ':memory:' AS idx", .{});
+    try c.exec("CREATE TABLE idx.index_meta(key TEXT PRIMARY KEY,value TEXT)", .{});
+    try std.testing.expectError(error.InvalidFlatSnapshotSchema, validateSnapshotFormat(c));
+    try c.exec("CREATE TABLE idx.prefix_top_base(key TEXT PRIMARY KEY,dids BLOB)", .{});
+    try validateSnapshotFormat(c);
+    try c.exec("INSERT INTO idx.index_meta VALUES('flat_prefix_version','99')", .{});
+    try std.testing.expectError(error.UnsupportedFlatSnapshotVersion, validateSnapshotFormat(c));
+    try c.exec("UPDATE idx.index_meta SET value='5'", .{});
+    try std.testing.expectError(error.InvalidFlatSnapshotSchema, validateSnapshotFormat(c));
+    try c.exec("DROP TABLE idx.prefix_top_base", .{});
+    try c.exec("CREATE VIEW idx.prefix_top_base AS SELECT NULL AS key,NULL AS dids WHERE 0", .{});
+    try std.testing.expectError(error.InvalidFlatSnapshotSchema, validateSnapshotFormat(c));
+    try c.exec("CREATE VIEW idx.actor_compact_base AS SELECT NULL AS did,NULL AS blob WHERE 0", .{});
+    try validateSnapshotFormat(c);
+    try c.exec("DROP VIEW idx.actor_compact_base", .{});
+    try c.exec("CREATE VIEW idx.actor_compact_base AS SELECT 1 AS wrong WHERE 0", .{});
+    try std.testing.expectError(error.InvalidFlatSnapshotSchema, validateSnapshotFormat(c));
+    try c.exec("DROP VIEW idx.actor_compact_base", .{});
+    try c.exec("CREATE VIEW idx.actor_compact_base AS SELECT 'did:x' AS did,X'00' AS blob", .{});
+    try std.testing.expectError(error.InvalidFlatSnapshotSchema, validateSnapshotFormat(c));
+    try c.exec("DELETE FROM idx.index_meta", .{});
+    try std.testing.expectError(error.InvalidFlatSnapshotSchema, validateSnapshotFormat(c));
+}
+
+extern "c" fn mkdtemp(template: [*:0]u8) ?[*:0]u8;
+
+fn writeFixture(path: []const u8, bytes: []const u8) !void {
+    const file = try std.Io.Dir.createFileAbsolute(io, path, .{ .truncate = true });
+    defer file.close(io);
+    var buffer: [4096]u8 = undefined;
+    var writer = std.Io.File.Writer.init(file, io, &buffer);
+    try writer.interface.writeAll(bytes);
+    try writer.interface.flush();
+}
+
+test "unified generation admission and swap retain leased bytes and reject corrupt replacement" {
+    var directory = "/tmp/unified-generation-XXXXXX".*;
+    _ = mkdtemp(&directory) orelse return error.TestDirectoryFailed;
+    defer std.Io.Dir.deleteTree(.cwd(), io, &directory) catch {};
+    var arena_state = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const old_path = try std.fmt.allocPrint(arena, "{s}/old.db", .{directory});
+    const new_path = try std.fmt.allocPrint(arena, "{s}/new.db", .{directory});
+    const bad_path = try std.fmt.allocPrint(arena, "{s}/bad.db", .{directory});
+    try writeFixture(old_path, @embedFile("../index/unified_fixture1.db"));
+    try writeFixture(new_path, @embedFile("../index/unified_fixture2.db"));
+    try writeFixture(bad_path, @embedFile("../index/unified_fixture2.db"));
+    try writeFixture(try std.fmt.allocPrint(arena, "{s}.prefix", .{old_path}), @embedFile("../index/unified_fixture1.bin"));
+    try writeFixture(try std.fmt.allocPrint(arena, "{s}.prefix", .{new_path}), @embedFile("../index/unified_fixture2.bin"));
+    const corrupt = try arena.dupe(u8, @embedFile("../index/unified_fixture2.bin"));
+    corrupt[corrupt.len - 1] ^= 1;
+    try writeFixture(try std.fmt.allocPrint(arena, "{s}.prefix", .{bad_path}), corrupt);
+    var local = LocalDb.init(std.testing.allocator);
+    defer local.deinit();
+    local.path = try std.fmt.allocPrint(arena, "{s}/overlay.db", .{directory});
+    try local.openDb(local.path);
+    try local.swapSnapshot(old_path);
+    const old = try local.checkoutRead();
+    var released = false;
+    defer if (!released) old.release();
+    const before = (try old.baseActor(arena, "did:arbitrary:small")).?;
+    const pack = @import("../index/pack.zig");
+    try std.testing.expectEqualStrings("old.example", (try pack.unpackActor(before)).handle);
+    var admitted = try local.prepareSnapshot(new_path);
+    defer admitted.deinit();
+    const future = (try admitted.map.?.findTagged(arena, .actor, "did:arbitrary:small")).?;
+    try std.testing.expectEqualStrings("new.example", (try pack.unpackActor(future)).handle);
+    try std.testing.expectError(error.FlatDigestMismatch, local.swapSnapshot(bad_path));
+    try std.testing.expectEqualStrings("old.example", (try pack.unpackActor((try old.baseActor(arena, "did:arbitrary:small")).?)).handle);
+    const Swap = struct {
+        local: *LocalDb,
+        path: []const u8,
+        entered: std.atomic.Value(bool) = .init(false),
+        done: std.atomic.Value(bool) = .init(false),
+        failed: bool = false,
+        fn run(self: *@This()) void {
+            self.entered.store(true, .release);
+            self.local.swapSnapshot(self.path) catch {
+                self.failed = true;
+            };
+            self.done.store(true, .release);
+        }
+    };
+    var swap: Swap = .{ .local = &local, .path = new_path };
+    const thread = try std.Thread.spawn(.{}, Swap.run, .{&swap});
+    var joined = false;
+    defer if (!joined) {
+        if (!released) {
+            old.release();
+            released = true;
+        }
+        thread.join();
+    };
+    while (!swap.entered.load(.acquire)) std.Thread.yield() catch {};
+    for (0..1000) |_| std.Thread.yield() catch {};
+    try std.testing.expect(!swap.done.load(.acquire));
+    try std.testing.expect((try old.prefix_map.?.findTagged(arena, .prefix, "h:old")) != null);
+    try std.testing.expect((try old.prefix_map.?.findTagged(arena, .prefix, "h:new")) == null);
+    old.release();
+    released = true;
+    thread.join();
+    joined = true;
+    try std.testing.expect(!swap.failed);
+    const current = try local.checkoutRead();
+    defer current.release();
+    try std.testing.expectEqualStrings("new.example", (try pack.unpackActor((try current.baseActor(arena, "did:arbitrary:small")).?)).handle);
+    try std.testing.expect((try current.prefix_map.?.findTagged(arena, .prefix, "h:new")) != null);
+    try std.testing.expect((try current.prefix_map.?.findTagged(arena, .prefix, "h:old")) == null);
+    try std.testing.expectEqualStrings("old.example", (try pack.unpackActor(before)).handle);
 }

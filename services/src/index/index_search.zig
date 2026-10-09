@@ -52,7 +52,8 @@ fn milliTimestamp() i64 {
 }
 
 pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, writer: anytype) !void {
-    const term = searchmod.sanitize(raw_query);
+    var sanitize_buf: [512]u8 = undefined;
+    const term = searchmod.sanitize(raw_query, &sanitize_buf);
     if (term.len == 0) {
         try writer.writeAll("{\"actors\":[]}");
         return;
@@ -205,7 +206,8 @@ fn filterFullQuery(arena: Allocator, norm: []const u8, rows: []searchmod.Candida
 /// Offline/shadow evaluator. Caller supplies one frozen read lease; never used
 /// by the public search handler. Public JSON and internal scores must agree.
 pub fn evaluateFrozen(arena: Allocator, lease: LocalDb.ReadLease, raw_query: []const u8) !Evaluation {
-    const norm = try normalize.query(arena, searchmod.sanitize(raw_query));
+    var sanitize_buf: [512]u8 = undefined;
+    const norm = try normalize.query(arena, searchmod.sanitize(raw_query, &sanitize_buf));
     const start = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
     var baseline_trace: Trace = .{};
     var candidate_trace: Trace = .{};
@@ -247,7 +249,8 @@ pub fn debug(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit
     defer arena_state.deinit();
     const arena = arena_state.allocator();
 
-    const term = searchmod.sanitize(raw_query);
+    var sanitize_buf: [512]u8 = undefined;
+    const term = searchmod.sanitize(raw_query, &sanitize_buf);
     const norm = if (term.len == 0) "" else try normalize.query(arena, term);
 
     var jw: json.Stringify = .{ .writer = writer };
@@ -304,6 +307,16 @@ const Report = struct {
 /// Decode prefix_top_base.dids for one key into scored DIDs. DIDs are duped
 /// into the arena (the blob is freed when the row iterator closes).
 fn basePrefixDids(arena: Allocator, lease: LocalDb.ReadLease, key: []const u8) ![]merge.Scored {
+    if (lease.prefix_map) |map| {
+        const blob = (try map.findTagged(arena, .prefix, key)) orelse return &.{};
+        var it = try pack.DidListIter.init(blob);
+        const out = try arena.alloc(merge.Scored, it.remaining);
+        for (out) |*item| {
+            const entry = it.next().?;
+            item.* = .{ .did = entry.did, .score = entry.score };
+        }
+        return out;
+    }
     var rows = try lease.query("SELECT dids FROM idx.prefix_top_base WHERE key = ?", .{key});
     defer rows.deinit();
     if (rows.next()) |row| {
@@ -417,7 +430,11 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
     {
         var need: std.ArrayListUnmanaged([]const u8) = .empty;
         for (did_list) |d| if (!ov_map.contains(d)) try need.append(arena, d);
-        if (need.items.len > 0) {
+        if (lease.prefix_map != null) {
+            for (need.items) |did| {
+                if (try lease.baseActor(arena, did)) |blob| try base_map.put(arena, did, blob);
+            }
+        } else if (need.items.len > 0) {
             const sql = try inClause(arena, "SELECT did, blob FROM idx.actor_compact_base WHERE did IN (", need.items.len);
             var rows = try lease.queryTextList(sql, need.items);
             defer rows.deinit();
@@ -837,4 +854,30 @@ test "real data differential (explicit offline paths only)" {
         std.mem.sort(i128, &bounded_times, {}, std.sort.asc(i128));
         std.debug.print("REAL_EVAL q={s} actors={d} full_us={d} bounded_us={d}\n", .{ query, count, @divTrunc(full_times[3], 1000), @divTrunc(bounded_times[3], 1000) });
     }
+}
+
+test "unified hydration retains large actors and overlay moderation" {
+    const bytes = @embedFile("unified_fixture.bin");
+    var digest: [32]u8 = undefined;
+    std.crypto.hash.sha2.Sha256.hash(bytes, &digest, .{});
+    const hex = std.fmt.bytesToHex(digest, .lower);
+    const map = try @import("flat_prefix.zig").Map.validate(bytes, &hex);
+    const zqlite = @import("zqlite");
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try @import("schema.zig").initOverlay(conn);
+    var local = LocalDb.init(testing.allocator);
+    const lease: LocalDb.ReadLease = .{ .db = &local, .slot = 0, .conn = conn, .prefix_map = map };
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const result = try executeLookup(arena, lease, "old", null, true);
+    try testing.expectEqual(@as(usize, 2), result.len);
+    try testing.expectEqualStrings("did:web:custom.example/path", result[1].did);
+    try testing.expectEqual(@as(usize, 40002), result[1].labels.len);
+    try conn.exec("INSERT INTO actor_overlay(did,blob,hidden,updated_at) VALUES('did:web:custom.example/path',NULL,0,2)", .{});
+    try testing.expectEqual(@as(usize, 1), (try executeLookup(arena, lease, "old", null, true)).len);
+    const blob = (try lease.baseActor(arena, "did:arbitrary:small")).?;
+    try conn.exec("INSERT INTO actor_overlay(did,blob,hidden,updated_at) VALUES('did:arbitrary:small',?,1,2)", .{zqlite.blob(blob)});
+    try testing.expectEqual(@as(usize, 0), (try executeLookup(arena, lease, "old", null, true)).len);
 }

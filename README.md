@@ -59,6 +59,11 @@ flowchart LR
   (they do not correct a stale handle; the ingester does). The hourly Worker cron handles
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
+Compact snapshot rollout is in development (2026-10-08); production still uses
+SQLite snapshots. See the [rollout gates](docs/plans/snapshot-compaction-rollout.md)
+and [full-corpus experiment](docs/evals/flat-prefix-compaction.md). Release
+qualification and deployment remain outstanding.
+
 The snapshot precomputes search candidates, but **the deployed overlay lookup
 can still scan a large matching prefix**. Candidate hydration is capped at 50
 before exact-handle reinjection. Prefix keys are stored up to 16 bytes; a longer

@@ -13,7 +13,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-const io = std.Options.debug_io;
+const io = if (@import("builtin").is_test) std.testing.io else std.Options.debug_io;
 const log = std.log.scoped(.r2);
 
 // std.c omits setenv/unsetenv from 0.16's curated list. Only the tests use
