@@ -1,6 +1,6 @@
 # Snapshot compaction rollout
 
-2026-10-08 — authorized rollout in local implementation; no deployment or production mutation performed.
+2026-10-09 — compact snapshot rollout remains isolated; no production compact pointer or reader deployment performed.
 The [isolated evaluation](../evals/flat-prefix-compaction.md) is complete. Its
 51.4% reduction against VACUUM and passing read gates establish the design, not
 production integration or performance on Fly hardware.
@@ -252,7 +252,10 @@ staging evidence should make the eventual production change concrete and reviewa
 
 ## Implementation status — 2026-10-08
 
-Work is isolated on `codex/snapshot-compaction`; production has not changed.
+Work is isolated on `codex/snapshot-compaction`; this rollout has not changed production.
+The separately deployed overlay ranking index is incorporated so replacement
+machines retain it. The home indexer schedule/source also changed in the quiet-build
+work; refresh that deployment inventory before applying compact publication.
 The dual reader, prepared read-pool exchange, immutable generation admission,
 and durable activation record are implemented locally. Legacy publishing
 remains the default. `INDEX_LATEST_KEY` selects an isolated manifest pointer;
@@ -279,8 +282,8 @@ Local real-rclone tests verify pointer preservation on failed publication.
 The Prefect integration is isolated in a separate worktree, with
 `snapshot_format="sqlite"` still the default. Compact mode builds locally,
 then converts and publishes in a separately retryable task. Source builds
-remain protected while their compact twin serves. No deployment parameters,
-schedule, or credentials have changed.
+remain protected while their compact twin serves. No deployment parameters or credentials were changed by this rollout; the separate
+quiet-build deployment must be preserved when integrating these flow changes.
 
 Still required: full crash-boundary review, production-release performance
 qualification on Fly, staged deployment, and the scheduled-cycle/rollback
