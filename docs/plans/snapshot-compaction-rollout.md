@@ -308,3 +308,8 @@ TYPEAHEAD_TEST_RCLONE=1 TYPEAHEAD_TEST_PAIR_ROOT=/tmp/typeahead-pair-fixture zig
 
 The fixture directory must not already exist. It contains only synthetic data
 and can be removed after the test. Transport tests use rclone's local backend.
+
+The rollout checkout includes the unchanged quiet-build supervisor and real-host
+tests from `21befc4`. Builder integration preserves its deployed CPU/thermal
+policy and process cancellation. These Python tools do not alter the qualified
+`f3c494a` serving executable. Integrated scheduled execution remains a later gate.
