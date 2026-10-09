@@ -77,7 +77,8 @@ read-pool slot (1 MiB each, 8 MiB with eight slots). Each exclusive lease owns i
 slot cache; snapshot activation invalidates every slot before new leases can
 read. Oversized pages use the existing bounded scratch path. This remains
 unshipped pending the complete release gates; see
-[the diagnostic evidence](docs/evals/compact-read-cache.json).
+[the diagnostic evidence](docs/evals/compact-read-cache.json) and
+[exact-release recovery checks](docs/evals/compact-cache-release-checks.json).
 
 The snapshot precomputes search candidates. Union-prefix overlay additions use a
 partial `(key, score DESC, did ASC)` index and stop after the top 50, plus indexed

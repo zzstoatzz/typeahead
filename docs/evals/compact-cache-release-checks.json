@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-09",
+  "source": "251b093cf6127cae886596e8114d52ff3abe1e59",
+  "binary_sha256": "d5a860f1c3aa55a1e6a3abef07a521134c856dd9ec35d5b9496493f11cf5f5bc",
+  "image_platform_digest": "sha256:30064fbba3afc26a0ed023863d2d31ede08f35ecd6a1827a321539d9369752a2",
+  "production_deployed": false,
+  "process_tests": {
+    "passed": 6,
+    "skipped": 0,
+    "duration_seconds": 22.333,
+    "cases": [
+      "corrupt compact and modified legacy twin fail closed",
+      "crash fallback retains newer moderation and prunes only covered rows",
+      "interrupted real rclone download cleaned on restart",
+      "SIGTERM before/after admission and with stalled TCP",
+      "eight persistent clients with mixed reads/writes",
+      "real ENOSPC on isolated 8 MiB tmpfs and subsequent recovery"
+    ],
+    "log_sha256": "4ff9497642ac6daac83419948e8a51f11f9700ddda75534cd61407a84af25bbb"
+  },
+  "baseline_control_verification": {
+    "passed": true,
+    "serial_responses_per_binary": 10060,
+    "concurrent_control_responses": 1000,
+    "clients": 32,
+    "control_sha256": "f52cfba4b4f3d025718c1dea238a2e0295d2b5edda41f99f20688266e35779eb",
+    "original_sha256": "f82400c65efa59456b3240828da41e496ad2e92532318972fbf9356e226ea920",
+    "scope": "Diagnostic control differs from deployed source only in caller-owned sanitization buffers. Original failing campaign retained."
+  },
+  "performance_status": "Not qualified; cache-candidate warm and bounded trials are running. Original failed and incomplete campaigns retained."
+}

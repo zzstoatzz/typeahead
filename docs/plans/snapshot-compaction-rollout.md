@@ -137,6 +137,14 @@ The result is retained as `release-normal-pool8-mapped/gate.json` on HeavyPad;
 its input SHA-256 is
 `74b3fae4c50f6e5e602830d5ab683310e5162963ddc2fc53021ef457141e6751`.
 
+The bounded page-cache candidate (`251b093`) passed all six actual Linux
+release-process recovery checks, including interrupted real rclone transport and
+real disk-full recovery. [Artifact-specific evidence](../evals/compact-cache-release-checks.json)
+identifies the tested executable and image. The complete cache-candidate read
+gates remain outstanding. Cold rounds are divided across four identical 2 GiB
+Fly machines, keeping all three variants of each randomized round together;
+CPU-credit and throttle validity checks and all acceptance thresholds are unchanged.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from
