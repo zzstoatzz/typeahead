@@ -313,3 +313,12 @@ The rollout checkout includes the unchanged quiet-build supervisor and real-host
 tests from `21befc4`. Builder integration preserves its deployed CPU/thermal
 policy and process cancellation. These Python tools do not alter the qualified
 `f3c494a` serving executable. Integrated scheduled execution remains a later gate.
+
+A later warm-cache attempt stopped at round 30 on a 4 KiB physical read in
+a SQLite mixed read/write trial. The snapshot was fully resident before and
+afterward. A separate writes-only process reproduced the same counter change
+after writing 8 MiB, with no data-file reads. Process `read_bytes` therefore
+cannot certify snapshot cache misses during writes. The revised validity check
+requires zero physical reads in read-only phases, records mixed-phase I/O, and
+waits for initial sync/compaction before timing both variants. The strict latency
+gates remain unchanged; the incomplete run is retained, not accepted.
