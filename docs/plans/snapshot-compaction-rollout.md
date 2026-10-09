@@ -246,6 +246,14 @@ complements engine differential tests; passing `/search` alone does not establis
 the public XRPC contract. Local testing must disable production database access,
 fallbacks, emergency proxying, and remote resource bindings.
 
+The isolated Worker check passed on October 9: 448 successful responses across
+both snapshot formats, both alias orders, seven queries (including Unicode and
+an exact handle), and limits 1, 10, 50, and 100. Every response matched the direct
+backend bytes. Each format/order started a fresh local Worker cache, and cached
+responses were verified. The previously completed error, CORS, and unavailable
+checks also passed. No production resource bindings or fallbacks were enabled.
+See [the response-check evidence](../evals/xrpc-compact-qualification.json).
+
 ## Qualification gates
 
 Before any production pointer changes:

@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "responses": 448,
+  "formats": [
+    "legacy",
+    "compact"
+  ],
+  "aliases": [
+    "tech.waow.typeahead.searchActors",
+    "app.bsky.actor.searchActorsTypeahead"
+  ],
+  "alias_orders": 2,
+  "fresh_worker_per_format_and_order": true,
+  "limits": [
+    1,
+    10,
+    50,
+    100
+  ],
+  "query_count": 7,
+  "backend_response_equality": true,
+  "cache_header_verified": true,
+  "production_resources": false,
+  "files": {
+    "xrpc-success-baseline-0.json": "1b53d0e1e6d3e9e46309604297c90395478609b5bb3bc1b87595d3d87aa0e72d",
+    "xrpc-success-baseline-1.json": "0080a64dac1d7b455ec1282a469ce2ed1b9645c1c8ce74f5fb5c0135c2a7073e",
+    "xrpc-success-compact-0.json": "226515bf635c154af58294c0f11906a6d3f6084d3bb717de4edf47ede7d2ca36",
+    "xrpc-success-compact-1.json": "6278b5ed9c9213eba614a3eab6f46e3c5c9ac5f0aee305b22647a82bd1a38100"
+  }
+}
