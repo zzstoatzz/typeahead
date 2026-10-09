@@ -113,6 +113,19 @@ reads in read-only phases. The complete 60-round run is still required, using
 `protocol-pool8-mapped.json`; the original latency gate and the independent cold
 Fly experiment are unchanged. Harness mappings are not serving-process memory.
 
+The actual deployed binary passed the manifest-rejection drill on the isolated
+Fly machine: after adopting legacy SQLite, it downloaded compact metadata,
+rejected manifest v2 with `UnsupportedManifestVersion`, and preserved identical
+responses for 2,000 queries across repeated polls. Its version gate rejects the
+format before attempting the sidecar. The two isolated test objects and private
+transport configuration were removed after the drill.
+
+The separate eight-client compatibility campaign stopped at trial 6 when the
+**deployed baseline** segfaulted. Its trace enters the old fatal watchdog's
+recursive failure path; the triggering panic is not established. No CPU throttling
+occurred. This failed campaign is retained and does not qualify legacy-path
+latency. The compact-versus-SQLite campaign remains independent.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from
