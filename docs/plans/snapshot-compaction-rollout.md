@@ -90,6 +90,20 @@ twin; the reader must leave the activation record unchanged and fail readiness.
 Metadata and sentinels alone do not establish that the fallback still matches
 its manifest. Normal legacy startup behavior is unchanged.
 
+The first bounded Fly trial on the f3c494a image returned five HTTP 503
+`read pool exhausted` responses with eight concurrent cold clients and the
+default four-connection pool. CPU throttle counters did not increase. This is a
+real availability failure, not an invalid timing sample. One diagnostic using
+`READ_POOL_SIZE=8` completed without errors, with 306,130,944 bytes peak RSS inside
+the unchanged 2 GiB machine limit. It does not establish performance acceptance.
+
+`protocol-pool8.json` freezes a complete rerun with eight connections for both
+formats, preserving all original latency, correctness, and resource gates. The
+separate deployed-release comparison keeps its baseline at four connections and
+uses eight for the candidate. Results use separate paths; the failed trial and
+four-connection warm run remain available. Production configuration is unchanged.
+The rollout must use the configuration that actually passes qualification.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from
