@@ -300,7 +300,7 @@ it needs an explicitly tested recovery path before the final rollout stage. A pa
 Reproduce local compact-pair tests from the typeahead checkout:
 
 ```sh
-python3 -m unittest discover -s scripts/snapshot_compaction -p 'test_*.py'
+just test-compactor
 python3 scripts/snapshot_compaction/recovery_fixture.py /tmp/typeahead-pair-fixture
 cd services
 TYPEAHEAD_TEST_RCLONE=1 TYPEAHEAD_TEST_PAIR_ROOT=/tmp/typeahead-pair-fixture zig build test

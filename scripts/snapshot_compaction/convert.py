@@ -4,9 +4,11 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import sys
 import tempfile
 
 from build import build, digest_file, sync_directory
+from quiet import run
 
 
 FIELDS = (
@@ -112,7 +114,10 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--build-id', required=True)
     parser.add_argument('--object-prefix', default='staging/compaction')
+    parser.add_argument('--unlimited-cpu', action='store_true', help='Skip Linux quiet supervision for controlled runs')
     args = parser.parse_args()
+    if not args.unlimited_cpu:
+        sys.exit(run([sys.executable, str(Path(__file__).resolve()), *sys.argv[1:], '--unlimited-cpu']))
     print(json.dumps(convert(args.source, args.manifest, args.output, args.build_id, args.object_prefix), indent=2))
 
 

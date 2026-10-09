@@ -64,6 +64,14 @@ SQLite snapshots. See the [rollout gates](docs/plans/snapshot-compaction-rollout
 and [full-corpus experiment](docs/evals/flat-prefix-compaction.md). Release
 qualification and deployment remain outstanding.
 
+The offline converter uses a Zig shared library for packing and exhaustive
+record verification; Python validates manifests and stages the finished pair.
+Build it with `just build-compactor`, test with `just test-compactor`, and use
+`just convert-quiet --source ... --manifest ... --output ... --build-id ...` on
+HeavyPad to cap the entire conversion at 20% of one CPU. See
+[native conversion](docs/native-compaction.md) for the format contract,
+measurements, and scheduler integration status.
+
 The snapshot precomputes search candidates. Union-prefix overlay additions use a
 partial `(key, score DESC, did ASC)` index and stop after the top 50, plus indexed
 corrections to snapshot candidates. Exact keys and intersections retain full

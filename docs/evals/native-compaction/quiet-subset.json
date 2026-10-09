@@ -1,0 +1,16 @@
+{
+  "python": {
+    "wall_seconds": 138.01842563401442,
+    "cpu_seconds": 25.669494696999998
+  },
+  "zig": {
+    "wall_seconds": 18.95812238100916,
+    "cpu_seconds": 3.6272275890000003
+  },
+  "keys": 1000000,
+  "sha256": {
+    "index.db": "c1a42cf7e9be221dcca4752c819fd2cc1ba424ae715f016708f0b9a4f080e729",
+    "index.db.prefix": "b441ccccb6cd316b02c73c544be6181eda1ad64410229fa7885b204fe595e8fe"
+  },
+  "max_rss": 112496
+}

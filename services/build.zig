@@ -20,6 +20,20 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const compactor = b.addLibrary(.{
+        .name = "typeahead_compact",
+        .linkage = .dynamic,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/compact.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{.{ .name = "zqlite", .module = zqlite.module("zqlite") }},
+        }),
+    });
+    b.step("compact", "Build the native offline snapshot compactor").dependOn(&b.addInstallArtifact(compactor, .{}).step);
+    b.installArtifact(compactor);
+
     const zug = b.dependency("zug", .{
         .target = target,
         .optimize = optimize,

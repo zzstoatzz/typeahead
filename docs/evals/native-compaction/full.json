@@ -1,0 +1,26 @@
+{
+  "source": "/home/stoat/typeahead-index/build/build-b1791408253-dac0/index.db",
+  "keys": 151692969,
+  "verified_keys": 151692969,
+  "pages": 820035,
+  "oversized_pages": 10706,
+  "sha256": "273c523d138adc679a161cd17d7406f0228a370844e1c44462d58f2446f06487",
+  "bytes": 6789828608,
+  "phases": {
+    "pack": {
+      "wall_seconds": 68.04826128506102,
+      "cpu_seconds": 60.851745146
+    },
+    "reference_checksum": {
+      "wall_seconds": 6.126845219987445,
+      "cpu_seconds": 4.496935114999992
+    },
+    "verify": {
+      "wall_seconds": 90.03700041398406,
+      "cpu_seconds": 65.487371002
+    }
+  },
+  "wall_seconds": 164.2121902310755,
+  "cpu_seconds": 130.836133182,
+  "max_rss": 81784
+}

@@ -209,7 +209,7 @@ pub const Map = struct {
         return openFile(allocator, full, expected);
     }
 
-    fn openFile(allocator: std.mem.Allocator, path: []const u8, expected: []const u8) !Map {
+    pub fn openFile(allocator: std.mem.Allocator, path: []const u8, expected: []const u8) !Map {
         const zpath = try allocator.allocSentinel(u8, path.len, 0);
         @memcpy(zpath, path);
         defer allocator.free(zpath);
