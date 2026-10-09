@@ -168,6 +168,15 @@ after a request handled inline on the accept thread. Pooled handlers retain
 keep-alive. Both 8-client and 32-client mixed read/write process tests pass;
 full performance qualification of this executable remains pending.
 
+Profiling showed that the uncapped warm host schedules serving threads on both
+performance and efficiency cores. A six-round diagnostic pins the server to
+physical performance cores 0/2/4/6 and the generator to 8/10/12/14. It preserves
+the workload and zero-read-I/O validity check; the eight-client paired median
+compact/control p95 ratio is 0.9220. This is selection evidence only. The fixed
+60-round qualification continues from those six complete rounds with identical
+placement and unchanged statistical thresholds. Native-client diagnostics also
+remain recorded; switching clients alone did not establish non-regression.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from

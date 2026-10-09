@@ -349,5 +349,88 @@
     ],
     "environment_correction": "Disk-full check initially rejected an unmounted old tmpfs path before exercising the release; passed using newly mounted isolated 8 MiB tmpfs, unmounted afterward.",
     "log": "/data/inline-close-release-tests.log; corrected disk-full rerun recorded in session tool output"
+  },
+  "pinned_diagnostic": {
+    "inputs": {
+      "scope": "Diagnostic only; unchanged query, I/O and acceptance protocol; fix heterogeneous-core placement by separating server and generator onto nonoverlapping physical performance cores.",
+      "server_cpus": [
+        0,
+        2,
+        4,
+        6
+      ],
+      "client_cpus": [
+        8,
+        10,
+        12,
+        14
+      ],
+      "harness_sha256": "9b37192f62e42529c47d07ec869538cf3ed6f0fd7ea08587b539ac601a663dd5",
+      "binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91"
+    },
+    "results": {
+      "restart_sqlite_cache": {
+        "median_paired_ratio": 0.689552087109575,
+        "ratios": [
+          0.6614603385100466,
+          0.8389365699846661,
+          0.7176438357091036,
+          0.5948532774621608,
+          0.597791138976961,
+          0.7571304917163745
+        ]
+      },
+      "warm": {
+        "median_paired_ratio": 0.8069533165334384,
+        "ratios": [
+          0.831354895322466,
+          0.8863391943307709,
+          0.8847728314386866,
+          0.6921480709160486,
+          0.7595599938027296,
+          0.7825517377444109
+        ]
+      },
+      "broad": {
+        "median_paired_ratio": 0.8102485031562718,
+        "ratios": [
+          0.8305991105672047,
+          0.783230693128908,
+          1.0040836995405567,
+          0.6813398094577666,
+          0.789897895745339,
+          0.8431452136885502
+        ]
+      },
+      "concurrency8": {
+        "median_paired_ratio": 0.9219873455755252,
+        "ratios": [
+          1.061972636125841,
+          0.979453418819988,
+          1.0363271094739077,
+          0.7976075519796333,
+          0.8645212723310622,
+          0.812146033307659
+        ]
+      },
+      "mixed_reads": {
+        "median_paired_ratio": 0.7531702687764357,
+        "ratios": [
+          0.7758105292875936,
+          0.879006525347767,
+          0.5733725403638446,
+          0.76048045396041,
+          0.6435383179478965,
+          0.7458600835924613
+        ]
+      }
+    },
+    "responses_had_errors": false,
+    "acceptance": false,
+    "qualification": "Full fixed 60 rounds continues from the six complete rounds; same executable, CPU affinity, workload and unchanged assess_release.py thresholds."
+  },
+  "native_client_diagnostic": {
+    "evidence": "/Users/nate/.local/share/typeahead-experiments/release-qualification-20261008/inline-close-native-client.json",
+    "conclusion": "Native client lowered absolute tails for both formats but did not establish compact non-regression; no failed gate was discarded."
   }
 }
