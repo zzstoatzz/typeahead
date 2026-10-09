@@ -14,8 +14,9 @@ from recovery_fixture import create
 
 
 class RunningRelease:
-    def __init__(self, root):
+    def __init__(self, root, index_root=None):
         self.root = root
+        self.index_root = root if index_root is None else index_root
         self.process = None
         self.serial = 0
 
@@ -26,7 +27,7 @@ class RunningRelease:
         self.serial += 1
         self.log = self.root / f'process-{self.serial}.log'
         env = {k: v for k, v in os.environ.items() if not k.startswith('INDEX_R2_')}
-        env.update(MODE='search', INDEX_BUILD_ROOT=str(self.root),
+        env.update(MODE='search', INDEX_BUILD_ROOT=str(self.index_root),
                    LOCAL_DB_PATH=str(self.root / 'overlay.db'), SQLITE_TMPDIR=str(self.root / 'tmp'), PORT=str(self.port),
                    INDEX_POLL_SECS='86400', TURSO_URL='127.0.0.1:1',
                    TURSO_AUTH_TOKEN='isolated-no-access', ADMIN_SECRET='local-recovery-test')

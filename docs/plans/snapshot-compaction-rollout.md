@@ -34,6 +34,13 @@ than the release executable's 256 KiB static TLS segment on Linux. Its stack
 reservation is now 1 MiB so the existing deadline tests can spawn the watchdog.
 This thread is created only on the fatal-exit path.
 
+`test_release_disk_full.py` also passed against the actual release on the isolated
+Fly machine. It fills an owned 8 MiB tmpfs until real `ENOSPC`, rejects fallback
+activation without changing the durable record or becoming ready, then recovers
+to the same-watermark legacy twin after space is freed. A newer moderation hide
+survives. This optional test requires `TYPEAHEAD_TEST_TMPFS` to name an empty
+mount no larger than 128 MiB; it never fills the serving volume.
+
 Publication is tested with real local rclone transport and an isolated R2 prefix.
 R2 `lsjson --stat` returns a directory for a missing object, unlike local storage;
 the publisher now distinguishes that from an existing immutable file. The live
@@ -50,6 +57,21 @@ The failed run is retained, and formal performance qualification restarts from
 round zero on the corrected image. Both storage variants use the same task
 budget. The separate old-release compatibility comparison uses identical
 `Connection: close` requests to avoid the old persistent-connection starvation.
+
+The next uncapped run was stopped after six rounds when compact broad-query p95
+regressed. Its file shared an inode with an ongoing upload: rclone 1.69.1
+[discards local source pages as it reads them](https://github.com/rclone/rclone/blob/v1.69.1/backend/local/fadvise_unix.go).
+The compact file was only 40% resident despite the harness's warmup, while the
+legacy file was fully resident. With a separate compact file copy, all pages
+remained resident and the same release executable measured 0.79 ms broad p95
+versus 0.96 ms for legacy, with zero physical reads for both. Across 600 queries,
+compact used 11,762 read calls and 97 MB of read data versus 48,056 and 188 MB.
+These diagnostics explain the contamination; they do not pass the release gate.
+The full 60-round rerun uses separate file copies for both formats and requires
+complete residency before and after each warm-cache trial. Acceptance thresholds
+and the cold, bounded Fly protocol are unchanged. Both attempts are retained in
+the qualification evidence, under `release-normal-capacity` and
+`release-normal-isolated` respectively.
 
 ## Scope and release structure
 
