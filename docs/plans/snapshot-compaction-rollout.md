@@ -104,6 +104,15 @@ uses eight for the candidate. Results use separate paths; the failed trial and
 four-connection warm run remain available. Production configuration is unchanged.
 The rollout must use the configuration that actually passes qualification.
 
+Warm qualification also exposed kernel page reclamation despite sequential
+warmup. A separate probe observed snapshot residency falling alongside increases
+in `pgsteal_kswapd`; neither incomplete warm run qualifies. The uncapped harness
+now retains read-only mappings and touches each artifact page after admission,
+identically for both formats. One diagnostic round passed with zero physical
+reads in read-only phases. The complete 60-round run is still required, using
+`protocol-pool8-mapped.json`; the original latency gate and the independent cold
+Fly experiment are unchanged. Harness mappings are not serving-process memory.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from
