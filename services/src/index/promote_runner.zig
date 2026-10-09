@@ -130,19 +130,21 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
         if (std.mem.eql(u8, current, m.active_build)) return;
         if (m.source_watermark < @as(i64, @intCast(db.attachedMetaInt(schema.meta.source_watermark)))) return error.RollbackRequiresReplay;
     }
-    if (m.manifest_version == 1 and try adoptIfPresent(arena, db, root, m)) {
-        const location: state.Entry = .{ .manifest = m, .location = if (std.mem.endsWith(u8, (try db.snapshotPath(arena)).?, SLOT_A)) .slot_a else .slot_b };
-        try state.save(arena, root, .{ .current = location });
-        return;
-    }
+    const entry: state.Entry = if (m.manifest_version == 1)
+        (try findLegacySlot(arena, db, root, m)) orelse .{ .manifest = m }
+    else
+        .{ .manifest = m };
     var prior = try state.load(arena, root);
     defer if (prior) |*value| value.deinit();
     const previous: ?state.Entry = if (m.legacy_twin) |twin|
         try ensureTwin(arena, db, cfg, root, m, twin, if (prior) |value| value.value else null)
     else if (prior) |value| value.value.current else null;
-    var prepared = try ensureGeneration(arena, db, cfg, root, m);
+    var prepared = if (entry.location == .generation)
+        try ensureGeneration(arena, db, cfg, root, m)
+    else
+        try prepareEntry(arena, db, entry, root, false);
     defer prepared.deinit();
-    try state.save(arena, root, .{ .current = .{ .manifest = m }, .previous = previous });
+    try state.save(arena, root, .{ .current = entry, .previous = previous });
     db.activateSnapshot(&prepared);
     _ = db.compactOverlay(m.source_watermark, null, null);
     cleanupGenerations(arena, root, m.active_build, if (previous) |value| value.manifest.active_build else null) catch |err| {
@@ -282,7 +284,10 @@ fn sentinelPrepared(arena: Allocator, prepared: LocalDb.PreparedSnapshot, probes
 
 fn cleanupGenerations(arena: Allocator, root: []const u8, current: []const u8, previous: ?[]const u8) !void {
     const parent = try std.fmt.allocPrint(arena, "{s}/generations", .{root});
-    var dir = try std.Io.Dir.openDirAbsolute(io, parent, .{ .iterate = true });
+    var dir = std.Io.Dir.openDirAbsolute(io, parent, .{ .iterate = true }) catch |err| switch (err) {
+        error.FileNotFound => return,
+        else => return err,
+    };
     defer dir.close(io);
     var names: std.ArrayListUnmanaged([]const u8) = .empty;
     var iterator = dir.iterate();
@@ -294,39 +299,18 @@ fn cleanupGenerations(arena: Allocator, root: []const u8, current: []const u8, p
     for (names.items) |name| try std.Io.Dir.deleteTree(.cwd(), io, try std.fmt.allocPrint(arena, "{s}/{s}", .{ parent, name }));
 }
 
-/// If a local A/B slot file already holds `active_build`, validate + attach it
-/// (no download). Returns true if adopted. Used after a restart, where the
-/// in-memory snapshot_path is null but the artifact is still on the volume.
-/// Skips the multi-GB sha re-verify (the file was verified when written +
-/// renamed atomically) but still runs validateSnapshot + sentinel.
-fn adoptIfPresent(arena: Allocator, db: *LocalDb, idx_dir: []const u8, m: promote.Manifest) !bool {
+fn findLegacySlot(arena: Allocator, db: *LocalDb, root: []const u8, m: promote.Manifest) !?state.Entry {
     for ([_][]const u8{ SLOT_A, SLOT_B }) |slot| {
-        const path = try std.fmt.allocPrint(arena, "{s}/{s}", .{ idx_dir, slot });
-        const path_z = try arena.dupeSentinel(u8, path, 0);
-        const snap = promote.openSnapshotReadOnly(path_z) catch continue; // missing/unreadable → skip
-        var adopt = false;
-        {
-            defer snap.close();
-            const bid = (schema.getMeta(snap, arena, schema.meta.build_id) catch null) orelse continue;
-            if (!std.mem.eql(u8, bid, m.active_build)) continue;
-            promote.validateSnapshot(arena, snap, m, 0, 0) catch |err| {
-                log.warn("adopt: validate failed for {s}: {s}", .{ path, @errorName(err) });
-                continue;
-            };
-            sentinelCheck(arena, snap, &COMMON_PROBES) catch |err| {
-                log.warn("adopt: sentinel failed for {s}: {s}", .{ path, @errorName(err) });
-                continue;
-            };
-            adopt = true;
-        }
-        if (adopt) {
-            try db.swapSnapshot(path);
-            _ = db.compactOverlay(m.source_watermark, null, null);
-            log.info("adopted on-disk snapshot {s} (build {s}, no download)", .{ path, m.active_build });
-            return true;
-        }
+        const path = try std.fmt.allocPrintSentinel(arena, "{s}/{s}", .{ root, slot }, 0);
+        const snap = promote.openSnapshotReadOnly(path) catch continue;
+        defer snap.close();
+        const bid = (try schema.getMeta(snap, arena, schema.meta.build_id)) orelse continue;
+        if (!std.mem.eql(u8, bid, m.active_build)) continue;
+        promote.validateSnapshot(arena, snap, m, db.attachedMetaInt(schema.meta.actor_count), db.attachedMetaInt(schema.meta.prefix_count)) catch continue;
+        sentinelCheck(arena, snap, &COMMON_PROBES) catch continue;
+        return .{ .manifest = m, .location = if (std.mem.eql(u8, slot, SLOT_A)) .slot_a else .slot_b };
     }
-    return false;
+    return null;
 }
 
 /// Semantic smoke check on a snapshot BEFORE it's attached. Derives prefix
@@ -661,7 +645,13 @@ test "recovery ignores partial activation and refuses rollback behind pruned wat
         var local = LocalDb.init(testing.allocator);
         defer local.deinit();
         try local.open();
-        try local.conn.?.exec("INSERT INTO actor_overlay(did,blob,hidden,updated_at,source) VALUES('newer',X'00',0,101,0)", .{});
+        try local.conn.?.exec("INSERT INTO actor_overlay(did,blob,hidden,updated_at,source) VALUES('newer',X'00',0,101,0),('covered',X'00',0,99,0)", .{});
+        const slot_path = try std.fmt.allocPrint(arena, "{s}/{s}", .{ root, SLOT_A });
+        try state.writeFile(slot_path, try state.readSmall(arena, try std.fmt.allocPrint(arena, "{s}/generations/legacy/index.db", .{root})));
+        const candidate = (try findLegacySlot(arena, &local, root, old)).?;
+        try testing.expect(candidate.location == .slot_a);
+        try testing.expect((try local.snapshotPath(arena)) == null);
+        try testing.expectEqual(@as(i64, 2), local.overlayActorRows());
         try recoverLocal(arena, &local, root);
         try testing.expectEqualStrings("current", (try local.attachedBuildId(arena)).?);
         try testing.expectEqual(@as(i64, 1), local.overlayActorRows());
