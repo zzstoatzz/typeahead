@@ -145,6 +145,29 @@ gates remain outstanding. Cold rounds are divided across four identical 2 GiB
 Fly machines, keeping all three variants of each randomized round together;
 CPU-credit and throttle validity checks and all acceptance thresholds are unchanged.
 
+The final cache-candidate assessments are now collected in
+[the qualification evidence](../evals/compact-cache-qualification.json). All
+60 cold rounds passed the primary and secondary gates; the three temporary
+parallel machines and their volumes were removed after archiving evidence.
+The 60 warm rounds failed the eight-client p95 gate: median compact/SQLite
+ratio 1.0114, upper one-sided 95% bound 1.0866. The other four warm phases passed.
+The separate legacy-path diagnostic against the sanitizer-fixed old control
+also failed: eight-client p95 ratio 1.4993 (lower bound 1.4727), with p99, CPU,
+and memory regressions. That diagnostic compared four old read slots with eight
+candidate slots; a factorial pool-size check is needed before attributing the
+regression to the storage implementation. These failures block rollout; no
+acceptance threshold has changed.
+
+The follow-up [scheduling diagnostic](../evals/compact-inline-scheduling.json)
+found that reverting the async limit from 16 to 8 brought cold legacy-path tails
+close to the old control. Reducing read slots alone still produced a real 503.
+A 32-client persistent-connection test then reproduced accept-loop starvation
+in the 16-task candidate: raising the limit had only moved the failure threshold.
+The new candidate restores the eight-task limit and sends `Connection: close`
+after a request handled inline on the accept thread. Pooled handlers retain
+keep-alive. Both 8-client and 32-client mixed read/write process tests pass;
+full performance qualification of this executable remains pending.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from

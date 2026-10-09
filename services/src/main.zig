@@ -145,8 +145,6 @@ pub fn main() !void {
         };
     };
 
-    if (role == .search) app_threaded_io.setAsyncLimit(.limited(16));
-
     if (role == .indexer) {
         // Logfire stays unconfigured here — indexer is a short-lived
         // offline job, std.log to stderr is enough for now. Wire spans
@@ -347,6 +345,7 @@ pub fn main() !void {
     // HTTP handlers receive identity pool as optional — search-only role has none
     const id_pool_arg: ?*identity.Pool = if (have_identity_pool) &identity_pool else null;
 
+    const accept_thread = std.Thread.getCurrentId();
     // main thread: HTTP accept loop
     while (true) {
         const stream = srv.accept(io) catch |err| switch (err) {
@@ -363,7 +362,7 @@ pub fn main() !void {
 
         if (local_db_ptr) |db| {
             // bounded pool — inline fallback under load (graceful degradation)
-            tasks.async(io, server.handleConnection, .{ stream, db, id_pool_arg });
+            tasks.async(io, server.handleConnection, .{ stream, db, id_pool_arg, accept_thread });
         } else {
             // No local DB (the ingester role). This branch used to answer EVERY
             // path with 503 "search unavailable" — /health included — so the

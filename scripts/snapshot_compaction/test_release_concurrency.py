@@ -15,6 +15,12 @@ from test_release_recovery import RunningRelease
 @unittest.skipUnless(os.environ.get('TYPEAHEAD_TEST_RELEASE'), 'release executable required')
 class Tests(unittest.TestCase):
     def test_eight_persistent_clients_with_mixed_reads_and_writes(self):
+        self.exercise_persistent_clients(8)
+
+    def test_saturated_persistent_clients_with_mixed_reads_and_writes(self):
+        self.exercise_persistent_clients(32)
+
+    def exercise_persistent_clients(self, clients):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             create(root / 'fixtures')
@@ -28,7 +34,7 @@ class Tests(unittest.TestCase):
             server = RunningRelease(root)
             connections = []
             local = threading.local()
-            barrier = threading.Barrier(8)
+            barrier = threading.Barrier(clients)
 
             def request(writer):
                 if not hasattr(local, 'connection'):
@@ -48,10 +54,10 @@ class Tests(unittest.TestCase):
             try:
                 server.start()
                 server.wait(lambda s: s['attached'] and 'incremental: done' in server.log.read_text())
-                with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=clients) as pool:
                     for _ in range(5):
                         started = time.monotonic()
-                        list(pool.map(request, [False] * 7 + [True]))
+                        list(pool.map(request, [False] * (clients - 1) + [True]))
                         self.assertLess(time.monotonic() - started, 2, 'clients waited for another connection to time out')
             finally:
                 for connection in connections:

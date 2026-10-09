@@ -25,8 +25,9 @@ const log = std.log.scoped(.server);
 
 const HTTP_BUF_SIZE = 65536;
 
-pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_pool: ?*identity.Pool) void {
+pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_pool: ?*identity.Pool, accept_thread: std.Thread.Id) void {
     defer stream.close(io);
+    const inline_request = std.Thread.getCurrentId() == accept_thread;
 
     var read_buffer: [HTTP_BUF_SIZE]u8 = undefined;
     var write_buffer: [HTTP_BUF_SIZE]u8 = undefined;
@@ -43,6 +44,7 @@ pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_
             }
             return;
         };
+        if (inline_request) request.head.keep_alive = false;
         if (http_guard.rejectUnframedBody(&request)) return;
 
         handleRequest(&request, local_db, identity_pool) catch |err| {

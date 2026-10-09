@@ -1,0 +1,353 @@
+{
+  "pool": [
+    {
+      "round": 0,
+      "variant": "baseline",
+      "pool_size": 4,
+      "latency": {
+        "n": 400,
+        "p50_ms": 11.663979,
+        "p95_ms": 120.382023,
+        "p99_ms": 179.001249
+      },
+      "errors": [],
+      "wall_seconds": 1.5379969280002115,
+      "cpu_seconds": 0.75,
+      "io": {
+        "rchar": 115782551,
+        "wchar": 350,
+        "syscr": 29584,
+        "syscw": 10,
+        "read_bytes": 51834880,
+        "write_bytes": 4096,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.308115,
+        "peak_rss_bytes": 188444672,
+        "startup_ms": 5453.818812999089,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 0,
+      "variant": "baseline",
+      "pool_size": 8,
+      "latency": {
+        "n": 400,
+        "p50_ms": 14.355529,
+        "p95_ms": 126.951922,
+        "p99_ms": 176.283049
+      },
+      "errors": [],
+      "wall_seconds": 1.604505554001662,
+      "cpu_seconds": 0.8699999999999999,
+      "io": {
+        "rchar": 116458391,
+        "wchar": 840,
+        "syscr": 29749,
+        "syscw": 24,
+        "read_bytes": 51822592,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.5362270000000002,
+        "peak_rss_bytes": 231342080,
+        "startup_ms": 5453.022615001828,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 0,
+      "variant": "candidate",
+      "pool_size": 8,
+      "latency": {
+        "n": 400,
+        "p50_ms": 7.534774,
+        "p95_ms": 191.140489,
+        "p99_ms": 221.589496
+      },
+      "errors": [],
+      "wall_seconds": 1.5396087480003189,
+      "cpu_seconds": 0.7800000000000002,
+      "io": {
+        "rchar": 116327323,
+        "wchar": 2525,
+        "syscr": 29718,
+        "syscw": 72,
+        "read_bytes": 51814400,
+        "write_bytes": 8192,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.571451,
+        "peak_rss_bytes": 242192384,
+        "startup_ms": 5432.544764997147,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 0,
+      "variant": "candidate",
+      "pool_size": 4,
+      "latency": {
+        "n": 400,
+        "p50_ms": 8.1229,
+        "p95_ms": 143.379902,
+        "p99_ms": 231.308706
+      },
+      "errors": [],
+      "wall_seconds": 1.5400604179994843,
+      "cpu_seconds": 0.7200000000000002,
+      "io": {
+        "rchar": 115934107,
+        "wchar": 560,
+        "syscr": 29622,
+        "syscw": 16,
+        "read_bytes": 51847168,
+        "write_bytes": 4096,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.254652,
+        "peak_rss_bytes": 191590400,
+        "startup_ms": 5459.4046540005365,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 1,
+      "variant": "candidate",
+      "pool_size": 4,
+      "latency": {
+        "n": 400,
+        "p50_ms": 7.934175,
+        "p95_ms": 121.216813,
+        "p99_ms": 236.697046
+      },
+      "errors": [
+        [
+          "r",
+          503,
+          "{\"error\":\"read pool exhausted\"}"
+        ]
+      ],
+      "wall_seconds": 1.52332681900225,
+      "cpu_seconds": 0.7199999999999998,
+      "io": {
+        "rchar": 117272711,
+        "wchar": 280,
+        "syscr": 29951,
+        "syscw": 8,
+        "read_bytes": 51159040,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.189351,
+        "peak_rss_bytes": 181882880,
+        "startup_ms": 5452.636314999836,
+        "termination": "SIGKILL identically for both releases"
+      }
+    }
+  ],
+  "async_eight": [
+    {
+      "round": 0,
+      "variant": "baseline",
+      "pool_size": 4,
+      "latency": {
+        "n": 400,
+        "p50_ms": 10.091585,
+        "p95_ms": 115.637353,
+        "p99_ms": 176.373289
+      },
+      "errors": [],
+      "wall_seconds": 1.5431434669990267,
+      "cpu_seconds": 0.6599999999999999,
+      "io": {
+        "rchar": 115803031,
+        "wchar": 420,
+        "syscr": 29589,
+        "syscw": 12,
+        "read_bytes": 51834880,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.125226,
+        "peak_rss_bytes": 186339328,
+        "startup_ms": 5448.0823449994205,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 0,
+      "variant": "candidate",
+      "pool_size": 8,
+      "latency": {
+        "n": 400,
+        "p50_ms": 11.0804595,
+        "p95_ms": 120.166153,
+        "p99_ms": 183.044179
+      },
+      "errors": [],
+      "wall_seconds": 1.5473615779992542,
+      "cpu_seconds": 0.72,
+      "io": {
+        "rchar": 117003159,
+        "wchar": 1051,
+        "syscr": 29882,
+        "syscw": 30,
+        "read_bytes": 51826688,
+        "write_bytes": 4096,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.266991,
+        "peak_rss_bytes": 241057792,
+        "startup_ms": 5456.79499399921,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 0,
+      "variant": "candidate",
+      "pool_size": 4,
+      "latency": {
+        "n": 400,
+        "p50_ms": 12.572213999999999,
+        "p95_ms": 107.201234,
+        "p99_ms": 177.314839
+      },
+      "errors": [],
+      "wall_seconds": 1.540618238002935,
+      "cpu_seconds": 0.6599999999999999,
+      "io": {
+        "rchar": 116278167,
+        "wchar": 280,
+        "syscr": 29705,
+        "syscw": 8,
+        "read_bytes": 51826688,
+        "write_bytes": 4096,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.093587,
+        "peak_rss_bytes": 190267392,
+        "startup_ms": 5444.696702001238,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 1,
+      "variant": "candidate",
+      "pool_size": 8,
+      "latency": {
+        "n": 400,
+        "p50_ms": 12.468513999999999,
+        "p95_ms": 110.123663,
+        "p99_ms": 131.211902
+      },
+      "errors": [],
+      "wall_seconds": 1.5492097070018644,
+      "cpu_seconds": 0.71,
+      "io": {
+        "rchar": 118615330,
+        "wchar": 772,
+        "syscr": 30282,
+        "syscw": 22,
+        "read_bytes": 51920896,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.100563,
+        "peak_rss_bytes": 224563200,
+        "startup_ms": 5443.9692859996285,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 1,
+      "variant": "candidate",
+      "pool_size": 4,
+      "latency": {
+        "n": 400,
+        "p50_ms": 11.715419,
+        "p95_ms": 103.978074,
+        "p99_ms": 138.788101
+      },
+      "errors": [],
+      "wall_seconds": 1.5502707779996854,
+      "cpu_seconds": 0.6600000000000001,
+      "io": {
+        "rchar": 119172386,
+        "wchar": 210,
+        "syscr": 30418,
+        "syscw": 6,
+        "read_bytes": 51892224,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.180465,
+        "peak_rss_bytes": 180301824,
+        "startup_ms": 5449.928375001036,
+        "termination": "SIGKILL identically for both releases"
+      }
+    },
+    {
+      "round": 1,
+      "variant": "baseline",
+      "pool_size": 4,
+      "latency": {
+        "n": 400,
+        "p50_ms": 13.854809,
+        "p95_ms": 98.354264,
+        "p99_ms": 127.841722
+      },
+      "errors": [],
+      "wall_seconds": 1.5438103580017923,
+      "cpu_seconds": 0.6599999999999999,
+      "io": {
+        "rchar": 118660386,
+        "wchar": 0,
+        "syscr": 30293,
+        "syscw": 0,
+        "read_bytes": 51904512,
+        "write_bytes": 0,
+        "cancelled_write_bytes": 0
+      },
+      "usage": {
+        "cpu_seconds": 2.2334009999999997,
+        "peak_rss_bytes": 176427008,
+        "startup_ms": 5444.804635000764,
+        "termination": "SIGKILL identically for both releases"
+      }
+    }
+  ],
+  "scope": "Isolated diagnostic only, not release acceptance. Pool diagnostic stopped on a real HTTP 503; async-eight uses short-lived connections and does not establish keep-alive safety.",
+  "inline_close_binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91",
+  "async_eight_diagnostic_binary_sha256": "54bc994b857386d75c206eab47f7b4e87ecd317c847874f9b85f11b5a8643cf5",
+  "prior_candidate_sha256": "d5a860f1c3aa55a1e6a3abef07a521134c856dd9ec35d5b9496493f11cf5f5bc",
+  "sanitizer_fixed_baseline_sha256": "f52cfba4b4f3d025718c1dea238a2e0295d2b5edda41f99f20688266e35779eb",
+  "release_process_tests": {
+    "machine": "287e064a7d5738",
+    "app": "typeahead-compact-qual-20261008",
+    "passed": 7,
+    "baseline_regression": "The prior 16-task candidate times out with 32 persistent mixed read/write clients.",
+    "coverage": [
+      "8 persistent clients",
+      "32 persistent clients",
+      "SIGTERM before/after admission and with stalled TCP",
+      "checksum rejection",
+      "crash fallback preserves newer moderation",
+      "interrupted real rclone download",
+      "real ENOSPC on owned 8 MiB tmpfs and recovery"
+    ],
+    "environment_correction": "Disk-full check initially rejected an unmounted old tmpfs path before exercising the release; passed using newly mounted isolated 8 MiB tmpfs, unmounted afterward.",
+    "log": "/data/inline-close-release-tests.log; corrected disk-full rerun recorded in session tool output"
+  }
+}
