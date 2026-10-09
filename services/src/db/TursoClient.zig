@@ -189,7 +189,11 @@ fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
 
     var waited_ms: u64 = 0;
     while (!out.done.load(.acquire) and waited_ms < FETCH_DEADLINE_MS) {
-        io.sleep(.{ .nanoseconds = 100 * std.time.ns_per_ms }, .real) catch {};
+        io.sleep(.{ .nanoseconds = 100 * std.time.ns_per_ms }, .real) catch |err| {
+            future.cancel(io);
+            if (out.result) |bytes| self.allocator.free(bytes) else |_| {}
+            return err;
+        };
         waited_ms += 100;
     }
 

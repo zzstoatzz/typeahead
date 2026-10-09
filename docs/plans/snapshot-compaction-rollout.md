@@ -5,6 +5,24 @@ The [isolated evaluation](../evals/flat-prefix-compaction.md) is complete. Its
 51.4% reduction against VACUUM and passing read gates establish the design, not
 production integration or performance on Fly hardware.
 
+Local qualification on 2026-10-08 reproduced exact responses with the Docker
+release executable: 8,000 initial responses, 935 overlay-transition responses,
+and 850 concurrent responses per format. Conversion exhaustively compared all
+151,692,969 actor/posting pairs; the resulting 6,789,846,175-byte snapshot
+(including metadata and manifest) is 51.4084% smaller than the VACUUM reference.
+Temporary rollback twins are additional storage. Release latency qualification
+and production deployment remain pending.
+
+The process-level checks exposed an existing shutdown bug in both formats:
+sync/watchdog sleeps swallowed cancellation and resumed sleeping after SIGTERM.
+The rollout returns on cancellation, cancels an in-flight Turso fetch, and
+propagates cancellation through sync rather than retrying it. Run
+`TYPEAHEAD_TEST_RELEASE=/absolute/path/to/typeahead-ingester python3 -m unittest
+discover -s scripts/snapshot_compaction -p test_release_lifecycle.py` to verify
+termination before admission, with either format admitted, and during a stalled
+TCP connection. This test runs
+the real executable against local artifacts with no production database access.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from

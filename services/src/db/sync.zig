@@ -103,7 +103,7 @@ pub fn noteProgress() void {
 pub fn watchdogLoop() void {
     last_progress_at.store(timestamp(), .monotonic);
     while (true) {
-        io.sleep(std.Io.Duration.fromSeconds(60), .awake) catch {};
+        io.sleep(std.Io.Duration.fromSeconds(60), .awake) catch return;
         const age = timestamp() - last_progress_at.load(.monotonic);
         if (age >= SYNC_STALL_SECS) {
             log.err("sync watchdog: no progress in {d}s, exiting for restart", .{age});
@@ -218,6 +218,10 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             const q_span = logfire.span("sync.query.updated", .{});
 
             var result = turso.query(sql, args) catch |err| {
+                if (err == error.Canceled) {
+                    q_span.end();
+                    return err;
+                }
                 log.err("incremental query failed: {}", .{err});
                 if (page_retries > 0) {
                     page_retries -= 1;
@@ -304,6 +308,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             log.err("unsearchable query failed: {}", .{err});
             q_span.setStatus(.@"error", "query failed");
             q_span.end();
+            if (err == error.Canceled) return err;
             had_turso_error = true;
             break :unsearchable;
         };
@@ -348,6 +353,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
             log.err("tombstone query failed: {}", .{err});
             q_span.setStatus(.@"error", "query failed");
             q_span.end();
+            if (err == error.Canceled) return err;
             had_turso_error = true;
             break :tombstone;
         };
@@ -499,17 +505,19 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
     // watchdog fed while waiting: this is expected idleness, not a wedge.
     while (!local.isReady()) {
         noteProgress();
-        io.sleep(.{ .nanoseconds = 5 * std.time.ns_per_s }, .real) catch {};
+        io.sleep(.{ .nanoseconds = 5 * std.time.ns_per_s }, .real) catch return;
     }
 
     incrementalSync(&turso, local) catch |err| {
+        if (err == error.Canceled) return;
         log.err("initial sync failed: {}", .{err});
     };
 
     while (true) {
-        io.sleep(.{ .nanoseconds = SYNC_INTERVAL_S * std.time.ns_per_s }, .real) catch {};
+        io.sleep(.{ .nanoseconds = SYNC_INTERVAL_S * std.time.ns_per_s }, .real) catch return;
 
         incrementalSync(&turso, local) catch |err| {
+            if (err == error.Canceled) return;
             log.err("periodic sync failed: {}", .{err});
         };
         // a completed pass is progress even when it applied nothing; a FAILED
