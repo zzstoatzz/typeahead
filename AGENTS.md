@@ -44,7 +44,8 @@ and correct the docs rather than assuming one automatically describes production
 The target is predictable, bounded request work. The snapshot contains precomputed
 prefix lists and the merge caps hydration at 50 candidates before exact promotion.
 Union-prefix additions use the partial ranking index in this branch; exact keys
-and intersections still read every matching row. Deployment verification is pending. See
+and intersections still read every matching row. The index is installed in the
+production database; the schema initialization change is on this branch. See
 [the lookup evaluation](docs/evals/bounded-overlay.md) for local experiments.
 
 Avoid corpus-proportional request work and full-scan Worker cron selectors. Full

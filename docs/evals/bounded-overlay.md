@@ -333,3 +333,18 @@ Existing differential lookup tests cover score changes, deletions, ties,
 intersections and exact promotion. The earlier measured write amplification still
 matters: this trades an extra partial index update for frequent faster reads.
 Production verification is pending.
+
+The index was installed directly on the production overlay on Fly machine
+`867e15ce4e1148`, without replacing the serving image. The overlay held 18,635,387
+rows (18,254,741 additions), much larger than the earlier captured fixture.
+The first three-minute bounded attempt timed out and rolled back; the next
+ten-minute bounded attempt completed with disk-backed sorting, a 64 MiB cache
+and two SQLite sorting workers. Search remained available during the build.
+
+Production `d:bs` top-50 query: `idx_prefix_overlay_rank`, zero full-scan steps,
+zero sort operations, 558 VM steps, and no automatic index. The direct HTTP
+`bs` response after migration matched the pre-migration response byte-for-byte;
+the post-migration request returned HTTP 200 in 158 ms (one network sample,
+not a latency distribution). SQLite persists the index across service restarts.
+The committed initializer also creates it for fresh databases once that source
+change is included in a serving-image release.

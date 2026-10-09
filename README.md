@@ -71,8 +71,9 @@ matching-key reads to preserve ranking correctness. Hydration is capped at 50
 before exact-handle reinjection. Queries longer than 16 bytes use their 16-byte
 prefix key and filter hydrated rows against the full query. See
 [architecture](docs/architecture.md) and [lookup evaluation](docs/evals/bounded-overlay.md).
-The ranking index is implemented on `codex/overlay-ranking`; production
-verification is pending.
+The ranking index was installed on the production overlay on October 9.
+Its idempotent initialization change is on `codex/overlay-ranking`; the running
+service image was not replaced.
 
 ## Public pages and metadata
 
