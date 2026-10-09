@@ -68,10 +68,21 @@ versus 0.96 ms for legacy, with zero physical reads for both. Across 600 queries
 compact used 11,762 read calls and 97 MB of read data versus 48,056 and 188 MB.
 These diagnostics explain the contamination; they do not pass the release gate.
 The full 60-round rerun uses separate file copies for both formats and requires
-complete residency before and after each warm-cache trial. Acceptance thresholds
+residency observations before and after each trial, plus zero physical-read bytes
+during every timed warm-cache phase. A whole-file residency guard proved too
+coarse: it rejected unused missing pages. Acceptance thresholds
 and the cold, bounded Fly protocol are unchanged. Both attempts are retained in
 the qualification evidence, under `release-normal-capacity` and
-`release-normal-isolated` respectively.
+`release-normal-isolated` respectively. Subsequent incomplete guard/harness runs
+are also retained; `protocol-io.json` records the revised validity check.
+
+A process interrupted during generation download leaves a staging directory, not
+just a `.part` file. Cleanup now removes only canonical `.staging-<build-id>`
+directories alongside partial files before recovery, so abandoned bytes cannot
+prevent a durable fallback activation. It preserves admitted generations, legacy
+slots, unrelated directories, and malformed staging names. Real-file tests cover
+that distinction and idempotence; a process test kills an actual throttled rclone
+copy before restarting the reader.
 
 ## Scope and release structure
 

@@ -40,16 +40,16 @@ fn indexRoot() []const u8 {
     return cGetenv("INDEX_BUILD_ROOT") orelse "/data";
 }
 
-/// A persisted snapshot file is only ever `index.{A,B}.db` (or `latest.json`).
-/// Anything ending in `.part` (a download renamed-but-never-adopted) or
-/// containing `.partial` (rclone's multi-thread copy temp) is transient debris
-/// from an interrupted/failed promote. Pure so the matching rules — which must
-/// NOT match a live `index.A.db` — are unit-tested.
 fn isTransientArtifact(name: []const u8) bool {
     return std.mem.endsWith(u8, name, ".part") or std.mem.indexOf(u8, name, ".partial") != null;
 }
 
-/// Delete stale `.part`/`.partial` debris in the index dir. A promote download
+fn isStagingDirectory(name: []const u8) bool {
+    const prefix = ".staging-";
+    return std.mem.startsWith(u8, name, prefix) and promote.validBuildId(name[prefix.len..]);
+}
+
+/// Delete stale partial files and generation staging directories. A promote download
 /// is single-threaded within checkOnce, so at the top of any poll every such
 /// file is leftover from a PRIOR failed/interrupted attempt — the prior code
 /// only deleted the one slot it was about to reuse, so a download to the other
@@ -71,14 +71,15 @@ fn sweepStalePartials(arena: Allocator, idx_dir: []const u8) void {
             log.warn("sweep: iterate {s} failed: {s}", .{ idx_dir, @errorName(err) });
             break;
         }) orelse break;
-        if (entry.kind != .file) continue;
-        if (isTransientArtifact(entry.name)) {
+        if ((entry.kind == .file and isTransientArtifact(entry.name)) or
+            (entry.kind == .directory and isStagingDirectory(entry.name)))
+        {
             const dup = arena.dupe(u8, entry.name) catch continue;
             stale.append(arena, dup) catch continue;
         }
     }
     for (stale.items) |name| {
-        dir.deleteFile(io, name) catch |err| {
+        dir.deleteTree(io, name) catch |err| {
             log.warn("sweep: delete {s} failed: {s}", .{ name, @errorName(err) });
             continue;
         };
@@ -114,9 +115,9 @@ pub fn checkOnce(gpa: Allocator, db: *LocalDb) !void {
     const arena = arena_state.allocator();
     const root = try std.fmt.allocPrint(arena, "{s}/index", .{indexRoot()});
     try std.Io.Dir.createDirPath(.cwd(), io, root);
+    sweepStalePartials(arena, root);
     try recoverLocal(arena, db, root);
     const cfg = try r2.configure(arena);
-    sweepStalePartials(arena, root);
     const latest_key = cGetenv("INDEX_LATEST_KEY") orelse LATEST_KEY;
     if (!promote.validObjectKey(latest_key)) return error.InvalidPointerKey;
     const downloaded = try std.fmt.allocPrint(arena, "{s}/latest.download.part", .{root});
@@ -501,6 +502,27 @@ test "isTransientArtifact matches debris, never live snapshots" {
     try testing.expect(!isTransientArtifact("index.A.db"));
     try testing.expect(!isTransientArtifact("index.B.db"));
     try testing.expect(!isTransientArtifact("latest.json"));
+}
+
+test "interrupted generation cleanup preserves serving artifacts and unrelated directories" {
+    var directory = "/tmp/typeahead-partials-XXXXXX".*;
+    _ = mkdtemp(&directory) orelse return error.TestDirectoryFailed;
+    defer std.Io.Dir.deleteTree(.cwd(), io, &directory) catch {};
+    var storage = std.heap.ArenaAllocator.init(testing.allocator);
+    defer storage.deinit();
+    const arena = storage.allocator();
+    const root: []const u8 = &directory;
+    const removed = [_][]const u8{ ".staging-interrupted/index.db", ".staging-interrupted/index.db.prefix.partial", "active.json.part" };
+    const retained = [_][]const u8{ "index.A.db", "index.B.db", "active.json", "generations/current/index.db", "generations/previous/index.db", ".staging-/keep", "unrelated.partial/keep" };
+    for (removed ++ retained) |name| {
+        const path = try std.fmt.allocPrint(arena, "{s}/{s}", .{ root, name });
+        try std.Io.Dir.createDirPath(.cwd(), io, std.fs.path.dirname(path).?);
+        try state.writeFile(path, "retained bytes");
+    }
+    sweepStalePartials(arena, root);
+    sweepStalePartials(arena, root);
+    for (removed) |name| try testing.expectError(error.FileNotFound, state.readSmall(arena, try std.fmt.allocPrint(arena, "{s}/{s}", .{ root, name })));
+    for (retained) |name| try testing.expectEqualStrings("retained bytes", try state.readSmall(arena, try std.fmt.allocPrint(arena, "{s}/{s}", .{ root, name })));
 }
 
 /// Build an in-memory snapshot whose prefix_top_base + actor_compact_base

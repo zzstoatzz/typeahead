@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import socket
 import sqlite3
 import subprocess
@@ -66,6 +67,49 @@ class RunningRelease:
 
 @unittest.skipUnless(os.environ.get('TYPEAHEAD_TEST_RELEASE'), 'release executable required')
 class Tests(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('rclone'), 'real rclone transport required')
+    def test_restart_removes_interrupted_generation_download(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            create(root / 'fixtures')
+            index = root / 'index'
+            index.mkdir()
+            (index / 'generations').symlink_to(root / 'fixtures/builds', target_is_directory=True)
+            manifest = json.loads((root / 'fixtures/builds/legacy/manifest.json').read_text())
+            active = index / 'active.json'
+            active.write_text(json.dumps({'version': 1, 'current': {'manifest': manifest, 'location': 'generation'}}))
+            original = active.read_bytes()
+            staging = index / '.staging-interrupted'
+            staging.mkdir()
+            source = root / 'download-source'
+            source.write_bytes(b'partial snapshot' * (1024 * 1024))
+            with (root / 'rclone.log').open('w') as log:
+                copy = subprocess.Popen(['rclone', '--config', os.devnull, 'copyto', '--bwlimit', '1M',
+                                         '--multi-thread-streams', '0', '--local-no-preallocate',
+                                         str(source), str(staging / 'index.db')], stdout=log, stderr=log)
+            try:
+                deadline = time.monotonic() + 15
+                while time.monotonic() < deadline:
+                    self.assertIsNone(copy.poll(), (root / 'rclone.log').read_text())
+                    if any(0 < path.stat().st_size < source.stat().st_size for path in staging.glob('index.db*')):
+                        break
+                    time.sleep(.02)
+                else:
+                    self.fail('rclone did not create a partial download')
+            finally:
+                copy.kill()
+                copy.wait(timeout=5)
+            self.assertTrue(any(staging.iterdir()))
+            server = RunningRelease(root)
+            try:
+                server.start()
+                server.wait(lambda state: state['build_id'] == 'legacy' and state['overlay_compact']['complete'])
+                self.assertEqual(server.request('/search?q=a')[1]['actors'][0]['did'], 'did:plc:recovery')
+                self.assertFalse(staging.exists())
+                self.assertEqual(active.read_bytes(), original)
+            finally:
+                server.crash()
+
     def test_crash_fallback_preserves_newer_hide_and_prunes_only_covered_rows(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
