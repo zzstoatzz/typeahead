@@ -120,6 +120,11 @@ pub fn initOverlay(conn: zqlite.Conn) !void {
     conn.exec("ALTER TABLE actor_overlay ADD COLUMN source INTEGER NOT NULL DEFAULT 0", .{}) catch {};
     conn.exec("ALTER TABLE prefix_overlay ADD COLUMN source INTEGER NOT NULL DEFAULT 0", .{}) catch {};
 
+    try conn.exec(
+        \\CREATE INDEX IF NOT EXISTS idx_prefix_overlay_rank
+        \\  ON prefix_overlay(key, score DESC, did ASC) WHERE op = 1
+    , .{});
+
     // updated_at indexes back the compaction prune (delete rows ≤ watermark).
     try conn.exec(
         \\CREATE INDEX IF NOT EXISTS idx_prefix_overlay_updated_at
@@ -309,4 +314,21 @@ test "meta key constants are non-empty and stable" {
     }) |k| {
         try testing.expect(k.len > 0);
     }
+}
+
+test "overlay top candidates use the ranking index without a temporary sort" {
+    var conn = try openMem();
+    defer conn.close();
+    try initOverlay(conn);
+    try initOverlay(conn);
+    var rows = try conn.rows("EXPLAIN QUERY PLAN SELECT did,score,op FROM prefix_overlay WHERE key = ? AND op = 1 ORDER BY score DESC,did ASC LIMIT 50", .{"d:bs"});
+    defer rows.deinit();
+    var indexed = false;
+    while (rows.next()) |row| {
+        const detail = row.text(3);
+        if (std.mem.indexOf(u8, detail, "idx_prefix_overlay_rank") != null) indexed = true;
+        try testing.expect(std.mem.indexOf(u8, detail, "TEMP B-TREE") == null);
+    }
+    if (rows.err) |err| return err;
+    try testing.expect(indexed);
 }

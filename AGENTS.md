@@ -43,8 +43,8 @@ and correct the docs rather than assuming one automatically describes production
 
 The target is predictable, bounded request work. The snapshot contains precomputed
 prefix lists and the merge caps hydration at 50 candidates before exact promotion.
-The deployed overlay lookup can still read every row for a matching prefix; do not
-claim constant or fully bounded work until measured and deployed. See
+Union-prefix additions use the partial ranking index in this branch; exact keys
+and intersections still read every matching row. Deployment verification is pending. See
 [the lookup evaluation](docs/evals/bounded-overlay.md) for local experiments.
 
 Avoid corpus-proportional request work and full-scan Worker cron selectors. Full

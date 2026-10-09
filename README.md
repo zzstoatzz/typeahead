@@ -64,14 +64,15 @@ SQLite snapshots. See the [rollout gates](docs/plans/snapshot-compaction-rollout
 and [full-corpus experiment](docs/evals/flat-prefix-compaction.md). Release
 qualification and deployment remain outstanding.
 
-The snapshot precomputes search candidates, but **the deployed overlay lookup
-can still scan a large matching prefix**. Candidate hydration is capped at 50
-before exact-handle reinjection. Prefix keys are stored up to 16 bytes; a longer
-query looks up its 16-byte cut and the hydrated rows are then filtered against
-the whole query, so a long query costs what its cut costs plus one pass over at
-most 50 rows. A capped result list does not imply bounded
-SQLite work. See [architecture](docs/architecture.md) and
-[discovery and identity](docs/discovery-and-identity.md).
+The snapshot precomputes search candidates. Union-prefix overlay additions use a
+partial `(key, score DESC, did ASC)` index and stop after the top 50, plus indexed
+corrections to snapshot candidates. Exact keys and intersections retain full
+matching-key reads to preserve ranking correctness. Hydration is capped at 50
+before exact-handle reinjection. Queries longer than 16 bytes use their 16-byte
+prefix key and filter hydrated rows against the full query. See
+[architecture](docs/architecture.md) and [lookup evaluation](docs/evals/bounded-overlay.md).
+The ranking index is implemented on `codex/overlay-ranking`; production
+verification is pending.
 
 ## Public pages and metadata
 

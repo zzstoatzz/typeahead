@@ -29,7 +29,10 @@ then snapshot actor blobs. Keys include exact handles (`e:`), handle prefixes
 support. Prefix keys are stored up to 16 bytes; a longer query looks up its cut
 and the hydrated rows are filtered against the whole query (see
 [the index design](typeahead-index-design.md#queries-longer-than-prefix_max)).
-The active manifest specifies the index versions and caps.
+The active manifest specifies the index versions and caps. Union-prefix additions
+use the partial overlay ranking index on `(key, score DESC, did ASC) WHERE op=1`
+in this branch, avoiding a matching-prefix sort. Base corrections remain point
+lookups; exact-key and intersection reads remain uncapped for correctness.
 
 The serving invariant is about work per engine query: no actor-corpus scan or
 request-time FTS ranking. It does not imply constant disk usage or a fixed RAM

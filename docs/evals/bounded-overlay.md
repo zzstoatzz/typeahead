@@ -323,3 +323,13 @@ fixture for both implementations; this does not test live freshness or sync
 catch-up. Samples include edge-cache hits, and baseline-first timing is biased
 by page warming. See [raw metrics](live-shadow-pilot.json) and the
 [runbook](../../ops/canary/README.md) for limits, rollback and remaining gates.
+
+## Ranking-index implementation — October 9
+
+`codex/overlay-ranking` installs `idx_prefix_overlay_rank` on
+`(key, score DESC, did ASC) WHERE op=1` through idempotent overlay initialization.
+The real SQLite query-plan test requires that index and rejects a temporary sort.
+Existing differential lookup tests cover score changes, deletions, ties,
+intersections and exact promotion. The earlier measured write amplification still
+matters: this trades an extra partial index update for frequent faster reads.
+Production verification is pending.

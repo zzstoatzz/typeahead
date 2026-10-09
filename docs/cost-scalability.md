@@ -46,7 +46,7 @@ Plan: **Scaler** (~$30/mo base), period resets monthly.
 
 Top read consumers (`--queries`, all batch/cron — **none are request-path**):
 - sync pagination walk `… WHERE handle != '' AND rowid > ? ORDER BY rowid LIMIT 2000` — search service's incremental/resync
-- stats aggregate `SELECT COUNT(*), SUM(CASE…) FROM actors` (~25 M rows) — still a full scan; `actor_deltas` rollup exists but the scan persists (cheap to retire)
+- stats aggregate `SELECT COUNT(*), SUM(CASE…) FROM actors` (~25 M rows) — historical full scan, since retired: `src/enrichment.ts:recordSnapshot` reads the maintained total counter and selective indexed counts
 - `last_activity_at` batch UPDATEs — ingester write churn
 
 ### Fly (`fly machine list`, `fly volumes list`)
