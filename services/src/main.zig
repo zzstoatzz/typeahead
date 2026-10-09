@@ -123,7 +123,7 @@ pub fn main() !void {
     const allocator = std.heap.smp_allocator;
     app_threaded_io = std.Io.Threaded.init(allocator, .{
         .stack_size = 8 * 1024 * 1024, // 8MB (default 16MB is wasteful on 256MB VM)
-        .async_limit = std.Io.Limit.limited(8), // bounded HTTP handler pool
+        .async_limit = std.Io.Limit.limited(8),
     });
 
     // Process role — explicit and required, no default. A role running on the
@@ -144,6 +144,8 @@ pub fn main() !void {
             return error.RoleRequired;
         };
     };
+
+    if (role == .search) app_threaded_io.setAsyncLimit(.limited(16));
 
     if (role == .indexer) {
         // Logfire stays unconfigured here — indexer is a short-lived

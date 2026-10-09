@@ -41,6 +41,16 @@ test covers first publication, identical retry, corruption rejection, unchanged
 pointer on failure, and cleanup. It requires `TYPEAHEAD_TEST_R2=1`, the existing
 `INDEX_R2_*` environment, and optionally `INDEX_RCLONE_BIN`.
 
+The first actual-release mixed-workload trial failed before yielding a complete
+round: the eight-task async budget includes the sync, watchdog, and promotion
+tasks, starving eight persistent HTTP clients. A focused process test reproduced
+a 5.4-second connection-timeout stall. The search role now uses a bounded
+16-task budget; the focused test and a full-corpus mixed-workload diagnostic pass.
+The failed run is retained, and formal performance qualification restarts from
+round zero on the corrected image. Both storage variants use the same task
+budget. The separate old-release compatibility comparison uses identical
+`Connection: close` requests to avoid the old persistent-connection starvation.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from
