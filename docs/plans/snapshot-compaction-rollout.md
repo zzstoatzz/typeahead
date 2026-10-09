@@ -34,6 +34,13 @@ than the release executable's 256 KiB static TLS segment on Linux. Its stack
 reservation is now 1 MiB so the existing deadline tests can spawn the watchdog.
 This thread is created only on the fatal-exit path.
 
+Publication is tested with real local rclone transport and an isolated R2 prefix.
+R2 `lsjson --stat` returns a directory for a missing object, unlike local storage;
+the publisher now distinguishes that from an existing immutable file. The live
+test covers first publication, identical retry, corruption rejection, unchanged
+pointer on failure, and cleanup. It requires `TYPEAHEAD_TEST_R2=1`, the existing
+`INDEX_R2_*` environment, and optionally `INDEX_RCLONE_BIN`.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from

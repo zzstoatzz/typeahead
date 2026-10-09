@@ -42,10 +42,10 @@ class Publisher:
             [*self.command, 'lsjson', '--stat', self.remote(object_key)],
             capture_output=True, text=True,
         )
-        if result.returncode == 0:
+        if result.returncode == 0 and not json.loads(result.stdout)['IsDir']:
             self.verify(local, object_key)
             return
-        if result.returncode not in (3, 4):
+        if result.returncode not in (0, 3, 4):
             raise RuntimeError(f'cannot inspect remote artifact: {object_key}: {result.stderr}')
         print(f'upload {object_key}', flush=True)
         subprocess.run(
