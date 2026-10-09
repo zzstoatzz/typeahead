@@ -177,7 +177,7 @@ fn recoverLocal(arena: Allocator, db: *LocalDb, root: []const u8) !void {
     var prepared = prepareEntry(arena, db, selected, root, false) catch |err| blk: {
         const previous = parsed.value.previous orelse return err;
         if (!state.rollbackAllowed(selected.manifest, previous.manifest)) return error.RollbackRequiresReplay;
-        const fallback = try prepareEntry(arena, db, previous, root, false);
+        const fallback = try prepareEntry(arena, db, previous, root, true);
         selected = previous;
         break :blk fallback;
     };

@@ -84,6 +84,12 @@ slots, unrelated directories, and malformed staging names. Real-file tests cover
 that distinction and idempotence; a process test kills an actual throttled rclone
 copy before restarting the reader.
 
+Recovery verifies a fallback's full checksum even when it is legacy SQLite.
+A process test corrupts the compact map and modifies an otherwise valid legacy
+twin; the reader must leave the activation record unchanged and fail readiness.
+Metadata and sentinels alone do not establish that the fallback still matches
+its manifest. Normal legacy startup behavior is unchanged.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from

@@ -67,6 +67,33 @@ class RunningRelease:
 
 @unittest.skipUnless(os.environ.get('TYPEAHEAD_TEST_RELEASE'), 'release executable required')
 class Tests(unittest.TestCase):
+    def test_corrupt_current_and_modified_legacy_twin_fail_closed(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            create(root / 'fixtures')
+            index = root / 'index'
+            index.mkdir()
+            (index / 'generations').symlink_to(root / 'fixtures/builds', target_is_directory=True)
+            manifests = {name: json.loads((root / 'fixtures/builds' / name / 'manifest.json').read_text())
+                         for name in ('compact', 'legacy')}
+            active = index / 'active.json'
+            active.write_text(json.dumps({'version': 1,
+                'current': {'manifest': manifests['compact'], 'location': 'generation'},
+                'previous': {'manifest': manifests['legacy'], 'location': 'generation'}}))
+            original = active.read_bytes()
+            (root / 'fixtures/builds/compact/index.db.prefix').write_bytes(b'truncated')
+            with sqlite3.connect(root / 'fixtures/builds/legacy/index.db') as connection:
+                connection.execute("INSERT INTO index_meta VALUES('untrusted-change','still valid SQLite')")
+            server = RunningRelease(root)
+            try:
+                server.start()
+                server.wait(lambda state: 'promote check failed' in server.log.read_text())
+                self.assertFalse(server.request('/index/status')[1]['attached'])
+                self.assertEqual(server.request('/search?q=a')[0], 503)
+                self.assertEqual(active.read_bytes(), original)
+            finally:
+                server.crash()
+
     @unittest.skipUnless(shutil.which('rclone'), 'real rclone transport required')
     def test_restart_removes_interrupted_generation_download(self):
         with tempfile.TemporaryDirectory() as temporary:
