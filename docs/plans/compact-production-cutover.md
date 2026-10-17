@@ -210,7 +210,7 @@ is altered. This preflight failure is retained and is not a passing rollback.
 
 ### Worker routing inventory — October 17
 
-The active Worker deployment is `165af368-6b74-4dc3-873e-8f233293ef57`,
+At the initial inventory, Worker deployment `165af368-6b74-4dc3-873e-8f233293ef57` was active,
 serving version `5daf6f08-c3d6-4cf4-bf9a-4f56efdef979` at 100%. It includes
 the independently shipped mobile stats fix. `SEARCH_BACKEND_URL` is a secret
 binding. Preserve this Worker code when switching the backend; do not deploy the
@@ -537,3 +537,36 @@ not claimed as an error-free integration run. Live catch-up is still untested.
 Both local Worker instances exited after testing; the native test server, bridge
 and tunnel were explicitly stopped. The restored volume and fixture overlay
 remain preserved for the next preparation step.
+
+### Binding switch and reversal rehearsed — October 17
+
+An isolated disposable Worker verified `versions secret put` stages a new
+`SEARCH_BACKEND_URL` without changing active traffic, and `versions deploy
+NEW_VERSION@100% --yes` switches the binding. **Reversal with `versions deploy
+BASE_VERSION@100%` failed with Cloudflare error 10220** because the secret changed.
+The earlier dry run could not detect this restriction.
+
+The working reversal is:
+
+```sh
+bunx --no-install wrangler rollback "$BASE_VERSION" --yes \
+  --message 'Restore verified legacy search backend'
+```
+
+Wrangler's rollback handler retries with Cloudflare's explicit secret-rollback
+confirmation. In the rehearsal, only `SEARCH_BACKEND_URL` changed. Both the
+returned binding value and the final 100%-baseline deployment were verified.
+The disposable Worker was deleted and API absence verified.
+[Evidence](../evals/compact-routing-rehearsal.json) records the failed and working
+commands. This verifies the control plane; real backend readiness remains an
+independent gate. No production routing changed.
+
+For the actual switch, refresh active and latest-uploaded versions immediately
+before staging; require the intended current code at 100% and no unexpected
+latest upload. Save that version as `BASE_VERSION`, with both backend readiness
+results and the exact existing backend URL. Preserve all unrelated bindings.
+After staging, verify the old backend is still active before deploying the new
+version. Before unattended rollback, verify no intervening unrelated secret/code
+change occurred; otherwise inspect the changed-secret list without `--yes` and
+preserve those changes explicitly. A rollback success message alone is insufficient:
+verify the active version, direct legacy readiness, public search and alias bodies.

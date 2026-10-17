@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "scope": "Secret-binding staging, switch and rollback control plane; not live backend readiness",
+  "worker": "typeahead-route-rehearsal-d5dca4",
+  "baseline_version": "7b9ff494-0795-4561-932e-9af3c752f878",
+  "replacement_version": "afcf2a2e-dc9e-45a5-8603-29cc4dc0470d",
+  "staging_kept_baseline_active": true,
+  "replacement_responses": [
+    {
+      "backend": "https://compact.invalid"
+    }
+  ],
+  "reversal_response": {
+    "backend": "https://legacy.invalid"
+  },
+  "final_deployment": {
+    "id": "9658e642-7cf7-4c99-9809-02e30f78690d",
+    "created_on": "2026-10-17T06:29:24.467443Z",
+    "versions": [
+      {
+        "version_id": "7b9ff494-0795-4561-932e-9af3c752f878",
+        "percentage": 100
+      }
+    ]
+  },
+  "failed_reversal": "versions deploy baseline@100% rejected with Cloudflare10220 because SEARCH_BACKEND_URL changed",
+  "successful_reversal": "wrangler rollback BASE_VERSION --yes --message MESSAGE",
+  "initial_probe": "First urllib probe returned HTTP403; later curl probes passed",
+  "production_routing_changed": false,
+  "temporary_worker_deleted": true,
+  "deletion_verified": "Versions API returns worker-not-found"
+}
