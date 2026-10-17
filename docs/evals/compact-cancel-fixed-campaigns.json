@@ -1,0 +1,22 @@
+{
+  "source": "cc2d5a1",
+  "binary_sha256": "758d458b829f350531364982d24136b9e1097f4e4c34977996a37488ea9a3606",
+  "image": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017",
+  "platform_digest": "sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+  "warm": {
+    "rounds": 60,
+    "trials": 180,
+    "harness": "unchanged release_assay_pinned.py; cores 8,10,12,14; isolated frozen cache; pool8; held warm maps and zero read-only physical IO guard",
+    "controller_sha256": "3ba2e42881c61c6bb8f4cfc64cae7dabb94f9025393e5f57e5ae20d15d3a385b",
+    "unit": "typeahead-cancel-fixed-warm-20261017.service"
+  },
+  "cold": {
+    "rounds": 60,
+    "trials": 180,
+    "harness": "unchanged release_assay.py; 4 shared CPUs, 2048 MiB, no swap; same frozen artifacts; pool8; credit >=48000 and no throttle increment",
+    "controller_sha256": "793f3f9bce922740e29fc053e661ec26031f122dde1794450055b7dd63937980",
+    "controller_pid": 80532
+  },
+  "acceptance": "Unchanged strict five-phase paired p95 upper CI <=1; secondary regressions unresolved fail; no latency-based exclusion or automatic retry. Every trial fresh for this binary.",
+  "production_routing_changed": false
+}

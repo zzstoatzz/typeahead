@@ -21,7 +21,7 @@
     "assess_release.py": "0e3f24b4d78d5c1e8ba71c6ba64b297ceedf4891a611426567004f5128ae74e4"
   },
   "mode": "4 shared CPUs, 2048 MB, no swap; frozen October 8 corpus; 60 randomized rounds with two legacy controls, same strict gates as warm campaign",
-  "status": "Replacement cc2d5a1 passes Linux lifecycle, seven recovery tests, and full-corpus live format switching with clean shutdown. Packaged/pushed, not deployed. Warm/cold/compatibility/matched reload performance and fresh-volume/live routing gates remain.",
+  "status": "Replacement cc2d5a1 running on isolated Fly machines only; fresh warm and cold campaigns started. Fresh-volume restore waits for protected checkpoint; live routing and publication remain unchanged.",
   "release_process_tests": {
     "passed": 7,
     "skipped": 0,
@@ -226,6 +226,15 @@
       "passed": true,
       "evidence": "compact-cancel-fixed-hot-reload.json",
       "latency_acceptance_claimed": false
+    },
+    "campaigns": "compact-cancel-fixed-campaigns.json",
+    "source_tag": "compact-candidate-cc2d5a1",
+    "archive": {
+      "platform_digest": "sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+      "binary_sha256": "758d458b829f350531364982d24136b9e1097f4e4c34977996a37488ea9a3606",
+      "archive_sha256": "fc6aede4c87b12a628f8aba31366fec3948a45c527181f8491bec2e3e7fbd34a",
+      "archive_bytes": 60856052,
+      "all_manifest_layers_verified": true
     }
   }
 }

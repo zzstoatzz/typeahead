@@ -67,8 +67,15 @@ skips ([log](../evals/compact-cancel-fixed-recovery.log.gz)) and the
 352,382 verified concurrent reads while switching to compact, 10,185 while
 switching back, 8,000 exact responses before and after, and clean SIGTERM exit.
 This is correctness/recovery evidence, not matched latency acceptance.
-The replacement image is packaged and pushed, but not deployed to Fly yet;
-its immutable digests are in the release evidence JSON.
+The replacement image is running only on the two isolated Fly machines;
+its immutable digests are in the release evidence JSON. Fresh 60-round warm and
+cold campaigns use the [recorded unchanged settings](../evals/compact-cancel-fixed-campaigns.json).
+The cold campaign waits for the same CPU-credit gate after machine replacement.
+The fresh-volume restore launcher now requires this replacement binary and the
+verified protected checkpoint. Source tag `compact-candidate-cc2d5a1` resolves to
+`cc2d5a1439793c050ac20404f97edbb20df6113e`; a complete bundle restores that commit.
+Its OCI archive was verified through every blob and the executable, then loaded
+and run without network/pulls. Protected R2 upload/readback is in progress.
 The superseded cold controller and queued compatibility controller were stopped;
 completed and interrupted trials are preserved. The replacement requires its own qualification; existing results
 remain associated with `38e0a27`. Production routing remains unchanged.
