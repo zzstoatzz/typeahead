@@ -144,11 +144,11 @@ credentials, and test data only after checking references and saving evidence.
 
 ## Remaining execution record
 
-Pending: replacement warm/cold and compatibility gates, matched reload latency,
-serving replacement readiness, route rehearsal, fresh-volume disaster drill,
-production cutover, scheduled publication, observation, cleanup. Native full-size
-reload correctness, protected publication and independent image/source recovery
-have passed as recorded below. Fill in
+Pending: resolution of the inconclusive warm gate, cold and compatibility gates,
+matched reload latency, serving replacement readiness, production cutover, scheduled
+publication, observation, and cleanup. Route rehearsal, fresh-volume restoration,
+legacy binary rollback, native full-size reload correctness, protected publication,
+and independent image/source recovery have passed as recorded below. Fill in
 exact resources, commands, timestamps, and results as each action completes.
 
 ### Packaged candidate — October 17
@@ -634,3 +634,27 @@ prove that the unsearchable/tombstone phases completed. It runs for at most two
 hours and records failed/unknown observations; a deadline does not restart the
 machine. Initial checks correctly rejected the unattached snapshot. Live catch-up
 has not yet been claimed complete.
+
+### Following scheduled publications after recovery — pending
+
+The private replacement intentionally reads the protected checkpoint subpath and
+`compact.json`. Leaving that configuration in production would pin it indefinitely;
+a successful publisher run alone would not demonstrate end-to-end promotion.
+
+After serving cutover and the first scheduled compact publication, verify the root
+`latest.json` names the new compact manifest and its same-watermark legacy twin,
+with all hashes and uploads complete. Keep the old backend synchronized and ready
+for traffic reversal. Only then remove the recovery bucket suffix and set
+`INDEX_LATEST_KEY=latest.json` on the replacement, retaining its image, volume,
+live overlay, and read-pool configuration. The
+[pending follow-publisher configuration](../evals/compact-follow-publisher-config-pending.json)
+is a template, not deployed state; refresh it against the machine before applying.
+Do not apply it while root `latest.json` still names the old legacy generation.
+
+Require native admission of the scheduled compact build, a full successful overlay
+sync, compaction completion, matching aliases, moderation/ranking checks, and
+healthy serving before counting the scheduled cycle complete. Protect and readback
+verify this new pair before cleanup. Subsequent polls must target the root pointer;
+record the final machine configuration as evidence. For publication rollback, use
+the new generation's verified legacy twin; do not combine an older snapshot with
+an overlay pruned past its watermark.
