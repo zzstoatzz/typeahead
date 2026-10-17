@@ -598,9 +598,11 @@ is pinned to the protected checkpoint; the root production pointer is untouched.
 
 Turso credentials from the existing encrypted store were staged without
 restarting qualification machines; only the recovery machine was updated.
-No public services are configured. `ADMIN_SECRET` is not yet configured on this
-app, so authenticated inline-refresh integration still needs preparation before
-cutover. Its restart policy is on-failure, at most ten retries.
+No public services are configured. The matching existing Fly-owned
+`ADMIN_SECRET` was subsequently staged after a non-mutating invalid-body probe
+returned the expected HTTP 400 from the legacy backend. It is not active on the
+currently running replacement; the planned restart will apply it and verify the
+same probe there before cutover. Its restart policy is on-failure, at most ten retries.
 [Machine configuration](../evals/compact-private-replacement-config.json) contains
 no credential values. Curl was installed only for private inspection; it is not
 a runtime dependency or a change to the pinned image.
