@@ -378,3 +378,21 @@ backend. OPTIONS succeeds for both, and unavailable-backend answers remain
 uncached. All bindings were local, database access and fallbacks disabled. The
 local Worker was stopped afterward. Successful full-corpus alias checks remain
 a separate gate against the replacement backend.
+
+## Legacy backend safety during pointer change
+
+The [exact deployed-reader drill](../evals/compact-deployed-reader-rejection.json)
+passed on October 17. Binary `f82400c65efa59456b3240828da41e496ad2e92532318972fbf9356e226ea920`
+first served the full current legacy snapshot and 60 overlay mutations. Its
+isolated R2 `latest.json` then changed to the real compact manifest, with the
+compact database available under that namespace. Three explicit
+`UnsupportedManifestVersion` rejections were observed while the old build stayed
+attached; all 8,000 response hashes matched before and after. The production
+pointer and backend were untouched. The unchanged old process uses forced
+teardown in this drill; no clean-shutdown claim is made for it.
+
+This establishes the pointer-first preparation step: the old serving backend can
+retain its legacy snapshot while the replacement is configured for the compact
+production pointer. Routing still waits for all remaining release gates and live
+overlay catch-up. Reverse routing must retain the old backend and its data until
+independent disaster restoration and the observation/publication gates complete.

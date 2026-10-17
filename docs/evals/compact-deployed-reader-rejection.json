@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "deployed_binary_sha256": "f82400c65efa59456b3240828da41e496ad2e92532318972fbf9356e226ea920",
+  "retained_build": "b1792141282-189b",
+  "rejected_build": "compact-b1792141282-189b",
+  "responses_before_and_after": 8000,
+  "mutations": 60,
+  "explicit_rejections": 3,
+  "teardown": "SIGKILL for unchanged deployed reader",
+  "production_pointer_changed": false
+}
