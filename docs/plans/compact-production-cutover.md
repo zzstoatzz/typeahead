@@ -319,7 +319,7 @@ in the release inventory. The configured GitHub Typeahead fallback returned
 “Repository not found” from this host, so it is not a verified recovery source.
 
 The publisher integration is [pull request 10](https://tangled.org/zzstoatzz.io/my-prefect-server/pulls/10).
-A fresh read of the live deployment shows `MPS_PIN=@523b0fe053fe453559e637c1c5cc800d4de7a3c2`,
+A fresh read of the live deployment shows `MPS_PIN=@2e743f38633bca962818d52e540257b99f102fc6`,
 empty parameters, the unchanged `0 9 */3 * *` schedule and no `INDEX_QUIET`.
 The integration branch includes that source revision. No publisher deployment
 or schedule mutation has occurred in this rollout. Pin the selected Typeahead
