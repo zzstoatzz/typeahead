@@ -517,3 +517,23 @@ The [full diagnostic record](../evals/compact-native-reload/diagnostic.json.gz)
 is excluded from formal acceptance. The verified queue started
 `typeahead-native-reload-formal-20261017`; it uses the frozen 20-round protocol
 and separate `reload-release/formal-bounded` output.
+
+### Recovered compact XRPC contract passed — October 17
+
+The final candidate served the recovered current-corpus compact snapshot with
+`READ_POOL_SIZE=8` through the current Worker source
+(`2564108f-c5c7-4d2b-9c78-e5031bb4e232`) in a local isolated runtime.
+All 224 responses passed: seven queries including Unicode, four limits, both
+aliases, repeated requests and both alias orderings. Each body matched the native
+backend exactly; CORS and the 60-second cache behavior passed.
+[Evidence](../evals/compact-recovered-xrpc.json.gz) retains the responses.
+
+The native listener is IPv4-only, so an ephemeral byte-forwarding bridge connected
+the Fly IPv6 tunnel to it. The initial local Worker startup used the module's
+named constant exports directly and failed; the default-entry wrapper corrected
+that harness error without changing production source. Fake Turso credentials
+prevented live access; expected background statistics-write network errors are
+not claimed as an error-free integration run. Live catch-up is still untested.
+Both local Worker instances exited after testing; the native test server, bridge
+and tunnel were explicitly stopped. The restored volume and fixture overlay
+remain preserved for the next preparation step.
