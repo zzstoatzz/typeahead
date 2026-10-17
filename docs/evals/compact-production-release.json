@@ -116,5 +116,17 @@
       "log": "/Users/nate/.local/share/typeahead-experiments/release-20261017/cold-campaign.log"
     }
   },
-  "volume_extended_before_cold_campaign": true
+  "volume_extended_before_cold_campaign": true,
+  "recovery_replacement": {
+    "app": "typeahead-search-compact",
+    "machine": "781e732c264678",
+    "volume": "vol_rnzg2g0gkko1lmpr",
+    "volume_gb": 60,
+    "image_digest": "sha256:db843d21e8da8f28a34a71dcd398904287eed7fe242b5b35cf70fd745a846174",
+    "public_services": false,
+    "purpose": "Fresh-volume disaster restore; potential serving replacement only after admission and all rollout gates",
+    "status": "provisioned; restore not yet started",
+    "initial_volume_used_bytes": 24576,
+    "binary_sha256_verified": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91"
+  }
 }

@@ -199,3 +199,16 @@ and the optional comparison benchmark; those are not claimed as verified here. T
 freshness endpoint still reports healthy legacy build `b1792141282-189b` with a
 known snapshot age. The pre-fix Worker version remains available, but use this
 new version as the routing-switch base so rollback retains the monitoring fix.
+
+### Fresh-volume recovery target — October 17
+
+Machine `781e732c264678` (`compact-recovery`) in `typeahead-search-compact`
+uses the pinned candidate image and new encrypted 60 GB volume
+`vol_rnzg2g0gkko1lmpr`. Before copying test fixtures, `/data` contained only
+`lost+found` and used 24 KiB; the executable SHA matched the qualified binary.
+It has no public services. The restore harness is staged separately from the
+latency machine and will run only after the current-generation rollback drill
+produces verified reference response hashes. Restoring the artifact is distinct
+from replaying the live upstream overlay; both must pass before traffic admission.
+The target may become the serving replacement only after all rollout gates pass;
+otherwise it remains a temporary resource covered by the cleanup gate.
