@@ -230,6 +230,14 @@ the exact expected generation, a successful overlay-sync watermark no older than
 600 seconds, a nonempty corpus, and the exact-handle probe at rank one. On October
 17 the live legacy backend passed; a deliberately incorrect expected build was
 rejected. This is a cutover admission command, not a recurring health monitor.
+For an empty-overlay restore, also supply `--max-snapshot-age 604800`. This
+rejects unknown/future watermarks and snapshots at least seven days old, because
+Turso tombstones expire after seven days. Require a complete successful sync pass
+before admission; the per-page lag alone is insufficient. This age restriction
+does not diagnose a continuously synchronized backend with an older base.
+On October 17, the live legacy backend passed ordinary admission; its status
+endpoint omits `source_watermark`, so fresh-restore admission correctly rejected
+it as unknown. Positive age admission on the replacement remains pending.
 A fresh replacement must additionally pass the alias, moderation, ranking and
 recovery gates above. A Fly `/health` HTTP-status check alone remains insufficient.
 
@@ -337,6 +345,14 @@ relative `builds/...` object keys. Its `latest.json` is the legacy pointer and
 as the R2 bucket subpath, and may start only once `protected-checkpoint.json`
 records success. Protection is pending until that record exists. The release
 prefix is manually retired only after the dated rollback window and cleanup gate.
+
+Before cleanup, protect and verify a fresh legacy/compact pair from the completed
+scheduled publication. Thirty-day source/image retention does not provide a
+thirty-day empty-overlay restore window: snapshots must remain within the
+seven-day tombstone replay window through catchup. Refresh the protected pair
+after publication; if it ages out, rebuild from current durable data instead of
+admitting an old snapshot. Keep the synchronized rollback backend until these
+recovery conditions and the observation gates are satisfied.
 
 ## Native matched reload qualification
 

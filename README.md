@@ -72,7 +72,9 @@ on October 16 reproduced the result. See the
 [warm qualification evidence](docs/evals/compact-inline-warm/gate.json) and
 [rollout gates](docs/plans/snapshot-compaction-rollout.md). The
 [production cutover runbook](docs/plans/compact-production-cutover.md) tracks
-current inventory, disaster rollback, and cleanup. Earlier failed runs
+current inventory, disaster rollback, and cleanup. Empty-overlay recovery requires
+a snapshot inside the seven-day tombstone replay window; archived images alone
+do not preserve that window. Earlier failed runs
 remain recorded; this warm pass does not complete the remaining release and
 production rollout gates. The October 17 live reload drill exposed an R2-download
 cancellation bug during shutdown; cutover is held while a replacement is tested.
