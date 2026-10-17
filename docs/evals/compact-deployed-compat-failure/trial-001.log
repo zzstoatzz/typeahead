@@ -1,0 +1,56 @@
+Connecting to fdaa:12:4e15:a7b:6a:7b:77a2:2...
+Traceback (most recent call last):
+  File "/data/qualification/assay.py", line 194, in bench
+    with cf.ThreadPoolExecutor(max_workers=8) as pool:timings['concurrency8']=summary(list(pool.map(measure,concurrent)))
+                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/concurrent/futures/_base.py", line 619, in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/concurrent/futures/_base.py", line 317, in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/qualification/assay.py", line 175, in measure
+    status,body,t=s.query(q)
+                  ^^^^^^^^^^
+  File "/data/qualification/assay.py", line 56, in query
+    def query(self,q,limit=50):return self.request('/search?'+urllib.parse.urlencode({'q':q,'limit':limit}))
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/qualification/compat_assay_pool8.py", line 84, in request
+    response = connection.getresponse()
+               ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/http/client.py", line 1403, in getresponse
+    response.begin()
+  File "/usr/lib/python3.11/http/client.py", line 323, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/http/client.py", line 292, in _read_status
+    raise RemoteDisconnected("Remote end closed connection without"
+http.client.RemoteDisconnected: Remote end closed connection without response
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/data/qualification/compat_assay_pool8.py", line 132, in <module>
+    assay.bench()
+  File "/data/qualification/assay.py", line 214, in bench
+    finally:usage=s.close()
+                  ^^^^^^^^^
+  File "/data/qualification/compat_assay_pool8.py", line 92, in close
+    (self.d / (name + '.txt')).write_text(Path('/proc', str(self.p.pid), name).read_text())
+                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/pathlib.py", line 1059, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/pathlib.py", line 1045, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ProcessLookupError: [Errno 3] No such process: '/proc/2398/smaps_rollup'
+Error: ssh shell: Process exited with status 1

@@ -710,3 +710,21 @@ was not treated as readiness. `just bench-ranking` against the isolated public
 URL passed every acceptance check; [full output](../evals/compact-public-ranking.log.gz)
 is retained. The no-stress engine comparison is running; current-Worker alias
 checks are prepared to run afterward.
+
+### Deployed-reader performance comparison failed — October 17, 07:24 UTC
+
+The unmodified deployed legacy binary `f82400c…` passed the initial serialized
+10,060-response correctness comparison against candidate `758d458…`, but crashed
+in trial 1 (`baseline-control`) during the eight-client phase. The server logged
+a segmentation fault followed by recursive fatal-handler frames; the HTTP client
+received a disconnect. The cleanup collector then encountered the already-exited
+process. CPU throttle counters stayed zero. These logs do not establish the
+underlying cause of this particular crash.
+
+[Failed trial, resource guards, and server log](../evals/compact-deployed-compat-failure/)
+are preserved. This is not a compact-candidate crash, and it is not a passing
+legacy performance comparison. No retry, query exclusion, or patched baseline
+was substituted. The waiting compatibility orchestrator had no active child
+processes and was stopped to prevent other shards starting this now-incomplete
+campaign. The three active cold controllers and native reload experiment were
+left untouched; collect their complete results independently.

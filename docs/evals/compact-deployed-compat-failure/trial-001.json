@@ -1,0 +1,109 @@
+{
+  "trial": 1,
+  "machine": "d895206f9ed638",
+  "shard": 0,
+  "before": {
+    "time": 1792221749.9371939,
+    "sampled_at": 1792221742.94,
+    "values": {
+      "fly_instance_cpu_baseline": 0.25,
+      "fly_instance_cpu_balance": 126982.006376,
+      "fly_instance_cpu_throttle": 0.0
+    },
+    "raw": [
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_baseline",
+          "instance": "d895206f9ed638",
+          "host": "f3bd",
+          "app": "typeahead-search-compact",
+          "region": "ewr"
+        },
+        "value": [
+          1792221742.94,
+          "0.25"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_balance",
+          "instance": "d895206f9ed638",
+          "host": "f3bd",
+          "app": "typeahead-search-compact",
+          "region": "ewr"
+        },
+        "value": [
+          1792221742.94,
+          "126982.006376"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_throttle",
+          "instance": "d895206f9ed638",
+          "host": "f3bd",
+          "app": "typeahead-search-compact",
+          "region": "ewr"
+        },
+        "value": [
+          1792221742.94,
+          "0"
+        ]
+      }
+    ]
+  },
+  "after": {
+    "time": 1792221786.410099,
+    "sampled_at": 1792221772.939,
+    "values": {
+      "fly_instance_cpu_baseline": 0.25,
+      "fly_instance_cpu_balance": 127269.02424,
+      "fly_instance_cpu_throttle": 0.0
+    },
+    "raw": [
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_baseline",
+          "instance": "d895206f9ed638",
+          "host": "f3bd",
+          "app": "typeahead-search-compact",
+          "region": "ewr"
+        },
+        "value": [
+          1792221782.94,
+          "0.25"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_balance",
+          "instance": "d895206f9ed638",
+          "host": "f3bd",
+          "app": "typeahead-search-compact",
+          "region": "ewr"
+        },
+        "value": [
+          1792221772.939,
+          "127269.02424"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_throttle",
+          "instance": "d895206f9ed638",
+          "host": "f3bd",
+          "app": "typeahead-search-compact",
+          "region": "ewr"
+        },
+        "value": [
+          1792221782.94,
+          "0"
+        ]
+      }
+    ]
+  },
+  "exit_code": 1,
+  "valid": false,
+  "candidate_read_pool_size": 8,
+  "control_read_pool_size": 4
+}
