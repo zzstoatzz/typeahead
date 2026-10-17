@@ -1,0 +1,76 @@
+{
+  "machine": "781e732c264678",
+  "app": "typeahead-search-compact",
+  "state_after_update": "started",
+  "configuration": {
+    "env": {
+      "INDEX_BUILD_ROOT": "/data/disaster-current-20261017",
+      "INDEX_LATEST_KEY": "compact.json",
+      "INDEX_POLL_SECS": "300",
+      "LOCAL_DB_PATH": "/data/live-overlay/overlay.db",
+      "MODE": "search",
+      "PORT": "8080",
+      "READ_POOL_SIZE": "8",
+      "SQLITE_TMPDIR": "/data/live-overlay/tmp"
+    },
+    "init": {
+      "cmd": [
+        "sh",
+        "-c",
+        "export INDEX_R2_BUCKET=\"${INDEX_R2_BUCKET}/releases/compact-candidate-38e0a27/checkpoint-b1792141282-189b\"; exec /app/typeahead-ingester"
+      ]
+    },
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 4,
+      "memory_mb": 2048
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 60,
+        "volume": "vol_rnzg2g0gkko1lmpr",
+        "name": "compact_recovery_data"
+      }
+    ],
+    "services": [
+      {
+        "protocol": "tcp",
+        "internal_port": 8080,
+        "autostop": false,
+        "autostart": true,
+        "min_machines_running": 1,
+        "ports": [
+          {
+            "port": 80,
+            "handlers": [
+              "http"
+            ],
+            "force_https": true
+          },
+          {
+            "port": 443,
+            "handlers": [
+              "http",
+              "tls"
+            ]
+          }
+        ],
+        "force_instance_key": null
+      }
+    ],
+    "image": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+    "restart": {
+      "policy": "on-failure",
+      "max_retries": 10
+    },
+    "dns": {}
+  },
+  "public_endpoint": "https://typeahead-search-compact.fly.dev",
+  "public_ipv6": "2a09:8280:1::1bb:9e:0",
+  "shared_ipv4": "66.241.125.33",
+  "production_routing_changed": false,
+  "readiness": "restart admission pending",
+  "inventory_note": "Pre-update status command rejected unsupported --json flag. Post-update machine list independently verified intended image/env/init/services/restart/guest/volume."
+}

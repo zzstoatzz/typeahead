@@ -686,3 +686,21 @@ assignment, CPU guards, sample counts, and acceptance thresholds remain unchange
 Compatibility uses its existing isolated namespace and output directories. Both
 combined 180-trial gates still must pass; a shard completion is not acceptance.
 Native reload qualification on HeavyPad and live overlay replay remain separate.
+
+### Live replay passed; isolated public restart underway — October 17, 07:16 UTC
+
+The fresh overlay completed its full live pass: 165,630 updated actors, 209
+unsearchable actors cleared, and 8,217 deletions applied. The final private
+admission check had 15 seconds of lag and ranked `zzstoatzz.io` first. See
+[full-pass evidence](../evals/compact-private-complete-sync.json) and
+[admission evidence](../evals/compact-private-live-ready.json).
+
+The replacement was then updated with the staged existing admin credential and
+public service configuration. Its image, volume, overlay paths, read pool, and
+protected snapshot pointer are preserved. The isolated address is
+`https://typeahead-search-compact.fly.dev`; production routing is unchanged.
+[Configuration and allocated addresses](../evals/compact-public-replacement-preparation.json)
+record the update. The credential passed the
+[authenticated invalid-body probe](../evals/compact-replacement-admin-credential-check.json)
+without mutation. Restart admission remains pending: HTTP 200 while
+`ready=false` is not success. Require a new complete sync pass after restart.
