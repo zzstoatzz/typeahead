@@ -251,3 +251,21 @@ cold trial or gate stops that continuation. No compatibility result is claimed y
 The old decoder's known UTF-8 race remains present; the baseline was not patched
 and no queries were removed. Preserve this isolated pointer until evidence is
 collected, then include it in temporary-channel cleanup.
+
+### Publisher pin and source recovery — October 17
+
+The canonical Tangled tag `compact-candidate-38e0a27` resolves to the exact
+qualified source `38e0a27234bbb76a1210da01e72e6a0d0fde67fc`. A shallow clone
+using the flow's `--depth 1 --branch <ref>` path resolved to that commit. A
+complete Git bundle was independently cloned and uploaded/read-back verified
+at `releases/compact-candidate-38e0a27/source.bundle`; its SHA-256 is recorded
+in the release inventory. The configured GitHub Typeahead fallback returned
+“Repository not found” from this host, so it is not a verified recovery source.
+
+The publisher integration is [pull request 10](https://tangled.org/zzstoatzz.io/my-prefect-server/pulls/10).
+A fresh read of the live deployment shows `MPS_PIN=@523b0fe053fe453559e637c1c5cc800d4de7a3c2`,
+empty parameters, the unchanged `0 9 */3 * *` schedule and no `INDEX_QUIET`.
+The integration branch includes that source revision. No publisher deployment
+or schedule mutation has occurred in this rollout. Pin the selected Typeahead
+source tag explicitly when enabling compact publication; registration and a
+complete scheduled cycle remain pending.

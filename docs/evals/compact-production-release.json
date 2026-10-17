@@ -151,5 +151,16 @@
     "live_upstream_catchup_tested": false,
     "fresh_volume_restore_tested": false,
     "failed_attempt": "full-rollback-fixture-collision: preseeded publisher manifest differed from reader canonical local manifest; rejected with GenerationIdentityCollision; preserved on HeavyPad."
-  }
+  },
+  "source_recovery": {
+    "tag": "compact-candidate-38e0a27",
+    "commit": "38e0a27234bbb76a1210da01e72e6a0d0fde67fc",
+    "bundle_object": "releases/compact-candidate-38e0a27/source.bundle",
+    "bundle_sha256": "e7670f9991d4e9ab80cec0a954632042ba3372d268ca13c2eebfba07bc75d5a0",
+    "r2_readback_verified": true,
+    "bundle_clone_verified": true,
+    "canonical_shallow_tag_clone_verified": true,
+    "github_fallback": "Repository not found from the local host; not accepted as a verified recovery source."
+  },
+  "publisher_pull_request": "https://tangled.org/zzstoatzz.io/my-prefect-server/pulls/10"
 }
