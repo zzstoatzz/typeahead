@@ -671,3 +671,18 @@ only the freshness parser and its test relative to this approved source, preserv
 the exact stats bytes and Wrangler config, and passes 97 unit tests, type checking,
 and focused lint. It is not deployed. Refresh active/latest versions again before
 shipping; subsequent approved stats work must not be overwritten.
+
+### Qualification scheduling amendment — October 17, 07:06 UTC
+
+Cold shard 0 completed all 45 assigned trials with valid CPU/exit guards; its
+results were archived before reuse. To avoid idle machines, the waiting-only
+compatibility orchestrator was replaced with a [per-machine pipeline](../evals/compact-compat-pipeline.py).
+Each machine starts legacy correctness and compatibility only after its own exact
+45 cold trial indices are complete and valid. No running cold process was stopped.
+The old waiter had no child processes when replaced.
+
+This changes scheduling only: binary, inputs, queries, randomization, round-to-machine
+assignment, CPU guards, sample counts, and acceptance thresholds remain unchanged.
+Compatibility uses its existing isolated namespace and output directories. Both
+combined 180-trial gates still must pass; a shard completion is not acceptance.
+Native reload qualification on HeavyPad and live overlay replay remain separate.
