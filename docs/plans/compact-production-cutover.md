@@ -899,3 +899,25 @@ and real scheduled publication, complete the root-pointer transition and recover
 checks, then remove only unneeded resources and disable itself. This is finite
 rollout work, not a replacement for normal production monitoring. The older paused
 health automation belongs to another investigation and was not changed.
+
+### Publisher CI repaired and passed — October 17, 20:00 UTC
+
+[Pipeline `3my3ukq4ems22`](../evals/compact-production-cutover/publisher-ci-passed.json)
+on `my-prefect-server` main `e4275b5` completed successfully through deployment
+registration. CI ran 741 passing tests with four skips, lint/format/type checks,
+and web checks. The real converter integration was already run explicitly during
+local qualification; CI's default environment skips that optional integration.
+[Complete CI log](../evals/compact-production-cutover/publisher-ci.log.gz) is retained.
+
+The repair moves the workflow to the existing NixOS microVM engine, avoiding the
+Nixery manifest response rejected by Docker for missing Content-Length. Three
+real Git tests now inherit the runner PATH instead of hiding Nix-installed Git
+behind hard-coded macOS/Linux directories. No checks or registration steps were
+removed. A direct HeavyPad Docker pull reproduced the old failure before repair.
+
+Live Typeahead deployment readback confirms package pin `e4275b5`, compact format,
+qualified tag, unchanged cron, and `INDEX_QUIET=0`. CI registration regenerated
+queued runs with compact parameters; [current schedule evidence](../evals/compact-production-cutover/publisher-scheduled-after-ci.json)
+identifies October 19 09:00 UTC run `bbd0eb3c-9d3e-4387-b8f2-e983a531fb56`.
+The prior CI infrastructure blocker is resolved. Scheduled publication, daily
+observation, pointer transition, and recovery-gated cleanup remain outstanding.

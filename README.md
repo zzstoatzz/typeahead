@@ -74,7 +74,8 @@ that comparison is incomplete, with its failure retained. Nate accepted these
 two exceptions on October 17, conditional on the now-passing reload gate.
 The production cutover passed freshness, alias, and full smoke checks. Scheduled
 compact publication, daily observation, and final cleanup remain pending. The
-publisher is registered on `my-prefect-server` main `e9c62cd`; its October 19
+publisher is registered on `my-prefect-server` main `e4275b5`, whose full CI
+workflow passed through registration; its October 19
 09:00 UTC scheduled run contains the compact format and qualified source tag.
 See the [cutover runbook](docs/plans/compact-production-cutover.md) for current
 inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-rollout.md)

@@ -1,0 +1,21 @@
+{
+  "id": "3my3ukq4ems22",
+  "commit": "e4275b56abde3ec9b333a188e6cca4672097fc9d",
+  "createdAt": "2026-10-17T14:53:10-05:00",
+  "repo": "did:plc:xrndz6e42qj6ygbclfmruugv",
+  "trigger": {
+    "$type": "sh.tangled.ci.trigger#push",
+    "newSha": "e4275b56abde3ec9b333a188e6cca4672097fc9d",
+    "oldSha": "b7a22540cd9c8a13d7b366156eb16dc3d43f4774",
+    "ref": "refs/heads/main"
+  },
+  "workflows": [
+    {
+      "id": "deploy.yml",
+      "name": "deploy.yml",
+      "status": "success",
+      "startedAt": "2026-10-17T14:53:10-05:00",
+      "finishedAt": "2026-10-17T15:00:33-05:00"
+    }
+  ]
+}
