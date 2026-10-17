@@ -489,3 +489,20 @@ private 64 MiB temporary filesystem and six hours; it uses a separate evidence
 directory. The warm gate still independently prevents cutover.
 The [queue controller](../evals/compact-native-reload/queue-formal.py) fails closed
 if any development run is missing or invalid.
+
+### Empty-volume recovery and legacy rollback passed — October 17
+
+The final candidate restored the protected current-corpus pair from R2 on the
+fresh recovery volume, admitted `compact-b1792141282-189b` in 1,929.888 seconds,
+and matched all 8,000 reference responses after 60 mutations. It shut down cleanly.
+The queued unmodified deployed reader then admitted the restored legacy twin in
+1.003 seconds and matched the same 8,000 responses with the overlay preserved.
+The old reader required its documented forced shutdown. Both controllers and
+serving processes have exited; their fixture overlay remains isolated.
+[Evidence](../evals/compact-fresh-volume-recovery.json) records both results.
+
+This verifies independent artifact restoration and binary/format rollback.
+It does not verify live upstream catch-up or traffic reversal. Before preparing
+this machine for serving, archive the evidence, remove only its fixture overlay,
+and replay real changes from the protected snapshot watermark with pool size 8.
+Production traffic remains on the original backend.

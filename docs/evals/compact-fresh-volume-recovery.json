@@ -1,0 +1,26 @@
+{
+  "machine": "781e732c264678",
+  "volume": "vol_rnzg2g0gkko1lmpr",
+  "candidate_source": "cc2d5a1",
+  "results": {
+    "result.json": {
+      "passed": true,
+      "admission_seconds": 1929.887621277,
+      "responses": 8000,
+      "mutations": 60,
+      "build_id": "compact-b1792141282-189b",
+      "started_with_empty_directory": true,
+      "live_upstream_catchup_tested": false
+    },
+    "legacy-restore-result.json": {
+      "passed": true,
+      "admission_seconds": 1.0033807580002758,
+      "responses": 8000,
+      "mutations": 60,
+      "build_id": "b1792141282-189b",
+      "started_after_verified_empty_volume_restore": true,
+      "old_reader_teardown": "SIGKILL",
+      "live_upstream_catchup_tested": false
+    }
+  }
+}
