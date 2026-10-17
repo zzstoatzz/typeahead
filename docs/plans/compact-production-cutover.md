@@ -41,13 +41,14 @@ below retain the full chronology, including superseded attempts.
 | Ranking and current-Worker alias/cache checks | Passed; broader oracle overlap remains below the aspirational target |
 | Bounded cold campaign | All 180 trials valid, primary gates passed, no secondary regression flags |
 | Uncapped warm campaign | Inconclusive at the unchanged strict gate; +3.5% mixed-read p95 upper confidence bound |
-| Native matched reload | Running; partial results are not acceptance |
+| Native matched reload | Passed all 60 trials; p95 upper confidence ratio 0.96794, no secondary flags |
 | Deployed legacy performance comparison | Old control crashed; incomplete, not passing |
 | Production routing, scheduled compact cycle, daily observation, final cleanup | Not completed |
 
 Four completed qualification machines are stopped. The isolated replacement
-and legacy production backend remain running. No requested acceptance exception
-has been approved; the existing criteria remain in force.
+and legacy production backend remain running. Nate approved the warm-latency and unavailable legacy-comparison exceptions on
+October 17, conditional on reload passing. Reload has now passed; other cutover
+and recovery requirements remain in force.
 
 ### Earlier candidate and repair history
 
@@ -821,3 +822,18 @@ not a claim that the legacy binary cannot fail.
 The public status chart's latest five-minute bucket was about one hour old when
 inspected. Its counts cannot establish the current error rate. Refresh direct
 readiness and appropriately fresh telemetry before switching or rolling back.
+
+### Reload passed and acceptance exceptions approved — October 17
+
+The frozen matched-reload assessor independently reproduced a pass on all 60
+trials (20 rounds). All validity checks passed; p95 upper confidence ratio is
+0.967942, p99 0.968945, and CPU/request 0.916238. No secondary regression flags.
+The service exited successfully. [Complete evidence](../evals/compact-native-reload/formal-results/gate.json)
+includes the compressed raw results and terminal service status.
+
+Nate explicitly accepted the +3.5% warm p95 upper confidence bound and unavailable
+unmodified-legacy performance comparison, conditional on reload passing, and
+authorized safe cutover with rollback retained, verification, and cleanup. These
+are recorded exceptions; the warm assessment remains inconclusive and the crashed
+legacy comparison remains incomplete. Other gates and cleanup conditions are
+unchanged. Production routing has not yet changed at this checkpoint.

@@ -68,9 +68,11 @@ cutover requires an already-ready replacement.
 
 The [uncapped warm run](docs/evals/compact-cancel-fixed-warm/gate.json) remains
 inconclusive under the unchanged no-regression gate: mixed-read p95 upper
-confidence bound is +3.5%. Native matched reload qualification is still running.
+confidence bound is +3.5%. Native matched reload qualification passed all 60 trials with no secondary
+regression flags.
 The unmodified legacy performance control crashed during concurrent reads;
-that comparison is incomplete, with its failure retained. Production cutover,
+that comparison is incomplete, with its failure retained. Nate accepted these
+two exceptions on October 17, conditional on the now-passing reload gate. Production cutover,
 scheduled compact publication, daily observation, and final cleanup are pending.
 See the [cutover runbook](docs/plans/compact-production-cutover.md) for current
 inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-rollout.md)
