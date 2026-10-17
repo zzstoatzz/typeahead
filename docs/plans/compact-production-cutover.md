@@ -359,3 +359,22 @@ A separate one-round development run is queued after the warm campaign exits,
 so the two experiments do not compete for CPU/memory. Its results cannot count
 toward the formal 20 rounds. The native harness is syntax-checked but not yet
 runtime-validated; no reload latency acceptance is claimed.
+
+## Protected checkpoint and current Worker checks
+
+On October 17 the [protected checkpoint](../evals/compact-protected-checkpoint.json)
+completed full SHA readback for both formats and their manifests, with isolated
+legacy/compact pointers written last. No production pointer changed. The
+replacement executable has started restoring from that namespace onto the empty
+recovery volume. The restoration process is live; completion is not yet claimed.
+This fixture drill uses the default four-slot read pool; eventual live serving
+must use the separately qualified eight-slot configuration and a clean upstream
+replay, without fixture mutations.
+
+The exact source of Worker version `28622855-db7a-4cf6-9e18-762e3485f05a`
+passed [isolated public error/CORS checks](../evals/compact-current-worker-errors.json):
+both aliases agree for absent/blank queries, invalid limits, and an unavailable
+backend. OPTIONS succeeds for both, and unavailable-backend answers remain
+uncached. All bindings were local, database access and fallbacks disabled. The
+local Worker was stopped afterward. Successful full-corpus alias checks remain
+a separate gate against the replacement backend.

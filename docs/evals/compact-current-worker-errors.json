@@ -1,0 +1,102 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "query": "",
+      "pair": [
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: Params must have the property \\\"q\\\"\"}",
+          "cors": "*"
+        },
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: Params must have the property \\\"q\\\"\"}",
+          "cors": "*"
+        }
+      ]
+    },
+    {
+      "query": "?q=%20",
+      "pair": [
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: Params must have the property \\\"q\\\"\"}",
+          "cors": "*"
+        },
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: Params must have the property \\\"q\\\"\"}",
+          "cors": "*"
+        }
+      ]
+    },
+    {
+      "query": "?q=alice&limit=0",
+      "pair": [
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: limit must be between 1 and 100\"}",
+          "cors": "*"
+        },
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: limit must be between 1 and 100\"}",
+          "cors": "*"
+        }
+      ]
+    },
+    {
+      "query": "?q=alice&limit=101",
+      "pair": [
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: limit must be between 1 and 100\"}",
+          "cors": "*"
+        },
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: limit must be between 1 and 100\"}",
+          "cors": "*"
+        }
+      ]
+    },
+    {
+      "query": "?q=alice&limit=nope",
+      "pair": [
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: limit must be between 1 and 100\"}",
+          "cors": "*"
+        },
+        {
+          "status": 400,
+          "body": "{\"error\":\"InvalidRequest\",\"message\":\"Error: limit must be between 1 and 100\"}",
+          "cors": "*"
+        }
+      ]
+    },
+    {
+      "query": "?q=unavailable-probe",
+      "pair": [
+        {
+          "status": 200,
+          "body": "{\"actors\":[]}",
+          "cors": "*"
+        },
+        {
+          "status": 200,
+          "body": "{\"actors\":[]}",
+          "cors": "*"
+        }
+      ]
+    }
+  ],
+  "preflight_aliases": 2,
+  "scope": "Real local Worker default handler; backend connection refused; no production bindings.",
+  "worker_version_source": "28622855-db7a-4cf6-9e18-762e3485f05a",
+  "actual_entry": "worker-release/src/index.ts",
+  "production_bindings": false,
+  "backend": "connection refused on unused localhost port",
+  "response_count": 14
+}
