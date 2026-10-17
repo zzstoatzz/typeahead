@@ -59,42 +59,36 @@ flowchart LR
   (they do not correct a stale handle; the ingester does). The hourly Worker cron handles
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
-Compact snapshot rollout remains unshipped (status verified 2026-10-17).
-The compact-ID freshness parser was deployed in Worker `2564108f…`, then later
-stats deployment replaced it. Active Worker `9c01bcf3-314c-453f-93a0-c76954c8419e`
-was verified October 17; its release archive still needs the parser prerequisite
-reconciled before compact cutover. The latest approved Worker is `f109afd8…`; its narrow parser reconciliation is
-prepared and tested, not deployed. Search continues serving the legacy backend.
-The isolated compact replacement has passed full live replay, restart admission,
-and the ranking suite. The final 180-trial cold campaign passed all primary
-gates; compact startup took about 205 seconds. Production cutover remains gated
-on the warm decision and native reload qualification. The
-unmodified legacy control crashed during concurrent performance comparison; that
-comparison is incomplete, with failure evidence retained in the cutover runbook.
-The replacement candidate’s October 17 warm run did not pass: mixed-read latency
-was inconclusive under the fixed gate ([evidence](docs/evals/compact-cancel-fixed-warm/gate.json)).
-Cutover remains gated. The older inline-close candidate's 60-round pinned warm run completed on October 9
-and passed all five p95 gates, with no flagged secondary regressions; reassessment
-on October 16 reproduced the result. See the
-[warm qualification evidence](docs/evals/compact-inline-warm/gate.json) and
-[rollout gates](docs/plans/snapshot-compaction-rollout.md). The
-[production cutover runbook](docs/plans/compact-production-cutover.md) tracks
-current inventory, disaster rollback, and cleanup. Empty-overlay recovery requires
-a snapshot inside the seven-day tombstone replay window; archived images alone
-do not preserve that window. Earlier failed runs
-remain recorded; this warm pass does not complete the remaining release and
-production rollout gates. The October 17 live reload drill exposed an R2-download
-cancellation bug during shutdown; cutover is held while a replacement is tested.
-The current-generation compact pair is 6.96 GB and passes the original/VACUUM
-size and differential-response gates. Local legacy twins remain mandatory for
-recovery; repeated promotion needs about 45.2 GB for two complete pairs before
-overlay and temporary files, so smaller production volumes are not yet justified.
+Compact snapshots are not yet serving production (status verified October 17,
+2026). Candidate `cc2d5a1` has passed independent disaster restoration, legacy
+binary rollback, complete live replay, restart admission, the isolated ranking
+suite, and 224 current-Worker alias/cache checks. Its complete 180-trial cold
+campaign passed all primary gates; compact startup took about 205 seconds, so
+cutover requires an already-ready replacement.
 
-The temporary qualification Fly app and both 60 GB volumes were deleted on
-October 16 after preserving evidence. A new isolated cutover candidate is being
-qualified on October 17; production remains unchanged. The candidate
-closes inline HTTP connections when the task pool is saturated, preventing idle
-keep-alive connections from blocking the accept loop; pooled behavior is unchanged.
+The [uncapped warm run](docs/evals/compact-cancel-fixed-warm/gate.json) remains
+inconclusive under the unchanged no-regression gate: mixed-read p95 upper
+confidence bound is +3.5%. Native matched reload qualification is still running.
+The unmodified legacy performance control crashed during concurrent reads;
+that comparison is incomplete, with its failure retained. Production cutover,
+scheduled compact publication, daily observation, and final cleanup are pending.
+See the [cutover runbook](docs/plans/compact-production-cutover.md) for current
+inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-rollout.md)
+for acceptance criteria. Earlier candidates' passing results do not qualify this
+replacement.
+
+The latest recorded approved Worker is `f109afd8…`; its compact-ID freshness
+parser fix is prepared and tested locally, not deployed. Refresh the active
+Worker before shipping to preserve concurrent stats changes. Four completed Fly
+qualification machines are stopped with volumes retained; the isolated replacement
+and legacy production backend remain running.
+
+The current-generation compact pair is 6.96 GB, over 50% smaller than the original
+and VACUUM reference. Local legacy twins remain mandatory for recovery; repeated
+promotion needs about 45.2 GB for two complete pairs before overlay and temporary
+files, so smaller production volumes are not yet justified. Empty-overlay recovery
+also requires a snapshot inside the seven-day tombstone replay window; archived
+images alone do not preserve that window.
 
 The offline converter uses a Zig shared library for packing and exhaustive
 record verification; Python validates manifests and stages the finished pair.

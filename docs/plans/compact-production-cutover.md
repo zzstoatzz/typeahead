@@ -29,6 +29,28 @@ October 16. Production traffic has not changed.
 
 ## Candidate and evidence
 
+Current executable: `cc2d5a1`, SHA-256
+`758d458b829f350531364982d24136b9e1097f4e4c34977996a37488ea9a3606`.
+The following summarizes completed evidence as of October 17; the dated sections
+below retain the full chronology, including superseded attempts.
+
+| Gate | Current result |
+| --- | --- |
+| Recovery, disaster restore, legacy rollback | Passed on the exact candidate |
+| Complete live replay and restart admission | Passed on the isolated public replacement |
+| Ranking and current-Worker alias/cache checks | Passed; broader oracle overlap remains below the aspirational target |
+| Bounded cold campaign | All 180 trials valid, primary gates passed, no secondary regression flags |
+| Uncapped warm campaign | Inconclusive at the unchanged strict gate; +3.5% mixed-read p95 upper confidence bound |
+| Native matched reload | Running; partial results are not acceptance |
+| Deployed legacy performance comparison | Old control crashed; incomplete, not passing |
+| Production routing, scheduled compact cycle, daily observation, final cleanup | Not completed |
+
+Four completed qualification machines are stopped. The isolated replacement
+and legacy production backend remain running. No requested acceptance exception
+has been approved; the existing criteria remain in force.
+
+### Earlier candidate and repair history
+
 Superseded source `38e0a27` (retained historical evidence), executable SHA-256
 `97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91`.
 Its 60-round pinned warm gate passed. Earlier cold and full-size rollback evidence
@@ -78,9 +100,9 @@ Its OCI archive was verified through every blob and the executable, then loaded
 and run without network/pulls. Both replacement objects have full verified R2 readback under
 `releases/compact-candidate-cc2d5a1/{source.bundle,image.tar.gz}`, outside the
 21-day `builds/` expiration rule. The legacy runtime backup stays under the
-previous release prefix. The exact deployed-reader compatibility campaign is
-queued after all cold trials and the strict cold gate pass; it keeps the
-unmodified legacy binary and will retain any correctness failure.
+previous release prefix. The exact deployed-reader compatibility campaign was later attempted with the
+unmodified legacy binary and stopped after that control crashed; its failure
+is retained below. The cold campaign completed and passed independently.
 The superseded cold controller and queued compatibility controller were stopped;
 completed and interrupted trials are preserved. The replacement requires its own qualification; existing results
 remain associated with `38e0a27`. Production routing remains unchanged.
