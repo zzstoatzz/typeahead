@@ -162,5 +162,35 @@
     "canonical_shallow_tag_clone_verified": true,
     "github_fallback": "Repository not found from the local host; not accepted as a verified recovery source."
   },
-  "publisher_pull_request": "https://tangled.org/zzstoatzz.io/my-prefect-server/pulls/10"
+  "publisher_pull_request": "https://tangled.org/zzstoatzz.io/my-prefect-server/pulls/10",
+  "runtime_recovery_archives": {
+    "compact": {
+      "platform_digest": "sha256:db843d21e8da8f28a34a71dcd398904287eed7fe242b5b35cf70fd745a846174",
+      "binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91",
+      "archive_sha256": "0910f4f8ab61232a51be2fc3ff3e51ca903368daa6753834764ec7a95e522d51",
+      "archive_bytes": 60736236,
+      "all_manifest_layers_verified": true,
+      "docker_load_and_binary_check": true,
+      "object_key": "releases/compact-candidate-38e0a27/compact-image.tar.gz",
+      "r2_readback_verified": true
+    },
+    "legacy": {
+      "platform_digest": "sha256:65cf9b0019df39319f5d006efb0642eaaebaa819f6ac5c28910f91b0620e1fc9",
+      "binary_sha256": "f82400c65efa59456b3240828da41e496ad2e92532318972fbf9356e226ea920",
+      "archive_sha256": "d7d17fbfe9e859531221ff81acb14069034258772c11f03c4cb7101779112f81",
+      "archive_bytes": 53648222,
+      "all_manifest_layers_verified": true,
+      "docker_load_and_binary_check": true,
+      "object_key": "releases/compact-candidate-38e0a27/legacy-image.tar.gz",
+      "r2_readback_verified": true
+    }
+  },
+  "r2_retention": {
+    "observed": "2026-10-17",
+    "builds_expire_days": 21,
+    "staging_expire_days": 7,
+    "releases_expiration_rule": null,
+    "protected_checkpoint_prefix": "releases/compact-candidate-38e0a27/checkpoint-b1792141282-189b",
+    "protected_checkpoint_status": "copy and readback verification running; fresh-volume drill waits for completion"
+  }
 }

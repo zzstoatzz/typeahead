@@ -269,3 +269,26 @@ The integration branch includes that source revision. No publisher deployment
 or schedule mutation has occurred in this rollout. Pin the selected Typeahead
 source tag explicitly when enabling compact publication; registration and a
 complete scheduled cycle remain pending.
+
+### Independent runtime archives and retention — October 17
+
+Both Linux amd64 runtime images are archived outside the Fly registry at
+`releases/compact-candidate-38e0a27/{compact,legacy}-image.tar.gz` in the index
+bucket. Every OCI blob, manifest reference and executable checksum was verified;
+both archives loaded into Docker and ran the checksum command successfully.
+Both R2 objects passed full readback verification. Archive hashes and exact
+platform digests are recorded in the release inventory. `docker image load -i
+<archive>` restores the compact tag or legacy image ID; retag and push to a
+recovery app's registry after `fly auth docker` if the original registry is gone.
+Do not delete the old app relying only on its registry references.
+
+The actual bucket lifecycle expires `builds/` at 21 days and `staging/` at 7 days;
+there is no object-expiration rule for `releases/`. Thus the original paths alone
+do not protect a longer rollback window. A copy of the current pair and original
+manifests is being verified under
+`releases/compact-candidate-38e0a27/checkpoint-b1792141282-189b/`, preserving the
+relative `builds/...` object keys. Its `latest.json` is the legacy pointer and
+`compact.json` is the compact pointer. The fresh-volume drill uses this prefix
+as the R2 bucket subpath, and may start only once `protected-checkpoint.json`
+records success. Protection is pending until that record exists. The release
+prefix is manually retired only after the dated rollback window and cleanup gate.
