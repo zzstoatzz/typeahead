@@ -1,0 +1,198 @@
+{
+  "observed_at": 1792266097.810014,
+  "bucket_seconds": 300,
+  "rows": [
+    {
+      "bucket": "5974216",
+      "endpoint": "admin/delete",
+      "status": "200",
+      "hits": "17"
+    },
+    {
+      "bucket": "5974216",
+      "endpoint": "admin/ingest",
+      "status": "200",
+      "hits": "164"
+    },
+    {
+      "bucket": "5974216",
+      "endpoint": "health",
+      "status": "200",
+      "hits": "5"
+    },
+    {
+      "bucket": "5974216",
+      "endpoint": "search",
+      "status": "200",
+      "hits": "66"
+    },
+    {
+      "bucket": "5974217",
+      "endpoint": "admin/delete",
+      "status": "200",
+      "hits": "14"
+    },
+    {
+      "bucket": "5974217",
+      "endpoint": "admin/ingest",
+      "status": "200",
+      "hits": "147"
+    },
+    {
+      "bucket": "5974217",
+      "endpoint": "health",
+      "status": "200",
+      "hits": "5"
+    },
+    {
+      "bucket": "5974217",
+      "endpoint": "page",
+      "status": "200",
+      "hits": "1"
+    },
+    {
+      "bucket": "5974217",
+      "endpoint": "search",
+      "status": "200",
+      "hits": "87"
+    },
+    {
+      "bucket": "5974218",
+      "endpoint": "admin/delete",
+      "status": "200",
+      "hits": "22"
+    },
+    {
+      "bucket": "5974218",
+      "endpoint": "admin/ingest",
+      "status": "200",
+      "hits": "149"
+    },
+    {
+      "bucket": "5974218",
+      "endpoint": "health",
+      "status": "200",
+      "hits": "6"
+    },
+    {
+      "bucket": "5974218",
+      "endpoint": "other",
+      "status": "404",
+      "hits": "2"
+    },
+    {
+      "bucket": "5974218",
+      "endpoint": "search",
+      "status": "200",
+      "hits": "84"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "admin",
+      "status": "200",
+      "hits": "10"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "admin",
+      "status": "400",
+      "hits": "2"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "admin/delete",
+      "status": "200",
+      "hits": "18"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "admin/ingest",
+      "status": "200",
+      "hits": "143"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "getProfiles",
+      "status": "200",
+      "hits": "4"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "getProfiles",
+      "status": "400",
+      "hits": "2"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "health",
+      "status": "200",
+      "hits": "9"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "other",
+      "status": "404",
+      "hits": "12"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "page",
+      "status": "200",
+      "hits": "18"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "request-indexing",
+      "status": "200",
+      "hits": "4"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "request-indexing",
+      "status": "302",
+      "hits": "2"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "request-indexing",
+      "status": "400",
+      "hits": "2"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "search",
+      "status": "200",
+      "hits": "124"
+    },
+    {
+      "bucket": "5974219",
+      "endpoint": "search",
+      "status": "400",
+      "hits": "4"
+    },
+    {
+      "bucket": "5974220",
+      "endpoint": "admin/delete",
+      "status": "200",
+      "hits": "3"
+    },
+    {
+      "bucket": "5974220",
+      "endpoint": "admin/ingest",
+      "status": "200",
+      "hits": "47"
+    },
+    {
+      "bucket": "5974220",
+      "endpoint": "health",
+      "status": "200",
+      "hits": "3"
+    },
+    {
+      "bucket": "5974220",
+      "endpoint": "search",
+      "status": "200",
+      "hits": "8"
+    }
+  ]
+}

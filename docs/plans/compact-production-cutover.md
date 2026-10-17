@@ -862,3 +862,40 @@ still requires the complete scheduled compact publication and fresh protected
 paired artifacts, not just this elapsed interval. Retain protected rollback
 artifacts through at least October 24, 19:37 UTC; confirm the newly protected
 snapshot remains within its seven-day replay window throughout that period.
+
+### Compact publisher registered — October 17, 19:44 UTC
+
+Source and configuration landed on `my-prefect-server` main `e9c62cd` on both
+remotes. Full local checks passed: 742 tests, 3 skips, lint/format/type checks,
+and web checks. A missing local-source result now fails explicitly before
+publication, resolving the typecheck failure. [Registered configuration](../evals/compact-production-cutover/publisher-registered.json)
+confirms compact format, tag `compact-candidate-cc2d5a1`, exact package pin,
+`INDEX_QUIET=0`, concurrency 1 / CANCEL_NEW, and unchanged cron.
+
+[Queued scheduler runs](../evals/compact-production-cutover/publisher-scheduled-runs.json)
+contain the new parameters; next is October 19 09:00 UTC, run
+`2ac84d00-c085-42bc-8f23-b8f3b0c7ab3a`. Registration replaced the old queued
+SQLite-default runs. Re-query before observing because later registrations may
+replace their IDs. This does not yet prove a successful scheduled publication.
+The initial Tangled CI attempt failed to pull its container (missing Content-Length)
+before executing checks; targeted registration followed the complete local checks.
+
+HeavyPad resolved the exact source tag through Tangled HTTPS. The configured
+GitHub fallback returned repository-not-found, so it is not counted as redundant
+source access. Protected source/runtime archives remain independently verified.
+
+Initial bounded live request-counter reads showed no 5xx statuses; [evidence](../evals/compact-production-cutover/initial-request-counts.json)
+covers the specified five-minute buckets, not the required full daily window.
+
+### Follow-up and CI status — October 17
+
+The same container-image pull failure recurred on the explicit CI retry
+`3my3u6jgez622`, before tests or registration. Local full checks and explicit
+registration evidence remain valid; CI is not represented as passed.
+
+Thread follow-up `finish-typeahead-cutover-verification` runs at 14:45 America/Chicago
+starting with the next daily occurrence. It must verify the full observation window
+and real scheduled publication, complete the root-pointer transition and recovery
+checks, then remove only unneeded resources and disable itself. This is finite
+rollout work, not a replacement for normal production monitoring. The older paused
+health automation belongs to another investigation and was not changed.

@@ -1,0 +1,32 @@
+{
+  "id": "5d446811-c098-438e-b16c-f1ccd9da7e97",
+  "updated": "2026-10-17T19:44:52.810882Z",
+  "parameters": {
+    "ref": "compact-candidate-cc2d5a1",
+    "snapshot_format": "compact"
+  },
+  "concurrency_limit": 1,
+  "concurrency_options": {
+    "collision_strategy": "CANCEL_NEW"
+  },
+  "global_concurrency_limit_id": null,
+  "schedules": [
+    {
+      "id": "15d6ad0e-4fe9-4bda-a576-76154ff6d764",
+      "created": "2026-10-17T19:44:52.810882Z",
+      "updated": "2026-10-17T19:44:52.810882Z",
+      "deployment_id": "5d446811-c098-438e-b16c-f1ccd9da7e97",
+      "schedule": {
+        "cron": "0 9 */3 * *"
+      },
+      "active": true,
+      "max_scheduled_runs": null,
+      "parameters": {},
+      "slug": null
+    }
+  ],
+  "work_pool_name": "home-pool",
+  "entrypoint": "flows/typeahead_index.py:typeahead_index",
+  "pin": "@e9c62cd34f9eb7832dd290644e98e64f3785ab74",
+  "quiet": "0"
+}
