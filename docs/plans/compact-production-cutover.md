@@ -211,7 +211,12 @@ latency machine and will run only after the current-generation rollback drill
 produces verified reference response hashes. Restoring the artifact is distinct
 from replaying the live upstream overlay; both must pass before traffic admission.
 The target may become the serving replacement only after all rollout gates pass;
-otherwise it remains a temporary resource covered by the cleanup gate.
+otherwise it remains a temporary resource covered by the cleanup gate. The drill
+uses a deliberately isolated upstream and writes fixture mutations to its overlay.
+Before reusing this machine for serving, stop the drill process, discard only its
+evaluation overlay database/WAL/SHM, preserve the verified snapshot artifacts,
+and rebuild the overlay from the snapshot watermark against real Turso. Never
+route traffic to an overlay containing qualification mutations.
 
 ### Current-generation rollback passed — October 17
 
