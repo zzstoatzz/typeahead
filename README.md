@@ -64,7 +64,9 @@ The inline-close candidate's 60-round pinned warm run completed on October 9
 and passed all five p95 gates, with no flagged secondary regressions; reassessment
 on October 16 reproduced the result. See the
 [warm qualification evidence](docs/evals/compact-inline-warm/gate.json) and
-[rollout gates](docs/plans/snapshot-compaction-rollout.md). Earlier failed runs
+[rollout gates](docs/plans/snapshot-compaction-rollout.md). The
+[production cutover runbook](docs/plans/compact-production-cutover.md) tracks
+current inventory, disaster rollback, and cleanup. Earlier failed runs
 remain recorded; this warm pass does not complete the remaining release and
 production rollout gates.
 
