@@ -506,3 +506,14 @@ It does not verify live upstream catch-up or traffic reversal. Before preparing
 this machine for serving, archive the evidence, remove only its fixture overlay,
 and replay real changes from the protected snapshot watermark with pool size 8.
 Production traffic remains on the original backend.
+
+### Native reload diagnostic complete; formal run active — October 17
+
+All three bounded diagnostic runs completed with exact matching responses and
+admission within the fixed 180-second window: compact 655,078 responses /
+68.208-second admission, baseline-control 593,264 / 47.830 seconds, baseline
+587,421 / 48.562 seconds. Clean teardown completed for each.
+The [full diagnostic record](../evals/compact-native-reload/diagnostic.json.gz)
+is excluded from formal acceptance. The verified queue started
+`typeahead-native-reload-formal-20261017`; it uses the frozen 20-round protocol
+and separate `reload-release/formal-bounded` output.
