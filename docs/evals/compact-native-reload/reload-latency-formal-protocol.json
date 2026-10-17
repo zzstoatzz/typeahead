@@ -1,0 +1,60 @@
+{
+  "purpose": "Exact release native pointer-driven reload acceptance",
+  "roles": [
+    "baseline",
+    "compact",
+    "baseline-control"
+  ],
+  "baseline_control": "Explicitly resolved to baseline binary and baseline artifacts; unique run label",
+  "rounds": 20,
+  "schedule": "Seed1791499057 randomized Latin rotations: first18 rounds exactly balanced; final2 rotations fixed before execution",
+  "cgroup": {
+    "memory_max": 2147483648,
+    "swap_max": 0
+  },
+  "readers": 7,
+  "duration_seconds": 180,
+  "swap_dispatch_seconds": 2,
+  "maximum_dispatch_lateness_seconds": 0.1,
+  "latency_window": "Requests starting at >=2 and <180 seconds, including completion beyond180",
+  "reload_requirement": "Native R2-pointer admission completes before180 seconds; invalid otherwise, no selective extension",
+  "queries": [
+    "a",
+    "alex",
+    "music",
+    "zzstoatzz.io",
+    "\u30d0\u30fc",
+    "komugikomen.bsky.social",
+    "jd",
+    "fig",
+    "Jaxxx \ud83d\udd1e",
+    "\u7a00",
+    "wsocial.eu",
+    "maj",
+    "jay.bsky.team",
+    "zzstoatzz.io",
+    "\u29fcT\u033c\u29fd\u29fcH\u033c\u29fd\u29fcC\u033c\u29fd\ud835\udd0f\ud835\udd2c\ud835\udd33\ud835\udd22\ud835\udd05\ud835\udd32\ud835\udd20\ud835\udd28",
+    "wik",
+    "cwonfig.pet",
+    "jdo",
+    "camden.opalgames",
+    "umbreontrainer.bsky.social"
+  ],
+  "correctness": "All bodies equal cross-variant golden and all status200; full-second read progress; distinct required pair-file inodes; swap dispatch2..2.1s and completebefore180s. All60 runs and roles required. Binary hashes checked before/after.",
+  "sampling": "Uniform bottom10000 random-priority sample per worker, merge global10000; at most70000 temporary entries; no shared per-read lock",
+  "report": "Per-run p95/p99, raw sampled latencies, all-request counts by query/worker/second, swap timing, inode identities, cgroup events",
+  "limitations": "Closed-loop7-client workload; no inference for untested offered loads or subsecond availability from interval counters alone. Full admission work is inside fixed180-second read window.",
+  "seed": 1791499057,
+  "gate": "Primary p95: median of20 paired round ratios candidate / mean(baseline,baseline-control); 10000 median bootstrap resamples seed94017, sorted index9499 one-sided95% upper bound <=1. Inconclusive fails. p99 secondary.",
+  "binary_sha256": {
+    "baseline": "758d458b829f350531364982d24136b9e1097f4e4c34977996a37488ea9a3606",
+    "compact": "758d458b829f350531364982d24136b9e1097f4e4c34977996a37488ea9a3606"
+  },
+  "formal_cli": "python3 reload-latency.py --formal --output formal-bounded --rounds 20 --duration 180 --seed 1791499057",
+  "selection": "One development round excluded; no latency-based acceptance or threshold changes.",
+  "window_reason": "Earlier laboratory swap bypassed native artifact verification. Actual full-corpus native admission took 69\u201389 seconds in prior development drills. Fixed180 seconds covers admission and subsequent reads equally for all roles; this does not claim the older30-second laboratory protocol passed.",
+  "support_sha256": "b446a1ab3080bacbc4452d3785d2cf978d1c16e79b228511e77b28b636ccfd52",
+  "harness_sha256": "7ad5369412520c7536aa160fb16f6d14c010380208b16bef5eabf0a710c578d2",
+  "assessor_sha256": "1cff57bdc42d05ac75b1b51103582536b6d79adc0f3f536247cf29cbadd8f16b",
+  "secondary": "p99 and serving CPU per completed request: a one-sided lower95% ratio >1 requires investigation and prevents acceptance."
+}

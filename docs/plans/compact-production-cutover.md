@@ -335,3 +335,27 @@ relative `builds/...` object keys. Its `latest.json` is the legacy pointer and
 as the R2 bucket subpath, and may start only once `protected-checkpoint.json`
 records success. Protection is pending until that record exists. The release
 prefix is manually retired only after the dated rollback window and cleanup gate.
+
+## Native matched reload qualification
+
+The [native reload harness and frozen protocol](../evals/compact-native-reload/reload-latency-formal-protocol.json)
+exercise the actual release executable, R2 pointer polling, full incoming artifact
+validation, durable activation, and read-pool replacement. The previous lab-only
+swap test does not qualify this path. Its 30-second window excluded the real
+69–89-second admission observed during development; the replacement protocol
+fixes a 180-second window for every role, with dispatch at two seconds. This is
+an explicitly different experiment, not a claim that the older lab test passed.
+
+The benchmark retains 20 paired rounds, two SQLite controls, seven readers,
+the original query set, uniform latency sampling, exact response equality,
+whole-second read progress, and the one-sided 95% p95 upper-ratio threshold of
+1. Inconclusive results fail. p99 and serving CPU per completed request remain
+secondary gates. Every incoming artifact has a distinct inode and verified hash.
+The release runs under a 2 GiB/no-swap cgroup. Artifacts are cached locally;
+network artifact download performance is covered by the separate empty-volume
+restoration drill, not this matched reload test.
+
+A separate one-round development run is queued after the warm campaign exits,
+so the two experiments do not compete for CPU/memory. Its results cannot count
+toward the formal 20 rounds. The native harness is syntax-checked but not yet
+runtime-validated; no reload latency acceptance is claimed.
