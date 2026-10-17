@@ -468,3 +468,24 @@ Mixed-read median p95 was 2.091 ms for compact, 2.078 ms for baseline and
 2.182 ms for baseline-control; these absolute medians do not override the paired
 acceptance criterion. Cold qualification and independent recovery/diagnostic
 work continue to identify any additional issues before choosing a correction.
+
+### Mixed-read investigation and native reload queue — October 17, 06:12 UTC
+
+The warm harness pins the generator to CPUs 8/10/12/14 and its serving child
+to CPUs 0/2/4/6. The legacy-rejection drill overlapped the warm campaign from
+05:41:25 to 05:41:39 UTC (7.789 CPU seconds), during trial 59. Its launch used
+CPU 0, so the earlier claim that it avoided the warm server's cores was wrong.
+This short overlap does not establish why the complete mixed-read gate was
+inconclusive; no trials are excluded and no pass is inferred.
+
+The bounded native reload development diagnostic admitted the compact generation
+in 68.208 seconds while completing 655,078 exact matching responses. Its two
+controls and overall completion remain pending. Unit
+`typeahead-queue-native-reload-formal-20261017` waits for that diagnostic to exit
+and verifies its complete three-role correctness/admission record before starting
+the already frozen 20-round formal protocol. It does not select by diagnostic
+latency or modify thresholds. Formal execution is capped at 2 GiB, no swap, a
+private 64 MiB temporary filesystem and six hours; it uses a separate evidence
+directory. The warm gate still independently prevents cutover.
+The [queue controller](../evals/compact-native-reload/queue-formal.py) fails closed
+if any development run is missing or invalid.
