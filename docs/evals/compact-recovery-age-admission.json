@@ -1,0 +1,26 @@
+{
+  "transport": "Loopback-only proxy forwarding every probe to actual private Fly machine over fly ssh; no recorded or fabricated responses",
+  "machine": "781e732c264678",
+  "seven_day_age_gate": {
+    "ready": false,
+    "failures": [
+      "overlay sync is unknown or too old"
+    ],
+    "build_id": "compact-b1792141282-189b",
+    "sync_lag_s": 34576,
+    "actor_count": 12560923,
+    "snapshot_age_s": 78342.20302391052
+  },
+  "one_second_age_gate": {
+    "ready": false,
+    "failures": [
+      "overlay sync is unknown or too old",
+      "snapshot is outside the fresh-restore replay window"
+    ],
+    "build_id": "compact-b1792141282-189b",
+    "sync_lag_s": 34473,
+    "actor_count": 12560923,
+    "snapshot_age_s": 78354.27240920067
+  },
+  "note": "Snapshot age admission verified; overall readiness still requires catchup and complete successful sync pass."
+}

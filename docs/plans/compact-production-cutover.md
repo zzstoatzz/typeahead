@@ -237,7 +237,10 @@ before admission; the per-page lag alone is insufficient. This age restriction
 does not diagnose a continuously synchronized backend with an older base.
 On October 17, the live legacy backend passed ordinary admission; its status
 endpoint omits `source_watermark`, so fresh-restore admission correctly rejected
-it as unknown. Positive age admission on the replacement remains pending.
+it as unknown. The private replacement then passed the seven-day age check and rejected a
+deliberate one-second limit through a loopback-only SSH forwarding proxy. Both
+checks still rejected overall admission because live replay was behind; see
+[actual probe results](../evals/compact-recovery-age-admission.json).
 A fresh replacement must additionally pass the alias, moderation, ranking and
 recovery gates above. A Fly `/health` HTTP-status check alone remains insufficient.
 
