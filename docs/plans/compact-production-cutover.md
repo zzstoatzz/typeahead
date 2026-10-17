@@ -34,19 +34,13 @@ Source `38e0a27` (later rollout commits record evidence), executable SHA-256
 The 60-round pinned warm gate passes. Earlier cold and full-size rollback evidence
 uses older executables and must not be represented as testing this candidate.
 
-On October 17 the exact candidate passed six real-process checks: corrupt-current
-and modified-twin rejection; crash fallback preserving newer moderation; interrupted
-rclone download cleanup; SIGTERM before/after admission and with stalled upstream;
-eight persistent mixed clients; and 32 persistent mixed clients. The first run
-skipped transport because rclone was absent from PATH; the individual test passed
-with `/home/stoat/.local/bin` added. Disk-full remains to be rechecked in this run.
-
-Current-generation conversion is running on HeavyPad under user unit
-`typeahead-compact-convert-20261017.service`, one CPU maximum, 8 GB memory maximum,
-four-hour deadline. Work root: `/home/stoat/typeahead-release-20261017`.
-`legacy-b1792141282-189b` protects the immutable legacy source using a hard link;
-`compact-b1792141282-189b` is published locally only after exhaustive conversion
-verification. No R2 pointer is changed by this job.
+On October 17 the exact candidate passed all seven real-process recovery checks
+inside the packaged Fly runtime, including real ENOSPC. Current-generation
+conversion and differential correctness also passed; detailed evidence appears
+below. Earlier incomplete attempts remain recorded in the release evidence.
+The protected legacy source and verified compact output are under
+`/home/stoat/typeahead-release-20261017` on HeavyPad. Isolated R2 publication
+is in progress; no production pointer has changed.
 
 ## Cutover sequence and stop conditions
 
@@ -107,9 +101,9 @@ credentials, and test data only after checking references and saving evidence.
 
 ## Remaining execution record
 
-Pending: cold and compatibility candidate gates, release reload/rollback, image
-packaging, isolated channel/replacement provisioning, route rehearsal, disaster
-drill, production cutover, scheduled publication, observation, cleanup. Fill in
+Pending: cold and compatibility candidate gates, release reload/rollback, isolated
+channel publication verification, serving replacement readiness, route rehearsal,
+disaster drill, production cutover, scheduled publication, observation, cleanup. Fill in
 exact resources, commands, timestamps, and results as each action completes.
 
 ### Packaged candidate — October 17
@@ -168,3 +162,14 @@ current generation. The deployed legacy executable always reads `latest.json`;
 its rollback drill uses that fixed key within the isolated namespace, while
 the new executable can select `legacy.json` explicitly. No production pointer
 is altered. This preflight failure is retained and is not a passing rollback.
+
+### Worker routing inventory — October 17
+
+The active Worker deployment is `165af368-6b74-4dc3-873e-8f233293ef57`,
+serving version `5daf6f08-c3d6-4cf4-bf9a-4f56efdef979` at 100%. It includes
+the independently shipped mobile stats fix. `SEARCH_BACKEND_URL` is a secret
+binding. Preserve this Worker code when switching the backend; do not deploy the
+older Worker source from this rollout branch. Before staging a binding-only
+version, refresh active and latest-uploaded versions: Wrangler's version-secret
+operation copies the latest uploaded version, which need not be active. Record
+both old and replacement versions and rehearse reversal before production.
