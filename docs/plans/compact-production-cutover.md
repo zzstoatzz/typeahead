@@ -570,3 +570,19 @@ version. Before unattended rollback, verify no intervening unrelated secret/code
 change occurred; otherwise inspect the changed-secret list without `--yes` and
 preserve those changes explicitly. A rollback success message alone is insufficient:
 verify the active version, direct legacy readiness, public search and alias bodies.
+
+### Worker changed again during independent stats work — October 17
+
+Fresh control-plane inventory shows active/latest Worker
+`9c01bcf3-314c-453f-93a0-c76954c8419e`, deployment
+`cb5b4c86-3ade-4c98-9f75-59558ccb6f98`, at 100%. The stats session's README
+identifies this deployment; `/tmp/typeahead-stats-release` contains its newer
+stats page but the older freshness parser. The compact-ID prerequisite is no
+longer claimed as live. Existing production legacy IDs continue to parse.
+
+Do not deploy the older `worker-current-release` archive over the new stats page,
+and do not include the root checkout's newer unapproved visual proposal. Before
+cutover, reconcile only the freshness parser with the latest approved release
+archive, verify the source diff and deployment, then refresh the reverse target.
+The 224 XRPC checks remain evidence for the explicitly recorded `2564108f…`
+source, not a blanket verification of subsequent deployments.
