@@ -59,7 +59,7 @@ flowchart LR
   (they do not correct a stale handle; the ingester does). The hourly Worker cron handles
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
-Compact snapshot rollout remains unshipped (status verified 2026-10-16).
+Compact snapshot rollout remains unshipped (status verified 2026-10-17).
 The inline-close candidate's 60-round pinned warm run completed on October 9
 and passed all five p95 gates, with no flagged secondary regressions; reassessment
 on October 16 reproduced the result. See the
@@ -69,9 +69,14 @@ on October 16 reproduced the result. See the
 current inventory, disaster rollback, and cleanup. Earlier failed runs
 remain recorded; this warm pass does not complete the remaining release and
 production rollout gates.
+The current-generation compact pair is 6.96 GB and passes the original/VACUUM
+size and differential-response gates. Local legacy twins remain mandatory for
+recovery; repeated promotion needs about 45.2 GB for two complete pairs before
+overlay and temporary files, so smaller production volumes are not yet justified.
 
 The temporary qualification Fly app and both 60 GB volumes were deleted on
-October 16 after preserving evidence. Production was not changed. The candidate
+October 16 after preserving evidence. A new isolated cutover candidate is being
+qualified on October 17; production remains unchanged. The candidate
 closes inline HTTP connections when the task pool is saturated, preventing idle
 keep-alive connections from blocking the accept loop; pooled behavior is unchanged.
 
