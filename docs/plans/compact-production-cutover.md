@@ -702,5 +702,8 @@ protected snapshot pointer are preserved. The isolated address is
 [Configuration and allocated addresses](../evals/compact-public-replacement-preparation.json)
 record the update. The credential passed the
 [authenticated invalid-body probe](../evals/compact-replacement-admin-credential-check.json)
-without mutation. Restart admission remains pending: HTTP 200 while
-`ready=false` is not success. Require a new complete sync pass after restart.
+without mutation. [Restart admission](../evals/compact-public-restart-ready.json)
+passed at 07:20 UTC: exact compact build, complete new sync pass (354 updates,
+34 clears, 37 deletes), 20-second lag, and exact-handle rank one. Native attachment
+after restart took about 207 seconds. HTTP 200 during that loading interval
+was not treated as readiness. Isolated ranking and engine qualification remain.

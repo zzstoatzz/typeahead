@@ -71,6 +71,6 @@
   "public_ipv6": "2a09:8280:1::1bb:9e:0",
   "shared_ipv4": "66.241.125.33",
   "production_routing_changed": false,
-  "readiness": "restart admission pending",
+  "readiness": "restart admission passed; see compact-public-restart-ready.json",
   "inventory_note": "Pre-update status command rejected unsupported --json flag. Post-update machine list independently verified intended image/env/init/services/restart/guest/volume."
 }
