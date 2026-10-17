@@ -1,0 +1,32 @@
+{
+  "checked_at": 1792223996.722982,
+  "source": "https://typeahead.waow.tech/stats?view=status",
+  "bucket_unit_seconds": 300,
+  "latest_bucket": 5974068,
+  "latest_bucket_unix_seconds": 1792220400,
+  "latest_bucket_age_s": 3596.7229828834534,
+  "scope": "Latest 12 displayed five-minute buckets across all Worker endpoints; stale data is not a current error-rate measurement",
+  "status_class_counts": {
+    "2xx": 2352,
+    "4xx": 8,
+    "5xx": 0,
+    "3xx": 2
+  },
+  "legacy_readiness": {
+    "ready": true,
+    "build_id": "b1792141282-189b",
+    "sync_lag_s": 45,
+    "actor_count": 12560923
+  },
+  "machine_events": {
+    "machine": "867e15ce4e1148",
+    "current_state": "started",
+    "host_status": "ok",
+    "previous_exit": "2026-10-16T18:02:19.068Z",
+    "exit_code": 134,
+    "oom_killed": false,
+    "requested_stop": false,
+    "recovered_at": "2026-10-16T18:05:04.893Z"
+  },
+  "causality": "No cause established for the historical production abort; not attributed to the isolated control crash."
+}

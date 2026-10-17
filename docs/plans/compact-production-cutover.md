@@ -804,3 +804,17 @@ and raw benchmark result. Volumes are retained pending final qualification and
 cleanup; this stops compute billing, not volume billing. Production and the
 ready replacement were not stopped. Native reload qualification remains active
 on HeavyPad.
+
+### Legacy rollback target rechecked — October 17
+
+The [rollback readiness check](../evals/compact-legacy-rollback-readiness.json)
+confirmed the unchanged legacy image/machine is started with host status OK,
+expected generation, exact-handle rank one, and 45-second overlay lag. Fly event
+history also records an unrequested non-OOM exit 134 on October 16 at 18:02 UTC,
+followed by restart at 18:05 UTC. These records do not establish its cause or link
+it to the isolated concurrent-read crash. Readiness is a point-in-time check,
+not a claim that the legacy binary cannot fail.
+
+The public status chart's latest five-minute bucket was about one hour old when
+inspected. Its counts cannot establish the current error rate. Refresh direct
+readiness and appropriately fresh telemetry before switching or rolling back.
