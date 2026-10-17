@@ -193,7 +193,9 @@ recovery gates above. A Fly `/health` HTTP-status check alone remains insufficie
 Worker version `28622855-db7a-4cf6-9e18-762e3485f05a` shipped the compact-ID
 freshness parser. Its isolated source was the exact stats release archive plus
 only `freshness.ts` and its test changes; no PDS or search-route code changed.
-All 97 Worker tests, typechecking, lint and post-deploy smoke passed. The public
+All 97 Worker tests, typechecking, lint and post-deploy smoke passed. The smoke
+recipe skipped authenticated admin-override checks (no `TYPEAHEAD_SECRET`)
+and the optional comparison benchmark; those are not claimed as verified here. The public
 freshness endpoint still reports healthy legacy build `b1792141282-189b` with a
 known snapshot age. The pre-fix Worker version remains available, but use this
 new version as the routing-switch base so rollback retains the monitoring fix.
