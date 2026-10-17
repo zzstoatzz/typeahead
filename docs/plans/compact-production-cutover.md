@@ -176,3 +176,14 @@ stats page before switching routing. Before staging a binding-only
 version, refresh active and latest-uploaded versions: Wrangler's version-secret
 operation copies the latest uploaded version, which need not be active. Record
 both old and replacement versions and rehearse reversal before production.
+
+### Admission command
+
+Run `python3 scripts/check-search-readiness.py <isolated-backend-url> --build <expected-build>`
+before registering or switching traffic. It requires an attached, ready snapshot,
+the exact expected generation, a successful overlay-sync watermark no older than
+600 seconds, a nonempty corpus, and the exact-handle probe at rank one. On October
+17 the live legacy backend passed; a deliberately incorrect expected build was
+rejected. This is a cutover admission command, not a recurring health monitor.
+A fresh replacement must additionally pass the alias, moderation, ranking and
+recovery gates above. A Fly `/health` HTTP-status check alone remains insufficient.
