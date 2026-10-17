@@ -396,3 +396,15 @@ retain its legacy snapshot while the replacement is configured for the compact
 production pointer. Routing still waits for all remaining release gates and live
 overlay catch-up. Reverse routing must retain the old backend and its data until
 independent disaster restoration and the observation/publication gates complete.
+
+The fresh-volume drill now has a second, conditional stage: after compact
+restoration has exited successfully and written its result, materialize the
+restored legacy twin as `index.A.db`, fsync the directory, and boot the exact
+old reader against the protected namespace's legacy `latest.json`. Require
+all 8,000 reference responses again. This tests binary rollback from independently
+restored artifacts rather than the earlier host-local fixture. Its controller is
+`/data/qualification/legacy_restore_after_fresh.py`; results will be
+`/data/disaster-current-20261017/legacy-restore-result.json`. It is queued, not
+passed. Before clearing fixture overlays or preparing this machine for live
+traffic, require **both** restore result files to pass and both drill processes
+to have exited.
