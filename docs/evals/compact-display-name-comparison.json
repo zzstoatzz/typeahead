@@ -1,0 +1,32 @@
+[
+  {
+    "query": "paul frazee",
+    "legacy": {
+      "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+      "handles": []
+    },
+    "compact": {
+      "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+      "handles": []
+    },
+    "byte_identical": true
+  },
+  {
+    "query": "pfrazee.com",
+    "legacy": {
+      "sha256": "c3cfbafc3e75f1504db7832d27340b2987f901ae17eb6dbb663a506e93d7ce74",
+      "handles": [
+        "pfrazee.com",
+        "pfrazee.bsky.social"
+      ]
+    },
+    "compact": {
+      "sha256": "c3cfbafc3e75f1504db7832d27340b2987f901ae17eb6dbb663a506e93d7ce74",
+      "handles": [
+        "pfrazee.com",
+        "pfrazee.bsky.social"
+      ]
+    },
+    "byte_identical": true
+  }
+]

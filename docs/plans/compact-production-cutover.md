@@ -728,3 +728,26 @@ was substituted. The waiting compatibility orchestrator had no active child
 processes and was stopped to prevent other shards starting this now-incomplete
 campaign. The three active cold controllers and native reload experiment were
 left untouched; collect their complete results independently.
+
+### Isolated public engine and current-Worker aliases — October 17, 07:30 UTC
+
+The complete `just bench-search --url https://typeahead-search-compact.fly.dev`
+run finished with stress disabled: 44 queries, three runs per query. Median of
+per-query p50 was 42.15 ms for cache-busted requests, 40.5 ms warm, and 98.05 ms
+for the side-by-side Bluesky oracle. This network-level comparison does not
+replace the frozen same-data non-regression gate.
+[Report](../evals/compact-public-engine-bench.json.gz) and
+[log](../evals/compact-public-engine-bench.log.gz) retain all results.
+
+Mean oracle overlap was 49.8%, below the aspirational 75% target. Display-name
+query `paul frazee` returned no actors; its exact handle did resolve. Two
+serialized production-baseline probes produced byte-identical bodies for those
+queries, as recorded in [the comparison](../evals/compact-display-name-comparison.json).
+Do not claim the run proves all search-quality targets are met. The separate
+canonical ranking suite passed its acceptance checks.
+
+The prepared `f109afd8…` Worker source plus the freshness parser passed
+[224 alias/CORS/cache checks](../evals/compact-public-f109-xrpc.json.gz) against
+the live isolated replacement: seven queries, four limits, both alias orders,
+and repeated cache reads, with exact backend bodies. Both temporary local
+Workers exited after the checks. This source is tested locally, not deployed.
