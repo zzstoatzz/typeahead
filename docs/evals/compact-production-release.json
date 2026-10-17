@@ -235,6 +235,13 @@
       "archive_sha256": "fc6aede4c87b12a628f8aba31366fec3948a45c527181f8491bec2e3e7fbd34a",
       "archive_bytes": 60856052,
       "all_manifest_layers_verified": true
+    },
+    "protected_backup": {
+      "verified_readback": true,
+      "prefix": "releases/compact-candidate-cc2d5a1",
+      "source_bundle_sha256": "e993d8b63040f9378d9b43e221f8a31e484e59985bb408933f536bbea4be060a",
+      "source_restored_commit": "cc2d5a1439793c050ac20404f97edbb20df6113e",
+      "image_archive_loaded_offline": true
     }
   }
 }

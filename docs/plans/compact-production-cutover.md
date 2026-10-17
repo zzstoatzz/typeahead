@@ -75,7 +75,12 @@ The fresh-volume restore launcher now requires this replacement binary and the
 verified protected checkpoint. Source tag `compact-candidate-cc2d5a1` resolves to
 `cc2d5a1439793c050ac20404f97edbb20df6113e`; a complete bundle restores that commit.
 Its OCI archive was verified through every blob and the executable, then loaded
-and run without network/pulls. Protected R2 upload/readback is in progress.
+and run without network/pulls. Both replacement objects have full verified R2 readback under
+`releases/compact-candidate-cc2d5a1/{source.bundle,image.tar.gz}`, outside the
+21-day `builds/` expiration rule. The legacy runtime backup stays under the
+previous release prefix. The exact deployed-reader compatibility campaign is
+queued after all cold trials and the strict cold gate pass; it keeps the
+unmodified legacy binary and will retain any correctness failure.
 The superseded cold controller and queued compatibility controller were stopped;
 completed and interrupted trials are preserved. The replacement requires its own qualification; existing results
 remain associated with `38e0a27`. Production routing remains unchanged.
