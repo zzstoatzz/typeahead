@@ -212,3 +212,23 @@ produces verified reference response hashes. Restoring the artifact is distinct
 from replaying the live upstream overlay; both must pass before traffic admission.
 The target may become the serving replacement only after all rollout gates pass;
 otherwise it remains a temporary resource covered by the cleanup gate.
+
+### Current-generation rollback passed — October 17
+
+The exact candidate served `compact-b1792141282-189b`, accepted 60 overlay
+mutations, then matched 8,000 response bodies through both dual-reader legacy
+fallback and the deployed legacy executable. The protected same-watermark legacy
+twin was hard-linked into `index.A.db` and the index directory fsynced **before**
+switching the isolated format pointer. Preserve the overlay throughout; do not
+use an older-watermark snapshot. The new reader shut down cleanly; the deployed
+legacy process used the drill's explicit SIGKILL teardown.
+
+The initial fixture attempt seeded publisher-format `manifest.json` directly in
+a generation directory, which correctly failed the reader's canonical local
+manifest check (`GenerationIdentityCollision`). That failed directory remains
+at `full-rollback-fixture-collision`; the corrected A-slot procedure passed in
+unit `typeahead-compact-rollback-aslot-20261017.service`. The full reference
+response hashes are retained in [compressed evidence](../evals/compact-current-rollback.json.gz).
+This verifies local format/binary rollback with the real R2 legacy pointer;
+it does not claim fresh-volume restoration or live upstream catch-up. The
+fresh-volume drill waits for both this result and full compact publication.

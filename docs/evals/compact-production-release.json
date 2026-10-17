@@ -128,5 +128,28 @@
     "status": "provisioned; restore not yet started",
     "initial_volume_used_bytes": 24576,
     "binary_sha256_verified": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91"
+  },
+  "current_generation_rollback": {
+    "compact": {
+      "admission_seconds": 17.125679336022586,
+      "build_id": "compact-b1792141282-189b"
+    },
+    "dual-reader-legacy": {
+      "admission_seconds": 18.86958407307975,
+      "build_id": "b1792141282-189b"
+    },
+    "deployed-reader-legacy": {
+      "admission_seconds": 2.862229879014194,
+      "build_id": "b1792141282-189b"
+    },
+    "responses_per_stage": 8000,
+    "mutations": 60,
+    "passed": true,
+    "reference_sha256": "32e6ea7d6b70bc105319f667926a83bc7fb84143644c9b069092623f6c4e7316",
+    "evidence": "compact-current-rollback.json.gz",
+    "procedure": "Materialize protected same-watermark legacy twin in index.A.db before changing format pointer; preserve overlay; then use deployed legacy executable.",
+    "live_upstream_catchup_tested": false,
+    "fresh_volume_restore_tested": false,
+    "failed_attempt": "full-rollback-fixture-collision: preseeded publisher manifest differed from reader canonical local manifest; rejected with GenerationIdentityCollision; preserved on HeavyPad."
   }
 }
