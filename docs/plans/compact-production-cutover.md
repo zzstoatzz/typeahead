@@ -166,12 +166,15 @@ credentials, and test data only after checking references and saving evidence.
 
 ## Remaining execution record
 
-Pending: resolution of the inconclusive warm gate, cold and compatibility gates,
-matched reload latency, serving replacement readiness, production cutover, scheduled
-publication, observation, and cleanup. Route rehearsal, fresh-volume restoration,
-legacy binary rollback, native full-size reload correctness, protected publication,
-and independent image/source recovery have passed as recorded below. Fill in
-exact resources, commands, timestamps, and results as each action completes.
+Pending: resolution of the inconclusive warm gate and failed legacy-control
+comparison, completion and assessment of matched reload latency, production cutover,
+scheduled publication, daily observation, and cleanup. The complete cold campaign,
+isolated replacement replay/restart admission, route rehearsal, fresh-volume
+restoration, legacy binary rollback, native full-size reload correctness, protected
+publication, and independent image/source recovery have passed as recorded below.
+Refresh readiness immediately before routing; a historical admission result does
+not establish current readiness. Record exact resources, commands, timestamps, and
+results as each remaining action completes.
 
 ### Packaged candidate — October 17
 
