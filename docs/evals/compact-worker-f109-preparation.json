@@ -1,0 +1,19 @@
+{
+  "status": "prepared, not deployed",
+  "base_version": "f109afd8-33ea-416b-ac02-6ebf2bed0028",
+  "base_deployment": "e360206e-3f74-4bca-b87f-42a2156bc175",
+  "source_archive": "/tmp/typeahead-stats-approved-release",
+  "prepared_archive": "/Users/nate/.local/share/typeahead-experiments/release-20261017/worker-approved-f109-freshness",
+  "changed_source_files": [
+    "src/handlers/freshness.test.ts",
+    "src/handlers/freshness.ts"
+  ],
+  "stats_sha256": "11b3a73305b34b73c4e0a39e42ce1ff82d01c0b8061544d5de0a86970fb93ee4",
+  "tests": {
+    "unit_pass": 97,
+    "unit_fail": 0,
+    "typecheck": "passed",
+    "focused_lint": "passed"
+  },
+  "requirement": "Refresh active and latest-uploaded version before deployment; do not overwrite later approved stats changes."
+}

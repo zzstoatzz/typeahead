@@ -658,3 +658,16 @@ verify this new pair before cleanup. Subsequent polls must target the root point
 record the final machine configuration as evidence. For publication rollback, use
 the new generation's verified legacy twin; do not combine an older snapshot with
 an overlay pruned past its watermark.
+
+### Latest approved Worker preparation — October 17, 06:56 UTC
+
+Active Worker `f109afd8-33ea-416b-ac02-6ebf2bed0028` now serves 100% in
+deployment `e360206e-3f74-4bca-b87f-42a2156bc175`. Its approved source archive
+is `/tmp/typeahead-stats-approved-release`; the older stats archive is not the
+current deployment. The unrelated local pill-consolidation proposal is excluded.
+
+The [prepared reconciliation](../evals/compact-worker-f109-preparation.json) changes
+only the freshness parser and its test relative to this approved source, preserves
+the exact stats bytes and Wrangler config, and passes 97 unit tests, type checking,
+and focused lint. It is not deployed. Refresh active/latest versions again before
+shipping; subsequent approved stats work must not be overwritten.

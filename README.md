@@ -60,10 +60,11 @@ flowchart LR
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
 Compact snapshot rollout remains unshipped (status verified 2026-10-17).
-The compact-ID freshness parser was deployed in Worker `2564108f…`, then a later
+The compact-ID freshness parser was deployed in Worker `2564108f…`, then later
 stats deployment replaced it. Active Worker `9c01bcf3-314c-453f-93a0-c76954c8419e`
 was verified October 17; its release archive still needs the parser prerequisite
-reconciled before compact cutover. Search continues serving the legacy backend.
+reconciled before compact cutover. The latest approved Worker is `f109afd8…`; its narrow parser reconciliation is
+prepared and tested, not deployed. Search continues serving the legacy backend.
 The replacement candidate’s October 17 warm run did not pass: mixed-read latency
 was inconclusive under the fixed gate ([evidence](docs/evals/compact-cancel-fixed-warm/gate.json)).
 Cutover remains gated. The older inline-close candidate's 60-round pinned warm run completed on October 9
