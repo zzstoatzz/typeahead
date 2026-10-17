@@ -1,0 +1,12 @@
+test_corrupt_current_and_modified_legacy_twin_fail_closed (test_release_recovery.Tests.test_corrupt_current_and_modified_legacy_twin_fail_closed) ... ok
+test_crash_fallback_preserves_newer_hide_and_prunes_only_covered_rows (test_release_recovery.Tests.test_crash_fallback_preserves_newer_hide_and_prunes_only_covered_rows) ... ok
+test_restart_removes_interrupted_generation_download (test_release_recovery.Tests.test_restart_removes_interrupted_generation_download) ... ok
+test_sigterm_before_and_after_snapshot_admission (test_release_lifecycle.Tests.test_sigterm_before_and_after_snapshot_admission) ... ok
+test_eight_persistent_clients_with_mixed_reads_and_writes (test_release_concurrency.Tests.test_eight_persistent_clients_with_mixed_reads_and_writes) ... ok
+test_saturated_persistent_clients_with_mixed_reads_and_writes (test_release_concurrency.Tests.test_saturated_persistent_clients_with_mixed_reads_and_writes) ... ok
+test_full_activation_filesystem_fails_closed_and_recovers (test_release_disk_full.Tests.test_full_activation_filesystem_fails_closed_and_recovers) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 27.805s
+
+OK

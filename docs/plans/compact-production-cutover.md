@@ -111,3 +111,30 @@ Pending: cold and compatibility candidate gates, release reload/rollback, image
 packaging, isolated channel/replacement provisioning, route rehearsal, disaster
 drill, production cutover, scheduled publication, observation, cleanup. Fill in
 exact resources, commands, timestamps, and results as each action completes.
+
+### Packaged candidate — October 17
+
+The production runtime base is pinned to
+`sha256:65cf9b0019df39319f5d006efb0642eaaebaa819f6ac5c28910f91b0620e1fc9`.
+The candidate image platform digest is
+`sha256:db843d21e8da8f28a34a71dcd398904287eed7fe242b5b35cf70fd745a846174`;
+its executable checksum matches the warm-qualified candidate both in Docker and
+on Fly. It is staged on `typeahead-search-compact`, machine `d895206f9ed638`,
+volume `vol_4912m2168o2e2w3r` (40 GB), with no public services. The volume is for
+isolated qualification and migration preparation; final retention sizing remains
+unproven. The machine currently runs `sleep infinity`, with qualification processes
+started explicitly. Do not treat machine state as serving readiness.
+
+The frozen qualification corpus is downloading from R2 with checksum verification;
+this is separate from the newer October 16 conversion on HeavyPad. Cold trials use
+four shared CPUs/2048 MB, no swap, 60 randomized rounds and the unchanged thresholds.
+CPU-credit and throttling metrics are available. No cold campaign starts until
+artifact verification succeeds and the initial credit threshold is reached.
+[Release inventory](../evals/compact-production-release.json) records the image,
+resources, harness hashes, and current status. The real ENOSPC recovery test also
+passed on HeavyPad in a private 8 MiB tmpfs mount namespace.
+
+All seven real-process recovery tests passed inside this exact Fly image, with
+no skips: corruption rejection, crash/moderation preservation, interrupted
+download cleanup, shutdown, 8/32-client concurrency, and real ENOSPC recovery.
+The [test log](../evals/compact-production-release-tests.log) is retained.

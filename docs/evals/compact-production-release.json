@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-17",
+  "candidate_source": "38e0a27234bbb76a1210da01e72e6a0d0fde67fc",
+  "binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91",
+  "image": "registry.fly.io/typeahead-search:compact-inline-38e0a27-20261017",
+  "platform_digest": "sha256:db843d21e8da8f28a34a71dcd398904287eed7fe242b5b35cf70fd745a846174",
+  "index_digest": "sha256:de3807c65338c6809f673ea9a278350a19a6bb270fcf6973a80750056fd3ad62",
+  "rollback_image_digest": "sha256:65cf9b0019df39319f5d006efb0642eaaebaa819f6ac5c28910f91b0620e1fc9",
+  "app": "typeahead-search-compact",
+  "machine": "d895206f9ed638",
+  "volume": "vol_4912m2168o2e2w3r",
+  "volume_gb": 40,
+  "public_services": false,
+  "production_changed": false,
+  "qualification_root": "/Users/nate/.local/share/typeahead-experiments/release-20261017/qualification",
+  "harness_sha256": {
+    "bounded_controller.py": "5329b602272dcc11980c475b17125b6330ac887da4ccf0d3e06d15055f265234",
+    "assay.py": "115a02d24195df2dbf716b2f23efc01a19498c92978237705131975a3c65755b",
+    "release_assay.py": "e27960fa59787c9e5a6047dbbf78308926c84018e233ca0bf53c16c9c083367d",
+    "prepare.py": "36ff0fadb883f0f81f2f70f630cd78d8c5044217735ba571861d65d214abaef6",
+    "assess_release.py": "0e3f24b4d78d5c1e8ba71c6ba64b297ceedf4891a611426567004f5128ae74e4"
+  },
+  "mode": "4 shared CPUs, 2048 MB, no swap; frozen October 8 corpus; 60 randomized rounds with two legacy controls, same strict gates as warm campaign",
+  "status": "All seven exact-image process recovery tests passed on isolated Fly. Artifact download/verification running; cold campaign not yet started.",
+  "release_process_tests": {
+    "passed": 7,
+    "skipped": 0,
+    "log_sha256": "4c2cf90958fff52e41437513b307d13636683cef0e56760bdeed09cfdaece9e9",
+    "evidence": "compact-production-release-tests.log"
+  }
+}
