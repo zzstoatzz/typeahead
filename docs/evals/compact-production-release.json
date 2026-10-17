@@ -9,7 +9,7 @@
   "app": "typeahead-search-compact",
   "machine": "d895206f9ed638",
   "volume": "vol_4912m2168o2e2w3r",
-  "volume_gb": 40,
+  "volume_gb": 60,
   "public_services": false,
   "production_changed": false,
   "qualification_root": "/Users/nate/.local/share/typeahead-experiments/release-20261017/qualification",
@@ -21,11 +21,100 @@
     "assess_release.py": "0e3f24b4d78d5c1e8ba71c6ba64b297ceedf4891a611426567004f5128ae74e4"
   },
   "mode": "4 shared CPUs, 2048 MB, no swap; frozen October 8 corpus; 60 randomized rounds with two legacy controls, same strict gates as warm campaign",
-  "status": "All seven exact-image process recovery tests passed on isolated Fly. Artifact download/verification running; cold campaign not yet started.",
+  "status": "Current-generation conversion, correctness, and original/VACUUM storage gates passed. Publication and frozen-corpus preparation running; cold campaign awaiting readiness/credits.",
   "release_process_tests": {
     "passed": 7,
     "skipped": 0,
     "log_sha256": "4c2cf90958fff52e41437513b307d13636683cef0e56760bdeed09cfdaece9e9",
     "evidence": "compact-production-release-tests.log"
-  }
+  },
+  "current_generation": {
+    "manifest": {
+      "manifest_version": 2,
+      "active_build": "compact-b1792141282-189b",
+      "previous_build": "b1792141282-189b",
+      "promoted_at": 1792142760,
+      "snapshot_url": "builds/compact-b1792141282-189b/index.db",
+      "byte_size": 16384,
+      "sha256": "3d9f8d1e418c8f511b22279a9d0ef2fc100638ef33993ad9c114d38b519060f8",
+      "source_watermark": 1792141239,
+      "actor_count": 12560923,
+      "prefix_count": 142072036,
+      "normalize_version": "v2-cjk-bigram",
+      "scoring_version": "v1-quality-score",
+      "top_n_short": 300,
+      "top_n_medium": 200,
+      "top_n_long": 100,
+      "overlay_top_n": 100,
+      "hydrate_cap": 50,
+      "builder_version": "heavypad",
+      "cjk_key_count": 2328841,
+      "cjk_actor_count": 581773,
+      "format_version": 5,
+      "prefix_map": {
+        "object_key": "builds/compact-b1792141282-189b/index.db.prefix",
+        "byte_size": 6962737152,
+        "sha256": "bdbbe708bc1104e7a3c08a4ad61686162a5fe83cf525377c85ca35d095af9c0e"
+      },
+      "legacy_twin": {
+        "manifest": {
+          "object_key": "builds/b1792141282-189b/manifest.json",
+          "byte_size": 655,
+          "sha256": "b32970a4f78eff5b23fc473a14663d6c72a15cf69c15eea6c6ff06ae83781ac1"
+        },
+        "build_id": "b1792141282-189b",
+        "source_watermark": 1792141239
+      }
+    },
+    "correctness": {
+      "baseline": {
+        "initial_responses": 8000,
+        "transition_responses": 935,
+        "concurrent_responses": 850,
+        "binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91",
+        "usage": {
+          "forced_shutdown": false,
+          "cpu_seconds": 3.18775,
+          "peak_rss_bytes": 716955648,
+          "startup_ms": 5442.215612158179,
+          "overlay_bytes": 679936
+        }
+      },
+      "compact": {
+        "initial_responses": 8000,
+        "transition_responses": 935,
+        "concurrent_responses": 850,
+        "binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91",
+        "usage": {
+          "forced_shutdown": false,
+          "cpu_seconds": 20.627722,
+          "peak_rss_bytes": 58830848,
+          "startup_ms": 20447.706180159003,
+          "overlay_bytes": 679936
+        }
+      }
+    },
+    "storage_gate": {
+      "source_bytes": 15620362240,
+      "vacuum_bytes": 14287581184,
+      "compact_bytes": 6962753536,
+      "elapsed_seconds": 22.64268037606962,
+      "passes_half_original": true,
+      "passes_half_vacuum": true
+    }
+  },
+  "rollback_preflight": {
+    "first_attempt": "Stopped before launching a server: prior staging pointer was absent. No correctness result from that attempt.",
+    "next_attempt": "Use newly published isolated current-generation channel; original binary reads its fixed latest.json from a separate namespace."
+  },
+  "running_jobs": {
+    "publication": "typeahead-compact-publish-20261017.service on heavypad",
+    "cold_controller": {
+      "pid": 53068,
+      "script": "/Users/nate/.local/share/typeahead-experiments/release-20261017/qualification/run_when_prepared.py",
+      "machine": "d895206f9ed638",
+      "log": "/Users/nate/.local/share/typeahead-experiments/release-20261017/cold-campaign.log"
+    }
+  },
+  "volume_extended_before_cold_campaign": true
 }

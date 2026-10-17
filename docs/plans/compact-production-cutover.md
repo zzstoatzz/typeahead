@@ -120,7 +120,7 @@ The candidate image platform digest is
 `sha256:db843d21e8da8f28a34a71dcd398904287eed7fe242b5b35cf70fd745a846174`;
 its executable checksum matches the warm-qualified candidate both in Docker and
 on Fly. It is staged on `typeahead-search-compact`, machine `d895206f9ed638`,
-volume `vol_4912m2168o2e2w3r` (40 GB), with no public services. The volume is for
+volume `vol_4912m2168o2e2w3r` (initially 40 GB, extended to 60 GB), with no public services. The volume is for
 isolated qualification and migration preparation; final retention sizing remains
 unproven. The machine currently runs `sleep infinity`, with qualification processes
 started explicitly. Do not treat machine state as serving readiness.
@@ -138,3 +138,33 @@ All seven real-process recovery tests passed inside this exact Fly image, with
 no skips: corruption rejection, crash/moderation preservation, interrupted
 download cleanup, shutdown, 8/32-client concurrency, and real ENOSPC recovery.
 The [test log](../evals/compact-production-release-tests.log) is retained.
+
+### Scheduled-promotion storage correction
+
+Review of `ensureTwin` → `ensureGeneration` → durable activation →
+`cleanupGenerations` shows that a new checkpoint requires both old and new
+legacy/compact pairs on disk until activation completes. The current pair is
+22,583,115,776 bytes; two pairs require about 45.2 GB before overlay/WAL and
+other temporary files. The 40 GB candidate volume was extended to 60 GB
+before the cold campaign. The earlier one-legacy/two-compact estimate was
+insufficient for repeated scheduled publication. Retiring mandatory local twins
+requires a separately tested recovery path before smaller production volumes
+can be claimed safe; this release preserves the current recovery contract.
+
+### Current-generation evidence
+
+Conversion of `b1792141282-189b` completed with exhaustive native verification.
+The compact pair is 6,962,753,536 bytes versus original SQLite 15,620,362,240
+and actual VACUUM output 14,287,581,184: both 50% reduction gates pass. The exact
+candidate also matched 8,000 initial, 935 mutation-transition, and 850 concurrent
+responses per format on this current snapshot, without forced shutdown.
+[Structured evidence](../evals/compact-production-release.json) includes the
+manifest, per-format correctness results, and measured storage gate.
+
+The first full-size rollback preflight stopped before starting a server because
+the old qualification pointer had been removed. A fresh isolated channel under
+`staging/compact-release-20261017/` is being published and verified for the
+current generation. The deployed legacy executable always reads `latest.json`;
+its rollback drill uses that fixed key within the isolated namespace, while
+the new executable can select `legacy.json` explicitly. No production pointer
+is altered. This preflight failure is retained and is not a passing rollback.

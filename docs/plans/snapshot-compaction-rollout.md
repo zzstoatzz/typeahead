@@ -348,9 +348,11 @@ Before any production pointer changes:
   2 GiB modes, restart/warm/broad/concurrent/mixed reads, and matched reload windows.
   Inspect p99, read CPU, admission, retention, errors, and overlay writes separately.
 - Provision migration headroom for legacy and compact twins, a complete staged
-  incoming generation, overlay/WAL/temp files, and failed-download cleanup. At the
-  measured sizes, legacy plus two compact generations alone is roughly 28.9 GB.
-  Size from actual artifacts and filesystem free space. The 51.4% saving describes
+  incoming generation, overlay/WAL/temp files, and failed-download cleanup. The current implementation downloads the incoming legacy twin before admitting
+  the incoming compact generation and only then removes the old pair. Thus peak
+  snapshot storage is two complete legacy/compact pairs, not one legacy plus two
+  compact files. At the October 16 sizes this is about 45.2 GB, before overlay,
+  WAL, and temporary files. Size from actual artifacts and filesystem free space. The 51.4% saving describes
   one serving artifact, not peak migration disk or every retained backup.
 
 ## Deployment sequence
