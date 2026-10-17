@@ -1,0 +1,32 @@
+[
+  {
+    "id": "8716d4b05dd978",
+    "name": "compact-qual-3",
+    "state": "stopped",
+    "public_services": 0
+  },
+  {
+    "id": "781e732c264678",
+    "name": "compact-recovery",
+    "state": "started",
+    "public_services": 1
+  },
+  {
+    "id": "0803912bd11018",
+    "name": "compact-qual-1",
+    "state": "stopped",
+    "public_services": 0
+  },
+  {
+    "id": "d895206f9ed638",
+    "name": "compact-candidate",
+    "state": "stopped",
+    "public_services": 0
+  },
+  {
+    "id": "d895202a11d558",
+    "name": "compact-qual-2",
+    "state": "stopped",
+    "public_services": 0
+  }
+]

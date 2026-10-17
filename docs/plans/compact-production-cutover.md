@@ -770,3 +770,15 @@ Median compact startup was 205.4 seconds versus about 5.4 seconds for the legacy
 formats. The cold serving improvement does not erase this admission cost. Use
 the already-admitted replacement for routing, retain the ready legacy backend,
 and do not substitute a direct in-place restart for the planned cutover.
+
+### Qualification compute stopped after evidence collection — October 17
+
+All four cold-only machines are stopped after their 180 trials and diagnostic
+archives were saved. [Machine state](../evals/compact-qualification-compute-stopped.json)
+confirms that only the isolated replacement remains started in this app.
+[Diagnostic archives](../evals/compact-cancel-fixed-cold/diagnostics/inventory.json)
+include each trial's server log, host snapshots, process status, memory summary,
+and raw benchmark result. Volumes are retained pending final qualification and
+cleanup; this stops compute billing, not volume billing. Production and the
+ready replacement were not stopped. Native reload qualification remains active
+on HeavyPad.
