@@ -1,0 +1,128 @@
+{
+  "input_sha256": "3dc5ce0c7064191c45c13a47ba137e134b5c737407f5a4fb5b2ed4013ea20833",
+  "variant": "compact",
+  "rounds": 60,
+  "primary": {
+    "restart_sqlite_cache": {
+      "median_ratio": 0.6924023162964198,
+      "lower_one_sided_95": 0.6708500913772921,
+      "upper_one_sided_95": 0.7016512905343574
+    },
+    "warm": {
+      "median_ratio": 0.8054854219674086,
+      "lower_one_sided_95": 0.7821584731431039,
+      "upper_one_sided_95": 0.8215437343828711
+    },
+    "broad": {
+      "median_ratio": 0.7909267777682466,
+      "lower_one_sided_95": 0.7676466740844763,
+      "upper_one_sided_95": 0.8091700409755853
+    },
+    "concurrency8": {
+      "median_ratio": 0.8362029352051914,
+      "lower_one_sided_95": 0.8125642059390372,
+      "upper_one_sided_95": 0.8521024620579771
+    },
+    "mixed_reads": {
+      "median_ratio": 0.9706485214818396,
+      "lower_one_sided_95": 0.9442108279134507,
+      "upper_one_sided_95": 1.0354326485204512
+    }
+  },
+  "secondary": {
+    "restart_sqlite_cache_p99": {
+      "median_ratio": 0.7273774559682847,
+      "lower_one_sided_95": 0.7083101485428496,
+      "upper_one_sided_95": 0.7570889773855043
+    },
+    "warm_p99": {
+      "median_ratio": 0.8111123332095302,
+      "lower_one_sided_95": 0.7801045931496424,
+      "upper_one_sided_95": 0.8342546354772538
+    },
+    "broad_p99": {
+      "median_ratio": 0.8203774738583611,
+      "lower_one_sided_95": 0.7937519024445034,
+      "upper_one_sided_95": 0.8422432139969337
+    },
+    "concurrency8_p99": {
+      "median_ratio": 0.8550727807167542,
+      "lower_one_sided_95": 0.8295762276317801,
+      "upper_one_sided_95": 0.8674843568832927
+    },
+    "mixed_reads_p99": {
+      "median_ratio": 0.930406620894699,
+      "lower_one_sided_95": 0.868088347215233,
+      "upper_one_sided_95": 1.0185195341021773
+    },
+    "restart_sqlite_cache_cpu": {
+      "median_ratio": 0.6666666666666523,
+      "lower_one_sided_95": 0.5000000000000782,
+      "upper_one_sided_95": 0.799999999999983
+    },
+    "warm_cpu": {
+      "median_ratio": 0.7600000000000051,
+      "lower_one_sided_95": 0.7421142369991498,
+      "upper_one_sided_95": 0.7777777777777809
+    },
+    "broad_cpu": {
+      "median_ratio": 0.6885775862068935,
+      "lower_one_sided_95": 0.6761904761904839,
+      "upper_one_sided_95": 0.7207792207792116
+    },
+    "concurrency8_cpu": {
+      "median_ratio": 0.7543103448275874,
+      "lower_one_sided_95": 0.740740740740738,
+      "upper_one_sided_95": 0.7692307692307665
+    },
+    "mixed_writes_p95": {
+      "median_ratio": 0.9859093028887534,
+      "lower_one_sided_95": 0.9606561663455238,
+      "upper_one_sided_95": 1.0185937608980469
+    },
+    "mixed_serving_cpu": {
+      "median_ratio": 0.8979591836734648,
+      "lower_one_sided_95": 0.8766430738119323,
+      "upper_one_sided_95": 0.9128787878787878
+    },
+    "peak_rss": {
+      "median_ratio": 0.1659407681903003,
+      "lower_one_sided_95": 0.16413608497678123,
+      "upper_one_sided_95": 0.1672100266189142
+    }
+  },
+  "primary_pass": false,
+  "secondary_regressions_requiring_investigation": [],
+  "startup_ms_medians": {
+    "baseline": 5444.559257943183,
+    "baseline-control": 5448.976255021989,
+    "compact": 15472.926502814516
+  },
+  "baseline_control_noise": {
+    "restart_sqlite_cache": {
+      "median_ratio": 1.0120569501994212,
+      "lower_one_sided_95": 0.9957708576908987,
+      "upper_one_sided_95": 1.0363008178442146
+    },
+    "warm": {
+      "median_ratio": 1.0516679759648375,
+      "lower_one_sided_95": 1.010277433524015,
+      "upper_one_sided_95": 1.0689101892873625
+    },
+    "broad": {
+      "median_ratio": 1.0157498056005059,
+      "lower_one_sided_95": 1.0027942618511276,
+      "upper_one_sided_95": 1.039996944470654
+    },
+    "concurrency8": {
+      "median_ratio": 1.0014517352531889,
+      "lower_one_sided_95": 0.9626651822459482,
+      "upper_one_sided_95": 1.0261412578421587
+    },
+    "mixed_reads": {
+      "median_ratio": 1.0228492417914312,
+      "lower_one_sided_95": 0.9748069947268025,
+      "upper_one_sided_95": 1.098524556496955
+    }
+  }
+}

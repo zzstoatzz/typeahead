@@ -451,3 +451,20 @@ Use this reconciled version as the reverse-routing base, refreshing the active
 deployment immediately before staging a binding change. The earlier reverse
 command was a dry run only; no route reversal has yet been exercised.
 See [deployment evidence](../evals/compact-worker-reconciliation.json).
+
+### Replacement warm gate did not pass — October 17, 06:04 UTC
+
+The final candidate `cc2d5a1` completed all 180 trials across 60 rounds.
+The unchanged assessment [did not pass](../evals/compact-cancel-fixed-warm/gate.json):
+four primary phases passed, while mixed-read p95 was inconclusive
+(median paired ratio 0.97065, one-sided 95% upper bound 1.03543; required <=1).
+No secondary regressions were flagged. All trials passed their correctness,
+read-only zero-physical-I/O and clean-shutdown guards. The full
+[raw evidence](../evals/compact-cancel-fixed-warm/bench-results.json.gz) is retained.
+
+This blocks cutover. The older candidate's passing run does not qualify this
+binary, and the new run must not be selectively repeated until it passes.
+Mixed-read median p95 was 2.091 ms for compact, 2.078 ms for baseline and
+2.182 ms for baseline-control; these absolute medians do not override the paired
+acceptance criterion. Cold qualification and independent recovery/diagnostic
+work continue to identify any additional issues before choosing a correction.

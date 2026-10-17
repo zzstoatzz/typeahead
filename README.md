@@ -64,7 +64,9 @@ Worker version `2564108f-c5c7-4d2b-9c78-e5031bb4e232` (October 17) recognizes
 the migration generation’s `compact-b...` ID for snapshot-age alerts; the
 initial post-deploy smoke check missed one labeled actor; exact-query checks
 and a full smoke rerun passed. Search still serves the legacy backend.
-The inline-close candidate's 60-round pinned warm run completed on October 9
+The replacement candidate’s October 17 warm run did not pass: mixed-read latency
+was inconclusive under the fixed gate ([evidence](docs/evals/compact-cancel-fixed-warm/gate.json)).
+Cutover remains gated. The older inline-close candidate's 60-round pinned warm run completed on October 9
 and passed all five p95 gates, with no flagged secondary regressions; reassessment
 on October 16 reproduced the result. See the
 [warm qualification evidence](docs/evals/compact-inline-warm/gate.json) and
