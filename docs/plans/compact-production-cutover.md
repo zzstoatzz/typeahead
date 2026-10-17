@@ -187,3 +187,13 @@ the exact expected generation, a successful overlay-sync watermark no older than
 rejected. This is a cutover admission command, not a recurring health monitor.
 A fresh replacement must additionally pass the alias, moderation, ranking and
 recovery gates above. A Fly `/health` HTTP-status check alone remains insufficient.
+
+### Freshness prerequisite shipped — October 17
+
+Worker version `28622855-db7a-4cf6-9e18-762e3485f05a` shipped the compact-ID
+freshness parser. Its isolated source was the exact stats release archive plus
+only `freshness.ts` and its test changes; no PDS or search-route code changed.
+All 97 Worker tests, typechecking, lint and post-deploy smoke passed. The public
+freshness endpoint still reports healthy legacy build `b1792141282-189b` with a
+known snapshot age. The pre-fix Worker version remains available, but use this
+new version as the routing-switch base so rollback retains the monitoring fix.
