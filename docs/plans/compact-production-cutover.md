@@ -706,4 +706,7 @@ without mutation. [Restart admission](../evals/compact-public-restart-ready.json
 passed at 07:20 UTC: exact compact build, complete new sync pass (354 updates,
 34 clears, 37 deletes), 20-second lag, and exact-handle rank one. Native attachment
 after restart took about 207 seconds. HTTP 200 during that loading interval
-was not treated as readiness. Isolated ranking and engine qualification remain.
+was not treated as readiness. `just bench-ranking` against the isolated public
+URL passed every acceptance check; [full output](../evals/compact-public-ranking.log.gz)
+is retained. The no-stress engine comparison is running; current-Worker alias
+checks are prepared to run afterward.
