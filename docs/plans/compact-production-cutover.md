@@ -751,3 +751,22 @@ The prepared `f109afd8…` Worker source plus the freshness parser passed
 the live isolated replacement: seven queries, four limits, both alias orders,
 and repeated cache reads, with exact backend bodies. Both temporary local
 Workers exited after the checks. This source is tested locally, not deployed.
+
+### Complete cold campaign passed — October 17, 07:37 UTC
+
+All four shards finished: 180 valid trials, 60 matched rounds, exact candidate
+`cc2d5a1`, pool size 8, four shared CPUs and 2 GiB per machine. The
+[combined gate](../evals/compact-cancel-fixed-cold/gate.json) passes all five primary
+read phases, with no secondary regression flags. Every per-trial CPU/exit guard
+and the full result set are archived beside the gate. No rounds were excluded
+or retried. This uses the frozen qualification corpus, not the later live overlay.
+
+Upper one-sided 95% p95 ratio bounds were 0.337 after SQLite-cache restart,
+0.823 warm, 0.112 broad, 0.414 with eight clients, and 0.850 during mixed reads.
+These bounded-memory results do not replace the separate inconclusive uncapped
+warm gate or the unfinished native reload qualification.
+
+Median compact startup was 205.4 seconds versus about 5.4 seconds for the legacy
+formats. The cold serving improvement does not erase this admission cost. Use
+the already-admitted replacement for routing, retain the ready legacy backend,
+and do not substitute a direct in-place restart for the planned cutover.

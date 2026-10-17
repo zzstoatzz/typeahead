@@ -66,7 +66,9 @@ was verified October 17; its release archive still needs the parser prerequisite
 reconciled before compact cutover. The latest approved Worker is `f109afd8…`; its narrow parser reconciliation is
 prepared and tested, not deployed. Search continues serving the legacy backend.
 The isolated compact replacement has passed full live replay, restart admission,
-and the ranking suite; production cutover remains gated on qualification. The
+and the ranking suite. The final 180-trial cold campaign passed all primary
+gates; compact startup took about 205 seconds. Production cutover remains gated
+on the warm decision and native reload qualification. The
 unmodified legacy control crashed during concurrent performance comparison; that
 comparison is incomplete, with failure evidence retained in the cutover runbook.
 The replacement candidate’s October 17 warm run did not pass: mixed-read latency
