@@ -21,7 +21,7 @@
     "assess_release.py": "0e3f24b4d78d5c1e8ba71c6ba64b297ceedf4891a611426567004f5128ae74e4"
   },
   "mode": "4 shared CPUs, 2048 MB, no swap; frozen October 8 corpus; 60 randomized rounds with two legacy controls, same strict gates as warm campaign",
-  "status": "Current-generation conversion, correctness, and original/VACUUM storage gates passed. Publication and frozen-corpus preparation running; cold campaign awaiting readiness/credits.",
+  "status": "Cutover held after original candidate shutdown failure. Linux cancellation regression fixed and passed; full-size reload and recovery reruns in progress. Original cold and compatibility controllers stopped as superseded.",
   "release_process_tests": {
     "passed": 7,
     "skipped": 0,
@@ -192,5 +192,26 @@
     "releases_expiration_rule": null,
     "protected_checkpoint_prefix": "releases/compact-candidate-38e0a27/checkpoint-b1792141282-189b",
     "protected_checkpoint_status": "copy and readback verification running; fresh-volume drill waits for completion"
+  },
+  "hot_reload_failure": {
+    "passed": false,
+    "stage": "SIGTERM drain",
+    "deadline_seconds": 20,
+    "original_binary_regression_reproduced": true,
+    "evidence": [
+      "compact-hot-reload-shutdown-failure.log.gz",
+      "compact-r2-cancel-original.log.gz"
+    ]
+  },
+  "cancellation_fix": {
+    "binary_sha256": "758d458b829f350531364982d24136b9e1097f4e4c34977996a37488ea9a3606",
+    "linux_lifecycle_regression": "passed including transport child connection closure",
+    "macos_lifecycle": "five SIGTERM cases failed; not a deployed runtime pass",
+    "unit_checks": {
+      "passed": 142,
+      "skipped": 4
+    },
+    "evidence": "compact-r2-cancel-fixed.log.gz",
+    "qualification": "pending"
   }
 }

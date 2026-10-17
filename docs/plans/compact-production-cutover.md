@@ -42,6 +42,30 @@ The protected legacy source and verified compact output are under
 `/home/stoat/typeahead-release-20261017` on HeavyPad. Isolated R2 publication
 is in progress; no production pointer has changed.
 
+### October 17 shutdown failure
+
+The full-corpus live R2-pointer drill switched legacy → compact → legacy with
+seven concurrent readers and completed the before/after 8,000-response comparisons.
+It then failed the 20-second SIGTERM drain deadline. No passing result is claimed.
+The [retained server log](../evals/compact-hot-reload-shutdown-failure.log.gz)
+shows R2 child cancellation converted into `RcloneFailed`, followed by continued
+polling. A real-rclone stalled-endpoint regression reproduces this on the exact
+candidate ([failure evidence](../evals/compact-r2-cancel-original.log.gz)).
+
+The transport must propagate cancellation, reap its child, and the promotion
+watcher must exit on cancellation. The Linux regression passes with the local replacement executable
+`758d458b829f350531364982d24136b9e1097f4e4c34977996a37488ea9a3606`
+([evidence](../evals/compact-r2-cancel-fixed.log.gz)); all five lifecycle variants
+exit cleanly, and the stalled R2 connection closes. Zig 0.17's canceled POSIX wait
+clears the child ID without reaping it; retain the ID for explicit child cleanup.
+The first repair exited but leaked the child and was rejected by this check.
+A macOS lifecycle run also failed all five SIGTERM cases and is not claimed as
+passing; Linux is the deployed runtime. Native unit checks passed (142 passed,
+4 skipped). Full-size reload/recovery reruns are in progress.
+The superseded cold controller and queued compatibility controller were stopped;
+completed and interrupted trials are preserved. The replacement requires its own qualification; existing results
+remain associated with `38e0a27`. Production routing remains unchanged.
+
 ## Cutover sequence and stop conditions
 
 1. Finish exact-candidate cold/legacy compatibility, matched reload, full-size

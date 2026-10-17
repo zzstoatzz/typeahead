@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import shutil
 import subprocess
 import tempfile
 import time
@@ -18,7 +19,7 @@ class Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             create(root / 'fixtures')
-            for variant in (None, 'legacy', 'compact', 'legacy-stalled'):
+            for variant in (None, 'legacy', 'compact', 'legacy-stalled', 'legacy-r2-stalled'):
                 with self.subTest(variant=variant):
                     work = root / (variant or 'unready')
                     index = work / 'index'
@@ -37,6 +38,9 @@ class Tests(unittest.TestCase):
                     upstream.listen()
                     upstream.settimeout(5)
                     stalled = variant == 'legacy-stalled'
+                    r2_stalled = variant == 'legacy-r2-stalled'
+                    if r2_stalled:
+                        self.assertIsNotNone(shutil.which('rclone'), 'real rclone required')
                     accepted = None
                     env = {k: v for k, v in os.environ.items() if not k.startswith('INDEX_R2_')}
                     env.update(MODE='search', INDEX_BUILD_ROOT=str(work), LOCAL_DB_PATH=str(work / 'overlay.db'),
@@ -44,6 +48,10 @@ class Tests(unittest.TestCase):
                                TURSO_AUTH_TOKEN='isolated-no-access')
                     if stalled:
                         env['TURSO_URL'] = f'127.0.0.1:{upstream.getsockname()[1]}'
+                    if r2_stalled:
+                        env.update(INDEX_R2_ENDPOINT=f'http://127.0.0.1:{upstream.getsockname()[1]}',
+                                   INDEX_R2_BUCKET='test', INDEX_R2_ACCESS_KEY_ID='test',
+                                   INDEX_R2_SECRET_ACCESS_KEY='test', INDEX_RCLONE_BIN=shutil.which('rclone'))
                     log_path = work / 'server.log'
                     with log_path.open('w') as log:
                         process = subprocess.Popen([binary], env=env, stdout=log, stderr=log)
@@ -62,11 +70,15 @@ class Tests(unittest.TestCase):
                             time.sleep(.05)
                         else:
                             self.fail(log_path.read_text())
-                        if stalled:
+                        if stalled or r2_stalled:
                             accepted, _ = upstream.accept()
                         process.terminate()
                         try:
                             self.assertEqual(process.wait(timeout=5), 0, log_path.read_text())
+                            if r2_stalled:
+                                accepted.settimeout(5)
+                                while accepted.recv(65536):
+                                    pass
                         except subprocess.TimeoutExpired:
                             self.fail('SIGTERM did not drain background tasks: ' + log_path.read_text())
                     finally:

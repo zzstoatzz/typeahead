@@ -95,6 +95,7 @@ pub fn watchLoop(gpa: Allocator, db: *LocalDb) void {
     log.info("promote watcher started: poll every {d}s", .{interval_s});
     while (true) {
         checkOnce(gpa, db) catch |err| {
+            if (err == error.Canceled) return;
             log.err("promote check failed: {s} (will retry)", .{@errorName(err)});
         };
         io.sleep(.{ .nanoseconds = interval_s * std.time.ns_per_s }, .real) catch return;

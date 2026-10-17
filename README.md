@@ -71,7 +71,8 @@ on October 16 reproduced the result. See the
 [production cutover runbook](docs/plans/compact-production-cutover.md) tracks
 current inventory, disaster rollback, and cleanup. Earlier failed runs
 remain recorded; this warm pass does not complete the remaining release and
-production rollout gates.
+production rollout gates. The October 17 live reload drill exposed an R2-download
+cancellation bug during shutdown; cutover is held while a replacement is tested.
 The current-generation compact pair is 6.96 GB and passes the original/VACUUM
 size and differential-response gates. Local legacy twins remain mandatory for
 recovery; repeated promotion needs about 45.2 GB for two complete pairs before

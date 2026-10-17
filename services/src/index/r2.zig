@@ -34,7 +34,7 @@ fn rcloneBin() []const u8 {
     return "rclone";
 }
 
-pub const Error = error{ MissingR2Config, RcloneFailed };
+pub const Error = error{ MissingR2Config, RcloneFailed, Canceled };
 
 /// rclone remote handle: the bucket name + the path to the written config.
 /// Both fields are process-lifetime stable (bucket points into libc environ,
@@ -69,6 +69,7 @@ pub fn configure(gpa: Allocator) Error!Config {
     defer gpa.free(content);
 
     writeConfig(content) catch |err| {
+        if (err == error.Canceled) return error.Canceled;
         log.err("failed to write rclone config: {s}", .{@errorName(err)});
         return Error.RcloneFailed;
     };
@@ -91,10 +92,17 @@ fn run(argv: []const []const u8) Error!void {
         .stdout = .inherit,
         .stderr = .inherit,
     }) catch |err| {
+        if (err == error.Canceled) return error.Canceled;
         log.err("rclone spawn failed: {s}", .{@errorName(err)});
         return Error.RcloneFailed;
     };
+    const child_id = child.id;
     const term = child.wait(io) catch |err| {
+        if (err == error.Canceled) {
+            child.id = child_id;
+            child.kill(io);
+            return error.Canceled;
+        }
         log.err("rclone wait failed: {s}", .{@errorName(err)});
         return Error.RcloneFailed;
     };
