@@ -241,7 +241,7 @@ recipe skipped authenticated admin-override checks (no `TYPEAHEAD_SECRET`)
 and the optional comparison benchmark; those are not claimed as verified here. The public
 freshness endpoint still reports healthy legacy build `b1792141282-189b` with a
 known snapshot age. The pre-fix Worker version remains available, but use this
-new version as the routing-switch base so rollback retains the monitoring fix.
+latest reconciled version below as the routing-switch base so rollback retains the monitoring fix.
 
 ### Fresh-volume recovery target — October 17
 
@@ -427,3 +427,25 @@ sizes and hashes on each machine. Cleanup must remove these three machines and
 volumes, plus the original latency machine, after qualification evidence is
 preserved. Do not delete the app if the recovery machine has become the serving
 backend; retain that machine and its volume through the production rollout gates.
+
+### Worker reconciliation — October 17, 05:59 UTC
+
+The later stats deployment `9087d1fd-1364-409e-a6ef-6b5d737ff57c`
+overwrote the freshness parser fix. Version
+`2564108f-c5c7-4d2b-9c78-e5031bb4e232` restores it while preserving that
+exact stats page. The isolated release differs from `/tmp/typeahead-stats-release`
+only in `freshness.ts` and its test; no search route or PDS changes were shipped.
+All 97 unit tests, typechecking and lint of the affected files passed.
+
+The initial smoke run failed the labeled-actor inclusion check for
+`jcsalterego.bsky.social`. Follow-up exact-handle queries returned the actor
+from both public aliases and the unchanged legacy backend with identical bodies.
+A complete smoke rerun passed; the original transient miss is not explained or
+erased. Admin override checks, Turso query-plan checks and comparison remained
+skipped in this isolated release. Readiness verified legacy build
+`b1792141282-189b` with 260-second lag; public freshness reported healthy.
+
+Use this reconciled version as the reverse-routing base, refreshing the active
+deployment immediately before staging a binding change. The earlier reverse
+command was a dry run only; no route reversal has yet been exercised.
+See [deployment evidence](../evals/compact-worker-reconciliation.json).
