@@ -586,3 +586,30 @@ cutover, reconcile only the freshness parser with the latest approved release
 archive, verify the source diff and deployment, then refresh the reverse target.
 The 224 XRPC checks remain evidence for the explicitly recorded `2564108f…`
 source, not a blanket verification of subsequent deployments.
+
+### Private replacement preparing live replay — October 17, 06:32 UTC
+
+After both recovery drills and the alias checks passed, machine `781e732c264678`
+was updated in place to run the pinned final image with pool size 8 and a fresh
+overlay at `/data/live-overlay/overlay.db`. The fixture overlay remains under
+`/data/disaster-current-20261017/overlay.db` and is not used for live replay.
+The independently restored snapshot pair remains the input. The R2 namespace
+is pinned to the protected checkpoint; the root production pointer is untouched.
+
+Turso credentials from the existing encrypted store were staged without
+restarting qualification machines; only the recovery machine was updated.
+No public services are configured. `ADMIN_SECRET` is not yet configured on this
+app, so authenticated inline-refresh integration still needs preparation before
+cutover. Its restart policy is on-failure, at most ten retries.
+[Machine configuration](../evals/compact-private-replacement-config.json) contains
+no credential values. Curl was installed only for private inspection; it is not
+a runtime dependency or a change to the pinned image.
+
+The [bounded admission observer](../evals/compact-observe-private-replacement.py)
+requires the exact build, attached/readiness state, nonempty corpus, <=600-second
+known sync lag, completed overlay compaction, the rank-one probe, and a successful
+full sync-pass log after this boot. A recent partial-page watermark alone cannot
+prove that the unsearchable/tombstone phases completed. It runs for at most two
+hours and records failed/unknown observations; a deadline does not restart the
+machine. Initial checks correctly rejected the unattached snapshot. Live catch-up
+has not yet been claimed complete.

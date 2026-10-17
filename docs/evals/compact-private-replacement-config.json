@@ -1,0 +1,39 @@
+{
+  "init": {
+    "cmd": [
+      "sh",
+      "-c",
+      "export INDEX_R2_BUCKET=\"${INDEX_R2_BUCKET}/releases/compact-candidate-38e0a27/checkpoint-b1792141282-189b\"; exec /app/typeahead-ingester"
+    ]
+  },
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 4,
+    "memory_mb": 2048
+  },
+  "mounts": [
+    {
+      "encrypted": true,
+      "path": "/data",
+      "size_gb": 60,
+      "volume": "vol_rnzg2g0gkko1lmpr",
+      "name": "compact_recovery_data"
+    }
+  ],
+  "image": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+  "restart": {
+    "policy": "on-failure",
+    "max_retries": 10
+  },
+  "dns": {},
+  "env": {
+    "MODE": "search",
+    "READ_POOL_SIZE": "8",
+    "INDEX_BUILD_ROOT": "/data/disaster-current-20261017",
+    "LOCAL_DB_PATH": "/data/live-overlay/overlay.db",
+    "SQLITE_TMPDIR": "/data/live-overlay/tmp",
+    "PORT": "8080",
+    "INDEX_POLL_SECS": "300",
+    "INDEX_LATEST_KEY": "compact.json"
+  }
+}
