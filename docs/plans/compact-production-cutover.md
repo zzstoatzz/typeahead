@@ -61,7 +61,14 @@ clears the child ID without reaping it; retain the ID for explicit child cleanup
 The first repair exited but leaked the child and was rejected by this check.
 A macOS lifecycle run also failed all five SIGTERM cases and is not claimed as
 passing; Linux is the deployed runtime. Native unit checks passed (142 passed,
-4 skipped). Full-size reload/recovery reruns are in progress.
+4 skipped). The final repair `cc2d5a1` also passed all seven Linux recovery tests without
+skips ([log](../evals/compact-cancel-fixed-recovery.log.gz)) and the
+[full-size live reload drill](../evals/compact-cancel-fixed-hot-reload.json):
+352,382 verified concurrent reads while switching to compact, 10,185 while
+switching back, 8,000 exact responses before and after, and clean SIGTERM exit.
+This is correctness/recovery evidence, not matched latency acceptance.
+The replacement image is packaged and pushed, but not deployed to Fly yet;
+its immutable digests are in the release evidence JSON.
 The superseded cold controller and queued compatibility controller were stopped;
 completed and interrupted trials are preserved. The replacement requires its own qualification; existing results
 remain associated with `38e0a27`. Production routing remains unchanged.

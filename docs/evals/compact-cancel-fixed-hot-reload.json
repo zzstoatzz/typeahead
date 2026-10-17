@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "transitions": [
+    {
+      "to": "compact",
+      "seconds": 76.23196698096581,
+      "verified_reads": 352382
+    },
+    {
+      "to": "baseline",
+      "seconds": 3.7957042569760233,
+      "verified_reads": 10185
+    }
+  ],
+  "reader_counts": [
+    51891,
+    51675,
+    51489,
+    51942,
+    51904,
+    51933,
+    51744
+  ],
+  "responses_before_and_after": 8000,
+  "mutations": 60,
+  "diagnostic_p95_ms": 2.985951956361532,
+  "latency_acceptance_claimed": false,
+  "scope": "Actual R2 pointer-driven live format switches with seven concurrent readers; same full corpus and overlay; cached immutable artifacts. Not a matched performance campaign."
+}

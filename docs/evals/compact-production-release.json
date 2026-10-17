@@ -21,7 +21,7 @@
     "assess_release.py": "0e3f24b4d78d5c1e8ba71c6ba64b297ceedf4891a611426567004f5128ae74e4"
   },
   "mode": "4 shared CPUs, 2048 MB, no swap; frozen October 8 corpus; 60 randomized rounds with two legacy controls, same strict gates as warm campaign",
-  "status": "Cutover held after original candidate shutdown failure. Linux cancellation regression fixed and passed; full-size reload and recovery reruns in progress. Original cold and compatibility controllers stopped as superseded.",
+  "status": "Replacement cc2d5a1 passes Linux lifecycle, seven recovery tests, and full-corpus live format switching with clean shutdown. Packaged/pushed, not deployed. Warm/cold/compatibility/matched reload performance and fresh-volume/live routing gates remain.",
   "release_process_tests": {
     "passed": 7,
     "skipped": 0,
@@ -212,6 +212,20 @@
       "skipped": 4
     },
     "evidence": "compact-r2-cancel-fixed.log.gz",
-    "qualification": "pending"
+    "qualification": "pending",
+    "source": "cc2d5a1",
+    "image": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017",
+    "platform_digest": "sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+    "index_digest": "sha256:a6ea775d48c3e8ca95c19d09c3b669879f2bda74fb3a66591b1ec5aa1751aa4f",
+    "linux_recovery": {
+      "passed": 7,
+      "skipped": 0,
+      "evidence": "compact-cancel-fixed-recovery.log.gz"
+    },
+    "hot_reload": {
+      "passed": true,
+      "evidence": "compact-cancel-fixed-hot-reload.json",
+      "latency_acceptance_claimed": false
+    }
   }
 }
