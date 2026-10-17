@@ -408,3 +408,22 @@ restored artifacts rather than the earlier host-local fixture. Its controller is
 passed. Before clearing fixture overlays or preparing this machine for live
 traffic, require **both** restore result files to pass and both drill processes
 to have exited.
+
+## Parallel cold qualification
+
+On October 17, before any replacement cold trial had begun, the run switched to
+the protocol's previously frozen four-machine amendment. Every machine has the
+same candidate image, four shared CPUs, 2048 MiB, no swap, and a 60 GB volume.
+Round `r` belongs to shard `r % 4`; its SQLite control, compact trial, and second
+SQLite control remain together. Workload, randomization, CPU-credit/throttling
+guards, and acceptance thresholds are unchanged. All 180 trials must pass
+validity and be assessed together. The same arrangement is queued for exact
+legacy-reader comparison only after the combined cold gate passes.
+
+Additional temporary resources are listed in the
+[campaign evidence](../evals/compact-cancel-fixed-campaigns.json). Their
+volumes have scheduled snapshots disabled. Artifact preparation verifies full
+sizes and hashes on each machine. Cleanup must remove these three machines and
+volumes, plus the original latency machine, after qualification evidence is
+preserved. Do not delete the app if the recovery machine has become the serving
+backend; retain that machine and its volume through the production rollout gates.

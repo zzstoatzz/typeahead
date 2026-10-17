@@ -15,7 +15,39 @@
     "trials": 180,
     "harness": "unchanged release_assay.py; 4 shared CPUs, 2048 MiB, no swap; same frozen artifacts; pool8; credit >=48000 and no throttle increment",
     "controller_sha256": "793f3f9bce922740e29fc053e661ec26031f122dde1794450055b7dd63937980",
-    "controller_pid": 80532
+    "machines": [
+      {
+        "shard": 0,
+        "machine": "d895206f9ed638",
+        "volume": "vol_4912m2168o2e2w3r",
+        "name": "compact-candidate"
+      },
+      {
+        "shard": 1,
+        "machine": "0803912bd11018",
+        "volume": "vol_re1wj6n3gx30xdo4",
+        "name": "compact-qual-1",
+        "zone": "1b96"
+      },
+      {
+        "shard": 2,
+        "machine": "d895202a11d558",
+        "volume": "vol_40ojnm9q7n8kd7m4",
+        "name": "compact-qual-2",
+        "zone": "d9fa"
+      },
+      {
+        "shard": 3,
+        "machine": "8716d4b05dd978",
+        "volume": "vol_v3gpk390jwdlmqw4",
+        "name": "compact-qual-3",
+        "zone": "7077"
+      }
+    ],
+    "round_assignment": "round modulo 4; all three variants in a round remain on the same machine",
+    "preexisting_trials_when_sharding_enabled": 0,
+    "protocol_reference": "Previously frozen bounded_parallel_amendment in qualification/protocol-cache.json",
+    "combined_assessment": "Exactly 180 valid trials across all four shards; assess once together. Compatibility starts only if combined cold gate passes."
   },
   "acceptance": "Unchanged strict five-phase paired p95 upper CI <=1; secondary regressions unresolved fail; no latency-based exclusion or automatic retry. Every trial fresh for this binary.",
   "production_routing_changed": false
