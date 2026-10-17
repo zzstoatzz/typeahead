@@ -59,8 +59,7 @@ flowchart LR
   (they do not correct a stale handle; the ingester does). The hourly Worker cron handles
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
-Compact snapshots are not yet serving production (status verified October 17,
-2026). Candidate `cc2d5a1` has passed independent disaster restoration, legacy
+Compact snapshots have served production since October 17, 2026, 19:37 UTC. Candidate `cc2d5a1` has passed independent disaster restoration, legacy
 binary rollback, complete live replay, restart admission, the isolated ranking
 suite, and 224 current-Worker alias/cache checks. Its complete 180-trial cold
 campaign passed all primary gates; compact startup took about 205 seconds, so
@@ -72,18 +71,21 @@ confidence bound is +3.5%. Native matched reload qualification passed all 60 tri
 regression flags.
 The unmodified legacy performance control crashed during concurrent reads;
 that comparison is incomplete, with its failure retained. Nate accepted these
-two exceptions on October 17, conditional on the now-passing reload gate. Production cutover,
-scheduled compact publication, daily observation, and final cleanup are pending.
+two exceptions on October 17, conditional on the now-passing reload gate.
+The production cutover passed freshness, alias, and full smoke checks. Scheduled
+compact publication, daily observation, and final cleanup remain pending.
 See the [cutover runbook](docs/plans/compact-production-cutover.md) for current
 inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-rollout.md)
 for acceptance criteria. Earlier candidates' passing results do not qualify this
 replacement.
 
-The latest recorded approved Worker is `f109afd8…`; its compact-ID freshness
-parser fix is prepared and tested locally, not deployed. Refresh the active
-Worker before shipping to preserve concurrent stats changes. Four completed Fly
-qualification machines are stopped with volumes retained; the isolated replacement
-and legacy production backend remain running.
+Worker `0b97a76f…` routes to `typeahead-search-compact.fly.dev` and includes the
+compact-ID freshness fix while preserving the approved stats page. Worker
+`44402a8f…` is the tested reverse target; the legacy `typeahead-search` backend
+remains running and synchronized. Four completed Fly qualification machines are
+stopped with volumes retained. The compact service still uses its protected
+checkpoint pending the scheduled-publisher transition; do not delete its app or
+use the legacy `services/fly.search.toml` configuration to update production.
 
 The current-generation compact pair is 6.96 GB, over 50% smaller than the original
 and VACUUM reference. Local legacy twins remain mandatory for recovery; repeated

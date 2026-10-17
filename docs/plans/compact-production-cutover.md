@@ -1,9 +1,10 @@
 # Compact production cutover
 
-Status: preparation, 2026-10-17 UTC. This runbook supplements the
+Status: production cutover verified, 2026-10-17 19:37 UTC. This runbook supplements the
 [snapshot rollout gates](snapshot-compaction-rollout.md); it does not waive them.
 Nate authorized production rollout, disaster rollback, and eventual cleanup on
-October 16. Production traffic has not changed.
+October 16. Production traffic now uses the compact backend; scheduled publication,
+daily observation, and final cleanup remain outstanding.
 
 ## Verified starting state
 
@@ -43,7 +44,8 @@ below retain the full chronology, including superseded attempts.
 | Uncapped warm campaign | Inconclusive at the unchanged strict gate; +3.5% mixed-read p95 upper confidence bound |
 | Native matched reload | Passed all 60 trials; p95 upper confidence ratio 0.96794, no secondary flags |
 | Deployed legacy performance comparison | Old control crashed; incomplete, not passing |
-| Production routing, scheduled compact cycle, daily observation, final cleanup | Not completed |
+| Production routing | Verified at 19:37 UTC; legacy backend retained |
+| Scheduled compact cycle, daily observation, final cleanup | Not completed |
 
 Four completed qualification machines are stopped. The isolated replacement
 and legacy production backend remain running. Nate approved the warm-latency and unavailable legacy-comparison exceptions on
@@ -837,3 +839,26 @@ authorized safe cutover with rollback retained, verification, and cleanup. These
 are recorded exceptions; the warm assessment remains inconclusive and the crashed
 legacy comparison remains incomplete. Other gates and cleanup conditions are
 unchanged. Production routing has not yet changed at this checkpoint.
+
+### Production cutover verified — October 17, 19:37 UTC
+
+[Cutover evidence](../evals/compact-production-cutover/cutover-result.json) records
+fresh admission for both backends, five before/after alias probes, control-plane
+versions, and the expected compact build through public freshness. The full
+[post-cutover smoke gate](../evals/compact-production-cutover/cutover-smoke.log)
+passed, including authenticated admin operations and live database query plans.
+These few latency probes are operational checks, not a new benchmark campaign.
+
+Worker `44402a8f-5a39-4079-9bc5-f63ac747f366` first deployed the tested freshness
+fix over the approved f109 source and passed smoke. Version
+`0b97a76f-4836-4756-97a0-d3fa5b4a210f` changes only `SEARCH_BACKEND_URL` to
+`https://typeahead-search-compact.fly.dev` and serves 100% of traffic. Preserve the
+running legacy backend and use the rehearsed rollback command with `44402a8f…`
+after checking for intervening changes. Immediate checks passed, so no rollback
+was executed. Both backends retain their existing volumes.
+
+The earliest full daily observation completes October 18 at 19:37 UTC. Cleanup
+still requires the complete scheduled compact publication and fresh protected
+paired artifacts, not just this elapsed interval. Retain protected rollback
+artifacts through at least October 24, 19:37 UTC; confirm the newly protected
+snapshot remains within its seven-day replay window throughout that period.

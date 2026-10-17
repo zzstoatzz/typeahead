@@ -1,0 +1,125 @@
+{
+  "base_version": "44402a8f-5a39-4079-9bc5-f63ac747f366",
+  "old_backend": "https://typeahead-search.fly.dev",
+  "new_backend": "https://typeahead-search-compact.fly.dev",
+  "started_at": 1792265818.355007,
+  "status": "cutover_verified",
+  "legacy_readiness": {
+    "ready": true,
+    "failures": [],
+    "build_id": "b1792141282-189b",
+    "sync_lag_s": 61,
+    "actor_count": 12560923,
+    "snapshot_age_s": null
+  },
+  "compact_readiness": {
+    "ready": true,
+    "failures": [],
+    "build_id": "compact-b1792141282-189b",
+    "sync_lag_s": 162,
+    "actor_count": 12560923,
+    "snapshot_age_s": 124580.20333313942
+  },
+  "before_probes": [
+    {
+      "query": "zzstoatzz.io",
+      "canonical_ms": 557.3382080037845,
+      "alias_ms": 293.70475000177976,
+      "actors": 3
+    },
+    {
+      "query": "nate",
+      "canonical_ms": 101.17999999783933,
+      "alias_ms": 109.18691600090824,
+      "actors": 5
+    },
+    {
+      "query": "paul",
+      "canonical_ms": 292.5402499968186,
+      "alias_ms": 196.8981249956414,
+      "actors": 5
+    },
+    {
+      "query": "sky",
+      "canonical_ms": 313.22366699168924,
+      "alias_ms": 178.96416599978693,
+      "actors": 5
+    },
+    {
+      "query": "dan",
+      "canonical_ms": 410.62379199138377,
+      "alias_ms": 125.9917499992298,
+      "actors": 5
+    }
+  ],
+  "before_freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 67,
+    "snapshot_age_s": 124542,
+    "build_id": "b1792141282-189b",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "new_version": "0b97a76f-4836-4756-97a0-d3fa5b4a210f",
+  "switched_at": 1792265839.665154,
+  "after_freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 184,
+    "snapshot_age_s": 124558,
+    "build_id": "compact-b1792141282-189b",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "after_probes": [
+    {
+      "query": "zzstoatzz.io",
+      "canonical_ms": 288.5849159938516,
+      "alias_ms": 185.4766250035027,
+      "actors": 3
+    },
+    {
+      "query": "nate",
+      "canonical_ms": 1110.649458001717,
+      "alias_ms": 120.2926660043886,
+      "actors": 5
+    },
+    {
+      "query": "paul",
+      "canonical_ms": 299.50674998690374,
+      "alias_ms": 144.92025000799913,
+      "actors": 5
+    },
+    {
+      "query": "sky",
+      "canonical_ms": 206.79554100206587,
+      "alias_ms": 113.60704198887106,
+      "actors": 5
+    },
+    {
+      "query": "dan",
+      "canonical_ms": 333.9131250104401,
+      "alias_ms": 311.95245900016744,
+      "actors": 5
+    }
+  ],
+  "active_deployment": {
+    "id": "56231306-79b3-4fb7-9f6d-236e7ad41d9c",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "Admit qualified compact backend with live legacy rollback retained",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "0b97a76f-4836-4756-97a0-d3fa5b4a210f",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-17T19:37:18.732168Z"
+  },
+  "verified_at": 1792265863.040289
+}
