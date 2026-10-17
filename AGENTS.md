@@ -67,7 +67,7 @@ one command each; `just perf` runs them all in order. Results land in
 | `just index-status` | **corpus scale** — `build_id`, `actor_count`, `prefix_count`, `normalize_version` | actor_count tracks the live corpus; build_id matches the deployed snapshot |
 
 Defaults target prod (`typeahead.waow.tech`) and the search service
-(`typeahead-search.fly.dev`); `smoke`/`bench-ranking`/`index-status` take a
+(`typeahead-search-compact.fly.dev`); `smoke`/`bench-ranking`/`index-status` take a
 positional url, `bench`/`bench-search` take `--url X`. Add `--quick` /
 `--no-stress` to `bench`/`bench-search` for a fast pass. `bench-search` skips stress by
 default so it doesn't hammer the single fly box.
@@ -104,7 +104,11 @@ regression is pinned). Extend it, don't prune it.
 
 - `just deploy-worker` — `wrangler deploy` **then** the smoke suite. A deploy that breaks
   shape, ranking, or the admin API fails loudly here. `deploy-worker-only` is the escape hatch.
-- `just deploy-search` / `just deploy-ingest` — the Zig fly roles (ingest + search).
+- `just deploy-ingest` deploys the Zig ingestion role. During the October 17 compact
+  cutover, `just deploy-search` is guarded: `services/fly.search.toml` describes the
+  retained legacy rollback backend. Restore its normal recipe only after the
+  production compact service follows scheduled publication, using its verified
+  configuration. See `docs/plans/compact-production-cutover.md`.
 - **the snapshot builder (`MODE=indexer`) is NOT a Fly deploy.** It runs on the home box
   (heavypad) as the `typeahead-index` Prefect deployment in the `my-prefect-server` repo,
   scheduled every 3 days (09:00 UTC): reads Turso → builds the prefix-index snapshot →

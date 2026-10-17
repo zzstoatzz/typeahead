@@ -180,7 +180,7 @@ ON CONFLICT(did) DO UPDATE SET
   updated_at = unixepoch()"""
 
 
-APPB_DEFAULT = "https://typeahead-search.fly.dev"
+APPB_DEFAULT = "https://typeahead-search-compact.fly.dev"
 
 
 def collect_benchmark_dids(appb_url=APPB_DEFAULT):

@@ -49,9 +49,10 @@ deploy-worker-only:
 deploy-ingest:
     cd services && fly deploy -c fly.toml
 
-# deploy the search service (snapshot + overlay serving). prod read path.
+# Guard the retained rollback backend until the compact publisher transition completes.
 deploy-search:
-    cd services && fly deploy -c fly.search.toml
+    @echo "Search deployment is guarded during compact cutover; see docs/plans/compact-production-cutover.md."
+    @exit 1
 
 # ─── benchmarking & health ───────────────────────────────────────────────
 # How to assess performance. Four layers, run from here. See AGENTS.md
@@ -65,7 +66,7 @@ deploy-search:
 #   just perf           run all of the above in sequence
 
 WORKER_URL := "https://typeahead.waow.tech"
-SEARCH_URL := "https://typeahead-search.fly.dev"
+SEARCH_URL := "https://typeahead-search-compact.fly.dev"
 
 # correctness gate against the public API (shape, ranking, moderation, admin)
 smoke url=WORKER_URL:

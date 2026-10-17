@@ -25,7 +25,7 @@ usage:
     ./scripts/bench.py --queries nate boorkie        # specific queries only
     ./scripts/bench.py --ranking                     # ranking mode via worker
     ./scripts/bench.py --ranking --appb-direct \
-        --url https://typeahead-search.fly.dev       # ranking + /debug/search
+        --url https://typeahead-search-compact.fly.dev       # ranking + /debug/search
 """
 
 import argparse

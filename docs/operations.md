@@ -1,5 +1,15 @@
 # operations / edge gotchas
 
+As of October 17, 2026, 19:37 UTC, production search is served by
+`typeahead-search-compact`; `typeahead-search` remains the synchronized rollback
+backend. The compact service is pinned to a protected checkpoint until the next
+scheduled compact publication is verified. During this transition, the deployment
+recipe refuses to deploy the legacy configuration, and production diagnostic and
+backfill defaults target the compact service. Historical restart and promotion
+instructions below refer to the legacy layout; use the
+[cutover runbook](plans/compact-production-cutover.md) for current operations.
+
+
 Operational notes that aren't obvious from the code, because the relevant
 config lives in Cloudflare/Fly dashboards, not the repo.
 

@@ -17,7 +17,7 @@ def serving_healthy(client):
         ingest_response = client.get('https://typeahead-ingester.fly.dev/health', headers={'User-Agent': 'typeahead-recovery/1'}, timeout=5)
         ingest_response.raise_for_status()
         ingest = ingest_response.json()['ingest']
-        search_response = client.get('https://typeahead-search.fly.dev/health', headers={'User-Agent': 'typeahead-recovery/1'}, timeout=5)
+        search_response = client.get('https://typeahead-search-compact.fly.dev/health', headers={'User-Agent': 'typeahead-recovery/1'}, timeout=5)
         search_response.raise_for_status()
         search = search_response.json()
         now = time.time()
