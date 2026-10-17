@@ -169,7 +169,10 @@ The active Worker deployment is `165af368-6b74-4dc3-873e-8f233293ef57`,
 serving version `5daf6f08-c3d6-4cf4-bf9a-4f56efdef979` at 100%. It includes
 the independently shipped mobile stats fix. `SEARCH_BACKEND_URL` is a secret
 binding. Preserve this Worker code when switching the backend; do not deploy the
-older Worker source from this rollout branch. Before staging a binding-only
+older Worker source from this rollout branch. The migration build ID (`compact-b...`) requires the freshness-parser fix
+recorded with this rollout; the scheduled publisher’s `b...-px05` ID already
+matches the legacy parser. Ship that narrow Worker fix while preserving the
+stats page before switching routing. Before staging a binding-only
 version, refresh active and latest-uploaded versions: Wrangler's version-secret
 operation copies the latest uploaded version, which need not be active. Record
 both old and replacement versions and rehearse reversal before production.

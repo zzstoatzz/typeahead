@@ -60,6 +60,8 @@ flowchart LR
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
 Compact snapshot rollout remains unshipped (status verified 2026-10-17).
+The locally tested Worker freshness parser also recognizes the migration
+generation’s `compact-b...` ID, preserving snapshot-age alerts at cutover.
 The inline-close candidate's 60-round pinned warm run completed on October 9
 and passed all five p95 gates, with no flagged secondary regressions; reassessment
 on October 16 reproduced the result. See the

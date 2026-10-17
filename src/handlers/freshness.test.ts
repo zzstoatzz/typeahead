@@ -70,6 +70,34 @@ describe("freshness", () => {
     expect(f.reasons.join(" ")).toContain("old");
   });
 
+  test("legacy and compact snapshots retain age alerts through real HTTP", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    let buildId = "";
+    const server = Bun.serve({
+      hostname: "127.0.0.1", port: 0,
+      fetch(request) {
+        const path = new URL(request.url).pathname;
+        if (path === "/health") return Response.json({ ready: true, sync_lag_s: 30 });
+        if (path === "/index/status") return Response.json({ build_id: buildId });
+        return Response.json({ actors: [{ handle: "zzstoatzz.io" }] });
+      },
+    });
+    try {
+      for (const prefix of ["b", "compact-b"]) {
+        for (const age of [3600, 5 * 24 * 3600]) {
+          buildId = `${prefix}${now - age}-21fc-px05`;
+          const result = await measureFreshness(fakeEnv({ SEARCH_BACKEND_URL: server.url.origin }));
+          expect(result.snapshot_age_s).toBeGreaterThanOrEqual(age);
+          expect(result.snapshot_age_s).toBeLessThan(age + 10);
+          expect(result.stale).toBe(age > 4 * 24 * 3600);
+          expect(result.build_id).toBe(buildId);
+        }
+      }
+    } finally {
+      server.stop(true);
+    }
+  });
+
   test("a serving path that cannot find the probe handle is not ok", async () => {
     backend({ lag: 30, findsSelf: false });
     const f = await measureFreshness(env);

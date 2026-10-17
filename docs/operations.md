@@ -169,7 +169,9 @@ removal), snapshot age, and a live query through the real serving path. Check it
 because the search service exported no telemetry at all until 2026-07-31.
 
 Thresholds: overlay lag warns at 10 min, stale at 30 min (sync runs every 5 min,
-edge cache is 60s). Snapshot stale at 4 days against a 3-day rebuild cadence.
+edge cache is 60s). Snapshot stale at 4 days against a 3-day rebuild cadence. The compact rollout
+adds age parsing for `compact-b<epoch>-...` IDs alongside legacy `b<epoch>-...`
+IDs; this Worker change must ship before compact backend cutover.
 
 The three layers and how to check each:
 

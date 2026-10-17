@@ -37,9 +37,9 @@ export type Freshness = {
   reasons: string[];
 };
 
-/** build ids look like "b1785229391-21fc" — the epoch seconds of the build */
+/** Legacy and compact build IDs retain the source build epoch. */
 function snapshotAge(buildId: string | null): number | null {
-  const m = buildId?.match(/^b(\d{10})-/);
+  const m = buildId?.match(/^(?:compact-)?b(\d{10})-/);
   if (!m) return null;
   return Math.floor(Date.now() / 1000) - parseInt(m[1]!, 10);
 }
