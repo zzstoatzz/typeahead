@@ -59,17 +59,19 @@ flowchart LR
   (they do not correct a stale handle; the ingester does). The hourly Worker cron handles
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
-Compact snapshot rollout is in development (2026-10-09); production still uses
-SQLite snapshots. See the [rollout gates](docs/plans/snapshot-compaction-rollout.md)
-and [full-corpus experiment](docs/evals/flat-prefix-compaction.md). Release
-qualification and deployment remain outstanding: cold reads passed, but warm
-concurrency and the legacy-path diagnostic failed their gates. See the
-[latest qualification evidence](docs/evals/compact-cache-qualification.json).
+Compact snapshot rollout remains unshipped (status verified 2026-10-16).
+The inline-close candidate's 60-round pinned warm run completed on October 9
+and passed all five p95 gates, with no flagged secondary regressions; reassessment
+on October 16 reproduced the result. See the
+[warm qualification evidence](docs/evals/compact-inline-warm/gate.json) and
+[rollout gates](docs/plans/snapshot-compaction-rollout.md). Earlier failed runs
+remain recorded; this warm pass does not complete the remaining release and
+production rollout gates.
 
-The current candidate also closes HTTP connections handled inline when the task
-pool is saturated, preventing idle keep-alive connections from blocking the
-accept loop. The pooled connection behavior is unchanged. This fix passes
-8-client and 32-client process checks and still awaits performance qualification.
+The temporary qualification Fly app and both 60 GB volumes were deleted on
+October 16 after preserving evidence. Production was not changed. The candidate
+closes inline HTTP connections when the task pool is saturated, preventing idle
+keep-alive connections from blocking the accept loop; pooled behavior is unchanged.
 
 The offline converter uses a Zig shared library for packing and exhaustive
 record verification; Python validates manifests and stages the finished pair.

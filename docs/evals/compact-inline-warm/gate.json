@@ -1,0 +1,128 @@
+{
+  "input_sha256": "ac69159b61f659ef83a13dd1e3bf7f453466d9f10fe37d36de0db57568909fab",
+  "variant": "compact",
+  "rounds": 60,
+  "primary": {
+    "restart_sqlite_cache": {
+      "median_ratio": 0.6502532298682406,
+      "lower_one_sided_95": 0.6223102184209826,
+      "upper_one_sided_95": 0.6707074710991605
+    },
+    "warm": {
+      "median_ratio": 0.8087284640291124,
+      "lower_one_sided_95": 0.7826928106941728,
+      "upper_one_sided_95": 0.8298722478787603
+    },
+    "broad": {
+      "median_ratio": 0.8254318707652817,
+      "lower_one_sided_95": 0.8111558668694125,
+      "upper_one_sided_95": 0.832913121991127
+    },
+    "concurrency8": {
+      "median_ratio": 0.8550670041049857,
+      "lower_one_sided_95": 0.8266296668866993,
+      "upper_one_sided_95": 0.867018568767456
+    },
+    "mixed_reads": {
+      "median_ratio": 0.9209468641464108,
+      "lower_one_sided_95": 0.9028757026945504,
+      "upper_one_sided_95": 0.9594865766578714
+    }
+  },
+  "secondary": {
+    "restart_sqlite_cache_p99": {
+      "median_ratio": 0.6628088719382893,
+      "lower_one_sided_95": 0.6386694147137366,
+      "upper_one_sided_95": 0.6837226258442359
+    },
+    "warm_p99": {
+      "median_ratio": 0.8160566871858134,
+      "lower_one_sided_95": 0.7985194419822933,
+      "upper_one_sided_95": 0.8379806857043169
+    },
+    "broad_p99": {
+      "median_ratio": 0.8447116665746395,
+      "lower_one_sided_95": 0.8317265264101612,
+      "upper_one_sided_95": 0.8557893712843209
+    },
+    "concurrency8_p99": {
+      "median_ratio": 0.8724246946087288,
+      "lower_one_sided_95": 0.8333886648136951,
+      "upper_one_sided_95": 0.8943529152410274
+    },
+    "mixed_reads_p99": {
+      "median_ratio": 0.9074431629186133,
+      "lower_one_sided_95": 0.8293254474172684,
+      "upper_one_sided_95": 0.9534341780563291
+    },
+    "restart_sqlite_cache_cpu": {
+      "median_ratio": 0.4999999999999894,
+      "lower_one_sided_95": 0.49999999999998923,
+      "upper_one_sided_95": 0.49999999999998956
+    },
+    "warm_cpu": {
+      "median_ratio": 0.8070175438596474,
+      "lower_one_sided_95": 0.7646153846153823,
+      "upper_one_sided_95": 0.8304597701149444
+    },
+    "broad_cpu": {
+      "median_ratio": 0.727272727272728,
+      "lower_one_sided_95": 0.7138130686517781,
+      "upper_one_sided_95": 0.7428571428571373
+    },
+    "concurrency8_cpu": {
+      "median_ratio": 0.7586206896551807,
+      "lower_one_sided_95": 0.7500000000000061,
+      "upper_one_sided_95": 0.7799539170506924
+    },
+    "mixed_writes_p95": {
+      "median_ratio": 0.9758652351111912,
+      "lower_one_sided_95": 0.9451040980004395,
+      "upper_one_sided_95": 0.9960553786954163
+    },
+    "mixed_serving_cpu": {
+      "median_ratio": 0.8749999999999999,
+      "lower_one_sided_95": 0.8541033434650445,
+      "upper_one_sided_95": 0.9090909090909138
+    },
+    "peak_rss": {
+      "median_ratio": 0.16415604632158065,
+      "lower_one_sided_95": 0.16311659346301788,
+      "upper_one_sided_95": 0.16552588006643987
+    }
+  },
+  "primary_pass": true,
+  "secondary_regressions_requiring_investigation": [],
+  "startup_ms_medians": {
+    "baseline": 5449.890192016028,
+    "baseline-control": 5450.532962509897,
+    "compact": 15464.26431753207
+  },
+  "baseline_control_noise": {
+    "restart_sqlite_cache": {
+      "median_ratio": 0.9811213290804264,
+      "lower_one_sided_95": 0.9655447056829403,
+      "upper_one_sided_95": 1.004387768777388
+    },
+    "warm": {
+      "median_ratio": 0.986197627146874,
+      "lower_one_sided_95": 0.9391914955246456,
+      "upper_one_sided_95": 1.0296802054690013
+    },
+    "broad": {
+      "median_ratio": 0.9913341751000322,
+      "lower_one_sided_95": 0.9764366953496434,
+      "upper_one_sided_95": 1.0053361852777338
+    },
+    "concurrency8": {
+      "median_ratio": 1.015640458965509,
+      "lower_one_sided_95": 0.996368158796153,
+      "upper_one_sided_95": 1.0403807369243148
+    },
+    "mixed_reads": {
+      "median_ratio": 0.9823099042952823,
+      "lower_one_sided_95": 0.910081202578807,
+      "upper_one_sided_95": 1.037569088669733
+    }
+  }
+}

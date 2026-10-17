@@ -463,5 +463,36 @@
         }
       }
     }
+  },
+  "warm_qualification": {
+    "completed": "2026-10-09",
+    "reverified": "2026-10-16",
+    "evidence": "compact-inline-warm/gate.json",
+    "input_sha256": "ac69159b61f659ef83a13dd1e3bf7f453466d9f10fe37d36de0db57568909fab",
+    "rounds": 60,
+    "primary_pass": true,
+    "secondary_regressions": [],
+    "scope": "Pinned HeavyPad warm run only; does not establish production rollout acceptance."
+  },
+  "qualification_cleanup": {
+    "date": "2026-10-16 America/Chicago (2026-10-17 UTC)",
+    "app": "typeahead-compact-qual-20261008",
+    "destroyed": true,
+    "machines": [
+      "867547be553ed8",
+      "287e064a7d5738"
+    ],
+    "volumes": [
+      "vol_vlymlo118n6qz3d4",
+      "vol_vlyml0g73zd8oxm4"
+    ],
+    "total_volume_gb": 120,
+    "archives": {
+      "closeout-867547be553ed8.tar.gz": "f3dbb629907a76c4eda793ec87c04ef7579516edd34ed83bc474970db1c10efa",
+      "closeout-287e064a7d5738.tar.gz": "085bc0f19215d7b9f1da81b8a11fc8bb4bce1916b517fe5104af82b11cf1b5a5"
+    },
+    "archive_directory": "/Users/nate/.local/share/typeahead-experiments/release-qualification-20261008",
+    "verification": "Fly app inventory omits app; volume listing returns app not found. Production health ready=true, 12,560,923 actors before cleanup.",
+    "production_changed": false
   }
 }

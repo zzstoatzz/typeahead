@@ -177,6 +177,34 @@ compact/control p95 ratio is 0.9220. This is selection evidence only. The fixed
 placement and unchanged statistical thresholds. Native-client diagnostics also
 remain recorded; switching clients alone did not establish non-regression.
 
+## Qualification closeout — 2026-10-16
+
+The pending pinned warm run actually completed on October 9. Its collector saved
+all 180 trials (60 rounds, three variants); the branch had not recorded them.
+Re-running the unchanged assessor with `--warm` on October 16 reproduced the
+[gate](../evals/compact-inline-warm/gate.json) byte-for-byte. All five primary
+p95 upper confidence bounds are below 1; concurrency8 has median ratio 0.8551
+and upper bound 0.8670. No secondary regressions were flagged. The zero-physical-read
+checks pass for every timed read-only phase. CPU placement and candidate binary
+remain those recorded above. Earlier failures remain evidence, not superseded passes.
+
+Reproduce from the repository root:
+
+```sh
+gzip -dc docs/evals/compact-inline-warm/bench-results.json.gz > /tmp/typeahead-inline-warm.json
+python3 docs/evals/compact-inline-warm/assess_release.py /tmp/typeahead-inline-warm.json --warm --output /tmp/typeahead-inline-warm-gate.json
+cmp docs/evals/compact-inline-warm/gate.json /tmp/typeahead-inline-warm-gate.json
+```
+
+Deleted `typeahead-compact-qual-20261008`, its two machines, and its two 60 GB
+volumes after collecting final evidence archives and matching their SHA-256 hashes.
+[Cleanup inventory](../evals/compact-inline-scheduling.json) records the IDs,
+archive locations, and verification. The app no longer appears in Fly's inventory.
+Production routing, snapshots, schedules, and volumes were unchanged. This closes
+the missing warm result and temporary infrastructure costs; it does not complete
+candidate-specific remaining release gates, staged rollout, daily observation,
+or scheduled-cycle/rollback verification described below.
+
 ## Scope and release structure
 
 Port the tested `unified8scratch` reader and conversion into a clean branch from
