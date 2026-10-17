@@ -29,9 +29,9 @@ October 16. Production traffic has not changed.
 
 ## Candidate and evidence
 
-Source `38e0a27` (later rollout commits record evidence), executable SHA-256
+Superseded source `38e0a27` (retained historical evidence), executable SHA-256
 `97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91`.
-The 60-round pinned warm gate passes. Earlier cold and full-size rollback evidence
+Its 60-round pinned warm gate passed. Earlier cold and full-size rollback evidence
 uses older executables and must not be represented as testing this candidate.
 
 On October 17 the exact candidate passed all seven real-process recovery checks
@@ -39,8 +39,8 @@ inside the packaged Fly runtime, including real ENOSPC. Current-generation
 conversion and differential correctness also passed; detailed evidence appears
 below. Earlier incomplete attempts remain recorded in the release evidence.
 The protected legacy source and verified compact output are under
-`/home/stoat/typeahead-release-20261017` on HeavyPad. Isolated R2 publication
-is in progress; no production pointer has changed.
+`/home/stoat/typeahead-release-20261017` on HeavyPad. Isolated R2 publication and protected checkpoint readback are complete; no
+production pointer has changed. The current candidate is `cc2d5a1`, described below.
 
 ### October 17 shutdown failure
 
@@ -67,7 +67,7 @@ skips ([log](../evals/compact-cancel-fixed-recovery.log.gz)) and the
 352,382 verified concurrent reads while switching to compact, 10,185 while
 switching back, 8,000 exact responses before and after, and clean SIGTERM exit.
 This is correctness/recovery evidence, not matched latency acceptance.
-The replacement image is running only on the two isolated Fly machines;
+The replacement image is running only on isolated Fly qualification/recovery machines;
 its immutable digests are in the release evidence JSON. Fresh 60-round warm and
 cold campaigns use the [recorded unchanged settings](../evals/compact-cancel-fixed-campaigns.json).
 The cold campaign waits for the same CPU-credit gate after machine replacement.
@@ -144,9 +144,11 @@ credentials, and test data only after checking references and saving evidence.
 
 ## Remaining execution record
 
-Pending: cold and compatibility candidate gates, release reload/rollback, isolated
-channel publication verification, serving replacement readiness, route rehearsal,
-disaster drill, production cutover, scheduled publication, observation, cleanup. Fill in
+Pending: replacement warm/cold and compatibility gates, matched reload latency,
+serving replacement readiness, route rehearsal, fresh-volume disaster drill,
+production cutover, scheduled publication, observation, cleanup. Native full-size
+reload correctness, protected publication and independent image/source recovery
+have passed as recorded below. Fill in
 exact resources, commands, timestamps, and results as each action completes.
 
 ### Packaged candidate — October 17
