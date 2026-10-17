@@ -232,3 +232,17 @@ response hashes are retained in [compressed evidence](../evals/compact-current-r
 This verifies local format/binary rollback with the real R2 legacy pointer;
 it does not claim fresh-volume restoration or live upstream catch-up. The
 fresh-volume drill waits for both this result and full compact publication.
+
+### Legacy-reader comparison staged — October 17
+
+The unmodified deployed binary (`f82400c6…`) and comparison harness are staged
+on qualification machine `d895206f9ed638`. Its frozen legacy pointer was uploaded
+and read-back verified at `staging/compact-release-20261017/frozen-compat/latest.json`.
+The [pinned protocol](../evals/compact-current-compat-protocol.json) preserves all
+queries, the original paired thresholds, production reader pool sizes (old four,
+candidate eight), CPU-credit checks and no-swap memory limit. The comparison is
+queued after collection and acceptance of all 180 compact cold trials; any failed
+cold trial or gate stops that continuation. No compatibility result is claimed yet.
+The old decoder's known UTF-8 race remains present; the baseline was not patched
+and no queries were removed. Preserve this isolated pointer until evidence is
+collected, then include it in temporary-channel cleanup.

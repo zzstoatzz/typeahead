@@ -1,0 +1,18 @@
+{
+  "frozen_before_measurement": true,
+  "candidate_binary_sha256": "97bef48a1c9de968e08b91635de9e4a29968c0db522d73fb6010ff1d132b2e91",
+  "deployed_binary_sha256": "f82400c65efa59456b3240828da41e496ad2e92532318972fbf9356e226ea920",
+  "protocol": "protocol-cache.json",
+  "protocol_sha256": "9a9f3600e872c83341d4b9e81a9e02d507561f842f5c1ec95095c89e4fabed65",
+  "harness_sha256": {
+    "assay.py": "115a02d24195df2dbf716b2f23efc01a19498c92978237705131975a3c65755b",
+    "compat_assay_pool8.py": "bf4615a7d59d83eb9ac10b5f141f0d2e9b92812a65ea6c579ca04e59d4748d63",
+    "compat_controller.py": "9674bc3d5c3276a234e800e6688bb7a623736a2e811cc047dff412dcb56dbe97",
+    "assess_release.py": "0e3f24b4d78d5c1e8ba71c6ba64b297ceedf4891a611426567004f5128ae74e4"
+  },
+  "app": "typeahead-search-compact",
+  "machine": "d895206f9ed638",
+  "pointer": "staging/compact-release-20261017/frozen-compat/latest.json",
+  "status": "staged; correctness and 60-round latency comparison await passing compact cold gate",
+  "deployed_decoder": "Unmodified deployed executable; prior UTF-8 decoder race remains a known possible failure. No queries excluded."
+}
