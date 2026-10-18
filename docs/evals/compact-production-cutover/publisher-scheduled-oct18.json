@@ -1,0 +1,32 @@
+[
+  {
+    "id": "4b12f29a-3e31-42e8-8273-de7b5bae0ff9",
+    "state_type": "SCHEDULED",
+    "expected_start_time": "2026-10-25T09:00:00.000000Z",
+    "auto_scheduled": true,
+    "parameters": {
+      "ref": "compact-candidate-cc2d5a1",
+      "snapshot_format": "compact"
+    }
+  },
+  {
+    "id": "bdd64522-70c4-4356-aaf6-096c03f0bb13",
+    "state_type": "SCHEDULED",
+    "expected_start_time": "2026-10-22T09:00:00.000000Z",
+    "auto_scheduled": true,
+    "parameters": {
+      "ref": "compact-candidate-cc2d5a1",
+      "snapshot_format": "compact"
+    }
+  },
+  {
+    "id": "e477782a-f15d-472f-93f3-d10aef781b23",
+    "state_type": "SCHEDULED",
+    "expected_start_time": "2026-10-19T09:00:00.000000Z",
+    "auto_scheduled": true,
+    "parameters": {
+      "ref": "compact-candidate-cc2d5a1",
+      "snapshot_format": "compact"
+    }
+  }
+]

@@ -921,3 +921,38 @@ queued runs with compact parameters; [current schedule evidence](../evals/compac
 identifies October 19 09:00 UTC run `bbd0eb3c-9d3e-4387-b8f2-e983a531fb56`.
 The prior CI infrastructure blocker is resolved. Scheduled publication, daily
 observation, pointer transition, and recovery-gated cleanup remain outstanding.
+
+### Daily traffic review — October 18
+
+The exact October 17 19:40 to October 18 19:40 UTC window contains records in
+all 288 five-minute buckets: 14,902 search HTTP 200s, 205 search HTTP 429s, ten
+search HTTP 400s, and no HTTP 5xx responses across endpoints. The 429s occurred
+in eight buckets (03:00 and 13:35–14:05 UTC); the Worker has an explicit search
+rate limiter. Caller attribution was not established, so do not describe every
+request as successful or infer capacity from this observation. See
+[daily counters](../evals/compact-production-cutover/daily-observation-oct18.json).
+
+Fresh readiness checks passed for both backends: compact overlay lag 226 seconds,
+legacy 195 seconds, expected paired build IDs, exact-handle rank one, and
+12,560,923 snapshot actors. Compact snapshot age was 212,792 seconds, inside the
+seven-day fresh-restore window. Four qualification machines remain stopped and
+the serving compact machine remains started. No serving configuration changed.
+
+The October 17 live performance investigation found that compact has no
+LOGFIRE_TOKEN and emits no compact service records in Logfire. The full-day
+counter review therefore does not prove full-day latency or backend error
+coverage. Restore telemetry using an availability-preserving transition and
+verify actual compact spans; retained legacy telemetry is not a substitute.
+
+Publisher registration refreshed on October 18 at 15:12 UTC after unrelated
+my-prefect-server changes. Its package pin is now
+`@1f324326d4b3a9986149bb457c58ed5f96719285`; the index flow and its deployment
+configuration are unchanged from the previously verified pin. Readback confirms
+the qualified tag, compact format, active unchanged schedule, and auto-scheduled
+October 19 09:00 UTC run `e477782a-f15d-472f-93f3-d10aef781b23`.
+Earlier queued run IDs no longer exist; always refresh before checking progress.
+
+The scheduled publication has not happened. Root-pointer transition, protected
+fresh paired readback/recovery, production deployment recipe reconciliation and
+cleanup remain gated. The finite follow-up stays active. No resources were
+deleted and no additional acceptance exception was taken.

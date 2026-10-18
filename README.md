@@ -73,7 +73,11 @@ The unmodified legacy performance control crashed during concurrent reads;
 that comparison is incomplete, with its failure retained. Nate accepted these
 two exceptions on October 17, conditional on the now-passing reload gate.
 The production cutover passed freshness, alias, and full smoke checks. Scheduled
-compact publication, daily observation, and final cleanup remain pending. The
+compact publication and final cleanup remain pending. The October 18 full-day
+counter review covered all 288 five-minute buckets: 14,902 successful searches,
+205 rate-limited searches, and no recorded 5xx responses across endpoints.
+Compact Logfire telemetry is still missing; these counters do not establish
+full-day latency or backend error coverage. The
 publisher is registered on `my-prefect-server` main `e4275b5`, whose full CI
 workflow passed through registration; its October 19
 09:00 UTC scheduled run contains the compact format and qualified source tag.

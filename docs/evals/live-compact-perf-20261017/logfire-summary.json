@@ -1,0 +1,12 @@
+{
+  "project": "typeahead",
+  "date": "2026-10-17",
+  "pre_cutover": {"start": "18:30:00Z", "end": "19:37:20Z", "service": "typeahead-search", "span": "search", "count": 92, "p50_ms": 4.295309437885787, "p95_ms": 15.281079619283398},
+  "post_cutover_search_service_records_at_query": 718,
+  "post_cutover_search_service_errors_at_query": 0,
+  "compact_records_returned": 0,
+  "compact_LOGFIRE_TOKEN_present": false,
+  "post_cutover_ingester_errors": ["2026-10-17T20:00:52.786021Z firehose: ReadFailed", "2026-10-17T20:20:46.439886Z firehose: ReadFailed"],
+  "late_legacy_probe_spans": {"start": "20:50:00Z", "count": 5, "p50_ms": 7.826720622506126, "p95_ms": 15.984061135812887},
+  "limitation": "Legacy-only telemetry cannot establish compact latency or error rates."
+}

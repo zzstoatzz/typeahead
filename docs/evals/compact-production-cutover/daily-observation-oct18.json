@@ -1,0 +1,93 @@
+{
+  "window_start": "2026-10-17T19:40:00Z",
+  "window_end_exclusive": "2026-10-18T19:40:00Z",
+  "buckets_with_records": 288,
+  "totals": [
+    {
+      "endpoint": "admin",
+      "status": "200",
+      "hits": 20
+    },
+    {
+      "endpoint": "admin",
+      "status": "400",
+      "hits": 4
+    },
+    {
+      "endpoint": "admin",
+      "status": "404",
+      "hits": 1
+    },
+    {
+      "endpoint": "admin/delete",
+      "status": "200",
+      "hits": 5276
+    },
+    {
+      "endpoint": "admin/ingest",
+      "status": "200",
+      "hits": 41796
+    },
+    {
+      "endpoint": "getProfiles",
+      "status": "200",
+      "hits": 439
+    },
+    {
+      "endpoint": "getProfiles",
+      "status": "400",
+      "hits": 4
+    },
+    {
+      "endpoint": "health",
+      "status": "200",
+      "hits": 1564
+    },
+    {
+      "endpoint": "other",
+      "status": "404",
+      "hits": 190
+    },
+    {
+      "endpoint": "page",
+      "status": "200",
+      "hits": 150
+    },
+    {
+      "endpoint": "page",
+      "status": "404",
+      "hits": 3
+    },
+    {
+      "endpoint": "request-indexing",
+      "status": "200",
+      "hits": 9
+    },
+    {
+      "endpoint": "request-indexing",
+      "status": "302",
+      "hits": 4
+    },
+    {
+      "endpoint": "request-indexing",
+      "status": "400",
+      "hits": 4
+    },
+    {
+      "endpoint": "search",
+      "status": "200",
+      "hits": 14902
+    },
+    {
+      "endpoint": "search",
+      "status": "400",
+      "hits": 10
+    },
+    {
+      "endpoint": "search",
+      "status": "429",
+      "hits": 205
+    }
+  ],
+  "server_errors": 0
+}
