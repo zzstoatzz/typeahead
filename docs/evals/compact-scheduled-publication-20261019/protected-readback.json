@@ -1,0 +1,33 @@
+{
+  "started_at": 1792439275.246136,
+  "prefix": "releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8",
+  "verified": true,
+  "artifacts": [
+    {
+      "object_key": "releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8/builds/b1792400507-4df8/index.db",
+      "byte_size": 15736393728,
+      "sha256": "7884f31dfd26c339f767fb64394008feb41d2745de65bb2b5f29e2af7f98f8dc"
+    },
+    {
+      "object_key": "releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8/builds/b1792400507-4df8/manifest.json",
+      "byte_size": 655,
+      "sha256": "5d0a10d73971e634b2c108386881bf9c96085cdbeaaa51ae33b3517af3d0b746"
+    },
+    {
+      "object_key": "releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8/builds/b1792400507-4df8-px05/index.db",
+      "byte_size": 16384,
+      "sha256": "b03bdb42e8ac71f7e6e5056a898b802cf034fd5497c1686b4c8238c7b06a811d"
+    },
+    {
+      "object_key": "releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8/builds/b1792400507-4df8-px05/index.db.prefix",
+      "byte_size": 7019524096,
+      "sha256": "c19e1db6111d4fa93323171a538afa26d96512f35dea857c51ada437d9a8cc12"
+    },
+    {
+      "object_key": "releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8/builds/b1792400507-4df8-px05/manifest.json",
+      "byte_size": 1183,
+      "sha256": "dc02ffbfdb7d52d0ad28832387eaa65fce782876f5d8878664dcc13d23099424"
+    }
+  ],
+  "finished_at": 1792442164.978981
+}

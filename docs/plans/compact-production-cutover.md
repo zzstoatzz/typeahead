@@ -1113,3 +1113,23 @@ transient correctness failure before declaring transition verification complete.
 Public freshness was healthy at the audit. The existing finite follow-up now
 runs every 15 minutes while native admission and protected readback progress;
 it remains quiet unless there is a meaningful change.
+
+### Protected pair verified — October 19, 20:40 follow-up
+
+The fresh protected pair passed complete size/SHA-256 readback for all five
+artifacts and both protected pointers. [Readback evidence](../evals/compact-scheduled-publication-20261019/protected-readback.json)
+records the immutable prefix `releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8`.
+HeavyPad user unit `typeahead-scheduled-empty-restore-20261019` started at 20:36
+UTC and remains running; its log is `empty-restore/restore.log`, not server.log.
+No passing restore result exists yet. Fly finished downloading the compact prefix
+and is validating it; native admission and overlay catch-up remain pending.
+Legacy public freshness is healthy. No resource deletion or routing change occurred.
+
+The original bounded public probe completed. An additional bounded 20-minute
+probe, `publisher-transition-20261019/probe-detailed.py`, now retains status,
+headers, elapsed time and failed response bodies in `public-probes-detailed.jsonl`.
+The earlier isolated empty result took roughly three seconds before the next
+probe interval; the existing Worker has a three-second backend timeout that can
+return an uncached empty list. This is a possible explanation, not proof of the
+failed request's cause. Logfire has no matching Worker request record. The
+correctness anomaly remains unresolved; no gate is waived.
