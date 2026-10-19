@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "admission_seconds": 1181.7443001600914,
+  "responses": 8000,
+  "mutations": 60,
+  "build_id": "b1792400507-4df8-px05",
+  "started_with_empty_directory": true,
+  "live_upstream_catchup_tested": false
+}

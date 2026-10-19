@@ -72,8 +72,8 @@ regression flags.
 The unmodified legacy performance control crashed during concurrent reads;
 that comparison is incomplete, with its failure retained. Nate accepted these
 two exceptions on October 17, conditional on the now-passing reload gate.
-The production cutover passed freshness, alias, and full smoke checks. The October 19 scheduled compact publication completed; native admission of that
-generation and final cleanup remain pending. The October 18 full-day
+The production cutover passed freshness, alias, and full smoke checks. The October 19 scheduled compact publication completed; native admission and empty-directory recovery passed, while live overlay
+catch-up and final cleanup remain pending. The October 18 full-day
 counter review covered all 288 five-minute buckets: 14,902 successful searches,
 205 rate-limited searches, and no recorded 5xx responses across endpoints.
 Compact Logfire telemetry was restored October 19 and actual sampled search spans
@@ -88,11 +88,11 @@ inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-r
 for acceptance criteria. Earlier candidates' passing results do not qualify this
 replacement.
 
-As of October 19, 20:22 UTC, Worker `a6fa2302…` temporarily routes to the healthy
-legacy `typeahead-search.fly.dev` backend while compact validates the scheduled
+As of October 19, 20:57 UTC, Worker `a6fa2302…` temporarily routes to the healthy
+legacy `typeahead-search.fly.dev` backend while compact catches up its overlay after admitting the scheduled
 snapshot. It preserves the latest Worker source. The compact machine now follows
-the root publisher pointer, but the new generation has not passed native admission
-and overlay catch-up yet. Four completed qualification machines remain stopped
+the root publisher pointer, and the new generation passed native admission, ranking checks, and
+empty-directory R2 recovery. Live overlay catch-up is still pending. Four completed qualification machines remain stopped
 with volumes retained. Do not delete the compact app or use the legacy
 `services/fly.search.toml` configuration to update it. The cutover runbook records
 the active transition and recovery checks.

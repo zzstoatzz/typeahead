@@ -1133,3 +1133,26 @@ probe interval; the existing Worker has a three-second backend timeout that can
 return an uncached empty list. This is a possible explanation, not proof of the
 failed request's cause. Logfire has no matching Worker request record. The
 correctness anomaly remains unresolved; no gate is waived.
+
+### Native admission and empty-directory recovery passed — October 19, 20:57 UTC
+
+Fly attached b1792400507-4df8-px05 at 20:41:48 UTC. The native active record
+retains b1792400507-4df8 as its same-watermark legacy previous generation.
+Logfire returned sampled search spans after attachment from the unchanged
+qualified image, including 20:55:36 UTC with exact_hits=1 and results=3.
+The direct ranking suite passed all acceptance criteria against the new build;
+[output](../evals/compact-scheduled-publication-20261019/ranking.log) is archived.
+
+HeavyPad's empty-directory recovery completed successfully with clean shutdown:
+[terminal result](../evals/compact-scheduled-publication-20261019/empty-restore-result.json)
+records native admission in 1,181.74 seconds, 8,000 response comparisons and
+60 mutations. This used the protected R2 pair and the qualified binary. The
+isolated upstream fixture does not establish live catch-up; that gate remains
+on the serving machine, with lag about 2,185 seconds at 20:55. Native overlay
+compaction reported 1,595,942 rows after 806.8 seconds; replay continues advancing.
+Do not treat these completed recovery checks as permission to waive the lag gate.
+
+The richer public probe had 163 successful checks and no failures at 20:55:31;
+the earlier single empty-result anomaly remains unexplained. Production remains
+on legacy and no routing or resource mutation occurred in this follow-up.
+README now reflects admitted generation/recovery versus pending live catch-up.
