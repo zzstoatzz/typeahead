@@ -1,0 +1,2998 @@
+{
+  "success": true,
+  "flow_run_id": "e477782a-f15d-472f-93f3-d10aef781b23",
+  "logs": [
+    {
+      "timestamp": "2026-10-19T09:00:01.081376+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Worker 'heavypad' submitting flow run 'e477782a-f15d-472f-93f3-d10aef781b23'",
+      "name": "prefect.flow_runs.worker"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:02.864360+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Starting flow run process...",
+      "name": "prefect.flow_runs.runner"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:03.061681+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Flow run 'typeahead-index-e477782a' submitted to infrastructure",
+      "name": "prefect.flow_runs.worker"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:07.738041+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Running 1 deployment pull step(s)",
+      "name": "prefect.flow_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:07.741435+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Executing deployment step: cached_checkout",
+      "name": "prefect.flow_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:08.482898+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Deployment step 'cached_checkout' completed successfully",
+      "name": "prefect.flow_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:09.842150+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "All deployment steps completed successfully",
+      "name": "prefect.flow_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:14.305851+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Beginning flow run 'typeahead-index-e477782a' for flow 'typeahead-index'",
+      "name": "prefect.flow_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:18.021686+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "cloned https://tangled.org/zzstoatzz.io/typeahead.git",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:18.022792+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Finished in state Completed()",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:00:18.024501+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "building with /home/stoat/.local/opt/zig-x86_64-linux-0.17.0/zig",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.668721+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Finished in state Completed()",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.671102+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "MODE=indexer channel=prod build_root=/home/stoat/typeahead-index/build",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.683003+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(ingester): MODE=indexer — running snapshot builder",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.683404+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer start: sample_limit=0 top_n=(300/200/100)",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.683953+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): snapshot path: /home/stoat/typeahead-index/build/build-b1792400507-4df8/index.db",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.684494+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): source mode: export_http",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.684820+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(turso): turso client → typeahead-zzstoatzz.aws-us-east-1.turso.io",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.685111+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase start: turso.export",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:01:47.949376+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(turso): turso export: current_generation=1462058",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:02:17.689554+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=30 source.db=0B disk_free=336479870976B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:02:47.695894+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=60 source.db=0B disk_free=337502773248B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:03:17.702147+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=90 source.db=0B disk_free=337189437440B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:03:47.709447+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=120 source.db=0B disk_free=336932290560B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:04:17.716870+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=150 source.db=0B disk_free=336651022336B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:04:47.723856+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=180 source.db=0B disk_free=336314019840B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:05:17.731342+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=210 source.db=0B disk_free=335948652544B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:05:47.737795+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=240 source.db=0B disk_free=335599800320B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:06:17.744978+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=270 source.db=0B disk_free=335251341312B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:06:47.752669+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=300 source.db=0B disk_free=334870474752B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:07:17.760214+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=330 source.db=0B disk_free=334571335680B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:07:47.768284+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=360 source.db=0B disk_free=334305435648B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:08:17.776335+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=390 source.db=0B disk_free=334028853248B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:08:47.783864+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=420 source.db=0B disk_free=333665755136B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:09:17.790959+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=450 source.db=0B disk_free=333416448000B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:09:47.798325+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=480 source.db=0B disk_free=333168553984B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:10:17.804901+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=510 source.db=0B disk_free=333007515648B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:10:47.812082+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=540 source.db=0B disk_free=332873732096B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:11:17.818569+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=570 source.db=0B disk_free=332698873856B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:11:47.824588+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=600 source.db=0B disk_free=332421169152B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:12:17.830853+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=630 source.db=0B disk_free=332165926912B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:12:47.836111+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=turso.export elapsed_s=660 source.db=0B disk_free=331813933056B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:13.842079+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase done: phase=turso.export elapsed_s=686 source.db=6772752384B disk_free=331482841088B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:13.843984+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): export complete in 686158ms → /home/stoat/typeahead-index/build/build-b1792400507-4df8/source.db",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:26.396579+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): exported DB validated: 12623942 searchable actors",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:26.396971+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): source_watermark from exported DB: 1792400505",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:27.414817+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=50000 actors=49990 emissions=2002102",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:28.436058+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=100000 actors=99972 emissions=3999356",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:29.461108+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=150000 actors=149965 emissions=5998840",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:30.484167+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=200000 actors=199958 emissions=7997185",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:31.503390+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=250000 actors=249946 emissions=9993216",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:32.538125+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=300000 actors=299940 emissions=11994568",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:33.602504+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=350000 actors=349923 emissions=13993785",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:34.689732+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=400000 actors=399915 emissions=15993050",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:35.753079+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=450000 actors=449902 emissions=17992098",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:36.808901+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=500000 actors=499894 emissions=19988774",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:37.870283+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=550000 actors=549882 emissions=21990373",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:38.928140+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=600000 actors=599869 emissions=23990417",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:39.989578+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=650000 actors=649857 emissions=25989047",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:41.047071+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=700000 actors=699847 emissions=27987222",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:42.129914+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=750000 actors=749834 emissions=29987813",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:43.337648+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=800000 actors=799821 emissions=31992580",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:44.479768+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=850000 actors=849815 emissions=33995329",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:45.570723+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=900000 actors=899805 emissions=35996722",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:46.845807+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=950000 actors=949801 emissions=37997982",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:48.099321+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1000000 actors=999789 emissions=39997395",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:49.164189+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1050000 actors=1049773 emissions=41996350",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:50.230413+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1100000 actors=1099762 emissions=43999045",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:51.295082+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1150000 actors=1149751 emissions=46000045",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:52.358083+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1200000 actors=1199743 emissions=48000398",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:53.422386+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1250000 actors=1249734 emissions=50002831",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:54.494714+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1300000 actors=1299727 emissions=52005231",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:55.564228+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1350000 actors=1349724 emissions=54002230",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:56.625141+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1400000 actors=1399712 emissions=56004040",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:57.687117+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1450000 actors=1449699 emissions=58007086",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:58.749343+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1500000 actors=1499686 emissions=60007993",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:13:59.823534+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1550000 actors=1549677 emissions=62009103",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:00.890609+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1600000 actors=1599675 emissions=64011034",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:01.957446+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1650000 actors=1649671 emissions=66008880",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:03.027141+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1700000 actors=1699659 emissions=68008478",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:04.096262+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1750000 actors=1749646 emissions=70007342",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:05.175252+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1800000 actors=1799630 emissions=72008498",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:06.311130+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1850000 actors=1849615 emissions=74009493",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:07.596235+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1900000 actors=1899602 emissions=76008811",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:08.738021+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=1950000 actors=1949592 emissions=78010687",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:09.813745+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2000000 actors=1999583 emissions=80010028",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:10.887508+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2050000 actors=2049571 emissions=82009092",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:11.949193+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2100000 actors=2099562 emissions=84003314",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:13.020669+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2150000 actors=2149551 emissions=86002429",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:14.086328+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2200000 actors=2199533 emissions=88001931",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:15.156063+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2250000 actors=2249525 emissions=89999078",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:16.405937+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2300000 actors=2299514 emissions=91998095",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:17.688987+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2350000 actors=2349503 emissions=93997907",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:18.970876+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2400000 actors=2399490 emissions=95999900",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:20.258795+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2450000 actors=2449475 emissions=97998435",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:21.533544+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2500000 actors=2499459 emissions=99998468",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:22.819966+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2550000 actors=2549454 emissions=102001100",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:24.106412+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2600000 actors=2599429 emissions=104001516",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:25.388737+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2650000 actors=2649415 emissions=105999387",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:26.576279+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2700000 actors=2699409 emissions=107998473",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:27.639853+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2750000 actors=2749399 emissions=109999355",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:28.702389+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2800000 actors=2799390 emissions=111996780",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:29.775370+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2850000 actors=2849383 emissions=113994607",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:30.839875+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2900000 actors=2899372 emissions=115995287",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:31.901273+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=2950000 actors=2949359 emissions=117994664",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:32.960918+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3000000 actors=2999352 emissions=119995658",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:34.032062+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3050000 actors=3049343 emissions=121994515",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:35.102835+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3100000 actors=3099333 emissions=123996807",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:36.180326+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3150000 actors=3149321 emissions=125995584",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:37.254324+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3200000 actors=3199309 emissions=127992809",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:38.315236+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3250000 actors=3249294 emissions=129991837",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:39.387595+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3300000 actors=3299287 emissions=131990786",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:40.452036+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3350000 actors=3349280 emissions=133988145",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:41.514760+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3400000 actors=3399265 emissions=135988427",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:42.577860+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3450000 actors=3449249 emissions=137987528",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:43.645029+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3500000 actors=3499239 emissions=139989264",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:44.713769+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3550000 actors=3549225 emissions=141989183",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:45.784404+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3600000 actors=3599215 emissions=143989873",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:46.852306+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3650000 actors=3649204 emissions=145988982",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:47.924780+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3700000 actors=3699187 emissions=147989316",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:48.988384+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3750000 actors=3749177 emissions=149988584",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:50.226219+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3800000 actors=3799164 emissions=151987121",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:51.383130+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3850000 actors=3849149 emissions=153985168",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:52.454572+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3900000 actors=3899135 emissions=155983646",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:53.523311+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=3950000 actors=3949121 emissions=157983736",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:54.619790+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4000000 actors=3999110 emissions=159982707",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:55.696831+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4050000 actors=4049095 emissions=161982560",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:56.770843+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4100000 actors=4099080 emissions=163984658",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:57.851556+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4150000 actors=4149061 emissions=165982462",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:58.917928+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4200000 actors=4199054 emissions=167982352",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:14:59.986307+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4250000 actors=4249039 emissions=169977753",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:01.073983+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4300000 actors=4299027 emissions=171977806",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:02.169283+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4350000 actors=4349015 emissions=173978943",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:03.246417+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4400000 actors=4398999 emissions=175977338",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:04.327276+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4450000 actors=4448992 emissions=177975963",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:05.415437+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4500000 actors=4498984 emissions=179975288",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:06.493433+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4550000 actors=4548979 emissions=181975011",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:07.571347+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4600000 actors=4598968 emissions=183977746",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:08.743909+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4650000 actors=4648960 emissions=185978361",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:09.861781+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4700000 actors=4698950 emissions=187977897",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:10.943261+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4750000 actors=4748936 emissions=189980325",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:12.016783+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4800000 actors=4798919 emissions=191979256",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:13.088769+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4850000 actors=4848906 emissions=193978919",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:14.161113+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4900000 actors=4898899 emissions=195977546",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:15.239264+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=4950000 actors=4948883 emissions=197975817",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:16.310694+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5000000 actors=4998872 emissions=199970109",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:17.383581+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5050000 actors=5048861 emissions=201970204",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:18.455400+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5100000 actors=5098851 emissions=203970772",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:19.545611+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5150000 actors=5148839 emissions=205970890",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:20.612219+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5200000 actors=5198831 emissions=207971231",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:21.697939+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5250000 actors=5248821 emissions=209968837",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:22.773026+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5300000 actors=5298806 emissions=211971197",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:23.846942+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5350000 actors=5348796 emissions=213969044",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:25.031537+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5400000 actors=5398784 emissions=215968364",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:26.102781+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5450000 actors=5448772 emissions=217966991",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:27.181283+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5500000 actors=5498759 emissions=219967671",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:28.247184+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5550000 actors=5548743 emissions=221963144",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:29.322293+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5600000 actors=5598728 emissions=223964244",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:30.392049+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5650000 actors=5648714 emissions=225964181",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:31.467023+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5700000 actors=5698703 emissions=227965904",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:32.541766+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5750000 actors=5748689 emissions=229962481",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:33.609987+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5800000 actors=5798679 emissions=231958675",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:34.701773+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5850000 actors=5848661 emissions=233956063",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:35.907110+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5900000 actors=5898655 emissions=235955339",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:36.979903+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=5950000 actors=5948647 emissions=237956833",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:38.060906+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6000000 actors=5998635 emissions=239959907",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:39.144857+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6050000 actors=6048624 emissions=241958020",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:40.224051+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6100000 actors=6098611 emissions=243957151",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:41.296741+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6150000 actors=6148600 emissions=245956819",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:42.373076+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6200000 actors=6198584 emissions=247954821",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:43.443558+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6250000 actors=6248570 emissions=249952910",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:44.518074+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6300000 actors=6298563 emissions=251951615",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:45.595600+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6350000 actors=6348548 emissions=253949854",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:46.716403+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6400000 actors=6398540 emissions=255948679",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:47.826257+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6450000 actors=6448534 emissions=257951284",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:48.915448+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6500000 actors=6498527 emissions=259950417",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:49.995699+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6550000 actors=6548511 emissions=261951327",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:51.074704+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6600000 actors=6598494 emissions=263950992",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:52.182474+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6650000 actors=6648482 emissions=265951460",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:53.269090+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6700000 actors=6698473 emissions=267952294",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:54.347274+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6750000 actors=6748462 emissions=269949333",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:55.569779+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6800000 actors=6798450 emissions=271947043",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:56.714057+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6850000 actors=6848436 emissions=273948387",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:57.824665+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6900000 actors=6898428 emissions=275947714",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:58.903289+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=6950000 actors=6948416 emissions=277944493",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:15:59.983722+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7000000 actors=6998402 emissions=279944298",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:01.057816+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7050000 actors=7048384 emissions=281950188",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:02.153141+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7100000 actors=7098369 emissions=283946862",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:03.252098+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7150000 actors=7148359 emissions=285947543",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:04.362578+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7200000 actors=7198351 emissions=287952272",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:05.463399+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7250000 actors=7248339 emissions=289953302",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:06.573169+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7300000 actors=7298331 emissions=291952943",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:07.682029+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7350000 actors=7348322 emissions=293953603",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:08.786003+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7400000 actors=7398305 emissions=295952838",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:09.883923+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7450000 actors=7448290 emissions=297950752",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:11.073219+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7500000 actors=7498275 emissions=299952304",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:12.173780+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7550000 actors=7548260 emissions=301953731",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:13.287491+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7600000 actors=7598244 emissions=303952791",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:14.367039+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7650000 actors=7648232 emissions=305953835",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:15.450877+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7700000 actors=7698220 emissions=307951349",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:16.671763+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7750000 actors=7748211 emissions=309952640",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:17.971116+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7800000 actors=7798199 emissions=311951920",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:19.253792+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7850000 actors=7848190 emissions=313953987",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:20.391325+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7900000 actors=7898179 emissions=315950512",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:21.707965+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=7950000 actors=7948162 emissions=317951944",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:22.977844+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8000000 actors=7998152 emissions=319949795",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:24.277338+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8050000 actors=8048138 emissions=321950027",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:25.586846+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8100000 actors=8098127 emissions=323949718",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:26.902114+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8150000 actors=8148116 emissions=325949623",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:28.206023+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8200000 actors=8198105 emissions=327948640",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:29.507875+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8250000 actors=8248091 emissions=329946799",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:30.810275+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8300000 actors=8298081 emissions=331950248",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:32.118049+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8350000 actors=8348066 emissions=333951332",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:33.354336+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8400000 actors=8398057 emissions=335948790",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:34.445777+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8450000 actors=8448045 emissions=337946762",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:35.536674+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8500000 actors=8498033 emissions=339945527",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:36.622045+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8550000 actors=8548021 emissions=341949788",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:37.708507+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8600000 actors=8598008 emissions=343948730",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:38.794369+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8650000 actors=8647996 emissions=345950095",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:40.093425+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8700000 actors=8697989 emissions=347944205",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:41.398675+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8750000 actors=8747979 emissions=349945009",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:42.757196+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8800000 actors=8797962 emissions=351945202",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:44.063583+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8850000 actors=8847950 emissions=353944133",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:45.193276+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8900000 actors=8897939 emissions=355946058",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:46.284209+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=8950000 actors=8947925 emissions=357944335",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:47.363320+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9000000 actors=8997915 emissions=359945647",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:48.448000+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9050000 actors=9047906 emissions=361944471",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:49.537670+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9100000 actors=9097892 emissions=363943768",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:50.622592+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9150000 actors=9147881 emissions=365944363",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:51.704416+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9200000 actors=9197873 emissions=367943142",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:52.791969+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9250000 actors=9247859 emissions=369945124",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:53.884782+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9300000 actors=9297854 emissions=371944400",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:54.980314+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9350000 actors=9347842 emissions=373943533",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:56.061530+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9400000 actors=9397831 emissions=375944026",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:57.142085+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9450000 actors=9447820 emissions=377940661",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:58.234741+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9500000 actors=9497809 emissions=379940420",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:16:59.314431+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9550000 actors=9547804 emissions=381939292",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:00.418834+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9600000 actors=9597795 emissions=383942077",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:01.509811+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9650000 actors=9647780 emissions=385943725",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:02.646420+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9700000 actors=9697771 emissions=387943280",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:03.735219+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9750000 actors=9747756 emissions=389943253",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:04.841025+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9800000 actors=9797741 emissions=391944151",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:05.929204+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9850000 actors=9847731 emissions=393943570",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:07.021147+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9900000 actors=9897715 emissions=395943379",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:08.100411+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=9950000 actors=9947706 emissions=397943660",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:09.185968+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10000000 actors=9997689 emissions=399942602",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:10.275236+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10050000 actors=10047674 emissions=401944262",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:11.359305+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10100000 actors=10097659 emissions=403945982",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:12.444763+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10150000 actors=10147647 emissions=405946039",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:13.550892+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10200000 actors=10197640 emissions=407944441",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:14.859874+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10250000 actors=10247628 emissions=409939965",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:16.172204+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10300000 actors=10297617 emissions=411940621",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:17.277152+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10350000 actors=10347601 emissions=413938038",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:18.536758+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10400000 actors=10397591 emissions=415939081",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:19.847392+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10450000 actors=10447581 emissions=417941129",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:21.155269+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10500000 actors=10497566 emissions=419941595",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:22.369673+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10550000 actors=10547555 emissions=421940982",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:23.469140+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10600000 actors=10597541 emissions=423940114",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:24.576333+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10650000 actors=10647527 emissions=425938543",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:25.750243+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10700000 actors=10697510 emissions=427937857",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:26.879367+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10750000 actors=10747505 emissions=429935595",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:27.954645+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10800000 actors=10797495 emissions=431937015",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:29.130744+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10850000 actors=10847479 emissions=433934781",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:30.429663+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10900000 actors=10897467 emissions=435937513",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:31.697174+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=10950000 actors=10947451 emissions=437934383",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:32.771887+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11000000 actors=10997441 emissions=439932629",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:33.849501+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11050000 actors=11047431 emissions=441932798",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:34.929885+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11100000 actors=11097418 emissions=443933568",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:36.002522+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11150000 actors=11147410 emissions=445932115",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:37.084024+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11200000 actors=11197396 emissions=447931561",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:38.161741+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11250000 actors=11247383 emissions=449930384",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:39.236623+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11300000 actors=11297371 emissions=451929959",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:40.311829+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11350000 actors=11347363 emissions=453931397",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:41.386828+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11400000 actors=11397349 emissions=455933402",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:42.471660+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11450000 actors=11447338 emissions=457936064",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:43.538239+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11500000 actors=11497324 emissions=459936194",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:44.606350+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11550000 actors=11547312 emissions=461932652",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:45.688211+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11600000 actors=11597295 emissions=463932176",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:46.762823+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11650000 actors=11647277 emissions=465934586",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:47.837913+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11700000 actors=11697269 emissions=467935905",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:48.908104+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11750000 actors=11747251 emissions=469935980",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:49.985824+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11800000 actors=11797241 emissions=471937352",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:51.056913+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11850000 actors=11847225 emissions=473934902",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:52.136512+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11900000 actors=11897210 emissions=475931619",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:53.206618+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=11950000 actors=11947199 emissions=477933567",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:54.281534+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12000000 actors=11997190 emissions=479934719",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:55.354364+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12050000 actors=12047179 emissions=481933431",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:56.424132+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12100000 actors=12097168 emissions=483935061",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:57.499409+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12150000 actors=12147153 emissions=485934809",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:58.594444+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12200000 actors=12197140 emissions=487935660",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:17:59.677317+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12250000 actors=12247127 emissions=489937942",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:00.753811+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12300000 actors=12297117 emissions=491937663",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:01.846971+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12350000 actors=12347109 emissions=493937376",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:02.928699+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12400000 actors=12397090 emissions=495940575",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:04.006552+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12450000 actors=12447080 emissions=497939847",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:05.111290+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12500000 actors=12497066 emissions=499941101",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:06.429850+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12550000 actors=12547058 emissions=501943063",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:07.730782+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer progress (export): rows_seen=12600000 actors=12597044 emissions=503943275",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:08.444251+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): emissions phase done (export): rows_seen=12623942 actors=12620975 emissions=504931044 watermark=1792400505",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:08.686258+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase start: create_index.emissions",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:18:38.691535+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=30 staging.db=28015603712B disk_free=303477698560B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:19:08.696849+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=60 staging.db=28015603712B disk_free=299514716160B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:19:38.702048+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=90 staging.db=28015603712B disk_free=295704051712B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:20:08.706979+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=120 staging.db=28015603712B disk_free=291671937024B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:20:38.712271+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=150 staging.db=28015603712B disk_free=287778136064B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:21:08.717483+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=180 staging.db=28015603712B disk_free=283792130048B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:21:38.722658+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=210 staging.db=28015603712B disk_free=279330992128B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:22:08.727646+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=240 staging.db=33281421312B disk_free=273669709824B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:22:38.732427+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=270 staging.db=38676058112B disk_free=268275068928B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:23:08.737380+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=300 staging.db=44771201024B disk_free=262179921920B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:23:38.742444+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase heartbeat: phase=create_index.emissions elapsed_s=330 staging.db=51706974208B disk_free=255178448896B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:02.747015+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase done: phase=create_index.emissions elapsed_s=354 staging.db=56239190016B disk_free=278820986880B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:02.748750+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): building prefix_top_base via grouped scan…",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:03.940399+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=10000000/504931044 keys=21191",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:05.132418+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=20000000/504931044 keys=35423",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:06.312648+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=30000000/504931044 keys=35677",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:07.489765+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=40000000/504931044 keys=35705",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:08.664716+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=50000000/504931044 keys=35815",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:09.838002+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=60000000/504931044 keys=36942",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:11.043343+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=70000000/504931044 keys=36996",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:12.219301+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=80000000/504931044 keys=36997",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:13.385834+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=90000000/504931044 keys=36998",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:14.555331+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=100000000/504931044 keys=36999",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:15.730078+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=110000000/504931044 keys=37000",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:16.882828+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=120000000/504931044 keys=50530",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:18.223520+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=130000000/504931044 keys=214357",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:19.385278+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=140000000/504931044 keys=228277",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:20.536157+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=150000000/504931044 keys=228412",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:21.697076+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=160000000/504931044 keys=228608",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:22.860512+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=170000000/504931044 keys=228609",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:24.032553+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=180000000/504931044 keys=228610",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:25.233839+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=190000000/504931044 keys=253964",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:26.410232+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=200000000/504931044 keys=255923",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:29.676371+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=210000000/504931044 keys=2742263",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:38.414041+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=220000000/504931044 keys=10863080",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:45.355109+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=230000000/504931044 keys=16846815",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:51.963812+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=240000000/504931044 keys=22788000",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:24:58.221027+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=250000000/504931044 keys=28405569",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:03.458427+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=260000000/504931044 keys=33027605",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:06.041427+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=270000000/504931044 keys=34589817",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:07.225169+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=280000000/504931044 keys=34590231",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:09.116035+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=290000000/504931044 keys=35382032",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:15.641228+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=300000000/504931044 keys=41299442",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:21.656153+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=310000000/504931044 keys=46956165",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:28.037965+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=320000000/504931044 keys=52802401",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:34.559849+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=330000000/504931044 keys=58804569",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:41.175695+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=340000000/504931044 keys=64887810",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:46.801066+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=350000000/504931044 keys=69771958",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:25:53.500288+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=360000000/504931044 keys=75914337",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:00.296223+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=370000000/504931044 keys=81974638",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:07.225103+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=380000000/504931044 keys=87989656",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:13.835870+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=390000000/504931044 keys=93620347",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:21.532490+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=400000000/504931044 keys=99491527",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:28.725516+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=410000000/504931044 keys=105588007",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:35.626142+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=420000000/504931044 keys=111867212",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:40.958340+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=430000000/504931044 keys=116036643",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:45.421953+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=440000000/504931044 keys=119280884",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:50.698514+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=450000000/504931044 keys=123036255",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:26:56.208312+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=460000000/504931044 keys=126925905",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:01.499602+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=470000000/504931044 keys=130507689",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:06.343266+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=480000000/504931044 keys=134288441",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:11.168010+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=490000000/504931044 keys=137854116",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:16.416346+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): group/pack progress: scanned=500000000/504931044 keys=141473767",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:18.595503+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): prefix_top_base done: distinct_keys=143049028",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:18.595972+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): peak artifact footprint: staging.db=56239190016B index.db=15736389632B",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:29.706255+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase start: manifest sha256 + write (15736393728B artifact)",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:37.592785+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): manifest written: byte_size=15736393728 sha256=7884f31dfd26c339",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:37.593165+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer done: build_id=b1792400507-4df8 actors=12620975 emissions=504931044 prefix_keys=143049028 cjk_keys=2348220 cjk_actors=586797 elapsed_ms=1549910",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:37.593336+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): phase ms: turso_fetch=686158 derive=56185 actor_insert=14562 emission_insert=174604 index_build=353575 group_pack=195849 meta=537 analyze=10294 manifest=7886",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:37.593483+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): indexer resources: index_db_bytes=15736393728 peak_rss_kb=467092",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:37.593650+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "info(indexer): channel=local — R2 upload skipped; build on disk at /home/stoat/typeahead-index/build/build-b1792400507-4df8",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:27:37.613864+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Finished in state Completed()",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.419340+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "{",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.424650+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"manifest_version\": 2,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.424858+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"active_build\": \"b1792400507-4df8-px05\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.425030+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"previous_build\": \"b1792400507-4df8\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.425180+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"promoted_at\": 1792402049,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.425323+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"snapshot_url\": \"builds/b1792400507-4df8-px05/index.db\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.425599+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"byte_size\": 16384,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.425739+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"sha256\": \"b03bdb42e8ac71f7e6e5056a898b802cf034fd5497c1686b4c8238c7b06a811d\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.425923+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"source_watermark\": 1792400505,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.426066+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"actor_count\": 12620975,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.426195+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"prefix_count\": 143049028,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.426379+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"normalize_version\": \"v2-cjk-bigram\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.426519+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"scoring_version\": \"v1-quality-score\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.426657+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"top_n_short\": 300,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.426787+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"top_n_medium\": 200,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.426914+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"top_n_long\": 100,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.427044+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"overlay_top_n\": 100,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.427163+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"hydrate_cap\": 50,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.427279+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"builder_version\": \"heavypad\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.427414+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"cjk_key_count\": 2348220,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.427542+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"cjk_actor_count\": 586797,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.427665+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"format_version\": 5,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.427783+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"prefix_map\": {",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.427901+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "    \"object_key\": \"builds/b1792400507-4df8-px05/index.db.prefix\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.428028+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "    \"byte_size\": 7019524096,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.428158+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "    \"sha256\": \"c19e1db6111d4fa93323171a538afa26d96512f35dea857c51ada437d9a8cc12\"",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.428280+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  },",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.428401+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  \"legacy_twin\": {",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.428524+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "    \"manifest\": {",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.428656+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "      \"object_key\": \"builds/b1792400507-4df8/manifest.json\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.428782+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "      \"byte_size\": 655,",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.428901+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "      \"sha256\": \"5d0a10d73971e634b2c108386881bf9c96085cdbeaaa51ae33b3517af3d0b746\"",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.429021+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "    },",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.429136+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "    \"build_id\": \"b1792400507-4df8\",",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.429250+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "    \"source_watermark\": 1792400505",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.429376+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "  }",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:32.429497+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "}",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T09:29:49.002386+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "upload builds/b1792400507-4df8/index.db",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T10:21:47.274048+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "verify builds/b1792400507-4df8/index.db",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T10:48:12.384960+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "upload builds/b1792400507-4df8/manifest.json",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T10:48:12.939045+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "verify builds/b1792400507-4df8/manifest.json",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T10:48:13.808525+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "upload builds/b1792400507-4df8-px05/index.db",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T10:48:14.435694+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "verify builds/b1792400507-4df8-px05/index.db",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T10:48:15.353457+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "upload builds/b1792400507-4df8-px05/index.db.prefix",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:13:58.998994+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "verify builds/b1792400507-4df8-px05/index.db.prefix",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:16.035390+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "upload builds/b1792400507-4df8-px05/manifest.json",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:16.589710+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "verify builds/b1792400507-4df8-px05/manifest.json",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:17.056809+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "publish pointer latest.json",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:17.594671+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "verify latest.json",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:18.235855+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "b1792400507-4df8-px05",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:18.246382+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Finished in state Completed()",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:18.345863+00:00",
+      "level": 30,
+      "level_name": "WARNING",
+      "message": "serving build_id unknown (https://typeahead.waow.tech/health/freshness unreachable); pruning nothing",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:18.347146+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Finished in state Completed()",
+      "name": "prefect.task_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:19.082063+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Finished in state Completed()",
+      "name": "prefect.flow_runs"
+    },
+    {
+      "timestamp": "2026-10-19T11:25:20.479686+00:00",
+      "level": 20,
+      "level_name": "INFO",
+      "message": "Process for flow run 'typeahead-index-e477782a' exited cleanly.",
+      "name": "prefect.flow_runs.runner"
+    }
+  ],
+  "truncated": false,
+  "limit": 500,
+  "error": null
+}

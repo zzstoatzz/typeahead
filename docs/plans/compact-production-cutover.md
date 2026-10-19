@@ -998,3 +998,35 @@ traffic returned. [Repair results](../evals/compact-logfire-repair/result.json)
 retain probe history, native readiness, alias/freshness summary and smoke output.
 No observed search downtime occurred; sampled probes are not a claim about every
 individual user request. All serving and rollback resources remain intact.
+
+### Scheduled compact publication confirmed — October 19, daily follow-up
+
+Run `e477782a-f15d-472f-93f3-d10aef781b23` completed at 11:25:18 UTC after
+starting at 09:00:13 UTC with compact format and the qualified source tag.
+[Publisher logs](../evals/compact-production-cutover/publisher-oct19-log.json)
+record verified paired uploads and root latest.json publication. Local pruning
+was conservatively skipped because the public freshness URL was unreachable
+from its Python client; no serving generation was deleted.
+
+Independent R2 manifest reads confirm root latest.json equals the immutable
+compact manifest for `b1792400507-4df8-px05`. The legacy twin is
+`b1792400507-4df8`; both have source watermark 1792400505 and 12,620,975 actors.
+The legacy database is 15,736,393,728 bytes and the compact prefix map is
+7,019,524,096 bytes (plus the 16,384-byte database).
+
+Protection and full streaming checksum readback were launched locally via
+`/Users/nate/.local/share/typeahead-experiments/publication-20261019/protect.py`.
+The destination is
+`releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8/`.
+This is **pending**, not verified: inspect `protect.log` and require
+`protected-readback.json` with verified=true before counting this gate. The
+script copies immutably and only publishes protected pointers after every
+artifact passes complete size/hash readback. Do not start a duplicate while
+the existing process is running.
+
+HeavyPad SSH requested renewed Tailscale authentication; renewal was requested
+from Nate. Local R2 verification continues independently. Production remains
+on the protected October 16 generation, healthy; legacy rollback passed with
+295-second lag. The serving volume has 30,995,352 KiB available, enough for the
+new pair. Worker fe998f27… is still active. No root-pointer transition, recovery
+admission, qualification deletion or final cleanup has been performed yet.
