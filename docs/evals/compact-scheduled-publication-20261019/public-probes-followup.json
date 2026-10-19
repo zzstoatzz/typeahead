@@ -1,0 +1,10 @@
+{
+  "count": 240,
+  "failures": 0,
+  "started_at": 1792442475.5311518,
+  "finished_at": 1792443736.888021,
+  "observed_http_statuses": [
+    200
+  ],
+  "evidence_path": "/Users/nate/.local/share/typeahead-experiments/publisher-transition-20261019/public-probes-detailed.jsonl"
+}

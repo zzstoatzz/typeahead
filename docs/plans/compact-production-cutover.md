@@ -1161,3 +1161,12 @@ Fresh deployment readback found another intervening Worker version:
 `86590349-5a6e-42c1-a6de-4c5d8835ff3b` at 100%. Public freshness still confirms
 healthy legacy build b1792141282-189b (85-second lag). Preserve this newer source;
 local transition state contains an older version and must not be used blindly.
+
+At 21:10 UTC native overlay lag decreased to 1,567 seconds; compaction reported
+2,595,942 rows processed at 21:06:50 UTC and remains in progress. Public legacy
+freshness passed (214-second lag). The richer bounded probe completed all 240
+checks successfully; [summary](../evals/compact-scheduled-publication-20261019/public-probes-followup.json)
+retains its interval and evidence path. This does not erase the earlier failure.
+The finite follow-up prompt now reflects completed recovery/admission gates and
+pending live catch-up, avoiding duplicate restoration jobs. README's pending
+catch-up status remains accurate; no deployment or resource change was made.
