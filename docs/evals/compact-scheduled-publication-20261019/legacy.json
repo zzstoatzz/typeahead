@@ -1,0 +1,22 @@
+{
+  "manifest_version": 1,
+  "active_build": "b1792400507-4df8",
+  "previous_build": null,
+  "promoted_at": 1792402049,
+  "snapshot_url": "builds/b1792400507-4df8/index.db",
+  "byte_size": 15736393728,
+  "sha256": "7884f31dfd26c339f767fb64394008feb41d2745de65bb2b5f29e2af7f98f8dc",
+  "source_watermark": 1792400505,
+  "actor_count": 12620975,
+  "prefix_count": 143049028,
+  "normalize_version": "v2-cjk-bigram",
+  "scoring_version": "v1-quality-score",
+  "top_n_short": 300,
+  "top_n_medium": 200,
+  "top_n_long": 100,
+  "overlay_top_n": 100,
+  "hydrate_cap": 50,
+  "builder_version": "heavypad",
+  "cjk_key_count": 2348220,
+  "cjk_actor_count": 586797
+}

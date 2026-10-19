@@ -1030,3 +1030,75 @@ on the protected October 16 generation, healthy; legacy rollback passed with
 295-second lag. The serving volume has 30,995,352 KiB available, enough for the
 new pair. Worker fe998f27… is still active. No root-pointer transition, recovery
 admission, qualification deletion or final cleanup has been performed yet.
+
+### Root-pointer transition in progress — October 19 after SSH renewal
+
+HeavyPad access was renewed. The scheduled pair passed fresh full-size rollback
+qualification with the exact cc2d5a1 binary (SHA 758d458b…) and retained legacy
+binary (SHA f82400c6…): 8,000 exact response comparisons per stage and 60 mutation
+checks, including compact-to-legacy format and original-binary rollback.
+Evidence is archived in [the scheduled-pair rollback result](../evals/compact-scheduled-publication-20261019/rollback-result.json)
+with its executed harness and immutable manifests.
+The systemd user unit `typeahead-scheduled-rollback-20261019` completed successfully.
+
+Traffic temporarily moved to legacy using Worker
+`e4d942d2-9d78-446c-8e7e-1ae979800565`, preserving the current source. Compact
+machine 781e732c264678 was updated from a fresh config read with only init changed
+to `/app/typeahead-ingester` and INDEX_LATEST_KEY changed to latest.json. Its R2
+bucket is no longer suffixed with the old checkpoint. Native admission of the
+new generation is still pending; do not route traffic back based on old-build
+readiness. No qualification resources have been deleted.
+
+Local controller `/Users/nate/.local/share/typeahead-experiments/publisher-transition-20261019/transition.py`
+records its Worker versions, refreshed machine config and readiness results.
+It only waits for the expected b1792400507-4df8-px05 build and lag <=300 seconds;
+it does not automatically return traffic. Public probes run alongside it.
+Logfire confirms native download from root builds/b1792400507-4df8/index.db.
+
+The independent protected-copy/readback process is still running locally.
+`publication-20261019/start_recovery.py` waits for verified=true, then copies that
+evidence to HeavyPad and launches user unit
+`typeahead-scheduled-empty-restore-20261019`. The recovery script requires the
+passing rollback result, starts with an empty directory, downloads from the new
+protected prefix, checks exact results/mutations, and records its result under
+`/home/stoat/typeahead-release-20261019/empty-restore/result.json`. Do not count
+this check until its terminal result passes. Check existing processes/units
+before relaunching anything. Production remains protected by the live legacy route.
+
+At 20:18 UTC the legacy twin download on Fly completed; native validation is still
+in progress and the old compact snapshot remains attached. Overlay projection
+was slow during the transfer, then advanced again at 20:12 UTC. This does not
+satisfy the <=300-second catch-up gate. Production remains on legacy and public
+probes have observed no failures. Logfire continues to receive compact search
+spans from direct readiness probes.
+
+Two attempts to prepare a separate bootstrap root stopped before any machine
+configuration changed because the downloaded file changed from its temporary
+name to its final name. The completed staging database is now hardlinked into
+`/data/publisher-current-20261019/index/generations/b1792400507-4df8/index.db`
+to preserve the download if a retry becomes necessary; this is an unverified
+cache, not an admitted recovery generation. No manifest or active record was
+installed there and INDEX_BUILD_ROOT remains `/data/disaster-current-20261017`.
+Let current native validation finish before restarting. The empty bootstrap
+root does not change production behavior or justify bypassing checksum checks.
+
+At 20:20:51 UTC native validation admitted the new legacy twin into the generation
+cache and began fetching the compact prefix. Overlay lag was still too high.
+At 20:22 UTC the compact machine was restarted with only INDEX_BUILD_ROOT changed
+to `/data/publisher-current-20261019`, using the native-written legacy manifest
+and hardlinked database. Native validation repeats the cached twin's checksum;
+there is no active record in the new root, so sync waits for admission and feeds
+its watchdog rather than projecting against the old snapshot during downloads.
+The old root and live overlay remain intact. `bootstrap-config.json` and
+`bootstrap-update.log` retain this transition locally.
+
+An intervening Worker deployment changed the active version to
+`a6fa2302-5e37-46b5-8f02-244aac16de0e`. The initial version guard stopped before
+mutation; fresh public freshness confirmed healthy legacy routing, and the
+current version was retained. Do not roll back to e4d942d2 without reconciling
+these newer Worker changes. Return routing must clone the then-current version.
+
+The protected legacy database, legacy manifest and compact database have now
+passed complete R2 checksum readback. The compact prefix copy/readback is still
+pending, so the protected pair is not yet complete and empty-directory recovery
+has not started.

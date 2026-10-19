@@ -1,0 +1,37 @@
+{
+  "manifest_version": 2,
+  "active_build": "b1792400507-4df8-px05",
+  "previous_build": "b1792400507-4df8",
+  "promoted_at": 1792402049,
+  "snapshot_url": "builds/b1792400507-4df8-px05/index.db",
+  "byte_size": 16384,
+  "sha256": "b03bdb42e8ac71f7e6e5056a898b802cf034fd5497c1686b4c8238c7b06a811d",
+  "source_watermark": 1792400505,
+  "actor_count": 12620975,
+  "prefix_count": 143049028,
+  "normalize_version": "v2-cjk-bigram",
+  "scoring_version": "v1-quality-score",
+  "top_n_short": 300,
+  "top_n_medium": 200,
+  "top_n_long": 100,
+  "overlay_top_n": 100,
+  "hydrate_cap": 50,
+  "builder_version": "heavypad",
+  "cjk_key_count": 2348220,
+  "cjk_actor_count": 586797,
+  "format_version": 5,
+  "prefix_map": {
+    "object_key": "builds/b1792400507-4df8-px05/index.db.prefix",
+    "byte_size": 7019524096,
+    "sha256": "c19e1db6111d4fa93323171a538afa26d96512f35dea857c51ada437d9a8cc12"
+  },
+  "legacy_twin": {
+    "manifest": {
+      "object_key": "builds/b1792400507-4df8/manifest.json",
+      "byte_size": 655,
+      "sha256": "5d0a10d73971e634b2c108386881bf9c96085cdbeaaa51ae33b3517af3d0b746"
+    },
+    "build_id": "b1792400507-4df8",
+    "source_watermark": 1792400505
+  }
+}

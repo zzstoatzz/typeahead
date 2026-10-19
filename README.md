@@ -72,8 +72,8 @@ regression flags.
 The unmodified legacy performance control crashed during concurrent reads;
 that comparison is incomplete, with its failure retained. Nate accepted these
 two exceptions on October 17, conditional on the now-passing reload gate.
-The production cutover passed freshness, alias, and full smoke checks. Scheduled
-compact publication and final cleanup remain pending. The October 18 full-day
+The production cutover passed freshness, alias, and full smoke checks. The October 19 scheduled compact publication completed; native admission of that
+generation and final cleanup remain pending. The October 18 full-day
 counter review covered all 288 five-minute buckets: 14,902 successful searches,
 205 rate-limited searches, and no recorded 5xx responses across endpoints.
 Compact Logfire telemetry was restored October 19 and actual sampled search spans
@@ -81,19 +81,21 @@ verified against its deployed image. The earlier counters do not establish
 historical full-day latency or backend error coverage. The
 publisher is registered on `my-prefect-server` main `e4275b5`, whose full CI
 workflow passed through registration; its October 19
-09:00 UTC scheduled run contains the compact format and qualified source tag.
+09:00 UTC scheduled run completed at 11:25 UTC with the compact format and
+qualified source tag.
 See the [cutover runbook](docs/plans/compact-production-cutover.md) for current
 inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-rollout.md)
 for acceptance criteria. Earlier candidates' passing results do not qualify this
 replacement.
 
-Worker `fe998f27…` routes to `typeahead-search-compact.fly.dev`, preserving the
-October 19 Worker source while restoring compact telemetry. Worker
-`0ed67e0c…` is the freshly verified reverse target; the legacy `typeahead-search` backend
-remains running and synchronized. Four completed Fly qualification machines are
-stopped with volumes retained. The compact service still uses its protected
-checkpoint pending the scheduled-publisher transition; do not delete its app or
-use the legacy `services/fly.search.toml` configuration to update production.
+As of October 19, 20:22 UTC, Worker `a6fa2302…` temporarily routes to the healthy
+legacy `typeahead-search.fly.dev` backend while compact validates the scheduled
+snapshot. It preserves the latest Worker source. The compact machine now follows
+the root publisher pointer, but the new generation has not passed native admission
+and overlay catch-up yet. Four completed qualification machines remain stopped
+with volumes retained. Do not delete the compact app or use the legacy
+`services/fly.search.toml` configuration to update it. The cutover runbook records
+the active transition and recovery checks.
 
 The current-generation compact pair is 6.96 GB, over 50% smaller than the original
 and VACUUM reference. Local legacy twins remain mandatory for recovery; repeated
