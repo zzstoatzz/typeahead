@@ -1,0 +1,31 @@
+{
+  "captured_probes": 846,
+  "failures": 1,
+  "window": [
+    {
+      "time": 1792440140.361782,
+      "status": 200,
+      "ms": 182.84010887145996
+    },
+    {
+      "time": 1792440142.5498931,
+      "status": 200,
+      "ms": 373.39091300964355
+    },
+    {
+      "time": 1792440144.92362,
+      "error": "list index out of range"
+    },
+    {
+      "time": 1792440150.1399832,
+      "status": 200,
+      "ms": 896.5907096862793
+    },
+    {
+      "time": 1792440153.0373828,
+      "status": 200,
+      "ms": 259.8531246185303
+    }
+  ],
+  "cause": "unresolved; failed response not retained"
+}

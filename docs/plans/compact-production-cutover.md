@@ -1102,3 +1102,14 @@ The protected legacy database, legacy manifest and compact database have now
 passed complete R2 checksum readback. The compact prefix copy/readback is still
 pending, so the protected pair is not yet complete and empty-directory recovery
 has not started.
+
+Probe audit correction at 20:26 UTC: one probe at 20:02:24.923 UTC raised
+`list index out of range` after parsing the HTTP response, consistent with an
+empty `actors` list. The adjacent probes passed. The harness did not retain the
+failed response body/status, so do not classify this as a proven HTTP outage or
+claim zero probe failures. Logfire for 20:02–20:03 UTC returned no warnings/errors;
+its 1-in-10 sampled searches cannot identify the exact request. Investigate this
+transient correctness failure before declaring transition verification complete.
+Public freshness was healthy at the audit. The existing finite follow-up now
+runs every 15 minutes while native admission and protected readback progress;
+it remains quiet unless there is a meaningful change.
