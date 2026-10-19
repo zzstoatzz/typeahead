@@ -88,7 +88,7 @@ inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-r
 for acceptance criteria. Earlier candidates' passing results do not qualify this
 replacement.
 
-As of October 19, 20:57 UTC, Worker `a6fa2302…` temporarily routes to the healthy
+As of October 19, 20:57 UTC, Worker `86590349…` temporarily routes to the healthy
 legacy `typeahead-search.fly.dev` backend while compact catches up its overlay after admitting the scheduled
 snapshot. It preserves the latest Worker source. The compact machine now follows
 the root publisher pointer, and the new generation passed native admission, ranking checks, and

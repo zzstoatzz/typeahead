@@ -1156,3 +1156,8 @@ The richer public probe had 163 successful checks and no failures at 20:55:31;
 the earlier single empty-result anomaly remains unexplained. Production remains
 on legacy and no routing or resource mutation occurred in this follow-up.
 README now reflects admitted generation/recovery versus pending live catch-up.
+
+Fresh deployment readback found another intervening Worker version:
+`86590349-5a6e-42c1-a6de-4c5d8835ff3b` at 100%. Public freshness still confirms
+healthy legacy build b1792141282-189b (85-second lag). Preserve this newer source;
+local transition state contains an older version and must not be used blindly.
