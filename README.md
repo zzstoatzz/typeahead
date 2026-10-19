@@ -76,8 +76,9 @@ The production cutover passed freshness, alias, and full smoke checks. Scheduled
 compact publication and final cleanup remain pending. The October 18 full-day
 counter review covered all 288 five-minute buckets: 14,902 successful searches,
 205 rate-limited searches, and no recorded 5xx responses across endpoints.
-Compact Logfire telemetry is still missing; these counters do not establish
-full-day latency or backend error coverage. The
+Compact Logfire telemetry was restored October 19 and actual sampled search spans
+verified against its deployed image. The earlier counters do not establish
+historical full-day latency or backend error coverage. The
 publisher is registered on `my-prefect-server` main `e4275b5`, whose full CI
 workflow passed through registration; its October 19
 09:00 UTC scheduled run contains the compact format and qualified source tag.
@@ -86,9 +87,9 @@ inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-r
 for acceptance criteria. Earlier candidates' passing results do not qualify this
 replacement.
 
-Worker `0b97a76f…` routes to `typeahead-search-compact.fly.dev` and includes the
-compact-ID freshness fix while preserving the approved stats page. Worker
-`44402a8f…` is the tested reverse target; the legacy `typeahead-search` backend
+Worker `fe998f27…` routes to `typeahead-search-compact.fly.dev`, preserving the
+October 19 Worker source while restoring compact telemetry. Worker
+`0ed67e0c…` is the freshly verified reverse target; the legacy `typeahead-search` backend
 remains running and synchronized. Four completed Fly qualification machines are
 stopped with volumes retained. The compact service still uses its protected
 checkpoint pending the scheduled-publisher transition; do not delete its app or

@@ -1,0 +1,82 @@
+{
+  "columns": [
+    {
+      "name": "start_timestamp",
+      "datatype": {
+        "Timestamp": [
+          "Microsecond",
+          "UTC"
+        ]
+      },
+      "nullable": false
+    },
+    {
+      "name": "trace_id",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "span_id",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "service_name",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "service_version",
+      "datatype": "Utf8",
+      "nullable": true
+    },
+    {
+      "name": "duration",
+      "datatype": "Float64",
+      "nullable": true
+    },
+    {
+      "name": "sample_rate",
+      "datatype": "Utf8",
+      "nullable": true
+    }
+  ],
+  "rows": [
+    {
+      "start_timestamp": "2026-10-19T17:00:40.883081Z",
+      "trace_id": "0c01cadb833392260ca143e174605b0c",
+      "span_id": "3a5071ee06ecc499",
+      "service_name": "typeahead-search-compact",
+      "service_version": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+      "duration": 0.00234872,
+      "sample_rate": "10"
+    },
+    {
+      "start_timestamp": "2026-10-19T17:00:37.923694Z",
+      "trace_id": "5d6a7ca7da75476de637a0ec27e94c32",
+      "span_id": "1e06b0e437de0523",
+      "service_name": "typeahead-search-compact",
+      "service_version": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+      "duration": 0.00327841,
+      "sample_rate": "10"
+    },
+    {
+      "start_timestamp": "2026-10-19T17:00:34.959468Z",
+      "trace_id": "eaad6377226a21831683093936c24c7b",
+      "span_id": "c2f67384676275d1",
+      "service_name": "typeahead-search-compact",
+      "service_version": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+      "duration": 0.00177275,
+      "sample_rate": "10"
+    },
+    {
+      "start_timestamp": "2026-10-19T17:00:29.556365Z",
+      "trace_id": "1fb5f72029b6f07d8a3db38be55eb45c",
+      "span_id": "88645fdcedf237e3",
+      "service_name": "typeahead-search-compact",
+      "service_version": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+      "duration": 0.00873064,
+      "sample_rate": "10"
+    }
+  ]
+}

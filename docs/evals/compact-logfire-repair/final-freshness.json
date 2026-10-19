@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "stale": false,
+  "replica_lag_s": 26,
+  "snapshot_age_s": 287998,
+  "build_id": "compact-b1792141282-189b",
+  "probe_ok": true,
+  "reasons": []
+}

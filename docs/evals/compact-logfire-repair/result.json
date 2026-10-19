@@ -1,0 +1,8 @@
+{
+  "public_probes": 157,
+  "failed_probes": [],
+  "smoke_exit": 0,
+  "active_worker": "fe998f27-df76-47dc-bd58-ad6d92fcafbf",
+  "rollback_worker": "0ed67e0c-070e-4558-99b1-819d35c2d5ef",
+  "verified_at": 1792429330.410604
+}

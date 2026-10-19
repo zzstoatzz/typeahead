@@ -956,3 +956,45 @@ The scheduled publication has not happened. Root-pointer transition, protected
 fresh paired readback/recovery, production deployment recipe reconciliation and
 cleanup remain gated. The finite follow-up stays active. No resources were
 deleted and no additional acceptance exception was taken.
+
+### Compact Logfire repaired — October 19
+
+Nate requested immediate repair without downtime. The current Worker had advanced
+to `4df98ae7-5ad4-4f04-8797-99ad50a43d5e`; the repair preserved that version's
+source/bindings and changed only SEARCH_BACKEND_URL for each transition. Do not
+roll back to the original October 17 source now.
+
+The existing Fly-owned LOGFIRE_TOKEN was transferred privately from legacy to
+the compact app's secret store, staged without deploying the four stopped
+qualification machines. Traffic moved to the verified legacy backend with Worker
+`0ed67e0c-070e-4558-99b1-819d35c2d5ef`, then only machine `781e732c264678` was
+updated from its freshly read exact configuration. Configuration equality was
+verified afterward: same image, volume, checkpoint, overlay and service settings.
+Compact loaded its snapshot while legacy served production. An initial Python
+freshness request received HTTP 403; curl confirmed healthy legacy freshness
+before the machine update proceeded. Continuous public search probes succeeded.
+
+After native readiness and 30 successful native searches, Logfire returned actual
+`search` spans under `typeahead-search-compact`, attributed to the qualified
+cc2d5a1 image digest f085469e…, with sample_rate=10. See
+[span evidence](../evals/compact-logfire-repair-spans.json). Startup logs alone were
+not used as admission evidence. Future replacement admission must require both
+the telemetry credential and a verified search span from the expected image.
+
+Traffic returned to compact with Worker `fe998f27-df76-47dc-bd58-ad6d92fcafbf`.
+Public freshness passed with 26-second lag; five canonical/alias pairs were
+identical. Legacy remained ready at 88-second lag. The current rollback version
+is `0ed67e0c-070e-4558-99b1-819d35c2d5ef`: after checking for intervening changes,
+use the rehearsed `wrangler rollback VERSION --yes` command, then verify public
+freshness/search. Old source rollback targets are historical only.
+
+The token remains in Fly's existing secret domain; no rotation or new credential
+was introduced. The root-pointer, scheduled-publication and recovery cleanup
+gates are unchanged by this repair.
+
+Final verification: full smoke suite exited 0, all 157 continuous public search
+probes succeeded, and Logfire returned three more compact search spans after
+traffic returned. [Repair results](../evals/compact-logfire-repair/result.json)
+retain probe history, native readiness, alias/freshness summary and smoke output.
+No observed search downtime occurred; sampled probes are not a claim about every
+individual user request. All serving and rollback resources remain intact.
