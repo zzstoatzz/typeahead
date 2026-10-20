@@ -9,10 +9,38 @@ import urllib.request
 from pds_bundle_download import Budget
 
 
+class HealthNotReady(RuntimeError):
+    pass
+
+
+def wait_for_admission(check, *, timeout=120, interval=10):
+    if not 0 < interval <= timeout <= 120:
+        raise ValueError('Admission pause must be bounded by 120 seconds')
+    deadline = time.monotonic() + timeout
+    paused = False
+    healthy = 0
+    while True:
+        try:
+            check()
+            healthy += 1
+            if not paused or healthy >= 2:
+                return
+        except HealthNotReady:
+            paused = True
+            healthy = 0
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise HealthNotReady('Admission did not recover within pause budget')
+        time.sleep(min(interval, remaining))
+        if time.monotonic() >= deadline:
+            raise HealthNotReady('Admission did not recover within pause budget')
+
+
 def download(base_url, token, output, *, max_bytes, bytes_per_second, admit):
     output = Path(output)
     partial = Path(str(output) + '.part')
-    if output.exists() or partial.exists():
+    attempt = Path(str(output) + '.attempt.json')
+    if output.exists() or partial.exists() or attempt.exists():
         raise ValueError('Existing checkpoint attempt requires reconciliation')
     if max_bytes < 1 or bytes_per_second < 1 or not callable(admit):
         raise ValueError('Transfer limits and admission required')
@@ -27,6 +55,13 @@ def download(base_url, token, output, *, max_bytes, bytes_per_second, admit):
     generation = json.loads(payload)['current_generation']
     if type(generation) is not int or generation < 0:
         raise ValueError('Invalid checkpoint generation')
+    metadata = {'generation': generation, 'max_bytes': max_bytes,
+                'bytes_per_second': bytes_per_second, 'started_at': time.time(),
+                'published': False}
+    with attempt.open('x') as receipt:
+        json.dump(metadata, receipt, indent=2)
+        receipt.flush()
+        os.fsync(receipt.fileno())
     admit()
     started = last_check = time.monotonic()
     total = 0
@@ -42,6 +77,7 @@ def download(base_url, token, output, *, max_bytes, bytes_per_second, admit):
             if time.monotonic() - last_check >= 10:
                 admit()
                 last_check = time.monotonic()
+            chunk_started = time.monotonic()
             chunk = response.read(min(65536, max_bytes + 1 - total))
             if not chunk:
                 break
@@ -50,7 +86,7 @@ def download(base_url, token, output, *, max_bytes, bytes_per_second, admit):
                 raise ValueError('Checkpoint exceeds transfer budget')
             stream.write(chunk)
             digest.update(chunk)
-            delay = total / bytes_per_second - (time.monotonic() - started)
+            delay = len(chunk) / bytes_per_second - (time.monotonic() - chunk_started)
             if delay > 0:
                 time.sleep(delay)
         stream.flush()

@@ -25,6 +25,15 @@ history and validate tail continuity. Their output is not approval to apply.
 Do bulk transfers on the designated cloud host. HeavyPad is on the metered home
 connection; reuse its retained data only for offline qualification. Keep the
 source checkpoint distinct from a search snapshot, which omits source rows.
+The checkpoint downloader saves its generation and limits before export and
+refuses to overwrite an existing attempt. It does not support ranged resume.
+Callers may wrap admission with `wait_for_admission`: only `HealthNotReady`
+pauses are retryable, for at most 120 seconds, with two consecutive passing
+checks required to resume. Disk, stop-file and other errors propagate immediately.
+The caller must preserve its health thresholds and counter baseline across the
+pause. Reading and publication wait for admission; transfer pacing does not
+accumulate a burst allowance while paused. This helper does not enable a job
+or authorize retrying a failed production export.
 
 ## Applying and verifying repairs
 
