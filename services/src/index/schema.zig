@@ -59,6 +59,7 @@ pub const meta = struct {
 /// every time the search service opens an existing snapshot file (CREATE IF NOT
 /// EXISTS makes this safe).
 pub fn initSnapshot(conn: zqlite.Conn) !void {
+    try conn.exec("CREATE TABLE IF NOT EXISTS pds_scopes (host TEXT PRIMARY KEY COLLATE NOCASE, actor_count INTEGER NOT NULL, enabled INTEGER NOT NULL) WITHOUT ROWID", .{});
     try conn.exec(
         \\CREATE TABLE IF NOT EXISTS prefix_top_base (
         \\  key   TEXT PRIMARY KEY,

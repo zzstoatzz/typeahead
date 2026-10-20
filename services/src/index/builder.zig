@@ -104,6 +104,7 @@ pub const Config = struct {
     build_root: []const u8 = "/data",
     /// 0 = unlimited (full corpus); >0 = LIMIT N actors (sampling).
     sample_limit: usize = 1000,
+    pds_max_actors: usize = 10000,
     /// Where the actor stream comes from. See SourceMode.
     source_mode: SourceMode = .auto,
     /// Top-N caps per prefix-length tier.
@@ -121,6 +122,7 @@ pub fn readConfigFromEnv() Config {
     return .{
         .build_root = cGetenv("INDEX_BUILD_ROOT") orelse "/data",
         .sample_limit = envUsize("INDEX_SAMPLE_LIMIT", 1000),
+        .pds_max_actors = envUsize("INDEX_PDS_MAX_ACTORS", 10000),
         .source_mode = parseSourceMode(cGetenv("INDEX_SOURCE")),
         .top_n_short = envUsize("INDEX_TOP_N_SHORT", 300),
         .top_n_medium = envUsize("INDEX_TOP_N_MEDIUM", 200),
@@ -846,9 +848,21 @@ fn buildFromAttached(
         log.info("source_watermark from exported DB: {d}", .{stats.source_watermark});
     }
 
+    var scope_arena = std.heap.ArenaAllocator.init(gpa);
+    defer scope_arena.deinit();
+    var counts: std.StringHashMapUnmanaged(u64) = .empty;
+    {
+        var groups = try snapshot.rows("SELECT pds,COUNT(*) FROM src.actors GROUP BY pds", .{});
+        defer groups.deinit();
+        while (groups.next()) |group| try addPdsCount(scope_arena.allocator(), &counts, group.text(0), @intCast(group.int(1)));
+        if (groups.err) |err| return err;
+    }
+    try writePdsScopes(scope_arena.allocator(), snapshot, counts, cfg.pds_max_actors);
     var sctx = StreamCtx{
         .gpa = gpa,
         .stats = stats,
+        .pds_counts = counts,
+        .pds_max_actors = cfg.pds_max_actors,
         .row_arena = std.heap.ArenaAllocator.init(gpa),
         .stmt_actor = undefined,
         .stmt_emit = undefined,
@@ -930,6 +944,8 @@ const StreamCtx = struct {
     stmt_actor: zqlite.Stmt,
     stmt_emit: zqlite.Stmt,
     progress_at: usize = 0,
+    pds_counts: std.StringHashMapUnmanaged(u64),
+    pds_max_actors: usize,
 };
 
 /// Process one actor row. Per-row arena reset keeps memory flat. `row`
@@ -980,7 +996,7 @@ fn processActorRow(ctx: *StreamCtx, row: anytype) !void {
     const t_derive = nowMs();
     const norm_handle = try normalize.handle(aa, raw_handle);
     const norm_display = try normalize.display(aa, raw_display);
-    const keys = try prefixes.deriveAllUnique(aa, norm_handle, norm_display);
+    const keys = try scopedActorKeys(aa, norm_handle, norm_display, pds, ctx.pds_counts, ctx.pds_max_actors);
     ctx.stats.phases.derive_ms += nowMs() - t_derive;
 
     const score: f32 = scoring.scoreOf(.{ .quality_score = @floatCast(quality_score) });
@@ -1028,6 +1044,13 @@ fn streamActorsAndEmit(
     cfg: Config,
     stats: *BuildStats,
 ) !void {
+    var scope_arena = std.heap.ArenaAllocator.init(gpa);
+    defer scope_arena.deinit();
+    var counts: std.StringHashMapUnmanaged(u64) = .empty;
+    var groups = try turso.query("SELECT pds,COUNT(*) FROM actors WHERE updated_at <= ? GROUP BY pds", &.{try std.fmt.allocPrint(scope_arena.allocator(), "{d}", .{stats.source_watermark})});
+    defer groups.deinit();
+    for (groups.rows) |group| try addPdsCount(scope_arena.allocator(), &counts, group.text(0), @intCast(group.int(1)));
+    try writePdsScopes(scope_arena.allocator(), snapshot, counts, cfg.pds_max_actors);
     const stmt_actor = try snapshot.prepare(
         "INSERT OR REPLACE INTO actor_compact_base (did, blob) VALUES (?, ?)",
     );
@@ -1134,7 +1157,7 @@ fn streamActorsAndEmit(
             const t_derive = nowMs();
             const norm_handle = try normalize.handle(aa, raw_handle);
             const norm_display = try normalize.display(aa, raw_display);
-            const keys = try prefixes.deriveAllUnique(aa, norm_handle, norm_display);
+            const keys = try scopedActorKeys(aa, norm_handle, norm_display, pds, counts, cfg.pds_max_actors);
             stats.phases.derive_ms += nowMs() - t_derive;
 
             const score: f32 = scoring.scoreOf(.{ .quality_score = @floatCast(quality_score) });
@@ -1257,7 +1280,7 @@ fn buildPrefixTopBase(
             }
             // copy the new key into arena memory so it survives across iterations
             current_key = try aa.dupe(u8, key);
-            current_top_n = topNFor(current_key.?.len, cfg);
+            current_top_n = topNFor((std.mem.indexOfScalar(u8, current_key.?, 0x1f) orelse current_key.?.len), cfg);
             stats.prefix_key_count += 1;
         }
 
@@ -1299,6 +1322,7 @@ fn writeMeta(
 ) !void {
     var buf: [64]u8 = undefined;
 
+    try schema.setMeta(conn, "pds_scope_version", "1");
     try schema.setMeta(conn, schema.meta.build_id, build_id);
     try schema.setMeta(conn, schema.meta.built_at, try std.fmt.bufPrint(&buf, "{d}", .{nowSeconds()}));
     try schema.setMeta(conn, schema.meta.source_watermark, try std.fmt.bufPrint(&buf, "{d}", .{stats.source_watermark}));
@@ -1434,4 +1458,82 @@ test "resolvePublish: local never publishes" {
     var pb: [160]u8 = undefined;
     var lb: [160]u8 = undefined;
     try testing.expectError(error.LocalNoPublish, resolvePublish(.local, true, "anything", &pb, &lb));
+}
+
+fn addPdsCount(arena: Allocator, counts: *std.StringHashMapUnmanaged(u64), endpoint: []const u8, count: u64) !void {
+    const host = (try @import("pds.zig").normalize(arena, endpoint)) orelse return;
+    const entry = try counts.getOrPut(arena, host);
+    if (!entry.found_existing) entry.value_ptr.* = 0;
+    entry.value_ptr.* += count;
+}
+
+fn scopedActorKeys(arena: Allocator, handle: []const u8, display: []const u8, endpoint: []const u8, counts: std.StringHashMapUnmanaged(u64), max: usize) ![][]const u8 {
+    const host = (try @import("pds.zig").normalize(arena, endpoint)) orelse return prefixes.deriveAllUnique(arena, handle, display);
+    const count = counts.get(host) orelse return prefixes.deriveAllUnique(arena, handle, display);
+    return prefixes.deriveWithPds(arena, handle, display, if (count <= max) host else "");
+}
+
+fn writePdsScopes(arena: Allocator, snapshot: zqlite.Conn, counts: std.StringHashMapUnmanaged(u64), max: usize) !void {
+    var hosts: std.ArrayListUnmanaged([]const u8) = .empty;
+    var it = counts.iterator();
+    while (it.next()) |entry| {
+        const enabled = entry.value_ptr.* <= max;
+        try snapshot.exec("INSERT INTO pds_scopes VALUES(?,?,?)", .{ entry.key_ptr.*, entry.value_ptr.*, @as(i64, @intFromBool(enabled)) });
+        if (enabled) try hosts.append(arena, entry.key_ptr.*);
+    }
+    std.mem.sort([]const u8, hosts.items, {}, struct {
+        fn less(_: void, a: []const u8, b: []const u8) bool {
+            return std.mem.order(u8, a, b) == .lt;
+        }
+    }.less);
+    var hash = std.crypto.hash.sha2.Sha256.init(.{});
+    for (hosts.items) |host| {
+        hash.update(host);
+        hash.update("\x00");
+    }
+    var digest: [32]u8 = undefined;
+    hash.final(&digest);
+    const hex = std.fmt.bytesToHex(digest, .lower);
+    try schema.setMeta(snapshot, "pds_scope_policy", &hex);
+    try schema.setMeta(snapshot, "pds_max_actors", try std.fmt.allocPrint(arena, "{d}", .{max}));
+}
+
+test "small PDS cutoff counts normalized hosting identities before emitting scoped keys" {
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    var counts: std.StringHashMapUnmanaged(u64) = .empty;
+    try addPdsCount(arena, &counts, "https://ACME.test/", 9999);
+    try addPdsCount(arena, &counts, "http://acme.test.", 1);
+    try addPdsCount(arena, &counts, "https://big.test", 10001);
+    try addPdsCount(arena, &counts, "", 20000);
+    try testing.expectEqual(@as(u64, 10000), counts.get("acme.test").?);
+    const global = try prefixes.deriveAllUnique(arena, "bob.custom.test", "bob smith");
+    const small = try scopedActorKeys(arena, "bob.custom.test", "bob smith", "https://acme.test", counts, 10000);
+    try testing.expectEqual(global.len * 2, small.len);
+    for ([_][]const u8{ "https://big.test", "https://unknown.test", "" }) |endpoint| {
+        const keys = try scopedActorKeys(arena, "bob.custom.test", "bob smith", endpoint, counts, 10000);
+        try testing.expectEqual(global.len, keys.len);
+        for (global, keys) |a, b| try testing.expectEqualStrings(a, b);
+    }
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try schema.initSnapshot(conn);
+    try writePdsScopes(arena, conn, counts, 10000);
+    {
+        const row = (try conn.row("SELECT enabled,actor_count FROM pds_scopes WHERE host='ACME.TEST'", .{})).?;
+        defer row.deinit();
+        try testing.expectEqual(@as(i64, 1), row.int(0));
+        try testing.expectEqual(@as(i64, 10000), row.int(1));
+    }
+    {
+        const row = (try conn.row("SELECT enabled FROM pds_scopes WHERE host='big.test'", .{})).?;
+        defer row.deinit();
+        try testing.expectEqual(@as(i64, 0), row.int(0));
+    }
+    const policy = (try schema.getMeta(conn, arena, "pds_scope_policy")).?;
+    try conn.exec("DELETE FROM pds_scopes", .{});
+    try writePdsScopes(arena, conn, counts, 9999);
+    const changed = (try schema.getMeta(conn, arena, "pds_scope_policy")).?;
+    try testing.expect(!std.mem.eql(u8, policy, changed));
 }

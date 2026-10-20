@@ -61,6 +61,26 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const eval_server = b.addExecutable(.{
+        .name = "eval-server",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/eval_server.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "zat", .module = zat.module("zat") },
+                .{ .name = "zqlite", .module = zqlite.module("zqlite") },
+                .{ .name = "logfire", .module = logfire.module("logfire") },
+                .{ .name = "zug", .module = zug.module("zug") },
+                .{ .name = "poolio", .module = poolio.module("poolio") },
+            },
+        }),
+    });
+
+    const install_eval_server = b.addInstallArtifact(eval_server, .{});
+    b.step("eval-server", "Build an isolated loopback search server with no sync or promotion").dependOn(&install_eval_server.step);
+
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

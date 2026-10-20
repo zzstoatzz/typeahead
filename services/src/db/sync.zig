@@ -174,7 +174,10 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     }
 
     const last_sync_ts = readLastSync(local, conn);
-    const from = resumePoint(last_sync_ts, snapshot_wm);
+    const scope_policy = try local.attachedMetaText(std.heap.page_allocator, "pds_scope_policy");
+    defer if (scope_policy) |policy| std.heap.page_allocator.free(policy);
+    const scope_ready = if (scope_policy) |policy| try scopePolicyReady(local, policy) else true;
+    const from = if (scope_ready) resumePoint(last_sync_ts, snapshot_wm) else snapshot_wm;
     log.info("incremental: last_sync={d} snapshot_watermark={d} from={d}", .{ last_sync_ts, snapshot_wm, from });
     span.setAttribute("from", from);
 
@@ -395,6 +398,11 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         });
     } else {
         writeLastSync(local, conn, timestamp());
+        if (scope_policy) |policy| {
+            local.lock();
+            defer local.unlock();
+            try conn.exec("INSERT OR REPLACE INTO sync_meta(key,value) VALUES('pds_scope_policy',?)", .{policy});
+        }
         {
             local.lock();
             defer local.unlock();
@@ -532,6 +540,8 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
 const OldRow = struct {
     handle_buf: [256]u8 = undefined,
     name_buf: [512]u8 = undefined,
+    pds_buf: [2048]u8 = undefined,
+    pds: ?[]const u8 = null,
     handle: ?[]const u8 = null,
     name: ?[]const u8 = null,
 };
@@ -574,6 +584,9 @@ fn oldFromLease(arena: std.mem.Allocator, lease: LocalDb.ReadLease, did: []const
     const b = blob orelse return true;
     if (b.len > 16384) return false;
     const ac = pack.unpackActor(b) catch return false;
+    if (ac.pds.len > out.pds_buf.len) return false;
+    @memcpy(out.pds_buf[0..ac.pds.len], ac.pds);
+    out.pds = out.pds_buf[0..ac.pds.len];
     if (ac.handle.len > 0 and ac.handle.len <= out.handle_buf.len) {
         @memcpy(out.handle_buf[0..ac.handle.len], ac.handle);
         out.handle = out.handle_buf[0..ac.handle.len];
@@ -602,7 +615,7 @@ test "unified base old actor suppresses renamed prefixes and preserves large syn
     var old: OldRow = .{};
     try std.testing.expect(oldFromLease(arena, lease, "did:arbitrary:small", &old));
     try std.testing.expectEqualStrings("old.example", old.handle.?);
-    try overlay.projectUpdate(arena, conn, .{
+    try overlay.projectUpdateWithPds(arena, conn, .{
         .did = "did:arbitrary:small",
         .handle = "new.example",
         .display_name = "New Name",
@@ -613,7 +626,7 @@ test "unified base old actor suppresses renamed prefixes and preserves large syn
         .created_at = "",
         .hidden = false,
         .quality_score = 2,
-    }, old.handle.?, old.name.?, 2);
+    }, old.handle.?, old.name.?, old.pds orelse "", 2);
     const suppressed = (try conn.row("SELECT op FROM prefix_overlay WHERE key='h:old' AND did='did:arbitrary:small'", .{})).?;
     defer suppressed.deinit();
     try std.testing.expectEqual(@as(i64, 0), suppressed.int(0));
@@ -636,7 +649,8 @@ fn projectRow(conn: zqlite.Conn, row: anytype, ctx: OverlayCtx) !void {
     if (!snapshotOldFromOverlayBase(ctx.local, did, &old)) {
         log.warn("old-row lookup failed for {s}; projecting without suppression", .{did});
     }
-    try overlay.projectUpdate(ctx.arena, conn, .{
+    const scopes = try pdsScopes(ctx.local, old.pds orelse "", row.text(Col.pds));
+    try overlay.projectUpdateWithPds(ctx.arena, conn, .{
         .did = did,
         .handle = row.text(Col.handle),
         .display_name = row.text(Col.display_name),
@@ -644,10 +658,11 @@ fn projectRow(conn: zqlite.Conn, row: anytype, ctx: OverlayCtx) !void {
         .labels = row.text(Col.labels),
         .associated = row.text(Col.associated),
         .pds = row.text(Col.pds),
+        .pds_indexed = scopes.new,
         .created_at = row.text(Col.created_at),
         .hidden = row.int(Col.hidden) != 0,
         .quality_score = @floatCast(row.float(Col.quality_score)),
-    }, old.handle orelse "", old.name orelse "", ctx.updated_at);
+    }, old.handle orelse "", old.name orelse "", if (scopes.old) old.pds orelse "" else "", ctx.updated_at);
 }
 
 /// Global tombstone in the overlay so serving suppresses the actor
@@ -657,7 +672,8 @@ fn projectRemoval(conn: zqlite.Conn, did: []const u8, caller: []const u8, ctx: O
     if (!snapshotOldFromOverlayBase(ctx.local, did, &old)) {
         log.warn("{s}: old-row lookup failed for {s}; tombstoning without suppression", .{ caller, did });
     }
-    try overlay.projectDelete(ctx.arena, conn, did, old.handle orelse "", old.name orelse "", ctx.updated_at);
+    const scopes = try pdsScopes(ctx.local, old.pds orelse "", "");
+    try overlay.projectDeleteWithPds(ctx.arena, conn, did, old.handle orelse "", old.name orelse "", if (scopes.old) old.pds orelse "" else "", ctx.updated_at);
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────
@@ -720,4 +736,38 @@ test "incremental paged keyset query keeps its seek anchor and plans as SEARCH" 
         if (std.mem.indexOf(u8, detail, "SEARCH") != null) saw_search = true;
     }
     try testing.expect(saw_search);
+}
+
+fn scopePolicyReady(local: *LocalDb, policy: []const u8) !bool {
+    const lease = try local.checkoutRead();
+    defer lease.release();
+    var rows = try lease.query("SELECT value FROM sync_meta WHERE key='pds_scope_policy'", .{});
+    defer rows.deinit();
+    const row = rows.next() orelse return false;
+    return std.mem.eql(u8, row.text(0), policy);
+}
+
+const PdsScopes = struct { old: bool = false, new: bool = false };
+
+fn pdsScopes(local: *LocalDb, old_endpoint: []const u8, new_endpoint: []const u8) !PdsScopes {
+    const pds = @import("../index/pds.zig");
+    const old_host = pds.host(old_endpoint) orelse "";
+    const new_host = pds.host(new_endpoint) orelse "";
+    if (old_host.len == 0 and new_host.len == 0) return .{};
+    const lease = try local.checkoutRead();
+    defer lease.release();
+    {
+        var rows = try lease.query("SELECT value FROM idx.index_meta WHERE key='pds_scope_version'", .{});
+        defer rows.deinit();
+        const row = rows.next() orelse return .{};
+        if (!std.mem.eql(u8, row.text(0), "1")) return .{};
+    }
+    var result: PdsScopes = .{};
+    var rows = try lease.query("SELECT host FROM idx.pds_scopes WHERE enabled=1 AND host IN (?,?)", .{ old_host, new_host });
+    defer rows.deinit();
+    while (rows.next()) |row| {
+        if (std.ascii.eqlIgnoreCase(row.text(0), old_host)) result.old = true;
+        if (std.ascii.eqlIgnoreCase(row.text(0), new_host)) result.new = true;
+    }
+    return result;
 }

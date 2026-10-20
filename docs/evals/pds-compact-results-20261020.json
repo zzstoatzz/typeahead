@@ -1,0 +1,398 @@
+{
+  "standard_benchmarks": {},
+  "baseline_engine": "/Users/nate/.local/share/typeahead-experiments/pds-homepage-20261020/baseline-source/services/zig-out/bin/eval-server",
+  "fixture_actors": 100005,
+  "comparisons": 1712,
+  "queries": 214,
+  "snapshot_bytes": {
+    "full": 37863424,
+    "baseline": 35098624,
+    "reference": 3940352
+  },
+  "http_latency": {
+    "global_baseline": {
+      "n": 400,
+      "p50_ms": 0.211,
+      "p95_ms": 0.537,
+      "max_ms": 0.67
+    },
+    "global_candidate": {
+      "n": 400,
+      "p50_ms": 0.211,
+      "p95_ms": 0.522,
+      "max_ms": 0.685
+    },
+    "scoped": {
+      "n": 400,
+      "p50_ms": 0.231,
+      "p95_ms": 0.575,
+      "max_ms": 0.701
+    },
+    "reference": {
+      "n": 400,
+      "p50_ms": 0.205,
+      "p95_ms": 0.539,
+      "max_ms": 0.737
+    },
+    "scoped_concurrency_20": {
+      "n": 400,
+      "p50_ms": 3.231,
+      "p95_ms": 4.804,
+      "max_ms": 6.698
+    },
+    "update_small": {
+      "n": 200,
+      "p50_ms": 0.835,
+      "p95_ms": 2.081,
+      "max_ms": 3.189
+    },
+    "update_large": {
+      "n": 200,
+      "p50_ms": 0.6,
+      "p95_ms": 1.268,
+      "max_ms": 2.067
+    }
+  },
+  "debug_scoped_bob": {
+    "engine": "index",
+    "q": "bob",
+    "normalized": "bob",
+    "mode": "union_any",
+    "hydrate_cap": 50,
+    "exact_hits": 0,
+    "merged": 50,
+    "query_cut": false,
+    "full_query_dropped": 0,
+    "keys": [
+      {
+        "key": "h:bob\u001facme.test",
+        "base": 300,
+        "overlay": 0,
+        "overlay_bounded": true
+      },
+      {
+        "key": "e:bob\u001facme.test",
+        "base": 0,
+        "overlay": 0,
+        "overlay_bounded": false
+      },
+      {
+        "key": "d:bob\u001facme.test",
+        "base": 0,
+        "overlay": 0,
+        "overlay_bounded": true
+      },
+      {
+        "key": "n:bob\u001facme.test",
+        "base": 300,
+        "overlay": 0,
+        "overlay_bounded": true
+      }
+    ],
+    "candidates": [
+      {
+        "did": "did:plc:000000000000000000009997",
+        "handle": "bob9997.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9997.44140625
+      },
+      {
+        "did": "did:plc:000000000000000000009996",
+        "handle": "person9996.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9996.4853515625
+      },
+      {
+        "did": "did:plc:000000000000000000009995",
+        "handle": "bob9995.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9995.927734375
+      },
+      {
+        "did": "did:plc:000000000000000000009993",
+        "handle": "bob9993.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9993.658203125
+      },
+      {
+        "did": "did:plc:000000000000000000009992",
+        "handle": "person9992.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9992.5771484375
+      },
+      {
+        "did": "did:plc:000000000000000000009991",
+        "handle": "bob9991.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9991.19921875
+      },
+      {
+        "did": "did:plc:000000000000000000009989",
+        "handle": "bob9989.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9989.2685546875
+      },
+      {
+        "did": "did:plc:000000000000000000009988",
+        "handle": "person9988.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9988.279296875
+      },
+      {
+        "did": "did:plc:000000000000000000009987",
+        "handle": "bob9987.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9987.572265625
+      },
+      {
+        "did": "did:plc:000000000000000000009985",
+        "handle": "bob9985.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9985.0537109375
+      },
+      {
+        "did": "did:plc:000000000000000000009984",
+        "handle": "person9984.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9984.8525390625
+      },
+      {
+        "did": "did:plc:000000000000000000009983",
+        "handle": "bob9983.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9983.1044921875
+      },
+      {
+        "did": "did:plc:000000000000000000009981",
+        "handle": "bob9981.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9981.3837890625
+      },
+      {
+        "did": "did:plc:000000000000000000009980",
+        "handle": "person9980.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9980.75390625
+      },
+      {
+        "did": "did:plc:000000000000000000009979",
+        "handle": "bob9979.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9979.853515625
+      },
+      {
+        "did": "did:plc:000000000000000000009977",
+        "handle": "bob9977.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9977.63671875
+      },
+      {
+        "did": "did:plc:000000000000000000009976",
+        "handle": "person9976.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9976.5673828125
+      },
+      {
+        "did": "did:plc:000000000000000000009975",
+        "handle": "bob9975.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9975.5400390625
+      },
+      {
+        "did": "did:plc:000000000000000000009973",
+        "handle": "bob9973.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9973.703125
+      },
+      {
+        "did": "did:plc:000000000000000000009972",
+        "handle": "person9972.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9972.84375
+      },
+      {
+        "did": "did:plc:000000000000000000009971",
+        "handle": "bob9971.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9971.55859375
+      },
+      {
+        "did": "did:plc:000000000000000000009969",
+        "handle": "bob9969.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9969.7236328125
+      },
+      {
+        "did": "did:plc:000000000000000000009968",
+        "handle": "person9968.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9968.1298828125
+      },
+      {
+        "did": "did:plc:000000000000000000009967",
+        "handle": "bob9967.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9967.6982421875
+      },
+      {
+        "did": "did:plc:000000000000000000009965",
+        "handle": "bob9965.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9965.7763671875
+      },
+      {
+        "did": "did:plc:000000000000000000009964",
+        "handle": "person9964.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9964.5185546875
+      },
+      {
+        "did": "did:plc:000000000000000000009963",
+        "handle": "bob9963.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9963.55078125
+      },
+      {
+        "did": "did:plc:000000000000000000009961",
+        "handle": "bob9961.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9961.099609375
+      },
+      {
+        "did": "did:plc:000000000000000000009960",
+        "handle": "person9960.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9960.56640625
+      },
+      {
+        "did": "did:plc:000000000000000000009959",
+        "handle": "bob9959.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9959.216796875
+      },
+      {
+        "did": "did:plc:000000000000000000009957",
+        "handle": "bob9957.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9957.0888671875
+      },
+      {
+        "did": "did:plc:000000000000000000009956",
+        "handle": "person9956.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9956.73828125
+      },
+      {
+        "did": "did:plc:000000000000000000009955",
+        "handle": "bob9955.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9955.38671875
+      },
+      {
+        "did": "did:plc:000000000000000000009953",
+        "handle": "bob9953.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9953.3359375
+      },
+      {
+        "did": "did:plc:000000000000000000009952",
+        "handle": "person9952.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9952.623046875
+      },
+      {
+        "did": "did:plc:000000000000000000009951",
+        "handle": "bob9951.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9951.80078125
+      },
+      {
+        "did": "did:plc:000000000000000000009949",
+        "handle": "bob9949.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9949.3916015625
+      },
+      {
+        "did": "did:plc:000000000000000000009948",
+        "handle": "person9948.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9948.921875
+      },
+      {
+        "did": "did:plc:000000000000000000009947",
+        "handle": "bob9947.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9947.685546875
+      },
+      {
+        "did": "did:plc:000000000000000000009945",
+        "handle": "bob9945.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9945.7578125
+      },
+      {
+        "did": "did:plc:000000000000000000009944",
+        "handle": "person9944.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9944.83984375
+      },
+      {
+        "did": "did:plc:000000000000000000009943",
+        "handle": "bob9943.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9943.3095703125
+      },
+      {
+        "did": "did:plc:000000000000000000009941",
+        "handle": "bob9941.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9941.8876953125
+      },
+      {
+        "did": "did:plc:000000000000000000009940",
+        "handle": "person9940.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9940.52734375
+      },
+      {
+        "did": "did:plc:000000000000000000009939",
+        "handle": "bob9939.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9939.779296875
+      },
+      {
+        "did": "did:plc:000000000000000000009937",
+        "handle": "bob9937.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9937.107421875
+      },
+      {
+        "did": "did:plc:000000000000000000009936",
+        "handle": "person9936.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9936.7861328125
+      },
+      {
+        "did": "did:plc:000000000000000000009935",
+        "handle": "bob9935.custom.test",
+        "display_name": "Bob definitelyarealcompany",
+        "score": 9935.294921875
+      },
+      {
+        "did": "did:plc:000000000000000000009933",
+        "handle": "bob9933.custom.test",
+        "display_name": "\u4f50\u85e4 \u592a\u90ce",
+        "score": 9933.6279296875
+      },
+      {
+        "did": "did:plc:000000000000000000009932",
+        "handle": "person9932.custom.test",
+        "display_name": "Bob Smith",
+        "score": 9932.2666015625
+      }
+    ]
+  },
+  "baseline_revision": "369cf6a84cfc4f8d3db628e132220d3d5671c8eb",
+  "snapshot_format": "FLATPX05",
+  "worker_runtime_checks": 18
+}

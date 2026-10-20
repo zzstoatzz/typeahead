@@ -1,0 +1,71 @@
+{
+  "standard_benchmarks": {
+    "ranking": 1,
+    "search": 0
+  },
+  "baseline_engine": "46b0c63, ReleaseFast, isolated eval-server harness",
+  "fixture_actors": 100005,
+  "comparisons": 1712,
+  "queries": 214,
+  "snapshot_bytes": {
+    "full": 98631680,
+    "baseline": 88903680,
+    "reference": 19914752
+  },
+  "http_latency": {
+    "global_baseline": {
+      "n": 400,
+      "p50_ms": 0.272,
+      "p95_ms": 0.636,
+      "max_ms": 3.787
+    },
+    "global_candidate": {
+      "n": 400,
+      "p50_ms": 0.263,
+      "p95_ms": 0.625,
+      "max_ms": 0.864
+    },
+    "scoped": {
+      "n": 400,
+      "p50_ms": 0.276,
+      "p95_ms": 0.653,
+      "max_ms": 0.958
+    },
+    "reference": {
+      "n": 400,
+      "p50_ms": 0.259,
+      "p95_ms": 0.616,
+      "max_ms": 1.025
+    },
+    "scoped_concurrency_20": {
+      "n": 400,
+      "p50_ms": 3.199,
+      "p95_ms": 4.868,
+      "max_ms": 6.434
+    },
+    "update_small": {
+      "n": 200,
+      "p50_ms": 0.632,
+      "p95_ms": 1.41,
+      "max_ms": 1.916
+    },
+    "update_large": {
+      "n": 200,
+      "p50_ms": 0.492,
+      "p95_ms": 1.028,
+      "max_ms": 1.83
+    }
+  },
+  "scope_cutoff": 10000,
+  "build": {
+    "baseline_ms": 7289,
+    "candidate_ms": 7329,
+    "baseline_emissions": 4270795,
+    "candidate_emissions": 4697812,
+    "baseline_prefix_keys": 870378,
+    "candidate_prefix_keys": 967490
+  },
+  "worker_runtime_checks": 18,
+  "date": "2026-10-08",
+  "production_changed": false
+}

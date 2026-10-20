@@ -39,6 +39,7 @@ pub const Actor = struct {
     labels: []const u8,
     associated: []const u8,
     pds: []const u8,
+    pds_indexed: bool = false,
     created_at: []const u8,
     hidden: bool,
     quality_score: f32,
@@ -48,21 +49,22 @@ pub const Actor = struct {
 /// pre-update values (the local row being replaced); pass "" for a brand-new
 /// actor. `updated_at` is the SOURCE timestamp (Turso updated_at), used for
 /// watermark-based compaction later.
-pub fn projectUpdate(
+pub fn projectUpdateWithPds(
     arena: Allocator,
     conn: zqlite.Conn,
     a: Actor,
     old_handle: []const u8,
     old_display: []const u8,
+    old_pds: []const u8,
     updated_at: i64,
 ) !void {
     const nh = try normalize.handle(arena, a.handle);
     const nd = try normalize.display(arena, a.display_name);
-    const new_keys = try prefixes.deriveAllUnique(arena, nh, nd);
+    const new_keys = try prefixes.deriveWithPds(arena, nh, nd, if (a.pds_indexed) a.pds else "");
 
     const oh = try normalize.handle(arena, old_handle);
     const od = try normalize.display(arena, old_display);
-    const old_keys = try prefixes.deriveAllUnique(arena, oh, od);
+    const old_keys = try prefixes.deriveWithPds(arena, oh, od, old_pds);
 
     const score = scoring.scoreOf(.{ .quality_score = a.quality_score });
 
@@ -93,12 +95,13 @@ pub fn projectUpdate(
 /// actor's known prefixes so it stops appearing as a candidate. The tombstone
 /// alone is sufficient for correctness (hydrate skips it); the prefix
 /// suppressions just keep candidate sets tidy.
-pub fn projectDelete(
+pub fn projectDeleteWithPds(
     arena: Allocator,
     conn: zqlite.Conn,
     did: []const u8,
     old_handle: []const u8,
     old_display: []const u8,
+    old_pds: []const u8,
     updated_at: i64,
 ) !void {
     try conn.exec(
@@ -108,7 +111,7 @@ pub fn projectDelete(
 
     const oh = try normalize.handle(arena, old_handle);
     const od = try normalize.display(arena, old_display);
-    for (try prefixes.deriveAllUnique(arena, oh, od)) |k| {
+    for (try prefixes.deriveWithPds(arena, oh, od, old_pds)) |k| {
         try upsertPrefix(conn, k, did, 0, 0, updated_at);
     }
 }
@@ -477,4 +480,11 @@ test "offline real actor fanout benchmark (disposable database only)" {
         const end = std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds;
         std.debug.print("FANOUT scenario={s} actors=500 committed_us={d}\n", .{ scenario, @divTrunc(end - start, 1000) });
     }
+}
+
+fn projectUpdate(arena: Allocator, conn: zqlite.Conn, a: Actor, old_handle: []const u8, old_display: []const u8, updated_at: i64) !void {
+    return projectUpdateWithPds(arena, conn, a, old_handle, old_display, a.pds, updated_at);
+}
+fn projectDelete(arena: Allocator, conn: zqlite.Conn, did: []const u8, old_handle: []const u8, old_display: []const u8, updated_at: i64) !void {
+    return projectDeleteWithPds(arena, conn, did, old_handle, old_display, "", updated_at);
 }

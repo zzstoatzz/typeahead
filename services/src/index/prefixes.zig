@@ -855,3 +855,18 @@ test "matchesFullQuery: handle prefix, exact, dot suffix, display run" {
     try testing.expect(matchesFullQuery("nate definitelyarealcompany", "x.y", "n definitelyarealcompanyx"));
     try testing.expect(!matchesFullQuery("nate definitelyarealcompany", "x.y", "nate definitelyarealcorp"));
 }
+
+pub fn deriveWithPds(arena: Allocator, handle: []const u8, display: []const u8, endpoint: []const u8) ![][]const u8 {
+    const global = try deriveAllUnique(arena, handle, display);
+    const pds = @import("pds.zig");
+    const host = (try pds.normalize(arena, endpoint)) orelse return global;
+    const keys = try arena.alloc([]const u8, global.len * 2);
+    @memcpy(keys[0..global.len], global);
+    for (global, keys[global.len..]) |key, *scoped| scoped.* = try pds.scopedKey(arena, key, host);
+    std.mem.sort([]const u8, keys, {}, struct {
+        fn less(_: void, a: []const u8, b: []const u8) bool {
+            return std.mem.order(u8, a, b) == .lt;
+        }
+    }.less);
+    return keys;
+}

@@ -249,7 +249,17 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
 
     // On engine error we 500/503 so the worker falls back to its configured
     // fallback path — never silently serve a wrong/empty page.
-    index_search.run(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch |err| {
+    var pds_buf: [512]u8 = undefined;
+    var host_buf: [253]u8 = undefined;
+    const pds = searchPds(target, &pds_buf, &host_buf) catch {
+        try sendJson(request, .bad_request, "{\"error\":\"invalid pds hostname\"}");
+        return;
+    };
+    index_search.run(local_db, std.heap.page_allocator, q, clamped_limit, pds, &output.writer) catch |err| {
+        if (err == error.PdsScopeUnavailable) {
+            try sendJson(request, .service_unavailable, "{\"error\":\"PdsScopeUnavailable\"}");
+            return;
+        }
         if (err == error.PoolExhausted) {
             try sendJson(request, .service_unavailable, "{\"error\":\"read pool exhausted\"}");
             return;
@@ -262,6 +272,7 @@ fn handleSearch(request: *http.Server.Request, target: []const u8, local_db: *Lo
     const body = output.written();
     try request.respond(body, .{
         .extra_headers = &.{
+            .{ .name = "x-typeahead-pds", .value = pds orelse "" },
             .{ .name = "content-type", .value = "application/json" },
             .{ .name = "access-control-allow-origin", .value = "*" },
             .{ .name = "access-control-allow-methods", .value = "GET, OPTIONS" },
@@ -297,7 +308,17 @@ fn handleDebugSearch(request: *http.Server.Request, target: []const u8, local_db
     // The same engine that answers /search. A debug view of a different
     // engine explains a ranking nobody sees (2026-08-12 — `q='fig ('` ranked
     // #1 in the old FTS debug path while /search didn't return it at all).
-    index_search.debug(local_db, std.heap.page_allocator, q, clamped_limit, &output.writer) catch |err| {
+    var pds_buf: [512]u8 = undefined;
+    var host_buf: [253]u8 = undefined;
+    const pds = searchPds(target, &pds_buf, &host_buf) catch {
+        try sendJson(request, .bad_request, "{\"error\":\"invalid pds hostname\"}");
+        return;
+    };
+    index_search.debug(local_db, std.heap.page_allocator, q, clamped_limit, pds, &output.writer) catch |err| {
+        if (err == error.PdsScopeUnavailable) {
+            try sendJson(request, .service_unavailable, "{\"error\":\"PdsScopeUnavailable\"}");
+            return;
+        }
         if (err == error.PoolExhausted) {
             try sendJson(request, .service_unavailable, "{\"error\":\"read pool exhausted\"}");
             return;
@@ -480,4 +501,17 @@ fn handleDebugIndex(request: *http.Server.Request, target: []const u8, local_db:
         return;
     };
     try sendJson(request, .ok, out.written());
+}
+
+fn searchPds(target: []const u8, decode_buf: []u8, host_buf: []u8) !?[]const u8 {
+    const query_start = mem.indexOfScalar(u8, target, '?') orelse return null;
+    var params = mem.splitScalar(u8, target[query_start + 1 ..], '&');
+    const raw = while (params.next()) |param| {
+        const split = mem.indexOfScalar(u8, param, '=') orelse param.len;
+        if (mem.eql(u8, param[0..split], "pds")) break if (split == param.len) "" else param[split + 1 ..];
+    } else return null;
+    const decoded = percentDecode(raw, decode_buf) orelse return error.InvalidPds;
+    const host = @import("index/pds.zig").host(decoded) orelse return error.InvalidPds;
+    for (host, 0..) |c, i| host_buf[i] = std.ascii.toLower(c);
+    return host_buf[0..host.len];
 }

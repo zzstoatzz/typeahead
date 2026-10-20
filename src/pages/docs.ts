@@ -104,10 +104,21 @@ export function docsPage(): string {
     </p>
     <pre><code>GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=...&amp;limit=10</code></pre>
     <p>
-      params are <code>q</code> and <code>limit</code> (1–100), returning
+      params are <code>q</code>, <code>limit</code> (1–100), and optional <code>pds</code>, returning
       <code>{ "actors": [...] }</code>. this is the endpoint to use —
       <code>app.bsky.*</code> names belong to bluesky's lexicons, and this service isn't
       bluesky. there's also a machine-readable summary at <a href="/llms.txt">/llms.txt</a>.
+    </p>
+
+    <p>
+      <code>?q=bob&amp;pds=acme.com</code> searches within the indexed hosting PDS before
+      candidate selection and ranking, including custom-domain handles. The hostname match is
+      exact and case-insensitive; subdomains are separate. HTTP(S) origins and a trailing
+      slash/dot are accepted; ports, paths, and empty values return 400. An unknown PDS returns
+      an empty list. This experiment indexes PDSs with at most 10,000 known actors at build time
+      (a configurable cutoff). Larger PDSs, scope-policy replay, or unavailable backend/snapshot support return <code>503 PdsScopeUnavailable</code>;
+      scoped requests never fall back to unfiltered results. This extension works on both
+      endpoint names here; it is not a Bluesky API parameter.
     </p>
 
     <h2 id="switching-from-bluesky">switching from bluesky</h2>

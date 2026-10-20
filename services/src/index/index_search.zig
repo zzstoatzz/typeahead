@@ -51,7 +51,7 @@ fn milliTimestamp() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(std.Options.debug_io, .awake).nanoseconds, std.time.ns_per_ms));
 }
 
-pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, writer: anytype) !void {
+pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, pds: ?[]const u8, writer: anytype) !void {
     var sanitize_buf: [512]u8 = undefined;
     const term = searchmod.sanitize(raw_query, &sanitize_buf);
     if (term.len == 0) {
@@ -80,7 +80,7 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
         const elapsed = milliTimestamp() - t0;
         if (elapsed >= slow_search_ms) log.warn("slow search: {d} ms (q_len={d} keys={d} merged={d})", .{ elapsed, norm.len, trace.keys.len, trace.merged });
     }
-    const candidates = try execute(arena, lease, norm, &trace);
+    const candidates = try executeScoped(arena, lease, norm, &trace, true, pds);
     span.setAttribute("q_len", @as(i64, @intCast(norm.len)));
     span.setAttribute("keys", @as(i64, @intCast(trace.keys.len)));
     span.setAttribute("merged", @as(i64, @intCast(trace.merged)));
@@ -128,20 +128,31 @@ pub const Trace = struct {
     not_found: usize = 0,
 };
 
-/// normalize'd query → ranked candidates. The single implementation behind both
-/// `/search` and `/debug/search`.
-fn execute(
-    arena: Allocator,
-    lease: LocalDb.ReadLease,
-    norm: []const u8,
-    trace: ?*Trace,
-) ![]searchmod.Candidate {
-    return executeLookup(arena, lease, norm, trace, true);
-}
-
 // The unbounded instantiation is used only by differential tests.
 fn executeLookup(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, trace: ?*Trace, comptime bounded: bool) ![]searchmod.Candidate {
+    return executeScoped(arena, lease, norm, trace, bounded, null);
+}
+
+fn executeScoped(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, trace: ?*Trace, comptime bounded: bool, pds: ?[]const u8) ![]searchmod.Candidate {
     const keys = try prefixes.queryKeys(arena, norm);
+    if (pds) |host| {
+        var rows = try lease.query("SELECT value FROM idx.index_meta WHERE key = 'pds_scope_version'", .{});
+        defer rows.deinit();
+        const row = rows.next() orelse return error.PdsScopeUnavailable;
+        if (!std.mem.eql(u8, row.text(0), "1")) return error.PdsScopeUnavailable;
+        for (keys) |*key| key.* = try @import("pds.zig").scopedKey(arena, key.*, host);
+    }
+    if (pds) |host| {
+        {
+            var rows = try lease.query("SELECT 1 FROM idx.index_meta i JOIN sync_meta s ON s.key=i.key AND s.value=i.value WHERE i.key='pds_scope_policy'", .{});
+            defer rows.deinit();
+            if (rows.next() == null) return error.PdsScopeUnavailable;
+        }
+        var rows = try lease.query("SELECT enabled FROM idx.pds_scopes WHERE host=?", .{host});
+        defer rows.deinit();
+        const row = rows.next() orelse return &.{};
+        if (row.int(0) != 1) return error.PdsScopeUnavailable;
+    }
     const mode = merge.modeForQuery(norm);
 
     var key_stats: std.ArrayListUnmanaged(Trace.KeyStat) = .empty;
@@ -180,7 +191,14 @@ fn executeLookup(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, t
         t.exact_hits = exact.count();
     }
 
-    const hydrated = try hydrate(arena, lease, merged, trace);
+    var hydrated = try hydrate(arena, lease, merged, trace);
+    if (pds) |host| {
+        var kept: std.ArrayListUnmanaged(searchmod.Candidate) = .empty;
+        for (hydrated) |c| if (@import("pds.zig").matches(c.pds, host)) {
+            try kept.append(arena, c);
+        };
+        hydrated = try kept.toOwnedSlice(arena);
+    }
     if (!prefixes.queryExceedsPrefixMax(norm)) return hydrated;
     return filterFullQuery(arena, norm, hydrated, trace);
 }
@@ -244,7 +262,7 @@ pub const Evaluation = struct { equal: bool, baseline_us: u64, candidate_us: u64
 /// reachability facts that explain it (per-key list sizes, merge mode, the
 /// HYDRATE_CAP survivors). A candidate absent from every key's top-N list is
 /// unreachable at ANY score — that is the answer this endpoint exists to give.
-pub fn debug(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, writer: anytype) !void {
+pub fn debug(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: usize, pds: ?[]const u8, writer: anytype) !void {
     var arena_state = std.heap.ArenaAllocator.init(allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
@@ -263,7 +281,7 @@ pub fn debug(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit
     defer lease.release();
 
     var trace: Trace = .{};
-    const candidates = try execute(arena, lease, norm, &trace);
+    const candidates = try executeScoped(arena, lease, norm, &trace, true, pds);
 
     const n = @min(limit, candidates.len);
     const rows = try arena.alloc(Report.Row, n);
@@ -880,4 +898,90 @@ test "unified hydration retains large actors and overlay moderation" {
     const blob = (try lease.baseActor(arena, "did:arbitrary:small")).?;
     try conn.exec("INSERT INTO actor_overlay(did,blob,hidden,updated_at) VALUES('did:arbitrary:small',?,1,2)", .{zqlite.blob(blob)});
     try testing.expectEqual(@as(usize, 0), (try executeLookup(arena, lease, "old", null, true)).len);
+}
+
+test "PDS scope selects before global cap and follows overlay identity and moderation" {
+    const zqlite = @import("zqlite");
+    const overlay = @import("overlay.zig");
+    var conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try @import("schema.zig").initOverlay(conn);
+    try conn.exec("ATTACH DATABASE ':memory:' AS idx", .{});
+    try conn.exec("CREATE TABLE idx.prefix_top_base(key TEXT PRIMARY KEY,dids BLOB)", .{});
+    try conn.exec("CREATE TABLE idx.actor_compact_base(did TEXT PRIMARY KEY,blob BLOB)", .{});
+    try conn.exec("CREATE TABLE idx.index_meta(key TEXT PRIMARY KEY,value TEXT)", .{});
+    var local = LocalDb.init(testing.allocator);
+    const lease: LocalDb.ReadLease = .{ .db = &local, .slot = 0, .conn = conn };
+    var arena_state = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    try testing.expectError(error.PdsScopeUnavailable, executeScoped(arena, lease, "bob", null, true, "acme.test"));
+    try conn.exec("INSERT INTO idx.index_meta VALUES('pds_scope_version','1'),('pds_scope_policy','test')", .{});
+    try conn.exec("CREATE TABLE sync_meta(key TEXT PRIMARY KEY,value TEXT)", .{});
+    try testing.expectError(error.PdsScopeUnavailable, executeScoped(arena, lease, "bob", null, true, "acme.test"));
+    try conn.exec("INSERT INTO sync_meta VALUES('pds_scope_policy','test')", .{});
+    try conn.exec("CREATE TABLE idx.pds_scopes(host TEXT PRIMARY KEY,enabled INTEGER)", .{});
+    try conn.exec("INSERT INTO idx.pds_scopes VALUES('acme.test',1),('new.test',1),('other.test',0)", .{});
+    try testing.expectError(error.PdsScopeUnavailable, executeScoped(arena, lease, "bob", null, true, "other.test"));
+    for (0..110) |i| {
+        const a: overlay.Actor = .{
+            .did = try std.fmt.allocPrint(arena, "did:{d:0>4}", .{i}),
+            .handle = try std.fmt.allocPrint(arena, "bob{d}.custom.test", .{i}),
+            .display_name = "Bob Smith 日本 definitelyarealcompany",
+            .pds_indexed = true,
+            .pds = if (i < 10) "https://Acme.test/" else "https://other.test",
+            .avatar_url = "",
+            .labels = "[]",
+            .associated = "{}",
+            .created_at = "",
+            .hidden = false,
+            .quality_score = @floatFromInt(i),
+        };
+        try overlay.projectUpdateWithPds(arena, conn, a, "", "", "", 1);
+    }
+    const global = try executeLookup(arena, lease, "bob", null, true);
+    try testing.expectEqual(@as(usize, 50), global.len);
+    for (global) |a| try testing.expectEqualStrings("https://other.test", a.pds);
+    const scoped = try executeScoped(arena, lease, "bob", null, true, "acme.test");
+    try testing.expectEqual(@as(usize, 10), scoped.len);
+    try testing.expectEqualStrings("did:0009", scoped[0].did);
+    for ([_][]const u8{ "bob", "bob smith", "日本", "definitelyarealcompany", "bob0.custom.test" }) |q| {
+        const norm = try normalize.query(arena, q);
+        const bounded = try executeScoped(arena, lease, norm, null, true, "acme.test");
+        const full = try executeScoped(arena, lease, norm, null, false, "acme.test");
+        try testing.expectEqual(full.len, bounded.len);
+        for (full, bounded) |a, b| try testing.expectEqualStrings(a.did, b.did);
+        try testing.expect(bounded.len > 0);
+    }
+    try testing.expectEqual(@as(usize, 0), (try executeScoped(arena, lease, "bob", null, true, "missing.test")).len);
+    try testing.expectEqual(@as(usize, 0), (try executeScoped(arena, lease, "bob", null, true, "sub.acme.test")).len);
+
+    try conn.exec("INSERT INTO idx.actor_compact_base SELECT did,blob FROM actor_overlay WHERE did='did:0009'", .{});
+    {
+        var rows = try conn.rows("SELECT key,score FROM prefix_overlay WHERE did='did:0009' AND op=1", .{});
+        defer rows.deinit();
+        while (rows.next()) |row| {
+            const key = try arena.dupe(u8, row.text(0));
+            const list = try pack.packDidList(arena, &.{.{ .did = "did:0009", .score = @floatCast(row.float(1)) }});
+            try conn.exec("INSERT INTO idx.prefix_top_base VALUES(?,?)", .{ key, list });
+        }
+    }
+    try conn.exec("DELETE FROM actor_overlay WHERE did='did:0009'", .{});
+    try conn.exec("DELETE FROM prefix_overlay WHERE did='did:0009'", .{});
+
+    var a: overlay.Actor = .{ .did = "did:0009", .handle = "bob9.custom.test", .display_name = "Bob Smith 日本 definitelyarealcompany", .pds = "https://new.test", .pds_indexed = true, .avatar_url = "", .labels = "[]", .associated = "{}", .created_at = "", .hidden = false, .quality_score = 9 };
+    try overlay.projectUpdateWithPds(arena, conn, a, a.handle, a.display_name, "https://acme.test", 2);
+    try testing.expectEqual(@as(usize, 9), (try executeScoped(arena, lease, "bob", null, true, "acme.test")).len);
+    try testing.expectEqual(@as(usize, 1), (try executeScoped(arena, lease, "bob", null, true, "new.test")).len);
+    a.hidden = true;
+    try overlay.projectUpdateWithPds(arena, conn, a, a.handle, a.display_name, a.pds, 3);
+    try testing.expectEqual(@as(usize, 0), (try executeScoped(arena, lease, "bob", null, true, "new.test")).len);
+    a.hidden = false;
+    a.handle = "alice.custom.test";
+    a.display_name = "Alice";
+    try overlay.projectUpdateWithPds(arena, conn, a, "bob9.custom.test", "Bob Smith 日本 definitelyarealcompany", a.pds, 4);
+    try testing.expectEqual(@as(usize, 0), (try executeScoped(arena, lease, "bob", null, true, "new.test")).len);
+    try testing.expectEqualStrings(a.did, (try executeScoped(arena, lease, "alice", null, true, "new.test"))[0].did);
+    try overlay.projectDeleteWithPds(arena, conn, a.did, a.handle, a.display_name, a.pds, 5);
+    try testing.expectEqual(@as(usize, 0), (try executeScoped(arena, lease, "alice", null, true, "new.test")).len);
 }

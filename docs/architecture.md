@@ -132,3 +132,28 @@ name `replica_lag_s`; it now measures overlay lag.
 For the incident and design history, see [operations](operations.md),
 [replica removal](replica-removal-plan.md), and the
 [September incident report](retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md).
+
+
+## PDS-scoped search experiment (2026-10-08, not deployed)
+
+The candidate builder counts actors by normalized hosting PDS offline, including
+hidden and handle-less rows. It emits PDS-scoped prefix keys only for hosts at or
+below `INDEX_PDS_MAX_ACTORS` (default 10,000); zero disables scoped lists.
+`pds_scopes` records counts and eligibility. This is a build-time population
+threshold, not a live membership quota.
+Scoped searches use these lists before merge and hydration; filtering global top-N
+results would lose community actors below the network-wide cutoff. No second
+actor blob is stored. Overlay projection diffs the previous and current hosting
+PDS alongside handle/name, suppressing old memberships on migration. Hydration
+checks the current PDS again to avoid leaking stale membership. Live projection
+also consults eligibility and emits no scoped keys for excluded PDSs.
+
+The snapshot hashes its eligible-host set. When that policy changes, scoped
+search returns 503 until sync has replayed from the snapshot watermark and stored
+the matching policy hash. Otherwise a newly eligible host could miss actors
+updated after the snapshot but before promotion. Unscoped search remains available.
+A failed replay leaves the gate closed; normal sync resumes after a successful pass.
+
+The existing lookup bounds and multi-token intersection limitations remain.
+Additional index and overlay work needs capacity validation before rollout;
+see [the evaluation](evals/pds-scope.md).

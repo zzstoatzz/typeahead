@@ -1,6 +1,10 @@
 # PDS filtering rollout plan
 
-Proposed 2026-10-17; not shipped. Compact snapshots are live, PDS filtering is not.
+Updated 2026-10-20; not shipped. Compact snapshots are live, PDS filtering is not.
+
+Nate approved the preview and authorized production rollout on October 20. See
+[verification evidence](../evals/pds-homepage-20261020.md). The show-before-shipping checkpoint is complete. Full-corpus qualification
+remains required before routing production to this candidate.
 
 ## Homepage interaction
 
@@ -32,12 +36,9 @@ server is not a handle suffix. Do not invent a host directory or suggestions API
 
 ## Shipping sequence and acceptance
 
-1. Restore compact Logfire telemetry through a prepared replacement or a temporary
-   switch to the healthy legacy backend; do not restart the sole serving compact
-   machine under traffic. The live compact machine lacks LOGFIRE_TOKEN as of this
-   check. Reuse the existing Typeahead-owned credential privately, identify the
-   compact service distinctly, and verify actual search spans before admitting it.
-   Measure backend, Worker cache-miss and edge-hit latency separately.
+1. Compact telemetry and publisher/rollback qualification completed during the
+   October 20 rollout. Preserve that recovery baseline and verify fresh health
+   and spans before any PDS transition. See compact-production-cutover.md.
 2. Integrate the local PDS experiment onto the shipped compact implementation in
    isolation, preserving other sessions' edits. Complete the existing compact
    publisher/rollback gates before replacing its production source pin. Verify

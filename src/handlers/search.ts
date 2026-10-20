@@ -1,3 +1,5 @@
+import { normalizePds } from "../pds";
+export { normalizePds } from "../pds";
 import { rowsAs, type TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
@@ -57,6 +59,7 @@ export function tursoFallbackOnUnreachable(enabled: boolean): boolean {
   return enabled;
 }
 
+
 export async function handleSearch(
   request: Request,
   db: TursoDB,
@@ -74,6 +77,14 @@ export async function handleSearch(
   if (isNaN(limitParam) || limitParam < 1 || limitParam > 100) {
     return json({ error: "InvalidRequest", message: "Error: limit must be between 1 and 100" }, 400);
   }
+
+  const rawPds = url.searchParams.get("pds");
+  const pds = rawPds === null ? null : normalizePds(rawPds);
+  if (rawPds !== null && pds === null) {
+    return json({ error: "InvalidRequest", message: "pds must be a DNS hostname or HTTP(S) origin without a port" }, 400);
+  }
+  const unavailable = () => json({ error: "PdsScopeUnavailable", message: "PDS-scoped search is unavailable" }, 503);
+  if (pds && (env.EMERGENCY_PROXY_BSKY || !env.SEARCH_BACKEND_URL)) return unavailable();
 
   const limit = limitParam;
   const term = sanitize(q);
@@ -105,7 +116,7 @@ export async function handleSearch(
   // hostname must belong to this zone so the CF zone-purge API can target it
   const host = new URL(request.url).host;
   const cacheKey = new Request(
-    `https://${host}/__cache/${encodeURIComponent(term)}:${limit}`,
+    `https://${host}/__cache/${encodeURIComponent(term)}:${limit}${pds ? `?pds=${encodeURIComponent(pds)}` : ""}`,
     request
   );
   const cache = caches.default;
@@ -118,8 +129,9 @@ export async function handleSearch(
   // try fly backend (local SQLite replica) if configured
   if (env.SEARCH_BACKEND_URL) {
     try {
-      const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}`;
+      const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}${pds ? `&pds=${encodeURIComponent(pds)}` : ""}`;
       const backendRes = await fetch(backendUrl, { signal: AbortSignal.timeout(3000) });
+      if (pds && backendRes.headers.get("X-Typeahead-Pds") !== pds) return unavailable();
       if (!backendRes.ok) throw new Error(`backend_${backendRes.status}`);
       {
         const body = await backendRes.text();
@@ -141,7 +153,7 @@ export async function handleSearch(
         } catch {
           empty = false;   // unparseable is the backend's problem, not a miss
         }
-        if (empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1")) throw new Error("backend_empty");
+        if (!pds && empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1")) throw new Error("backend_empty");
 
         ctx.waitUntil(Promise.all([
           recordMetric(db, Date.now() - t0),
@@ -159,6 +171,7 @@ export async function handleSearch(
         return response;
       }
     } catch (e: unknown) {
+      if (pds) return unavailable();
       const reason = e instanceof Error ? e.message : String(e);
       if (reason !== "backend_empty" && !tursoFallbackOnUnreachable(env.TURSO_FALLBACK_ON_UNREACHABLE === "1")) {
         console.log(JSON.stringify({ event: "search_backend_unreachable", term, error: reason }));

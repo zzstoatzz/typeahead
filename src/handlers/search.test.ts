@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { TURSO_FALLBACK_MAX_LIMIT, tursoFallbackOnEmpty } from "./search";
+import { TURSO_FALLBACK_MAX_LIMIT, tursoFallbackOnEmpty, normalizePds } from "./search";
 
 // an empty engine answer is re-asked of Turso only for interactive-sized
 // requests: the fallback is a full-corpus FTS query, and bulk keyword sweeps
@@ -21,4 +21,14 @@ describe("tursoFallbackOnEmpty", () => {
     expect(tursoFallbackOnEmpty(TURSO_FALLBACK_MAX_LIMIT + 1, true)).toBe(false);
     expect(tursoFallbackOnEmpty(100, true)).toBe(false);
   });
+});
+
+
+test("PDS scope is an exact normalized hostname, never a handle suffix or URL path", () => {
+  for (const input of ["acme.test", "ACME.TEST", "https://Acme.test/", "HTTP://ACME.TEST./"]) {
+    expect(normalizePds(input)).toBe("acme.test");
+  }
+  for (const input of ["", "acme", "*.acme.test", "acme.test/path", "acme.test?x", "user@acme.test", "acme.test:443", "a..test", "-a.test", "a-.test", "acme.test\n", "acme.test\u001fh:b", "é.test"]) {
+    expect(normalizePds(input)).toBeNull();
+  }
 });

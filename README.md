@@ -14,6 +14,22 @@ Returns the `profileViewBasic` fields without viewer state: `did`, `handle`,
 canonical endpoint. `/xrpc/app.bsky.actor.searchActorsTypeahead` remains a
 compatible alias with identical parameters and response.
 
+**Local compact integration, 2026-10-20; not deployed:** optional `pds=acme.com`
+searches by indexed hosting PDS before candidate selection, including custom-domain
+handles. The experiment builds scopes only for PDSs with at most 10,000 known actor
+rows at snapshot time (`INDEX_PDS_MAX_ACTORS`, configurable). Larger PDSs return
+503 `PdsScopeUnavailable`; their global results remain available. The PDS-scoped lists are additional to the global lists; requests without
+`pds` retain their existing behavior. Unknown hosts return an empty list; missing
+backend/snapshot support returns 503 instead of unfiltered results. Hostnames are
+case-insensitive and exact (no subdomain expansion); HTTP(S) origins and a trailing
+slash/dot are accepted, ports and paths are rejected. See the
+[correctness/performance evaluation and rollout gates](docs/evals/pds-scope.md).
+The local homepage preview adds a filter button inside the search field, opening a
+hostname panel without changing the closed layout. An available PDS favicon
+replaces the filter icon while selected; missing icons retain the sliders. See the
+[compact integration review](docs/evals/pds-homepage-20261020.md).
+Synthetic results establish correctness on the fixture, not production capacity.
+
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile
 and enrichment fields; counts are omitted until enriched. No viewer state.
@@ -162,6 +178,47 @@ suspensions arrive as `#account` events and are deleted, and appview takedowns
 are re-enriched visible by policy. See
 [operations](docs/operations.md#the-hidden-count-is-sampling-not-enforcement-2026-09-20).
 
+Stats interactions (October 17, 2026) keep the donut stationary during repeated
+selections. The activity card uses aligned search/latency metrics and compact
+comparison pills whose DOM nodes and icon slots remain stable during selection.
+The larger SVG ring preserves twelve sources plus a remainder, with exact source
+details shown on selection rather than printed on slices. “Explore … more”
+zooms into the remainder; “Back to top apps” returns directly to the original
+view at any depth, and breadcrumbs return to intermediate levels. This action does
+not depend on identifying a color. Selected apps have checkmarks and selected
+slices have outlines. Brand icons and operator avatars appear on slices where
+they fit; the same sources are used in the pills. Icons remain upright, and
+resize/drill-down recomputes fit without crowding narrow slices.
+
+One complete app pill list replaces the duplicate table. Search, batches of 50,
+and show-all expose every app. A “Show all / Show fewer” control above the
+list stays synchronized with the bottom controls, so collapsing never requires
+scrolling to the end. Pills retain percentages; selection shows exact
+request counts and shares together inside the ring, with its website link. The
+header keeps overall totals visible. Deselecting the inspected app returns the
+center to the total rather than an older comparison; the repeated root breadcrumbs and detached
+detail row are removed. Long names wrap up to three lines in the center; the
+complete name remains in its pill. Six verified brand API mappings supply icons,
+with domain favicon and marker fallbacks. See
+[the source chart and brand findings](docs/ui/stats-sources.md).
+
+Source totals count cache misses; endpoint/status totals count all answered
+requests. Comparisons, total-line visibility, and link/image/CSV exports remain
+available. Secondary text has stronger contrast, the mobile moderation metric
+spans its row, and the footer has one short “Add your app” link.
+
+The October 19 follow-up matches the homepage’s 16px search input text to avoid
+iPhone focus zoom while preserving pinch zoom. Deployed as Worker version
+`86590349-5a6e-42c1-a6de-4c5d8835ff3b`. Deployment smoke passed. Live mobile and desktop checks verified logo loading,
+correct slice placement, and tapping directly on an icon. The release preserves the deployed freshness fix and current backend routing. Live Chromium and WebKit checks cover selection, stable geometry,
+recursive navigation, pagination through all apps, search, shared selections,
+and dimensions in both themes at phone and desktop widths. Full-page visual
+checks include 320px, 390px, and 1280px layouts.
+
+Browser regression: `node scripts/test-stats-interactions.mjs <stats-page-url>`
+(requires Playwright with Chromium and WebKit; `PLAYWRIGHT_MODULE` may point to an
+existing installation).
+
 ## Operational status
 
 As of September 6, 2026:
@@ -185,6 +242,12 @@ As of September 6, 2026:
   its temporary 60 GB volume were deleted on 2026-09-28; evaluation evidence is preserved and the ranking-index experiment
   remains deferred. See the [evaluation](docs/evals/bounded-overlay.md)
   and [canary limits and rollback](ops/canary/README.md).
+
+An isolated [snapshot compaction experiment](docs/evals/flat-prefix-compaction.md)
+preserves the serving snapshot's contents with 51.4% less disk than SQLite VACUUM.
+All declared read-speed gates pass; the experiment is not deployed. The
+[rollout plan](docs/plans/snapshot-compaction-rollout.md) covers paired artifacts,
+production qualification, and overlay-safe rollback.
 
 These are dated observations, not configuration sources. Fly role configs live in
 `services/`; Prefect schedules and deployment definitions live in
