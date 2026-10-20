@@ -1,0 +1,8 @@
+{
+  "pipeline": "3mybghh5hol22",
+  "commit": "3695f3cd5c88fb728375a0b39d7cabe8bc28c786",
+  "status": "success",
+  "finished_at": "2026-10-20T00:59:49Z",
+  "engine": "microvm",
+  "image": "nixos"
+}

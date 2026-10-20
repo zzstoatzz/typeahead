@@ -1,0 +1,407 @@
+
+── deploy.yml: microVM setup ──
+[deploy.yml] starting microVM image nixos
+[deploy.yml] agent connected; serial log: /var/lib/spindle/overlays/spindle-microvm-knot1.tangled.sh-3mybghh5hol22-deploy.yml-1082602244/serial.log
+
+── deploy.yml: Clone repository into workspace ($ git init
+git remote add origin https://knot1.tangled.sh/did:plc:nabched6glrnfsrsudl6j2ym
+git fetch --depth=1 --recurse-submodules=yes --tags origin 3695f3cd5c88fb728375a0b39d7cabe8bc28c786
+git checkout FETCH_HEAD) ──
+[deploy.yml] hint: Using 'master' as the name for the initial branch. This default branch name
+[deploy.yml] hint: will change to "main" in Git 3.0. To configure the initial branch name
+[deploy.yml] hint: to use in all of your new repositories, which will suppress this warning,
+[deploy.yml] hint: call:
+[deploy.yml] hint:
+[deploy.yml] hint: 	git config --global init.defaultBranch <name>
+[deploy.yml] hint:
+[deploy.yml] hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+[deploy.yml] hint: 'development'. The just-created branch can be renamed via this command:
+[deploy.yml] hint:
+[deploy.yml] hint: 	git branch -m <name>
+[deploy.yml] hint:
+[deploy.yml] hint: Disable this message with "git config set advice.defaultBranchName false"
+[deploy.yml] Initialized empty Git repository in /workspace/repo/.git/
+[deploy.yml] From https://knot1.tangled.sh/did:plc:nabched6glrnfsrsudl6j2ym
+[deploy.yml]  * branch            3695f3cd5c88fb728375a0b39d7cabe8bc28c786 -> FETCH_HEAD
+[deploy.yml]  * [new tag]         compact-candidate-38e0a27 -> compact-candidate-38e0a27
+[deploy.yml]  * [new tag]         compact-candidate-cc2d5a1 -> compact-candidate-cc2d5a1
+[deploy.yml] Note: switching to 'FETCH_HEAD'.
+[deploy.yml] 
+[deploy.yml] You are in 'detached HEAD' state. You can look around, make experimental
+[deploy.yml] changes and commit them, and you can discard any commits you make in this
+[deploy.yml] state without impacting any branches by switching back to a branch.
+[deploy.yml] 
+[deploy.yml] If you want to create a new branch to retain commits you create, you may
+[deploy.yml] do so (now or later) by using -c with the switch command. Example:
+[deploy.yml] 
+[deploy.yml]   git switch -c <new-branch-name>
+[deploy.yml] 
+[deploy.yml] Or undo this operation with:
+[deploy.yml] 
+[deploy.yml]   git switch -
+[deploy.yml] 
+[deploy.yml] Turn off this advice by setting config variable advice.detachedHead to false
+[deploy.yml] 
+[deploy.yml] HEAD is now at 3695f3c Run verification CI in NixOS microVM after Nixery image pull failure
+
+── deploy.yml: NixOS config activation ($ activate nixos config) ──
+[deploy.yml] building NixOS config from user config
+[deploy.yml] these 27 derivations will be built:
+[deploy.yml]   /nix/store/avvr87vwnpk2ii29mkmijy5rpnidyaw7-unit-shuttle.service.drv
+[deploy.yml]   /nix/store/f2j0ign9539004cahf2apqd111la70ng-etc-os-release.drv
+[deploy.yml]   /nix/store/qrl7796j8p85xn6i0bn2sx6ycdk50r52-shutdown-ramfs-contents.json.drv
+[deploy.yml]   /nix/store/gi0vq0jrsrxpj7n66dqkn0d6kwvfq4fd-unit-generate-shutdown-ramfs.service.drv
+[deploy.yml]   /nix/store/p6lsx9lhjnxsvmfvnpnmy144q89dc6xb-unit-systemd-networkd-wait-online.service-disabled.drv
+[deploy.yml]   /nix/store/88xg10iip198qi5cz9mq1f2bglf3p2g3-spindle-post-build-hook.drv
+[deploy.yml]   /nix/store/bgvkl783z0mq77bspbln565bddp1q7jb-nix.conf.drv
+[deploy.yml]   /nix/store/aj89liia60ilnhprzmlakva05kbhz1ak-X-Restart-Triggers-nix-daemon.drv
+[deploy.yml]   /nix/store/vpcjplxvccxr54g2vmn5wq3damfr6snd-unit-nix-daemon.service.drv
+[deploy.yml]   /nix/store/z63v4kn76w2wja02yf3zqwzj70fv66jc-unit-console-getty.service-disabled.drv
+[deploy.yml]   /nix/store/03mpxsfk0njqh0b823516b5s1qznbjs3-system-units.drv
+[deploy.yml]   /nix/store/4b7qkkyfv9vjkmbyymc73i6wllrmb79h-dry-activate.drv
+[deploy.yml]   /nix/store/83qcic5j4in1f9h03qxkfvgzxms3lyl7-issue.drv
+[deploy.yml]   /nix/store/bx0n3lq212y6b0klrx3hyaynsc3w70q9-boot.json.drv
+[deploy.yml]   /nix/store/c76in083rrc1zg8nd1p85jw699ypky7y-set-environment.drv
+[deploy.yml]   /nix/store/jk98cvnvcb5adz3d58r8x6zxrvnhlng0-nodejs-24.15.0.drv
+[deploy.yml]   /nix/store/lf19yppja32w19smgcn0qiiad60v2lhf-spindle-deps-env.drv
+[deploy.yml]   /nix/store/caa7rrgdx1gd800xr52wvpfy5c8i4228-etc-spindle-devshell-drv.drv
+[deploy.yml]   /nix/store/hh6l5dry7yj7572cajvrlr0f1mbpl43y-stage-2-init.sh.drv
+[deploy.yml]   /nix/store/d5l4p9kymz439zns5a9izap4fmj2pmv9-builder.pl.drv
+[deploy.yml]   /nix/store/lvw3x5mx8ighpwdryk0n19lpmrcxvvk3-perl-5.42.0-env.drv
+[deploy.yml]   /nix/store/lrp0gdai32q6v58jr0rq1c8gxhhqpfgk-etc-pam-environment.drv
+[deploy.yml]   /nix/store/mr2gsa9syvnq57id14apk4yv4z5c24fp-etc-profile.drv
+[deploy.yml]   /nix/store/ysb7xvvxbwifbkabaxih7y4sj14aprcv-etc-nix-registry.json.drv
+[deploy.yml]   /nix/store/s9i7g3irpypgmzam8rqkhgxhwbblh8za-etc.drv
+[deploy.yml]   /nix/store/mw6ir90ysnkdr3bpxwczkdvivq5nyzpc-activate.drv
+[deploy.yml]   /nix/store/chllbhn6av4hpg48xqy9s0vp9mzxzspw-nixos-system-spindle-microvm-26.05pre-git.drv
+[deploy.yml] these 57 paths will be fetched (160.2 MiB download, 565.4 MiB unpacked):
+[deploy.yml]   /nix/store/bngg7032mjqxwfqhy91l1gpccq7ixnip-ShellCheck-0.11.0
+[deploy.yml]   /nix/store/i8nclac5zk07v7zd9x6pf2i102yrj495-ada-3.4.4
+[deploy.yml]   /nix/store/s2946bl9ciwzhafd66jhansrmxq9xhqm-binutils-2.46
+[deploy.yml]   /nix/store/6h5x436gsbc92ahp2bmxfl8h7h318p17-binutils-2.46-lib
+[deploy.yml]   /nix/store/mbyy19mdwnfvfwmdi0gqgggx0njvpl1w-binutils-wrapper-2.46
+[deploy.yml]   /nix/store/hivfv7qwmfhd60qyn6ysva4ydwq3d008-brotli-1.2.0
+[deploy.yml]   /nix/store/3r1z17iah1fb7qncbpjcy3bm6mh4idbw-brotli-1.2.0-dev
+[deploy.yml]   /nix/store/z1cxjx705fswwjjns0sw2ysbd5jqxfgm-bun-1.3.13
+[deploy.yml]   /nix/store/12vmymjk59ilhwwncmaskvyxcg3i23z8-c-ares-1.34.6
+[deploy.yml]   /nix/store/dadk381crh40alsk19jhn4m828szsj6b-c-ares-1.34.6
+[deploy.yml]   /nix/store/palv96s88bkvwiczhsfwkg9nz112napb-c-ares-1.34.6-dev
+[deploy.yml]   /nix/store/5y1v5mjsrlz3i2pwg43hdc6ghjjylbpq-die-hook
+[deploy.yml]   /nix/store/vca8h0pif2zlvlbsq8kpl0yb32wfc80a-ensure-all-wrappers-paths-exist
+[deploy.yml]   /nix/store/hi0fdcqdkmzwxhzlx7y6z2yf6d5lw8ix-expand-response-params
+[deploy.yml]   /nix/store/kyz3mm5snbb8998kbkm28jps1phk9509-file-5.47
+[deploy.yml]   /nix/store/qxaq7jz61a6zkr2mq49i0zvqip2m2jj8-gcc-15.2.0
+[deploy.yml]   /nix/store/788mx070y81zjlg5ipcl0cra3afviw9k-gcc-wrapper-15.2.0
+[deploy.yml]   /nix/store/15h9askp4k1lx44d9871wid23j2a8ijp-glibc-2.42-61-dev
+[deploy.yml]   /nix/store/r50gpjb5pcl01c7nvhrn31rnwsnhzplg-gmp-6.3.0
+[deploy.yml]   /nix/store/zmvllxxx62iys7vpyg020rni3v29bcxi-gnu-config-2024-01-01
+[deploy.yml]   /nix/store/vlq7nnw39j7rwk0pp68w1fcwzpxahm9h-gnumake-4.4.1
+[deploy.yml]   /nix/store/k5akwnrn9x2afaj2va7g4a2zpdim8l43-gnutar-1.35
+[deploy.yml]   /nix/store/4dn9hz9kl3fvcr4y09n6vdr302bldwcj-icu4c-76.1-dev
+[deploy.yml]   /nix/store/17rqw7p3j0vvvwja05l6bq2im8qpxcl7-isl-0.20
+[deploy.yml]   /nix/store/8429b8dd1865995zjavxhrljlg35vicr-libev-4.33
+[deploy.yml]   /nix/store/0j6jil4xc4ndp0kcqzjwbfywxvifl160-libmpc-1.4.0
+[deploy.yml]   /nix/store/l28nh2wfbk8d36hvh9q3a3gvk93m98cc-libuv-1.52.1-dev
+[deploy.yml]   /nix/store/s52vdyj97g3adv6qb431v8m2kccs0bzz-linux-headers-6.18.7
+[deploy.yml]   /nix/store/3c4qw8c5c90qhn846dhvy7jfjknr868x-llhttp-9.4.1-dev
+[deploy.yml]   /nix/store/sn4y9m3yg3qgxi14h9cl51l333zi40xq-lndir-1.0.5
+[deploy.yml]   /nix/store/scadi7kx5gq7yvy8kkgxsflypfbycblb-make-binary-wrapper-hook
+[deploy.yml]   /nix/store/qw8rpqmndqzyc3fzzla754v5hlpm10i4-make-shell-wrapper-hook
+[deploy.yml]   /nix/store/drmzcl1j9wwwgz4q87dvz2p2zfwnp4w3-mpfr-4.2.2
+[deploy.yml]   /nix/store/rnpbgcxmw93mlcai4bidv0dxjmxza41z-nghttp2-1.69.0
+[deploy.yml]   /nix/store/938xyzg63mmfy5v19lx8hwi8dxar1hmg-nghttp2-1.69.0-dev
+[deploy.yml]   /nix/store/5dpya8d71vpqb5m7bpb04h51lcwggipd-nghttp3-1.15.0-dev
+[deploy.yml]   /nix/store/xgymgmzn6pxjavnnyypvadyraq8kqalq-ngtcp2-1.22.1-dev
+[deploy.yml]   /nix/store/q1r7qkrnbhakljr4j228v2yi2874jkl9-nodejs-slim-24.15.0
+[deploy.yml]   /nix/store/6plsadgnfakc13sjwcqjskb672pws2yw-nodejs-slim-24.15.0-corepack
+[deploy.yml]   /nix/store/mm1a1wnphf568znv8jsz1gf4476yjhzm-nodejs-slim-24.15.0-npm
+[deploy.yml]   /nix/store/wjfhh11sfcdf97mvg7hbxickybxzk850-numactl-2.0.18
+[deploy.yml]   /nix/store/zyrxhd7nwmkcs11m144jagxcmddw2i41-openssl-3.6.2-bin
+[deploy.yml]   /nix/store/wxws7pwyzk8mbmjc1rwwwx9v184hh67v-openssl-3.6.2-dev
+[deploy.yml]   /nix/store/ilblcn1dkvzghcr2yk3av6jxn5rk1iqw-patchelf-0.15.2
+[deploy.yml]   /nix/store/9cy0fa8587lncgv41fdd8db8mw930ap5-perl5.42.0-Config-IniFiles-3.000003
+[deploy.yml]   /nix/store/amia51k26a28d9i4x18yiqr84sl6nl1a-perl5.42.0-IO-Stringy-2.113
+[deploy.yml]   /nix/store/9rzjjfx05q2i3g2npr1z9v33261kd73y-simdjson-4.6.0
+[deploy.yml]   /nix/store/8bfapy5gj8bqbqi72lrwm4z4lagvfq2f-simdutf-6.5.0
+[deploy.yml]   /nix/store/whp2j7j4mc7qnyq6017zi9rg0yx4d2wd-simdutf-9.0.0
+[deploy.yml]   /nix/store/4np2hfkmk2spyb342g5lfiir48k5hlyf-source
+[deploy.yml]   /nix/store/jl35p88sb0jjm11sr2p9v37q6hm3c6pm-sqlite-3.51.2-bin
+[deploy.yml]   /nix/store/vyd6g9viqafhzr97dq8zsbksdf4w5avm-sqlite-3.51.2-dev
+[deploy.yml]   /nix/store/81ff57hcs8gjlnaqqhbilzxsvb5pfzaa-stdenv-linux
+[deploy.yml]   /nix/store/xknj6c33cc197s60ry0i69vdkmaizrs1-update-autotools-gnu-config-scripts-hook
+[deploy.yml]   /nix/store/i5bnc1sz9hd9w3qv432nfz5cxhq30bs7-uvwasi-0.0.23
+[deploy.yml]   /nix/store/h7ik0g1xxayy0z8h27zbvrgmac63irgs-zlib-1.3.2-dev
+[deploy.yml]   /nix/store/cbzpsvdi282yhw702d7s42lirqnr0i0g-zstd-1.5.7-dev
+[deploy.yml] copying path '/nix/store/vca8h0pif2zlvlbsq8kpl0yb32wfc80a-ensure-all-wrappers-paths-exist' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/5y1v5mjsrlz3i2pwg43hdc6ghjjylbpq-die-hook' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/zmvllxxx62iys7vpyg020rni3v29bcxi-gnu-config-2024-01-01' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/kyz3mm5snbb8998kbkm28jps1phk9509-file-5.47' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/vlq7nnw39j7rwk0pp68w1fcwzpxahm9h-gnumake-4.4.1' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/amia51k26a28d9i4x18yiqr84sl6nl1a-perl5.42.0-IO-Stringy-2.113' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/k5akwnrn9x2afaj2va7g4a2zpdim8l43-gnutar-1.35' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/ilblcn1dkvzghcr2yk3av6jxn5rk1iqw-patchelf-0.15.2' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/hi0fdcqdkmzwxhzlx7y6z2yf6d5lw8ix-expand-response-params' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/s52vdyj97g3adv6qb431v8m2kccs0bzz-linux-headers-6.18.7' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/r50gpjb5pcl01c7nvhrn31rnwsnhzplg-gmp-6.3.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/6h5x436gsbc92ahp2bmxfl8h7h318p17-binutils-2.46-lib' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/sn4y9m3yg3qgxi14h9cl51l333zi40xq-lndir-1.0.5' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/4np2hfkmk2spyb342g5lfiir48k5hlyf-source' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/z1cxjx705fswwjjns0sw2ysbd5jqxfgm-bun-1.3.13' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/wjfhh11sfcdf97mvg7hbxickybxzk850-numactl-2.0.18' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/hivfv7qwmfhd60qyn6ysva4ydwq3d008-brotli-1.2.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/12vmymjk59ilhwwncmaskvyxcg3i23z8-c-ares-1.34.6' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/dadk381crh40alsk19jhn4m828szsj6b-c-ares-1.34.6' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/4dn9hz9kl3fvcr4y09n6vdr302bldwcj-icu4c-76.1-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/8429b8dd1865995zjavxhrljlg35vicr-libev-4.33' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/l28nh2wfbk8d36hvh9q3a3gvk93m98cc-libuv-1.52.1-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/3c4qw8c5c90qhn846dhvy7jfjknr868x-llhttp-9.4.1-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/3r1z17iah1fb7qncbpjcy3bm6mh4idbw-brotli-1.2.0-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/bngg7032mjqxwfqhy91l1gpccq7ixnip-ShellCheck-0.11.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/qw8rpqmndqzyc3fzzla754v5hlpm10i4-make-shell-wrapper-hook' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/5dpya8d71vpqb5m7bpb04h51lcwggipd-nghttp3-1.15.0-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/xgymgmzn6pxjavnnyypvadyraq8kqalq-ngtcp2-1.22.1-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/zyrxhd7nwmkcs11m144jagxcmddw2i41-openssl-3.6.2-bin' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/palv96s88bkvwiczhsfwkg9nz112napb-c-ares-1.34.6-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/rnpbgcxmw93mlcai4bidv0dxjmxza41z-nghttp2-1.69.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/17rqw7p3j0vvvwja05l6bq2im8qpxcl7-isl-0.20' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/drmzcl1j9wwwgz4q87dvz2p2zfwnp4w3-mpfr-4.2.2' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/9cy0fa8587lncgv41fdd8db8mw930ap5-perl5.42.0-Config-IniFiles-3.000003' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/9rzjjfx05q2i3g2npr1z9v33261kd73y-simdjson-4.6.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/8bfapy5gj8bqbqi72lrwm4z4lagvfq2f-simdutf-6.5.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/whp2j7j4mc7qnyq6017zi9rg0yx4d2wd-simdutf-9.0.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/jl35p88sb0jjm11sr2p9v37q6hm3c6pm-sqlite-3.51.2-bin' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/xknj6c33cc197s60ry0i69vdkmaizrs1-update-autotools-gnu-config-scripts-hook' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/s2946bl9ciwzhafd66jhansrmxq9xhqm-binutils-2.46' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/i5bnc1sz9hd9w3qv432nfz5cxhq30bs7-uvwasi-0.0.23' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/wxws7pwyzk8mbmjc1rwwwx9v184hh67v-openssl-3.6.2-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/h7ik0g1xxayy0z8h27zbvrgmac63irgs-zlib-1.3.2-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/cbzpsvdi282yhw702d7s42lirqnr0i0g-zstd-1.5.7-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/0j6jil4xc4ndp0kcqzjwbfywxvifl160-libmpc-1.4.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/81ff57hcs8gjlnaqqhbilzxsvb5pfzaa-stdenv-linux' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/i8nclac5zk07v7zd9x6pf2i102yrj495-ada-3.4.4' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/938xyzg63mmfy5v19lx8hwi8dxar1hmg-nghttp2-1.69.0-dev' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/15h9askp4k1lx44d9871wid23j2a8ijp-glibc-2.42-61-dev' from 'https://cache.nixos.org'...
+[deploy.yml] building '/nix/store/bx0n3lq212y6b0klrx3hyaynsc3w70q9-boot.json.drv'...
+[deploy.yml] building '/nix/store/d5l4p9kymz439zns5a9izap4fmj2pmv9-builder.pl.drv'...
+[deploy.yml] building '/nix/store/4b7qkkyfv9vjkmbyymc73i6wllrmb79h-dry-activate.drv'...
+[deploy.yml] building '/nix/store/ysb7xvvxbwifbkabaxih7y4sj14aprcv-etc-nix-registry.json.drv'...
+[deploy.yml] building '/nix/store/f2j0ign9539004cahf2apqd111la70ng-etc-os-release.drv'...
+[deploy.yml] building '/nix/store/lrp0gdai32q6v58jr0rq1c8gxhhqpfgk-etc-pam-environment.drv'...
+[deploy.yml] building '/nix/store/83qcic5j4in1f9h03qxkfvgzxms3lyl7-issue.drv'...
+[deploy.yml] building '/nix/store/c76in083rrc1zg8nd1p85jw699ypky7y-set-environment.drv'...
+[deploy.yml] building '/nix/store/88xg10iip198qi5cz9mq1f2bglf3p2g3-spindle-post-build-hook.drv'...
+[deploy.yml] building '/nix/store/hh6l5dry7yj7572cajvrlr0f1mbpl43y-stage-2-init.sh.drv'...
+[deploy.yml] building '/nix/store/z63v4kn76w2wja02yf3zqwzj70fv66jc-unit-console-getty.service-disabled.drv'...
+[deploy.yml] building '/nix/store/avvr87vwnpk2ii29mkmijy5rpnidyaw7-unit-shuttle.service.drv'...
+[deploy.yml] copying path '/nix/store/vyd6g9viqafhzr97dq8zsbksdf4w5avm-sqlite-3.51.2-dev' from 'https://cache.nixos.org'...
+[deploy.yml] building '/nix/store/p6lsx9lhjnxsvmfvnpnmy144q89dc6xb-unit-systemd-networkd-wait-online.service-disabled.drv'...
+[deploy.yml] building '/nix/store/mr2gsa9syvnq57id14apk4yv4z5c24fp-etc-profile.drv'...
+[deploy.yml] building '/nix/store/bgvkl783z0mq77bspbln565bddp1q7jb-nix.conf.drv'...
+[deploy.yml] building '/nix/store/qrl7796j8p85xn6i0bn2sx6ycdk50r52-shutdown-ramfs-contents.json.drv'...
+[deploy.yml] copying path '/nix/store/qxaq7jz61a6zkr2mq49i0zvqip2m2jj8-gcc-15.2.0' from 'https://cache.nixos.org'...
+[deploy.yml] building '/nix/store/aj89liia60ilnhprzmlakva05kbhz1ak-X-Restart-Triggers-nix-daemon.drv'...
+[deploy.yml] building '/nix/store/gi0vq0jrsrxpj7n66dqkn0d6kwvfq4fd-unit-generate-shutdown-ramfs.service.drv'...
+[deploy.yml] building '/nix/store/vpcjplxvccxr54g2vmn5wq3damfr6snd-unit-nix-daemon.service.drv'...
+[deploy.yml] copying path '/nix/store/q1r7qkrnbhakljr4j228v2yi2874jkl9-nodejs-slim-24.15.0' from 'https://cache.nixos.org'...
+[deploy.yml] building '/nix/store/03mpxsfk0njqh0b823516b5s1qznbjs3-system-units.drv'...
+[deploy.yml] copying path '/nix/store/mbyy19mdwnfvfwmdi0gqgggx0njvpl1w-binutils-wrapper-2.46' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/6plsadgnfakc13sjwcqjskb672pws2yw-nodejs-slim-24.15.0-corepack' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/mm1a1wnphf568znv8jsz1gf4476yjhzm-nodejs-slim-24.15.0-npm' from 'https://cache.nixos.org'...
+[deploy.yml] building '/nix/store/jk98cvnvcb5adz3d58r8x6zxrvnhlng0-nodejs-24.15.0.drv'...
+[deploy.yml] building '/nix/store/lf19yppja32w19smgcn0qiiad60v2lhf-spindle-deps-env.drv'...
+[deploy.yml] building '/nix/store/caa7rrgdx1gd800xr52wvpfy5c8i4228-etc-spindle-devshell-drv.drv'...
+[deploy.yml] building '/nix/store/s9i7g3irpypgmzam8rqkhgxhwbblh8za-etc.drv'...
+[deploy.yml] building '/nix/store/mw6ir90ysnkdr3bpxwczkdvivq5nyzpc-activate.drv'...
+[deploy.yml] copying path '/nix/store/788mx070y81zjlg5ipcl0cra3afviw9k-gcc-wrapper-15.2.0' from 'https://cache.nixos.org'...
+[deploy.yml] copying path '/nix/store/scadi7kx5gq7yvy8kkgxsflypfbycblb-make-binary-wrapper-hook' from 'https://cache.nixos.org'...
+[deploy.yml] building '/nix/store/lvw3x5mx8ighpwdryk0n19lpmrcxvvk3-perl-5.42.0-env.drv'...
+[deploy.yml] building '/nix/store/chllbhn6av4hpg48xqy9s0vp9mzxzspw-nixos-system-spindle-microvm-26.05pre-git.drv'...
+[deploy.yml] activated NixOS config toplevel /nix/store/s25g7x5l497s2b2cm2v8p5fb4cla6xm4-nixos-system-spindle-microvm-26.05pre-git
+
+── deploy.yml: verify ($ set -euo pipefail
+bun install
+bunx tsc --noEmit
+bunx oxlint --deny-warnings src
+bun test
+bunx wrangler deploy --dry-run
+) ──
+[deploy.yml] bun install v1.3.13 (bf2e2cec)
+[deploy.yml] 
+[deploy.yml] + @cloudflare/workers-types@5.20260730.1
+[deploy.yml] + @oxlint/plugins@1.79.0
+[deploy.yml] + bun-types@1.3.14
+[deploy.yml] + oxlint@1.79.0
+[deploy.yml] + typescript@7.0.2
+[deploy.yml] + wrangler@4.74.0
+[deploy.yml] + @libsql/client@0.17.0
+[deploy.yml] + workers-og@0.0.27
+[deploy.yml] 
+[deploy.yml] 95 packages installed [8.71s]
+[deploy.yml] Found 0 warnings and 0 errors.
+[deploy.yml] Finished in 165ms on 41 files with 111 rules using 12 threads.
+[deploy.yml] bun test v1.3.13 (bf2e2cec)
+[deploy.yml] 
+[deploy.yml] src/metrics.test.ts:
+[deploy.yml] (pass) endpointLabel: known routes get stable labels, everything else is 'other'
+[deploy.yml] (pass) trafficDomain: X-Client > Origin > Referer(self→homepage) > unknown; non-hostnames rejected [1.00ms]
+[deploy.yml] (pass) recordRequest: one UPSERT keyed by the full (bucket, domain, endpoint, status) [1.00ms]
+[deploy.yml] 
+[deploy.yml] src/moderation.test.ts:
+[deploy.yml] (pass) isDomainBlocked: apex + subdomains match, look-alikes do not
+[deploy.yml] (pass) resolveHidden: precedence — show override is the final word
+[deploy.yml] 
+[deploy.yml] src/db.test.ts:
+[deploy.yml] (pass) getDb hands every caller its own client [1.00ms]
+[deploy.yml] 
+[deploy.yml] src/utils.test.ts:
+[deploy.yml] (pass) computeAuthorityScoreBreakdown matches the legacy total
+[deploy.yml] (pass) computeAuthorityScoreBreakdown penalizes very fresh accounts
+[deploy.yml] (pass) computeAuthorityScoreBreakdown floors fresh-account penalties at zero
+[deploy.yml] (pass) pdsOrigin accepts a plain https origin
+[deploy.yml] (pass) pdsOrigin rejects non-https, credentials, paths, and single-label hosts
+[deploy.yml] 
+[deploy.yml] src/index.test.ts:
+[deploy.yml] (pass) records the real status of a served response [1.00ms]
+[deploy.yml] (pass) an uncaught throw is counted as 500 and still propagates
+[deploy.yml] (pass) OPTIONS preflights are answered without being counted
+[deploy.yml] {"event":"search_backend_unreachable","term":"nate","error":"connect ECONNREFUSED"}
+[deploy.yml] (pass) an unreachable engine answers empty without touching Turso [1.00ms]
+[deploy.yml] 
+[deploy.yml] src/labelers.test.ts:
+[deploy.yml] (pass) applyLabelHistory > a negation withdraws the earlier label of the same val [1.00ms]
+[deploy.yml] (pass) applyLabelHistory > order in the response does not matter, the latest record wins
+[deploy.yml] (pass) applyLabelHistory > an expired label is not applied
+[deploy.yml] (pass) percentileFromQuantiles > finds the band a score falls in
+[deploy.yml] (pass) percentileFromQuantiles > no quantiles or no positive score means no percentile
+[deploy.yml] (pass) labelers.json > every entry has a resolvable endpoint and the appview operators are pinned
+[deploy.yml] 
+[deploy.yml] src/cron.test.ts:
+[deploy.yml] (pass) isProfileIdentical > true when every field matches
+[deploy.yml] (pass) isProfileIdentical > avatar change forces a write (the pckt.blog bug)
+[deploy.yml] (pass) isProfileIdentical > display_name change forces a write
+[deploy.yml] (pass) isProfileIdentical > follower count change forces a write (popularity drift)
+[deploy.yml] (pass) isProfileIdentical > a different profile source forces a write even when every field matches
+[deploy.yml] {"event":"moderation_refresh","checked":0,"changed":1,"skipped":0,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":0}
+[deploy.yml] (pass) refreshModeration takes counts from the Blacksky appview on a Bluesky takedown > takedown → blacksky profile → UPDATE with counts and profile_source='blacksky' [1.00ms]
+[deploy.yml] {"event":"moderation_refresh","checked":1,"changed":1,"skipped":0,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":1}
+[deploy.yml] (pass) refreshModeration advances the freshness cursor > CHANGED profile: cursor advances for the actor [1.00ms]
+[deploy.yml] {"event":"moderation_refresh","checked":1,"changed":0,"skipped":1,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":0}
+[deploy.yml] (pass) refreshModeration advances the freshness cursor > UNCHANGED profile: cursor STILL advances (the starvation bug)
+[deploy.yml] {"event":"moderation_refresh","status":"empty"}
+[deploy.yml] (pass) refreshModeration quality-walk cursor > keyset cursor is inlined as literals, not bound params (Turso plan degradation)
+[deploy.yml] {"event":"moderation_refresh","status":"empty"}
+[deploy.yml] (pass) refreshModeration quality-walk cursor > a poisoned cursor cannot inject SQL — non-numeric values are dropped
+[deploy.yml] {"event":"moderation_refresh","status":"empty"}
+[deploy.yml] (pass) refreshModeration quality-walk cursor > short walk page wraps the cursor (pool exhausted)
+[deploy.yml] 
+[deploy.yml] src/handlers/search.test.ts:
+[deploy.yml] (pass) tursoFallbackOnEmpty > off by default: the engine's empty answer is final at every limit
+[deploy.yml] (pass) tursoFallbackOnEmpty > when enabled, interactive limits keep the second look
+[deploy.yml] (pass) tursoFallbackOnEmpty > when enabled, bulk limits still take the engine's answer as final
+[deploy.yml] 
+[deploy.yml] src/handlers/admin.test.ts:
+[deploy.yml] (pass) extractProfileFields: populated profile writes counts + qualityScore
+[deploy.yml] (pass) extractProfileFields: description + banner CID come through
+[deploy.yml] (pass) extractProfileFields: countless profile → qualityScore 0 (no age-bonus clobber)
+[deploy.yml] (pass) extractProfileFields: genuine zero-follower profile still scores (counts present)
+[deploy.yml] (pass) extractProfileFields: label-hidden profile → hidden=1
+[deploy.yml] (pass) extractProfileFields: domain-blocked profile (no override) → hidden=1
+[deploy.yml] (pass) extractProfileFields: per-DID show override beats domain-block + labels
+[deploy.yml] {"event":"auth_failure","endpoint":"/admin/mod-override","ip":"unknown"}
+[deploy.yml] (pass) handleEnrichProfiles: missing/wrong Bearer → 401
+[deploy.yml] (pass) handleEnrichProfiles: body.dids not an array → 400
+[deploy.yml] (pass) handleEnrichProfiles: > 100 DIDs → 400 (hard server-side cap)
+[deploy.yml] (pass) handleEnrichProfiles: invalid DID shape → 400 [1.00ms]
+[deploy.yml] (pass) handleEnrichProfiles: empty array → 200 with zeros
+[deploy.yml] 
+[deploy.yml] src/handlers/profiles.test.ts:
+[deploy.yml] (pass) cache key is independent of actor order
+[deploy.yml] (pass) cache key lowercases handles but preserves DID case
+[deploy.yml] (pass) cache key dedupes repeated actors
+[deploy.yml] (pass) mixed dids and handles produce a stable key regardless of order
+[deploy.yml] (pass) profileView renders the profile-card fields
+[deploy.yml] (pass) profileView omits counts until the enrich path has seen the actor
+[deploy.yml] (pass) profileView keeps known counts while a re-check is queued
+[deploy.yml] (pass) profileView omits empty description and banner
+[deploy.yml] 
+[deploy.yml] src/handlers/ingest.test.ts:
+[deploy.yml] {"event":"ingest_done","count":3,"statements":5,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+[deploy.yml] (pass) counts ALL new actors — bare-DID AND handle-bearing — not just bare
+[deploy.yml] (pass) counts zero new when all actors already exist [1.00ms]
+[deploy.yml] {"event":"ingest_done","count":2,"statements":3,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+[deploy.yml] {"event":"ingest_done","count":1,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+[deploy.yml] {"event":"ingest_done","count":1,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+[deploy.yml] {"event":"ingest_done","count":1,"statements":1,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+[deploy.yml] (pass) a new handle for an existing actor replaces the old one; a bare DID keeps it [1.00ms]
+[deploy.yml] 
+[deploy.yml] src/handlers/og.test.ts:
+[deploy.yml] (pass) compact: millions to one decimal, thousands rounded, small numbers exact [4.00ms]
+[deploy.yml] (pass) overviewFigures: latest snapshot, every search ever, every app ever [1.00ms]
+[deploy.yml] (pass) the default card carries the compact figures and does not define itself by bluesky
+[deploy.yml] 
+[deploy.yml] src/handlers/freshness.test.ts:
+[deploy.yml] (pass) freshness > a healthy pipeline is not stale [1.00ms]
+[deploy.yml] (pass) freshness > catches the 2026-07-28 failure: replica far behind, everything else green
+[deploy.yml] (pass) freshness > normal sync jitter does not trip it
+[deploy.yml] (pass) freshness > a stalled snapshot rebuild is stale even with a healthy replica
+[deploy.yml] (pass) freshness > legacy and compact snapshots retain age alerts through real HTTP [2.00ms]
+[deploy.yml] (pass) freshness > a serving path that cannot find the probe handle is not ok
+[deploy.yml] (pass) freshness > an unreachable backend is reported, not thrown
+[deploy.yml] {"event":"freshness_notify","ok":true,"status":200,"body":"{}"}
+[deploy.yml] (pass) freshness notification > fires when it goes stale [1.00ms]
+[deploy.yml] {"event":"freshness_notify","ok":true,"status":200,"body":"{}"}
+[deploy.yml] (pass) freshness notification > fires once on recovery, not on every healthy run
+[deploy.yml] (pass) freshness notification > does not repeat while it stays broken
+[deploy.yml] (pass) freshness notification > silent when no webhook is configured
+[deploy.yml] 
+[deploy.yml] src/pages/stats.test.ts:
+[deploy.yml] (pass) traffic source selection targets > the legend entry is not a link
+[deploy.yml] (pass) traffic source selection targets > the table row's domain name links to the app's site
+[deploy.yml] (pass) traffic source selection targets > the row keeps non-anchor cells to select by
+[deploy.yml] (pass) traffic source selection targets > bare app names (no dot) get no outbound link [1.00ms]
+[deploy.yml] (pass) traffic source selection targets > synthetic buckets get no outbound link
+[deploy.yml] (pass) domain escaping > no raw script tag survives into the document
+[deploy.yml] (pass) domain escaping > the JSON payload cannot close the script element
+[deploy.yml] (pass) domain escaping > the quote cannot break out of the data-domain attribute
+[deploy.yml] (pass) link previews > a shared comparison names what is being compared
+[deploy.yml] (pass) link previews > the card image is handed the same params as the page
+[deploy.yml] (pass) link previews > apps with no traffic in the window are dropped, not previewed as zero
+[deploy.yml] (pass) link previews > unfiltered falls back to describing the service [1.00ms]
+[deploy.yml] (pass) request slices > the same volume is summed down to endpoint and status-class maps
+[deploy.yml] (pass) request slices > the view switch is rendered with the source view active
+[deploy.yml] (pass) stylesheet has no orphaned declarations [1.00ms]
+[deploy.yml] (pass) everything else > the tail beyond the top 12 is drawn as one slice and named in the legend
+[deploy.yml] (pass) everything else > percentages divide by the whole table, not the rows fetched
+[deploy.yml] (pass) everything else > no rest slice when the ring already holds everything
+[deploy.yml] (pass) the long tail > every source is a row; rows past the first page are folded, not missing [3.00ms]
+[deploy.yml] (pass) the long tail > a last page smaller than the page size says how many it holds
+[deploy.yml] (pass) the long tail > no button when the first page holds everything
+[deploy.yml] 
+[deploy.yml] src/pages/service-description.test.ts:
+[deploy.yml] (pass) service messaging > llms.txt carries no experimental disclaimer
+[deploy.yml] (pass) service messaging > the homepage no longer carries the experimental badge
+[deploy.yml] 
+[deploy.yml] src/pages/reputation.test.ts:
+[deploy.yml] (pass) reputation page script > every inline script parses
+[deploy.yml] (pass) reputation page script > the deep-link load runs after the last top-level declaration
+[deploy.yml] 
+[deploy.yml]  97 pass
+[deploy.yml]  0 fail
+[deploy.yml]  454 expect() calls
+[deploy.yml] Ran 97 tests across 16 files. [152.00ms]
+[deploy.yml] 
+[deploy.yml]  ⛅️ wrangler 4.74.0 (update available 4.151.2)
+[deploy.yml] ──────────────────────────────────────────────
+[deploy.yml] [33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mProcessing wrangler.jsonc configuration:[0m
+[deploy.yml] 
+[deploy.yml]     - "unsafe" fields are experimental and may change or break at any time.
+[deploy.yml] Total Upload: 2431.61 KiB / gzip: 800.08 KiB
+[deploy.yml] Your Worker has access to the following bindings:
+[deploy.yml] Binding                                                           Resource                  
+[deploy.yml] env.KV (af614e8f42a44543920f7aad0ae7b70a)                         KV Namespace              
+[deploy.yml] env.RATE_LIMITER (ratelimit)                                      Unsafe Metadata           
+[deploy.yml] env.RATE_LIMITER_STRICT (ratelimit)                               Unsafe Metadata           
+[deploy.yml] env.SERVICE_DID ("did:plc:y6kywgnb7xletjpa5hhxmd4k")              Environment Variable      
+[deploy.yml] --dry-run: exiting now.
+[deploy.yml] 
+[deploy.yml] Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md

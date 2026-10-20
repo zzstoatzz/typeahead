@@ -73,7 +73,8 @@ The unmodified legacy performance control crashed during concurrent reads;
 that comparison is incomplete, with its failure retained. Nate accepted these
 two exceptions on October 17, conditional on the now-passing reload gate.
 The production cutover passed freshness, alias, and full smoke checks. The October 19 scheduled compact publication completed; native admission, live catch-up and empty-directory recovery passed. Temporary
-qualification resources were removed; source/PR cleanup remains pending. The October 18 full-day
+qualification resources were removed. Source integration and retained recovery
+resources are recorded in the cutover runbook. The October 18 full-day
 counter review covered all 288 five-minute buckets: 14,902 successful searches,
 205 rate-limited searches, and no recorded 5xx responses across endpoints.
 Compact Logfire telemetry was restored October 19 and actual sampled search spans

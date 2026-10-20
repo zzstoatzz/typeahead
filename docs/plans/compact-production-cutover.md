@@ -6,7 +6,9 @@ Status: scheduled compact generation live and verified, October 20, 2026
 `86590349-5a6e-42c1-a6de-4c5d8835ff3b`. Refresh current versions before rollback.
 Scheduled publication, daily observation, protected pair readback, native admission,
 live catch-up, ranking and empty-directory recovery passed. The four stopped
-qualification machines and volumes are removed. Source/PR/worktree cleanup remains.
+qualification machines and volumes are removed. The Prefect source is on main and
+its superseded PR/worktree are closed/removed. Typeahead source integration uses a
+non-force Git fast-forward after passing CI; see the closeout below.
 The dated sections below preserve superseded states and earlier failures; use this
 status and the latest dated section for current operations. Only Nate's two
 October 17 performance exceptions apply.
@@ -1227,3 +1229,29 @@ Nixery image pull reported missing or empty Content-Length. The workflow now use
 the same NixOS microVM engine that passed in the Prefect repository, retaining
 its Bun/Node dependencies and all verification commands. Deployment remains
 manual; CI only builds/tests/dry-runs. A new pipeline must pass before merge.
+
+### Final observation and source integration — October 20, 01:01 UTC
+
+All 120 bounded return probes passed with exact-handle rank 1; their complete
+[records](../evals/compact-scheduled-publication-20261019/public-probes-return.jsonl)
+are archived. This is in addition to the earlier 240 passing detailed probes,
+not a claim that the original isolated empty result never occurred. Production
+and rollback remain retained as specified above.
+
+The repaired microVM pipeline 3mybghh5hol22 passed on 3695f3c, including typecheck,
+lint, 97 Worker tests and Wrangler dry-run. [CI result](../evals/compact-scheduled-publication-20261019/ci-result.json)
+and full log are archived. The final changes after that verified source revision
+are only this closeout documentation and evidence. The PR round includes the CI
+repair; Tangled's merge API rejected its approximately 45 MB evidence patch with
+HTTP 413. Integration therefore uses a normal non-force Git fast-forward of the
+verified branch; the PR is closed only after checking main contains it. The
+primary checkout's unrelated dirty files must remain untouched.
+
+The clean Prefect temporary worktree was removed after verifying its commits
+are on main. The Typeahead rollout worktree is intentionally retained as the
+operational runbook and recovery-harness path referenced by existing artifacts;
+other experiment worktrees are left intact because their ownership and remaining
+uses are separate from production cleanup. The protected fresh pair and both
+source/runtime archives remain available independently of the removed Fly
+qualification resources. Retain the existing legacy backend and old serving roots
+for rollback, and honor the October 24 minimum artifact-retention deadline.
