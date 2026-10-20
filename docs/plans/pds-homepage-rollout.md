@@ -116,11 +116,13 @@ After candidate admission, fresh lag <=300 seconds, native benchmarks and Logfir
    its cron `0 9 */3 * *` and all unrelated deployments. Publish root only from the
    fully read-back qualified manifest. Do not call a future scheduled run complete.
 4. Refresh the candidate config to follow root `latest.json`, retaining its
-   existing snapshot and overlay paths. Apply with legacy coverage, then require
-   exact generation, admission, scope readiness and current catch-up again.
-5. Assign the saved public service configuration to the new machine; verify it
-   is the sole public compact machine. Clone the latest Worker back to compact.
-   Verify global health and authenticated smoke before exposing PDS API/UI.
+   existing snapshot and overlay paths. Assign the saved public service config
+   in the same machine update, while the Worker remains on healthy legacy.
+   Require exact generation, admission, scope readiness and current catch-up
+   again before routing public API traffic to it.
+5. Verify the new machine is the sole public compact machine and its origin is
+   healthy. Clone the latest Worker back to compact. Verify global health and
+   authenticated smoke before exposing PDS API/UI.
 6. Deploy reconciled Worker source with `--var PDS_UI_ENABLED:0`; verify real
    scoped queries, normalized cache separation, aliases and explicit unavailable
    states. Enable the homepage only after that acceptance, then check live browser

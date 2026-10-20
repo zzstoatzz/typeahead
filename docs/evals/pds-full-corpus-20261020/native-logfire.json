@@ -1,0 +1,64 @@
+{
+  "columns": [
+    {
+      "name": "service_name",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "service_version",
+      "datatype": "Utf8",
+      "nullable": true
+    },
+    {
+      "name": "span_name",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "spans",
+      "datatype": "Int64",
+      "nullable": false
+    },
+    {
+      "name": "latest",
+      "datatype": {
+        "Timestamp": [
+          "Microsecond",
+          "UTC"
+        ]
+      },
+      "nullable": true
+    }
+  ],
+  "rows": [
+    {
+      "service_name": "typeahead-search-compact",
+      "service_version": "registry.fly.io/typeahead-search-compact:pds-31ec142-20261020@sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938",
+      "span_name": "search",
+      "spans": 4,
+      "latest": "2026-10-20T14:50:22.700905Z"
+    },
+    {
+      "service_name": "typeahead-search-compact",
+      "service_version": "registry.fly.io/typeahead-search-compact:pds-31ec142-20261020@sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938",
+      "span_name": "sync.query.unsearchable",
+      "spans": 1,
+      "latest": "2026-10-20T14:49:07.238236Z"
+    },
+    {
+      "service_name": "typeahead-search-compact",
+      "service_version": "registry.fly.io/typeahead-search-compact:pds-31ec142-20261020@sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938",
+      "span_name": "incremental: clearing 58 unsearchable actors",
+      "spans": 1,
+      "latest": "2026-10-20T14:49:07.338608Z"
+    },
+    {
+      "service_name": "typeahead-search-compact",
+      "service_version": "registry.fly.io/typeahead-search-compact:pds-31ec142-20261020@sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938",
+      "span_name": "incremental: querying unsearchable actors",
+      "spans": 1,
+      "latest": "2026-10-20T14:49:07.238214Z"
+    }
+  ]
+}

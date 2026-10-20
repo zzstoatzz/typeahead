@@ -1,0 +1,9 @@
+{
+  "build": "b1792484789-3d65-px05",
+  "pointer": "staging/pds-candidate-31ec142-20261020/latest.json",
+  "paired_full_readback": true,
+  "source_watermark": 1792484192,
+  "legacy_sha256": "c7d7503a5661486757da8d313ffd071c3bf57d3267992193f841c15dc10cd852",
+  "compact_sha256": "34b0ed47fe6e29b1898be7be7d5450e5d672bd223f372b80013601d3d5701c89",
+  "prefix_sha256": "2967d49389995b398aabefd2dbf8c9e299e70d11e5c5c3909b6e28cf3ea303e5"
+}

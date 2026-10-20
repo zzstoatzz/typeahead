@@ -151,3 +151,39 @@ volume. It runs the qualified portable binary (SHA-256
 `11431ef01fed077d36d3b7ca6409a78100ac28c3a6599766414ab96fad8fedd8`).
 Its R2 pair publication/readback and empty-volume native admission remain pending.
 Production routing and the root publisher pointer have not changed.
+
+## Protected publication — October 20, 11:43 UTC
+
+The complete SQLite/compact pair passed independent R2 checksum readback before
+publishing the isolated pointer. See [publication result](pds-full-corpus-20261020/publication.json).
+The native generation directory was empty before the service's first successful
+pointer poll; [directory evidence](pds-full-corpus-20261020/native-before-restore.json)
+records that no files were pre-seeded into the restore path. Native restore,
+admission and catch-up are still pending; production remains unchanged.
+
+The abandoned 08:47 multipart upload for this task's SQLite twin was removed
+only after the completed recovery object passed readback. A dry run selected
+only that upload, the completed object's metadata stayed identical, and a fresh
+listing found no pending uploads in that build prefix. See
+[cleanup result](pds-full-corpus-20261020/abandoned-upload-cleanup.json).
+
+Main keeps `PDS_UI_ENABLED=0` until live API acceptance so another Worker deploy
+cannot expose the filter prematurely. Source commit `712f4b9` passed pipeline
+`3myciu3p7ve22`. The immutable builder tag remains
+`pds-compact-31ec142-20261020`; it contains the identical qualified native source.
+
+### Native admission and transition — October 20, 14:50 UTC
+
+The private candidate restored the protected pair into its initially empty root,
+admitted `b1792484789-3d65-px05`, and caught up to 26 seconds behind. Its real
+scoped, normalized, invalid, unknown and excluded-host requests passed all 24
+[response checks](pds-full-corpus-20261020/native-acceptance.json). The native
+ranking suite passed; the quick direct search benchmark completed without stress.
+[Logfire confirmed search spans](pds-full-corpus-20261020/native-logfire.json)
+from the exact qualified image. This is native acceptance, not public API release.
+
+Worker `73c101ec-5c7f-4237-8f19-284dcab6d51e` temporarily routes to healthy legacy,
+cloning the previously current Worker source. Its full authenticated smoke passed.
+Old compact machine `781e732c264678` is pinned to the protected old pointer with
+public services removed; its image, snapshot and live overlay remain intact.
+Publisher registration and public PDS API/UI acceptance remain outstanding.
