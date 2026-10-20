@@ -1,7 +1,8 @@
 # architecture
 
-Verified against the September 2 replica removal, September 4 fallback changes,
-and live services on September 5, 2026.
+Serving path updated against live services October 20, 2026. Historical
+illustrations below predate the compact and private transport releases; the
+[README diagram](../README.md#how-it-works) shows the current runtime roles.
 
 `typeahead.waow.tech` provides independent actor search for atproto. The canonical
 `tech.waow.typeahead.searchActors` endpoint and the
@@ -16,10 +17,15 @@ emergency rollback option.
 ## serving
 
 Clients reach the Cloudflare Worker, which applies rate limits, checks its edge
-cache, and asks `typeahead-search` on Fly in `ewr` for `/search`. The Zig search
+cache, and sends misses through the private `typeahead-search-transport` Worker,
+placed near US East, to `typeahead-search-compact` on Fly in `ewr` for `/search`.
+Cache hits stay at the public edge. The transport only forwards bounded GET
+searches to the configured compact or legacy origin; it does not query Turso or
+change results. [Live latency and rollback evidence](evals/edge-latency-20261020.md).
+The Zig search
 service holds a read-only SQLite snapshot and a live overlay. Since September 2
-it has **no full actor replica, local FTS index, bootstrap/resync path, or replica
-hydration safety belt**.
+it has **no full actor replica, local FTS index, or replica hydration fallback**.
+Compact bootstrap downloads and verifies snapshot artifacts before admission.
 
 Each request normalizes the query, derives bounded prefix keys, reads
 precomputed top-N DID lists, merges overlay additions and suppressions, promotes

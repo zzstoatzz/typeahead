@@ -45,7 +45,8 @@ flowchart LR
   Relay[Bluesky relay] -->|subscribeRepos| Ingester[Fly ingester]
   Ingester -->|batches and cursor| Worker
   Worker -->|actor writes and accounting| Turso
-  Worker -->|cache misses| Search[Fly search]
+  Worker -->|cache misses, private binding| Transport[Origin transport Worker, US East]
+  Transport --> Search[Fly search]
   Turso -->|changed rows and tombstones| Search
   Turso -->|database export| Builder[Heavypad index builder]
   Builder -->|index.db and manifest| R2
@@ -59,6 +60,8 @@ answer arrives, without a transient loading dropdown.
 
 - **Worker:** public endpoints, a 60-second search cache, admin ingestion,
   request accounting, and profile APIs. Turso search fallbacks are opt-in.
+  Cache misses use a private transport Worker placed in US East to avoid
+  measured overseas origin detours; cache hits stay at the edge.
   Bluesky is an explicit rollback option, not the normal search backend.
 - **Ingester:** Zig on Fly, consuming the relay's `subscribeRepos` firehose
   (not Jetstream). Profile and activity events become batched actor updates.
@@ -113,9 +116,9 @@ inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-r
 for acceptance criteria. Earlier candidates' passing results do not qualify this
 replacement.
 
-As of October 20, 15:19 UTC, Worker `36477826-a11c-426b-807b-88dd9f331aba`
-serves PDS-capable build `b1792484789-3d65-px05` through
-`typeahead-search-compact.fly.dev`, machine `8d4916be311008`, following root
+As of October 20, 16:31 UTC, Worker `89901546-0e01-4789-b19a-541f0545460e`
+serves PDS-capable build `b1792484789-3d65-px05` through the private
+`typeahead-search-transport` binding and `typeahead-search-compact.fly.dev`, machine `8d4916be311008`, following root
 `latest.json`. Its snapshot and live overlay are under `/data/pds-current-20261020`
 and `/data/pds-overlay`. Public scoped/alias checks, authenticated smoke, native
 admission and catch-up, browser checks, and compact Logfire spans passed.

@@ -1,11 +1,12 @@
 # PDS filtering rollout plan
 
-Live October 20, 2026, 15:19 UTC. Worker
-`36477826-a11c-426b-807b-88dd9f331aba` serves PDS-capable compact build
+Current October 20, 2026, 16:31 UTC. Worker
+`89901546-0e01-4789-b19a-541f0545460e` serves PDS-capable compact build
 `b1792484789-3d65-px05` on `8d4916be311008`, root `latest.json`.
 Public API acceptance, authenticated smoke from HeavyPad, live browser checks and
 Logfire passed. The filter defaults closed, including after a scoped URL reload.
-See [release evidence](../evals/pds-homepage-20261020.md). Earlier dated transition
+See [release evidence](../evals/pds-homepage-20261020.md) and the subsequent
+[private origin transport improvement](../evals/edge-latency-20261020.md). Earlier dated transition
 sections below describe superseded intermediate states.
 
 Nate approved the preview and authorized production rollout on October 20. See

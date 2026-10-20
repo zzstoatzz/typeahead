@@ -135,7 +135,10 @@ export async function handleSearch(
     try {
       const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}${pds ? `&pds=${encodeURIComponent(pds)}` : ""}`;
       const backendStart = Date.now();
-      const backendRes = await fetch(backendUrl, { signal: AbortSignal.timeout(3000) });
+      const init = { signal: AbortSignal.timeout(3000) };
+      const backendRes = env.SEARCH_TRANSPORT
+        ? await env.SEARCH_TRANSPORT.fetch(backendUrl, init)
+        : await fetch(backendUrl, init);
       if (pds && backendRes.headers.get("X-Typeahead-Pds") !== pds) return unavailable();
       if (!backendRes.ok) throw new Error(`backend_${backendRes.status}`);
       {

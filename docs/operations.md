@@ -1,10 +1,13 @@
 # operations / edge gotchas
 
-As of October 20, 2026, 15:19 UTC, production serves PDS-capable compact build
+As of October 20, 2026, 16:31 UTC, production serves PDS-capable compact build
 `b1792484789-3d65-px05` on `typeahead-search-compact` machine `8d4916be311008`,
 following root `latest.json` at `/data/pds-current-20261020`, with live overlay
-`/data/pds-overlay/overlay.db`. Worker `36477826-a11c-426b-807b-88dd9f331aba`
-enables the collapsed homepage filter after public API acceptance.
+`/data/pds-overlay/overlay.db`. Worker `89901546-0e01-4789-b19a-541f0545460e`
+keeps the homepage filter collapsed and sends search cache misses through the
+private `typeahead-search-transport` binding placed in US East. Cache hits remain
+at the public edge. [Latency evidence and rollback](evals/edge-latency-20261020.md)
+record the direct-transport rollback version and deployment order.
 
 `typeahead-search` remains synchronized for rollback. Previous compact machine
 `781e732c264678` is private and pinned to the protected old pointer. Disable scoped
