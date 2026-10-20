@@ -1,0 +1,131 @@
+[
+  {
+    "phase": "baseline",
+    "seconds": 28.850956439971924,
+    "before": {},
+    "after": {
+      "last_sync": "1792491401",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "0",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491401"
+    }
+  },
+  {
+    "phase": "failed-replay",
+    "seconds": 16.63722062110901,
+    "before": {
+      "last_sync": "1792491401",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "0",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491401"
+    },
+    "after": {
+      "last_sync": "1792491401",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "1",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491418"
+    }
+  },
+  {
+    "phase": "retry",
+    "seconds": 26.824933290481567,
+    "before": {
+      "last_sync": "1792491401",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "1",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491418"
+    },
+    "after": {
+      "last_sync": "1792491445",
+      "pds_scope_policy": "6bdfb5e8d3a186b77622f453b58af20744c80643e5eaee4cb4cae2e7ba1f8964",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "1",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491445"
+    }
+  },
+  {
+    "phase": "restart",
+    "seconds": 15.776130676269531,
+    "before": {
+      "last_sync": "1792491445",
+      "pds_scope_policy": "6bdfb5e8d3a186b77622f453b58af20744c80643e5eaee4cb4cae2e7ba1f8964",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "1",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491445"
+    },
+    "after": {
+      "last_sync": "1792491445",
+      "pds_scope_policy": "6bdfb5e8d3a186b77622f453b58af20744c80643e5eaee4cb4cae2e7ba1f8964",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "1",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491445"
+    }
+  },
+  {
+    "phase": "changed-policy",
+    "seconds": 23.347161531448364,
+    "before": {
+      "last_sync": "1792491445",
+      "pds_scope_policy": "6bdfb5e8d3a186b77622f453b58af20744c80643e5eaee4cb4cae2e7ba1f8964",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "1",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491445"
+    },
+    "after": {
+      "last_sync": "1792491484",
+      "pds_scope_policy": "d1017b719dbb62307f4daddce3b160d483fe14126826ca373d9066fc64d5a9e2",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "0",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491484"
+    }
+  },
+  {
+    "phase": "restored-policy",
+    "seconds": 23.29670262336731,
+    "before": {
+      "last_sync": "1792491484",
+      "pds_scope_policy": "d1017b719dbb62307f4daddce3b160d483fe14126826ca373d9066fc64d5a9e2",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "0",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491484"
+    },
+    "after": {
+      "last_sync": "1792491507",
+      "pds_scope_policy": "6bdfb5e8d3a186b77622f453b58af20744c80643e5eaee4cb4cae2e7ba1f8964",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "0",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491507"
+    }
+  },
+  {
+    "phase": "final-restart",
+    "seconds": 19.111096382141113,
+    "before": {
+      "last_sync": "1792491507",
+      "pds_scope_policy": "6bdfb5e8d3a186b77622f453b58af20744c80643e5eaee4cb4cae2e7ba1f8964",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "0",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491507"
+    },
+    "after": {
+      "last_sync": "1792491507",
+      "pds_scope_policy": "6bdfb5e8d3a186b77622f453b58af20744c80643e5eaee4cb4cae2e7ba1f8964",
+      "overlay_compact_deleted": "0",
+      "overlay_compact_ms": "0",
+      "overlay_compact_complete": "1",
+      "overlay_compact_at": "1792491507"
+    }
+  }
+]

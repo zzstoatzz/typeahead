@@ -13,7 +13,7 @@ GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=<prefix>
 - pds: optional exact hosting hostname, e.g. acme.com. Filters before ranking and caps;
   custom-domain handles are included, subdomains are separate. Case-insensitive;
   HTTP(S) origin and trailing slash/dot accepted; ports, paths and empty values rejected (400).
-  Experimental: scopes cover PDSs with at most 10,000 known actors at build time
+  Scopes cover PDSs with at most 10,000 known actors at build time
   (configurable). Unknown PDS returns { "actors": [] }. Larger PDSs, pending replay,
   or missing backend/snapshot support return
   503 PdsScopeUnavailable, never unscoped fallback results. Results reflect indexed PDS identity.

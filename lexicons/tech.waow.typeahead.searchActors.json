@@ -15,7 +15,7 @@
           },
           "pds": {
             "type": "string",
-            "description": "Optional exact hosting PDS hostname, e.g. acme.com. Case-insensitive; HTTP(S) origin and trailing slash/dot accepted, ports and paths rejected. Filters before candidate selection, including custom-domain handles. Experimental scopes cover PDSs with at most 10,000 known actors at build time (configurable). Unknown PDS returns no actors; larger PDSs or unavailable scope support return HTTP 503 PdsScopeUnavailable."
+            "description": "Optional exact hosting PDS hostname, e.g. acme.com. Case-insensitive; HTTP(S) origin and trailing slash/dot accepted, ports and paths rejected. Filters before candidate selection, including custom-domain handles. Scopes cover PDSs with at most 10,000 known actors at build time (configurable). Unknown PDS returns no actors; larger PDSs or unavailable scope support return HTTP 503 PdsScopeUnavailable."
           },
           "limit": {
             "type": "integer",

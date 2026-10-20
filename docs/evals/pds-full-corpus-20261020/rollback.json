@@ -1,0 +1,15 @@
+{
+  "mutations": 60,
+  "stages": [
+    {
+      "stage": "legacy",
+      "comparisons": 5175
+    },
+    {
+      "stage": "compact_return",
+      "comparisons": 5175
+    }
+  ],
+  "clean_shutdown": true,
+  "overlay_quick_check": "ok"
+}

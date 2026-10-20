@@ -231,7 +231,7 @@ export function indexPage(pdsEnabled = false): string {
           const data = await response.json();
           if (current !== generation) return;
           if (!response.ok) {
-            message(data.error === 'PdsScopeUnavailable' ? 'Search for this hosting server is unavailable. Try again later or choose All servers.' : 'Search is unavailable. Please try again.');
+            message(data.error === 'PdsScopeUnavailable' ? 'Filtering is unavailable for this hosting server. Choose another server or All servers.' : 'Search is unavailable. Please try again.');
             return;
           }
           if (!Array.isArray(data.actors)) throw new Error('Invalid search response');
