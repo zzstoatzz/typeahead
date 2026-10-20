@@ -58,7 +58,18 @@ verified cutover. `pds_repair_verify.py` checks native canary propagation.
 cloud-local queue and cursor together. `pds_identity_queue.py` persists retry
 schedules and leases without changing the handle job's shared timer. Overlapping,
 delayed windows do not guarantee discovery of backdated writes; independent
-missing-PDS reconciliation remains necessary. Lease expiry authorizes rechecking
+missing-PDS reconciliation remains necessary. `pds_identity_reconciliation.py`
+provides a resumable sweep with an explicit rowid boundary and at most 1,000
+rows per source read, filtering missing PDS locally after that bounded read.
+It includes hidden and handleless actors. Cursor advancement and queue inserts
+commit together. Later arrivals and changes behind the cursor require a later
+cycle; the scheduler must repeat completed sweeps. Completed queue jobs reopen
+on missing observations even with older timestamps, without resetting cooldown
+for unresolved work. Queue timestamps are discovery hints; every write still
+requires fresh source and authority reads. These sweeps belong on the cloud
+repair host, never the Worker request or cron path.
+
+Lease expiry authorizes rechecking
 identity, not replaying an ambiguous source mutation. No recurring writer or
 schedule is enabled by these modules.
 

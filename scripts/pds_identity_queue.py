@@ -2,7 +2,12 @@
 
 Lease expiry permits rechecking identity, never blind replay of a source write.
 The repair ledger must reconcile sent/unknown writes before another attempt.
-Source updated_at is a discovery hint, not proof of unchanged identity.
+The queue version is the highest source timestamp observed, not a write
+precondition. A missing-PDS observation at an older timestamp reopens a completed
+job without lowering that high-water mark. Pending retries keep their cooldown.
+Workers must freshly read source state and reconcile write receipts. Changes
+observed during a lease can still require the next reconciliation cycle when
+they do not increase the timestamp; this queue is not a source change log.
 """
 import sqlite3
 import uuid
@@ -10,12 +15,12 @@ from contextlib import closing
 
 
 ENQUEUE_SQL = """INSERT INTO identity_jobs(did,version,due) VALUES(?,?,?)
-ON CONFLICT(did) DO UPDATE SET version=excluded.version,
-completed_version=CASE WHEN excluded.version=identity_jobs.version
+ON CONFLICT(did) DO UPDATE SET version=max(identity_jobs.version,excluded.version),
+completed_version=CASE WHEN excluded.version<=identity_jobs.version
     THEN -1 ELSE identity_jobs.completed_version END,
 due=min(identity_jobs.due,excluded.due)
 WHERE excluded.version > identity_jobs.version
-OR (excluded.version=identity_jobs.version
+OR (excluded.version<=identity_jobs.version
     AND identity_jobs.completed_version=identity_jobs.version)"""
 
 

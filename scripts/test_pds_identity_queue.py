@@ -21,6 +21,7 @@ class QueueTests(unittest.TestCase):
         self.queue.finish(claim, 1001, verified=False, retry_seconds=300)
         self.queue = IdentityQueue(self.path)
         self.queue.enqueue([('did:plc:account', 100)], 1002)
+        self.queue.enqueue([('did:plc:account', 90)], 1003)
         self.assertEqual(self.claim(1100), [])
         self.assertEqual(len(self.claim(1301)), 1)
 
@@ -42,7 +43,9 @@ class QueueTests(unittest.TestCase):
         self.assertEqual(second['version'], 101)
         self.queue.finish(second, 1003, verified=True)
         self.queue.enqueue([('did:plc:account', 100)], 1004)
-        self.assertEqual(self.claim(1004), [])
+        backdated = self.claim(1004)
+        self.assertEqual(len(backdated), 1)
+        self.assertEqual(backdated[0]['version'], 101)
 
     def test_same_second_missing_observation_is_rechecked(self):
         claim = self.claim()[0]
