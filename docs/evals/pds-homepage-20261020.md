@@ -187,3 +187,27 @@ cloning the previously current Worker source. Its full authenticated smoke passe
 Old compact machine `781e732c264678` is pinned to the protected old pointer with
 public services removed; its image, snapshot and live overlay remain intact.
 Publisher registration and public PDS API/UI acceptance remain outstanding.
+
+### Publisher and root transition — October 20, 15:03 UTC
+
+The publisher's main CI was blocked by 29 existing type errors in the Agentic
+publication flow, then by the Linux runner lacking `shasum`. Commits `8aa7323`
+and `776c8e1` correct the typed boundaries and select the available SHA-256 tool.
+Pipeline `3mycvdzctvr22` passed all checks and registration at 15:03:14 UTC:
+767 tests passed, four skipped, plus type/lint/frontend checks. Its temporary
+source worktree was reconciled onto main; no Cloud draft-PR publication ran.
+
+[Registration readback](pds-full-corpus-20261020/publisher-registered.json) confirms
+the immutable PDS builder tag and explicit 10,000-actor cutoff.
+[Concurrency and schedule](pds-full-corpus-20261020/publisher-concurrency.json)
+remain one run, `CANCEL_NEW`, and `0 9 */3 * *`.
+The [queued October 22 09:00 run](pds-full-corpus-20261020/next-scheduled.json)
+already carries the new parameters; it has not run yet.
+
+[Root publication](pds-full-corpus-20261020/root-promoted.json) passed guarded
+readback after the old machine was pinned and healthy. Candidate restart with
+root `latest.json` and the saved public service config is in progress; the Worker
+still serves healthy legacy. The
+[5.45 GB compressed transport objects](pds-full-corpus-20261020/transport-cleanup.json)
+were removed only after full protected-pair readback and native empty-root restore.
+Protected pairs, staging manifest, rollback volumes, images and old roots remain.

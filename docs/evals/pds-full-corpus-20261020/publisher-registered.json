@@ -1,0 +1,18 @@
+{
+  "updated": "2026-10-20T15:02:24.199563+00:00",
+  "parameters": {
+    "ref": "pds-compact-31ec142-20261020",
+    "snapshot_format": "compact"
+  },
+  "cutoff": "10000",
+  "pin": "@776c8e19ad942b02c1570e999c873c1623743d34",
+  "schedules": [
+    {
+      "active": true,
+      "schedule": "cron='0 9 */3 * *' timezone=None day_or=True"
+    }
+  ],
+  "concurrency_options": {
+    "collision_strategy": "CANCEL_NEW"
+  }
+}

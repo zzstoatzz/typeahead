@@ -1,0 +1,1 @@
+{"at": 1792508448.2786205, "removed": [{"key": "staging/pds-candidate-31ec142-20261020/transport/legacy.zst", "bytes": 2997751474}, {"key": "staging/pds-candidate-31ec142-20261020/transport/prefix.zst", "bytes": 2447591336}], "remaining": [], "protected_pair_retained": true}

@@ -1,0 +1,31 @@
+{
+  "id": "5d446811-c098-438e-b16c-f1ccd9da7e97",
+  "updated": "2026-10-20T15:02:24.199563Z",
+  "concurrency_limit": 1,
+  "global_concurrency_limit": null,
+  "concurrency_options": {
+    "collision_strategy": "CANCEL_NEW",
+    "grace_period_seconds": null
+  },
+  "parameters": {
+    "ref": "pds-compact-31ec142-20261020",
+    "snapshot_format": "compact"
+  },
+  "schedules": [
+    {
+      "id": "7318b27e-3c2a-4f03-8d0d-60e73212f8c1",
+      "created": "2026-10-20T15:02:24.199563Z",
+      "updated": "2026-10-20T15:02:24.199563Z",
+      "deployment_id": "5d446811-c098-438e-b16c-f1ccd9da7e97",
+      "schedule": {
+        "cron": "0 9 */3 * *",
+        "timezone": null,
+        "day_or": true
+      },
+      "active": true,
+      "max_scheduled_runs": null,
+      "parameters": {},
+      "slug": null
+    }
+  ]
+}

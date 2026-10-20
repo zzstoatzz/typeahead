@@ -1,24 +1,24 @@
 # Verified production configuration, October 20, 2026 UTC.
-# Keep the guarded cutover procedure in docs/plans/compact-production-cutover.md.
+# Keep the guarded cutover procedure in docs/plans/pds-homepage-rollout.md.
 # A plain deploy is not a substitute for routing through healthy legacy coverage.
 app = 'typeahead-search-compact'
 primary_region = 'ewr'
 
 [build]
-  image = 'registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d'
+  image = 'registry.fly.io/typeahead-search-compact:pds-31ec142-20261020@sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938'
 
 [mounts]
-  source = 'compact_recovery_data'
+  source = 'pds_candidate_data'
   destination = '/data'
 
 [env]
   MODE = 'search'
   PORT = '8080'
-  INDEX_BUILD_ROOT = '/data/publisher-current-20261019'
+  INDEX_BUILD_ROOT = '/data/pds-current-20261020'
   INDEX_LATEST_KEY = 'latest.json'
   INDEX_POLL_SECS = '300'
-  LOCAL_DB_PATH = '/data/live-overlay/overlay.db'
-  SQLITE_TMPDIR = '/data/live-overlay/tmp'
+  LOCAL_DB_PATH = '/data/pds-overlay/overlay.db'
+  SQLITE_TMPDIR = '/data/pds-overlay/tmp'
   READ_POOL_SIZE = '8'
 
 [processes]

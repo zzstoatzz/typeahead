@@ -1,6 +1,9 @@
 # PDS filtering rollout plan
 
-Updated 2026-10-20; not shipped. Compact snapshots are live, PDS filtering is not.
+Updated 2026-10-20, 15:04 UTC; PDS API/UI not shipped yet. Production temporarily
+serves legacy through Worker `73c101ec-5c7f-4237-8f19-284dcab6d51e`. The qualified
+PDS root is published and its replacement is restarting with final configuration.
+See the latest [verification evidence](../evals/pds-homepage-20261020.md).
 
 Nate approved the preview and authorized production rollout on October 20. See
 [verification evidence](../evals/pds-homepage-20261020.md). The show-before-shipping checkpoint is complete. Full-corpus qualification
@@ -94,7 +97,10 @@ The qualified native image is
 Private candidate `8d4916be311008` and volume `vol_4qlwyx1kl6o19x6r` follow
 `staging/pds-candidate-31ec142-20261020/latest.json`, using
 `/data/pds-current-20261020` and `/data/pds-overlay/overlay.db`. No public services
-are assigned. Full pair upload/readback and native admission are still pending.
+were assigned during qualification. Full pair upload/readback, empty-root native
+restore, catch-up, scoped checks, ranking and Logfire passed. At 15:04 UTC the
+machine restarted with root `latest.json` and the public service configuration;
+production traffic stays on legacy until re-admission and catch-up pass.
 Expected generation: `b1792484789-3d65-px05`, watermark `1792484192`.
 
 The existing root manifest was copied immutably and read back at
