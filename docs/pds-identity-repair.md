@@ -1,7 +1,8 @@
 # PDS identity repair tooling
 
 Status: October 20, 2026. Full coverage repair and recurring coverage are
-unfinished. Two guarded source repairs were verified in native and public
+unfinished. [Cleanup](pds-repair-cleanup-20261020.md) removed the abandoned
+controllers and unconnected framework; execution is stopped. Two guarded source repairs were verified in native and public
 search. Offline reconstruction and larger-cutoff experiments are not deployed
 coverage. Production still uses the 10,000-actor cutoff.
 
@@ -20,25 +21,11 @@ accounts for omitted nonsearchable candidates with bound source provenance.
 history and validate tail continuity. Their output is not approval to apply.
 `pds_reconstruction_report.py` accounts for unresolved and excluded identities.
 
-`pds_bundle_download.py`, `pds_cloud_reconstruct.py` and
-`pds_checkpoint_download.py` bound transfers and retain incomplete attempts.
-Do bulk transfers on the designated cloud host. HeavyPad is on the metered home
-connection; reuse its retained data only for offline qualification. Keep the
-source checkpoint distinct from a search snapshot, which omits source rows.
-The checkpoint downloader saves its generation and limits before export and
-refuses to overwrite an existing attempt. It does not support ranged resume.
-Callers may wrap admission with `wait_for_admission`: only `HealthNotReady`
-pauses are retryable, for at most 120 seconds, with two consecutive passing
-checks required to resume. Disk, stop-file and other errors propagate immediately.
-The caller must preserve its health thresholds and counter baseline across the
-pause. Reading and publication wait for admission; transfer pacing does not
-accumulate a burst allowance while paused. This helper does not enable a job
-or authorize retrying a failed production export. Socket waits are capped at
-60 seconds while admission runs at least every ten seconds between bounded
-health probes. There is at most one 64KiB read in flight; it may finish into
-memory during a health pause, but no next read or file append proceeds before
-admission. Socket timeouts remain terminal; failed attempts are not restarted
-automatically.
+The abandoned full-export downloader and duplicate cloud reconstruction controller
+were removed during cleanup. No further bulk downloads or repair jobs are enabled.
+Retained HeavyPad results, cloud snapshot/candidate data, and the completed PLC
+tail remain evidence, not approval to apply. `pds_bundle_download.py` remains a
+dependency of the retained tail capture's durable transfer budget.
 
 ## Applying and verifying repairs
 
@@ -54,40 +41,16 @@ reconciliation reports `unchanged` or `present_unattributed`; these do not prove
 the old request cannot still commit. Explicit retries still require fresh
 source and authority reads plus normal admission. No recurring writer is enabled.
 
-`pds_repair_stage.py` provides bounded, paced batches but has no enabled
-production transport. Its admission callback must independently establish
-current authority, writer coordination, live ingestion/search health, eligible
-scope policy, storage reserve and rollback readiness. `pds_repair_admission.py`
-connects cloud-host, storage and health checks; it does not replace those other
-gates. `pds_fly_progress.py` binds successful completed sync logs to the expected
-uncordoned serving generation. Refresh that explicit identity only after a
-verified cutover. `pds_repair_verify.py` checks native canary propagation.
-
-## Recurring coverage
-
-`pds_identity_discovery.py` captures bounded source-update pages and commits the
-cloud-local queue and cursor together. `pds_identity_queue.py` persists retry
-schedules and leases without changing the handle job's shared timer. Overlapping,
-delayed windows do not guarantee discovery of backdated writes; independent
-missing-PDS reconciliation remains necessary. `pds_identity_reconciliation.py`
-provides a resumable sweep with an explicit rowid boundary and at most 1,000
-rows per source read, filtering missing PDS locally after that bounded read.
-It includes hidden and handleless actors. Cursor advancement and queue inserts
-commit together. Later arrivals and changes behind the cursor require a later
-cycle; the scheduler must repeat completed sweeps. Completed queue jobs reopen
-on missing observations even with older timestamps, without resetting cooldown
-for unresolved work. Queue timestamps are discovery hints; every write still
-requires fresh source and authority reads. These sweeps belong on the cloud
-repair host, never the Worker request or cron path.
-
-Lease expiry authorizes rechecking
-identity, not replaying an ambiguous source mutation. No recurring writer or
-schedule is enabled by these modules.
+`pds_fly_progress.py` binds successful completed sync logs to the expected
+uncordoned serving generation. `pds_repair_verify.py` checks native canary
+propagation. The unconnected generic stage/admission wrappers and undeployed
+recurring discovery, reconciliation and retry queue were removed. Git retains
+the experiments if their evidence is needed; no recurring repair was shipped.
 
 ## Verification
 
 Run `python3 -m unittest discover -s scripts -p 'test_pds_*.py'`.
 The suite uses real temporary SQLite databases and loopback HTTP servers. It
-covers partial transfers, interrupted receipts, conditional conflicts, deletions,
-identity changes, durable restart, pagination and fail-closed admission. These
+covers retained transfer budgets, interrupted receipts, conditional conflicts,
+deletions, identity changes, PLC tail continuity and health rejection. These
 checks do not substitute for production rollout, recovery or throughput gates.

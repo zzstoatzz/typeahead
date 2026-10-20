@@ -36,8 +36,9 @@ The public API, browser flow and Logfire spans were verified after deployment.
 PDS membership is incomplete: the October 20 source export had 9.88 million
 of 12.65 million actor rows without a hosting PDS. The weekly identity job
 selected missing handles rather than missing PDS values. Two guarded repairs
-have been verified; full repair and recurring coverage are still in progress.
-The [repair tooling](docs/pds-identity-repair.md) includes transfer limits,
+have been verified; full repair and recurring coverage remain unfinished. Repair execution is stopped
+after [cleanup of abandoned experiments](docs/pds-repair-cleanup-20261020.md).
+The retained [repair tooling](docs/pds-identity-repair.md) includes transfer limits,
 conditional writes and durable receipts. These tools do not enable bulk writes
 or change the deployed 10,000-actor filter cutoff.
 The [October 20 parser-fix cutover](docs/evals/pds-parser-cutover-20261020.md)
@@ -140,8 +141,9 @@ The publisher is registered from `my-prefect-server` main `776c8e1`, with immuta
 builder tag `pds-compact-31ec142-20261020`; its next queued run is October 22 at
 09:00 UTC was verified at that time. On October 20 at 23:27 UTC, both bulk
 home schedules were verified inactive and all queued runs removed to avoid ISP
-overage traffic. MPS main `7fedc3b` records the hold. Cloud reconstruction and
-checkpoint qualification are in progress; a replacement recurring publisher
+overage traffic. MPS main `7fedc3b` records the hold. The duplicate cloud
+reconstruction and failed checkpoint chain were stopped during cleanup; a
+replacement recurring publisher
 and identity repair are not yet enabled. The existing snapshot and live overlay
 continue serving. Do not resume the old schedules before qualifying the cloud
 replacement. See the [operational record](docs/evals/pds-parser-cutover-20261020.md).
