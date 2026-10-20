@@ -63,9 +63,10 @@ server is not a handle suffix. Do not invent a host directory or suggestions API
    empty/unavailable states and mobile layout. Publish the lexicon and update
    README, /docs, /llms.txt and the homepage API example together with shipped status.
 
-Rollout controls: the release configuration sets `PDS_UI_ENABLED=1`. Override it
-with `--var PDS_UI_ENABLED:0` for the initial API-only Worker deployment; deploy
-the release default only after live API acceptance. `PDS_SEARCH_DISABLED=1` hides the control and rejects
+Rollout controls: keep the source configuration at `PDS_UI_ENABLED=0` until
+live API acceptance, so unrelated Worker deployments cannot expose the UI early.
+Use `--var PDS_UI_ENABLED:0` for the initial API-only deployment as an explicit
+guard; change the source default to `1` only after acceptance. `PDS_SEARCH_DISABLED=1` hides the control and rejects
 scoped requests before cache lookup, including already cached answers.
 
 Rollback: set `PDS_SEARCH_DISABLED=1` to hide the UI and disable scoped requests with an explicit unavailable

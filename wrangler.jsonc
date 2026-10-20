@@ -7,7 +7,7 @@
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "vars": {
     "SERVICE_DID": "did:plc:y6kywgnb7xletjpa5hhxmd4k",
-    "PDS_UI_ENABLED": "1"
+    "PDS_UI_ENABLED": "0"
   },
   "kv_namespaces": [
     {
