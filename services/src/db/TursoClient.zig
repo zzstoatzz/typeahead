@@ -331,21 +331,16 @@ fn buildTypedRequestBody(self: *TursoClient, sql: []const u8, args: []const Runt
 }
 
 fn parseResult(allocator: Allocator, response: []const u8) !Result {
-    const parsed = json.parseFromSlice(json.Value, allocator, response, .{}) catch {
-        return .{ .allocator = allocator, .parsed = null, .rows = &.{} };
-    };
-
-    const json_rows = getRowsFromParsed(parsed.value) orelse {
-        return .{ .allocator = allocator, .parsed = parsed, .rows = &.{} };
-    };
+    const parsed = json.parseFromSlice(json.Value, allocator, response, .{}) catch return error.InvalidTursoResponse;
+    errdefer parsed.deinit();
+    const json_rows = getRowsFromParsed(parsed.value) orelse return error.InvalidTursoResponse;
 
     var rows: std.ArrayList(Row) = .empty;
     errdefer rows.deinit(allocator);
 
     for (json_rows.items) |item| {
-        if (item == .array) {
-            try rows.append(allocator, .{ .columns = item.array.items });
-        }
+        if (item != .array) return error.InvalidTursoResponse;
+        try rows.append(allocator, .{ .columns = item.array.items });
     }
 
     return .{
@@ -357,6 +352,8 @@ fn parseResult(allocator: Allocator, response: []const u8) !Result {
 
 fn getRowsFromResult(item: json.Value) ?json.Array {
     if (item != .object) return null;
+    const kind = item.object.get("type") orelse return null;
+    if (kind != .string or !mem.eql(u8, kind.string, "ok")) return null;
     const resp = item.object.get("response") orelse return null;
     if (resp != .object) return null;
     const res = resp.object.get("result") orelse return null;
@@ -367,6 +364,7 @@ fn getRowsFromResult(item: json.Value) ?json.Array {
 }
 
 fn getRowsFromParsed(value: json.Value) ?json.Array {
+    if (value != .object) return null;
     const results = value.object.get("results") orelse return null;
     if (results != .array or results.array.items.len == 0) return null;
     return getRowsFromResult(results.array.items[0]);
@@ -564,4 +562,21 @@ fn logExtractIntMiss(obj: anytype) void {
         used += part.len;
     }
     log.warn("{s}", .{buf[0..used]});
+}
+
+test "query responses distinguish empty rows from failed or malformed statements" {
+    const allocator = std.testing.allocator;
+    var empty = try parseResult(allocator, "{\"results\":[{\"type\":\"ok\",\"response\":{\"type\":\"execute\",\"result\":{\"rows\":[]}}}]}");
+    defer empty.deinit();
+    try std.testing.expectEqual(@as(usize, 0), empty.rows.len);
+    var one = try parseResult(allocator, "{\"results\":[{\"type\":\"ok\",\"response\":{\"type\":\"execute\",\"result\":{\"rows\":[[{\"type\":\"text\",\"value\":\"did:plc:example\"},{\"type\":\"integer\",\"value\":\"123\"}]]}}}]}");
+    defer one.deinit();
+    try std.testing.expectEqual(@as(usize, 1), one.rows.len);
+    try std.testing.expectEqualStrings("did:plc:example", one.rows[0].text(0));
+    try std.testing.expectEqual(@as(i64, 123), one.rows[0].int(1));
+    const invalid = [_][]const u8{
+        "not json",                                                                      "null",                                                                                "[]",                                                                            "{}", "{\"results\":[]}",
+        "{\"results\":[{\"type\":\"error\",\"error\":{\"code\":\"SQL_INPUT_ERROR\"}}]}", "{\"results\":[{\"type\":\"ok\",\"response\":{\"type\":\"execute\",\"result\":{}}}]}", "{\"results\":[{\"type\":\"ok\",\"response\":{\"result\":{\"rows\":[null]}}}]}",
+    };
+    for (invalid) |body| try std.testing.expectError(error.InvalidTursoResponse, parseResult(allocator, body));
 }

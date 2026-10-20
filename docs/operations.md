@@ -460,3 +460,13 @@ the Fly request ID, whose suffix identifies ingress, not the serving machine.
 Compare it with `CF-Ray` and compact Logfire search spans when diagnosing
 transport latency. Cached responses replace old timings with the current hit
 lookup duration. See [the investigation](evals/edge-latency-20261020.md).
+
+
+## SQL response failure handling (qualified October 20, 2026)
+
+The native sync client must distinguish a successful empty query from an HTTP-200
+Hrana statement error or malformed result. The parser fix rejects invalid
+responses so incremental sync cannot advance the completed scope policy after
+an unsuccessful query. The qualified image in the current production status
+above predates this fix; source qualification is not deployment. See
+[replay failure qualification](evals/pds-replay-response-fix.md) for evidence.

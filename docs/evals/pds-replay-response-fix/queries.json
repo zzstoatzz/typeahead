@@ -1,0 +1,142 @@
+[
+  {
+    "mode": "http_error",
+    "sql": "SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score, updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "http_error",
+    "sql": "SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score, updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "http_error",
+    "sql": "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = ''",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "http_error",
+    "sql": "SELECT did, deleted_at FROM tombstones WHERE deleted_at > ?",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "statement_error",
+    "sql": "SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score, updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "statement_error",
+    "sql": "SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score, updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "statement_error",
+    "sql": "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = ''",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "statement_error",
+    "sql": "SELECT did, deleted_at FROM tombstones WHERE deleted_at > ?",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score, updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = ''",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, deleted_at FROM tombstones WHERE deleted_at > ?",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score, updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500",
+    "args": [
+      "1792532170"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = ''",
+    "args": [
+      "1792532170"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, deleted_at FROM tombstones WHERE deleted_at > ?",
+    "args": [
+      "1792532170"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score, updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = ''",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, deleted_at FROM tombstones WHERE deleted_at > ?",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, last_activity_at, quality_score, updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = ''",
+    "args": [
+      "1792483892"
+    ]
+  },
+  {
+    "mode": "ok",
+    "sql": "SELECT did, deleted_at FROM tombstones WHERE deleted_at > ?",
+    "args": [
+      "1792483892"
+    ]
+  }
+]
