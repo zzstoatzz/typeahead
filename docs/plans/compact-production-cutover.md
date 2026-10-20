@@ -1,10 +1,15 @@
 # Compact production cutover
 
-Status: production cutover verified, 2026-10-17 19:37 UTC. This runbook supplements the
-[snapshot rollout gates](snapshot-compaction-rollout.md); it does not waive them.
-Nate authorized production rollout, disaster rollback, and eventual cleanup on
-October 16. Production traffic now uses the compact backend; scheduled publication,
-daily observation, and final cleanup remain outstanding.
+Status: scheduled compact generation live and verified, October 20, 2026
+00:50 UTC. Worker `6a814dee-4ffe-4b26-aa38-dc39e92f3c6c` serves compact build
+`b1792400507-4df8-px05`; legacy remains ready behind reverse Worker
+`86590349-5a6e-42c1-a6de-4c5d8835ff3b`. Refresh current versions before rollback.
+Scheduled publication, daily observation, protected pair readback, native admission,
+live catch-up, ranking and empty-directory recovery passed. The four stopped
+qualification machines and volumes are removed. Source/PR/worktree cleanup remains.
+The dated sections below preserve superseded states and earlier failures; use this
+status and the latest dated section for current operations. Only Nate's two
+October 17 performance exceptions apply.
 
 ## Verified starting state
 
@@ -45,10 +50,10 @@ below retain the full chronology, including superseded attempts.
 | Native matched reload | Passed all 60 trials; p95 upper confidence ratio 0.96794, no secondary flags |
 | Deployed legacy performance comparison | Old control crashed; incomplete, not passing |
 | Production routing | Verified at 19:37 UTC; legacy backend retained |
-| Scheduled compact cycle, daily observation, final cleanup | Not completed |
+| Scheduled compact cycle and daily observation | Passed; source/PR/worktree cleanup remains |
 
-Four completed qualification machines are stopped. The isolated replacement
-and legacy production backend remain running. Nate approved the warm-latency and unavailable legacy-comparison exceptions on
+Four completed qualification machines and their volumes were removed October 20.
+The compact production backend and legacy rollback backend remain running. Nate approved the warm-latency and unavailable legacy-comparison exceptions on
 October 17, conditional on reload passing. Reload has now passed; other cutover
 and recovery requirements remain in force.
 
@@ -1170,3 +1175,41 @@ retains its interval and evidence path. This does not erase the earlier failure.
 The finite follow-up prompt now reflects completed recovery/admission gates and
 pending live catch-up, avoiding duplicate restoration jobs. README's pending
 catch-up status remains accurate; no deployment or resource change was made.
+
+### Scheduled generation returned to production — October 20, 00:50 UTC
+
+Fresh compact readiness passed with 54-second lag; legacy rollback passed at
+121 seconds. Existing Worker 86590349… was cloned with only SEARCH_BACKEND_URL
+changed, preserving intervening source changes. Worker 6a814dee… now serves the
+scheduled generation with root latest.json, unchanged qualified binary and the
+original overlay. Public freshness passed at 70-second lag. Five canonical/alias
+response pairs were byte-identical, and authenticated smoke passed before and
+after routing (including admin CRUD and live Turso query-plan checks). Optional
+Bluesky comparison was not run; the direct ranking suite already passed.
+[Return evidence](../evals/compact-scheduled-publication-20261019/return-result.json)
+and both smoke logs are archived. Fresh compact Logfire spans from the qualified
+image were verified at 00:48:21 and 00:48:25 UTC before routing.
+
+All four stopped qualification machines and their four 60 GB volumes were
+removed after fresh inventory matched the explicit allowed IDs and the protected
+pair's empty-directory restoration passed. [Cleanup record](../evals/compact-scheduled-publication-20261019/qualification-cleanup.json)
+records the IDs and verifies absence. The production app, production volume,
+legacy app/machine/volume, protected R2 pair, source/image archives and old serving
+roots remain intact. No recovery path depends on the removed qualification disks.
+The production volume has not been downsized.
+
+`services/fly.search-compact.toml` records the qualified image and live environment,
+mount, sizing and HTTP settings; Fly config validation passed. The legacy config
+is explicitly marked rollback-only. A plain Fly deploy does not provide the
+Worker routing/readiness protection, so `just deploy-search` remains guarded.
+For updates, read fresh machine configuration, verify healthy legacy, clone the
+current Worker to route legacy, update only the serving machine, wait for expected
+build and <=300-second lag, and clone the then-current Worker back. Run full smoke
+with existing credentials and reverse to legacy if it fails. Preserve staged
+secrets and unrelated configuration when refreshing the machine.
+
+The earlier single empty public result happened while legacy served. Its cause
+is not established; the richer subsequent 240-probe campaign passed. No claim
+of zero observed failures is made. A further bounded probe records the return in
+`publisher-transition-20261019/public-probes-return.jsonl`. Source/PR/worktree
+cleanup remains; keep the finite follow-up active until reconciled.

@@ -1,13 +1,18 @@
 # operations / edge gotchas
 
-As of October 17, 2026, 19:37 UTC, production search is served by
-`typeahead-search-compact`; `typeahead-search` remains the synchronized rollback
-backend. The compact service is pinned to a protected checkpoint until the next
-scheduled compact publication is verified. During this transition, the deployment
-recipe refuses to deploy the legacy configuration, and production diagnostic and
-backfill defaults target the compact service. Historical restart and promotion
-instructions below refer to the legacy layout; use the
-[cutover runbook](plans/compact-production-cutover.md) for current operations.
+As of October 20, 2026, 00:50 UTC, production search is served by
+`typeahead-search-compact`, following root `latest.json` at
+`/data/publisher-current-20261019`. The October 19 scheduled generation passed
+native admission, live catch-up, ranking, full smoke and protected-R2 restoration.
+`typeahead-search` remains the synchronized rollback backend. The production
+configuration is recorded in `services/fly.search-compact.toml`; the older
+`services/fly.search.toml` is for legacy rollback. `just deploy-search` remains
+guarded because a plain deploy does not cover restart with a healthy alternate
+backend. Use the [cutover runbook](plans/compact-production-cutover.md) for the
+fresh-config, Worker-version-preserving transition and explicit readiness gates.
+Historical restart and promotion instructions below refer to the legacy layout.
+The four temporary qualification machines and volumes are removed; production
+and rollback volumes and protected recovery artifacts are retained.
 
 
 Operational notes that aren't obvious from the code, because the relevant

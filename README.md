@@ -72,8 +72,8 @@ regression flags.
 The unmodified legacy performance control crashed during concurrent reads;
 that comparison is incomplete, with its failure retained. Nate accepted these
 two exceptions on October 17, conditional on the now-passing reload gate.
-The production cutover passed freshness, alias, and full smoke checks. The October 19 scheduled compact publication completed; native admission and empty-directory recovery passed, while live overlay
-catch-up and final cleanup remain pending. The October 18 full-day
+The production cutover passed freshness, alias, and full smoke checks. The October 19 scheduled compact publication completed; native admission, live catch-up and empty-directory recovery passed. Temporary
+qualification resources were removed; source/PR cleanup remains pending. The October 18 full-day
 counter review covered all 288 five-minute buckets: 14,902 successful searches,
 205 rate-limited searches, and no recorded 5xx responses across endpoints.
 Compact Logfire telemetry was restored October 19 and actual sampled search spans
@@ -88,18 +88,20 @@ inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-r
 for acceptance criteria. Earlier candidates' passing results do not qualify this
 replacement.
 
-As of October 19, 20:57 UTC, Worker `86590349…` temporarily routes to the healthy
-legacy `typeahead-search.fly.dev` backend while compact catches up its overlay after admitting the scheduled
-snapshot. It preserves the latest Worker source. The compact machine now follows
-the root publisher pointer, and the new generation passed native admission, ranking checks, and
-empty-directory R2 recovery. Live overlay catch-up is still pending. Four completed qualification machines remain stopped
-with volumes retained. Do not delete the compact app or use the legacy
-`services/fly.search.toml` configuration to update it. The cutover runbook records
-the active transition and recovery checks.
+As of October 20, 00:50 UTC, Worker `6a814dee…` routes to
+`typeahead-search-compact.fly.dev`, serving scheduled build
+`b1792400507-4df8-px05`. Authenticated smoke and canonical/alias checks passed.
+Worker `86590349…` is the retained reverse version; refresh deployment state
+before rollback so newer Worker changes are preserved. The legacy backend remains
+running and synchronized. All four temporary qualification machines and their
+60 GB volumes were removed after protected-pair readback and recovery passed.
+Production's configuration is recorded in `services/fly.search-compact.toml`;
+`services/fly.search.toml` is retained for legacy rollback. `just deploy-search`
+remains guarded: use the runbook's legacy-covered transition and readiness gates.
 
-The current-generation compact pair is 6.96 GB, over 50% smaller than the original
+The current-generation compact pair is 7.02 GB, over 50% smaller than the original
 and VACUUM reference. Local legacy twins remain mandatory for recovery; repeated
-promotion needs about 45.2 GB for two complete pairs before overlay and temporary
+promotion needs about 45.5 GB for two complete pairs before overlay and temporary
 files, so smaller production volumes are not yet justified. Empty-overlay recovery
 also requires a snapshot inside the seven-day tombstone replay window; archived
 images alone do not preserve that window.

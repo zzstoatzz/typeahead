@@ -1,0 +1,20 @@
+{
+  "started_at": 1792457464.718635,
+  "machines": [
+    "d895206f9ed638",
+    "0803912bd11018",
+    "d895202a11d558",
+    "8716d4b05dd978"
+  ],
+  "volumes": [
+    "vol_4912m2168o2e2w3r",
+    "vol_re1wj6n3gx30xdo4",
+    "vol_40ojnm9q7n8kd7m4",
+    "vol_v3gpk390jwdlmqw4"
+  ],
+  "protected_pair": "releases/compact-candidate-cc2d5a1/checkpoint-b1792400507-4df8",
+  "live_machine": "781e732c264678",
+  "legacy_retained": true,
+  "finished_at": 1792457469.356732,
+  "verified": true
+}

@@ -1,0 +1,38 @@
+# Verified production configuration, October 20, 2026 UTC.
+# Keep the guarded cutover procedure in docs/plans/compact-production-cutover.md.
+# A plain deploy is not a substitute for routing through healthy legacy coverage.
+app = 'typeahead-search-compact'
+primary_region = 'ewr'
+
+[build]
+  image = 'registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d'
+
+[mounts]
+  source = 'compact_recovery_data'
+  destination = '/data'
+
+[env]
+  MODE = 'search'
+  PORT = '8080'
+  INDEX_BUILD_ROOT = '/data/publisher-current-20261019'
+  INDEX_LATEST_KEY = 'latest.json'
+  INDEX_POLL_SECS = '300'
+  LOCAL_DB_PATH = '/data/live-overlay/overlay.db'
+  SQLITE_TMPDIR = '/data/live-overlay/tmp'
+  READ_POOL_SIZE = '8'
+
+[processes]
+  app = '/app/typeahead-ingester'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ['app']
+
+[[vm]]
+  memory = '2048mb'
+  cpu_kind = 'shared'
+  cpus = 4

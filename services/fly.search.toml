@@ -6,7 +6,8 @@
 # from the two. No local copy of the corpus. It does NOT consume the firehose
 # and does NOT run Turso schema migrations.
 #
-# Worker's SEARCH_BACKEND_URL points here after the cutover.
+# Retained legacy rollback backend. Production is described in
+# fly.search-compact.toml; follow the cutover runbook before any deployment.
 
 app = 'typeahead-search'
 primary_region = 'ewr'

@@ -1,0 +1,41 @@
+{
+  "started_at": 1792457384.895252,
+  "expected_build": "b1792400507-4df8-px05",
+  "compact_readiness": {
+    "ready": true,
+    "failures": [],
+    "build_id": "b1792400507-4df8-px05",
+    "sync_lag_s": 54,
+    "actor_count": 12620975,
+    "snapshot_age_s": 56880.19285988808
+  },
+  "legacy_readiness": {
+    "ready": true,
+    "failures": [],
+    "build_id": "b1792141282-189b",
+    "sync_lag_s": 121,
+    "actor_count": 12560923,
+    "snapshot_age_s": null
+  },
+  "rollback_worker": "86590349-5a6e-42c1-a6de-4c5d8835ff3b",
+  "compact_worker": "6a814dee-4ffe-4b26-aa38-dc39e92f3c6c",
+  "switched_at": 1792457400.04745,
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 70,
+    "snapshot_age_s": 56894,
+    "build_id": "b1792400507-4df8-px05",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "alias_pairs": [
+    "zzstoatzz.io",
+    "nate",
+    "paul",
+    "dan",
+    "sky"
+  ],
+  "passed": true,
+  "finished_at": 1792457436.3795662
+}
