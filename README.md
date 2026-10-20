@@ -14,9 +14,9 @@ Returns the `profileViewBasic` fields without viewer state: `did`, `handle`,
 canonical endpoint. `/xrpc/app.bsky.actor.searchActorsTypeahead` remains a
 compatible alias with identical parameters and response.
 
-**Local compact integration, 2026-10-20; not deployed:** optional `pds=acme.com`
+**Live since October 20, 2026, 15:19 UTC:** optional `pds=acme.com`
 searches by indexed hosting PDS before candidate selection, including custom-domain
-handles. The experiment builds scopes only for PDSs with at most 10,000 known actor
+handles. The snapshot builds scopes only for PDSs with at most 10,000 known actor
 rows at snapshot time (`INDEX_PDS_MAX_ACTORS`, configurable). Larger PDSs return
 503 `PdsScopeUnavailable`; their global results remain available. The PDS-scoped lists are additional to the global lists; requests without
 `pds` retain their existing behavior. Unknown hosts return an empty list; missing
@@ -24,11 +24,14 @@ backend/snapshot support returns 503 instead of unfiltered results. Hostnames ar
 case-insensitive and exact (no subdomain expansion); HTTP(S) origins and a trailing
 slash/dot are accepted, ports and paths are rejected. See the
 [correctness/performance evaluation and rollout gates](docs/evals/pds-scope.md).
-The local homepage preview adds a filter button inside the search field, opening a
-hostname panel without changing the closed layout. An available PDS favicon
+The homepage filter sits inside the search field and stays closed by default,
+including when a shared URL selects a PDS. Opening it reveals a hostname panel
+without changing the page layout. An available PDS favicon
 replaces the filter icon while selected; missing icons retain the sliders. See the
 [compact integration review](docs/evals/pds-homepage-20261020.md).
-Synthetic results establish correctness on the fixture, not production capacity.
+Full-corpus qualification covered 12.64 million searchable actors, 2,223 eligible
+PDS hosts, paired global/scoped comparisons, rollback and empty-root restoration.
+The public API, browser flow and Logfire spans were verified after deployment.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile
@@ -96,8 +99,8 @@ counter review covered all 288 five-minute buckets: 14,902 successful searches,
 Compact Logfire telemetry was restored October 19 and actual sampled search spans
 verified against its deployed image. The earlier counters do not establish
 historical full-day latency or backend error coverage. The
-publisher is registered on `my-prefect-server` main `e4275b5`, whose full CI
-workflow passed through registration; its October 19
+October 19 publisher registration used `my-prefect-server` main `e4275b5`, whose
+full CI workflow passed through registration; its October 19
 09:00 UTC scheduled run completed at 11:25 UTC with the compact format and
 qualified source tag.
 See the [cutover runbook](docs/plans/compact-production-cutover.md) for current
@@ -105,23 +108,31 @@ inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-r
 for acceptance criteria. Earlier candidates' passing results do not qualify this
 replacement.
 
-As of October 20, 00:50 UTC, Worker `6a814dee…` routes to
-`typeahead-search-compact.fly.dev`, serving scheduled build
-`b1792400507-4df8-px05`. Authenticated smoke and canonical/alias checks passed.
-Worker `86590349…` is the retained reverse version; refresh deployment state
-before rollback so newer Worker changes are preserved. The legacy backend remains
-running and synchronized. All four temporary qualification machines and their
-60 GB volumes were removed after protected-pair readback and recovery passed.
-Production's configuration is recorded in `services/fly.search-compact.toml`;
-`services/fly.search.toml` is retained for legacy rollback. `just deploy-search`
-remains guarded: use the runbook's legacy-covered transition and readiness gates.
+As of October 20, 15:19 UTC, Worker `36477826-a11c-426b-807b-88dd9f331aba`
+serves PDS-capable build `b1792484789-3d65-px05` through
+`typeahead-search-compact.fly.dev`, machine `8d4916be311008`, following root
+`latest.json`. Its snapshot and live overlay are under `/data/pds-current-20261020`
+and `/data/pds-overlay`. Public scoped/alias checks, authenticated smoke, native
+admission and catch-up, browser checks, and compact Logfire spans passed.
+The publisher is registered from `my-prefect-server` main `776c8e1`, with immutable
+builder tag `pds-compact-31ec142-20261020`; its next queued run is October 22 at
+09:00 UTC, with those parameters verified. That future run has not completed.
 
-The current-generation compact pair is 7.02 GB, over 50% smaller than the original
-and VACUUM reference. Local legacy twins remain mandatory for recovery; repeated
-promotion needs about 45.5 GB for two complete pairs before overlay and temporary
-files, so smaller production volumes are not yet justified. Empty-overlay recovery
-also requires a snapshot inside the seven-day tombstone replay window; archived
-images alone do not preserve that window.
+Legacy remains running and synchronized. Old compact machine `781e732c264678`
+is retained privately on a protected pre-PDS pointer with its original overlay.
+Before routing to an incompatible backend, disable PDS search on the current
+Worker so even cached scopes fail explicitly; never restore a pre-PDS Worker
+that silently ignores the parameter. Preserve newer unrelated Worker changes.
+See the [PDS release runbook](docs/plans/pds-homepage-rollout.md) for rollback,
+retained recovery artifacts and evidence. `services/fly.search-compact.toml`
+records the current configuration; `just deploy-search` remains guarded.
+
+The current compact pair is 7.204 GB. Local legacy twins remain mandatory for
+recovery; two complete current-format pairs need about 46.6 GB before overlay
+and temporary files, so smaller production volumes are not yet justified.
+Empty-overlay recovery also requires a snapshot inside the seven-day tombstone
+replay window; archived images alone do not preserve that window. The previous
+recovery resources remain under the existing October 24/26 retention gates.
 
 The offline converter uses a Zig shared library for packing and exhaustive
 record verification; Python validates manifests and stages the finished pair.

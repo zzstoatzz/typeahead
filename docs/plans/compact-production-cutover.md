@@ -1,10 +1,11 @@
 # Compact production cutover
 
-CURRENT STATUS, October 20, 15:04 UTC: the authorized PDS release is transitioning
-under healthy legacy coverage. Worker `73c101ec-5c7f-4237-8f19-284dcab6d51e` serves
-legacy; old compact `781e732c264678` is healthy and pinned privately to its
-protected old pointer. The replacement is restarting on the verified PDS root.
-Use [the PDS runbook](pds-homepage-rollout.md) for this active transition.
+CURRENT STATUS, October 20, 15:19 UTC: the PDS release is live on compact machine
+`8d4916be311008`, build `b1792484789-3d65-px05`, through Worker
+`36477826-a11c-426b-807b-88dd9f331aba`. All release gates passed; see the
+[PDS runbook](pds-homepage-rollout.md) for current configuration and recovery.
+Old compact `781e732c264678` remains healthy and private on its protected old
+pointer; legacy remains synchronized. The retention gates below still apply.
 
 Previous completed compact release, October 20, 2026
 00:50 UTC. Worker `6a814dee-4ffe-4b26-aa38-dc39e92f3c6c` serves compact build

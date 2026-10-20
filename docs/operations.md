@@ -1,22 +1,21 @@
 # operations / edge gotchas
 
-As of October 20, 2026, 00:50 UTC, production search is served by
-`typeahead-search-compact`, following root `latest.json` at
-`/data/publisher-current-20261019`. The October 19 scheduled generation passed
-native admission, live catch-up, ranking, full smoke and protected-R2 restoration.
-`typeahead-search` remains the synchronized rollback backend. The production
-configuration is recorded in `services/fly.search-compact.toml`; the older
-`services/fly.search.toml` is for legacy rollback. `just deploy-search` remains
-guarded because a plain deploy does not cover restart with a healthy alternate
-backend. Use the [cutover runbook](plans/compact-production-cutover.md) for the
-fresh-config, Worker-version-preserving transition and explicit readiness gates.
-Historical restart and promotion instructions below refer to the legacy layout.
-The four temporary qualification machines and volumes are removed; production
-and rollback volumes and protected recovery artifacts are retained.
+As of October 20, 2026, 15:19 UTC, production serves PDS-capable compact build
+`b1792484789-3d65-px05` on `typeahead-search-compact` machine `8d4916be311008`,
+following root `latest.json` at `/data/pds-current-20261020`, with live overlay
+`/data/pds-overlay/overlay.db`. Worker `36477826-a11c-426b-807b-88dd9f331aba`
+enables the collapsed homepage filter after public API acceptance.
 
-
-Operational notes that aren't obvious from the code, because the relevant
-config lives in Cloudflare/Fly dashboards, not the repo.
+`typeahead-search` remains synchronized for rollback. Previous compact machine
+`781e732c264678` is private and pinned to the protected old pointer. Disable scoped
+search before routing to an incompatible backend; preserve current Worker source.
+See [the PDS runbook](plans/pds-homepage-rollout.md) for the transition and recovery
+inventory, and [release evidence](evals/pds-homepage-20261020.md) for full-corpus,
+public API, browser and telemetry checks. The next scheduled publisher run is
+October 22 at 09:00 UTC; its PDS source pin is registered and queued, not yet run.
+`services/fly.search-compact.toml` records the serving configuration. Plain search
+deploys remain guarded in favor of the rollback-covered transition. Historical
+restart and promotion instructions below refer to the legacy layout.
 
 ## Cloudflare: Browser Integrity Check is OFF for the public API (`/xrpc/`)
 

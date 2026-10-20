@@ -134,9 +134,9 @@ For the incident and design history, see [operations](operations.md),
 [September incident report](retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md).
 
 
-## PDS-scoped search experiment (2026-10-08, not deployed)
+## PDS-scoped search (live October 20, 2026)
 
-The candidate builder counts actors by normalized hosting PDS offline, including
+The builder counts actors by normalized hosting PDS offline, including
 hidden and handle-less rows. It emits PDS-scoped prefix keys only for hosts at or
 below `INDEX_PDS_MAX_ACTORS` (default 10,000); zero disables scoped lists.
 `pds_scopes` records counts and eligibility. This is a build-time population
@@ -155,5 +155,7 @@ updated after the snapshot but before promotion. Unscoped search remains availab
 A failed replay leaves the gate closed; normal sync resumes after a successful pass.
 
 The existing lookup bounds and multi-token intersection limitations remain.
-Additional index and overlay work needs capacity validation before rollout;
-see [the evaluation](evals/pds-scope.md).
+The full-corpus compact release passed paired correctness/performance, replay,
+rollback and restoration gates before deployment; see
+[the release evidence](evals/pds-homepage-20261020.md) and
+[current configuration and rollback](plans/pds-homepage-rollout.md).

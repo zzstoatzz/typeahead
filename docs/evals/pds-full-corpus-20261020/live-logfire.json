@@ -1,0 +1,43 @@
+{
+  "columns": [
+    {
+      "name": "span_name",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "records",
+      "datatype": "Int64",
+      "nullable": false
+    },
+    {
+      "name": "latest",
+      "datatype": {
+        "Timestamp": [
+          "Microsecond",
+          "UTC"
+        ]
+      },
+      "nullable": true
+    },
+    {
+      "name": "p50_seconds",
+      "datatype": "Float64",
+      "nullable": true
+    },
+    {
+      "name": "p95_seconds",
+      "datatype": "Float64",
+      "nullable": true
+    }
+  ],
+  "rows": [
+    {
+      "span_name": "search",
+      "records": 9,
+      "latest": "2026-10-20T15:24:00.328539Z",
+      "p50_seconds": 0.0036602017368829827,
+      "p95_seconds": 0.007511559828805803
+    }
+  ]
+}

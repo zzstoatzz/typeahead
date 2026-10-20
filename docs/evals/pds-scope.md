@@ -1,7 +1,10 @@
 # Small-PDS search experiment — 2026-10-08
 
-**Local implementation and synthetic verification only. No production writes,
-configuration changes, lexicon publication, or deployments.**
+**Historical October 8 experiment:** the implementation and measurements below
+were local and synthetic. PDS filtering subsequently shipped on compact on
+October 20 after full-corpus qualification; see
+[the production release evidence](pds-homepage-20261020.md). The historical
+fixture timings below do not establish production capacity.
 
 The [request](https://bsky.app/profile/renderg.host/post/3mxdrtvtnnk2q) is to search
 within a community's hosting PDS, including members with custom-domain handles.

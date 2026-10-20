@@ -1,6 +1,8 @@
 # PDS homepage review — October 20, 2026
 
-PDS is not deployed; the authorized rollout is in isolated qualification.
+PDS filtering is live as of October 20, 15:19 UTC; see the public release
+section below for final evidence. Earlier sections preserve the preview and
+qualification chronology.
 The initial preview review made no production deployments, publisher changes,
 or new hosted resources. Ported the October 8 PDS experiment onto current compact main
 `369cf6a`, preserving the primary checkout's unrelated edits.
@@ -211,3 +213,59 @@ still serves healthy legacy. The
 [5.45 GB compressed transport objects](pds-full-corpus-20261020/transport-cleanup.json)
 were removed only after full protected-pair readback and native empty-root restore.
 Protected pairs, staging manifest, rollback volumes, images and old roots remain.
+
+### Public release — October 20, 15:19 UTC
+
+Worker `6b90a33e-faa7-4a08-aa77-d8b32a5d2998` returned traffic to the qualified
+compact backend after final re-admission reached zero lag and its public origin
+passed all 24 scope checks. Worker `c5ab36c1-66d0-4ea8-a5be-37f97d65f414` added
+API support with the homepage hidden. All
+[35 public API checks](pds-full-corpus-20261020/public-api-acceptance.json) passed:
+positive/unknown/excluded/invalid hosts, normalized cache separation, unchanged
+global answers across scoped requests, and byte-identical canonical/alias bodies.
+
+Worker `36477826-a11c-426b-807b-88dd9f331aba`, source `770da05`, then enabled the
+homepage. Full authenticated smoke passed from HeavyPad before and after that
+UI deployment, including profiles, moderation/admin operations, page scripts,
+and live Turso query plans. The final UI deployment used the documented
+`deploy-worker-only` command followed by the same complete smoke suite remotely,
+because the local network path had intermittent pre-HTTP TLS failures.
+
+Two local smoke attempts failed and remain recorded, not waived or erased:
+the first reported two profile shape failures without retaining the failed
+responses, so their exact cause is unknown. A captured rerun passed profiles
+but failed different endpoints with SSL handshake timeouts before HTTP. Direct
+profile readbacks were correct, and the relevant profile counters contained only
+200/400 responses, not 5xx/429. The independent HeavyPad runs passed every check.
+Raw attempts, captured responses and passing logs are retained under
+`~/.local/share/typeahead-experiments/pds-homepage-20261020/`.
+
+The real browser verified closed-by-default behavior on `/` and after a scoped
+URL reload, an unchanged 48px search field, actual `2bit.pics` results scoped to
+`selfhosted.social`, loaded 18px PDS favicon, Apply/All servers, Back, Enter/Escape,
+and explicit unavailable messaging for an excluded host. At 390px width the
+panel stayed between x=20 and x=370 with no horizontal overflow. The browser was
+left on the working live scope with its panel closed and viewport override reset.
+The public [lexicon readback](pds-full-corpus-20261020/published-lexicon.json)
+confirmed CID `bafyreidkoht7lankornr7vwtpqbxo5mivhfr3nmtdfoqrukvxv7lfibi2q`.
+
+Final [Logfire evidence](pds-full-corpus-20261020/live-logfire.json) contains nine
+sampled search spans after UI enablement, engine p50 3.66 ms / p95 7.51 ms,
+and no error-level events from that image in the inspected window. This is a
+small sampled engine window, not a historical or end-to-end latency comparison.
+The [quick live edge benchmark](pds-full-corpus-20261020/live-edge-bench.json)
+measured warm p50/p95 84/121 ms and cache-miss p50/p95 675/2118 ms; Bluesky's
+p50/p95 was 162/761 ms. No stress test ran. Cache-miss performance remains slower
+than Bluesky; this release is not evidence of an end-to-end speedup. The paired
+full-corpus engine qualification remains the evidence for no detected engine
+regression. Broader oracle overlap remains below the aspirational target.
+
+README, operational configuration and both cutover runbooks now describe the
+verified release. The old compact/legacy backends, protected pairs, image/source
+archives and old roots remain available under the recorded retention gates.
+
+Closeout also removed the candidate's 336 KB publication-helper directory and
+HeavyPad's two redundant compressed transport files, after checking no qualification
+units or file users remained. The qualification source data and comparison/recovery
+artifacts remain retained. Local preview/fixture processes and SSH tunnels were
+stopped after the browser moved to production; temporary SSH credentials were removed.

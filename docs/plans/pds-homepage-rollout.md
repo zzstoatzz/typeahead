@@ -1,13 +1,15 @@
 # PDS filtering rollout plan
 
-Updated 2026-10-20, 15:04 UTC; PDS API/UI not shipped yet. Production temporarily
-serves legacy through Worker `73c101ec-5c7f-4237-8f19-284dcab6d51e`. The qualified
-PDS root is published and its replacement is restarting with final configuration.
-See the latest [verification evidence](../evals/pds-homepage-20261020.md).
+Live October 20, 2026, 15:19 UTC. Worker
+`36477826-a11c-426b-807b-88dd9f331aba` serves PDS-capable compact build
+`b1792484789-3d65-px05` on `8d4916be311008`, root `latest.json`.
+Public API acceptance, authenticated smoke from HeavyPad, live browser checks and
+Logfire passed. The filter defaults closed, including after a scoped URL reload.
+See [release evidence](../evals/pds-homepage-20261020.md). Earlier dated transition
+sections below describe superseded intermediate states.
 
 Nate approved the preview and authorized production rollout on October 20. See
-[verification evidence](../evals/pds-homepage-20261020.md). The show-before-shipping checkpoint is complete. Full-corpus qualification
-remains required before routing production to this candidate.
+[verification evidence](../evals/pds-homepage-20261020.md). The show-before-shipping checkpoint is complete. Full-corpus qualification and the shipping sequence below have completed.
 
 ## Homepage interaction
 
@@ -66,8 +68,8 @@ server is not a handle suffix. Do not invent a host directory or suggestions API
    empty/unavailable states and mobile layout. Publish the lexicon and update
    README, /docs, /llms.txt and the homepage API example together with shipped status.
 
-Rollout controls: keep the source configuration at `PDS_UI_ENABLED=0` until
-live API acceptance, so unrelated Worker deployments cannot expose the UI early.
+Rollout controls: `PDS_UI_ENABLED=1` is now live after API acceptance. Future
+releases should keep it at `0` until their API acceptance passes.
 Use `--var PDS_UI_ENABLED:0` for the initial API-only deployment as an explicit
 guard; change the source default to `1` only after acceptance. `PDS_SEARCH_DISABLED=1` hides the control and rejects
 scoped requests before cache lookup, including already cached answers.
@@ -138,3 +140,32 @@ Before any rollback to an incompatible backend, deploy `PDS_SEARCH_DISABLED=1`
 and verify even cached scopes return unavailable. Route through healthy legacy
 while restoring the previous compact configuration. Do not reuse a newer pruned
 snapshot/overlay pair against the old snapshot.
+
+## Current recovery inventory and closeout — October 20, 2026
+
+- Serving: `8d4916be311008`, volume `vol_4qlwyx1kl6o19x6r`, qualified image above,
+  root `latest.json`, `/data/pds-current-20261020`, `/data/pds-overlay/overlay.db`.
+- Previous compact: `781e732c264678`, volume `vol_rnzg2g0gkko1lmpr`, unchanged
+  qualified old image, original `/data/live-overlay/overlay.db`, no public services,
+  pointer `releases/pds-rollback-20261020/b1792400507-4df8-px05/latest.json`.
+- Legacy: `typeahead-search`, machine `867e15ce4e1148`, volume
+  `vol_4m3mkzpz1lmy383v`, synchronized and ready for global-search coverage.
+- New recovery pair: compact objects under
+  `releases/pds-candidate-31ec142/b1792484789-3d65-px05/`, legacy twin under
+  `builds/b1792484789-3d65/`, watermark `1792484192`. Full independent checksum
+  readback and actual native empty-directory restoration passed.
+- Preserve previous protected pairs, old roots and source/image archives under
+  the existing October 24/26 retention gates. The new pair's empty-overlay replay
+  also depends on the seven-day tombstone horizon; keep its live overlay current.
+- Temporary compressed transport objects (5.45 GB) and the abandoned multipart
+  upload are removed and absence verified. The small staging manifest remains
+  as a reproducible pointer to the qualified release; it does not serve traffic.
+- Publisher source is on main `776c8e1`; CI `3mycvdzctvr22` passed checks and
+  registration. October 22 09:00 is queued with the new immutable source pin,
+  unchanged concurrency one / `CANCEL_NEW`, and the 10,000-actor cutoff.
+
+Do not deploy any pre-PDS Worker version as a shortcut rollback: it ignores scoped
+parameters. Disable PDS on the then-current Worker, verify cached scopes fail
+closed, and clone that source when routing to healthy legacy. Restore a matched
+snapshot/overlay pair if native recovery is needed. Do not delete the production
+compact app or any retained recovery volume merely because its name is historical.
