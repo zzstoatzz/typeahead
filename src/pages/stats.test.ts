@@ -15,51 +15,14 @@ function page(domains: string[], trafficAll?: StatsData["trafficAll"]): string {
   return statsPage(d);
 }
 
-/** The selection targets — one legend entry, one table row — as raw markup. */
-function legendEntry(html: string, domain: string): string {
-  const start = html.indexOf(`<span data-domain="${domain}">`);
-  if (start < 0) return "";
-  const next = html.indexOf(`<span data-domain=`, start + 1);
-  return html.slice(start, next < 0 ? start + 400 : next);
-}
-function tableRow(html: string, domain: string): string {
-  return html.match(new RegExp(`<tr data-domain="${domain}">.*?</tr>`, "s"))?.[0] ?? "";
-}
-
-describe("traffic source selection targets", () => {
-  // The split contract (2026-08-15): in the TABLE the domain name is a link to
-  // the app's site — the row still selects via the rank/hits/% cells because
-  // the click handler skips anchors. In the LEGEND the whole entry stays a
-  // selection target (it has no other tappable surface), so the name there is
-  // NOT a link.
-  const html = page(["plyr.fm", "unknown"]);
-
-  test("the legend entry is not a link", () => {
-    const entry = legendEntry(html, "plyr.fm");
-    expect(entry).toContain("plyr.fm");
-    expect(entry).not.toContain("<a ");
-  });
-
-  test("the table row's domain name links to the app's site", () => {
-    const cell = tableRow(html, "plyr.fm").match(/<td class="ts-domain">.*?<\/td>/s)?.[0] ?? "";
-    expect(cell).toContain('href="https://plyr.fm"');
-    expect(cell).toContain('target="_blank"');
-  });
-
-  test("the row keeps non-anchor cells to select by", () => {
-    const row = tableRow(html, "plyr.fm");
-    expect(row).toContain('class="ts-hits"');
-    expect(row).toContain('class="ts-pct"');
-  });
-
-  test("bare app names (no dot) get no outbound link", () => {
-    const html2 = page(["pckt"]);
-    expect(tableRow(html2, "pckt")).not.toContain("<a ");
-  });
-
-  test("synthetic buckets get no outbound link", () => {
-    // "unknown"/"homepage" are attribution buckets, not hostnames
-    expect(tableRow(html, "unknown")).not.toContain("<a ");
+describe("traffic source chart", () => {
+  test("the source section has one chart and one app list, without a table", () => {
+    const html = page(["plyr.fm", "unknown"]);
+    expect(html).toContain('<svg id="pie"');
+    expect(html).toContain('id="pie-breadcrumb"');
+    expect(html).toContain('id="source-list"');
+    expect(html).not.toContain('<div class="pie-legend">');
+    expect(html).not.toContain('<table class="ts-table"');
   });
 });
 
@@ -82,7 +45,7 @@ describe("domain escaping", () => {
   });
 
   test("the quote cannot break out of the data-domain attribute", () => {
-    expect(html).toContain("&quot;&gt;&lt;/script&gt;");
+    expect(html).not.toContain('data-domain="a"');
   });
 });
 
@@ -206,18 +169,14 @@ describe("everything else", () => {
     // sources and 2000 hits in total, so 866 hits are "everything else"
     const html = page(twelve, { domains: 52, hits: 2000 });
     expect(html).toContain('"domain":"everything else","hits":866,"rest":true');
-    const start = html.indexOf('<div class="pie-legend">');
-    const legend = html.slice(start, html.indexOf("</div>", start));
-    expect(legend).toContain("everything else · 40 sources (43.3%)");
-    expect(legend).toContain('data-domain="everything else"');
-    expect(html).not.toContain('<tr data-domain="everything else"');
+    expect(html).toContain('"domain":"app0.test","hits":100');
+
   });
 
   test("percentages divide by the whole table, not the rows fetched", () => {
     const html = page(twelve, { domains: 52, hits: 2000 });
     // app0.test has 100 hits: 5.0% of 2000, which would be 8.8% of the 1134 listed
-    expect(legendEntry(html, "app0.test")).toContain("(5.0%)");
-    expect(html).toContain("top 12 named above · 12 sources below");
+    expect(html).toContain("const trafficGrandTotal = 2000;");
   });
 
   test("no rest slice when the ring already holds everything", () => {
@@ -229,29 +188,12 @@ describe("everything else", () => {
 });
 
 describe("the long tail", () => {
-  // The handler used to fetch LIMIT 50 and the page listed exactly that, so
-  // every source past rank 50 (a new adopter with ten hits, say) was invisible
-  // on /stats although it was counted. Every source is now in the document;
-  // rows past the first page are folded behind a button, not dropped.
-  const many = Array.from({ length: 130 }, (_, i) => `app${i}.test`);
-
-  test("every source is a row; rows past the first page are folded, not missing", () => {
+  test("every source and exact count is available to recursive navigation", () => {
+    const many = Array.from({ length: 130 }, (_, i) => `app${i}.test`);
     const html = page(many);
-    for (const d of many) expect(html).toContain(`<tr data-domain="${d}"`);
-    expect(html).toContain('<tr data-domain="app49.test"><td');
-    expect(html).toContain('<tr data-domain="app50.test" data-page="1" hidden>');
-    expect(html).toContain('<tr data-domain="app129.test" data-page="2" hidden>');
-    expect(html).toContain('id="ts-more" data-page-size="50">show 50 more · 80 remaining</button>');
-  });
-
-  test("a last page smaller than the page size says how many it holds", () => {
-    const html = page(Array.from({ length: 62 }, (_, i) => `app${i}.test`));
-    expect(html).toContain(">show 12 more · 12 remaining</button>");
-  });
-
-  test("no button when the first page holds everything", () => {
-    const html = page(Array.from({ length: 50 }, (_, i) => `app${i}.test`));
-    expect(html).not.toContain("data-page=");
-    expect(html).not.toContain('id="ts-more"');
+    const sources = JSON.parse(html.match(/const allTraffic = (.*?);/)![1]!);
+    expect(sources).toHaveLength(130);
+    for (let i = 0; i < many.length; i++) expect(sources[i]).toEqual({domain: many[i], hits: 100 - i});
+    for (const domain of many) expect(html).toContain('data-domain="' + domain + '"');
   });
 });

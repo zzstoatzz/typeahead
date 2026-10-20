@@ -61,3 +61,22 @@ After approval and passing qualification, admit a warmed compatible backend,
 verify Worker scoped responses and aliases, then expose this UI. Preserve the
 then-current Worker source. Hide/disable scoped requests explicitly before an
 incompatible-backend rollback; retain compatible snapshot/overlay recovery pairs.
+
+## Authorized rollout preparation — October 20
+
+Nate approved the UI and authorized rollout. Candidate `b867870` passed Tangled
+pipeline `3myc77ioj6522`. The scope-only disable switch passed 22 Worker runtime
+checks, including disabling an already cached scoped answer while global search
+remained available, then re-enabling it.
+
+Live Worker version `6a814dee-4ffe-4b26-aa38-dc39e92f3c6c` was downloaded for source
+comparison. Its `statsPage` function exactly matches the primary checkout's
+uncommitted stats implementation, not repository main. That source and its tests
+are carried into this release to preserve deployed behavior; the primary checkout
+is untouched. This is deployment reconciliation, not a new stats redesign.
+
+Full-corpus export/build runs in the isolated HeavyPad directory
+`/home/stoat/typeahead-pds-20261020`, user units
+`typeahead-pds-compile-20261020` and `typeahead-pds-full-build-20261020`.
+The build uses `INDEX_CHANNEL=local` and cannot publish a production pointer.
+Qualification and deployment are still pending.

@@ -32,22 +32,6 @@ export interface StatsData {
   view?: { apps: string[]; range: string; origin: string };
 }
 
-/** cached/cold latency as two atomic pairs.
- *
- *  This was one inline string — "6.2 ms <span>cached</span> · 173 ms
- *  <span>cold</span>" — so at narrow widths the last tag wrapped by itself and
- *  the card rendered a lone orphaned "cold" on its own line. Each number+tag is
- *  now one nowrap unit, so they either sit on one line or wrap as whole pairs.
- */
-function latencyHtml(cached: number, cold: number): string {
-  const pair = (n: string, tag: string) =>
-    `<span class="lat-pair"><span class="lat-n">${n}</span><span class="lat-t">${tag}</span></span>`;
-  const parts = [];
-  if (cached > 0) parts.push(pair(`${cached.toFixed(1)} ms`, "cached"));
-  parts.push(pair(`${cold.toFixed(0)} ms`, "cold"));
-  return parts.join('<span class="lat-sep">·</span>');
-}
-
 /** Link-preview metadata that describes THIS view, not the page in general.
  *
  *  A shared comparison is only worth sharing if the unfurl says what is being
@@ -182,7 +166,6 @@ export function statsPage(d: StatsData): string {
     '#14b8a6', '#3b82f6', '#a855f7', '#f59e0b', '#f43f5e', '#06b6d4', '#65a30d', '#f97316', '#ec4899',
   ];
   const SPECIAL_DOMAINS = { unknown: '#94a3b8', homepage: '#64748b' } satisfies Record<string, string>;
-  const isSpecial = (d: string): d is keyof typeof SPECIAL_DOMAINS => Object.hasOwn(SPECIAL_DOMAINS, d);
   const PIE_TOP_N = 12;
   // Every percentage on the page divides by the WHOLE table, and the ring
   // draws the whole table too: the top N as named slices plus one neutral
@@ -254,40 +237,10 @@ export function statsPage(d: StatsData): string {
     daily: sliceRequests(d.requestDaily, (r) => r.day),
   });
 
-  // It used to be that NO name was a link, because the selection handler skips
-  // anchors so the link could still navigate — which meant the largest part of
-  // every legend entry and table row did not select. The split that survives:
-  // in the TABLE the name is a link again (the row still selects via the rank,
-  // hits, and % cells — the selection handler skips anchors); in the LEGEND
-  // the whole entry stays a selection target, since it has no other surface.
-  // Only dotted hostnames link: X-Client values can be bare app names
-  // ("pckt", "lazurite") and https://pckt is not a place.
-  const nameLink = (domain: string) => isSpecial(domain) || !domain.includes('.') ? esc(domain)
-    : `<a href="https://${esc(domain)}" target="_blank" rel="noopener" class="legend-link">${esc(domain)}</a>`;
-
-  const pieLegendHtml = pieSlice.map((r, i) => {
-    const color = isSpecial(r.domain) ? SPECIAL_DOMAINS[r.domain] : PIE_COLORS[i % PIE_COLORS.length];
-    const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
-    return `<span data-domain="${esc(r.domain)}"><span class="ldot" style="background:${color}"></span>${esc(r.domain)} (${pct}%)</span>`;
-  }).join('') + (rest
-    ? `<span class="rest" data-domain="${REST_LABEL}"><span class="ldot rest-dot"></span>${REST_LABEL} · ${rest.domains} sources (${((rest.hits / trafficGrandTotal) * 100).toFixed(1)}%)</span>`
-    : '');
-
-  // Every source is in the table, but only the first page is visible at
-  // load: the rest carry a page number and `hidden`, and the button below
-  // the table reveals a page at a time. Selecting a folded source from the
-  // URL (?apps=) unfolds down to its row (see the client script).
-  const TS_PAGE = 50;
-  const trafficTableRows = d.trafficSources.map((r, i) => {
-    const pct = trafficGrandTotal > 0 ? ((r.hits / trafficGrandTotal) * 100).toFixed(1) : '0';
-    const page = Math.floor(i / TS_PAGE);
-    const fold = page > 0 ? ` data-page="${page}" hidden` : '';
-    return `<tr data-domain="${esc(r.domain)}"${fold}><td class="ts-rank">${i + 1}</td><td class="ts-domain">${nameLink(r.domain)}</td><td class="ts-hits">${r.hits.toLocaleString()}</td><td class="ts-pct">${pct}%</td></tr>`;
+  const sourcePills = d.trafficSources.map((row, i) => {
+    const pct = trafficGrandTotal ? (row.hits / trafficGrandTotal * 100).toFixed(1) : '0';
+    return `<button type="button" data-domain="${esc(row.domain)}" data-hits="${row.hits}" data-share="${pct}" title="${esc(row.domain)} · ${row.hits.toLocaleString()} requests · ${pct}% of traffic" aria-label="${esc(row.domain)}, ${row.hits.toLocaleString()} requests, ${pct}% of traffic" aria-pressed="false"${i >= 12 ? ' hidden' : ''}><span class="source-name">${esc(row.domain)}</span><span class="source-value">${pct}%</span></button>`;
   }).join('');
-  const trafficFolded = Math.max(0, d.trafficSources.length - TS_PAGE);
-  const trafficMoreHtml = trafficFolded > 0
-    ? `<button type="button" class="ts-more" id="ts-more" data-page-size="${TS_PAGE}">show ${Math.min(TS_PAGE, trafficFolded)} more · ${trafficFolded} remaining</button>`
-    : '';
 
   return `<!doctype html>
 <html lang="en">
@@ -298,6 +251,7 @@ export function statsPage(d: StatsData): string {
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}
+    :root, :root[data-theme] { --dim: var(--muted); }
     body { display: flex; justify-content: center;
            padding: calc(1.5rem + env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom)); }
     .container { max-width: 620px; width: 100%; }
@@ -366,21 +320,41 @@ export function statsPage(d: StatsData): string {
        the table rows both carry it, which is exactly why they worked on a phone
        and the donut did not. */
     #pie { display: block; margin: 0 auto; width: 280px; height: 280px;
-           touch-action: none; cursor: pointer; }
-    .pie-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; margin-top: 0.7rem;
-                  font-size: 0.7rem; color: var(--muted); justify-content: center; }
-    .pie-legend span[data-domain] { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4;
-                       padding: 0.35rem 0.5rem; border-radius: 999px; min-height: 30px;
-                       border: 1px solid transparent; }
-    .pie-legend span.sel { border-color: var(--line-2); background: var(--panel-2); }
-    .traffic-series { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+           touch-action: pan-y; cursor: pointer; }
+    #pie-breadcrumb { display: flex; align-items: center; gap: 0.3rem; height: 36px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+    #pie-breadcrumb button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.65rem; padding: 0.4rem 0.3rem; cursor: pointer; flex-shrink: 0; }
+    #pie-breadcrumb button[aria-current] { color: var(--text); }
+    .pie-help { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.6rem; margin-top: 0.6rem; }
+    .pie-stage { position: relative; }
+    .source-detail { position: absolute; inset: 26%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center; pointer-events: none; }
+    .source-detail .detail-name { width: 100%; color: var(--text); font-size: clamp(12px, 3.3vw, 18px); line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .source-detail .detail-total { font-size: clamp(24px, 6vw, 36px); }
+    .source-detail .detail-count { font-size: clamp(10px, 2.5vw, 12px); line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .source-detail a { pointer-events: auto; display: inline-flex; align-items: center; min-height: 32px; color: var(--accent); font-size: 11px; }
+    .source-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+    .source-heading a { font-size: 0.65rem; color: var(--muted); white-space: nowrap; }
+    .source-context { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.6rem; }
+    #pie-breadcrumb[hidden] { display: none; }
+    #pie .pie-segment { cursor: pointer; outline: none; }
+    #pie .pie-face { stroke: var(--panel); stroke-width: 0.6; transition: opacity 100ms ease; }
+    #pie .pie-segment:hover .pie-face, #pie .pie-segment:focus-visible .pie-face { filter: brightness(1.12); }
+    #pie .pie-segment:focus-visible .pie-face { stroke: var(--text); stroke-width: 1.5; }
+    #pie-explore, #pie-back { min-height: 44px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0.4rem 0.6rem; background: var(--panel-2); color: var(--text); font: inherit; cursor: pointer; }
+    #pie-explore[hidden], #pie-back[hidden], #pie-hint[hidden] { display: none; }
+    .pie-help { align-items: center; justify-content: center; }
+    .pie-help:has(#pie-back:not([hidden])) { justify-content: space-between; }
+    #pie .pie-segment[aria-pressed="true"] .pie-face { stroke: var(--text); stroke-width: 1.5; }
+    #source-list button[aria-pressed="true"]::after { content: "✓"; color: var(--text); }
+    #pie text, #pie image, #pie .pie-logo { pointer-events: none; }
+    @media (prefers-reduced-motion: reduce) { #pie .pie-face { transition: none; } }
+    .traffic-series { margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
     .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
     .traffic-series .ranged-header { margin-bottom: 0.5rem; }
     /* The plot RESERVES its height so swapping the chart for the empty state
        cannot move the page. Previously the empty state was content-sized while
        the svg was responsive (viewBox 600x90, height:auto), so hovering a domain
        with no traffic in the window made everything below lurch up. */
-    .tseries-plot { position: relative; aspect-ratio: 600 / 135; }
+    .tseries-plot { position: relative; height: 112px; margin-top: 0.6rem; }
     .tseries-plot > svg, .tseries-plot > #tseries-empty {
       position: absolute; inset: 0; width: 100%; height: 100%;
     }
@@ -394,47 +368,43 @@ export function statsPage(d: StatsData): string {
     #tseries polyline.baseline { stroke-dasharray: 3 3; stroke-width: 1; opacity: 0.75; }
     #tseries-guide { stroke: var(--line-2); stroke-width: 1; vector-effect: non-scaling-stroke; }
     #tseries-dots circle { fill: var(--bg); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-    /* Reserves one chip row at all times. Without it, hovering the donut (which
-       shows a preview chip) or making a first selection grew the header by a
-       row and shoved the chart down — the chart appeared to jump while the
-       pointer was nowhere near it. */
-    /* flex-basis 0, so the row never gets pushed under the heading by its own
-       content — that wrap was the chart "jumping" when a chip appeared. It still
-       reserves one row height at all times, which covers the donut's hover
-       preview and any single selection. */
-    /* always its own full-width row under the title, in EVERY view — the row
-       used to sit beside the title in one view and below it in the others, so
-       switching views threw the view switch from one side of the card to the
-       other. Same place, same shape, whatever is selected. */
-    #tseries-chips { display: flex; flex-wrap: wrap; gap: 0.5rem 0.45rem; align-items: center;
-                     min-height: 34px; flex-basis: 100%; min-width: 0;
-                     justify-content: flex-start; margin: 0.15rem 0 0.35rem; }
-    .ts-chip { display: inline-flex; align-items: center; gap: 0.4rem;
-               background: var(--panel-2); border: 1px solid var(--line-2); color: var(--text);
-               padding: 0.35rem 0.5rem 0.35rem 0.6rem; font-size: 0.72rem; cursor: pointer;
-               border-radius: 999px; font-family: inherit; min-height: 34px; }
-    .ts-chip .x { color: var(--faint); font-size: 0.95rem; line-height: 1; }
-    .ts-chip:hover { border-color: var(--line); }
-    .ts-chip:hover .x { color: var(--text); }
-    .ts-chip .ldot.dash { background: none !important; border: 1.5px dashed var(--dim); }
-    .ts-chip.clear { color: var(--muted); background: transparent; padding: 0.35rem 0.7rem; }
-    .ts-chip.preview { background: transparent; border-style: dashed; color: var(--muted);
-                       cursor: default; pointer-events: none; }
-    /* an available-but-unselected line. Same chip, quieter: the endpoint and
-       status views have no legend below to tap, so the chip row IS the picker */
-    .ts-chip.pick { background: transparent; border-color: var(--line); color: var(--muted); }
-    .ts-chip.pick:hover { color: var(--text); border-color: var(--line-2); }
-    .ts-chip.pick .ldot { opacity: 0.55; }
+    .activity-metrics { display: grid; grid-template-columns: 1.25fr 1fr 1fr; gap: 0.75rem; margin: 1rem 0; }
+    .activity-metrics .value { white-space: nowrap; font-variant-numeric: tabular-nums; font-size: 1.15rem; }
+    .activity-metrics small { font-size: 0.65rem; color: var(--muted); }
+    #activity-period { color: var(--dim); font-size: 0.65rem; margin-left: 0.35rem; }
+    .activity-wrap > .ranged-header { display: flex; flex-wrap: nowrap; gap: 0.5rem; }
+    #activity-range { display: grid; grid-template-columns: repeat(4, 1fr); }
+    #activity-range button, #tseries-dim button { min-height: 34px; padding: 0.25rem 0.45rem; font-size: 0.65rem; border-color: transparent; }
+    #activity-range, #tseries-dim { gap: 0; border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
+    #activity-range button.active, #tseries-dim button.active { border-color: var(--line-2); }
+    .traffic-series > .ranged-header { display: flex; flex-wrap: nowrap; gap: 0.5rem; }
+    #tseries-dim { display: inline-flex; }
+    #tseries-chips { display: flex; gap: 0.35rem; height: 40px; align-items: center; overflow-x: auto; scrollbar-width: none; }
+    .ts-chip { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; height: 30px; padding: 0 0.55rem; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 0.65rem; cursor: pointer; }
+    .ts-chip.selected { background: var(--panel-2); border-color: var(--line-2); color: var(--text); }
+    .ts-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .series-name { display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+    .series-check { color: var(--muted); }
+    .source-logo { display: inline-block; position: relative; width: 14px; height: 14px; flex-shrink: 0; vertical-align: middle; }
+    .source-logo img { position: absolute; inset: 0; width: 14px; height: 14px; object-fit: contain; border-radius: 3px; visibility: hidden; }
+    .source-logo::before { content: ""; position: absolute; width: 6px; height: 6px; inset: 4px; border-radius: 50%; background: var(--logo-color, var(--muted)); }
+    .source-logo.loaded::before { visibility: hidden; }
+    .pie-selection { display: flex; align-items: center; gap: 0.5rem; height: 36px; font-size: 0.65rem; color: var(--muted); }
+    #pie-selection-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pie-selection a { margin-left: auto; white-space: nowrap; color: var(--accent); }
+    #traffic-chart { scroll-margin-top: 16px; }
+    #clear-series { background: transparent; border: 0; color: var(--muted); font: inherit; font-size: 0.7rem; cursor: pointer; min-height: 36px; padding: 0 0.5rem; }
+    #clear-series:disabled { opacity: 0.4; cursor: default; }
     .dim-btns button { padding: 0.25rem 0.5rem; font-size: 0.66rem; min-height: 28px; }
     #tseries-dim { margin-left: auto; }
     .empty-card { color: var(--dim); font-size: 0.8rem; padding: 2rem 0; text-align: center; }
     .pie-cta { margin-top: 0.6rem; font-size: 0.7rem; color: var(--dim); text-align: center; }
-    .pie-cta a { color: var(--blue); text-decoration: none; }
+    .pie-cta a { display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; color: var(--blue); text-decoration: none; }
     .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
                     color: var(--dim); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
     .tseries-foot { display: flex; align-items: center; justify-content: space-between;
                     gap: 0.5rem; margin-top: 0.5rem; }
-    .tseries-hint { font-size: 0.65rem; color: var(--faint); }
+    .tseries-hint { font-size: 0.65rem; color: var(--muted); white-space: nowrap; min-width: 0; }
     .ts-foot-btns { display: flex; align-items: center; gap: 0.3rem; flex-shrink: 0; }
     .ts-menu-wrap { position: relative; flex-shrink: 0; }
     #tseries-menu-btn { background: transparent; border: 1px solid var(--line); color: var(--dim);
@@ -450,59 +420,9 @@ export function statsPage(d: StatsData): string {
                       padding: 0.5rem 0.6rem; font-size: 0.7rem; font-family: inherit;
                       cursor: pointer; border-radius: 5px; white-space: nowrap; }
     .ts-menu button:hover { background: var(--hover); color: var(--text); }
-    /* the integral row — area under each curve over the plotted window */
-    /* One line, always. It used to wrap — so a long domain, or a second
-       selection, silently changed the height of everything below the chart.
-       Overflow scrolls sideways instead of growing downward. */
-    .tseries-totals { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem;
-                      font-size: 0.68rem; color: var(--muted); margin-top: 0.5rem;
-                      min-height: 1.5em; }
-    .tseries-totals .sig { color: var(--dim); font-size: 0.85rem; cursor: default;
-                           position: relative; border-bottom: 1px dotted var(--faint); }
-    .tseries-totals .sig:hover::after, .tseries-totals .sig:focus::after {
-      content: attr(data-tip); position: absolute; left: 0; top: 1.8em; width: 190px;
-      background: var(--tip-bg); border: 1px solid var(--line-2); border-radius: 6px;
-      padding: 0.45rem 0.6rem; font-size: 0.65rem; color: var(--muted); z-index: 30; line-height: 1.5; }
-    .tseries-totals .tot { display: inline-flex; align-items: baseline; gap: 0.3rem; }
-    .tseries-totals .tot b { font-weight: 400; color: var(--text); font-variant-numeric: tabular-nums; }
-    .tseries-totals .tot .pct { color: var(--faint); }
-    .tseries-totals .lead { color: var(--text); }
-    .pie-legend span[data-domain] { cursor: pointer; }
-    .pie-legend span.rest { display: flex; align-items: center; gap: 0.3rem; line-height: 1.4; color: var(--muted); }
-    .pie-legend .rest-dot { background: var(--dim); }
-    .pie-legend span.sel { color: var(--bright); }
-    .pie-legend span.sel .ldot { outline: 1.5px solid var(--bright); outline-offset: 1px; }
-    .ts-table tbody tr[data-domain] { cursor: pointer; }
-    .ts-table tbody tr[data-domain]:hover td { background: var(--hover); }
-    .ts-table tbody tr.sel td { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
-
-    .ts-table-wrap { margin-top: 1rem; max-height: 280px; overflow-y: auto;
-                     -webkit-overflow-scrolling: touch;
-                     border: 1px solid var(--line); border-radius: 8px; }
-    .ts-table-wrap::-webkit-scrollbar { width: 8px; }
-    .ts-table-wrap::-webkit-scrollbar-track { background: var(--bg); }
-    .ts-table-wrap::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 4px; }
-    .ts-table { width: 100%; border-collapse: collapse; font-size: 0.72rem;
-                color: var(--text); table-layout: fixed; }
-    .ts-table thead th { position: sticky; top: 0; background: var(--panel-2); color: var(--dim);
-                         font-weight: 400; text-align: left; padding: 0.45rem 0.7rem;
-                         border-bottom: 1px solid var(--line); font-size: 0.68rem;
-                         text-transform: uppercase; letter-spacing: 0.04em; }
-    .ts-table td { padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--line); }
-    .ts-table tr:last-child td { border-bottom: none; }
-    .ts-rank { color: var(--dim); width: 2.2rem; }
-    .ts-domain { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .legend-link { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--faint); }
-    .legend-link:hover { color: var(--text); border-bottom-color: var(--muted); }
-    .ts-hits { text-align: right; font-variant-numeric: tabular-nums; color: var(--text);
-               width: 4.5rem; }
-    .ts-pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted);
-              width: 3.2rem; }
-    .ts-summary { font-size: 0.7rem; color: var(--dim); margin-top: 0.6rem; text-align: center; }
-    .ts-more { display: block; width: 100%; margin-top: 0.5rem; min-height: 34px;
-               background: transparent; border: 1px solid var(--line); border-radius: 6px;
-               color: var(--dim); font: inherit; font-size: 0.7rem; cursor: pointer; }
-    .ts-more:hover { color: var(--muted); border-color: var(--line-2); }
+    .tseries-totals { height: 20px; white-space: nowrap; overflow-x: auto; scrollbar-width: thin; margin-top: 0.6rem; color: var(--muted); font-size: 0.65rem; line-height: 1.5; overflow-wrap: anywhere; }
+    .tseries-totals { display: flex; align-items: center; gap: 1rem; scrollbar-width: none; padding-right: 1rem; mask-image: linear-gradient(to right, black calc(100% - 20px), transparent); }
+    .series-total { display: inline-flex; align-items: center; gap: 0.3rem; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 
     footer { padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: 0.7rem;
              color: var(--faint); display: flex; align-items: center; justify-content: center;
@@ -517,17 +437,31 @@ export function statsPage(d: StatsData): string {
       #trend { height: 170px; }
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
       .summary-2, .summary-3 { grid-template-columns: 1fr 1fr; }
-      #pie { width: 230px; height: 230px; }
-      .pie-legend { gap: 0.3rem 0.6rem; font-size: 0.68rem; }
+      .summary-3 > :last-child { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+      #pie { width: 200px; height: 200px; }
       .tseries-plot { aspect-ratio: auto; height: 72px; }
-      .ts-table-wrap { max-height: 320px; }
-      .ts-table { font-size: 0.7rem; }
-      .ts-table thead th { padding: 0.4rem 0.5rem; font-size: 0.62rem; }
-      .ts-table td { padding: 0.5rem 0.5rem; }
-      .ts-rank { width: 1.8rem; }
-      .ts-hits { width: 3.6rem; }
-      .ts-pct { width: 2.8rem; }
     }
+    @media (max-width: 360px) {
+      #activity-period { display: block; margin: 0.2rem 0 0; }
+      #tseries-dim button { padding-inline: 0.3rem; font-size: 0.6rem; }
+      .traffic-series h2 { font-size: 0.65rem; }
+    }
+    #pie { width: 100%; height: auto; aspect-ratio: 1; margin: 0; overflow: visible; touch-action: pan-y; }
+    @media (max-width: 360px) { .pie-help { font-size: 0.55rem; } }
+    .source-tools { display: flex; gap: 0.6rem; align-items: center; margin-top: 0.6rem; }
+    #source-search { width: 100%; min-width: 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--text); padding: 0.5rem 0; font: inherit; font-size: 16px; border-radius: 0; }
+    #source-toggle { flex-shrink: 0; min-height: 44px; padding: 0.4rem 0.6rem; border: 1px solid var(--line-2); border-radius: 8px; background: transparent; color: var(--text); font: inherit; font-size: 0.65rem; cursor: pointer; }
+    #source-toggle[hidden] { display: none; }
+    #source-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
+    #source-list button { display: inline-flex; align-items: center; gap: 0.35rem; max-width: 100%; padding: 0.3rem 0.55rem; min-height: 32px; border: 1px solid var(--line); border-radius: 16px; color: var(--muted); background: transparent; font: inherit; font-size: 0.65rem; cursor: pointer; }
+    #source-list button[aria-pressed="true"] { background: var(--panel-2); border-color: var(--line-2); color: var(--text); }
+    #source-list button[hidden], .source-actions button[hidden] { display: none; }
+    .source-name { min-width: 0; overflow-wrap: anywhere; text-align: left; }
+    .source-value { flex-shrink: 0; font-variant-numeric: tabular-nums; color: var(--muted); }
+    .source-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.6rem; color: var(--muted); }
+    #source-count { margin-right: auto; }
+    .source-actions button { padding: 0.25rem; min-height: 32px; background: transparent; border: 0; color: var(--text); font: inherit; cursor: pointer; }
+    #source-empty { font-size: 0.7rem; color: var(--muted); }
   </style>
 </head>
 <body>
@@ -583,7 +517,7 @@ export function statsPage(d: StatsData): string {
          a different window than the searches count sitting next to it. -->
     <div class="activity-wrap">
       <div class="ranged-header">
-        <h2>activity</h2>
+        <h2>activity <span id="activity-period">7 days</span></h2>
         <span class="range-btns" id="activity-range">
           <button data-range="24h">24h</button>
           <button data-range="7d" class="active">7d</button>
@@ -591,20 +525,15 @@ export function statsPage(d: StatsData): string {
           <button data-range="all">all</button>
         </span>
       </div>
-      <div class="summary summary-2">
-        <div class="metric">
-          <div class="label" id="searches-label">total searches (7 days)</div>
-          <div class="value" id="searches-value">${initialTotal.toLocaleString()}</div>
-        </div>
-        <div class="metric">
-          <div class="label" tabindex="0" data-tip="cached (edge) vs uncached (fly replica)">avg latency</div>
-          <div class="value latency" id="latency-value">${latencyHtml(d.avgCacheLatency, d.avgLatency)}</div>
-        </div>
+      <div class="activity-metrics">
+        <div class="metric"><div class="label" id="searches-label">searches</div><div class="value" id="searches-value">${initialTotal.toLocaleString()}</div></div>
+        <div class="metric"><div class="label" title="Mean response time for cached searches at the edge">avg cached</div><div class="value" id="cached-latency">${d.avgCacheLatency.toFixed(1)} <small>ms</small></div></div>
+        <div class="metric"><div class="label" title="Mean response time for searches that miss the edge cache">avg cold</div><div class="value" id="cold-latency">${d.avgLatency.toFixed(0)} <small>ms</small></div></div>
       </div>
       <!-- the series lives INSIDE this card, directly under the control that
            drives it. It used to sit below the donut, several hundred pixels from
            a selector that silently governed it. -->
-      <div class="traffic-series">
+      <div class="traffic-series" id="traffic-chart">
         <div class="ranged-header">
           <h2 id="tseries-label">traffic over time — all sources</h2>
           <span class="range-btns dim-btns" id="tseries-dim" aria-label="slice by">
@@ -612,7 +541,7 @@ export function statsPage(d: StatsData): string {
             <button data-dim="endpoint">endpoint</button>
             <button data-dim="status">status</button>
           </span>
-          <div id="tseries-chips"></div>
+
         </div>
         <div class="tseries-plot">
           <svg viewBox="0 0 600 135" preserveAspectRatio="none" id="tseries">
@@ -623,12 +552,13 @@ export function statsPage(d: StatsData): string {
           <div id="tseries-empty" style="display:none">no traffic in this window</div>
         </div>
         <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
-        <div class="tseries-totals" id="tseries-totals"></div>
+        <div id="tseries-chips" role="group" aria-label="Chart series"></div>
+        <div class="tseries-totals" id="tseries-totals" aria-live="polite"></div>
         <div class="tseries-foot">
-          <span class="tseries-hint" id="tseries-hint">tap a source below to add or remove it</span>
-          <div class="ts-foot-btns">
+          <span class="tseries-hint" id="tseries-hint">Tap to compare</span>
+          <div class="ts-foot-btns"><button id="clear-series" type="button">clear</button>
           <div class="ts-menu-wrap">
-            <button id="tseries-menu-btn" aria-haspopup="menu" aria-expanded="false" title="chart actions">&hellip;</button>
+            <button id="tseries-menu-btn" aria-haspopup="menu" aria-expanded="false" title="chart actions">export</button>
             <div class="ts-menu" id="tseries-menu" role="menu" hidden>
               <button role="menuitem" data-act="link">copy link to this view</button>
               <button role="menuitem" data-act="copy">copy image</button>
@@ -642,23 +572,19 @@ export function statsPage(d: StatsData): string {
     </div>
 
     <div class="pie-wrap">
-      <h2>traffic sources</h2>
+      <div class="source-heading"><h2>traffic sources</h2><a href="#traffic-chart">View activity ↑</a></div>
+      <div class="source-context">${trafficGrandTotal.toLocaleString()} requests · ${d.trafficSources.length} apps</div>
       ${d.trafficSources.length > 0
-        ? `<canvas id="pie" role="img" aria-label="traffic sources by app"></canvas>
-           <div class="pie-legend">${pieLegendHtml}</div>
-           ${rest
-              ? `<div class="ts-summary">top ${PIE_TOP_N} named above · ${d.trafficSources.length} sources below</div>`
-              : ''}
-           <div class="ts-table-wrap">
-             <table class="ts-table">
-               <thead><tr><th>#</th><th>domain</th><th style="text-align:right">hits</th><th style="text-align:right">%</th></tr></thead>
-               <tbody>${trafficTableRows}</tbody>
-             </table>
-           </div>
-           ${trafficMoreHtml}`
+        ? `<nav id="pie-breadcrumb" aria-label="Traffic source depth"></nav>
+           <div class="pie-stage"><svg id="pie" viewBox="0 0 400 400" role="group" aria-label="Traffic sources. Select a source to compare, or zoom into smaller sources."></svg><div class="source-detail" id="source-detail" aria-live="polite"></div></div>
+           <div class="pie-help"><button type="button" id="pie-back" hidden>← Back to top apps</button><button type="button" id="pie-explore" hidden></button></div>
+           <div class="source-tools"><input type="search" id="source-search" placeholder="Find an app" aria-label="Find an app" autocomplete="off"><button type="button" id="source-toggle" aria-controls="source-list" aria-expanded="false"${d.trafficSources.length <= 12 ? ' hidden' : ''}>Show all</button></div>
+           <div id="source-list" aria-label="All apps">${sourcePills}</div>
+           <p id="source-empty" hidden>No matching apps</p>
+           <div class="source-actions"><span id="source-count">${Math.min(12, d.trafficSources.length)} of ${d.trafficSources.length} apps</span><button type="button" id="source-more"${d.trafficSources.length <= 12 ? ' hidden' : ''}>show 50 more</button><button type="button" id="source-all"${d.trafficSources.length <= 12 ? ' hidden' : ''}>show all</button><button type="button" id="source-less" hidden>less</button></div>`
         : `<div class="empty-card">collecting data — check back soon</div>`}
       <div class="pie-cta">
-        want to show up here? <a href="/docs">switch from bluesky&rsquo;s typeahead &rarr;</a>
+        <a href="/docs">Add your app &rarr;</a>
       </div>
     </div>
     <div class="pie-tip" id="pie-tip"></div>
@@ -897,6 +823,7 @@ export function statsPage(d: StatsData): string {
     const trafficGrandTotal = ${trafficGrandTotal};
     const pieCanvas = document.getElementById('pie');
     const pieTip = document.getElementById('pie-tip');
+    let refreshPie = () => {};
 
     /* --- per-app traffic history: click pins a domain, hover the line for detail --- */
     const trafficSeries = ${trafficSeriesJson};     // hourly, 30d: domain -> [[hour, hits], ...]
@@ -924,6 +851,7 @@ export function statsPage(d: StatsData): string {
     const tseriesT1 = document.getElementById('tseries-t1');
     const TS_W = 600, TS_H = 135, TS_PAD = 6;
     const SVGNS = 'http://www.w3.org/2000/svg';
+    let inspectedSource = null;
     let pinned = [];           // click-selected domains, in selection order
     let hovered = null;        // pie-hover preview; only active while nothing is pinned
     let showBaseline = true;   // the dotted all-sources line, for relative scale
@@ -934,9 +862,9 @@ export function statsPage(d: StatsData): string {
     // total is larger and includes the ingester's own admin traffic.
     let tsDim = 'source';
     const DIMS = {
-      source:   { all: 'all sources',  title: 'traffic over time',  hint: 'tap a source below to add or remove it' },
-      endpoint: { all: 'all requests', title: 'requests by endpoint', hint: 'tap an endpoint to add or remove it' },
-      status:   { all: 'all requests', title: 'requests by status',   hint: 'tap a status class to add or remove it' },
+      source:   { all: 'all sources',  title: 'traffic over time',  hint: 'Tap to compare' },
+      endpoint: { all: 'all requests', title: 'requests by endpoint', hint: 'Tap to toggle' },
+      status:   { all: 'all requests', title: 'requests by status',   hint: 'Tap to toggle' },
     };
     const ENDPOINT_ORDER = ['search', 'getProfiles', 'request-indexing', 'page', 'admin/ingest', 'admin/delete', 'admin', 'health', 'debug', 'other'];
     // Okabe–Ito: distinguishable under deuteranopia/protanopia/tritanopia and
@@ -971,11 +899,13 @@ export function statsPage(d: StatsData): string {
     const REST_KEY = ${JSON.stringify(REST_LABEL)};
     // the named sources are the pie's real slices; everything outside them is REST_KEY
     const NAMED = new Set(traffic.filter(r => !r.rest).map(r => r.domain));
+    const allTraffic = ${jsonScript(d.trafficSources)};
+    const sourceDomains = allTraffic.map(r => r.domain);
     function domainColor(domain) {
       if (domain == null) return tok('--accent');
       if (domain === REST_KEY) return tok('--dim', '#8a938c');
       if (SPECIAL_SERIES[domain]) return SPECIAL_SERIES[domain];
-      const idx = traffic.findIndex(r => r.domain === domain);
+      const idx = sourceDomains.indexOf(domain);
       return idx >= 0 ? PIE_COLORS[idx % PIE_COLORS.length] : tok('--accent');
     }
     let tsRange = '7d';
@@ -1030,6 +960,7 @@ export function statsPage(d: StatsData): string {
       return specs;
     }
     function showSeries() {
+      refreshPie();
       if (!tseriesLines) return;
       const cfg = TS_RANGES[tsRange];
       const nowUnit = Math.floor(Date.now() / 1000 / cfg.stepSec);
@@ -1040,9 +971,8 @@ export function statsPage(d: StatsData): string {
       // span is printed on the axis below. This used to append the domain, "all
       // sources", and "· last 30d" — enough text to overflow the header on a
       // phone to say what two other elements already said.
-      if (tseriesLabel) tseriesLabel.textContent = DIMS[tsDim].title + ' · ' + cfg.grain;
-      if (tseriesHint) tseriesHint.textContent = DIMS[tsDim].hint;
-      renderChips();
+      if (tseriesLabel) tseriesLabel.textContent = cfg.grain + ' traffic';
+      if (tseriesHint) tseriesHint.textContent = pinned.length ? '× removes a line' : DIMS[tsDim].hint;
       const nonEmpty = raws.filter(r => r.length > 0);
       const empty = nonEmpty.length === 0 || Math.max(...raws.map(r => r.length)) < 2;
       if (tseriesEl) tseriesEl.style.display = empty ? 'none' : 'block';
@@ -1088,137 +1018,145 @@ export function statsPage(d: StatsData): string {
       tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, step, toY, series };
       renderTotals();
     }
-    function chip(name, color, dashed, onClear) {
-      const b = document.createElement('button');
-      b.className = 'ts-chip';
-      b.title = 'remove from chart';
-      const dot = document.createElement('span');
-      dot.className = 'ldot' + (dashed ? ' dash' : '');
-      if (!dashed) dot.style.background = color;
-      const label = document.createElement('span');
-      label.textContent = name;              // domains are caller-controlled — never innerHTML
-      b.append(dot, label);
-      if (onClear) {
-        const x = document.createElement('span');
-        x.className = 'x';
-        x.textContent = '×';
-        b.appendChild(x);
-        b.addEventListener('click', onClear);
-      }
-      return b;
+    const brandNamespaces = { 'plyr.fm': 'fm.plyr', 'bsky38.com': 'com.bsky38', 'marque.at': 'at.marque', 'standard-reader.app': 'app.standard-reader', 'userinput.app': 'app.userinput', 'youandme.at': 'at.youandme' };
+    const failedLogos = new Set();
+    function sourceIconUrls(domain) {
+      if (!domain || !/^[a-z0-9-]+(?:\\.[a-z0-9-]+)+$/i.test(domain)) return null;
+      if (/\\.(?:localhost|local|internal|test|invalid|ts\\.net)$/i.test(domain) || /^[0-9.]+$/.test(domain)) return null;
+      const favicon = domain === 'northsky.app' ? 'https://northsky.app/static/apple-touch-icon.png' : 'https://' + domain + '/favicon.ico';
+      const namespace = brandNamespaces[domain];
+      return [namespace ? 'https://brand.waow.tech/xrpc/tech.waow.brand.getIcon?namespace=' + encodeURIComponent(namespace) : favicon, favicon];
     }
-    function renderChips() {
-      if (!tseriesChips) return;
-      tseriesChips.replaceChildren();
-      if (tsDim !== 'source') {
-        // no legend below to tap in these views, so the row lists every line
-        // this slice can draw: selected ones solid with an ×, the rest quiet
-        if (pinned.length && showBaseline) {
-          tseriesChips.appendChild(chip(DIMS[tsDim].all, null, true, () => { showBaseline = false; showSeries(); syncUrl(); }));
-        }
-        const keys = dimKeys();
-        for (const k of keys) {
-          const sel = pinned.includes(k);
-          const c = chip(k, keyColor(k), false, () => applySelection(k));
-          if (!sel) { c.classList.add('pick'); c.title = 'add to chart'; c.querySelector('.x').textContent = '+'; }
-          tseriesChips.appendChild(c);
-        }
-        if (pinned.length >= 2) {
-          const clear = document.createElement('button');
-          clear.className = 'ts-chip clear';
-          clear.textContent = 'clear';
-          clear.addEventListener('click', () => applySelection(null));
-          tseriesChips.appendChild(clear);
-        } else if (pinned.length === 0 && keys.length >= 2) {
-          const all = document.createElement('button');
-          all.className = 'ts-chip clear';
-          all.textContent = 'select all';
-          all.addEventListener('click', () => { pinned = keys.slice(); showBaseline = true; showSeries(); syncUrl(); });
-          tseriesChips.appendChild(all);
-        }
-        return;
-      }
-      if (pinned.length === 0) {
-        // hover preview: name the line without pretending it's a filter
-        if (hovered != null) {
-          const c = chip(hovered, domainColor(hovered), false, null);
-          c.classList.add('preview');
-          tseriesChips.appendChild(c);
-        }
-        return;
-      }
-      if (showBaseline) {
-        tseriesChips.appendChild(chip('all sources', null, true, () => { showBaseline = false; showSeries(); syncUrl(); }));
-      }
-      for (const d of pinned) {
-        tseriesChips.appendChild(chip(d, domainColor(d), false, () => applySelection(d)));
-      }
-      // with every tap additive, there has to be one obvious way back to nothing
-      if (pinned.length >= 2) {
-        const clear = document.createElement('button');
-        clear.className = 'ts-chip clear';
-        clear.textContent = 'clear';
-        clear.addEventListener('click', () => applySelection(null));
-        tseriesChips.appendChild(clear);
-      }
+    function sourceLogo(domain) {
+      const urls = sourceIconUrls(domain);
+      if (!urls) return null;
+      const slot = document.createElement('span');
+      slot.className = 'source-logo';
+      slot.style.setProperty('--logo-color', domainColor(domain));
+      const img = document.createElement('img');
+      img.alt = ''; img.width = 14; img.height = 14;
+      slot.append(img);
+      if (failedLogos.has(domain)) return slot;
+      img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
+      const [primary, favicon] = urls;
+      img.src = primary;
+      img.addEventListener('load', () => { img.style.visibility = 'visible'; slot.classList.add('loaded'); }, { once: true });
+      img.addEventListener('error', () => { if (img.src !== favicon) img.src = favicon; else failedLogos.add(domain); });
+      return slot;
     }
-    // The area under each curve. Buckets are counts per fixed-width interval, so
-    // the integral over the window is just their sum — no trapezoid needed, and
-    // pretending otherwise would invent precision the data doesn't have.
+    const sourceButtons = [...document.querySelectorAll('#source-list button[data-domain]')];
+    let sourceLimit = 12;
+    for (const button of sourceButtons) {
+      const logo = sourceLogo(button.dataset.domain);
+      if (logo) button.prepend(logo);
+      else { const dot = document.createElement('span'); dot.className = 'ldot'; dot.style.background = domainColor(button.dataset.domain); button.prepend(dot); }
+      button.addEventListener('click', () => { if (tsDim !== 'source') setDim('source'); applySelection(button.dataset.domain); });
+    }
+    function renderSources() {
+      if (!sourceButtons.length) return;
+      const query = document.getElementById('source-search').value.trim().toLowerCase();
+      let shown = 0;
+      for (const [i, button] of sourceButtons.entries()) {
+        button.hidden = query ? !button.dataset.domain.toLowerCase().includes(query) : i >= sourceLimit;
+        if (!button.hidden) shown++;
+        button.setAttribute('aria-pressed', String(tsDim === 'source' && pinned.includes(button.dataset.domain)));
+      }
+      document.getElementById('source-count').textContent = query ? shown + ' matches' : shown + ' of ' + sourceButtons.length + ' apps';
+      const toggle = document.getElementById('source-toggle');
+      toggle.hidden = !!query || sourceButtons.length <= 12;
+      toggle.textContent = sourceLimit > 12 ? 'Show fewer' : 'Show all';
+      toggle.setAttribute('aria-expanded', String(sourceLimit > 12));
+      document.getElementById('source-empty').hidden = shown > 0;
+      document.getElementById('source-more').hidden = !!query || shown === sourceButtons.length;
+      document.getElementById('source-more').textContent = 'show ' + Math.min(50, sourceButtons.length - shown) + ' more';
+      document.getElementById('source-all').hidden = !!query || shown === sourceButtons.length;
+      document.getElementById('source-less').hidden = !!query || sourceLimit <= 12;
+    }
+    document.getElementById('source-search')?.addEventListener('input', renderSources);
+    document.getElementById('source-toggle')?.addEventListener('click', () => { sourceLimit = sourceLimit > 12 ? 12 : sourceButtons.length; renderSources(); });
+    document.getElementById('source-more')?.addEventListener('click', () => { sourceLimit += 50; renderSources(); });
+    document.getElementById('source-all')?.addEventListener('click', () => { sourceLimit = sourceButtons.length; renderSources(); });
+    document.getElementById('source-less')?.addEventListener('click', () => { sourceLimit = 12; renderSources(); });
     function renderTotals() {
-      if (!tseriesTotals) return;
-      tseriesTotals.replaceChildren();
-      if (!tsView) return;
-      const t0u = tsView.t0Sec / tsView.stepSec, n = tsView.series[0].counts.length;
-      // measured over the same window even when the baseline line is hidden,
-      // so dismissing it doesn't silently change what the percentages mean
-      const all = seriesFor(null, tsView.stepSec)
-        .filter(([t]) => t >= t0u && t < t0u + n).reduce((s, r) => s + r[1], 0);
-      // unfiltered, the one series IS the total — report it rather than leaving
-      // a reserved-but-blank row
-      const apps = tsView.series.filter(s => pinned.length === 0 || !s.baseline)
-        .map(s => ({ name: s.name, color: s.color, isTotal: s.domain == null,
-                     sum: s.counts.reduce((a, b) => a + b, 0) }))
-        .sort((a, b) => b.sum - a.sum);
-      const sig = document.createElement('span');
-      sig.className = 'sig';
-      sig.tabIndex = 0;
-      sig.textContent = '∫';
-      sig.dataset.tip = 'area under each curve — total requests over the window shown. '
-        + 'requests, not users: apps call the endpoint at different rates.';
-      tseriesTotals.appendChild(sig);
-      for (const a of apps) {
-        const el = document.createElement('span');
-        el.className = 'tot';
-        const dot = document.createElement('span');
-        dot.className = 'ldot';
-        dot.style.background = a.color;
-        const name = document.createElement('span');
-        name.textContent = a.name;
-        const num = document.createElement('b');
-        num.textContent = a.sum.toLocaleString();
-        el.append(dot, name, num);
-        if (all > 0 && !a.isTotal) {   // "100%" of itself says nothing
-          const pct = document.createElement('span');
-          pct.className = 'pct';
-          pct.textContent = '(' + (a.sum / all * 100).toFixed(1) + '%)';
-          el.appendChild(pct);
+      renderSources();
+      if (!tseriesChips || !tseriesTotals) return;
+      const scrollLeft = tseriesChips.scrollLeft;
+      const existing = new Map([...tseriesChips.children].map(el => [el.dataset.key, el]));
+      const cfg = TS_RANGES[tsRange];
+      const since = cfg.secs == null ? -Infinity : Math.floor(Date.now() / 1000 / cfg.stepSec) - cfg.secs / cfg.stepSec;
+      const sumFor = domain => seriesFor(domain, cfg.stepSec)
+        .filter(([t]) => tsView ? t >= tsView.t0Sec / tsView.stepSec && t < tsView.t0Sec / tsView.stepSec + tsView.series[0].counts.length : t >= since)
+        .reduce((sum, [, hits]) => sum + hits, 0);
+      const all = sumFor(null);
+      const keys = tsDim === 'source' ? [...new Set([...pinned, ...(hovered ? [hovered] : [])])] : dimKeys();
+      const rows = [{ domain: null, name: DIMS[tsDim].all }, ...keys.map(domain => ({ domain, name: domain }))];
+      for (const row of rows) {
+        const active = row.domain == null ? (pinned.length === 0 ? !hovered : showBaseline) : pinned.includes(row.domain) || hovered === row.domain;
+        const key = tsDim + ':' + (row.domain == null ? '__total' : row.domain);
+        let button = existing.get(key);
+        if (!button) {
+          button = document.createElement('button');
+          button.type = 'button'; button.dataset.key = key;
+          const name = document.createElement('span'); name.className = 'series-name';
+          const dot = document.createElement('span'); dot.className = 'ldot';
+          dot.style.background = keyColor(row.domain);
+          name.append(dot);
+          if (tsDim === 'source') { const logo = sourceLogo(row.domain); if (logo) { name.append(logo); dot.style.display = 'none'; } }
+          const label = document.createElement('span'); label.textContent = row.domain == null ? 'total' : row.name; name.append(label);
+          const check = document.createElement('span'); check.className = 'series-check';
+          button.append(name, check);
+          button.addEventListener('click', () => {
+            hovered = null;
+            if (row.domain == null) {
+              if (!pinned.length) return;
+              showBaseline = !showBaseline; showSeries(); syncUrl();
+            } else applySelection(row.domain);
+          });
+          tseriesChips.appendChild(button);
         }
-        tseriesTotals.appendChild(el);
+        existing.delete(key);
+        button.className = 'ts-chip' + (active ? ' selected' : '');
+        button.setAttribute('aria-pressed', String(active));
+        button.setAttribute('aria-label', (row.domain == null && !pinned.length ? '' : active ? 'Hide ' : 'Show ') + row.name);
+        const sum = sumFor(row.domain);
+        const share = all > 0 ? (sum / all * 100).toFixed(1) + '%' : '—';
+        button.title = row.name + ': ' + sum.toLocaleString() + ' requests (' + share + ')';
+        button.querySelector('.series-check').textContent = active && (row.domain != null || pinned.length) ? '×' : active ? '' : '+';
+        const dot = button.querySelector('.ldot');
+        dot.style.background = row.domain == null && pinned.length ? 'transparent' : keyColor(row.domain);
+        dot.style.border = row.domain == null && pinned.length ? '1px dashed var(--muted)' : '';
       }
-      // A ratio, stated as a ratio. This said "X leads Y", which frames request
-      // volume as a scoreboard — but an app that calls the endpoint on every
-      // keystroke, or retries a bad auth flow, generates more requests without
-      // more people using it. The number is real; the ranking it implied wasn't.
-      if (apps.length >= 2 && apps[0].sum > 0 && apps[1].sum > 0) {
-        const lead = document.createElement('span');
-        lead.className = 'lead';
-        const r = apps[0].sum / apps[1].sum;
-        lead.textContent = apps[0].name + ' ' + (r < 10 ? r.toFixed(2) : Math.round(r))
-          + '× ' + apps[1].name + ' by request volume';
-        tseriesTotals.appendChild(lead);
+      for (const button of existing.values()) button.remove();
+      tseriesChips.scrollLeft = scrollLeft;
+      const ranked = keys.filter(k => pinned.includes(k)).map(name => ({ name, sum: sumFor(name) })).sort((a, b) => b.sum - a.sum);
+      tseriesTotals.replaceChildren();
+      for (const row of [...activeSpecs()].sort((a, b) => Number(a.domain == null) - Number(b.domain == null))) {
+        const sum = sumFor(row.domain);
+        const share = all > 0 ? (sum / all * 100).toFixed(1) : '0';
+        const item = document.createElement('span'); item.className = 'series-total'; item.tabIndex = 0;
+        item.title = row.name + ': ' + sum.toLocaleString() + ' requests (' + share + '%)';
+        item.setAttribute('aria-label', item.title);
+        const dot = document.createElement('span'); dot.className = 'ldot'; dot.style.background = keyColor(row.domain);
+        if (row.domain == null && pinned.length) { dot.style.background = 'transparent'; dot.style.border = '1px dashed var(--muted)'; }
+        item.append(dot, sum.toLocaleString() + ' (' + share + '%)');
+        tseriesTotals.append(item);
       }
+      if (ranked.length >= 2 && ranked[1].sum > 0) {
+        const ratio = ranked[0].sum / ranked[1].sum;
+        const comparison = document.createElement('span'); comparison.className = 'series-total';
+        comparison.textContent = ranked[0].name + ' ' + (ratio < 10 ? ratio.toFixed(2) : Math.round(ratio)) + '× ' + ranked[1].name;
+        tseriesTotals.append(comparison);
+      }
+      tseriesTotals.title = (tsDim === 'source' ? 'Search cache misses' : 'All answered requests') + ' in the plotted window. Requests, not people. Apps call at different rates.';
+      const clear = document.getElementById('clear-series');
+      clear.disabled = tsDim === 'source' && pinned.length === 0;
+      clear.textContent = tsDim !== 'source' && pinned.length === 0 ? 'select all' : 'clear';
     }
+    document.getElementById('clear-series').addEventListener('click', () => {
+      hovered = null;
+      if (tsDim !== 'source' && pinned.length === 0) { pinned = dimKeys(); showBaseline = true; showSeries(); syncUrl(); }
+      else applySelection(null);
+    });
 
     function cssColor(v) {
       const m = /^var\\((--[\\w-]+)\\)$/.exec(v);
@@ -1411,10 +1349,9 @@ export function statsPage(d: StatsData): string {
       const apps = (p.get('apps') || '').split(',').map(s => s.trim()).filter(s => KNOWN.has(s));
       if (!apps.length) { syncUrl(); return; }
       pinned = [...new Set(apps)];
+      for (const app of pinned) sourceLimit = Math.max(sourceLimit, sourceButtons.findIndex(b => b.dataset.domain === app) + 1);
       showBaseline = p.get('total') !== '0';
-      unfoldTo(pinned);
-      document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el =>
-        el.classList.toggle('sel', pinned.includes(el.dataset.domain)));
+
       showSeries();
       syncUrl();
     };
@@ -1444,8 +1381,8 @@ export function statsPage(d: StatsData): string {
       tsDim = dim;
       // the picker views start with every line ON — the first thing you see is
       // the whole breakdown, and 'clear' is one tap if you want to pick instead
+      inspectedSource = null;
       pinned = dim === 'source' ? [] : dimKeys(); hovered = null; showBaseline = true;
-      document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => el.classList.remove('sel'));
       setActiveDimBtn();
       showSeries();
       syncUrl();
@@ -1455,50 +1392,32 @@ export function statsPage(d: StatsData): string {
       if (b) setDim(b.dataset.dim);
     });
     function applySelection(domain) {
-      if (domain == null) pinned = [];
-      else if (pinned.includes(domain)) pinned = pinned.filter(d => d !== domain);
-      else pinned = [...pinned, domain];
+      if (domain == null) { pinned = []; inspectedSource = null; }
+      else if (pinned.includes(domain)) {
+        pinned = pinned.filter(d => d !== domain);
+        if (inspectedSource === domain) inspectedSource = null;
+      } else { pinned = [...pinned, domain]; inspectedSource = domain; }
       if (pinned.length === 0) showBaseline = true;  // fresh start next time
-      document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el =>
-        el.classList.toggle('sel', pinned.includes(el.dataset.domain)));
       showSeries();
       syncUrl();
     }
-    document.querySelectorAll('.pie-legend span[data-domain], .ts-table tbody tr[data-domain]').forEach(el => {
-      el.addEventListener('click', e => {
-        if (e.target.closest('a')) return; // domain links still navigate
-        setDim('source');                  // a source tap is a source-view action
-        applySelection(el.dataset.domain);
-      });
-    });
-
-    /* the table past the first page is folded: rows carry data-page and
-       hidden, and each tap of the button reveals one more page. Nothing is
-       fetched — every source is already in the document — so a folded source
-       selected from the URL just needs its page (and those above it) shown. */
-    const tsMore = document.getElementById('ts-more');
-    const tsFolded = () => document.querySelectorAll('.ts-table tbody tr[data-page][hidden]');
-    function revealPage(page) {
-      document.querySelectorAll('.ts-table tbody tr[data-page]').forEach(tr => {
-        if (Number(tr.dataset.page) <= page) tr.hidden = false;
-      });
-      if (!tsMore) return;
-      const left = tsFolded().length;
-      if (left === 0) { tsMore.hidden = true; return; }
-      const size = Number(tsMore.dataset.pageSize) || 50;
-      tsMore.textContent = 'show ' + Math.min(size, left) + ' more · ' + left + ' remaining';
+    function showSourceDetail(row, total, count, scoped) {
+      const detail = document.getElementById('source-detail'); detail.replaceChildren();
+      const name = document.createElement('span');
+      name.className = row ? 'detail-name' : 'detail-total';
+      name.textContent = row ? row.domain : fmtNum(total);
+      if (row) name.title = row.domain;
+      detail.append(name);
+      const counts = document.createElement('span'); counts.className = 'detail-count';
+      counts.textContent = row ? row.hits.toLocaleString() + ' requests' : count + ' apps'; detail.append(counts);
+      const share = document.createElement('span'); share.className = 'detail-count';
+      const percent = row ? row.hits / trafficGrandTotal * 100 : 0;
+      share.textContent = row ? (percent > 0 && percent < 0.1 ? '<0.1' : percent.toFixed(1)) + '% of all traffic' : scoped ? (total / trafficGrandTotal * 100).toFixed(2) + '% of all traffic' : 'all-time requests'; detail.append(share);
+      if (row && /^[a-z0-9-]+(?:\\.[a-z0-9-]+)+$/i.test(row.domain)) {
+        const link = document.createElement('a'); link.href = 'https://' + row.domain;
+        link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Visit website ↗'; detail.append(link);
+      }
     }
-    function unfoldTo(domains) {
-      let deepest = 0;
-      document.querySelectorAll('.ts-table tbody tr[data-page]').forEach(tr => {
-        if (domains.includes(tr.dataset.domain)) deepest = Math.max(deepest, Number(tr.dataset.page));
-      });
-      if (deepest > 0) revealPage(deepest);
-    }
-    if (tsMore) tsMore.addEventListener('click', () => {
-      const next = tsFolded()[0];
-      if (next) revealPage(Number(next.dataset.page));
-    });
 
     // trace the line: crosshair dot + timestamp/value tooltip (mouse or finger)
     function tseriesTrace(clientX, clientY) {
@@ -1565,170 +1484,112 @@ export function statsPage(d: StatsData): string {
     }
     showSeries();
 
-    if (pieCanvas && traffic.length > 0) {
-      const pieTotal = traffic.reduce((s, r) => s + r.hits, 0);
-
-      const SPECIAL = ${jsonScript(SPECIAL_DOMAINS)};
-      function getColor(i) {
-        if (traffic[i].rest) return tok('--dim', '#8a938c');
-        return SPECIAL[traffic[i].domain] || PIE_COLORS[i % PIE_COLORS.length];
+    if (pieCanvas && allTraffic.length > 0) {
+      const rootRows = allTraffic.filter(row => row.hits > 0);
+      const rootSum = rootRows.reduce((sum, row) => sum + row.hits, 0);
+      if (trafficGrandTotal > rootSum) rootRows.push({domain: 'unattributed remainder', hits: trafficGrandTotal - rootSum});
+      const stack = [{ rows: rootRows, title: 'All sources' }];
+      let view = [];
+      function svgNode(name, attrs = {}, text) {
+        const el = document.createElementNS(SVGNS, name);
+        for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, String(value));
+        if (text != null) el.textContent = text;
+        return el;
       }
-
-      // build segments: { start, end, color, domain, hits }
-      const segments = [];
-      let angle = -Math.PI / 2;
-      for (let i = 0; i < traffic.length; i++) {
-        const sweep = (traffic[i].hits / pieTotal) * Math.PI * 2;
-        segments.push({ start: angle, end: angle + sweep, color: getColor(i), domain: traffic[i].domain, hits: traffic[i].hits, rest: !!traffic[i].rest });
-        angle += sweep;
+      function activateOnTap(el, action) {
+        let down = null;
+        el.addEventListener('pointerdown', e => { if (e.isPrimary && e.button === 0) down = {id: e.pointerId, x: e.clientX, y: e.clientY}; });
+        el.addEventListener('pointercancel', () => { down = null; });
+        el.addEventListener('pointerup', e => {
+          const start = down; down = null;
+          if (start && start.id === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) <= 10) action();
+        });
+        el.addEventListener('click', e => { if (e.detail === 0) action(); });
+        el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); action(); } });
       }
-
-      let animProgress = 0;
-      let hoverIdx = -1;
-      const animStart = performance.now();
-      const animDur = 800;
-
-      function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-
-      function drawPie() {
-        const pctx = pieCanvas.getContext('2d');
-        const dpr = window.devicePixelRatio || 1;
-        const W = pieCanvas.clientWidth, H = pieCanvas.clientHeight;
-        pieCanvas.width = W * dpr; pieCanvas.height = H * dpr;
-        pctx.scale(dpr, dpr);
-        pctx.clearRect(0, 0, W, H);
-
-        const cx = W / 2, cy = H / 2;
-        const outerR = Math.min(W, H) / 2 - 8;
-        const innerR = outerR * 0.6;
-        const maxAngle = -Math.PI / 2 + animProgress * Math.PI * 2;
-
-        for (let i = 0; i < segments.length; i++) {
-          const seg = segments[i];
-          const drawStart = seg.start;
-          const drawEnd = Math.min(seg.end, maxAngle);
-          if (drawEnd <= drawStart) continue;
-
-          const grow = hoverIdx === i ? 4 : 0;
-          const alpha = hoverIdx >= 0 && hoverIdx !== i ? 0.4 : 1;
-
-          pctx.globalAlpha = alpha;
-          pctx.beginPath();
-          pctx.arc(cx, cy, outerR + grow, drawStart, drawEnd);
-          pctx.arc(cx, cy, innerR - (grow ? 2 : 0), drawEnd, drawStart, true);
-          pctx.closePath();
-          pctx.fillStyle = seg.color;
-          pctx.fill();
-        }
-
-        // center text
-        pctx.globalAlpha = 1;
-        pctx.fillStyle = tok('--muted');
-        pctx.font = '600 ' + (outerR * 0.22) + 'px system-ui, sans-serif';
-        pctx.textAlign = 'center';
-        pctx.textBaseline = 'middle';
-        pctx.fillText(fmtNum(pieTotal), cx, cy - outerR * 0.06);
-        pctx.font = (outerR * 0.11) + 'px system-ui, sans-serif';
-        pctx.fillStyle = tok('--dim');
-        pctx.fillText('hits', cx, cy + outerR * 0.14);
+      const point = (r, a) => [200 + Math.cos(a) * r, 200 + Math.sin(a) * r];
+      function arcPath(r, a, b, reverse = false) {
+        const first = point(r, reverse ? b : a), last = point(r, reverse ? a : b);
+        return 'M ' + first.join(' ') + ' A ' + r + ' ' + r + ' 0 ' + (b - a > Math.PI ? 1 : 0) + ' ' + (reverse ? 0 : 1) + ' ' + last.join(' ');
       }
-
-      function animLoop(now) {
-        const t = Math.min((now - animStart) / animDur, 1);
-        animProgress = easeOutCubic(t);
-        drawPie();
-        if (t < 1) requestAnimationFrame(animLoop);
-      }
-      requestAnimationFrame(animLoop);
-
-      function hitTest(clientX, clientY) {
-        const rect = pieCanvas.getBoundingClientRect();
-        const mx = clientX - rect.left - rect.width / 2;
-        const my = clientY - rect.top - rect.height / 2;
-        const dist = Math.sqrt(mx * mx + my * my);
-        const outerR = Math.min(rect.width, rect.height) / 2 - 8;
-        const innerR = outerR * 0.6;
-        if (dist < innerR || dist > outerR + 8) return -1;
-        let a = Math.atan2(my, mx);
-        if (a < -Math.PI / 2) a += Math.PI * 2;
-        for (let i = 0; i < segments.length; i++) {
-          if (a >= segments[i].start && a < segments[i].end) return i;
-        }
-        return -1;
-      }
-
-      function pieHover(clientX, clientY, isTouch) {
-        const idx = hitTest(clientX, clientY);
-        if (idx !== hoverIdx) {
-          hoverIdx = idx;
-          drawPie();
-          // Hover previews the history — but only for a real pointer. A finger
-          // does not hover, and previewing on touch was actively misleading:
-          // dragging across the donut swapped a preview chip in and out, which
-          // looks exactly like selecting and then losing the selection.
-          if (!isTouch && pinned.length === 0) { hovered = idx >= 0 ? segments[idx].domain : null; showSeries(); }
-        }
-        if (idx >= 0) {
-          const seg = segments[idx];
-          const denom = trafficGrandTotal > 0 ? trafficGrandTotal : pieTotal;
-          const pct = ((seg.hits / denom) * 100).toFixed(1);
-          pieTip.innerHTML = '<strong>' + seg.domain + '</strong><br>' + seg.hits.toLocaleString() + (seg.hits === 1 ? ' hit' : ' hits') + ' (' + pct + '%)';
-          pieTip.style.display = 'block';
-          const tx = clientX + 14, ty = clientY - 10;
-          pieTip.style.left = (tx + pieTip.offsetWidth > window.innerWidth ? clientX - pieTip.offsetWidth - 10 : tx) + 'px';
-          pieTip.style.top = ty + 'px';
-        } else {
-          pieTip.style.display = 'none';
-        }
-      }
-
-      pieCanvas.addEventListener('mousemove', e => pieHover(e.clientX, e.clientY, false));
-      pieCanvas.addEventListener('mouseleave', () => { hoverIdx = -1; drawPie(); pieTip.style.display = 'none'; if (pinned.length === 0) { hovered = null; showSeries(); } });
-
-      /* Selecting from the donut is handled on touchend, not left to the click
-         the browser may or may not synthesise afterwards. The legend and table
-         are ordinary elements; this is a canvas, and it was the one surface
-         where a tap did nothing — you could only ever move the hover preview
-         around, which read as "it keeps replacing my selection".
-         tapHandledAt swallows the synthetic click if it does arrive, so a
-         single tap can never toggle twice. */
-      let tapStart = null, tapHandledAt = 0;
-      pieCanvas.addEventListener('touchstart', e => {
-        const t = e.touches[0];
-        tapStart = { x: t.clientX, y: t.clientY, at: Date.now() };
-      }, { passive: true });
-      pieCanvas.addEventListener('touchmove', e => {
-        e.preventDefault();
-        const t = e.touches[0];
-        // a drag is tracing the chart, not choosing a slice
-        if (tapStart && Math.hypot(t.clientX - tapStart.x, t.clientY - tapStart.y) > 10) tapStart = null;
-        pieHover(t.clientX, t.clientY, true);
-      });
-      pieCanvas.addEventListener('touchend', e => {
-        hoverIdx = -1; drawPie(); pieTip.style.display = 'none';
-        const t = e.changedTouches && e.changedTouches[0];
-        if (tapStart && t && Date.now() - tapStart.at < 700) {
-          const idx = hitTest(t.clientX, t.clientY);
-          tapStart = null;
-          if (idx >= 0) {
-            hovered = null;
-            tapHandledAt = Date.now();
-            applySelection(segments[idx].domain);
-            return;
+      let renderedWidth = 0;
+      function renderPie() {
+        renderedWidth = pieCanvas.clientWidth;
+        const rows = stack[stack.length - 1].rows;
+        const total = rows.reduce((sum, row) => sum + row.hits, 0);
+        const tail = rows.slice(12);
+        view = rows.slice(0, 12).map(row => ({...row, rest: false}));
+        if (tail.length) view.push({domain: 'Smaller sources', hits: tail.reduce((sum, row) => sum + row.hits, 0), rest: true, rows: tail});
+        pieCanvas.dataset.total = total;
+        pieCanvas.dataset.depth = stack.length - 1;
+        pieCanvas.replaceChildren();
+        let angle = -Math.PI / 2;
+        view.forEach(row => {
+          const start = angle;
+          const end = angle + row.hits / total * Math.PI * 2 - 0.00001;
+          angle = end + 0.00001;
+          const mid = (start + end) / 2;
+          const outer = 190, inner = 133;
+          const group = svgNode('g', {class: 'pie-segment' + (row.rest ? ' tail' : ''), tabindex: 0, role: 'button', 'data-domain': row.domain, 'data-hits': row.hits, 'data-rest': row.rest, 'data-angle': mid,
+            'aria-label': row.rest ? 'Zoom into ' + row.rows.length + ' smaller sources, ' + row.hits.toLocaleString() + ' hits' : row.domain + ', ' + row.hits.toLocaleString() + ' hits, ' + (row.hits / total * 100).toFixed(1) + '% of this view',
+            ...(row.rest ? {} : {'aria-pressed': String(tsDim === 'source' && pinned.includes(row.domain))})});
+          const path = arcPath(outer, start, end) + ' L ' + point(inner, end).join(' ') + ' A ' + inner + ' ' + inner + ' 0 ' + (end - start > Math.PI ? 1 : 0) + ' 0 ' + point(inner, start).join(' ') + ' Z';
+          group.append(svgNode('path', {d: path, class: 'pie-face', fill: row.rest ? 'var(--line-2)' : domainColor(row.domain), opacity: tsDim === 'source' && pinned.length && !pinned.includes(row.domain) && !row.rest ? 0.72 : 1}));
+          group.append(svgNode('title', {}, group.getAttribute('aria-label')));
+          const scale = renderedWidth / 400;
+          const iconPixels = Math.min(24, (outer - inner) * scale * 0.6);
+          const size = iconPixels / scale;
+          const radius = (outer + inner) / 2;
+          const clearance = Math.min((outer - inner) / 2, radius * Math.sin(Math.min((end - start) / 2, Math.PI / 2)));
+          if (!row.rest && iconPixels >= 18 && size / Math.SQRT2 + 2 / scale <= clearance) {
+            const urls = sourceIconUrls(row.domain);
+            if (urls) {
+              const [x, y] = point(radius, mid);
+              const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
+              icon.append(svgNode('rect', {x: x - size / 2, y: y - size / 2, width: size, height: size, rx: 4 / scale, fill: 'var(--panel)'}));
+              const img = svgNode('image', {href: urls[0], x: x - size / 2 + 1 / scale, y: y - size / 2 + 1 / scale, width: size - 2 / scale, height: size - 2 / scale, preserveAspectRatio: 'xMidYMid meet'});
+              img.addEventListener('load', () => icon.setAttribute('opacity', '1'));
+              img.addEventListener('error', () => { if (img.getAttribute('href') !== urls[1]) img.setAttribute('href', urls[1]); else icon.remove(); });
+              icon.append(img); group.append(icon);
+            }
           }
-        }
-        tapStart = null;
-        if (pinned.length === 0) { hovered = null; showSeries(); }
-      });
-      pieCanvas.addEventListener('click', e => {
-        if (Date.now() - tapHandledAt < 700) return; // already handled as a tap
-        const idx = hitTest(e.clientX, e.clientY);
-        if (idx < 0) return;
-        const dom = segments[idx].domain;
-        hovered = null;
-        applySelection(dom);
-      });
-      window.addEventListener('resize', () => drawPie());
+
+          const activate = () => {
+            if (row.rest) { stack.push({rows: row.rows, title: row.rows.length + ' sources'}); renderPie(); }
+            else { if (tsDim !== 'source') setDim('source'); applySelection(row.domain); }
+          };
+          activateOnTap(group, activate);
+          pieCanvas.append(group);
+        });
+        const back = document.getElementById('pie-back');
+        back.hidden = stack.length === 1;
+        back.onclick = () => { stack.splice(1); renderPie(); document.getElementById('pie-explore').focus({preventScroll: true}); };
+        const explore = document.getElementById('pie-explore');
+        explore.hidden = !tail.length;
+        explore.textContent = 'Explore ' + tail.length + ' more →';
+        explore.setAttribute('aria-label', 'Zoom into the remaining ' + tail.length + ' apps');
+        explore.onclick = () => { stack.push({rows: tail, title: tail.length + ' sources'}); renderPie(); };
+        const breadcrumb = document.getElementById('pie-breadcrumb'); breadcrumb.replaceChildren();
+        breadcrumb.hidden = stack.length === 1;
+        stack.forEach((level, i) => {
+          const button = document.createElement('button'); button.textContent = (i ? '› ' : '') + level.title;
+          if (i === stack.length - 1) button.setAttribute('aria-current', 'location');
+          button.addEventListener('click', () => { stack.splice(i + 1); renderPie(); }); breadcrumb.append(button);
+        });
+        refreshPie();
+      }
+      refreshPie = () => {
+        const rows = stack[stack.length - 1].rows;
+        const row = tsDim === 'source' ? rows.find(r => r.domain === inspectedSource) : null;
+        showSourceDetail(row, rows.reduce((sum, r) => sum + r.hits, 0), rows.length, stack.length > 1);
+        pieCanvas.querySelectorAll('.pie-segment[data-rest="false"]').forEach(group => {
+          const selected = tsDim === 'source' && pinned.includes(group.dataset.domain);
+          group.setAttribute('aria-pressed', String(selected));
+          group.querySelector('.pie-face').setAttribute('opacity', tsDim === 'source' && pinned.length && !selected ? '0.72' : '1');
+        });
+      };
+      renderPie();
+      new ResizeObserver(() => { if (Math.abs(pieCanvas.clientWidth - renderedWidth) > 1) renderPie(); }).observe(pieCanvas);
     }
 
     /* --- activity: one range selector drives searches, latency, and the series --- */
@@ -1741,8 +1602,8 @@ export function statsPage(d: StatsData): string {
     const AGG_LABEL = { 300: '5 min', 3600: 'hour', 21600: '6 h' };
 
     const searchesValue = document.getElementById('searches-value');
-    const searchesLabel = document.getElementById('searches-label');
-    const latencyValue = document.getElementById('latency-value');
+    const cachedLatency = document.getElementById('cached-latency');
+    const coldLatency = document.getElementById('cold-latency');
 
     /* ONE handler for the whole activity section. Previously total searches,
        avg latency, and the traffic chart each had their own selector, so the
@@ -1754,17 +1615,11 @@ export function statsPage(d: StatsData): string {
       const label = RANGE_LABEL[range] || range;
       const { searches, cacheHits, totalMs, cacheMs } = ACTIVITY[range] || ACTIVITY['all'];
       if (searchesValue) searchesValue.textContent = (searches + cacheHits).toLocaleString();
-      if (searchesLabel) searchesLabel.textContent = 'total searches (' + label + ')';
-
-      if (latencyValue) {
-        const cold = searches > 0 ? totalMs / searches : 0;
-        const cached = cacheHits > 0 ? cacheMs / cacheHits : 0;
-        const pair = (n, t) => '<span class="lat-pair"><span class="lat-n">' + n + '</span><span class="lat-t">' + t + '</span></span>';
-        const parts = [];
-        if (cached > 0) parts.push(pair(cached.toFixed(1) + ' ms', 'cached'));
-        parts.push(pair(cold.toFixed(0) + ' ms', 'cold'));
-        latencyValue.innerHTML = parts.join('<span class="lat-sep">·</span>');
-      }
+      document.getElementById('activity-period').textContent = label;
+      const cold = searches > 0 ? totalMs / searches : 0;
+      const cached = cacheHits > 0 ? cacheMs / cacheHits : 0;
+      cachedLatency.innerHTML = (cacheHits > 0 ? cached.toFixed(1) : '—') + ' <small>ms</small>';
+      coldLatency.innerHTML = (searches > 0 ? cold.toFixed(0) : '—') + ' <small>ms</small>';
 
       window.__setTsRange?.(range);
     }
