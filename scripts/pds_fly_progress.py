@@ -7,8 +7,8 @@ import subprocess
 import time
 
 APP='typeahead-search-compact'
-EXPECTED={'id':'8d4916be311008','instance_id':'01M5CXE7SXEP6Q7S4EJ5ER96M9',
-          'digest':'sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938'}
+EXPECTED={'id':'86e502fe55e4e8','instance_id':'01M5DRQXFBG3RRXTRV1ZSVXCVC',
+          'digest':'sha256:433155b25711c8e98b3885a56528dca26d0cb36c38d22f0a3ece6487888cc3bd'}
 
 
 def json_stream(text):

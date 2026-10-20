@@ -1,14 +1,14 @@
 # Verified production configuration, October 20, 2026 UTC.
-# Keep the guarded cutover procedure in docs/plans/pds-homepage-rollout.md.
-# A plain deploy is not a substitute for routing through healthy legacy coverage.
+# Follow docs/evals/pds-parser-cutover-20261020.md for the guarded transition.
+# Keep the previous PDS-capable machine running for rollback.
 app = 'typeahead-search-compact'
 primary_region = 'ewr'
 
 [build]
-  image = 'registry.fly.io/typeahead-search-compact:pds-31ec142-20261020@sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938'
+  image = 'registry.fly.io/typeahead-search-compact@sha256:433155b25711c8e98b3885a56528dca26d0cb36c38d22f0a3ece6487888cc3bd'
 
 [mounts]
-  source = 'pds_candidate_data'
+  source = 'pds_replay_data'
   destination = '/data'
 
 [env]

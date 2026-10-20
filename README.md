@@ -40,6 +40,10 @@ have been verified; full repair and recurring coverage are still in progress.
 The [repair tooling](docs/pds-identity-repair.md) includes transfer limits,
 conditional writes and durable receipts. These tools do not enable bulk writes
 or change the deployed 10,000-actor filter cutoff.
+The [October 20 parser-fix cutover](docs/evals/pds-parser-cutover-20261020.md)
+rejects failed replay queries before declaring readiness. Its previous PDS-capable
+backend remains running for rollback; smoke, scoped aliases and Logfire were
+verified after the transition.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

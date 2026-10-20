@@ -1,0 +1,11 @@
+{
+  "identity": {
+    "id": "86e502fe55e4e8",
+    "instance_id": "01M5DRQXFBG3RRXTRV1ZSVXCVC",
+    "digest": "sha256:433155b25711c8e98b3885a56528dca26d0cb36c38d22f0a3ece6487888cc3bd",
+    "updated_at": "2026-10-20T23:12:40Z"
+  },
+  "observed_at": 1792538147.523375,
+  "completed_at": 1792538126.185681,
+  "source": "fly-machine-completed-sync-log"
+}
