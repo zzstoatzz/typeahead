@@ -1,0 +1,10 @@
+when:
+  - event: ["push"]
+    branch: main
+engine: microvm
+image: nixos
+dependencies:
+  - python3
+steps:
+  - name: verify
+    command: python3 -m unittest discover -s scripts -p 'test_pds_*.py'

@@ -33,6 +33,14 @@ Full-corpus qualification covered 12.64 million searchable actors, 2,223 eligibl
 PDS hosts, paired global/scoped comparisons, rollback and empty-root restoration.
 The public API, browser flow and Logfire spans were verified after deployment.
 
+PDS membership is incomplete: the October 20 source export had 9.88 million
+of 12.65 million actor rows without a hosting PDS. The weekly identity job
+selected missing handles rather than missing PDS values. Two guarded repairs
+have been verified; full repair and recurring coverage are still in progress.
+The [repair tooling](docs/pds-identity-repair.md) includes transfer limits,
+conditional writes and durable receipts. These tools do not enable bulk writes
+or change the deployed 10,000-actor filter cutoff.
+
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile
 and enrichment fields; counts are omitted until enriched. No viewer state.
