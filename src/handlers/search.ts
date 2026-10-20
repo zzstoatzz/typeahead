@@ -123,18 +123,25 @@ export async function handleSearch(
   const cached = await cache.match(cacheKey);
   if (cached) {
     ctx.waitUntil(recordCacheHit(db, Date.now() - t0));
-    return cached;
+    const response = new Response(cached.body, cached);
+    response.headers.set("Server-Timing", `cache;desc="hit";dur=${Date.now() - t0}`);
+    return response;
   }
+
+  const cacheMs = Date.now() - t0;
 
   // try fly backend (local SQLite replica) if configured
   if (env.SEARCH_BACKEND_URL) {
     try {
       const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}${pds ? `&pds=${encodeURIComponent(pds)}` : ""}`;
+      const backendStart = Date.now();
       const backendRes = await fetch(backendUrl, { signal: AbortSignal.timeout(3000) });
       if (pds && backendRes.headers.get("X-Typeahead-Pds") !== pds) return unavailable();
       if (!backendRes.ok) throw new Error(`backend_${backendRes.status}`);
       {
+        const headersMs = Date.now() - backendStart;
         const body = await backendRes.text();
+        const backendMs = Date.now() - backendStart;
 
         // An EMPTY result from the replica falls through to Turso.
         //
@@ -161,7 +168,8 @@ export async function handleSearch(
         ]));
 
         const response = new Response(body, {
-          headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+          headers: { "Content-Type": "application/json", ...CORS_HEADERS,
+            "Server-Timing": `cache;desc="miss";dur=${cacheMs}, origin_headers;dur=${headersMs};desc="${backendRes.headers.get("fly-request-id") || "unknown"}", origin;dur=${backendMs}, search;dur=${Date.now() - t0}` },
         });
 
         const cacheable = new Response(response.clone().body, response);

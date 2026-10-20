@@ -219,11 +219,12 @@ export function indexPage(pdsEnabled = false): string {
       const value = q.value.trim();
       results.classList.remove('show');
       results.replaceChildren();
+      results.setAttribute('aria-busy', 'false');
       if (appliedPds && !normalizePds(appliedPds)) { message('Invalid hosting server. Open the filter to correct it.'); return; }
       if (value.length < 2) return;
       timer = setTimeout(async () => {
         request = new AbortController();
-        message('Searching…');
+        results.setAttribute('aria-busy', 'true');
         try {
           const params = new URLSearchParams({q: value, limit: '8'});
           if (appliedPds) params.set('pds', appliedPds);
@@ -253,6 +254,8 @@ export function indexPage(pdsEnabled = false): string {
           results.classList.add('show');
         } catch (error) {
           if (current === generation && error.name !== 'AbortError') message('Search is unavailable. Please try again.');
+        } finally {
+          if (current === generation) results.setAttribute('aria-busy', 'false');
         }
       }, delay);
     }

@@ -52,6 +52,11 @@ flowchart LR
   R2 -->|verified snapshot| Search
 ```
 
+Search response timing and the October 20 cold-edge investigation are recorded in
+[the latency evaluation](docs/evals/edge-latency-20261020.md). Engine timings alone
+do not establish public request latency. The homepage opens results after the
+answer arrives, without a transient loading dropdown.
+
 - **Worker:** public endpoints, a 60-second search cache, admin ingestion,
   request accounting, and profile APIs. Turso search fallbacks are opt-in.
   Bluesky is an explicit rollback option, not the normal search backend.

@@ -447,3 +447,13 @@ Fixed already: pub-search freshness threshold 30m→60m (overnight publish gaps)
 cancel-≠-crash orchestration, the typeahead sync-stall class. The principle to
 hold when adding one: **one page per signal, and every page actionable** — add
 coverage only where a firing would change what you do.
+
+## Search transport timing (October 20, 2026)
+
+Search responses expose `Server-Timing`: `cache` identifies hit/miss and lookup
+time; misses also expose `origin_headers`, `origin`, and `search` durations in
+milliseconds. These phases overlap; do not add them. `origin_headers` carries
+the Fly request ID, whose suffix identifies ingress, not the serving machine.
+Compare it with `CF-Ray` and compact Logfire search spans when diagnosing
+transport latency. Cached responses replace old timings with the current hit
+lookup duration. See [the investigation](evals/edge-latency-20261020.md).
