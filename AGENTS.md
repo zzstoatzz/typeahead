@@ -111,14 +111,15 @@ regression is pinned). Extend it, don't prune it.
   configuration. See `docs/plans/compact-production-cutover.md`.
 - **the snapshot builder (`MODE=indexer`) is NOT a Fly deploy.** It runs on the home box
   (heavypad) as the `typeahead-index` Prefect deployment in the `my-prefect-server` repo,
-  scheduled every 3 days (09:00 UTC): reads Turso → builds the prefix-index snapshot →
+  configured every 3 days (09:00 UTC), temporarily inactive for the October 20
+  cloud migration (see docs/operations.md): reads Turso → builds the prefix-index snapshot →
   uploads to R2 → App B promotes. To change it, edit `flows/typeahead_index.py` /
   `prefect.yaml` there and redeploy. `prefect.yaml` IS authoritative for schedules —
   each deploy replaces them. `services/fly.indexer.toml` is retained only as a manual
   rollback path. Host prereqs: `deploy/home-indexer/install.sh`.
   See `docs/operations.md`.
-- **`typeahead-plc-identity`** — the other heavypad Prefect deployment, weekly
-  (Mon 05:00 UTC). Bulk DID -> handle/pds from the PLC log, for what `getProfiles`
+- **`typeahead-plc-identity`** — the other heavypad Prefect deployment, configured
+  weekly (Mon 05:00 UTC), temporarily inactive with the bulk builder. Bulk DID -> handle/pds from the PLC log, for what `getProfiles`
   cannot see. See `docs/discovery-and-identity.md`.
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.

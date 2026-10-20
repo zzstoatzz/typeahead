@@ -1,0 +1,222 @@
+{
+  "at": 1792539321.260936,
+  "rollback": "8d4916be311008",
+  "generation": "01M5DTD1CPT6A2X3K0P2BXWARR",
+  "cordoned": true,
+  "pointer": "releases/pds-coverage-rollback-20261020/b1792484789-3d65-px05/latest.json",
+  "serving_unchanged": true,
+  "health": {
+    "status": "ok",
+    "ready": true,
+    "actors": 12641735,
+    "rss_kb": 351268,
+    "sync_lag_s": 77
+  },
+  "recovery_verified": true,
+  "index": {
+    "promote_enabled": true,
+    "attached": true,
+    "snapshot_path": "/data/pds-current-20261020/index/generations/b1792484789-3d65-px05/index.db",
+    "build_id": "b1792484789-3d65-px05",
+    "snapshot_format": "FLATPX05",
+    "source_watermark": 1792484192,
+    "actor_count": 12641735,
+    "prefix_count": 145935146,
+    "score_quantiles": [
+      -126.27,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      6.02,
+      30.0,
+      30.1,
+      30.1,
+      30.1,
+      47.71,
+      53.73,
+      60.21,
+      75.92,
+      83.88,
+      94.05,
+      104.19,
+      114.51,
+      126.55,
+      137.92,
+      147.7,
+      158.3,
+      169.04,
+      180.28,
+      192.51,
+      205.92,
+      220.62,
+      236.95,
+      255.29,
+      276.23,
+      300.45,
+      329.23,
+      365.36,
+      417.34,
+      1021.98
+    ],
+    "overlay_actor_rows": 53522,
+    "overlay_compact": {
+      "deleted": 0,
+      "ms": 0,
+      "complete": true,
+      "at": 1792539244
+    }
+  },
+  "results": [
+    {
+      "query": "/search?q=2bit&pds=selfhosted.social&limit=8",
+      "response": {
+        "actors": [
+          {
+            "did": "did:plc:sbmntiflmknij2axeck3w6u7",
+            "handle": "2bit.pics",
+            "displayName": "2bit.pics",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:sbmntiflmknij2axeck3w6u7/bafkreie7fdg4tbsdjadw7p5fhrn4cm7yww6uvorsocdltfdsfintvv73ua",
+            "avatarFallback": "https://selfhosted.social/xrpc/com.atproto.sync.getBlob?did=did:plc:sbmntiflmknij2axeck3w6u7&cid=bafkreie7fdg4tbsdjadw7p5fhrn4cm7yww6uvorsocdltfdsfintvv73ua",
+            "labels": [],
+            "createdAt": "2026-08-10T00:15:42.564Z"
+          }
+        ]
+      },
+      "matches_serving": true
+    },
+    {
+      "query": "/search?q=zzstoatzz.io&limit=8",
+      "response": {
+        "actors": [
+          {
+            "did": "did:plc:xbtmt2zjwlrfegqvch7fboei",
+            "handle": "zzstoatzz.io",
+            "displayName": "nate",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:xbtmt2zjwlrfegqvch7fboei/bafkreiegehiwbazkkpp5nucenajtdjwinxrrnz7ukawpqnudbr47f44zhq",
+            "avatarFallback": "https://pds.zzstoatzz.io/xrpc/com.atproto.sync.getBlob?did=did:plc:xbtmt2zjwlrfegqvch7fboei&cid=bafkreiegehiwbazkkpp5nucenajtdjwinxrrnz7ukawpqnudbr47f44zhq",
+            "associated": {
+              "lists": 7,
+              "feedgens": 3,
+              "starterPacks": 4,
+              "chat": {
+                "allowIncoming": "all",
+                "allowGroupInvites": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-10-17T22:23:42.606Z"
+          },
+          {
+            "did": "did:plc:65sucjiel52gefhcdcypynsr",
+            "handle": "phi.zzstoatzz.io",
+            "displayName": "\u03d5",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:65sucjiel52gefhcdcypynsr/bafkreiewoko6h52dsonaanrw4xdrut3hdj2q5jgviqeuoeymjl4qbfucwm",
+            "associated": {
+              "feedgens": 2,
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [
+              {
+                "src": "did:plc:65sucjiel52gefhcdcypynsr",
+                "uri": "at://did:plc:65sucjiel52gefhcdcypynsr/app.bsky.actor.profile/self",
+                "cid": "bafyreib7hwqypaqptjplasl2g3tzgg5zx7r2bg4zcwgf7xffqixfksecsa",
+                "val": "bot",
+                "cts": "1970-01-01T00:00:00.000Z"
+              }
+            ],
+            "createdAt": "2025-03-17T06:18:35.045Z"
+          },
+          {
+            "did": "did:plc:3cr6uc547ot7j3nysnxmnrsl",
+            "handle": "alt.zzstoatzz.io",
+            "displayName": "alt n8",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:3cr6uc547ot7j3nysnxmnrsl/bafkreiga5vbutfqnuambox4n75ve556guwutjaqdww72gbar2m77mbsj2a",
+            "labels": [],
+            "createdAt": "2026-07-27T22:25:30.567Z"
+          },
+          {
+            "did": "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+            "handle": "jev.zzstoatzz.io",
+            "displayName": "talky jev",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:ehr2oix3bkhbxsqen4wav2bp/bafkreig3cci7jvw5ezjm7xlpp3fqgkekbkb2mcoedu62xfqntsr3t4srtu",
+            "avatarFallback": "https://pds.zat.dev/xrpc/com.atproto.sync.getBlob?did=did:plc:ehr2oix3bkhbxsqen4wav2bp&cid=bafkreig3cci7jvw5ezjm7xlpp3fqgkekbkb2mcoedu62xfqntsr3t4srtu",
+            "labels": []
+          }
+        ]
+      },
+      "matches_serving": true
+    }
+  ]
+}

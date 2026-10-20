@@ -14,8 +14,13 @@ record the direct-transport rollback version and deployment order.
 search before routing to an incompatible backend; preserve current Worker source.
 See [the PDS runbook](plans/pds-homepage-rollout.md) for the transition and recovery
 inventory, and [release evidence](evals/pds-homepage-20261020.md) for full-corpus,
-public API, browser and telemetry checks. The next scheduled publisher run is
-October 22 at 09:00 UTC; its PDS source pin is registered and queued, not yet run.
+public API, browser and telemetry checks. The later
+[parser cutover](evals/pds-parser-cutover-20261020.md) moved serving to
+`86e502fe55e4e8` at 23:12 UTC, retaining `8d4916be311008` privately for PDS rollback.
+At 23:27 UTC both bulk home schedules were verified inactive with no queued runs.
+The previously queued October 22 publisher run will not execute; cloud publisher
+and identity-repair qualification remain incomplete. Do not resume the old home
+schedules before the cloud replacement passes its gates.
 `services/fly.search-compact.toml` records the serving configuration. Plain search
 deploys remain guarded in favor of the rollback-covered transition. Historical
 restart and promotion instructions below refer to the legacy layout.

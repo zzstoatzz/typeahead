@@ -57,10 +57,13 @@ Resolving one DID per HTTP request does not work at corpus scale.
    against arrivals (~2,900 new accounts/hour), not against the backlog.
 2. **The ingester's identity pool** — every `#identity` event, new DID or
    existing (see below). Posts `pds` along with the handle.
-3. **`scripts/plc-identity-sync.py`** — bulk, authoritative, weekly. Covers the
-   ~4% `getProfiles` cannot see (self-hosted PDSes) and is the only source of
-   `pds` in bulk. It selects `handle = '' OR pds = ''` only: it never corrects
-   a handle that is present but stale.
+3. **`scripts/plc-identity-sync.py`** — bulk PLC identity processing. The
+   registered weekly job used the default missing-handle selector, so it missed
+   actors with a handle but no PDS. That omission left bulk PDS coverage incomplete. Its home schedule is paused as of October 20, 2026 to avoid bulk
+   ISP traffic while a cloud replacement is qualified. Do not simply enable
+   missing-PDS selection with the old generic writer: it can overwrite nonempty
+   identity fields. See [repair contracts](pds-identity-repair.md) and the
+   [schedule hold](evals/pds-parser-cutover-20261020.md#bulk-home-schedule-hold--october-20-2327-utc).
 
 ## identity: handle changes are the live consumer's job
 
@@ -155,7 +158,7 @@ and `did:web` accounts that are not in PLC at all. Expect low thousands.
 | symptom | cause | what to do |
 | --- | --- | --- |
 | never-attempted count growing over many hours | phase 1 not keeping pace with arrivals | raise `IDENTITY_LIMIT`, or check for 429s from `getProfiles` |
-| attempted count growing | accounts the appview cannot see | the weekly PLC job covers these |
+| attempted count growing | accounts the appview cannot see | bulk PLC repair is required; the home schedule is currently paused |
 | hour missing from `snapshots` | cron did not fire, or a step failed | compare `cron_last_attempt` in KV — it is written before any step |
 | ingester `pending` climbing | worker writes are slow or failing | check Turso write latency; see the single-writer note below |
 

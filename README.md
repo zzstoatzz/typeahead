@@ -85,7 +85,8 @@ answer arrives, without a transient loading dropdown.
 - **Turso:** durable actor records, moderation overrides, and tombstones.
   Ingestion, enrichment, and request accounting share its writer.
 - **Index builder:** the same Zig codebase in `MODE=indexer`, orchestrated by
-  Prefect on heavypad every three days. It exports Turso, builds prefix-to-actor
+  Prefect on heavypad with a three-day schedule, temporarily paused October 20
+  while bulk work moves to cloud infrastructure. It exports Turso, builds prefix-to-actor
   lists and compact profiles, and publishes a SQLite snapshot to R2. It is an
   offline batch job; an unsuccessful build leaves the previous snapshot serving.
 - **Search:** Zig on Fly. It verifies and attaches the R2 snapshot read-only,
@@ -94,8 +95,9 @@ answer arrives, without a transient loading dropdown.
   hydrate profiles, and apply moderation. There is no separate full actor-table
   replica on the serving machine; the snapshot itself contains compact profiles.
 - **Maintenance:** Prefect jobs on heavypad handle identity and profile
-  enrichment, including weekly PLC processing for rows with no handle yet
-  (they do not correct a stale handle; the ingester does). The hourly Worker cron handles
+  enrichment. Weekly PLC processing is temporarily paused with the bulk builder;
+  its existing selector covers rows with no handle yet
+  (it does not correct stale handles; the ingester does). The hourly Worker cron handles
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
 Compact snapshots have served production since October 17, 2026, 19:37 UTC. Candidate `cc2d5a1` has passed independent disaster restoration, legacy
@@ -136,7 +138,13 @@ and `/data/pds-overlay`. Public scoped/alias checks, authenticated smoke, native
 admission and catch-up, browser checks, and compact Logfire spans passed.
 The publisher is registered from `my-prefect-server` main `776c8e1`, with immutable
 builder tag `pds-compact-31ec142-20261020`; its next queued run is October 22 at
-09:00 UTC, with those parameters verified. That future run has not completed.
+09:00 UTC was verified at that time. On October 20 at 23:27 UTC, both bulk
+home schedules were verified inactive and all queued runs removed to avoid ISP
+overage traffic. MPS main `7fedc3b` records the hold. Cloud reconstruction and
+checkpoint qualification are in progress; a replacement recurring publisher
+and identity repair are not yet enabled. The existing snapshot and live overlay
+continue serving. Do not resume the old schedules before qualifying the cloud
+replacement. See the [operational record](docs/evals/pds-parser-cutover-20261020.md).
 
 Legacy remains running and synchronized. Old compact machine `781e732c264678`
 is retained privately on a protected pre-PDS pointer with its original overlay.
@@ -320,7 +328,8 @@ use an isolated target for performance experiments and account for availability
 before replacing it. Benchmarks and smoke scripts may default to production;
 check their target and whether they perform writes before running them.
 
-The home builder is deployed through Prefect. `services/fly.indexer.toml` remains
+The home builder is deployed through Prefect; its bulk schedule is currently
+paused for the cloud migration described above. `services/fly.indexer.toml` remains
 an optional manual Fly rollback path, not the scheduled builder. See
 [operations](docs/operations.md).
 

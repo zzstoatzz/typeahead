@@ -60,8 +60,52 @@ cordon the new machine. Never remove the only healthy routed backend. Repeat
 public smoke, scoped aliases and Logfire verification, and reconcile the explicit
 write-admission identity only after that verification.
 
-Both PDS-capable machines currently follow the root publisher pointer. Before
-publishing a later cutoff or repaired snapshot, protect the rollback machine's
-current checkpoint pointer while it is private and verify recovery again. The
+Production follows the root publisher pointer. As verified October 20 at 23:35
+UTC, private rollback `8d4916be311008` is pinned to the protected current build
+(see below). Preserve that pin when publishing a later cutoff or repaired snapshot. The
 older pre-PDS legacy backend is an emergency fallback requiring explicit scope
 handling; it is not the routine rollback path for the live PDS filter.
+
+
+## Bulk home schedule hold — October 20, 23:27 UTC
+
+MPS main `7fedc3be6d20340ecc212753d8a06d48edb2ccdc` is verified on both
+repository remotes and records inactive schedules for `typeahead-index` and
+`typeahead-plc-identity`. Live Prefect reads confirmed both schedules inactive
+and zero scheduled, pending or running flows for those two deployments after
+cancelling the three remaining queued index runs. Other schedules and production
+services were not paused.
+
+The existing qualified index pair is about 23.3 GB; uploading and reading it
+back would use about 46.6 GB before the source export. Moving this work to the
+existing Hetzner server avoids another bulk transfer through the metered home
+connection. Cloud reconstruction and checkpoint qualification remain in progress.
+Neither a recurring cloud publisher nor recurring repair is enabled yet.
+Resume bulk schedules only after qualifying the cloud executor, budgets,
+protected recovery pair, native replay and ingestion/search admission, and
+updating authoritative deployment configuration.
+
+
+## Pinned PDS rollback — October 20, 23:35 UTC
+
+Saved and byte-verified the current manifest at
+`releases/pds-coverage-rollback-20261020/b1792484789-3d65-px05/latest.json`.
+Updated only the private rollback machine's `INDEX_LATEST_KEY`, guarding its
+current version and retaining service exclusion. New generation:
+`01M5DTD1CPT6A2X3K0P2BXWARR`. Production's generation and public routing stayed
+unchanged. The immediate post-update inventory assertion ran before the new
+configuration was visible; subsequent fresh inventory confirmed the intended
+pointer and cordoned state. No second update was issued.
+
+Native startup progressed through local snapshot reads, then passed readiness
+with 12,641,735 actors, exact build `b1792484789-3d65-px05`, and 77-second overlay
+lag. Global exact-handle and selfhosted.social searches matched the serving
+machine's complete response bodies and expected first handles. An initial probe
+used the public XRPC route on the native server and was rejected; the corrected
+`/search` probes passed. Inventory before/after verified the private generation
+and unchanged production generation.
+
+[Verification evidence](pds-parser-cutover-20261020/rollback-pin-state.json).
+This check verifies restart with the protected pointer and existing local
+artifacts; it is not a new empty-directory disaster restore or full R2 artifact
+readback. Existing recovery artifacts remain retained.
