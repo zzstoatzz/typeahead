@@ -18,6 +18,8 @@ class DownloadTests(unittest.TestCase):
         with sqlite3.connect(src) as db:
             db.execute('CREATE TABLE actors(did TEXT,pds TEXT,updated_at INTEGER,handle TEXT,quality_score REAL)')
         payload = src.read_bytes()
+        self.export_delay = 0
+        fixture = self
         class Handler(http.server.BaseHTTPRequestHandler):
             def log_message(self, *args): pass
             def do_GET(self):
@@ -25,7 +27,9 @@ class DownloadTests(unittest.TestCase):
                 self.send_response(200)
                 self.send_header('Content-Length', str(len(body)))
                 self.end_headers()
-                self.wfile.write(body)
+                if self.path != '/info': time.sleep(fixture.export_delay)
+                try: self.wfile.write(body)
+                except BrokenPipeError: pass
         server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
@@ -36,6 +40,31 @@ class DownloadTests(unittest.TestCase):
     def run_download(self, **changes):
         args = dict(max_bytes=100000, bytes_per_second=1000000, admit=lambda: None)
         return download(self.url, 'disposable-test-token', self.root / 'checkpoint.db', **(args | changes))
+
+    def test_health_checks_continue_during_slow_socket_read(self):
+        self.export_delay=.15
+        checks=[]
+        result=self.run_download(admit=lambda:checks.append(time.monotonic()),read_timeout=.5,check_interval=.02)
+        self.assertGreaterEqual(len(checks),7)
+        self.assertEqual(result['bytes'],(self.root/'source.db').stat().st_size)
+
+    def test_health_rejection_during_socket_wait_prevents_publication(self):
+        self.export_delay=.15
+        checks=[]
+        def admit():
+            checks.append(time.monotonic())
+            if len(checks)>=3:raise RuntimeError('Stop during slow read')
+        with self.assertRaisesRegex(RuntimeError,'Stop during slow read'):
+            self.run_download(admit=admit,read_timeout=.5,check_interval=.02)
+        self.assertFalse((self.root/'checkpoint.db').exists())
+        self.assertEqual((self.root/'checkpoint.db.part').stat().st_size,0)
+
+    def test_socket_timeout_is_terminal_not_an_automatic_retry(self):
+        self.export_delay=.2
+        with self.assertRaises(TimeoutError):
+            self.run_download(read_timeout=.05,check_interval=.01)
+        self.assertFalse((self.root/'checkpoint.db').exists())
+        with self.assertRaisesRegex(ValueError,'reconciliation'):self.run_download()
 
     def test_actual_http_checkpoint_verified_and_not_replaced(self):
         result = self.run_download()

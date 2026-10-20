@@ -55,6 +55,35 @@ class LedgerTests(unittest.TestCase):
         for attempt in [self.attempt,second]:self.assertEqual(self.ledger.get(attempt)['state'],'unknown')
         self.assertEqual(self.db.execute("SELECT count(*) FROM actors WHERE pds='https://pds.test'").fetchone(),(2,))
 
+    def test_definite_conflict_can_retry_with_fresh_source_and_preserved_history(self):
+        self.db.execute("UPDATE actors SET updated_at=11");self.db.commit()
+        self.assertEqual(self.ledger.send(self.attempt,self.execute),'conflict')
+        before=self.ledger.get(self.attempt)
+        replacement=self.ledger.retry(self.attempt,11,'https://fresh.test')
+        restarted=Ledger(self.ledger.path)
+        self.assertEqual(restarted.get(self.attempt),before)
+        with self.assertRaises(ValueError):restarted.retry(self.attempt,11,'https://fresh.test')
+        with self.assertRaises(ValueError):restarted.send(self.attempt,self.execute)
+        self.assertEqual(restarted.send(replacement,self.execute),'confirmed')
+        self.assertEqual(self.current()['pds'],'https://fresh.test')
+
+    def test_confirmed_receipt_survives_a_later_missing_identity_repair(self):
+        self.ledger.send(self.attempt,self.execute)
+        old=self.ledger.get(self.attempt)
+        self.db.execute("UPDATE actors SET pds='',updated_at=20");self.db.commit()
+        replacement=self.ledger.retry(self.attempt,20,'https://migrated.test')
+        self.assertEqual(self.ledger.send(replacement,self.execute),'confirmed')
+        self.assertEqual(self.ledger.get(self.attempt),old)
+        self.assertEqual(self.current()['pds'],'https://migrated.test')
+
+    def test_ambiguous_and_reconciled_attempts_cannot_authorize_retry(self):
+        for state in ['prepared','sent','unknown','unchanged','changed','deleted','present_unattributed']:
+            attempt=self.ledger.prepare('did:plc:'+state,10,'https://pds.test')
+            if state!='prepared':self.ledger.transition(attempt,'prepared',state)
+            with self.assertRaisesRegex(ValueError,'definite completed'):
+                self.ledger.retry(attempt,11,'https://fresh.test')
+            self.assertEqual(self.ledger.get(attempt)['state'],state)
+
     def test_interrupted_before_send_and_concurrent_migration(self):
         self.ledger.transition(self.attempt,'prepared','sent')
         self.assertEqual(Ledger(self.ledger.path).reconcile(self.attempt,self.current()),'unchanged')

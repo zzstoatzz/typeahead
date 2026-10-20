@@ -1,4 +1,5 @@
 """Bounded checkpoint download with admission checks; no publication or retries."""
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
@@ -22,6 +23,8 @@ def wait_for_admission(check, *, timeout=120, interval=10):
     while True:
         try:
             check()
+            if paused and time.monotonic() >= deadline:
+                raise HealthNotReady('Admission did not recover within pause budget')
             healthy += 1
             if not paused or healthy >= 2:
                 return
@@ -36,7 +39,8 @@ def wait_for_admission(check, *, timeout=120, interval=10):
             raise HealthNotReady('Admission did not recover within pause budget')
 
 
-def download(base_url, token, output, *, max_bytes, bytes_per_second, admit):
+def download(base_url, token, output, *, max_bytes, bytes_per_second, admit,
+             read_timeout=60, check_interval=10):
     output = Path(output)
     partial = Path(str(output) + '.part')
     attempt = Path(str(output) + '.attempt.json')
@@ -44,6 +48,8 @@ def download(base_url, token, output, *, max_bytes, bytes_per_second, admit):
         raise ValueError('Existing checkpoint attempt requires reconciliation')
     if max_bytes < 1 or bytes_per_second < 1 or not callable(admit):
         raise ValueError('Transfer limits and admission required')
+    if not 0 < check_interval <= 10 or not check_interval <= read_timeout <= 60:
+        raise ValueError('Bounded socket timeout and health interval required')
     admit()
     budget = Budget(Path(str(output) + '.budget.db'), max_bytes + 65536)
     budget.reserve(max_bytes + 65536)
@@ -57,6 +63,7 @@ def download(base_url, token, output, *, max_bytes, bytes_per_second, admit):
         raise ValueError('Invalid checkpoint generation')
     metadata = {'generation': generation, 'max_bytes': max_bytes,
                 'bytes_per_second': bytes_per_second, 'started_at': time.time(),
+                'read_timeout': read_timeout, 'check_interval': check_interval,
                 'published': False}
     with attempt.open('x') as receipt:
         json.dump(metadata, receipt, indent=2)
@@ -67,30 +74,57 @@ def download(base_url, token, output, *, max_bytes, bytes_per_second, admit):
     total = 0
     digest = hashlib.sha256()
     request = urllib.request.Request(base_url.rstrip('/') + '/export/' + str(generation), headers=headers)
-    with urllib.request.urlopen(request, timeout=10) as response, partial.open('xb') as stream:
-        if response.status != 200:
-            raise ValueError('Checkpoint download failed')
-        length = response.headers.get('Content-Length')
-        if length is not None and int(length) > max_bytes:
-            raise ValueError('Checkpoint exceeds transfer budget')
+    def receive(future):
+        nonlocal last_check
         while True:
-            if time.monotonic() - last_check >= 10:
+            if time.monotonic() - last_check >= check_interval:
                 admit()
                 last_check = time.monotonic()
-            chunk_started = time.monotonic()
-            chunk = response.read(min(65536, max_bytes + 1 - total))
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > max_bytes:
+            try:
+                value = future.result(timeout=max(.001, check_interval-(time.monotonic()-last_check)))
+            except TimeoutError:
+                if not future.done():
+                    continue
+                value = future.result()
+            if time.monotonic() - last_check >= check_interval:
+                admit()
+                last_check = time.monotonic()
+            return value
+
+    with ThreadPoolExecutor(max_workers=1) as reader:
+        opening = reader.submit(urllib.request.urlopen, request, timeout=read_timeout)
+        try:
+            response = receive(opening)
+        except BaseException:
+            try:
+                opening.result().close()
+            except Exception:
+                pass
+            raise
+        with response, partial.open('xb') as stream:
+            if response.status != 200:
+                raise ValueError('Checkpoint download failed')
+            length = response.headers.get('Content-Length')
+            if length is not None and int(length) > max_bytes:
                 raise ValueError('Checkpoint exceeds transfer budget')
-            stream.write(chunk)
-            digest.update(chunk)
-            delay = len(chunk) / bytes_per_second - (time.monotonic() - chunk_started)
-            if delay > 0:
-                time.sleep(delay)
-        stream.flush()
-        os.fsync(stream.fileno())
+            while True:
+                if time.monotonic() - last_check >= check_interval:
+                    admit()
+                    last_check = time.monotonic()
+                chunk_started = time.monotonic()
+                chunk = receive(reader.submit(response.read1, min(65536, max_bytes + 1 - total)))
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > max_bytes:
+                    raise ValueError('Checkpoint exceeds transfer budget')
+                stream.write(chunk)
+                digest.update(chunk)
+                delay = len(chunk) / bytes_per_second - (time.monotonic() - chunk_started)
+                if delay > 0:
+                    time.sleep(delay)
+            stream.flush()
+            os.fsync(stream.fileno())
     admit()
     with sqlite3.connect(partial.resolve().as_uri() + '?mode=ro', uri=True) as db:
         if db.execute('PRAGMA quick_check').fetchall() != [('ok',)]:

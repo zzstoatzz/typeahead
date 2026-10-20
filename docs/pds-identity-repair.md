@@ -33,7 +33,12 @@ checks required to resume. Disk, stop-file and other errors propagate immediatel
 The caller must preserve its health thresholds and counter baseline across the
 pause. Reading and publication wait for admission; transfer pacing does not
 accumulate a burst allowance while paused. This helper does not enable a job
-or authorize retrying a failed production export.
+or authorize retrying a failed production export. Socket waits are capped at
+60 seconds while admission runs at least every ten seconds between bounded
+health probes. There is at most one 64KiB read in flight; it may finish into
+memory during a health pause, but no next read or file append proceeds before
+admission. Socket timeouts remain terminal; failed attempts are not restarted
+automatically.
 
 ## Applying and verifying repairs
 
@@ -41,7 +46,13 @@ or authorize retrying a failed production export.
 source reads, a completed health baseline, conditional writes and receipts.
 `pds_repair_ledger.py` records prepared, sent, confirmed and ambiguous attempts;
 unknown writes must be reconciled, never blindly retried. Updates only fill an
-empty PDS when the observed source version still matches.
+empty PDS when the observed source version still matches. `Ledger.retry`
+requires the current attempt to have a definite `confirmed` or `conflict`
+outcome and retains its original receipt in `attempt_history`. Only one current
+attempt per DID is allowed. Ambiguous outcomes remain ineligible even after
+reconciliation reports `unchanged` or `present_unattributed`; these do not prove
+the old request cannot still commit. Explicit retries still require fresh
+source and authority reads plus normal admission. No recurring writer is enabled.
 
 `pds_repair_stage.py` provides bounded, paced batches but has no enabled
 production transport. Its admission callback must independently establish

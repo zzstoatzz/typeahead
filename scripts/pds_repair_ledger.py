@@ -26,6 +26,9 @@ class Ledger:
               pds TEXT NOT NULL,prepared_at REAL NOT NULL,state TEXT NOT NULL,
               receipt TEXT, UNIQUE(did)
             )''')
+            db.execute('''CREATE TABLE IF NOT EXISTS attempt_history AS
+                SELECT * FROM attempts WHERE 0''')
+            db.execute('CREATE UNIQUE INDEX IF NOT EXISTS attempt_history_id ON attempt_history(id)')
             db.commit()
 
     def prepare(self, did, observed_updated_at, pds):
@@ -38,9 +41,24 @@ class Ledger:
     def get(self, attempt):
         with closing(sqlite3.connect(self.path)) as db:
             db.row_factory=sqlite3.Row
-            row=db.execute('SELECT * FROM attempts WHERE id=?',(attempt,)).fetchone()
+            row=db.execute('SELECT * FROM attempts WHERE id=? UNION ALL SELECT * FROM attempt_history WHERE id=?',(attempt,attempt)).fetchone()
             if row is None:raise ValueError('Unknown repair attempt')
             return dict(row)
+
+    def retry(self, previous, observed_updated_at, pds):
+        if type(observed_updated_at) is not int or observed_updated_at < 0 or not isinstance(pds,str) or not pds:
+            raise ValueError('Fresh source timestamp and resolved PDS required')
+        attempt=str(uuid.uuid4())
+        with closing(sqlite3.connect(self.path)) as db, db:
+            db.execute('BEGIN IMMEDIATE')
+            item=db.execute('SELECT did,state FROM attempts WHERE id=?',(previous,)).fetchone()
+            if item is None or item[1] not in ('confirmed','conflict'):
+                raise ValueError('Retry requires a definite completed current attempt')
+            db.execute('INSERT INTO attempt_history SELECT * FROM attempts WHERE id=?',(previous,))
+            db.execute('DELETE FROM attempts WHERE id=?',(previous,))
+            db.execute('INSERT INTO attempts VALUES(?,?,?,?,?,?,NULL)',
+                       (attempt,item[0],observed_updated_at,pds,time.time(),'prepared'))
+        return attempt
 
     def transition(self, attempt, before, after, receipt=None):
         with closing(sqlite3.connect(self.path)) as db, db:
