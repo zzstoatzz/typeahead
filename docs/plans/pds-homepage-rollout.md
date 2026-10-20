@@ -82,3 +82,50 @@ slower than Bluesky in the quick benchmark. Restore end-to-end spans first, then
 attribute miss time among Worker work, backend transport, engine and hydration.
 Optimize the measured dominant phase and repeat the same query set; do not trade
 scope correctness or global ranking for a faster number.
+
+## Production transition prepared October 20, 2026
+
+Source is merged on main (`8c24887`) with immutable builder tag
+`pds-compact-31ec142-20261020`. This is source preparation, not a live PDS release.
+The qualified native image is
+`registry.fly.io/typeahead-search-compact:pds-31ec142-20261020@sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938`.
+
+Private candidate `8d4916be311008` and volume `vol_4qlwyx1kl6o19x6r` follow
+`staging/pds-candidate-31ec142-20261020/latest.json`, using
+`/data/pds-current-20261020` and `/data/pds-overlay/overlay.db`. No public services
+are assigned. Full pair upload/readback and native admission are still pending.
+Expected generation: `b1792484789-3d65-px05`, watermark `1792484192`.
+
+The existing root manifest was copied immutably and read back at
+`releases/pds-rollback-20261020/b1792400507-4df8-px05/latest.json`.
+Existing compact machine `781e732c264678` has only 8.4 GB free; it must be pinned
+to that protected pointer before publishing the new 23.3 GB recovery pair at
+root. Its old image, volume, snapshot roots and live overlay remain recovery
+resources. Retain the earlier recovery pair and archives through the existing
+October 24/26 retention gates in the compact cutover runbook.
+
+After candidate admission, fresh lag <=300 seconds, native benchmarks and Logfire:
+
+1. Refresh current Worker versions/source and both backend health checks. Clone
+   the then-current Worker with only its backend changed to healthy legacy.
+   Confirm public smoke and allow in-flight requests to drain.
+2. Save fresh old compact machine config; pin it to the protected old pointer and
+   remove public services. Verify it remains healthy privately. Keep legacy serving.
+3. Register the merged publisher pin and explicit 10,000-actor cutoff, preserving
+   its cron `0 9 */3 * *` and all unrelated deployments. Publish root only from the
+   fully read-back qualified manifest. Do not call a future scheduled run complete.
+4. Refresh the candidate config to follow root `latest.json`, retaining its
+   existing snapshot and overlay paths. Apply with legacy coverage, then require
+   exact generation, admission, scope readiness and current catch-up again.
+5. Assign the saved public service configuration to the new machine; verify it
+   is the sole public compact machine. Clone the latest Worker back to compact.
+   Verify global health and authenticated smoke before exposing PDS API/UI.
+6. Deploy reconciled Worker source with `--var PDS_UI_ENABLED:0`; verify real
+   scoped queries, normalized cache separation, aliases and explicit unavailable
+   states. Enable the homepage only after that acceptance, then check live browser
+   behavior, public schema, telemetry and smoke. Preserve newer unrelated source.
+
+Before any rollback to an incompatible backend, deploy `PDS_SEARCH_DISABLED=1`
+and verify even cached scopes return unavailable. Route through healthy legacy
+while restoring the previous compact configuration. Do not reuse a newer pruned
+snapshot/overlay pair against the old snapshot.
