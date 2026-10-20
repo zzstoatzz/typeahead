@@ -1213,3 +1213,17 @@ is not established; the richer subsequent 240-probe campaign passed. No claim
 of zero observed failures is made. A further bounded probe records the return in
 `publisher-transition-20261019/public-probes-return.jsonl`. Source/PR/worktree
 cleanup remains; keep the finite follow-up active until reconciled.
+
+### Source reconciliation — October 20, 00:56 UTC
+
+Prefect PR 3my2cq5txmp22 was closed after ancestry verification confirmed all its
+commits through e9c62cd are already on main. Its clean temporary worktree was
+removed; only ignored caches/dependencies were present. Main's unrelated changes
+were preserved. Typeahead's PR now has a current title/body and round. Local
+Worker typecheck, lint, all 97 tests and dry-run bundle passed.
+
+Manual CI pipeline 3mybgflj5mk22 on f796bb5 failed before executing any check:
+Nixery image pull reported missing or empty Content-Length. The workflow now uses
+the same NixOS microVM engine that passed in the Prefect repository, retaining
+its Bun/Node dependencies and all verification commands. Deployment remains
+manual; CI only builds/tests/dry-runs. A new pipeline must pass before merge.

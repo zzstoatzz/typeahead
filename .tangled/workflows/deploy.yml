@@ -2,12 +2,12 @@ when:
   - event: ["push"]
     branch: main
 
-engine: nixery
+engine: microvm
+image: nixos
 
 dependencies:
-  nixpkgs:
-    - bun
-    - nodejs
+  - bun
+  - nodejs
 
 # Deploy is intentionally NOT done from tangled CI — the secrets path has been
 # unreliable (rolled values don't propagate, see commits 0ff3acb/eacaf7f). The
