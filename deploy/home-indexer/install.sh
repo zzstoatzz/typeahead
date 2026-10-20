@@ -7,14 +7,14 @@
 # ~/.local/bin (on the worker PATH). Idempotent: re-running upgrades in place.
 set -euo pipefail
 
-ZIG_VERSION=0.16.0
+ZIG_VERSION=0.17.0
 RCLONE_VERSION=1.69.1
 ARCH=x86_64
 BIN="$HOME/.local/bin"
 OPT="$HOME/.local/opt"
 mkdir -p "$BIN" "$OPT"
 
-# --- zig 0.16.0 (matches services/Dockerfile) ---
+# --- zig 0.17.0 (matches services/Dockerfile and build.zig.zon) ---
 if [ "$("$BIN/zig" version 2>/dev/null || true)" != "$ZIG_VERSION" ]; then
   echo "installing zig $ZIG_VERSION ..."
   tmp=$(mktemp -d)
