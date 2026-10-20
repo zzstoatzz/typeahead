@@ -115,7 +115,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   const { pathname } = new URL(request.url);
 
   if (pathname === "/" && request.method === "GET") {
-    return html(indexPage());
+    return html(indexPage(env.PDS_UI_ENABLED === "1" && env.PDS_SEARCH_DISABLED !== "1"));
   }
   // atproto handle verification for the service's own account
   // (SERVICE_DID is a wrangler var; set once the account exists)

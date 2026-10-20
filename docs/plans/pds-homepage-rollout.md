@@ -63,7 +63,11 @@ server is not a handle suffix. Do not invent a host directory or suggestions API
    empty/unavailable states and mobile layout. Publish the lexicon and update
    README, /docs, /llms.txt and the homepage API example together with shipped status.
 
-Rollback: hide the UI and disable scoped requests with an explicit unavailable
+Rollout controls: keep `PDS_UI_ENABLED` unset until live API acceptance; set it
+to `1` to show the filter. `PDS_SEARCH_DISABLED=1` hides the control and rejects
+scoped requests before cache lookup, including already cached answers.
+
+Rollback: set `PDS_SEARCH_DISABLED=1` to hide the UI and disable scoped requests with an explicit unavailable
 response before routing to an incompatible backend. Invalidate/version scoped
 cache entries; account for the existing 60-second TTL. Preserve a compatible
 snapshot/overlay pair and do not reuse a pruned overlay against an older snapshot.

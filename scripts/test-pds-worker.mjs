@@ -15,7 +15,8 @@ const built = spawnSync("bun", ["build", "scripts/pds-worker-entry.js", "--targe
 assert.equal(built.status, 0);
 let checks = 0;
 async function runtime(bindings, test) {
-  const mf = new Miniflare({ modules: true, modulesRoot: directory, scriptPath: bundle, compatibilityDate: "2024-12-01", d1Databases: ["DB"], bindings });
+  const options = { modules: true, modulesRoot: directory, scriptPath: bundle, compatibilityDate: "2024-12-01", d1Databases: ["DB"], bindings };
+  const mf = new Miniflare(options);
   try {
     const db = await mf.getD1Database("DB");
     await db.exec("CREATE TABLE metrics(hour INTEGER PRIMARY KEY, searches INTEGER DEFAULT 0, total_ms INTEGER DEFAULT 0, cache_hits INTEGER DEFAULT 0, cache_ms INTEGER DEFAULT 0); CREATE TABLE traffic_sources(domain TEXT PRIMARY KEY,hits INTEGER); CREATE TABLE traffic_buckets(bucket INTEGER,domain TEXT,hits INTEGER,PRIMARY KEY(bucket,domain));");
@@ -23,13 +24,13 @@ async function runtime(bindings, test) {
       const path = alias ? "app.bsky.actor.searchActorsTypeahead" : "tech.waow.typeahead.searchActors";
       return mf.dispatchFetch(`https://typeahead.test/xrpc/${path}?${query}`);
     };
-    await test(fetch, db);
+    await test(fetch, db, overrides => mf.setOptions({ ...options, bindings: { ...bindings, ...overrides } }));
   } finally {
     await mf.dispose();
   }
 }
 try {
-  await runtime({ SEARCH_BACKEND_URL: backend, TURSO_FALLBACK_ON_EMPTY: "1", TURSO_FALLBACK_ON_UNREACHABLE: "1" }, async (fetch, db) => {
+  await runtime({ SEARCH_BACKEND_URL: backend, TURSO_FALLBACK_ON_EMPTY: "1", TURSO_FALLBACK_ON_UNREACHABLE: "1" }, async (fetch, db, updateBindings) => {
     const global = await (await fetch("q=bob")).text();
     const scoped = await (await fetch("q=bob&pds=acme.test")).text();
     assert.notEqual(scoped, global); checks++;
@@ -46,8 +47,14 @@ try {
     assert.deepEqual(await empty.json(), { actors: [] }); checks++;
     await new Promise(resolve => setTimeout(resolve, 100));
     assert.ok((await db.prepare("SELECT SUM(cache_hits) AS hits FROM metrics").first()).hits >= 1); checks++;
+    await updateBindings({ PDS_SEARCH_DISABLED: "1" });
+    assert.equal((await fetch("q=bob&pds=acme.test")).status, 503); checks++;
+    assert.equal(await (await fetch("q=bob")).text(), global); checks++;
+    await updateBindings({ PDS_SEARCH_DISABLED: "0" });
+    assert.equal(await (await fetch("q=bob&pds=acme.test")).text(), scoped); checks++;
   });
   for (const bindings of [
+    { SEARCH_BACKEND_URL: backend, PDS_SEARCH_DISABLED: "1" },
     { SEARCH_BACKEND_URL: unsupportedBackend },
     { SEARCH_BACKEND_URL: "http://127.0.0.1:1", TURSO_FALLBACK_ON_UNREACHABLE: "1" },
     {},

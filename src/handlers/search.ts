@@ -84,7 +84,7 @@ export async function handleSearch(
     return json({ error: "InvalidRequest", message: "pds must be a DNS hostname or HTTP(S) origin without a port" }, 400);
   }
   const unavailable = () => json({ error: "PdsScopeUnavailable", message: "PDS-scoped search is unavailable" }, 503);
-  if (pds && (env.EMERGENCY_PROXY_BSKY || !env.SEARCH_BACKEND_URL)) return unavailable();
+  if (pds && (env.PDS_SEARCH_DISABLED === "1" || env.EMERGENCY_PROXY_BSKY || !env.SEARCH_BACKEND_URL)) return unavailable();
 
   const limit = limitParam;
   const term = sanitize(q);

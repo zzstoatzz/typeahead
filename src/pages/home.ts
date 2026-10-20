@@ -2,7 +2,7 @@ import { normalizePds } from "../pds";
 import { FAVICON } from "../types";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, ogTags, TAGLINE } from "./theme";
 
-export function indexPage(): string {
+export function indexPage(pdsEnabled = false): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -121,7 +121,7 @@ export function indexPage(): string {
       <label for="q">try it</label>
       <div class="search-wrap">
         <input id="q" placeholder="search handles..." autocomplete="off" autofocus>
-        <button class="filter-toggle" id="filter-toggle" type="button" aria-label="Filter by hosting server: all servers" aria-expanded="false" aria-controls="filter-panel" title="Filter by hosting server">
+        <button ${pdsEnabled ? "" : "hidden"} class="filter-toggle" id="filter-toggle" type="button" aria-label="Filter by hosting server: all servers" aria-expanded="false" aria-controls="filter-panel" title="Filter by hosting server">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--panel)"/><circle cx="15" cy="17" r="3" fill="var(--panel)"/></svg>
         </button>
         <form class="filter-panel" id="filter-panel" hidden aria-label="Hosting server filter">
@@ -146,7 +146,7 @@ export function indexPage(): string {
 
     <div class="api">
       <span class="method">GET</span>
-      <span class="path" title="pds is optional; limit defaults to 10">/xrpc/tech.waow.typeahead.searchActors?q=...&amp;pds=acme.com</span>
+      <span class="path" title="limit defaults to 10">/xrpc/tech.waow.typeahead.searchActors?q=...${pdsEnabled ? "&amp;pds=acme.com" : ""}</span>
     </div>
 
     <footer>
