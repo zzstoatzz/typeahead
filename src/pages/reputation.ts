@@ -183,26 +183,20 @@ export function reputationPage(): string {
       font-size: 0.72rem; line-height: 1.45;
     }
 
-    .intro { margin: 2rem 0; }
-    .intro h2 { font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.25; color: var(--bright); font-weight: 600; }
-    .intro p, .explanation p { font-size: 0.9rem; line-height: 1.7; color: var(--text); }
-    .intro p { margin-top: 0.8rem; max-width: 65ch; }
-    .ranking-steps { list-style: none; counter-reset: ranking; margin: 1.5rem 0; }
-    .ranking-steps li { counter-increment: ranking; position: relative; padding: 1rem 0 1rem 2.4rem; border-top: 1px solid var(--line-2); }
-    .ranking-steps li::before { content: counter(ranking); position: absolute; left: 0; top: 1.1rem; color: var(--accent); }
-    .ranking-steps h3 { color: var(--bright); font-size: 0.95rem; margin-bottom: 0.4rem; }
-    .explanation details { margin: 1rem 0; }
-    .explanation summary { cursor: pointer; color: var(--text); font-size: 0.85rem; padding: 0.6rem 0; }
-    .factors { margin: 0.4rem 0; }
-    .factors div { display: grid; grid-template-columns: 8rem 1fr; gap: 1rem; padding: 0.65rem 0; border-bottom: 1px solid var(--line); font-size: 0.82rem; line-height: 1.6; }
+    .explanation { margin: 1.6rem 0; border-bottom: 1px solid var(--line); padding-bottom: 1rem; }
+    .explanation > summary { font-size: 1.1rem; color: var(--bright); cursor: pointer; padding: 0.4rem 0; }
+    .ranking-facts { margin: 0.7rem 0; }
+    .ranking-facts div { display: grid; grid-template-columns: 7rem 1fr; gap: 0.75rem; padding: 0.45rem 0; font-size: 0.85rem; line-height: 1.5; }
+    .ranking-facts dt { color: var(--muted); }
+    .ranking-facts dd { color: var(--text); }
+    .weights summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; padding: 0.6rem 0; }
+    .factors div { display: grid; grid-template-columns: 7rem 1fr; gap: 0.75rem; padding: 0.65rem 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; line-height: 1.5; }
     .factors dt { color: var(--bright); }
-    .factors dd { color: var(--text); }
-    .pds-note { border-left: 2px solid var(--accent); padding-left: 1rem; margin: 1.6rem 0 2rem; }
-    .pds-note h3 { font-size: 0.95rem; color: var(--bright); margin-bottom: 0.5rem; }
-    .inspect-heading { font-size: 1.1rem; color: var(--bright); margin-bottom: 0.5rem; }
-    .inspect-note { color: var(--muted); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1rem; }
+    .limits { padding-left: 1rem; margin-top: 0.8rem; font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+    .limits li { margin: 0.4rem 0; }
+    .inspect-heading { font-size: 0.9rem; color: var(--bright); margin-bottom: 0.7rem; }
     :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-    @media (max-width: 560px) { .factors div { grid-template-columns: 1fr; gap: 0.2rem; } .header { flex-wrap: wrap; } }
+    @media (max-width: 560px) { .factors div { grid-template-columns: 1fr; gap: 0.2rem; } .header { flex-wrap: wrap; } .sec > summary { grid-template-columns: 1fr auto; } .sec-line { grid-column: 1; } .sec-end { grid-column: 2; grid-row: 1 / span 2; } }
 
     footer { padding-top: 1.5rem; margin-top: 1.5rem; border-top: 1px solid var(--line);
              font-size: 0.7rem; color: var(--faint); display: flex; align-items: center;
@@ -214,11 +208,13 @@ export function reputationPage(): string {
       .verdicts { grid-template-columns: 1fr; }
       .verdict + .verdict { border-left: 0; border-top: 1px solid var(--line); }
       .sec > summary { grid-template-columns: 1fr auto; }
-      .sec > summary .kicker { grid-column: 1 / -1; }
+      .sec > summary .kicker { grid-column: 1; }
       .score-pair { grid-template-columns: 1fr; }
       .bar-row { grid-template-columns: 1fr 4.4rem; }
       .bar { grid-column: 1 / -1; grid-row: 2; }
-      form { flex-direction: column; }
+      .verdict { display: grid; grid-template-columns: 6rem 1fr; align-items: baseline; padding: 0.7rem 0; column-gap: 0.5rem; }
+      .v-value { margin-top: 0; }
+      .v-sub { grid-column: 2; }
     }
   </style>
 </head>
@@ -232,39 +228,33 @@ export function reputationPage(): string {
         <a href="/docs">docs</a>
       </nav>
     </div>
-    <section class="explanation" aria-labelledby="ranking-title">
-      <div class="intro">
-        <h2 id="ranking-title">What puts someone first?</h2>
-        <p>The words you type decide who can match. A stored account score orders those matches. Typing a full handle promotes that exact account ahead of other matches.</p>
-      </div>
-      <ol class="ranking-steps">
-        <li><h3>Match the query</h3><p>Typeahead looks up handle and display-name prefixes. A multi-word query requires every word to match. The index keeps limited candidate lists, so a low-scoring account can be missing from a broad search.</p></li>
-        <li><h3>Order by account score</h3><p>Follower and post counts contribute to the score, with diminishing returns. The follower-to-following ratio and account age can add bonuses. Accounts under three days old receive a penalty.</p></li>
-        <li><h3>Promote an exact handle</h3><p>Searching <code>alice.offprint.social</code> promotes that visible account even if its score is low. Searching just <code>alice</code> does not give it that exact-handle priority.</p></li>
-      </ol>
-      <details>
-        <summary>See the score inputs and weights</summary>
+    <details class="explanation" id="ranking-guide" open>
+      <summary>How ranking works</summary>
+      <dl class="ranking-facts">
+        <div><dt>Matches</dt><dd>Handle and display-name prefixes.</dd></div>
+        <div><dt>Score</dt><dd>Followers, posts, follow ratio, account age.</dd></div>
+        <div><dt>Exact handle</dt><dd>Promoted ahead of other matches.</dd></div>
+        <div><dt>PDS</dt><dd>Filters results. No ranking boost.</dd></div>
+      </dl>
+      <details class="weights">
+        <summary>Weights and limits</summary>
         <dl class="factors">
-          <div><dt>Followers</dt><dd>100 × log₁₀(followers + 1). About 100 points for 9 followers, 200 for 99, and 300 for 999.</dd></div>
-          <div><dt>Posts</dt><dd>20 × log₁₀(posts + 1). More posts help, but each additional post contributes less.</dd></div>
-          <div><dt>Follow ratio</dt><dd>With more than 100 followers and at least one following: +50 when followers / following exceeds 10; another +100 when it exceeds 100.</dd></div>
-          <div><dt>Account age</dt><dd>−100 under 24 hours; −50 from 24 to 72 hours. +30 after 365 days, and another +30 after 1,095 days. Unknown age adds no age adjustment.</dd></div>
+          <div><dt>Followers</dt><dd>100 × log₁₀(count + 1)</dd></div>
+          <div><dt>Posts</dt><dd>20 × log₁₀(count + 1)</dd></div>
+          <div><dt>Follow ratio</dt><dd>+50 above 10; +150 above 100. Requires &gt;100 followers and &gt;0 following.</dd></div>
+          <div><dt>Account age</dt><dd>−100 under 1 day; −50 under 3 days. +30 after 1 year; +60 after 3 years. Unknown: 0.</dd></div>
         </dl>
-        <p>The total cannot fall below zero. Search uses the stored score, not a fresh calculation on every keystroke. Missing or outdated profile counts can therefore affect ranking.</p>
+        <ul class="limits">
+          <li>Scores use stored counts and cannot fall below zero.</li>
+          <li>Multi-word queries require every word. Limited candidate lists can omit low-scoring matches.</li>
+          <li>Hidden accounts are excluded regardless of score.</li>
+          <li>PDS data is incomplete. Hosts above 10,000 known indexed actors are excluded from filtering.</li>
+        </ul>
       </details>
-      <details>
-        <summary>Where moderation fits</summary>
-        <p>Visibility rules can exclude an account from search. They are separate from its ranking score. The account report below also checks moderation services; those live label checks are not extra ranking points.</p>
-      </details>
-      <aside class="pds-note">
-        <h3>Does my PDS get priority?</h3>
-        <p>No. Today, <code>pds=offprint.social</code> restricts results to that host; it does not boost its accounts while keeping everyone else. There is no PDS-preference parameter.</p>
-        <p>PDS membership data is incomplete, and the current filter excludes hosts above 10,000 known indexed actors. <a href="/docs">Read the API limits.</a></p>
-      </aside>
-    </section>
+    </details>
     <section aria-labelledby="inspect-title">
     <h2 class="inspect-heading" id="inspect-title">Inspect an account</h2>
-    <p class="inspect-note">See its stored score, the inputs behind it, visibility checks, and sample search positions. A score percentile is not a search-result position.</p>
+
     <div class="entry">
       <form id="form">
         <div class="ta-wrap">
@@ -273,7 +263,7 @@ export function reputationPage(): string {
         <button id="go" type="submit">inspect</button>
       </form>
     </div>
-    <div id="out" aria-live="polite"></div>
+    <div id="out"></div>
     </section>
     <footer>
       <a href="/">home</a>
@@ -332,6 +322,7 @@ export function reputationPage(): string {
     }
 
     async function load(val) {
+      document.getElementById('ranking-guide').open = false;
       go.disabled = true;
       go.innerHTML = '<span class="btn-caret"></span>';
       startStages();
@@ -436,9 +427,7 @@ export function reputationPage(): string {
       const verdictMod = appliedCount
         ? verdict('warn', 'moderation', appliedCount + ' label' + (appliedCount === 1 ? '' : 's'), 'from ' + applied.map(l => l.name).join(', '))
         : verdict('good', 'moderation', 'no labels', (m.labelers.length - down.length) + ' of ' + m.labelers.length + ' services answered');
-      const verdictRank = pct.percentile == null
-        ? verdict('na', 'ranking', d.score.stored > 0 ? 'score ' + num(d.score.stored) : 'unscored', pct.percentile == null && d.score.stored > 0 ? 'percentile not available yet' : 'no positive stored score')
-        : verdict('good', 'ranking', 'top ' + num(pct.topPercent) + '%', 'score ' + num(d.score.stored) + ' · #' + numInt(pct.rank) + ' of ' + numInt(pct.total));
+      const verdictRank = verdict('na', 'score', num(d.score.stored), pct.topPercent == null ? 'percentile unavailable' : '≈ top ' + num(pct.topPercent) + '% by score');
 
       out.innerHTML =
         '<div class="who">' +
@@ -446,35 +435,25 @@ export function reputationPage(): string {
           '<div class="who-text">' +
             '<div class="who-name">' + esc(d.actor.displayName || d.actor.handle) + '</div>' +
             '<div class="who-handle">@' + esc(d.actor.handle) + '</div>' +
-            '<div class="who-tag">' + esc(d.actor.did) + (d.actor.createdAt ? ' · created ' + esc(dateShort(d.actor.createdAt)) : '') + '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="verdicts">' + verdictSearch + verdictRank + verdictMod + '</div>' +
+        '<div class="verdicts">' + verdictRank + verdictSearch + verdictMod + '</div>' +
         '<div class="secs">' +
-          sec('sec-rank', 'ranking', 'stored score <span class="hi">' + num(d.score.stored) + '</span>' +
-              (pct.percentile == null ? '' : ', top ' + num(pct.topPercent) + '% of ' + numInt(pct.total)) +
-              (stale ? ' · recalculation differs by ' + signed(d.score.staleDelta) : ''),
+          sec('sec-rank', 'score breakdown', stale ? 'Recalculation: ' + signed(d.score.staleDelta) : 'Followers, posts, ratio, age',
             statusBadge(stale ? 'warn' : 'good', stale ? 'pending write' : 'current'), true,
-            '<div class="metric"><span class="num">' + num(d.score.computedNow) + '</span><span class="unit">score if recalculated now</span></div>' +
-            '<div class="card-sub">' + esc(scoreSummary(d, pct, stale)) + (d.indexing.profileSource === 'blacksky' ? " counts come from Blacksky's appview because Bluesky refuses this profile." : '') + '</div>' +
-            '<div class="score-pair">' +
-              mini('stored score', num(d.score.stored)) +
-              mini('snapshot actors', pct.rank == null ? 'n/a' : '#' + numInt(pct.rank) + ' of ' + numInt(pct.total)) +
-              mini('top band', pct.topPercent == null ? 'not available' : 'top ' + num(pct.topPercent) + '%') +
-              mini('recalc delta', signed(d.score.staleDelta)) +
-            '</div>' +
+            '<div class="card-sub">Stored score: ' + num(d.score.stored) + '. Recalculated: ' + num(d.score.computedNow) + '. ' + (stale ? 'Search uses the stored value.' : '') + '</div>' +
             '<div class="bars" style="margin-top:0.9rem">' +
               bar('followers', b.followersInfluence, maxPart) +
               bar('posts', b.postsInfluence, maxPart) +
               bar('follow ratio', b.followerFollowRatioBonus, maxPart) +
               bar('account age bonus', b.matureAccountBonus, maxPart) +
-              bar('freshness penalty', Math.abs(b.freshness.penalty), maxPart, b.freshness.penalty < 0 ? 'penalty' : '') +
+              bar('new-account penalty', Math.abs(b.freshness.penalty), maxPart, b.freshness.penalty < 0 ? 'penalty' : '') +
             '</div>' +
             '<div class="card-sub"><span class="hi">' + num(b.inputs.followersCount) + '</span> followers, ' +
               '<span class="hi">' + num(b.inputs.postsCount) + '</span> posts, and an account age of ' +
               '<span class="hi">' + (b.freshness.ageDays == null ? 'unknown' : num(b.freshness.ageDays) + ' days') + '</span>. ' +
-              'new accounts are penalized before they have history: <24h is -100, <72h is -50. older accounts can receive a maturity bonus.</div>') +
-          sec('sec-vis', 'visibility', hidden ? 'hidden from search — ' + gateShort(d) : 'allowed to appear; ' + (d.indexing.shouldBeInPrefixIndex ? 'in prefix lookup' : 'not in prefix lookup'),
+              '</div>') +
+          sec('sec-vis', 'visibility', hidden ? gateShort(d) : (d.indexing.shouldBeInPrefixIndex ? 'In prefix lookup' : 'Not in prefix lookup'),
             statusBadge(hidden ? 'bad' : 'good', hidden ? 'hidden' : 'can appear'), hidden,
             '<div class="checks">' +
               info('separate from ranking', 'these checks decide whether the actor is allowed to appear — they never add to or subtract from the score.') +
@@ -485,7 +464,7 @@ export function reputationPage(): string {
             '</div>') +
           sec('sec-mod', 'moderation', appliedCount
               ? applied.map(l => '<span class="hi">' + esc(l.name) + '</span>: ' + l.labels.map(x => x.val).join(', ')).join(' · ')
-              : 'no labels from ' + (m.labelers.length - down.length) + ' moderation services' + (down.length ? ' (' + down.length + ' did not answer)' : ''),
+              : (m.labelers.length - down.length) + ' of ' + m.labelers.length + ' services answered',
             moderationBadge(m), appliedCount > 0,
             '<div class="checks">' +
               info('labels typeahead holds', (ownLabels.length ? ownLabels.join(', ') : 'none') + ' — ' + m.storedLabelsSource + '.') +
@@ -493,7 +472,7 @@ export function reputationPage(): string {
             '<div class="labelers">' + m.labelers.map(labelerRow).join('') + '</div>' +
             '<div class="card-sub">each service is asked directly (com.atproto.label.queryLabels) when this report loads; nothing here is stored. ' +
               'a labeler only affects people who subscribe to it, except where an appview runs it.</div>') +
-          sec('sec-search', 'live searches', [exact, display, prefix].filter(p => p && p.query).map(p => '<span class="hi">' + esc(p.query) + '</span> ' + (p.found ? '#' + p.position : 'not top 50')).join(' · '),
+          sec('sec-search', 'search positions', [exact, display, prefix].filter(p => p && p.query).map(p => '<span class="hi">' + esc(p.query) + '</span> ' + (p.found ? '#' + p.position : 'not top 50')).join(' · '),
             statusBadge(exact.found ? 'good' : 'warn', exact.found ? 'exact works' : 'not found'), !exact.found,
             '<div class="queries">' +
               queryRow('exact handle', exact) +
@@ -533,7 +512,6 @@ export function reputationPage(): string {
       return 'stored row marked hidden';
     }
     function statusBadge(kind, text) { return '<span class="state ' + kind + '"><span class="dot"></span>' + esc(text) + '</span>'; }
-    function mini(label, value) { return '<div class="mini"><div class="mini-label">' + esc(label) + '</div><div class="mini-value">' + esc(value) + '</div></div>'; }
     function bar(label, val, max, cls) {
       return '<div class="bar-row"><div class="bar-label">' + esc(label) + '</div><div class="bar ' + (cls || '') + '"><span style="width:' +
         Math.max(1, Math.round((val / max) * 100)) + '%"></span></div><div class="bar-val">' + (cls === 'penalty' ? '-' : '') + num(val) + '</div></div>';
@@ -556,7 +534,7 @@ export function reputationPage(): string {
       const applied = m.labelers.reduce((n, l) => n + l.labels.length, 0);
       const down = m.labelers.filter(l => l.status !== 'ok').length;
       if (applied) return statusBadge('warn', applied + ' label' + (applied === 1 ? '' : 's') + ' applied');
-      return statusBadge('good', down ? 'no labels · ' + down + ' unreachable' : 'no labels');
+      return statusBadge(down ? 'warn' : 'good', down ? down + ' unavailable' : 'no labels');
     }
     function labelerRow(l) {
       const what = l.status !== 'ok' ? '<span class="lab-none">did not answer</span>'
@@ -576,15 +554,6 @@ export function reputationPage(): string {
       return '<span class="ini">' + esc((a.handle || '?').charAt(0)) + '</span>';
     }
 
-    function scoreSummary(d, p, stale) {
-      const stored = 'search uses the stored score: ' + num(d.score.stored) + '.';
-      const freshness = stale
-        ? ' recalculation differs by ' + signed(d.score.staleDelta) + ', so enrichment has not written the newest value yet.'
-        : ' it matches the current formula.';
-      if (!p || p.percentile == null) return stored + freshness + ' no percentile yet because this actor has no positive stored score.';
-      return stored + freshness + ' that ranks #' + numInt(p.rank) + ' of ' + numInt(p.total) +
-        ' visible scored actors, above ' + num(p.percentile) + '% of them.';
-    }
     function dateShort(s) { const d = new Date(s); return Number.isNaN(d.getTime()) ? s : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
     function dateTime(s) { const d = new Date(s); return Number.isNaN(d.getTime()) ? s : d.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
     function num(n) { return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 }); }

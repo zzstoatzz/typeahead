@@ -196,11 +196,13 @@ service image was not replaced.
 The Worker serves the homepage (`/`), `/stats`, `/docs`, `/reputation`, and
 `/llms.txt`, all from `src/pages/` on one shared theme. Dated state:
 
-- Ranking explainer (October 20, 2026; preview, not deployed): `/reputation`
-  explains query matching, stored score inputs, exact-handle promotion, and PDS
-  filtering limits before the account inspector. Score weights and moderation
-  details expand on demand; account reports open their score breakdown first.
-  This changes presentation only, not ranking or report API behavior.
+- Ranking explainer (October 20, 2026; preview, not deployed to production):
+  [phone preview](https://typeahead-ranking-review.n8-3e9.workers.dev/reputation)
+  has a four-row summary and expandable weights. Entering a handle collapses
+  the guide; account reports show score, visibility, and moderation, followed
+  by expandable details. The isolated preview serves a captured public report
+  for `zzstoatzz.io`; it has no production bindings or backend requests.
+  Ranking and the production report API are unchanged.
 - Homepage navigation (September 6, 2026): `[src]` and `[llms.txt]` share the
   project-resource row; the theme control sits at the right; attribution,
   stats, and docs are in the footer.
