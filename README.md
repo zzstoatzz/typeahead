@@ -196,6 +196,11 @@ service image was not replaced.
 The Worker serves the homepage (`/`), `/stats`, `/docs`, `/reputation`, and
 `/llms.txt`, all from `src/pages/` on one shared theme. Dated state:
 
+- Ranking explainer (October 20, 2026; preview, not deployed): `/reputation`
+  explains query matching, stored score inputs, exact-handle promotion, and PDS
+  filtering limits before the account inspector. Score weights and moderation
+  details expand on demand; account reports open their score breakdown first.
+  This changes presentation only, not ranking or report API behavior.
 - Homepage navigation (September 6, 2026): `[src]` and `[llms.txt]` share the
   project-resource row; the theme control sits at the right; attribution,
   stats, and docs are in the footer.

@@ -9,13 +9,13 @@ export function reputationPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ranking &amp; moderation report · typeahead</title>
+  <title>how ranking works · typeahead</title>
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}
     body { display: flex; justify-content: center;
            padding: calc(1.5rem + env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom)); }
-    .container { max-width: 620px; width: 100%; }
+    .container { max-width: 720px; width: 100%; }
     .header { display: flex; align-items: baseline; justify-content: space-between; gap: 0.4rem; margin-bottom: 0.4rem; }
     h1 { font-size: 1.1rem; font-weight: 400; color: var(--muted); }
     .toplinks { font-size: 0.75rem; color: var(--faint); display: flex; gap: 0.45rem; }
@@ -182,6 +182,28 @@ export function reputationPage(): string {
       border-radius: 8px; padding: 0.85rem; overflow: auto; color: var(--muted);
       font-size: 0.72rem; line-height: 1.45;
     }
+
+    .intro { margin: 2rem 0; }
+    .intro h2 { font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.25; color: var(--bright); font-weight: 600; }
+    .intro p, .explanation p { font-size: 0.9rem; line-height: 1.7; color: var(--text); }
+    .intro p { margin-top: 0.8rem; max-width: 65ch; }
+    .ranking-steps { list-style: none; counter-reset: ranking; margin: 1.5rem 0; }
+    .ranking-steps li { counter-increment: ranking; position: relative; padding: 1rem 0 1rem 2.4rem; border-top: 1px solid var(--line-2); }
+    .ranking-steps li::before { content: counter(ranking); position: absolute; left: 0; top: 1.1rem; color: var(--accent); }
+    .ranking-steps h3 { color: var(--bright); font-size: 0.95rem; margin-bottom: 0.4rem; }
+    .explanation details { margin: 1rem 0; }
+    .explanation summary { cursor: pointer; color: var(--text); font-size: 0.85rem; padding: 0.6rem 0; }
+    .factors { margin: 0.4rem 0; }
+    .factors div { display: grid; grid-template-columns: 8rem 1fr; gap: 1rem; padding: 0.65rem 0; border-bottom: 1px solid var(--line); font-size: 0.82rem; line-height: 1.6; }
+    .factors dt { color: var(--bright); }
+    .factors dd { color: var(--text); }
+    .pds-note { border-left: 2px solid var(--accent); padding-left: 1rem; margin: 1.6rem 0 2rem; }
+    .pds-note h3 { font-size: 0.95rem; color: var(--bright); margin-bottom: 0.5rem; }
+    .inspect-heading { font-size: 1.1rem; color: var(--bright); margin-bottom: 0.5rem; }
+    .inspect-note { color: var(--muted); font-size: 0.85rem; line-height: 1.6; margin-bottom: 1rem; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    @media (max-width: 560px) { .factors div { grid-template-columns: 1fr; gap: 0.2rem; } .header { flex-wrap: wrap; } }
+
     footer { padding-top: 1.5rem; margin-top: 1.5rem; border-top: 1px solid var(--line);
              font-size: 0.7rem; color: var(--faint); display: flex; align-items: center;
              justify-content: center; flex-wrap: wrap; gap: 0.4rem 0.6rem; }
@@ -203,23 +225,56 @@ export function reputationPage(): string {
 <body>
   <div class="container">
     <div class="header">
-      <h1><a href="/" class="wordmark">typeahead</a> ranking &amp; moderation report</h1>
+      <h1><a href="/" class="wordmark">typeahead</a> ranking</h1>
       <nav class="toplinks" aria-label="site links">
         <a href="/stats">stats</a>
         <span>·</span>
         <a href="/docs">docs</a>
       </nav>
     </div>
-    <p class="subtitle">why an actor ranks where it does, and what each moderation service says about it — score inputs, visibility gates, labels, live search positions</p>
+    <section class="explanation" aria-labelledby="ranking-title">
+      <div class="intro">
+        <h2 id="ranking-title">What puts someone first?</h2>
+        <p>The words you type decide who can match. A stored account score orders those matches. Typing a full handle promotes that exact account ahead of other matches.</p>
+      </div>
+      <ol class="ranking-steps">
+        <li><h3>Match the query</h3><p>Typeahead looks up handle and display-name prefixes. A multi-word query requires every word to match. The index keeps limited candidate lists, so a low-scoring account can be missing from a broad search.</p></li>
+        <li><h3>Order by account score</h3><p>Follower and post counts contribute to the score, with diminishing returns. The follower-to-following ratio and account age can add bonuses. Accounts under three days old receive a penalty.</p></li>
+        <li><h3>Promote an exact handle</h3><p>Searching <code>alice.offprint.social</code> promotes that visible account even if its score is low. Searching just <code>alice</code> does not give it that exact-handle priority.</p></li>
+      </ol>
+      <details>
+        <summary>See the score inputs and weights</summary>
+        <dl class="factors">
+          <div><dt>Followers</dt><dd>100 × log₁₀(followers + 1). About 100 points for 9 followers, 200 for 99, and 300 for 999.</dd></div>
+          <div><dt>Posts</dt><dd>20 × log₁₀(posts + 1). More posts help, but each additional post contributes less.</dd></div>
+          <div><dt>Follow ratio</dt><dd>With more than 100 followers and at least one following: +50 when followers / following exceeds 10; another +100 when it exceeds 100.</dd></div>
+          <div><dt>Account age</dt><dd>−100 under 24 hours; −50 from 24 to 72 hours. +30 after 365 days, and another +30 after 1,095 days. Unknown age adds no age adjustment.</dd></div>
+        </dl>
+        <p>The total cannot fall below zero. Search uses the stored score, not a fresh calculation on every keystroke. Missing or outdated profile counts can therefore affect ranking.</p>
+      </details>
+      <details>
+        <summary>Where moderation fits</summary>
+        <p>Visibility rules can exclude an account from search. They are separate from its ranking score. The account report below also checks moderation services; those live label checks are not extra ranking points.</p>
+      </details>
+      <aside class="pds-note">
+        <h3>Does my PDS get priority?</h3>
+        <p>No. Today, <code>pds=offprint.social</code> restricts results to that host; it does not boost its accounts while keeping everyone else. There is no PDS-preference parameter.</p>
+        <p>PDS membership data is incomplete, and the current filter excludes hosts above 10,000 known indexed actors. <a href="/docs">Read the API limits.</a></p>
+      </aside>
+    </section>
+    <section aria-labelledby="inspect-title">
+    <h2 class="inspect-heading" id="inspect-title">Inspect an account</h2>
+    <p class="inspect-note">See its stored score, the inputs behind it, visibility checks, and sample search positions. A score percentile is not a search-result position.</p>
     <div class="entry">
       <form id="form">
         <div class="ta-wrap">
-          <input id="actor" name="actor" placeholder="enter a handle or DID" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
+          <input id="actor" name="actor" placeholder="enter a handle or DID" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Handle or DID">
         </div>
         <button id="go" type="submit">inspect</button>
       </form>
     </div>
-    <div id="out"></div>
+    <div id="out" aria-live="polite"></div>
+    </section>
     <footer>
       <a href="/">home</a>
       · <a href="/stats">stats</a>
@@ -394,31 +449,12 @@ export function reputationPage(): string {
             '<div class="who-tag">' + esc(d.actor.did) + (d.actor.createdAt ? ' · created ' + esc(dateShort(d.actor.createdAt)) : '') + '</div>' +
           '</div>' +
         '</div>' +
-        '<div class="verdicts">' + verdictSearch + verdictMod + verdictRank + '</div>' +
+        '<div class="verdicts">' + verdictSearch + verdictRank + verdictMod + '</div>' +
         '<div class="secs">' +
-          sec('sec-vis', 'visibility', hidden ? 'hidden from search — ' + gateShort(d) : 'allowed to appear; ' + (d.indexing.shouldBeInPrefixIndex ? 'in prefix lookup' : 'not in prefix lookup'),
-            statusBadge(hidden ? 'bad' : 'good', hidden ? 'hidden' : 'can appear'), hidden,
-            '<div class="checks">' +
-              info('separate from ranking', 'these checks decide whether the actor is allowed to appear — they never add to or subtract from the score.') +
-              check(!m.hiddenStored, 'stored visibility', m.hiddenStored ? 'the actors row is currently marked hidden.' : 'the actors row is currently visible.') +
-              check(!m.hiddenComputed, 'moderation result', gateCopy(d)) +
-              check(d.indexing.shouldBeInPrefixIndex, 'prefix lookup eligibility', d.indexing.shouldBeInPrefixIndex ? 'handle is present and the actor is allowed into prefix lookup.' : 'hidden actors or actors without handles are excluded from prefix lookup.') +
-              check(d.indexing.exactHandleLookupFindsIt, 'exact handle lookup', d.indexing.exactHandleLookupFindsIt ? 'a direct handle lookup resolves to this DID.' : 'the handle is not currently resolvable to this DID via exact lookup.') +
-            '</div>') +
-          sec('sec-mod', 'moderation', appliedCount
-              ? applied.map(l => '<span class="hi">' + esc(l.name) + '</span>: ' + l.labels.map(x => x.val).join(', ')).join(' · ')
-              : 'no labels from ' + (m.labelers.length - down.length) + ' moderation services' + (down.length ? ' (' + down.length + ' did not answer)' : ''),
-            moderationBadge(m), appliedCount > 0,
-            '<div class="checks">' +
-              info('labels typeahead holds', (ownLabels.length ? ownLabels.join(', ') : 'none') + ' — ' + m.storedLabelsSource + '.') +
-            '</div>' +
-            '<div class="labelers">' + m.labelers.map(labelerRow).join('') + '</div>' +
-            '<div class="card-sub">each service is asked directly (com.atproto.label.queryLabels) when this report loads; nothing here is stored. ' +
-              'a labeler only affects people who subscribe to it, except where an appview runs it.</div>') +
           sec('sec-rank', 'ranking', 'stored score <span class="hi">' + num(d.score.stored) + '</span>' +
               (pct.percentile == null ? '' : ', top ' + num(pct.topPercent) + '% of ' + numInt(pct.total)) +
               (stale ? ' · recalculation differs by ' + signed(d.score.staleDelta) : ''),
-            statusBadge(stale ? 'warn' : 'good', stale ? 'pending write' : 'current'), false,
+            statusBadge(stale ? 'warn' : 'good', stale ? 'pending write' : 'current'), true,
             '<div class="metric"><span class="num">' + num(d.score.computedNow) + '</span><span class="unit">score if recalculated now</span></div>' +
             '<div class="card-sub">' + esc(scoreSummary(d, pct, stale)) + (d.indexing.profileSource === 'blacksky' ? " counts come from Blacksky's appview because Bluesky refuses this profile." : '') + '</div>' +
             '<div class="score-pair">' +
@@ -438,6 +474,25 @@ export function reputationPage(): string {
               '<span class="hi">' + num(b.inputs.postsCount) + '</span> posts, and an account age of ' +
               '<span class="hi">' + (b.freshness.ageDays == null ? 'unknown' : num(b.freshness.ageDays) + ' days') + '</span>. ' +
               'new accounts are penalized before they have history: <24h is -100, <72h is -50. older accounts can receive a maturity bonus.</div>') +
+          sec('sec-vis', 'visibility', hidden ? 'hidden from search — ' + gateShort(d) : 'allowed to appear; ' + (d.indexing.shouldBeInPrefixIndex ? 'in prefix lookup' : 'not in prefix lookup'),
+            statusBadge(hidden ? 'bad' : 'good', hidden ? 'hidden' : 'can appear'), hidden,
+            '<div class="checks">' +
+              info('separate from ranking', 'these checks decide whether the actor is allowed to appear — they never add to or subtract from the score.') +
+              check(!m.hiddenStored, 'stored visibility', m.hiddenStored ? 'the actors row is currently marked hidden.' : 'the actors row is currently visible.') +
+              check(!m.hiddenComputed, 'moderation result', gateCopy(d)) +
+              check(d.indexing.shouldBeInPrefixIndex, 'prefix lookup eligibility', d.indexing.shouldBeInPrefixIndex ? 'handle is present and the actor is allowed into prefix lookup.' : 'hidden actors or actors without handles are excluded from prefix lookup.') +
+              check(d.indexing.exactHandleLookupFindsIt, 'exact handle lookup', d.indexing.exactHandleLookupFindsIt ? 'a direct handle lookup resolves to this DID.' : 'the handle is not currently resolvable to this DID via exact lookup.') +
+            '</div>') +
+          sec('sec-mod', 'moderation', appliedCount
+              ? applied.map(l => '<span class="hi">' + esc(l.name) + '</span>: ' + l.labels.map(x => x.val).join(', ')).join(' · ')
+              : 'no labels from ' + (m.labelers.length - down.length) + ' moderation services' + (down.length ? ' (' + down.length + ' did not answer)' : ''),
+            moderationBadge(m), appliedCount > 0,
+            '<div class="checks">' +
+              info('labels typeahead holds', (ownLabels.length ? ownLabels.join(', ') : 'none') + ' — ' + m.storedLabelsSource + '.') +
+            '</div>' +
+            '<div class="labelers">' + m.labelers.map(labelerRow).join('') + '</div>' +
+            '<div class="card-sub">each service is asked directly (com.atproto.label.queryLabels) when this report loads; nothing here is stored. ' +
+              'a labeler only affects people who subscribe to it, except where an appview runs it.</div>') +
           sec('sec-search', 'live searches', [exact, display, prefix].filter(p => p && p.query).map(p => '<span class="hi">' + esc(p.query) + '</span> ' + (p.found ? '#' + p.position : 'not top 50')).join(' · '),
             statusBadge(exact.found ? 'good' : 'warn', exact.found ? 'exact works' : 'not found'), !exact.found,
             '<div class="queries">' +
