@@ -196,8 +196,8 @@ service image was not replaced.
 The Worker serves the homepage (`/`), `/stats`, `/docs`, `/reputation`, and
 `/llms.txt`, all from `src/pages/` on one shared theme. Dated state:
 
-- Ranking explainer (October 20, 2026): `/reputation` has a four-row summary
-  and expandable weights. Entering a handle collapses the guide; account reports
+- Ranking explainer (October 20, 2026): `/reputation` has a three-row summary
+  with small section icons and expandable weights. Entering a handle collapses the guide; account reports
   show score, visibility, and moderation, followed by expandable details.
   [Deployment verification](docs/evals/ranking-page-20261020.md). Ranking and
   the report API are unchanged.

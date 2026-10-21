@@ -37,3 +37,12 @@ claim and enrichment write on view.
 A proposed next step is to load the stored report first, fetch external sections
 on demand, and give cached external results explicit timestamps. No access or
 storage changes were included in this release.
+
+## Copy and icon follow-up
+
+Removed the PDS comparison from the ranking guide and redundant moderation
+explanations. Retained operational status and query-result diagnostics. Small
+inline SVG icons identify ranking inputs and report sections; labels remain
+visible and icons are hidden from assistive technology. No image requests or
+dependencies were added. Doodl integration is a future option: ZDS resolves
+drawing references into bundled PNG assets served by content hash.

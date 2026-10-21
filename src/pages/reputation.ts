@@ -2,6 +2,19 @@ import { FAVICON } from "../types";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT } from "./theme";
 import { LABELERS } from "../labelers";
 
+const rankingIcons = {
+  search: '<circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/>',
+  score: '<path d="M5 19V12M12 19V5M19 19V9"/>',
+  exact: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/>',
+  visibility: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+  moderation: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/>',
+  data: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 4 16 4 16 0V5M4 12c0 4 16 4 16 0"/>',
+};
+
+function rankingIcon(name: keyof typeof rankingIcons): string {
+  return `<svg class="ranking-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${rankingIcons[name]}</svg>`;
+}
+
 export function reputationPage(): string {
   const LABELER_COUNT = LABELERS.length;
   return `<!doctype html>
@@ -186,8 +199,10 @@ export function reputationPage(): string {
     .explanation { margin: 1.6rem 0; border-bottom: 1px solid var(--line); padding-bottom: 1rem; }
     .explanation > summary { font-size: 1.1rem; color: var(--bright); cursor: pointer; padding: 0.4rem 0; }
     .ranking-facts { margin: 0.7rem 0; }
-    .ranking-facts div { display: grid; grid-template-columns: 7rem 1fr; gap: 0.75rem; padding: 0.45rem 0; font-size: 0.85rem; line-height: 1.5; }
-    .ranking-facts dt { color: var(--muted); }
+    .ranking-facts div { display: grid; grid-template-columns: 8.3rem 1fr; gap: 0.75rem; padding: 0.45rem 0; font-size: 0.85rem; line-height: 1.5; }
+    .ranking-facts dt { color: var(--muted); display: flex; gap: 0.45rem; align-items: baseline; }
+    .ranking-icon { width: 16px; height: 16px; flex-shrink: 0; vertical-align: -3px; color: var(--muted); }
+    .sec .kicker .ranking-icon { margin-right: 0.45rem; }
     .ranking-facts dd { color: var(--text); }
     .weights summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; padding: 0.6rem 0; }
     .factors div { display: grid; grid-template-columns: 7rem 1fr; gap: 0.75rem; padding: 0.65rem 0; border-bottom: 1px solid var(--line); font-size: 0.8rem; line-height: 1.5; }
@@ -231,10 +246,9 @@ export function reputationPage(): string {
     <details class="explanation" id="ranking-guide" open>
       <summary>How ranking works</summary>
       <dl class="ranking-facts">
-        <div><dt>Matches</dt><dd>Handle and display-name prefixes.</dd></div>
-        <div><dt>Score</dt><dd>Followers, posts, follow ratio, account age.</dd></div>
-        <div><dt>Exact handle</dt><dd>Promoted ahead of other matches.</dd></div>
-        <div><dt>PDS</dt><dd>Filters results. No ranking boost.</dd></div>
+        <div><dt>${rankingIcon("search")}Matches</dt><dd>Handle and display-name prefixes.</dd></div>
+        <div><dt>${rankingIcon("score")}Score</dt><dd>Followers, posts, follow ratio, account age.</dd></div>
+        <div><dt>${rankingIcon("exact")}Exact handle</dt><dd>Promoted ahead of other matches.</dd></div>
       </dl>
       <details class="weights">
         <summary>Weights and limits</summary>
@@ -245,10 +259,9 @@ export function reputationPage(): string {
           <div><dt>Account age</dt><dd>−100 under 1 day; −50 under 3 days. +30 after 1 year; +60 after 3 years. Unknown: 0.</dd></div>
         </dl>
         <ul class="limits">
-          <li>Scores use stored counts and cannot fall below zero.</li>
+          <li>Scores use stored counts. Minimum score: 0.</li>
           <li>Multi-word queries require every word. Limited candidate lists can omit low-scoring matches.</li>
           <li>Hidden accounts are excluded regardless of score.</li>
-          <li>PDS data is incomplete. Hosts above 10,000 known indexed actors are excluded from filtering.</li>
         </ul>
       </details>
     </details>
@@ -456,7 +469,6 @@ export function reputationPage(): string {
           sec('sec-vis', 'visibility', hidden ? gateShort(d) : (d.indexing.shouldBeInPrefixIndex ? 'In prefix lookup' : 'Not in prefix lookup'),
             statusBadge(hidden ? 'bad' : 'good', hidden ? 'hidden' : 'can appear'), hidden,
             '<div class="checks">' +
-              info('separate from ranking', 'these checks decide whether the actor is allowed to appear — they never add to or subtract from the score.') +
               check(!m.hiddenStored, 'stored visibility', m.hiddenStored ? 'the actors row is currently marked hidden.' : 'the actors row is currently visible.') +
               check(!m.hiddenComputed, 'moderation result', gateCopy(d)) +
               check(d.indexing.shouldBeInPrefixIndex, 'prefix lookup eligibility', d.indexing.shouldBeInPrefixIndex ? 'handle is present and the actor is allowed into prefix lookup.' : 'hidden actors or actors without handles are excluded from prefix lookup.') +
@@ -470,8 +482,7 @@ export function reputationPage(): string {
               info('labels typeahead holds', (ownLabels.length ? ownLabels.join(', ') : 'none') + ' — ' + m.storedLabelsSource + '.') +
             '</div>' +
             '<div class="labelers">' + m.labelers.map(labelerRow).join('') + '</div>' +
-            '<div class="card-sub">each service is asked directly (com.atproto.label.queryLabels) when this report loads; nothing here is stored. ' +
-              'a labeler only affects people who subscribe to it, except where an appview runs it.</div>') +
+            '<div class="card-sub">Labels checked when this report loaded.</div>') +
           sec('sec-search', 'search positions', [exact, display, prefix].filter(p => p && p.query).map(p => '<span class="hi">' + esc(p.query) + '</span> ' + (p.found ? '#' + p.position : 'not top 50')).join(' · '),
             statusBadge(exact.found ? 'good' : 'warn', exact.found ? 'exact works' : 'not found'), !exact.found,
             '<div class="queries">' +
@@ -494,8 +505,9 @@ export function reputationPage(): string {
     function verdict(kind, label, value, sub) {
       return '<div class="verdict"><div class="kicker">' + esc(label) + '</div><div class="v-value"><span class="dot ' + kind + '"></span>' + esc(value) + '</div><div class="v-sub">' + esc(sub) + '</div></div>';
     }
+    const sectionIcons = ${JSON.stringify({"sec-rank": rankingIcon("score"), "sec-vis": rankingIcon("visibility"), "sec-mod": rankingIcon("moderation"), "sec-search": rankingIcon("search"), "sec-data": rankingIcon("data")})};
     function sec(kind, label, line, state, open, body) {
-      return '<details class="sec ' + kind + '"' + (open ? ' open' : '') + '><summary><span class="kicker">' + esc(label) + '</span><span class="sec-line">' + line + '</span>' +
+      return '<details class="sec ' + kind + '"' + (open ? ' open' : '') + '><summary><span class="kicker">' + (sectionIcons[kind] || '') + esc(label) + '</span><span class="sec-line">' + line + '</span>' +
         '<span class="sec-end">' + state + '<span class="sec-chev">▶</span></span></summary><div class="sec-body">' + body + '</div></details>';
     }
     function sourceCopy(src) {
