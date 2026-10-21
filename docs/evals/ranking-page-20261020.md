@@ -46,3 +46,8 @@ inline SVG icons identify ranking inputs and report sections; labels remain
 visible and icons are hidden from assistive technology. No image requests or
 dependencies were added. Doodl integration is a future option: ZDS resolves
 drawing references into bundled PNG assets served by content hash.
+
+Follow-up deployed as `479e77d2-8334-43d6-9089-95271f7d591a`; immediate rollback is
+`feb97b42-2a8c-4b6e-9a04-22d53fb472e7`. Typecheck, all 93 tests and
+authenticated smoke passed. Live mobile guide and preview report icons were
+visually verified, including light and dark themes. Evidence: `icons-deploy-smoke.log`.
