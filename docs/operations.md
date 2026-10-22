@@ -9,8 +9,9 @@ private `typeahead-search-transport` binding placed in US East. Cache hits remai
 at the public edge. [Latency evidence and rollback](evals/edge-latency-20261020.md)
 record the direct-transport rollback version and deployment order.
 
-`typeahead-search` remains synchronized for rollback. Previous compact machine
-`781e732c264678` is private and pinned to the protected old pointer. Disable scoped
+`typeahead-search` and the compact rollback machines were stopped on October 22
+(see below). Previous compact machine `781e732c264678` is pinned to the protected
+old pointer. Disable scoped
 search before routing to an incompatible backend; preserve current Worker source.
 See [the PDS runbook](plans/pds-homepage-rollout.md) for the transition and recovery
 inventory, and [release evidence](evals/pds-homepage-20261020.md) for full-corpus,
@@ -24,6 +25,47 @@ schedules before the cloud replacement passes its gates.
 `services/fly.search-compact.toml` records the serving configuration. Plain search
 deploys remain guarded in favor of the rollback-covered transition. Historical
 restart and promotion instructions below refer to the legacy layout.
+
+## Rollback machines stopped — October 22, 2026
+
+To cut cost, every non-serving search machine is stopped; `86e502fe55e4e8` is the
+only running search backend. Nothing was destroyed, and each stopped machine is
+cordoned with service autostart off, so Fly's proxy cannot wake it.
+
+| machine | app | role | state | kept |
+| --- | --- | --- | --- | --- |
+| `8d4916be311008` | `typeahead-search-compact` | PDS-capable rollback, pinned to `releases/pds-coverage-rollback-20261020/b1792484789-3d65-px05/latest.json`, image `pds-31ec142-20261020@sha256:7df51c4b…` | stopped, cordoned, autostart off | volume `vol_4qlwyx1kl6o19x6r` (60 GB) |
+| `781e732c264678` | `typeahead-search-compact` | pre-PDS compact recovery (rollback group, no services) | stopped | its volume |
+| `867e15ce4e1148` | `typeahead-search` | legacy backend; was not synchronized — every 5 min its promote failed with `UnsupportedManifestVersion` while re-downloading the current build | stopped, cordoned, autostart off | its volume and snapshots |
+
+Cordon alone does not stop the proxy from autostarting a machine: the legacy box
+was restarted by a request 10 s after it was stopped, until `--autostart=false`.
+
+Rollback to `8d4916be311008` if `86e502fe55e4e8` fails:
+
+1. If no backend is routed, flip the Worker to Bluesky's typeahead:
+   `bunx wrangler secret put EMERGENCY_PROXY_BSKY` (delete it afterwards). Do not
+   use `TURSO_FALLBACK_ON_UNREACHABLE`; it overloaded Turso on 2026-09-04. Without
+   either, the Worker answers `{"actors":[]}` uncached.
+2. `fly machine update 8d4916be311008 -a typeahead-search-compact --autostart=true --skip-start -y`
+   then `fly machine start 8d4916be311008 -a typeahead-search-compact`.
+3. Wait for readiness: the October 20 pin restart reached verified readiness 5m19s
+   after launch; median compact startup is about 205 s.
+4. Uncordon `8d4916be311008`, verify routing and public search, then cordon
+   `86e502fe55e4e8`. Never remove the only healthy routed backend.
+
+Overlay catch-up runs at about 2.5 min per hour stopped (September 2 replay of
+19 h in 47 min; today's sync pages about 60–70 actors/s), so roughly 1 h per day
+stopped. Route at readiness if needed: a stale overlay beats no results. Past
+7 days stopped, `TOMBSTONE_RETENTION_S` means deletions before the watermark
+return only with the next index promote.
+
+If the volume were also lost, the R2 pin and its objects rebuild it: verified on
+October 22, `releases/pds-candidate-31ec142/b1792484789-3d65-px05/index.db.prefix`
+(7.20 GB) and `builds/b1792484789-3d65/index.db` (16.10 GB), with the rollback
+image manifest still in `registry.fly.io`. A fresh 60 GB machine needs the
+23.3 GB download plus admission (1,181.74 s in the October 19 empty restore),
+about 25–45 min, then catch-up from the October 20 watermark.
 
 ## Cloudflare: Browser Integrity Check is OFF for the public API (`/xrpc/`)
 

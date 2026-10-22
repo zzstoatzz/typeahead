@@ -86,6 +86,12 @@ Scaler without cutting write volume first. NOT over-provisioned.
 - The hub.waow.tech auto-estimate is compute-only — the table above is the real number.
 
 ## changelog
+- **2026-10-22** — stopped every non-serving search machine (about −$40/mo compute):
+  compact rollback `8d4916be311008` (−$13.27) and recovery `781e732c264678` (−$13.27),
+  and legacy `typeahead-search` `867e15ce4e1148` (−$13.27), which was stuck in a failing
+  promote loop. Volumes, snapshots, R2 pins and images are kept; restore steps and
+  rollback timings are in `docs/operations.md` "Rollback machines stopped". Volumes
+  ($27 compact + $9 legacy) and snapshots still bill.
 - **2026-08-29** — measured again (14d Fly Prometheus + logfire) for `docs/replica-removal-plan.md`.
   Ingester right-sized 2cpu/512MB → 1cpu/256MB and its empty 10GB volume destroyed (−$4.69).
   The `typeahead-indexer` Fly app turned out to be already empty (the $16 line above was stale).
