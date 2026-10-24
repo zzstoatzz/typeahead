@@ -216,7 +216,7 @@ fn openReadPool(self: *LocalDb, path: [*:0]const u8) !void {
     applyReadPragmas(self.meta_conn.?);
     if (self.snapshot_path) |sp| {
         try attachSnapshot(self.meta_conn.?, sp);
-        self.prefix_map = try loadPrefixMap(self.allocator, self.meta_conn.?, sp);
+        self.prefix_map = try loadPrefixMap(self.allocator, self.meta_conn.?, sp, false);
     }
 }
 
@@ -251,15 +251,28 @@ pub const PreparedSnapshot = struct {
     }
 };
 
-fn loadPrefixMap(allocator: Allocator, conn: zqlite.Conn, path: []const u8) !?FlatMap {
+fn loadPrefixMap(allocator: Allocator, conn: zqlite.Conn, path: []const u8, verified: bool) !?FlatMap {
     const marker = (try conn.row("SELECT value FROM idx.index_meta WHERE key='flat_prefix_version'", .{})) orelse return null;
     defer marker.deinit();
     const digest = (try conn.row("SELECT value FROM idx.index_meta WHERE key='flat_prefix_sha256'", .{})) orelse return error.MissingFlatDigest;
     defer digest.deinit();
+    if (verified) {
+        const side = try std.fmt.allocPrint(allocator, "{s}.prefix", .{path});
+        defer allocator.free(side);
+        return try FlatMap.openVerifiedFile(allocator, side);
+    }
     return try FlatMap.open(allocator, path, digest.text(0));
 }
 
 pub fn prepareSnapshot(self: *LocalDb, snapshot: []const u8) !PreparedSnapshot {
+    return self.prepareSnapshotMode(snapshot, false);
+}
+
+pub fn prepareVerifiedSnapshot(self: *LocalDb, snapshot: []const u8) !PreparedSnapshot {
+    return self.prepareSnapshotMode(snapshot, true);
+}
+
+fn prepareSnapshotMode(self: *LocalDb, snapshot: []const u8, verified: bool) !PreparedSnapshot {
     const path = try self.allocator.dupeSentinel(u8, self.path, 0);
     defer self.allocator.free(path);
     const destination = try self.allocator.dupe(u8, snapshot);
@@ -276,7 +289,7 @@ pub fn prepareSnapshot(self: *LocalDb, snapshot: []const u8) !PreparedSnapshot {
     prepared.meta = try zqlite.open(path, zqlite.OpenFlags.ReadOnly);
     applyReadPragmas(prepared.meta.?);
     try attachSnapshot(prepared.meta.?, snapshot);
-    prepared.map = try loadPrefixMap(self.allocator, prepared.meta.?, snapshot);
+    prepared.map = try loadPrefixMap(self.allocator, prepared.meta.?, snapshot, verified);
     for (prepared.conns) |*conn| {
         conn.* = try zqlite.open(path, zqlite.OpenFlags.ReadOnly);
         applyReadPragmas(conn.*.?);

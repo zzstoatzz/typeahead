@@ -77,6 +77,12 @@ experiment did not establish a benefit and was reverted to 128 KiB before rollba
 Investigate bounded startup/validation and cold-query latency before another
 resource reduction; do not weaken integrity checks as a shortcut.
 
+The subsequent [isolated startup experiment](evals/startup-buffer-20261024.md)
+found no timing benefit from larger validation reads on a 100,000-actor subset.
+Its metadata-only prototype became ready in 18 ms on the same verified fixture.
+That prototype is restricted to the evaluation server and still needs an
+admission/integrity protocol before production use. Production remains unchanged.
+
 
 ## Search rollback resource retirement — October 24, 2026
 

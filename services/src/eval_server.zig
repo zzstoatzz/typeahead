@@ -10,7 +10,13 @@ pub fn main() !void {
     var local = LocalDb.init(std.heap.page_allocator);
     defer local.deinit();
     try local.open();
-    try local.swapSnapshot(snapshot);
+    if (std.c.getenv("TYPEAHEAD_EVAL_VERIFIED_SNAPSHOT") != null) {
+        const app = std.mem.span(std.c.getenv("FLY_APP_NAME") orelse return error.MissingEvaluationApp);
+        if (!std.mem.startsWith(u8, app, "typeahead-startup-")) return error.InvalidEvaluationApp;
+        var prepared = try local.prepareVerifiedSnapshot(snapshot);
+        defer prepared.deinit();
+        local.activateSnapshot(&prepared);
+    } else try local.swapSnapshot(snapshot);
     if (try local.attachedMetaText(std.heap.page_allocator, "pds_scope_policy")) |policy| {
         defer std.heap.page_allocator.free(policy);
         try local.exec("INSERT OR REPLACE INTO sync_meta(key,value) VALUES('pds_scope_policy',?)", .{policy});

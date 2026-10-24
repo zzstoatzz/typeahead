@@ -1,0 +1,7 @@
+.git
+**/.zig-cache
+**/zig-out
+node_modules
+docs
+.env
+.dev.vars

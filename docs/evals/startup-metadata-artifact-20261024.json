@@ -1,0 +1,9 @@
+{
+  "binary_sha256": "e8289f4bedb96909cfbdc659c4d1c82300e311d49014d7a1bbfb588b6437f9bc",
+  "binary_bytes": 12343192,
+  "target": "x86_64-linux-gnu",
+  "optimize": "ReleaseSafe",
+  "fixture_verified_before_run": true,
+  "candidate_mode": "TYPEAHEAD_EVAL_VERIFIED_SNAPSHOT=1",
+  "production_unchanged": true
+}

@@ -1,0 +1,2247 @@
+{
+  "app": "typeahead-startup-20261024",
+  "snapshot": "/data/small-eval/snapshot/index.db",
+  "queries": [
+    "cuu",
+    "cuumpster.bsky.social",
+    "haz",
+    "hazardzalgo.bsky.social",
+    "dus",
+    "dust22306.bbi.to",
+    "gki",
+    "gkiffeur.bsky.social",
+    "sle",
+    "sleppane.bsky.social",
+    "fer",
+    "fernando_iure.bsky.social",
+    "rom",
+    "romrompurin29.bsky.social",
+    "m-w",
+    "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+    "ant",
+    "antwon_sapiente.bsky.social",
+    "vis",
+    "vishvk.bsky.social",
+    "dev",
+    "devin_quasi.bsky.social",
+    "aph",
+    "aphros-vrc.bsky.social",
+    "nak",
+    "nakifox.bsky.social",
+    "music",
+    "nate",
+    "alice",
+    "\u6771\u4eac"
+  ],
+  "runs": [
+    {
+      "variant": "baseline",
+      "round": 0,
+      "queries": [
+        {
+          "phase": "first_pass",
+          "q": "cuu",
+          "status": 200,
+          "ms": 0.592,
+          "sha256": "956d3959384c1a57f74d25fa9642a7c37930fcb0e59954a427b3c1a50bf75168",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "cuumpster.bsky.social",
+          "status": 200,
+          "ms": 0.45,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "haz",
+          "status": 200,
+          "ms": 0.568,
+          "sha256": "3d97f8012f27f63967a57ce5b12b8eda823c799bb6b20c99f749a5bbd9ded0d4",
+          "actors": 11
+        },
+        {
+          "phase": "first_pass",
+          "q": "hazardzalgo.bsky.social",
+          "status": 200,
+          "ms": 0.411,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "dus",
+          "status": 200,
+          "ms": 0.557,
+          "sha256": "f31929f7a6f7ee21649ab581f10a1d285dff0670035ec87f08749f5aad09ec9a",
+          "actors": 8
+        },
+        {
+          "phase": "first_pass",
+          "q": "dust22306.bbi.to",
+          "status": 200,
+          "ms": 0.441,
+          "sha256": "83c63c225fba850538f968395af02f02516fdc29f0f5a29ad81d60f0db05d4d9",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "gki",
+          "status": 200,
+          "ms": 0.439,
+          "sha256": "424e65c906d8e72639b1bb6577ea3253e6a35857c5ccd66ae9566b8b70d57248",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "gkiffeur.bsky.social",
+          "status": 200,
+          "ms": 0.356,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "sle",
+          "status": 200,
+          "ms": 0.521,
+          "sha256": "a3c2b17c884ef262afb8781f6b1e4ab182166e8797bb1d91cbd67ac06bd680ab",
+          "actors": 12
+        },
+        {
+          "phase": "first_pass",
+          "q": "sleppane.bsky.social",
+          "status": 200,
+          "ms": 0.348,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "fer",
+          "status": 200,
+          "ms": 0.506,
+          "sha256": "d2fbf73e8de8102ba4be31ed4d1b4f914cbb5647fb6180b0780e139766410143",
+          "actors": 17
+        },
+        {
+          "phase": "first_pass",
+          "q": "fernando_iure.bsky.social",
+          "status": 200,
+          "ms": 0.351,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "rom",
+          "status": 200,
+          "ms": 0.464,
+          "sha256": "241744abd9f91708c6ede19a47363165a3ba8e57150c68d01b72f431784aec61",
+          "actors": 8
+        },
+        {
+          "phase": "first_pass",
+          "q": "romrompurin29.bsky.social",
+          "status": 200,
+          "ms": 0.357,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "m-w",
+          "status": 200,
+          "ms": 0.727,
+          "sha256": "158d48ed3da78fd7563ca1879363989bd99ac81acf9f0194c9ae421552f17f16",
+          "actors": 50
+        },
+        {
+          "phase": "first_pass",
+          "q": "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+          "status": 200,
+          "ms": 0.349,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "ant",
+          "status": 200,
+          "ms": 0.644,
+          "sha256": "a60ed13202fce6c87e02fabf4a0b3c4794225429f60ea44d971299425053e157",
+          "actors": 31
+        },
+        {
+          "phase": "first_pass",
+          "q": "antwon_sapiente.bsky.social",
+          "status": 200,
+          "ms": 0.336,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "vis",
+          "status": 200,
+          "ms": 0.477,
+          "sha256": "941e03ebda93b67ef9f86d8b29812880088864b4642771de9146bab4c4e66d64",
+          "actors": 9
+        },
+        {
+          "phase": "first_pass",
+          "q": "vishvk.bsky.social",
+          "status": 200,
+          "ms": 0.329,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "dev",
+          "status": 200,
+          "ms": 0.508,
+          "sha256": "0ed1279cf355750b78941540094de2e3eaaecec2b03ff14ce0017b8e4f2185cc",
+          "actors": 18
+        },
+        {
+          "phase": "first_pass",
+          "q": "devin_quasi.bsky.social",
+          "status": 200,
+          "ms": 0.341,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "aph",
+          "status": 200,
+          "ms": 0.398,
+          "sha256": "a4b57417f199904eb33fa6650618b6d0420a58be8c2ac9014c629875c7e88cbb",
+          "actors": 2
+        },
+        {
+          "phase": "first_pass",
+          "q": "aphros-vrc.bsky.social",
+          "status": 200,
+          "ms": 0.38,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "nak",
+          "status": 200,
+          "ms": 0.464,
+          "sha256": "751cab4e4f26a9311cacbe7197c92ed785ba3ef0ef7d72bc74ab8c669bdf8361",
+          "actors": 6
+        },
+        {
+          "phase": "first_pass",
+          "q": "nakifox.bsky.social",
+          "status": 200,
+          "ms": 0.494,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "music",
+          "status": 200,
+          "ms": 0.438,
+          "sha256": "d55c2234397563a07833729ded013ce2668640b95b309224ab3b6eb342a17064",
+          "actors": 4
+        },
+        {
+          "phase": "first_pass",
+          "q": "nate",
+          "status": 200,
+          "ms": 0.399,
+          "sha256": "dfabb2402e15ac5f0604a6dfe79ec9fd5ac25335ffd10147cc60bf4cb9234e5c",
+          "actors": 5
+        },
+        {
+          "phase": "first_pass",
+          "q": "alice",
+          "status": 200,
+          "ms": 0.386,
+          "sha256": "52dfd0f9d39453e34f35f8dbf2d3cef616a630fd7fede1a081153211d9407ff0",
+          "actors": 4
+        },
+        {
+          "phase": "first_pass",
+          "q": "\u6771\u4eac",
+          "status": 200,
+          "ms": 0.351,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "cuu",
+          "status": 200,
+          "ms": 0.692,
+          "sha256": "956d3959384c1a57f74d25fa9642a7c37930fcb0e59954a427b3c1a50bf75168",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "cuumpster.bsky.social",
+          "status": 200,
+          "ms": 0.684,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "haz",
+          "status": 200,
+          "ms": 0.816,
+          "sha256": "3d97f8012f27f63967a57ce5b12b8eda823c799bb6b20c99f749a5bbd9ded0d4",
+          "actors": 11
+        },
+        {
+          "phase": "warm",
+          "q": "hazardzalgo.bsky.social",
+          "status": 200,
+          "ms": 0.403,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "dus",
+          "status": 200,
+          "ms": 0.467,
+          "sha256": "f31929f7a6f7ee21649ab581f10a1d285dff0670035ec87f08749f5aad09ec9a",
+          "actors": 8
+        },
+        {
+          "phase": "warm",
+          "q": "dust22306.bbi.to",
+          "status": 200,
+          "ms": 0.423,
+          "sha256": "83c63c225fba850538f968395af02f02516fdc29f0f5a29ad81d60f0db05d4d9",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "gki",
+          "status": 200,
+          "ms": 0.418,
+          "sha256": "424e65c906d8e72639b1bb6577ea3253e6a35857c5ccd66ae9566b8b70d57248",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "gkiffeur.bsky.social",
+          "status": 200,
+          "ms": 0.552,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "sle",
+          "status": 200,
+          "ms": 0.522,
+          "sha256": "a3c2b17c884ef262afb8781f6b1e4ab182166e8797bb1d91cbd67ac06bd680ab",
+          "actors": 12
+        },
+        {
+          "phase": "warm",
+          "q": "sleppane.bsky.social",
+          "status": 200,
+          "ms": 0.451,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "fer",
+          "status": 200,
+          "ms": 0.524,
+          "sha256": "d2fbf73e8de8102ba4be31ed4d1b4f914cbb5647fb6180b0780e139766410143",
+          "actors": 17
+        },
+        {
+          "phase": "warm",
+          "q": "fernando_iure.bsky.social",
+          "status": 200,
+          "ms": 0.362,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "rom",
+          "status": 200,
+          "ms": 0.439,
+          "sha256": "241744abd9f91708c6ede19a47363165a3ba8e57150c68d01b72f431784aec61",
+          "actors": 8
+        },
+        {
+          "phase": "warm",
+          "q": "romrompurin29.bsky.social",
+          "status": 200,
+          "ms": 0.362,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "m-w",
+          "status": 200,
+          "ms": 0.691,
+          "sha256": "158d48ed3da78fd7563ca1879363989bd99ac81acf9f0194c9ae421552f17f16",
+          "actors": 50
+        },
+        {
+          "phase": "warm",
+          "q": "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+          "status": 200,
+          "ms": 0.366,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "ant",
+          "status": 200,
+          "ms": 0.718,
+          "sha256": "a60ed13202fce6c87e02fabf4a0b3c4794225429f60ea44d971299425053e157",
+          "actors": 31
+        },
+        {
+          "phase": "warm",
+          "q": "antwon_sapiente.bsky.social",
+          "status": 200,
+          "ms": 0.357,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "vis",
+          "status": 200,
+          "ms": 0.498,
+          "sha256": "941e03ebda93b67ef9f86d8b29812880088864b4642771de9146bab4c4e66d64",
+          "actors": 9
+        },
+        {
+          "phase": "warm",
+          "q": "vishvk.bsky.social",
+          "status": 200,
+          "ms": 0.342,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "dev",
+          "status": 200,
+          "ms": 0.532,
+          "sha256": "0ed1279cf355750b78941540094de2e3eaaecec2b03ff14ce0017b8e4f2185cc",
+          "actors": 18
+        },
+        {
+          "phase": "warm",
+          "q": "devin_quasi.bsky.social",
+          "status": 200,
+          "ms": 0.363,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "aph",
+          "status": 200,
+          "ms": 0.431,
+          "sha256": "a4b57417f199904eb33fa6650618b6d0420a58be8c2ac9014c629875c7e88cbb",
+          "actors": 2
+        },
+        {
+          "phase": "warm",
+          "q": "aphros-vrc.bsky.social",
+          "status": 200,
+          "ms": 0.412,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "nak",
+          "status": 200,
+          "ms": 0.506,
+          "sha256": "751cab4e4f26a9311cacbe7197c92ed785ba3ef0ef7d72bc74ab8c669bdf8361",
+          "actors": 6
+        },
+        {
+          "phase": "warm",
+          "q": "nakifox.bsky.social",
+          "status": 200,
+          "ms": 0.469,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "music",
+          "status": 200,
+          "ms": 0.437,
+          "sha256": "d55c2234397563a07833729ded013ce2668640b95b309224ab3b6eb342a17064",
+          "actors": 4
+        },
+        {
+          "phase": "warm",
+          "q": "nate",
+          "status": 200,
+          "ms": 0.449,
+          "sha256": "dfabb2402e15ac5f0604a6dfe79ec9fd5ac25335ffd10147cc60bf4cb9234e5c",
+          "actors": 5
+        },
+        {
+          "phase": "warm",
+          "q": "alice",
+          "status": 200,
+          "ms": 0.408,
+          "sha256": "52dfd0f9d39453e34f35f8dbf2d3cef616a630fd7fede1a081153211d9407ff0",
+          "actors": 4
+        },
+        {
+          "phase": "warm",
+          "q": "\u6771\u4eac",
+          "status": 200,
+          "ms": 0.366,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        }
+      ],
+      "startup_seconds": 0.047,
+      "startup_process": {
+        "rchar": 7946767,
+        "wchar": 62533,
+        "syscr": 1039,
+        "syscw": 46,
+        "read_bytes": 7802880,
+        "write_bytes": 114688,
+        "cancelled_write_bytes": 0,
+        "VmHWM": 16637952,
+        "VmRSS": 16637952
+      },
+      "index": {
+        "promote_enabled": true,
+        "attached": true,
+        "snapshot_path": "/data/small-eval/snapshot/index.db",
+        "build_id": "original",
+        "snapshot_format": "FLATPX05",
+        "source_watermark": 0,
+        "actor_count": 20000,
+        "prefix_count": 165432,
+        "score_quantiles": null,
+        "overlay_actor_rows": 0,
+        "overlay_compact": {
+          "deleted": 0,
+          "ms": 0,
+          "complete": false,
+          "at": 0
+        }
+      },
+      "scoped": [
+        {
+          "status": 503,
+          "ms": 0.428,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "body": {
+            "error": "PdsScopeUnavailable"
+          }
+        },
+        {
+          "status": 503,
+          "ms": 0.362,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "body": {
+            "error": "PdsScopeUnavailable"
+          }
+        }
+      ],
+      "final_process": {
+        "rchar": 11338255,
+        "wchar": 62533,
+        "syscr": 1465,
+        "syscw": 46,
+        "read_bytes": 7802880,
+        "write_bytes": 114688,
+        "cancelled_write_bytes": 0,
+        "VmHWM": 16756736,
+        "VmRSS": 16752640
+      },
+      "health": {
+        "status": "ok",
+        "ready": true,
+        "actors": 20000,
+        "rss_kb": 16360,
+        "sync_lag_s": -1
+      }
+    },
+    {
+      "variant": "candidate",
+      "round": 1,
+      "queries": [
+        {
+          "phase": "first_pass",
+          "q": "cuu",
+          "status": 200,
+          "ms": 0.709,
+          "sha256": "956d3959384c1a57f74d25fa9642a7c37930fcb0e59954a427b3c1a50bf75168",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "cuumpster.bsky.social",
+          "status": 200,
+          "ms": 0.425,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "haz",
+          "status": 200,
+          "ms": 0.734,
+          "sha256": "3d97f8012f27f63967a57ce5b12b8eda823c799bb6b20c99f749a5bbd9ded0d4",
+          "actors": 11
+        },
+        {
+          "phase": "first_pass",
+          "q": "hazardzalgo.bsky.social",
+          "status": 200,
+          "ms": 0.386,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "dus",
+          "status": 200,
+          "ms": 0.505,
+          "sha256": "f31929f7a6f7ee21649ab581f10a1d285dff0670035ec87f08749f5aad09ec9a",
+          "actors": 8
+        },
+        {
+          "phase": "first_pass",
+          "q": "dust22306.bbi.to",
+          "status": 200,
+          "ms": 0.372,
+          "sha256": "83c63c225fba850538f968395af02f02516fdc29f0f5a29ad81d60f0db05d4d9",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "gki",
+          "status": 200,
+          "ms": 0.399,
+          "sha256": "424e65c906d8e72639b1bb6577ea3253e6a35857c5ccd66ae9566b8b70d57248",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "gkiffeur.bsky.social",
+          "status": 200,
+          "ms": 0.392,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "sle",
+          "status": 200,
+          "ms": 0.514,
+          "sha256": "a3c2b17c884ef262afb8781f6b1e4ab182166e8797bb1d91cbd67ac06bd680ab",
+          "actors": 12
+        },
+        {
+          "phase": "first_pass",
+          "q": "sleppane.bsky.social",
+          "status": 200,
+          "ms": 0.36,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "fer",
+          "status": 200,
+          "ms": 0.527,
+          "sha256": "d2fbf73e8de8102ba4be31ed4d1b4f914cbb5647fb6180b0780e139766410143",
+          "actors": 17
+        },
+        {
+          "phase": "first_pass",
+          "q": "fernando_iure.bsky.social",
+          "status": 200,
+          "ms": 0.339,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "rom",
+          "status": 200,
+          "ms": 0.448,
+          "sha256": "241744abd9f91708c6ede19a47363165a3ba8e57150c68d01b72f431784aec61",
+          "actors": 8
+        },
+        {
+          "phase": "first_pass",
+          "q": "romrompurin29.bsky.social",
+          "status": 200,
+          "ms": 0.34,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "m-w",
+          "status": 200,
+          "ms": 0.747,
+          "sha256": "158d48ed3da78fd7563ca1879363989bd99ac81acf9f0194c9ae421552f17f16",
+          "actors": 50
+        },
+        {
+          "phase": "first_pass",
+          "q": "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+          "status": 200,
+          "ms": 0.379,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "ant",
+          "status": 200,
+          "ms": 0.618,
+          "sha256": "a60ed13202fce6c87e02fabf4a0b3c4794225429f60ea44d971299425053e157",
+          "actors": 31
+        },
+        {
+          "phase": "first_pass",
+          "q": "antwon_sapiente.bsky.social",
+          "status": 200,
+          "ms": 0.337,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "vis",
+          "status": 200,
+          "ms": 0.461,
+          "sha256": "941e03ebda93b67ef9f86d8b29812880088864b4642771de9146bab4c4e66d64",
+          "actors": 9
+        },
+        {
+          "phase": "first_pass",
+          "q": "vishvk.bsky.social",
+          "status": 200,
+          "ms": 0.33,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "dev",
+          "status": 200,
+          "ms": 0.506,
+          "sha256": "0ed1279cf355750b78941540094de2e3eaaecec2b03ff14ce0017b8e4f2185cc",
+          "actors": 18
+        },
+        {
+          "phase": "first_pass",
+          "q": "devin_quasi.bsky.social",
+          "status": 200,
+          "ms": 0.332,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "aph",
+          "status": 200,
+          "ms": 0.366,
+          "sha256": "a4b57417f199904eb33fa6650618b6d0420a58be8c2ac9014c629875c7e88cbb",
+          "actors": 2
+        },
+        {
+          "phase": "first_pass",
+          "q": "aphros-vrc.bsky.social",
+          "status": 200,
+          "ms": 0.333,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "nak",
+          "status": 200,
+          "ms": 0.482,
+          "sha256": "751cab4e4f26a9311cacbe7197c92ed785ba3ef0ef7d72bc74ab8c669bdf8361",
+          "actors": 6
+        },
+        {
+          "phase": "first_pass",
+          "q": "nakifox.bsky.social",
+          "status": 200,
+          "ms": 0.412,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "music",
+          "status": 200,
+          "ms": 0.45,
+          "sha256": "d55c2234397563a07833729ded013ce2668640b95b309224ab3b6eb342a17064",
+          "actors": 4
+        },
+        {
+          "phase": "first_pass",
+          "q": "nate",
+          "status": 200,
+          "ms": 0.551,
+          "sha256": "dfabb2402e15ac5f0604a6dfe79ec9fd5ac25335ffd10147cc60bf4cb9234e5c",
+          "actors": 5
+        },
+        {
+          "phase": "first_pass",
+          "q": "alice",
+          "status": 200,
+          "ms": 0.455,
+          "sha256": "52dfd0f9d39453e34f35f8dbf2d3cef616a630fd7fede1a081153211d9407ff0",
+          "actors": 4
+        },
+        {
+          "phase": "first_pass",
+          "q": "\u6771\u4eac",
+          "status": 200,
+          "ms": 0.347,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "cuu",
+          "status": 200,
+          "ms": 0.469,
+          "sha256": "956d3959384c1a57f74d25fa9642a7c37930fcb0e59954a427b3c1a50bf75168",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "cuumpster.bsky.social",
+          "status": 200,
+          "ms": 0.4,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "haz",
+          "status": 200,
+          "ms": 0.501,
+          "sha256": "3d97f8012f27f63967a57ce5b12b8eda823c799bb6b20c99f749a5bbd9ded0d4",
+          "actors": 11
+        },
+        {
+          "phase": "warm",
+          "q": "hazardzalgo.bsky.social",
+          "status": 200,
+          "ms": 0.433,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "dus",
+          "status": 200,
+          "ms": 0.506,
+          "sha256": "f31929f7a6f7ee21649ab581f10a1d285dff0670035ec87f08749f5aad09ec9a",
+          "actors": 8
+        },
+        {
+          "phase": "warm",
+          "q": "dust22306.bbi.to",
+          "status": 200,
+          "ms": 0.453,
+          "sha256": "83c63c225fba850538f968395af02f02516fdc29f0f5a29ad81d60f0db05d4d9",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "gki",
+          "status": 200,
+          "ms": 0.34,
+          "sha256": "424e65c906d8e72639b1bb6577ea3253e6a35857c5ccd66ae9566b8b70d57248",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "gkiffeur.bsky.social",
+          "status": 200,
+          "ms": 0.319,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "sle",
+          "status": 200,
+          "ms": 0.448,
+          "sha256": "a3c2b17c884ef262afb8781f6b1e4ab182166e8797bb1d91cbd67ac06bd680ab",
+          "actors": 12
+        },
+        {
+          "phase": "warm",
+          "q": "sleppane.bsky.social",
+          "status": 200,
+          "ms": 0.36,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "fer",
+          "status": 200,
+          "ms": 0.613,
+          "sha256": "d2fbf73e8de8102ba4be31ed4d1b4f914cbb5647fb6180b0780e139766410143",
+          "actors": 17
+        },
+        {
+          "phase": "warm",
+          "q": "fernando_iure.bsky.social",
+          "status": 200,
+          "ms": 0.406,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "rom",
+          "status": 200,
+          "ms": 0.516,
+          "sha256": "241744abd9f91708c6ede19a47363165a3ba8e57150c68d01b72f431784aec61",
+          "actors": 8
+        },
+        {
+          "phase": "warm",
+          "q": "romrompurin29.bsky.social",
+          "status": 200,
+          "ms": 0.435,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "m-w",
+          "status": 200,
+          "ms": 0.73,
+          "sha256": "158d48ed3da78fd7563ca1879363989bd99ac81acf9f0194c9ae421552f17f16",
+          "actors": 50
+        },
+        {
+          "phase": "warm",
+          "q": "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+          "status": 200,
+          "ms": 0.424,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "ant",
+          "status": 200,
+          "ms": 0.677,
+          "sha256": "a60ed13202fce6c87e02fabf4a0b3c4794225429f60ea44d971299425053e157",
+          "actors": 31
+        },
+        {
+          "phase": "warm",
+          "q": "antwon_sapiente.bsky.social",
+          "status": 200,
+          "ms": 0.385,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "vis",
+          "status": 200,
+          "ms": 0.514,
+          "sha256": "941e03ebda93b67ef9f86d8b29812880088864b4642771de9146bab4c4e66d64",
+          "actors": 9
+        },
+        {
+          "phase": "warm",
+          "q": "vishvk.bsky.social",
+          "status": 200,
+          "ms": 0.384,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "dev",
+          "status": 200,
+          "ms": 0.652,
+          "sha256": "0ed1279cf355750b78941540094de2e3eaaecec2b03ff14ce0017b8e4f2185cc",
+          "actors": 18
+        },
+        {
+          "phase": "warm",
+          "q": "devin_quasi.bsky.social",
+          "status": 200,
+          "ms": 0.398,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "aph",
+          "status": 200,
+          "ms": 0.483,
+          "sha256": "a4b57417f199904eb33fa6650618b6d0420a58be8c2ac9014c629875c7e88cbb",
+          "actors": 2
+        },
+        {
+          "phase": "warm",
+          "q": "aphros-vrc.bsky.social",
+          "status": 200,
+          "ms": 0.382,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "nak",
+          "status": 200,
+          "ms": 0.486,
+          "sha256": "751cab4e4f26a9311cacbe7197c92ed785ba3ef0ef7d72bc74ab8c669bdf8361",
+          "actors": 6
+        },
+        {
+          "phase": "warm",
+          "q": "nakifox.bsky.social",
+          "status": 200,
+          "ms": 0.381,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "music",
+          "status": 200,
+          "ms": 0.474,
+          "sha256": "d55c2234397563a07833729ded013ce2668640b95b309224ab3b6eb342a17064",
+          "actors": 4
+        },
+        {
+          "phase": "warm",
+          "q": "nate",
+          "status": 200,
+          "ms": 0.463,
+          "sha256": "dfabb2402e15ac5f0604a6dfe79ec9fd5ac25335ffd10147cc60bf4cb9234e5c",
+          "actors": 5
+        },
+        {
+          "phase": "warm",
+          "q": "alice",
+          "status": 200,
+          "ms": 0.545,
+          "sha256": "52dfd0f9d39453e34f35f8dbf2d3cef616a630fd7fede1a081153211d9407ff0",
+          "actors": 4
+        },
+        {
+          "phase": "warm",
+          "q": "\u6771\u4eac",
+          "status": 200,
+          "ms": 0.392,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        }
+      ],
+      "startup_seconds": 0.05,
+      "startup_process": {
+        "rchar": 7946767,
+        "wchar": 62533,
+        "syscr": 102,
+        "syscw": 46,
+        "read_bytes": 7802880,
+        "write_bytes": 114688,
+        "cancelled_write_bytes": 0,
+        "VmHWM": 16515072,
+        "VmRSS": 16515072
+      },
+      "index": {
+        "promote_enabled": true,
+        "attached": true,
+        "snapshot_path": "/data/small-eval/snapshot/index.db",
+        "build_id": "original",
+        "snapshot_format": "FLATPX05",
+        "source_watermark": 0,
+        "actor_count": 20000,
+        "prefix_count": 165432,
+        "score_quantiles": null,
+        "overlay_actor_rows": 0,
+        "overlay_compact": {
+          "deleted": 0,
+          "ms": 0,
+          "complete": false,
+          "at": 0
+        }
+      },
+      "scoped": [
+        {
+          "status": 503,
+          "ms": 0.441,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "body": {
+            "error": "PdsScopeUnavailable"
+          }
+        },
+        {
+          "status": 503,
+          "ms": 0.341,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "body": {
+            "error": "PdsScopeUnavailable"
+          }
+        }
+      ],
+      "final_process": {
+        "rchar": 11338255,
+        "wchar": 62533,
+        "syscr": 528,
+        "syscw": 46,
+        "read_bytes": 7802880,
+        "write_bytes": 114688,
+        "cancelled_write_bytes": 0,
+        "VmHWM": 16629760,
+        "VmRSS": 16629760
+      },
+      "health": {
+        "status": "ok",
+        "ready": true,
+        "actors": 20000,
+        "rss_kb": 16240,
+        "sync_lag_s": -1
+      }
+    },
+    {
+      "variant": "candidate",
+      "round": 2,
+      "queries": [
+        {
+          "phase": "first_pass",
+          "q": "cuu",
+          "status": 200,
+          "ms": 0.507,
+          "sha256": "956d3959384c1a57f74d25fa9642a7c37930fcb0e59954a427b3c1a50bf75168",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "cuumpster.bsky.social",
+          "status": 200,
+          "ms": 0.341,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "haz",
+          "status": 200,
+          "ms": 0.523,
+          "sha256": "3d97f8012f27f63967a57ce5b12b8eda823c799bb6b20c99f749a5bbd9ded0d4",
+          "actors": 11
+        },
+        {
+          "phase": "first_pass",
+          "q": "hazardzalgo.bsky.social",
+          "status": 200,
+          "ms": 0.324,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "dus",
+          "status": 200,
+          "ms": 0.464,
+          "sha256": "f31929f7a6f7ee21649ab581f10a1d285dff0670035ec87f08749f5aad09ec9a",
+          "actors": 8
+        },
+        {
+          "phase": "first_pass",
+          "q": "dust22306.bbi.to",
+          "status": 200,
+          "ms": 0.453,
+          "sha256": "83c63c225fba850538f968395af02f02516fdc29f0f5a29ad81d60f0db05d4d9",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "gki",
+          "status": 200,
+          "ms": 0.411,
+          "sha256": "424e65c906d8e72639b1bb6577ea3253e6a35857c5ccd66ae9566b8b70d57248",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "gkiffeur.bsky.social",
+          "status": 200,
+          "ms": 0.323,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "sle",
+          "status": 200,
+          "ms": 0.462,
+          "sha256": "a3c2b17c884ef262afb8781f6b1e4ab182166e8797bb1d91cbd67ac06bd680ab",
+          "actors": 12
+        },
+        {
+          "phase": "first_pass",
+          "q": "sleppane.bsky.social",
+          "status": 200,
+          "ms": 0.322,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "fer",
+          "status": 200,
+          "ms": 0.488,
+          "sha256": "d2fbf73e8de8102ba4be31ed4d1b4f914cbb5647fb6180b0780e139766410143",
+          "actors": 17
+        },
+        {
+          "phase": "first_pass",
+          "q": "fernando_iure.bsky.social",
+          "status": 200,
+          "ms": 0.377,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "rom",
+          "status": 200,
+          "ms": 0.425,
+          "sha256": "241744abd9f91708c6ede19a47363165a3ba8e57150c68d01b72f431784aec61",
+          "actors": 8
+        },
+        {
+          "phase": "first_pass",
+          "q": "romrompurin29.bsky.social",
+          "status": 200,
+          "ms": 0.325,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "m-w",
+          "status": 200,
+          "ms": 0.622,
+          "sha256": "158d48ed3da78fd7563ca1879363989bd99ac81acf9f0194c9ae421552f17f16",
+          "actors": 50
+        },
+        {
+          "phase": "first_pass",
+          "q": "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+          "status": 200,
+          "ms": 0.358,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "ant",
+          "status": 200,
+          "ms": 0.559,
+          "sha256": "a60ed13202fce6c87e02fabf4a0b3c4794225429f60ea44d971299425053e157",
+          "actors": 31
+        },
+        {
+          "phase": "first_pass",
+          "q": "antwon_sapiente.bsky.social",
+          "status": 200,
+          "ms": 0.344,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "vis",
+          "status": 200,
+          "ms": 0.411,
+          "sha256": "941e03ebda93b67ef9f86d8b29812880088864b4642771de9146bab4c4e66d64",
+          "actors": 9
+        },
+        {
+          "phase": "first_pass",
+          "q": "vishvk.bsky.social",
+          "status": 200,
+          "ms": 0.356,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "dev",
+          "status": 200,
+          "ms": 0.475,
+          "sha256": "0ed1279cf355750b78941540094de2e3eaaecec2b03ff14ce0017b8e4f2185cc",
+          "actors": 18
+        },
+        {
+          "phase": "first_pass",
+          "q": "devin_quasi.bsky.social",
+          "status": 200,
+          "ms": 0.328,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "aph",
+          "status": 200,
+          "ms": 0.409,
+          "sha256": "a4b57417f199904eb33fa6650618b6d0420a58be8c2ac9014c629875c7e88cbb",
+          "actors": 2
+        },
+        {
+          "phase": "first_pass",
+          "q": "aphros-vrc.bsky.social",
+          "status": 200,
+          "ms": 0.315,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "nak",
+          "status": 200,
+          "ms": 0.473,
+          "sha256": "751cab4e4f26a9311cacbe7197c92ed785ba3ef0ef7d72bc74ab8c669bdf8361",
+          "actors": 6
+        },
+        {
+          "phase": "first_pass",
+          "q": "nakifox.bsky.social",
+          "status": 200,
+          "ms": 0.385,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "music",
+          "status": 200,
+          "ms": 0.509,
+          "sha256": "d55c2234397563a07833729ded013ce2668640b95b309224ab3b6eb342a17064",
+          "actors": 4
+        },
+        {
+          "phase": "first_pass",
+          "q": "nate",
+          "status": 200,
+          "ms": 0.477,
+          "sha256": "dfabb2402e15ac5f0604a6dfe79ec9fd5ac25335ffd10147cc60bf4cb9234e5c",
+          "actors": 5
+        },
+        {
+          "phase": "first_pass",
+          "q": "alice",
+          "status": 200,
+          "ms": 0.494,
+          "sha256": "52dfd0f9d39453e34f35f8dbf2d3cef616a630fd7fede1a081153211d9407ff0",
+          "actors": 4
+        },
+        {
+          "phase": "first_pass",
+          "q": "\u6771\u4eac",
+          "status": 200,
+          "ms": 0.369,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "cuu",
+          "status": 200,
+          "ms": 0.473,
+          "sha256": "956d3959384c1a57f74d25fa9642a7c37930fcb0e59954a427b3c1a50bf75168",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "cuumpster.bsky.social",
+          "status": 200,
+          "ms": 0.39,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "haz",
+          "status": 200,
+          "ms": 0.546,
+          "sha256": "3d97f8012f27f63967a57ce5b12b8eda823c799bb6b20c99f749a5bbd9ded0d4",
+          "actors": 11
+        },
+        {
+          "phase": "warm",
+          "q": "hazardzalgo.bsky.social",
+          "status": 200,
+          "ms": 0.388,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "dus",
+          "status": 200,
+          "ms": 0.53,
+          "sha256": "f31929f7a6f7ee21649ab581f10a1d285dff0670035ec87f08749f5aad09ec9a",
+          "actors": 8
+        },
+        {
+          "phase": "warm",
+          "q": "dust22306.bbi.to",
+          "status": 200,
+          "ms": 0.437,
+          "sha256": "83c63c225fba850538f968395af02f02516fdc29f0f5a29ad81d60f0db05d4d9",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "gki",
+          "status": 200,
+          "ms": 0.42,
+          "sha256": "424e65c906d8e72639b1bb6577ea3253e6a35857c5ccd66ae9566b8b70d57248",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "gkiffeur.bsky.social",
+          "status": 200,
+          "ms": 0.378,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "sle",
+          "status": 200,
+          "ms": 0.551,
+          "sha256": "a3c2b17c884ef262afb8781f6b1e4ab182166e8797bb1d91cbd67ac06bd680ab",
+          "actors": 12
+        },
+        {
+          "phase": "warm",
+          "q": "sleppane.bsky.social",
+          "status": 200,
+          "ms": 0.387,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "fer",
+          "status": 200,
+          "ms": 0.578,
+          "sha256": "d2fbf73e8de8102ba4be31ed4d1b4f914cbb5647fb6180b0780e139766410143",
+          "actors": 17
+        },
+        {
+          "phase": "warm",
+          "q": "fernando_iure.bsky.social",
+          "status": 200,
+          "ms": 0.388,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "rom",
+          "status": 200,
+          "ms": 0.599,
+          "sha256": "241744abd9f91708c6ede19a47363165a3ba8e57150c68d01b72f431784aec61",
+          "actors": 8
+        },
+        {
+          "phase": "warm",
+          "q": "romrompurin29.bsky.social",
+          "status": 200,
+          "ms": 0.383,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "m-w",
+          "status": 200,
+          "ms": 0.736,
+          "sha256": "158d48ed3da78fd7563ca1879363989bd99ac81acf9f0194c9ae421552f17f16",
+          "actors": 50
+        },
+        {
+          "phase": "warm",
+          "q": "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+          "status": 200,
+          "ms": 0.4,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "ant",
+          "status": 200,
+          "ms": 0.686,
+          "sha256": "a60ed13202fce6c87e02fabf4a0b3c4794225429f60ea44d971299425053e157",
+          "actors": 31
+        },
+        {
+          "phase": "warm",
+          "q": "antwon_sapiente.bsky.social",
+          "status": 200,
+          "ms": 0.434,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "vis",
+          "status": 200,
+          "ms": 0.51,
+          "sha256": "941e03ebda93b67ef9f86d8b29812880088864b4642771de9146bab4c4e66d64",
+          "actors": 9
+        },
+        {
+          "phase": "warm",
+          "q": "vishvk.bsky.social",
+          "status": 200,
+          "ms": 0.441,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "dev",
+          "status": 200,
+          "ms": 0.604,
+          "sha256": "0ed1279cf355750b78941540094de2e3eaaecec2b03ff14ce0017b8e4f2185cc",
+          "actors": 18
+        },
+        {
+          "phase": "warm",
+          "q": "devin_quasi.bsky.social",
+          "status": 200,
+          "ms": 0.402,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "aph",
+          "status": 200,
+          "ms": 0.484,
+          "sha256": "a4b57417f199904eb33fa6650618b6d0420a58be8c2ac9014c629875c7e88cbb",
+          "actors": 2
+        },
+        {
+          "phase": "warm",
+          "q": "aphros-vrc.bsky.social",
+          "status": 200,
+          "ms": 0.467,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "nak",
+          "status": 200,
+          "ms": 0.536,
+          "sha256": "751cab4e4f26a9311cacbe7197c92ed785ba3ef0ef7d72bc74ab8c669bdf8361",
+          "actors": 6
+        },
+        {
+          "phase": "warm",
+          "q": "nakifox.bsky.social",
+          "status": 200,
+          "ms": 0.459,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "music",
+          "status": 200,
+          "ms": 0.56,
+          "sha256": "d55c2234397563a07833729ded013ce2668640b95b309224ab3b6eb342a17064",
+          "actors": 4
+        },
+        {
+          "phase": "warm",
+          "q": "nate",
+          "status": 200,
+          "ms": 0.407,
+          "sha256": "dfabb2402e15ac5f0604a6dfe79ec9fd5ac25335ffd10147cc60bf4cb9234e5c",
+          "actors": 5
+        },
+        {
+          "phase": "warm",
+          "q": "alice",
+          "status": 200,
+          "ms": 0.467,
+          "sha256": "52dfd0f9d39453e34f35f8dbf2d3cef616a630fd7fede1a081153211d9407ff0",
+          "actors": 4
+        },
+        {
+          "phase": "warm",
+          "q": "\u6771\u4eac",
+          "status": 200,
+          "ms": 0.378,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        }
+      ],
+      "startup_seconds": 0.217,
+      "startup_process": {
+        "rchar": 7946767,
+        "wchar": 62533,
+        "syscr": 102,
+        "syscw": 46,
+        "read_bytes": 7802880,
+        "write_bytes": 114688,
+        "cancelled_write_bytes": 0,
+        "VmHWM": 16457728,
+        "VmRSS": 16457728
+      },
+      "index": {
+        "promote_enabled": true,
+        "attached": true,
+        "snapshot_path": "/data/small-eval/snapshot/index.db",
+        "build_id": "original",
+        "snapshot_format": "FLATPX05",
+        "source_watermark": 0,
+        "actor_count": 20000,
+        "prefix_count": 165432,
+        "score_quantiles": null,
+        "overlay_actor_rows": 0,
+        "overlay_compact": {
+          "deleted": 0,
+          "ms": 0,
+          "complete": false,
+          "at": 0
+        }
+      },
+      "scoped": [
+        {
+          "status": 503,
+          "ms": 0.437,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "body": {
+            "error": "PdsScopeUnavailable"
+          }
+        },
+        {
+          "status": 503,
+          "ms": 0.329,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "body": {
+            "error": "PdsScopeUnavailable"
+          }
+        }
+      ],
+      "final_process": {
+        "rchar": 11338255,
+        "wchar": 62533,
+        "syscr": 528,
+        "syscw": 46,
+        "read_bytes": 7802880,
+        "write_bytes": 114688,
+        "cancelled_write_bytes": 0,
+        "VmHWM": 16572416,
+        "VmRSS": 16572416
+      },
+      "health": {
+        "status": "ok",
+        "ready": true,
+        "actors": 20000,
+        "rss_kb": 16184,
+        "sync_lag_s": -1
+      }
+    },
+    {
+      "variant": "baseline",
+      "round": 3,
+      "queries": [
+        {
+          "phase": "first_pass",
+          "q": "cuu",
+          "status": 200,
+          "ms": 0.592,
+          "sha256": "956d3959384c1a57f74d25fa9642a7c37930fcb0e59954a427b3c1a50bf75168",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "cuumpster.bsky.social",
+          "status": 200,
+          "ms": 0.449,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "haz",
+          "status": 200,
+          "ms": 0.699,
+          "sha256": "3d97f8012f27f63967a57ce5b12b8eda823c799bb6b20c99f749a5bbd9ded0d4",
+          "actors": 11
+        },
+        {
+          "phase": "first_pass",
+          "q": "hazardzalgo.bsky.social",
+          "status": 200,
+          "ms": 0.446,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "dus",
+          "status": 200,
+          "ms": 0.54,
+          "sha256": "f31929f7a6f7ee21649ab581f10a1d285dff0670035ec87f08749f5aad09ec9a",
+          "actors": 8
+        },
+        {
+          "phase": "first_pass",
+          "q": "dust22306.bbi.to",
+          "status": 200,
+          "ms": 0.62,
+          "sha256": "83c63c225fba850538f968395af02f02516fdc29f0f5a29ad81d60f0db05d4d9",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "gki",
+          "status": 200,
+          "ms": 0.501,
+          "sha256": "424e65c906d8e72639b1bb6577ea3253e6a35857c5ccd66ae9566b8b70d57248",
+          "actors": 1
+        },
+        {
+          "phase": "first_pass",
+          "q": "gkiffeur.bsky.social",
+          "status": 200,
+          "ms": 0.38,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "sle",
+          "status": 200,
+          "ms": 0.532,
+          "sha256": "a3c2b17c884ef262afb8781f6b1e4ab182166e8797bb1d91cbd67ac06bd680ab",
+          "actors": 12
+        },
+        {
+          "phase": "first_pass",
+          "q": "sleppane.bsky.social",
+          "status": 200,
+          "ms": 0.33,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "fer",
+          "status": 200,
+          "ms": 0.559,
+          "sha256": "d2fbf73e8de8102ba4be31ed4d1b4f914cbb5647fb6180b0780e139766410143",
+          "actors": 17
+        },
+        {
+          "phase": "first_pass",
+          "q": "fernando_iure.bsky.social",
+          "status": 200,
+          "ms": 0.385,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "rom",
+          "status": 200,
+          "ms": 0.536,
+          "sha256": "241744abd9f91708c6ede19a47363165a3ba8e57150c68d01b72f431784aec61",
+          "actors": 8
+        },
+        {
+          "phase": "first_pass",
+          "q": "romrompurin29.bsky.social",
+          "status": 200,
+          "ms": 0.455,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "m-w",
+          "status": 200,
+          "ms": 0.897,
+          "sha256": "158d48ed3da78fd7563ca1879363989bd99ac81acf9f0194c9ae421552f17f16",
+          "actors": 50
+        },
+        {
+          "phase": "first_pass",
+          "q": "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+          "status": 200,
+          "ms": 0.477,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "ant",
+          "status": 200,
+          "ms": 0.854,
+          "sha256": "a60ed13202fce6c87e02fabf4a0b3c4794225429f60ea44d971299425053e157",
+          "actors": 31
+        },
+        {
+          "phase": "first_pass",
+          "q": "antwon_sapiente.bsky.social",
+          "status": 200,
+          "ms": 0.46,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "vis",
+          "status": 200,
+          "ms": 0.613,
+          "sha256": "941e03ebda93b67ef9f86d8b29812880088864b4642771de9146bab4c4e66d64",
+          "actors": 9
+        },
+        {
+          "phase": "first_pass",
+          "q": "vishvk.bsky.social",
+          "status": 200,
+          "ms": 0.408,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "dev",
+          "status": 200,
+          "ms": 0.637,
+          "sha256": "0ed1279cf355750b78941540094de2e3eaaecec2b03ff14ce0017b8e4f2185cc",
+          "actors": 18
+        },
+        {
+          "phase": "first_pass",
+          "q": "devin_quasi.bsky.social",
+          "status": 200,
+          "ms": 0.528,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "aph",
+          "status": 200,
+          "ms": 0.623,
+          "sha256": "a4b57417f199904eb33fa6650618b6d0420a58be8c2ac9014c629875c7e88cbb",
+          "actors": 2
+        },
+        {
+          "phase": "first_pass",
+          "q": "aphros-vrc.bsky.social",
+          "status": 200,
+          "ms": 0.497,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "nak",
+          "status": 200,
+          "ms": 0.527,
+          "sha256": "751cab4e4f26a9311cacbe7197c92ed785ba3ef0ef7d72bc74ab8c669bdf8361",
+          "actors": 6
+        },
+        {
+          "phase": "first_pass",
+          "q": "nakifox.bsky.social",
+          "status": 200,
+          "ms": 0.438,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "first_pass",
+          "q": "music",
+          "status": 200,
+          "ms": 0.498,
+          "sha256": "d55c2234397563a07833729ded013ce2668640b95b309224ab3b6eb342a17064",
+          "actors": 4
+        },
+        {
+          "phase": "first_pass",
+          "q": "nate",
+          "status": 200,
+          "ms": 0.512,
+          "sha256": "dfabb2402e15ac5f0604a6dfe79ec9fd5ac25335ffd10147cc60bf4cb9234e5c",
+          "actors": 5
+        },
+        {
+          "phase": "first_pass",
+          "q": "alice",
+          "status": 200,
+          "ms": 0.538,
+          "sha256": "52dfd0f9d39453e34f35f8dbf2d3cef616a630fd7fede1a081153211d9407ff0",
+          "actors": 4
+        },
+        {
+          "phase": "first_pass",
+          "q": "\u6771\u4eac",
+          "status": 200,
+          "ms": 0.381,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "cuu",
+          "status": 200,
+          "ms": 0.537,
+          "sha256": "956d3959384c1a57f74d25fa9642a7c37930fcb0e59954a427b3c1a50bf75168",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "cuumpster.bsky.social",
+          "status": 200,
+          "ms": 0.411,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "haz",
+          "status": 200,
+          "ms": 0.636,
+          "sha256": "3d97f8012f27f63967a57ce5b12b8eda823c799bb6b20c99f749a5bbd9ded0d4",
+          "actors": 11
+        },
+        {
+          "phase": "warm",
+          "q": "hazardzalgo.bsky.social",
+          "status": 200,
+          "ms": 0.386,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "dus",
+          "status": 200,
+          "ms": 0.546,
+          "sha256": "f31929f7a6f7ee21649ab581f10a1d285dff0670035ec87f08749f5aad09ec9a",
+          "actors": 8
+        },
+        {
+          "phase": "warm",
+          "q": "dust22306.bbi.to",
+          "status": 200,
+          "ms": 0.463,
+          "sha256": "83c63c225fba850538f968395af02f02516fdc29f0f5a29ad81d60f0db05d4d9",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "gki",
+          "status": 200,
+          "ms": 0.574,
+          "sha256": "424e65c906d8e72639b1bb6577ea3253e6a35857c5ccd66ae9566b8b70d57248",
+          "actors": 1
+        },
+        {
+          "phase": "warm",
+          "q": "gkiffeur.bsky.social",
+          "status": 200,
+          "ms": 0.486,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "sle",
+          "status": 200,
+          "ms": 0.676,
+          "sha256": "a3c2b17c884ef262afb8781f6b1e4ab182166e8797bb1d91cbd67ac06bd680ab",
+          "actors": 12
+        },
+        {
+          "phase": "warm",
+          "q": "sleppane.bsky.social",
+          "status": 200,
+          "ms": 0.496,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "fer",
+          "status": 200,
+          "ms": 0.564,
+          "sha256": "d2fbf73e8de8102ba4be31ed4d1b4f914cbb5647fb6180b0780e139766410143",
+          "actors": 17
+        },
+        {
+          "phase": "warm",
+          "q": "fernando_iure.bsky.social",
+          "status": 200,
+          "ms": 0.402,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "rom",
+          "status": 200,
+          "ms": 0.515,
+          "sha256": "241744abd9f91708c6ede19a47363165a3ba8e57150c68d01b72f431784aec61",
+          "actors": 8
+        },
+        {
+          "phase": "warm",
+          "q": "romrompurin29.bsky.social",
+          "status": 200,
+          "ms": 0.477,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "m-w",
+          "status": 200,
+          "ms": 0.777,
+          "sha256": "158d48ed3da78fd7563ca1879363989bd99ac81acf9f0194c9ae421552f17f16",
+          "actors": 50
+        },
+        {
+          "phase": "warm",
+          "q": "m-w-t-f7cf1c9ba9b8.wallets.tz2at.store",
+          "status": 200,
+          "ms": 0.368,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "ant",
+          "status": 200,
+          "ms": 0.621,
+          "sha256": "a60ed13202fce6c87e02fabf4a0b3c4794225429f60ea44d971299425053e157",
+          "actors": 31
+        },
+        {
+          "phase": "warm",
+          "q": "antwon_sapiente.bsky.social",
+          "status": 200,
+          "ms": 0.401,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "vis",
+          "status": 200,
+          "ms": 0.544,
+          "sha256": "941e03ebda93b67ef9f86d8b29812880088864b4642771de9146bab4c4e66d64",
+          "actors": 9
+        },
+        {
+          "phase": "warm",
+          "q": "vishvk.bsky.social",
+          "status": 200,
+          "ms": 0.434,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "dev",
+          "status": 200,
+          "ms": 0.559,
+          "sha256": "0ed1279cf355750b78941540094de2e3eaaecec2b03ff14ce0017b8e4f2185cc",
+          "actors": 18
+        },
+        {
+          "phase": "warm",
+          "q": "devin_quasi.bsky.social",
+          "status": 200,
+          "ms": 0.396,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "aph",
+          "status": 200,
+          "ms": 0.445,
+          "sha256": "a4b57417f199904eb33fa6650618b6d0420a58be8c2ac9014c629875c7e88cbb",
+          "actors": 2
+        },
+        {
+          "phase": "warm",
+          "q": "aphros-vrc.bsky.social",
+          "status": 200,
+          "ms": 0.394,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "nak",
+          "status": 200,
+          "ms": 0.499,
+          "sha256": "751cab4e4f26a9311cacbe7197c92ed785ba3ef0ef7d72bc74ab8c669bdf8361",
+          "actors": 6
+        },
+        {
+          "phase": "warm",
+          "q": "nakifox.bsky.social",
+          "status": 200,
+          "ms": 0.404,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        },
+        {
+          "phase": "warm",
+          "q": "music",
+          "status": 200,
+          "ms": 0.489,
+          "sha256": "d55c2234397563a07833729ded013ce2668640b95b309224ab3b6eb342a17064",
+          "actors": 4
+        },
+        {
+          "phase": "warm",
+          "q": "nate",
+          "status": 200,
+          "ms": 0.515,
+          "sha256": "dfabb2402e15ac5f0604a6dfe79ec9fd5ac25335ffd10147cc60bf4cb9234e5c",
+          "actors": 5
+        },
+        {
+          "phase": "warm",
+          "q": "alice",
+          "status": 200,
+          "ms": 0.46,
+          "sha256": "52dfd0f9d39453e34f35f8dbf2d3cef616a630fd7fede1a081153211d9407ff0",
+          "actors": 4
+        },
+        {
+          "phase": "warm",
+          "q": "\u6771\u4eac",
+          "status": 200,
+          "ms": 0.39,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "actors": 0
+        }
+      ],
+      "startup_seconds": 0.442,
+      "startup_process": {
+        "rchar": 7946767,
+        "wchar": 62533,
+        "syscr": 1039,
+        "syscw": 46,
+        "read_bytes": 7802880,
+        "write_bytes": 114688,
+        "cancelled_write_bytes": 0,
+        "VmHWM": 16449536,
+        "VmRSS": 16449536
+      },
+      "index": {
+        "promote_enabled": true,
+        "attached": true,
+        "snapshot_path": "/data/small-eval/snapshot/index.db",
+        "build_id": "original",
+        "snapshot_format": "FLATPX05",
+        "source_watermark": 0,
+        "actor_count": 20000,
+        "prefix_count": 165432,
+        "score_quantiles": null,
+        "overlay_actor_rows": 0,
+        "overlay_compact": {
+          "deleted": 0,
+          "ms": 0,
+          "complete": false,
+          "at": 0
+        }
+      },
+      "scoped": [
+        {
+          "status": 503,
+          "ms": 0.464,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "body": {
+            "error": "PdsScopeUnavailable"
+          }
+        },
+        {
+          "status": 503,
+          "ms": 0.515,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "body": {
+            "error": "PdsScopeUnavailable"
+          }
+        }
+      ],
+      "final_process": {
+        "rchar": 11338255,
+        "wchar": 62533,
+        "syscr": 1465,
+        "syscw": 46,
+        "read_bytes": 7802880,
+        "write_bytes": 114688,
+        "cancelled_write_bytes": 0,
+        "VmHWM": 16568320,
+        "VmRSS": 16568320
+      },
+      "health": {
+        "status": "ok",
+        "ready": true,
+        "actors": 20000,
+        "rss_kb": 16180,
+        "sync_lag_s": -1
+      }
+    }
+  ],
+  "cache_policy": "per-file POSIX_FADV_DONTNEED before each process; copied private overlay"
+}

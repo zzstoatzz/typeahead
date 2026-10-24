@@ -4,6 +4,7 @@ extern "c" fn posix_fadvise(fd: c_int, offset: c.off_t, len: c.off_t, advice: c_
 const max_key = 8193;
 const normal_page = 8192;
 const max_extent = 16 * 1024 * 1024;
+const validation_read_size = 1024 * 1024;
 pub const Namespace = enum(u8) { actor = 1, prefix = 2 };
 
 pub const Cache = struct {
@@ -30,6 +31,7 @@ pub const Map = struct {
     file_size: usize,
     fd: ?c.fd_t = null,
     owner: ?std.mem.Allocator = null,
+    mapping: ?std.Io.File.MemoryMap = null,
     pages: usize,
     records: usize,
     page_data: usize,
@@ -240,6 +242,15 @@ pub const Map = struct {
     }
 
     pub fn openFile(allocator: std.mem.Allocator, path: []const u8, expected: []const u8) !Map {
+        return openFileMode(allocator, path, expected, false);
+    }
+
+    /// Only for immutable files whose full validation was completed before admission.
+    pub fn openVerifiedFile(allocator: std.mem.Allocator, path: []const u8) !Map {
+        return openFileMode(allocator, path, "", true);
+    }
+
+    fn openFileMode(allocator: std.mem.Allocator, path: []const u8, expected: []const u8, verified: bool) !Map {
         const zpath = try allocator.allocSentinel(u8, path.len, 0);
         @memcpy(zpath, path);
         defer allocator.free(zpath);
@@ -265,20 +276,45 @@ pub const Map = struct {
         if (terminal < pages * 10 or terminal > pages * (max_key + 10) or terminal > root_size64 - records64) return error.InvalidFlatDirectory;
         if ((records64 + terminal + 4095) / 4096 * 4096 != root_size64) return error.InvalidFlatSections;
         const root_size: usize = @intCast(root_size64);
+        if (verified) {
+            const mapping = try std.Io.File.MemoryMap.create(std.Options.debug_io, .{ .handle = fd, .flags = .{ .nonblocking = false } }, .{
+                .len = root_size,
+                .protection = .{ .read = true, .write = false },
+                .populate = false,
+            });
+            return .{
+                .bytes = mapping.memory,
+                .file_size = size,
+                .fd = fd,
+                .mapping = mapping,
+                .pages = @intCast(pages),
+                .records = @intCast(records64),
+                .page_data = root_size,
+            };
+        }
         const roots = try allocator.alloc(u8, root_size);
         errdefer allocator.free(roots);
         try readExact(fd, roots, 0);
         var result = try validateRoot(roots, size);
         var hasher = std.crypto.hash.sha2.Sha256.init(.{});
         hasher.update(roots);
-        var buffer = try allocator.alloc(u8, normal_page);
+        var buffer = try allocator.alloc(u8, @min(validation_read_size, @max(normal_page, size - root_size)));
         defer allocator.free(buffer);
+        var buffered_start: usize = 0;
+        var buffered_len: usize = 0;
         for (0..result.pages) |i| {
             const bounds = try result.extent(i);
             const extent_size = bounds.end - bounds.start;
-            if (extent_size > buffer.len) buffer = try allocator.realloc(buffer, extent_size);
-            const chunk = buffer[0..extent_size];
-            try readExact(fd, chunk, bounds.start);
+            if (extent_size > buffer.len) {
+                buffer = try allocator.realloc(buffer, extent_size);
+                buffered_len = 0;
+            }
+            if (bounds.start < buffered_start or bounds.end > buffered_start + buffered_len) {
+                buffered_start = bounds.start;
+                buffered_len = @min(buffer.len, size - buffered_start);
+                try readExact(fd, buffer[0..buffered_len], buffered_start);
+            }
+            const chunk = buffer[bounds.start - buffered_start .. bounds.end - buffered_start];
             const current = try parsePage(chunk);
             const root = try result.record(i);
             const next_key: ?[]const u8 = if (i + 1 < result.pages) (try result.record(i + 1)).key else null;
@@ -298,6 +334,10 @@ pub const Map = struct {
     }
 
     pub fn close(self: Map) void {
+        if (self.mapping) |value| {
+            var mapping = value;
+            mapping.destroy(std.Options.debug_io);
+        }
         if (self.fd) |fd| _ = c.close(fd);
         if (self.owner) |allocator| allocator.free(self.bytes);
     }
@@ -507,8 +547,21 @@ test "pread real file owns root closes fd and keeps request bytes alive" {
     }
     const map = try Map.openFile(std.testing.allocator, &path, &digest);
     defer map.close();
+    const admitted = try Map.openVerifiedFile(std.testing.allocator, &path);
+    defer admitted.close();
+    try std.testing.expect(admitted.mapping != null);
+    for (0..64) |number| {
+        var key_buffer: [32]u8 = undefined;
+        const key = try std.fmt.bufPrint(&key_buffer, "n:key{d:0>8}", .{number});
+        var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+        defer arena.deinit();
+        const expected = (try map.findTagged(arena.allocator(), .prefix, key)).?;
+        const actual = (try admitted.findTagged(arena.allocator(), .prefix, key)).?;
+        try std.testing.expectEqualSlices(u8, expected, actual);
+    }
     try std.testing.expect(c.ftruncate(writer, @intCast(map.page_data + 1)) == 0);
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     try std.testing.expectError(error.FlatTruncatedRead, map.findTagged(arena.allocator(), .prefix, "n:key00000000"));
+    try std.testing.expectError(error.FlatTruncatedRead, admitted.findTagged(arena.allocator(), .prefix, "n:key00000000"));
 }

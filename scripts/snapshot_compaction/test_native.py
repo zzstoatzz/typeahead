@@ -14,6 +14,30 @@ from verify import iter_new
 
 
 class Tests(unittest.TestCase):
+    def test_file_verification_crosses_read_windows_and_oversized_values(self):
+        rng = random.Random(1792880000)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            db = root / "source.db"
+            side = root / "map"
+            actors = [(f"did:{i:06d}", rng.randbytes(4096)) for i in range(600)]
+            source(db, actors, [("large", rng.randbytes(2 * 1024 * 1024 + 17))])
+            stats = pack(db, side, root / "pages")
+            original = side.read_bytes()
+            self.assertGreater(len(original), 4 * 1024 * 1024)
+            self.assertGreater(stats.oversized_pages, 0)
+            digest = hashlib.sha256(original).hexdigest()
+            verify(db, side, digest, stats)
+            for position in (1024 * 1024 - 1, 1024 * 1024, 1024 * 1024 + 1, len(original) - 1):
+                with self.subTest(position=position):
+                    corrupt = bytearray(original)
+                    corrupt[position] ^= 1
+                    side.write_bytes(corrupt)
+                    with self.assertRaises(ValueError):
+                        verify(db, side, digest, stats)
+            side.write_bytes(original)
+            verify(db, side, digest, stats)
+
     def test_byte_identical_to_python_reference(self):
         rng = random.Random(1791518400)
         for case in range(16):
