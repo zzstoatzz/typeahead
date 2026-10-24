@@ -266,5 +266,19 @@
     "config_sha256": "117d319e2ec6f70e6d73646a3cf63668572b7647bc274676c46ff6d3f8dfe990"
   },
   "completed_at": "2026-10-24T21:48:53.684180+00:00",
-  "result": "Three stopped machines and their three 60 GB volumes destroyed; serving configuration and generation unchanged; public exact-handle search passed before and after each removal."
+  "result": "Three stopped machines and their three 60 GB volumes destroyed; serving configuration and generation unchanged; public exact-handle search passed before and after each removal.",
+  "refreshed_cost_snapshot": {
+    "generated_at": "2026-10-24T21:50:03.172937Z",
+    "flow_run_id": "e3ae6c3e-2d43-4bef-a6c0-685ebda95276",
+    "recorded_total_cents": 54440,
+    "typeahead_total_cents": 3727,
+    "typeahead_compute_cents": 1529,
+    "typeahead_volume_cents": 900,
+    "typeahead_snapshot_cents": 1298,
+    "coverage_gaps": [
+      "Stopped-machine rootfs costs unmeasured across Fly inventory",
+      "Cloudflare R2 storage query unauthorized; amount omitted"
+    ],
+    "source": "io.zzstoatzz.cost.snapshot/2026-10-24"
+  }
 }

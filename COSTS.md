@@ -86,6 +86,14 @@ Scaler without cutting write volume first. NOT over-provisioned.
 - The hub.waow.tech auto-estimate is compute-only — the table above is the real number.
 
 ## changelog
+- **2026-10-24, post-cleanup refresh** — Typeahead estimate $37.27/month:
+  $15.29 running compute, $9.00 single 60 GB volume, $12.98 retained snapshots.
+  Previous snapshot was $94.24. Confirmed actual capacity reduction is $27/month
+  for the three deleted volumes; compute estimate removal reflects machines
+  already stopped October 22. Organization total refreshed to $544.40, with
+  unmeasured stopped rootfs and Cloudflare R2 storage explicitly omitted by the
+  collector. Flow `e3ae6c3e-2d43-4bef-a6c0-685ebda95276` completed with state name
+  `Incomplete`; the snapshot was published at `2026-10-24T21:50:03.172937Z`.
 - **2026-10-24** — deleted the three stopped rollback/legacy search machines and
   their three 60 GB volumes: $27/month provisioned storage removed. Production
   search and ingestion remain running. R2 recovery objects and pinned image
