@@ -86,6 +86,12 @@ Scaler without cutting write volume first. NOT over-provisioned.
 - The hub.waow.tech auto-estimate is compute-only — the table above is the real number.
 
 ## changelog
+- **2026-10-24, resource sizing trial** — tested serving search at two shared
+  CPUs / 1 GiB, then restored four shared CPUs / 2 GiB after a cold-query timeout.
+  No compute savings from that trial are retained. Original-size native search
+  and both public aliases recovered; the emergency Bluesky switch was removed.
+  The comparison did not isolate size from cache state. Evidence and remaining
+  startup investigation are in `docs/operations.md`.
 - **2026-10-24, post-cleanup refresh** — Typeahead estimate $37.27/month:
   $15.29 running compute, $9.00 single 60 GB volume, $12.98 retained snapshots.
   Previous snapshot was $94.24. Confirmed actual capacity reduction is $27/month

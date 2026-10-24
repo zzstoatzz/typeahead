@@ -26,6 +26,58 @@ schedules before the cloud replacement passes its gates.
 deploys remain guarded in favor of the rollback-covered transition. Historical
 restart and promotion instructions below refer to the legacy layout.
 
+## Search machine sizing trial — October 24, 2026
+
+The operator authorized testing two shared CPUs and 1 GiB RAM on serving machine
+`86e502fe55e4e8`, down from four CPUs and 2 GiB. Only `config.guest` changed;
+image, disk, environment, startup command and routing were verified unchanged.
+The ingester remains one shared CPU and 256 MiB. The 60 GB search volume remains.
+
+Before resizing, the available seven-day metrics showed search CPU averaging
+0.013 cores, a five-minute peak of 0.172 cores, zero CPU throttling, and a
+449 MiB peak for total memory minus available memory. That memory measure excludes
+reclaimable cache. Index reloads and cache misses must still fit the smaller VM;
+low steady-state usage alone is not a proof of startup capacity.
+
+[Resize evidence](ops/search-resize-20261024.json) records before/after serial
+native searches, readiness, overlay lag and post-ready observations. Roll back
+resource sizing with:
+
+```sh
+fly machine update 86e502fe55e4e8 -a typeahead-search-compact --vm-cpus 4 --vm-memory 2048 --detach --yes
+```
+
+This restarts the sole search backend; verify readiness and overlay catch-up
+before calling it recovered. The historical index pin and corpus are unchanged.
+
+The 2 CPU / 1 GiB trial did not pass the cold-query checks. After attachment,
+exact-handle, nate, alice and bob queries matched baseline DIDs; the next query
+(`music`) exceeded the five-second client timeout. The automated check restored
+4 CPUs / 2 GiB. This comparison used a warm original baseline and a cold restarted
+candidate, so it does not establish that the size reduction alone caused the
+failure. The smaller configuration was not retained.
+
+During recovery, `EMERGENCY_PROXY_BSKY=1` temporarily routed unscoped search to
+Bluesky's public API; PDS-scoped requests failed closed. The switch was removed
+after original-size recovery and all 24 serial native requests passed with the
+same DID results as baseline. Public exact-handle and `selfhosted.social` scoped
+search both returned 200 through the canonical and compatibility aliases, with
+byte-identical bodies within each pair. Public cache-miss timing included the
+native origin again; the switch was also verified absent from Worker secrets.
+Native recovery checks had a 100.00 ms median and 187.56 ms maximum round-trip
+latency from the operator's Mac; these include network time and are not engine
+benchmarks. This is a bounded recovery check, not a sustained-load qualification.
+
+Cold startup spent most of its time waiting on file reads. `/proc/pressure/io`
+showed about 95% I/O pressure; Fly reported zero CPU throttling and the 1 GiB VM
+had substantial available memory. `FlatMap.open` validates and hashes all pages
+of the 7.2 GB prefix file before attachment. `prepareSnapshot` loads the map once,
+not once per read connection. A temporary 128 KiB to 1 MiB block read-ahead
+experiment did not establish a benefit and was reverted to 128 KiB before rollback.
+Investigate bounded startup/validation and cold-query latency before another
+resource reduction; do not weaken integrity checks as a shortcut.
+
+
 ## Search rollback resource retirement — October 24, 2026
 
 The October 22 cost-reduction session stopped three non-serving machines but

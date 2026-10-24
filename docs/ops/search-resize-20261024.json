@@ -1,0 +1,740 @@
+{
+  "started_at": 1792878854.4324899,
+  "before_machine": {
+    "id": "86e502fe55e4e8",
+    "version": "01M5DRQXFBG3RRXTRV1ZSVXCVC",
+    "config": {
+      "env": {
+        "INDEX_BUILD_ROOT": "/data/pds-current-20261020",
+        "INDEX_LATEST_KEY": "latest.json",
+        "INDEX_POLL_SECS": "300",
+        "LOCAL_DB_PATH": "/data/pds-overlay/overlay.db",
+        "MODE": "search",
+        "PORT": "8080",
+        "READ_POOL_SIZE": "8",
+        "SQLITE_TMPDIR": "/data/pds-overlay/tmp"
+      },
+      "init": {
+        "cmd": [
+          "/app/typeahead-ingester"
+        ]
+      },
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 4,
+        "memory_mb": 2048
+      },
+      "metadata": {
+        "fly_process_group": "app",
+        "qualification": "pds-replay-20261020"
+      },
+      "mounts": [
+        {
+          "encrypted": true,
+          "path": "/data",
+          "size_gb": 60,
+          "volume": "vol_vxmqwnpnlewdgzj4",
+          "name": "pds_replay_data"
+        }
+      ],
+      "services": [
+        {
+          "protocol": "tcp",
+          "internal_port": 8080,
+          "autostop": false,
+          "autostart": true,
+          "min_machines_running": 1,
+          "ports": [
+            {
+              "port": 80,
+              "handlers": [
+                "http"
+              ],
+              "force_https": true
+            },
+            {
+              "port": 443,
+              "handlers": [
+                "http",
+                "tls"
+              ]
+            }
+          ],
+          "force_instance_key": null
+        }
+      ],
+      "image": "registry.fly.io/typeahead-search-compact@sha256:433155b25711c8e98b3885a56528dca26d0cb36c38d22f0a3ece6487888cc3bd",
+      "restart": {
+        "policy": "on-failure",
+        "max_retries": 10
+      },
+      "dns": {}
+    }
+  },
+  "baseline": [
+    {
+      "q": "zzstoatzz.io",
+      "samples_ms": [
+        98.97,
+        113.11
+      ],
+      "dids": [
+        "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "did:plc:65sucjiel52gefhcdcypynsr",
+        "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+        "did:plc:3cr6uc547ot7j3nysnxmnrsl"
+      ]
+    },
+    {
+      "q": "nate",
+      "samples_ms": [
+        90.78,
+        78.82
+      ],
+      "dids": [
+        "did:plc:dst5a7uf7wtatmp66p5ygzmw",
+        "did:plc:kgihv26oznpn6cu3p45jzydp",
+        "did:plc:jehkz3ubrqvdnq7rqp67pweo",
+        "did:plc:twd4pvmds7pyvvgrjsgoscdk",
+        "did:plc:bqltstbdzc7keycyhdqtqhk2",
+        "did:plc:pffxichc3l3hnvyysin3zjbi",
+        "did:plc:zp4hh7r3nl66qzcemmjw5chi",
+        "did:plc:2qwpeisxhznwdjfylihurdp4",
+        "did:plc:gn3jcqukhjkzvfoyuymof7hl",
+        "did:plc:y7i6khpjx5rxzjnnpuayz65n"
+      ]
+    },
+    {
+      "q": "alice",
+      "samples_ms": [
+        100.78,
+        102.83
+      ],
+      "dids": [
+        "did:plc:5onh7ko2ux7bjjesmbeayjel",
+        "did:plc:nayn64p7dqdnuntl2bszhvhc",
+        "did:plc:patacy5oe26ctakf4nymr4dq",
+        "did:plc:an2e3qjrwpfizkms3k2li23v",
+        "did:plc:65kss3ewg5ida5mjyuk73v5r",
+        "did:plc:by3jhwdqgbtrcc7q4tkkv3cf",
+        "did:plc:f5azbajpc6ymlu5r6fbrrd3h",
+        "did:plc:rdbqbsfdeda6ztu6vnvz6lvn",
+        "did:plc:43wukabk4yz6xgcaedziheyz",
+        "did:plc:noio2dklzkk2d4puveedhvlk"
+      ]
+    },
+    {
+      "q": "bob",
+      "samples_ms": [
+        121.15,
+        113.03
+      ],
+      "dids": [
+        "did:plc:e6viblkcsztudabnp56gjh4v",
+        "did:plc:e7fxgizxsdejjnu3xbaki24u",
+        "did:plc:yq4zsnkm6a6nuxazitjznxdo",
+        "did:plc:ep4ecfghdfre2jr7jegwvt5x",
+        "did:plc:sho65umi6t4ohqyaijutbdcr",
+        "did:plc:cpogxgxnmob5jfz5eveuj4ry",
+        "did:plc:drfb2pdjlnsqkfgsoellcahm",
+        "did:plc:lroelm2gtwcr3rgjztmibruo",
+        "did:plc:lazwx7wwfn5nqcjjx6oehzvg",
+        "did:plc:bimdrioot6fjz3aitv2oanjo"
+      ]
+    },
+    {
+      "q": "music",
+      "samples_ms": [
+        112.04,
+        83.92
+      ],
+      "dids": [
+        "did:plc:xz2sityvjgjvtqvd6pmyqu7v",
+        "did:plc:22suonhd5a5nihhbi3ljf2ik",
+        "did:plc:v74h7zv33a4536eiputffsup",
+        "did:plc:7tpnelpmygum42pb625nwvmj",
+        "did:plc:6qzxv7zhqfra4cdz2htuakk5",
+        "did:plc:ux6z7vc6akwpy7t7oborh3gn",
+        "did:plc:hdk2exllc3ipl6xsxaphijaz",
+        "did:plc:v4mbexaulrnj7mxaus6u2syn",
+        "did:plc:uw4nxxgm6qh2swv6loyjy7tp",
+        "did:plc:4nkk2mmpk45rpsrob6zdu4yl"
+      ]
+    },
+    {
+      "q": "jazz",
+      "samples_ms": [
+        123.92,
+        87.21
+      ],
+      "dids": [
+        "did:plc:22s3osblieou32v5zvypclks",
+        "did:plc:tbbj7svix3dy2q7buwlkzrxo",
+        "did:plc:g3tsnqwqvizpb247ttz5f6hj",
+        "did:plc:cs74r37u6uw7zhomobjwvwnt",
+        "did:plc:bppyfxqopitsz7mgnzt3smnl",
+        "did:plc:wj5koqhqdfs67j5hanfxqyd3",
+        "did:plc:yh7ykx5vzzok2d7zzonmw4n5",
+        "did:plc:ujaciq55gioqggjcjl63iar7",
+        "did:plc:kq6v54fjdr5j26cixmabls4v",
+        "did:plc:aii7twankqtrkspfpvetcxvq"
+      ]
+    },
+    {
+      "q": "sarah",
+      "samples_ms": [
+        84.07,
+        97.31
+      ],
+      "dids": [
+        "did:plc:hf4htawd64uqbftoudxcicrp",
+        "did:plc:4t2ziwnnescprzorvmrfduey",
+        "did:plc:drvjrr7almy72kaui33hcvug",
+        "did:plc:65vkd7kbacss37t7uj75g2qt",
+        "did:plc:yj2yzzvnylclt3ghwjnkcxxz",
+        "did:plc:saoifgy5hqasxd4bhtgmubmj",
+        "did:plc:76uvxp22hlgaoq7gfhcs2p7a",
+        "did:plc:sgqlb2os5537waze4wjtfprl",
+        "did:plc:coqhxdcmnnbgizwi66icj26o",
+        "did:plc:2bn7ssxkp74wf5hfpxtvumdz"
+      ]
+    },
+    {
+      "q": "john",
+      "samples_ms": [
+        90.65,
+        83.3
+      ],
+      "dids": [
+        "did:plc:qvzn322kmcvd7xtnips5xaun",
+        "did:plc:aslw5awiodzplmvzhbysxuwp",
+        "did:plc:767ycrlfjmddxgnxsylkfbrd",
+        "did:plc:7zo2m47clvry3lbqozpbhtfx",
+        "did:plc:7334ydaavuvnqifa7gyct7sc",
+        "did:plc:qvbjh3d7mhuwrohrzpc3vmbx",
+        "did:plc:al3j5igj4jsp75wbbdxtfwml",
+        "did:plc:sm7jjs7tjezbfgpuylg5yajq",
+        "did:plc:2mah5wmpebxb3svdrlc3i3ht",
+        "did:plc:kf57jji37ccfkqqqaianrpfk"
+      ]
+    },
+    {
+      "q": "alex",
+      "samples_ms": [
+        123.05,
+        83.03
+      ],
+      "dids": [
+        "did:plc:p7gxyfr5vii5ntpwo7f6dhe2",
+        "did:plc:ic7n7z2yrxtl4ejl5dfjchmm",
+        "did:plc:i37bzld52baqvaqpmz46cg3o",
+        "did:plc:quzcwmqdsnbosevdgj3bmtq2",
+        "did:plc:af7tqcetuyt352aolf3znlxe",
+        "did:plc:mnni4exuqf2rvvsvxc5q4pb2",
+        "did:plc:kup2dxtfk4jelusiz465cfpd",
+        "did:plc:5yas6gqmpr3ayy2xz2h3klfc",
+        "did:plc:nehcwc3ng5igejopsi5fnqrr",
+        "did:plc:nx2hxdrsv3mivqwwvkq7xlqx"
+      ]
+    },
+    {
+      "q": "maria",
+      "samples_ms": [
+        104.48,
+        109.64
+      ],
+      "dids": [
+        "did:plc:o4ej2n6h4fmlwqpevo544ill",
+        "did:plc:un7ax3cmaqemchu5tsqnymts",
+        "did:plc:vfkxgdteo2lveaj3jyeturf6",
+        "did:plc:wvtwsjgvhu6ppzhbclzd6y76",
+        "did:plc:xrxbycbachtxi4gjqk3f4rzb",
+        "did:plc:i53npbvr2tfzno5cxgx7lxlh",
+        "did:plc:mbmiokeltsjrirjhevik47u2",
+        "did:plc:hsmix5jgmjmwfcv6ea5vgaug",
+        "did:plc:yb2l53aiavc2wh62akaxyb2z",
+        "did:plc:3zxq5ombb5jq3lc3w4pvqj2y"
+      ]
+    },
+    {
+      "q": "\u6771\u4eac",
+      "samples_ms": [
+        85.61,
+        86.6
+      ],
+      "dids": [
+        "did:plc:yxhvwuf7qtdnvku2iibtlklc",
+        "did:plc:avqkit2nkbvq2gtisy5hecvc",
+        "did:plc:64ec7yzhi2tqyb6xwv6ua4dg",
+        "did:plc:hrnv2z3zbfkkhjlggv2uiuxj",
+        "did:plc:6pwj53vk3uj2zehirdu6hxtk",
+        "did:plc:5an6q5jgcsao5h3gpk4f7uqr",
+        "did:plc:kq74lexdiojoqbylry4hvgjo",
+        "did:plc:jsxflnqhj6stoulvbqfmlrac",
+        "did:plc:gg47k3mhm7pblfe7i6ntmqke",
+        "did:plc:4fkkqc724esds2f66qlj5sqn"
+      ]
+    },
+    {
+      "q": "selfhosted",
+      "samples_ms": [
+        107.7,
+        84.61
+      ],
+      "dids": [
+        "did:plc:fwi4bgwyd5m66jgh4d4lbviq",
+        "did:plc:vsicp7h3rpa2pbfid3zzwqoy",
+        "did:plc:6h6askem2qvtw6laall5mnal",
+        "did:plc:l2fu4pia7kbutceqot2yoffn",
+        "did:plc:btipjp3ld4m6pa6nqzrozr6y",
+        "did:plc:vy7owubskdalbxgin2zxehrs",
+        "did:plc:6sfanwmqr6yr4kavngda4dre",
+        "did:plc:kmddxrg3f7hltmhgddx3rxs5",
+        "did:plc:3oraemc2okbia6x6krk2tslp",
+        "did:plc:ke3nfv7zx3ocpw6bbr4hi7zo"
+      ]
+    }
+  ],
+  "startup_samples": [
+    {
+      "at": 1792879310.8293571,
+      "health": {
+        "status": "ok",
+        "ready": true,
+        "actors": 12641735,
+        "rss_kb": 191360,
+        "sync_lag_s": 600
+      },
+      "build_id": "b1792484789-3d65-px05"
+    },
+    {
+      "at": 1792879326.037932,
+      "health": {
+        "status": "ok",
+        "ready": true,
+        "actors": 12641735,
+        "rss_kb": 299268,
+        "sync_lag_s": 615
+      },
+      "build_id": "b1792484789-3d65-px05"
+    },
+    {
+      "at": 1792879341.265491,
+      "health": {
+        "status": "ok",
+        "ready": true,
+        "actors": 12641735,
+        "rss_kb": 299300,
+        "sync_lag_s": 631
+      },
+      "build_id": "b1792484789-3d65-px05"
+    },
+    {
+      "at": 1792879356.462223,
+      "health": {
+        "status": "ok",
+        "ready": true,
+        "actors": 12641735,
+        "rss_kb": 360576,
+        "sync_lag_s": 298
+      },
+      "build_id": "b1792484789-3d65-px05"
+    }
+  ],
+  "after": [
+    {
+      "q": "zzstoatzz.io",
+      "samples_ms": [
+        83.56,
+        104.96
+      ],
+      "dids": [
+        "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "did:plc:65sucjiel52gefhcdcypynsr",
+        "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+        "did:plc:3cr6uc547ot7j3nysnxmnrsl"
+      ]
+    },
+    {
+      "q": "nate",
+      "samples_ms": [
+        209.73,
+        82.04
+      ],
+      "dids": [
+        "did:plc:dst5a7uf7wtatmp66p5ygzmw",
+        "did:plc:kgihv26oznpn6cu3p45jzydp",
+        "did:plc:jehkz3ubrqvdnq7rqp67pweo",
+        "did:plc:twd4pvmds7pyvvgrjsgoscdk",
+        "did:plc:bqltstbdzc7keycyhdqtqhk2",
+        "did:plc:pffxichc3l3hnvyysin3zjbi",
+        "did:plc:zp4hh7r3nl66qzcemmjw5chi",
+        "did:plc:2qwpeisxhznwdjfylihurdp4",
+        "did:plc:gn3jcqukhjkzvfoyuymof7hl",
+        "did:plc:y7i6khpjx5rxzjnnpuayz65n"
+      ]
+    },
+    {
+      "q": "alice",
+      "samples_ms": [
+        206.23,
+        79.94
+      ],
+      "dids": [
+        "did:plc:5onh7ko2ux7bjjesmbeayjel",
+        "did:plc:nayn64p7dqdnuntl2bszhvhc",
+        "did:plc:patacy5oe26ctakf4nymr4dq",
+        "did:plc:an2e3qjrwpfizkms3k2li23v",
+        "did:plc:65kss3ewg5ida5mjyuk73v5r",
+        "did:plc:by3jhwdqgbtrcc7q4tkkv3cf",
+        "did:plc:f5azbajpc6ymlu5r6fbrrd3h",
+        "did:plc:rdbqbsfdeda6ztu6vnvz6lvn",
+        "did:plc:43wukabk4yz6xgcaedziheyz",
+        "did:plc:noio2dklzkk2d4puveedhvlk"
+      ]
+    },
+    {
+      "q": "bob",
+      "samples_ms": [
+        707.41,
+        100.74
+      ],
+      "dids": [
+        "did:plc:e6viblkcsztudabnp56gjh4v",
+        "did:plc:e7fxgizxsdejjnu3xbaki24u",
+        "did:plc:yq4zsnkm6a6nuxazitjznxdo",
+        "did:plc:ep4ecfghdfre2jr7jegwvt5x",
+        "did:plc:sho65umi6t4ohqyaijutbdcr",
+        "did:plc:cpogxgxnmob5jfz5eveuj4ry",
+        "did:plc:drfb2pdjlnsqkfgsoellcahm",
+        "did:plc:lroelm2gtwcr3rgjztmibruo",
+        "did:plc:lazwx7wwfn5nqcjjx6oehzvg",
+        "did:plc:bimdrioot6fjz3aitv2oanjo"
+      ]
+    }
+  ],
+  "failure": "The read operation timed out",
+  "result": "original size recovered; native and public checks passed; emergency fallback removed",
+  "original_size_recovery_checks": [
+    {
+      "q": "zzstoatzz.io",
+      "samples_ms": [
+        101.16,
+        86.02
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "did:plc:65sucjiel52gefhcdcypynsr",
+        "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+        "did:plc:3cr6uc547ot7j3nysnxmnrsl"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "nate",
+      "samples_ms": [
+        122.08,
+        83.96
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:dst5a7uf7wtatmp66p5ygzmw",
+        "did:plc:kgihv26oznpn6cu3p45jzydp",
+        "did:plc:jehkz3ubrqvdnq7rqp67pweo",
+        "did:plc:twd4pvmds7pyvvgrjsgoscdk",
+        "did:plc:bqltstbdzc7keycyhdqtqhk2",
+        "did:plc:pffxichc3l3hnvyysin3zjbi",
+        "did:plc:zp4hh7r3nl66qzcemmjw5chi",
+        "did:plc:2qwpeisxhznwdjfylihurdp4",
+        "did:plc:gn3jcqukhjkzvfoyuymof7hl",
+        "did:plc:y7i6khpjx5rxzjnnpuayz65n"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "alice",
+      "samples_ms": [
+        124.68,
+        93.14
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:5onh7ko2ux7bjjesmbeayjel",
+        "did:plc:nayn64p7dqdnuntl2bszhvhc",
+        "did:plc:patacy5oe26ctakf4nymr4dq",
+        "did:plc:an2e3qjrwpfizkms3k2li23v",
+        "did:plc:65kss3ewg5ida5mjyuk73v5r",
+        "did:plc:by3jhwdqgbtrcc7q4tkkv3cf",
+        "did:plc:f5azbajpc6ymlu5r6fbrrd3h",
+        "did:plc:rdbqbsfdeda6ztu6vnvz6lvn",
+        "did:plc:43wukabk4yz6xgcaedziheyz",
+        "did:plc:noio2dklzkk2d4puveedhvlk"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "bob",
+      "samples_ms": [
+        123.02,
+        142.51
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:e6viblkcsztudabnp56gjh4v",
+        "did:plc:e7fxgizxsdejjnu3xbaki24u",
+        "did:plc:yq4zsnkm6a6nuxazitjznxdo",
+        "did:plc:ep4ecfghdfre2jr7jegwvt5x",
+        "did:plc:sho65umi6t4ohqyaijutbdcr",
+        "did:plc:cpogxgxnmob5jfz5eveuj4ry",
+        "did:plc:drfb2pdjlnsqkfgsoellcahm",
+        "did:plc:lroelm2gtwcr3rgjztmibruo",
+        "did:plc:lazwx7wwfn5nqcjjx6oehzvg",
+        "did:plc:bimdrioot6fjz3aitv2oanjo"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "music",
+      "samples_ms": [
+        125.11,
+        84.98
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:xz2sityvjgjvtqvd6pmyqu7v",
+        "did:plc:22suonhd5a5nihhbi3ljf2ik",
+        "did:plc:v74h7zv33a4536eiputffsup",
+        "did:plc:7tpnelpmygum42pb625nwvmj",
+        "did:plc:6qzxv7zhqfra4cdz2htuakk5",
+        "did:plc:ux6z7vc6akwpy7t7oborh3gn",
+        "did:plc:hdk2exllc3ipl6xsxaphijaz",
+        "did:plc:v4mbexaulrnj7mxaus6u2syn",
+        "did:plc:uw4nxxgm6qh2swv6loyjy7tp",
+        "did:plc:4nkk2mmpk45rpsrob6zdu4yl"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "jazz",
+      "samples_ms": [
+        98.84,
+        88.31
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:22s3osblieou32v5zvypclks",
+        "did:plc:tbbj7svix3dy2q7buwlkzrxo",
+        "did:plc:g3tsnqwqvizpb247ttz5f6hj",
+        "did:plc:cs74r37u6uw7zhomobjwvwnt",
+        "did:plc:bppyfxqopitsz7mgnzt3smnl",
+        "did:plc:wj5koqhqdfs67j5hanfxqyd3",
+        "did:plc:yh7ykx5vzzok2d7zzonmw4n5",
+        "did:plc:ujaciq55gioqggjcjl63iar7",
+        "did:plc:kq6v54fjdr5j26cixmabls4v",
+        "did:plc:aii7twankqtrkspfpvetcxvq"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "sarah",
+      "samples_ms": [
+        108.03,
+        83.97
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:hf4htawd64uqbftoudxcicrp",
+        "did:plc:4t2ziwnnescprzorvmrfduey",
+        "did:plc:drvjrr7almy72kaui33hcvug",
+        "did:plc:65vkd7kbacss37t7uj75g2qt",
+        "did:plc:yj2yzzvnylclt3ghwjnkcxxz",
+        "did:plc:saoifgy5hqasxd4bhtgmubmj",
+        "did:plc:76uvxp22hlgaoq7gfhcs2p7a",
+        "did:plc:sgqlb2os5537waze4wjtfprl",
+        "did:plc:coqhxdcmnnbgizwi66icj26o",
+        "did:plc:2bn7ssxkp74wf5hfpxtvumdz"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "john",
+      "samples_ms": [
+        112.61,
+        89.04
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:qvzn322kmcvd7xtnips5xaun",
+        "did:plc:aslw5awiodzplmvzhbysxuwp",
+        "did:plc:767ycrlfjmddxgnxsylkfbrd",
+        "did:plc:7zo2m47clvry3lbqozpbhtfx",
+        "did:plc:7334ydaavuvnqifa7gyct7sc",
+        "did:plc:qvbjh3d7mhuwrohrzpc3vmbx",
+        "did:plc:al3j5igj4jsp75wbbdxtfwml",
+        "did:plc:sm7jjs7tjezbfgpuylg5yajq",
+        "did:plc:2mah5wmpebxb3svdrlc3i3ht",
+        "did:plc:kf57jji37ccfkqqqaianrpfk"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "alex",
+      "samples_ms": [
+        187.56,
+        83.16
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:p7gxyfr5vii5ntpwo7f6dhe2",
+        "did:plc:ic7n7z2yrxtl4ejl5dfjchmm",
+        "did:plc:i37bzld52baqvaqpmz46cg3o",
+        "did:plc:quzcwmqdsnbosevdgj3bmtq2",
+        "did:plc:af7tqcetuyt352aolf3znlxe",
+        "did:plc:mnni4exuqf2rvvsvxc5q4pb2",
+        "did:plc:kup2dxtfk4jelusiz465cfpd",
+        "did:plc:5yas6gqmpr3ayy2xz2h3klfc",
+        "did:plc:nehcwc3ng5igejopsi5fnqrr",
+        "did:plc:nx2hxdrsv3mivqwwvkq7xlqx"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "maria",
+      "samples_ms": [
+        133.59,
+        85.18
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:o4ej2n6h4fmlwqpevo544ill",
+        "did:plc:un7ax3cmaqemchu5tsqnymts",
+        "did:plc:vfkxgdteo2lveaj3jyeturf6",
+        "did:plc:wvtwsjgvhu6ppzhbclzd6y76",
+        "did:plc:xrxbycbachtxi4gjqk3f4rzb",
+        "did:plc:i53npbvr2tfzno5cxgx7lxlh",
+        "did:plc:mbmiokeltsjrirjhevik47u2",
+        "did:plc:hsmix5jgmjmwfcv6ea5vgaug",
+        "did:plc:yb2l53aiavc2wh62akaxyb2z",
+        "did:plc:3zxq5ombb5jq3lc3w4pvqj2y"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "\u6771\u4eac",
+      "samples_ms": [
+        120.03,
+        85.71
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:yxhvwuf7qtdnvku2iibtlklc",
+        "did:plc:avqkit2nkbvq2gtisy5hecvc",
+        "did:plc:64ec7yzhi2tqyb6xwv6ua4dg",
+        "did:plc:hrnv2z3zbfkkhjlggv2uiuxj",
+        "did:plc:6pwj53vk3uj2zehirdu6hxtk",
+        "did:plc:5an6q5jgcsao5h3gpk4f7uqr",
+        "did:plc:kq74lexdiojoqbylry4hvgjo",
+        "did:plc:jsxflnqhj6stoulvbqfmlrac",
+        "did:plc:gg47k3mhm7pblfe7i6ntmqke",
+        "did:plc:4fkkqc724esds2f66qlj5sqn"
+      ],
+      "matches_baseline": true
+    },
+    {
+      "q": "selfhosted",
+      "samples_ms": [
+        109.02,
+        82.34
+      ],
+      "errors": [],
+      "dids": [
+        "did:plc:fwi4bgwyd5m66jgh4d4lbviq",
+        "did:plc:vsicp7h3rpa2pbfid3zzwqoy",
+        "did:plc:6h6askem2qvtw6laall5mnal",
+        "did:plc:l2fu4pia7kbutceqot2yoffn",
+        "did:plc:btipjp3ld4m6pa6nqzrozr6y",
+        "did:plc:vy7owubskdalbxgin2zxehrs",
+        "did:plc:6sfanwmqr6yr4kavngda4dre",
+        "did:plc:kmddxrg3f7hltmhgddx3rxs5",
+        "did:plc:3oraemc2okbia6x6krk2tslp",
+        "did:plc:ke3nfv7zx3ocpw6bbr4hi7zo"
+      ],
+      "matches_baseline": true
+    }
+  ],
+  "public_recovery_checks": [
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "scoped": false,
+      "status": 200,
+      "handles": [
+        "zzstoatzz.io",
+        "phi.zzstoatzz.io",
+        "jev.zzstoatzz.io",
+        "alt.zzstoatzz.io"
+      ],
+      "server_timing": "cache;desc=\"miss\";dur=23, origin_headers;dur=48;desc=\"01M5QZ9QEFJQP19W5NN46AZ7X4-iad\", origin;dur=48, search;dur=71"
+    },
+    {
+      "endpoint": "app.bsky.actor.searchActorsTypeahead",
+      "scoped": false,
+      "status": 200,
+      "handles": [
+        "zzstoatzz.io",
+        "phi.zzstoatzz.io",
+        "jev.zzstoatzz.io",
+        "alt.zzstoatzz.io"
+      ],
+      "server_timing": "cache;desc=\"hit\";dur=7"
+    },
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "scoped": true,
+      "status": 200,
+      "handles": [
+        "filippo.abyssdomain.expert",
+        "aparker.io",
+        "goose.art",
+        "witchsky.app",
+        "a2.co"
+      ],
+      "server_timing": "cache;desc=\"miss\";dur=34, origin_headers;dur=67;desc=\"01M5QZ9QXCC982HG228T4F8GQH-iad\", origin;dur=67, search;dur=101"
+    },
+    {
+      "endpoint": "app.bsky.actor.searchActorsTypeahead",
+      "scoped": true,
+      "status": 200,
+      "handles": [
+        "filippo.abyssdomain.expert",
+        "aparker.io",
+        "goose.art",
+        "witchsky.app",
+        "a2.co"
+      ],
+      "server_timing": "cache;desc=\"hit\";dur=41"
+    }
+  ],
+  "emergency_fallback_removed": true,
+  "recovery": {
+    "samples": [
+      {
+        "at": 1792879603.0353081,
+        "health": {
+          "status": "ok",
+          "ready": true,
+          "actors": 12641735,
+          "rss_kb": 155004,
+          "sync_lag_s": 288
+        }
+      }
+    ],
+    "result": "ready"
+  },
+  "finished_at": "2026-10-24T22:08:23.365238+00:00",
+  "original_recovery_latency_summary_ms": {
+    "median": 100.0,
+    "max": 187.56,
+    "requests": 24
+  }
+}
