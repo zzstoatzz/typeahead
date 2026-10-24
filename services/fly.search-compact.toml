@@ -34,6 +34,6 @@ primary_region = 'ewr'
   processes = ['app']
 
 [[vm]]
-  memory = '1024mb'
+  memory = '2048mb'
   cpu_kind = 'shared'
-  cpus = 2
+  cpus = 4
