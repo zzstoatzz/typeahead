@@ -1,6 +1,7 @@
 # Verified production configuration, October 20, 2026 UTC.
 # Follow docs/evals/pds-parser-cutover-20261020.md for the guarded transition.
-# Keep the previous PDS-capable machine running for rollback.
+# October 24: previous rollback machines/volumes retired; restore from R2.
+# See docs/operations.md for saved recreation configurations.
 app = 'typeahead-search-compact'
 primary_region = 'ewr'
 

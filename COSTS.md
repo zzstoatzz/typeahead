@@ -86,6 +86,12 @@ Scaler without cutting write volume first. NOT over-provisioned.
 - The hub.waow.tech auto-estimate is compute-only — the table above is the real number.
 
 ## changelog
+- **2026-10-24** — deleted the three stopped rollback/legacy search machines and
+  their three 60 GB volumes: $27/month provisioned storage removed. Production
+  search and ingestion remain running. R2 recovery objects and pinned image
+  configurations are retained; see `docs/operations.md`. Snapshot expiry and
+  trailing-seven-day compute estimates must not be presented as new immediate
+  compute savings.
 - **2026-10-22** — stopped every non-serving search machine (about −$40/mo compute):
   compact rollback `8d4916be311008` (−$13.27) and recovery `781e732c264678` (−$13.27),
   and legacy `typeahead-search` `867e15ce4e1148` (−$13.27), which was stuck in a failing

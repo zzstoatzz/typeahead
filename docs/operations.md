@@ -9,9 +9,9 @@ private `typeahead-search-transport` binding placed in US East. Cache hits remai
 at the public edge. [Latency evidence and rollback](evals/edge-latency-20261020.md)
 record the direct-transport rollback version and deployment order.
 
-`typeahead-search` and the compact rollback machines were stopped on October 22
-(see below). Previous compact machine `781e732c264678` is pinned to the protected
-old pointer. Disable scoped
+The three non-serving search machines and their volumes were retired on October 24
+(see below). The protected R2 rollback pointer and published images remain;
+recovery now requires a fresh volume and machine. Disable scoped
 search before routing to an incompatible backend; preserve current Worker source.
 See [the PDS runbook](plans/pds-homepage-rollout.md) for the transition and recovery
 inventory, and [release evidence](evals/pds-homepage-20261020.md) for full-corpus,
@@ -26,7 +26,57 @@ schedules before the cloud replacement passes its gates.
 deploys remain guarded in favor of the rollback-covered transition. Historical
 restart and promotion instructions below refer to the legacy layout.
 
-## Rollback machines stopped — October 22, 2026
+## Search rollback resource retirement — October 24, 2026
+
+The October 22 cost-reduction session stopped three non-serving machines but
+retained their volumes for faster rollback. On October 24 the operator requested
+removal of obsolete machines and disks. Removed:
+
+| machine | app | deleted volume |
+| --- | --- | --- |
+| `867e15ce4e1148` | `typeahead-search` | `vol_4m3mkzpz1lmy383v` |
+| `781e732c264678` | `typeahead-search-compact` | `vol_rnzg2g0gkko1lmpr` |
+| `8d4916be311008` | `typeahead-search-compact` | `vol_4qlwyx1kl6o19x6r` |
+
+Each volume was 60 GB. This removes $27/month of provisioned volume capacity.
+The earlier compute savings were already achieved when the machines stopped;
+do not count those again. Evergreen's trailing-seven-day compute estimate also
+changes when deleted machines disappear from inventory; that is an estimate
+change, not additional savings against the pre-deletion running inventory.
+Deleted-volume snapshots can remain restorable until their retention expires;
+no immediate snapshot billing reduction is claimed.
+
+Production remains on `86e502fe55e4e8`, with volume `vol_vxmqwnpnlewdgzj4`.
+The ingester remains on `7845636a3d0ee8`. Public exact-handle search passed before
+cleanup and after each removal. The serving machine's configuration and generation
+were identical before and after. [Evidence and non-secret recreation configurations](ops/search-retirement-20261024.json)
+include the retired machines' pinned image digests and snapshot IDs.
+
+Verified the protected rollback manifest via the serving machine's existing R2
+client, and statted its 7,203,934,208-byte prefix object and 16,099,401,728-byte
+legacy twin. This was an existence/size check, not a fresh full readback or restore
+exercise. The protected pointer and objects remain unchanged.
+
+Recovery now requires a new volume and machine rather than starting a retained
+machine. While retained snapshots exist, use the saved snapshot IDs with
+`fly volumes create --snapshot-id` to recreate a disk. Otherwise rebuild from
+the protected R2 pointer. Use the saved PDS-capable rollback configuration for
+`8d4916be311008`, replacing its mount with the newly created volume ID; retain
+service exclusion until readiness and public/scoped verification pass. Existing
+app secrets remain on `typeahead-search-compact`; no credential values are archived.
+For a manual recovery, create a 60 GB volume in `ewr`, then extract the saved
+`8d4916be311008` config from the evidence JSON, replace `mounts[0].volume` with
+the new ID, and remove `mounts[0].name` and `mounts[0].size_gb`. Launch it with
+`fly machine run <saved-image> -a typeahead-search-compact --machine-config <config.json>`.
+Keep `services` empty while qualifying the replacement so it cannot receive
+public traffic before readiness. Restore routing only after the existing scoped
+search checks pass. Fly's installed CLI confirms `--machine-config` support;
+this cleanup did not launch a replacement or re-run the full recovery drill.
+
+The October 22 empty-volume recovery and watermark caveats below still apply.
+Do not issue the old start/update commands against the deleted IDs.
+
+### Historical stop procedure — October 22, 2026
 
 To cut cost, every non-serving search machine is stopped; `86e502fe55e4e8` is the
 only running search backend. Nothing was destroyed, and each stopped machine is

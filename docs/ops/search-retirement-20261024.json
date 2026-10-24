@@ -1,0 +1,270 @@
+{
+  "observed_at": "2026-10-24T21:48:41.422445+00:00",
+  "machines": [
+    {
+      "app": "typeahead-search",
+      "id": "867e15ce4e1148",
+      "name": "search-phase3",
+      "config": {
+        "env": {
+          "FLY_PROCESS_GROUP": "app",
+          "INDEX_BUILD_ROOT": "/data",
+          "MODE": "search",
+          "PRIMARY_REGION": "ewr",
+          "SQLITE_TMPDIR": "/data/tmp"
+        },
+        "init": {
+          "cmd": [
+            "./typeahead-ingester"
+          ]
+        },
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 4,
+          "memory_mb": 2048
+        },
+        "mounts": [
+          {
+            "encrypted": true,
+            "path": "/data",
+            "size_gb": 60,
+            "volume": "vol_4m3mkzpz1lmy383v",
+            "name": "typeahead_search_data"
+          }
+        ],
+        "services": [
+          {
+            "protocol": "tcp",
+            "internal_port": 8080,
+            "autostop": false,
+            "autostart": false,
+            "min_machines_running": 1,
+            "ports": [
+              {
+                "port": 80,
+                "handlers": [
+                  "http"
+                ],
+                "force_https": true
+              },
+              {
+                "port": 443,
+                "handlers": [
+                  "http",
+                  "tls"
+                ]
+              }
+            ],
+            "force_instance_key": null
+          }
+        ],
+        "image": "registry.fly.io/typeahead-search:deployment-01M433KYXAP6J35FA6BR9S7TEC",
+        "restart": {
+          "policy": "on-failure",
+          "max_retries": 10
+        }
+      },
+      "snapshots": [
+        {
+          "id": "vs_a9pXRw8R9OK2s3vb0zv4Mwk",
+          "size": 60830101604,
+          "volume_size": 64424509440,
+          "digest": "b97278a649b735588fe5e6eee36b1f247abed54287c2441e86c66c2e1429ba82",
+          "created_at": "2026-10-20T19:20:26Z",
+          "status": "created",
+          "retention_days": 5
+        },
+        {
+          "id": "vs_gkZaVv8VkO65h5o2b9vvz8Q",
+          "size": 23242396881,
+          "volume_size": 64424509440,
+          "digest": "36dfd94d09d242fe729451d397a78450f0da2b3b1af5f38937edb82dd3b44496",
+          "created_at": "2026-10-21T19:20:30Z",
+          "status": "created",
+          "retention_days": 5
+        },
+        {
+          "id": "vs_yG6mZ1nZG3pVHPPbQ06BY9A",
+          "size": 15090316150,
+          "volume_size": 64424509440,
+          "digest": "6a3e9b068946a68f57106c50dea096ec36437046a3488c449b4b18966c998f25",
+          "created_at": "2026-10-22T19:20:30Z",
+          "status": "created",
+          "retention_days": 5
+        },
+        {
+          "id": "vs_nkYMqB8qk6O5hzQkYjjVXZ3X",
+          "size": 1360914,
+          "volume_size": 64424509440,
+          "digest": "a1d1730e28873bf6ab65cea91f40404a13797dfe2eaa3ef1ba2ab8772406457b",
+          "created_at": "2026-10-23T19:21:10Z",
+          "status": "created",
+          "retention_days": 5
+        },
+        {
+          "id": "vs_qwe3y9VywG05s7qJVpvkzxnO",
+          "size": 1360951,
+          "volume_size": 64424509440,
+          "digest": "e66191217a89deb83292d3eb100328ba51953595183b402de9678e712f2448bc",
+          "created_at": "2026-10-24T19:22:10Z",
+          "status": "created",
+          "retention_days": 5
+        }
+      ]
+    },
+    {
+      "app": "typeahead-search-compact",
+      "id": "781e732c264678",
+      "name": "compact-recovery",
+      "config": {
+        "env": {
+          "INDEX_BUILD_ROOT": "/data/publisher-current-20261019",
+          "INDEX_LATEST_KEY": "releases/pds-rollback-20261020/b1792400507-4df8-px05/latest.json",
+          "INDEX_POLL_SECS": "300",
+          "LOCAL_DB_PATH": "/data/live-overlay/overlay.db",
+          "MODE": "search",
+          "PORT": "8080",
+          "READ_POOL_SIZE": "8",
+          "SQLITE_TMPDIR": "/data/live-overlay/tmp"
+        },
+        "init": {
+          "cmd": [
+            "/app/typeahead-ingester"
+          ]
+        },
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 4,
+          "memory_mb": 2048
+        },
+        "mounts": [
+          {
+            "encrypted": true,
+            "path": "/data",
+            "size_gb": 60,
+            "volume": "vol_rnzg2g0gkko1lmpr",
+            "name": "compact_recovery_data"
+          }
+        ],
+        "image": "registry.fly.io/typeahead-search:compact-cancel-cc2d5a1-20261017@sha256:f085469e6f302369514a917655c8215b99d6686cf1e71a692b88a3880d4e810d",
+        "restart": {
+          "policy": "on-failure",
+          "max_retries": 10
+        }
+      },
+      "snapshots": []
+    },
+    {
+      "app": "typeahead-search-compact",
+      "id": "8d4916be311008",
+      "name": "pds-candidate-20261020",
+      "config": {
+        "env": {
+          "INDEX_BUILD_ROOT": "/data/pds-current-20261020",
+          "INDEX_LATEST_KEY": "releases/pds-coverage-rollback-20261020/b1792484789-3d65-px05/latest.json",
+          "INDEX_POLL_SECS": "300",
+          "LOCAL_DB_PATH": "/data/pds-overlay/overlay.db",
+          "MODE": "search",
+          "PORT": "8080",
+          "READ_POOL_SIZE": "8",
+          "SQLITE_TMPDIR": "/data/pds-overlay/tmp"
+        },
+        "init": {
+          "cmd": [
+            "/app/typeahead-ingester"
+          ]
+        },
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 4,
+          "memory_mb": 2048
+        },
+        "mounts": [
+          {
+            "encrypted": true,
+            "path": "/data",
+            "size_gb": 60,
+            "volume": "vol_4qlwyx1kl6o19x6r",
+            "name": "pds_candidate_data"
+          }
+        ],
+        "services": [
+          {
+            "protocol": "tcp",
+            "internal_port": 8080,
+            "autostop": false,
+            "autostart": false,
+            "min_machines_running": 1,
+            "ports": [
+              {
+                "port": 80,
+                "handlers": [
+                  "http"
+                ],
+                "force_https": true
+              },
+              {
+                "port": 443,
+                "handlers": [
+                  "http",
+                  "tls"
+                ]
+              }
+            ],
+            "force_instance_key": null
+          }
+        ],
+        "image": "registry.fly.io/typeahead-search-compact:pds-31ec142-20261020@sha256:7df51c4b6ba2b26dcfc1aeb15b7821c7ec0caf6594cb511fc93ddbe946101938",
+        "restart": {
+          "policy": "on-failure",
+          "max_retries": 10
+        }
+      },
+      "snapshots": [
+        {
+          "id": "vs_QabxxyKDRpJfXl1N6GZX8e",
+          "size": 55857255184,
+          "volume_size": 64424509440,
+          "digest": "73fb85d20db1804d6cd5961ae30010b56b886945c6e07eae84af23ddf8cc91af",
+          "created_at": "2026-10-21T08:52:30Z",
+          "status": "created",
+          "retention_days": 7
+        },
+        {
+          "id": "vs_8xoNNL54J3ysZ6nMNyLQPoO",
+          "size": 7474690123,
+          "volume_size": 64424509440,
+          "digest": "8b3df5584f1219d72e2d6ef03588685119955e0f8b950cc1f67c24e1d353d9ac",
+          "created_at": "2026-10-22T08:52:41Z",
+          "status": "created",
+          "retention_days": 7
+        },
+        {
+          "id": "vs_QabxxyKDRpJf7gxqvvJvpwZ",
+          "size": 7854692207,
+          "volume_size": 64424509440,
+          "digest": "094fe6dbd711fbfdd4209c29505955f2129d7358121a49c8145522f4a11624bc",
+          "created_at": "2026-10-23T08:53:01Z",
+          "status": "created",
+          "retention_days": 7
+        },
+        {
+          "id": "vs_ReYyygKbMpRSXRa3BLoYA3",
+          "size": 1391436,
+          "volume_size": 64424509440,
+          "digest": "41acc7fdce616b527e211345e5b639c49a7dc5830826c9c4f525b9679019fa6a",
+          "created_at": "2026-10-24T08:54:01Z",
+          "status": "created",
+          "retention_days": 7
+        }
+      ]
+    }
+  ],
+  "serving_machine": {
+    "id": "86e502fe55e4e8",
+    "version": "01M5DRQXFBG3RRXTRV1ZSVXCVC",
+    "config_sha256": "117d319e2ec6f70e6d73646a3cf63668572b7647bc274676c46ff6d3f8dfe990"
+  },
+  "completed_at": "2026-10-24T21:48:53.684180+00:00",
+  "result": "Three stopped machines and their three 60 GB volumes destroyed; serving configuration and generation unchanged; public exact-handle search passed before and after each removal."
+}

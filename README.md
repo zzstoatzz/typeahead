@@ -342,6 +342,11 @@ an optional manual Fly rollback path, not the scheduled builder. See
 
 ## Costs
 
+As verified October 24, 2026, Fly runs one search machine and one ingester.
+Three stopped rollback/legacy machines and their 60 GB volumes were deleted;
+recovery uses retained R2 artifacts and saved configurations. See the
+[retirement record](docs/operations.md#search-rollback-resource-retirement--october-24-2026).
+
 The existing [hub cost snapshot](https://hub.waow.tech/api/costs.json) reports
 project-attributed line items and their estimation basis. Turso and Cloudflare
 subscriptions are shared with other projects; their whole account invoices are
