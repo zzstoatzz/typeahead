@@ -15,7 +15,7 @@ try {
  assert.equal((await mf.dispatchFetch(base+'/unlisted')).status,404);
  assert.equal((await mf.dispatchFetch('https://example.invalid/search?q=a')).status,404);
  for(const bad of ['not json',JSON.stringify({version:1,current:{origin:'https://example.invalid',build_id:route.current.build_id}})]) {
-  await bucket.put('control/search-routing.json',bad);assert.equal((await mf.dispatchFetch(base+'/health')).status,503);
+  await bucket.put('control/search-routing.json',bad);await new Promise(resolve=>setTimeout(resolve,1100));assert.equal((await mf.dispatchFetch(base+'/health')).status,503);
  }
  await bucket.put('control/search-routing.json',JSON.stringify({...route,current:{...route.current,build_id:'b1792896198-test'}}));
  assert.equal((await (await mf.dispatchFetch(base+'/route')).json()).build_id,'b1792896198-test');

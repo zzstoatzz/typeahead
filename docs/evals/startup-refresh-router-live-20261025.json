@@ -1,0 +1,105 @@
+{
+  "at": "2026-10-25T06:31:53.788543+00:00",
+  "prior": {
+    "id": "9126acce-c740-4dd6-95d3-0e81dfa19723",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/triggered_by": "secret"
+    },
+    "versions": [
+      {
+        "version_id": "e7497249-a134-451b-8544-afda9c3bfe44",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-25T05:40:29.365497Z"
+  },
+  "new_backend_url": "https://typeahead-search-transport.n8-3e9.workers.dev",
+  "actual_backend_unchanged": "https://typeahead-startup-20261024.fly.dev",
+  "observations": [
+    {
+      "/health/freshness": {
+        "status": 200,
+        "ms": 320.81,
+        "freshness": {
+          "ok": true,
+          "stale": false,
+          "replica_lag_s": 250,
+          "snapshot_age_s": 13718,
+          "build_id": "b1792896197-ebe5-px05",
+          "probe_ok": true,
+          "reasons": []
+        }
+      },
+      "/xrpc/tech.waow.typeahead.searchActors?q=zzstoatzz.io&limit=1": {
+        "status": 200,
+        "ms": 460.07
+      },
+      "/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=1": {
+        "status": 200,
+        "ms": 177.33
+      },
+      "/xrpc/tech.waow.typeahead.searchActors?q=a&pds=selfhosted.social&limit=5": {
+        "status": 200,
+        "ms": 360.17
+      }
+    },
+    {
+      "/health/freshness": {
+        "status": 200,
+        "ms": 586.42,
+        "freshness": {
+          "ok": true,
+          "stale": false,
+          "replica_lag_s": 266,
+          "snapshot_age_s": 13734,
+          "build_id": "b1792896197-ebe5-px05",
+          "probe_ok": true,
+          "reasons": []
+        }
+      },
+      "/xrpc/tech.waow.typeahead.searchActors?q=zzstoatzz.io&limit=1": {
+        "status": 200,
+        "ms": 86.15
+      },
+      "/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=1": {
+        "status": 200,
+        "ms": 122.23
+      },
+      "/xrpc/tech.waow.typeahead.searchActors?q=a&pds=selfhosted.social&limit=5": {
+        "status": 200,
+        "ms": 90.28
+      }
+    },
+    {
+      "/health/freshness": {
+        "status": 200,
+        "ms": 594.28,
+        "freshness": {
+          "ok": true,
+          "stale": false,
+          "replica_lag_s": 282,
+          "snapshot_age_s": 13750,
+          "build_id": "b1792896197-ebe5-px05",
+          "probe_ok": true,
+          "reasons": []
+        }
+      },
+      "/xrpc/tech.waow.typeahead.searchActors?q=zzstoatzz.io&limit=1": {
+        "status": 200,
+        "ms": 243.11
+      },
+      "/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=1": {
+        "status": 200,
+        "ms": 115.53
+      },
+      "/xrpc/tech.waow.typeahead.searchActors?q=a&pds=selfhosted.social&limit=5": {
+        "status": 200,
+        "ms": 89.96
+      }
+    }
+  ],
+  "passed": true
+}

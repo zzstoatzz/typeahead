@@ -1,4 +1,4 @@
-import { allowedRoute, parseRoute, ROUTE_KEY } from "./search-route";
+import { allowedRoute, readRoute } from "./search-route";
 
 const origins = new Set([
   "https://typeahead-search-compact.fly.dev",
@@ -18,9 +18,7 @@ export default {
     }
     let route;
     try {
-      const object = await env.SEARCH_CONTROL.get(ROUTE_KEY);
-      if (object === null || object.size > 16384) throw new Error("Missing search route");
-      route = parseRoute(await object.json());
+      route = await readRoute(env.SEARCH_CONTROL, request.method === "GET" && url.pathname !== "/route");
     } catch {
       return Response.json({ error: "SearchRouteUnavailable" }, { status: 503 });
     }

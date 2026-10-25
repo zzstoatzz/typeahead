@@ -26,3 +26,14 @@ export function allowedRoute(request: Request) {
   }
   return request.method === "POST" && path === "/admin/refresh";
 }
+
+let cachedRoute: { route: ReturnType<typeof parseRoute>; expiresAt: number } | undefined;
+
+export async function readRoute(bucket: R2Bucket, cache: boolean) {
+  if (cache && cachedRoute && Date.now() < cachedRoute.expiresAt) return cachedRoute.route;
+  const object = await bucket.get(ROUTE_KEY);
+  if (object === null || object.size > 16384) throw new Error("Missing search route");
+  const route = parseRoute(await object.json());
+  cachedRoute = { route, expiresAt: Date.now() + 1000 };
+  return route;
+}

@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-25T06:36:29.386900+00:00",
+  "removed_machine": "85e946b42130e8",
+  "removed_volume": "vol_vdeod60yk5gpnow4",
+  "removed_fixture_keys": [
+    "qualification/refresh-20261025/b1792909457-qual-good-px05/index.db",
+    "qualification/refresh-20261025/b1792909457-qual-good-px05/index.db.prefix",
+    "control/slots/typeahead-search-refresh/qualification-good/latest.json",
+    "qualification/refresh-20261025/b1792909458-qual-bad-px05/index.db",
+    "qualification/refresh-20261025/b1792909458-qual-bad-px05/index.db.prefix",
+    "control/slots/typeahead-search-refresh/qualification-bad/latest.json"
+  ],
+  "controller_serving_guard_and_inactive_cleanup_passed": true,
+  "app_scoped_credential_rejects_other_app": true,
+  "passed": true
+}
