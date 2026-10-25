@@ -1,0 +1,70 @@
+{
+  "init": {
+    "cmd": [
+      "/app/typeahead-ingester"
+    ]
+  },
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 2,
+    "memory_mb": 1024
+  },
+  "mounts": [
+    {
+      "encrypted": true,
+      "path": "/data",
+      "size_gb": 60,
+      "volume": "vol_v8eyllqdyykq0z5v",
+      "name": "startup_direct"
+    }
+  ],
+  "image": "registry.fly.io/typeahead-startup-20261024@sha256:61b252cbb7f6bef9ec00579083b464622928da91789c3531a13fda96a365e837",
+  "restart": {
+    "policy": "always"
+  },
+  "dns": {},
+  "env": {
+    "MODE": "search",
+    "PORT": "8080",
+    "INDEX_BUILD_ROOT": "/data/candidate",
+    "INDEX_LATEST_KEY": "latest.json",
+    "INDEX_POLL_SECS": "300",
+    "LOCAL_DB_PATH": "/data/candidate/overlay.db",
+    "SQLITE_TMPDIR": "/data/candidate/tmp",
+    "READ_POOL_SIZE": "8"
+  },
+  "services": [
+    {
+      "protocol": "tcp",
+      "internal_port": 8080,
+      "ports": [
+        {
+          "port": 80,
+          "handlers": [
+            "http"
+          ],
+          "force_https": true
+        },
+        {
+          "port": 443,
+          "handlers": [
+            "tls",
+            "http"
+          ]
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "ready": {
+      "type": "http",
+      "port": 8080,
+      "method": "GET",
+      "path": "/ready",
+      "interval": "15s",
+      "timeout": "2s",
+      "grace_period": "5s"
+    }
+  },
+  "auto_destroy": false
+}

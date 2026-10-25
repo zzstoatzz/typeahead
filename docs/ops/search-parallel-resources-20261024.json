@@ -1,0 +1,66 @@
+{
+  "app": "typeahead-startup-20261024",
+  "purpose": "parallel smaller search backend qualification; production routing unchanged",
+  "observed_at": "2026-10-25T01:50:26.387249+00:00",
+  "image": "registry.fly.io/typeahead-startup-20261024@sha256:61b252cbb7f6bef9ec00579083b464622928da91789c3531a13fda96a365e837",
+  "machines": [
+    {
+      "id": "7841e35f965528",
+      "name": "startup-direct",
+      "cpus": 2,
+      "memory_mb": 1024,
+      "services": [
+        80,
+        443
+      ]
+    }
+  ],
+  "volumes": [
+    {
+      "id": "vol_v8eyllqdyykq0z5v",
+      "size_gb": 60,
+      "snapshots": false
+    }
+  ],
+  "deleted": [
+    {
+      "machine": "683556ea309728",
+      "volume": "vol_vxmqddn73y9qxpx4",
+      "reason": "abandoned full-disk snapshot restore"
+    },
+    {
+      "derived_fixtures": [
+        "max-eval",
+        "small-eval",
+        "small-eval-100k",
+        "metadata-eval",
+        "admitted-bin"
+      ],
+      "reason": "superseded by complete verified snapshot and immutable candidate image"
+    }
+  ],
+  "status": "parallel candidate qualified and serving; original production routing unchanged",
+  "dataset": {
+    "actors": 12641735,
+    "prefix_keys": 145935146,
+    "bytes": 7203934208,
+    "path": "/data/candidate/index/generations/b1792484789-3d65-px05/index.db.prefix"
+  },
+  "last_result": {
+    "baseline_seconds": 213.833,
+    "admitted_seconds": [
+      0.0185,
+      0.0117,
+      0.0169
+    ],
+    "mismatches": 0,
+    "comparisons": 184
+  },
+  "live_catchup": {
+    "updated": 2805,
+    "cleared": 161,
+    "deleted": 168,
+    "sync_lag_s": 0
+  },
+  "clean_restart_process_to_attached_ms": 55.3
+}

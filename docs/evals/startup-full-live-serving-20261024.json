@@ -1,0 +1,104 @@
+{
+  "app": "typeahead-startup-20261024",
+  "image": "sha256:61b252cbb7f6bef9ec00579083b464622928da91789c3531a13fda96a365e837",
+  "events": [
+    {
+      "timestamp": "2026-10-25T01:46:02.335354392Z",
+      "message": "info(sync): incremental: querying updated actors (cursor_ts=1792890478)"
+    },
+    {
+      "timestamp": "2026-10-25T01:46:02.843617045Z",
+      "message": "info(sync): incremental: projecting 500 updated actors"
+    },
+    {
+      "timestamp": "2026-10-25T01:46:51.2395796Z",
+      "message": "info(sync): incremental: querying updated actors (cursor_ts=1792891209)"
+    },
+    {
+      "timestamp": "2026-10-25T01:46:51.745667437Z",
+      "message": "info(sync): incremental: projecting 500 updated actors"
+    },
+    {
+      "timestamp": "2026-10-25T01:47:51.273866641Z",
+      "message": "info(sync): incremental: querying updated actors (cursor_ts=1792892043)"
+    },
+    {
+      "timestamp": "2026-10-25T01:47:51.67974216Z",
+      "message": "info(sync): incremental: projecting 500 updated actors"
+    },
+    {
+      "timestamp": "2026-10-25T01:48:04.451890728Z",
+      "message": "info(sync): incremental: querying updated actors (cursor_ts=1792892080)"
+    },
+    {
+      "timestamp": "2026-10-25T01:48:04.857893238Z",
+      "message": "info(sync): incremental: projecting 500 updated actors"
+    },
+    {
+      "timestamp": "2026-10-25T01:48:36.290153882Z",
+      "message": "info(sync): incremental: querying updated actors (cursor_ts=1792892576)"
+    },
+    {
+      "timestamp": "2026-10-25T01:48:36.593681205Z",
+      "message": "info(sync): incremental: projecting 305 updated actors"
+    },
+    {
+      "timestamp": "2026-10-25T01:48:51.858130416Z",
+      "message": "info(sync): incremental: querying unsearchable actors"
+    },
+    {
+      "timestamp": "2026-10-25T01:48:52.935141028Z",
+      "message": "info(sync): incremental: querying tombstones"
+    },
+    {
+      "timestamp": "2026-10-25T01:48:56.408660624Z",
+      "message": "info(sync): incremental: done (updated=2805, cleared=161, deleted=168)"
+    }
+  ],
+  "checks": [
+    {
+      "path": "/ready",
+      "status": 200,
+      "ms": 137.48,
+      "body": {
+        "ready": true
+      },
+      "pds_ack": null
+    },
+    {
+      "path": "/health",
+      "status": 200,
+      "ms": 109.04,
+      "body": {
+        "status": "ok",
+        "ready": true,
+        "actors": 12641735,
+        "rss_kb": 325344,
+        "sync_lag_s": 0
+      },
+      "pds_ack": null
+    },
+    {
+      "path": "/search?q=nate&limit=5",
+      "status": 200,
+      "ms": 122.26,
+      "pds_ack": "",
+      "actors": 5
+    },
+    {
+      "path": "/search?q=zzstoatzz.io&limit=5",
+      "status": 200,
+      "ms": 95.22,
+      "pds_ack": "",
+      "actors": 4
+    },
+    {
+      "path": "/search?q=a&pds=selfhosted.social&limit=5",
+      "status": 200,
+      "ms": 125.3,
+      "pds_ack": "selfhosted.social",
+      "actors": 5
+    }
+  ],
+  "passed": true
+}

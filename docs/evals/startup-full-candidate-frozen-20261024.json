@@ -1,0 +1,2121 @@
+{
+  "cpu_count": 2,
+  "mem_total_kb": 984988,
+  "oracle_build": "b1792484789-3d65-px05",
+  "runs": [
+    {
+      "startup_seconds": 0.0185,
+      "cold": [
+        {
+          "status": 200,
+          "sha256": "feb3e5e4bf47b5b9a2dccfe46ed7bb638c28aec31cccd253a5c1311e56db1b84",
+          "pds_ack": "",
+          "ms": 203.73,
+          "params": {
+            "q": "fig",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "feb3e5e4bf47b5b9a2dccfe46ed7bb638c28aec31cccd253a5c1311e56db1b84",
+          "pds_ack": "",
+          "ms": 15.751,
+          "params": {
+            "q": "fig (",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "96a19fa365be4eb607277e7e5f0b811a173bb1566a4e230e8de702f7b7e5ef21",
+          "pds_ack": "",
+          "ms": 11.257,
+          "params": {
+            "q": "fig aka",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "90470db06260bf1a12446af4c075e5af2283dbc23a8c4c25154ec1f109592640",
+          "pds_ack": "",
+          "ms": 357.382,
+          "params": {
+            "q": "phil",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "253f2271aacbf68566717a06b0a40e8d8215757f6ff94aa2d5ba83b70a832dbc",
+          "pds_ack": "",
+          "ms": 125.421,
+          "params": {
+            "q": "zzstoatzz",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a0bdf04ac56c4d8223357b8127ed2058dbd187698517828d509779042926f307",
+          "pds_ack": "",
+          "ms": 2.781,
+          "params": {
+            "q": "zzstoatzz.io",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "13f4da1e23dbb1306099cae789d402fef5f741380315f8e4694c10ccabcb75d5",
+          "pds_ack": "",
+          "ms": 420.849,
+          "params": {
+            "q": "nate",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "940e0cbc139e6bda4be82534a4923ddb521e2249dc28db67e46efd414012241e",
+          "pds_ack": "",
+          "ms": 324.616,
+          "params": {
+            "q": "alex",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "6601d0ededce5c7cb8cbb6d058c5cb19e330f110e6272c20bef2102c5de96f9a",
+          "pds_ack": "",
+          "ms": 292.66,
+          "params": {
+            "q": "bob",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ca7e32f8f1b222942385976e1874a30e2990193622bb65ffda0eaac6d01ae670",
+          "pds_ack": "",
+          "ms": 313.161,
+          "params": {
+            "q": "aoc",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "caa7ca9ec9ffc226f766cd2f89a7cf1f8d815c8b3b9771ba8a41c9301f579b3c",
+          "pds_ack": "",
+          "ms": 230.961,
+          "params": {
+            "q": "car",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "abdd5ca45bb994f8d0917279360053989dac41bf2592890453e7fb336a57f757",
+          "pds_ack": "",
+          "ms": 554.667,
+          "params": {
+            "q": "a",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "81514a2c01279945f362dbdb91bf4872d685d98473a96eaff8f795091d85a8ec",
+          "pds_ack": "",
+          "ms": 143.222,
+          "params": {
+            "q": "na",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a17d87100ce7ba9fed720f3e3c4ac64063dd72a9f89befdb5bfa7b2f3fbafb7c",
+          "pds_ack": "",
+          "ms": 231.123,
+          "params": {
+            "q": "sky",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "3a665ae3c139745cebc39f944e8990daf291723f5c092425dba627b25f5f68d9",
+          "pds_ack": "",
+          "ms": 195.434,
+          "params": {
+            "q": "bl",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "20636f20a6c1df224a360fab883ff8cea186704d521571c3be17b9bb37970d68",
+          "pds_ack": "",
+          "ms": 464.437,
+          "params": {
+            "q": "j",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "86d0ef998c9eda621be71f3431b3c930212bd4ad91678f92fdd606c4def4cfdd",
+          "pds_ack": "",
+          "ms": 158.466,
+          "params": {
+            "q": "sarah",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a5c8705cd3aa29feff743fb8c8cc7570f21a203e58b2829c53e99f11d35dd754",
+          "pds_ack": "",
+          "ms": 155.259,
+          "params": {
+            "q": "dan",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "39b63bd7fcb814a7f8e7fccaef1e1d4a7c8554cd1e0ffecb99d72a4ff76aed06",
+          "pds_ack": "",
+          "ms": 124.077,
+          "params": {
+            "q": "paul",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e3463789506b05fb7f943e2c18db61e565c40779955460e19d5fff135b1003c5",
+          "pds_ack": "",
+          "ms": 84.426,
+          "params": {
+            "q": "sam",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "bb8ae68f7275435e2bba27d184678b4b699786873b1ea42f5aa85f536d7d1fb1",
+          "pds_ack": "",
+          "ms": 152.67,
+          "params": {
+            "q": "chris",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "d3f95c7975d2e8fa8cc62084c592d399b6e00fb64cea3a4afb715e1bd02d1aa3",
+          "pds_ack": "",
+          "ms": 203.831,
+          "params": {
+            "q": "jordan",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "4bba8227854b1724120377eb16abf7051624282157a526b8dcfd5326d9af4f6c",
+          "pds_ack": "",
+          "ms": 163.598,
+          "params": {
+            "q": "mike",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "fd6ced25215289ec55d1ea6828db7487326041f6c105bda6c743bab86df9a723",
+          "pds_ack": "",
+          "ms": 140.552,
+          "params": {
+            "q": "anna",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e988ed2c69b52a396dcd17cd0ea02ad1517544c77477b292a62d07a423cfab05",
+          "pds_ack": "",
+          "ms": 23.708,
+          "params": {
+            "q": "boorkie",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "817b5edda0096ab9fc90ff36744db17d9a3623d8629fa9b743722ca725b0199b",
+          "pds_ack": "",
+          "ms": 67.808,
+          "params": {
+            "q": "kohari",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "8434ddf4aa25f4f158a7be6d2ba307737c8411b7ef421408d3ac483bc5261689",
+          "pds_ack": "",
+          "ms": 7.603,
+          "params": {
+            "q": "pfrazee",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "3ba8b7166ed6204ca74ebb1d6e6d5aee8bc071d6241b801439808e16140e6687",
+          "pds_ack": "",
+          "ms": 23.002,
+          "params": {
+            "q": "jay.bsky.team",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "abc1018a1e178042045cf3c38c0b409a2ab12e7e1a44214583c07ed8bf2e7cf1",
+          "pds_ack": "",
+          "ms": 112.334,
+          "params": {
+            "q": "alice",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "906107e45c3fef8d2a82fcd28e072b849e056f60aedf79ee13fee2964c6c55de",
+          "pds_ack": "",
+          "ms": 119.785,
+          "params": {
+            "q": "Andr\u00e9",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e70f251fc00bb6798d1f3f32aec72084a338a2591537747f3b0ab2a67ff310be",
+          "pds_ack": "",
+          "ms": 114.039,
+          "params": {
+            "q": "na\u00efve",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "fc3a11efa1d0a5706973f1de25c706c58e990dd1b84e0afdb2408593640b19b1",
+          "pds_ack": "",
+          "ms": 80.86,
+          "params": {
+            "q": "caf\u00e9",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "f77f2183f6222692215f1ec4520f0613b10d15a79f20cb3e9510916d01e01889",
+          "pds_ack": "",
+          "ms": 1.87,
+          "params": {
+            "q": "nate kohari",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "",
+          "ms": 14.516,
+          "params": {
+            "q": "paul frazee",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ba6a6a31255fcec79e4a245858279008e0cde9c6af85df2ab76d5f00b4d2710a",
+          "pds_ack": "",
+          "ms": 3.439,
+          "params": {
+            "q": "nate.io",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "24992bc1cbd96dbb30da7d7825ea2da9f51524d0dd3c601d124a0748589b55ca",
+          "pds_ack": "",
+          "ms": 163.204,
+          "params": {
+            "q": "the",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "59d1d5d19fba071b1e344f53d013468a279206dff4766d64ab6e0f618d261bca",
+          "pds_ack": "",
+          "ms": 71.709,
+          "params": {
+            "q": "test",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "174400474e1684bde725955513a2d536377975ee697619a3bb19d326ee011490",
+          "pds_ack": "",
+          "ms": 118.335,
+          "params": {
+            "q": "bot",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "87e0341f98ec05b51589a299b44b8b7604eefd652852776641e385c9b807c80f",
+          "pds_ack": "",
+          "ms": 121.596,
+          "params": {
+            "q": "news",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "eaf5f6e03e79940d03739ca1b72fc85d39374e2797cacaa5f89954ca9c96dcde",
+          "pds_ack": "",
+          "ms": 150.353,
+          "params": {
+            "q": "art",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "9a2915c1c5cad0946e9669804b36e4a2bf393bb3dd182638954e4e34461270b2",
+          "pds_ack": "",
+          "ms": 133.198,
+          "params": {
+            "q": "dev",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "64398e53bdc942e07a71b4709c790a77f2cff0aa4776c04029666cb40332c8c7",
+          "pds_ack": "",
+          "ms": 77.029,
+          "params": {
+            "q": "music",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "594f08d748be52bb4fb0eea5197f710b3901675a946278b7b4a05e71227ced11",
+          "pds_ack": "",
+          "ms": 87.398,
+          "params": {
+            "q": "photographer",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "16a5b68a0011f4f930b5016a327f39c915422f8e09583debfae9767a72f06b03",
+          "pds_ack": "",
+          "ms": 126.932,
+          "params": {
+            "q": "designer",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "9763756cafd98d60f188a255d59a9cb78fc6c857af5cf716f7798af241508b31",
+          "pds_ack": "",
+          "ms": 102.104,
+          "params": {
+            "q": "engineer",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e75c9336553565f42def751d65408b8cb9211002bc2c732dd1a0efff2eb08d8d",
+          "pds_ack": "",
+          "ms": 55.239,
+          "params": {
+            "q": "journalist",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "693325a6bc00cc7726e087b6c6ef5343ebc7d0cd9ea7bc2a74fb11c0a0bf3eeb",
+          "pds_ack": "",
+          "ms": 129.233,
+          "params": {
+            "q": "tokyo",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "c2a9080141e86668c8d93f1860a99a4dee092b1e2032d27a27dc1ae09fd9549b",
+          "pds_ack": "",
+          "ms": 100.649,
+          "params": {
+            "q": "berlin",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "c2572b7b6dc154a52540f4aa6c0f81f6f2c1f22860fd5d493a2441f143dd1acd",
+          "pds_ack": "",
+          "ms": 106.168,
+          "params": {
+            "q": "podcast",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "0be2ff22fd966f03ff4cb76f4466fed81701ea796178903a8ad95e65e5a080fc",
+          "pds_ack": "",
+          "ms": 126.58,
+          "params": {
+            "q": "crypto",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "0eb2d6797664358531fb5cd86adc86aa5f3dd86f1a32f1bbbb66602ad4d94822",
+          "pds_ack": "",
+          "ms": 102.212,
+          "params": {
+            "q": "gaming",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ae72fa13001495d66f568a3b3f9c399c9a57eabee505274aa980407711c3ad68",
+          "pds_ack": "",
+          "ms": 67.007,
+          "params": {
+            "q": "\u6771\u4eac",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 3.066,
+          "params": {
+            "q": "fig",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.861,
+          "params": {
+            "q": "fig (",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.475,
+          "params": {
+            "q": "fig aka",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 3.09,
+          "params": {
+            "q": "phil",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.979,
+          "params": {
+            "q": "zzstoatzz",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.964,
+          "params": {
+            "q": "zzstoatzz.io",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.333,
+          "params": {
+            "q": "nate",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "527c5aafe1a5c49bf4594cb2876bfc6b99f472b7934002ac2d6e192684f6e5d5",
+          "pds_ack": "selfhosted.social",
+          "ms": 7.897,
+          "params": {
+            "q": "alex",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 4.12,
+          "params": {
+            "q": "bob",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.006,
+          "params": {
+            "q": "aoc",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "7fd85b1d447fe2ab09fd4a9117d0cadbaeed40846b7688eb097436c070d631b0",
+          "pds_ack": "selfhosted.social",
+          "ms": 12.789,
+          "params": {
+            "q": "car",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ec000ec054bd3e8dd9d69750723aab448063442cb1a64ebfe9b3ac6cef8c2643",
+          "pds_ack": "selfhosted.social",
+          "ms": 78.239,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.109,
+          "params": {
+            "q": "fig",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.914,
+          "params": {
+            "q": "fig (",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.127,
+          "params": {
+            "q": "fig aka",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.924,
+          "params": {
+            "q": "phil",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.825,
+          "params": {
+            "q": "zzstoatzz",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.782,
+          "params": {
+            "q": "zzstoatzz.io",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.784,
+          "params": {
+            "q": "nate",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "527c5aafe1a5c49bf4594cb2876bfc6b99f472b7934002ac2d6e192684f6e5d5",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.555,
+          "params": {
+            "q": "alex",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.047,
+          "params": {
+            "q": "bob",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.974,
+          "params": {
+            "q": "aoc",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "7fd85b1d447fe2ab09fd4a9117d0cadbaeed40846b7688eb097436c070d631b0",
+          "pds_ack": "selfhosted.social",
+          "ms": 4.48,
+          "params": {
+            "q": "car",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ec000ec054bd3e8dd9d69750723aab448063442cb1a64ebfe9b3ac6cef8c2643",
+          "pds_ack": "selfhosted.social",
+          "ms": 12.081,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "bsky.social",
+          "ms": 0.406,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "bsky.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "unknown.example",
+          "ms": 0.328,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "unknown.example"
+          },
+          "match": true
+        }
+      ],
+      "warm": [
+        {
+          "status": 200,
+          "sha256": "feb3e5e4bf47b5b9a2dccfe46ed7bb638c28aec31cccd253a5c1311e56db1b84",
+          "pds_ack": "",
+          "ms": 16.205,
+          "params": {
+            "q": "fig",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "feb3e5e4bf47b5b9a2dccfe46ed7bb638c28aec31cccd253a5c1311e56db1b84",
+          "pds_ack": "",
+          "ms": 16.702,
+          "params": {
+            "q": "fig (",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "96a19fa365be4eb607277e7e5f0b811a173bb1566a4e230e8de702f7b7e5ef21",
+          "pds_ack": "",
+          "ms": 1.944,
+          "params": {
+            "q": "fig aka",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "90470db06260bf1a12446af4c075e5af2283dbc23a8c4c25154ec1f109592640",
+          "pds_ack": "",
+          "ms": 15.313,
+          "params": {
+            "q": "phil",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "253f2271aacbf68566717a06b0a40e8d8215757f6ff94aa2d5ba83b70a832dbc",
+          "pds_ack": "",
+          "ms": 3.203,
+          "params": {
+            "q": "zzstoatzz",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a0bdf04ac56c4d8223357b8127ed2058dbd187698517828d509779042926f307",
+          "pds_ack": "",
+          "ms": 2.394,
+          "params": {
+            "q": "zzstoatzz.io",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "13f4da1e23dbb1306099cae789d402fef5f741380315f8e4694c10ccabcb75d5",
+          "pds_ack": "",
+          "ms": 14.092,
+          "params": {
+            "q": "nate",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "940e0cbc139e6bda4be82534a4923ddb521e2249dc28db67e46efd414012241e",
+          "pds_ack": "",
+          "ms": 15.253,
+          "params": {
+            "q": "alex",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "6601d0ededce5c7cb8cbb6d058c5cb19e330f110e6272c20bef2102c5de96f9a",
+          "pds_ack": "",
+          "ms": 14.754,
+          "params": {
+            "q": "bob",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ca7e32f8f1b222942385976e1874a30e2990193622bb65ffda0eaac6d01ae670",
+          "pds_ack": "",
+          "ms": 13.33,
+          "params": {
+            "q": "aoc",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "caa7ca9ec9ffc226f766cd2f89a7cf1f8d815c8b3b9771ba8a41c9301f579b3c",
+          "pds_ack": "",
+          "ms": 16.024,
+          "params": {
+            "q": "car",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "abdd5ca45bb994f8d0917279360053989dac41bf2592890453e7fb336a57f757",
+          "pds_ack": "",
+          "ms": 18.962,
+          "params": {
+            "q": "a",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "81514a2c01279945f362dbdb91bf4872d685d98473a96eaff8f795091d85a8ec",
+          "pds_ack": "",
+          "ms": 17.771,
+          "params": {
+            "q": "na",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a17d87100ce7ba9fed720f3e3c4ac64063dd72a9f89befdb5bfa7b2f3fbafb7c",
+          "pds_ack": "",
+          "ms": 16.866,
+          "params": {
+            "q": "sky",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "3a665ae3c139745cebc39f944e8990daf291723f5c092425dba627b25f5f68d9",
+          "pds_ack": "",
+          "ms": 15.24,
+          "params": {
+            "q": "bl",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "20636f20a6c1df224a360fab883ff8cea186704d521571c3be17b9bb37970d68",
+          "pds_ack": "",
+          "ms": 18.789,
+          "params": {
+            "q": "j",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "86d0ef998c9eda621be71f3431b3c930212bd4ad91678f92fdd606c4def4cfdd",
+          "pds_ack": "",
+          "ms": 16.794,
+          "params": {
+            "q": "sarah",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a5c8705cd3aa29feff743fb8c8cc7570f21a203e58b2829c53e99f11d35dd754",
+          "pds_ack": "",
+          "ms": 14.982,
+          "params": {
+            "q": "dan",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "39b63bd7fcb814a7f8e7fccaef1e1d4a7c8554cd1e0ffecb99d72a4ff76aed06",
+          "pds_ack": "",
+          "ms": 14.135,
+          "params": {
+            "q": "paul",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e3463789506b05fb7f943e2c18db61e565c40779955460e19d5fff135b1003c5",
+          "pds_ack": "",
+          "ms": 14.268,
+          "params": {
+            "q": "sam",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "bb8ae68f7275435e2bba27d184678b4b699786873b1ea42f5aa85f536d7d1fb1",
+          "pds_ack": "",
+          "ms": 14.788,
+          "params": {
+            "q": "chris",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "d3f95c7975d2e8fa8cc62084c592d399b6e00fb64cea3a4afb715e1bd02d1aa3",
+          "pds_ack": "",
+          "ms": 14.679,
+          "params": {
+            "q": "jordan",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "4bba8227854b1724120377eb16abf7051624282157a526b8dcfd5326d9af4f6c",
+          "pds_ack": "",
+          "ms": 13.744,
+          "params": {
+            "q": "mike",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "fd6ced25215289ec55d1ea6828db7487326041f6c105bda6c743bab86df9a723",
+          "pds_ack": "",
+          "ms": 14.54,
+          "params": {
+            "q": "anna",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e988ed2c69b52a396dcd17cd0ea02ad1517544c77477b292a62d07a423cfab05",
+          "pds_ack": "",
+          "ms": 2.476,
+          "params": {
+            "q": "boorkie",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "817b5edda0096ab9fc90ff36744db17d9a3623d8629fa9b743722ca725b0199b",
+          "pds_ack": "",
+          "ms": 5.201,
+          "params": {
+            "q": "kohari",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "8434ddf4aa25f4f158a7be6d2ba307737c8411b7ef421408d3ac483bc5261689",
+          "pds_ack": "",
+          "ms": 2.663,
+          "params": {
+            "q": "pfrazee",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "3ba8b7166ed6204ca74ebb1d6e6d5aee8bc071d6241b801439808e16140e6687",
+          "pds_ack": "",
+          "ms": 2.347,
+          "params": {
+            "q": "jay.bsky.team",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "abc1018a1e178042045cf3c38c0b409a2ab12e7e1a44214583c07ed8bf2e7cf1",
+          "pds_ack": "",
+          "ms": 15.448,
+          "params": {
+            "q": "alice",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "906107e45c3fef8d2a82fcd28e072b849e056f60aedf79ee13fee2964c6c55de",
+          "pds_ack": "",
+          "ms": 18.077,
+          "params": {
+            "q": "Andr\u00e9",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e70f251fc00bb6798d1f3f32aec72084a338a2591537747f3b0ab2a67ff310be",
+          "pds_ack": "",
+          "ms": 19.962,
+          "params": {
+            "q": "na\u00efve",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "fc3a11efa1d0a5706973f1de25c706c58e990dd1b84e0afdb2408593640b19b1",
+          "pds_ack": "",
+          "ms": 20.284,
+          "params": {
+            "q": "caf\u00e9",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "f77f2183f6222692215f1ec4520f0613b10d15a79f20cb3e9510916d01e01889",
+          "pds_ack": "",
+          "ms": 1.86,
+          "params": {
+            "q": "nate kohari",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "",
+          "ms": 1.559,
+          "params": {
+            "q": "paul frazee",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ba6a6a31255fcec79e4a245858279008e0cde9c6af85df2ab76d5f00b4d2710a",
+          "pds_ack": "",
+          "ms": 2.354,
+          "params": {
+            "q": "nate.io",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "24992bc1cbd96dbb30da7d7825ea2da9f51524d0dd3c601d124a0748589b55ca",
+          "pds_ack": "",
+          "ms": 20.555,
+          "params": {
+            "q": "the",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "59d1d5d19fba071b1e344f53d013468a279206dff4766d64ab6e0f618d261bca",
+          "pds_ack": "",
+          "ms": 15.375,
+          "params": {
+            "q": "test",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "174400474e1684bde725955513a2d536377975ee697619a3bb19d326ee011490",
+          "pds_ack": "",
+          "ms": 16.326,
+          "params": {
+            "q": "bot",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "87e0341f98ec05b51589a299b44b8b7604eefd652852776641e385c9b807c80f",
+          "pds_ack": "",
+          "ms": 14.944,
+          "params": {
+            "q": "news",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "eaf5f6e03e79940d03739ca1b72fc85d39374e2797cacaa5f89954ca9c96dcde",
+          "pds_ack": "",
+          "ms": 15.573,
+          "params": {
+            "q": "art",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "9a2915c1c5cad0946e9669804b36e4a2bf393bb3dd182638954e4e34461270b2",
+          "pds_ack": "",
+          "ms": 15.435,
+          "params": {
+            "q": "dev",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "64398e53bdc942e07a71b4709c790a77f2cff0aa4776c04029666cb40332c8c7",
+          "pds_ack": "",
+          "ms": 15.03,
+          "params": {
+            "q": "music",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "594f08d748be52bb4fb0eea5197f710b3901675a946278b7b4a05e71227ced11",
+          "pds_ack": "",
+          "ms": 15.07,
+          "params": {
+            "q": "photographer",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "16a5b68a0011f4f930b5016a327f39c915422f8e09583debfae9767a72f06b03",
+          "pds_ack": "",
+          "ms": 14.44,
+          "params": {
+            "q": "designer",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "9763756cafd98d60f188a255d59a9cb78fc6c857af5cf716f7798af241508b31",
+          "pds_ack": "",
+          "ms": 13.344,
+          "params": {
+            "q": "engineer",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e75c9336553565f42def751d65408b8cb9211002bc2c732dd1a0efff2eb08d8d",
+          "pds_ack": "",
+          "ms": 14.403,
+          "params": {
+            "q": "journalist",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "693325a6bc00cc7726e087b6c6ef5343ebc7d0cd9ea7bc2a74fb11c0a0bf3eeb",
+          "pds_ack": "",
+          "ms": 13.441,
+          "params": {
+            "q": "tokyo",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "c2a9080141e86668c8d93f1860a99a4dee092b1e2032d27a27dc1ae09fd9549b",
+          "pds_ack": "",
+          "ms": 14.676,
+          "params": {
+            "q": "berlin",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "c2572b7b6dc154a52540f4aa6c0f81f6f2c1f22860fd5d493a2441f143dd1acd",
+          "pds_ack": "",
+          "ms": 11.807,
+          "params": {
+            "q": "podcast",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "0be2ff22fd966f03ff4cb76f4466fed81701ea796178903a8ad95e65e5a080fc",
+          "pds_ack": "",
+          "ms": 15.764,
+          "params": {
+            "q": "crypto",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "0eb2d6797664358531fb5cd86adc86aa5f3dd86f1a32f1bbbb66602ad4d94822",
+          "pds_ack": "",
+          "ms": 12.796,
+          "params": {
+            "q": "gaming",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ae72fa13001495d66f568a3b3f9c399c9a57eabee505274aa980407711c3ad68",
+          "pds_ack": "",
+          "ms": 14.666,
+          "params": {
+            "q": "\u6771\u4eac",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.311,
+          "params": {
+            "q": "fig",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.12,
+          "params": {
+            "q": "fig (",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.562,
+          "params": {
+            "q": "fig aka",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.313,
+          "params": {
+            "q": "phil",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.014,
+          "params": {
+            "q": "zzstoatzz",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.946,
+          "params": {
+            "q": "zzstoatzz.io",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.936,
+          "params": {
+            "q": "nate",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "527c5aafe1a5c49bf4594cb2876bfc6b99f472b7934002ac2d6e192684f6e5d5",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.919,
+          "params": {
+            "q": "alex",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.089,
+          "params": {
+            "q": "bob",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.04,
+          "params": {
+            "q": "aoc",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "7fd85b1d447fe2ab09fd4a9117d0cadbaeed40846b7688eb097436c070d631b0",
+          "pds_ack": "selfhosted.social",
+          "ms": 4.517,
+          "params": {
+            "q": "car",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ec000ec054bd3e8dd9d69750723aab448063442cb1a64ebfe9b3ac6cef8c2643",
+          "pds_ack": "selfhosted.social",
+          "ms": 12.293,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.016,
+          "params": {
+            "q": "fig",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.911,
+          "params": {
+            "q": "fig (",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.308,
+          "params": {
+            "q": "fig aka",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.124,
+          "params": {
+            "q": "phil",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.212,
+          "params": {
+            "q": "zzstoatzz",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.933,
+          "params": {
+            "q": "zzstoatzz.io",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.122,
+          "params": {
+            "q": "nate",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "527c5aafe1a5c49bf4594cb2876bfc6b99f472b7934002ac2d6e192684f6e5d5",
+          "pds_ack": "selfhosted.social",
+          "ms": 2.618,
+          "params": {
+            "q": "alex",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.993,
+          "params": {
+            "q": "bob",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "selfhosted.social",
+          "ms": 1.925,
+          "params": {
+            "q": "aoc",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "7fd85b1d447fe2ab09fd4a9117d0cadbaeed40846b7688eb097436c070d631b0",
+          "pds_ack": "selfhosted.social",
+          "ms": 4.614,
+          "params": {
+            "q": "car",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ec000ec054bd3e8dd9d69750723aab448063442cb1a64ebfe9b3ac6cef8c2643",
+          "pds_ack": "selfhosted.social",
+          "ms": 13.026,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "bsky.social",
+          "ms": 0.539,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "bsky.social"
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+          "pds_ack": "unknown.example",
+          "ms": 0.357,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "unknown.example"
+          },
+          "match": true
+        }
+      ],
+      "concurrent": [
+        {
+          "status": 200,
+          "sha256": "feb3e5e4bf47b5b9a2dccfe46ed7bb638c28aec31cccd253a5c1311e56db1b84",
+          "pds_ack": "",
+          "ms": 18.109,
+          "params": {
+            "q": "fig",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "feb3e5e4bf47b5b9a2dccfe46ed7bb638c28aec31cccd253a5c1311e56db1b84",
+          "pds_ack": "",
+          "ms": 34.092,
+          "params": {
+            "q": "fig (",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "96a19fa365be4eb607277e7e5f0b811a173bb1566a4e230e8de702f7b7e5ef21",
+          "pds_ack": "",
+          "ms": 19.108,
+          "params": {
+            "q": "fig aka",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "90470db06260bf1a12446af4c075e5af2283dbc23a8c4c25154ec1f109592640",
+          "pds_ack": "",
+          "ms": 47.645,
+          "params": {
+            "q": "phil",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "253f2271aacbf68566717a06b0a40e8d8215757f6ff94aa2d5ba83b70a832dbc",
+          "pds_ack": "",
+          "ms": 50.079,
+          "params": {
+            "q": "zzstoatzz",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a0bdf04ac56c4d8223357b8127ed2058dbd187698517828d509779042926f307",
+          "pds_ack": "",
+          "ms": 50.904,
+          "params": {
+            "q": "zzstoatzz.io",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "13f4da1e23dbb1306099cae789d402fef5f741380315f8e4694c10ccabcb75d5",
+          "pds_ack": "",
+          "ms": 64.785,
+          "params": {
+            "q": "nate",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "940e0cbc139e6bda4be82534a4923ddb521e2249dc28db67e46efd414012241e",
+          "pds_ack": "",
+          "ms": 80.14,
+          "params": {
+            "q": "alex",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "6601d0ededce5c7cb8cbb6d058c5cb19e330f110e6272c20bef2102c5de96f9a",
+          "pds_ack": "",
+          "ms": 79.7,
+          "params": {
+            "q": "bob",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ca7e32f8f1b222942385976e1874a30e2990193622bb65ffda0eaac6d01ae670",
+          "pds_ack": "",
+          "ms": 92.105,
+          "params": {
+            "q": "aoc",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "caa7ca9ec9ffc226f766cd2f89a7cf1f8d815c8b3b9771ba8a41c9301f579b3c",
+          "pds_ack": "",
+          "ms": 93.263,
+          "params": {
+            "q": "car",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "abdd5ca45bb994f8d0917279360053989dac41bf2592890453e7fb336a57f757",
+          "pds_ack": "",
+          "ms": 96.843,
+          "params": {
+            "q": "a",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "81514a2c01279945f362dbdb91bf4872d685d98473a96eaff8f795091d85a8ec",
+          "pds_ack": "",
+          "ms": 109.407,
+          "params": {
+            "q": "na",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a17d87100ce7ba9fed720f3e3c4ac64063dd72a9f89befdb5bfa7b2f3fbafb7c",
+          "pds_ack": "",
+          "ms": 123.065,
+          "params": {
+            "q": "sky",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "3a665ae3c139745cebc39f944e8990daf291723f5c092425dba627b25f5f68d9",
+          "pds_ack": "",
+          "ms": 123.765,
+          "params": {
+            "q": "bl",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "20636f20a6c1df224a360fab883ff8cea186704d521571c3be17b9bb37970d68",
+          "pds_ack": "",
+          "ms": 126.017,
+          "params": {
+            "q": "j",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "86d0ef998c9eda621be71f3431b3c930212bd4ad91678f92fdd606c4def4cfdd",
+          "pds_ack": "",
+          "ms": 127.959,
+          "params": {
+            "q": "sarah",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "a5c8705cd3aa29feff743fb8c8cc7570f21a203e58b2829c53e99f11d35dd754",
+          "pds_ack": "",
+          "ms": 129.052,
+          "params": {
+            "q": "dan",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "39b63bd7fcb814a7f8e7fccaef1e1d4a7c8554cd1e0ffecb99d72a4ff76aed06",
+          "pds_ack": "",
+          "ms": 126.454,
+          "params": {
+            "q": "paul",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "e3463789506b05fb7f943e2c18db61e565c40779955460e19d5fff135b1003c5",
+          "pds_ack": "",
+          "ms": 122.451,
+          "params": {
+            "q": "sam",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "bb8ae68f7275435e2bba27d184678b4b699786873b1ea42f5aa85f536d7d1fb1",
+          "pds_ack": "",
+          "ms": 121.068,
+          "params": {
+            "q": "chris",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "d3f95c7975d2e8fa8cc62084c592d399b6e00fb64cea3a4afb715e1bd02d1aa3",
+          "pds_ack": "",
+          "ms": 119.926,
+          "params": {
+            "q": "jordan",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "4bba8227854b1724120377eb16abf7051624282157a526b8dcfd5326d9af4f6c",
+          "pds_ack": "",
+          "ms": 118.939,
+          "params": {
+            "q": "mike",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "fd6ced25215289ec55d1ea6828db7487326041f6c105bda6c743bab86df9a723",
+          "pds_ack": "",
+          "ms": 115.499,
+          "params": {
+            "q": "anna",
+            "limit": 50
+          },
+          "match": true
+        }
+      ],
+      "process_status": {
+        "VmHWM": "234840 kB",
+        "VmRSS": "234744 kB"
+      }
+    },
+    {
+      "startup_seconds": 0.0117,
+      "sanity": [
+        {
+          "status": 200,
+          "sha256": "feb3e5e4bf47b5b9a2dccfe46ed7bb638c28aec31cccd253a5c1311e56db1b84",
+          "pds_ack": "",
+          "ms": 471.242,
+          "params": {
+            "q": "fig",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ec000ec054bd3e8dd9d69750723aab448063442cb1a64ebfe9b3ac6cef8c2643",
+          "pds_ack": "selfhosted.social",
+          "ms": 647.157,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        }
+      ],
+      "process_status": {
+        "VmHWM": "38576 kB",
+        "VmRSS": "38576 kB"
+      }
+    },
+    {
+      "startup_seconds": 0.0169,
+      "sanity": [
+        {
+          "status": 200,
+          "sha256": "feb3e5e4bf47b5b9a2dccfe46ed7bb638c28aec31cccd253a5c1311e56db1b84",
+          "pds_ack": "",
+          "ms": 1470.302,
+          "params": {
+            "q": "fig",
+            "limit": 50
+          },
+          "match": true
+        },
+        {
+          "status": 200,
+          "sha256": "ec000ec054bd3e8dd9d69750723aab448063442cb1a64ebfe9b3ac6cef8c2643",
+          "pds_ack": "selfhosted.social",
+          "ms": 647.093,
+          "params": {
+            "q": "a",
+            "limit": 50,
+            "pds": "https://selfhosted.social"
+          },
+          "match": true
+        }
+      ],
+      "process_status": {
+        "VmHWM": "38660 kB",
+        "VmRSS": "38660 kB"
+      }
+    }
+  ],
+  "missing_receipt": {
+    "seconds": 0.0077,
+    "error": "SnapshotNotAdmitted",
+    "exit_code": 1
+  }
+}
