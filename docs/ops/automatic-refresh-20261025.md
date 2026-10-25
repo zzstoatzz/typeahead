@@ -180,3 +180,19 @@ $19.91/month of always-on compute and deleting 120 GB removes $18/month of volum
 The current search baseline is $6.64/month compute plus $3/month for its 20 GB disk;
 the separate ingester, snapshot storage, builder and shared services are additional.
 These are list-price estimates, not invoice savings or a complete project bill.
+
+## Retired home datasets
+
+Later October 25, the operator requested cleanup of the old home build and
+qualification datasets. HeavyPad root disk usage fell from 92% to 43%; 852 GiB
+was reclaimed. The two newest home build generations, small scripts, manifests,
+logs and JSON results remain. Large obsolete experiment database/prefix payloads
+were removed; historical local paths in earlier evaluations may now be retired.
+The archived cloud generations, R2 artifacts and serving disks were not changed.
+The audit also stopped a localhost evaluation server orphaned since October 8.
+
+The home publisher remains disabled. The active cloud publisher's retention now
+runs before new-build disk admission as well as after success, counts format twins
+as one generation, and can identify a working stale backend from HTTP 503. Unknown
+identity still protects data and blocks oversized retention with a visible failure.
+See the [producer audit](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/audits/2026-10-25-worker-disk-cleanup.md).

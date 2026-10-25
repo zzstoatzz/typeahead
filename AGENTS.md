@@ -176,3 +176,14 @@ explicitly. A changed eligible-host policy must replay from the snapshot
 watermark before publishing its readiness hash. See `docs/evals/pds-scope.md` for
 isolated evaluation commands and rollout order. No full-corpus capacity claim
 may be inferred from synthetic fixture timings.
+
+## experiment storage lifecycle
+
+Every corpus-scale experiment must name its owner, scratch root, disk budget,
+and cleanup path before writing data. Use scoped temporary directories and a
+supervised process group with teardown on success, failure and cancellation.
+Preserve small scripts, manifests, hashes and results; retire full database/index
+copies after qualification and mark retired payload paths in the evidence record.
+Do not declare an experiment complete while its servers or unbounded trial data
+remain. Large files hard-linked into trial trees consume storage until their last
+link is removed; verify reclamation with filesystem free space, not summed sizes.

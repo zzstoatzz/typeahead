@@ -46,6 +46,7 @@ rejects failed replay queries before declaring readiness. Smoke, scoped aliases 
 The superseded backends and disks were retired October 25 after qualification of
 the two-CPU / 1 GiB admitted-startup backend; see the
 [retirement record](docs/ops/automatic-refresh-20261025.md#superseded-backend-retirement).
+Obsolete home datasets were also retired; the [storage audit](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/audits/2026-10-25-worker-disk-cleanup.md) records retained evidence and retention fixes.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile
