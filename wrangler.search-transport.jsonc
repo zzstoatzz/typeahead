@@ -2,7 +2,8 @@
   "name": "typeahead-search-transport",
   "main": "src/search-transport.ts",
   "compatibility_date": "2024-12-01",
-  "workers_dev": false,
+  "workers_dev": true,
+  "r2_buckets": [{ "binding": "SEARCH_CONTROL", "bucket_name": "typeahead-index" }],
   "placement": { "region": "aws:us-east-1" },
-  "observability": { "enabled": true, "head_sampling_rate": 1 }
+  "observability": { "enabled": true, "head_sampling_rate": 1, "traces": { "enabled": true } }
 }

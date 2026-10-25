@@ -1,3 +1,5 @@
+import { allowedRoute, parseRoute, ROUTE_KEY } from "./search-route";
+
 const origins = new Set([
   "https://typeahead-search-compact.fly.dev",
   "https://typeahead-search.fly.dev",
@@ -5,11 +7,26 @@ const origins = new Set([
 ]);
 
 export default {
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request, env: SearchTransportEnv): Promise<Response> {
     const url = new URL(request.url);
-    if (request.method !== "GET" || url.pathname !== "/search" || !origins.has(url.origin)) {
+    if (origins.has(url.origin)) {
+      if (request.method !== "GET" || url.pathname !== "/search") return new Response("Not found", { status: 404 });
+      return fetch(url, { signal: AbortSignal.timeout(3000) });
+    }
+    if (url.origin !== "https://typeahead-search-transport.n8-3e9.workers.dev" || !allowedRoute(request)) {
       return new Response("Not found", { status: 404 });
     }
-    return fetch(url, { signal: AbortSignal.timeout(3000) });
+    let route;
+    try {
+      const object = await env.SEARCH_CONTROL.get(ROUTE_KEY);
+      if (object === null || object.size > 16384) throw new Error("Missing search route");
+      route = parseRoute(await object.json());
+    } catch {
+      return Response.json({ error: "SearchRouteUnavailable" }, { status: 503 });
+    }
+    if (url.pathname === "/route") return Response.json(route, { headers: { "Cache-Control": "no-store" } });
+    const target = new URL(url.pathname + url.search, route.origin);
+    const forwarded = new Request(target, request);
+    return fetch(forwarded, { signal: AbortSignal.timeout(url.pathname === "/admin/refresh" ? 5000 : 3000), redirect: "manual" });
   },
 };
