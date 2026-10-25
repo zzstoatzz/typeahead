@@ -51,6 +51,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=builder /app/zig-out/bin/typeahead-ingester .
+COPY --from=builder /app/zig-out/bin/admit-prefix .
 COPY --from=builder /usr/local/bin/rclone /usr/local/bin/rclone
 
 CMD ["./typeahead-ingester"]

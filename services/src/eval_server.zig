@@ -10,10 +10,10 @@ pub fn main() !void {
     var local = LocalDb.init(std.heap.page_allocator);
     defer local.deinit();
     try local.open();
-    if (std.c.getenv("TYPEAHEAD_EVAL_VERIFIED_SNAPSHOT") != null) {
+    if (std.c.getenv("TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT") != null) {
         const app = std.mem.span(std.c.getenv("FLY_APP_NAME") orelse return error.MissingEvaluationApp);
         if (!std.mem.startsWith(u8, app, "typeahead-startup-")) return error.InvalidEvaluationApp;
-        var prepared = try local.prepareVerifiedSnapshot(snapshot);
+        var prepared = try local.prepareAdmittedSnapshot(snapshot);
         defer prepared.deinit();
         local.activateSnapshot(&prepared);
     } else try local.swapSnapshot(snapshot);

@@ -82,6 +82,9 @@ found no timing benefit from larger validation reads on a 100,000-actor subset.
 Its metadata-only prototype became ready in 18 ms on the same verified fixture.
 That prototype is restricted to the evaluation server and still needs an
 admission/integrity protocol before production use. Production remains unchanged.
+The subsequent [verified-startup candidate](evals/startup-admitted-candidate-20261024.md)
+replaces the bypass with installation-time admission and per-block verification;
+follow its qualification gates before changing routing.
 
 
 ## Search rollback resource retirement — October 24, 2026

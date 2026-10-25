@@ -1,0 +1,18 @@
+{
+  "admit-prefix": {
+    "bytes": 3680376,
+    "sha256": "4b1f7cff7c39379fc2e96332f0c24dd9e73c4273dc6cbda8f89ff45065bea0c5"
+  },
+  "flat-admission-test": {
+    "bytes": 4591624,
+    "sha256": "244037003af632a959c8cfb99ecbf67df39f50432eaa666f4b231843ac009ced"
+  },
+  "eval-server": {
+    "bytes": 12402456,
+    "sha256": "b6368f40d16a8ca7e1456e77344179d74229f3a503d8847191a4e740b3163fbe"
+  },
+  "typeahead-ingester": {
+    "bytes": 23353096,
+    "sha256": "625e69883c19349acffe2fc1492b90070630a2b4da399091a0a75275dcf52f8c"
+  }
+}

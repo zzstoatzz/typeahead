@@ -161,12 +161,12 @@ fn prepareEntry(arena: Allocator, db: *LocalDb, entry: state.Entry, root: []cons
     const snap = try promote.openSnapshotReadOnly(path_z);
     defer snap.close();
     try promote.validateSnapshot(arena, snap, entry.manifest, db.attachedMetaInt(schema.meta.actor_count), db.attachedMetaInt(schema.meta.prefix_count));
-    var prepared = try db.prepareSnapshot(path);
+    var prepared = if (verify) try db.prepareSnapshot(path) else try db.prepareAdmittedSnapshot(path);
     errdefer prepared.deinit();
     if (entry.manifest.prefix_map) |map| {
         if (prepared.map == null or prepared.map.?.file_size != map.byte_size) return error.SizeMismatch;
     }
-    try sentinelPrepared(arena, prepared, &COMMON_PROBES);
+    if (verify or entry.manifest.manifest_version == 1) try sentinelPrepared(arena, prepared, &COMMON_PROBES);
     return prepared;
 }
 
@@ -178,7 +178,7 @@ fn recoverLocal(arena: Allocator, db: *LocalDb, root: []const u8) !void {
     var prepared = prepareEntry(arena, db, selected, root, false) catch |err| blk: {
         const previous = parsed.value.previous orelse return err;
         if (!state.rollbackAllowed(selected.manifest, previous.manifest)) return error.RollbackRequiresReplay;
-        const fallback = try prepareEntry(arena, db, previous, root, true);
+        const fallback = try prepareEntry(arena, db, previous, root, previous.manifest.manifest_version == 1);
         selected = previous;
         break :blk fallback;
     };

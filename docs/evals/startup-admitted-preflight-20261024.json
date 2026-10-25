@@ -1,0 +1,100 @@
+{
+  "preflight": {
+    "snapshot": "/data/candidate/index/generations/b1792484789-3d65-px05/index.db",
+    "runs": [
+      {
+        "startup_seconds": 0.019,
+        "queries": [
+          {
+            "q": "a",
+            "ms": 158.051,
+            "status": 200,
+            "sha256": "97ce19ad9d7f666997a9cc88dcb868a780b6f368d58deb2cca8aee42ab9c45c2",
+            "actors": 50
+          },
+          {
+            "q": "nate",
+            "ms": 97.481,
+            "status": 200,
+            "sha256": "72822d69a4e8f7c88307e9f22b1d55d1f7b85792e53a9274a0911c0b482e70a2",
+            "actors": 50
+          },
+          {
+            "q": "music",
+            "ms": 70.959,
+            "status": 200,
+            "sha256": "26c87870e7912cf933bf91ce98852d5488ef0d9f823a9d3ead2ae746a709f655",
+            "actors": 50
+          },
+          {
+            "q": "\u6771\u4eac",
+            "ms": 69.389,
+            "status": 200,
+            "sha256": "f38820ab2a0cb773d6dd0735c45b6749c3a1a9932d9512dbe68925d123d414ca",
+            "actors": 50
+          },
+          {
+            "q": "zzstoatzz.io",
+            "ms": 10.623,
+            "status": 200,
+            "sha256": "96a62bdd9081df5b41103daf4db81acde02d985be083eb22b812b5bf79c03fa9",
+            "actors": 4
+          }
+        ]
+      },
+      {
+        "startup_seconds": 0.0165,
+        "queries": [
+          {
+            "q": "a",
+            "ms": 57.703,
+            "status": 200,
+            "sha256": "97ce19ad9d7f666997a9cc88dcb868a780b6f368d58deb2cca8aee42ab9c45c2",
+            "actors": 50
+          },
+          {
+            "q": "nate",
+            "ms": 56.089,
+            "status": 200,
+            "sha256": "72822d69a4e8f7c88307e9f22b1d55d1f7b85792e53a9274a0911c0b482e70a2",
+            "actors": 50
+          },
+          {
+            "q": "music",
+            "ms": 56.101,
+            "status": 200,
+            "sha256": "26c87870e7912cf933bf91ce98852d5488ef0d9f823a9d3ead2ae746a709f655",
+            "actors": 50
+          },
+          {
+            "q": "\u6771\u4eac",
+            "ms": 54.756,
+            "status": 200,
+            "sha256": "f38820ab2a0cb773d6dd0735c45b6749c3a1a9932d9512dbe68925d123d414ca",
+            "actors": 50
+          },
+          {
+            "q": "zzstoatzz.io",
+            "ms": 9.922,
+            "status": 200,
+            "sha256": "96a62bdd9081df5b41103daf4db81acde02d985be083eb22b812b5bf79c03fa9",
+            "actors": 4
+          }
+        ]
+      }
+    ],
+    "guest": "4 shared CPUs, 1 GiB preparation configuration",
+    "missing_receipt": {
+      "exit_code": 1,
+      "seconds": 0.0122,
+      "error": "SnapshotNotAdmitted"
+    }
+  },
+  "overlay_copy": {
+    "bytes": 3552636928,
+    "source_last_sync": "1792889938",
+    "pds_scope_policy": "6bdfb5e8d3a186b77622f453b58af20744c80643e5eaee4cb4cae2e7ba1f8964",
+    "quick_check": "ok",
+    "elapsed_seconds": 413.7895319019999
+  }
+}

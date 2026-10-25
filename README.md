@@ -272,6 +272,8 @@ As of September 6, 2026:
 - Search runs on one Fly machine: 4 shared CPUs, 2 GiB RAM, and a 60 GB volume.
   The isolated [startup experiment](docs/evals/startup-buffer-20261024.md) tests
   buffered validation and metadata-only recovery; neither is deployed to production.
+  Its [parallel candidate](docs/evals/startup-admitted-candidate-20261024.md) adds
+  installation-time admission and block checksums before production qualification.
   Ingester runs separately on 1 shared CPU and 256 MiB RAM.
 - The ingest retry/cursor fixes are deployed. Historical recovery restored and
   search-verified 377 accounts; remaining historical uncertainty is documented

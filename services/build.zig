@@ -81,6 +81,18 @@ pub fn build(b: *std.Build) void {
     const install_eval_server = b.addInstallArtifact(eval_server, .{});
     b.step("eval-server", "Build an isolated loopback search server with no sync or promotion").dependOn(&install_eval_server.step);
 
+    const admit_prefix = b.addExecutable(.{
+        .name = "admit-prefix",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/admit_prefix.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
+    });
+    b.step("admit-prefix", "Verify and admit an immutable prefix file before service startup").dependOn(&b.addInstallArtifact(admit_prefix, .{}).step);
+    b.installArtifact(admit_prefix);
+
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

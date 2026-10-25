@@ -1,0 +1,7 @@
+FROM registry.fly.io/typeahead-search-compact@sha256:433155b25711c8e98b3885a56528dca26d0cb36c38d22f0a3ece6487888cc3bd AS tools
+FROM registry.fly.io/typeahead-startup-20261024@sha256:5f7bbf06530fead019fd6464c0dbcdb5e5ff004d9a05128fab2bca427055de8f
+COPY --from=tools /usr/local/bin/rclone /usr/local/bin/rclone
+COPY typeahead-ingester admit-prefix eval-server /app/
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.revision=$SOURCE_REVISION
+CMD ["/app/typeahead-ingester"]

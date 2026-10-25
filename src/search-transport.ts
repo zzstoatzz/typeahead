@@ -1,6 +1,7 @@
 const origins = new Set([
   "https://typeahead-search-compact.fly.dev",
   "https://typeahead-search.fly.dev",
+  "https://typeahead-startup-20261024.fly.dev",
 ]);
 
 export default {

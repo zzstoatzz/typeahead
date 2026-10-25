@@ -1,5 +1,6 @@
 const std = @import("std");
 const c = std.c;
+const admission = @import("flat_admission.zig");
 extern "c" fn posix_fadvise(fd: c_int, offset: c.off_t, len: c.off_t, advice: c_int) c_int;
 const max_key = 8193;
 const normal_page = 8192;
@@ -10,9 +11,15 @@ pub const Namespace = enum(u8) { actor = 1, prefix = 2 };
 pub const Cache = struct {
     pages: [128]?usize,
     bytes: [128][normal_page]u8,
+    root_pages: [256]?usize,
 
     pub fn clear(self: *Cache) void {
         self.pages = @splat(null);
+        self.beginQuery();
+    }
+
+    pub fn beginQuery(self: *Cache) void {
+        self.root_pages = @splat(null);
     }
 
     fn read(self: *Cache, fd: c.fd_t, index: usize, offset: usize) ![]const u8 {
@@ -32,11 +39,13 @@ pub const Map = struct {
     fd: ?c.fd_t = null,
     owner: ?std.mem.Allocator = null,
     mapping: ?std.Io.File.MemoryMap = null,
+    admitted: ?admission.Admission = null,
     pages: usize,
     records: usize,
     page_data: usize,
     const Record = struct { key: []const u8, offset: usize };
     const Page = struct { bytes: []const u8, count: usize, key_end: usize, used: usize };
+    const Extent = struct { start: usize, end: usize };
 
     fn validateRoot(bytes: []const u8, file_size: usize) !Map {
         if (bytes.len < 84 or !std.mem.eql(u8, bytes[0..8], "FLATPX05")) return error.InvalidFlatHeader;
@@ -80,10 +89,32 @@ pub const Map = struct {
     }
 
     fn record(self: Map, index: usize) !Record {
+        return self.recordCached(index, null);
+    }
+
+    fn verifyRoot(self: Map, cache: ?*Cache, start: usize, end: usize) !void {
+        const receipt = self.admitted orelse return;
+        if (start > end or end > self.bytes.len) return error.InvalidAdmissionRange;
+        if (cache) |cached| {
+            const first = start / admission.block_size;
+            const last = (end + admission.block_size - 1) / admission.block_size;
+            for (first..last) |page_index| {
+                const slot = page_index % cached.root_pages.len;
+                if (cached.root_pages[slot] == page_index) continue;
+                const offset = page_index * admission.block_size;
+                try receipt.verifyRoot(self.bytes, offset, offset + admission.block_size);
+                cached.root_pages[slot] = page_index;
+            }
+        } else try receipt.verifyRoot(self.bytes, start, end);
+    }
+
+    fn recordCached(self: Map, index: usize, cache: ?*Cache) !Record {
         if (index >= self.pages) return error.InvalidFlatDirectory;
+        try self.verifyRoot(cache, 80 + index * 4, 80 + (index + 2) * 4);
         const start: usize = std.mem.readInt(u32, self.bytes[80 + index * 4 ..][0..4], .little);
         const end: usize = std.mem.readInt(u32, self.bytes[80 + (index + 1) * 4 ..][0..4], .little);
         if (start > end or end > self.page_data - self.records or end - start < 10) return error.InvalidFlatDirectory;
+        try self.verifyRoot(cache, self.records + start, self.records + end);
         const bytes = self.bytes[self.records + start .. self.records + end];
         const size: usize = std.mem.readInt(u16, bytes[0..2], .little);
         if (size == 0 or size > max_key or size + 10 != bytes.len) return error.InvalidFlatDirectory;
@@ -93,9 +124,13 @@ pub const Map = struct {
         return .{ .key = bytes[2 .. 2 + size], .offset = @intCast(offset) };
     }
 
-    fn extent(self: Map, index: usize) !struct { start: usize, end: usize } {
-        const start = (try self.record(index)).offset;
-        const end = if (index + 1 < self.pages) (try self.record(index + 1)).offset else self.file_size - self.page_data;
+    fn extent(self: Map, index: usize) !Extent {
+        return self.extentCached(index, null);
+    }
+
+    fn extentCached(self: Map, index: usize, cache: ?*Cache) !Extent {
+        const start = (try self.recordCached(index, cache)).offset;
+        const end = if (index + 1 < self.pages) (try self.recordCached(index + 1, cache)).offset else self.file_size - self.page_data;
         if (end < start or end - start < normal_page or end - start > max_extent or (index == 0 and start != 0)) return error.InvalidFlatDirectory;
         return .{ .start = self.page_data + start, .end = self.page_data + end };
     }
@@ -173,12 +208,12 @@ pub const Map = struct {
         var high = self.pages;
         while (low < high) {
             const mid = low + (high - low) / 2;
-            const item = try self.record(mid);
+            const item = try self.recordCached(mid, cache);
             if (std.mem.order(u8, item.key, target) != .gt) low = mid + 1 else high = mid;
         }
         if (low == 0) return null;
         const page_index = low - 1;
-        const bounds = try self.extent(page_index);
+        const bounds = try self.extentCached(page_index, cache);
         var scratch: [2 * normal_page]u8 = undefined;
         var temporary: ?[]u8 = null;
         defer if (temporary) |buffer| std.heap.page_allocator.free(buffer);
@@ -194,8 +229,9 @@ pub const Map = struct {
             try readExact(fd, buffer, bounds.start);
             break :blk buffer;
         } else self.bytes[bounds.start..bounds.end];
+        if (self.admitted) |receipt| try receipt.verify(bytes, bounds.start);
         const current = try parsePage(bytes);
-        if (!std.mem.eql(u8, (try self.record(page_index)).key, try firstKey(try group(current, 0)))) return error.InvalidFlatDirectory;
+        if (!std.mem.eql(u8, (try self.recordCached(page_index, cache)).key, try firstKey(try group(current, 0)))) return error.InvalidFlatDirectory;
         const groups = (current.count + 15) / 16;
         low = 0;
         high = groups;
@@ -242,21 +278,29 @@ pub const Map = struct {
     }
 
     pub fn openFile(allocator: std.mem.Allocator, path: []const u8, expected: []const u8) !Map {
-        return openFileMode(allocator, path, expected, false);
+        return openFileMode(allocator, path, expected, .verify);
     }
 
-    /// Only for immutable files whose full validation was completed before admission.
-    pub fn openVerifiedFile(allocator: std.mem.Allocator, path: []const u8) !Map {
-        return openFileMode(allocator, path, "", true);
+    pub fn admitFile(allocator: std.mem.Allocator, path: []const u8, expected: []const u8) !Map {
+        const verified = try openFileMode(allocator, path, expected, .admit);
+        verified.close();
+        return openAdmittedFile(allocator, path, expected);
     }
 
-    fn openFileMode(allocator: std.mem.Allocator, path: []const u8, expected: []const u8, verified: bool) !Map {
+    pub fn openAdmittedFile(allocator: std.mem.Allocator, path: []const u8, expected: []const u8) !Map {
+        return openFileMode(allocator, path, expected, .cached);
+    }
+
+    fn openFileMode(allocator: std.mem.Allocator, path: []const u8, expected: []const u8, mode: enum { verify, admit, cached }) !Map {
         const zpath = try allocator.allocSentinel(u8, path.len, 0);
         @memcpy(zpath, path);
         defer allocator.free(zpath);
         const fd = c.open(zpath.ptr, .{});
         if (fd < 0) return error.FlatOpenFailed;
         errdefer _ = c.close(fd);
+        const before = if (mode == .admit) try admission.identity(fd, expected) else undefined;
+        const receipt: ?admission.Admission = if (mode == .cached) try admission.Admission.open(allocator, path, fd, expected) else null;
+        errdefer if (receipt) |value| value.close();
         const length = c.lseek(fd, 0, c.SEEK.END);
         if (length < 84) return error.InvalidFlatHeader;
         const size: usize = std.math.cast(usize, length) orelse return error.FlatTooLarge;
@@ -276,17 +320,24 @@ pub const Map = struct {
         if (terminal < pages * 10 or terminal > pages * (max_key + 10) or terminal > root_size64 - records64) return error.InvalidFlatDirectory;
         if ((records64 + terminal + 4095) / 4096 * 4096 != root_size64) return error.InvalidFlatSections;
         const root_size: usize = @intCast(root_size64);
-        if (verified) {
-            const mapping = try std.Io.File.MemoryMap.create(std.Options.debug_io, .{ .handle = fd, .flags = .{ .nonblocking = false } }, .{
+        if (mode == .cached) {
+            var mapping = try std.Io.File.MemoryMap.create(std.Options.debug_io, .{ .handle = fd, .flags = .{ .nonblocking = false } }, .{
                 .len = root_size,
                 .protection = .{ .read = true, .write = false },
                 .populate = false,
             });
+            errdefer mapping.destroy(std.Options.debug_io);
+            try receipt.?.verifyRoot(mapping.memory, 0, 84);
+            try receipt.?.verifyRoot(mapping.memory, @intCast(records64 - 4), @intCast(records64));
+            if (@import("builtin").os.tag == .linux) {
+                if (posix_fadvise(fd, 0, 0, std.os.linux.POSIX_FADV.RANDOM) != 0) return error.FlatAdviceFailed;
+            }
             return .{
                 .bytes = mapping.memory,
                 .file_size = size,
                 .fd = fd,
                 .mapping = mapping,
+                .admitted = receipt,
                 .pages = @intCast(pages),
                 .records = @intCast(records64),
                 .page_data = root_size,
@@ -296,6 +347,9 @@ pub const Map = struct {
         errdefer allocator.free(roots);
         try readExact(fd, roots, 0);
         var result = try validateRoot(roots, size);
+        const hashes = if (mode == .admit) try allocator.alloc(u8, size / admission.block_size * 32) else null;
+        defer if (hashes) |bytes| allocator.free(bytes);
+        if (hashes) |bytes| admission.record(bytes, roots, 0);
         var hasher = std.crypto.hash.sha2.Sha256.init(.{});
         hasher.update(roots);
         var buffer = try allocator.alloc(u8, @min(validation_read_size, @max(normal_page, size - root_size)));
@@ -320,11 +374,13 @@ pub const Map = struct {
             const next_key: ?[]const u8 = if (i + 1 < result.pages) (try result.record(i + 1)).key else null;
             try checkPage(current, root.key, next_key);
             hasher.update(chunk);
+            if (hashes) |bytes| admission.record(bytes, chunk, bounds.start);
         }
         var digest: [32]u8 = undefined;
         hasher.final(&digest);
         const hex = std.fmt.bytesToHex(digest, .lower);
         if (!std.mem.eql(u8, &hex, expected)) return error.FlatDigestMismatch;
+        if (hashes) |bytes| try admission.publish(allocator, path, fd, before, expected, bytes);
         if (@import("builtin").os.tag == .linux) {
             if (posix_fadvise(fd, 0, 0, std.os.linux.POSIX_FADV.RANDOM) != 0) return error.FlatAdviceFailed;
         }
@@ -334,6 +390,7 @@ pub const Map = struct {
     }
 
     pub fn close(self: Map) void {
+        if (self.admitted) |receipt| receipt.close();
         if (self.mapping) |value| {
             var mapping = value;
             mapping.destroy(std.Options.debug_io);
@@ -490,6 +547,117 @@ test "unified cross restart order and empty map" {
 
 extern "c" fn mkstemp(template: [*:0]u8) c_int;
 
+test "admission binds the opened inode and rejects modified data and receipts" {
+    const fixture = @embedFile("flat_prefix_fixture.bin");
+    const digest = digestOf(fixture);
+    var path = "/tmp/typeahead-admission-XXXXXX".*;
+    const writer = mkstemp(&path);
+    if (writer < 0) return error.TestFileCreateFailed;
+    defer _ = c.close(writer);
+    defer _ = c.unlink(&path);
+    try writeTestFile(writer, fixture);
+    const receipt_path = try std.fmt.allocPrintSentinel(std.testing.allocator, "{s}.admitted", .{path}, 0);
+    defer std.testing.allocator.free(receipt_path);
+    defer _ = c.unlink(receipt_path);
+    try std.testing.expectError(error.SnapshotNotAdmitted, Map.openAdmittedFile(std.testing.allocator, &path, &digest));
+    try std.testing.expectError(error.FlatDigestMismatch, Map.admitFile(std.testing.allocator, &path, "0000000000000000000000000000000000000000000000000000000000000000"));
+    try std.testing.expectError(error.SnapshotNotAdmitted, Map.openAdmittedFile(std.testing.allocator, &path, &digest));
+    const first = try Map.admitFile(std.testing.allocator, &path, &digest);
+    first.close();
+    try std.testing.expectError(error.StaleAdmission, Map.openAdmittedFile(std.testing.allocator, &path, "0000000000000000000000000000000000000000000000000000000000000000"));
+    {
+        const cached = try Map.openAdmittedFile(std.testing.allocator, &path, &digest);
+        defer cached.close();
+        const root = try cached.record(0);
+        const bounds = try cached.extent(0);
+        var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+        defer arena.deinit();
+        try std.testing.expect((try cached.find(arena.allocator(), root.key)) != null);
+        const cache = try std.testing.allocator.create(Cache);
+        defer std.testing.allocator.destroy(cache);
+        cache.clear();
+        try std.testing.expect((try cached.findCached(arena.allocator(), root.key, cache)) != null);
+        const changed_header: [1]u8 = .{fixture[72] ^ 1};
+        try std.testing.expectEqual(@as(isize, 1), c.pwrite(writer, &changed_header, 1, 72));
+        cache.beginQuery();
+        try std.testing.expectError(error.FlatBlockChecksumMismatch, cached.findCached(arena.allocator(), root.key, cache));
+        try std.testing.expectEqual(@as(isize, 1), c.pwrite(writer, fixture[72..].ptr, 1, 72));
+        cache.beginQuery();
+        const offset = bounds.start + 4096;
+        const changed: [1]u8 = .{fixture[offset] ^ 1};
+        try std.testing.expectEqual(@as(isize, 1), c.pwrite(writer, &changed, 1, @intCast(offset)));
+        try std.testing.expectError(error.FlatBlockChecksumMismatch, cached.find(arena.allocator(), root.key));
+        try std.testing.expectError(error.StaleAdmission, Map.openAdmittedFile(std.testing.allocator, &path, &digest));
+        try std.testing.expectEqual(@as(isize, 1), c.pwrite(writer, fixture[offset..].ptr, 1, @intCast(offset)));
+    }
+    const renewed = try Map.admitFile(std.testing.allocator, &path, &digest);
+    renewed.close();
+    {
+        const receipt_fd = c.open(receipt_path, .{ .ACCMODE = .RDWR });
+        if (receipt_fd < 0) return error.TestFileOpenFailed;
+        defer _ = c.close(receipt_fd);
+        var original: [1]u8 = undefined;
+        try readExact(receipt_fd, &original, admission.header_size);
+        const changed: [1]u8 = .{original[0] ^ 1};
+        try std.testing.expectEqual(@as(isize, 1), c.pwrite(receipt_fd, &changed, 1, admission.header_size));
+        try std.testing.expectError(error.FlatBlockChecksumMismatch, Map.openAdmittedFile(std.testing.allocator, &path, &digest));
+        try std.testing.expect(c.ftruncate(receipt_fd, admission.header_size) == 0);
+        try std.testing.expectError(error.InvalidAdmission, Map.openAdmittedFile(std.testing.allocator, &path, &digest));
+    }
+    const restored = try Map.admitFile(std.testing.allocator, &path, &digest);
+    restored.close();
+    var replacement_path = "/tmp/typeahead-replacement-XXXXXX".*;
+    const replacement = mkstemp(&replacement_path);
+    if (replacement < 0) return error.TestFileCreateFailed;
+    defer _ = c.close(replacement);
+    defer _ = c.unlink(&replacement_path);
+    try writeTestFile(replacement, fixture);
+    try std.testing.expect(c.rename(&replacement_path, &path) == 0);
+    try std.testing.expectError(error.StaleAdmission, Map.openAdmittedFile(std.testing.allocator, &path, &digest));
+}
+
+fn writeTestFile(fd: c.fd_t, bytes: []const u8) !void {
+    var offset: usize = 0;
+    while (offset < bytes.len) {
+        const count = c.write(fd, bytes[offset..].ptr, bytes.len - offset);
+        if (count <= 0) return error.TestFileWriteFailed;
+        offset += @intCast(count);
+    }
+}
+
+extern "c" fn mkdtemp(template: [*:0]u8) ?[*:0]u8;
+
+test "admission survives atomic generation directory publication" {
+    const io = std.Options.debug_io;
+    const allocator = std.testing.allocator;
+    const fixture = @embedFile("flat_prefix_fixture.bin");
+    const digest = digestOf(fixture);
+    var directory = "/tmp/typeahead-admitted-dir-XXXXXX".*;
+    _ = mkdtemp(&directory) orelse return error.TestDirectoryFailed;
+    defer std.Io.Dir.deleteTree(.cwd(), io, &directory) catch {};
+    const path = try std.fmt.allocPrint(allocator, "{s}/index.db.prefix", .{directory});
+    defer allocator.free(path);
+    {
+        const writer = try std.Io.Dir.createFileAbsolute(io, path, .{});
+        defer writer.close(io);
+        try writer.writeStreamingAll(io, fixture);
+    }
+    const admitted = try Map.admitFile(allocator, path, &digest);
+    admitted.close();
+    const published = try std.fmt.allocPrint(allocator, "{s}-published", .{directory});
+    defer allocator.free(published);
+    defer std.Io.Dir.deleteTree(.cwd(), io, published) catch {};
+    try std.Io.Dir.renameAbsolute(&directory, published, io);
+    const published_path = try std.fmt.allocPrint(allocator, "{s}/index.db.prefix", .{published});
+    defer allocator.free(published_path);
+    const recovered = try Map.openAdmittedFile(allocator, published_path, &digest);
+    defer recovered.close();
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+    const blob = (try recovered.findTagged(arena.allocator(), .prefix, "n:key00000000")).?;
+    try std.testing.expectEqualStrings("did", blob[9..]);
+}
+
 test "pread real file owns root closes fd and keeps request bytes alive" {
     const fixture = @embedFile("flat_prefix_fixture.bin");
     const digest = digestOf(fixture);
@@ -547,7 +715,10 @@ test "pread real file owns root closes fd and keeps request bytes alive" {
     }
     const map = try Map.openFile(std.testing.allocator, &path, &digest);
     defer map.close();
-    const admitted = try Map.openVerifiedFile(std.testing.allocator, &path);
+    const receipt_path = try std.fmt.allocPrintSentinel(std.testing.allocator, "{s}.admitted", .{path}, 0);
+    defer std.testing.allocator.free(receipt_path);
+    defer _ = c.unlink(receipt_path);
+    const admitted = try Map.admitFile(std.testing.allocator, &path, &digest);
     defer admitted.close();
     try std.testing.expect(admitted.mapping != null);
     for (0..64) |number| {

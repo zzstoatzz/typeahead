@@ -72,6 +72,9 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_poo
         try handleDebugSearch(request, target, local_db);
     } else if (mem.eql(u8, path, "/health")) {
         try handleHealth(request, local_db, identity_pool);
+    } else if (mem.eql(u8, path, "/ready")) {
+        const ready = local_db.isReady();
+        try sendJson(request, if (ready) .ok else .service_unavailable, if (ready) "{\"ready\":true}" else "{\"ready\":false}");
     } else if (mem.eql(u8, path, "/index/status")) {
         try handleIndexStatus(request, local_db);
     } else if (mem.eql(u8, path, "/debug/index")) {
