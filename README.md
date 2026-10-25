@@ -267,6 +267,15 @@ existing installation).
 
 ## Operational status
 
+October 25, 2026: the improved-startup backend is being prepared on a separate
+Fly machine and volume with its own frozen snapshot pointer. Production remains
+on the original backend and stale snapshot; restoring availability did not resolve
+the freshness alert. The [held cutover plan](docs/ops/search-cutover-20261025.md)
+records isolation, qualification gates, rollback, and cleanup. No production
+routing, transport deployment, or shared snapshot publication is authorized during
+preparation. Earlier startup results below refer to the previous snapshot;
+qualification of the fresh snapshot is recorded separately before approval.
+
 As of September 6, 2026:
 
 - Search runs on one Fly machine: 4 shared CPUs, 2 GiB RAM, and a 60 GB volume.

@@ -450,6 +450,10 @@ pub const CompactResult = struct { deleted: u64, chunks: u64, complete: bool };
 /// lets it feed its watchdog. Results are recorded in sync_meta for
 /// /index/status. Best-effort: failures are logged, never fatal.
 pub fn compactOverlay(self: *LocalDb, new_watermark: i64, max_chunks: ?u64, on_chunk: ?*const fn () void) CompactResult {
+    return self.compactOverlayWithIo(io, new_watermark, max_chunks, on_chunk);
+}
+
+fn compactOverlayWithIo(self: *LocalDb, compact_io: std.Io, new_watermark: i64, max_chunks: ?u64, on_chunk: ?*const fn () void) CompactResult {
     const c = self.conn orelse return .{ .deleted = 0, .chunks = 0, .complete = false };
     const t0 = milliTimestamp();
     var total: u64 = 0;
@@ -457,19 +461,20 @@ pub fn compactOverlay(self: *LocalDb, new_watermark: i64, max_chunks: ?u64, on_c
     var complete = false;
     log.info("overlay compaction started (watermark {d}, max_chunks {?d})", .{ new_watermark, max_chunks });
     while (true) {
+        compact_io.checkCancel() catch break;
         if (max_chunks) |m| if (chunks >= m) break;
         if (!self.isReady()) {
             if (max_chunks != null) break;
-            io.sleep(.{ .nanoseconds = 5 * std.time.ns_per_s }, .real) catch {};
+            compact_io.sleep(.{ .nanoseconds = 5 * std.time.ns_per_s }, .real) catch break;
             continue;
         }
-        self.mutex.lockUncancelable(io);
+        self.mutex.lockUncancelable(compact_io);
         const deleted = overlay.compactChunk(c, new_watermark) catch |err| {
-            self.mutex.unlock(io);
+            self.mutex.unlock(compact_io);
             log.warn("overlay compaction failed after {d} rows: {}", .{ total, err });
             break;
         };
-        self.mutex.unlock(io);
+        self.mutex.unlock(compact_io);
         if (deleted == 0) {
             complete = true;
             break;
@@ -480,7 +485,7 @@ pub fn compactOverlay(self: *LocalDb, new_watermark: i64, max_chunks: ?u64, on_c
         if (chunks % 50 == 0) {
             log.info("overlay compaction: {d} rows in {d}ms", .{ total, milliTimestamp() - t0 });
         }
-        io.sleep(.{ .nanoseconds = 50 * std.time.ns_per_ms }, .real) catch {};
+        compact_io.sleep(.{ .nanoseconds = 50 * std.time.ns_per_ms }, .real) catch break;
     }
     const ms = milliTimestamp() - t0;
     log.info("overlay compaction {s}: {d} rows in {d}ms", .{ if (complete) "done" else "paused", total, ms });
@@ -794,6 +799,46 @@ test "flat format admission rejects missing and unknown markers and permits lega
 }
 
 extern "c" fn mkdtemp(template: [*:0]u8) ?[*:0]u8;
+
+test "canceling compaction while initial sync is unready leaves compaction incomplete" {
+    var directory = "/tmp/cancel-compaction-XXXXXX".*;
+    _ = mkdtemp(&directory) orelse return error.TestDirectoryFailed;
+    defer std.Io.Dir.deleteTree(.cwd(), io, &directory) catch {};
+    const path = try std.fmt.allocPrint(std.testing.allocator, "{s}/overlay.db", .{directory});
+    defer std.testing.allocator.free(path);
+    var local = LocalDb.init(std.testing.allocator);
+    defer local.deinit();
+    try local.openDb(path);
+    local.setReady(false);
+    var threaded: std.Io.Threaded = .init(std.testing.allocator, .{});
+    defer threaded.deinit();
+    const task_io = threaded.io();
+    const Work = struct {
+        local: *LocalDb,
+        task_io: std.Io,
+        entered: std.atomic.Value(bool) = .init(false),
+        result: ?CompactResult = null,
+        fn run(self: *@This()) void {
+            self.entered.store(true, .release);
+            self.result = self.local.compactOverlayWithIo(self.task_io, 100, null, null);
+        }
+        fn releaseWait(db: *LocalDb) void {
+            io.sleep(.{ .nanoseconds = 250 * std.time.ns_per_ms }, .real) catch {};
+            db.setReady(true);
+        }
+    };
+    var work: Work = .{ .local = &local, .task_io = task_io };
+    var tasks: std.Io.Group = .init;
+    defer tasks.cancel(task_io);
+    try tasks.concurrent(task_io, Work.run, .{&work});
+    while (!work.entered.load(.acquire)) std.Thread.yield() catch {};
+    const release = try std.Thread.spawn(.{}, Work.releaseWait, .{&local});
+    defer release.join();
+    tasks.cancel(task_io);
+    try std.testing.expect(work.result != null);
+    try std.testing.expect(!work.result.?.complete);
+    try std.testing.expectEqual(@as(u64, 0), work.result.?.deleted);
+}
 
 fn writeFixture(path: []const u8, bytes: []const u8) !void {
     const file = try std.Io.Dir.createFileAbsolute(io, path, .{ .truncate = true });

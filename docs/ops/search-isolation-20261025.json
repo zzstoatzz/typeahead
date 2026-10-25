@@ -1,0 +1,248 @@
+{
+  "at": "2026-10-25T05:01:19.256090+00:00",
+  "machines": [
+    {
+      "app": "typeahead-search-compact",
+      "machine": "86e502fe55e4e8",
+      "state": "started",
+      "machine_version": "01M5QZ0CMEHPXV6TPEZK2MGESP",
+      "image": "registry.fly.io/typeahead-search-compact@sha256:433155b25711c8e98b3885a56528dca26d0cb36c38d22f0a3ece6487888cc3bd",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 4,
+        "memory_mb": 2048
+      },
+      "volume": "vol_vxmqwnpnlewdgzj4",
+      "snapshot_pointer": "latest.json",
+      "command": [
+        "/app/typeahead-ingester"
+      ]
+    },
+    {
+      "app": "typeahead-startup-20261024",
+      "machine": "7841e35f965528",
+      "state": "started",
+      "machine_version": "01M5RPQA494DG56459YKKW7EAN",
+      "image": "registry.fly.io/typeahead-startup-20261024@sha256:61b252cbb7f6bef9ec00579083b464622928da91789c3531a13fda96a365e837",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "volume": "vol_v8eyllqdyykq0z5v",
+      "snapshot_pointer": "candidates/startup-20261025/latest.json",
+      "command": [
+        "/bin/sleep",
+        "infinity"
+      ]
+    }
+  ],
+  "production_pointer": {
+    "build_id": "b1792484789-3d65-px05",
+    "sha256": "85140e53c3ee0c5dd024505aa058127dd0c25a003d93d18c29988e71225bda8e"
+  },
+  "candidate_pointer": {
+    "build_id": "b1792896197-ebe5-px05",
+    "sha256": "3d6f572c3027b6cdaef7dd4035014d7fbab39f9f96be557042e4cd47118dafbd"
+  },
+  "public_deployments_before": [
+    {
+      "id": "cc641ef6-73d4-4ce6-a286-8e01c5ba7b36",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "b4ae3a05-18f2-491f-b739-330c959586e9",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T15:44:03.485624Z"
+    },
+    {
+      "id": "062784f8-1070-401c-8ded-85f4f0b76107",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "3e10b520-11c2-4240-a5f7-0180e6b02239",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T15:45:31.824403Z"
+    },
+    {
+      "id": "174e5895-4b07-42b3-847a-5d30abb6e191",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "ee8042ff-439d-4657-87d1-9fea7af8d4ad",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T15:52:16.129096Z"
+    },
+    {
+      "id": "4002f03b-a724-4f1e-af6f-31c723fbc75f",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/message": "Origin latency: rollback-covered backend transition",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "1496f156-41b9-4674-84de-a8e437064b9a",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T16:26:05.951066Z"
+    },
+    {
+      "id": "42839a17-9889-45cf-9c32-c07c01ac5a34",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/message": "Origin latency: rollback-covered backend transition",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "2c4615e4-1500-40b4-9ec0-4fedd5e8540b",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T16:31:19.279726Z"
+    },
+    {
+      "id": "6b417258-67b4-48da-8560-d91801abcfaf",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "89901546-0e01-4789-b19a-541f0545460e",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T16:31:40.445655Z"
+    },
+    {
+      "id": "2990a661-5ada-4aa4-91ff-285a5d0f8758",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "feb97b42-2a8c-4b6e-9a04-22d53fb472e7",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-21T03:11:56.515957Z"
+    },
+    {
+      "id": "cc0addf7-59be-4448-a9ed-d7cbe49bcc3c",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "479e77d2-8334-43d6-9089-95271f7d591a",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-21T03:27:18.602878Z"
+    },
+    {
+      "id": "af78690e-123a-4789-9cd0-0dcc61772858",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "secret"
+      },
+      "versions": [
+        {
+          "version_id": "292e11e1-5a84-4da2-9cb3-1a9571b2e870",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-24T21:59:00.01478Z"
+    },
+    {
+      "id": "6942b161-018f-46d3-895a-776370d4e69a",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "secret"
+      },
+      "versions": [
+        {
+          "version_id": "e331b7b4-cbca-4a28-9270-29af2fc2b7bb",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-24T22:07:43.298783Z"
+    }
+  ],
+  "transport_deployments_before": [
+    {
+      "id": "653567af-6207-4e16-a102-860bcf8dae54",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/message": "Automatic deployment on upload.",
+        "workers/triggered_by": "upload"
+      },
+      "versions": [
+        {
+          "version_id": "656937d1-1972-4f04-9d77-50e9f33b2e75",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T16:29:04.786528Z"
+    },
+    {
+      "id": "3791886e-8169-472c-9961-a79e075cdbce",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "786da370-0cc2-499b-9238-25e25de81267",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T16:31:06.202665Z"
+    }
+  ],
+  "isolation_passed": true
+}

@@ -137,6 +137,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_index_tests = b.addRunArtifact(index_tests);
+    b.step("test-index-binary", "Build the index test executable without running it").dependOn(&b.addInstallArtifact(index_tests, .{}).step);
 
     // Explicit offline tool: no server, sync loop, or credentials required.
     const evaluator = b.addExecutable(.{
