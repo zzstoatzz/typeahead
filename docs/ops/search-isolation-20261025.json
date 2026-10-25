@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-25T05:01:19.256090+00:00",
+  "at": "2026-10-25T05:38:45.252149+00:00",
   "machines": [
     {
       "app": "typeahead-search-compact",
@@ -22,8 +22,8 @@
       "app": "typeahead-startup-20261024",
       "machine": "7841e35f965528",
       "state": "started",
-      "machine_version": "01M5RPQA494DG56459YKKW7EAN",
-      "image": "registry.fly.io/typeahead-startup-20261024@sha256:61b252cbb7f6bef9ec00579083b464622928da91789c3531a13fda96a365e837",
+      "machine_version": "01M5RR9CBQ9S3P50DVWMNKCVF1",
+      "image": "registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573",
       "guest": {
         "cpu_kind": "shared",
         "cpus": 2,
@@ -32,8 +32,7 @@
       "volume": "vol_v8eyllqdyykq0z5v",
       "snapshot_pointer": "candidates/startup-20261025/latest.json",
       "command": [
-        "/bin/sleep",
-        "infinity"
+        "/app/typeahead-ingester"
       ]
     }
   ],
@@ -43,7 +42,7 @@
   },
   "candidate_pointer": {
     "build_id": "b1792896197-ebe5-px05",
-    "sha256": "3d6f572c3027b6cdaef7dd4035014d7fbab39f9f96be557042e4cd47118dafbd"
+    "sha256": "5a19af3fcf12d52ca7d2127c0749bff365a7893ef732b8d554a363226f386887"
   },
   "public_deployments_before": [
     {

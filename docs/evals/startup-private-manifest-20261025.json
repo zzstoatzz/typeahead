@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-25T05:39:35.155018+00:00",
+  "candidate": "typeahead-startup-20261024",
+  "machine": "7841e35f965528",
+  "private_pointer": "candidates/startup-20261025/latest.json",
+  "downloaded_manifest_sha256": "5a19af3fcf12d52ca7d2127c0749bff365a7893ef732b8d554a363226f386887",
+  "expected_manifest_sha256": "5a19af3fcf12d52ca7d2127c0749bff365a7893ef732b8d554a363226f386887",
+  "events": [
+    {
+      "at": "2026-10-25T05:36:11.656773126Z",
+      "message": "info(promote_runner): promote watcher started: poll every 300s"
+    },
+    {
+      "at": "2026-10-25T05:36:11.657426984Z",
+      "message": "info(promote_runner): sweep: removed stale partial latest.download.part"
+    },
+    {
+      "at": "2026-10-25T05:36:11.672621373Z",
+      "message": "info(local_db): snapshot attached: /data/candidate/index/generations/b1792896197-ebe5-px05/index.db"
+    },
+    {
+      "at": "2026-10-25T05:36:11.802385Z",
+      "message": "Health check 'ready' on port 8080 is in a 'warning' state. Your app may not be responding properly."
+    },
+    {
+      "at": "2026-10-25T05:36:12.411167Z",
+      "message": "Health check 'ready' on port 8080 is now passing."
+    }
+  ],
+  "passed": true
+}

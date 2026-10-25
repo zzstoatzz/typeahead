@@ -1,0 +1,11 @@
+{
+  "source_revision": "b39e21d9b5f67832f1f206870e23e531a7c5a192",
+  "image": "registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573",
+  "artifacts": {
+    "typeahead-ingester": "21892b725db968886296231b8fd0a17f3bbf71661dcc4b72e2bcbb4034e43160",
+    "eval-server": "48cb7430e0474362a46f6c75606187247f84db2970125fd47611a18bd981331e",
+    "index-tests": "dd073a111e07523a2bd8ed40f1ff710061bd544e0cd16e06b16835d1649d07fa"
+  },
+  "linux_index_tests_passed": true,
+  "production_changed": false
+}

@@ -1,0 +1,24 @@
+{
+  "watermark": 1792894100,
+  "predicate": "NOT (source = 0 AND updated_at <= watermark)",
+  "tables": {
+    "sync_meta": {
+      "rows": 6,
+      "logical_sha256": "b9defae0f885171d85a77d3a6cbb906302617a465b6979f87290325101548946"
+    },
+    "actor_overlay": {
+      "rows": 10799,
+      "logical_sha256": "1dbd3e2033763f74a63e4192a7f194dfb9e03e613ddc5b52336924d3c8ea06d9"
+    },
+    "prefix_overlay": {
+      "rows": 451069,
+      "logical_sha256": "d50dd5cb1311e4432ca4aba1f4965d3860d3372729ddc6a4fd239f8850ebf8ab"
+    }
+  },
+  "started_at_unix": 1792905793.4817188,
+  "last_sync": "1792905245",
+  "passed": true,
+  "bytes": 81043456,
+  "seconds": 68.25629758834839,
+  "backup_directory": "/data/candidate/overlay-before-offline-compaction"
+}

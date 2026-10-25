@@ -1,6 +1,8 @@
 # Isolated search candidate and held cutover
 
-Preparation is in progress on October 25, 2026. This document is a plan, not a
+Runtime qualification, durable-channel full readback, native manifest acceptance,
+and isolation/drift checks passed on October 25, 2026. The candidate is ready;
+traffic cutover remains held. This document is a plan, not a
 record of a production cutover. Nate's explicit approval is required before any
 production routing or transport deployment. Do not publish the shared R2
 `latest.json` as part of this operation.
@@ -13,8 +15,8 @@ production routing or transport deployment. Do not publish the shared R2
 | Candidate | `typeahead-startup-20261024` / `7841e35f965528` | `vol_v8eyllqdyykq0z5v` | `candidates/startup-20261025/latest.json` |
 
 The candidate uses immutable image
-`registry.fly.io/typeahead-startup-20261024@sha256:61b252cbb7f6bef9ec00579083b464622928da91789c3531a13fda96a365e837`,
-source `f7dfca7cb6e94a3a86557003fe19de9c47a3e17e`. Its serving configuration is
+`registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573`,
+source `b39e21d9b5f67832f1f206870e23e531a7c5a192`. Its serving configuration is
 two shared CPUs, 1 GiB memory, and its existing 60 GiB volume. Offline installation
 temporarily uses eight shared CPUs and 2 GiB on this candidate only. The existing
 image contains the reference, admission, and evaluation tools; no rebuild is needed.
@@ -39,18 +41,39 @@ recovery compactor ignored cancellation while waiting for the initial replica
 sync. Canceling sync during SIGTERM left that wait active indefinitely. The local
 fix exits canceled readiness waits and inter-chunk waits and records incomplete
 compaction rather than completion. Its real SQLite / threaded-I/O regression
-fails before the fix and passes after it; native validation passes 148 tests with
-four skips. Linux and candidate lifecycle qualification of this update remain
-required. Build a runnable Linux index test artifact with `zig build
+fails before the fix and passes after it. Mac and Linux validation each pass
+148 tests with four skips. The final image drains SIGTERM successfully and
+reattaches the index 71.324 ms after process launch on the smaller VM. Build a
+runnable Linux index test artifact with `zig build
 test-index-binary -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseSafe` and run that
 artifact on the candidate; its temporary fixture does not touch the live overlay.
 
-Remote candidate artifacts are being preserved beneath
+Offline preparation retains exactly the native compactor's surviving rows:
+`NOT (source = 0 AND updated_at <= snapshot watermark)`. It preserves all local
+source overrides and the sync cursor. The copied schema/indexes and row hashes
+were checked, and SQLite integrity verification passed. The prepared overlay is
+81,043,456 bytes, with 10,799 actor rows and 451,069 prefix rows. The original
+candidate overlay is preserved at `/data/candidate/overlay-before-offline-compaction/`.
+No production database was copied or modified during this preparation.
+
+Remote candidate artifacts are preserved beneath
 `releases/startup-candidate-20261025/`, outside the expiring `staging/` and
 `builds/` prefixes. Require the protection receipt and full readback checksums
 before cutover. The same-watermark legacy twin remains a recovery artifact in
 R2; candidate process recovery uses its locally admitted compact generation.
 Immediate traffic rollback uses the intact production backend and its live overlay.
+
+Native manifest paths must end with their build IDs: native objects under
+`releases/startup-candidate-20261025/b1792896197-ebe5-px05/`, legacy objects under
+`releases/startup-candidate-20261025/b1792896197-ebe5/`. An earlier private manifest
+using `native/` and `legacy/` directories was rejected by the candidate's validator;
+its pointer was restored to the original valid fresh manifest while that private
+layout was corrected. Corrected-layout full SHA-256 readback and the native
+watcher poll now pass. This did not alter the serving build or
+the shared production pointer.
+
+Qualification evidence is summarized in
+[the fresh candidate report](../evals/startup-fresh-candidate-20261025.md).
 
 ## Required evidence before approval
 

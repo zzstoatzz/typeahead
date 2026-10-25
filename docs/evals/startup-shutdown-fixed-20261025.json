@@ -1,0 +1,61 @@
+{
+  "cpu_count": 2,
+  "build_id": "b1792896197-ebe5-px05",
+  "runs": [
+    {
+      "startup_seconds": 0.023772186000000417,
+      "cold": {
+        "queries": 79,
+        "median_ms": 30.515,
+        "max_ms": 1523.0
+      },
+      "warm": {
+        "queries": 79,
+        "median_ms": 14.767,
+        "max_ms": 17.99
+      },
+      "concurrent": {
+        "queries": 24,
+        "max_ms": 133.457
+      }
+    },
+    {
+      "startup_seconds": 0.01227943900000028,
+      "sanity": [
+        {
+          "status": 200,
+          "sha256": "6098ac58298ab8bfc79cfbce8bab633b23190ca09f4ada4c131c694f93ab8774",
+          "pds_ack": "",
+          "ms": 595.371
+        },
+        {
+          "status": 503,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "pds_ack": null,
+          "ms": 0.632
+        }
+      ]
+    },
+    {
+      "startup_seconds": 0.017068701999999547,
+      "sanity": [
+        {
+          "status": 200,
+          "sha256": "6098ac58298ab8bfc79cfbce8bab633b23190ca09f4ada4c131c694f93ab8774",
+          "pds_ack": "",
+          "ms": 1587.455
+        },
+        {
+          "status": 503,
+          "sha256": "8577092d92b54c3a55c4652a8647b193092c3d28c6e4211a68e56ab74634c3a1",
+          "pds_ack": null,
+          "ms": 0.619
+        }
+      ]
+    }
+  ],
+  "reference": "previous admitted reader on same compacted overlay",
+  "reference_startup_seconds": 0.05617733899999999,
+  "missing_receipt_fails_closed": true,
+  "passed": true
+}

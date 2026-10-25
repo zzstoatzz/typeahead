@@ -1,0 +1,27 @@
+{
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 0,
+    "snapshot_age_s": 9902,
+    "build_id": "b1792896197-ebe5-px05",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "freshness_status": 200,
+  "transport": [
+    {
+      "path": "/search?q=zzstoatzz.io&limit=5",
+      "status": 200,
+      "ms": 40.38233300000002
+    },
+    {
+      "path": "/search?q=a&pds=selfhosted.social&limit=5",
+      "status": 200,
+      "ms": 50.192124999999976
+    }
+  ],
+  "unknown_origin_status": 404,
+  "deployed": false,
+  "passed": true
+}

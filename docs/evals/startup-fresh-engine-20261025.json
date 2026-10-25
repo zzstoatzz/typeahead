@@ -1,0 +1,398 @@
+{
+  "meta": {
+    "target": "https://typeahead-startup-20261024.fly.dev",
+    "baseline": "https://public.api.bsky.app",
+    "corpus_size": 10,
+    "runs": 1,
+    "date": "2026-10-25T05:29:46.760494+00:00"
+  },
+  "latency": [
+    {
+      "query": "nate",
+      "ours_cold": {
+        "min": 145.0,
+        "max": 145.0,
+        "mean": 145.0,
+        "p50": 145.0,
+        "p95": 145.0
+      },
+      "ours_warm": {
+        "min": 53.5,
+        "max": 53.5,
+        "mean": 53.5,
+        "p50": 53.5,
+        "p95": 53.5
+      },
+      "bsky": {
+        "min": 62.0,
+        "max": 62.0,
+        "mean": 62.0,
+        "p50": 62.0,
+        "p95": 62.0
+      }
+    },
+    {
+      "query": "zzstoatzz",
+      "ours_cold": {
+        "min": 40.2,
+        "max": 40.2,
+        "mean": 40.2,
+        "p50": 40.2,
+        "p95": 40.2
+      },
+      "ours_warm": {
+        "min": 42.4,
+        "max": 42.4,
+        "mean": 42.4,
+        "p50": 42.4,
+        "p95": 42.4
+      },
+      "bsky": {
+        "min": 22.1,
+        "max": 22.1,
+        "mean": 22.1,
+        "p50": 22.1,
+        "p95": 22.1
+      }
+    },
+    {
+      "query": "paul",
+      "ours_cold": {
+        "min": 66.6,
+        "max": 66.6,
+        "mean": 66.6,
+        "p50": 66.6,
+        "p95": 66.6
+      },
+      "ours_warm": {
+        "min": 50.6,
+        "max": 50.6,
+        "mean": 50.6,
+        "p50": 50.6,
+        "p95": 50.6
+      },
+      "bsky": {
+        "min": 108.1,
+        "max": 108.1,
+        "mean": 108.1,
+        "p50": 108.1,
+        "p95": 108.1
+      }
+    },
+    {
+      "query": "boorkie",
+      "ours_cold": {
+        "min": 44.3,
+        "max": 44.3,
+        "mean": 44.3,
+        "p50": 44.3,
+        "p95": 44.3
+      },
+      "ours_warm": {
+        "min": 41.6,
+        "max": 41.6,
+        "mean": 41.6,
+        "p50": 41.6,
+        "p95": 41.6
+      },
+      "bsky": {
+        "min": 81.5,
+        "max": 81.5,
+        "mean": 81.5,
+        "p50": 81.5,
+        "p95": 81.5
+      }
+    },
+    {
+      "query": "sky",
+      "ours_cold": {
+        "min": 90.3,
+        "max": 90.3,
+        "mean": 90.3,
+        "p50": 90.3,
+        "p95": 90.3
+      },
+      "ours_warm": {
+        "min": 51.5,
+        "max": 51.5,
+        "mean": 51.5,
+        "p50": 51.5,
+        "p95": 51.5
+      },
+      "bsky": {
+        "min": 96.8,
+        "max": 96.8,
+        "mean": 96.8,
+        "p50": 96.8,
+        "p95": 96.8
+      }
+    },
+    {
+      "query": "sarah",
+      "ours_cold": {
+        "min": 69.1,
+        "max": 69.1,
+        "mean": 69.1,
+        "p50": 69.1,
+        "p95": 69.1
+      },
+      "ours_warm": {
+        "min": 58.6,
+        "max": 58.6,
+        "mean": 58.6,
+        "p50": 58.6,
+        "p95": 58.6
+      },
+      "bsky": {
+        "min": 101.4,
+        "max": 101.4,
+        "mean": 101.4,
+        "p50": 101.4,
+        "p95": 101.4
+      }
+    },
+    {
+      "query": "Andr\u00e9",
+      "ours_cold": {
+        "min": 107.7,
+        "max": 107.7,
+        "mean": 107.7,
+        "p50": 107.7,
+        "p95": 107.7
+      },
+      "ours_warm": {
+        "min": 62.1,
+        "max": 62.1,
+        "mean": 62.1,
+        "p50": 62.1,
+        "p95": 62.1
+      },
+      "bsky": {
+        "min": 111.5,
+        "max": 111.5,
+        "mean": 111.5,
+        "p50": 111.5,
+        "p95": 111.5
+      }
+    },
+    {
+      "query": "nate kohari",
+      "ours_cold": {
+        "min": 40.9,
+        "max": 40.9,
+        "mean": 40.9,
+        "p50": 40.9,
+        "p95": 40.9
+      },
+      "ours_warm": {
+        "min": 52.9,
+        "max": 52.9,
+        "mean": 52.9,
+        "p50": 52.9,
+        "p95": 52.9
+      },
+      "bsky": {
+        "min": 96.6,
+        "max": 96.6,
+        "mean": 96.6,
+        "p50": 96.6,
+        "p95": 96.6
+      }
+    },
+    {
+      "query": "a",
+      "ours_cold": {
+        "min": 104.2,
+        "max": 104.2,
+        "mean": 104.2,
+        "p50": 104.2,
+        "p95": 104.2
+      },
+      "ours_warm": {
+        "min": 53.7,
+        "max": 53.7,
+        "mean": 53.7,
+        "p50": 53.7,
+        "p95": 53.7
+      },
+      "bsky": {
+        "min": 180.9,
+        "max": 180.9,
+        "mean": 180.9,
+        "p50": 180.9,
+        "p95": 180.9
+      }
+    },
+    {
+      "query": "dev",
+      "ours_cold": {
+        "min": 84.6,
+        "max": 84.6,
+        "mean": 84.6,
+        "p50": 84.6,
+        "p95": 84.6
+      },
+      "ours_warm": {
+        "min": 54.5,
+        "max": 54.5,
+        "mean": 54.5,
+        "p50": 54.5,
+        "p95": 54.5
+      },
+      "bsky": {
+        "min": 90.9,
+        "max": 90.9,
+        "mean": 90.9,
+        "p50": 90.9,
+        "p95": 90.9
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "query": "nate",
+      "ours_count": 10,
+      "bsky_count": 10,
+      "overlap_count": 6,
+      "overlap_pct": 60.0,
+      "ours_extras": 4,
+      "bsky_extras": 4,
+      "avg_rank_delta": 1.33
+    },
+    {
+      "query": "zzstoatzz",
+      "ours_count": 6,
+      "bsky_count": 2,
+      "overlap_count": 2,
+      "overlap_pct": 100.0,
+      "ours_extras": 4,
+      "bsky_extras": 0,
+      "avg_rank_delta": 0.5
+    },
+    {
+      "query": "paul",
+      "ours_count": 10,
+      "bsky_count": 10,
+      "overlap_count": 4,
+      "overlap_pct": 40.0,
+      "ours_extras": 6,
+      "bsky_extras": 6,
+      "avg_rank_delta": 3.5
+    },
+    {
+      "query": "boorkie",
+      "ours_count": 1,
+      "bsky_count": 1,
+      "overlap_count": 1,
+      "overlap_pct": 100.0,
+      "ours_extras": 0,
+      "bsky_extras": 0,
+      "avg_rank_delta": 0
+    },
+    {
+      "query": "sky",
+      "ours_count": 10,
+      "bsky_count": 10,
+      "overlap_count": 4,
+      "overlap_pct": 40.0,
+      "ours_extras": 6,
+      "bsky_extras": 6,
+      "avg_rank_delta": 1
+    },
+    {
+      "query": "sarah",
+      "ours_count": 10,
+      "bsky_count": 10,
+      "overlap_count": 5,
+      "overlap_pct": 50.0,
+      "ours_extras": 5,
+      "bsky_extras": 5,
+      "avg_rank_delta": 2.8
+    },
+    {
+      "query": "Andr\u00e9",
+      "ours_count": 10,
+      "bsky_count": 10,
+      "overlap_count": 7,
+      "overlap_pct": 70.0,
+      "ours_extras": 3,
+      "bsky_extras": 3,
+      "avg_rank_delta": 2.14
+    },
+    {
+      "query": "nate kohari",
+      "ours_count": 1,
+      "bsky_count": 10,
+      "overlap_count": 1,
+      "overlap_pct": 10.0,
+      "ours_extras": 0,
+      "bsky_extras": 9,
+      "avg_rank_delta": 0
+    },
+    {
+      "query": "a",
+      "ours_count": 10,
+      "bsky_count": 10,
+      "overlap_count": 4,
+      "overlap_pct": 40.0,
+      "ours_extras": 6,
+      "bsky_extras": 6,
+      "avg_rank_delta": 3.75
+    },
+    {
+      "query": "dev",
+      "ours_count": 10,
+      "bsky_count": 10,
+      "overlap_count": 3,
+      "overlap_pct": 30.0,
+      "ours_extras": 7,
+      "bsky_extras": 7,
+      "avg_rank_delta": 2
+    }
+  ],
+  "field_completeness": {
+    "ours_total": 78,
+    "bsky_total": 83,
+    "ours": {
+      "displayName": 77,
+      "avatar": 77,
+      "createdAt": 76,
+      "associated": 74
+    },
+    "bsky": {
+      "displayName": 83,
+      "avatar": 83,
+      "createdAt": 83,
+      "associated": 83
+    }
+  },
+  "display_name_search": [
+    {
+      "query": "boorkie",
+      "ours_count": 1,
+      "bsky_count": 1,
+      "found": true,
+      "ours_sample": [
+        "brookie.puppygirl.app"
+      ],
+      "bsky_sample": [
+        "brookie.puppygirl.app"
+      ]
+    },
+    {
+      "query": "nate kohari",
+      "ours_count": 1,
+      "bsky_count": 10,
+      "found": true,
+      "ours_sample": [
+        "nate.io"
+      ],
+      "bsky_sample": [
+        "nate.io",
+        "nkohari.bsky.social",
+        "mnateshyamalan.bsky.social"
+      ]
+    }
+  ],
+  "stress": []
+}

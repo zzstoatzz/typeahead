@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-25T05:39:20.390906+00:00",
+  "deleted_obsolete_private_keys": [
+    "releases/startup-candidate-20261025/native/index.db",
+    "releases/startup-candidate-20261025/native/index.db.prefix",
+    "releases/startup-candidate-20261025/native/manifest.json",
+    "releases/startup-candidate-20261025/legacy/index.db",
+    "releases/startup-candidate-20261025/legacy/manifest.json"
+  ],
+  "owned_multipart_uploads_remaining": 0,
+  "passed": true
+}

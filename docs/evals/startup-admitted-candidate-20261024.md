@@ -1,5 +1,9 @@
 # Verified startup and parallel search candidate
 
+This page records the October 24 qualification. The subsequent
+[fresh full-corpus qualification](startup-fresh-candidate-20261025.md) identifies
+the current candidate image, data, shutdown fix, and held cutover.
+
 This follows the [metadata-only experiment](startup-buffer-20261024.md). Production
 continues serving on `typeahead-search-compact` machine `86e502fe55e4e8`, four shared
 CPUs and 2 GiB RAM, with its original image. Routing has not changed.

@@ -1,0 +1,218 @@
+Updating machine 7841e35f965528
+Machine 7841e35f965528 updated successfully!
+
+Monitor machine status here:
+https://fly.io/apps/typeahead-startup-20261024/machines/7841e35f965528
+Waiting up to 1m0s for machine 7841e35f965528 to reach "started"...
+Machine 7841e35f965528 reached state "started"
+Connecting to fdaa:12:4e15:a7b:735:8a91:8eca:2... complete
+Exact image artifacts verified
+Connecting to fdaa:12:4e15:a7b:735:8a91:8eca:2... complete
+1/152 index.normalize.test.ascii lowercase...OK
+2/152 index.normalize.test.handle internal chars preserved...OK
+3/152 index.normalize.test.latin-1 fold...OK
+4/152 index.normalize.test.ligatures expand...OK
+5/152 index.normalize.test.punctuation becomes space separator...OK
+6/152 index.normalize.test.leading and trailing separators stripped...OK
+7/152 index.normalize.test.internal runs of separators collapse to single space...OK
+8/152 index.normalize.test.emoji dropped, CJK preserved (v2)...OK
+9/152 index.normalize.test.v2: japanese kana + han preserved...OK
+10/152 index.normalize.test.v2: katakana folds to hiragana...OK
+11/152 index.normalize.test.v2: full-width ascii folds to ascii...OK
+12/152 index.normalize.test.v2: ideographic + middle-dot spaces separate tokens...OK
+13/152 index.normalize.test.v2: mixed latin + cjk preserved inline (segmented later)...OK
+14/152 index.normalize.test.combining marks dropped (pre-composed already folded above)...OK
+15/152 index.normalize.test.empty and whitespace-only inputs...OK
+16/152 index.normalize.test.invalid utf8 bytes skipped...OK
+17/152 index.normalize.test.output capped at MAX_OUTPUT...OK
+18/152 index.normalize.test.idempotence: query(query(x)) == query(x)...OK
+19/152 index.normalize.test.handle() drops underscore (atproto spec is [a-z0-9.-])...OK
+20/152 index.normalize.test.handle() also lowercase/fold/strip emoji like query()...OK
+21/152 index.normalize.test.display() keeps underscore (display names commonly have it)...OK
+22/152 index.normalize.test.query() keeps underscore (user may type a username with _)...OK
+23/152 index.normalize.test.version constant is stable...OK
+24/152 index.prefixes.test.formatKey shape...OK
+25/152 index.prefixes.test.handlePrefixKeys generates every prefix...OK
+26/152 index.prefixes.test.handlePrefixKeys respects PREFIX_MAX...OK
+27/152 index.prefixes.test.handlePrefixKeys on empty handle returns empty...OK
+28/152 index.prefixes.test.displayTokens splits on single space...OK
+29/152 index.prefixes.test.displayTokens caps at MAX_DISPLAY_TOKENS...OK
+30/152 index.prefixes.test.displayPrefixKeys covers every token's prefixes...OK
+31/152 index.prefixes.test.deriveAll combines h/n/e for a typical actor...OK
+32/152 index.prefixes.test.deriveAll handles empty display name...OK
+33/152 index.prefixes.test.deriveAll handles empty handle...OK
+34/152 index.prefixes.test.queryKeys: single token...OK
+35/152 index.prefixes.test.domainSuffixKeys: prefixes of each dot-boundary suffix...OK
+36/152 index.prefixes.test.domainSuffixKeys: no dots → no keys...OK
+37/152 index.prefixes.test.deriveAll for a domain handle is findable by its domain suffix...OK
+38/152 index.prefixes.test.queryKeys: multi-token query skips h:/e: (would never match)...OK
+39/152 index.prefixes.test.queryKeys: empty query returns empty...OK
+40/152 index.prefixes.test.deriveAll output is sane for unicode-normalized input...OK
+41/152 index.prefixes.test.deriveAll on display 'fig fig' emits duplicate n:fig keys (by design)...OK
+42/152 index.prefixes.test.deriveAllUnique returns sorted deduped slice...OK
+43/152 index.prefixes.test.deriveAllUnique enables clean set-diff for overlay rename...OK
+44/152 index.prefixes.test.v2: displayPrefixKeys bigrams a CJK run + leading unigram...OK
+45/152 index.prefixes.test.v2: queryKeys bigrams a CJK query...OK
+46/152 index.prefixes.test.v2: single CJK char query → leading unigram only...OK
+47/152 index.prefixes.test.v2: mixed latin+cjk token segments into runs...OK
+48/152 index.prefixes.test.v2: query bigrams are a subset of indexed keys (builder/query agree)...OK
+49/152 index.prefixes.test.queryKeys: keys longer than PREFIX_MAX are cut; e: stays whole...OK
+50/152 index.prefixes.test.prefixCut never splits a UTF-8 sequence...OK
+51/152 index.prefixes.test.queryExceedsPrefixMax...OK
+52/152 index.prefixes.test.matchesFullQuery: handle prefix, exact, dot suffix, display run...OK
+53/152 index.pack.test.pack/unpack actor roundtrip...OK
+54/152 index.pack.test.pack actor with hidden=true and empty fields...OK
+55/152 index.pack.test.unpackActor rejects unknown version...OK
+56/152 index.pack.test.unpackActor rejects truncated blob...OK
+57/152 index.pack.test.packActor accepts display name at 256 bytes (atproto upper bound)...OK
+58/152 index.pack.test.packActor rejects field over 65535 bytes...OK
+59/152 index.pack.test.pack/unpack did_list roundtrip...OK
+60/152 index.pack.test.did_list empty roundtrip...OK
+61/152 index.pack.test.DidListIter rejects unknown version...OK
+62/152 index.pack.test.DidListIter rejects truncated blob (header)...OK
+63/152 index.pack.test.DidListIter rejects corruption mid-blob (count says 2 but body has 1)...OK
+64/152 index.pack.test.DidListIter rejects trailing garbage...OK
+65/152 index.pack.test.actor blob fields are stable across versions...OK
+66/152 index.merge.test.modeForQuery...OK
+67/152 index.merge.test.union: single-token across h/e/n keys, max score, dedup...OK
+68/152 index.merge.test.intersect: multi-token requires hit under every token, sums score...OK
+69/152 index.merge.test.overlay op=0 suppresses a base DID for that key...OK
+70/152 index.merge.test.overlay op=1 adds a new DID and rescores an existing one...OK
+71/152 index.merge.test.intersect: overlay-suppressed DID drops out of the intersection...OK
+72/152 index.merge.test.cap truncates to top-N by score...OK
+73/152 index.merge.test.empty keysets → empty result...OK
+74/152 index.index_search.test.promoteExact lifts exact hits to the front, preserving score order...OK
+75/152 index.index_search.test.promoteExact re-injects an exact hit the score cap evicted...OK
+76/152 index.index_search.test.inClause builds the right placeholder count...OK
+77/152 index.index_search.test.search spans are head-sampled 1 in N...OK
+78/152 index.index_search.test.bounded union lookup preserves deletions, lowered base scores, and score ties...OK
+79/152 index.index_search.test.overlay bounds never truncate intersections or exact promotion...OK
+80/152 index.index_search.test.bounded lookup differential: seeded multi-key SQLite fixtures match full ranking...OK
+81/152 index.index_search.test.full pipeline differential preserves exact promotion and moderation across query shapes...OK
+82/152 index.index_search.test.queries longer than PREFIX_MAX resolve through the cut key and keep only whole-query matches...OK
+83/152 index.index_search.test.real data differential (explicit offline paths only)...SKIP
+84/152 index.index_search.test.unified hydration retains large actors and overlay moderation...OK
+85/152 index.index_search.test.PDS scope selects before global cap and follows overlay identity and moderation...OK
+86/152 index.overlay.test.projectUpdate writes actor blob + adds new prefixes...OK
+87/152 index.overlay.test.projectUpdate rename suppresses old keys, adds new, leaves common...OK
+88/152 index.overlay.test.projectUpdate packs RAW handle/display (not normalized) into the blob...OK
+89/152 index.overlay.test.projectUpdate score-only change carries score into overlay (enrichment bug)...OK
+90/152 index.overlay.test.projectDelete writes tombstone (NULL blob) + suppresses old keys...OK
+91/152 index.overlay.test.compact prunes sync rows ≤ watermark but keeps operator + newer rows...OK
+92/152 index.overlay.test.compactChunk is bounded and converges across an overlay larger than one chunk...OK
+93/152 index.overlay.test.offline real actor fanout benchmark (disposable database only)...SKIP
+94/152 index.scoring.test.scoreOf passes quality_score through...OK
+95/152 index.scoring.test.version constant is stable...OK
+96/152 index.schema.test.initSnapshot creates all three tables idempotently...OK
+97/152 index.schema.test.initSnapshot tables are WITHOUT ROWID...OK
+98/152 index.schema.test.initOverlay creates tables + index idempotently...OK
+99/152 index.schema.test.setMeta/getMeta roundtrip...OK
+100/152 index.schema.test.setMeta overwrites existing value...OK
+101/152 index.schema.test.table name constants reflect actual created tables...OK
+102/152 index.schema.test.meta key constants are non-empty and stable...OK
+103/152 index.schema.test.overlay top candidates use the ranking index without a temporary sort...OK
+104/152 index.manifest.test.sha256File matches known digest...OK
+105/152 index.promote.test.parse manifest (ignores unknown fields)...OK
+106/152 index.promote.test.verifyFile size + checksum gate...[promote] (warn): size mismatch: got 6 want 7
+[promote] (warn): sha256 mismatch
+OK
+107/152 index.promote.test.validateSnapshot accepts a good snapshot...OK
+108/152 index.promote.test.validateSnapshot CJK floor: v2 build with ~no CJK keys is rejected...[promote] (warn): cjk_key_count 0 below floor 50000 for v2-cjk-bigram
+OK
+109/152 index.promote.test.validateSnapshot rejects bad manifest_version...OK
+110/152 index.promote.test.validateSnapshot rejects normalize_version mismatch...OK
+111/152 index.promote.test.validateSnapshot rejects missing table...OK
+112/152 index.promote.test.validateSnapshot enforces actor_count floor...OK
+113/152 index.promote.test.compact manifest binds pair identity and rollback watermark...OK
+114/152 index.promote.test.compact metadata must agree with every manifest serving field...OK
+115/152 index.promote.test.legacy rollback metadata cannot claim a different watermark or identity...OK
+116/152 index.promote.test.manifest rejects numeric overflow and incorrectly identified twin...OK
+117/152 index.promote_runner.test.isTransientArtifact matches debris, never live snapshots...OK
+118/152 index.promote_runner.test.interrupted generation cleanup preserves serving artifacts and unrelated directories...OK
+119/152 index.promote_runner.test.sentinelCheck passes on a snapshot that answers the probe...OK
+120/152 index.promote_runner.test.sentinelCheck rejects an empty snapshot...[promote_runner] (warn): sentinel: only 0/1 probes resolved to non-empty prefix rows
+OK
+121/152 index.promote_runner.test.recovery ignores partial activation and refuses rollback behind pruned watermark...OK
+122/152 index.promote_runner.test.real rclone transport admits immutable generation and rejects corrupt replacement...SKIP
+123/152 index.promote_runner.test.compact pair transport rejects missing and mismatched maps and recovers through verified twin...SKIP
+124/152 index.r2.test.configure writes an r2 remote config and returns the bucket...OK
+125/152 index.r2.test.configure errors when a secret is missing...OK
+126/152 index.builder.test.scoreQuantilesJson: 101 points, monotone, empty is []...OK
+127/152 index.builder.test.topNFor classifies by prefix-text length...OK
+128/152 index.builder.test.Config defaults reflect design doc...OK
+129/152 index.builder.test.group/pack index is covering (index-only scan)...OK
+130/152 index.builder.test.parseChannel defaults to local (safe) and maps known values...[indexer] (warn): INDEX_CHANNEL='production' unrecognized; defaulting to local (no upload)
+[indexer] (warn): INDEX_CHANNEL='' unrecognized; defaulting to local (no upload)
+OK
+131/152 index.builder.test.resolvePublish: prod requires explicit arming...OK
+132/152 index.builder.test.resolvePublish: staging needs a name and is namespaced away from prod...OK
+133/152 index.builder.test.resolvePublish: local never publishes...OK
+134/152 index.builder.test.small PDS cutoff counts normalized hosting identities before emitting scoped keys...OK
+135/152 db.sync.test.unified base old actor suppresses renamed prefixes and preserves large sync limit...OK
+136/152 db.sync.test.resumePoint never starts behind the attached snapshot...OK
+137/152 db.sync.test.incremental paged keyset query keeps its seek anchor and plans as SEARCH...OK
+138/152 http_guard.test.bodiless POST gets 411 and a closed connection...OK
+139/152 http_guard.test.framed and bodiless-by-method requests pass through untouched...OK
+140/152 index.flat_prefix.test.unified namespaces retain opaque empty and non posting values...OK
+141/152 index.flat_prefix.test.paged fences preserve all postings and boundary misses...OK
+142/152 index.flat_prefix.test.unified oversized posting and maximum key preserve raw bytes...OK
+143/152 index.flat_prefix.test.unified rejects malformed restart posting offset and length...OK
+144/152 index.flat_prefix.test.unified cross restart order and empty map...OK
+145/152 index.flat_prefix.test.admission binds the opened inode and rejects modified data and receipts...OK
+146/152 index.flat_prefix.test.admission survives atomic generation directory publication...OK
+147/152 index.flat_prefix.test.pread real file owns root closes fd and keeps request bytes alive...OK
+148/152 db.LocalDb.test.flat format admission rejects missing and unknown markers and permits legacy...OK
+149/152 db.LocalDb.test.canceling compaction while initial sync is unready leaves compaction incomplete...OK
+150/152 db.LocalDb.test.unified generation admission and swap retain leased bytes and reject corrupt replacement...OK
+151/152 index.pds.test.PDS hostname normalization rejects ambiguous scopes...OK
+152/152 search.test.avatarCid: bare CID, getBlob URL, CDN URL, garbage...OK
+148 passed; 4 skipped; 0 failed.
+Connecting to fdaa:12:4e15:a7b:735:8a91:8eca:2... complete
+Retained sync_meta 6 rows
+Retained actor_overlay 10799 rows
+Retained prefix_overlay 451069 rows
+{
+  "watermark": 1792894100,
+  "predicate": "NOT (source = 0 AND updated_at <= watermark)",
+  "tables": {
+    "sync_meta": {
+      "rows": 6,
+      "logical_sha256": "b9defae0f885171d85a77d3a6cbb906302617a465b6979f87290325101548946"
+    },
+    "actor_overlay": {
+      "rows": 10799,
+      "logical_sha256": "1dbd3e2033763f74a63e4192a7f194dfb9e03e613ddc5b52336924d3c8ea06d9"
+    },
+    "prefix_overlay": {
+      "rows": 451069,
+      "logical_sha256": "d50dd5cb1311e4432ca4aba1f4965d3860d3372729ddc6a4fd239f8850ebf8ab"
+    }
+  },
+  "started_at_unix": 1792905793.4817188,
+  "last_sync": "1792905245",
+  "passed": true,
+  "bytes": 81043456,
+  "seconds": 68.25629758834839,
+  "backup_directory": "/data/candidate/overlay-before-offline-compaction"
+}
+Updating machine 7841e35f965528
+Machine 7841e35f965528 updated successfully!
+
+Monitor machine status here:
+https://fly.io/apps/typeahead-startup-20261024/machines/7841e35f965528
+Waiting up to 1m0s for machine 7841e35f965528 to reach "started"...
+Machine 7841e35f965528 reached state "started"
+Connecting to fdaa:12:4e15:a7b:735:8a91:8eca:2... complete
+shutdown-reference ready in 0.0562 seconds
+shutdown-candidate-0 ready in 0.0238 seconds
+shutdown-candidate-1 ready in 0.0123 seconds
+shutdown-candidate-2 ready in 0.0171 seconds
+Updated reader parity and sub-second recovery passed on compacted overlay
+Updating machine 7841e35f965528
+Machine 7841e35f965528 updated successfully!
+
+Monitor machine status here:
+https://fly.io/apps/typeahead-startup-20261024/machines/7841e35f965528
+Waiting up to 1m0s for machine 7841e35f965528 to reach "started"...
+Machine 7841e35f965528 reached state "started"
+Fixed candidate image serving on final resources; production untouched

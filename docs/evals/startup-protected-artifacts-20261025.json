@@ -1,0 +1,26 @@
+{
+  "build_id": "b1792896197-ebe5-px05",
+  "manifest_sha256": "5a19af3fcf12d52ca7d2127c0749bff365a7893ef732b8d554a363226f386887",
+  "artifacts": [
+    {
+      "key": "releases/startup-candidate-20261025/b1792896197-ebe5-px05/index.db",
+      "bytes": 81920,
+      "sha256": "a8c00ba529d01be7136e71e3a5089b22578095e6ad1806ee7b087dd3cc5b0dcd"
+    },
+    {
+      "key": "releases/startup-candidate-20261025/b1792896197-ebe5-px05/index.db.prefix",
+      "bytes": 7290933248,
+      "sha256": "e81114603afe15098f0cc54b3c704f1c2650ea503322676ede77551af580d48c"
+    },
+    {
+      "key": "releases/startup-candidate-20261025/b1792896197-ebe5/index.db",
+      "bytes": 16302272512,
+      "sha256": "a9984615bb8cf32be14dab6c0b5e8266997105e94b88bb4301bda1a4a0fc2102"
+    }
+  ],
+  "production_pointer_written": false,
+  "at_unix": 1792906318.6755037,
+  "passed": true,
+  "private_pointer": "candidates/startup-20261025/latest.json",
+  "private_pointer_updated": true
+}

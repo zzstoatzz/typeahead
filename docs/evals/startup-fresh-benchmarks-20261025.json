@@ -1,0 +1,14 @@
+{
+  "ranking": {
+    "exit_code": 0,
+    "seconds": 10.663877416984178,
+    "failures": [],
+    "log": "docs/evals/startup-fresh-ranking-20261025.log"
+  },
+  "engine": {
+    "exit_code": 0,
+    "seconds": 53.4517259580025,
+    "failures": [],
+    "log": "docs/evals/startup-fresh-engine-20261025.log"
+  }
+}
