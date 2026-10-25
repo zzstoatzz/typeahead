@@ -1,0 +1,75 @@
+{
+  "at": "2026-10-25T05:41:35.039932+00:00",
+  "public": {
+    "precutover": {
+      "id": "6942b161-018f-46d3-895a-776370d4e69a",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "secret"
+      },
+      "versions": [
+        {
+          "version_id": "e331b7b4-cbca-4a28-9270-29af2fc2b7bb",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-24T22:07:43.298783Z"
+    },
+    "aftercutover": {
+      "id": "9126acce-c740-4dd6-95d3-0e81dfa19723",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "secret"
+      },
+      "versions": [
+        {
+          "version_id": "e7497249-a134-451b-8544-afda9c3bfe44",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-25T05:40:29.365497Z"
+    }
+  },
+  "transport": {
+    "precutover": {
+      "id": "3791886e-8169-472c-9961-a79e075cdbce",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "786da370-0cc2-499b-9238-25e25de81267",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-20T16:31:06.202665Z"
+    },
+    "aftercutover": {
+      "id": "e56cd3d0-642f-4658-b0f5-d2016d83f43b",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "8de9d8f4-ad1a-4130-9e24-1ba5c9b7a85b",
+          "percentage": 100
+        }
+      ],
+      "created_on": "2026-10-25T05:40:23.075014Z"
+    }
+  },
+  "binding_changed": "SEARCH_BACKEND_URL",
+  "new_backend": "https://typeahead-startup-20261024.fly.dev",
+  "rollback_backend": "https://typeahead-search-compact.fly.dev",
+  "approved": true
+}

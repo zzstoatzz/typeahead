@@ -1,10 +1,10 @@
-# Isolated search candidate and held cutover
+# Isolated search rollout and rollback
 
-Runtime qualification, durable-channel full readback, native manifest acceptance,
-and isolation/drift checks passed on October 25, 2026. The candidate is ready;
-traffic cutover remains held. This document is a plan, not a
-record of a production cutover. Nate's explicit approval is required before any
-production routing or transport deployment. Do not publish the shared R2
+Nate approved cutover on October 25, 2026: "yes go! watch as it goes". The
+transport allowlist and public backend binding were deployed after all readiness
+and drift checks passed. Five public verification rounds and Evergreen
+validation pass. See the [execution record](search-cutover-result-20261025.md).
+The procedure below preserves the verified rollback path. Do not publish the shared R2
 `latest.json` as part of this operation.
 
 ## Isolation and current resources
@@ -53,7 +53,8 @@ Offline preparation retains exactly the native compactor's surviving rows:
 source overrides and the sync cursor. The copied schema/indexes and row hashes
 were checked, and SQLite integrity verification passed. The prepared overlay is
 81,043,456 bytes, with 10,799 actor rows and 451,069 prefix rows. The original
-candidate overlay is preserved at `/data/candidate/overlay-before-offline-compaction/`.
+candidate overlay was retained through qualification and removed after successful
+cutover; the original production backend has its separate intact rollback overlay.
 No production database was copied or modified during this preparation.
 
 Remote candidate artifacts are preserved beneath

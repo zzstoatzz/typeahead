@@ -1,0 +1,85 @@
+{
+  "at": "2026-10-25T05:43:25.293300+00:00",
+  "typeahead_apps": [
+    "typeahead-backfill",
+    "typeahead-canary",
+    "typeahead-indexer",
+    "typeahead-ingester",
+    "typeahead-refresh-handles",
+    "typeahead-search",
+    "typeahead-search-compact",
+    "typeahead-startup-20261024"
+  ],
+  "rollout_apps": [
+    {
+      "app": "typeahead-search-compact",
+      "role": "retained routing rollback",
+      "machines": [
+        {
+          "id": "86e502fe55e4e8",
+          "state": "started",
+          "image": "registry.fly.io/typeahead-search-compact@sha256:433155b25711c8e98b3885a56528dca26d0cb36c38d22f0a3ece6487888cc3bd",
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 4,
+            "memory_mb": 2048
+          },
+          "mounts": [
+            {
+              "encrypted": true,
+              "path": "/data",
+              "size_gb": 60,
+              "volume": "vol_vxmqwnpnlewdgzj4",
+              "name": "pds_replay_data"
+            }
+          ],
+          "snapshot_pointer": "latest.json"
+        }
+      ],
+      "volumes": [
+        {
+          "id": "vol_vxmqwnpnlewdgzj4",
+          "size_gb": 60,
+          "state": "created",
+          "attached_machine_id": "86e502fe55e4e8",
+          "snapshot_retention": 5
+        }
+      ]
+    },
+    {
+      "app": "typeahead-startup-20261024",
+      "role": "serving",
+      "machines": [
+        {
+          "id": "7841e35f965528",
+          "state": "started",
+          "image": "registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573",
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 2,
+            "memory_mb": 1024
+          },
+          "mounts": [
+            {
+              "encrypted": true,
+              "path": "/data",
+              "size_gb": 60,
+              "volume": "vol_v8eyllqdyykq0z5v",
+              "name": "startup_direct"
+            }
+          ],
+          "snapshot_pointer": "candidates/startup-20261025/latest.json"
+        }
+      ],
+      "volumes": [
+        {
+          "id": "vol_v8eyllqdyykq0z5v",
+          "size_gb": 60,
+          "state": "created",
+          "attached_machine_id": "7841e35f965528",
+          "snapshot_retention": 5
+        }
+      ]
+    }
+  ]
+}

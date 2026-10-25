@@ -1,0 +1,383 @@
+{
+  "approval": "Nate: yes go! watch as it goes",
+  "started_at": "2026-10-25T05:41:01.437576+00:00",
+  "rounds": [
+    {
+      "at": "2026-10-25T05:41:02.825580+00:00",
+      "freshness": {
+        "status": 200,
+        "ms": 260.95,
+        "body": {
+          "ok": true,
+          "stale": false,
+          "replica_lag_s": 278,
+          "snapshot_age_s": 10664,
+          "build_id": "b1792896197-ebe5-px05",
+          "probe_ok": true,
+          "reasons": []
+        },
+        "server_timing": "cfEdge;dur=75,cfOrigin;dur=0,cfWorker;dur=103",
+        "pds_ack": null
+      },
+      "queries": [
+        {
+          "alias": "tech.waow.typeahead.searchActors",
+          "status": 200,
+          "ms": 191.57,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"hit\";dur=21"
+        },
+        {
+          "alias": "app.bsky.actor.searchActorsTypeahead",
+          "status": 200,
+          "ms": 86.92,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"hit\";dur=3"
+        },
+        {
+          "pds": "selfhosted.social",
+          "status": 200,
+          "ms": 236.45,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"miss\";dur=7, origin_headers;dur=122;desc=\"01M5RS77M30AWZB784NBANN0Q2-iad\", origin;dur=122, search;dur=129"
+        },
+        {
+          "pds": "https%3A%2F%2Fselfhosted.social",
+          "status": 200,
+          "ms": 108.44,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"hit\";dur=8"
+        },
+        {
+          "pds": "unknown.invalid",
+          "status": 200,
+          "ms": 132.94,
+          "handles": [],
+          "server_timing": "cache;desc=\"miss\";dur=6, origin_headers;dur=46;desc=\"01M5RS77W2T46S84HN1TK81Q8D-iad\", origin;dur=46, search;dur=52"
+        },
+        {
+          "pds": "rhizopogon.us-west.host.bsky.network",
+          "status": 503,
+          "ms": 272.78,
+          "handles": [],
+          "server_timing": "cfEdge;dur=19,cfOrigin;dur=0,cfWorker;dur=168"
+        }
+      ],
+      "backend_scope_ack": "selfhosted.social"
+    },
+    {
+      "at": "2026-10-25T05:41:34.215732+00:00",
+      "freshness": {
+        "status": 200,
+        "ms": 204.81,
+        "body": {
+          "ok": true,
+          "stale": false,
+          "replica_lag_s": 5,
+          "snapshot_age_s": 10696,
+          "build_id": "b1792896197-ebe5-px05",
+          "probe_ok": true,
+          "reasons": []
+        },
+        "server_timing": "cfEdge;dur=28,cfOrigin;dur=0,cfWorker;dur=94",
+        "pds_ack": null
+      },
+      "queries": [
+        {
+          "alias": "tech.waow.typeahead.searchActors",
+          "status": 200,
+          "ms": 221.23,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"miss\";dur=7, origin_headers;dur=99;desc=\"01M5RS85XSZ2KVXY7S9MV2PZP7-iad\", origin;dur=99, search;dur=106"
+        },
+        {
+          "alias": "app.bsky.actor.searchActorsTypeahead",
+          "status": 200,
+          "ms": 113.98,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"hit\";dur=5"
+        },
+        {
+          "pds": "selfhosted.social",
+          "status": 200,
+          "ms": 255.27,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"hit\";dur=33"
+        },
+        {
+          "pds": "https%3A%2F%2Fselfhosted.social",
+          "status": 200,
+          "ms": 159.19,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"hit\";dur=9"
+        },
+        {
+          "pds": "unknown.invalid",
+          "status": 200,
+          "ms": 151.75,
+          "handles": [],
+          "server_timing": "cache;desc=\"hit\";dur=14"
+        },
+        {
+          "pds": "rhizopogon.us-west.host.bsky.network",
+          "status": 503,
+          "ms": 181.63,
+          "handles": [],
+          "server_timing": "cfEdge;dur=18,cfOrigin;dur=0,cfWorker;dur=99"
+        }
+      ],
+      "backend_scope_ack": "selfhosted.social"
+    },
+    {
+      "at": "2026-10-25T05:42:05.426072+00:00",
+      "freshness": {
+        "status": 200,
+        "ms": 246.96,
+        "body": {
+          "ok": true,
+          "stale": false,
+          "replica_lag_s": 36,
+          "snapshot_age_s": 10727,
+          "build_id": "b1792896197-ebe5-px05",
+          "probe_ok": true,
+          "reasons": []
+        },
+        "server_timing": "cfEdge;dur=84,cfOrigin;dur=0,cfWorker;dur=101",
+        "pds_ack": null
+      },
+      "queries": [
+        {
+          "alias": "tech.waow.typeahead.searchActors",
+          "status": 200,
+          "ms": 97.87,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"hit\";dur=7"
+        },
+        {
+          "alias": "app.bsky.actor.searchActorsTypeahead",
+          "status": 200,
+          "ms": 94.47,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"hit\";dur=5"
+        },
+        {
+          "pds": "selfhosted.social",
+          "status": 200,
+          "ms": 206.16,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"miss\";dur=7, origin_headers;dur=86;desc=\"01M5RS94SSCNBGJVMVTH3JES9E-iad\", origin;dur=86, search;dur=93"
+        },
+        {
+          "pds": "https%3A%2F%2Fselfhosted.social",
+          "status": 200,
+          "ms": 111.78,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"hit\";dur=8"
+        },
+        {
+          "pds": "unknown.invalid",
+          "status": 200,
+          "ms": 169.0,
+          "handles": [],
+          "server_timing": "cache;desc=\"miss\";dur=6, origin_headers;dur=84;desc=\"01M5RS953DFBWWK3GA27WN3KWE-iad\", origin;dur=84, search;dur=90"
+        },
+        {
+          "pds": "rhizopogon.us-west.host.bsky.network",
+          "status": 503,
+          "ms": 180.31,
+          "handles": [],
+          "server_timing": "cfEdge;dur=30,cfOrigin;dur=0,cfWorker;dur=87"
+        }
+      ],
+      "backend_scope_ack": "selfhosted.social"
+    },
+    {
+      "at": "2026-10-25T05:42:36.572776+00:00",
+      "freshness": {
+        "status": 200,
+        "ms": 244.25,
+        "body": {
+          "ok": true,
+          "stale": false,
+          "replica_lag_s": 67,
+          "snapshot_age_s": 10758,
+          "build_id": "b1792896197-ebe5-px05",
+          "probe_ok": true,
+          "reasons": []
+        },
+        "server_timing": "cfEdge;dur=26,cfOrigin;dur=0,cfWorker;dur=141",
+        "pds_ack": null
+      },
+      "queries": [
+        {
+          "alias": "tech.waow.typeahead.searchActors",
+          "status": 200,
+          "ms": 151.75,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"miss\";dur=5, origin_headers;dur=55;desc=\"01M5RSA31ZAQE24RYNHWK7MNDV-iad\", origin;dur=55, search;dur=60"
+        },
+        {
+          "alias": "app.bsky.actor.searchActorsTypeahead",
+          "status": 200,
+          "ms": 124.59,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"hit\";dur=6"
+        },
+        {
+          "pds": "selfhosted.social",
+          "status": 200,
+          "ms": 109.46,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"hit\";dur=7"
+        },
+        {
+          "pds": "https%3A%2F%2Fselfhosted.social",
+          "status": 200,
+          "ms": 103.68,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"hit\";dur=7"
+        },
+        {
+          "pds": "unknown.invalid",
+          "status": 200,
+          "ms": 112.15,
+          "handles": [],
+          "server_timing": "cache;desc=\"hit\";dur=5"
+        },
+        {
+          "pds": "rhizopogon.us-west.host.bsky.network",
+          "status": 503,
+          "ms": 139.33,
+          "handles": [],
+          "server_timing": "cfEdge;dur=16,cfOrigin;dur=0,cfWorker;dur=63"
+        }
+      ],
+      "backend_scope_ack": "selfhosted.social"
+    },
+    {
+      "at": "2026-10-25T05:43:07.828996+00:00",
+      "freshness": {
+        "status": 200,
+        "ms": 136.78,
+        "body": {
+          "ok": true,
+          "stale": false,
+          "replica_lag_s": 98,
+          "snapshot_age_s": 10789,
+          "build_id": "b1792896197-ebe5-px05",
+          "probe_ok": true,
+          "reasons": []
+        },
+        "server_timing": "cfEdge;dur=8,cfOrigin;dur=0,cfWorker;dur=60",
+        "pds_ack": null
+      },
+      "queries": [
+        {
+          "alias": "tech.waow.typeahead.searchActors",
+          "status": 200,
+          "ms": 268.41,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"hit\";dur=51"
+        },
+        {
+          "alias": "app.bsky.actor.searchActorsTypeahead",
+          "status": 200,
+          "ms": 92.06,
+          "first": "zzstoatzz.io",
+          "server_timing": "cache;desc=\"hit\";dur=7"
+        },
+        {
+          "pds": "selfhosted.social",
+          "status": 200,
+          "ms": 176.22,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"miss\";dur=6, origin_headers;dur=83;desc=\"01M5RSB1QE0DYDRGES2Q9FYH7E-iad\", origin;dur=83, search;dur=89"
+        },
+        {
+          "pds": "https%3A%2F%2Fselfhosted.social",
+          "status": 200,
+          "ms": 108.82,
+          "handles": [
+            "filippo.abyssdomain.expert",
+            "aparker.io",
+            "goose.art",
+            "witchsky.app",
+            "a2.co"
+          ],
+          "server_timing": "cache;desc=\"hit\";dur=8"
+        },
+        {
+          "pds": "unknown.invalid",
+          "status": 200,
+          "ms": 204.36,
+          "handles": [],
+          "server_timing": "cache;desc=\"miss\";dur=6, origin_headers;dur=56;desc=\"01M5RSB21TJK9V95JXH53809GT-iad\", origin;dur=56, search;dur=62"
+        },
+        {
+          "pds": "rhizopogon.us-west.host.bsky.network",
+          "status": 503,
+          "ms": 139.47,
+          "handles": [],
+          "server_timing": "cfEdge;dur=17,cfOrigin;dur=0,cfWorker;dur=57"
+        }
+      ],
+      "backend_scope_ack": "selfhosted.social"
+    }
+  ],
+  "passed": true,
+  "completed_at": "2026-10-25T05:43:07.829923+00:00"
+}

@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-25T05:42:52.124720+00:00",
+  "user_agent": "fleet-health/1",
+  "status": 200,
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 84,
+    "snapshot_age_s": 10775,
+    "build_id": "b1792896197-ebe5-px05",
+    "probe_ok": true,
+    "reasons": []
+  }
+}

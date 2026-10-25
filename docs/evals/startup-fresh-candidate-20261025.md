@@ -1,9 +1,9 @@
 # Fresh full-corpus candidate qualification
 
-October 25, 2026. Production remains on its original machine, volume, image,
-shared snapshot pointer, transport and routing. Its snapshot-staleness alert is
-still legitimate. This qualification prepares a separate backend; cutover is held
-for Nate's explicit approval.
+October 25, 2026. During qualification production remained on its original
+machine, volume, image, shared snapshot pointer, transport and routing. Nate
+subsequently approved cutover; the [execution record](../ops/search-cutover-result-20261025.md)
+shows public and Evergreen checks passing on this fresh backend.
 
 ## Candidate
 
@@ -75,7 +75,8 @@ measurements and the loopback disk-cold matrix above measure different paths.
 
 Runtime verification, full SHA-256 readback of the protected artifacts, private
 manifest acceptance and final isolation/drift checks pass. The candidate is ready
-for an explicitly approved traffic cutover. Production remains unchanged.
+for the subsequently approved traffic cutover. Production was unchanged throughout
+preparation.
 The native watcher fetched the corrected manifest on the clean restart; its
 downloaded SHA-256 matches the protected pointer, and no promotion error followed.
 Both deployed Worker versions match their recorded pre-preparation versions.

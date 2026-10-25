@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-25T05:42:15.467785+00:00",
+  "removed_paths": [
+    "/data/candidate/index/generations/b1792484789-3d65-px05",
+    "/data/candidate/overlay-before-offline-compaction",
+    "/data/candidate/preflight-tmp",
+    "/data/candidate/preflight-overlay.db",
+    "/data/candidate/preflight-overlay.db-shm",
+    "/data/candidate/preflight-overlay.db-wal",
+    "/data/candidate/overlay.download.part-shm",
+    "/data/candidate/overlay.download.part-wal"
+  ],
+  "removed_bytes": 11026783033,
+  "old_backend_retained": "typeahead-search-compact/86e502fe55e4e8/vol_vxmqwnpnlewdgzj4",
+  "live_generation_retained": "b1792896197-ebe5-px05",
+  "qualification_evidence_retained": true,
+  "passed": true
+}

@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-25T05:43:02.945120+00:00",
+  "source": "real check_evergreen.fn inventory/status validation",
+  "typeahead_results": [
+    {
+      "name": "search freshness",
+      "url": "https://typeahead.waow.tech/health/freshness",
+      "project": "typeahead",
+      "status": 200,
+      "ok": true,
+      "ms": 253.0
+    },
+    {
+      "name": "ingester",
+      "url": "https://ingest.typeahead.waow.tech/health",
+      "project": "typeahead",
+      "status": 200,
+      "ok": true,
+      "ms": 232.0
+    }
+  ],
+  "passed": true
+}

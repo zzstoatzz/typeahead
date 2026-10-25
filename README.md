@@ -267,16 +267,16 @@ existing installation).
 
 ## Operational status
 
-October 25, 2026: the improved-startup backend is prepared on a separate
-Fly machine and volume with its own frozen snapshot pointer. Production remains
-on the original backend and stale snapshot; restoring availability did not resolve
-the freshness alert. The [held cutover plan](docs/ops/search-cutover-20261025.md)
-records isolation, qualification gates, rollback, and cleanup. No production
-routing, transport deployment, or shared snapshot publication is authorized during
-preparation. Earlier startup results below refer to the previous snapshot;
-[fresh-snapshot qualification](docs/evals/startup-fresh-candidate-20261025.md)
-now passes, including clean shutdown and the private artifact channel. Traffic
-cutover remains held for explicit approval.
+October 25, 2026: the improved-startup backend is live after an explicitly approved
+cutover. It serves the verified fresh snapshot on two shared CPUs / 1 GiB, using
+its separate volume and private snapshot pointer. Public freshness and Evergreen
+both return healthy results; five rounds of public global/PDS checks pass. The
+original backend remains running for immediate routing rollback. See the
+[execution record](docs/ops/search-cutover-result-20261025.md),
+[rollback procedure](docs/ops/search-cutover-20261025.md), and
+[fresh snapshot qualification](docs/evals/startup-fresh-candidate-20261025.md).
+The bulk publisher remains paused: subsequent snapshot refreshes must be prepared
+offline, with the next snapshot required before October 29 at 02:43 UTC.
 
 As of September 6, 2026:
 
