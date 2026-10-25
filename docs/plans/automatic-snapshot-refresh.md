@@ -10,7 +10,10 @@ The recurring cloud Prefect publisher builds and fully verifies immutable compac
 and legacy artifacts. A rollout controller installs compact artifacts onto an idle
 Fly app with its own fresh volume. Installation and admission finish before the
 search process starts. The legacy twin stays in R2; routing rollback uses the
-previous backend and its independent live overlay.
+previous backend and its independent live overlay when retained. On October 25,
+the operator retired both superseded backends/disks after accepting the smaller
+backend. The managed app slots remain; the inactive one is empty until the next
+refresh. Immediate rollback is unavailable while `previous` is null.
 
 The two managed apps are `typeahead-startup-20261024` and
 `typeahead-search-refresh`. The serving app must never be resized, restarted,

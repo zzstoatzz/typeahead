@@ -91,7 +91,9 @@ twin under `releases/search/<id>/`, then updates `control/builds/latest.json`.
 That ready pointer does not change traffic. The controller prepares the inactive
 slot on independent compute/storage and its own slot pointer, catches up its
 overlay, checks search/freshness and final-size cached restart, then conditionally
-updates the routing record. The previous backend remains running for rollback.
+updates the routing record. Successful refreshes retain the previous backend for rollback. The operator retired
+the two superseded backends October 25; only the current search backend runs until
+the next refresh, and the routing record has no immediate rollback target.
 No bulk installation or validation runs on the serving backend. An interrupted
 installation leaves that backend selected; failed post-cutover checks restore
 its route. Current and previous managed generations and twins are retained.

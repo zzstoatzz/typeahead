@@ -154,3 +154,29 @@ The temporary handoff disk guard is inactive with MainPID zero and its script
 removed. The permanent cloud worker remains active with its own resource limits,
 process-group cleanup and per-command scratch cleanup. No freshness thresholds,
 alert routes or alert muting were changed.
+
+## Superseded-backend retirement
+
+Later October 25, the operator authorized retirement after accepting the smaller
+production backend. The active route and public freshness were checked before
+each deletion. The routing record was conditionally updated to `previous: null`
+before removing the old target. Current build, machine, disk and image did not change.
+
+Removed:
+
+- Original `typeahead-search-compact` machine `86e502fe55e4e8` and 60 GB volume `vol_vxmqwnpnlewdgzj4` (four shared CPUs / 2 GiB).
+- Previous managed `typeahead-startup-20261024` machine `7841e35f965528` and 60 GB volume `vol_v8eyllqdyykq0z5v` (two shared CPUs / 1 GiB).
+
+Both apps now have no machines or active volumes. The two managed app identities,
+credentials, installer image and schedule remain, allowing the next refresh to
+create an independent candidate in the empty slot. Old on-disk overlays are gone;
+recovery requires installation and replay from retained R2 artifacts. Immediate
+old-backend routing rollback is unavailable until another successful refresh.
+Public freshness and exact-handle queries through both aliases passed after cleanup.
+[Retirement inventory and receipt](../evals/search-retirement-20261025.json).
+
+At the connector's configured list prices, deleting both machines removes
+$19.91/month of always-on compute and deleting 120 GB removes $18/month of volumes.
+The current search baseline is $6.64/month compute plus $3/month for its 20 GB disk;
+the separate ingester, snapshot storage, builder and shared services are additional.
+These are list-price estimates, not invoice savings or a complete project bill.

@@ -6,11 +6,13 @@ Public traffic uses the transport Worker's stable URL and
 `control/search-routing.json`, currently selecting the admitted-startup backend.
 The automatic-refresh deployment is active at 06:00 UTC on odd-numbered days,
 with the next run queued for October 27. Production uses build
-`b1792908655-14d5-px05` on `typeahead-search-refresh`; the previous managed backend
-remains available for routing rollback. [The refresh runbook](plans/automatic-snapshot-refresh.md)
+`b1792908655-14d5-px05` on `typeahead-search-refresh` at two shared CPUs / 1 GiB.
+The two superseded machines and their 60 GB disks were retired with operator
+authorization later October 25. The inactive managed app remains empty for the next
+refresh; `previous` is null, so immediate old-backend rollback is unavailable. [The refresh runbook](plans/automatic-snapshot-refresh.md)
 and [execution record](ops/automatic-refresh-20261025.md) cover verified rollout,
-rollback, recovery, inventory and cleanup. The original compact app remains a
-separately retained legacy rollback resource.
+rollback, recovery, inventory, cleanup and the subsequent retirement.
+R2 artifacts and pinned images remain available for recovery.
 The dated October 20 configuration below is historical recovery context.
 
 As of October 20, 2026, 16:31 UTC, production serves PDS-capable compact build
