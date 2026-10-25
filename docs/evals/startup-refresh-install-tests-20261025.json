@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-25T06:25:12.016577+00:00",
+  "app": "typeahead-search-refresh",
+  "machine": "85e946b42130e8",
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:0c431115b6528d626ae36669dda9cc73d256cba6223bd443cf27daebc6ae512a",
+  "real_r2_and_rclone": true,
+  "real_native_admission": true,
+  "reports": [
+    {
+      "results": [
+        {
+          "verified_install_and_cached_retry": true,
+          "build_id": "b1792909457-qual-good-px05"
+        },
+        {
+          "corrupt_prefix_rejected_and_previous_activation_preserved": true
+        }
+      ],
+      "passed": true
+    },
+    {
+      "results": [
+        {
+          "retry_after_corruption": true,
+          "build_id": "b1792909458-qual-bad-px05"
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "passed": true
+}

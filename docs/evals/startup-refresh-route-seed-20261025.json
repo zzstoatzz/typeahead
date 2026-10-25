@@ -1,0 +1,17 @@
+{
+  "route": {
+    "version": 1,
+    "current": {
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "build_id": "b1792896197-ebe5-px05",
+      "source_watermark": 1792894100,
+      "machine_id": "7841e35f965528",
+      "volume_id": "vol_v8eyllqdyykq0z5v"
+    },
+    "previous": null,
+    "promoted_at": 1792909572
+  },
+  "etag": "\"9f0554c64ec2230d4243e02312796c2a\"",
+  "public_backend_changed": false,
+  "passed": true
+}

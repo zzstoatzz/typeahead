@@ -27,6 +27,7 @@ export default {
     if (url.pathname === "/route") return Response.json(route, { headers: { "Cache-Control": "no-store" } });
     const target = new URL(url.pathname + url.search, route.origin);
     const forwarded = new Request(target, request);
+    forwarded.headers.delete("Host");
     return fetch(forwarded, { signal: AbortSignal.timeout(url.pathname === "/admin/refresh" ? 5000 : 3000), redirect: "manual" });
   },
 };
