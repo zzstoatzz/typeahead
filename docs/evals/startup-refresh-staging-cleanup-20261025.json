@@ -1,0 +1,20 @@
+{
+  "source_sha256": "fb1d424bf9c9a4f80ab476dd31961301cb8fb5496e4895b675f7601773e67ca0",
+  "abandoned_removed": true,
+  "open_file_preserved": true,
+  "recent_staging_preserved": true,
+  "completed_generation_preserved": true,
+  "symlink_preserved": true,
+  "actual_cleanup": {
+    "removed": [
+      {
+        "path": "/var/lib/typeahead-indexer/active/.compact-release-3ggul2cc",
+        "bytes": 7292937432
+      }
+    ],
+    "busy": [],
+    "bytes_freed": 7292937432
+  },
+  "free_gib": 105.41,
+  "passed": true
+}

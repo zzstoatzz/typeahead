@@ -1,0 +1,12 @@
+{
+  "stopped_before_update": true,
+  "started_after_update": true,
+  "before_instance": "01M5S3ENGSG4CAJKVWNF3725Y2",
+  "after_instance": "01M5S3F1ERK3G6Q8PRWB122RWA",
+  "machine_id": "82e660c70167e8",
+  "no_serving_ports": true,
+  "no_volume": true,
+  "routing_unchanged": true,
+  "passed": true,
+  "test_machine_removed": true
+}

@@ -1,5 +1,18 @@
 # operations / edge gotchas
 
+## Current automatic refresh — October 25, 2026
+
+Public traffic uses the transport Worker's stable URL and
+`control/search-routing.json`, currently selecting the admitted-startup backend.
+The automatic-refresh deployment is active at 06:00 UTC on odd-numbered days,
+with the next run queued for October 27. Production uses build
+`b1792908655-14d5-px05` on `typeahead-search-refresh`; the previous managed backend
+remains available for routing rollback. [The refresh runbook](plans/automatic-snapshot-refresh.md)
+and [execution record](ops/automatic-refresh-20261025.md) cover verified rollout,
+rollback, recovery, inventory and cleanup. The original compact app remains a
+separately retained legacy rollback resource.
+The dated October 20 configuration below is historical recovery context.
+
 As of October 20, 2026, 16:31 UTC, production serves PDS-capable compact build
 `b1792484789-3d65-px05` on `typeahead-search-compact` machine `8d4916be311008`,
 following root `latest.json` at `/data/pds-current-20261020`, with live overlay

@@ -1,0 +1,13 @@
+{
+  "source_app": "typeahead-search-refresh",
+  "target_app": "typeahead-startup-20261024",
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:0c431115b6528d626ae36669dda9cc73d256cba6223bd443cf27daebc6ae512a",
+  "machine_id": "8dd326ce124228",
+  "exit_code": 0,
+  "volume_attached": false,
+  "serving_ports": false,
+  "passed": true,
+  "test_machine_removed": true,
+  "previous_backend_unchanged": true,
+  "routing_unchanged": true
+}

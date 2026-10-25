@@ -1,0 +1,8 @@
+{
+  "platform": "Linux",
+  "source_sha256": "1f47f223946370f1f8b702d5f7b0db635870b29c7abf7482ad4e6d7be4d9277c",
+  "parent_sigkill_test": true,
+  "term_ignoring_descendants_stopped": true,
+  "cleanup_seconds": 5.115,
+  "passed": true
+}

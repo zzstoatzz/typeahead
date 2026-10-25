@@ -1,0 +1,94 @@
+{
+  "at_unix": 1792920073,
+  "route": {
+    "version": 1,
+    "current": {
+      "origin": "https://typeahead-search-refresh.fly.dev",
+      "build_id": "b1792908655-14d5-px05",
+      "source_watermark": 1792908646,
+      "machine_id": "85379da4636338",
+      "volume_id": "vol_r685k90m3x97opj4",
+      "legacy_build_id": "b1792908655-14d5"
+    },
+    "previous": {
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "build_id": "b1792896197-ebe5-px05",
+      "source_watermark": 1792894100,
+      "machine_id": "7841e35f965528",
+      "volume_id": "vol_v8eyllqdyykq0z5v"
+    },
+    "promoted_at": 1792919401
+  },
+  "apps": {
+    "typeahead-startup-20261024": {
+      "machine_id": "7841e35f965528",
+      "state": "started",
+      "image": "registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "volume_id": "vol_v8eyllqdyykq0z5v",
+      "volume_size_gb": 60,
+      "slot_pointer": "candidates/startup-20261025/latest.json",
+      "retired_volumes": [
+        {
+          "id": "vol_vxmqddn73y9qxpx4",
+          "state": "pending_destroy",
+          "list_state": "pending_destroy"
+        }
+      ]
+    },
+    "typeahead-search-refresh": {
+      "machine_id": "85379da4636338",
+      "state": "started",
+      "image": "registry.fly.io/typeahead-search-refresh@sha256:0c431115b6528d626ae36669dda9cc73d256cba6223bd443cf27daebc6ae512a",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "volume_id": "vol_r685k90m3x97opj4",
+      "volume_size_gb": 20,
+      "slot_pointer": "control/slots/typeahead-search-refresh/latest.json",
+      "retired_volumes": [
+        {
+          "id": "vol_vdeod60yk5gpnow4",
+          "state": "pending_destroy",
+          "list_state": "pending_destroy"
+        },
+        {
+          "id": "vol_4qlwjz8x88oyoowr",
+          "state": "pending_destroy",
+          "list_state": "pending_destroy"
+        },
+        {
+          "id": "vol_4qlwjqnenqyxejnr",
+          "state": "pending_destroy",
+          "list_state": "waiting_for_detach"
+        }
+      ]
+    }
+  },
+  "ready_build": "b1792908655-14d5-px05",
+  "managed_artifacts": {
+    "database": "releases/search/b1792908655-14d5-px05/index.db",
+    "prefix": {
+      "object_key": "releases/search/b1792908655-14d5-px05/index.db.prefix",
+      "byte_size": 7292854272,
+      "sha256": "bf5dd0fb7e01a454d7d630a5fa67903fa7db7fd3fe42393a855c3fba5dc9b176"
+    },
+    "legacy_twin": {
+      "manifest": {
+        "object_key": "releases/search/b1792908655-14d5/manifest.json",
+        "byte_size": 587,
+        "sha256": "f0af03fe9141c785c1bbc3672b8bfbc90a377def007937ae567cfe831eca1de0"
+      },
+      "build_id": "b1792908655-14d5",
+      "source_watermark": 1792908646
+    }
+  },
+  "owned_multipart_uploads": [],
+  "passed": true
+}

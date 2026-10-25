@@ -1,4 +1,5 @@
-# Verified production configuration, October 20, 2026 UTC.
+# Legacy rollback configuration; no longer the normal serving app (October 25, 2026).
+# Managed slot configuration and scheduling belong to my-prefect-server.
 # Follow docs/evals/pds-parser-cutover-20261020.md for the guarded transition.
 # October 24: previous rollback machines/volumes retired; restore from R2.
 # See docs/operations.md for saved recreation configurations.

@@ -1,7 +1,10 @@
 # Automatic isolated snapshot refresh
 
-Implementation in progress, October 25, 2026. Current production remains on the
-verified admitted snapshot; no automatic refresh is enabled by this document.
+Live and verified October 25, 2026. Full publication, isolated installation,
+cached restart, guarded promotion, rollback and prepared-backend recovery passed.
+The active fixed cron runs at 06:00 UTC on odd-numbered days of the month, at most
+48 hours apart; the next actual queued run is October 27. See the
+[execution record](../ops/automatic-refresh-20261025.md).
 
 The recurring cloud Prefect publisher builds and fully verifies immutable compact
 and legacy artifacts. A rollout controller installs compact artifacts onto an idle
@@ -20,7 +23,7 @@ existing authenticated inline refresh all follow the same route. Updating the
 route requires the previous ETag; stale writers fail. The controller needs no
 Cloudflare account administration token. The transport remains compatible with
 direct-origin configurations for emergency recovery. Public traffic now uses its
-stable URL, pointing to the unchanged qualified backend. Validated route metadata
+stable URL, selecting the current qualified backend. Validated route metadata
 may be cached for one second; admin writes and diagnostic route reads bypass it.
 
 Before routing, require full artifact checksum/structural admission, current build
@@ -33,9 +36,22 @@ the run rather than being deleted.
 Real disposable installer tests and router runtime checks now pass. They include
 corrupt-artifact rejection, recovery, inactive resource cleanup, app credential
 scoping, real R2 conditional writes, global/PDS routing and preserved admin auth.
-The remaining gates are full snapshot rollout, rollback exercise, actual scheduled
-registration and queued parameters, and final inventory/cleanup. The publisher is not
-complete until all these gates pass and the recurring schedule is active.
+Full-cycle, rollback, retry, final resource and queued-schedule checks also pass.
+Cached restart explicitly stops the candidate, waits for stopped state, updates
+with `skip_launch`, starts it and waits for started state before HTTP checks.
+This prevents the old process from satisfying readiness during an async restart.
+A failed candidate remains inactive for diagnosis and retry. The publisher's
+rollout task reuses the same verified publication and prepared disk on retry;
+`resume_rollout=true` also recovers it without another build or publication.
+Cold queries still pay deferred I/O and can exceed the unchanged 2.5-second
+qualification budget. Those failures block promotion; the successful recovery
+required retries. This is not a guarantee of sub-second cold query latency.
+
+The original shared root `latest.json` remains fixed for legacy recovery. Normal
+automation uses the verified build pointer and per-slot pointers; it does not
+resume bulk installs on the serving disk. The PLC identity deployment remains
+paused independently. Source/configuration and live schedule evidence are owned
+by [my-prefect-server](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/automatic-typeahead-refresh.md).
 
 ## Reproducible installer checks
 

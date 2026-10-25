@@ -59,11 +59,14 @@ flowchart LR
   Ingester -->|batches and cursor| Worker
   Worker -->|actor writes and accounting| Turso
   Worker -->|cache misses, private binding| Transport[Origin transport Worker, US East]
-  Transport --> Search[Fly search]
+  Routing[R2 routing record] --> Transport
+  Transport --> Search[Serving Fly search]
   Turso -->|changed rows and tombstones| Search
-  Turso -->|database export| Builder[Heavypad index builder]
-  Builder -->|index.db and manifest| R2
-  R2 -->|verified snapshot| Search
+  Turso -->|database export| Builder[Cloud Prefect builder]
+  Builder -->|verified immutable artifacts| R2
+  R2 --> Installer[Idle Fly slot, independent disk]
+  Installer -->|admission and query gates| Controller[Refresh controller]
+  Controller -->|conditional promotion| Routing
 ```
 
 Search response timing and the October 20 cold-edge investigation are recorded in
@@ -86,83 +89,38 @@ answer arrives, without a transient loading dropdown.
 - **Turso:** durable actor records, moderation overrides, and tombstones.
   Ingestion, enrichment, and request accounting share its writer.
 - **Index builder:** the same Zig codebase in `MODE=indexer`, orchestrated by
-  Prefect on heavypad with a three-day schedule, temporarily paused October 20
-  while bulk work moves to cloud infrastructure. It exports Turso, builds prefix-to-actor
-  lists and compact profiles, and publishes a SQLite snapshot to R2. It is an
-  offline batch job; an unsuccessful build leaves the previous snapshot serving.
-- **Search:** Zig on Fly. It verifies and attaches the R2 snapshot read-only,
-  then pulls newer Turso rows into a mutable overlay approximately every five
-  minutes. Queries merge snapshot and overlay candidates, promote exact handles,
-  hydrate profiles, and apply moderation. There is no separate full actor-table
-  replica on the serving machine; the snapshot itself contains compact profiles.
+  Prefect on a resource-limited cloud worker. It exports Turso, builds prefix lists
+  and compact profiles, and fully verifies immutable artifacts in R2. A controller
+  installs onto an idle backend with its own disk; failed preparation leaves the
+  serving backend untouched. See the [refresh runbook](docs/plans/automatic-snapshot-refresh.md)
+  for qualification and scheduling status.
+- **Search:** Zig on Fly. Installation fully validates the snapshot and records
+  admission tied to the exact files. Restart checks that admission and attaches
+  read-only metadata without rescanning the corpus; pages load on demand. Newer
+  Turso rows enter a mutable overlay approximately every five minutes. Queries
+  merge snapshot and overlay candidates, promote exact handles, hydrate profiles,
+  and apply moderation. The previous backend remains available for routing rollback.
 - **Maintenance:** Prefect jobs on heavypad handle identity and profile
-  enrichment. Weekly PLC processing is temporarily paused with the bulk builder;
+  enrichment. Weekly PLC processing remains paused;
   its existing selector covers rows with no handle yet
   (it does not correct stale handles; the ingester does). The hourly Worker cron handles
   freshness, statistics, and moderation refresh—not bulk enrichment.
 
-Compact snapshots have served production since October 17, 2026, 19:37 UTC. Candidate `cc2d5a1` has passed independent disaster restoration, legacy
-binary rollback, complete live replay, restart admission, the isolated ranking
-suite, and 224 current-Worker alias/cache checks. Its complete 180-trial cold
-campaign passed all primary gates; compact startup took about 205 seconds, so
-cutover requires an already-ready replacement.
+Compact snapshots have served production since October 17, 2026. The
+[compact release record](docs/plans/compact-production-cutover.md) and
+[PDS cutover record](docs/evals/pds-parser-cutover-20261020.md) retain the historical
+qualification, performance exceptions and recovery evidence. The October 25
+[automatic refresh record](docs/ops/automatic-refresh-20261025.md) supersedes their
+serving inventory and shared-pointer installation procedure.
 
-The [uncapped warm run](docs/evals/compact-cancel-fixed-warm/gate.json) remains
-inconclusive under the unchanged no-regression gate: mixed-read p95 upper
-confidence bound is +3.5%. Native matched reload qualification passed all 60 trials with no secondary
-regression flags.
-The unmodified legacy performance control crashed during concurrent reads;
-that comparison is incomplete, with its failure retained. Nate accepted these
-two exceptions on October 17, conditional on the now-passing reload gate.
-The production cutover passed freshness, alias, and full smoke checks. The October 19 scheduled compact publication completed; native admission, live catch-up and empty-directory recovery passed. Temporary
-qualification resources were removed. Source integration and retained recovery
-resources are recorded in the cutover runbook. The October 18 full-day
-counter review covered all 288 five-minute buckets: 14,902 successful searches,
-205 rate-limited searches, and no recorded 5xx responses across endpoints.
-Compact Logfire telemetry was restored October 19 and actual sampled search spans
-verified against its deployed image. The earlier counters do not establish
-historical full-day latency or backend error coverage. The
-October 19 publisher registration used `my-prefect-server` main `e4275b5`, whose
-full CI workflow passed through registration; its October 19
-09:00 UTC scheduled run completed at 11:25 UTC with the compact format and
-qualified source tag.
-See the [cutover runbook](docs/plans/compact-production-cutover.md) for current
-inventory and evidence, and the [rollout gates](docs/plans/snapshot-compaction-rollout.md)
-for acceptance criteria. Earlier candidates' passing results do not qualify this
-replacement.
-
-As of October 20, 16:31 UTC, Worker `89901546-0e01-4789-b19a-541f0545460e`
-serves PDS-capable build `b1792484789-3d65-px05` through the private
-`typeahead-search-transport` binding and `typeahead-search-compact.fly.dev`, machine `8d4916be311008`, following root
-`latest.json`. Its snapshot and live overlay are under `/data/pds-current-20261020`
-and `/data/pds-overlay`. Public scoped/alias checks, authenticated smoke, native
-admission and catch-up, browser checks, and compact Logfire spans passed.
-The publisher is registered from `my-prefect-server` main `776c8e1`, with immutable
-builder tag `pds-compact-31ec142-20261020`; its next queued run is October 22 at
-09:00 UTC was verified at that time. On October 20 at 23:27 UTC, both bulk
-home schedules were verified inactive and all queued runs removed to avoid ISP
-overage traffic. MPS main `7fedc3b` records the hold. The duplicate cloud
-reconstruction and failed checkpoint chain were stopped during cleanup; a
-replacement recurring publisher
-and identity repair are not yet enabled. The existing snapshot and live overlay
-continue serving. Do not resume the old schedules before qualifying the cloud
-replacement. See the [operational record](docs/evals/pds-parser-cutover-20261020.md).
-
-Legacy remains running and synchronized. Old compact machine `781e732c264678`
-is retained privately on a protected pre-PDS pointer with its original overlay.
-Before routing to an incompatible backend, disable PDS search on the current
-Worker so even cached scopes fail explicitly; never restore a pre-PDS Worker
-that silently ignores the parameter. Preserve newer unrelated Worker changes.
-See the [PDS release runbook](docs/plans/pds-homepage-rollout.md) for rollback,
-retained recovery artifacts and evidence. `services/fly.search-compact.toml`
-records the current configuration; `just deploy-search` remains guarded.
-
-The current compact pair is 7.204 GB. Local legacy twins remain mandatory for
-recovery; two complete current-format pairs need about 46.6 GB before overlay
-and temporary files, so smaller production volumes are not yet justified.
-Empty-overlay recovery also requires a snapshot inside the seven-day tombstone
-replay window; archived images alone do not preserve that window. The previous
-recovery resources remain under the existing October 24/26 retention gates.
+Each serving slot holds one compact snapshot plus its live overlay. The
+same-watermark legacy twin stays in R2; it is not downloaded onto the serving disk.
+Current and previous artifacts remain protected remotely, and the previous backend
+keeps its independent disk for routing rollback. A fresh 20 GB slot passed full
+installation and restart qualification. Recovery still needs a snapshot inside
+the seven-day tombstone replay window. Routing to an incompatible historical
+backend requires explicitly disabling PDS search first; preserve the public
+Worker's unrelated changes.
 
 The offline converter uses a Zig shared library for packing and exhaustive
 record verification; Python validates manifests and stages the finished pair.
@@ -245,8 +203,7 @@ header keeps overall totals visible. Deselecting the inspected app returns the
 center to the total rather than an older comparison; the repeated root breadcrumbs and detached
 detail row are removed. Long names wrap up to three lines in the center; the
 complete name remains in its pill. Six verified brand API mappings supply icons,
-with domain favicon and marker fallbacks. See
-[the source chart and brand findings](docs/ui/stats-sources.md).
+with domain favicon and marker fallbacks.
 
 Source totals count cache misses; endpoint/status totals count all answered
 requests. Comparisons, total-line visibility, and link/image/CSV exports remain
@@ -267,16 +224,20 @@ existing installation).
 
 ## Operational status
 
-October 25, 2026: the improved-startup backend is live after an explicitly approved
-cutover. It serves the verified fresh snapshot on two shared CPUs / 1 GiB, using
-its separate volume and private snapshot pointer. Public freshness and Evergreen
-both return healthy results; five rounds of public global/PDS checks pass. The
-original backend remains running for immediate routing rollback. See the
-[execution record](docs/ops/search-cutover-result-20261025.md),
-[rollback procedure](docs/ops/search-cutover-20261025.md), and
-[fresh snapshot qualification](docs/evals/startup-fresh-candidate-20261025.md).
-The bulk publisher remains paused: subsequent snapshot refreshes must be prepared
-offline, with the next snapshot required before October 29 at 02:43 UTC.
+October 25, 2026: automatic snapshot refresh is restored. The cloud publisher
+builds and fully verifies artifacts, prepares the idle backend on an independent
+disk, checks admission, catch-up, queries and cached restart, then switches the
+transport route. Production serves `b1792908655-14d5-px05` on two shared CPUs /
+1 GiB. Public aliases, PDS behavior, freshness and Evergreen pass. Rollback and
+recovery through the already-prepared backend were exercised successfully.
+
+The active schedule is 06:00 UTC on odd-numbered days of the month, at most
+48 hours apart; the next queued run is October 27. The previous managed backend
+remains running for immediate routing rollback. The original compact app remains
+separately retained as agreed. See the [execution record](docs/ops/automatic-refresh-20261025.md)
+and [refresh runbook](docs/plans/automatic-snapshot-refresh.md) for actual resources,
+scheduling, cleanup and the remaining cold-query latency tradeoff. PLC identity
+repair remains paused independently of snapshot refresh.
 
 As of September 6, 2026:
 
@@ -342,29 +303,33 @@ Repository instructions live in [AGENTS.md](AGENTS.md).
 ```sh
 just deploy-worker     # Cloudflare deploy, then smoke checks
 just deploy-ingest     # Fly ingester
-just deploy-search     # Fly search
 ```
 
-These commands affect production. Search currently has a single serving machine;
-use an isolated target for performance experiments and account for availability
-before replacing it. Benchmarks and smoke scripts may default to production;
+These commands affect production. Backend refresh uses the isolated controller,
+not `just deploy-search`, which remains guarded. Prepare binary changes on an
+independent target and qualify the installer image before changing its immutable
+pin in the publisher. Benchmarks and smoke scripts may default to production;
 check their target and whether they perform writes before running them.
 
-The home builder is deployed through Prefect; its bulk schedule is currently
-paused for the cloud migration described above. `services/fly.indexer.toml` remains
+The cloud builder and isolated refresh controller are deployed through Prefect;
+[the refresh runbook](docs/plans/automatic-snapshot-refresh.md) records current qualification
+and scheduling. The old home bulk publisher remains disabled. `services/fly.indexer.toml` remains
 an optional manual Fly rollback path, not the scheduled builder. See
 [operations](docs/operations.md).
 
 ## Costs
 
-As verified October 24, 2026, Fly runs one search machine (four shared CPUs,
-2 GiB RAM) and one ingester (one shared CPU, 256 MiB RAM).
-Three stopped rollback/legacy machines and their 60 GB volumes were deleted;
-recovery uses retained R2 artifacts and saved configurations. See the
-[retirement record](docs/operations.md#search-rollback-resource-retirement--october-24-2026).
+As verified October 25, 2026, the two managed search slots each have two shared
+CPUs and 1 GiB RAM: serving uses a 20 GB volume, and the previous backend retains
+its 60 GB volume. The separately retained original compact backend has four
+shared CPUs, 2 GiB and 60 GB. The ingester remains one shared CPU / 256 MiB.
+These retained rollback resources are real capacity; the October 24 single-backend
+cost estimate is not the new total. [Current inventory](docs/evals/startup-refresh-resources-20261025.json).
+The [October 24 retirement](docs/operations.md#search-rollback-resource-retirement--october-24-2026)
+records the three older stopped machines and disks that were removed.
 
-The existing [hub cost snapshot](https://hub.waow.tech/api/costs.json) reports
-project-attributed line items and their estimation basis. Turso and Cloudflare
+Use Evergreen's resource-attributed cost records and the verified operational
+inventory. Trailing compute extrapolations can lag resource deletion. Turso and Cloudflare
 subscriptions are shared with other projects; their whole account invoices are
 not Typeahead's cost. [COSTS.md](COSTS.md) retains dated historical research;
 do not use its older resource sizes or totals as current estimates.

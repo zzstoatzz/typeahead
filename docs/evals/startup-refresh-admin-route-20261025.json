@@ -1,0 +1,9 @@
+{
+  "at": "2026-10-25T07:03:19.678557+00:00",
+  "authenticated_empty_body_status": 400,
+  "body": {
+    "error": "did and handle are required"
+  },
+  "actor_mutation_performed": false,
+  "auth_and_request_framing_passed": true
+}

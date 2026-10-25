@@ -56,9 +56,9 @@ deploy-worker-only:
 deploy-ingest:
     cd services && fly deploy -c fly.toml
 
-# Guard the retained rollback backend until the compact publisher transition completes.
+# Keep legacy direct deploys guarded; managed refresh prepares an isolated slot.
 deploy-search:
-    @echo "Search deployment is guarded during compact cutover; see docs/plans/compact-production-cutover.md."
+    @echo "Direct search deployment is guarded; see docs/plans/automatic-snapshot-refresh.md."
     @exit 1
 
 # ─── benchmarking & health ───────────────────────────────────────────────
@@ -67,13 +67,13 @@ deploy-search:
 #
 #   just smoke          correctness gate (shape, ranking, moderation, admin)
 #   just bench          edge latency — what users feel (worker + CF cache)
-#   just bench-search   engine latency — the query engine alone (search service, no cache)
+#   just bench-search   backend latency — active transport route, no public edge cache
 #   just bench-ranking  ranking quality vs bluesky oracle (acceptance-gated)
 #   just index-status   corpus scale (actor_count, prefix_count, build_id)
 #   just perf           run all of the above in sequence
 
 WORKER_URL := "https://typeahead.waow.tech"
-SEARCH_URL := "https://typeahead-search-compact.fly.dev"
+SEARCH_URL := "https://typeahead-search-transport.n8-3e9.workers.dev"
 
 # correctness gate against the public API (shape, ranking, moderation, admin)
 smoke url=WORKER_URL:
@@ -84,7 +84,7 @@ alias prod-smoke := smoke
 bench *ARGS:
     ./scripts/bench.py {{ARGS}}
 
-# engine latency — search service direct, bypassing the edge cache (stress off by default).
+# backend latency through the active transport route, bypassing the public edge cache.
 # extra flags pass through; a trailing `--url X` overrides the default target.
 bench-search *ARGS:
     ./scripts/bench.py --url {{SEARCH_URL}} --appb-direct --no-stress {{ARGS}}

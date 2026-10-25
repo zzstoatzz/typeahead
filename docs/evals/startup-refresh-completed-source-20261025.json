@@ -1,0 +1,11 @@
+{
+  "completed_generation": "/var/lib/typeahead-indexer/active/build-b1792908655-14d5",
+  "build_id": "b1792908655-14d5",
+  "source_watermark": 1792908646,
+  "byte_size": 16307335168,
+  "sha256": "08b8f8a1e475ba0ae3924ac97eef88e7acf8394008a4c6cb3574039d8fa453b7",
+  "actor_count": 12760941,
+  "prefix_count": 147886190,
+  "free_gib": 90.59,
+  "passed": true
+}

@@ -1,0 +1,29 @@
+{
+  "at_unix": 1792919141,
+  "current": {
+    "origin": "https://typeahead-startup-20261024.fly.dev",
+    "build_id": "b1792896197-ebe5-px05",
+    "source_watermark": 1792894100,
+    "machine_id": "7841e35f965528",
+    "volume_id": "vol_v8eyllqdyykq0z5v"
+  },
+  "previous": {
+    "origin": "https://typeahead-search-refresh.fly.dev",
+    "build_id": "b1792908655-14d5-px05",
+    "source_watermark": 1792908646,
+    "machine_id": "85379da4636338",
+    "volume_id": "vol_r685k90m3x97opj4",
+    "legacy_build_id": "b1792908655-14d5"
+  },
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 193,
+    "snapshot_age_s": 22943,
+    "build_id": "b1792896197-ebe5-px05",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "machine_or_volume_changed": false,
+  "passed": true
+}

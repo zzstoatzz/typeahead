@@ -1,0 +1,73 @@
+{
+  "deployment": {
+    "id": "5d446811-c098-438e-b16c-f1ccd9da7e97",
+    "parameters": {
+      "ref": "pds-compact-31ec142-20261020",
+      "snapshot_format": "compact",
+      "automatic_refresh": true
+    },
+    "schedules": [
+      {
+        "id": "a01b53d2-8e58-47e7-95c5-31e0d179607c",
+        "created": "2026-10-25T09:34:56.626233Z",
+        "updated": "2026-10-25T09:34:56.626233Z",
+        "deployment_id": "5d446811-c098-438e-b16c-f1ccd9da7e97",
+        "schedule": {
+          "cron": "0 6 */2 * *",
+          "timezone": "UTC",
+          "day_or": true
+        },
+        "active": true,
+        "max_scheduled_runs": null,
+        "parameters": {},
+        "slug": null
+      }
+    ],
+    "work_pool_name": "typeahead-cloud-pool",
+    "source_pin": "@1cca37e758fc9f0e758a40401201ed89a0f7e420",
+    "channel": "managed",
+    "allow_legacy_root_publish": "0",
+    "image": "registry.fly.io/typeahead-search-refresh@sha256:0c431115b6528d626ae36669dda9cc73d256cba6223bd443cf27daebc6ae512a"
+  },
+  "queued_runs": [
+    {
+      "id": "d650ebe9-b1a5-4359-94c0-50b7f853ee47",
+      "auto_scheduled": true,
+      "expected_start_time": "2026-10-27T06:00:00.000000Z",
+      "parameters": {
+        "ref": "pds-compact-31ec142-20261020",
+        "snapshot_format": "compact",
+        "automatic_refresh": true
+      },
+      "job_variables": {}
+    },
+    {
+      "id": "46b05cb5-bead-4c0c-ae6f-64f4d9ca997c",
+      "auto_scheduled": true,
+      "expected_start_time": "2026-10-29T06:00:00.000000Z",
+      "parameters": {
+        "ref": "pds-compact-31ec142-20261020",
+        "snapshot_format": "compact",
+        "automatic_refresh": true
+      },
+      "job_variables": {}
+    },
+    {
+      "id": "6a502456-55cd-4280-ad88-06c75ea1e0dc",
+      "auto_scheduled": true,
+      "expected_start_time": "2026-10-31T06:00:00.000000Z",
+      "parameters": {
+        "ref": "pds-compact-31ec142-20261020",
+        "snapshot_format": "compact",
+        "automatic_refresh": true
+      },
+      "job_variables": {}
+    }
+  ],
+  "pool": {
+    "name": "typeahead-cloud-pool",
+    "concurrency_limit": 1,
+    "status": "READY"
+  },
+  "passed": true
+}

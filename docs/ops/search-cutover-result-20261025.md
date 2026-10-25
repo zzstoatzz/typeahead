@@ -1,5 +1,8 @@
 # Search cutover execution
 
+Historical initial cutover record. The later [automatic refresh restoration](automatic-refresh-20261025.md)
+supersedes the paused-publication status and normal routing procedure below.
+
 Nate approved the prepared cutover: “yes go! watch as it goes”. On October 25,
 2026, public Typeahead switched to `https://typeahead-startup-20261024.fly.dev`
 after confirming both expected Worker versions, candidate freshness and rollback

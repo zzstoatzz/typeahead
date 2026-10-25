@@ -1,0 +1,70 @@
+{
+  "idempotent": true,
+  "build_id": "b1792896197-ebe5-px05",
+  "current": {
+    "origin": "https://typeahead-startup-20261024.fly.dev",
+    "build_id": "b1792896197-ebe5-px05",
+    "source_watermark": 1792894100,
+    "machine_id": "7841e35f965528",
+    "volume_id": "vol_v8eyllqdyykq0z5v"
+  },
+  "previous": null,
+  "qualified": {
+    "sync_lag_s": 122,
+    "query_ms": [
+      43.79,
+      54.12,
+      52.91,
+      64.28
+    ]
+  },
+  "observations": [
+    {
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 123,
+      "snapshot_age_s": 20058,
+      "build_id": "b1792896197-ebe5-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 154,
+      "snapshot_age_s": 20089,
+      "build_id": "b1792896197-ebe5-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 185,
+      "snapshot_age_s": 20120,
+      "build_id": "b1792896197-ebe5-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 216,
+      "snapshot_age_s": 20151,
+      "build_id": "b1792896197-ebe5-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 246,
+      "snapshot_age_s": 20181,
+      "build_id": "b1792896197-ebe5-px05",
+      "probe_ok": true,
+      "reasons": []
+    }
+  ],
+  "passed": true,
+  "routing_unchanged": true
+}

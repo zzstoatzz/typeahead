@@ -18,7 +18,7 @@ import { json } from "../utils";
 // ~10 min is normal operation. Past 30 min something is wrong, not just slow.
 const WARN_LAG_S = 10 * 60;
 const STALE_LAG_S = 30 * 60;
-// the snapshot rebuild runs every 3 days; past 4 the job itself is failing
+// Managed refresh runs at most 48h apart; keep the existing 4-day stale threshold.
 const SNAPSHOT_STALE_S = 4 * 24 * 3600;
 const PROBE_HANDLE = "zzstoatzz.io";
 

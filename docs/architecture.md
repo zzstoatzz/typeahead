@@ -1,6 +1,6 @@
 # architecture
 
-Serving path updated against live services October 20, 2026. Historical
+Serving path updated against live services October 25, 2026. Historical
 illustrations below predate the compact and private transport releases; the
 [README diagram](../README.md#how-it-works) shows the current runtime roles.
 
@@ -18,14 +18,18 @@ emergency rollback option.
 
 Clients reach the Cloudflare Worker, which applies rate limits, checks its edge
 cache, and sends misses through the private `typeahead-search-transport` Worker,
-placed near US East, to `typeahead-search-compact` on Fly in `ewr` for `/search`.
-Cache hits stay at the public edge. The transport only forwards bounded GET
-searches to the configured compact or legacy origin; it does not query Turso or
-change results. [Live latency and rollback evidence](evals/edge-latency-20261020.md).
+placed near US East, to the active Fly backend in `ewr`. The transport reads
+`control/search-routing.json` through its R2 binding and accepts only the two
+managed slot origins. Validated route metadata may be cached for one second;
+admin writes and diagnostic route reads bypass it. Search, freshness, diagnostics,
+and the existing authenticated inline refresh follow that route. Cache hits stay
+at the public edge. The transport does not query Turso or change results. [Live latency and rollback evidence](evals/edge-latency-20261020.md).
 The Zig search
 service holds a read-only SQLite snapshot and a live overlay. Since September 2
 it has **no full actor replica, local FTS index, or replica hydration fallback**.
-Compact bootstrap downloads and verifies snapshot artifacts before admission.
+Compact artifacts are installed and admitted before the search process starts.
+Cached recovery binds the opened file to its admission sidecar and checks accessed
+blocks rather than scanning the entire prefix payload.
 
 Each request normalizes the query, derives bounded prefix keys, reads
 precomputed top-N DID lists, merges overlay additions and suppressions, promotes
@@ -73,22 +77,32 @@ periodic sync remains the recovery path if that push fails.
 
 ## offline builds and enrichment
 
-Prefect's `home-pool` process worker on **heavypad** runs the snapshot builder.
-`flows/typeahead_index.py` and `prefect.yaml` in `my-prefect-server` own deployment
-and scheduling. The same Zig binary runs with `MODE=indexer`: export Turso,
-build the prefix-index SQLite artifact, write its manifest, upload to R2, exit.
-The schedule is `0 9 */3 * *` UTC: days 1, 4, 7, etc., with shorter intervals at
-some month boundaries. `services/fly.indexer.toml` is a manual rollback option,
-not the normal build host.
+Prefect's dedicated `typeahead-cloud-pool` runs full snapshot builds on cloud
+infrastructure with bounded CPU, memory and disk reserves. `flows/typeahead_index.py`
+and `prefect.yaml` in `my-prefect-server` own the source pin, format, schedule,
+installer image and controller credentials. The old bulk home publisher remains
+disabled. Automatic refresh is verified and scheduled at 06:00 UTC on odd-numbered
+days of the month, at most 48 hours apart. The
+[execution record](ops/automatic-refresh-20261025.md) includes live registration and
+queued-run evidence.
 
-R2's `typeahead-index/latest.json` names the active `builds/<id>/index.db`.
-Promotion checks manifest version, size, SHA-256, schema/index versions, and
-sentinel queries before swapping the attached snapshot. A failed build or
-validation keeps the previous snapshot serving. Base freshness still needs
-monitoring; retaining an old snapshot indefinitely is not a healthy steady state.
+Managed publication uploads and fully reads back compact artifacts and the legacy
+twin under `releases/search/<id>/`, then updates `control/builds/latest.json`.
+That ready pointer does not change traffic. The controller prepares the inactive
+slot on independent compute/storage and its own slot pointer, catches up its
+overlay, checks search/freshness and final-size cached restart, then conditionally
+updates the routing record. The previous backend remains running for rollback.
+No bulk installation or validation runs on the serving backend. An interrupted
+installation leaves that backend selected; failed post-cutover checks restore
+its route. Current and previous managed generations and twins are retained.
+
+The historical shared `latest.json` remains a legacy recovery pointer and is not
+part of managed rollout. See [automatic refresh](plans/automatic-snapshot-refresh.md)
+and the [publisher/controller runbook](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/automatic-typeahead-refresh.md).
 
 Other heavypad jobs resolve identities hourly (:20 UTC), enrich profiles daily
-(20:00 UTC), and process PLC identity data weekly (Monday 05:00 UTC). Profile
+(20:00 UTC), and declare a weekly PLC identity deployment (Monday 05:00 UTC), which remains
+paused. Profile
 sources include Bluesky, Blacksky, and PDS fallback; PLC covers identity discovery
 outside appview coverage. The Worker cron now handles freshness, stats, and
 moderation refresh inside a 12-minute budget, without profile enrichment. Its

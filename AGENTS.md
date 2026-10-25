@@ -52,6 +52,15 @@ Avoid corpus-proportional request work and full-scan Worker cron selectors. Full
 index builds are deliberately corpus-scale offline jobs; this is not permission
 to move that work onto the request path.
 
+## snapshot refresh ownership
+
+Bulk builds and refresh orchestration belong to the cloud `typeahead-index`
+deployment in my-prefect-server. Prepare and admit snapshots only on the inactive
+managed Fly slot with independent storage. Never download, verify, resize or restart
+the serving slot for a trial or refresh. Its slot pointer stays fixed while serving.
+Promote only a qualified backend through the conditional R2 routing update; retain
+the previous backend for rollback. Follow [the refresh runbook](docs/plans/automatic-snapshot-refresh.md).
+
 ## performance & benchmarking
 
 Everything you need to assess performance is wired into the root `justfile`. Four layers,
@@ -66,11 +75,13 @@ one command each; `just perf` runs them all in order. Results land in
 | `just bench-ranking` | **ranking quality** — canonical query set vs bluesky as oracle, with `/debug/search` score breakdowns | structural criteria pass; parity criteria are aspirational (see below) |
 | `just index-status` | **corpus scale** — `build_id`, `actor_count`, `prefix_count`, `normalize_version` | actor_count tracks the live corpus; build_id matches the deployed snapshot |
 
-Defaults target prod (`typeahead.waow.tech`) and the search service
-(`typeahead-search-compact.fly.dev`); `smoke`/`bench-ranking`/`index-status` take a
+Defaults target prod (`typeahead.waow.tech`) and the search backend
+through the stable transport route (`typeahead-search-transport.n8-3e9.workers.dev`);
+`smoke`/`bench-ranking`/`index-status` take a
 positional url, `bench`/`bench-search` take `--url X`. Add `--quick` /
 `--no-stress` to `bench`/`bench-search` for a fast pass. `bench-search` skips stress by
-default so it doesn't hammer the single fly box.
+default so it doesn't hammer the serving Fly box. For engine-only timing, pass the
+explicit backend origin; transport timing includes the routing hop.
 
 **The benchmark oracle is bluesky, not a fixed number.** `scripts/bench.py` measures us
 side-by-side against `public.api.bsky.app` for the same queries every run, so the bar moves

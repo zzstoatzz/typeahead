@@ -1,0 +1,141 @@
+{
+  "at_unix": 1792920208,
+  "route": {
+    "version": 1,
+    "current": {
+      "origin": "https://typeahead-search-refresh.fly.dev",
+      "build_id": "b1792908655-14d5-px05",
+      "source_watermark": 1792908646,
+      "machine_id": "85379da4636338",
+      "volume_id": "vol_r685k90m3x97opj4",
+      "legacy_build_id": "b1792908655-14d5"
+    },
+    "previous": {
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "build_id": "b1792896197-ebe5-px05",
+      "source_watermark": 1792894100,
+      "machine_id": "7841e35f965528",
+      "volume_id": "vol_v8eyllqdyykq0z5v"
+    },
+    "promoted_at": 1792919401
+  },
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 194,
+    "snapshot_age_s": 11548,
+    "build_id": "b1792908655-14d5-px05",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "public_probes": [
+    {
+      "alias": "tech.waow.typeahead.searchActors",
+      "params": {
+        "q": "zzstoatzz.io",
+        "limit": 1
+      },
+      "status": 200,
+      "actors": 1,
+      "ms": 255.9
+    },
+    {
+      "alias": "app.bsky.actor.searchActorsTypeahead",
+      "params": {
+        "q": "zzstoatzz.io",
+        "limit": 1
+      },
+      "status": 200,
+      "actors": 1,
+      "ms": 41.21
+    },
+    {
+      "alias": "tech.waow.typeahead.searchActors",
+      "params": {
+        "q": "a",
+        "limit": 5,
+        "pds": "selfhosted.social"
+      },
+      "status": 200,
+      "actors": 5,
+      "ms": 103.77
+    },
+    {
+      "alias": "app.bsky.actor.searchActorsTypeahead",
+      "params": {
+        "q": "a",
+        "limit": 5,
+        "pds": "selfhosted.social"
+      },
+      "status": 200,
+      "actors": 5,
+      "ms": 42.54
+    },
+    {
+      "alias": "tech.waow.typeahead.searchActors",
+      "params": {
+        "q": "a",
+        "limit": 5,
+        "pds": "https://selfhosted.social"
+      },
+      "status": 200,
+      "actors": 5,
+      "ms": 28.44
+    },
+    {
+      "alias": "app.bsky.actor.searchActorsTypeahead",
+      "params": {
+        "q": "a",
+        "limit": 5,
+        "pds": "https://selfhosted.social"
+      },
+      "status": 200,
+      "actors": 5,
+      "ms": 25.42
+    },
+    {
+      "alias": "tech.waow.typeahead.searchActors",
+      "params": {
+        "q": "a",
+        "limit": 5,
+        "pds": "unknown.invalid"
+      },
+      "status": 200,
+      "actors": 0,
+      "ms": 239.48
+    },
+    {
+      "alias": "app.bsky.actor.searchActorsTypeahead",
+      "params": {
+        "q": "a",
+        "limit": 5,
+        "pds": "unknown.invalid"
+      },
+      "status": 200,
+      "actors": 0,
+      "ms": 40.06
+    }
+  ],
+  "excluded_pds_rejected": true,
+  "aliases_equal": true,
+  "evergreen": [
+    {
+      "name": "search freshness",
+      "url": "https://typeahead.waow.tech/health/freshness",
+      "project": "typeahead",
+      "status": 200,
+      "ok": true,
+      "ms": 617.0
+    },
+    {
+      "name": "ingester",
+      "url": "https://ingest.typeahead.waow.tech/health",
+      "project": "typeahead",
+      "status": 200,
+      "ok": true,
+      "ms": 220.0
+    }
+  ],
+  "legacy_root_pointer_sha256": "85140e53c3ee0c5dd024505aa058127dd0c25a003d93d18c29988e71225bda8e",
+  "passed": true
+}
