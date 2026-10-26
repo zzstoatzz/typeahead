@@ -58,11 +58,39 @@ by [my-prefect-server](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/m
 
 ## Reproducible installer checks
 
-The installer image uses the already qualified native binaries; only its Python
-bootstrap layer changes. Build from `scripts/snapshot_refresh/` with its Dockerfile,
-using `fly deploy --app typeahead-search-refresh --build-only --push --remote-only`
-and a source-revision build argument. Pin the resulting digest in the publisher's
+Build the native binaries and installer from the checked-out revision with
+`sh scripts/snapshot_refresh/build.sh registry.fly.io/typeahead-search-refresh:<tag>`
+after `fly auth docker`. The script builds an x86-64 Linux release, copies the
+native binaries and bootstrap into a temporary image context, and removes that
+context on exit. Pin the resulting digest in the publisher's
 `INDEX_REFRESH_IMAGE`; building an image does not authorize routing it.
+
+## Search telemetry
+
+Both managed apps require `LOGFIRE_TOKEN` (or `LOGFIRE_WRITE_TOKEN`); the installer
+rejects a missing token before touching storage. Stage the canonical existing
+Typeahead write token on both apps with
+`python3 scripts/snapshot_refresh/provision_telemetry.py`. The encrypted source is
+`logfire.typeahead-write-token` in the local SOPS store. Staging does not restart
+running machines. New Machines inherit the app secrets; a running process needs
+an explicitly planned update to consume a changed token.
+
+The transport marks `/health` requests with `X-Typeahead-Routed-Health: 1`.
+Native `http.health` spans record `production_probe=true`, allowing the
+[sync alert query](../../scripts/snapshot_refresh/sync-alert.sql) to select the
+most recently probed production slot instead of a retired app name. The 30-minute
+query window covers the existing 15-minute fleet sweep and five-minute sync loop.
+Missing probes, missing sync spans and errored-only sync passes all alert. Spans
+from the rollback slot cannot satisfy the selected production slot's sync count.
+After cutover, verify a routed health span under the new slot and an error-free
+`sync.incremental` span. A concurrent cutover can leave the last probe on the
+previous slot until the next routed probe; the independent public freshness check
+still measures the routed backend. No telemetry-only check replaces that probe.
+
+Turso requests refresh Zig's cached TLS validation time before each subsequent
+request under the existing client mutex. Certificate verification remains enabled.
+The real HTTPS regression is opt-in with `TYPEAHEAD_TLS_TEST_URL` set to a public
+HTTPS URL; it requires no database credential.
 
 Local checks:
 

@@ -342,6 +342,12 @@ fn handleDebugSearch(request: *http.Server.Request, target: []const u8, local_db
 fn handleHealth(request: *http.Server.Request, local_db: *LocalDb, identity_pool: ?*identity.Pool) !void {
     const span = logfire.span("http.health", .{});
     defer span.end();
+    var headers = request.iterateHeaders();
+    while (headers.next()) |header| {
+        if (std.ascii.eqlIgnoreCase(header.name, "X-Typeahead-Routed-Health") and mem.eql(u8, header.value, "1")) {
+            span.setAttribute("production_probe", true);
+        }
+    }
 
     // ready = a validated snapshot is attached; actors = that snapshot's
     // count (the overlay above it is reported on /index/status).

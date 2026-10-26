@@ -208,11 +208,16 @@ fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
     return out.result;
 }
 
+fn fetch(self: *TursoClient, options: http.Client.FetchOptions) http.Client.FetchError!http.Client.FetchResult {
+    if (self.http_client.now != null) self.http_client.now = std.Io.Clock.real.now(io);
+    return self.http_client.fetch(options);
+}
+
 fn rawFetch(self: *TursoClient, url: []const u8, auth: []const u8, payload: []const u8) ![]const u8 {
     var response_body: std.Io.Writer.Allocating = .init(self.allocator);
     errdefer response_body.deinit();
 
-    const res = self.http_client.fetch(.{
+    const res = self.fetch(.{
         .location = .{ .url = url },
         .method = .POST,
         .headers = .{
@@ -236,6 +241,23 @@ fn rawFetch(self: *TursoClient, url: []const u8, auth: []const u8, payload: []co
     }
 
     return try response_body.toOwnedSlice();
+}
+
+test "Turso HTTPS uses current time after a certificate rotates" {
+    const url = cGetenv("TYPEAHEAD_TLS_TEST_URL") orelse return error.SkipZigTest;
+    var client: TursoClient = .{
+        .allocator = std.testing.allocator,
+        .url = "",
+        .token = "",
+        .http_client = .{ .allocator = std.testing.allocator, .io = io },
+    };
+    defer client.deinit();
+    const options: http.Client.FetchOptions = .{ .location = .{ .url = url }, .keep_alive = false };
+    _ = try client.http_client.fetch(options);
+    client.http_client.now = .{ .nanoseconds = 0 };
+    try std.testing.expectError(error.TlsInitializationFailed, client.http_client.fetch(options));
+    _ = try client.fetch(options);
+    try std.testing.expect(client.http_client.now.?.nanoseconds > 0);
 }
 
 fn buildRequestBody(self: *TursoClient, sql: []const u8, args: []const []const u8) ![]const u8 {
@@ -461,7 +483,7 @@ fn fetchCurrentGeneration(self: *TursoClient) !i64 {
     var response_body: std.Io.Writer.Allocating = .init(self.allocator);
     defer response_body.deinit();
 
-    const res = self.http_client.fetch(.{
+    const res = self.fetch(.{
         .location = .{ .url = url },
         .method = .GET,
         .headers = .{ .authorization = .{ .override = auth } },
@@ -516,7 +538,7 @@ pub fn exportToFile(self: *TursoClient, output_path: []const u8) !void {
     var write_buf: [64 * 1024]u8 = undefined;
     var fw = std.Io.File.Writer.init(file, io, &write_buf);
 
-    const res = self.http_client.fetch(.{
+    const res = self.fetch(.{
         .location = .{ .url = url },
         .method = .GET,
         .headers = .{ .authorization = .{ .override = auth } },

@@ -132,6 +132,8 @@ def install(config):
 def main():
     if os.environ.get('FLY_APP_NAME') not in ('typeahead-startup-20261024', 'typeahead-search-refresh'):
         raise RuntimeError('Installer is restricted to managed refresh slots')
+    if not (os.environ.get('LOGFIRE_WRITE_TOKEN') or os.environ.get('LOGFIRE_TOKEN')):
+        raise RuntimeError('Managed search requires a Logfire write token')
     ROOT.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode='w', prefix='refresh-r2-', suffix='.conf') as config:
         config.write('[r2]\ntype = s3\nprovider = Cloudflare\nregion = auto\nno_check_bucket = true\n')

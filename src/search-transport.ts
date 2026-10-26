@@ -26,6 +26,8 @@ export default {
     const target = new URL(url.pathname + url.search, route.origin);
     const forwarded = new Request(target, request);
     forwarded.headers.delete("Host");
+    forwarded.headers.delete("X-Typeahead-Routed-Health");
+    if (url.pathname === "/health") forwarded.headers.set("X-Typeahead-Routed-Health", "1");
     return fetch(forwarded, { signal: AbortSignal.timeout(url.pathname === "/admin/refresh" ? 5000 : 3000), redirect: "manual" });
   },
 };

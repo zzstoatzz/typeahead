@@ -1,5 +1,7 @@
 import importlib.util
 import json
+import subprocess
+import sys
 import os
 from pathlib import Path
 import sqlite3
@@ -13,6 +15,13 @@ spec.loader.exec_module(installer)
 
 
 class InstallTests(unittest.TestCase):
+    def test_managed_startup_rejects_missing_telemetry_before_touching_storage(self):
+        env = {k: v for k, v in os.environ.items() if k not in ("LOGFIRE_TOKEN", "LOGFIRE_WRITE_TOKEN")}
+        env["FLY_APP_NAME"] = "typeahead-search-refresh"
+        result = subprocess.run([sys.executable, str(Path(__file__).with_name("install.py"))], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Managed search requires a Logfire write token", result.stderr)
+
     def manifest(self):
         bid = 'b1792908655-test-px05'
         return dict(manifest_version=2, format_version=5, active_build=bid, source_watermark=int(time.time()) - 60,
