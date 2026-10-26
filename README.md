@@ -49,6 +49,8 @@ the two-CPU / 1 GiB admitted-startup backend; see the
 Obsolete home datasets were also retired; the [storage audit](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/audits/2026-10-25-worker-disk-cleanup.md) records retained evidence and retention fixes.
 Search telemetry provisioning and production-slot sync monitoring are covered in
 the [refresh runbook](docs/plans/automatic-snapshot-refresh.md#search-telemetry).
+The [October 26 repair](docs/ops/search-monitoring-20261026.md) restores search
+telemetry and makes sync monitoring follow the routed production backend.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

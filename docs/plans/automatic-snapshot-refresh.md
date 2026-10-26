@@ -87,6 +87,8 @@ After cutover, verify a routed health span under the new slot and an error-free
 previous slot until the next routed probe; the independent public freshness check
 still measures the routed backend. No telemetry-only check replaces that probe.
 
+Origin connection errors and timeouts return 503 `SearchBackendUnavailable`.
+
 Turso requests refresh Zig's cached TLS validation time before each subsequent
 request under the existing client mutex. Certificate verification remains enabled.
 The real HTTPS regression is opt-in with `TYPEAHEAD_TLS_TEST_URL` set to a public

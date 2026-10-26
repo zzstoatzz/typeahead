@@ -1,0 +1,245 @@
+{
+  "verified_at": "2026-10-26 18:43:49 UTC",
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:37fa2b5ed4cf21c63a1e75fefd0f48d001c2cf3d0635f5ee16441c40cece6525",
+  "native_source": "503b8b1",
+  "transport_source": "bc7781b",
+  "transport_version": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+  "publisher_source": "41c7a6e",
+  "machine": {
+    "id": "85379da4636338",
+    "volume": "vol_r685k90m3x97opj4",
+    "same_configuration_except_image": true
+  },
+  "health": [
+    {
+      "url": "https://typeahead.waow.tech/health/freshness",
+      "status": 200,
+      "body": {
+        "ok": true,
+        "stale": false,
+        "replica_lag_s": 207,
+        "snapshot_age_s": 131572,
+        "build_id": "b1792908655-14d5-px05",
+        "probe_ok": true,
+        "reasons": []
+      }
+    },
+    {
+      "url": "https://typeahead-search-transport.n8-3e9.workers.dev/route",
+      "status": 200,
+      "body": {
+        "origin": "https://typeahead-search-refresh.fly.dev",
+        "build_id": "b1792908655-14d5-px05"
+      }
+    },
+    {
+      "url": "https://typeahead-search-refresh.fly.dev/health",
+      "status": 200,
+      "body": {
+        "status": "ok",
+        "ready": true,
+        "actors": 12760941,
+        "rss_kb": 381132,
+        "sync_lag_s": 208
+      }
+    }
+  ],
+  "sync": {
+    "columns": [
+      {
+        "name": "start_timestamp",
+        "datatype": {
+          "Timestamp": [
+            "Microsecond",
+            "UTC"
+          ]
+        },
+        "nullable": false
+      },
+      {
+        "name": "duration",
+        "datatype": "Float64",
+        "nullable": true
+      },
+      {
+        "name": "attributes",
+        "datatype": "JSON",
+        "nullable": true
+      },
+      {
+        "name": "level",
+        "datatype": "UInt16",
+        "nullable": false
+      },
+      {
+        "name": "otel_status_code",
+        "datatype": "Utf8",
+        "nullable": true
+      },
+      {
+        "name": "trace_id",
+        "datatype": "Utf8",
+        "nullable": false
+      }
+    ],
+    "rows": [
+      {
+        "start_timestamp": "2026-10-26T18:35:30.867987Z",
+        "duration": 290.022137676,
+        "attributes": {
+          "cleared": 191,
+          "compact_complete": true,
+          "compact_deleted": 0,
+          "deleted": 891,
+          "from": 1793036226,
+          "projection_skipped": 0,
+          "updated": 4488
+        },
+        "level": 9,
+        "otel_status_code": "OK",
+        "trace_id": "5765455c09fc80b5817a8bdf34915410"
+      }
+    ]
+  },
+  "live_alert_query": {
+    "rows": []
+  },
+  "alert": {
+    "id": "55d8ff0c-8a87-491f-bce0-67a24a5c8d3c",
+    "query": "WITH serving AS (\n    SELECT service_name, max(start_timestamp) AS latest_probe\n    FROM records\n    WHERE span_name = 'http.health'\n      AND attributes->>'production_probe' = 'true'\n      AND service_name IN ('typeahead-startup-20261024', 'typeahead-search-refresh')\n    GROUP BY service_name\n    ORDER BY latest_probe DESC\n    LIMIT 1\n)\nSELECT count(sync.span_id) AS sync_spans\nFROM serving\nLEFT JOIN records AS sync\n  ON sync.service_name = serving.service_name\n AND sync.span_name = 'sync.incremental'\n AND sync.level < 17\n AND sync.attributes->>'skipped' IS NULL\nHAVING count(sync.span_id) = 0",
+    "last_run": "2026-10-26T18:40:45.349610Z",
+    "has_matches": false,
+    "has_errors": false,
+    "result": {
+      "data": [],
+      "columns": [
+        {
+          "name": "sync_spans",
+          "type": {
+            "is_array": false,
+            "type_name": "Int64"
+          },
+          "nullable": false
+        }
+      ],
+      "trace_id": "01a17984f583d4c57c9f33a3074933d6"
+    },
+    "frequency": "PT5M",
+    "time_window": "PT30M",
+    "watermark": "PT1M",
+    "channels": [
+      {
+        "channel_id": "dd48f5e3-d524-4586-be6e-371b7a5b887e",
+        "schedule_id": null
+      },
+      {
+        "channel_id": "f22200f9-efdb-4e3a-9141-f0fce6b4c578",
+        "schedule_id": null
+      }
+    ]
+  },
+  "alert_fixture_results": [
+    {
+      "scenario": "rollback_only",
+      "result": {
+        "columns": [
+          {
+            "name": "sync_spans",
+            "datatype": "Int64",
+            "nullable": false
+          }
+        ],
+        "rows": [
+          {
+            "sync_spans": 0
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "production_ok",
+      "result": {
+        "columns": [
+          {
+            "name": "sync_spans",
+            "datatype": "Int64",
+            "nullable": false
+          }
+        ],
+        "rows": []
+      }
+    },
+    {
+      "scenario": "missing_probe",
+      "result": {
+        "columns": [
+          {
+            "name": "sync_spans",
+            "datatype": "Int64",
+            "nullable": false
+          }
+        ],
+        "rows": [
+          {
+            "sync_spans": 0
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "errored",
+      "result": {
+        "columns": [
+          {
+            "name": "sync_spans",
+            "datatype": "Int64",
+            "nullable": false
+          }
+        ],
+        "rows": [
+          {
+            "sync_spans": 0
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "skipped",
+      "result": {
+        "columns": [
+          {
+            "name": "sync_spans",
+            "datatype": "Int64",
+            "nullable": false
+          }
+        ],
+        "rows": [
+          {
+            "sync_spans": 0
+          }
+        ]
+      }
+    }
+  ],
+  "checks": {
+    "native_tests": "passed; 14/14 build steps",
+    "worker_tests": "94 passed",
+    "installer_tests": "4 passed",
+    "real_https_regression": "passed on macOS and x86-64 Linux",
+    "typescript": "passed",
+    "lint": "passed",
+    "real_workerd_r2": "passed, including unavailable empty managed slot -> 503",
+    "public_smoke": "passed; credential-dependent admin and query-plan cases skipped"
+  },
+  "schedule": {
+    "cron": "0 6 */2 * *",
+    "timezone": "UTC",
+    "active": true,
+    "queued": [
+      "2026-10-27T06:00:00Z",
+      "2026-10-29T06:00:00Z",
+      "2026-10-31T06:00:00Z"
+    ],
+    "run_job_variable_overrides": "empty"
+  }
+}
