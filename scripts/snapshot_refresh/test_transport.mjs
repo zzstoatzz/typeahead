@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 const mf = new Miniflare({modules:true,script:readFileSync(process.argv[2], 'utf8'),compatibilityDate:'2024-12-01',r2Buckets:['SEARCH_CONTROL']});
 const bucket = await mf.getR2Bucket('SEARCH_CONTROL');
 const base='https://typeahead-search-transport.n8-3e9.workers.dev';
-const route={version:1,current:{origin:'https://typeahead-startup-20261024.fly.dev',build_id:'b1792896197-ebe5-px05'}};
+const active=await (await fetch(base+'/route')).json();
+const route={version:1,current:active};
 try {
  assert.equal((await mf.dispatchFetch(base+'/health')).status,503);
  await bucket.put('control/search-routing.json',JSON.stringify(route));
