@@ -3,7 +3,7 @@
 Status: **historical design record**. This captures the rearchitecture plan and
 many decisions from the FTS-to-prefix-index migration. For the current
 operational architecture, start with `docs/architecture.md`,
-`docs/operations.md`, and `CLAUDE.md`.
+`docs/operations.md`, and `AGENTS.md`.
 
 bounded-work prefix serving + authority ranking for the atproto actor
 typeahead service. consolidates two independent tracks. neither blocks

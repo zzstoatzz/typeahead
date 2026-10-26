@@ -43,7 +43,7 @@ export function isProfileIdentical(
 
 /** refresh moderation labels and profile aggregates for a bounded batch.
  *
- *  THE CRON CONTRACT (see CLAUDE.md): every selector here must be an index
+ *  THE CRON CONTRACT (see AGENTS.md): every selector here must be an index
  *  SEARCH, never a corpus scan, and every batch size must state what it can
  *  honestly cover. The previous two-pool selector broke both rules: it ran
  *  two full-table ORDER BY scans over ~11M rows every hour to pick 1,000, and

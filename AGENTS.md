@@ -1,7 +1,10 @@
 # Typeahead — repository instructions
 
-This root `AGENTS.md` is canonical. `.claude/CLAUDE.md` symlinks here so
-Claude and other agents use the same instructions. Paths are repository-relative.
+This root `AGENTS.md` is canonical. Shared repository skills live in
+`.agents/skills/`, discovered directly by Pi and Codex. Claude Code discovers
+the same skills through symlinks in `.claude/skills/`; keep those links when
+moving or adding skills. Claude Code 2.1.277 or later reads this `AGENTS.md`
+directly when no ancestor `CLAUDE.md` overrides it. Paths are repository-relative.
 
 ## documentation is part of the change
 

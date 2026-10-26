@@ -298,7 +298,8 @@ There is no default role. Use the role's configuration and credentials; a bare
 - `docs/` — architecture, operations, evaluations, and dated retrospectives.
 
 Repository instructions live in [AGENTS.md](AGENTS.md).
-`.claude/CLAUDE.md` is a symlink to that same file.
+Shared repository skills live in `.agents/skills/`, which Pi and Codex discover
+directly. `.claude/skills/` contains compatibility symlinks for Claude Code.
 
 ## Deployment and validation
 
