@@ -20,5 +20,11 @@ try {
  }
  await bucket.put('control/search-routing.json',JSON.stringify({...route,current:{...route.current,build_id:'b1792896198-test'}}));
  assert.equal((await (await mf.dispatchFetch(base+'/route')).json()).build_id,'b1792896198-test');
+ if(process.env.TYPEAHEAD_UNAVAILABLE_ORIGIN) {
+  await bucket.put('control/search-routing.json',JSON.stringify({...route,current:{...route.current,origin:process.env.TYPEAHEAD_UNAVAILABLE_ORIGIN}}));
+  await new Promise(resolve=>setTimeout(resolve,1100));
+  const failed=await mf.dispatchFetch(base+'/health');
+  assert.equal(failed.status,503);assert.equal((await failed.json()).error,'SearchBackendUnavailable');
+ }
  console.log('Real workerd + R2: missing/corrupt route fails closed; route update, health, search, scoped acknowledgment, admin auth and origin restrictions pass');
 } finally {await mf.dispose()}

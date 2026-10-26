@@ -13,6 +13,6 @@ FROM serving
 LEFT JOIN records AS sync
   ON sync.service_name = serving.service_name
  AND sync.span_name = 'sync.incremental'
- AND sync.level < 'error'
+ AND sync.level < 17
  AND sync.attributes->>'skipped' IS NULL
 HAVING count(sync.span_id) = 0
