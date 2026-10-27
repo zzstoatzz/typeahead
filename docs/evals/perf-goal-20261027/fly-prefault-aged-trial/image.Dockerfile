@@ -1,0 +1,4 @@
+FROM registry.fly.io/typeahead-startup-20261024@sha256:6f7bf0e782ae5bed6215cb1ea96c7884b98df2832f7c5dbde9ce6ef193b65327
+COPY baseline candidate cloud_trial.py fly_trial.py /app/perf/
+LABEL tech.waow.typeahead.perf_revision=9b65d77c0b506fb62666196dd8c4c9295c8af556
+LABEL tech.waow.typeahead.perf_harness_revision=9b65d77c0b506fb62666196dd8c4c9295c8af556

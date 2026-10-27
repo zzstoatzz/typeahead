@@ -560,5 +560,32 @@ gate so a failure retains diagnostic evidence. No source/Turso requests are made
 
 The shared-hint 50% observation passed with 92 timing events, 57 shared-cache
 overlaps, median concurrent phase time 36 ms and zero observed masked failures.
-A guarded 100% observation is running with e8c21659 retained for rollback. Public
-mean improvement remains unproven until the new full-traffic window is examined.
+A guarded 100% observation restored e8c21659 when the public passive tail closed.
+A retry also rolled back when that observer exited successfully without an error
+diagnostic. Neither is a service-failure finding or a completed observation.
+Both streams passed a six-minute deployment-free check with stdin held open;
+the [receipt](transport-overlap/shared-hint/observer-preflight.json) records
+their live handles before teardown. A new 30-minute guarded observation started
+at 13:00 UTC with the same held-open stdin, unchanged service gates and public
+counter snapshots before/after the observation and after smoke completes.
+Holding stdin open is a tested observer mitigation, not proof of the earlier
+disconnects' cause. This attempt rolled back at 13:01 UTC after unchanged smoke
+failed its second `/stats` fetch with a read timeout. Search checks passed and
+no masked failures were observed; neither fact excuses the failed gate. A later
+compressed `/stats` read on retained e8c21659 returned 200 in 330 ms (132,364 wire
+bytes, 578,803 decoded bytes). The [readback](transport-overlap/shared-hint/stats-readback.json)
+does not establish the timeout's cause. The retained Worker remains at 100%
+while unchanged smoke was checked there. That smoke passed without changing
+timeouts or correctness checks. Another guarded 30-minute observation started
+at 13:04 UTC, with the same error, freshness, smoke and observer gates and
+deployment-ownership rollback. No latency improvement is claimed.
+Public mean improvement remains unproven. At 12:54 UTC, hourly uncached means
+were 219, 226 and 242 ms for 10:00, 11:00 and the partial 12:00 hour; these mixed
+version/smoke cohorts cannot attribute a gain to the candidate. See
+[the bounded counter read](recent-stats-1300.json).
+
+Private run 20261027-a944d3237145 is active on Machine d893105c150108 and
+volume vol_v8eyqz0kkkw8mpkv. Its immutable image and independent supervisor are
+recorded in [the launch receipt](fly-trial/launch-20261027-a944d3237145.json).
+It has no public services and cannot modify the serving or retained rollback
+Machine. Qualification and retirement remain pending.

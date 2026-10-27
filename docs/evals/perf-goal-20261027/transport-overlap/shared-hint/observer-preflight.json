@@ -1,0 +1,16 @@
+{
+  "started_at": "2026-10-27T12:54:12.859820+00:00",
+  "stdin_held_open": true,
+  "production_mutations": 0,
+  "status": "passed-six-minute-observation",
+  "elapsed_s": 360.4,
+  "bytes_discarded": {
+    "typeahead": 194839,
+    "typeahead-search-transport": 291237
+  },
+  "exit_before_stop": {
+    "typeahead": null,
+    "typeahead-search-transport": null
+  },
+  "finished_at": "2026-10-27T13:00:13.294206+00:00"
+}

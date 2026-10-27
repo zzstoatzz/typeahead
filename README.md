@@ -69,10 +69,13 @@ identifies storage wait and repeated overlay writes as efficiency targets.
 A bounded metadata-prefault follow-up is locally tested for cold startup, not
 deployed; its Fly qualification is pending. Guarded replay writes and finer
 search/sync phase timings are tested locally
-and in an isolated archived-corpus comparison, not deployed; the live configuration remains two CPUs / 1 GiB. A separate local transport
+and in an isolated archived-corpus comparison, not deployed; the live configuration remains two CPUs / 1 GiB. A separate transport
 candidate overlaps route validation with read-only origin work and can reuse
-advisory hints across isolates through the Cache API; its live gain and rollout
-remain unqualified.
+advisory hints across isolates through the Cache API. Limited 10% and 50%
+observations passed. Full-traffic attempts rolled back after observer disconnects
+and a smoke `/stats` timeout. Public latency gain and completed rollout remain
+unqualified; retained e8c21659 remains the rollback target. Dated traffic state
+is recorded in the qualification plan.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

@@ -1,0 +1,249 @@
+{
+  "public_masked_failures": 0,
+  "public_status": {
+    "200": 16,
+    "400": 2
+  },
+  "public_outcomes": {
+    "ok": 18
+  },
+  "started_at": "2026-10-27T13:00:37.581074+00:00",
+  "old": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+  "candidate": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "candidate_percentage": 0,
+  "generated_search_requests": 0,
+  "samples": [
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 152,
+      "origin_headers_ms": 112,
+      "total_headers_ms": 264,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 60
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 130,
+      "origin_headers_ms": 55,
+      "total_headers_ms": 130,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 27
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 295,
+      "origin_headers_ms": 182,
+      "total_headers_ms": 295,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 183,
+      "origin_headers_ms": 61,
+      "total_headers_ms": 183,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 199,
+      "origin_headers_ms": 78,
+      "total_headers_ms": 214,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 136
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 106,
+      "origin_headers_ms": 19,
+      "total_headers_ms": 106,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 74,
+      "origin_headers_ms": 41,
+      "total_headers_ms": 79,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 38
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 119,
+      "origin_headers_ms": 26,
+      "total_headers_ms": 145,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 27
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 74,
+      "origin_headers_ms": 25,
+      "total_headers_ms": 74,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 97,
+      "origin_headers_ms": 53,
+      "total_headers_ms": 97,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 35
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 116,
+      "origin_headers_ms": 48,
+      "total_headers_ms": 116,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 87,
+      "origin_headers_ms": 47,
+      "total_headers_ms": 87,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 22
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 125,
+      "origin_headers_ms": 43,
+      "total_headers_ms": 125,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 103,
+      "origin_headers_ms": 70,
+      "total_headers_ms": 103,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 133,
+      "origin_headers_ms": 25,
+      "total_headers_ms": 133,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 43,
+      "total_headers_ms": 43,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 88,
+      "origin_headers_ms": 43,
+      "total_headers_ms": 88,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 22
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 108,
+      "origin_headers_ms": 45,
+      "total_headers_ms": 108,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    }
+  ],
+  "health": [
+    {
+      "elapsed_s": 2.1,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 234,
+      "snapshot_age_s": 24474,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    }
+  ],
+  "outcomes": {
+    "ok": 18
+  },
+  "status": "rolled-back",
+  "observer_stdin_held_open": true,
+  "counter_first_bucket": 5977020,
+  "deployment_message": "Typeahead perf shared-hint 2026-10-27T13:00:37.581074+00:00",
+  "deployment_id": "8ad9b820-aee3-4775-9280-0a1a04d9a555",
+  "error": "RuntimeError: smoke correctness gate failed",
+  "observer_exit": {
+    "transport": {
+      "exit_before_stop": null,
+      "final_exit": 0,
+      "diagnostic_flags": []
+    },
+    "public": {
+      "exit_before_stop": null,
+      "final_exit": 0,
+      "diagnostic_flags": []
+    }
+  },
+  "finished_at": "2026-10-27T13:01:35.998129+00:00"
+}

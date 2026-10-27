@@ -1,0 +1,42 @@
+
+ ⛅️ wrangler 4.74.0 (update available 4.153.0)
+──────────────────────────────────────────────
+╭ Deploy Worker Versions by splitting traffic between multiple versions
+│
+├ Fetching latest deployment
+│
+├ Your current deployment has 1 version(s):
+│
+│ (100%) 40a014e4-5ec0-467d-a8e7-214b626436ce
+│       Created:  2026-10-27T11:32:26.999058Z
+│           Tag:  perf-shared-hint
+│       Message:  Share advisory hints across cold isolates; authoritative routing and one-second TTL unchanged
+│
+├ Fetching deployable versions
+│
+├ Which version(s) do you want to deploy?
+├ 1 Worker Version(s) selected
+│
+├     Worker Version 1:  e8c21659-0b2c-4cec-beb4-86b4ecf91191
+│              Created:  2026-10-26T18:41:29.748992Z
+│                  Tag:  -
+│              Message:  -
+│
+├ What percentage of traffic should Worker Version 1 receive?
+├ 100% of traffic
+├
+├ Add a deployment message
+│ Deployment message Restore retained transport version after bounded canary gate
+│
+├ Deploying 1 version(s)
+│
+├ Syncing non-versioned settings
+│
+│ Synced non-versioned settings:
+│                      logpush:  false
+│                observability:  enabled:             true
+│                                head_sampling_rate:  1
+│               tail_consumers:  <skipped>
+│     streaming_tail_consumers:  <skipped>
+│
+╰  SUCCESS  Deployed typeahead-search-transport version e8c21659-0b2c-4cec-beb4-86b4ecf91191 at 100% (1.53 sec)

@@ -1,0 +1,153 @@
+{
+  "read_at": "2026-10-27T12:54:23.977977+00:00",
+  "window_start": 1793083800,
+  "window_end": 1793105400,
+  "limitations": [
+    "success-only legacy latency accounting omits backend-unreachable early returns",
+    "cannot infer failure-inclusive percentiles from totals",
+    "recent smoke requests included",
+    "mixed transport versions and bounded smoke traffic during this historical window"
+  ],
+  "metrics": [
+    {
+      "bucket": 5976936,
+      "searches": 70,
+      "total_ms": 17105.0,
+      "cache_hits": 0,
+      "cache_ms": 0.0,
+      "utc_hour": "2026-10-27T06:00:00+00:00",
+      "miss_mean_ms": 244.36
+    },
+    {
+      "bucket": 5976948,
+      "searches": 406,
+      "total_ms": 83581.0,
+      "cache_hits": 13,
+      "cache_ms": 217.0,
+      "utc_hour": "2026-10-27T07:00:00+00:00",
+      "miss_mean_ms": 205.86
+    },
+    {
+      "bucket": 5976960,
+      "searches": 306,
+      "total_ms": 70090.0,
+      "cache_hits": 15,
+      "cache_ms": 99.0,
+      "utc_hour": "2026-10-27T08:00:00+00:00",
+      "miss_mean_ms": 229.05
+    },
+    {
+      "bucket": 5976972,
+      "searches": 509,
+      "total_ms": 104460.0,
+      "cache_hits": 8,
+      "cache_ms": 89.0,
+      "utc_hour": "2026-10-27T09:00:00+00:00",
+      "miss_mean_ms": 205.23
+    },
+    {
+      "bucket": 5976984,
+      "searches": 338,
+      "total_ms": 74052.0,
+      "cache_hits": 19,
+      "cache_ms": 172.0,
+      "utc_hour": "2026-10-27T10:00:00+00:00",
+      "miss_mean_ms": 219.09
+    },
+    {
+      "bucket": 5976996,
+      "searches": 410,
+      "total_ms": 92583.0,
+      "cache_hits": 9,
+      "cache_ms": 120.0,
+      "utc_hour": "2026-10-27T11:00:00+00:00",
+      "miss_mean_ms": 225.81
+    },
+    {
+      "bucket": 5977008,
+      "searches": 437,
+      "total_ms": 105640.0,
+      "cache_hits": 18,
+      "cache_ms": 300.0,
+      "utc_hour": "2026-10-27T12:00:00+00:00",
+      "miss_mean_ms": 241.74
+    }
+  ],
+  "request_status": [
+    {
+      "endpoint": "admin",
+      "status": 200,
+      "hits": 34
+    },
+    {
+      "endpoint": "admin",
+      "status": 400,
+      "hits": 6
+    },
+    {
+      "endpoint": "admin/delete",
+      "status": 200,
+      "hits": 1367
+    },
+    {
+      "endpoint": "admin/ingest",
+      "status": 200,
+      "hits": 8942
+    },
+    {
+      "endpoint": "getProfiles",
+      "status": 200,
+      "hits": 106
+    },
+    {
+      "endpoint": "getProfiles",
+      "status": 400,
+      "hits": 7
+    },
+    {
+      "endpoint": "health",
+      "status": 200,
+      "hits": 487
+    },
+    {
+      "endpoint": "other",
+      "status": 404,
+      "hits": 9
+    },
+    {
+      "endpoint": "page",
+      "status": 200,
+      "hits": 61
+    },
+    {
+      "endpoint": "request-indexing",
+      "status": 200,
+      "hits": 13
+    },
+    {
+      "endpoint": "request-indexing",
+      "status": 302,
+      "hits": 7
+    },
+    {
+      "endpoint": "request-indexing",
+      "status": 400,
+      "hits": 7
+    },
+    {
+      "endpoint": "search",
+      "status": 200,
+      "hits": 2559
+    },
+    {
+      "endpoint": "search",
+      "status": 304,
+      "hits": 1
+    },
+    {
+      "endpoint": "search",
+      "status": 400,
+      "hits": 14
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "tag": "registry.fly.io/typeahead-startup-20261024:perf-aged-9b65d77c",
+  "digests": [
+    "registry.fly.io/typeahead-startup-20261024@sha256:65b49a4219f7fcbaa62fea0e6ba349e06c43b4762493498a0cbbd6092561cb6a"
+  ],
+  "candidate_commit": "9b65d77c0b506fb62666196dd8c4c9295c8af556",
+  "harness_commit": "9b65d77c0b506fb62666196dd8c4c9295c8af556",
+  "base": "registry.fly.io/typeahead-startup-20261024@sha256:6f7bf0e782ae5bed6215cb1ea96c7884b98df2832f7c5dbde9ce6ef193b65327",
+  "captured_actor_target": 200000
+}

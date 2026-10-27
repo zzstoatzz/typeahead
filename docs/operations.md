@@ -708,9 +708,18 @@ and public error masking remain separate open RCA work.
 
 ## Safe performance qualification — October 27, 2026; active goal
 
-Status at 11:50 UTC: production remains healthy on two shared CPUs / 1 GiB,
-with native f670. Shared-hint transport version 40a014e4 is in a bounded 50%
-canary; retained e8c21659 is the rollback version. Native performance changes
+Status at 13:05 UTC: production remains healthy on two shared CPUs / 1 GiB,
+with native f670. Shared-hint version 40a014e4
+passed limited 10% and 50% observations; two full-traffic observations restored
+e8c21659 when a passive log observer disconnected. Neither established the
+public latency target. Both observers then passed a six-minute deployment-free
+check with stdin held open. The next full-traffic attempt restored e8c21659
+after smoke's second `/stats` fetch timed out; search checks passed. A compressed
+readback on the retained version returned 200 in 330 ms. This does not establish
+the timeout's cause. Unchanged smoke then passed on the retained version and
+on a new guarded 30-minute full-traffic observation. That observation is active,
+with retained e8c21659 as rollback and a post-smoke public counter window.
+Native performance changes
 remain undeployed. The [qualification plan](evals/perf-goal-20261027/plan.md)
 records targets, frozen-input correctness gates, independent trial storage,
 failed attempts, offered-load queueing and publisher/rollback protections.
@@ -729,9 +738,9 @@ completed on separate storage. All 10,080 attempts matched; warm/mixed p95/p99
 were below 50/100 ms, but cold p99 was 1.6–2.7 seconds: overall qualification
 has not passed. Payloads were reclaimed, VM destroyed, and the unattached volume
 is pending_destroy (a non-billable soft-deleted provider record). A locally tested
-metadata-only prefault follow-up is being prepared with startup and residency
-measurements; its corpus result remains unproven. The overlay
-sample remains smaller than an aged live overlay, and live freshness is separate.
+metadata-only prefault follow-up is running privately with startup and residency
+measurements and a 200,000-actor captured overlay; its result remains unproven.
+The earlier measured overlay was only 5,000 actors. Live freshness is separate.
 
 Two bounded 10% transport canaries passed credentialed smoke and freshness
 checks but restored e8c21659 to 100% for insufficient overlap evidence.
@@ -741,6 +750,10 @@ phase events, including two overlaps; it does not establish a live speedup.
 A local follow-up shares bounded advisory hints through the Cache API while
 preserving authoritative route validation, the one-second metadata TTL and exact
 origin/build comparison. It passed real cache-persistence/restart and HTTP
-failure tests; it remains undeployed. Admin/health routing, R2 promotion and
+failure tests. Later limited 10% and 50% observations recorded median concurrent
+phase times of 39 and 36 ms, respectively, with no observed masked failures.
+These phase overlaps do not establish a causal public latency gain. Full-traffic
+qualification remains incomplete after observer disconnects and rollback.
+Admin/health routing, R2 promotion and
 native serving resources remain unchanged. The retained e8c21659 version is
 the rollback target for any further guarded rollout.
