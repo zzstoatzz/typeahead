@@ -327,3 +327,9 @@ the corpus stays on cloud storage. Stop child groups before deleting owned
 payloads, retain filesystem free-space receipts, then verify Machine and volume
 retirement through Fly. Do not declare qualification complete with trial resources
 still present. Recheck protected production/rollback identities afterward.
+
+The private image derives from the cached production runtime image and replaces
+only its command with a bounded offline evaluator; it is published under the
+inactive app registry and is ineligible for the refresh app promotion path.
+README reviewed: its performance numbers remain acceptance targets, with corpus
+qualification and rollout explicitly pending; no deployed guarantee changed.

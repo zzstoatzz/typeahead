@@ -1,0 +1,7 @@
+FROM registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd
+ARG PERF_REVISION
+LABEL tech.waow.typeahead.perf_revision=$PERF_REVISION
+LABEL tech.waow.typeahead.role=private-offline-evaluation
+WORKDIR /app/perf
+COPY baseline candidate qualify.py cloud_trial.py fly_trial.py fly_control.py cases-varied.json install_snapshot.py ./
+CMD ["timeout", "--signal=TERM", "--kill-after=20s", "5400s", "python3", "/app/perf/fly_trial.py"]
