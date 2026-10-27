@@ -1,0 +1,159 @@
+[
+  {
+    "start_timestamp": "2026-10-27T06:16:57.070298Z",
+    "span_name": "sync.apply.updated",
+    "duration": 17.011018374,
+    "attributes": {
+      "rows": 350
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:16:56.065570Z",
+    "span_name": "sync.query.updated",
+    "duration": 1.004634755,
+    "attributes": {
+      "rows": 350
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:16:56.065040Z",
+    "span_name": "sync.incremental",
+    "duration": 23.070149061,
+    "attributes": {
+      "cleared": 70,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 47,
+      "from": 1793081516,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 350
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:11:37.264903Z",
+    "span_name": "sync.apply.updated",
+    "duration": 15.430046058,
+    "attributes": {
+      "rows": 370
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:11:36.960933Z",
+    "span_name": "sync.query.updated",
+    "duration": 0.303886986,
+    "attributes": {
+      "rows": 370
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:11:24.132125Z",
+    "span_name": "sync.apply.updated",
+    "duration": 12.828129903,
+    "attributes": {
+      "rows": 500
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:11:23.527041Z",
+    "span_name": "sync.query.updated",
+    "duration": 0.604999243,
+    "attributes": {
+      "rows": 500
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:11:11.283022Z",
+    "span_name": "sync.apply.updated",
+    "duration": 12.238228488,
+    "attributes": {
+      "rows": 500
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:11:10.677675Z",
+    "span_name": "sync.query.updated",
+    "duration": 0.605273124,
+    "attributes": {
+      "rows": 500
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:11:10.677172Z",
+    "span_name": "sync.incremental",
+    "duration": 45.379908721,
+    "attributes": {
+      "cleared": 76,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 47,
+      "from": 1793081170,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 1370
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:05:58.508280Z",
+    "span_name": "sync.apply.updated",
+    "duration": 9.191557492,
+    "attributes": {
+      "rows": 195
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:05:58.106025Z",
+    "span_name": "sync.query.updated",
+    "duration": 0.402179439,
+    "attributes": {
+      "rows": 195
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:05:31.307173Z",
+    "span_name": "sync.apply.updated",
+    "duration": 26.79195578,
+    "attributes": {
+      "rows": 500
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:05:30.802056Z",
+    "span_name": "sync.query.updated",
+    "duration": 0.50503634,
+    "attributes": {
+      "rows": 500
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:05:09.208153Z",
+    "span_name": "sync.apply.updated",
+    "duration": 21.593277408,
+    "attributes": {
+      "rows": 500
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:05:08.803054Z",
+    "span_name": "sync.query.updated",
+    "duration": 0.405027718,
+    "attributes": {
+      "rows": 500
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T06:05:03.313801Z",
+    "span_name": "sync.incremental",
+    "duration": 67.355445408,
+    "attributes": {
+      "cleared": 63,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 34,
+      "from": 1793080913,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 1195
+    }
+  }
+]

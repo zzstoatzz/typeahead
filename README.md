@@ -59,6 +59,11 @@ adds bounded retries, HTTP-client recovery and stricter watchdog feeding; it is
 live October 27 on two CPUs / 1 GiB. The release also repairs the unsearchable-actor
 query’s missing `COLLATE NOCASE`, which timed out during isolated replay.
 
+The [October 27 system-health audit](docs/evals/system-health-20261027/README.md)
+identifies storage wait and repeated overlay writes as efficiency targets.
+Guarded replay writes and finer search/sync phase timings are tested locally,
+not deployed; the live configuration remains two CPUs / 1 GiB.
+
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile
 and enrichment fields; counts are omitted until enriched. No viewer state.

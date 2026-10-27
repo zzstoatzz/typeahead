@@ -69,18 +69,27 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
         return;
     }
 
-    const lease = try local.checkoutRead();
+    const span = sampledSearchSpan();
+    defer span.end();
+    const wait_start = milliTimestamp();
+    const lease = local.checkoutRead() catch |err| {
+        span.setAttribute("read_pool_wait_ms", milliTimestamp() - wait_start);
+        span.setStatus(.@"error", @errorName(err));
+        return err;
+    };
+    span.setAttribute("read_pool_wait_ms", milliTimestamp() - wait_start);
     defer lease.release();
 
     var trace: Trace = .{};
     const t0 = milliTimestamp();
-    const span = sampledSearchSpan();
-    defer span.end();
     defer {
         const elapsed = milliTimestamp() - t0;
         if (elapsed >= slow_search_ms) log.warn("slow search: {d} ms (q_len={d} keys={d} merged={d})", .{ elapsed, norm.len, trace.keys.len, trace.merged });
     }
     const candidates = try executeScoped(arena, lease, norm, &trace, true, pds);
+    span.setAttribute("prefix_ms", trace.prefix_ms);
+    span.setAttribute("merge_ms", trace.merge_ms);
+    span.setAttribute("hydrate_ms", trace.hydrate_ms);
     span.setAttribute("q_len", @as(i64, @intCast(norm.len)));
     span.setAttribute("keys", @as(i64, @intCast(trace.keys.len)));
     span.setAttribute("merged", @as(i64, @intCast(trace.merged)));
@@ -93,6 +102,8 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     span.setAttribute("not_found", @as(i64, @intCast(trace.not_found)));
     span.setAttribute("results", @as(i64, @intCast(@min(limit, candidates.len))));
 
+    const encode_start = milliTimestamp();
+    defer span.setAttribute("encode_ms", milliTimestamp() - encode_start);
     var jw: json.Stringify = .{ .writer = writer };
     try jw.beginObject();
     try jw.objectField("actors");
@@ -111,6 +122,9 @@ pub const Trace = struct {
     // Counts describe rows fetched by this request, not total stored rows.
     pub const KeyStat = struct { key: []const u8, base: usize, overlay: usize, overlay_bounded: bool = false };
 
+    prefix_ms: i64 = 0,
+    merge_ms: i64 = 0,
+    hydrate_ms: i64 = 0,
     keys: []KeyStat = &.{},
     mode: merge.Mode = .union_any,
     merged: usize = 0,
@@ -134,6 +148,7 @@ fn executeLookup(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, t
 }
 
 fn executeScoped(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, trace: ?*Trace, comptime bounded: bool, pds: ?[]const u8) ![]searchmod.Candidate {
+    const prefix_start = milliTimestamp();
     const keys = try prefixes.queryKeys(arena, norm);
     if (pds) |host| {
         var rows = try lease.query("SELECT value FROM idx.index_meta WHERE key = 'pds_scope_version'", .{});
@@ -181,6 +196,8 @@ fn executeScoped(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, t
         if (trace != null) try key_stats.append(arena, .{ .key = key, .base = base.len, .overlay = ov.len, .overlay_bounded = bounded and boundOverlay(mode, is_exact) });
     }
 
+    const merge_start = milliTimestamp();
+    if (trace) |t| t.prefix_ms = merge_start - prefix_start;
     var merged = try merge.combine(arena, keysets.items, mode, HYDRATE_CAP);
     if (exact.count() > 0) merged = try promoteExact(arena, merged, exact);
 
@@ -191,6 +208,11 @@ fn executeScoped(arena: Allocator, lease: LocalDb.ReadLease, norm: []const u8, t
         t.exact_hits = exact.count();
     }
 
+    const hydrate_start = milliTimestamp();
+    if (trace) |t| t.merge_ms = hydrate_start - merge_start;
+    defer if (trace) |t| {
+        t.hydrate_ms = milliTimestamp() - hydrate_start;
+    };
     var hydrated = try hydrate(arena, lease, merged, trace);
     if (pds) |host| {
         var kept: std.ArrayListUnmanaged(searchmod.Candidate) = .empty;

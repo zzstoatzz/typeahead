@@ -1,0 +1,7 @@
+test_eight_persistent_clients_with_mixed_reads_and_writes (test_release_concurrency.Tests.test_eight_persistent_clients_with_mixed_reads_and_writes) ... ok
+test_saturated_persistent_clients_with_mixed_reads_and_writes (test_release_concurrency.Tests.test_saturated_persistent_clients_with_mixed_reads_and_writes) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 15.744s
+
+OK

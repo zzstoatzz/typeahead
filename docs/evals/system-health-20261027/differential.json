@@ -1,0 +1,13 @@
+{
+  "operations": 4000,
+  "state_comparisons": 2000,
+  "states_identical": true,
+  "includes": [
+    "null tombstones",
+    "hidden state",
+    "score/op changes",
+    "older and newer timestamps",
+    "operator source rows",
+    "compaction"
+  ]
+}

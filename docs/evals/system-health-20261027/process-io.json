@@ -1,0 +1,135 @@
+{
+  "at": 1793081794.3766425,
+  "pid": "652",
+  "threads": {
+    "680": {
+      "read_bytes": 73728,
+      "write_bytes": 0,
+      "rchar": 192770,
+      "wchar": 0,
+      "syscr": 36,
+      "syscw": 0,
+      "cpu_ticks": 1,
+      "wchan": "futex_wait_queue"
+    },
+    "676": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 222073,
+      "wchar": 0,
+      "syscr": 2,
+      "syscw": 0,
+      "cpu_ticks": 1,
+      "wchan": "futex_wait_queue"
+    },
+    "675": {
+      "read_bytes": 884736,
+      "write_bytes": 0,
+      "rchar": 1008505,
+      "wchar": 0,
+      "syscr": 143,
+      "syscw": 0,
+      "cpu_ticks": 3,
+      "wchan": "futex_wait_queue"
+    },
+    "673": {
+      "read_bytes": 1241088,
+      "write_bytes": 0,
+      "rchar": 1057059,
+      "wchar": 0,
+      "syscr": 211,
+      "syscw": 0,
+      "cpu_ticks": 2,
+      "wchan": "futex_wait_queue"
+    },
+    "672": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 0,
+      "wchar": 0,
+      "syscr": 0,
+      "syscw": 0,
+      "cpu_ticks": 1,
+      "wchan": "hrtimer_nanosleep"
+    },
+    "679": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 0,
+      "wchar": 0,
+      "syscr": 0,
+      "syscw": 0,
+      "cpu_ticks": 0,
+      "wchan": "hrtimer_nanosleep"
+    },
+    "674": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 176128,
+      "wchar": 0,
+      "syscr": 33,
+      "syscw": 0,
+      "cpu_ticks": 1,
+      "wchan": "futex_wait_queue"
+    },
+    "677": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 0,
+      "wchar": 0,
+      "syscr": 0,
+      "syscw": 0,
+      "cpu_ticks": 0,
+      "wchan": "hrtimer_nanosleep"
+    },
+    "678": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 0,
+      "wchar": 0,
+      "syscr": 0,
+      "syscw": 0,
+      "cpu_ticks": 0,
+      "wchan": "hrtimer_nanosleep"
+    },
+    "652": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 0,
+      "wchar": 0,
+      "syscr": 0,
+      "syscw": 0,
+      "cpu_ticks": 0,
+      "wchan": "inet_csk_accept"
+    },
+    "671": {
+      "read_bytes": 0,
+      "write_bytes": 0,
+      "rchar": 0,
+      "wchar": 0,
+      "syscr": 0,
+      "syscw": 0,
+      "cpu_ticks": 0,
+      "wchan": "futex_wait_queue"
+    }
+  },
+  "io": "rchar: 2343620268\nwchar: 1278455798\nsyscr: 562851\nsyscw: 576186\nread_bytes: 771358720\nwrite_bytes: 1421983744\ncancelled_write_bytes: 8192\n",
+  "status": {
+    "VmRSS": "388768 kB",
+    "RssAnon": "67556 kB",
+    "RssFile": "321212 kB",
+    "Threads": "11"
+  },
+  "pressure": {
+    "memory": "some avg10=0.00 avg60=0.00 avg300=0.00 total=2635\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=2630\n",
+    "io": "some avg10=0.03 avg60=0.41 avg300=6.26 total=100286366\nfull avg10=0.03 avg60=0.41 avg300=6.24 total=99894012\n",
+    "cpu": "some avg10=0.00 avg60=0.00 avg300=0.00 total=758808\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n"
+  },
+  "files": {
+    "/data/refresh/overlay.db": 1558573056,
+    "/data/refresh/overlay.db-shm": 458752,
+    "/data/refresh/overlay.db-wal": 32992
+  },
+  "page_count": 380511,
+  "freelist": 0
+}

@@ -56,10 +56,21 @@ const OverlayCtx = struct {
     arena: Allocator,
     updated_at: i64,
     local: *LocalDb,
+    timings: ?*ProjectionTimings = null,
+};
+
+const ProjectionTimings = struct {
+    old_row_ns: i96 = 0,
+    scope_ns: i96 = 0,
+    overlay_ns: i96 = 0,
 };
 
 fn timestamp() i64 {
     return @intCast(@divFloor(std.Io.Timestamp.now(io, .real).nanoseconds, std.time.ns_per_s));
+}
+
+fn monotonicMs() i64 {
+    return @intCast(@divFloor(std.Io.Timestamp.now(io, .awake).nanoseconds, std.time.ns_per_ms));
 }
 
 /// Keyset page ≥2 of the incremental drain. The `updated_at >= ?1` anchor is
@@ -261,23 +272,35 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !bool {
                 const a_span = logfire.span("sync.apply.updated", .{});
                 defer a_span.end();
 
+                const lock_start = monotonicMs();
                 local.lock();
                 defer local.unlock();
+                a_span.setAttribute("lock_wait_ms", monotonicMs() - lock_start);
                 conn.exec("BEGIN", .{}) catch {};
+                const changes_before = zqlite.c.sqlite3_total_changes64(conn.conn);
+                const projection_start = monotonicMs();
+                var timings: ProjectionTimings = .{};
                 for (result.rows) |row| {
                     const ua = row.int(trailing_col);
                     if (ua <= snapshot_wm) {
                         projection_skipped += 1;
                         continue;
                     }
-                    projectRow(conn, row, .{ .arena = ov_arena.allocator(), .updated_at = ua, .local = local }) catch {
+                    projectRow(conn, row, .{ .arena = ov_arena.allocator(), .updated_at = ua, .local = local, .timings = &timings }) catch {
                         error_count += 1;
                         continue;
                     };
                     _ = ov_arena.reset(.retain_capacity);
                     updated += 1;
                 }
+                const commit_start = monotonicMs();
+                a_span.setAttribute("projection_ms", commit_start - projection_start);
+                a_span.setAttribute("old_row_ms", @as(i64, @intCast(@divTrunc(timings.old_row_ns, std.time.ns_per_ms))));
+                a_span.setAttribute("scope_ms", @as(i64, @intCast(@divTrunc(timings.scope_ns, std.time.ns_per_ms))));
+                a_span.setAttribute("overlay_ms", @as(i64, @intCast(@divTrunc(timings.overlay_ns, std.time.ns_per_ms))));
                 conn.exec("COMMIT", .{}) catch {};
+                a_span.setAttribute("commit_ms", monotonicMs() - commit_start);
+                a_span.setAttribute("sqlite_changes", zqlite.c.sqlite3_total_changes64(conn.conn) - changes_before);
 
                 a_span.setAttribute("rows", @as(i64, @intCast(result.rows.len)));
                 a_span.setStatus(.ok, null);
@@ -424,7 +447,17 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !bool {
             // release their snapshots, then truncates the WAL file to zero.
             // If it can't (sustained read pressure), it returns busy without
             // throwing; we'll retry next cycle.
-            conn.exec("PRAGMA wal_checkpoint(TRUNCATE)", .{}) catch {};
+            const checkpoint_span = logfire.span("sync.checkpoint", .{});
+            defer checkpoint_span.end();
+            if (conn.row("PRAGMA wal_checkpoint(TRUNCATE)", .{}) catch |err| blk: {
+                checkpoint_span.setStatus(.@"error", @errorName(err));
+                break :blk null;
+            }) |row| {
+                defer row.deinit();
+                checkpoint_span.setAttribute("busy", row.int(0));
+                checkpoint_span.setAttribute("wal_frames", row.int(1));
+                checkpoint_span.setAttribute("checkpointed_frames", row.int(2));
+            }
         }
         span.setStatus(.ok, null);
         log.info("incremental: done (updated={d}, cleared={d}, deleted={d})", .{ updated, cleared, deleted });
@@ -672,12 +705,20 @@ test "unified base old actor suppresses renamed prefixes and preserves large syn
 /// Project one updated actor into the overlay, inside the caller's
 /// transaction on the write conn. `row` only needs .text/.int/.float.
 fn projectRow(conn: zqlite.Conn, row: anytype, ctx: OverlayCtx) !void {
+    const old_start = if (ctx.timings != null) std.Io.Timestamp.now(io, .awake).nanoseconds else 0;
     const did = row.text(Col.did);
     var old: OldRow = .{};
     if (!snapshotOldFromOverlayBase(ctx.local, did, &old)) {
         log.warn("old-row lookup failed for {s}; projecting without suppression", .{did});
     }
+    const scope_start = if (ctx.timings != null) std.Io.Timestamp.now(io, .awake).nanoseconds else 0;
     const scopes = try pdsScopes(ctx.local, old.pds orelse "", row.text(Col.pds));
+    const overlay_start = if (ctx.timings != null) std.Io.Timestamp.now(io, .awake).nanoseconds else 0;
+    defer if (ctx.timings) |timings| {
+        timings.old_row_ns += scope_start - old_start;
+        timings.scope_ns += overlay_start - scope_start;
+        timings.overlay_ns += std.Io.Timestamp.now(io, .awake).nanoseconds - overlay_start;
+    };
     try overlay.projectUpdateWithPds(ctx.arena, conn, .{
         .did = did,
         .handle = row.text(Col.handle),

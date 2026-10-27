@@ -687,3 +687,13 @@ responses so incremental sync cannot advance the completed scope policy after
 an unsuccessful query. The qualified image in the current production status
 above predates this fix; source qualification is not deployment. See
 [replay failure qualification](evals/pds-replay-response-fix.md) for evidence.
+
+## Storage efficiency audit — October 27, 2026; local changes only
+
+The [health audit](evals/system-health-20261027/README.md) records Fly/Logfire
+measurements, duplicate source sampling, guarded actor/prefix writes and phase
+timing fields. Production was inspected read-only. The new write guards and
+timings are not deployed; the serving resources and discovery source are unchanged.
+The local SQL benchmark proves equivalent final states and cheaper exact replay,
+not a production latency or full-corpus capacity improvement. Admission isolation
+and public error masking remain separate open RCA work.

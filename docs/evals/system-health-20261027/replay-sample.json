@@ -1,0 +1,16 @@
+{
+  "at": 1793082218.7805955,
+  "source_watermark": 1793082177,
+  "source_since": 1793081877,
+  "limit": 500,
+  "truncated": true,
+  "sample_rows": 500,
+  "counts": {
+    "same_source_timestamp": 500,
+    "different_source_timestamp": 0,
+    "missing": 0
+  },
+  "elapsed_s": 0.3476759430000129,
+  "writes": 0,
+  "qualification": "Timestamp equality identifies replay candidates; it does not prove full prefix equality or a population replay rate."
+}

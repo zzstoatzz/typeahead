@@ -29,6 +29,8 @@ const pack = @import("pack.zig");
 
 const log = std.log.scoped(.overlay);
 
+const upsert_actor_sql = "INSERT INTO actor_overlay (did, blob, hidden, updated_at, source) VALUES (?, ?, ?, ?, 0) ON CONFLICT(did) DO UPDATE SET blob=excluded.blob, hidden=excluded.hidden, updated_at=excluded.updated_at, source=0 WHERE actor_overlay.blob IS NOT excluded.blob OR actor_overlay.hidden != excluded.hidden OR actor_overlay.updated_at != excluded.updated_at OR actor_overlay.source != 0";
+
 /// Raw (un-normalized) actor fields from a sync delta. We normalize the
 /// handle/display here so prefix derivation matches the builder exactly.
 pub const Actor = struct {
@@ -84,7 +86,7 @@ pub fn projectUpdateWithPds(
         .associated = a.associated,
     });
     try conn.exec(
-        "INSERT OR REPLACE INTO actor_overlay (did, blob, hidden, updated_at, source) VALUES (?, ?, ?, ?, 0)",
+        upsert_actor_sql,
         .{ a.did, zqlite.blob(blob), @as(i64, @intFromBool(a.hidden)), updated_at },
     );
 
@@ -105,8 +107,8 @@ pub fn projectDeleteWithPds(
     updated_at: i64,
 ) !void {
     try conn.exec(
-        "INSERT OR REPLACE INTO actor_overlay (did, blob, hidden, updated_at, source) VALUES (?, NULL, 0, ?, 0)",
-        .{ did, updated_at },
+        upsert_actor_sql,
+        .{ did, @as(?zqlite.Blob, null), @as(i64, 0), updated_at },
     );
 
     const oh = try normalize.handle(arena, old_handle);
@@ -121,8 +123,7 @@ pub fn projectDeleteWithPds(
 ///   - key only in `new` (rename / new actor) → add (op=1, new score).
 ///   - key in both (unchanged set) → upsert (op=1, new score). Carries live
 ///     score updates (enrichment, refresh) into ranking before the next
-///     snapshot rebuild. INSERT OR REPLACE handles the no-change case as a
-///     cheap rewrite; compaction prunes on rebuild.
+///     snapshot rebuild. Identical replay rows leave the stored entry untouched.
 fn diffPrefixes(
     conn: zqlite.Conn,
     did: []const u8,
@@ -158,9 +159,11 @@ fn diffPrefixes(
     }
 }
 
+const upsert_prefix_sql = "INSERT INTO prefix_overlay (key, did, score, op, updated_at, source) VALUES (?, ?, ?, ?, ?, 0) ON CONFLICT(key, did) DO UPDATE SET score=excluded.score, op=excluded.op, updated_at=excluded.updated_at, source=0 WHERE prefix_overlay.score IS NOT excluded.score OR prefix_overlay.op != excluded.op OR prefix_overlay.updated_at != excluded.updated_at OR prefix_overlay.source != 0";
+
 fn upsertPrefix(conn: zqlite.Conn, key: []const u8, did: []const u8, score: f32, op: i64, updated_at: i64) !void {
     try conn.exec(
-        "INSERT OR REPLACE INTO prefix_overlay (key, did, score, op, updated_at, source) VALUES (?, ?, ?, ?, ?, 0)",
+        upsert_prefix_sql,
         .{ key, did, @as(f64, score), op, updated_at },
     );
 }
@@ -201,6 +204,54 @@ pub fn compact(conn: zqlite.Conn, new_watermark: i64) !void {
 
 const testing = std.testing;
 const schema = @import("schema.zig");
+
+test "prefix replay skips identical writes but preserves timestamp, ranking and source changes" {
+    const conn = try memConn();
+    defer conn.close();
+    try upsertPrefix(conn, "h:a", "did:a", 1, 1, 100);
+    try upsertPrefix(conn, "h:a", "did:a", 1, 1, 100);
+    {
+        const row = (try conn.row("SELECT total_changes()", .{})).?;
+        defer row.deinit();
+        try testing.expectEqual(@as(i64, 1), row.int(0));
+    }
+    try upsertPrefix(conn, "h:a", "did:a", 1, 1, 200);
+    try compact(conn, 150);
+    try testing.expectEqual(@as(?i64, 1), try prefixOp(conn, "h:a", "did:a"));
+    try upsertPrefix(conn, "h:a", "did:a", 3, 1, 200);
+    {
+        const row = (try conn.row("SELECT score FROM prefix_overlay WHERE key='h:a' AND did='did:a'", .{})).?;
+        defer row.deinit();
+        try testing.expectEqual(@as(f64, 3), row.float(0));
+    }
+    try upsertPrefix(conn, "h:a", "did:a", 0, 0, 200);
+    try testing.expectEqual(@as(?i64, 0), try prefixOp(conn, "h:a", "did:a"));
+    try conn.exec("UPDATE prefix_overlay SET source=1 WHERE key='h:a' AND did='did:a'", .{});
+    try upsertPrefix(conn, "h:a", "did:a", 0, 0, 200);
+    try compact(conn, 200);
+    try testing.expectEqual(@as(?i64, null), try prefixOp(conn, "h:a", "did:a"));
+}
+
+test "actor replay avoids writes and tombstones remain null-safe" {
+    const conn = try memConn();
+    defer conn.close();
+    const blob = zqlite.blob("packed actor");
+    try conn.exec(upsert_actor_sql, .{ "did:a", blob, @as(i64, 0), @as(i64, 100) });
+    try conn.exec(upsert_actor_sql, .{ "did:a", blob, @as(i64, 0), @as(i64, 100) });
+    try testing.expectEqual(@as(i64, 1), zqlite.c.sqlite3_total_changes64(conn.conn));
+    try conn.exec(upsert_actor_sql, .{ "did:a", zqlite.blob("new actor"), @as(i64, 1), @as(i64, 100) });
+    try testing.expectEqual(@as(i64, 2), zqlite.c.sqlite3_total_changes64(conn.conn));
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    try projectDelete(arena.allocator(), conn, "did:a", "", "", 200);
+    try projectDelete(arena.allocator(), conn, "did:a", "", "", 200);
+    try testing.expectEqual(@as(i64, 3), zqlite.c.sqlite3_total_changes64(conn.conn));
+    const row = (try conn.row("SELECT blob IS NULL,hidden,updated_at FROM actor_overlay WHERE did='did:a'", .{})).?;
+    defer row.deinit();
+    try testing.expectEqual(@as(i64, 1), row.int(0));
+    try testing.expectEqual(@as(i64, 0), row.int(1));
+    try testing.expectEqual(@as(i64, 200), row.int(2));
+}
 
 fn memConn() !zqlite.Conn {
     const conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
