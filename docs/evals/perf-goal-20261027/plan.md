@@ -717,3 +717,42 @@ freshness, HTTP/runtime/masked-failure and full observer-coverage gates. The
 qualified latency counter window will use complete post-smoke buckets starting
 at 13:55 UTC. Native retry 963b8d20811d has reached bootstrap admission/prefill;
 its measurement and retirement remain pending.
+
+
+## Reset goal and current-capacity qualification — 14:40 UTC
+
+Nate stopped the earlier goal and explicitly reset the original performance
+objective. The active objective retains the same native/public targets, full
+search semantics, current 2 shared CPUs/1 GiB and production/rollback protections.
+Observer development is parked in a named Git stash. No more observer features
+are a prerequisite to the application work; authoritative provider metrics,
+application counters, correctness probes and smoke remain available.
+
+The overlapping-tail rollout restored e8c21659 when coverage was lost. Its
+lifecycle evidence later showed identical tail-session IDs issued to separate
+clients, so the earlier overlap test did not prove independent backing leases.
+No production performance improvement is claimed from those rejected windows.
+
+A one-line writer-cache experiment (20 MiB to 128 MiB) passed native tests and
+reduced CPU time in a bounded SQL mechanism model, but left WAL writes effectively
+unchanged. Because current Fly CPU use is low and I/O is the measured cost, the
+configuration change was reverted. [Model source/results](writer-cache-model.json)
+retain exact logical-state and compaction equality; these are not Fly latency
+or capacity measurements. The serving writer cache remains 20 MiB.
+
+The production diagnostic at 14:34 UTC reports 12,809,429 snapshot actors and
+30,606 overlay actors. The next paired qualification uses the current published
+build b1793081565-0228-px05 and 50,000 captured overlay actors, rather than blocking
+current-capacity measurements behind a 200,000-actor fixture. It retains the full
+published snapshot, canonical cases, exact body/status/PDS comparisons, mixed
+projection workload, cold-data checks and original percentile gates. This tests
+current capacity with overlay headroom; it makes no 200,000-actor or future-cycle
+capacity claim. Broader capacity remains unproven.
+
+Private installation reads the existing serving-slot publication pointer without
+modifying it, on a new independently owned volume and private Machine. The serving
+and retained rollback Machines and their disks stay untouched. Native binary
+hashes remain the 9b65d77c pair: no cache-tuning experiment is included. The prior
+200,000-actor retry also stopped during unmeasured preparation; its failure,
+cleanup and independent retirement receipts are retained. No latency failure was
+converted into a pass. The README targets remain accurate and unshipped.

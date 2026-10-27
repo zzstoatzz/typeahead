@@ -708,24 +708,15 @@ and public error masking remain separate open RCA work.
 
 ## Safe performance qualification — October 27, 2026; active goal
 
-Status at 14:00 UTC: production remains healthy on two shared CPUs / 1 GiB,
-with native f670. Shared-hint version 40a014e4
-passed limited 10% and 50% observations; two full-traffic observations restored
-e8c21659 when a passive log observer disconnected. Neither established the
-public latency target. Both observers then passed a six-minute deployment-free
-check with stdin held open. The next full-traffic attempt restored e8c21659
-after smoke's second `/stats` fetch timed out; search checks passed. A compressed
-readback on the retained version returned 200 in 330 ms. This does not establish
-the timeout's cause. Unchanged smoke then passed on the retained version and
-on a new guarded full-traffic observation. That observation also restored
-e8c21659 when the transport tail exited at 13:08 UTC. Retained e8c21659 is
-retained for rollback. Temporary Wrangler 4.153.0 passed a twelve-minute read-only
-liveness check, but its next single-stream canary rolled back on a reconnect.
-A ten-minute overlapping-observer test then passed forced replacement, real
-reconnects and total-loss rejection. A full-traffic retry with those observers
-and settled public counter reconciliation is active and has passed smoke.
-Native performance changes
-remain undeployed. The [qualification plan](evals/perf-goal-20261027/plan.md)
+Status at 14:40 UTC: production remains on native f670 and retained transport
+e8c21659 at two shared CPUs / 1 GiB. Full-traffic transport observations rolled
+back after observer failures; no public latency gain is qualified. The user reset
+the original performance goal and observer development is parked. Native work
+focuses on the existing write guards and bounded metadata warming. A larger
+writer-cache experiment was rejected after journal writes stayed unchanged.
+Current-capacity qualification is prepared against the latest publication with
+50,000 overlay actors, above the 30,606 currently reported live. It does not
+establish 200,000-actor capacity. The [qualification plan](evals/perf-goal-20261027/plan.md)
 records targets, frozen-input correctness gates, independent trial storage,
 failed attempts, offered-load queueing and publisher/rollback protections.
 Percentile admission requires at least 1,000 search attempts. The evaluation-only

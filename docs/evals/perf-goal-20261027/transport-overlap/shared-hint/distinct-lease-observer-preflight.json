@@ -1,0 +1,213 @@
+{
+  "started_at": "2026-10-27T14:13:20.866030+00:00",
+  "production_mutations": 0,
+  "generated_requests": 0,
+  "unique_invocations": {},
+  "replacements": [],
+  "status": "failed",
+  "error": "RuntimeError: observer connection deadline",
+  "observer": {
+    "cli_sha256": "18dbf242b542e171c993d68cc41a4e58bc4f533392fc91b71e29ffeee7bf6c0c",
+    "instrumented_cli_sha256": "0233be64f13fce9ab3d3ed8a0d505fa85f21d403c2dcd49ef64ca37d00efdc7d",
+    "children": 4,
+    "events": [
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "53b49bb4bc0d430f9921695e488f3370",
+        "pid": 54435,
+        "at": 1793110403463
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "e90d4b86958848a9b22e0345f59cb444",
+        "pid": 54436,
+        "at": 1793110403546
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "pid": 54435,
+        "at": 1793110404024
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "connected",
+        "pid": 54436,
+        "at": 1793110404050
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "pid": 54436,
+        "at": 1793110422408
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "pid": 54436,
+        "at": 1793110422408
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "deleted",
+        "id": "e90d4b86958848a9b22e0345f59cb444",
+        "pid": 54436,
+        "at": 1793110422980
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "pid": 54435,
+        "at": 1793110424056
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "pid": 54435,
+        "at": 1793110424056
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "53b49bb4bc0d430f9921695e488f3370",
+        "pid": 54435,
+        "at": 1793110424490
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "708062a278924350894a36528d02e693",
+        "pid": 54436,
+        "at": 1793110424559
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "connected",
+        "pid": 54436,
+        "at": 1793110424959
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "8197cd93d19f40e1b4aa7c476937854b",
+        "pid": 54435,
+        "at": 1793110425907
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "pid": 54435,
+        "at": 1793110426282
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "pid": 54435,
+        "at": 1793110436304
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "pid": 54435,
+        "at": 1793110436304
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "8197cd93d19f40e1b4aa7c476937854b",
+        "pid": 54435,
+        "at": 1793110436816
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "450db7ab342a40cf9a0d8aceabe99322",
+        "pid": 54435,
+        "at": 1793110438237
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "pid": 54435,
+        "at": 1793110438594
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "pid": 54436,
+        "at": 1793110448356
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "pid": 54436,
+        "at": 1793110448356
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "deleted",
+        "id": "708062a278924350894a36528d02e693",
+        "pid": 54436,
+        "at": 1793110448855
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "pid": 54435,
+        "at": 1793110449127
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "450db7ab342a40cf9a0d8aceabe99322",
+        "pid": 54435,
+        "at": 1793110449530
+      }
+    ],
+    "preexisting_leases_protected": {
+      "public": 0,
+      "transport": 0
+    },
+    "distinct_method_filters": [
+      "GET+HEAD",
+      "GET+OPTIONS"
+    ],
+    "all_owned_sessions_retired": true
+  },
+  "finished_at": "2026-10-27T14:14:09.904527+00:00"
+}

@@ -1,0 +1,79 @@
+{
+  "scope": "SQLite write-cache mechanism experiment on macOS; not Fly capacity or HTTP latency",
+  "sqlite_version": "3.53.0",
+  "actor_count": 4000,
+  "prefixes_per_actor": 50,
+  "batch_actors": 500,
+  "scratch_budget_bytes": 268435456,
+  "trials": [
+    {
+      "trial": 0,
+      "cache_kib": 20000,
+      "projection_ms": 2005.09,
+      "cpu_ms": 1905.88,
+      "wal_frames": 62452,
+      "wal_frame_bytes": 257302240,
+      "peak_wal_bytes": 33734592,
+      "state_sha256": "7b5c660f9524696297cb2030963b0f1e396751243de1ac32d9c6bd47b3aa9203",
+      "compacted_sha256": "44372a08fde48981ae0caf0545e958fc53aca71ce803921bea308b8a0e3bb3c5"
+    },
+    {
+      "trial": 0,
+      "cache_kib": 131072,
+      "projection_ms": 1199.42,
+      "cpu_ms": 1143.71,
+      "wal_frames": 62451,
+      "wal_frame_bytes": 257298120,
+      "peak_wal_bytes": 33734592,
+      "state_sha256": "7b5c660f9524696297cb2030963b0f1e396751243de1ac32d9c6bd47b3aa9203",
+      "compacted_sha256": "44372a08fde48981ae0caf0545e958fc53aca71ce803921bea308b8a0e3bb3c5"
+    },
+    {
+      "trial": 1,
+      "cache_kib": 131072,
+      "projection_ms": 1180.57,
+      "cpu_ms": 1128.44,
+      "wal_frames": 62451,
+      "wal_frame_bytes": 257298120,
+      "peak_wal_bytes": 33734592,
+      "state_sha256": "7b5c660f9524696297cb2030963b0f1e396751243de1ac32d9c6bd47b3aa9203",
+      "compacted_sha256": "44372a08fde48981ae0caf0545e958fc53aca71ce803921bea308b8a0e3bb3c5"
+    },
+    {
+      "trial": 1,
+      "cache_kib": 20000,
+      "projection_ms": 1917.32,
+      "cpu_ms": 1835.75,
+      "wal_frames": 62452,
+      "wal_frame_bytes": 257302240,
+      "peak_wal_bytes": 33734592,
+      "state_sha256": "7b5c660f9524696297cb2030963b0f1e396751243de1ac32d9c6bd47b3aa9203",
+      "compacted_sha256": "44372a08fde48981ae0caf0545e958fc53aca71ce803921bea308b8a0e3bb3c5"
+    },
+    {
+      "trial": 2,
+      "cache_kib": 20000,
+      "projection_ms": 1919.51,
+      "cpu_ms": 1827.99,
+      "wal_frames": 62452,
+      "wal_frame_bytes": 257302240,
+      "peak_wal_bytes": 33734592,
+      "state_sha256": "7b5c660f9524696297cb2030963b0f1e396751243de1ac32d9c6bd47b3aa9203",
+      "compacted_sha256": "44372a08fde48981ae0caf0545e958fc53aca71ce803921bea308b8a0e3bb3c5"
+    },
+    {
+      "trial": 2,
+      "cache_kib": 131072,
+      "projection_ms": 1150.8,
+      "cpu_ms": 1136.41,
+      "wal_frames": 62451,
+      "wal_frame_bytes": 257298120,
+      "peak_wal_bytes": 33734592,
+      "state_sha256": "7b5c660f9524696297cb2030963b0f1e396751243de1ac32d9c6bd47b3aa9203",
+      "compacted_sha256": "44372a08fde48981ae0caf0545e958fc53aca71ce803921bea308b8a0e3bb3c5"
+    }
+  ],
+  "base_bytes": 29745152,
+  "all_states_and_compactions_identical": true,
+  "scratch_retired": true
+}

@@ -1,0 +1,4 @@
+info(local_db): opening /data/refresh/index/generations/b1792908655-14d5-px05/bootstrap.db
+info(local_db): read pool: size=4 wait_budget_ms=250
+info(local_db): initialized
+info(local_db): snapshot attached: /data/refresh/index/generations/b1792908655-14d5-px05/index.db

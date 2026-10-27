@@ -1,0 +1,1524 @@
+{
+  "public_masked_failures": 0,
+  "public_status": {
+    "200": 50,
+    "None": 16,
+    "400": 2
+  },
+  "public_outcomes": {
+    "ok": 52,
+    "canceled": 16
+  },
+  "started_at": "2026-10-27T13:51:41.590663+00:00",
+  "old": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+  "candidate": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "candidate_percentage": 0,
+  "generated_search_requests": 0,
+  "samples": [
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 103,
+      "origin_headers_ms": 54,
+      "total_headers_ms": 157,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 29
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 101,
+      "origin_headers_ms": 26,
+      "total_headers_ms": 101,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 26
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 96,
+      "origin_headers_ms": 21,
+      "total_headers_ms": 96,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 88,
+      "origin_headers_ms": 34,
+      "total_headers_ms": 88,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 39
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 101,
+      "origin_headers_ms": 38,
+      "total_headers_ms": 101,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 26
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 18,
+      "total_headers_ms": 18,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 71,
+      "origin_headers_ms": 63,
+      "total_headers_ms": 115,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 52
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 50,
+      "total_headers_ms": 50,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 109,
+      "origin_headers_ms": 47,
+      "total_headers_ms": 109,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 30
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 73,
+      "origin_headers_ms": 57,
+      "total_headers_ms": 73,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 110,
+      "origin_headers_ms": 65,
+      "total_headers_ms": 118,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 53
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 51,
+      "total_headers_ms": 51,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 106,
+      "origin_headers_ms": 57,
+      "total_headers_ms": 106,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 38
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 161,
+      "origin_headers_ms": 66,
+      "total_headers_ms": 171,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 105
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 100,
+      "origin_headers_ms": 28,
+      "total_headers_ms": 100,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 116,
+      "origin_headers_ms": 40,
+      "total_headers_ms": 116,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 24
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 115,
+      "origin_headers_ms": 56,
+      "total_headers_ms": 115,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 33
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 95,
+      "origin_headers_ms": 22,
+      "total_headers_ms": 95,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 103,
+      "origin_headers_ms": 48,
+      "total_headers_ms": 103,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 29
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 109,
+      "origin_headers_ms": 37,
+      "total_headers_ms": 109,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 165,
+      "origin_headers_ms": 34,
+      "total_headers_ms": 165,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 96,
+      "origin_headers_ms": 24,
+      "total_headers_ms": 96,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 108,
+      "origin_headers_ms": 34,
+      "total_headers_ms": 142,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 37
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 129,
+      "origin_headers_ms": 62,
+      "total_headers_ms": 129,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 78,
+      "origin_headers_ms": 51,
+      "total_headers_ms": 78,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 116,
+      "origin_headers_ms": 64,
+      "total_headers_ms": 116,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 85,
+      "origin_headers_ms": 30,
+      "total_headers_ms": 85,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 185,
+      "origin_headers_ms": 29,
+      "total_headers_ms": 185,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 99,
+      "origin_headers_ms": 41,
+      "total_headers_ms": 99,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 59,
+      "origin_headers_ms": 48,
+      "total_headers_ms": 59,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 62,
+      "origin_headers_ms": 23,
+      "total_headers_ms": 62,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 109,
+      "origin_headers_ms": 25,
+      "total_headers_ms": 109,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 27
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 108,
+      "origin_headers_ms": 51,
+      "total_headers_ms": 108,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 49
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 93,
+      "origin_headers_ms": 26,
+      "total_headers_ms": 93,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 12
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 105,
+      "origin_headers_ms": 44,
+      "total_headers_ms": 149,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 10
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 101,
+      "origin_headers_ms": 30,
+      "total_headers_ms": 101,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 28
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 257,
+      "origin_headers_ms": 634,
+      "total_headers_ms": 649,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 15
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 150,
+      "origin_headers_ms": 625,
+      "total_headers_ms": 625,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 139,
+      "origin_headers_ms": 42,
+      "total_headers_ms": 139,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 13
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 97,
+      "origin_headers_ms": 88,
+      "total_headers_ms": 114,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 26
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 104,
+      "origin_headers_ms": 261,
+      "total_headers_ms": 261,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 395,
+      "origin_headers_ms": 48,
+      "total_headers_ms": 395,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 17
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 110,
+      "origin_headers_ms": 45,
+      "total_headers_ms": 110,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 36
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 138,
+      "origin_headers_ms": 54,
+      "total_headers_ms": 138,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 60
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 123,
+      "origin_headers_ms": 75,
+      "total_headers_ms": 123,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 82,
+      "origin_headers_ms": 31,
+      "total_headers_ms": 82,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 113,
+      "origin_headers_ms": 48,
+      "total_headers_ms": 113,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 12
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 103,
+      "origin_headers_ms": 51,
+      "total_headers_ms": 103,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 72,
+      "origin_headers_ms": 50,
+      "total_headers_ms": 72,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 56,
+      "origin_headers_ms": 43,
+      "total_headers_ms": 56,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 9
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 117,
+      "origin_headers_ms": 27,
+      "total_headers_ms": 117,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 115,
+      "origin_headers_ms": 27,
+      "total_headers_ms": 115,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 10
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 86,
+      "origin_headers_ms": 83,
+      "total_headers_ms": 86,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 108,
+      "origin_headers_ms": 57,
+      "total_headers_ms": 108,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 113,
+      "origin_headers_ms": 62,
+      "total_headers_ms": 113,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 38
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 106,
+      "origin_headers_ms": 53,
+      "total_headers_ms": 106,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 16
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 99,
+      "origin_headers_ms": 44,
+      "total_headers_ms": 99,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 20
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 116,
+      "origin_headers_ms": 22,
+      "total_headers_ms": 116,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 99,
+      "origin_headers_ms": 27,
+      "total_headers_ms": 99,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 102,
+      "origin_headers_ms": 25,
+      "total_headers_ms": 102,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 70,
+      "origin_headers_ms": 26,
+      "total_headers_ms": 70,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 100,
+      "origin_headers_ms": 26,
+      "total_headers_ms": 100,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 18,
+      "total_headers_ms": 18,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 112,
+      "origin_headers_ms": 63,
+      "total_headers_ms": 112,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 30
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 121,
+      "origin_headers_ms": 57,
+      "total_headers_ms": 121,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 14
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 122,
+      "origin_headers_ms": 36,
+      "total_headers_ms": 122,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 149,
+      "origin_headers_ms": 35,
+      "total_headers_ms": 149,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 64,
+      "origin_headers_ms": 28,
+      "total_headers_ms": 64,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 67,
+      "origin_headers_ms": 63,
+      "total_headers_ms": 67,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 124,
+      "origin_headers_ms": 45,
+      "total_headers_ms": 124,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 7
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 120,
+      "origin_headers_ms": 38,
+      "total_headers_ms": 120,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 32
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 87,
+      "origin_headers_ms": 57,
+      "total_headers_ms": 87,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 20
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 174,
+      "origin_headers_ms": 74,
+      "total_headers_ms": 174,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 54
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 100,
+      "origin_headers_ms": 25,
+      "total_headers_ms": 100,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 26
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 156,
+      "origin_headers_ms": 29,
+      "total_headers_ms": 156,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 120,
+      "origin_headers_ms": 45,
+      "total_headers_ms": 120,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 92,
+      "origin_headers_ms": 86,
+      "total_headers_ms": 98,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 12
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 104,
+      "origin_headers_ms": 35,
+      "total_headers_ms": 104,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 12
+    }
+  ],
+  "health": [
+    {
+      "elapsed_s": 2.0,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 128,
+      "snapshot_age_s": 27538,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 62.0,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 198,
+      "snapshot_age_s": 27608,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 121.3,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 258,
+      "snapshot_age_s": 27668,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 181.6,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 6,
+      "snapshot_age_s": 27728,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 241.4,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 59,
+      "snapshot_age_s": 27788,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 301.9,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 119,
+      "snapshot_age_s": 27849,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 362.1,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 179,
+      "snapshot_age_s": 27908,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 422.0,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 239,
+      "snapshot_age_s": 27969,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    }
+  ],
+  "outcomes": {
+    "ok": 78
+  },
+  "status": "rolled-back",
+  "observer_stdin_held_open": true,
+  "observer_wrangler": "4.153.0",
+  "observer_strategy": "overlap across deployment and replacement, fail on total coverage loss",
+  "counter_first_bucket": 5977030,
+  "deployment_message": "Typeahead perf shared-hint 2026-10-27T13:51:41.590663+00:00",
+  "deployment_id": "f5b1ee98-5399-4bba-8926-fd74f190c7c4",
+  "steady_counter_started": "2026-10-27T13:52:06.502908+00:00",
+  "qualified_start_bucket": 5977031,
+  "error": "RuntimeError: all observers lost for a Worker",
+  "observer_overlap": {
+    "cli_sha256": "18dbf242b542e171c993d68cc41a4e58bc4f533392fc91b71e29ffeee7bf6c0c",
+    "instrumented_cli_sha256": "7b14ca0291212eb4008e7809fe0e886b9b9883b0978c700345864a3386ff6ff4",
+    "children": 4,
+    "events": [
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "c0ddd235ae914e75b17b759b26779174",
+        "at": 1793109104769
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "54a7fc93d2694607871e27766e6915ec",
+        "at": 1793109104861
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793109105184
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793109105250
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "created",
+        "id": "c0ddd235ae914e75b17b759b26779174",
+        "at": 1793109111634
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "created",
+        "id": "54a7fc93d2694607871e27766e6915ec",
+        "at": 1793109111700
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109111768
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109112105
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109149408
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109149409
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "deleted",
+        "id": "54a7fc93d2694607871e27766e6915ec",
+        "at": 1793109149822
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "created",
+        "id": "3bc15102f5994459aaada35711ac02a7",
+        "at": 1793109151336
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109151678
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109151678
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109151715
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "deleted",
+        "id": "c0ddd235ae914e75b17b759b26779174",
+        "at": 1793109152172
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "created",
+        "id": "a3935025843144d889c99671b7029173",
+        "at": 1793109153518
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109153810
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109175224
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109175224
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109175305
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109175306
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "a3935025843144d889c99671b7029173",
+        "at": 1793109177000
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "3bc15102f5994459aaada35711ac02a7",
+        "at": 1793109177136
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793109177185
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793109177445
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109204425
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109204425
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "3bc15102f5994459aaada35711ac02a7",
+        "at": 1793109204816
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "d16b09340e1649b4a1546f382875065d",
+        "at": 1793109206180
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793109206511
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109431787
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109431787
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "created",
+        "id": "d16b09340e1649b4a1546f382875065d",
+        "at": 1793109433630
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109433819
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109433883
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109433883
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "deleted",
+        "id": "a3935025843144d889c99671b7029173",
+        "at": 1793109434481
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "created",
+        "id": "665c26594c994ae6911dc4c34574e35a",
+        "at": 1793109435895
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109436220
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109436575
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109436575
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "d16b09340e1649b4a1546f382875065d",
+        "at": 1793109436953
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109437261
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109437261
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "c35e8def1c044fc9a03a0af5aee40e3d",
+        "at": 1793109438360
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793109438773
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "665c26594c994ae6911dc4c34574e35a",
+        "at": 1793109439242
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793109439511
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109452926
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109452926
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109454190
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109454190
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "deleted",
+        "id": "665c26594c994ae6911dc4c34574e35a",
+        "at": 1793109454645
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "created",
+        "id": "c35e8def1c044fc9a03a0af5aee40e3d",
+        "at": 1793109454728
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109455093
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "created",
+        "id": "69437bc5e29f40b48781463191ca3b16",
+        "at": 1793109456002
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109456439
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109565260
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109565260
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109565260
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109565260
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "c35e8def1c044fc9a03a0af5aee40e3d",
+        "at": 1793109565865
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "13bba8c248034cb9ae9dbf11f21d7ea8",
+        "at": 1793109567643
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793109568276
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109570901
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "13bba8c248034cb9ae9dbf11f21d7ea8",
+        "at": 1793109571291
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "created",
+        "id": "13bba8c248034cb9ae9dbf11f21d7ea8",
+        "at": 1793109567476
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109568276
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109572246
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109566553
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109566553
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "deleted",
+        "id": "69437bc5e29f40b48781463191ca3b16",
+        "at": 1793109567354
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "created",
+        "id": "394b1449c7bf421697873da81e6ee5a3",
+        "at": 1793109568769
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793109569447
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109573012
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "deleted",
+        "id": "394b1449c7bf421697873da81e6ee5a3",
+        "at": 1793109573860
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793109569588
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793109569588
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "394b1449c7bf421697873da81e6ee5a3",
+        "at": 1793109571740
+      }
+    ],
+    "all_owned_sessions_retired": true
+  },
+  "observer_exit": {},
+  "finished_at": "2026-10-27T13:59:34.782289+00:00"
+}

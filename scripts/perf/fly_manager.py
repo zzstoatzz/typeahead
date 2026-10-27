@@ -13,7 +13,7 @@ import urllib.request
 
 APP = 'typeahead-startup-20261024'
 PROTECTED = '080d415b734708'
-BUILD = 'b1792908655-14d5-px05'
+BUILD = 'b1793081565-0228-px05'
 EXPECTED_ROUTE = {'origin': 'https://typeahead-search-refresh.fly.dev', 'build_id': 'b1793081565-0228-px05'}
 GUEST = {'cpu_kind': 'shared', 'cpus': 2, 'memory_mb': 1024}
 
@@ -118,7 +118,7 @@ class Manager:
                 'mounts': [{'volume': self.volume['id'], 'path': '/data'}],
                 'restart': {'policy': 'no'}, 'stop_config': {'signal': 'SIGTERM', 'timeout': 20000000000},
                 'env': {'PERF_RUN_ID': self.args.run, 'REFRESH_BUILD_ID': BUILD,
-                        'INDEX_LATEST_KEY': 'control/slots/' + APP + '/latest.json'},
+                        'INDEX_LATEST_KEY': 'control/slots/typeahead-search-refresh/latest.json'},
                 'metadata': {'owner': 'typeahead-perf-goal', 'perf_run': self.args.run, 'build_id': BUILD}}})
         self.report['creation_pending'] = None
         self.save('private-machine-created', machine_id=self.machine['id'])

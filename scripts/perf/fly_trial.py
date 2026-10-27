@@ -21,7 +21,7 @@ class FlyTrial(Trial):
         self.payload = self.scratch / 'index/generations' / manifest['active_build']
         self.evidence = Path('/data/evidence')
         self.evidence.mkdir(exist_ok=True)
-        self.args = argparse.Namespace(bin_dir='/app/perf', cases='/app/perf/cases-varied.json', pre_admitted=True, actor_count=200000)
+        self.args = argparse.Namespace(bin_dir='/app/perf', cases='/app/perf/cases-varied.json', pre_admitted=True, actor_count=50000)
         self.children = []
         self.started = time.monotonic()
         memory = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
@@ -32,7 +32,7 @@ class FlyTrial(Trial):
         self.report = {'kind': 'private-fly-full-snapshot', 'goal_qualified': False, 'runs': {},
                        'limitations': ['captured actor fence sample is biased and is not a live delta export',
                                        'no Turso or live freshness qualification'],
-                       'capture_method': 'first 200000 actor-namespace page fences; deterministic shuffled order',
+                       'capture_method': 'first 50000 actor-namespace page fences; deterministic shuffled order',
                        'machine_id': os.environ.get('FLY_MACHINE_ID'), 'run_id': os.environ['PERF_RUN_ID'],
                        'hardware': {'cpus': os.cpu_count(), 'memory_kib': memory_kib, 'machine': os.uname().machine}}
 
