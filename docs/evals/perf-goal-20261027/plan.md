@@ -396,3 +396,9 @@ before it may remain active. These are mechanism/correctness gates, not a p95
 or population-speedup claim; native/public performance goals remain unqualified.
 It restores the retained version on failure or insufficient evidence after ten
 minutes. Its evidence is in transport-overlap/full-timing-canary/.
+
+Scope correction for the 33.04 ms native p95: deployed f670 starts its search
+span after read-pool checkout. It excludes queue wait and cannot establish the
+full native request target. The tested local phase instrumentation moves the
+span before checkout, but remains undeployed. The private harness measures
+complete client attempts and is the relevant admission gate.

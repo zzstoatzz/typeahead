@@ -4,7 +4,8 @@
   "limitations": [
     "sampled native spans, not failure-inclusive end-to-end demand",
     "private trial emits no Logfire telemetry",
-    "finer native phase timings remain undeployed"
+    "finer native phase timings remain undeployed",
+    "deployed f670 search span starts after read-pool checkout, so it excludes queue wait"
   ],
   "result": {
     "columns": [
