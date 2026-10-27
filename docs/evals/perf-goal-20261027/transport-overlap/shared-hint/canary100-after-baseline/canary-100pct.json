@@ -1,0 +1,667 @@
+{
+  "public_masked_failures": 0,
+  "public_status": {
+    "200": 51,
+    "400": 2,
+    "None": 10
+  },
+  "public_outcomes": {
+    "ok": 53,
+    "canceled": 10
+  },
+  "started_at": "2026-10-27T13:04:26.164138+00:00",
+  "old": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+  "candidate": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "candidate_percentage": 0,
+  "generated_search_requests": 0,
+  "samples": [
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 98,
+      "origin_headers_ms": 36,
+      "total_headers_ms": 134,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 8
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 92,
+      "origin_headers_ms": 39,
+      "total_headers_ms": 92,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 19
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 70,
+      "origin_headers_ms": 47,
+      "total_headers_ms": 70,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 16
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 98,
+      "origin_headers_ms": 17,
+      "total_headers_ms": 98,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 7
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 51,
+      "origin_headers_ms": 23,
+      "total_headers_ms": 51,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 8
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 117,
+      "origin_headers_ms": 29,
+      "total_headers_ms": 117,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 8
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 59,
+      "origin_headers_ms": 25,
+      "total_headers_ms": 59,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 7
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 104,
+      "origin_headers_ms": 40,
+      "total_headers_ms": 104,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 66,
+      "origin_headers_ms": 40,
+      "total_headers_ms": 66,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 9
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 33,
+      "total_headers_ms": 33,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 144,
+      "origin_headers_ms": 86,
+      "total_headers_ms": 144,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 110,
+      "origin_headers_ms": 19,
+      "total_headers_ms": 110,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 151,
+      "origin_headers_ms": 30,
+      "total_headers_ms": 151,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 16
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 102,
+      "origin_headers_ms": 23,
+      "total_headers_ms": 102,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 94,
+      "origin_headers_ms": 31,
+      "total_headers_ms": 94,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 8
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 66,
+      "origin_headers_ms": 35,
+      "total_headers_ms": 66,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 152,
+      "origin_headers_ms": 28,
+      "total_headers_ms": 152,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 18
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 146,
+      "origin_headers_ms": 17,
+      "total_headers_ms": 146,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 67,
+      "origin_headers_ms": 23,
+      "total_headers_ms": 67,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 61,
+      "origin_headers_ms": 18,
+      "total_headers_ms": 61,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 65,
+      "origin_headers_ms": 28,
+      "total_headers_ms": 65,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 128,
+      "origin_headers_ms": 22,
+      "total_headers_ms": 128,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 25
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 87,
+      "origin_headers_ms": 36,
+      "total_headers_ms": 87,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 109,
+      "origin_headers_ms": 44,
+      "total_headers_ms": 109,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 6
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 94,
+      "origin_headers_ms": 54,
+      "total_headers_ms": 94,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 10
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 167,
+      "origin_headers_ms": 45,
+      "total_headers_ms": 167,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 9
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 98,
+      "origin_headers_ms": 30,
+      "total_headers_ms": 98,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 21
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 55,
+      "origin_headers_ms": 19,
+      "total_headers_ms": 55,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 113,
+      "origin_headers_ms": 35,
+      "total_headers_ms": 113,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 8
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 58,
+      "origin_headers_ms": 18,
+      "total_headers_ms": 58,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 55,
+      "origin_headers_ms": 16,
+      "total_headers_ms": 55,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 114,
+      "origin_headers_ms": 28,
+      "total_headers_ms": 114,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 169,
+      "origin_headers_ms": 42,
+      "total_headers_ms": 169,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 7
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 50,
+      "total_headers_ms": 50,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 97,
+      "origin_headers_ms": 35,
+      "total_headers_ms": 97,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 60,
+      "origin_headers_ms": 29,
+      "total_headers_ms": 60,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 8
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 93,
+      "origin_headers_ms": 35,
+      "total_headers_ms": 93,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 96,
+      "origin_headers_ms": 55,
+      "total_headers_ms": 96,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 117,
+      "origin_headers_ms": 34,
+      "total_headers_ms": 117,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 117,
+      "origin_headers_ms": 51,
+      "total_headers_ms": 117,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 10
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 36,
+      "total_headers_ms": 36,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 87,
+      "origin_headers_ms": 18,
+      "total_headers_ms": 87,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 64,
+      "origin_headers_ms": 49,
+      "total_headers_ms": 64,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 158,
+      "origin_headers_ms": 43,
+      "total_headers_ms": 158,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 110,
+      "origin_headers_ms": 56,
+      "total_headers_ms": 110,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 109,
+      "origin_headers_ms": 40,
+      "total_headers_ms": 109,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 95,
+      "origin_headers_ms": 46,
+      "total_headers_ms": 95,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 213,
+      "origin_headers_ms": 26,
+      "total_headers_ms": 213,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 91,
+      "origin_headers_ms": 34,
+      "total_headers_ms": 91,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 112,
+      "origin_headers_ms": 24,
+      "total_headers_ms": 112,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 66,
+      "origin_headers_ms": 26,
+      "total_headers_ms": 66,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 100,
+      "origin_headers_ms": 47,
+      "total_headers_ms": 100,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 118,
+      "origin_headers_ms": 28,
+      "total_headers_ms": 118,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    }
+  ],
+  "health": [
+    {
+      "elapsed_s": 1.3,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 149,
+      "snapshot_age_s": 24702,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 61.8,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 217,
+      "snapshot_age_s": 24770,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 121.6,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 277,
+      "snapshot_age_s": 24830,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 182.0,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 11,
+      "snapshot_age_s": 24891,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    }
+  ],
+  "outcomes": {
+    "ok": 53
+  },
+  "status": "rolled-back",
+  "observer_stdin_held_open": true,
+  "counter_first_bucket": 5977020,
+  "deployment_message": "Typeahead perf shared-hint 2026-10-27T13:04:26.164138+00:00",
+  "deployment_id": "4f8ec48e-2b30-4649-8723-e992f1dd5714",
+  "steady_counter_started": "2026-10-27T13:04:52.574220+00:00",
+  "error": "RuntimeError: passive tail closed: transport",
+  "observer_exit": {
+    "transport": {
+      "exit_before_stop": 0,
+      "final_exit": 0,
+      "diagnostic_flags": []
+    },
+    "public": {
+      "exit_before_stop": null,
+      "final_exit": 0,
+      "diagnostic_flags": []
+    }
+  },
+  "finished_at": "2026-10-27T13:08:05.469380+00:00"
+}

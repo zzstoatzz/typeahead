@@ -1,0 +1,26 @@
+{
+  "http_status": 200,
+  "body": {
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "workersInvocationsAdaptive": [
+              {
+                "quantiles": {
+                  "cpuTimeP50": 3473,
+                  "cpuTimeP99": 18684
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1059
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  }
+}

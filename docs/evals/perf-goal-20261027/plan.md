@@ -589,3 +589,34 @@ volume vol_v8eyqz0kkkw8mpkv. Its immutable image and independent supervisor are
 recorded in [the launch receipt](fly-trial/launch-20261027-a944d3237145.json).
 It has no public services and cannot modify the serving or retained rollback
 Machine. Qualification and retirement remain pending.
+
+
+### Observer failure and independent analytics — 13:12 UTC
+
+The post-baseline full-traffic attempt passed unchanged smoke, then restored
+retained e8c21659 at 13:08 UTC when the transport tail exited with code zero.
+Its 53 timing samples and 32 post-smoke cache misses are insufficient for the
+full observation gate. Those misses averaged 186.66 ms; all 32 correspond to
+32 additional HTTP 200 counters, with no other status increments. This short,
+failed window includes final counter readback after rollback and does not
+qualify the public target. Holding stdin open did not prevent the disconnect.
+No further rollout is running.
+
+Bundled Wrangler 4.74.0 lacks the reconnect lifecycle present in Cloudflare's
+[upstream tail fix](https://github.com/cloudflare/workers-sdk/pull/14415).
+Temporary Wrangler 4.153.0 is installed only under
+`/tmp/typeahead-observer-wrangler-4.153.0`, without changing project dependencies.
+A bounded twelve-minute read-only liveness check is running; CLI liveness is
+not proof of continuous log delivery. This tooling hypothesis remains unproven.
+
+The existing OAuth connection can read provider-side GraphQL invocation
+analytics: [a bounded query](transport-overlap/shared-hint/analytics-read-probe.json)
+reported 1,059 public Worker invocations and zero runtime errors for
+12:55–13:10 UTC. This covers every endpoint and cannot identify HTTP-200 masked
+search failures. Counter reconciliation and search-specific outcomes remain
+necessary. A schema introspection request depleted the analytics query budget;
+no further analytics queries will run before the stated five-minute cooldown.
+No additional permissions were requested.
+
+Private run a944d3237145 completed its exact 200,000-actor capture and entered
+bootstrap admission/prefill. Its measurement and cleanup gates remain pending.

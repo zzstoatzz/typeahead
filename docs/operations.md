@@ -708,7 +708,7 @@ and public error masking remain separate open RCA work.
 
 ## Safe performance qualification — October 27, 2026; active goal
 
-Status at 13:05 UTC: production remains healthy on two shared CPUs / 1 GiB,
+Status at 13:12 UTC: production remains healthy on two shared CPUs / 1 GiB,
 with native f670. Shared-hint version 40a014e4
 passed limited 10% and 50% observations; two full-traffic observations restored
 e8c21659 when a passive log observer disconnected. Neither established the
@@ -717,8 +717,9 @@ check with stdin held open. The next full-traffic attempt restored e8c21659
 after smoke's second `/stats` fetch timed out; search checks passed. A compressed
 readback on the retained version returned 200 in 330 ms. This does not establish
 the timeout's cause. Unchanged smoke then passed on the retained version and
-on a new guarded 30-minute full-traffic observation. That observation is active,
-with retained e8c21659 as rollback and a post-smoke public counter window.
+on a new guarded full-traffic observation. That observation also restored
+e8c21659 when the transport tail exited at 13:08 UTC. Retained e8c21659 is
+serving at 100%; rollout attempts are stopped while the observer is repaired.
 Native performance changes
 remain undeployed. The [qualification plan](evals/perf-goal-20261027/plan.md)
 records targets, frozen-input correctness gates, independent trial storage,
