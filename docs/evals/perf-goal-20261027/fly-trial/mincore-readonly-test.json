@@ -1,0 +1,1 @@
+{"previous_writable_mapping_errno": 12, "read_only_mapping": {"pages": 1780482, "resident_pages": 0}, "hot": {"pages": 1780482, "resident_pages": 1}, "cold_after_advice": {"pages": 1780482, "resident_pages": 0}, "rlimit_data": 1073741824, "payload": "temporary sparse file, retired on exit"}

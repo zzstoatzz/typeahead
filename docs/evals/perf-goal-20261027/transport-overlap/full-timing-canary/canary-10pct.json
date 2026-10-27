@@ -1,0 +1,294 @@
+{
+  "started_at": "2026-10-27T10:38:04.722639+00:00",
+  "old": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+  "candidate": "7504eb57-d149-41f3-b1c7-ff0fe91813d1",
+  "candidate_percentage": 0,
+  "generated_search_requests": 0,
+  "samples": [
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 60,
+      "origin_headers_ms": 61,
+      "total_headers_ms": 121,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 83,
+      "origin_headers_ms": 14,
+      "total_headers_ms": 83,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 63,
+      "origin_headers_ms": 68,
+      "total_headers_ms": 131,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 90,
+      "origin_headers_ms": 66,
+      "total_headers_ms": 156,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 0,
+      "origin_headers_ms": 46,
+      "total_headers_ms": 46,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 204,
+      "origin_headers_ms": 62,
+      "total_headers_ms": 266,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 87,
+      "origin_headers_ms": 29,
+      "total_headers_ms": 116,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 142,
+      "origin_headers_ms": 41,
+      "total_headers_ms": 183,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 61,
+      "origin_headers_ms": 32,
+      "total_headers_ms": 93,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 87,
+      "origin_headers_ms": 57,
+      "total_headers_ms": 144,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 129,
+      "origin_headers_ms": 51,
+      "total_headers_ms": 180,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 111,
+      "origin_headers_ms": 50,
+      "total_headers_ms": 161,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 124,
+      "origin_headers_ms": 43,
+      "total_headers_ms": 167,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 110,
+      "origin_headers_ms": 52,
+      "total_headers_ms": 162,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 94,
+      "origin_headers_ms": 52,
+      "total_headers_ms": 146,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 113,
+      "origin_headers_ms": 70,
+      "total_headers_ms": 183,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 105,
+      "origin_headers_ms": 42,
+      "total_headers_ms": 147,
+      "outcome": "http",
+      "sample_rate": 1
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 109,
+      "origin_headers_ms": 27,
+      "total_headers_ms": 136,
+      "outcome": "http",
+      "sample_rate": 1
+    }
+  ],
+  "health": [
+    {
+      "elapsed_s": 1.4,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 64,
+      "snapshot_age_s": 15920,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 60.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 131,
+      "snapshot_age_s": 15987,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 120.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 191,
+      "snapshot_age_s": 16047,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 180.9,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 251,
+      "snapshot_age_s": 16107,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 240.8,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 4,
+      "snapshot_age_s": 16167,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 300.6,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 64,
+      "snapshot_age_s": 16227,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 360.6,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 124,
+      "snapshot_age_s": 16287,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 420.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 184,
+      "snapshot_age_s": 16347,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 481.0,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 244,
+      "snapshot_age_s": 16407,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 540.6,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 304,
+      "snapshot_age_s": 16467,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 600.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 56,
+      "snapshot_age_s": 16527,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    }
+  ],
+  "outcomes": {
+    "ok": 141
+  },
+  "status": "rolled-back",
+  "smoke_exit_code": 0,
+  "limitations": [
+    "small passive cohort cannot establish public latency percentiles or causal population gain",
+    "native and public goal gates remain separate"
+  ],
+  "error": "RuntimeError: insufficient complete timing coverage for continued canary",
+  "finished_at": "2026-10-27T10:48:15.698797+00:00"
+}

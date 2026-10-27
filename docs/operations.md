@@ -763,3 +763,11 @@ bounded 10% canary with the retained version at 90%; its credentialed smoke
 gate passed. [Its final record](evals/perf-goal-20261027/transport-overlap/full-timing-canary/canary-10pct.json)
 controls the eventual outcome. Initial events include both serial and overlapped
 requests; this small cohort does not establish a public latency percentile.
+
+At 10:48 UTC, the second transport canary also restored e8c21659 to 100%
+for insufficient overlap evidence (18 events, two overlaps). Correctness and
+freshness passed; both candidates now receive zero traffic. The first private
+Fly run retired its payload/Machine/volume after a harness-only mapping failure
+following 1,008 passing reference contracts. [Retirement proof](evals/perf-goal-20261027/fly-trial/run-20261027-04adaf220602/external-retirement.json).
+A corrected read-only cache probe and cleanup supervisor are locally tested;
+a new private run is being prepared. Native optimization remains undeployed.

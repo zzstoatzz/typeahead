@@ -402,3 +402,33 @@ span after read-pool checkout. It excludes queue wait and cannot establish the
 full native request target. The tested local phase instrumentation moves the
 span before checkout, but remains undeployed. The private harness measures
 complete client attempts and is the relevant admission gate.
+
+The first full Fly run stopped after reference capture: all 1,008 reference
+contracts passed, then Python’s mincore helper failed with ENOMEM because its
+7.29 GB MAP_PRIVATE mapping requested write access on the 1 GiB VM. No warm,
+cold or mixed phase was measured. A read-only libc mmap fixes the harness; a
+native Linux test with a 1 GiB data limit reproduces the old failure, succeeds
+with the new mapping, observes a written resident page, and confirms its eviction.
+
+The payload reclaimed 7,502,434,304 bytes before teardown. Fly readback confirms
+the trial Machine and volume are absent and the retained rollback identity is
+unchanged; the run’s token was revoked. The manager’s immediate volume-list
+confirmation raced Fly deletion visibility, so it now polls for bounded confirmed
+absence. Its cleanup hook also could not read the removed LoadCredential source.
+The retry uses a root-only ephemeral RAM-file through both manager phases, then
+unlinks it in the final cleanup hook; a real systemd dummy-token test verifies
+start, stop-hook access and source removal. No real token is stored in evidence.
+
+The second transport canary also restored e8c21659 to 100%: it observed 18
+complete events (16 serial, 2 overlap), with passing credentialed smoke and
+healthy freshness. This is insufficient overlap evidence for keeping the candidate
+live. It suggests poor per-isolate hint reuse, but does not establish an isolate
+lifetime distribution or a population latency gain. Both candidates remain at zero
+traffic; the performance goal remains unqualified.
+
+Private retry preparation also removes redundant post-copy MD5 reads from its
+rclone wrapper only. Size checks and the unchanged full SHA256 admission remain
+mandatory; the production installer’s transfer command is unchanged. The pinned
+rclone supports --ignore-checksum, which skips its post-copy checksum pass:
+https://rclone.org/flags/ . The retry’s corpus/storage/guest/cleanup bounds remain
+the same as the first private Fly run.

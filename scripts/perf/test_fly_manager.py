@@ -22,6 +22,8 @@ class ManagerTest(unittest.TestCase):
         self.volumes = {'vol_old': {'id': 'vol_old', 'name': 'protected', 'attached_machine_id': PROTECTED}}
         self.requests = []
         self.lose_machine_response = False
+        self.stale_deleted_volume = None
+        self.delay_volume_deletion = False
         fixture = self
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *_): pass
@@ -32,7 +34,11 @@ class ManagerTest(unittest.TestCase):
                 path = self.path.split('?', 1)[0].removeprefix('/v1/apps/' + APP + '/')
                 if self.command == 'GET':
                     if path == 'machines': return self.reply(list(fixture.machines.values()))
-                    if path == 'volumes': return self.reply(list(fixture.volumes.values()))
+                    if path == 'volumes':
+                        values = list(fixture.volumes.values())
+                        if fixture.stale_deleted_volume:
+                            values.append(fixture.stale_deleted_volume); fixture.stale_deleted_volume = None
+                        return self.reply(values)
                     kind, key = path.split('/')
                     return self.reply((fixture.machines if kind == 'machines' else fixture.volumes)[key])
                 if self.command == 'POST':
@@ -48,6 +54,8 @@ class ManagerTest(unittest.TestCase):
                         return self.reply(machine)
                 if self.command == 'DELETE':
                     kind, key = path.split('/')
+                    if kind == 'volumes' and fixture.delay_volume_deletion:
+                        fixture.stale_deleted_volume = fixture.volumes[key]
                     del (fixture.machines if kind == 'machines' else fixture.volumes)[key]
                     return self.reply({})
                 self.reply({}, 404)
@@ -74,6 +82,13 @@ class ManagerTest(unittest.TestCase):
         self.assertEqual(self.machines, {PROTECTED: before})
         self.assertEqual(set(self.volumes), {'vol_old'})
         self.assertTrue(self.manager.report['retired'])
+
+    def test_retirement_waits_for_eventually_consistent_volume_listing(self):
+        self.delay_volume_deletion = True
+        self.manager.create()
+        self.manager.retire()
+        self.assertTrue(self.manager.report['retired'])
+        self.assertEqual(set(self.volumes), {'vol_old'})
 
     def test_cleanup_resolves_created_machine_when_post_response_was_lost(self):
         self.lose_machine_response = True

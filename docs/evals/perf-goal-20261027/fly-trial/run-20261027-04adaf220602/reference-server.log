@@ -1,0 +1,8 @@
+info(local_db): opening /data/refresh/index/generations/b1792908655-14d5-px05/baseline-overlay.db
+info(local_db): read pool: size=4 wait_budget_ms=250
+info(local_db): initialized
+info(local_db): snapshot attached: /data/refresh/index/generations/b1792908655-14d5-px05/index.db
+warning(index_search): slow search: 486 ms (q_len=3 keys=4 merged=50)
+warning(index_search): slow search: 234 ms (q_len=4 keys=4 merged=50)
+warning(index_search): slow search: 113 ms (q_len=4 keys=4 merged=50)
+warning(index_search): slow search: 1465 ms (q_len=3 keys=4 merged=50)

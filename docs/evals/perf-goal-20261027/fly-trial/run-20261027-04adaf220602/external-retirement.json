@@ -1,0 +1,13 @@
+{
+  "checked_at": "2026-10-27T10:50:29.843724+00:00",
+  "owned_machine_absent": true,
+  "owned_volume_absent": true,
+  "protected_identity_unchanged": true,
+  "remaining_machines": [
+    "080d415b734708"
+  ],
+  "remaining_volumes": [
+    "vol_4915xomx28k0ml5r"
+  ],
+  "goal_qualified": false
+}

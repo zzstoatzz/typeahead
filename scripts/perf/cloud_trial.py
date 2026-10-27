@@ -38,16 +38,23 @@ def residency(path):
     libc = ctypes.CDLL(None, use_errno=True)
     libc.mincore.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_ubyte)]
     libc.mincore.restype = ctypes.c_int
-    with path.open('rb') as source, mmap.mmap(source.fileno(), 0, flags=mmap.MAP_PRIVATE,
-                                              prot=mmap.PROT_READ | mmap.PROT_WRITE) as mapping:
-        address = ctypes.c_char.from_buffer(mapping)
+    libc.mmap.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_long]
+    libc.mmap.restype = ctypes.c_void_p
+    libc.munmap.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+    libc.munmap.restype = ctypes.c_int
+    with path.open('rb') as source:
+        address = libc.mmap(None, size, mmap.PROT_READ, mmap.MAP_PRIVATE, source.fileno(), 0)
+        if address == ctypes.c_void_p(-1).value:
+            raise OSError(ctypes.get_errno(), 'read-only private residency mapping failed')
         try:
             vector = (ctypes.c_ubyte * pages)()
-            if libc.mincore(ctypes.addressof(address), size, vector):
+            if libc.mincore(address, size, vector):
                 raise OSError(ctypes.get_errno(), 'private file residency check failed')
             return {'pages': pages, 'resident_pages': sum(value & 1 for value in vector)}
         finally:
-            del address
+            if libc.munmap(address, size):
+                raise OSError(ctypes.get_errno(), 'private residency unmap failed')
+
 
 
 def cleanup(scratch, evidence):

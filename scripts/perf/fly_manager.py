@@ -49,13 +49,14 @@ class Manager:
         print(json.dumps({'phase': phase, **values}), flush=True)
 
     def api(self, method, path, body=None):
-        token = 'isolated-fixture' if self.test else (Path(os.environ['CREDENTIALS_DIRECTORY']) / 'fly-token').read_text().strip()
+        token = 'isolated-fixture' if self.test else (Path('/run') / ('typeahead-perf-fly-' + self.args.run) / 'token').read_text().strip()
         request = urllib.request.Request(self.api_origin + '/v1/apps/' + APP + '/' + path,
             data=None if body is None else json.dumps(body).encode(), method=method,
             headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'User-Agent': 'typeahead-perf/1.0'})
         try:
             with urllib.request.urlopen(request, timeout=25) as response:
                 raw = response.read(2 * 1024 * 1024)
+                if method == 'DELETE': return None
                 return json.loads(raw) if raw else None
         except urllib.error.HTTPError as exc:
             code = exc.code
@@ -171,8 +172,10 @@ class Manager:
                     or actual.get('attached_machine_id')):
                 raise RuntimeError('unsafe private volume retirement')
             self.api('DELETE', 'volumes/' + actual['id'])
-            if any(v['id'] == actual['id'] for v in self.api('GET', 'volumes')):
-                raise RuntimeError('private volume retirement not confirmed')
+            for _ in range(30):
+                if not any(v['id'] == actual['id'] for v in self.api('GET', 'volumes')): break
+                time.sleep(2)
+            else: raise RuntimeError('private volume retirement not confirmed')
         self.report['retired'] = True
         try: self.guard(deadline=False)
         except (RuntimeError, OSError) as exc: self.report['post_cleanup_guard_error'] = str(exc)

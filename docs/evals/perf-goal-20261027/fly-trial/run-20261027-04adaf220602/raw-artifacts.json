@@ -1,0 +1,56 @@
+{
+  "archive": "results.tgz",
+  "sha256": "9889edf5f1edf9fe6d801ab9c210eeee8e518a2f24f500bc2183b04aaa2a93e0",
+  "members": [
+    {
+      "name": "capture.log",
+      "bytes": 268,
+      "sha256": "2b669038e1eb52cef11f3873dd8dae327df265f6427b5787a21e67da65fba5fc"
+    },
+    {
+      "name": "reference.log",
+      "bytes": 35,
+      "sha256": "f33ce0130611e241ceaf8b0ae795ebf30fc5a572b9e94f80bdad7e608219a5e2"
+    },
+    {
+      "name": "failure.json",
+      "bytes": 68,
+      "sha256": "8de9dd29354e487b93dbe03e7843eb1f80ef8651625433017220f10169f00ce4"
+    },
+    {
+      "name": "state.json",
+      "bytes": 793,
+      "sha256": "fb20a3dd9b01c99aa5926bdab1693f52acaa09fd590bef5e35bf4825839723d7"
+    },
+    {
+      "name": "reference-server.log",
+      "bytes": 558,
+      "sha256": "28e425486c51c024ef117bc6ac5cf380c49a4d48f3adbbb0adaeda7983a540f5"
+    },
+    {
+      "name": "inputs.json",
+      "bytes": 742,
+      "sha256": "c2368723c29553ebea2c1989b61b9c359247577acc30cf80c47b8f42cabb2be4"
+    },
+    {
+      "name": "cleanup.json",
+      "bytes": 123,
+      "sha256": "59874013222c74bee2a85be25356a6fdc0d595757f4af8fac092c4fae48f5288"
+    },
+    {
+      "name": "bootstrap-server.log",
+      "bytes": 270,
+      "sha256": "caa776c97d7c53c679360d20e66407f4e55da3b2d641f52be0fe5eb187712f04"
+    },
+    {
+      "name": "install.log",
+      "bytes": 199,
+      "sha256": "3ab2e2eb9732cc4cf8884aa344f4ffb5c34da8ef557557c435ca5350c95ba43f"
+    },
+    {
+      "name": "reference.json",
+      "bytes": 446178,
+      "sha256": "97a5e758e75a9f5f234a43cd541dfb1678c0f7485c91facdc555dd99836db921"
+    }
+  ]
+}

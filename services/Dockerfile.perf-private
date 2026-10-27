@@ -4,4 +4,5 @@ LABEL tech.waow.typeahead.perf_revision=$PERF_REVISION
 LABEL tech.waow.typeahead.role=private-offline-evaluation
 WORKDIR /app/perf
 COPY baseline candidate qualify.py cloud_trial.py fly_trial.py fly_control.py cases-varied.json install_snapshot.py ./
+COPY --chmod=0755 rclone-private.sh ./rclone
 CMD ["timeout", "--signal=TERM", "--kill-after=20s", "5400s", "python3", "/app/perf/fly_trial.py"]

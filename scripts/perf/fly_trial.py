@@ -98,7 +98,8 @@ def main():
         (evidence / 'status.json').write_text(json.dumps({'phase': 'installing', 'run_id': os.environ['PERF_RUN_ID']}))
         with (evidence / 'install.log').open('xb') as output:
             preparing = subprocess.Popen([sys.executable, '-c', 'import install_snapshot; install_snapshot.prepare()'],
-                cwd='/app/perf', stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
+                cwd='/app/perf', env=dict(os.environ, PATH='/app/perf:/usr/local/bin:/usr/bin:/bin'),
+                stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
         while preparing.poll() is None:
             if time.monotonic() - started > 2400: raise TimeoutError('private installation deadline')
             if shutil.disk_usage('/data').free < 2 * GIB: raise RuntimeError('private installation disk reserve')

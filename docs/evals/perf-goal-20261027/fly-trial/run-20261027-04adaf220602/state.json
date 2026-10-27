@@ -1,0 +1,32 @@
+{
+  "kind": "private-fly-full-snapshot",
+  "goal_qualified": false,
+  "runs": {},
+  "limitations": [
+    "captured 5000-actor overlay is smaller than aged live overlay",
+    "no Turso or live freshness qualification"
+  ],
+  "capture_method": "first 5000 actor-namespace page fences",
+  "machine_id": "7841712c141d18",
+  "run_id": "20261027-04adaf220602",
+  "hardware": {
+    "cpus": 2,
+    "memory_kib": 984988,
+    "machine": "x86_64"
+  },
+  "phase": "reference-capture",
+  "bootstrap_metrics": {
+    "rchar": 297712425,
+    "wchar": 325854938,
+    "syscr": 66933,
+    "syscw": 140185,
+    "read_bytes": 0,
+    "write_bytes": 318582784,
+    "cancelled_write_bytes": 0,
+    "cpu_ms": 4270.0,
+    "VmHWM": 83390464,
+    "VmRSS": 83390464,
+    "RssAnon": 39391232,
+    "RssFile": 43999232
+  }
+}
