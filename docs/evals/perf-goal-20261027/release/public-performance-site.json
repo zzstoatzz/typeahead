@@ -39,5 +39,32 @@
       "internal_identifiers_and_credentials_excluded": true
     },
     "meaning": "Earlier 197 ms observation is dated; later slower traffic and incomplete accounting are visible. Controlled engine results remain limited to the tested input."
+  },
+  "project_aligned_revision": {
+    "published_at_utc": "2026-10-27T21:26:43Z",
+    "source_commit": "653b3aaa79bf77d9e302b58645cf4e7220c1ddb9",
+    "version_number": 3,
+    "url": "https://typeahead-faster-search.n80n8.chatgpt.site",
+    "theme_source": "src/pages/theme.ts",
+    "references": [
+      "https://typeahead.waow.tech/stats",
+      "https://pub-search.waow.tech/stats"
+    ],
+    "changes": [
+      "Reuse Typeahead colors, monospace, caret wordmark and theme toggle",
+      "Replace promotional layout and slogans with compact charts and tables",
+      "Keep dated public measurements, failed qualification and resource increases visible"
+    ],
+    "verification": {
+      "desktop_1280_and_phone_390": true,
+      "light_and_dark": true,
+      "engine_controls": true,
+      "theme_control": true,
+      "phone_scroll_width_matches_viewport": true,
+      "console_errors": 0,
+      "comparison_data_matches_evidence": true,
+      "public_asset_privacy_scan": true,
+      "published_html_confirmed": true
+    }
   }
 }
