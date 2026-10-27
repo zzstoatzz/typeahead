@@ -73,6 +73,8 @@ fn timestamp() i64 {
 const incremental_paged_sql = "SELECT " ++ actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at >= ?1 AND (updated_at > ?1 OR did > ?2) ORDER BY updated_at, did LIMIT 500";
 const incremental_first_sql = "SELECT " ++ actor_cols ++ ", updated_at FROM actors WHERE handle != '' AND updated_at > ?1 ORDER BY updated_at, did LIMIT 500";
 
+const unsearchable_sql = "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = '' COLLATE NOCASE";
+
 // 500-row pages keep responses ~300KB (the 2026-08-03 wedge bit on a 1.1MiB page).
 const BATCH_SIZE = 500;
 const SYNC_INTERVAL_S = 300;
@@ -313,7 +315,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !bool {
         const q_span = logfire.span("sync.query.unsearchable", .{});
 
         var result = turso.query(
-            "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = ''",
+            unsearchable_sql,
             &.{since_str},
         ) catch |err| {
             log.err("unsearchable query failed: {}", .{err});
@@ -815,4 +817,34 @@ fn pdsScopes(local: *LocalDb, old_endpoint: []const u8, new_endpoint: []const u8
         if (std.ascii.eqlIgnoreCase(row.text(0), new_host)) result.new = true;
     }
     return result;
+}
+
+test "unsearchable actors use the handle index with bound watermark" {
+    const testing = std.testing;
+    const conn = try zqlite.open(":memory:", zqlite.OpenFlags.Create | zqlite.OpenFlags.ReadWrite);
+    defer conn.close();
+    try conn.exec("CREATE TABLE actors(did TEXT PRIMARY KEY, handle TEXT NOT NULL, updated_at INTEGER NOT NULL)", .{});
+    try conn.exec("CREATE INDEX idx_actors_handle ON actors(handle COLLATE NOCASE)", .{});
+    try conn.exec("CREATE INDEX idx_actors_updated_at ON actors(updated_at,did)", .{});
+    try conn.exec("WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x<2000) INSERT INTO actors SELECT 'did:plc:'||x, CASE WHEN x<=72 THEN '' ELSE 'handle-'||x END, 2000 FROM n", .{});
+    try conn.exec("INSERT INTO actors VALUES('did:plc:old','',500)", .{});
+    {
+        var rows = try conn.rows("EXPLAIN QUERY PLAN " ++ unsearchable_sql, .{"1000"});
+        defer rows.deinit();
+        var indexed = false;
+        while (rows.next()) |row| {
+            const detail = row.text(3);
+            try testing.expect(std.mem.indexOf(u8, detail, "SCAN") == null);
+            if (std.mem.indexOf(u8, detail, "SEARCH actors USING INDEX idx_actors_handle") != null) indexed = true;
+        }
+        try testing.expect(indexed);
+    }
+    var rows = try conn.rows(unsearchable_sql, .{"1000"});
+    defer rows.deinit();
+    var count: usize = 0;
+    while (rows.next()) |row| {
+        try testing.expectEqual(@as(i64, 2000), row.int(1));
+        count += 1;
+    }
+    try testing.expectEqual(@as(usize, 72), count);
 }

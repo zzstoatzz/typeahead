@@ -397,6 +397,14 @@ than merged wholesale. The certificate-clock repair is already deployed in
   300 seconds including jitter. Clean passes retain the 300-second interval.
   The one in-pass updated-page retry waits two seconds; cancellation still exits.
 
+The isolated release also exposed a missing collation in the unsearchable-actor
+query. The original used `idx_actors_updated_at` and exceeded the 60-second fetch
+deadline on the two-day replay. `handle = '' COLLATE NOCASE` uses the existing
+`idx_actors_handle`; the live equivalent returned all 72 matching actors in
+2.4 seconds, reading 7,735 rows. A real SQLite regression pins the index choice
+with bound timestamps and verifies the selected actors. This is a SQL repair,
+not a longer timeout or a new production index.
+
 An HTTP 500/503 response keeps the watchdog alive without advancing the successful
 sync watermark. A prolonged network outage is indistinguishable from a broken
 local transport and can still cause a restart after progress stops. This policy

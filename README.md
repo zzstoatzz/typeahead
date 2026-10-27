@@ -56,7 +56,8 @@ records actual search failures and the remaining admission, API error and alert-
 restored telemetry does not close those serving reliability issues.
 The [sync hardening follow-up](docs/operations.md#sync-hardening-follow-up-october-26-2026-tested-locally-not-deployed)
 adds bounded retries, HTTP-client recovery and stricter watchdog feeding; it is
-locally tested and not deployed.
+locally tested and not deployed. The release also repairs the unsearchable-actor
+query’s missing `COLLATE NOCASE`, which timed out during isolated replay.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

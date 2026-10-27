@@ -118,23 +118,23 @@ regression is pinned). Extend it, don't prune it.
 
 - `just deploy-worker` — `wrangler deploy` **then** the smoke suite. A deploy that breaks
   shape, ranking, or the admin API fails loudly here. `deploy-worker-only` is the escape hatch.
-- `just deploy-ingest` deploys the Zig ingestion role. During the October 17 compact
-  cutover, `just deploy-search` is guarded: `services/fly.search.toml` describes the
-  retained legacy rollback backend. Restore its normal recipe only after the
-  production compact service follows scheduled publication, using its verified
-  configuration. See `docs/plans/compact-production-cutover.md`.
-- **the snapshot builder (`MODE=indexer`) is NOT a Fly deploy.** It runs on the home box
-  (heavypad) as the `typeahead-index` Prefect deployment in the `my-prefect-server` repo,
-  configured every 3 days (09:00 UTC), temporarily inactive for the October 20
-  cloud migration (see docs/operations.md): reads Turso → builds the prefix-index snapshot →
-  uploads to R2 → App B promotes. To change it, edit `flows/typeahead_index.py` /
-  `prefect.yaml` there and redeploy. `prefect.yaml` IS authoritative for schedules —
-  each deploy replaces them. `services/fly.indexer.toml` is retained only as a manual
-  rollback path. Host prereqs: `deploy/home-indexer/install.sh`.
-  See `docs/operations.md`.
-- **`typeahead-plc-identity`** — the other heavypad Prefect deployment, configured
-  weekly (Mon 05:00 UTC), temporarily inactive with the bulk builder. Bulk DID -> handle/pds from the PLC log, for what `getProfiles`
-  cannot see. See `docs/discovery-and-identity.md`.
+- `just deploy-ingest` deploys the Zig ingestion role. `just deploy-search`
+  remains guarded: `services/fly.search.toml` is retained legacy configuration,
+  not the managed production slot. Native image releases follow the
+  [refresh runbook](docs/plans/automatic-snapshot-refresh.md), including inactive
+  installation, admission, final-size restart, qualification and guarded routing.
+- **The snapshot builder (`MODE=indexer`) is not a Fly deploy.** The cloud
+  `typeahead-index` deployment in `my-prefect-server` reads Turso, publishes
+  immutable artifacts to R2, and invokes the managed rollout controller. Its
+  cloud worker stays separate from home monitoring and analytics. That repo owns
+  `flows/typeahead_index.py`, deployment definitions, image pins and schedules;
+  verify active API/worker ownership against its migration records before changing
+  them. Do not revive the obsolete home cadence or `services/fly.indexer.toml`
+  as an automatic path. See [operations](docs/operations.md).
+- **`typeahead-plc-identity`** bulk-resolves DID -> handle/PDS from the PLC log
+  for identities the appview cannot see. Its weekly cadence remains paused
+  independently of the active snapshot publisher. Verify current ownership in
+  `my-prefect-server` before resuming it. See [discovery and identity](docs/discovery-and-identity.md).
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
 
