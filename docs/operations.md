@@ -808,3 +808,11 @@ conditional-read candidate is being prepared for a bounded warm-reuse canary.
 It is restored in source but is not live; 40a014e4 still serves all normal
 traffic. The 18:35–18:50 confirmation mean was 197.93 ms, so the 163.47 ms
 result was not sustained and the performance goal remains open.
+
+At 19:05 UTC the bounded warm-reuse qualification had reached 10% normal
+traffic and passed smoke. It steps through 50% and 100%, smoke-gates each
+step, then requires a settled 15-minute window with at least 100 misses,
+complete HTTP reconciliation, no unexpected HTTP statuses and a mean <=169 ms.
+Failure or interruption restores 40a014e4 only while the job still owns the
+transport deployment. Native images, volumes and the routing object are
+unchanged. This is qualification in progress, not a performance PASS.

@@ -12,3 +12,16 @@ end-to-end gain. The live release already measured 163.47 ms in a settled
 public cohort. Its source was retained; the experimental patch is archived
 in conditional-candidate.patch. Temporary Worker deletion is confirmed by
 CLI and a subsequent API 404.
+
+## Warm-reuse follow-up
+
+The zero-percent sample contained five fresh-isolate/shared-hint candidate
+calls and one memory-hint call, versus 13 memory-hint calls among 21 live
+version events. The original negative result therefore did not represent
+normal ETag reuse. Source 427d320 restores the exact already-tested candidate
+for one bounded 10%/50%/100% qualification (warm-canary-run.py). All prior
+results remain. Success requires >=100 misses, reconciled counts, no HTTP
+errors, healthy freshness, owned deployment and public mean <=169 ms. The
+process has a 35-minute deadline and scoped rollback on failure/interruption.
+The qualification is not complete while its state is observing. No recurring
+monitor, new backend, native resource change or production load test is used.

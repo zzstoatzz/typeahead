@@ -85,9 +85,10 @@ This is about 25% below the earlier 263 ms mean, but still misses both 185 ms
 and 169 ms targets. These temporal cohorts are not randomized comparisons.
 e8c21659 is retained for transport rollback.
 Dated traffic and qualification evidence is in the performance record.
-A conditional route-read candidate is being qualified under normal reuse after
-an inconclusive zero-percent test dominated by fresh instances. It is restored
-in source but not live; see [the experiment](docs/evals/perf-goal-20261027/route-read/README.md).
+A conditional route-read candidate is under a bounded traffic canary after an
+inconclusive zero-percent test dominated by fresh instances. It has not passed
+full-traffic performance qualification; 40a014e4 is retained for rollback. See
+[the launch record](docs/evals/perf-goal-20261027/route-read/warm-canary-launch.json).
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

@@ -1,0 +1,13 @@
+{
+  "owner": "conditional-warm-20261027-1903",
+  "old": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "new": "3ffe6674-ccab-49e4-aec0-31acafd73a89",
+  "source": "427d320",
+  "deadline_utc": "2026-10-27T19:39:29.576537+00:00",
+  "percentage": 50,
+  "deployment_id": "5f261aa7-0ce3-4208-96ed-4cb187700e1d",
+  "phase": "observing",
+  "window_start_utc": null,
+  "window_end_utc": null,
+  "recorded_at_utc": "2026-10-27T19:06:44.660239+00:00"
+}
