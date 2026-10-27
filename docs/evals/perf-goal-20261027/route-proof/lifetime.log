@@ -1,0 +1,6 @@
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":2,"origin_headers_ms":11,"total_headers_ms":11,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":58,"origin_headers_ms":4,"total_headers_ms":62,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":54,"origin_headers_ms":4,"total_headers_ms":58,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":54,"origin_headers_ms":3,"total_headers_ms":57,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":54,"origin_headers_ms":2,"total_headers_ms":54,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+PASS: real R2 + Cache API + held HTTP authority; known-route proof reuse, original expiry, no renewal, unknown origin/build and future-proof rejection

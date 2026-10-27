@@ -1,0 +1,15 @@
+{
+  "before": {
+    "n": 6,
+    "mean_route_ms": 131.66666666666666,
+    "mean_wall_ms": 299.99781250000035,
+    "errors": 0
+  },
+  "after": {
+    "n": 6,
+    "mean_route_ms": 128.83333333333334,
+    "mean_wall_ms": 250.81297216666613,
+    "errors": 0
+  },
+  "equal_response_pairs": true
+}

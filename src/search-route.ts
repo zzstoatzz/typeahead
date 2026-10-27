@@ -23,7 +23,7 @@ export function allowedRoute(request: Request) {
   return request.method === "POST" && path === "/admin/refresh";
 }
 
-let cachedRoute: { route: ReturnType<typeof parseRoute>; etag: string; expiresAt: number; hintExpiresAt: number } | undefined;
+let cachedRoute: { route: ReturnType<typeof parseRoute>; expiresAt: number; hintExpiresAt: number } | undefined;
 let sharedHintsEnabled = true;
 
 export function sharedHintsAllowed() {
@@ -32,7 +32,7 @@ export function sharedHintsAllowed() {
 
 export function routeHintRecord() {
   if (cachedRoute && Date.now() < cachedRoute.hintExpiresAt) {
-    return { route: { version: 1 as const, current: cachedRoute.route }, expires_at: cachedRoute.hintExpiresAt };
+    return { route: { version: 1 as const, current: cachedRoute.route }, expires_at: cachedRoute.hintExpiresAt, verified_until: cachedRoute.expiresAt };
   }
   return undefined;
 }
@@ -46,19 +46,11 @@ export async function readRoute(bucket: R2Bucket, cache: boolean) {
   if (cache && cachedRoute && Date.now() < cachedRoute.expiresAt) return cachedRoute.route;
   const before = cachedRoute;
   try {
-    const object = await bucket.get(ROUTE_KEY, {
-      onlyIf: cache && before ? { etagDoesNotMatch: before.etag } : {},
-    });
+    const object = await bucket.get(ROUTE_KEY);
     if (object === null || object.size > 16384) throw new Error("Missing search route");
-    let route: ReturnType<typeof parseRoute>;
-    if ("body" in object) {
-      route = parseRoute(await object.json());
-    } else {
-      if (!before || object.etag !== before.etag) throw new Error("Unvalidated search route");
-      route = before.route;
-    }
+    const route = parseRoute(await object.json());
     const validatedAt = Date.now();
-    cachedRoute = { route, etag: object.etag, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
+    cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
     sharedHintsEnabled = true;
     return route;
   } catch (error) {

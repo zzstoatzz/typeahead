@@ -1,0 +1,236 @@
+{
+  "at": "2026-10-27T19:32:19.259362+00:00",
+  "results": [
+    {
+      "auth_source": "wrangler_oauth",
+      "status": 403,
+      "success": false,
+      "errors": [
+        {
+          "code": 10000,
+          "message": "Authentication error",
+          "documentation_url": "https://developers.cloudflare.com/api/resources/workers/subresources/observability/subresources/telemetry"
+        }
+      ],
+      "keys": null
+    },
+    {
+      "auth_source": "existing_project_token",
+      "status": 200,
+      "success": true,
+      "errors": [],
+      "keys": [
+        {
+          "key": "$metadata.message",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.messageTemplate",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.error",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.errorTemplate",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.origin",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.service",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.level",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.requestId",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.spanId",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.traceId",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.transactionName",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.spanName",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.trigger",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.fingerprint",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.account",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.type",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.id",
+          "type": "string",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.duration",
+          "type": "number",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.latency",
+          "type": "number",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.traceDuration",
+          "type": "number",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.startTime",
+          "type": "number",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "$metadata.endTime",
+          "type": "number",
+          "lastSeenAt": 1793129539232
+        },
+        {
+          "key": "mode",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "total_headers_ms",
+          "type": "number",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "outcome",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.truncated",
+          "type": "boolean",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.event.request.method",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.event.request.search.q",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "status",
+          "type": "number",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "sample_rate",
+          "type": "number",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.scriptName",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "hint_wait_ms",
+          "type": "number",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.scriptVersion.id",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.event.request.search.limit",
+          "type": "number",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "route_ms",
+          "type": "number",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "origin_headers_ms",
+          "type": "number",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "event",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.event.request.url",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.executionModel",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.event.request.path",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "$workers.eventType",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        },
+        {
+          "key": "hint_source",
+          "type": "string",
+          "lastSeenAt": 1793129510414
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,362 @@
+{
+  "at": "2026-10-27T19:34:06.316Z",
+  "request": {
+    "queryId": "typeahead-route-component-audit-20261027",
+    "dry": true,
+    "view": "calculations",
+    "calculationMode": "aggregate",
+    "ignoreSeries": true,
+    "limit": 20,
+    "timeframe": {
+      "from": 1793128200000,
+      "to": 1793129100000
+    },
+    "parameters": {
+      "filters": [
+        {
+          "key": "$metadata.service",
+          "operation": "eq",
+          "type": "string",
+          "value": "typeahead-search-transport"
+        },
+        {
+          "key": "event",
+          "operation": "eq",
+          "type": "string",
+          "value": "search_transport_timing"
+        }
+      ],
+      "calculations": [
+        {
+          "operator": "count",
+          "alias": "events"
+        },
+        {
+          "operator": "avg",
+          "key": "route_ms",
+          "keyType": "number",
+          "alias": "route_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "origin_headers_ms",
+          "keyType": "number",
+          "alias": "origin_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "total_headers_ms",
+          "keyType": "number",
+          "alias": "total_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "hint_wait_ms",
+          "keyType": "number",
+          "alias": "hint_wait_ms"
+        }
+      ],
+      "groupBys": [
+        {
+          "type": "string",
+          "value": "$workers.scriptVersion.id"
+        },
+        {
+          "type": "string",
+          "value": "hint_source"
+        }
+      ]
+    }
+  },
+  "status": 200,
+  "success": true,
+  "errors": [],
+  "statistics": {
+    "elapsed": 0.243317538,
+    "rows_read": 5752471,
+    "bytes_read": 958931488,
+    "abr_level": 1
+  },
+  "calculations": [
+    {
+      "alias": "events",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ memory",
+          "value": 148,
+          "interval": 1.064748201438849,
+          "sampleInterval": 1.064748201438849,
+          "count": 148
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ none",
+          "value": 2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ shared",
+          "value": 71,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 71
+        }
+      ]
+    },
+    {
+      "alias": "route_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ memory",
+          "value": 96.18243243243244,
+          "interval": 1.064748201438849,
+          "sampleInterval": 1.064748201438849,
+          "count": 148
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ none",
+          "value": 90,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ shared",
+          "value": 114.59154929577464,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 71
+        }
+      ]
+    },
+    {
+      "alias": "origin_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ memory",
+          "value": 45.25,
+          "interval": 1.064748201438849,
+          "sampleInterval": 1.064748201438849,
+          "count": 148
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ none",
+          "value": 55,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ shared",
+          "value": 60.36619718309859,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 71
+        }
+      ]
+    },
+    {
+      "alias": "total_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ memory",
+          "value": 101.91216216216216,
+          "interval": 1.064748201438849,
+          "sampleInterval": 1.064748201438849,
+          "count": 148
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ none",
+          "value": 145,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ shared",
+          "value": 128.73239436619718,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 71
+        }
+      ]
+    },
+    {
+      "alias": "hint_wait_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ memory",
+          "value": 0,
+          "interval": 1.064748201438849,
+          "sampleInterval": 1.064748201438849,
+          "count": 148
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ none",
+          "value": 16,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.scriptVersion.id",
+              "value": "3ffe6674-ccab-49e4-aec0-31acafd73a89"
+            },
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "3ffe6674-ccab-49e4-aec0-31acafd73a89 ⬤ shared",
+          "value": 16.971830985915492,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 71
+        }
+      ]
+    }
+  ]
+}

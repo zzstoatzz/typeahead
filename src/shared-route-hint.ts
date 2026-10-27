@@ -1,11 +1,11 @@
 import * as z from "zod/mini";
-import { routeSchema, type routeHintRecord } from "./search-route";
+import { routeSchema, type parseRoute, type routeHintRecord } from "./search-route";
 
 export const HINT_CACHE = "typeahead-route-hints-v1";
 export const HINT_KEY = "https://typeahead.waow.tech/__transport-route-hint/v1";
-const hintSchema = z.object({ route: routeSchema, expires_at: z.number() });
+const hintSchema = z.object({ route: routeSchema, expires_at: z.number(), verified_until: z.optional(z.number()) });
 
-export async function readSharedHint(cache: Cache) {
+export async function readSharedHintRecord(cache: Cache) {
   try {
     const response = await cache.match(HINT_KEY);
     if (!response?.body) return undefined;
@@ -20,10 +20,27 @@ export async function readSharedHint(cache: Cache) {
     const hint = hintSchema.parse(await new Response(bounded).json());
     const now = Date.now();
     if (!Number.isSafeInteger(hint.expires_at) || hint.expires_at <= now || hint.expires_at > now + 60_000) return undefined;
-    return hint.route;
+    const verifiedUntil = hint.verified_until;
+    return { route: hint.route, verified_until: verifiedUntil !== undefined && Number.isSafeInteger(verifiedUntil)
+      && verifiedUntil > now && verifiedUntil <= now + 1000 && verifiedUntil <= hint.expires_at ? verifiedUntil : undefined };
   } catch {
     return undefined;
   }
+}
+
+export async function readSharedHint(cache: Cache) {
+  return (await readSharedHintRecord(cache))?.route;
+}
+
+type Route = ReturnType<typeof parseRoute>;
+
+export function reuseVerifiedRoute(current: Promise<Route>, known: Route | undefined, hint: Promise<Awaited<ReturnType<typeof readSharedHintRecord>>>) {
+  if (!known) return current;
+  return Promise.race([current, hint.then(record => {
+    if (record?.verified_until !== undefined && Date.now() < record.verified_until
+      && record.route.origin === known.origin && record.route.build_id === known.build_id) return known;
+    return current;
+  }, () => current)]);
 }
 
 export async function rememberSharedHint(cache: Cache, hint: ReturnType<typeof routeHintRecord>) {

@@ -1,5 +1,5 @@
 import { allowedRoute, readRoute, routeHintRecord, sharedHintsAllowed, speculativeRoute } from "./search-route";
-import { HINT_CACHE, readSharedHint, rememberSharedHint, forgetSharedHint } from "./shared-route-hint";
+import { HINT_CACHE, readSharedHintRecord, reuseVerifiedRoute, rememberSharedHint, forgetSharedHint } from "./shared-route-hint";
 import { validatedSearch } from "./validated-search";
 
 const origins = new Set([
@@ -22,18 +22,21 @@ export default {
       const current = readRoute(env.SEARCH_CONTROL, true);
       const memoryHint = speculativeRoute();
       const cache = Promise.resolve().then(() => caches.open(HINT_CACHE)).catch(() => undefined);
-      const hint = memoryHint ?? (sharedHintsAllowed() ? cache.then(value => value ? readSharedHint(value) : undefined) : undefined);
+      const shared = sharedHintsAllowed() ? cache.then(value => value ? readSharedHintRecord(value) : undefined) : Promise.resolve(undefined);
+      const hint = memoryHint ?? shared.then(record => record?.route);
       ctx.waitUntil(Promise.allSettled([
         Promise.resolve(hint),
         current.then(() => cache.then(value => value ? rememberSharedHint(value, routeHintRecord()) : undefined),
           () => cache.then(value => value ? forgetSharedHint(value) : undefined)),
       ]).then(() => undefined));
-      return validatedSearch(current, hint, (route, signal) => {
+      const response = await validatedSearch(reuseVerifiedRoute(current, memoryHint, shared), hint, (route, signal) => {
         const forwarded = new Request(new URL(url.pathname + url.search, route.origin), request);
         forwarded.headers.delete("Host");
         forwarded.headers.delete("X-Typeahead-Routed-Health");
         return fetch(forwarded, { signal, redirect: "manual" });
       }, memoryHint ? "memory" : "shared");
+      response.headers.set("X-Typeahead-Route-Strategy", "proof");
+      return response;
     }
     let route;
     try {

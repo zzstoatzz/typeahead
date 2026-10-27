@@ -1,0 +1,297 @@
+{
+  "at": "2026-10-27T19:42:18.138Z",
+  "request": {
+    "queryId": "typeahead-baseline-components-20261027",
+    "dry": true,
+    "view": "calculations",
+    "ignoreSeries": true,
+    "limit": 10,
+    "timeframe": {
+      "from": 1793126100000,
+      "to": 1793127000000
+    },
+    "parameters": {
+      "filters": [
+        {
+          "key": "$metadata.service",
+          "operation": "eq",
+          "type": "string",
+          "value": "typeahead-search-transport"
+        },
+        {
+          "key": "event",
+          "operation": "eq",
+          "type": "string",
+          "value": "search_transport_timing"
+        }
+      ],
+      "calculations": [
+        {
+          "operator": "count",
+          "alias": "events"
+        },
+        {
+          "operator": "avg",
+          "key": "route_ms",
+          "keyType": "number",
+          "alias": "route_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "origin_headers_ms",
+          "keyType": "number",
+          "alias": "origin_headers_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "total_headers_ms",
+          "keyType": "number",
+          "alias": "total_headers_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "hint_wait_ms",
+          "keyType": "number",
+          "alias": "hint_wait_ms"
+        }
+      ],
+      "groupBys": [
+        {
+          "type": "string",
+          "value": "hint_source"
+        }
+      ]
+    }
+  },
+  "status": 200,
+  "success": true,
+  "errors": [],
+  "statistics": {
+    "elapsed": 0.222253128,
+    "rows_read": 6495217,
+    "bytes_read": 680286128,
+    "abr_level": 1
+  },
+  "calculations": [
+    {
+      "alias": "events",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "shared",
+          "value": 87,
+          "interval": 1.1153846153846154,
+          "sampleInterval": 1.1153846153846154,
+          "count": 87
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "memory",
+          "value": 223,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 223
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "none",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "route_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "shared",
+          "value": 127.20689655172414,
+          "interval": 1.1153846153846154,
+          "sampleInterval": 1.1153846153846154,
+          "count": 87
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "memory",
+          "value": 95.99551569506727,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 223
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "none",
+          "value": 103,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "origin_headers_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "shared",
+          "value": 48.35632183908046,
+          "interval": 1.1153846153846154,
+          "sampleInterval": 1.1153846153846154,
+          "count": 87
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "memory",
+          "value": 57.73991031390135,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 223
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "none",
+          "value": 52,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "total_headers_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "shared",
+          "value": 128.9655172413793,
+          "interval": 1.1153846153846154,
+          "sampleInterval": 1.1153846153846154,
+          "count": 87
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "memory",
+          "value": 117.31838565022422,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 223
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "none",
+          "value": 155,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "hint_wait_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "shared"
+            }
+          ],
+          "groupKey": "shared",
+          "value": 16.114942528735632,
+          "interval": 1.1153846153846154,
+          "sampleInterval": 1.1153846153846154,
+          "count": 87
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "memory"
+            }
+          ],
+          "groupKey": "memory",
+          "value": 0,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 223
+        },
+        {
+          "groups": [
+            {
+              "key": "hint_source",
+              "value": "none"
+            }
+          ],
+          "groupKey": "none",
+          "value": 6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

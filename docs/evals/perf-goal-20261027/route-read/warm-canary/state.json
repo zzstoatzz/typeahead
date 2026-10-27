@@ -1,0 +1,132 @@
+{
+  "owner": "conditional-warm-20261027-1903",
+  "old": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "new": "3ffe6674-ccab-49e4-aec0-31acafd73a89",
+  "source": "427d320",
+  "deadline_utc": "2026-10-27T19:39:29.576537+00:00",
+  "events": [
+    {
+      "id": "47742c14-25be-4578-ad7a-cd7ce781b611",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/message": "conditional-warm-20261027-1903 10%",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "3ffe6674-ccab-49e4-aec0-31acafd73a89",
+          "percentage": 10
+        },
+        {
+          "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+          "percentage": 90
+        }
+      ],
+      "created_on": "2026-10-27T19:04:34.674574Z"
+    },
+    {
+      "id": "5f261aa7-0ce3-4208-96ed-4cb187700e1d",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/message": "conditional-warm-20261027-1903 50%",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "3ffe6674-ccab-49e4-aec0-31acafd73a89",
+          "percentage": 50
+        },
+        {
+          "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+          "percentage": 50
+        }
+      ],
+      "created_on": "2026-10-27T19:05:50.827982Z"
+    },
+    {
+      "id": "c5332456-49c7-49a2-92ca-468c81a9bc8b",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/message": "conditional-warm-20261027-1903 100%",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "3ffe6674-ccab-49e4-aec0-31acafd73a89",
+          "percentage": 100
+        },
+        {
+          "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+          "percentage": 0
+        }
+      ],
+      "created_on": "2026-10-27T19:07:06.520619Z"
+    }
+  ],
+  "before": {
+    "id": "10bc2952-2ebe-4d4a-a799-5ed2650044db",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "Retain qualified live transport; bounded zero-percent experiment complete",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T18:40:56.820112Z"
+  },
+  "phase": "restored-retained",
+  "percentage": 100,
+  "deployment_id": "c5332456-49c7-49a2-92ca-468c81a9bc8b",
+  "last_health": {
+    "status": 200,
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 63,
+    "snapshot_age_s": 20002,
+    "build_id": "b1793109259-2b36-px05",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "first_bucket": 5977094,
+  "last_bucket_exclusive": 5977097,
+  "window_start_utc": "2026-10-27T19:10:00+00:00",
+  "window_end_utc": "2026-10-27T19:25:00+00:00",
+  "result": {
+    "misses": 133,
+    "mean_ms": 200.57894736842104,
+    "cache_hits": 4,
+    "answered": 137,
+    "errors": 0,
+    "reconciled": true
+  },
+  "error": "{'misses': 133, 'mean_ms': 200.57894736842104, 'cache_hits': 4, 'answered': 137, 'errors': 0, 'reconciled': True}",
+  "deployment": {
+    "id": "c566f874-38b8-4f5d-879e-e1e346a87c98",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "conditional-warm-20261027-1903 restore retained transport",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T19:28:03.508735Z"
+  }
+}

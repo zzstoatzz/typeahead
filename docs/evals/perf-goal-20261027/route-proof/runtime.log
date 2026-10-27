@@ -1,0 +1,9 @@
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"serial","route_ms":10,"origin_headers_ms":0,"total_headers_ms":10,"hint_source":"none","hint_wait_ms":10,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"serial","route_ms":2,"origin_headers_ms":25,"total_headers_ms":27,"hint_source":"none","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":0,"origin_headers_ms":14,"total_headers_ms":14,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":3,"origin_headers_ms":16,"total_headers_ms":21,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"overlap","route_ms":5,"origin_headers_ms":5,"total_headers_ms":5,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"serial","route_ms":0,"origin_headers_ms":0,"total_headers_ms":0,"hint_source":"none","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":502,"mode":"overlap","route_ms":0,"origin_headers_ms":4,"total_headers_ms":4,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"backend_unavailable","status":503,"mode":"overlap","route_ms":0,"origin_headers_ms":1,"total_headers_ms":1,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+PASS: real workerd + local R2 + real HTTP origins; cache window, route changes, cancellation, errors, PDS acknowledgment, admin auth and health forwarding

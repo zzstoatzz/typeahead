@@ -111,6 +111,7 @@ export async function handleSearch(
   }
 
   const t0 = Date.now();
+  const ingressColo = request.cf?.colo ?? "unknown";
 
   // cache API — edge cache for hot queries
   // hostname must belong to this zone so the CF zone-purge API can target it
@@ -132,13 +133,19 @@ export async function handleSearch(
 
   // try fly backend (local SQLite replica) if configured
   if (env.SEARCH_BACKEND_URL) {
+    let backendStrategy: "retained" | "proof" | "unknown" = "unknown";
+    let backendRouteClass: "routed" | "direct" | "other" = "other";
     try {
       const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}${pds ? `&pds=${encodeURIComponent(pds)}` : ""}`;
+      const parsedBackend = new URL(backendUrl);
+      backendRouteClass = parsedBackend.origin === "https://typeahead-search-transport.n8-3e9.workers.dev" ? "routed"
+        : parsedBackend.hostname.endsWith(".fly.dev") ? "direct" : "other";
       const backendStart = Date.now();
       const init = { signal: AbortSignal.timeout(3000) };
       const backendRes = env.SEARCH_TRANSPORT
         ? await env.SEARCH_TRANSPORT.fetch(backendUrl, init)
         : await fetch(backendUrl, init);
+      backendStrategy = backendRes.headers.get("X-Typeahead-Route-Strategy") === "proof" ? "proof" : "retained";
       if (pds && backendRes.headers.get("X-Typeahead-Pds") !== pds) return unavailable();
       if (!backendRes.ok) throw new Error(`backend_${backendRes.status}`);
       {
@@ -165,10 +172,19 @@ export async function handleSearch(
         }
         if (!pds && empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1")) throw new Error("backend_empty");
 
+        const elapsedMs = Date.now() - t0;
         ctx.waitUntil(Promise.all([
-          recordMetric(db, Date.now() - t0),
+          recordMetric(db, elapsedMs),
           recordTrafficSource(db, request),
         ]));
+        const timing = backendRes.headers.get("Server-Timing") ?? "";
+        const routeMs = /transport_route;dur=([0-9.]+)/.exec(timing);
+        const originMs = /transport_origin_headers;dur=([0-9.]+)/.exec(timing);
+        console.log(JSON.stringify({ event: "search_response_timing", outcome: "ok", status: 200,
+          backend_strategy: backendStrategy, backend_route_class: backendRouteClass, ingress_colo: ingressColo,
+          search_ms: elapsedMs, cache_ms: cacheMs, backend_headers_ms: headersMs, backend_ms: backendMs,
+          transport_route_ms: routeMs ? Number(routeMs[1]) : null,
+          transport_origin_ms: originMs ? Number(originMs[1]) : null, empty }));
 
         const response = new Response(body, {
           headers: { "Content-Type": "application/json", ...CORS_HEADERS,
@@ -185,6 +201,9 @@ export async function handleSearch(
       if (pds) return unavailable();
       const reason = e instanceof Error ? e.message : String(e);
       if (reason !== "backend_empty" && !tursoFallbackOnUnreachable(env.TURSO_FALLBACK_ON_UNREACHABLE === "1")) {
+        console.log(JSON.stringify({ event: "search_response_timing", outcome: "backend_error", status: 200,
+          backend_strategy: backendStrategy, backend_route_class: backendRouteClass, ingress_colo: ingressColo,
+          search_ms: Date.now() - t0, cache_ms: cacheMs }));
         console.log(JSON.stringify({ event: "search_backend_unreachable", term, error: reason }));
         // not cached: the engine restarts in ~15 s and the next keystroke
         // should reach it, not a pinned empty answer

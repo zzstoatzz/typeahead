@@ -3,7 +3,8 @@
 Status: final verification. Native source 62266a3 and transport 40a014e4 are live;
 the 18:20–18:35 UTC window measured 163.47 ms with full HTTP reconciliation.
 Confirmation measured 197.93 ms; final smoke passed, and the public goal remains
-open. A bounded warm-reuse canary is being prepared. Owner: this performance
+open. The warm conditional-read canary failed and restored 40a014e4. A local proof-
+reuse candidate and query-free public timing seam are being prepared. Owner: this performance
 goal. Earlier starting state and dated experiments follow.
 The starting branch is codex/typeahead-io-audit at 5821bda, with locally tested
 write guards and phase instrumentation from faef0c8. Production is a separate
@@ -1136,3 +1137,26 @@ The same locally/runtime-tested candidate is restored for a bounded 10%/50%
 and full-traffic qualification, with unchanged one-second validation and scoped
 rollback. No native/backend change. This is a different reuse condition, not
 a relabeling of the earlier result.
+
+### Warm conditional-read failure and new local candidate
+
+The fixed 19:10–19:25 UTC candidate window measured 133 misses, mean
+200.58 ms, four hits and 137 reconciled HTTP-200 answers, no HTTP errors.
+The bounded job restored 40a014e4 at 19:28 UTC and retained smoke passed.
+Post-window exact response pairs still match on the same ATL/IAD path.
+This is a failed efficacy gate, not a release.
+
+The existing project credential can query stored Workers telemetry, while the
+Wrangler OAuth credential cannot. No permission or credential was changed.
+Aggregate logs show memory-hint route validation 95.996 ms before versus
+96.182 ms on the conditional candidate; cached JSON reuse did not remove the
+critical wait. The telemetry is adaptive and has a different scope from public
+endpoint counters; it is not used as a counter reconciliation.
+
+The local one-second proof candidate eliminates a redundant wait only when
+another instance has just validated the exact already-known route. The original
+expiry is retained, fresh instances cannot use it, and the current R2 read still
+runs and alone can renew the proof. Existing tests and a new real R2/Cache API/
+held-HTTP test pass. The public handler also adds query-free strategy/colo/phase
+timings through its existing log sink. Neither change is deployed yet; see
+[the candidate record](route-proof/README.md). The public goal remains open.
