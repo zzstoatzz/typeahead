@@ -975,3 +975,40 @@ reclaimed their payloads and retired their private Machines/volumes. Their
 small raw archives retain all six paired responses, phase logs and process I/O.
 No performance candidate has been deployed. Main-source publication and CI do
 not deploy this repository; live native and transport versions remain unchanged.
+
+### Qualified and deployed native release — 17:43 UTC readback
+
+Run 45b615c88376 passed every candidate gate on the full 12,816,605-actor
+snapshot and actual 18,200-actor / 735,417-prefix overlay: 5,040 exact responses,
+zero failures; cold p95/p99 28.20/33.51 ms versus baseline 3,013.31/4,353.03 ms
+(four baseline failures); warm 19.95/23.41 ms; mixed 21.34/25.34 ms with all 40
+writer batches. The mixed maximum was 548.85 ms; this is a percentile result,
+not a maximum-latency guarantee. Input hashes and all attempts are archived in
+900,845 bytes, SHA256 b18043a5a3164f6740b96e0cc530b1baf5f4e6ccdb5937057a98346fe0eedcde.
+
+Mixed writes fell 3,145,646,080 to 2,084,872,192 bytes; reads increased 9,945,088
+to 141,029,376 bytes. Total I/O decreased 29.5%. CPU increased 49.93 to 54.96
+seconds (10.1%); RSS ended at 323 MB versus 309 MB. The unchanged hardware has
+headroom, but the release does not claim every resource metric improves.
+The private payload was removed, its VM deleted and volume retired. Both
+managed apps now contain no private performance Machines.
+
+Typeahead source cae71b6 and MPS source cd72bcf are on main with green CI.
+The registered deployment pins image d4c3111e and package cd72bcf; its builder,
+cloud pool and odd-day 06:00 UTC schedule are unchanged. Only inactive A was
+updated. The guarded resume flow bbcfa61e-2d95-4cf6-9d83-37c1dd088b67 completed
+17:34:34 UTC after final-size restart, PDS/exact/global checks and conditional
+R2 promotion. A now serves C; B is healthy and retained. Both are still two
+shared CPUs / 1 GiB. No serving-slot restart or resize occurred.
+
+Live index status confirms C and the full corpus. Credentialed smoke and all
+ranking acceptance criteria pass. Logfire readback 17:31:45–17:41 UTC contains
+one successful serving-slot sync span and 27 health spans (25 routed), no errors.
+The existing transport remains e8c21659 at 100%; the unshipped overlap candidate
+is excluded from this measurement. Public natural-traffic verification starts
+17:40 UTC, after generated public smoke searches, with settled bucket and HTTP
+counter reconciliation required. The overall goal remains open for that result.
+
+README was compared against the implementation and verified deployment and
+updated with these distinctions. No public endpoint or response shape changed,
+so the API chip, lexicon, /docs and /llms.txt require no API edit.

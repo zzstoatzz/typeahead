@@ -1,0 +1,186 @@
+{
+  "at": "2026-10-27T17:27:35.748764+00:00",
+  "machine": {
+    "id": "8e3d79b70dd748",
+    "instance_id": "01M5Z6D1S2G5S6F6WT4BGAGA3H",
+    "version": "01M5Z6D1S2G5S6F6WT4BGAGA3H",
+    "state": "started",
+    "image": "registry.fly.io/typeahead-search-refresh@sha256:d4c3111ee8ad058cb08f7ef02ffeb0a2826e1c328b61c12c29a6e9d3e93ca0ed",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 20,
+        "volume": "vol_v8eyqk61q9dy9gkv",
+        "name": "refresh_1793113768"
+      }
+    ],
+    "services": [
+      {
+        "protocol": "tcp",
+        "internal_port": 8080,
+        "autostop": false,
+        "autostart": false,
+        "ports": [
+          {
+            "port": 443,
+            "handlers": [
+              "tls",
+              "http"
+            ]
+          },
+          {
+            "port": 80,
+            "handlers": [
+              "http"
+            ]
+          }
+        ],
+        "force_instance_key": null
+      }
+    ],
+    "metadata": {
+      "build_id": "b1793109259-2b36-px05",
+      "owner": "typeahead-snapshot-refresh"
+    }
+  },
+  "route": {
+    "origin": "https://typeahead-search-refresh.fly.dev",
+    "build_id": "b1793081565-0228-px05"
+  },
+  "/ready": {
+    "ready": true
+  },
+  "/health": {
+    "status": "ok",
+    "ready": true,
+    "actors": 12816605,
+    "rss_kb": 282924,
+    "sync_lag_s": 13
+  },
+  "/index/status": {
+    "promote_enabled": true,
+    "attached": true,
+    "snapshot_path": "/data/refresh/index/generations/b1793109259-2b36-px05/index.db",
+    "build_id": "b1793109259-2b36-px05",
+    "snapshot_format": "FLATPX05",
+    "source_watermark": 1793109254,
+    "actor_count": 12816605,
+    "prefix_count": 148742123,
+    "score_quantiles": [
+      -126.27,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      13.98,
+      30.0,
+      30.1,
+      30.1,
+      32.46,
+      47.71,
+      60.1,
+      63.8,
+      77.71,
+      87.96,
+      97.23,
+      107.82,
+      120.31,
+      130.0,
+      140.75,
+      150.51,
+      160.84,
+      171.5,
+      182.68,
+      195.02,
+      208.45,
+      223.23,
+      239.61,
+      257.96,
+      278.95,
+      303.24,
+      332.09,
+      368.18,
+      420.16,
+      1021.98
+    ],
+    "overlay_actor_rows": 20681,
+    "overlay_compact": {
+      "deleted": 0,
+      "ms": 0,
+      "complete": true,
+      "at": 1793122043
+    }
+  }
+}

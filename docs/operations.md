@@ -758,11 +758,23 @@ Admin/health routing, R2 promotion and
 native serving resources remain unchanged. The retained e8c21659 version is
 the rollback target for any further guarded rollout.
 
-### Overlay reader I/O follow-up — October 27, not deployed
+### Overlay reader I/O release — October 27, live
 
-A local candidate disables SQLite mapping for reader connections' `main` overlay
-while retaining the existing writer and attached-index settings. In an isolated
-Fly diagnostic, identical cold searches fell from 534–799 ms to 29–43 ms and
-13–17 MB of reads to about 1 MB. This is diagnostic evidence, not a production
-latency guarantee; full mixed-load qualification and rollout remain pending.
-See [the performance record](evals/perf-goal-20261027/plan.md).
+Reader connections disable SQLite mapping for the `main` overlay, retaining
+the existing writer and attached-index settings. The release also includes
+bounded snapshot metadata warming and guarded replay writes. After same-input
+Fly qualification, flow bbcfa61e-2d95-4cf6-9d83-37c1dd088b67 performed the cached
+restart, semantic/PDS checks and conditional routing promotion. It completed
+at 17:34 UTC. Startup Machine 8e3d79b70dd748 serves build b1793109259-2b36-px05
+with image d4c3111e / native source 62266a3. Refresh Machine 801539a6551778 remains
+healthy for rollback. Both use two shared CPUs / 1 GiB and independent disks.
+
+The isolated 5,040-response candidate had no mismatches or failures: cold p99
+33.5 ms versus baseline 4.35 seconds; mixed p99 25.3 ms with 40 writer batches.
+Mixed writes fell 34%, but reads rose from 9.9 MB to 141 MB and CPU rose 10%.
+Total measured read/write bytes fell 29%. These are current-input measurements,
+not aged-overlay or universal production guarantees. Live smoke and ranking
+acceptance passed. Routed health and successful sync spans are present for the
+serving slot. The e8c21659 transport is unchanged while public latency is measured.
+See [the release evidence](evals/perf-goal-20261027/release/overlay-pread-live.json)
+and [the performance record](evals/perf-goal-20261027/plan.md).

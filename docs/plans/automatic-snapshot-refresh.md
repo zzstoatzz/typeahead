@@ -1,5 +1,15 @@
 # Automatic isolated snapshot refresh
 
+Current readback October 27, 17:43 UTC: `typeahead-startup-20261024` / Machine
+`8e3d79b70dd748` serves build `b1793109259-2b36-px05`, with performance image
+`d4c3111e` / native `62266a3`. The guarded resume completed at 17:34 UTC after
+cached restart and public verification. `typeahead-search-refresh` / Machine
+`801539a6551778`, build `b1793081565-0228-px05`, remains healthy for rollback.
+Both stay at two shared CPUs / 1 GiB with independent 20 GB disks. Smoke,
+ranking acceptance, routed health telemetry and successful sync telemetry pass.
+See the [release readback](../evals/perf-goal-20261027/release/overlay-pread-live.json).
+The dated inventory below is historical. The builder and schedule are unchanged.
+
 Readback October 27, 15:50 UTC: B (`typeahead-search-refresh`, Machine
 `801539a6551778`, build `b1793081565-0228-px05`) remains healthy and serving.
 A subsequent publisher replaced the former inactive A and left a newer prepared

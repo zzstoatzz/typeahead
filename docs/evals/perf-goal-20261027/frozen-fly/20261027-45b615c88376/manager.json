@@ -7,7 +7,7 @@
   "source_machine": "8e3d79b70dd748",
   "disk_budget_bytes": 21474836480,
   "deadline_seconds": 5100,
-  "phase": "private-trial-running",
+  "phase": "retired-private-resources",
   "protected": {
     "id": "8e3d79b70dd748",
     "instance_id": "01M5YZ6S1N8KM6WNHXX213J7E7",
@@ -62,8 +62,15 @@
   "machine_id": "28699d2fd33708",
   "machine_state": "created",
   "status": {
-    "phase": "starting",
+    "phase": "results-ready",
+    "bytes": 900845,
+    "sha256": "b18043a5a3164f6740b96e0cc530b1baf5f4e6ccdb5937057a98346fe0eedcde",
+    "run_id": "20261027-45b615c88376",
     "installation": "installed",
-    "measurement": "baseline-warm"
-  }
+    "measurement": "completed-offline-profile"
+  },
+  "evidence_bytes": 900845,
+  "evidence_sha256": "b18043a5a3164f6740b96e0cc530b1baf5f4e6ccdb5937057a98346fe0eedcde",
+  "volume_retirement_state": "pending_destroy",
+  "retired": true
 }

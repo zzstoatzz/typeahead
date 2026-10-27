@@ -61,23 +61,27 @@ query’s missing `COLLATE NOCASE`, which timed out during isolated replay.
 
 The active [safe performance goal](docs/evals/perf-goal-20261027/plan.md) targets
 warm mixed-workload native p95 ≤50 ms / p99 ≤100 ms at two CPUs / 1 GiB, with
-unchanged search outcomes and failure-inclusive accounting. These are acceptance
-targets, not deployed guarantees. Corpus qualification and rollout remain pending.
+unchanged search outcomes and failure-inclusive accounting. The October 27 native
+release passed isolated qualification and is live on the managed startup slot;
+public latency verification remains pending. These targets are not universal
+production latency guarantees.
 
 The [October 27 system-health audit](docs/evals/system-health-20261027/README.md)
 identifies storage wait and repeated overlay writes as efficiency targets.
-Bounded metadata warming and ordinary SQLite overlay page reads are under
-isolated cold-start qualification, not deployed. The overlay change reduced
-three cold probes from 534–799 ms to 29–43 ms with identical responses; full
-mixed-load qualification remains pending. Guarded replay writes and finer
-search/sync phase timings are tested locally
-and in an isolated archived-corpus comparison, not deployed; the live configuration remains two CPUs / 1 GiB. A separate transport
+Bounded metadata warming, ordinary SQLite overlay page reads, guarded replay
+writes and finer search/sync timings are live as of October 27, 17:34 UTC.
+On an independent Fly copy of the full snapshot and actual overlay, all 5,040
+candidate responses matched: cold p99 fell from 4.35 seconds to 33.5 ms, and
+mixed search/sync p99 was 25.3 ms. Both managed backends remain at two shared
+CPUs / 1 GiB; the previous backend is healthy and retained for rollback. See
+the [release readback](docs/evals/perf-goal-20261027/release/overlay-pread-live.json).
+A separate, unshipped transport
 candidate overlaps route validation with read-only origin work and can reuse
 advisory hints across isolates through the Cache API. Limited 10% and 50%
 observations passed. A completed full-traffic cohort measured 191 ms uncached mean
 versus 227 ms beforehand, but missed the 185 ms qualification milestone and
 restored the retained transport. Other attempts rolled back after observer
-disconnects and a smoke `/stats` timeout. Completed rollout remains unqualified;
+disconnects and a smoke `/stats` timeout. That transport rollout remains unqualified;
 retained e8c21659 remains the transport rollback target. Dated traffic state
 is recorded in the qualification plan.
 
