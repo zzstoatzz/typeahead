@@ -84,3 +84,35 @@ The first Docker push failed before publication because its stored registry
 credential could not resolve this app repository. Normal Fly Docker
 authentication was refreshed before retrying the identical tag; no runtime
 deployment or production credential was changed.
+
+### First run stopped by its guard
+
+Run 20261027-26af11250a09 stopped during reference capture because its serving-
+Machine read received HTTP 403. It produced no qualification result. The
+Machine and independent volume were retired and its app token revoked. Fly's
+`auth token --help` explicitly warns that the current CLI token may expire
+quickly. The retry uses a named read-only personal-organization token with the
+same 90-minute lifetime solely for fixed serving-Machine identity reads; the
+app-scoped token still owns trial mutations. Both named credentials are revoked
+on exit. This replaces the expiring CLI-token capture, not any data/resource
+guard or acceptance criterion.
+
+### Complete uncached-attempt accounting — local, not deployed
+
+The public handler now schedules the latency counter once in a finally block
+around its entire cache-miss path, including backend failure, scope-acknowledgment
+failure and SQL fallback failure. A request that sanitizes to empty is also
+counted as an uncached answer. Cache hits retain their separate counter; request
+validation and emergency proxy behavior are unchanged. The legacy HTTP-200 empty
+error response is preserved and still explicitly logged as backend_error, so
+HTTP success alone cannot qualify it. Successful actor/ranking/cache behavior
+is unchanged. Future public mean gates must include these failed attempts;
+older counters omit them and remain labeled with that limitation.
+
+`node scripts/snapshot_refresh/test_search_accounting.mjs` passes with real
+workerd, Cache API, SQLite/D1 and a loopback HTTP origin. It checks the normalized
+empty answer, real HTTP-500 origin wait retained in total_ms, uncached error
+recovery, cache-hit separation, fail-closed PDS acknowledgment and an actual
+SQLite fallback error counted once. Fixture subprocesses, server and temporary
+files are retired in finally. The existing 104 Worker tests, typecheck, lint
+and upload dry run also pass. This is not yet a production measurement.

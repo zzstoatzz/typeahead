@@ -89,7 +89,8 @@ The later proof-reuse trial restored retained transport 40a014e4 at 20:37 UTC.
 Its fixed window recorded a 318.46 ms public mean and two unreconciled answers;
 the performance goal remains open. Read-only Fly and native timings now identify
 storage wait and commit interference during sync. A larger bounded immutable-page
-cache is locally tested, not deployed. See [the current follow-up](docs/evals/perf-goal-20261027/storage-followup/README.md).
+cache is locally tested, not deployed. A separate local accounting fix retains
+failed uncached-attempt durations and is not yet live. See [the current follow-up](docs/evals/perf-goal-20261027/storage-followup/README.md).
 The proof candidate and failed qualification evidence remain in
 [the experiment record](docs/evals/perf-goal-20261027/route-proof/README.md).
 

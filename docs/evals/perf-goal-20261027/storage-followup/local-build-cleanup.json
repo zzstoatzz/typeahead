@@ -1,0 +1,12 @@
+{
+  "owner": "typeahead-perf-goal",
+  "scope": "local ELF pair and image context after immutable image publication",
+  "paths_removed": [
+    "/tmp/typeahead-cache512-pair-20261027",
+    "/tmp/typeahead-cache512-image-20261027"
+  ],
+  "free_before": 24911843328,
+  "free_after": 24962318336,
+  "free_delta": 50475008,
+  "corpus_present": false
+}

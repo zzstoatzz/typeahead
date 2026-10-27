@@ -1,0 +1,5 @@
+{"event":"search_response_timing","outcome":"backend_error","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"ORD","search_ms":39,"cache_ms":3}
+{"event":"search_backend_unreachable","term":"fixture","error":"backend_500"}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"ORD","search_ms":29,"cache_ms":0,"backend_headers_ms":29,"backend_ms":29,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_fallback_timeout","term":"fallback","error":"D1_ERROR: no such table: actors: SQLITE_ERROR"}
+PASS: real workerd + Cache API + SQLite/D1 + HTTP origin; sanitized empty, backend error wait, scope failure, SQL fallback failure, recovery and cache hit accounting

@@ -18,7 +18,8 @@ class Fork(fm.Manager):
         self.report={'run_id':run,'image':image,'goal_qualified':False,'events':[],'source_volume':SOURCE_VOLUME,'source_machine':fm.PROTECTED,'disk_budget_bytes':20*1024**3,'deadline_seconds':5100}
         self.api_origin='https://api.machines.dev'; self.test=False
         self.serving=None
-        self.guard_token=subprocess.check_output(['fly','auth','token','--quiet'],text=True).strip()
+        self.guard_token=None
+        self.guard_token_name='typeahead-perf-read-'+run
         self.token_name='typeahead-perf-fork-'+(sys.argv[2] if len(sys.argv)>2 else run)
         result=json.loads(subprocess.check_output(['fly','tokens','create','deploy','-a',fm.APP,'--expiry','90m','--name',self.token_name,'--json'],text=True))
         self.token=result.get('token') if isinstance(result,dict) else result
@@ -35,6 +36,10 @@ class Fork(fm.Manager):
     def guard(self,deadline=True):
         route=self.read('GET','https://typeahead-search-transport.n8-3e9.workers.dev/route',authorized=False)
         if route!=fm.EXPECTED_ROUTE: raise RuntimeError('production route changed')
+        if self.guard_token is None:
+            credential=json.loads(subprocess.check_output(['fly','tokens','create','readonly','--org','personal','--expiry','90m','--name',self.guard_token_name,'--json'],text=True))
+            self.guard_token=credential.get('token') if isinstance(credential,dict) else credential
+            if not isinstance(self.guard_token,str) or not self.guard_token: raise RuntimeError('invalid guard credential')
         serving=self.identity(self.read('GET',self.api_origin+'/v1/apps/typeahead-startup-20261024/machines/8e3d79b70dd748',serving_guard=True))
         if self.serving is not None and serving!=self.serving: raise RuntimeError('serving Machine changed')
         if serving['instance_id']!='01M5Z6NJ6RNKFMHR9FS8P0MBVN' or serving['state']!='started': raise RuntimeError('serving identity differs from preflight')
@@ -88,7 +93,14 @@ if __name__=='__main__':
     try:
         manager.resume(sys.argv[2]) if len(sys.argv)>2 else manager.run()
     finally:
-        rows=subprocess.check_output(['fly','tokens','list','-a',fm.APP,'--scope','app'],text=True).splitlines()
-        matches=[row.split()[0] for row in rows if manager.token_name in row.split()]
-        if len(matches)==1: subprocess.run(['fly','tokens','revoke',matches[0]],check=True,stdout=subprocess.DEVNULL)
-        elif len(matches)>1: raise RuntimeError('ambiguous scoped token retirement')
+        errors=[]
+        for scope,name,args in [('app',manager.token_name,['-a',fm.APP,'--scope','app']),('org',manager.guard_token_name,['--org','personal','--scope','org'])]:
+            try:
+                rows=subprocess.check_output(['fly','tokens','list',*args],text=True).splitlines()
+                matches=[row.split()[0] for row in rows if name in row.split()]
+                if len(matches)==1: subprocess.run(['fly','tokens','revoke',matches[0]],check=True,stdout=subprocess.DEVNULL)
+                elif len(matches)>1: raise RuntimeError('ambiguous '+scope+' token retirement')
+            except Exception as error: errors.append(scope+': '+str(error))
+        manager.report['credential_retirement_errors']=errors
+        manager.save('retired-private-resources' if manager.report.get('retired') else 'credential-cleanup-complete')
+        if errors: raise RuntimeError('; '.join(errors))
