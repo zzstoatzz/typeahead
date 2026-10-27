@@ -240,3 +240,52 @@ route-diagnostic.json records four uncached /route reads and paired guard-only
 and network variation, not a directly instrumented R2 span. The source currently
 awaits the route read before beginning the origin fetch. This motivates the
 separate local transport overlap candidate; it does not prove its live gain.
+
+## Transport overlap candidate — local tested, not deployed
+
+Only GET /search can begin an origin read using a route validated within the
+last 60 seconds. It still resolves the route under the unchanged one-second
+metadata cache policy before returning any hinted bytes. Both origin and build
+identity must match. Otherwise it cancels/discards the hinted response and reads
+the selected backend. A failed route read returns SearchRouteUnavailable and
+disables further hints until route validation recovers. No stale-response
+fallback is introduced. An unchanged route uses one origin request; a changed
+route can cause one canceled extra GET. The origin deadline remains three seconds.
+Admin writes, health, readiness and diagnostic routing retain their existing paths.
+
+The transport emits Server-Timing for route validation, origin response headers
+and selection mode (serial, overlap or reselected). It logs the same phase data
+for one in ten calls and every error, with sample_rate, without query strings or
+client identifiers. The durations overlap and must not be added together;
+total_headers_ms is the elapsed header deadline measurement, not body completion. These fields are on the
+transport response; the public Worker currently constructs its own timing header.
+The public API bodies, aliases, PDS acknowledgment, cache TTL and failure contract
+are unchanged. Public error masking remains open RCA work.
+
+102 Bun tests, TypeScript checking and lint pass. A real HTTP fixture with
+120 ms control latency and 160 ms origin latency verifies at least 60 ms saved
+by overlap while preserving complete responses. Other tests hold a completed
+hinted body until validation, cancel old in-flight requests, discard already
+received bodies on origin/build change, preserve scope errors and exercise a
+real refused TCP connection. These imposed fixture delays do not predict live gain.
+
+A separate actual workerd runtime test uses local R2 and real loopback HTTP
+origins. It checks the unchanged one-second cache window, diagnostic bypass,
+route changes, cancellation, malformed routing, suppression of hints after
+validation failure, PDS acknowledgment, admin authorization forwarding and routed
+health markers. A second workerd target directly fetches a closed loopback port
+and returns explicit SearchBackendUnavailable. Its first attempt is retained:
+the original fixture gateway converted a refused connection to an HTTP500,
+so expecting a network rejection at that boundary was incorrect. The corrected
+gateway explicitly returns HTTP502 and verifies HTTP error pass-through; the
+separate direct workerd check establishes actual network rejection behavior.
+All test servers, runtimes and scratch entry points are removed on exit.
+
+Deployment preparation retains the previous transport version
+`e8c21659-0b2c-4cec-beb4-86b4ecf91191` from the latest deployment dated
+October 26, 18:41 UTC. Deployment lists are chronological: choose by created_on,
+not the first entry. A candidate version upload does not route traffic.
+Any eventual gradual rollout must preserve this version, run the smoke gate,
+watch actual failure events rather than HTTP200 alone, and stop or roll back on
+contract/freshness regressions. Do not claim the public mean target from these
+fixtures or the earlier native/cloud measurements.

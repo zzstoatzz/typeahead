@@ -716,7 +716,7 @@ data with missing/mismatched PDS readiness is rejected rather than declared read
 
 The client refuses unmarked or non-loopback targets, captures complete response
 hashes, records failed attempts and offered-load queueing, and requires at least
-1,000 search attempts before a percentile qualification can pass. Six real HTTP /
+1,000 search attempts before a percentile qualification can pass. Eight real HTTP /
 native-fixture tests passed. Fixture timings do not qualify corpus capacity.
 Production and the active automatic refresh were not changed.
 
@@ -726,3 +726,9 @@ guarded writes cut measured process writes by 30% and SQLite mutations by 50%;
 CPU increased 3%, and mixed-search p99 stayed about 16 ms in both arms. This is
 cloud SSD evidence with a small overlay, not a Fly latency guarantee or deployed
 change. Payloads and evaluation processes were retired.
+
+The [transport overlap candidate](evals/perf-goal-20261027/plan.md#transport-overlap-candidate--local-tested-not-deployed)
+is separately local tested and undeployed. It preserves route validation before
+response selection and the one-second metadata TTL. Existing transport version
+`e8c21659-0b2c-4cec-beb4-86b4ecf91191` is the verified rollback target; no R2
+route, Fly Machine or native image was changed for these Worker fixture tests.

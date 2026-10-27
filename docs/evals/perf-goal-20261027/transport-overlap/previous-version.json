@@ -1,0 +1,21 @@
+{
+  "id": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+  "number": 7,
+  "metadata": {
+    "created_on": "2026-10-26T18:41:29.748992Z",
+    "source": "wrangler",
+    "author_id": "f19318f89143934c2a962a1b191879ef",
+    "author_email": "n8@zzstoatzz.io",
+    "has_preview": true
+  },
+  "annotations": {
+    "workers/triggered_by": "version_upload"
+  },
+  "binding_summary": [
+    {
+      "name": "SEARCH_CONTROL",
+      "type": "r2_bucket",
+      "bucket_name": "typeahead-index"
+    }
+  ]
+}

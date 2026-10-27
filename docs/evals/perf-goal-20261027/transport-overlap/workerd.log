@@ -1,0 +1,6 @@
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"serial","route_ms":5,"origin_headers_ms":0,"total_headers_ms":5,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"overlap","route_ms":2,"origin_headers_ms":2,"total_headers_ms":2,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"serial","route_ms":1,"origin_headers_ms":0,"total_headers_ms":1,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":502,"mode":"overlap","route_ms":0,"origin_headers_ms":2,"total_headers_ms":2,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"backend_unavailable","status":503,"mode":"overlap","route_ms":0,"origin_headers_ms":0,"total_headers_ms":0,"sample_rate":1}
+PASS: real workerd + local R2 + real HTTP origins; cache window, route changes, cancellation, errors, PDS acknowledgment, admin auth and health forwarding

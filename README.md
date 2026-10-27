@@ -67,7 +67,9 @@ targets, not deployed guarantees. Corpus qualification and rollout remain pendin
 The [October 27 system-health audit](docs/evals/system-health-20261027/README.md)
 identifies storage wait and repeated overlay writes as efficiency targets.
 Guarded replay writes and finer search/sync phase timings are tested locally
-and in an isolated archived-corpus comparison, not deployed; the live configuration remains two CPUs / 1 GiB.
+and in an isolated archived-corpus comparison, not deployed; the live configuration remains two CPUs / 1 GiB. A separate local transport
+candidate overlaps route validation with read-only origin work; its live gain
+and rollout remain unqualified.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

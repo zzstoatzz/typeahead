@@ -23,13 +23,25 @@ export function allowedRoute(request: Request) {
   return request.method === "POST" && path === "/admin/refresh";
 }
 
-let cachedRoute: { route: ReturnType<typeof parseRoute>; expiresAt: number } | undefined;
+let cachedRoute: { route: ReturnType<typeof parseRoute>; expiresAt: number; hintExpiresAt: number } | undefined;
+
+export function speculativeRoute() {
+  if (cachedRoute && Date.now() < cachedRoute.hintExpiresAt) return cachedRoute.route;
+  return undefined;
+}
 
 export async function readRoute(bucket: R2Bucket, cache: boolean) {
   if (cache && cachedRoute && Date.now() < cachedRoute.expiresAt) return cachedRoute.route;
-  const object = await bucket.get(ROUTE_KEY);
-  if (object === null || object.size > 16384) throw new Error("Missing search route");
-  const route = parseRoute(await object.json());
-  cachedRoute = { route, expiresAt: Date.now() + 1000 };
-  return route;
+  const before = cachedRoute;
+  try {
+    const object = await bucket.get(ROUTE_KEY);
+    if (object === null || object.size > 16384) throw new Error("Missing search route");
+    const route = parseRoute(await object.json());
+    const validatedAt = Date.now();
+    cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
+    return route;
+  } catch (error) {
+    if (cachedRoute && cachedRoute === before) cachedRoute.hintExpiresAt = 0;
+    throw error;
+  }
 }

@@ -1,0 +1,163 @@
+bun test v1.4.0 (34cbb9a40)
+
+src/utils.test.ts:
+(pass) computeAuthorityScoreBreakdown matches the legacy total [0.21ms]
+(pass) computeAuthorityScoreBreakdown penalizes very fresh accounts [0.02ms]
+(pass) computeAuthorityScoreBreakdown floors fresh-account penalties at zero [0.01ms]
+(pass) pdsOrigin accepts a plain https origin [0.08ms]
+(pass) pdsOrigin rejects non-https, credentials, paths, and single-label hosts [0.07ms]
+
+src/index.test.ts:
+(pass) records the real status of a served response [0.74ms]
+(pass) an uncaught throw is counted as 500 and still propagates [0.11ms]
+(pass) OPTIONS preflights are answered without being counted [0.05ms]
+{"event":"search_backend_unreachable","term":"nate","error":"connect ECONNREFUSED"}
+(pass) an unreachable engine answers empty without touching Turso [1.18ms]
+
+src/validated-search.test.ts:
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"serial","route_ms":122,"origin_headers_ms":163,"total_headers_ms":285,"sample_rate":10}
+(pass) real HTTP control and origin reads overlap while complete responses stay identical [450.21ms]
+(pass) a completed hinted response waits for fresh route validation [123.75ms]
+(pass) route change discards hinted bytes and cancels the old HTTP request: https://typeahead-search-refresh.fly.dev [185.16ms]
+(pass) route change discards hinted bytes and cancels the old HTTP request: https://typeahead-startup-20261024.fly.dev [185.18ms]
+(pass) a completed response from the previous origin is discarded after validation [90.44ms]
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"overlap","route_ms":28,"origin_headers_ms":27,"total_headers_ms":28,"sample_rate":1}
+(pass) route failure fails closed and cancels a slow hinted request [41.35ms]
+{"event":"search_transport_timing","outcome":"http","status":503,"mode":"overlap","route_ms":12,"origin_headers_ms":12,"total_headers_ms":12,"sample_rate":1}
+(pass) an HTTP scope error passes through unchanged [13.77ms]
+{"event":"search_transport_timing","outcome":"backend_unavailable","status":503,"mode":"overlap","route_ms":13,"origin_headers_ms":0,"total_headers_ms":13,"sample_rate":1}
+(pass) a real refused origin connection becomes explicit backend unavailability [13.35ms]
+
+src/metrics.test.ts:
+(pass) endpointLabel: known routes get stable labels, everything else is 'other' [0.13ms]
+(pass) trafficDomain: X-Client > Origin > Referer(self→homepage) > unknown; non-hostnames rejected [0.18ms]
+(pass) recordRequest: one UPSERT keyed by the full (bucket, domain, endpoint, status) [0.30ms]
+
+src/db.test.ts:
+(pass) getDb hands every caller its own client [0.10ms]
+
+src/cron.test.ts:
+(pass) isProfileIdentical > true when every field matches [0.92ms]
+(pass) isProfileIdentical > avatar change forces a write (the pckt.blog bug) [0.03ms]
+(pass) isProfileIdentical > display_name change forces a write [0.02ms]
+(pass) isProfileIdentical > follower count change forces a write (popularity drift) [0.02ms]
+(pass) isProfileIdentical > a different profile source forces a write even when every field matches [0.03ms]
+{"event":"moderation_refresh","checked":0,"changed":1,"skipped":0,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":1}
+(pass) refreshModeration takes counts from the Blacksky appview on a Bluesky takedown > takedown → blacksky profile → UPDATE with counts and profile_source='blacksky' [2.40ms]
+{"event":"moderation_refresh","checked":1,"changed":1,"skipped":0,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":0}
+(pass) refreshModeration advances the freshness cursor > CHANGED profile: cursor advances for the actor [0.45ms]
+{"event":"moderation_refresh","checked":1,"changed":0,"skipped":1,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":1}
+(pass) refreshModeration advances the freshness cursor > UNCHANGED profile: cursor STILL advances (the starvation bug) [0.17ms]
+{"event":"moderation_refresh","status":"empty"}
+(pass) refreshModeration quality-walk cursor > keyset cursor is inlined as literals, not bound params (Turso plan degradation) [0.17ms]
+{"event":"moderation_refresh","status":"empty"}
+(pass) refreshModeration quality-walk cursor > a poisoned cursor cannot inject SQL — non-numeric values are dropped [0.09ms]
+{"event":"moderation_refresh","status":"empty"}
+(pass) refreshModeration quality-walk cursor > short walk page wraps the cursor (pool exhausted) [0.08ms]
+
+src/moderation.test.ts:
+(pass) isDomainBlocked: apex + subdomains match, look-alikes do not [0.05ms]
+(pass) resolveHidden: precedence — show override is the final word [0.06ms]
+
+src/labelers.test.ts:
+(pass) applyLabelHistory > a negation withdraws the earlier label of the same val [0.43ms]
+(pass) applyLabelHistory > order in the response does not matter, the latest record wins [0.03ms]
+(pass) applyLabelHistory > an expired label is not applied [0.03ms]
+(pass) percentileFromQuantiles > finds the band a score falls in [0.03ms]
+(pass) percentileFromQuantiles > no quantiles or no positive score means no percentile [0.01ms]
+(pass) labelers.json > every entry has a resolvable endpoint and the appview operators are pinned [0.05ms]
+
+src/search-transport.test.ts:
+(pass) routing records accept only managed backend origins and exact build identities [0.75ms]
+(pass) router exposes only existing backend read paths and authenticated refresh path [0.09ms]
+
+src/pages/reputation.test.ts:
+(pass) reputation page script > every inline script parses [0.30ms]
+(pass) reputation page script > the deep-link load runs after the last top-level declaration [0.10ms]
+
+src/pages/service-description.test.ts:
+(pass) service messaging > llms.txt carries no experimental disclaimer [0.03ms]
+(pass) service messaging > the homepage no longer carries the experimental badge [0.16ms]
+
+src/pages/stats.test.ts:
+(pass) traffic source chart > the source section has one chart and one app list, without a table [0.19ms]
+(pass) domain escaping > no raw script tag survives into the document [0.07ms]
+(pass) domain escaping > the JSON payload cannot close the script element [0.04ms]
+(pass) domain escaping > the quote cannot break out of the data-domain attribute [0.04ms]
+(pass) link previews > a shared comparison names what is being compared [0.21ms]
+(pass) link previews > the card image is handed the same params as the page [0.12ms]
+(pass) link previews > apps with no traffic in the window are dropped, not previewed as zero [0.11ms]
+(pass) link previews > unfiltered falls back to describing the service [0.09ms]
+(pass) request slices > the same volume is summed down to endpoint and status-class maps [0.02ms]
+(pass) request slices > the view switch is rendered with the source view active [0.08ms]
+(pass) stylesheet has no orphaned declarations [0.69ms]
+(pass) everything else > the tail beyond the top 12 is drawn as one slice and named in the legend [0.16ms]
+(pass) everything else > percentages divide by the whole table, not the rows fetched [0.11ms]
+(pass) everything else > no rest slice when the ring already holds everything [0.16ms]
+(pass) the long tail > every source and exact count is available to recursive navigation [3.41ms]
+
+src/handlers/ingest.test.ts:
+{"event":"ingest_done","count":3,"statements":5,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+(pass) counts ALL new actors — bare-DID AND handle-bearing — not just bare [0.65ms]
+{"event":"ingest_done","count":2,"statements":3,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+(pass) counts zero new when all actors already exist [0.09ms]
+{"event":"ingest_done","count":1,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+{"event":"ingest_done","count":1,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+{"event":"ingest_done","count":1,"statements":1,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+(pass) a new handle for an existing actor replaces the old one; a bare DID keeps it [2.09ms]
+
+src/handlers/freshness.test.ts:
+(pass) freshness > a healthy pipeline is not stale [0.30ms]
+(pass) freshness > catches the 2026-07-28 failure: replica far behind, everything else green [0.05ms]
+(pass) freshness > normal sync jitter does not trip it [0.03ms]
+(pass) freshness > a stalled snapshot rebuild is stale even with a healthy replica [0.05ms]
+(pass) freshness > legacy and compact snapshots retain age alerts through real HTTP [2.13ms]
+(pass) freshness > a serving path that cannot find the probe handle is not ok [0.07ms]
+(pass) freshness > an unreachable backend is reported, not thrown [0.07ms]
+{"event":"freshness_notify","ok":true,"status":200,"body":"{}"}
+(pass) freshness notification > fires when it goes stale [0.47ms]
+{"event":"freshness_notify","ok":true,"status":200,"body":"{}"}
+(pass) freshness notification > fires once on recovery, not on every healthy run [0.09ms]
+(pass) freshness notification > does not repeat while it stays broken [0.03ms]
+(pass) freshness notification > silent when no webhook is configured [0.03ms]
+
+src/handlers/admin.test.ts:
+(pass) extractProfileFields: populated profile writes counts + qualityScore [0.05ms]
+(pass) extractProfileFields: description + banner CID come through [0.02ms]
+(pass) extractProfileFields: countless profile → qualityScore 0 (no age-bonus clobber) [0.01ms]
+(pass) extractProfileFields: genuine zero-follower profile still scores (counts present) [0.01ms]
+(pass) extractProfileFields: label-hidden profile → hidden=1 [0.01ms]
+(pass) extractProfileFields: domain-blocked profile (no override) → hidden=1
+(pass) extractProfileFields: per-DID show override beats domain-block + labels [0.01ms]
+{"event":"auth_failure","endpoint":"/admin/mod-override","ip":"unknown"}
+(pass) handleEnrichProfiles: missing/wrong Bearer → 401 [0.14ms]
+(pass) handleEnrichProfiles: body.dids not an array → 400 [0.07ms]
+(pass) handleEnrichProfiles: > 100 DIDs → 400 (hard server-side cap) [0.10ms]
+(pass) handleEnrichProfiles: invalid DID shape → 400 [0.05ms]
+(pass) handleEnrichProfiles: empty array → 200 with zeros [0.05ms]
+
+src/handlers/search.test.ts:
+(pass) tursoFallbackOnEmpty > off by default: the engine's empty answer is final at every limit [0.01ms]
+(pass) tursoFallbackOnEmpty > when enabled, interactive limits keep the second look
+(pass) tursoFallbackOnEmpty > when enabled, bulk limits still take the engine's answer as final
+(pass) PDS scope is an exact normalized hostname, never a handle suffix or URL path [0.16ms]
+
+src/handlers/profiles.test.ts:
+(pass) cache key is independent of actor order [0.04ms]
+(pass) cache key lowercases handles but preserves DID case [0.01ms]
+(pass) cache key dedupes repeated actors
+(pass) mixed dids and handles produce a stable key regardless of order
+(pass) profileView renders the profile-card fields [0.11ms]
+(pass) profileView omits counts until the enrich path has seen the actor [0.03ms]
+(pass) profileView keeps known counts while a re-check is queued [0.01ms]
+(pass) profileView omits empty description and banner [0.01ms]
+
+src/handlers/og.test.ts:
+(pass) compact: millions to one decimal, thousands rounded, small numbers exact [0.15ms]
+(pass) overviewFigures: latest snapshot, every search ever, every app ever [0.08ms]
+(pass) the default card carries the compact figures and does not define itself by bluesky [0.13ms]
+
+ 102 pass
+ 0 fail
+ 650 expect() calls
+Ran 102 tests across 18 files. [1176.00ms]

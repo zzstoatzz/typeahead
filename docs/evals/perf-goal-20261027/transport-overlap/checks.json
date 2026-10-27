@@ -1,0 +1,76 @@
+{
+  "checked_at": "2026-10-27T09:25:56.380629+00:00",
+  "production_requests_generated": 0,
+  "checks": [
+    {
+      "name": "typecheck",
+      "command": [
+        "bunx",
+        "tsc",
+        "--noEmit"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "lint",
+      "command": [
+        "bunx",
+        "oxlint",
+        "--deny-warnings",
+        "src"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "bun-tests",
+      "command": [
+        "bun",
+        "test"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "bundle",
+      "command": [
+        "bun",
+        "build",
+        "src/search-transport.ts",
+        "--target",
+        "browser",
+        "--outfile",
+        "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-transport-check-g_2_wwzc/transport.mjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "workerd",
+      "command": [
+        "node",
+        "scripts/snapshot_refresh/test_transport_isolated.mjs",
+        "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-transport-check-g_2_wwzc/transport.mjs"
+      ],
+      "exit_code": 0
+    },
+    {
+      "name": "dry-run",
+      "command": [
+        "bunx",
+        "wrangler",
+        "deploy",
+        "-c",
+        "wrangler.search-transport.jsonc",
+        "--dry-run"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "source_sha256": {
+    "src/validated-search.ts": "412762e251e6a52c8bb16ca119f7fc10c467305ffd915d0d28dd2a87725e0452",
+    "src/search-route.ts": "f591e9007ae6525caaf4e057f491291540d3e133ff433f7abf5a4e6895546164",
+    "src/search-transport.ts": "2eccf3b2ded7eb60f6c60d2d59183544f08ea2563c1ce031cfc1da5775afd170",
+    "src/validated-search.test.ts": "b15876500a5123333d0760bc667e263784c8f234985b8b3cc152b90586347a10",
+    "src/search-transport.test.ts": "856f7cbbd7848692be5ab1108c3e9296b86405e8a78dc6768f7c4a6e61f45ab4",
+    "scripts/snapshot_refresh/test_transport_isolated.mjs": "88803468fddcbb2c632431d44969d6f75cceb227c7fb422541c384717f3ec9f3",
+    "wrangler.search-transport.jsonc": "30b41518084c3148b09bc6d0894f2406072bf22848c20b1bd01bd0b6c5b52b05"
+  }
+}

@@ -35,6 +35,11 @@ Cloudflare account administration token. The transport remains compatible with
 direct-origin configurations for emergency recovery. Public traffic now uses its
 stable URL, selecting the current qualified backend. Validated route metadata
 may be cached for one second; admin writes and diagnostic route reads bypass it.
+A local, undeployed [transport candidate](../evals/perf-goal-20261027/plan.md#transport-overlap-candidate--local-tested-not-deployed)
+overlaps read-only search with route validation while holding the response until
+selection is confirmed. It retains the one-second metadata TTL and may cancel
+one extra GET when a route changes. Admin and health routing stay on their
+existing paths; the R2 conditional promotion contract is unchanged.
 
 Before routing, require full artifact checksum/structural admission, current build
 and watermark, global/exact/CJK/PDS probes, replica lag under 600 seconds, and a
