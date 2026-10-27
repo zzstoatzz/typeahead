@@ -787,3 +787,49 @@ configuration, not a randomized causal estimate. The candidate sample is too
 small to qualify. Runtime errors remain zero in the provider readbacks so far;
 client disconnects remain explicitly recorded separately. Full-window and
 native qualification remain pending.
+
+
+### Publisher ownership change — 15:18 UTC
+
+The independent guard stopped run 2caf472a9943 when the protected rollback
+Machine was explicitly stopped and destroyed via the Fly API at 15:09 UTC.
+The private trial retired its own Machine and volume; no native latency phase
+completed. The serving Machine 801539a6551778 is unchanged and healthy.
+
+Read-only Prefect inspection identifies running publisher flow
+9770e846-b789-4d8c-9cd2-53069daa84d2 (started 13:50 UTC). It is preparing new build
+b1793109259-2b36-px05 on managed Machine 8e3d79b70dd748, using the existing b0492f07
+production image. Its preparation guest is four CPUs/1 GiB, with the controller's
+usual final-size qualification still pending. The performance task will not
+mutate the publisher's candidate, route, clock or controller. Native qualification
+must resume after this publisher is terminal and the new serving/rollback
+inventory has been verified. This is an ownership/state change, not evidence
+against the native optimization.
+
+A production-role image for the existing candidate is built but not deployed:
+[release manifest](release/native-image.json). Native source is identical to
+9b65d77c; no rejected cache experiment is included. The public qualification is
+independent of the aborted native trial and remains healthy on the unchanged
+serving build at the latest check.
+
+### Qualification using the publisher's admitted inactive snapshot
+
+At 15:50 UTC the publisher is terminal (failed its candidate latency budget),
+A is started at 2 shared CPUs / 1 GiB on 8e3d79b70dd748 with independent volume
+vol_v8eyqk61q9dy9gkv, and B remains the healthy serving route. The next bounded
+trial will fork only A's volume, never B's. Owner: this performance goal;
+scratch: /data/refresh on the new private volume; disk budget: 20 GiB with
+2 GiB reserve; deadline: 90 minutes; teardown: supervisor deletes only its
+owned private Machine and volume. Evidence is retained, corpus payload retired.
+
+The frozen input will use the actual recovered SQLite overlay, including
+moderation and tombstones. This avoids synthetic prefill and is evidence for
+current actual state, not a 50k/200k aged overlay claim. Neutral evaluators can
+now preserve feed row timestamps. The production executable is unaffected by
+this fixture support. README's unshipped status remains correct.
+
+The completed transport window 14:50–15:15 UTC contains 205 uncached searches
+at 190.95 ms mean and five cache hits. All 210 HTTP-200 answers reconcile.
+That is 15.9% lower than the preceding 227.01 ms cohort, but misses the
+predetermined 185 ms milestone. The guard restored e8c21659 after an analytics
+read timeout; neither this window nor the overall performance goal is qualified.

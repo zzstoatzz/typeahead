@@ -22,7 +22,7 @@ pub const Counters = struct {
 };
 
 pub const Writer = struct {
-    const Actor = struct { did: []const u8, blob_hex: []const u8 };
+    const Actor = struct { did: []const u8, blob_hex: []const u8, updated_at: ?i64 = null };
     const Entry = struct { row: sync.InlineRow, timestamp: i64 };
     const Mode = enum { replay, mixed };
 
@@ -55,7 +55,7 @@ pub const Writer = struct {
             const blob = try allocator.alloc(u8, actor.blob_hex.len / 2);
             _ = try std.fmt.hexToBytes(blob, actor.blob_hex);
             const value = try pack.unpackActor(blob);
-            entry.* = .{ .row = .{ .vals = @splat(""), .qs = value.quality_score }, .timestamp = watermark + 1 };
+            entry.* = .{ .row = .{ .vals = @splat(""), .qs = value.quality_score }, .timestamp = actor.updated_at orelse (watermark + 1) };
             entry.row.vals[sync.Col.did] = actor.did;
             entry.row.vals[sync.Col.handle] = value.handle;
             entry.row.vals[sync.Col.display_name] = value.display;

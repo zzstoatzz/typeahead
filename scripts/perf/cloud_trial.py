@@ -269,15 +269,18 @@ class Trial:
 
     def measure(self, manifest):
         feed = self.payload / 'feed.json'
-        self.save('bootstrap-admission-and-prefill')
-        overlay = self.payload / 'bootstrap.db'
-        child, base, nonce, _ = self.start_server('bootstrap', overlay, '0' * 64, self.payload / 'never-start')
-        self.report['bootstrap_metrics'] = self.metrics(child)
-        self.stop(child)
         frozen = self.payload / 'frozen-overlay.db'
-        with closing(sqlite3.connect('file:' + str(overlay) + '?mode=ro', uri=True)) as incoming, closing(sqlite3.connect(frozen)) as output:
-            incoming.backup(output)
-        self.retire_overlay(overlay)
+        if getattr(self.args, 'frozen_overlay', False):
+            if not frozen.is_file() or frozen.is_symlink(): raise ValueError('missing frozen private overlay')
+        else:
+            self.save('bootstrap-admission-and-prefill')
+            overlay = self.payload / 'bootstrap.db'
+            child, base, nonce, _ = self.start_server('bootstrap', overlay, '0' * 64, self.payload / 'never-start')
+            self.report['bootstrap_metrics'] = self.metrics(child)
+            self.stop(child)
+            with closing(sqlite3.connect('file:' + str(overlay) + '?mode=ro', uri=True)) as incoming, closing(sqlite3.connect(frozen)) as output:
+                incoming.backup(output)
+            self.retire_overlay(overlay)
         inputs = {'snapshot_sha256': manifest['sha256'], 'prefix_sha256': manifest['prefix_map']['sha256'],
                   'overlay_sha256': digest(frozen), 'feed_sha256': digest(feed),
                   'cases_sha256': digest(Path(self.args.cases)), 'captured_actors': getattr(self.args, 'actor_count', 5000),
