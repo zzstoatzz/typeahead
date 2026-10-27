@@ -1039,3 +1039,19 @@ errors. The disconnects remain explicit. All known experiment volumes are
 retired and unattached, no private Fly Machines remain, and all returned named
 temporary trial credentials are revoked (17:59 audit). These are one-time
 release checks; no recurring observer or automation was added.
+
+### Settled combined release result — public target unmet
+
+Read at 18:13 UTC, the predetermined 17:55–18:10 UTC window contains
+225 uncached searches averaging 197.462 ms and seven cache hits. All 232
+HTTP-200 answers reconcile, with zero HTTP errors. This is about 25% below
+the earlier 263 ms mean, but misses both the 185 ms milestone and 169 ms
+target. Comparisons across natural traffic windows are temporal, not randomized
+query/colo comparisons. The native targets are qualified and shipped; the public
+latency goal remains open. The working improvements remain live with rollback
+retained. Final provider analytics returned a rate-limit budget error; its
+receipt is preserved and no final provider-runtime count is inferred.
+
+Evidence: [settled counters](transport-overlap/native-plus-overlap-1755-1810.json)
+and [provider read](release/native-overlap-provider-final.json). README and
+operations were reviewed and updated against this result.

@@ -63,7 +63,7 @@ The active [safe performance goal](docs/evals/perf-goal-20261027/plan.md) target
 warm mixed-workload native p95 ≤50 ms / p99 ≤100 ms at two CPUs / 1 GiB, with
 unchanged search outcomes and failure-inclusive accounting. The October 27 native
 release passed isolated qualification and is live on the managed startup slot;
-public latency verification remains pending. These targets are not universal
+the settled public cohort averaged 197 ms, above the 169 ms goal. These targets are not universal
 production latency guarantees.
 
 The [October 27 system-health audit](docs/evals/system-health-20261027/README.md)
@@ -79,8 +79,11 @@ Transport version 40a014e4 is also live as of 17:51 UTC. It overlaps read-only
 origin work with authoritative route validation and shares advisory hints across
 isolates; the existing one-second routing TTL is unchanged. Smoke passed after
 deployment. Its earlier standalone cohort measured 191 ms versus 227 ms before
-it, but missed the 185 ms milestone. The combined release's natural-traffic
-measurement remains pending; e8c21659 is retained for transport rollback.
+it, but missed the 185 ms milestone. The combined release's 17:55–18:10 UTC cohort measured 225 uncached searches
+averaging 197.46 ms; all 232 HTTP-200 answers reconcile, with no HTTP errors.
+This is about 25% below the earlier 263 ms mean, but still misses both 185 ms
+and 169 ms targets. These temporal cohorts are not randomized comparisons.
+e8c21659 is retained for transport rollback.
 Dated traffic and qualification evidence is in the performance record.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)

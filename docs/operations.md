@@ -777,6 +777,10 @@ not aged-overlay or universal production guarantees. Live smoke and ranking
 acceptance passed. Routed health and successful sync spans are present for the
 serving slot. The native-only 17:40–17:45 UTC bucket measured 248.46 ms over 39 misses.
 Transport 40a014e4 was enabled at 17:51 UTC and passed smoke; the combined
-public latency window remains pending. e8c21659 remains available for rollback.
+17:55–18:10 UTC window measured 225 misses averaging 197.46 ms. All 232
+HTTP-200 answers reconcile, with no HTTP errors. The 185 ms milestone and
+169 ms target remain unmet; temporal cohorts do not establish a causal gain.
+The final provider analytics read was rate-limited, so no final provider-runtime
+error count is claimed. e8c21659 remains available for rollback.
 See [the release evidence](evals/perf-goal-20261027/release/overlay-pread-live.json)
 and [the performance record](evals/perf-goal-20261027/plan.md).

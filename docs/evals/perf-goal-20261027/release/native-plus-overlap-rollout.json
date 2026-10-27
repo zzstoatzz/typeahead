@@ -1,6 +1,6 @@
 {
   "at": "2026-10-27T17:51:03.537244+00:00",
-  "phase": "live-smoke-passed-public-latency-pending",
+  "phase": "live-smoke-passed-public-target-unmet",
   "before": {
     "id": "3045f389-1884-4e0b-8619-0dcdba0dabc3",
     "source": "wrangler",
@@ -20,7 +20,7 @@
   },
   "message": "Qualified native overlay release: enable validated route overlap 2026-10-27T17:51:03.536971+00:00",
   "native_build": "b1793109259-2b36-px05",
-  "efficacy_pending": true,
+  "efficacy_pending": false,
   "after": {
     "id": "0805c5d6-f4f2-412a-9980-325b63392ccc",
     "source": "wrangler",
@@ -40,5 +40,14 @@
   },
   "smoke": "passed",
   "natural_window_start": "2026-10-27T17:55:00Z",
-  "natural_window_end": "2026-10-27T18:10:00Z"
+  "natural_window_end": "2026-10-27T18:10:00Z",
+  "public_result": {
+    "misses": 225,
+    "mean_ms": 197.4622222222222,
+    "cache_hits": 7,
+    "http_200": 232,
+    "http_errors": 0,
+    "target_met": false,
+    "goal_remains_open": true
+  }
 }

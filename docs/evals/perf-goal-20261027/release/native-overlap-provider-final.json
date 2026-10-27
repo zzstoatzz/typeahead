@@ -1,0 +1,20 @@
+{
+  "at": "2026-10-27T18:14:28.304816+00:00",
+  "start": "2026-10-27T17:55:00Z",
+  "end": "2026-10-27T18:10:00Z",
+  "result": {
+    "status": 200,
+    "data": null,
+    "errors": [
+      {
+        "message": "Rate limiter budget depleted. Please try again after 5 minutes. Refer to this page for more details about rate limits: https://developers.cloudflare.com/analytics/graphql-api/limits/",
+        "path": null,
+        "extensions": {
+          "code": "budget",
+          "timestamp": "2026-10-27T18:14:28.265399503Z",
+          "ray_id": "a513ae38cf2bead8-SEA"
+        }
+      }
+    ]
+  }
+}
