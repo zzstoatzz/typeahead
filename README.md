@@ -66,8 +66,10 @@ targets, not deployed guarantees. Corpus qualification and rollout remain pendin
 
 The [October 27 system-health audit](docs/evals/system-health-20261027/README.md)
 identifies storage wait and repeated overlay writes as efficiency targets.
-A bounded metadata-prefault follow-up is locally tested for cold startup, not
-deployed; its Fly qualification is pending. Guarded replay writes and finer
+Bounded metadata warming and ordinary SQLite overlay page reads are under
+isolated cold-start qualification, not deployed. The overlay change reduced
+three cold probes from 534–799 ms to 29–43 ms with identical responses; full
+mixed-load qualification remains pending. Guarded replay writes and finer
 search/sync phase timings are tested locally
 and in an isolated archived-corpus comparison, not deployed; the live configuration remains two CPUs / 1 GiB. A separate transport
 candidate overlaps route validation with read-only origin work and can reuse

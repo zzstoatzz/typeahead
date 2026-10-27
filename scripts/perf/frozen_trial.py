@@ -18,8 +18,7 @@ from fly_trial import FlyTrial
 def diagnose(trial):
     trial.report['kind'] = 'private-fly-cold-phase-diagnostic'
     trial.report['diagnostics'] = []
-    for index, (variant, query) in enumerate([(v,q) for v in ['mmap', 'pread'] for q in ['nate', 'a', 'photographer']]):
-        trial.args.overlay_mmap_zero = variant == 'pread'
+    for index, query in enumerate(['nate', 'a', 'photographer']):
         overlay = trial.payload / 'diagnostic-overlay.db'
         shutil.copyfile(trial.payload / 'frozen-overlay.db', overlay)
         receipt = trial.evict_private(overlay)
@@ -27,7 +26,7 @@ def diagnose(trial):
         child, base, _, _ = trial.start_server('candidate', overlay, '0' * 64, trial.payload / 'never-start')
         before = trial.metrics(child)
         result, body = qualify.request(base, '/search?q=' + urllib.parse.quote(query) + '&limit=10', 10)
-        trial.report['diagnostics'].append({'variant': variant, 'query': query, 'pre_start_residency': receipt,
+        trial.report['diagnostics'].append({'variant': 'production-default', 'query': query, 'pre_start_residency': receipt,
             'http': result, 'body': json.loads(body), 'before': before, 'after': trial.metrics(child)})
         trial.stop(child)
         (trial.evidence / 'candidate-server.log').rename(trial.evidence / ('diagnostic-' + str(index) + '-server.log'))

@@ -345,6 +345,7 @@ fn applyReadPragmas(c: zqlite.Conn) void {
     _ = c.exec("PRAGMA query_only=ON", .{}) catch {};
     _ = c.exec("PRAGMA busy_timeout=1000", .{}) catch {};
     _ = c.exec("PRAGMA mmap_size=268435456", .{}) catch {}; // 256MB
+    _ = c.exec("PRAGMA main.mmap_size=0", .{}) catch {};
     _ = c.exec("PRAGMA cache_size=-20000", .{}) catch {}; // 20MB
 }
 

@@ -937,3 +937,28 @@ SQLite overlay lookup from base actor-page reads. It also compares the existing
 256 MiB SQLite main-database mmap with an evaluator-only `main.mmap_size=0`
 probe, holding snapshot, overlay and query constant. No production pragma is
 changed; this is a targeted I/O-amplification hypothesis, not a selected fix.
+
+### Confirmed overlay I/O bottleneck and selected change
+
+Short paired diagnostic 58bd21dbc764 isolated the remaining hydration cost to
+SQLite actor-overlay reads, not the flat actor file. With the existing mapping,
+`nate` spent 498 ms in overlay lookup and 29 ms in base reads; `a` spent
+613/30 ms; `photographer` 497/28 ms. Changing only the evaluator's main-database
+mapping limit to zero produced byte-identical HTTP-200 responses:
+
+| query | existing mmap ms | ordinary page reads ms | bytes read before / after |
+| --- | ---: | ---: | ---: |
+| nate | 536.87 | 33.29 | 13,029,376 / 978,944 |
+| a | 798.81 | 42.78 | 17,293,312 / 1,150,976 |
+| photographer | 534.14 | 28.60 | 12,967,936 / 978,944 |
+
+CPU also fell from 30–40 ms to 20 ms. The observed cause is amplified cold I/O
+through the SQLite overlay mapping; the exact kernel read-ahead behavior is an
+inference, not a traced syscall claim. SQLite documents `main.mmap_size=0` as
+disabling mapped I/O only for that schema ([pragma reference](https://sqlite.org/pragma.html#pragma_mmap_size)).
+
+The selected production change adds that one schema-specific pragma to reader
+configuration. The writer and attached immutable index retain their existing
+mapping limits. The temporary evaluator override is removed; fresh baseline and
+candidate ELFs exercise their real reader configuration. Full same-input cold,
+warm and concurrent-writer qualification is required before release.

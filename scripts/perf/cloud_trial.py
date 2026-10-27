@@ -177,8 +177,6 @@ class Trial:
             env.update(TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT='1', TYPEAHEAD_EVAL_PRIVATE_ROOT=str(self.payload))
         if name != 'bootstrap':
             env['TYPEAHEAD_EVAL_SKIP_PREFILL'] = '1'
-        if getattr(self.args, 'overlay_mmap_zero', False):
-            env['TYPEAHEAD_EVAL_OVERLAY_MMAP_ZERO'] = '1'
         executable = Path(self.args.bin_dir) / ('baseline' if name == 'bootstrap' else name)
         with (self.evidence / (name + '-server.log')).open('xb') as output:
             child = subprocess.Popen([str(executable)], env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)

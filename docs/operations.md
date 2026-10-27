@@ -757,3 +757,12 @@ qualification remains incomplete after observer disconnects and rollback.
 Admin/health routing, R2 promotion and
 native serving resources remain unchanged. The retained e8c21659 version is
 the rollback target for any further guarded rollout.
+
+### Overlay reader I/O follow-up — October 27, not deployed
+
+A local candidate disables SQLite mapping for reader connections' `main` overlay
+while retaining the existing writer and attached-index settings. In an isolated
+Fly diagnostic, identical cold searches fell from 534–799 ms to 29–43 ms and
+13–17 MB of reads to about 1 MB. This is diagnostic evidence, not a production
+latency guarantee; full mixed-load qualification and rollout remain pending.
+See [the performance record](evals/perf-goal-20261027/plan.md).
