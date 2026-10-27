@@ -907,3 +907,24 @@ reset and process startup. It uses the metadata-only candidate and the recovered
 actual overlay, then retires its payload and volume. Owner, root and budget remain
 the same: this goal, /data/refresh on an independent fork, 20 GiB / 90 minutes.
 No further optimization will be chosen before those phase costs are read.
+
+The rejected read-ahead trial completed with a substantial load regression:
+warm p99 19.39 seconds and mixed p99 102.38 seconds, including 553 failed mixed
+requests and only four writer batches. Those failures are retained in the
+880,545-byte archive (SHA256 b77eb5b9fc9803673ef49d7305d21801c354172ad4eda8d8d036a520e583cd64)
+under frozen-fly/20261027-a63df5da9b03/. The private Machine and volume are retired;
+payload deletion reclaimed 7,493,079,040 bytes. Its scoped token is revoked.
+This experiment is neither a shipped optimization nor a qualified result.
+
+The corrected corruption fixture passed before removal: 155 passes / six
+platform skips. The initial fixture failure changed a different actor's page;
+its correction is retained in history. Its final pass does not override the
+load regression. The active source removes the whole read-ahead experiment.
+
+The diagnostic-only image is efe3668957721a1379863868d462524a3b509227ab8066a6f61debd0750f5265,
+using metadata warming plus existing phase counters in the slow-search log
+(source 321e126). It uses /search; /debug/search does not serialize phase times.
+The earlier diagnostic image dd95bffc was built but never run and is superseded.
+The settled retained-transport cohort 16:05–16:20 UTC has 108 misses at 292.92 ms
+mean, seven cache hits, all 115 HTTP-200 answers reconciled. Natural cohort
+variation remains a limitation of the public comparisons.

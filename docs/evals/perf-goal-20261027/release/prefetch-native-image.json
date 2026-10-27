@@ -1,0 +1,16 @@
+{
+  "status": "rejected: cold latency gate failed; not deployed",
+  "source_commit": "4779f79",
+  "runtime_source": "016552a; later changes only tests and evidence",
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:c030acd0708f7181d438f6175ca120098e8549d0849e99621328ebd124330fac",
+  "binaries": {
+    "typeahead-ingester": {
+      "bytes": 23414528,
+      "sha256": "ab4c5520efca22e0d24a5f33a2dbd36688b9f8d6a1621d4daf43b4e81a4bd0bf"
+    },
+    "admit-prefix": {
+      "bytes": 3680432,
+      "sha256": "c0e28dbfdf92f0694e80de51d5acb2bf220c4986600f3c1b9961ccd7c34e1133"
+    }
+  }
+}
