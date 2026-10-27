@@ -36,6 +36,8 @@ def cleanup(scratch, evidence):
     owner = json.loads((scratch / 'owner.json').read_text())
     if owner != {'owner': 'typeahead-perf-goal', 'run': scratch.name}:
         raise ValueError('experiment owner mismatch')
+    if not payload.exists() and (evidence / 'cleanup.json').is_file():
+        return
     before = shutil.disk_usage(scratch).free
     allocated = sum(p.stat().st_blocks * 512 for p in payload.rglob('*') if p.is_file()) if payload.exists() else 0
     shutil.rmtree(payload, ignore_errors=False) if payload.exists() else None

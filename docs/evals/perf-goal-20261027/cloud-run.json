@@ -17,5 +17,9 @@
     "candidate": "728e548e8e957b7e9dbcc879d0c3ef4a32de64d834a67e866085ff14b164b202"
   },
   "status": "running; input copy; not qualified",
-  "advisory_first_touch_limitation": "File-cache eviction is advisory and does not clear the evaluator per-slot cache; baseline reference capture also warms those slots. Do not compare this phase as equally cold across arms. A fresh-process cold gate remains required."
+  "advisory_first_touch_limitation": "File-cache eviction is advisory and does not clear the evaluator per-slot cache; baseline reference capture also warms those slots. Do not compare this phase as equally cold across arms. A fresh-process cold gate remains required.",
+  "cleanup_only_update": {
+    "sha256": "cbfec035085f59dc40ef789259992e0b755f8b1a80e77ff0a5d18c64b023ac47",
+    "reason": "Preserve the first reclamation receipt on repeated cleanup. Running supervisor code remains its originally loaded ffd5d86 version; ExecStopPost uses this idempotent version. No workload or input change."
+  }
 }
