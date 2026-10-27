@@ -1,0 +1,183 @@
+{
+  "project": "typeahead",
+  "service": "typeahead-search-refresh",
+  "route_unchanged": true,
+  "rows": [
+    {
+      "start_timestamp": "2026-10-27T05:05:35.644781Z",
+      "span_name": "search",
+      "duration": 0.023383779,
+      "attributes": {
+        "blob_hidden": 0,
+        "exact_hits": 0,
+        "hydrated_base": 49,
+        "hydrated_overlay": 1,
+        "keys": 4,
+        "merged": 50,
+        "not_found": 0,
+        "overlay_hidden": 0,
+        "q_len": 3,
+        "results": 8,
+        "sample_rate": 10,
+        "tombstoned": 0
+      },
+      "trace_id": "0507a25ffa5dfee78b8320cf79b5de72"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:05:07.094550Z",
+      "span_name": "search",
+      "duration": 0.026233322,
+      "attributes": {
+        "blob_hidden": 0,
+        "exact_hits": 0,
+        "hydrated_base": 45,
+        "hydrated_overlay": 5,
+        "keys": 4,
+        "merged": 50,
+        "not_found": 0,
+        "overlay_hidden": 0,
+        "q_len": 4,
+        "results": 5,
+        "sample_rate": 10,
+        "tombstoned": 0
+      },
+      "trace_id": "c7760aea90556078e6b66808c4db7f28"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:04:25.066175Z",
+      "span_name": "search",
+      "duration": 0.022671179,
+      "attributes": {
+        "blob_hidden": 0,
+        "exact_hits": 0,
+        "hydrated_base": 43,
+        "hydrated_overlay": 7,
+        "keys": 4,
+        "merged": 50,
+        "not_found": 0,
+        "overlay_hidden": 0,
+        "q_len": 3,
+        "results": 8,
+        "sample_rate": 10,
+        "tombstoned": 0
+      },
+      "trace_id": "3ff7e350bbb50344915dbe9e3f4c3119"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:04:07.252609Z",
+      "span_name": "slow search: 2056 ms (q_len=2 keys=4 merged=50)",
+      "duration": null,
+      "attributes": {
+        "code.module.name": "index_search"
+      },
+      "trace_id": "01a17bbe8a5400e915a317028fffb2b1"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:04:02.380197Z",
+      "span_name": "slow search: 1282 ms (q_len=3 keys=4 merged=50)",
+      "duration": null,
+      "attributes": {
+        "code.module.name": "index_search"
+      },
+      "trace_id": "01a17bbe774c9f39c300e76ba6bbbd49"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:04:02.200290Z",
+      "span_name": "slow search: 2698 ms (q_len=2 keys=4 merged=50)",
+      "duration": null,
+      "attributes": {
+        "code.module.name": "index_search"
+      },
+      "trace_id": "01a17bbe7698cad1233d29f0fb95f3bc"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:03:56.756812Z",
+      "span_name": "slow search: 924 ms (q_len=5 keys=4 merged=10)",
+      "duration": null,
+      "attributes": {
+        "code.module.name": "index_search"
+      },
+      "trace_id": "01a17bbe615403f412aeb5506848e663"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:03:22.988346Z",
+      "span_name": "search",
+      "duration": 0.003594043,
+      "attributes": {
+        "blob_hidden": 0,
+        "exact_hits": 1,
+        "hydrated_base": 2,
+        "hydrated_overlay": 2,
+        "keys": 4,
+        "merged": 4,
+        "not_found": 0,
+        "overlay_hidden": 0,
+        "q_len": 12,
+        "results": 4,
+        "sample_rate": 10,
+        "tombstoned": 0
+      },
+      "trace_id": "2dc7cddd1bfa7ba2452953c90457eaff"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:02:16.061191Z",
+      "span_name": "search",
+      "duration": 0.031528087,
+      "attributes": {
+        "blob_hidden": 0,
+        "exact_hits": 0,
+        "hydrated_base": 47,
+        "hydrated_overlay": 3,
+        "keys": 4,
+        "merged": 50,
+        "not_found": 0,
+        "overlay_hidden": 0,
+        "q_len": 3,
+        "results": 8,
+        "sample_rate": 10,
+        "tombstoned": 0
+      },
+      "trace_id": "d07b0e4caa05f32b105a21ce641e72d2"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:01:32.342017Z",
+      "span_name": "search",
+      "duration": 0.022119288,
+      "attributes": {
+        "blob_hidden": 0,
+        "exact_hits": 0,
+        "hydrated_base": 48,
+        "hydrated_overlay": 2,
+        "keys": 4,
+        "merged": 50,
+        "not_found": 0,
+        "overlay_hidden": 0,
+        "q_len": 3,
+        "results": 8,
+        "sample_rate": 10,
+        "tombstoned": 0
+      },
+      "trace_id": "d4f53b5c0a98a5495d995809356b28dc"
+    },
+    {
+      "start_timestamp": "2026-10-27T05:01:00.578151Z",
+      "span_name": "search",
+      "duration": 0.026386652,
+      "attributes": {
+        "blob_hidden": 0,
+        "exact_hits": 0,
+        "hydrated_base": 50,
+        "hydrated_overlay": 0,
+        "keys": 4,
+        "merged": 50,
+        "not_found": 0,
+        "overlay_hidden": 0,
+        "q_len": 5,
+        "results": 8,
+        "sample_rate": 10,
+        "tombstoned": 0
+      },
+      "trace_id": "78dc9bdfd4332f13a48636d22c96d932"
+    }
+  ]
+}

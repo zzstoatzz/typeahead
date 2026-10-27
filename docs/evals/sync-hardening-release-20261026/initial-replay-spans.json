@@ -1,0 +1,31 @@
+{
+  "project": "typeahead",
+  "rows": [
+    {
+      "start_timestamp": "2026-10-27T03:15:50.975133Z",
+      "duration": 3977.944869662,
+      "otel_status_code": "ERROR",
+      "attributes": {
+        "cleared": 0,
+        "compact_complete": true,
+        "compact_deleted": 0,
+        "deleted": 17576,
+        "error_count": 0,
+        "from": 1792908646,
+        "projection_skipped": 19,
+        "transport_failures": 0,
+        "updated": 168568
+      },
+      "trace_id": "d7d4eec4ea3a044a0a14a93820d9139d"
+    },
+    {
+      "start_timestamp": "2026-10-27T04:22:24.920820Z",
+      "duration": 693.568541347,
+      "otel_status_code": "UNSET",
+      "attributes": {
+        "from": 1792908646
+      },
+      "trace_id": "a31181025431857d1aa3347efbc448ae"
+    }
+  ]
+}

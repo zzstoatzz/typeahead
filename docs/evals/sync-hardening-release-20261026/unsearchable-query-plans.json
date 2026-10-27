@@ -1,0 +1,193 @@
+{
+  "queries": [
+    "EXPLAIN QUERY PLAN SELECT did, updated_at FROM actors WHERE updated_at > 1792908346 AND handle = ''",
+    "EXPLAIN QUERY PLAN SELECT did, updated_at FROM actors WHERE updated_at > 1792908346 AND handle = '' COLLATE NOCASE",
+    "EXPLAIN QUERY PLAN SELECT did, updated_at FROM actors WHERE updated_at > 1792908346 AND handle = '' COLLATE NOCASE ORDER BY updated_at,did LIMIT 500"
+  ],
+  "response": {
+    "baton": null,
+    "base_url": null,
+    "results": [
+      {
+        "type": "ok",
+        "response": {
+          "type": "execute",
+          "result": {
+            "cols": [
+              {
+                "name": "id",
+                "decltype": null
+              },
+              {
+                "name": "parent",
+                "decltype": null
+              },
+              {
+                "name": "notused",
+                "decltype": null
+              },
+              {
+                "name": "detail",
+                "decltype": null
+              }
+            ],
+            "rows": [
+              [
+                {
+                  "type": "integer",
+                  "value": "3"
+                },
+                {
+                  "type": "integer",
+                  "value": "0"
+                },
+                {
+                  "type": "integer",
+                  "value": "203"
+                },
+                {
+                  "type": "text",
+                  "value": "SEARCH actors USING INDEX idx_actors_updated_at (updated_at>?)"
+                }
+              ]
+            ],
+            "affected_row_count": 0,
+            "last_insert_rowid": null,
+            "replication_index": null,
+            "rows_read": 0,
+            "rows_written": 0,
+            "query_duration_ms": 0.338
+          }
+        }
+      },
+      {
+        "type": "ok",
+        "response": {
+          "type": "execute",
+          "result": {
+            "cols": [
+              {
+                "name": "id",
+                "decltype": null
+              },
+              {
+                "name": "parent",
+                "decltype": null
+              },
+              {
+                "name": "notused",
+                "decltype": null
+              },
+              {
+                "name": "detail",
+                "decltype": null
+              }
+            ],
+            "rows": [
+              [
+                {
+                  "type": "integer",
+                  "value": "3"
+                },
+                {
+                  "type": "integer",
+                  "value": "0"
+                },
+                {
+                  "type": "integer",
+                  "value": "61"
+                },
+                {
+                  "type": "text",
+                  "value": "SEARCH actors USING INDEX idx_actors_handle (handle=?)"
+                }
+              ]
+            ],
+            "affected_row_count": 0,
+            "last_insert_rowid": null,
+            "replication_index": null,
+            "rows_read": 0,
+            "rows_written": 0,
+            "query_duration_ms": 0.063
+          }
+        }
+      },
+      {
+        "type": "ok",
+        "response": {
+          "type": "execute",
+          "result": {
+            "cols": [
+              {
+                "name": "id",
+                "decltype": null
+              },
+              {
+                "name": "parent",
+                "decltype": null
+              },
+              {
+                "name": "notused",
+                "decltype": null
+              },
+              {
+                "name": "detail",
+                "decltype": null
+              }
+            ],
+            "rows": [
+              [
+                {
+                  "type": "integer",
+                  "value": "5"
+                },
+                {
+                  "type": "integer",
+                  "value": "0"
+                },
+                {
+                  "type": "integer",
+                  "value": "61"
+                },
+                {
+                  "type": "text",
+                  "value": "SEARCH actors USING INDEX idx_actors_handle (handle=?)"
+                }
+              ],
+              [
+                {
+                  "type": "integer",
+                  "value": "24"
+                },
+                {
+                  "type": "integer",
+                  "value": "0"
+                },
+                {
+                  "type": "integer",
+                  "value": "0"
+                },
+                {
+                  "type": "text",
+                  "value": "USE TEMP B-TREE FOR ORDER BY"
+                }
+              ]
+            ],
+            "affected_row_count": 0,
+            "last_insert_rowid": null,
+            "replication_index": null,
+            "rows_read": 0,
+            "rows_written": 0,
+            "query_duration_ms": 0.111
+          }
+        }
+      },
+      {
+        "type": "ok",
+        "response": {
+          "type": "close"
+        }
+      }
+    ]
+  }
+}

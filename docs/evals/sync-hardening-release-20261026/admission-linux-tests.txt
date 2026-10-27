@@ -1,0 +1,68 @@
+test_eight_persistent_clients_with_mixed_reads_and_writes (test_release_concurrency.Tests.test_eight_persistent_clients_with_mixed_reads_and_writes) ... ERROR
+test_partial_headers_do_not_run_on_the_accept_thread (test_release_concurrency.Tests.test_partial_headers_do_not_run_on_the_accept_thread) ... FAIL
+test_saturated_persistent_clients_with_mixed_reads_and_writes (test_release_concurrency.Tests.test_saturated_persistent_clients_with_mixed_reads_and_writes) ... ERROR
+
+======================================================================
+ERROR: test_eight_persistent_clients_with_mixed_reads_and_writes (test_release_concurrency.Tests.test_eight_persistent_clients_with_mixed_reads_and_writes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/test/test_release_concurrency.py", line 55, in test_eight_persistent_clients_with_mixed_reads_and_writes
+    self.exercise_persistent_clients(8)
+  File "/test/test_release_concurrency.py", line 63, in exercise_persistent_clients
+    create(root / 'fixtures')
+  File "/test/recovery_fixture.py", line 39, in create
+    convert(database, legacy / 'manifest.json', root / 'builds/compact', 'compact', 'builds')
+  File "/test/convert.py", line 72, in convert
+    evidence = build(source, staged)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/test/build.py", line 53, in build
+    stats = pack(source, side, work / "pages")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/test/native.py", line 32, in pack
+    error = library().typeahead_compact_pack(
+            ^^^^^^^^^
+  File "/test/native.py", line 18, in library
+    default = Path(__file__).resolve().parents[2] / "services/zig-out/lib" / f"libtypeahead_compact.{suffix}"
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.11/pathlib.py", line 446, in __getitem__
+    raise IndexError(idx)
+IndexError: 2
+
+======================================================================
+ERROR: test_saturated_persistent_clients_with_mixed_reads_and_writes (test_release_concurrency.Tests.test_saturated_persistent_clients_with_mixed_reads_and_writes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/test/test_release_concurrency.py", line 58, in test_saturated_persistent_clients_with_mixed_reads_and_writes
+    self.exercise_persistent_clients(32)
+  File "/test/test_release_concurrency.py", line 63, in exercise_persistent_clients
+    create(root / 'fixtures')
+  File "/test/recovery_fixture.py", line 39, in create
+    convert(database, legacy / 'manifest.json', root / 'builds/compact', 'compact', 'builds')
+  File "/test/convert.py", line 72, in convert
+    evidence = build(source, staged)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "/test/build.py", line 53, in build
+    stats = pack(source, side, work / "pages")
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/test/native.py", line 32, in pack
+    error = library().typeahead_compact_pack(
+            ^^^^^^^^^
+  File "/test/native.py", line 18, in library
+    default = Path(__file__).resolve().parents[2] / "services/zig-out/lib" / f"libtypeahead_compact.{suffix}"
+              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+  File "/usr/lib/python3.11/pathlib.py", line 446, in __getitem__
+    raise IndexError(idx)
+IndexError: 2
+
+======================================================================
+FAIL: test_partial_headers_do_not_run_on_the_accept_thread (test_release_concurrency.Tests.test_partial_headers_do_not_run_on_the_accept_thread)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/test/test_release_concurrency.py", line 39, in test_partial_headers_do_not_run_on_the_accept_thread
+    self.assertEqual(status, 503)
+AssertionError: 200 != 503
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.462s
+
+FAILED (failures=1, errors=2)

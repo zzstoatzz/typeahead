@@ -1,0 +1,16 @@
+{
+  "etag": "\"9643e34719e6c85e5f8b7d0a201d9b49\"",
+  "route": {
+    "version": 1,
+    "current": {
+      "origin": "https://typeahead-search-refresh.fly.dev",
+      "build_id": "b1792908655-14d5-px05",
+      "source_watermark": 1792908646,
+      "machine_id": "85379da4636338",
+      "volume_id": "vol_r685k90m3x97opj4",
+      "legacy_build_id": "b1792908655-14d5"
+    },
+    "previous": null,
+    "promoted_at": 1792919401
+  }
+}

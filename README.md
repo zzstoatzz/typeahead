@@ -54,9 +54,9 @@ telemetry and makes sync monitoring follow the routed production backend.
 The later [search-timeout RCA and retro](docs/retros/2026-10-26-search-timeouts-and-freshness-alerts.md)
 records actual search failures and the remaining admission, API error and alert-recovery work;
 restored telemetry does not close those serving reliability issues.
-The [sync hardening follow-up](docs/operations.md#sync-hardening-follow-up-october-26-2026-tested-locally-not-deployed)
+The [sync hardening follow-up](docs/operations.md#sync-hardening-follow-up-october-27-2026-live)
 adds bounded retries, HTTP-client recovery and stricter watchdog feeding; it is
-locally tested and not deployed. The release also repairs the unsearchable-actor
+live October 27 on two CPUs / 1 GiB. The release also repairs the unsearchable-actor
 query’s missing `COLLATE NOCASE`, which timed out during isolated replay.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
@@ -237,20 +237,19 @@ existing installation).
 
 ## Operational status
 
-October 25, 2026: automatic snapshot refresh is restored. The cloud publisher
-builds and fully verifies artifacts, prepares the idle backend on an independent
-disk, checks admission, catch-up, queries and cached restart, then switches the
-transport route. Production serves `b1792908655-14d5-px05` on two shared CPUs /
-1 GiB. Public aliases, PDS behavior, freshness and Evergreen pass. Rollback and
-recovery through the already-prepared backend were exercised successfully.
+October 27, 2026, 06:06 UTC: native sync hardening `f67005b` is live on
+`typeahead-startup-20261024`, serving `b1792908655-14d5-px05` at two shared CPUs /
+1 GiB. Public smoke checks passed; routed health and sync telemetry are present,
+and freshness lag was 30 seconds. `typeahead-search-refresh` remains running
+as the previous routing backend on its independent disk. See the
+[release and sizing evidence](docs/ops/sync-hardening-release-20261026.md).
 
-The active schedule is 06:00 UTC on odd-numbered days of the month, at most
-48 hours apart; the next queued run is October 27. The previous managed backend
-remains running for immediate routing rollback. The original compact app remains
-separately retained as agreed. See the [execution record](docs/ops/automatic-refresh-20261025.md)
-and [refresh runbook](docs/plans/automatic-snapshot-refresh.md) for actual resources,
-scheduling, cleanup and the remaining cold-query latency tradeoff. PLC identity
-repair remains paused independently of snapshot refresh.
+Automatic refresh builds and verifies artifacts in the cloud, qualifies the idle
+slot, then changes routing conditionally. API/worker migration and schedule
+ownership remain in `my-prefect-server`; consult its migration record before
+changing clocks. PLC identity repair remains paused independently. Known serving
+latency and admission issues remain open in the
+[RCA](docs/retros/2026-10-26-search-timeouts-and-freshness-alerts.md).
 
 As of September 6, 2026:
 
@@ -333,12 +332,11 @@ an optional manual Fly rollback path, not the scheduled builder. See
 
 ## Costs
 
-As verified October 25, 2026, the two managed search slots each have two shared
-CPUs and 1 GiB RAM: serving uses a 20 GB volume, and the previous backend retains
-its 60 GB volume. The separately retained original compact backend has four
-shared CPUs, 2 GiB and 60 GB. The ingester remains one shared CPU / 256 MiB.
-These retained rollback resources are real capacity; the October 24 single-backend
-cost estimate is not the new total. [Current inventory](docs/evals/startup-refresh-resources-20261025.json).
+As verified October 27, 2026, both managed search slots have two shared CPUs,
+1 GiB RAM and independent 20 GB volumes. The earlier compact backend and its
+60 GB disk were retired October 25. The ingester remains one shared CPU /
+256 MiB. Retaining the previous managed backend provides immediate routing
+rollback. [Verified serving state](docs/evals/sync-hardening-release-20261026/production-after.json).
 The [October 24 retirement](docs/operations.md#search-rollback-resource-retirement--october-24-2026)
 records the three older stopped machines and disks that were removed.
 

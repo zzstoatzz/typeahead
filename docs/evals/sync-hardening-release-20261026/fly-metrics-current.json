@@ -1,0 +1,401 @@
+{
+  "cpu_gauges": {
+    "query": "{app=\"typeahead-search-refresh\",__name__=~\"fly_instance_cpu_(baseline|balance|throttle)\"}",
+    "data": [
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_balance",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "100000"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_baseline",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0.125"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_cpu_throttle",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      }
+    ]
+  },
+  "memory": {
+    "query": "{app=\"typeahead-search-refresh\",__name__=~\"fly_instance_memory_(mem_total|mem_available|cached|swap_total|swap_free|pressure_some|pressure_full)\"}",
+    "data": [
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_cached",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "674725888"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_mem_available",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "676216832"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_mem_total",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "1008627712"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_pressure_full",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "pressure_duration": "avg10",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_pressure_full",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "pressure_duration": "avg300",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0.15999999642372"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_pressure_full",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "pressure_duration": "avg60",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_pressure_full",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "pressure_duration": "total",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "460122611"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_pressure_some",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "pressure_duration": "avg10",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_pressure_some",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "pressure_duration": "avg300",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0.15999999642372"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_pressure_some",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "pressure_duration": "avg60",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_pressure_some",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "pressure_duration": "total",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "466988075"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_swap_free",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_memory_swap_total",
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      }
+    ]
+  },
+  "disks": {
+    "query": "fly_instance_disk_reads_completed{app=\"typeahead-search-refresh\"}",
+    "data": [
+      {
+        "metric": {
+          "__name__": "fly_instance_disk_reads_completed",
+          "app": "typeahead-search-refresh",
+          "device": "vda",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "19203"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_disk_reads_completed",
+          "app": "typeahead-search-refresh",
+          "device": "vdb",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "6183"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_disk_reads_completed",
+          "app": "typeahead-search-refresh",
+          "device": "vdc",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "4522750"
+        ]
+      },
+      {
+        "metric": {
+          "__name__": "fly_instance_disk_reads_completed",
+          "app": "typeahead-search-refresh",
+          "device": "vdd",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "10"
+        ]
+      }
+    ]
+  },
+  "cpu_use": {
+    "query": "sum by (mode) (rate(fly_instance_cpu{app=\"typeahead-search-refresh\"}[1m])) / 100",
+    "data": [
+      {
+        "metric": {
+          "mode": "guest"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "guest_nice"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "idle"
+        },
+        "value": [
+          1793078070,
+          "1.9936345003416038"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "iowait"
+        },
+        "value": [
+          1793078070,
+          "0.0004999083501358084"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "irq"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "nice"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "softirq"
+        },
+        "value": [
+          1793078070,
+          "0.0006665444668477445"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "steal"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "system"
+        },
+        "value": [
+          1793078070,
+          "0.000999816700271617"
+        ]
+      },
+      {
+        "metric": {
+          "mode": "user"
+        },
+        "value": [
+          1793078070,
+          "0.002332905633967106"
+        ]
+      }
+    ]
+  },
+  "cpu_throttle_hour": {
+    "query": "increase(fly_instance_cpu_throttle{app=\"typeahead-search-refresh\"}[1h]) / 100",
+    "data": [
+      {
+        "metric": {
+          "app": "typeahead-search-refresh",
+          "host": "0106",
+          "instance": "85379da4636338",
+          "region": "ewr"
+        },
+        "value": [
+          1793078070,
+          "0"
+        ]
+      }
+    ]
+  }
+}

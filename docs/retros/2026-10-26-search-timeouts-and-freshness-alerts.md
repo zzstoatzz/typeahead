@@ -259,3 +259,15 @@ receipts retain trace IDs and selected fields. The before/after sources and
 [afternoon deployment receipt](../evals/search-monitoring-20261026.json) distinguish
 what shipped from what this report only investigates. No serving behavior,
 resource size, thresholds or schedules were changed while writing this RCA.
+
+## Sizing follow-up — October 27, 2026
+
+A later slow-request window at 05:04 UTC had retained Fly metrics: memory
+pressure and disk waits rose while CPU throttling stayed zero. An inactive
+1 GiB → 2 GiB → 1 GiB comparison reproduced extra repeat-query disk reads at
+1 GiB with identical responses and unchanged sync watermarks. Two GiB eliminated
+those repeat reads and improved warm tails. This establishes a memory-capacity
+effect for that working set; it does not prove the physical cause of the earlier
+incident or close the admission and API-error action items above. See the
+[measurements](../evals/sync-hardening-release-20261026/memory-findings.md) and
+[native release record](../ops/sync-hardening-release-20261026.md).

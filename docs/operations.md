@@ -1,18 +1,20 @@
 # operations / edge gotchas
 
-## Current automatic refresh — October 25, 2026
+## Current automatic refresh — October 27, 2026
 
-Public traffic uses the transport Worker's stable URL and
-`control/search-routing.json`, currently selecting the admitted-startup backend.
-The automatic-refresh deployment is active at 06:00 UTC on odd-numbered days,
-with the next run queued for October 27. Production uses build
-`b1792908655-14d5-px05` on `typeahead-search-refresh` at two shared CPUs / 1 GiB.
-The two superseded machines and their 60 GB disks were retired with operator
-authorization later October 25. The inactive managed app remains empty for the next
-refresh; `previous` is null, so immediate old-backend rollback is unavailable. [The refresh runbook](plans/automatic-snapshot-refresh.md)
-and [execution record](ops/automatic-refresh-20261025.md) cover verified rollout,
-rollback, recovery, inventory, cleanup and the subsequent retirement.
-R2 artifacts and pinned images remain available for recovery.
+Verified at 06:06 UTC: public routing selects `typeahead-startup-20261024`,
+Machine `080d415b734708`, build `b1792908655-14d5-px05`, native source `f67005b`.
+It retains the downsized two shared CPUs / 1 GiB and an independent 20 GB disk.
+Public smoke passed; routed telemetry and a clean completed sync are present,
+and freshness lag was 30 seconds. `typeahead-search-refresh` / `85379da4636338`
+is retained as `previous`, also at two CPUs / 1 GiB on its own 20 GB disk.
+The superseded legacy backends/disks were retired October 25. See the
+[release record](ops/sync-hardening-release-20261026.md) and
+[refresh runbook](plans/automatic-snapshot-refresh.md).
+
+The separate `my-prefect-server` migration owns API, worker and schedule state.
+Do not infer that a configured cadence is active or restore obsolete clocks
+from historical notes below. R2 artifacts and pinned images remain available.
 The dated October 20 configuration below is historical recovery context.
 
 As of October 20, 2026, 16:31 UTC, production serves PDS-capable compact build
@@ -380,11 +382,13 @@ must target the **routed managed app and Machine**, not the retained legacy app.
 The service reuses its cached admitted snapshot and persisted overlay watermark;
 a restart still interrupts serving.
 
-### Sync hardening follow-up (October 26, 2026; tested locally, not deployed)
+### Sync hardening follow-up (October 27, 2026; live)
 
 The stale `sync-hardening` branch (`d466bba`) was ported onto current main rather
 than merged wholesale. The certificate-clock repair is already deployed in
 `503b8b1`; this follow-up adds no concurrent tasks or runtime capacity changes.
+It shipped as `f67005b` at two CPUs / 1 GiB; see the
+[verified release](ops/sync-hardening-release-20261026.md).
 
 - Each HTTP fetch counts consecutive transport failures and completed responses.
   After three consecutive transport failures, the sync loop rebuilds its private

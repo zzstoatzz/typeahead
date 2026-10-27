@@ -1,0 +1,21 @@
+{
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd",
+  "policy_before": {
+    "ready": true,
+    "policy_sha256": "4aa1a674a9f8f0ce7ed4fd349370146be2722bb050f1ef07d9217c3b8ad5293b",
+    "last_sync": "1793079367"
+  },
+  "arms": [],
+  "restored": true,
+  "restored_guest": {
+    "cpu_kind": "shared",
+    "cpus": 2,
+    "memory_mb": 1024
+  },
+  "policy_after": {
+    "ready": true,
+    "policy_sha256": "4aa1a674a9f8f0ce7ed4fd349370146be2722bb050f1ef07d9217c3b8ad5293b",
+    "last_sync": "1793079367"
+  },
+  "serving_route_unchanged": true
+}

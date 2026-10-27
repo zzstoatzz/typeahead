@@ -1,0 +1,21 @@
+{
+  "cols": [
+    {
+      "name": "did",
+      "decltype": "TEXT"
+    },
+    {
+      "name": "updated_at",
+      "decltype": "INTEGER"
+    }
+  ],
+  "affected_row_count": 0,
+  "last_insert_rowid": null,
+  "replication_index": null,
+  "rows_read": 7728,
+  "rows_written": 0,
+  "query_duration_ms": 3041.809,
+  "query": "SELECT did, updated_at FROM actors WHERE updated_at > ? AND handle = '' COLLATE NOCASE",
+  "row_count": 137,
+  "elapsed_s": 3.4829411249957047
+}

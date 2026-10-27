@@ -1,0 +1,82 @@
+[
+  {
+    "start_timestamp": "2026-10-27T05:51:28.565148Z",
+    "service_name": "typeahead-startup-20261024",
+    "duration": 19.843315775,
+    "otel_status_code": "OK",
+    "attributes": {
+      "cleared": 61,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 57,
+      "from": 1793079988,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 340
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T05:46:07.263514Z",
+    "service_name": "typeahead-startup-20261024",
+    "duration": 21.29373415,
+    "otel_status_code": "OK",
+    "attributes": {
+      "cleared": 38,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 40,
+      "from": 1793079887,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 212
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T05:44:26.176928Z",
+    "service_name": "typeahead-startup-20261024",
+    "duration": 20.844612628,
+    "otel_status_code": "OK",
+    "attributes": {
+      "cleared": 44,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 41,
+      "from": 1793079791,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 216
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T05:42:51.208251Z",
+    "service_name": "typeahead-startup-20261024",
+    "duration": 20.768410467,
+    "otel_status_code": "OK",
+    "attributes": {
+      "cleared": 38,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 35,
+      "from": 1793079693,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 221
+    }
+  },
+  {
+    "start_timestamp": "2026-10-27T05:41:05.039810Z",
+    "service_name": "typeahead-startup-20261024",
+    "duration": 28.587791411,
+    "otel_status_code": "OK",
+    "attributes": {
+      "cleared": 56,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 39,
+      "from": 1793079485,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 290
+    }
+  }
+]

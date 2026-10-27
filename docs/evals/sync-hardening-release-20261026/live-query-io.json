@@ -1,0 +1,26 @@
+{
+  "process_id": 652,
+  "samples": [
+    {
+      "query": "na",
+      "attempt": 1,
+      "status": 200,
+      "actors": 8,
+      "elapsed_ms": 35.65,
+      "disk_read_bytes": 1228800,
+      "major_faults": 19,
+      "process_cpu_ms": 20.0
+    },
+    {
+      "query": "na",
+      "attempt": 2,
+      "status": 200,
+      "actors": 8,
+      "elapsed_ms": 19.17,
+      "disk_read_bytes": 0,
+      "major_faults": 0,
+      "process_cpu_ms": 20.0
+    }
+  ],
+  "note": "Process counters can include concurrent work."
+}

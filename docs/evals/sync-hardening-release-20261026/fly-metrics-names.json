@@ -1,0 +1,308 @@
+[
+  {
+    "metric": {
+      "__name__": "fly_instance_cpu"
+    },
+    "value": [
+      1793077992,
+      "20"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_cpu_balance"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_cpu_baseline"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_cpu_throttle"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_io_in_progress"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_reads_completed"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_reads_merged"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_sectors_read"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_sectors_written"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_time_io"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_time_io_weighted"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_time_reading"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_time_writing"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_writes_completed"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_disk_writes_merged"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_active"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_buffers"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_cached"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_dirty"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_inactive"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_mem_available"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_mem_free"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_mem_total"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_pressure_full"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_pressure_some"
+    },
+    "value": [
+      1793077992,
+      "4"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_shmem"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_slab"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_swap_cached"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_swap_free"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_swap_total"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_vmalloc_chunk"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_vmalloc_total"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_vmalloc_used"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  },
+  {
+    "metric": {
+      "__name__": "fly_instance_memory_writeback"
+    },
+    "value": [
+      1793077992,
+      "1"
+    ]
+  }
+]

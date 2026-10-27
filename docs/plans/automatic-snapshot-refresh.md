@@ -1,19 +1,20 @@
 # Automatic isolated snapshot refresh
 
-Live and verified October 25, 2026. Full publication, isolated installation,
-cached restart, guarded promotion, rollback and prepared-backend recovery passed.
-The active fixed cron runs at 06:00 UTC on odd-numbered days of the month, at most
-48 hours apart; the next actual queued run is October 27. See the
-[execution record](../ops/automatic-refresh-20261025.md).
+Live state verified October 27, 2026, 06:06 UTC: native `f67005b` serves on
+`typeahead-startup-20261024` at two shared CPUs / 1 GiB; the previous backend
+`typeahead-search-refresh` remains available for routing rollback. Both have
+independent 20 GB disks. See the [release evidence](../ops/sync-hardening-release-20261026.md).
+The configured cadence is 06:00 UTC on odd-numbered days; API/worker migration
+and actual schedule activation are owned by `my-prefect-server`. Verify that
+repo's current migration state before changing clocks.
 
 The recurring cloud Prefect publisher builds and fully verifies immutable compact
 and legacy artifacts. A rollout controller installs compact artifacts onto an idle
 Fly app with its own fresh volume. Installation and admission finish before the
 search process starts. The legacy twin stays in R2; routing rollback uses the
-previous backend and its independent live overlay when retained. On October 25,
-the operator retired both superseded backends/disks after accepting the smaller
-backend. The managed app slots remain; the inactive one is empty until the next
-refresh. Immediate rollback is unavailable while `previous` is null.
+previous backend and its independent live overlay. The operator retired the
+older superseded backends/disks October 25; the October 27 native release
+prepared the empty managed slot and retained its predecessor for rollback.
 
 The two managed apps are `typeahead-startup-20261024` and
 `typeahead-search-refresh`. The serving app must never be resized, restarted,

@@ -1,0 +1,20 @@
+{
+  "id": "080d415b734708",
+  "state": "started",
+  "instance_id": "01M5XN2TQMFZ3JVGB8W8Y5HWSH",
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:34c5a61a794674e64802d5d633dd800a2adfab2c0d91f0d8ceb14e5c28a84da3",
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 4,
+    "memory_mb": 1024
+  },
+  "mounts": [
+    {
+      "encrypted": true,
+      "path": "/data",
+      "size_gb": 20,
+      "volume": "vol_4915xomx28k0ml5r",
+      "name": "refresh_1793070293"
+    }
+  ]
+}

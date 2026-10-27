@@ -1,0 +1,9 @@
+{
+  "image_id": "sha256:34c5a61a794674e64802d5d633dd800a2adfab2c0d91f0d8ceb14e5c28a84da3",
+  "repo_digests": [
+    "registry.fly.io/typeahead-search-refresh@sha256:34c5a61a794674e64802d5d633dd800a2adfab2c0d91f0d8ceb14e5c28a84da3"
+  ],
+  "architecture": "amd64",
+  "os": "linux",
+  "source_revision": "06a714c687dab357d0d287666974faed58bbf92d"
+}

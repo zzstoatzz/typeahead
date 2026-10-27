@@ -1,0 +1,18 @@
+{
+  "start_timestamp": "2026-10-27T03:15:00Z",
+  "project": "typeahead",
+  "rows": [
+    {
+      "service_name": "typeahead-startup-20261024",
+      "span_name": "http.health",
+      "spans": 18,
+      "failures": 0
+    },
+    {
+      "service_name": "typeahead-startup-20261024",
+      "span_name": "sync.query.updated",
+      "spans": 83,
+      "failures": 0
+    }
+  ]
+}

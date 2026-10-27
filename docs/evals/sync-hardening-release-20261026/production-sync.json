@@ -1,0 +1,18 @@
+[
+  {
+    "start_timestamp": "2026-10-27T06:05:03.313801Z",
+    "service_name": "typeahead-startup-20261024",
+    "duration": 67.355445408,
+    "otel_status_code": "OK",
+    "attributes": {
+      "cleared": 63,
+      "compact_complete": true,
+      "compact_deleted": 0,
+      "deleted": 34,
+      "from": 1793080913,
+      "projection_skipped": 0,
+      "transport_failures": 0,
+      "updated": 1195
+    }
+  }
+]
