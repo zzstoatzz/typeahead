@@ -15,5 +15,29 @@
     "internal_identifiers_credentials_and_traffic_sources_excluded": true,
     "unauthenticated_served_assets_match_reviewed_payload": true
   },
-  "qualification": "Public observations, engine tests, failure accounting and limitations are distinct. The performance goal remains open."
+  "qualification": "Public observations, engine tests, failure accounting and limitations are distinct. The performance goal remains open.",
+  "latest_publication": {
+    "published_at_utc": "2026-10-27T20:53:02Z",
+    "source_commit": "7602eb7b8d228c96015433643eed1052f3016a71",
+    "version_number": 2,
+    "url": "https://typeahead-faster-search.n80n8.chatgpt.site",
+    "later_window": {
+      "start_utc": "2026-10-27T20:25:00Z",
+      "end_utc": "2026-10-27T20:35:00Z",
+      "recorded_uncached_searches": 151,
+      "mean_ms": 318.4569536423841,
+      "cache_hits": 18,
+      "http_200": 171,
+      "unreconciled_answers": 2,
+      "qualified": false
+    },
+    "verification": {
+      "public_notice_verified_unauthenticated": true,
+      "notice_visually_reviewed_desktop_and_390px_phone": true,
+      "phone_horizontal_overflow": false,
+      "browser_console_errors": 0,
+      "internal_identifiers_and_credentials_excluded": true
+    },
+    "meaning": "Earlier 197 ms observation is dated; later slower traffic and incomplete accounting are visible. Controlled engine results remain limited to the tested input."
+  }
 }

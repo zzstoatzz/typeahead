@@ -1,9 +1,11 @@
 # Performance goal completion audit
 
-Status: incomplete. Native qualification and guarded publication are verified;
-the conditional routing candidate failed its fixed public qualification window
-and restored the retained version. The next proof-reuse candidate is under guarded qualification.
-Do not infer completion from smoke passing or from one earlier low-latency bucket.
+Status: incomplete. Both routing candidates restored retained transport. The
+latest public window is 318.46 ms with incomplete accounting; live storage
+interference requires further optimization. A larger bounded immutable-page
+cache passes local native tests and is not deployed. Controlled qualification
+for the earlier frozen input remains valid within its stated scope.
+Do not infer completion from smoke passing or from an earlier low-latency bucket.
 
 | Requirement | Evidence and scope | State |
 | --- | --- | --- |
