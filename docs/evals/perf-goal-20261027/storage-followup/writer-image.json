@@ -1,0 +1,9 @@
+{
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:c301c869b7a050f0edf30be4ee9d8b13d52a25425f100e52c6e8670869b98906",
+  "candidate_source": "2ffd938a7bad936fca72da62582dfd7463824dbb",
+  "baseline_source": "62266a35bf1e8a1c5096ceee74cb914fd7147a9f",
+  "base_image": "registry.fly.io/typeahead-startup-20261024@sha256:ce3e939708e59c3f39ccf05fb463ef5b95c3dfec6f99edec7d5867421ef49d9e",
+  "dockerfile_sha256": "43128c332868acad2d1c66ef84db5612ca747b804134a19712b273b4a5993f99",
+  "deployed_to_managed_backend": false,
+  "trial_only": true
+}
