@@ -26,6 +26,16 @@ const log = std.log.scoped(.server);
 const HTTP_BUF_SIZE = 65536;
 
 pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_pool: ?*identity.Pool, accept_thread: std.Thread.Id) void {
+    handleConnectionContext(stream, local_db, identity_pool, accept_thread, null);
+}
+
+pub const EvaluationIdentity = struct { nonce: []const u8, input_id: []const u8 };
+
+pub fn handleEvaluationConnection(stream: std.Io.net.Stream, local_db: *LocalDb, accept_thread: std.Thread.Id, evaluation: EvaluationIdentity) void {
+    handleConnectionContext(stream, local_db, null, accept_thread, evaluation);
+}
+
+fn handleConnectionContext(stream: std.Io.net.Stream, local_db: *LocalDb, identity_pool: ?*identity.Pool, accept_thread: std.Thread.Id, evaluation_identity: ?EvaluationIdentity) void {
     defer stream.close(io);
     const inline_request = std.Thread.getCurrentId() == accept_thread;
 
@@ -47,7 +57,7 @@ pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_
         if (inline_request) request.head.keep_alive = false;
         if (http_guard.rejectUnframedBody(&request)) return;
 
-        handleRequest(&request, local_db, identity_pool) catch |err| {
+        handleRequest(&request, local_db, identity_pool, evaluation_identity) catch |err| {
             log.err("request error: {}", .{err});
             return;
         };
@@ -56,7 +66,7 @@ pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_
     }
 }
 
-fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_pool: ?*identity.Pool) !void {
+fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_pool: ?*identity.Pool, evaluation_identity: ?EvaluationIdentity) !void {
     const target = request.head.target;
 
     if (request.head.method == .OPTIONS) {
@@ -66,7 +76,13 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_poo
 
     const path = if (mem.indexOf(u8, target, "?")) |qi| target[0..qi] else target;
 
-    if (mem.eql(u8, path, "/search")) {
+    if (evaluation_identity != null and mem.eql(u8, path, "/__evaluation")) {
+        var output: std.Io.Writer.Allocating = .init(std.heap.smp_allocator);
+        defer output.deinit();
+        var jw: json.Stringify = .{ .writer = &output.writer };
+        try jw.write(.{ .nonce = evaluation_identity.?.nonce, .input_id = evaluation_identity.?.input_id, .ready = local_db.isReady() });
+        try sendJson(request, .ok, output.written());
+    } else if (mem.eql(u8, path, "/search")) {
         try handleSearch(request, target, local_db);
     } else if (mem.eql(u8, path, "/debug/search")) {
         try handleDebugSearch(request, target, local_db);

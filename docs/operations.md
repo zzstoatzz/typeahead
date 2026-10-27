@@ -697,3 +697,17 @@ timings are not deployed; the serving resources and discovery source are unchang
 The local SQL benchmark proves equivalent final states and cheaper exact replay,
 not a production latency or full-corpus capacity improvement. Admission isolation
 and public error masking remain separate open RCA work.
+
+## Safe performance qualification — October 27, 2026; active goal
+
+The [qualification plan](evals/perf-goal-20261027/plan.md) fixes target resources,
+semantic gates, experiment budgets and publisher/rollback protections. The new
+evaluator uses threaded I/O, an explicit nonce and frozen-input ID. Its special
+identity endpoint is absent from normal production connections. Nonempty overlay
+data with missing/mismatched PDS readiness is rejected rather than declared ready.
+
+The client refuses unmarked or non-loopback targets, captures complete response
+hashes, records failed attempts and offered-load queueing, and requires at least
+1,000 search attempts before a percentile qualification can pass. Six real HTTP /
+native-fixture tests passed. Fixture timings do not qualify corpus capacity.
+Production and the active automatic refresh were not changed.

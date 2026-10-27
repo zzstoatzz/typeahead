@@ -1,0 +1,253 @@
+[
+  {
+    "id": "global-000",
+    "path": "/search?q=fig&limit=10"
+  },
+  {
+    "id": "global-001",
+    "path": "/search?q=fig+%28&limit=10"
+  },
+  {
+    "id": "global-002",
+    "path": "/search?q=fig+aka&limit=10"
+  },
+  {
+    "id": "global-003",
+    "path": "/search?q=phil&limit=10"
+  },
+  {
+    "id": "global-004",
+    "path": "/search?q=zzstoatzz&limit=10"
+  },
+  {
+    "id": "global-005",
+    "path": "/search?q=zzstoatzz.io&limit=10",
+    "min_actors": 1,
+    "first_handle": "zzstoatzz.io"
+  },
+  {
+    "id": "global-006",
+    "path": "/search?q=nate&limit=10"
+  },
+  {
+    "id": "global-007",
+    "path": "/search?q=alex&limit=10"
+  },
+  {
+    "id": "global-008",
+    "path": "/search?q=bob&limit=10"
+  },
+  {
+    "id": "global-009",
+    "path": "/search?q=aoc&limit=10"
+  },
+  {
+    "id": "global-010",
+    "path": "/search?q=car&limit=10"
+  },
+  {
+    "id": "global-011",
+    "path": "/search?q=a&limit=10"
+  },
+  {
+    "id": "global-012",
+    "path": "/search?q=na&limit=10"
+  },
+  {
+    "id": "global-013",
+    "path": "/search?q=sky&limit=10"
+  },
+  {
+    "id": "global-014",
+    "path": "/search?q=bl&limit=10"
+  },
+  {
+    "id": "global-015",
+    "path": "/search?q=j&limit=10"
+  },
+  {
+    "id": "global-016",
+    "path": "/search?q=sarah&limit=10"
+  },
+  {
+    "id": "global-017",
+    "path": "/search?q=dan&limit=10"
+  },
+  {
+    "id": "global-018",
+    "path": "/search?q=paul&limit=10"
+  },
+  {
+    "id": "global-019",
+    "path": "/search?q=sam&limit=10"
+  },
+  {
+    "id": "global-020",
+    "path": "/search?q=chris&limit=10"
+  },
+  {
+    "id": "global-021",
+    "path": "/search?q=jordan&limit=10"
+  },
+  {
+    "id": "global-022",
+    "path": "/search?q=mike&limit=10"
+  },
+  {
+    "id": "global-023",
+    "path": "/search?q=anna&limit=10"
+  },
+  {
+    "id": "global-024",
+    "path": "/search?q=boorkie&limit=10"
+  },
+  {
+    "id": "global-025",
+    "path": "/search?q=kohari&limit=10"
+  },
+  {
+    "id": "global-026",
+    "path": "/search?q=pfrazee&limit=10"
+  },
+  {
+    "id": "global-027",
+    "path": "/search?q=jay.bsky.team&limit=10"
+  },
+  {
+    "id": "global-028",
+    "path": "/search?q=alice&limit=10"
+  },
+  {
+    "id": "global-029",
+    "path": "/search?q=Andr%C3%A9&limit=10"
+  },
+  {
+    "id": "global-030",
+    "path": "/search?q=na%C3%AFve&limit=10"
+  },
+  {
+    "id": "global-031",
+    "path": "/search?q=caf%C3%A9&limit=10"
+  },
+  {
+    "id": "global-032",
+    "path": "/search?q=nate+kohari&limit=10"
+  },
+  {
+    "id": "global-033",
+    "path": "/search?q=paul+frazee&limit=10"
+  },
+  {
+    "id": "global-034",
+    "path": "/search?q=nate.io&limit=10"
+  },
+  {
+    "id": "global-035",
+    "path": "/search?q=the&limit=10"
+  },
+  {
+    "id": "global-036",
+    "path": "/search?q=test&limit=10"
+  },
+  {
+    "id": "global-037",
+    "path": "/search?q=bot&limit=10"
+  },
+  {
+    "id": "global-038",
+    "path": "/search?q=news&limit=10"
+  },
+  {
+    "id": "global-039",
+    "path": "/search?q=art&limit=10"
+  },
+  {
+    "id": "global-040",
+    "path": "/search?q=dev&limit=10"
+  },
+  {
+    "id": "global-041",
+    "path": "/search?q=music&limit=10"
+  },
+  {
+    "id": "global-042",
+    "path": "/search?q=photographer&limit=10"
+  },
+  {
+    "id": "global-043",
+    "path": "/search?q=designer&limit=10"
+  },
+  {
+    "id": "global-044",
+    "path": "/search?q=engineer&limit=10"
+  },
+  {
+    "id": "global-045",
+    "path": "/search?q=journalist&limit=10"
+  },
+  {
+    "id": "global-046",
+    "path": "/search?q=tokyo&limit=10"
+  },
+  {
+    "id": "global-047",
+    "path": "/search?q=berlin&limit=10"
+  },
+  {
+    "id": "global-048",
+    "path": "/search?q=podcast&limit=10"
+  },
+  {
+    "id": "global-049",
+    "path": "/search?q=crypto&limit=10"
+  },
+  {
+    "id": "global-050",
+    "path": "/search?q=gaming&limit=10"
+  },
+  {
+    "id": "global-051",
+    "path": "/search?q=%E6%97%A5%E6%9C%AC&limit=10"
+  },
+  {
+    "id": "global-052",
+    "path": "/search?q=%E6%9D%B1%E4%BA%AC&limit=10"
+  },
+  {
+    "id": "global-053",
+    "path": "/search?q=%E4%B8%AD%E6%96%87&limit=10"
+  },
+  {
+    "id": "global-054",
+    "path": "/search?q=typeahead.waow.tech&limit=10"
+  },
+  {
+    "id": "global-055",
+    "path": "/search?q=typeahead.waow.tx&limit=10"
+  },
+  {
+    "id": "global-056",
+    "path": "/search?q=no-such-actor-43e8e15a.invalid&limit=10"
+  },
+  {
+    "id": "pds-eligible",
+    "path": "/search?q=a&limit=10&pds=selfhosted.social",
+    "status": 200
+  },
+  {
+    "id": "pds-eligible-url",
+    "path": "/search?q=a&limit=10&pds=https%3A%2F%2Fselfhosted.social",
+    "status": 200
+  },
+  {
+    "id": "pds-unknown",
+    "path": "/search?q=a&limit=10&pds=not-a-pds.invalid",
+    "status": 200
+  },
+  {
+    "id": "pds-excluded",
+    "path": "/search?q=a&limit=10&pds=rhizopogon.us-west.host.bsky.network",
+    "status": 503,
+    "error": "PdsScopeUnavailable"
+  }
+]

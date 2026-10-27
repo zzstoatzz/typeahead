@@ -59,6 +59,11 @@ adds bounded retries, HTTP-client recovery and stricter watchdog feeding; it is
 live October 27 on two CPUs / 1 GiB. The release also repairs the unsearchable-actor
 query’s missing `COLLATE NOCASE`, which timed out during isolated replay.
 
+The active [safe performance goal](docs/evals/perf-goal-20261027/plan.md) targets
+warm mixed-workload native p95 ≤50 ms / p99 ≤100 ms at two CPUs / 1 GiB, with
+unchanged search outcomes and failure-inclusive accounting. These are acceptance
+targets, not deployed guarantees. Corpus qualification and rollout remain pending.
+
 The [October 27 system-health audit](docs/evals/system-health-20261027/README.md)
 identifies storage wait and repeated overlay writes as efficiency targets.
 Guarded replay writes and finer search/sync phase timings are tested locally,

@@ -32,7 +32,7 @@ def start_server(binary, snapshot, directory, name):
     with socket.socket() as sock:
         sock.bind(('127.0.0.1', 0))
         port = sock.getsockname()[1]
-    env = {**os.environ, 'TYPEAHEAD_EVAL_SNAPSHOT': str(snapshot.resolve()),
+    env = {**os.environ, 'TYPEAHEAD_EVAL_NONCE': 'pds-evaluation-' + name, 'TYPEAHEAD_EVAL_SNAPSHOT': str(snapshot.resolve()),
            'LOCAL_DB_PATH': str((directory / (name + '.db')).resolve()), 'PORT': str(port), 'ADMIN_SECRET': 'local-pds-evaluation'}
     log = open(directory / (name + '.log'), 'w')
     process = subprocess.Popen([str(binary.resolve())], env=env, stdout=log, stderr=log)

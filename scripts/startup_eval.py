@@ -55,7 +55,7 @@ def measure(args, variant, number, frozen, queries):
         path.unlink(missing_ok=True)
     shutil.copyfile(frozen, overlay)
     evict((args.snapshot, Path(str(args.snapshot) + ".prefix"), frozen, overlay))
-    env = dict(os.environ, TYPEAHEAD_EVAL_SNAPSHOT=str(args.snapshot),
+    env = dict(os.environ, TYPEAHEAD_EVAL_NONCE=f"startup-evaluation-{variant}-{number}", TYPEAHEAD_EVAL_SNAPSHOT=str(args.snapshot),
                LOCAL_DB_PATH=str(overlay), PORT=str(args.port), READ_POOL_SIZE="8")
     result = {"variant": variant, "round": number, "queries": []}
     started = time.monotonic()

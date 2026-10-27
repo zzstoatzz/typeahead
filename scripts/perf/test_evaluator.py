@@ -1,0 +1,122 @@
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import sqlite3
+import subprocess
+import sys
+import tempfile
+import time
+import unittest
+import uuid
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'snapshot_compaction'))
+from recovery_fixture import create
+import qualify
+
+
+@unittest.skipUnless(os.environ.get('TYPEAHEAD_EVAL_SERVER'), 'native evaluation executable required')
+class EvaluatorTest(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix='typeahead-perf-fixture-')
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        create(self.root / 'fixtures')
+        self.snapshot = self.root / 'fixtures/builds/legacy/index.db'
+        self.overlay = self.root / 'overlay.db'
+        self.nonce = uuid.uuid4().hex
+        self.input_id = hashlib.sha256(self.snapshot.read_bytes()).hexdigest()
+        self.process = None
+        self.addCleanup(self.stop)
+
+    def stop(self):
+        if self.process and self.process.poll() is None:
+            os.killpg(self.process.pid, signal.SIGTERM)
+            try:
+                self.process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                os.killpg(self.process.pid, signal.SIGKILL)
+                self.process.wait(timeout=3)
+
+    def start(self, wait=True):
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1', 0))
+            port = listener.getsockname()[1]
+        env = {k: v for k, v in os.environ.items()
+               if not k.startswith(('TURSO_', 'INDEX_R2_', 'LOGFIRE_', 'PREFECT_'))}
+        env.update(TYPEAHEAD_EVAL_SNAPSHOT=str(self.snapshot), LOCAL_DB_PATH=str(self.overlay),
+                   TYPEAHEAD_EVAL_NONCE=self.nonce, TYPEAHEAD_EVAL_INPUT_ID=self.input_id,
+                   PORT=str(port))
+        self.log = self.root / ('server-' + str(time.monotonic_ns()) + '.log')
+        with self.log.open('w') as output:
+            self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
+                                            stdout=output, stderr=output, start_new_session=True)
+        self.base = f'http://127.0.0.1:{port}'
+        if wait:
+            deadline = time.monotonic() + 10
+            while time.monotonic() < deadline:
+                if self.process.poll() is not None:
+                    self.fail(self.log.read_text())
+                try:
+                    qualify.verify_target(self.base, self.nonce, .1, self.input_id)
+                    return
+                except (OSError, ValueError):
+                    time.sleep(.02)
+            self.fail(self.log.read_text())
+
+    def test_native_identity_reference_and_concurrent_response_equivalence(self):
+        self.start()
+        cases = [{'id': 'actor', 'path': '/search?q=a&limit=10', 'status': 200,
+                  'min_actors': 1, 'first_handle': 'recovery.test'},
+                 {'id': 'empty', 'path': '/search?q=zzzz&limit=10', 'status': 200}]
+        reference = qualify.capture(self.base, cases, 1, rps=10)
+        self.assertTrue(reference['passed'], reference)
+        rows = qualify.measure(self.base, cases, reference, 4, 4, 10, 1, 3)
+        self.assertTrue(all(row['correct'] for row in rows), rows)
+        self.assertEqual(len(rows), 8)
+        with self.assertRaises(ValueError):
+            qualify.verify_target(self.base, self.nonce, 1, 'b' * 64)
+        cases_path = self.root / 'cases.json'
+        reference_path = self.root / 'reference.json'
+        report_path = self.root / 'qualification.json'
+        cases_path.write_text(json.dumps(cases))
+        command = [sys.executable, qualify.__file__, '--url', self.base, '--nonce', self.nonce,
+                   '--input-id', self.input_id, '--cases', str(cases_path), '--rps', '10',
+                   '--rounds', '2', '--duration', '2', '--timeout', '1']
+        result = subprocess.run(command + ['--output', str(reference_path)], capture_output=True, timeout=5)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result = subprocess.run(command + ['--reference', str(reference_path), '--output', str(report_path)],
+                                capture_output=True, timeout=5)
+        self.assertEqual(result.returncode, 1, result.stderr)
+        summary = json.loads(report_path.read_text())['summary']
+        self.assertEqual(summary['failures'], 0)
+        self.assertFalse(summary['enough_samples'])
+        self.assertFalse(summary['passed'])
+
+    def test_nonempty_overlay_cannot_forge_pds_readiness(self):
+        with sqlite3.connect(self.snapshot) as conn:
+            conn.execute("INSERT INTO index_meta VALUES('pds_scope_policy','fixture-policy')")
+        self.start()
+        self.stop()
+        with sqlite3.connect(self.overlay) as conn:
+            conn.execute("DELETE FROM sync_meta WHERE key='pds_scope_policy'")
+            conn.execute("INSERT INTO actor_overlay VALUES('did:fixture',x'00',0,200,0)")
+        self.start(wait=False)
+        try:
+            exit_code = self.process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            result, body = qualify.request(self.base, '/__evaluation', .2)
+            with sqlite3.connect(self.overlay) as conn:
+                policy = conn.execute("SELECT value FROM sync_meta WHERE key='pds_scope_policy'").fetchone()
+                count = conn.execute('SELECT count(*) FROM actor_overlay').fetchone()
+            self.fail(self.log.read_text() + repr((result, body, policy, count)))
+        self.assertNotEqual(exit_code, 0)
+        self.assertIn('UnreadyEvaluationOverlay', self.log.read_text())
+        with sqlite3.connect(self.overlay) as conn:
+            self.assertIsNone(conn.execute("SELECT value FROM sync_meta WHERE key='pds_scope_policy'").fetchone())
+
+
+if __name__ == '__main__':
+    unittest.main()
