@@ -15,6 +15,7 @@ const index_search = @import("index/index_search.zig");
 const index_schema = @import("index/schema.zig");
 const sync = @import("db/sync.zig");
 const http_guard = @import("http_guard.zig");
+const EvalCounters = @import("eval_writer.zig").Counters;
 
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     const v = std.c.getenv(name) orelse return null;
@@ -29,7 +30,7 @@ pub fn handleConnection(stream: std.Io.net.Stream, local_db: *LocalDb, identity_
     handleConnectionContext(stream, local_db, identity_pool, accept_thread, null);
 }
 
-pub const EvaluationIdentity = struct { nonce: []const u8, input_id: []const u8 };
+pub const EvaluationIdentity = struct { nonce: []const u8, input_id: []const u8, writer: ?*const EvalCounters = null };
 
 pub fn handleEvaluationConnection(stream: std.Io.net.Stream, local_db: *LocalDb, accept_thread: std.Thread.Id, evaluation: EvaluationIdentity) void {
     handleConnectionContext(stream, local_db, null, accept_thread, evaluation);
@@ -80,7 +81,7 @@ fn handleRequest(request: *http.Server.Request, local_db: *LocalDb, identity_poo
         var output: std.Io.Writer.Allocating = .init(std.heap.smp_allocator);
         defer output.deinit();
         var jw: json.Stringify = .{ .writer = &output.writer };
-        try jw.write(.{ .nonce = evaluation_identity.?.nonce, .input_id = evaluation_identity.?.input_id, .ready = local_db.isReady() });
+        try jw.write(.{ .nonce = evaluation_identity.?.nonce, .input_id = evaluation_identity.?.input_id, .ready = local_db.isReady(), .writer = if (evaluation_identity.?.writer) |counter| counter.snapshot() else null });
         try sendJson(request, .ok, output.written());
     } else if (mem.eql(u8, path, "/search")) {
         try handleSearch(request, target, local_db);

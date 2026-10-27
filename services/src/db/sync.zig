@@ -52,7 +52,7 @@ const trailing_col: usize = Col.quality_score + 1;
 /// `updated_at` is the source timestamp; `local` is for reading the old row
 /// from overlay-then-base through a read lease (only read-pool conns have the
 /// `idx` snapshot attached).
-const OverlayCtx = struct {
+pub const OverlayCtx = struct {
     arena: Allocator,
     updated_at: i64,
     local: *LocalDb,
@@ -704,7 +704,7 @@ test "unified base old actor suppresses renamed prefixes and preserves large syn
 
 /// Project one updated actor into the overlay, inside the caller's
 /// transaction on the write conn. `row` only needs .text/.int/.float.
-fn projectRow(conn: zqlite.Conn, row: anytype, ctx: OverlayCtx) !void {
+pub fn projectRow(conn: zqlite.Conn, row: anytype, ctx: OverlayCtx) !void {
     const old_start = if (ctx.timings != null) std.Io.Timestamp.now(io, .awake).nanoseconds else 0;
     const did = row.text(Col.did);
     var old: OldRow = .{};

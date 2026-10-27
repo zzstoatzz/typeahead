@@ -103,7 +103,7 @@ or production defaults exist. Run accounting tests with:
 
 ## Initial verification
 
-Six tests passed, including the actual native evaluation executable, reference
+Seven tests passed, including the actual native evaluation executable, reference
 body equivalence under concurrent HTTP, wrong nonce/input identity rejection,
 timeouts retained as failures, incorrect HTTP200 empty bodies, and refusal to
 forge readiness on nonempty overlay data. A startup-error test also caught the
@@ -145,7 +145,12 @@ supervisor is killed. Preserve small receipts and verify filesystem reclamation.
 
 This stage compares baseline f67005b with the candidate, using identical neutral
 evaluator/threading/identity guards on both. The exact source and binary hashes
-must be recorded. The initial frozen overlay is empty/base-only. Its timings do
-not qualify real overlay growth or sync interference; storage is cloud SSD rather
+must be recorded. The frozen overlay is prefilled through the production projection function with
+5,000 captured actors from the immutable legacy twin. Mixed load replays half and
+advances source timestamps for half, in 500-actor batches scheduled every five
+seconds, while checking full response hashes and PDS acknowledgment. Three
+background task slots match production scheduling pressure. A 1,008-case varied
+manifest preserves the canonical cases and adds deterministic short prefixes.
+Its timings do not qualify the aged production overlay or live Turso sync; storage is cloud SSD rather
 than the Fly volume. Mixed-workload and final Fly gates remain outstanding even
 if the offline warm numbers pass.

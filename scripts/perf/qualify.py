@@ -15,7 +15,7 @@ import urllib.request
 
 def request(base, path, timeout):
     started = time.monotonic()
-    status, body, error = None, b'', None
+    status, body, error, pds_ack = None, b'', None, None
     try:
         req = urllib.request.Request(base + path, headers={'User-Agent': 'typeahead-isolated-qualification/1'})
         try:
@@ -24,6 +24,7 @@ def request(base, path, timeout):
             response = exc
         with response:
             status = response.status
+            pds_ack = response.headers.get('X-Typeahead-Pds')
             chunks = []
             length = 0
             while chunk := response.read1(65536):
@@ -37,7 +38,7 @@ def request(base, path, timeout):
     except (OSError, ValueError, http.client.HTTPException) as exc:
         error = type(exc).__name__
     return {'status': status, 'sha256': hashlib.sha256(body).hexdigest(),
-            'elapsed_ms': (time.monotonic() - started) * 1000, 'error': error}, body
+            'elapsed_ms': (time.monotonic() - started) * 1000, 'error': error, 'pds_ack': pds_ack}, body
 
 
 def verify_target(base, nonce, timeout, input_id=None):
@@ -97,6 +98,8 @@ def capture(base, cases, timeout, rps=4):
         time.sleep(max(0, started + index / rps - time.monotonic()))
         result, body = request(base, case['path'], timeout)
         correct = result['error'] is None and result['status'] == case['status']
+        if 'pds_ack' in case:
+            correct = correct and result['pds_ack'] == case['pds_ack']
         try:
             payload = json.loads(body)
             correct = correct and isinstance(payload, dict)
@@ -110,7 +113,7 @@ def capture(base, cases, timeout, rps=4):
         except (ValueError, KeyError, TypeError, AttributeError):
             correct = False
         attempts.append({'id': case['id'], **result, 'correct': correct})
-        reference[case['id']] = {'path': case['path'], 'status': case['status'], 'sha256': result['sha256']}
+        reference[case['id']] = {'path': case['path'], 'status': case['status'], 'sha256': result['sha256'], 'pds_ack': result['pds_ack']}
     return {'reference': reference, 'attempts': attempts, 'passed': all(r['correct'] for r in attempts)}
 
 
@@ -132,7 +135,8 @@ def measure(base, cases, reference, rounds, concurrency, rps, timeout, duration)
         else:
             result, _ = request(base, case['path'], min(timeout, deadline - time.monotonic()))
         correct = (result['error'] is None and result['status'] == case['status']
-                   and result['sha256'] == expected[case['id']]['sha256'])
+                   and result['sha256'] == expected[case['id']]['sha256']
+                   and result.get('pds_ack') == expected[case['id']].get('pds_ack'))
         return {'id': case['id'], 'index': index, 'expected_status': case['status'],
                 'queue_ms': queue_ms, 'end_to_end_ms': (time.monotonic() - scheduled) * 1000,
                 'correct': correct, **result}
@@ -157,6 +161,7 @@ def main():
     parser.add_argument('--duration', type=float, default=180)
     parser.add_argument('--p95-ms', type=float, default=50)
     parser.add_argument('--p99-ms', type=float, default=100)
+    parser.add_argument('--require-writer-batches', type=int, default=0)
     args = parser.parse_args()
     if Path(args.output).exists():
         raise ValueError('output already exists; preserve each qualification attempt separately')
@@ -164,6 +169,7 @@ def main():
     if not (1 <= args.concurrency <= 8 and 0 < args.rps <= 10 and 0 < args.timeout <= 10
             and 0 < args.duration <= 300 and 1 <= args.rounds <= 20
             and len(cases) * args.rounds <= 20000
+            and 0 <= args.require_writer_batches <= 10000
             and len(cases) * args.rounds / args.rps <= args.duration):
         raise ValueError('workload exceeds qualification bounds')
     if len(args.input_id) != 64 or any(c not in '0123456789abcdef' for c in args.input_id):
@@ -187,7 +193,16 @@ def main():
         report = {'kind': 'reference-capture', 'identity': identity, **capture(args.url.rstrip('/'), cases, args.timeout, args.rps)}
         passed = report['passed']
     try:
-        verify_target(args.url, args.nonce, args.timeout, args.input_id)
+        end_identity = verify_target(args.url, args.nonce, args.timeout, args.input_id)
+        report['identity_end'] = end_identity
+        if args.require_writer_batches:
+            initial = identity.get('writer') or {}
+            final = end_identity.get('writer') or {}
+            batches = final.get('batches', 0) - initial.get('batches', 0)
+            changes = final.get('changes', 0) - initial.get('changes', 0)
+            report['writer_overlap'] = {'batches': batches, 'sqlite_changes': changes}
+            if batches < args.require_writer_batches or final.get('failures', 1) != 0:
+                raise ValueError('required error-free writer activity did not overlap qualification')
     except (OSError, ValueError) as exc:
         report['identity_end_error'] = str(exc)
         passed = False

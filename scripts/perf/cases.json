@@ -232,17 +232,20 @@
   {
     "id": "pds-eligible",
     "path": "/search?q=a&limit=10&pds=selfhosted.social",
-    "status": 200
+    "status": 200,
+    "pds_ack": "selfhosted.social"
   },
   {
     "id": "pds-eligible-url",
     "path": "/search?q=a&limit=10&pds=https%3A%2F%2Fselfhosted.social",
-    "status": 200
+    "status": 200,
+    "pds_ack": "selfhosted.social"
   },
   {
     "id": "pds-unknown",
     "path": "/search?q=a&limit=10&pds=not-a-pds.invalid",
-    "status": 200
+    "status": 200,
+    "pds_ack": "not-a-pds.invalid"
   },
   {
     "id": "pds-excluded",

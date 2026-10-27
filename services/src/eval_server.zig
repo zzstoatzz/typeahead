@@ -1,6 +1,7 @@
 const std = @import("std");
 const LocalDb = @import("db/LocalDb.zig");
 const server = @import("server.zig");
+const EvalWriter = @import("eval_writer.zig").Writer;
 
 var threaded_io: std.Io.Threaded = undefined;
 pub const std_options_debug_threaded_io: ?*std.Io.Threaded = &threaded_io;
@@ -42,13 +43,25 @@ pub fn main() !void {
             try local.exec("INSERT OR REPLACE INTO sync_meta(key,value) VALUES('pds_scope_policy',?)", .{policy});
         }
     }
+    var writer_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer writer_arena.deinit();
+    var writer = try EvalWriter.init(writer_arena.allocator(), &local);
+    if (writer) |*value| try value.prefill();
+    const slots = try std.fmt.parseInt(usize, std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_BACKGROUND_SLOTS") orelse if (writer != null) "3" else "0"), 10);
+    if (slots > 7 or (writer != null and slots == 0)) return error.InvalidBackgroundSlots;
     var addr = std.Io.net.IpAddress{ .ip4 = .{ .bytes = .{ 127, 0, 0, 1 }, .port = port } };
     var listener = try addr.listen(io, .{ .reuse_address = true });
     defer listener.deinit(io);
     var tasks: std.Io.Group = .init;
     defer tasks.cancel(io);
+    if (writer) |*value| try tasks.concurrent(io, EvalWriter.run, .{value});
+    for (0..slots - @as(usize, @intFromBool(writer != null))) |_| try tasks.concurrent(io, idleLoop, .{});
     while (true) {
         const stream = try listener.accept(io);
-        tasks.async(io, server.handleEvaluationConnection, .{ stream, &local, std.Thread.getCurrentId(), server.EvaluationIdentity{ .nonce = nonce, .input_id = input_id } });
+        tasks.async(io, server.handleEvaluationConnection, .{ stream, &local, std.Thread.getCurrentId(), server.EvaluationIdentity{ .nonce = nonce, .input_id = input_id, .writer = if (writer) |*value| &value.counters else null } });
     }
+}
+
+fn idleLoop() void {
+    while (true) std.Options.debug_io.sleep(std.Io.Duration.fromSeconds(60), .awake) catch return;
 }

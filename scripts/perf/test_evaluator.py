@@ -40,7 +40,7 @@ class EvaluatorTest(unittest.TestCase):
                 os.killpg(self.process.pid, signal.SIGKILL)
                 self.process.wait(timeout=3)
 
-    def start(self, wait=True):
+    def start(self, wait=True, extra_env=None):
         with socket.socket() as listener:
             listener.bind(('127.0.0.1', 0))
             port = listener.getsockname()[1]
@@ -49,6 +49,7 @@ class EvaluatorTest(unittest.TestCase):
         env.update(TYPEAHEAD_EVAL_SNAPSHOT=str(self.snapshot), LOCAL_DB_PATH=str(self.overlay),
                    TYPEAHEAD_EVAL_NONCE=self.nonce, TYPEAHEAD_EVAL_INPUT_ID=self.input_id,
                    PORT=str(port))
+        env.update(extra_env or {})
         self.log = self.root / ('server-' + str(time.monotonic_ns()) + '.log')
         with self.log.open('w') as output:
             self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
@@ -116,6 +117,27 @@ class EvaluatorTest(unittest.TestCase):
         self.assertIn('UnreadyEvaluationOverlay', self.log.read_text())
         with sqlite3.connect(self.overlay) as conn:
             self.assertIsNone(conn.execute("SELECT value FROM sync_meta WHERE key='pds_scope_policy'").fetchone())
+
+    def test_native_captured_projection_overlaps_reads_without_changing_results(self):
+        with sqlite3.connect(self.snapshot) as conn:
+            did, blob = conn.execute('SELECT did,blob FROM actor_compact_base LIMIT 1').fetchone()
+        feed = self.root / 'feed.json'
+        feed.write_text(json.dumps([{'did': did, 'blob_hex': blob.hex()},
+                                    {'did': did + '-second', 'blob_hex': blob.hex()}]))
+        trigger = self.root / 'writer-start'
+        self.start(extra_env={'TYPEAHEAD_EVAL_FEED': str(feed), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
+                              'TYPEAHEAD_EVAL_WRITER_START': str(trigger), 'TYPEAHEAD_EVAL_WRITER_DELAY_MS': '10'})
+        cases = [{'id': 'actor', 'path': '/search?q=a&limit=10', 'status': 200,
+                  'min_actors': 1, 'first_handle': 'recovery.test'}]
+        reference = qualify.capture(self.base, cases, 1)
+        initial = qualify.verify_target(self.base, self.nonce, 1, self.input_id)
+        trigger.touch()
+        rows = qualify.measure(self.base, cases, reference, 8, 4, 10, 1, 3)
+        final = qualify.verify_target(self.base, self.nonce, 1, self.input_id)
+        self.assertTrue(all(row['correct'] for row in rows), rows)
+        self.assertGreater(final['writer']['batches'], initial['writer']['batches'])
+        self.assertGreater(final['writer']['changes'], initial['writer']['changes'])
+        self.assertEqual(final['writer']['failures'], 0)
 
 
 if __name__ == '__main__':
