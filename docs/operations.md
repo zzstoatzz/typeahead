@@ -2,6 +2,14 @@
 
 ## Current automatic refresh — October 27, 2026
 
+Latest readback at 08:15 UTC: the scheduled cloud refresh completed at 08:03:05
+and routed build `b1793081565-0228-px05` to `typeahead-search-refresh`, Machine
+`801539a6551778`. Native source remains `f67005b`, at two shared CPUs / 1 GiB.
+The prior `typeahead-startup-20261024` / `080d415b734708` remains running for
+rollback. Public freshness was healthy with 106 seconds lag. This performance
+investigation made no production mutation; its guarded writes remain local.
+See the [readback evidence](evals/perf-goal-20261027/production-during-trial.json).
+
 Verified at 06:06 UTC: public routing selects `typeahead-startup-20261024`,
 Machine `080d415b734708`, build `b1792908655-14d5-px05`, native source `f67005b`.
 It retains the downsized two shared CPUs / 1 GiB and an independent 20 GB disk.

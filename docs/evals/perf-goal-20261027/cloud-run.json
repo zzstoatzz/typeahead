@@ -1,0 +1,21 @@
+{
+  "run_id": "20261027-800a5ec34a01",
+  "host": "100.78.52.120",
+  "unit": "typeahead-perf-20261027-800a5ec34a01",
+  "code": "/var/lib/typeahead-perf-code/20261027-800a5ec34a01",
+  "scratch": "/var/lib/typeahead-perf/20261027-800a5ec34a01",
+  "evidence": "/var/lib/typeahead-perf-evidence/20261027-800a5ec34a01",
+  "uploaded_compressed_bytes": 8642485,
+  "launch_command": "systemd-run --unit typeahead-perf-20261027-800a5ec34a01 --collect --no-block --property User=typeahead-indexer --property Group=typeahead-indexer --property 'StateDirectory=typeahead-perf/20261027-800a5ec34a01 typeahead-perf-evidence/20261027-800a5ec34a01' --property StateDirectoryMode=0750 --property CPUQuota=200% --property MemoryMax=1G --property MemorySwapMax=0 --property CPUWeight=1 --property IOWeight=1 --property Nice=19 --property IOSchedulingClass=idle --property TasksMax=64 --property RuntimeMaxSec=5400 --property KillMode=control-group --property PrivateNetwork=yes --property ProtectSystem=strict --property ProtectHome=yes --property NoNewPrivileges=yes --property CapabilityBoundingSet= --property RestrictSUIDSGID=yes --property 'ExecStopPost=/usr/bin/python3 /var/lib/typeahead-perf-code/20261027-800a5ec34a01/cloud_trial.py --scratch /var/lib/typeahead-perf/20261027-800a5ec34a01 --evidence /var/lib/typeahead-perf-evidence/20261027-800a5ec34a01 --cleanup-only' /usr/bin/python3 /var/lib/typeahead-perf-code/20261027-800a5ec34a01/cloud_trial.py --scratch /var/lib/typeahead-perf/20261027-800a5ec34a01 --evidence /var/lib/typeahead-perf-evidence/20261027-800a5ec34a01 --source /var/lib/typeahead-indexer/builds/archive/build-b1792908655-14d5-px05 --bin-dir /var/lib/typeahead-perf-code/20261027-800a5ec34a01 --cases /var/lib/typeahead-perf-code/20261027-800a5ec34a01/cases-varied.json",
+  "wrapper_commit": "ffd5d86b3225de14cca835be8fe1d78cb4502a37",
+  "uploaded_files_sha256": {
+    "cloud_trial.py": "521a0ec2574bf0080abf2f52fce01d84705604232f3e5472495aa1fd60dfb6cb",
+    "qualify.py": "6f3b9bcdef0d8725c57cda065523d19140ac9ea1c1263d506037bc52ce100f8a",
+    "cases-varied.json": "1d35e13d0d8487d679170dbc648cb4e861cdc64f5a637476e6a7686ddd8aa184",
+    "build-pair.json": "d6ac42d4b78099d586444e20d44930e54774a95a5d19a76a771ee08712f80b6e",
+    "baseline": "c1cb1c65e53c99ff7773be7e56a747adf05af4fd25ab7e2341efa3e3d6c093fd",
+    "candidate": "728e548e8e957b7e9dbcc879d0c3ef4a32de64d834a67e866085ff14b164b202"
+  },
+  "status": "running; input copy; not qualified",
+  "advisory_first_touch_limitation": "File-cache eviction is advisory and does not clear the evaluator per-slot cache; baseline reference capture also warms those slots. Do not compare this phase as equally cold across arms. A fresh-process cold gate remains required."
+}

@@ -1,5 +1,11 @@
 # Automatic isolated snapshot refresh
 
+The October 27 scheduled refresh completed at 08:03 UTC. Readback at 08:15 UTC
+selects `typeahead-search-refresh` / `801539a6551778`, build
+`b1793081565-0228-px05`, with `typeahead-startup-20261024` retained for rollback.
+Both still run native `f67005b` at two shared CPUs / 1 GiB. See the
+[readback evidence](../evals/perf-goal-20261027/production-during-trial.json).
+
 Live state verified October 27, 2026, 06:06 UTC: native `f67005b` serves on
 `typeahead-startup-20261024` at two shared CPUs / 1 GiB; the previous backend
 `typeahead-search-refresh` remains available for routing rollback. Both have

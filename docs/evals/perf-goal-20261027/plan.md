@@ -154,3 +154,19 @@ manifest preserves the canonical cases and adds deterministic short prefixes.
 Its timings do not qualify the aged production overlay or live Turso sync; storage is cloud SSD rather
 than the Fly volume. Mixed-workload and final Fly gates remain outstanding even
 if the offline warm numbers pass.
+
+Run 20261027-800a5ec34a01 started at 08:03 UTC; cloud-run.json records its exact
+unit, command and uploaded hashes. Its first-touch phase evicts the private
+filesystem cache only, without clearing process-local slot caches; baseline
+reference capture has also touched those caches. Treat that phase as advisory,
+not an equally cold comparison. Fresh-process cold qualification remains open.
+Warm and mixed phases follow complete varied-query rounds on both arms.
+
+Production readback at 08:15 UTC: scheduled run
+a21b0b8e-892b-4fce-b06d-7bee9ebfe784 completed at 08:03:05 UTC and selected
+new build b1793081565-0228-px05 on typeahead-search-refresh / 801539a6551778.
+The prior startup slot remains running for rollback. Both retain two shared
+CPUs / 1 GiB and native f67005b. Public freshness is healthy with 106 seconds
+lag. production-during-trial.json retains route, source, resource and health
+readbacks. This goal made no production mutation. The /stats 24h miss mean is
+259.20 ms, versus 168.83 ms over 7d; the difference is still unqualified.

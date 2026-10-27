@@ -1,0 +1,72 @@
+{
+  "checked_at": "2026-10-27T08:15:03.050412+00:00",
+  "production_mutations": false,
+  "scheduled_refresh": {
+    "run_id": "a21b0b8e-892b-4fce-b06d-7bee9ebfe784",
+    "state": "COMPLETED",
+    "end_time": "2026-10-27T08:03:05.046677Z"
+  },
+  "typeahead-search-refresh": [
+    {
+      "id": "801539a6551778",
+      "state": "started",
+      "image_ref": {
+        "registry": "registry.fly.io",
+        "repository": "typeahead-search-refresh",
+        "digest": "sha256:db8ddbb48baa2da4aebc09be2d6733484f648c9ded81a6437d4d69ec7ef60feb",
+        "labels": {
+          "org.opencontainers.image.revision": "f67005bf6c1c304790199e17bc8253332dddcb05"
+        }
+      },
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "metadata": {
+        "build_id": "b1793081565-0228-px05",
+        "owner": "typeahead-snapshot-refresh"
+      },
+      "config_image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd",
+      "updated_at": "2026-10-27T07:57:42Z"
+    }
+  ],
+  "typeahead-startup-20261024": [
+    {
+      "id": "080d415b734708",
+      "state": "started",
+      "image_ref": {
+        "registry": "registry.fly.io",
+        "repository": "typeahead-search-refresh",
+        "digest": "sha256:db8ddbb48baa2da4aebc09be2d6733484f648c9ded81a6437d4d69ec7ef60feb",
+        "labels": {
+          "org.opencontainers.image.revision": "f67005bf6c1c304790199e17bc8253332dddcb05"
+        }
+      },
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "metadata": {
+        "build_id": "b1792908655-14d5-px05",
+        "owner": "typeahead-snapshot-refresh"
+      },
+      "config_image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd",
+      "updated_at": "2026-10-27T06:04:47Z"
+    }
+  ],
+  "route": {
+    "origin": "https://typeahead-search-refresh.fly.dev",
+    "build_id": "b1793081565-0228-px05"
+  },
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 106,
+    "snapshot_age_s": 7340,
+    "build_id": "b1793081565-0228-px05",
+    "probe_ok": true,
+    "reasons": []
+  }
+}

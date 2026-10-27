@@ -1,0 +1,83 @@
+{
+  "window_start": "2026-10-27T08:00:00Z",
+  "window_end": "2026-10-27T08:08:00Z",
+  "source": "Logfire typeahead project; native search spans are head-sampled 1/10 and omit pre-handler admission wait; this is not a population latency qualification",
+  "result": {
+    "columns": [
+      {
+        "name": "service_name",
+        "datatype": "Utf8",
+        "nullable": false
+      },
+      {
+        "name": "span_name",
+        "datatype": "Utf8",
+        "nullable": false
+      },
+      {
+        "name": "n",
+        "datatype": "Int64",
+        "nullable": false
+      },
+      {
+        "name": "first_seen",
+        "datatype": {
+          "Timestamp": [
+            "Microsecond",
+            "UTC"
+          ]
+        },
+        "nullable": true
+      },
+      {
+        "name": "last_seen",
+        "datatype": {
+          "Timestamp": [
+            "Microsecond",
+            "UTC"
+          ]
+        },
+        "nullable": true
+      },
+      {
+        "name": "mean_ms",
+        "datatype": "Float64",
+        "nullable": true
+      },
+      {
+        "name": "max_ms",
+        "datatype": "Float64",
+        "nullable": true
+      }
+    ],
+    "rows": [
+      {
+        "service_name": "typeahead-search-refresh",
+        "span_name": "http.health",
+        "n": 11,
+        "first_seen": "2026-10-27T08:00:03.366160Z",
+        "last_seen": "2026-10-27T08:05:22.921293Z",
+        "mean_ms": 0.5501312727272728,
+        "max_ms": 1.125761
+      },
+      {
+        "service_name": "typeahead-search-refresh",
+        "span_name": "search",
+        "n": 9,
+        "first_seen": "2026-10-27T08:00:57.394473Z",
+        "last_seen": "2026-10-27T08:05:15.665711Z",
+        "mean_ms": 15.222050333333335,
+        "max_ms": 35.085349
+      },
+      {
+        "service_name": "typeahead-search-refresh",
+        "span_name": "sync.incremental",
+        "n": 1,
+        "first_seen": "2026-10-27T08:02:55.191158Z",
+        "last_seen": "2026-10-27T08:02:55.191158Z",
+        "mean_ms": 11235.095461,
+        "max_ms": 11235.095461
+      }
+    ]
+  }
+}
