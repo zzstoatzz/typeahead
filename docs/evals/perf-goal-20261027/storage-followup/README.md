@@ -51,3 +51,12 @@ to be downloaded to the laptop. No new trial resource has been created yet.
 
 API references: https://fly.io/docs/monitoring/metrics/ and
 https://developers.cloudflare.com/api/resources/workers/subresources/observability/subresources/telemetry/methods/query/
+
+The two-counter gap persisted on a later same-window confirmation at about
+20:56 UTC; the original and confirmation snapshots are both retained. Linux
+ReleaseSafe baseline/candidate binaries have now built successfully, identified
+in build-pair.json. Their scratch root is /tmp/typeahead-cache512-pair-20261027
+(owner: this goal, binary budget 64 MiB); retire it after the private image is
+built or if this candidate is abandoned. No corpus payload is present locally.
+The 20:55 public probe was healthy with 131-second lag, and the transport API
+confirmed retained 40a014e4 alone.

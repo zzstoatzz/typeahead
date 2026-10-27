@@ -1,0 +1,17 @@
+{
+  "id": "a05e474a-22af-48d0-8bd7-b5449554d2b1",
+  "source": "wrangler",
+  "strategy": "percentage",
+  "author_email": "n8@zzstoatzz.io",
+  "annotations": {
+    "workers/message": "route-proof-retry-5eeae7e-20261027 restore retained transport",
+    "workers/triggered_by": "deployment"
+  },
+  "versions": [
+    {
+      "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+      "percentage": 100
+    }
+  ],
+  "created_on": "2026-10-27T20:37:04.109787Z"
+}

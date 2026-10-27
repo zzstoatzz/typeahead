@@ -1,0 +1,32 @@
+{
+  "baseline_commit": "62266a35bf1e8a1c5096ceee74cb914fd7147a9f",
+  "candidate_commit": "fb8907d32bb2b7d5165668481e1b01fe22fcbb6c",
+  "zig": "0.17.0",
+  "flags": [
+    "-Doptimize=ReleaseSafe",
+    "-Dtarget=x86_64-linux-gnu"
+  ],
+  "neutral_evaluator_files": {
+    "server.zig": "4ec20d20a7da3d87a9adb690074de9f457d7a592b4c670873faaac7678aa369f",
+    "eval_server.zig": "85ca6a39fa68270c551d4b4bd78197ab39078eeada637aaef4356a95ea184be8",
+    "eval_writer.zig": "b2ffed80be93e2c730273cfcdc2fb9629876f89697005109269a8fc26e09cbe4"
+  },
+  "baseline_neutral_patches": {
+    "sync_visibility": [
+      "pub OverlayCtx",
+      "pub projectRow"
+    ],
+    "actor_fence_capture_sha256": "12b013948f89d00d50e5f3a45e303f3ca58bb670a1372aa1a7d7b2e1eca9c58d",
+    "actor_fence_capture_applied": false
+  },
+  "binaries": {
+    "baseline": {
+      "bytes": 12609008,
+      "sha256": "58f3ac6207cb936853ba73db93def7120e6091355bc2ed7696f80f68579c3cdf"
+    },
+    "candidate": {
+      "bytes": 12610320,
+      "sha256": "688b12b6d84035aa37663be63d3676bda058fc8a62a6dd136b86391e0d1c1080"
+    }
+  }
+}

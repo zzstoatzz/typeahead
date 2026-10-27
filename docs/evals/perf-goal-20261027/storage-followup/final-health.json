@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-27T20:55:03.189Z",
+  "status": 200,
+  "ok": true,
+  "stale": false,
+  "replica_lag_s": 131,
+  "snapshot_age_s": 25244,
+  "build_id": "b1793109259-2b36-px05",
+  "probe_ok": true,
+  "reasons": []
+}
