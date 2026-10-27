@@ -1,0 +1,311 @@
+{
+  "at": "2026-10-27T20:19:17.345Z",
+  "request": {
+    "queryId": "typeahead-public-phase-20261027",
+    "dry": true,
+    "view": "calculations",
+    "ignoreSeries": true,
+    "limit": 50,
+    "timeframe": {
+      "from": 1793132335000,
+      "to": 1793132400000
+    },
+    "parameters": {
+      "filters": [
+        {
+          "key": "$metadata.service",
+          "operation": "eq",
+          "type": "string",
+          "value": "typeahead"
+        },
+        {
+          "key": "event",
+          "operation": "eq",
+          "type": "string",
+          "value": "search_response_timing"
+        }
+      ],
+      "calculations": [
+        {
+          "operator": "count",
+          "alias": "events"
+        },
+        {
+          "operator": "avg",
+          "key": "search_ms",
+          "keyType": "number",
+          "alias": "search_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "cache_ms",
+          "keyType": "number",
+          "alias": "cache_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "backend_headers_ms",
+          "keyType": "number",
+          "alias": "backend_headers_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "backend_ms",
+          "keyType": "number",
+          "alias": "backend_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "transport_route_ms",
+          "keyType": "number",
+          "alias": "transport_route_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "transport_origin_ms",
+          "keyType": "number",
+          "alias": "transport_origin_ms"
+        }
+      ],
+      "groupBys": [
+        {
+          "type": "string",
+          "value": "backend_strategy"
+        },
+        {
+          "type": "string",
+          "value": "backend_route_class"
+        },
+        {
+          "type": "string",
+          "value": "ingress_colo"
+        },
+        {
+          "type": "string",
+          "value": "outcome"
+        }
+      ]
+    }
+  },
+  "status": 200,
+  "success": true,
+  "errors": [],
+  "statistics": {
+    "elapsed": 0.065564587,
+    "rows_read": 1969840,
+    "bytes_read": 93817141,
+    "abr_level": 1
+  },
+  "calculations": [
+    {
+      "alias": "events",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "search_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 171,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "cache_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 26,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "backend_headers_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 145,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "backend_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 145,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "transport_route_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 114,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "transport_origin_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 80,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

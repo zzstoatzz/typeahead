@@ -218,8 +218,8 @@ def test_deprecated_param(base_url: str):
     data_q, _ = fetch(f"{base_url}{XRPC_PATH}?q=nate&limit=5")
     data_term, _ = fetch(f"{base_url}{XRPC_PATH}?term=nate&limit=5")
 
-    if not data_q or "_error" in data_q or not data_term or "_error" in data_term:
-        check("both params work", False)
+    if not data_q or "_error" in data_q or "_http_error" in data_q or not data_term or "_error" in data_term or "_http_error" in data_term:
+        check("both params work", False, f"q={data_q!r}, term={data_term!r}")
         return
 
     actors_q = {a.get("did") for a in data_q.get("actors", [])}

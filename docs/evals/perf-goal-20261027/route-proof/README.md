@@ -26,3 +26,32 @@ requests through the existing log sink, with no new service, monitor or table.
 Backend-error empty answers get a distinct outcome. The marker header is internal
 to the transport and is not forwarded by the public API. Logging deployment and
 transport qualification must be recorded separately.
+
+### Public timing release qualification
+
+Source `5eeae7e` passed all local checks and the retried CI build (the initial
+runner did not connect). Public version `a0c42973` initially failed smoke: the
+`q=nate` deprecated-parameter comparison saw zero actors while `term=nate`
+saw five, so the release automatically restored the previous public version.
+That observation is retained, not treated as a pass. A subsequent ordinary
+read of each parameter returned five actors on the retained release. The
+failure's HTTP status was not preserved by that assertion; smoke now reports
+HTTP errors explicitly, including when both requests fail. The same immutable
+logging version is being qualified once more with the unchanged full gate.
+
+Initial stored timing events confirm real public requests use the routing
+transport, rather than its legacy direct-origin bypass. No proof-reuse transport
+version has been deployed during these public logging checks.
+
+The retry passed the full smoke suite at 20:21 UTC. Public timing version
+`a0c42973` is live; only its timing seam changed. The bounded proof-reuse
+transport trial starts with retained `40a014e4` and candidate `b9cedc8d`, with
+10% and 50% smoke/health gates, a fixed ten-minute 50/50 natural-traffic
+comparison grouped by ingress location, then (only if that improves) a fixed
+15-minute full-traffic counter gate after settlement. The paired phase needs
+at least 20 matched-location observations per arm by matched minimum counts;
+the full phase needs at least 100 misses, mean <=169 ms, no unexpected statuses,
+and complete HTTP/counter reconciliation. Health/freshness and deployment
+ownership are checked throughout. The one-hour supervisor restores the retained
+transport on failure, interruption or deadline. No Fly resources or traffic
+rates are changed. See `canary-run.py` and its terminal `canary/state.json`.

@@ -1,0 +1,62 @@
+{
+  "request": {
+    "queryId": "typeahead-smoke-failure-http-20261027",
+    "dry": true,
+    "view": "calculations",
+    "ignoreSeries": true,
+    "limit": 25,
+    "timeframe": {
+      "from": 1793132335000,
+      "to": 1793132380000
+    },
+    "parameters": {
+      "filters": [
+        {
+          "key": "$metadata.service",
+          "operation": "eq",
+          "type": "string",
+          "value": "typeahead"
+        },
+        {
+          "key": "$workers.event.request.search.q",
+          "operation": "eq",
+          "type": "string",
+          "value": "nate"
+        }
+      ],
+      "calculations": [
+        {
+          "operator": "count",
+          "alias": "events"
+        }
+      ],
+      "groupBys": [
+        {
+          "type": "string",
+          "value": "$workers.event.response.status"
+        },
+        {
+          "type": "string",
+          "value": "$workers.outcome"
+        },
+        {
+          "type": "string",
+          "value": "event"
+        },
+        {
+          "type": "string",
+          "value": "error"
+        }
+      ]
+    }
+  },
+  "status": 200,
+  "success": true,
+  "errors": [],
+  "calculations": [
+    {
+      "alias": "events",
+      "aggregates": []
+    }
+  ]
+}

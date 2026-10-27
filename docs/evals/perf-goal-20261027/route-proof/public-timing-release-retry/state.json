@@ -1,0 +1,40 @@
+{
+  "source": "5eeae7e9fbc6c10d9e17c5746d93f8bba7a05f32",
+  "before": {
+    "id": "627cf63d-c240-45b5-8f91-44dbbe3fd6ad",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "public-timing-5eeae7e-20261027 rollback",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "936893b4-c7be-4ecc-ac58-0d7babda28e1",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T20:19:20.665316Z"
+  },
+  "candidate": "a0c42973-77c2-4895-9ee0-9207a7a4ffc0",
+  "started_utc": "2026-10-27T20:20:46.031824+00:00",
+  "deployment": {
+    "id": "22c85022-7ec9-4035-a01a-f518ec6cd337",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "public-timing-5eeae7e-20261027",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "a0c42973-77c2-4895-9ee0-9207a7a4ffc0",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T20:20:47.83814Z"
+  },
+  "phase": "smoke-passed"
+}

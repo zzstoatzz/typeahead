@@ -1,0 +1,24 @@
+{
+  "source": "5eeae7e9fbc6c10d9e17c5746d93f8bba7a05f32",
+  "local_checks": {
+    "worker_tests": 104,
+    "typecheck": "pass",
+    "lint": "pass",
+    "both_worker_upload_dry_runs": "pass",
+    "real_workerd_route_tests": "pass",
+    "persistent_cache_test": "pass",
+    "proof_lifetime_test": "pass"
+  },
+  "ci": {
+    "first_pipeline": "3myv2hilb2u22",
+    "first_result": "runner connection timeout before tests",
+    "retry_pipeline": "3myv2mhxpbp22",
+    "retry_deploy_workflow": "success",
+    "pds_workflow_pipeline": "3myv2hilb2u22",
+    "pds_workflow": "success"
+  },
+  "public_logging_version": "a0c42973-77c2-4895-9ee0-9207a7a4ffc0",
+  "candidate_transport_version": "b9cedc8d-d677-4d7c-b075-05351ee52a8c",
+  "retained_transport_version": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "candidate_live": false
+}
