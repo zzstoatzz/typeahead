@@ -366,3 +366,18 @@ search sampling (51 spans, 09:30–10:30 UTC) reports mean 10.71 ms and p95
 prevent subtracting these summaries as a precise network-phase measurement.
 The explicit transport cold-start samples show routing validation at 58–122 ms
 and origin headers at 25–45 ms, identifying measurable routing overhead.
+
+The first live canary exposed an observability limitation: sampling each
+isolate’s first and every tenth call preferentially captures cold starts in this
+low-volume service. A local follow-up records one small query-free timing event
+per transport search (roughly 13,000/day at observed demand). This changes neither
+native span sampling nor routing behavior. It is not in the active canary version;
+full timing coverage needs its own staged version before another live evaluation.
+
+The first ten-minute canary ended at 10:33 UTC and restored e8c21659 to
+100% because overlap samples were insufficient. Eight timing samples were
+serial; this biased sample cannot estimate the overlap fraction. Correctness
+smoke passed and freshness remained healthy throughout. Runtime tail outcomes
+include client cancellations; they are retained rather than counted as successful
+requests. Final deployment readback confirms the candidate receives zero traffic.
+The native private Fly trial continues independently.

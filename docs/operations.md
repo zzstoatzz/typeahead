@@ -749,3 +749,11 @@ At 10:23 UTC October 27, a bounded 10% canary of staged transport version
 [canary record](evals/perf-goal-20261027/transport-overlap/canary-10pct.json)
 is authoritative for the final outcome and percentage. The independent private
 Fly trial is running installation; no native performance qualification is claimed.
+
+A local follow-up removes per-isolate first-call timing bias by logging a
+query-free transport phase event for every search. It is separate from the first
+10% canary and is not deployed; native span sampling remains unchanged.
+
+At 10:33 UTC, the first canary restored the retained e8c21659 transport version
+to 100% because it lacked overlap evidence. Correctness/freshness gates passed,
+but no live speedup is claimed. [Final readback](evals/perf-goal-20261027/transport-overlap/canary-final-readback.json).

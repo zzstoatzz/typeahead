@@ -1,0 +1,228 @@
+{
+  "started_at": "2026-10-27T10:23:30.800035+00:00",
+  "old": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+  "candidate": "4a3b1424-ae73-4e0f-bb58-e838126678f9",
+  "candidate_percentage": 0,
+  "generated_search_requests": 0,
+  "samples": [
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 63,
+      "origin_headers_ms": 37,
+      "total_headers_ms": 100,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 122,
+      "origin_headers_ms": 39,
+      "total_headers_ms": 161,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 105,
+      "origin_headers_ms": 45,
+      "total_headers_ms": 150,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 59,
+      "origin_headers_ms": 38,
+      "total_headers_ms": 97,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 63,
+      "origin_headers_ms": 40,
+      "total_headers_ms": 103,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 82,
+      "origin_headers_ms": 37,
+      "total_headers_ms": 119,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 58,
+      "origin_headers_ms": 25,
+      "total_headers_ms": 83,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 103,
+      "origin_headers_ms": 32,
+      "total_headers_ms": 135,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 88,
+      "origin_headers_ms": 33,
+      "total_headers_ms": 121,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 182,
+      "origin_headers_ms": 32,
+      "total_headers_ms": 214,
+      "outcome": "http",
+      "sample_rate": 10
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 98,
+      "origin_headers_ms": 36,
+      "total_headers_ms": 134,
+      "outcome": "http",
+      "sample_rate": 10
+    }
+  ],
+  "health": [
+    {
+      "elapsed_s": 1.2,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 116,
+      "snapshot_age_s": 15046,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 60.6,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 184,
+      "snapshot_age_s": 15114,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 120.4,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 244,
+      "snapshot_age_s": 15174,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 181.1,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 368,
+      "snapshot_age_s": 15234,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 240.9,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 52,
+      "snapshot_age_s": 15294,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 300.8,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 112,
+      "snapshot_age_s": 15354,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 360.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 172,
+      "snapshot_age_s": 15414,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 420.9,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 232,
+      "snapshot_age_s": 15474,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 480.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 292,
+      "snapshot_age_s": 15534,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 540.9,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 46,
+      "snapshot_age_s": 15594,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 600.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 106,
+      "snapshot_age_s": 15654,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    }
+  ],
+  "outcomes": {
+    "ok": 93,
+    "canceled": 2
+  },
+  "status": "rolled-back",
+  "smoke_exit_code": 0,
+  "error": "RuntimeError: insufficient overlap samples for continued canary",
+  "finished_at": "2026-10-27T10:33:42.863321+00:00"
+}

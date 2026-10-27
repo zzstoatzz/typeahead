@@ -2,19 +2,17 @@ import type { parseRoute } from "./search-route";
 
 type Route = ReturnType<typeof parseRoute>;
 type OriginFetch = (route: Route, signal: AbortSignal) => Promise<Response>;
-let sequence = 0;
 
 export async function validatedSearch(
   current: Promise<Route>,
   hint: Route | undefined,
   fetchOrigin: OriginFetch,
 ): Promise<Response> {
-  const sampled = sequence++ % 10 === 0;
   const started = Date.now();
   const report = (status: number, mode: string, routeMs: number, originMs: number, outcome: string) => {
-    if (sampled || status >= 400) console.log(JSON.stringify({ event: "search_transport_timing", outcome,
+    console.log(JSON.stringify({ event: "search_transport_timing", outcome,
       status, mode, route_ms: routeMs, origin_headers_ms: originMs, total_headers_ms: Date.now() - started,
-      sample_rate: status >= 400 ? 1 : 10 }));
+      sample_rate: 1 }));
   };
   const begin = (route: Route) => {
     const abort = new AbortController();
