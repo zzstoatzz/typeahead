@@ -1,0 +1,69 @@
+{
+  "at": "2026-10-27T17:59:05.633126+00:00",
+  "temporary_tokens_checked": 3,
+  "newly_revoked_names": [],
+  "all_named_tokens_revoked": true,
+  "private_volumes": [
+    {
+      "id": "vol_4oj6gj0n91km3qxr",
+      "name": "perf_20261027_04adaf220602",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_vxmq97z6m565ewj4",
+      "name": "perf_20261027_4e76e7937657",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_v8eyqz0kkkw8mpkv",
+      "name": "perf_20261027_a944d3237145",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_re1qj7o28ge0xod4",
+      "name": "perf_20261027_963b8d20811d",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_vz80lxy65o2p0wjv",
+      "name": "perf_20261027_2caf472a9943",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_v3gxkkq76w60eem4",
+      "name": "perf_20261027_fe49de6251bd",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_rkgdqqpq577ne1y4",
+      "name": "perf_20261027_a63df5da9b03",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_vjy7ol9opqz295pv",
+      "name": "perf_20261027_263a043fc893",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_42kdjd0mqoqlq174",
+      "name": "perf_20261027_58bd21dbc764",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    },
+    {
+      "id": "vol_vxmq9qg3yl7pqln4",
+      "name": "perf_20261027_45b615c88376",
+      "state": "pending_destroy",
+      "attached_machine_id": null
+    }
+  ],
+  "nonretired_private_volumes": []
+}

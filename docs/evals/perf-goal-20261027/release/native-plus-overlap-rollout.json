@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-27T17:51:03.537244+00:00",
+  "phase": "live-smoke-passed-public-latency-pending",
+  "before": {
+    "id": "3045f389-1884-4e0b-8619-0dcdba0dabc3",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "Restore retained transport after bounded performance gate",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T15:20:07.085933Z"
+  },
+  "message": "Qualified native overlay release: enable validated route overlap 2026-10-27T17:51:03.536971+00:00",
+  "native_build": "b1793109259-2b36-px05",
+  "efficacy_pending": true,
+  "after": {
+    "id": "0805c5d6-f4f2-412a-9980-325b63392ccc",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "Qualified native overlay release: enable validated route overlap 2026-10-27T17:51:03.536971+00:00",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T17:51:06.843455Z"
+  },
+  "smoke": "passed",
+  "natural_window_start": "2026-10-27T17:55:00Z",
+  "natural_window_end": "2026-10-27T18:10:00Z"
+}

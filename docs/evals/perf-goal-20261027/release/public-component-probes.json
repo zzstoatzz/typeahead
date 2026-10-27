@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-27T17:53:34.895Z",
+  "scope": "two ordinary read-only probes, not percentile qualification; excluded from natural cohort",
+  "rows": [
+    {
+      "name": "public",
+      "status": 200,
+      "elapsed_ms": 357.228166,
+      "server_timing": "cache;desc=\"miss\";dur=14, origin_headers;dur=120;desc=\"01M5Z7XZKW20PXWETRW9B0N6ZK-iad\", origin;dur=120, search;dur=134",
+      "cf_ray": "a5138f9cf95bbbd1-ATL",
+      "actors": 50,
+      "sha256": "b60db048436c2eb884cb1d1836e35c14b3e0c345e1065be1f6f806dec14d1020"
+    },
+    {
+      "name": "transport",
+      "status": 200,
+      "elapsed_ms": 493.01124999999996,
+      "server_timing": "transport_route;dur=264, transport_origin_headers;dur=47, transport_mode;desc=\"overlap\"",
+      "cf_ray": "a5138f9f3ef0c63a-ATL",
+      "actors": 50,
+      "sha256": "b60db048436c2eb884cb1d1836e35c14b3e0c345e1065be1f6f806dec14d1020"
+    }
+  ]
+}

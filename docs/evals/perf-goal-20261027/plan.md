@@ -1012,3 +1012,30 @@ counter reconciliation required. The overall goal remains open for that result.
 README was compared against the implementation and verified deployment and
 updated with these distinctions. No public endpoint or response shape changed,
 so the API chip, lexicon, /docs and /llms.txt require no API edit.
+
+### Native plus validated transport overlap — live, efficacy pending
+
+The native-only clean bucket 17:40–17:45 UTC measured 39 misses averaging
+248.46 ms, all 39 HTTP-200 answers reconciled. It did not meet the public target.
+The previously tested transport 40a014e4 was enabled at 17:51 UTC under owned
+deployment 0805c5d6-f4f2-412a-9980-325b63392ccc; smoke passed. Native image and
+routing target are unchanged. Retained e8c21659 remains the rollback version.
+The existing safety evidence includes real-workerd tests, 10%/50% checks and
+an earlier complete HTTP-reconciled full-traffic cohort with no runtime errors.
+The missed standalone efficacy gate remains recorded; it is not relabeled PASS.
+
+The combined release's clean natural window is 17:55–18:10 UTC, after all
+public smoke and the two ordinary diagnostic requests. Require >=100 misses,
+settled counter reconciliation and healthy serving identity. The first complete
+bucket contains 98 misses averaging 194.24 ms and one cache hit; all 99 HTTP-200
+answers reconcile. This is preliminary and still above the public milestone.
+The full-window result is pending. A single public diagnostic returned 134 ms
+server-side and a byte-identical transport response; that is not a percentile
+or public-cohort qualification.
+
+Provider analytics 17:51:10–17:58 UTC show 630 successful public invocations,
+33 client disconnects and 47 successful transport invocations, zero runtime
+errors. The disconnects remain explicit. All known experiment volumes are
+retired and unattached, no private Fly Machines remain, and all returned named
+temporary trial credentials are revoked (17:59 audit). These are one-time
+release checks; no recurring observer or automation was added.

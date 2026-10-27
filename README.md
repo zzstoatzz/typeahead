@@ -75,15 +75,13 @@ candidate responses matched: cold p99 fell from 4.35 seconds to 33.5 ms, and
 mixed search/sync p99 was 25.3 ms. Both managed backends remain at two shared
 CPUs / 1 GiB; the previous backend is healthy and retained for rollback. See
 the [release readback](docs/evals/perf-goal-20261027/release/overlay-pread-live.json).
-A separate, unshipped transport
-candidate overlaps route validation with read-only origin work and can reuse
-advisory hints across isolates through the Cache API. Limited 10% and 50%
-observations passed. A completed full-traffic cohort measured 191 ms uncached mean
-versus 227 ms beforehand, but missed the 185 ms qualification milestone and
-restored the retained transport. Other attempts rolled back after observer
-disconnects and a smoke `/stats` timeout. That transport rollout remains unqualified;
-retained e8c21659 remains the transport rollback target. Dated traffic state
-is recorded in the qualification plan.
+Transport version 40a014e4 is also live as of 17:51 UTC. It overlaps read-only
+origin work with authoritative route validation and shares advisory hints across
+isolates; the existing one-second routing TTL is unchanged. Smoke passed after
+deployment. Its earlier standalone cohort measured 191 ms versus 227 ms before
+it, but missed the 185 ms milestone. The combined release's natural-traffic
+measurement remains pending; e8c21659 is retained for transport rollback.
+Dated traffic and qualification evidence is in the performance record.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

@@ -1,5 +1,5 @@
 {
-  "status": "built-not-deployed; full isolated qualification running",
+  "status": "live: startup slot serves qualified build C; previous refresh slot retained",
   "source_commit": "62266a35bf1e8a1c5096ceee74cb914fd7147a9f",
   "image": "registry.fly.io/typeahead-search-refresh@sha256:d4c3111ee8ad058cb08f7ef02ffeb0a2826e1c328b61c12c29a6e9d3e93ca0ed",
   "binaries": {
@@ -11,5 +11,8 @@
       "bytes": 3680432,
       "sha256": "66f77175a674024b69ece241cad9c3d6438fbe5ebe260305b935b287e4a17ecb"
     }
-  }
+  },
+  "verified_live_at": "2026-10-27T17:43:24.917224Z",
+  "flow_run_id": "bbcfa61e-2d95-4cf6-9d83-37c1dd088b67",
+  "public_latency_verification": "pending"
 }

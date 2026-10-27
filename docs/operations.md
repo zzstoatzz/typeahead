@@ -775,6 +775,8 @@ Mixed writes fell 34%, but reads rose from 9.9 MB to 141 MB and CPU rose 10%.
 Total measured read/write bytes fell 29%. These are current-input measurements,
 not aged-overlay or universal production guarantees. Live smoke and ranking
 acceptance passed. Routed health and successful sync spans are present for the
-serving slot. The e8c21659 transport is unchanged while public latency is measured.
+serving slot. The native-only 17:40–17:45 UTC bucket measured 248.46 ms over 39 misses.
+Transport 40a014e4 was enabled at 17:51 UTC and passed smoke; the combined
+public latency window remains pending. e8c21659 remains available for rollback.
 See [the release evidence](evals/perf-goal-20261027/release/overlay-pread-live.json)
 and [the performance record](evals/perf-goal-20261027/plan.md).

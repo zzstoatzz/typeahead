@@ -1,0 +1,48 @@
+{
+  "at": "2026-10-27T18:02:03.895972+00:00",
+  "start": "2026-10-27T17:51:10Z",
+  "end": "2026-10-27T17:58:00Z",
+  "result": {
+    "status": 200,
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "public": [
+              {
+                "dimensions": {
+                  "status": "clientDisconnected"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 33
+                }
+              },
+              {
+                "dimensions": {
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 630
+                }
+              }
+            ],
+            "transport": [
+              {
+                "dimensions": {
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 47
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  }
+}
