@@ -1,0 +1,37 @@
+{
+  "at": "2026-10-27T18:45:45.907Z",
+  "rows": [
+    {
+      "name": "public",
+      "status": 200,
+      "result": {
+        "ok": true,
+        "stale": false,
+        "replica_lag_s": 58,
+        "snapshot_age_s": 17486,
+        "build_id": "b1793109259-2b36-px05",
+        "probe_ok": true,
+        "reasons": []
+      }
+    },
+    {
+      "name": "route",
+      "status": 200,
+      "result": {
+        "origin": "https://typeahead-startup-20261024.fly.dev",
+        "build_id": "b1793109259-2b36-px05"
+      }
+    },
+    {
+      "name": "rollback",
+      "status": 200,
+      "result": {
+        "status": "ok",
+        "ready": true,
+        "actors": 12809429,
+        "rss_kb": 357580,
+        "sync_lag_s": 68
+      }
+    }
+  ]
+}

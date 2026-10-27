@@ -1,7 +1,9 @@
 # Safe performance goal — October 27, 2026
 
-Status: active; native performance changes remain unshipped and transport is under
-guarded qualification. Owner: this Typeahead performance goal. Dated state follows.
+Status: final verification. Native source 62266a3 and transport 40a014e4 are live;
+the 18:20–18:35 UTC window measured 163.47 ms with full HTTP reconciliation.
+A fixed confirmation window and final smoke are pending. Owner: this performance
+goal. Earlier starting state and dated experiments follow.
 The starting branch is codex/typeahead-io-audit at 5821bda, with locally tested
 write guards and phase instrumentation from faef0c8. Production is a separate
 verified release; do not treat the branch or a successful fixture as live.
@@ -1090,3 +1092,28 @@ TTL and fail-closed validation. Real workerd/R2/HTTP tests cover expiry without
 a changed object, route change, deletion, corruption and recovery; shared
 hints remain advisory. No production change yet. README/operations identify
 this status; public API docs need no endpoint or shape changes.
+
+### Final verification in progress
+
+The clean 18:20–18:35 UTC window on the qualified live release contains
+262 misses averaging 163.47 ms and 16 cache hits. All 278 HTTP-200 answers
+reconcile; no HTTP errors. The entire 17:55–18:35 UTC interval contains 594
+misses averaging 181.57 ms, 24 hits and 618 reconciled HTTP-200 answers. The
+entire interval includes the five previously recorded ordinary diagnostic
+public reads at 18:18–18:19; the clean later window includes none. These
+windows remain separate, with temporal-query/network limitations explicit.
+
+Conditional-read candidate 3371cf9 / 3ffe6674 reached 0% normal traffic only.
+Native tail metadata confirmed six forced candidate requests; all six body
+pairs match the live version. Although route validation mean fell from 145 to
+125.67 ms, mean wall time was essentially unchanged (306.32 to 305.45 ms) on
+the same ATL/IAD path. It was removed from the deployment and reverted from
+the working source; the patch remains archived. Further production changes
+are unjustified by this evidence.
+
+A fixed 18:35–18:50 UTC confirmation window is in progress. The final smoke
+starts only after that window closes, and counters settle until 18:53 UTC.
+Current readback shows both managed Machines still at two shared CPUs / 1 GiB
+with the same serving/rollback image, volume and instance IDs. Serving lag is
+58 seconds. Logfire 18:10–18:45 contains seven successful incremental sync
+spans and 74 routed health spans, no error-level spans for these operations.

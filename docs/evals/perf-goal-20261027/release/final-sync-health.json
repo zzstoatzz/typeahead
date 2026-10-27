@@ -1,0 +1,57 @@
+{
+  "columns": [
+    {
+      "name": "service_name",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "span_name",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "spans",
+      "datatype": "Int64",
+      "nullable": false
+    },
+    {
+      "name": "errors",
+      "datatype": "Int64",
+      "nullable": true
+    },
+    {
+      "name": "routed_health",
+      "datatype": "Int64",
+      "nullable": true
+    },
+    {
+      "name": "last_span",
+      "datatype": {
+        "Timestamp": [
+          "Microsecond",
+          "UTC"
+        ]
+      },
+      "nullable": true
+    }
+  ],
+  "rows": [
+    {
+      "service_name": "typeahead-startup-20261024",
+      "span_name": "sync.incremental",
+      "spans": 7,
+      "errors": 0,
+      "routed_health": 0,
+      "last_span": "2026-10-27T18:44:37.171895Z"
+    },
+    {
+      "service_name": "typeahead-startup-20261024",
+      "span_name": "http.health",
+      "spans": 74,
+      "errors": 0,
+      "routed_health": 74,
+      "last_span": "2026-10-27T18:44:49.995938Z"
+    }
+  ]
+}

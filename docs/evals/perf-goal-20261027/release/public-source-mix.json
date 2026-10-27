@@ -1,0 +1,81 @@
+{
+  "at": "2026-10-27T18:47:25.868555+00:00",
+  "plan": [
+    {
+      "id": "8",
+      "parent": "0",
+      "notused": "155",
+      "detail": "SEARCH request_buckets USING PRIMARY KEY (bucket>? AND bucket<?)"
+    },
+    {
+      "id": "19",
+      "parent": "0",
+      "notused": "0",
+      "detail": "USE TEMP B-TREE FOR GROUP BY"
+    },
+    {
+      "id": "61",
+      "parent": "0",
+      "notused": "0",
+      "detail": "USE TEMP B-TREE FOR ORDER BY"
+    }
+  ],
+  "windows": {
+    "before": [
+      {
+        "app_hash": "86dbb7d17115dc3b",
+        "requests": 82
+      },
+      {
+        "app_hash": "b23a6a8439c0dde5",
+        "requests": 17
+      },
+      {
+        "app_hash": "53f4666a614a83ff",
+        "requests": 13
+      },
+      {
+        "app_hash": "e33bb165c6131bbf",
+        "requests": 2
+      },
+      {
+        "app_hash": "efbeeaea18635f86",
+        "requests": 1
+      }
+    ],
+    "recent": [
+      {
+        "app_hash": "86dbb7d17115dc3b",
+        "requests": 179
+      },
+      {
+        "app_hash": "72cd1a291f38b5e7",
+        "requests": 53
+      },
+      {
+        "app_hash": "b23a6a8439c0dde5",
+        "requests": 17
+      },
+      {
+        "app_hash": "1492ae53fa5393b7",
+        "requests": 11
+      },
+      {
+        "app_hash": "30750974f0db4c44",
+        "requests": 9
+      },
+      {
+        "app_hash": "fb5c2b0098cc99a3",
+        "requests": 5
+      },
+      {
+        "app_hash": "ce36cc68c87a42fe",
+        "requests": 3
+      },
+      {
+        "app_hash": "65bc1cc81875b193",
+        "requests": 1
+      }
+    ]
+  }
+}

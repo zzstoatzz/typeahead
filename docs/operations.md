@@ -785,20 +785,19 @@ error count is claimed. e8c21659 remains available for rollback.
 See [the release evidence](evals/perf-goal-20261027/release/overlay-pread-live.json)
 and [the performance record](evals/perf-goal-20261027/plan.md).
 
-### Conditional route validation — October 27, local qualification
+### Conditional route validation — October 27, experiment retired
 
-The transport candidate retains the parsed routing object with its R2 ETag.
-After the existing one-second memory cache expires, a conditional R2 GET
-revalidates that ETag. An unchanged object returns metadata only; a changed
-object returns and validates the full body before its route can authorize an
-answer. Missing, invalid and oversized objects still fail closed. Diagnostic
-route reads and authenticated refresh forwarding still force a full read.
-No routing TTL or advisory-hint authority changes.
+A locally correct conditional-GET candidate retained the parsed route and R2
+ETag without extending the one-second cache. Eight read-only IAD method pairs
+averaged 107.75 ms for GET and 80.375 ms for conditional GET. However, six
+same-input, alternating-version pairs through the actual transport averaged
+306.32 ms before and 305.45 ms after end to end. All bodies matched. Native
+tail metadata confirmed the requested versions and the same ATL/IAD network
+path. These small diagnostics do not establish a material end-to-end gain.
 
-Eight alternating same-placement read comparisons averaged 107.75 ms for the
-full GET and 80.375 ms for conditional GET; this is diagnostic evidence, not
-a public latency guarantee. The temporary read-only profiling Worker was
-deleted. Worker tests, TypeScript and real workerd/R2/HTTP tests pass, including
-unchanged-route validation after expiry, changed/deleted/corrupt routes, scoped
-acknowledgment and hint failure/recovery. This candidate is not deployed yet.
-See [the bounded comparison](evals/perf-goal-20261027/route-read/README.md).
+The candidate reached 0% normal traffic only. It has been removed from the
+deployment, and its source change is reverted; normal traffic retains 40a014e4.
+The patch and failed-to-establish-efficacy evidence remain in
+[the experiment record](evals/perf-goal-20261027/route-read/README.md). The
+temporary read-only profiling Worker is deleted and its code has expired.
+No cache lifetime, API or production backend changes resulted.

@@ -1,0 +1,22 @@
+{
+  "timing_events_by_actual_version": {
+    "40a014e4-5ec0-467d-a8e7-214b626436ce": 21,
+    "3ffe6674-ccab-49e4-aec0-31acafd73a89": 6
+  },
+  "paired_requests": 12,
+  "response_pairs_equal": true,
+  "same_placement": [
+    "remote-IAD"
+  ],
+  "same_ingress_colo": [
+    "ATL"
+  ],
+  "before": {
+    "mean_route_ms": 145,
+    "mean_wall_ms": 306.3197499999998
+  },
+  "after": {
+    "mean_route_ms": 125.66666666666667,
+    "mean_wall_ms": 305.4487429999999
+  }
+}

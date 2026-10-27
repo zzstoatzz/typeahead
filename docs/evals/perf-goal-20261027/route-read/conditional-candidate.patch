@@ -1,0 +1,66 @@
+diff --git a/scripts/snapshot_refresh/test_transport_isolated.mjs b/scripts/snapshot_refresh/test_transport_isolated.mjs
+index bcca93e..73732fe 100644
+--- a/scripts/snapshot_refresh/test_transport_isolated.mjs
++++ b/scripts/snapshot_refresh/test_transport_isolated.mjs
+@@ -60,6 +60,11 @@ try {
+   assert.equal(response.headers.get('X-Typeahead-Pds'), 'selfhosted.social');
+   assert.match(response.headers.get('Server-Timing'), /transport_mode;desc="serial"/);
+   assert.equal((await response.json()).actors[0].did, a.origin);
++  await new Promise(resolve => setTimeout(resolve, 1100));
++  response = await search();
++  assert.equal(response.status, 200);
++  assert.equal(response.headers.get('X-Typeahead-Pds'), 'selfhosted.social');
++  assert.equal((await response.json()).actors[0].did, a.origin, 'an unchanged R2 object can validate without returning its body');
+   await put(b);
+   response = await search();
+   assert.equal((await response.json()).actors[0].did, a.origin, 'existing one-second cache window is preserved');
+@@ -95,6 +100,13 @@ try {
+   assert.equal(arrivals.length, afterFailure, 'failed route validation disables further speculative origin work');
+   await put(b);
+   await (await mf.dispatchFetch(base + '/route')).body.cancel();
++  await bucket.delete('control/search-routing.json');
++  await new Promise(resolve => setTimeout(resolve, 1100));
++  response = await search();
++  assert.equal(response.status, 503, 'a retained ETag cannot authorize a deleted route');
++  assert.deepEqual(await response.json(), { error: 'SearchRouteUnavailable' });
++  await put(b);
++  await (await mf.dispatchFetch(base + '/route')).body.cancel();
+   server.closeAllConnections();
+   await new Promise(resolve => server.close(resolve));
+   response = await search();
+diff --git a/src/search-route.ts b/src/search-route.ts
+index ec82b2e..895e44e 100644
+--- a/src/search-route.ts
++++ b/src/search-route.ts
+@@ -23,7 +23,7 @@ export function allowedRoute(request: Request) {
+   return request.method === "POST" && path === "/admin/refresh";
+ }
+ 
+-let cachedRoute: { route: ReturnType<typeof parseRoute>; expiresAt: number; hintExpiresAt: number } | undefined;
++let cachedRoute: { route: ReturnType<typeof parseRoute>; etag: string; expiresAt: number; hintExpiresAt: number } | undefined;
+ let sharedHintsEnabled = true;
+ 
+ export function sharedHintsAllowed() {
+@@ -46,11 +46,19 @@ export async function readRoute(bucket: R2Bucket, cache: boolean) {
+   if (cache && cachedRoute && Date.now() < cachedRoute.expiresAt) return cachedRoute.route;
+   const before = cachedRoute;
+   try {
+-    const object = await bucket.get(ROUTE_KEY);
++    const object = await bucket.get(ROUTE_KEY, {
++      onlyIf: cache && before ? { etagDoesNotMatch: before.etag } : {},
++    });
+     if (object === null || object.size > 16384) throw new Error("Missing search route");
+-    const route = parseRoute(await object.json());
++    let route: ReturnType<typeof parseRoute>;
++    if ("body" in object) {
++      route = parseRoute(await object.json());
++    } else {
++      if (!before || object.etag !== before.etag) throw new Error("Unvalidated search route");
++      route = before.route;
++    }
+     const validatedAt = Date.now();
+-    cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
++    cachedRoute = { route, etag: object.etag, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
+     sharedHintsEnabled = true;
+     return route;
+   } catch (error) {

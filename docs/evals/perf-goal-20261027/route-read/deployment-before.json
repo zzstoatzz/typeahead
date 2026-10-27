@@ -1,0 +1,17 @@
+{
+  "id": "0805c5d6-f4f2-412a-9980-325b63392ccc",
+  "source": "wrangler",
+  "strategy": "percentage",
+  "author_email": "n8@zzstoatzz.io",
+  "annotations": {
+    "workers/message": "Qualified native overlay release: enable validated route overlap 2026-10-27T17:51:03.536971+00:00",
+    "workers/triggered_by": "deployment"
+  },
+  "versions": [
+    {
+      "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+      "percentage": 100
+    }
+  ],
+  "created_on": "2026-10-27T17:51:06.843455Z"
+}
