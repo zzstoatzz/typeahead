@@ -1,5 +1,14 @@
 # Automatic isolated snapshot refresh
 
+Readback October 27, 15:50 UTC: B (`typeahead-search-refresh`, Machine
+`801539a6551778`, build `b1793081565-0228-px05`) remains healthy and serving.
+A subsequent publisher replaced the former inactive A and left a newer prepared
+candidate, Machine `8e3d79b70dd748`, build `b1793109259-2b36-px05`, at two CPUs /
+1 GiB. That run failed its latency gate and did not promote. The previous A
+Machine no longer exists; do not use the older rollback inventory below as a
+current Machine identity. Performance qualification uses only an independent
+fork of the new inactive disk. See the [dated qualification record](../evals/perf-goal-20261027/plan.md).
+
 The October 27 scheduled refresh completed at 08:03 UTC. Readback at 08:15 UTC
 selects `typeahead-search-refresh` / `801539a6551778`, build
 `b1793081565-0228-px05`, with `typeahead-startup-20261024` retained for rollback.

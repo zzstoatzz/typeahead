@@ -72,9 +72,11 @@ search/sync phase timings are tested locally
 and in an isolated archived-corpus comparison, not deployed; the live configuration remains two CPUs / 1 GiB. A separate transport
 candidate overlaps route validation with read-only origin work and can reuse
 advisory hints across isolates through the Cache API. Limited 10% and 50%
-observations passed. Full-traffic attempts rolled back after observer disconnects
-and a smoke `/stats` timeout. Public latency gain and completed rollout remain
-unqualified; retained e8c21659 remains the rollback target. Dated traffic state
+observations passed. A completed full-traffic cohort measured 191 ms uncached mean
+versus 227 ms beforehand, but missed the 185 ms qualification milestone and
+restored the retained transport. Other attempts rolled back after observer
+disconnects and a smoke `/stats` timeout. Completed rollout remains unqualified;
+retained e8c21659 remains the transport rollback target. Dated traffic state
 is recorded in the qualification plan.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
