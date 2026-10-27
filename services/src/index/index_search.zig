@@ -84,7 +84,7 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     const t0 = milliTimestamp();
     defer {
         const elapsed = milliTimestamp() - t0;
-        if (elapsed >= slow_search_ms) log.warn("slow search: {d} ms (q_len={d} keys={d} merged={d} prefix_ms={d} merge_ms={d} hydrate_ms={d})", .{ elapsed, norm.len, trace.keys.len, trace.merged, trace.prefix_ms, trace.merge_ms, trace.hydrate_ms });
+        if (elapsed >= slow_search_ms) log.warn("slow search: {d} ms (q_len={d} keys={d} merged={d} prefix_ms={d} merge_ms={d} hydrate_ms={d} overlay_ms={d} base_ms={d})", .{ elapsed, norm.len, trace.keys.len, trace.merged, trace.prefix_ms, trace.merge_ms, trace.hydrate_ms, trace.hydrate_overlay_ms, trace.hydrate_base_ms });
     }
     const candidates = try executeScoped(arena, lease, norm, &trace, true, pds);
     span.setAttribute("prefix_ms", trace.prefix_ms);
@@ -125,6 +125,8 @@ pub const Trace = struct {
     prefix_ms: i64 = 0,
     merge_ms: i64 = 0,
     hydrate_ms: i64 = 0,
+    hydrate_overlay_ms: i64 = 0,
+    hydrate_base_ms: i64 = 0,
     keys: []KeyStat = &.{},
     mode: merge.Mode = .union_any,
     merged: usize = 0,
@@ -455,6 +457,7 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
     // 1. actor_overlay: did → {blob?, hidden}. NULL blob = tombstone.
     const OverlayActor = struct { blob: ?[]const u8, hidden: bool };
     var ov_map: std.StringHashMapUnmanaged(OverlayActor) = .empty;
+    const overlay_start = milliTimestamp();
     {
         const sql = try inClause(arena, "SELECT did, blob, hidden FROM actor_overlay WHERE did IN (", did_list.len);
         var rows = try lease.queryTextList(sql, did_list);
@@ -466,6 +469,8 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
     }
 
     // 2. base actor_compact_base for DIDs the overlay doesn't cover.
+    const base_start = milliTimestamp();
+    if (trace) |t| t.hydrate_overlay_ms = base_start - overlay_start;
     var base_map: std.StringHashMapUnmanaged([]const u8) = .empty;
     {
         var need: std.ArrayListUnmanaged([]const u8) = .empty;
@@ -484,6 +489,7 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
         }
     }
 
+    if (trace) |t| t.hydrate_base_ms = milliTimestamp() - base_start;
     var stats: Trace = .{};
     var out: std.ArrayListUnmanaged(searchmod.Candidate) = .empty;
     for (dids) |d| {

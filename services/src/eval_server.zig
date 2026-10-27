@@ -35,6 +35,9 @@ pub fn main() !void {
         defer prepared.deinit();
         local.activateSnapshot(&prepared);
     } else try local.swapSnapshot(snapshot);
+    if (std.c.getenv("TYPEAHEAD_EVAL_OVERLAY_MMAP_ZERO") != null) {
+        for (local.read_conns) |conn| try conn.?.exec("PRAGMA main.mmap_size=0", .{});
+    }
     if (try local.attachedMetaText(std.heap.page_allocator, "pds_scope_policy")) |policy| {
         defer std.heap.page_allocator.free(policy);
         const conn = local.conn.?;

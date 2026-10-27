@@ -928,3 +928,12 @@ The earlier diagnostic image dd95bffc was built but never run and is superseded.
 The settled retained-transport cohort 16:05–16:20 UTC has 108 misses at 292.92 ms
 mean, seven cache hits, all 115 HTTP-200 answers reconciled. Natural cohort
 variation remains a limitation of the public comparisons.
+
+The three-query diagnostic completed and retired: cold `nate` 548 ms (prefix
+7 ms, hydration 541 ms), `a` 827 ms (125/697 ms), `photographer` 548 ms
+(7/540 ms). CPU was only 30–50 ms; process reads were 13–18 MB per query.
+The remaining stall is hydration I/O. The next short diagnostic separates the
+SQLite overlay lookup from base actor-page reads. It also compares the existing
+256 MiB SQLite main-database mmap with an evaluator-only `main.mmap_size=0`
+probe, holding snapshot, overlay and query constant. No production pragma is
+changed; this is a targeted I/O-amplification hypothesis, not a selected fix.
