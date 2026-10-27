@@ -71,6 +71,10 @@ this repair does not establish a new latency guarantee.
 
 ## 20:00 Chicago freshness alert
 
+The [RCA and retro](../retros/2026-10-26-search-timeouts-and-freshness-alerts.md)
+supersedes the initial impact assessment below: the event also affected public
+search requests, and admission starvation is now reproduced in the deployed image.
+
 A later alert on October 26 was a transient serving timeout. Cloudflare recorded
 `/health` returning 503 after 3,211 ms at 01:00:56.536 UTC on October 27
 (20:00:56 Chicago, October 26), request `768aa3559b6697a4a034ce084dd4eae5`.

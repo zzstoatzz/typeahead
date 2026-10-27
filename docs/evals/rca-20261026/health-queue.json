@@ -1,0 +1,41 @@
+{
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:37fa2b5ed4cf21c63a1e75fefd0f48d001c2cf3d0635f5ee16441c40cece6525",
+  "async_limit": 8,
+  "held_connections": 9,
+  "probe_deadline_s": 3,
+  "limits": {
+    "cpus": 1,
+    "memory_mb": 256,
+    "scratch_mib": 16,
+    "read_only_root": true,
+    "pids": 64
+  },
+  "production_mutations": false,
+  "baseline": {
+    "http_status": 200,
+    "elapsed_ms": 7.92,
+    "body": {
+      "status": "ok",
+      "ready": false,
+      "actors": 0,
+      "rss_kb": 22484,
+      "sync_lag_s": -1
+    }
+  },
+  "saturated": {
+    "error": "TimeoutError",
+    "elapsed_ms": 3002.78
+  },
+  "recovered": {
+    "http_status": 200,
+    "elapsed_ms": 3.35,
+    "body": {
+      "status": "ok",
+      "ready": false,
+      "actors": 0,
+      "rss_kb": 25380,
+      "sync_lag_s": -1
+    }
+  },
+  "reproduced": true
+}

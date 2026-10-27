@@ -1,0 +1,177 @@
+{
+  "query_id": "sb06dot5iihtnmeffprpfodv",
+  "service": "typeahead",
+  "window": {
+    "from": 1793062780000,
+    "to": 1793062920000
+  },
+  "result": {
+    "events": [
+      {
+        "timestamp": 1793062863952,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "a1d1865fe3607d92724f0bb98313e1c8",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062863816,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "bda5a74e25d7355eba4ed82cede18390",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062863721,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "640e70661c636302cd517083f193c6ec",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062860861,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "fbd1761c4615637cca30ab869028a578",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062860393,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "7b6c4a7f13af78933877a10efd488ffe",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062859899,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "7f1ca6113fbf0f25d2eab2b2df94c37d",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062859425,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "a87c9156f8dd264ce263a30b651dadde",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062859010,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "14b8f127bcab978124c4d6df3d74902d",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062855097,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "3ad72f99fd74eece1328bb6c63efe023",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062854717,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "31cc224d4c799f464455432be387ab94",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062854503,
+        "source": {
+          "event": "search_backend_unreachable",
+          "error": "The operation was aborted due to timeout"
+        },
+        "request_id": "63ed85047dde9103720f4ae88dea80ed",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch"
+        },
+        "response": null
+      }
+    ]
+  }
+}

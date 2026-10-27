@@ -1,0 +1,105 @@
+{
+  "query_id": "0mjf7we8pjmabyf1nlkpgdhl",
+  "service": "typeahead",
+  "window": {
+    "from": 1793062780000,
+    "to": 1793062920000
+  },
+  "result": {
+    "events": [
+      {
+        "timestamp": 1793062883817,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "07b2ae235fa2fe7679ca6940fbcf70a8",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 1108,
+          "cpuTimeMs": 8
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062867873,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "e22ce4ab3f451ce11a48e30846fdfd26",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 7659,
+          "cpuTimeMs": 10
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062860007,
+        "source": {
+          "ok": true,
+          "event": "freshness_notify",
+          "body": "",
+          "status": 204
+        },
+        "request_id": "08cf883789a881a180aa5e1c94947eb6",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "scheduled"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062859750,
+        "source": {
+          "ok": false,
+          "stale": true,
+          "event": "freshness_stale",
+          "reasons": [
+            "search service /health unreachable"
+          ]
+        },
+        "request_id": "08cf883789a881a180aa5e1c94947eb6",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "scheduled"
+        },
+        "response": null
+      },
+      {
+        "timestamp": 1793062824086,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "4be114d413c57584a120d034417c012e",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 1232,
+          "cpuTimeMs": 6
+        },
+        "response": {
+          "status": 200
+        }
+      }
+    ]
+  }
+}

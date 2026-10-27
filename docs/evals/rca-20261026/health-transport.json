@@ -1,0 +1,88 @@
+{
+  "query_id": "xs4m3ulqpictwn1h3wforod3",
+  "service": "typeahead-search-transport",
+  "window": {
+    "from": 1793062780000,
+    "to": 1793062920000
+  },
+  "result": {
+    "events": [
+      {
+        "timestamp": 1793062882956,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "c8e83f9b4fb883bf7773e31cee4ef229",
+        "worker": {
+          "scriptVersion": {
+            "id": "e8c21659-0b2c-4cec-beb4-86b4ecf91191"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 137,
+          "cpuTimeMs": 1
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062862956,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "4003e2051cc535efa9e0494426b98b69",
+        "worker": {
+          "scriptVersion": {
+            "id": "e8c21659-0b2c-4cec-beb4-86b4ecf91191"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 2672,
+          "cpuTimeMs": 1
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062856536,
+        "source": {
+          "level": "error"
+        },
+        "request_id": "768aa3559b6697a4a034ce084dd4eae5",
+        "worker": {
+          "scriptVersion": {
+            "id": "e8c21659-0b2c-4cec-beb4-86b4ecf91191"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3211,
+          "cpuTimeMs": 2
+        },
+        "response": {
+          "status": 503
+        }
+      },
+      {
+        "timestamp": 1793062823169,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "f0f610d248523c263d6318d648ba7935",
+        "worker": {
+          "scriptVersion": {
+            "id": "e8c21659-0b2c-4cec-beb4-86b4ecf91191"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 175,
+          "cpuTimeMs": 2
+        },
+        "response": {
+          "status": 200
+        }
+      }
+    ]
+  }
+}

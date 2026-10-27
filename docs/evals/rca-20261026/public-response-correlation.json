@@ -1,0 +1,221 @@
+{
+  "query_id": "3pcdusftirtsvjiryeiueyp7",
+  "service": "typeahead",
+  "window": {
+    "from": 1793062780000,
+    "to": 1793062920000
+  },
+  "result": {
+    "events": [
+      {
+        "timestamp": 1793062864039,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "a1d1865fe3607d92724f0bb98313e1c8",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3094,
+          "cpuTimeMs": 2
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062863892,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "bda5a74e25d7355eba4ed82cede18390",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3088,
+          "cpuTimeMs": 6
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062863794,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "640e70661c636302cd517083f193c6ec",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3081,
+          "cpuTimeMs": 3
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062860916,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "fbd1761c4615637cca30ab869028a578",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3072,
+          "cpuTimeMs": 4
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062860452,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "7b6c4a7f13af78933877a10efd488ffe",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3082,
+          "cpuTimeMs": 4
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062859957,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "7f1ca6113fbf0f25d2eab2b2df94c37d",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3076,
+          "cpuTimeMs": 6
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062859481,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "a87c9156f8dd264ce263a30b651dadde",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3071,
+          "cpuTimeMs": 6
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062859063,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "14b8f127bcab978124c4d6df3d74902d",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3067,
+          "cpuTimeMs": 3
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062855346,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "3ad72f99fd74eece1328bb6c63efe023",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3270,
+          "cpuTimeMs": 5
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062854766,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "31cc224d4c799f464455432be387ab94",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3070,
+          "cpuTimeMs": 4
+        },
+        "response": {
+          "status": 200
+        }
+      },
+      {
+        "timestamp": 1793062854555,
+        "source": {
+          "level": "info"
+        },
+        "request_id": "63ed85047dde9103720f4ae88dea80ed",
+        "worker": {
+          "scriptVersion": {
+            "id": "936893b4-c7be-4ecc-ac58-0d7babda28e1"
+          },
+          "eventType": "fetch",
+          "outcome": "ok",
+          "wallTimeMs": 3069,
+          "cpuTimeMs": 4
+        },
+        "response": {
+          "status": 200
+        }
+      }
+    ]
+  }
+}

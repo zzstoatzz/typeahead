@@ -1,0 +1,120 @@
+{
+  "query_id": "sxfsz7j0j0sndne2crnr9vd9",
+  "service": "typeahead-search-transport",
+  "window": {
+    "from": 1793062780000,
+    "to": 1793062920000
+  },
+  "result": {
+    "aggregates": [
+      {
+        "alias": "requests",
+        "calculation": "count",
+        "aggregates": [
+          {
+            "groups": [
+              {
+                "key": "$metadata.trigger",
+                "value": "GET /index/status"
+              },
+              {
+                "key": "$workers.event.response.status",
+                "value": 200
+              }
+            ],
+            "groupKey": "GET /index/status \u2b24 200",
+            "value": 3,
+            "interval": 1,
+            "sampleInterval": 1,
+            "count": 3
+          },
+          {
+            "groups": [
+              {
+                "key": "$metadata.trigger",
+                "value": "GET /index/status"
+              },
+              {
+                "key": "$workers.event.response.status",
+                "value": 503
+              }
+            ],
+            "groupKey": "GET /index/status \u2b24 503",
+            "value": 1,
+            "interval": 1,
+            "sampleInterval": 1,
+            "count": 1
+          },
+          {
+            "groups": [
+              {
+                "key": "$metadata.trigger",
+                "value": "GET /search"
+              },
+              {
+                "key": "$workers.event.response.status",
+                "value": 503
+              }
+            ],
+            "groupKey": "GET /search \u2b24 503",
+            "value": 12,
+            "interval": 1,
+            "sampleInterval": 1,
+            "count": 12
+          },
+          {
+            "groups": [
+              {
+                "key": "$metadata.trigger",
+                "value": "GET /search"
+              },
+              {
+                "key": "$workers.event.response.status",
+                "value": 200
+              }
+            ],
+            "groupKey": "GET /search \u2b24 200",
+            "value": 23,
+            "interval": 1,
+            "sampleInterval": 1,
+            "count": 23
+          },
+          {
+            "groups": [
+              {
+                "key": "$metadata.trigger",
+                "value": "GET /health"
+              },
+              {
+                "key": "$workers.event.response.status",
+                "value": 503
+              }
+            ],
+            "groupKey": "GET /health \u2b24 503",
+            "value": 1,
+            "interval": 1,
+            "sampleInterval": 1,
+            "count": 1
+          },
+          {
+            "groups": [
+              {
+                "key": "$metadata.trigger",
+                "value": "GET /health"
+              },
+              {
+                "key": "$workers.event.response.status",
+                "value": 200
+              }
+            ],
+            "groupKey": "GET /health \u2b24 200",
+            "value": 3,
+            "interval": 1,
+            "sampleInterval": 1,
+            "count": 3
+          }
+        ]
+      }
+    ]
+  }
+}

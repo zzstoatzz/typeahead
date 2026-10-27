@@ -1,0 +1,61 @@
+{
+  "columns": [
+    {
+      "name": "start_timestamp",
+      "datatype": {
+        "Timestamp": [
+          "Microsecond",
+          "UTC"
+        ]
+      },
+      "nullable": false
+    },
+    {
+      "name": "message",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "level",
+      "datatype": "UInt16",
+      "nullable": false
+    }
+  ],
+  "rows": [
+    {
+      "start_timestamp": "2026-10-27T01:00:51.811285Z",
+      "message": "slow search: 302 ms (q_len=5 keys=4 merged=50)",
+      "level": 13
+    },
+    {
+      "start_timestamp": "2026-10-27T01:00:52.578778Z",
+      "message": "slow search: 978 ms (q_len=4 keys=4 merged=50)",
+      "level": 13
+    },
+    {
+      "start_timestamp": "2026-10-27T01:00:55.730039Z",
+      "message": "slow search: 3687 ms (q_len=2 keys=4 merged=50)",
+      "level": 13
+    },
+    {
+      "start_timestamp": "2026-10-27T01:00:56.146522Z",
+      "message": "slow search: 4259 ms (q_len=3 keys=4 merged=50)",
+      "level": 13
+    },
+    {
+      "start_timestamp": "2026-10-27T01:01:00.702644Z",
+      "message": "slow search: 8393 ms (q_len=1 keys=4 merged=50)",
+      "level": 13
+    },
+    {
+      "start_timestamp": "2026-10-27T01:01:02.934397Z",
+      "message": "slow search: 2229 ms (q_len=3 keys=4 merged=50)",
+      "level": 13
+    },
+    {
+      "start_timestamp": "2026-10-27T01:01:03.077476Z",
+      "message": "slow search: 2371 ms (q_len=2 keys=4 merged=50)",
+      "level": 13
+    }
+  ]
+}

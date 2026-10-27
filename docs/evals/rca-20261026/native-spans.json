@@ -1,0 +1,109 @@
+{
+  "columns": [
+    {
+      "name": "start_timestamp",
+      "datatype": {
+        "Timestamp": [
+          "Microsecond",
+          "UTC"
+        ]
+      },
+      "nullable": false
+    },
+    {
+      "name": "span_name",
+      "datatype": "Utf8",
+      "nullable": false
+    },
+    {
+      "name": "duration",
+      "datatype": "Float64",
+      "nullable": true
+    },
+    {
+      "name": "attributes",
+      "datatype": "JSON",
+      "nullable": true
+    },
+    {
+      "name": "otel_status_code",
+      "datatype": "Utf8",
+      "nullable": true
+    },
+    {
+      "name": "trace_id",
+      "datatype": "Utf8",
+      "nullable": false
+    }
+  ],
+  "rows": [
+    {
+      "start_timestamp": "2026-10-27T01:00:23.165374Z",
+      "span_name": "http.health",
+      "duration": 0.00047178,
+      "attributes": {
+        "actors": 12760941,
+        "production_probe": true,
+        "ready": "true",
+        "sync_lag_s": 279
+      },
+      "otel_status_code": "OK",
+      "trace_id": "ed4adffa96c655d597b3d83eae980321"
+    },
+    {
+      "start_timestamp": "2026-10-27T01:00:44.386588Z",
+      "span_name": "sync.incremental",
+      "duration": 26.289625515,
+      "attributes": {
+        "cleared": 107,
+        "compact_complete": true,
+        "compact_deleted": 0,
+        "deleted": 44,
+        "from": 1793062544,
+        "projection_skipped": 0,
+        "updated": 461
+      },
+      "otel_status_code": "OK",
+      "trace_id": "5e473da67f9cad8755a16da0b2579c0b"
+    },
+    {
+      "start_timestamp": "2026-10-27T01:01:00.702940Z",
+      "span_name": "http.health",
+      "duration": 0.01158198,
+      "attributes": {
+        "actors": 12760941,
+        "production_probe": true,
+        "ready": "true",
+        "sync_lag_s": 316
+      },
+      "otel_status_code": "OK",
+      "trace_id": "0e28f694dae353c324dcd0271e50f06d"
+    },
+    {
+      "start_timestamp": "2026-10-27T01:01:02.944881Z",
+      "span_name": "http.health",
+      "duration": 0.00041842,
+      "attributes": {
+        "actors": 12760941,
+        "production_probe": true,
+        "ready": "true",
+        "sync_lag_s": 19
+      },
+      "otel_status_code": "OK",
+      "trace_id": "22b851367d73b64cb2f1c288ca36cf71"
+    },
+    {
+      "start_timestamp": "2026-10-27T01:01:22.952960Z",
+      "span_name": "http.health",
+      "duration": 0.000418941,
+      "attributes": {
+        "actors": 12760941,
+        "production_probe": true,
+        "ready": "true",
+        "sync_lag_s": 12
+      },
+      "otel_status_code": "OK",
+      "trace_id": "8780903aa6d22c4eda40a7173e927238"
+    }
+  ]
+}
