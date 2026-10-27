@@ -1,0 +1,12 @@
+{
+  "tag": "registry.fly.io/typeahead-startup-20261024:perf-20261027-c0deff8d",
+  "digests": [
+    "registry.fly.io/typeahead-startup-20261024@sha256:5de8836cae5efdaaf6b9c77316e682f06d64d944d439405a3d80dc6692d3e7e0"
+  ],
+  "candidate_commit": "c0deff8d9938f77d935a21624b20d1ccf0ec3c4a",
+  "run_id": "20261027-04adaf220602",
+  "unit": "typeahead-perf-fly-20261027-04adaf220602",
+  "remote_evidence": "/var/lib/typeahead-perf-fly/20261027-04adaf220602",
+  "token_expiry": "2h from launch",
+  "manager_sha256": "38b5aa57cb07d1fe135fa48872b681f1ad9a82260f8755757c8d77cd72a700a0"
+}

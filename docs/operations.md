@@ -743,3 +743,9 @@ Private Fly qualification is prepared but has not started. It uses a new private
 2 shared CPU / 1 GiB Machine and independent volume in the inactive app, preserving
 the retained rollback Machine and slot pointer. The [resource and cleanup contract](evals/perf-goal-20261027/plan.md#private-fly-hardware-qualification--preparation)
 records its bounds; preparation is not evidence of a Fly performance pass.
+
+At 10:23 UTC October 27, a bounded 10% canary of staged transport version
+4a3b1424 began after local tests; the credentialed smoke gate passed. Its
+[canary record](evals/perf-goal-20261027/transport-overlap/canary-10pct.json)
+is authoritative for the final outcome and percentage. The independent private
+Fly trial is running installation; no native performance qualification is claimed.

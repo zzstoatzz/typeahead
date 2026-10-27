@@ -1,0 +1,106 @@
+{
+  "window_start": "2026-10-27T09:30:00Z",
+  "window_end": "2026-10-27T10:30:00Z",
+  "limitations": [
+    "sampled native spans, not failure-inclusive end-to-end demand",
+    "private trial emits no Logfire telemetry",
+    "finer native phase timings remain undeployed"
+  ],
+  "result": {
+    "columns": [
+      {
+        "name": "service_name",
+        "datatype": "Utf8",
+        "nullable": false
+      },
+      {
+        "name": "span_name",
+        "datatype": "Utf8",
+        "nullable": false
+      },
+      {
+        "name": "spans",
+        "datatype": "Int64",
+        "nullable": false
+      },
+      {
+        "name": "mean_ms",
+        "datatype": "Float64",
+        "nullable": true
+      },
+      {
+        "name": "p95_ms",
+        "datatype": "Float64",
+        "nullable": true
+      },
+      {
+        "name": "latest",
+        "datatype": {
+          "Timestamp": [
+            "Microsecond",
+            "UTC"
+          ]
+        },
+        "nullable": true
+      }
+    ],
+    "rows": [
+      {
+        "service_name": "typeahead-startup-20261024",
+        "span_name": "sync.incremental",
+        "spans": 11,
+        "mean_ms": 29116.56813972727,
+        "p95_ms": 58178.30137203916,
+        "latest": "2026-10-27T10:27:17.801464Z"
+      },
+      {
+        "service_name": "typeahead-search-refresh",
+        "span_name": "sync.apply.updated",
+        "spans": 17,
+        "mean_ms": 4384.839127588235,
+        "p95_ms": 5064.703240891209,
+        "latest": "2026-10-27T10:26:38.994792Z"
+      },
+      {
+        "service_name": "typeahead-search-refresh",
+        "span_name": "search",
+        "spans": 51,
+        "mean_ms": 10.705662470588235,
+        "p95_ms": 33.03579276735356,
+        "latest": "2026-10-27T10:28:39.837426Z"
+      },
+      {
+        "service_name": "typeahead-startup-20261024",
+        "span_name": "sync.apply.updated",
+        "spans": 17,
+        "mean_ms": 16799.607210411763,
+        "p95_ms": 27037.035617330082,
+        "latest": "2026-10-27T10:27:30.537900Z"
+      },
+      {
+        "service_name": "typeahead-search-refresh",
+        "span_name": "sync.incremental",
+        "spans": 11,
+        "mean_ms": 9404.470010909092,
+        "p95_ms": 17997.742558493806,
+        "latest": "2026-10-27T10:26:35.354767Z"
+      },
+      {
+        "service_name": "typeahead-startup-20261024",
+        "span_name": "sync.query.updated",
+        "spans": 17,
+        "mean_ms": 439.7686476470588,
+        "p95_ms": 724.6776400304199,
+        "latest": "2026-10-27T10:27:30.334501Z"
+      },
+      {
+        "service_name": "typeahead-search-refresh",
+        "span_name": "sync.query.updated",
+        "spans": 17,
+        "mean_ms": 411.65528023529413,
+        "p95_ms": 502.64658732266076,
+        "latest": "2026-10-27T10:26:38.790841Z"
+      }
+    ]
+  }
+}

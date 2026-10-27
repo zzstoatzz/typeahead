@@ -341,3 +341,28 @@ HTTP200 with the expected route. Its cleanup receipt confirms zero owned
 resources. ExecStopPost also exposed a DynamicUser credential read failure;
 the retry uses a root supervisor restricted by systemd filesystem/capability
 controls, with its short-lived credential retained through cleanup.
+
+At 10:21 UTC, run 20261027-04adaf220602 created private Fly Machine
+7841712c141d18 with independent volume vol_4oj6gj0n91km3qxr, then began
+R2 installation. Its independently running systemd manager owns retirement
+and retains a two-hour app-scoped credential through ExecStopPost. The first
+failed launch’s credential was revoked. This active payload is not qualified.
+
+At 10:23 UTC, the previously staged transport version began a bounded 10%
+canary, retaining e8c21659 at 90%. The ordinary smoke gate passed; a second
+credentialed smoke pass also exercised admin CRUD and Turso selector plans.
+The canary watcher automatically restores the previous version on correctness,
+runtime or freshness failures, or insufficient overlap samples after ten minutes.
+First samples are serial cold starts, so there is no measured live speedup yet.
+Only a successful, observed canary may continue; native code remains undeployed.
+
+A 10:30 UTC read of the underlying five-minute metrics (six-hour bounded
+indexed query) reports hourly miss means around 199–232 ms; the 09:00 UTC
+hour has 509 recorded misses averaging 205.23 ms. This is more recent than
+the materialized 24h mean, but still omits masked backend failures and includes
+smoke traffic. Do not attribute it to the 10% canary. Recent Logfire native
+search sampling (51 spans, 09:30–10:30 UTC) reports mean 10.71 ms and p95
+33.04 ms on the serving refresh role. Different cohorts and partial coverage
+prevent subtracting these summaries as a precise network-phase measurement.
+The explicit transport cold-start samples show routing validation at 58–122 ms
+and origin headers at 25–45 ms, identifying measurable routing overhead.
