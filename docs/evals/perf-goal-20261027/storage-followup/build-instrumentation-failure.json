@@ -1,0 +1,8 @@
+{
+  "stage": "local baseline build",
+  "performance_measurement_started": false,
+  "error": "neutral visibility patch produced pub pub for an already-public baseline declaration",
+  "correction": "anchor private declarations at line boundaries; do not duplicate existing exports",
+  "temporary_baseline_checkout": "automatically removed",
+  "output_directory_bytes": 0
+}

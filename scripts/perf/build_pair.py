@@ -52,7 +52,7 @@ def main():
         (work / 'services/zig-pkg').symlink_to(root / 'services/zig-pkg', target_is_directory=True)
         for name in names: shutil.copy2(root / 'services/src' / name, work / 'services/src' / name)
         sync = work / 'services/src/db/sync.zig'
-        sync.write_text(sync.read_text().replace('const OverlayCtx = struct', 'pub const OverlayCtx = struct').replace('fn projectRow(', 'pub fn projectRow('))
+        sync.write_text(sync.read_text().replace('\nconst OverlayCtx = struct', '\npub const OverlayCtx = struct').replace('\nfn projectRow(', '\npub fn projectRow('))
         target = work / 'services/src/index/flat_prefix.zig'
         original = target.read_text()
         add_capture = '    pub fn actorFenceKeys(' not in original
