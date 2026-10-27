@@ -88,8 +88,14 @@ const TOMBSTONE_RETENTION_S = 7 * 24 * 3600;
 // is indistinguishable from a healthy idle loop. Exiting lets fly restart us,
 // which is exactly how the same failure was handled for the ingester.
 //
-// Fed by every applied page, every compaction chunk, and every completed pass.
+// Fed by applied pages, nonempty compaction chunks, clean passes, and HTTP
+// responses. Transport-only failures must not keep a broken client alive.
 const SYNC_STALL_SECS: i64 = 20 * 60;
+/// consecutive transport failures before the Turso client is rebuilt; the
+/// cheap step before the watchdog's restart
+const CLIENT_RESET_AFTER: u32 = 3;
+/// first retry delay after a failed pass; doubles up to SYNC_INTERVAL_S
+const RETRY_BASE_S: u64 = 15;
 /// overlay compaction chunks per incremental pass (~7s each on the fly volume
 /// at 20k rows: ≈ 12 min worst case, inside one watchdog window even without
 /// the per-chunk progress note).
@@ -152,8 +158,9 @@ fn writeLastSync(local: *LocalDb, conn: zqlite.Conn, ts: i64) void {
 /// One pass: page Turso rows newer than the watermark into the overlay, then
 /// the actors that became unsearchable and the tombstones. Only advances the
 /// watermark to "now" when every query and write succeeded; page progress is
-/// persisted as it goes.
-pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
+/// persisted as it goes. Returns whether the pass was clean (an idle skip
+/// counts as clean).
+pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !bool {
     const span = logfire.span("sync.incremental", .{});
     defer span.end();
 
@@ -170,7 +177,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
         log.info("incremental: no snapshot attached, waiting for promote", .{});
         span.setAttribute("skipped", "no_snapshot");
         span.setStatus(.ok, null);
-        return;
+        return true;
     }
 
     const last_sync_ts = readLastSync(local, conn);
@@ -197,7 +204,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     // buffer: subtract 300s to catch stragglers (matches pub-search)
     const since_ts = from - 300;
     var since_buf: [20]u8 = undefined;
-    const since_str = std.fmt.bufPrint(&since_buf, "{d}", .{since_ts}) catch return;
+    const since_str = std.fmt.bufPrint(&since_buf, "{d}", .{since_ts}) catch return false;
 
     var updated: usize = 0;
     var error_count: usize = 0;
@@ -231,6 +238,7 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
                     log.info("incremental: retrying page after {s}", .{@errorName(err)});
                     q_span.setStatus(.@"error", "query failed; retrying");
                     q_span.end();
+                    try io.sleep(std.Io.Duration.fromSeconds(2), .awake);
                     continue;
                 }
                 q_span.setStatus(.@"error", "query failed");
@@ -431,6 +439,8 @@ pub fn incrementalSync(turso: *TursoClient, local: *LocalDb) !void {
     span.setAttribute("deleted", @as(i64, @intCast(deleted)));
     span.setAttribute("cleared", @as(i64, @intCast(cleared)));
     span.setAttribute("projection_skipped", @as(i64, @intCast(projection_skipped)));
+    span.setAttribute("transport_failures", @as(i64, turso.consecutive_transport_failures));
+    return !had_error;
 }
 
 /// A row assembled from JSON rather than read back out of Turso.
@@ -516,23 +526,39 @@ pub fn syncLoop(allocator: Allocator, local: *LocalDb) void {
         io.sleep(.{ .nanoseconds = 5 * std.time.ns_per_s }, .real) catch return;
     }
 
-    incrementalSync(&turso, local) catch |err| {
-        if (err == error.Canceled) return;
-        log.err("initial sync failed: {}", .{err});
-    };
-
+    var failed_passes: u32 = 0;
     while (true) {
-        io.sleep(.{ .nanoseconds = SYNC_INTERVAL_S * std.time.ns_per_s }, .real) catch return;
-
-        incrementalSync(&turso, local) catch |err| {
+        const responses_before = turso.http_responses;
+        const clean = incrementalSync(&turso, local) catch |err| blk: {
             if (err == error.Canceled) return;
-            log.err("periodic sync failed: {}", .{err});
+            log.err("sync pass failed: {}", .{err});
+            break :blk false;
         };
-        // a completed pass is progress even when it applied nothing; a FAILED
-        // pass counts too — the watchdog is for silence, and a loop that errors
-        // every 5 minutes is loud enough to alert on separately
-        noteProgress();
+
+        if (clean or turso.http_responses != responses_before) noteProgress();
+        if (!clean and turso.consecutive_transport_failures >= CLIENT_RESET_AFTER) {
+            turso.resetHttp();
+        }
+
+        failed_passes = if (clean) 0 else failed_passes +| 1;
+        const wait_s = nextSyncDelay(failed_passes, jitterUnit());
+        if (!clean) log.warn("sync pass failed ({d} in a row); next attempt in {d}s", .{ failed_passes, wait_s });
+        io.sleep(.{ .nanoseconds = @as(i96, wait_s) * std.time.ns_per_s }, .real) catch return;
     }
+}
+
+fn nextSyncDelay(failed_passes: u32, jitter: f64) u64 {
+    if (failed_passes == 0) return SYNC_INTERVAL_S;
+    const shift: u6 = @intCast(@min(failed_passes - 1, 16));
+    const base = @min(RETRY_BASE_S << shift, SYNC_INTERVAL_S);
+    const extra: u64 = @intFromFloat(@as(f64, @floatFromInt(base)) * 0.25 * jitter);
+    return @min(base + extra, SYNC_INTERVAL_S);
+}
+
+fn jitterUnit() f64 {
+    var b: [8]u8 = undefined;
+    io.random(&b);
+    return @as(f64, @floatFromInt(std.mem.readInt(u64, &b, .little) >> 11)) / @as(f64, 1 << 53);
 }
 
 /// Old (handle, display_name) of an actor as serving currently knows it —
@@ -677,6 +703,25 @@ fn projectRemoval(conn: zqlite.Conn, did: []const u8, caller: []const u8, ctx: O
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────
+
+test "nextSyncDelay backs off from a quick retry to the normal cadence" {
+    const t = std.testing;
+    try t.expectEqual(@as(u64, SYNC_INTERVAL_S), nextSyncDelay(0, 0.9));
+    try t.expectEqual(@as(u64, 15), nextSyncDelay(1, 0));
+    try t.expectEqual(@as(u64, 30), nextSyncDelay(2, 0));
+    try t.expectEqual(@as(u64, 120), nextSyncDelay(4, 0));
+    try t.expectEqual(@as(u64, SYNC_INTERVAL_S), nextSyncDelay(6, 0));
+    try t.expectEqual(@as(u64, SYNC_INTERVAL_S), nextSyncDelay(std.math.maxInt(u32), 0));
+    try t.expect(nextSyncDelay(9, 0.999) == SYNC_INTERVAL_S);
+    try t.expect(nextSyncDelay(1, 0.999) + nextSyncDelay(2, 0.999) < 120);
+}
+
+test "jitterUnit stays in [0, 1)" {
+    for (0..1000) |_| {
+        const j = jitterUnit();
+        try std.testing.expect(j >= 0 and j < 1);
+    }
+}
 
 test "resumePoint never starts behind the attached snapshot" {
     const t = std.testing;

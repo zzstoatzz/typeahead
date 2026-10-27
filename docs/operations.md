@@ -372,12 +372,44 @@ The three layers and how to check each:
 | Turso → overlay | `/health/freshness` → `replica_lag_s` | < 600s |
 | snapshot | `/index/status` → `build_id` | age < 3 days |
 
-If the overlay is behind and no `sync.*` spans are arriving, the sync loop is
-wedged: the watchdog exits the process within 20 min so fly restarts it. A
-manual `fly machine restart -a typeahead-search` is safe — on boot the service
-re-adopts the on-disk snapshot and resumes projecting from the persisted
-watermark (`sync_meta.last_sync`, advanced per page); the worker's backstop
-covers the seconds in between.
+Missing `sync.*` spans alone do not prove a wedge: first check routed production
+health and telemetry provisioning in the [October 26 repair](ops/search-monitoring-20261026.md).
+The watchdog detects 20 minutes without recorded progress; historically failed
+passes fed it, so repeated transport failures could evade restart. A manual restart
+must target the **routed managed app and Machine**, not the retained legacy app.
+The service reuses its cached admitted snapshot and persisted overlay watermark;
+a restart still interrupts serving.
+
+### Sync hardening follow-up (October 26, 2026; tested locally, not deployed)
+
+The stale `sync-hardening` branch (`d466bba`) was ported onto current main rather
+than merged wholesale. The certificate-clock repair is already deployed in
+`503b8b1`; this follow-up adds no concurrent tasks or runtime capacity changes.
+
+- Each HTTP fetch counts consecutive transport failures and completed responses.
+  After three consecutive transport failures, the sync loop rebuilds its private
+  HTTP client and clears the failure streak. Response totals survive the reset.
+- A clean pass or any HTTP response during that pass feeds the watchdog. Applied
+  pages and nonempty compaction chunks remain progress. Failed transport-only
+  passes and rebuilding the client do not feed it. Responses earlier in a pass
+  still count when a later request fails; zero requests do not imply contact.
+- Failed passes retry after 15 seconds, doubling with up to 25% jitter, capped at
+  300 seconds including jitter. Clean passes retain the 300-second interval.
+  The one in-pass updated-page retry waits two seconds; cancellation still exits.
+
+An HTTP 500/503 response keeps the watchdog alive without advancing the successful
+sync watermark. A prolonged network outage is indistinguishable from a broken
+local transport and can still cause a restart after progress stops. This policy
+cannot promise uninterrupted search during every Turso outage. It also does not
+fix the [separate admission starvation incident](retros/2026-10-26-search-timeouts-and-freshness-alerts.md).
+
+`python3 scripts/tests/turso_transport.py` runs the native suite against real
+loopback connections that disconnect before responding or return HTTP 503. Set
+`TYPEAHEAD_TLS_TEST_URL` to a public HTTPS URL to also run the existing stale-clock
+regression. Verification: 153 native tests passed, four skipped (including
+fixture-dependent cases); all 14 build steps succeeded. The x86-64 Linux
+ReleaseSafe build also passed all 16 steps. The historical certificate dates remain unverified: the frozen clock
+is a reproduced failure mechanism and a likely historical cause.
 
 ## how a request-indexing lands (2026-07-31)
 

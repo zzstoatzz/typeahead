@@ -20,5 +20,6 @@ comptime {
     _ = @import("index/r2.zig");
     _ = @import("index/builder.zig");
     _ = @import("db/sync.zig");
+    _ = @import("db/TursoClient.zig");
     _ = @import("http_guard.zig");
 }

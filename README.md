@@ -54,6 +54,9 @@ telemetry and makes sync monitoring follow the routed production backend.
 The later [search-timeout RCA and retro](docs/retros/2026-10-26-search-timeouts-and-freshness-alerts.md)
 records actual search failures and the remaining admission, API error and alert-recovery work;
 restored telemetry does not close those serving reliability issues.
+The [sync hardening follow-up](docs/operations.md#sync-hardening-follow-up-october-26-2026-tested-locally-not-deployed)
+adds bounded retries, HTTP-client recovery and stricter watchdog feeding; it is
+locally tested and not deployed.
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

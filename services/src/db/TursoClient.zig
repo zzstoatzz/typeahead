@@ -27,6 +27,8 @@ url: []const u8, // host only (no protocol prefix)
 token: []const u8,
 http_client: http.Client,
 mutex: std.Io.Mutex = std.Io.Mutex.init,
+consecutive_transport_failures: u32 = 0,
+http_responses: u64 = 0,
 
 pub fn init(allocator: Allocator) !TursoClient {
     const url = cGetenv("TURSO_URL") orelse {
@@ -56,6 +58,15 @@ pub fn init(allocator: Allocator) !TursoClient {
 
 pub fn deinit(self: *TursoClient) void {
     self.http_client.deinit();
+}
+
+pub fn resetHttp(self: *TursoClient) void {
+    self.mutex.lockUncancelable(io);
+    defer self.mutex.unlock(io);
+    self.http_client.deinit();
+    self.http_client = .{ .allocator = self.allocator, .io = io };
+    self.consecutive_transport_failures = 0;
+    log.warn("turso http client rebuilt after repeated transport failures", .{});
 }
 
 pub const Row = struct {
@@ -177,6 +188,8 @@ fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
     const auth = std.fmt.bufPrint(&auth_buf, "Bearer {s}", .{self.token}) catch
         return error.AuthTooLong;
 
+    const failures_before = self.consecutive_transport_failures;
+    const responses_before = self.http_responses;
     var out: FetchOut = .{};
     var future = std.Io.concurrent(io, fetchTask, .{ self, url, auth, body, &out }) catch |err| {
         // pool exhaustion is OUR resource problem — fail the query (callers
@@ -200,6 +213,7 @@ fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
     if (!out.done.load(.acquire)) {
         log.err("turso fetch exceeded {d}ms deadline; canceling stalled request", .{FETCH_DEADLINE_MS});
         future.cancel(io);
+        if (self.http_responses == responses_before and self.consecutive_transport_failures == failures_before) self.consecutive_transport_failures +|= 1;
         if (!out.done.load(.acquire)) return error.FetchTimeout;
         return out.result catch error.FetchTimeout;
     }
@@ -210,7 +224,13 @@ fn doRequest(self: *TursoClient, body: []const u8) ![]const u8 {
 
 fn fetch(self: *TursoClient, options: http.Client.FetchOptions) http.Client.FetchError!http.Client.FetchResult {
     if (self.http_client.now != null) self.http_client.now = std.Io.Clock.real.now(io);
-    return self.http_client.fetch(options);
+    const response = self.http_client.fetch(options) catch |err| {
+        if (err != error.Canceled) self.consecutive_transport_failures +|= 1;
+        return err;
+    };
+    self.consecutive_transport_failures = 0;
+    self.http_responses +%= 1;
+    return response;
 }
 
 fn rawFetch(self: *TursoClient, url: []const u8, auth: []const u8, payload: []const u8) ![]const u8 {
@@ -258,6 +278,42 @@ test "Turso HTTPS uses current time after a certificate rotates" {
     try std.testing.expectError(error.TlsInitializationFailed, client.http_client.fetch(options));
     _ = try client.fetch(options);
     try std.testing.expect(client.http_client.now.?.nanoseconds > 0);
+}
+
+test "transport failures rebuild without inventing HTTP progress" {
+    const origin = cGetenv("TYPEAHEAD_TURSO_HTTP_TEST_URL") orelse return error.SkipZigTest;
+    var client: TursoClient = .{
+        .allocator = std.testing.allocator,
+        .url = "",
+        .token = "",
+        .http_client = .{ .allocator = std.testing.allocator, .io = io },
+    };
+    defer client.deinit();
+    var url_buf: [512]u8 = undefined;
+    const broken = try std.fmt.bufPrint(&url_buf, "{s}/disconnect", .{origin});
+    for (0..3) |_| {
+        if (client.fetch(.{ .location = .{ .url = broken }, .keep_alive = false })) |_| {
+            return error.ExpectedTransportFailure;
+        } else |_| {}
+    }
+    try std.testing.expectEqual(@as(u32, 3), client.consecutive_transport_failures);
+    try std.testing.expectEqual(@as(u64, 0), client.http_responses);
+    client.resetHttp();
+    try std.testing.expectEqual(@as(u32, 0), client.consecutive_transport_failures);
+    try std.testing.expectEqual(@as(u64, 0), client.http_responses);
+    const unavailable = try std.fmt.bufPrint(&url_buf, "{s}/unavailable", .{origin});
+    const response = try client.fetch(.{ .location = .{ .url = unavailable }, .keep_alive = false });
+    try std.testing.expectEqual(http.Status.service_unavailable, response.status);
+    try std.testing.expectEqual(@as(u32, 0), client.consecutive_transport_failures);
+    try std.testing.expectEqual(@as(u64, 1), client.http_responses);
+    const broken_again = try std.fmt.bufPrint(&url_buf, "{s}/disconnect", .{origin});
+    if (client.fetch(.{ .location = .{ .url = broken_again }, .keep_alive = false })) |_| {
+        return error.ExpectedTransportFailure;
+    } else |_| {}
+    try std.testing.expectEqual(@as(u32, 1), client.consecutive_transport_failures);
+    try std.testing.expectEqual(@as(u64, 1), client.http_responses);
+    client.resetHttp();
+    try std.testing.expectEqual(@as(u64, 1), client.http_responses);
 }
 
 fn buildRequestBody(self: *TursoClient, sql: []const u8, args: []const []const u8) ![]const u8 {
