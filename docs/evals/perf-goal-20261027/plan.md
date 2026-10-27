@@ -375,9 +375,24 @@ native span sampling nor routing behavior. It is not in the active canary versio
 full timing coverage needs its own staged version before another live evaluation.
 
 The first ten-minute canary ended at 10:33 UTC and restored e8c21659 to
-100% because overlap samples were insufficient. Eight timing samples were
+100% because overlap samples were insufficient. Eleven timing samples were
 serial; this biased sample cannot estimate the overlap fraction. Correctness
 smoke passed and freshness remained healthy throughout. Runtime tail outcomes
 include client cancellations; they are retained rather than counted as successful
 requests. Final deployment readback confirms the candidate receives zero traffic.
 The native private Fly trial continues independently.
+
+The complete-timing follow-up passed 102 Bun tests, type checking and targeted
+linting, and was uploaded as version 7504eb57-d149-41f3-b1c7-ff0fe91813d1
+at zero traffic. It changes timing-event coverage only relative to the first
+overlap candidate. A new live evaluation remains pending; e8c21659 remains
+the retained serving version.
+
+A second bounded 10% canary uses complete timing events and the same routing
+implementation, with the previous version retained at 90%. It requires the
+credentialed smoke gate, healthy freshness and no observed backend/runtime
+failures, plus at least ten complete timing events and three overlapped calls
+before it may remain active. These are mechanism/correctness gates, not a p95
+or population-speedup claim; native/public performance goals remain unqualified.
+It restores the retained version on failure or insufficient evidence after ten
+minutes. Its evidence is in transport-overlap/full-timing-canary/.

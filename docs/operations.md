@@ -757,3 +757,9 @@ query-free transport phase event for every search. It is separate from the first
 At 10:33 UTC, the first canary restored the retained e8c21659 transport version
 to 100% because it lacked overlap evidence. Correctness/freshness gates passed,
 but no live speedup is claimed. [Final readback](evals/perf-goal-20261027/transport-overlap/canary-final-readback.json).
+
+At 10:38 UTC October 27, the full-timing version 7504eb57 began a second
+bounded 10% canary with the retained version at 90%; its credentialed smoke
+gate passed. [Its final record](evals/perf-goal-20261027/transport-overlap/full-timing-canary/canary-10pct.json)
+controls the eventual outcome. Initial events include both serial and overlapped
+requests; this small cohort does not establish a public latency percentile.

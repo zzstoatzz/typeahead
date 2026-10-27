@@ -1,0 +1,23 @@
+{
+  "checked_at": "2026-10-27T10:35:55.420985+00:00",
+  "candidate_version": "7504eb57-d149-41f3-b1c7-ff0fe91813d1",
+  "candidate_traffic_percentage": 0,
+  "live_deployment": {
+    "id": "a2d2ba93-1e09-4999-81cb-01ea069512cb",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "Restore retained transport version after bounded canary gate",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T10:33:41.338446Z"
+  },
+  "goal_qualified": false
+}
