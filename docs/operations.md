@@ -817,7 +817,7 @@ Failure or interruption restores 40a014e4 only while the job still owns the
 transport deployment. Native images, volumes and the routing object are
 unchanged. This is qualification in progress, not a performance PASS.
 
-### One-second route proof — October 27, local candidate
+### One-second route proof — October 27, qualification in progress
 
 The warm conditional-read canary failed at 200.58 ms over 133 misses, with
 complete HTTP reconciliation and no HTTP errors. It restored 40a014e4 at
@@ -830,10 +830,20 @@ identical origin/build. Fresh instances and new destinations still require R2.
 Expired proofs fall back to the already-started current read; consuming a proof
 does not extend or republish its expiry. The independent read alone may publish
 a renewed proof. Current cache/freshness bounds and the managed backend roles
-remain unchanged. This is not yet deployed or performance-qualified.
+remain unchanged. This is a candidate under qualification, not a proven win.
 
 A query-free public timing event records successful uncached responses and
 backend-error empty answers, with bounded strategy labels, serving colo and
 phase milliseconds. The internal transport marker is discarded by the public
-response constructor. This instrumentation is being prepared independently of
-the transport trial so location-matched comparisons use observed public timings.
+response constructor. Public timing version a0c42973 passed full smoke and is
+live as of 20:21 UTC. The first attempt failed a deprecated-parameter equality
+check and restored the previous version; that failed run remains recorded.
+
+The proof-reuse transport b9cedc8d passed its 10% smoke/health gate. A Cloudflare
+10500 internal authentication error prevented its move to 50%, and the supervisor
+restored retained transport 40a014e4. A single retry reached 50% at 20:24 UTC.
+It must pass same-window location-matched natural traffic, then a settled
+full-traffic mean <=169 ms with failure-inclusive reconciliation; otherwise it
+restores 40a014e4. Both Fly instance IDs, volumes and two-CPU / 1 GiB resources
+were verified unchanged at 20:23 UTC. See
+[the current bounded trial](evals/perf-goal-20261027/route-proof/README.md).

@@ -2,7 +2,7 @@
 
 Status: incomplete. Native qualification and guarded publication are verified;
 the conditional routing candidate failed its fixed public qualification window
-and restored the retained version. The next proof-reuse candidate is local.
+and restored the retained version. The next proof-reuse candidate is under guarded qualification.
 Do not infer completion from smoke passing or from one earlier low-latency bucket.
 
 | Requirement | Evidence and scope | State |
@@ -29,3 +29,11 @@ a claim that every visitor received an answer. The cancellations remain explicit
 The conditional canary is terminal (`restored-retained`), with mean 200.58 ms
 and no HTTP errors. It does not complete the public requirement. Post-rollback
 smoke passed. There are no continuing canary observers from that run.
+
+At 20:23 UTC both managed Fly instance IDs and final resources were verified
+unchanged (`route-proof/canary/machine-guard.json`). Public query-free timings
+are live after full smoke. The proof-reuse candidate passed its 10% gate; a
+control-plane 10500 error prevented progression and safely restored retained
+transport. The single retry is now at 50%, with fixed natural-traffic gates.
+This remains incomplete until that job has a terminal qualified result and all
+final correctness/freshness/counter and cleanup readbacks are checked.

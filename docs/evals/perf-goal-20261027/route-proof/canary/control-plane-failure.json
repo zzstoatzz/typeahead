@@ -1,0 +1,10 @@
+{
+  "at_utc": "2026-10-27T20:23:05Z",
+  "operation": "read retained version before 50% deployment",
+  "cloudflare_error_code": 10500,
+  "message": "Internal authentication error: internal server error",
+  "canary_10_percent_smoke": "passed",
+  "recovery": "restored retained transport",
+  "restored_deployment": "c5f3987d-715f-4067-bd5e-f28b24826532",
+  "performance_gate": "not reached"
+}

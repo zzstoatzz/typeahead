@@ -1,0 +1,78 @@
+{
+  "owner": "route-proof-5eeae7e-20261027",
+  "old": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "new": "b9cedc8d-d677-4d7c-b075-05351ee52a8c",
+  "source": "5eeae7e",
+  "deadline_utc": "2026-10-27T21:21:41.557616+00:00",
+  "events": [
+    {
+      "id": "440591be-2be1-41a1-9e01-7032818a89c3",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/message": "route-proof-5eeae7e-20261027 10%",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "b9cedc8d-d677-4d7c-b075-05351ee52a8c",
+          "percentage": 10
+        },
+        {
+          "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+          "percentage": 90
+        }
+      ],
+      "created_on": "2026-10-27T20:21:45.03988Z"
+    }
+  ],
+  "before": {
+    "id": "c566f874-38b8-4f5d-879e-e1e346a87c98",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "conditional-warm-20261027-1903 restore retained transport",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T19:28:03.508735Z"
+  },
+  "phase": "restored-retained",
+  "percentage": 10,
+  "deployment_id": "440591be-2be1-41a1-9e01-7032818a89c3",
+  "last_health": {
+    "status": 200,
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 105,
+    "snapshot_age_s": 23265,
+    "build_id": "b1793109259-2b36-px05",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "error": "Command '['bunx', 'wrangler', 'versions', 'deploy', 'b9cedc8d-d677-4d7c-b075-05351ee52a8c@50', '40a014e4-5ec0-467d-a8e7-214b626436ce@50', '--config', 'wrangler.search-transport.jsonc', '--yes', '--message', 'route-proof-5eeae7e-20261027 50%']' returned non-zero exit status 1.",
+  "deployment": {
+    "id": "c5f3987d-715f-4067-bd5e-f28b24826532",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "route-proof-5eeae7e-20261027 restore retained transport",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T20:23:12.409294Z"
+  }
+}
