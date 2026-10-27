@@ -833,3 +833,17 @@ at 190.95 ms mean and five cache hits. All 210 HTTP-200 answers reconcile.
 That is 15.9% lower than the preceding 227.01 ms cohort, but misses the
 predetermined 185 ms milestone. The guard restored e8c21659 after an analytics
 read timeout; neither this window nor the overall performance goal is qualified.
+
+The frozen-overlay native pair builds successfully for Linux. Seven real native
+fixture tests pass on macOS (4.24 seconds), including preservation of actual
+feed timestamps during projection; ten HTTP/harness guard tests also pass.
+The new private fork is vol_v3gxkkq76w60eem4 on private Machine 894505b6d54718;
+it reached reference capture at 15:55 UTC. Source A and serving B are unchanged.
+The former cloud supervisor host is offline, so this bounded run is supervised
+locally with the same identity/route/ownership checks and mandatory teardown.
+
+Retrospective durable provider analytics cover 14:49:37–15:19:37 UTC: public
+2,072 successful invocations and 76 client disconnects, transport 338 successful
+invocations, zero reported runtime errors in either service. Disconnects remain
+explicit and are not folded into successful HTTP outcomes. This resolves the
+analytics-read failure's coverage gap; the public mean still misses 185 ms.

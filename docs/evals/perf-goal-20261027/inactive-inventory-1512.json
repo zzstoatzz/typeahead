@@ -1,0 +1,16 @@
+[
+  {
+    "id": "8e3d79b70dd748",
+    "state": "started",
+    "metadata": {
+      "build_id": "b1793109259-2b36-px05",
+      "owner": "typeahead-snapshot-refresh"
+    },
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 4,
+      "memory_mb": 1024
+    },
+    "image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd"
+  }
+]

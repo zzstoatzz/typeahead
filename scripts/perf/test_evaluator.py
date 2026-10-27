@@ -236,11 +236,13 @@ class EvaluatorTest(unittest.TestCase):
         with sqlite3.connect(self.snapshot) as conn:
             did, blob = conn.execute('SELECT did,blob FROM actor_compact_base LIMIT 1').fetchone()
         feed = self.root / 'feed.json'
-        feed.write_text(json.dumps([{'did': did, 'blob_hex': blob.hex()},
+        feed.write_text(json.dumps([{'did': did, 'blob_hex': blob.hex(), 'updated_at': 123456},
                                     {'did': did + '-second', 'blob_hex': blob.hex()}]))
         trigger = self.root / 'writer-start'
         self.start(extra_env={'TYPEAHEAD_EVAL_FEED': str(feed), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
                               'TYPEAHEAD_EVAL_WRITER_START': str(trigger), 'TYPEAHEAD_EVAL_WRITER_DELAY_MS': '10'})
+        with sqlite3.connect(self.overlay) as conn:
+            self.assertEqual(conn.execute('SELECT updated_at FROM actor_overlay WHERE did=?', (did,)).fetchone()[0], 123456)
         cases = [{'id': 'actor', 'path': '/search?q=a&limit=10', 'status': 200,
                   'min_actors': 1, 'first_handle': 'recovery.test'}]
         reference = qualify.capture(self.base, cases, 1)

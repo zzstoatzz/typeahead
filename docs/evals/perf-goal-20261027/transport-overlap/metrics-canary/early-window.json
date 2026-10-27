@@ -1,0 +1,24 @@
+{
+  "read_at": "2026-10-27T14:58:57.369410+00:00",
+  "first_bucket": 5977042,
+  "last_bucket_exclusive": 5977043,
+  "limitations": [
+    "legacy miss latency excludes backend-unreachable empty answers",
+    "asynchronous writes and two sequential statements can skew count reconciliation",
+    "cumulative counters; compare snapshots with identical bounds"
+  ],
+  "metrics": [
+    {
+      "searches": 27,
+      "total_ms": 4589.0,
+      "cache_hits": 0,
+      "cache_ms": 0.0
+    }
+  ],
+  "request_status": [
+    {
+      "status": 200,
+      "hits": 27
+    }
+  ]
+}

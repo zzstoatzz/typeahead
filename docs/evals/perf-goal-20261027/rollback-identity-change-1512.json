@@ -1,0 +1,73 @@
+{
+  "id": "080d415b734708",
+  "state": "destroyed",
+  "instance_id": "01M5XZC04CDTFWZNSYYHQ8F8VD",
+  "version": "01M5XZC04CDTFWZNSYYHQ8F8VD",
+  "updated_at": "2026-10-27T15:09:06Z",
+  "events": [
+    {
+      "id": "01M5YYGTMZGZYBKHA52SW6768Z",
+      "type": "destroy",
+      "status": "destroyed",
+      "source": "flyd",
+      "timestamp": 1793113746079
+    },
+    {
+      "id": "01M5YYGTC0D5VTBMREVY0EAEGH",
+      "type": "destroy",
+      "status": "destroying",
+      "source": "user",
+      "timestamp": 1793113745792
+    },
+    {
+      "id": "01M5YYGSEA491XYKXWNS7XYDDW",
+      "type": "exit",
+      "status": "stopped",
+      "request": {
+        "exit_event": {
+          "requested_stop": true,
+          "restarting": false,
+          "guest_exit_code": 0,
+          "guest_signal": -1,
+          "guest_error": "",
+          "exit_code": 0,
+          "signal": -1,
+          "error": "",
+          "oom_killed": false,
+          "exited_at": "2026-10-27T15:09:04.741Z"
+        },
+        "restart_count": 0
+      },
+      "source": "flyd",
+      "timestamp": 1793113744842
+    },
+    {
+      "id": "01M5YYGGW9608H01B2DCFCBKSG",
+      "type": "stop",
+      "status": "stopping",
+      "request": {
+        "reason": ""
+      },
+      "source": "user",
+      "timestamp": 1793113736073
+    },
+    {
+      "id": "01M5XZC5E0RMYPSKZGVG01GDJ8",
+      "type": "start",
+      "status": "started",
+      "request": {},
+      "source": "flyd",
+      "timestamp": 1793081087424
+    }
+  ],
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd",
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 2,
+    "memory_mb": 1024
+  },
+  "metadata": {
+    "build_id": "b1792908655-14d5-px05",
+    "owner": "typeahead-snapshot-refresh"
+  }
+}

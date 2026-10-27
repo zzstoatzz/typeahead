@@ -1,0 +1,14 @@
+{
+  "tag": "registry.fly.io/typeahead-search-refresh:perf-be7e23f",
+  "digests": [
+    "registry.fly.io/typeahead-search-refresh@sha256:a46422647e9972dd365434bae5e65e183770eb1170db655b77dede03a5bd0afe"
+  ],
+  "source_commit": "be7e23f9bb5c023de5cb6adf4da5252d706342a9",
+  "native_sources_identical_to": "9b65d77c0b506fb62666196dd8c4c9295c8af556",
+  "binaries": {
+    "typeahead-ingester": "b8642d87c0cae41e4c0d29f913e7236969441288a25f831611ce187e0c4ac4dc",
+    "admit-prefix": "52a84047be6353df13744c070e80be6ecf892c81894566f1c8a6c8fc43e28371"
+  },
+  "created_at": "2026-10-27T15:18:38.268690+00:00",
+  "state": "built, not deployed or publisher-default"
+}

@@ -1,0 +1,9 @@
+{
+  "run_id": "20261027-2caf472a9943",
+  "machine_absent": true,
+  "volume_state": "pending_destroy",
+  "volume_unattached": true,
+  "token_revoked_or_already_absent": true,
+  "remote_ram_credential_absence": "not independently verified: former supervisor host is offline",
+  "in_guest_payload_reclamation": "not collected before identity-change abort; private volume retired"
+}

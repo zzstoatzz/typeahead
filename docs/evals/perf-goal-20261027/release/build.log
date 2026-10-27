@@ -1,0 +1,108 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 364B 0.0s done
+#1 DONE 0.1s
+
+#2 [auth] sharing credentials for registry.fly.io
+#2 DONE 0.0s
+
+#3 [internal] load metadata for registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573
+#3 DONE 0.5s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.1s
+
+#5 [1/3] FROM registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573
+#5 resolve registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 27.10MB 0.1s done
+#6 DONE 0.2s
+
+#5 [1/3] FROM registry.fly.io/typeahead-startup-20261024@sha256:9822d2b735cbfd5cda65b1bc4b8c6f95fcfd74e3d109c78e22b9a5b596247573
+#5 CACHED
+
+#7 [2/3] COPY typeahead-ingester admit-prefix /app/
+#7 DONE 0.1s
+
+#8 [3/3] COPY install.py /app/install-snapshot.py
+#8 DONE 0.1s
+
+#9 exporting to image
+#9 exporting layers
+#9 exporting layers 0.9s done
+#9 exporting manifest sha256:b48c2606e15761c098ca33eb38bba6f2e13a58d5d0846907d85e341b7b96f08b
+#9 exporting manifest sha256:b48c2606e15761c098ca33eb38bba6f2e13a58d5d0846907d85e341b7b96f08b 0.0s done
+#9 exporting config sha256:7aec3ee8b1dc64392d079a0a40ccc6c01c914d25d6824ead383fb627fd94fa4a 0.0s done
+#9 exporting attestation manifest sha256:c97aa7f36e188fd47eb10a0d10b93868ab56f04bdd3f9984dde63407439478fc 0.0s done
+#9 exporting manifest list sha256:a46422647e9972dd365434bae5e65e183770eb1170db655b77dede03a5bd0afe 0.0s done
+#9 naming to registry.fly.io/typeahead-search-refresh:perf-be7e23f done
+#9 DONE 1.0s
+The push refers to repository [registry.fly.io/typeahead-search-refresh]
+1380ee96f9fc: Waiting
+bcb3887fa683: Waiting
+10152d27b66f: Waiting
+cbd4dcb0ccde: Waiting
+4d71c084f73c: Waiting
+ac007e037486: Waiting
+96abe6a8acf6: Waiting
+b95e76c39d89: Waiting
+668b1ef1de55: Waiting
+e0a9f26f207c: Waiting
+1b30080d4f32: Waiting
+b8bd0773ed37: Waiting
+5e5c4f9689ac: Waiting
+5d61cf29e297: Waiting
+db6a365d54d2: Waiting
+509f53b93486: Waiting
+4a1e26c727db: Waiting
+cbd4dcb0ccde: Waiting
+4d71c084f73c: Waiting
+ac007e037486: Waiting
+96abe6a8acf6: Waiting
+b95e76c39d89: Waiting
+668b1ef1de55: Waiting
+e0a9f26f207c: Waiting
+1b30080d4f32: Waiting
+b8bd0773ed37: Waiting
+5e5c4f9689ac: Waiting
+5d61cf29e297: Waiting
+db6a365d54d2: Waiting
+509f53b93486: Waiting
+4a1e26c727db: Waiting
+1380ee96f9fc: Waiting
+bcb3887fa683: Waiting
+10152d27b66f: Waiting
+5e5c4f9689ac: Waiting
+5d61cf29e297: Layer already exists
+db6a365d54d2: Layer already exists
+509f53b93486: Layer already exists
+4a1e26c727db: Layer already exists
+1380ee96f9fc: Waiting
+bcb3887fa683: Layer already exists
+10152d27b66f: Layer already exists
+cbd4dcb0ccde: Layer already exists
+4d71c084f73c: Layer already exists
+ac007e037486: Layer already exists
+96abe6a8acf6: Waiting
+b95e76c39d89: Layer already exists
+668b1ef1de55: Layer already exists
+e0a9f26f207c: Layer already exists
+1b30080d4f32: Layer already exists
+b8bd0773ed37: Layer already exists
+5e5c4f9689ac: Waiting
+1380ee96f9fc: Waiting
+96abe6a8acf6: Waiting
+5e5c4f9689ac: Waiting
+1380ee96f9fc: Waiting
+96abe6a8acf6: Waiting
+5e5c4f9689ac: Waiting
+1380ee96f9fc: Waiting
+96abe6a8acf6: Waiting
+5e5c4f9689ac: Pushed
+1380ee96f9fc: Pushed
+96abe6a8acf6: Pushed
+perf-be7e23f: digest: sha256:a46422647e9972dd365434bae5e65e183770eb1170db655b77dede03a5bd0afe size: 856
