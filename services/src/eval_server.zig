@@ -57,18 +57,23 @@ pub fn main() !void {
         const count = try std.fmt.parseInt(usize, std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_CAPTURE_COUNT") orelse "5000"), 10);
         const map = local.prefix_map orelse return error.NoCaptureSnapshot;
         const dids = try map.actorFenceKeys(arena, count);
-        var bytes: std.Io.Writer.Allocating = .init(arena);
+        var bytes: std.Io.Writer.Allocating = .init(std.heap.page_allocator);
+        defer bytes.deinit();
+        var row_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer row_arena.deinit();
         var jw: std.json.Stringify = .{ .writer = &bytes.writer };
         try jw.beginArray();
         for (dids) |did| {
-            const blob = (try map.findTagged(arena, .actor, did)) orelse return error.MissingCaptureActor;
-            const hex = try arena.alloc(u8, blob.len * 2);
+            const row_allocator = row_arena.allocator();
+            const blob = (try map.findTagged(row_allocator, .actor, did)) orelse return error.MissingCaptureActor;
+            const hex = try row_allocator.alloc(u8, blob.len * 2);
             for (blob, 0..) |value, index| {
                 hex[index * 2] = "0123456789abcdef"[value >> 4];
                 hex[index * 2 + 1] = "0123456789abcdef"[value & 15];
             }
             try jw.write(.{ .did = did, .blob_hex = hex });
-            if (bytes.written().len > 32 * 1024 * 1024) return error.CaptureTooLarge;
+            if (bytes.written().len > 128 * 1024 * 1024) return error.CaptureTooLarge;
+            _ = row_arena.reset(.retain_capacity);
         }
         try jw.endArray();
         const file = try std.Io.Dir.cwd().createFile(io, std.mem.span(output), .{ .exclusive = true });

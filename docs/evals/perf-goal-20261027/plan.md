@@ -533,3 +533,32 @@ Public outcomes include 17 client cancellations, retained as a separate category
 A bounded 50% follow-up is active, retaining e8c21659 for rollback; this still
 does not establish the public mean target. Rollback checks deployment ownership
 so another writer’s deployment is preserved.
+
+The metadata-prefault trial is enlarged to 200,000 real captured actors,
+roughly three days of discovery at the measured arrival rate and larger than
+the currently observed 16,657-row production overlay. This is still a biased
+fence sample, not a claim that all live delta patterns are covered. An archived
+metadata-only binary search found 328,815 actor fence entries, so the requested
+count is available without scanning or exporting the serving database. Capture
+uses a reusable per-row arena and a <=128 MiB serialized feed; default evaluation
+feeds retain their existing 5,000-actor budget unless explicitly raised. Feed
+order is deterministically shuffled to spread mixed writes through the overlay.
+A real 5,001-row fixture rejects an implicit budget increase, accepts an explicit
+one and verifies fields remain valid through native projection and HTTP reads.
+
+Scratch remains the new private 20 GiB volume, payload <=16 GiB, free reserve
+>=2 GiB, evidence <=16 MiB and lifetime <=90 minutes. Bootstrap/finished arm
+overlays are retired after copying/hash/measurement so only the frozen overlay
+and current arm need coexist with the snapshot. Reclamation receipts are retained.
+Capture has a ten-minute bound; all measurement rates, latency thresholds,
+2.5-second attempt timeout and failure-inclusive accounting stay unchanged.
+Only unmeasured reference extraction may wait up to ten seconds per response
+to establish the correctness oracle; it remains bounded by its existing total
+command deadline. Startup time includes evaluation-feed loading and is not a
+production restart estimate. Post-ready residency is saved before its cold-data
+gate so a failure retains diagnostic evidence. No source/Turso requests are made.
+
+The shared-hint 50% observation passed with 92 timing events, 57 shared-cache
+overlaps, median concurrent phase time 36 ms and zero observed masked failures.
+A guarded 100% observation is running with e8c21659 retained for rollback. Public
+mean improvement remains unproven until the new full-traffic window is examined.

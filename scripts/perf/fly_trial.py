@@ -21,7 +21,7 @@ class FlyTrial(Trial):
         self.payload = self.scratch / 'index/generations' / manifest['active_build']
         self.evidence = Path('/data/evidence')
         self.evidence.mkdir(exist_ok=True)
-        self.args = argparse.Namespace(bin_dir='/app/perf', cases='/app/perf/cases-varied.json', pre_admitted=True)
+        self.args = argparse.Namespace(bin_dir='/app/perf', cases='/app/perf/cases-varied.json', pre_admitted=True, actor_count=200000)
         self.children = []
         self.started = time.monotonic()
         memory = dict(line.split(':', 1) for line in Path('/proc/meminfo').read_text().splitlines())
@@ -30,9 +30,9 @@ class FlyTrial(Trial):
             raise RuntimeError('private VM resource shape does not match qualification')
         if len(Path('/proc/swaps').read_text().splitlines()) != 1: raise RuntimeError('qualification requires no swap')
         self.report = {'kind': 'private-fly-full-snapshot', 'goal_qualified': False, 'runs': {},
-                       'limitations': ['captured 5000-actor overlay is smaller than aged live overlay',
+                       'limitations': ['captured actor fence sample is biased and is not a live delta export',
                                        'no Turso or live freshness qualification'],
-                       'capture_method': 'first 5000 actor-namespace page fences',
+                       'capture_method': 'first 200000 actor-namespace page fences; deterministic shuffled order',
                        'machine_id': os.environ.get('FLY_MACHINE_ID'), 'run_id': os.environ['PERF_RUN_ID'],
                        'hardware': {'cpus': os.cpu_count(), 'memory_kib': memory_kib, 'machine': os.uname().machine}}
 
@@ -57,12 +57,13 @@ class FlyTrial(Trial):
                'TYPEAHEAD_EVAL_NONCE': self.report['run_id'],
                'TYPEAHEAD_EVAL_PRIVATE_ROOT': str(self.payload),
                'TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT': '1',
-               'TYPEAHEAD_EVAL_CAPTURE_FEED': str(self.payload / 'feed.json')}
+               'TYPEAHEAD_EVAL_CAPTURE_FEED': str(self.payload / 'feed.json'),
+               'TYPEAHEAD_EVAL_CAPTURE_COUNT': str(self.args.actor_count)}
         with (self.evidence / 'capture.log').open('xb') as output:
             child = subprocess.Popen(['/app/perf/baseline'], env=env, stdout=output,
                                      stderr=subprocess.STDOUT, start_new_session=True)
         self.children.append(child)
-        deadline = time.monotonic() + 180
+        deadline = time.monotonic() + 600
         while child.poll() is None:
             self.guard()
             if time.monotonic() > deadline:
@@ -70,8 +71,13 @@ class FlyTrial(Trial):
                 raise TimeoutError('capturing private input')
             time.sleep(.25)
         if child.returncode: raise RuntimeError('private capture failed')
-        if len(json.loads((self.payload / 'feed.json').read_text())) != 5000:
+        actors = json.loads((self.payload / 'feed.json').read_text())
+        if len(actors) != self.args.actor_count:
             raise RuntimeError('incomplete private capture')
+        import random
+        random.Random(20261027).shuffle(actors)
+        with (self.payload / 'feed.json').open('w') as output:
+            json.dump(actors, output, separators=(',', ':'))
 
     def retire(self):
         expected = self.scratch / 'index/generations' / os.environ['REFRESH_BUILD_ID']

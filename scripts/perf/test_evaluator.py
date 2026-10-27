@@ -168,6 +168,26 @@ class EvaluatorTest(unittest.TestCase):
         self.assertNotEqual(self.process.wait(timeout=5), 0)
         self.assertIn('InvalidEvaluationPrivateRoot', self.log.read_text())
 
+    def test_larger_feed_requires_explicit_budget_and_keeps_borrowed_fields_alive(self):
+        import base64
+        with sqlite3.connect(self.snapshot) as conn:
+            blob = conn.execute('SELECT blob FROM actor_compact_base LIMIT 1').fetchone()[0]
+        feed = self.root / 'large-feed.json'
+        feed.write_text(json.dumps([{'did': 'did:plc:' + base64.b32encode(i.to_bytes(15, 'big')).decode().lower(),
+                                    'blob_hex': blob.hex()} for i in range(5001)]))
+        writer = {'TYPEAHEAD_EVAL_FEED': str(feed), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
+                  'TYPEAHEAD_EVAL_WRITER_START': str(self.root / 'never-start')}
+        self.start(wait=False, extra_env=writer)
+        self.assertNotEqual(self.process.wait(timeout=10), 0)
+        self.assertIn('InvalidFeedSize', self.log.read_text())
+        self.start(extra_env={**writer, 'TYPEAHEAD_EVAL_MAX_ACTORS': '5001'})
+        result, body = qualify.request(self.base, '/search?q=recovery.test&limit=10', 2)
+        self.assertEqual(result['status'], 200)
+        self.assertEqual(len(json.loads(body)['actors']), 10)
+        self.assertTrue(all(actor['handle'] == 'recovery.test' for actor in json.loads(body)['actors']))
+        with sqlite3.connect(self.overlay) as conn:
+            self.assertEqual(conn.execute('SELECT count(*) FROM actor_overlay').fetchone()[0], 5001)
+
     def test_native_captured_projection_overlaps_reads_without_changing_results(self):
         with sqlite3.connect(self.snapshot) as conn:
             did, blob = conn.execute('SELECT did,blob FROM actor_compact_base LIMIT 1').fetchone()

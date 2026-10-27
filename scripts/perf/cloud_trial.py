@@ -169,7 +169,8 @@ class Trial:
         env = {'PATH': '/usr/bin:/bin', 'LANG': 'C.UTF-8', 'SQLITE_TMPDIR': str(self.payload / 'tmp'),
                'TYPEAHEAD_EVAL_SNAPSHOT': str(self.payload / 'index.db'), 'LOCAL_DB_PATH': str(overlay),
                'TYPEAHEAD_EVAL_NONCE': nonce, 'TYPEAHEAD_EVAL_INPUT_ID': input_id,
-               'TYPEAHEAD_EVAL_FEED': str(self.payload / 'feed.json'), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
+               'TYPEAHEAD_EVAL_FEED': str(self.payload / 'feed.json'),
+               'TYPEAHEAD_EVAL_MAX_ACTORS': str(getattr(self.args, 'actor_count', 5000)), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
                'TYPEAHEAD_EVAL_WRITER_START': str(trigger), 'TYPEAHEAD_EVAL_WRITER_DELAY_MS': '5000',
                'TYPEAHEAD_EVAL_BACKGROUND_SLOTS': '3', 'PORT': str(port)}
         if name != 'bootstrap' or getattr(self.args, 'pre_admitted', False):
@@ -256,6 +257,16 @@ class Trial:
         del actors
         self.measure(manifest)
 
+    def retire_overlay(self, path):
+        if path.parent != self.payload or path.is_symlink(): raise ValueError('unsafe private overlay retirement')
+        before = shutil.disk_usage(self.payload).free
+        for suffix in ['', '-wal', '-shm']:
+            owned = path.with_name(path.name + suffix)
+            if owned.is_symlink(): raise ValueError('unexpected overlay symlink')
+            owned.unlink(missing_ok=True)
+        self.report.setdefault('retired_overlays', []).append({'name': path.name, 'free_before': before,
+            'free_after': shutil.disk_usage(self.payload).free})
+
     def measure(self, manifest):
         feed = self.payload / 'feed.json'
         self.save('bootstrap-admission-and-prefill')
@@ -266,19 +277,20 @@ class Trial:
         frozen = self.payload / 'frozen-overlay.db'
         with closing(sqlite3.connect('file:' + str(overlay) + '?mode=ro', uri=True)) as incoming, closing(sqlite3.connect(frozen)) as output:
             incoming.backup(output)
+        self.retire_overlay(overlay)
         inputs = {'snapshot_sha256': manifest['sha256'], 'prefix_sha256': manifest['prefix_map']['sha256'],
                   'overlay_sha256': digest(frozen), 'feed_sha256': digest(feed),
-                  'cases_sha256': digest(Path(self.args.cases)), 'captured_actors': 5000,
+                  'cases_sha256': digest(Path(self.args.cases)), 'captured_actors': getattr(self.args, 'actor_count', 5000),
                   'guest': {'cpu_ceiling': 2, 'memory_bytes': GIB, 'background_slots': 3},
                   'writer': {'mode': 'mixed', 'batch_size': 500, 'scheduled_interval_ms': 5000}}
         encoded = json.dumps(inputs, sort_keys=True).encode()
         input_id = hashlib.sha256(encoded).hexdigest()
         (self.evidence / 'inputs.json').write_text(json.dumps({'input_id': input_id, **inputs}, indent=2) + '\n')
         reference = self.evidence / 'reference.json'
-        def client(base, nonce):
+        def client(base, nonce, timeout=2.5):
             return [sys.executable, str(Path(__file__).with_name('qualify.py')), '--url', base,
                     '--nonce', nonce, '--input-id', input_id, '--cases', self.args.cases,
-                    '--rps', '10', '--concurrency', '4', '--duration', '250', '--timeout', '2.5']
+                    '--rps', '10', '--concurrency', '4', '--duration', '250', '--timeout', str(timeout)]
 
         for name in ['baseline', 'candidate']:
             self.save(name + '-startup')
@@ -288,7 +300,7 @@ class Trial:
             if name == 'baseline':
                 child, base, nonce, _ = self.start_server(name, overlay, input_id, trigger)
                 self.save('reference-capture')
-                code = self.run(client(base, nonce) + ['--rounds', '1', '--output', str(reference)], 'reference', 300)
+                code = self.run(client(base, nonce, timeout=10) + ['--rounds', '1', '--output', str(reference)], 'reference', 300)
                 self.stop(child)
                 (self.evidence / 'baseline-server.log').rename(self.evidence / 'reference-server.log')
                 if code: raise RuntimeError('baseline reference capture failed')
@@ -300,11 +312,12 @@ class Trial:
                 root_bytes = struct.unpack_from('<Q', stream.read(80), 32)[0]
             post_ready = {'prefix': residency(self.payload / 'index.db.prefix', root_bytes),
                           'admission': residency(self.payload / 'index.db.prefix.admitted')}
-            if post_ready['prefix']['payload_resident_pages'] * mmap.PAGESIZE > 2 * 1024 * 1024:
-                raise RuntimeError('payload pages warmed before first-touch measurement')
             common = client(base, nonce)
             self.report['runs'][name] = {'identity': identity, 'startup_ms': startup_ms,
                 'pre_start_residency': cache_receipt, 'post_ready_residency': post_ready, 'phases': {}}
+            self.save(name + '-ready')
+            if post_ready['prefix']['payload_resident_pages'] * mmap.PAGESIZE > 2 * 1024 * 1024:
+                raise RuntimeError('payload pages warmed before first-touch measurement')
             for phase, rounds, p95, p99 in [('first-touch', 1, 250, 500), ('warm', 2, 50, 100), ('mixed', 2, 50, 100)]:
                 self.save(name + '-' + phase)
                 if phase == 'mixed': trigger.touch()
@@ -320,6 +333,7 @@ class Trial:
                     'summary': report['summary'], 'writer_overlap': report.get('writer_overlap'),
                     'process_before': before, 'process_after': after}
             self.stop(child)
+            self.retire_overlay(overlay)
         self.save('completed-offline-profile')
 
 

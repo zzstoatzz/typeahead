@@ -390,7 +390,7 @@ pub const Map = struct {
     }
 
     pub fn actorFenceKeys(self: Map, arena: std.mem.Allocator, limit: usize) ![]const []const u8 {
-        if (limit == 0 or limit > 5000) return error.InvalidCaptureLimit;
+        if (limit == 0 or limit > 200000) return error.InvalidCaptureLimit;
         var keys: std.ArrayListUnmanaged([]const u8) = .empty;
         for (0..@min(self.pages, limit)) |index| {
             const root = try self.record(index);

@@ -39,9 +39,11 @@ pub const Writer = struct {
         const trigger = std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_WRITER_START") orelse return error.MissingWriterTrigger);
         const delay_ms = try std.fmt.parseInt(u64, std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_WRITER_DELAY_MS") orelse "1000"), 10);
         if (delay_ms > 30000) return error.InvalidWriterDelay;
-        const bytes = try std.Io.Dir.cwd().readFileAlloc(io, std.mem.span(source), allocator, .limited(32 * 1024 * 1024));
-        const actors = try std.json.parseFromSlice([]Actor, allocator, bytes, .{ .allocate = .alloc_always });
-        if (actors.value.len == 0 or actors.value.len > 5000) return error.InvalidFeedSize;
+        const max_actors = try std.fmt.parseInt(usize, std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_MAX_ACTORS") orelse "5000"), 10);
+        if (max_actors == 0 or max_actors > 200000) return error.InvalidFeedSize;
+        const bytes = try std.Io.Dir.cwd().readFileAlloc(io, std.mem.span(source), allocator, .limited(if (max_actors > 5000) 128 * 1024 * 1024 else 32 * 1024 * 1024));
+        const actors = try std.json.parseFromSlice([]Actor, allocator, bytes, .{ .allocate = .alloc_if_needed });
+        if (actors.value.len == 0 or actors.value.len > max_actors) return error.InvalidFeedSize;
         const entries = try allocator.alloc(Entry, actors.value.len);
         var seen: std.StringHashMapUnmanaged(void) = .empty;
         const watermark: i64 = @intCast(local.attachedMetaInt(schema.meta.source_watermark));
