@@ -107,7 +107,8 @@ pub const Writer = struct {
                 const scheduled = started + batch_number * self.delay_ms * std.time.ns_per_ms;
                 const now = std.Io.Timestamp.now(io, .awake).nanoseconds;
                 if (scheduled > now) io.sleep(.{ .nanoseconds = scheduled - now }, .awake) catch return;
-                _ = self.counters.max_lag_ms.fetchMax(@intCast(@divTrunc(@max(now - scheduled, 0), std.time.ns_per_ms)), .monotonic);
+                const awake = std.Io.Timestamp.now(io, .awake).nanoseconds;
+                _ = self.counters.max_lag_ms.fetchMax(@intCast(@divTrunc(@max(awake - scheduled, 0), std.time.ns_per_ms)), .monotonic);
                 self.counters.active.store(true, .release);
                 self.batch(first, @min(first + 500, self.entries.len), pass) catch {
                     _ = self.counters.failures.fetchAdd(1, .monotonic);

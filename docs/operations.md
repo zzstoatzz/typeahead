@@ -719,3 +719,10 @@ hashes, records failed attempts and offered-load queueing, and requires at least
 1,000 search attempts before a percentile qualification can pass. Six real HTTP /
 native-fixture tests passed. Fixture timings do not qualify corpus capacity.
 Production and the active automatic refresh were not changed.
+
+The first [isolated corpus comparison](evals/perf-goal-20261027/plan.md#completed-first-offline-comparison--0840-utc)
+completed at 08:40 UTC. With 5,000 captured actors and identical source batches,
+guarded writes cut measured process writes by 30% and SQLite mutations by 50%;
+CPU increased 3%, and mixed-search p99 stayed about 16 ms in both arms. This is
+cloud SSD evidence with a small overlay, not a Fly latency guarantee or deployed
+change. Payloads and evaluation processes were retired.

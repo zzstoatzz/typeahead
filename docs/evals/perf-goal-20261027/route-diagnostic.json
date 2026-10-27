@@ -1,0 +1,62 @@
+{
+  "checked_at": "2026-10-27T08:35:37.128517+00:00",
+  "generated_search_requests": 0,
+  "same_client_connection": true,
+  "requests": [
+    {
+      "path": "/perf-missing-route",
+      "status": 404,
+      "elapsed_ms": 238.2027499988908,
+      "colo": "ORD"
+    },
+    {
+      "path": "/route",
+      "status": 200,
+      "elapsed_ms": 141.20099999126978,
+      "colo": "ORD"
+    },
+    {
+      "path": "/perf-missing-route",
+      "status": 404,
+      "elapsed_ms": 61.86662500840612,
+      "colo": "ORD"
+    },
+    {
+      "path": "/route",
+      "status": 200,
+      "elapsed_ms": 119.1346250125207,
+      "colo": "ORD"
+    },
+    {
+      "path": "/perf-missing-route",
+      "status": 404,
+      "elapsed_ms": 77.28683299501427,
+      "colo": "ORD"
+    },
+    {
+      "path": "/route",
+      "status": 200,
+      "elapsed_ms": 374.26454199885484,
+      "colo": "ORD"
+    },
+    {
+      "path": "/perf-missing-route",
+      "status": 404,
+      "elapsed_ms": 85.46645900059957,
+      "colo": "ORD"
+    },
+    {
+      "path": "/route",
+      "status": 200,
+      "elapsed_ms": 159.39000000071246,
+      "colo": "ORD"
+    },
+    {
+      "path": "/perf-missing-route",
+      "status": 404,
+      "elapsed_ms": 75.26129200414289,
+      "colo": "ORD"
+    }
+  ],
+  "limitation": "Route bypasses metadata cache and reads R2; unknown path returns before that read. Difference includes runtime/network variation and is not a directly instrumented R2 span."
+}

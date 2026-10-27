@@ -1,0 +1,1 @@
+{"attempts": 2016, "failures": 0, "search_attempts": 2014, "p50_ms": 11.65856420993805, "p95_ms": 13.743747025728226, "p99_ms": 15.833897516131401, "max_ms": 83.27903598546982, "passed": true, "minimum_search_attempts": 1000, "enough_samples": true}

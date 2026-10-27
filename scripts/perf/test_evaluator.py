@@ -118,6 +118,38 @@ class EvaluatorTest(unittest.TestCase):
         with sqlite3.connect(self.overlay) as conn:
             self.assertIsNone(conn.execute("SELECT value FROM sync_meta WHERE key='pds_scope_policy'").fetchone())
 
+    def test_cached_private_restart_preserves_frozen_overlay_without_prefill(self):
+        self.snapshot = self.root / 'fixtures/builds/compact/index.db'
+        self.input_id = hashlib.sha256(self.snapshot.read_bytes()).hexdigest()
+        with sqlite3.connect(self.root / 'fixtures/builds/legacy/index.db') as conn:
+            did, blob = conn.execute('SELECT did,blob FROM actor_compact_base LIMIT 1').fetchone()
+        feed = self.root / 'feed.json'
+        feed.write_text(json.dumps([{'did': did, 'blob_hex': blob.hex()}]))
+        writer = {'TYPEAHEAD_EVAL_FEED': str(feed), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
+                  'TYPEAHEAD_EVAL_WRITER_START': str(self.root / 'never-start')}
+        self.start(extra_env=writer)
+        cases = [{'id': 'actor', 'path': '/search?q=a&limit=10', 'status': 200,
+                  'min_actors': 1, 'first_handle': 'recovery.test'}]
+        reference = qualify.capture(self.base, cases, 1)
+        self.assertTrue(reference['passed'], reference)
+        self.stop()
+        self.assertTrue(Path(str(self.snapshot) + '.prefix.admitted').is_file())
+        with sqlite3.connect(self.overlay) as conn:
+            conn.execute('UPDATE actor_overlay SET updated_at=updated_at+1000')
+            before = conn.execute('SELECT did,blob,hidden,updated_at,source FROM actor_overlay ORDER BY did').fetchall()
+        self.start(extra_env={**writer, 'TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT': '1',
+                              'TYPEAHEAD_EVAL_PRIVATE_ROOT': str(self.root), 'TYPEAHEAD_EVAL_SKIP_PREFILL': '1'})
+        rows = qualify.measure(self.base, cases, reference, 2, 1, 10, 1, 1)
+        self.assertTrue(all(row['correct'] for row in rows), rows)
+        self.stop()
+        with sqlite3.connect(self.overlay) as conn:
+            after = conn.execute('SELECT did,blob,hidden,updated_at,source FROM actor_overlay ORDER BY did').fetchall()
+        self.assertEqual(before, after)
+        self.start(wait=False, extra_env={'TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT': '1',
+                                         'TYPEAHEAD_EVAL_PRIVATE_ROOT': str(self.root)[:-1]})
+        self.assertNotEqual(self.process.wait(timeout=5), 0)
+        self.assertIn('InvalidEvaluationPrivateRoot', self.log.read_text())
+
     def test_native_captured_projection_overlaps_reads_without_changing_results(self):
         with sqlite3.connect(self.snapshot) as conn:
             did, blob = conn.execute('SELECT did,blob FROM actor_compact_base LIMIT 1').fetchone()

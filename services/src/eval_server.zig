@@ -16,14 +16,21 @@ pub fn main() !void {
     if (nonce.len < 16 or nonce.len > 128) return error.InvalidEvaluationNonce;
     const input_id = std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_INPUT_ID") orelse "");
     const snapshot = std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_SNAPSHOT") orelse return error.MissingEvaluationSnapshot);
-    _ = std.c.getenv("LOCAL_DB_PATH") orelse return error.MissingEvaluationOverlay;
+    const overlay_path = std.mem.span(std.c.getenv("LOCAL_DB_PATH") orelse return error.MissingEvaluationOverlay);
     const port = try std.fmt.parseInt(u16, std.mem.span(std.c.getenv("PORT") orelse return error.MissingEvaluationPort), 10);
     var local = LocalDb.init(std.heap.page_allocator);
     defer local.deinit();
     try local.open();
     if (std.c.getenv("TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT") != null) {
-        const app = std.mem.span(std.c.getenv("FLY_APP_NAME") orelse return error.MissingEvaluationApp);
-        if (!std.mem.startsWith(u8, app, "typeahead-startup-")) return error.InvalidEvaluationApp;
+        if (std.c.getenv("FLY_APP_NAME")) |value| {
+            if (!std.mem.startsWith(u8, std.mem.span(value), "typeahead-startup-")) return error.InvalidEvaluationApp;
+        } else {
+            const root = std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_PRIVATE_ROOT") orelse return error.MissingEvaluationPrivateRoot);
+            if (root.len < 2 or root[0] != '/' or root[root.len - 1] == '/') return error.InvalidEvaluationPrivateRoot;
+            for ([_][]const u8{ snapshot, overlay_path }) |path| {
+                if (path.len <= root.len or !std.mem.startsWith(u8, path, root) or path[root.len] != '/') return error.InvalidEvaluationPrivateRoot;
+            }
+        }
         var prepared = try local.prepareAdmittedSnapshot(snapshot);
         defer prepared.deinit();
         local.activateSnapshot(&prepared);
@@ -46,7 +53,9 @@ pub fn main() !void {
     var writer_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer writer_arena.deinit();
     var writer = try EvalWriter.init(writer_arena.allocator(), &local);
-    if (writer) |*value| try value.prefill();
+    if (std.c.getenv("TYPEAHEAD_EVAL_SKIP_PREFILL") == null) {
+        if (writer) |*value| try value.prefill();
+    }
     const slots = try std.fmt.parseInt(usize, std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_BACKGROUND_SLOTS") orelse if (writer != null) "3" else "0"), 10);
     if (slots > 7 or (writer != null and slots == 0)) return error.InvalidBackgroundSlots;
     var addr = std.Io.net.IpAddress{ .ip4 = .{ .bytes = .{ 127, 0, 0, 1 }, .port = port } };

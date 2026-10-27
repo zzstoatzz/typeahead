@@ -1,0 +1,242 @@
+{
+  "duration_s": 50.272038666997105,
+  "passive": true,
+  "generated_search_requests": 0,
+  "tail_exit_codes": [
+    0,
+    0
+  ],
+  "records": [
+    {
+      "worker": "typeahead",
+      "path": "/xrpc/app.bsky.actor.searchActorsTypeahead",
+      "outcome": "canceled",
+      "timings": {
+        "wallTime": 74,
+        "cpuTime": 2,
+        "eventTimestamp": 1793089665554
+      },
+      "top_fields": [
+        "cpuTime",
+        "diagnosticsChannelEvents",
+        "event",
+        "eventTimestamp",
+        "exceptions",
+        "executionModel",
+        "logs",
+        "outcome",
+        "scriptName",
+        "scriptVersion",
+        "truncated",
+        "wallTime"
+      ],
+      "event_fields": [
+        "request"
+      ],
+      "status": null
+    },
+    {
+      "worker": "typeahead-search-transport",
+      "path": "/search",
+      "outcome": "ok",
+      "timings": {
+        "wallTime": 156,
+        "cpuTime": 1,
+        "eventTimestamp": 1793089665628
+      },
+      "top_fields": [
+        "cpuTime",
+        "diagnosticsChannelEvents",
+        "event",
+        "eventTimestamp",
+        "exceptions",
+        "executionModel",
+        "logs",
+        "outcome",
+        "scriptName",
+        "scriptVersion",
+        "truncated",
+        "wallTime"
+      ],
+      "event_fields": [
+        "request",
+        "response"
+      ],
+      "status": 200
+    },
+    {
+      "worker": "typeahead-search-transport",
+      "path": "/search",
+      "outcome": "ok",
+      "timings": {
+        "wallTime": 94,
+        "cpuTime": 1,
+        "eventTimestamp": 1793089665820
+      },
+      "top_fields": [
+        "cpuTime",
+        "diagnosticsChannelEvents",
+        "event",
+        "eventTimestamp",
+        "exceptions",
+        "executionModel",
+        "logs",
+        "outcome",
+        "scriptName",
+        "scriptVersion",
+        "truncated",
+        "wallTime"
+      ],
+      "event_fields": [
+        "request",
+        "response"
+      ],
+      "status": 200
+    },
+    {
+      "worker": "typeahead-search-transport",
+      "path": "/search",
+      "outcome": "ok",
+      "timings": {
+        "wallTime": 225,
+        "cpuTime": 1,
+        "eventTimestamp": 1793089666133
+      },
+      "top_fields": [
+        "cpuTime",
+        "diagnosticsChannelEvents",
+        "event",
+        "eventTimestamp",
+        "exceptions",
+        "executionModel",
+        "logs",
+        "outcome",
+        "scriptName",
+        "scriptVersion",
+        "truncated",
+        "wallTime"
+      ],
+      "event_fields": [
+        "request",
+        "response"
+      ],
+      "status": 200
+    },
+    {
+      "worker": "typeahead",
+      "path": "/xrpc/app.bsky.actor.searchActorsTypeahead",
+      "outcome": "canceled",
+      "timings": {
+        "wallTime": 300,
+        "cpuTime": 1,
+        "eventTimestamp": 1793089666074
+      },
+      "top_fields": [
+        "cpuTime",
+        "diagnosticsChannelEvents",
+        "event",
+        "eventTimestamp",
+        "exceptions",
+        "executionModel",
+        "logs",
+        "outcome",
+        "scriptName",
+        "scriptVersion",
+        "truncated",
+        "wallTime"
+      ],
+      "event_fields": [
+        "request"
+      ],
+      "status": null
+    },
+    {
+      "worker": "typeahead",
+      "path": "/xrpc/app.bsky.actor.searchActorsTypeahead",
+      "outcome": "ok",
+      "timings": {
+        "wallTime": 706,
+        "cpuTime": 5,
+        "eventTimestamp": 1793089665745
+      },
+      "top_fields": [
+        "cpuTime",
+        "diagnosticsChannelEvents",
+        "event",
+        "eventTimestamp",
+        "exceptions",
+        "executionModel",
+        "logs",
+        "outcome",
+        "scriptName",
+        "scriptVersion",
+        "truncated",
+        "wallTime"
+      ],
+      "event_fields": [
+        "request",
+        "response"
+      ],
+      "status": 200
+    },
+    {
+      "worker": "typeahead-search-transport",
+      "path": "/search",
+      "outcome": "ok",
+      "timings": {
+        "wallTime": 150,
+        "cpuTime": 1,
+        "eventTimestamp": 1793089666528
+      },
+      "top_fields": [
+        "cpuTime",
+        "diagnosticsChannelEvents",
+        "event",
+        "eventTimestamp",
+        "exceptions",
+        "executionModel",
+        "logs",
+        "outcome",
+        "scriptName",
+        "scriptVersion",
+        "truncated",
+        "wallTime"
+      ],
+      "event_fields": [
+        "request",
+        "response"
+      ],
+      "status": 200
+    },
+    {
+      "worker": "typeahead",
+      "path": "/xrpc/app.bsky.actor.searchActorsTypeahead",
+      "outcome": "ok",
+      "timings": {
+        "wallTime": 452,
+        "cpuTime": 5,
+        "eventTimestamp": 1793089666469
+      },
+      "top_fields": [
+        "cpuTime",
+        "diagnosticsChannelEvents",
+        "event",
+        "eventTimestamp",
+        "exceptions",
+        "executionModel",
+        "logs",
+        "outcome",
+        "scriptName",
+        "scriptVersion",
+        "truncated",
+        "wallTime"
+      ],
+      "event_fields": [
+        "request",
+        "response"
+      ],
+      "status": 200
+    }
+  ],
+  "limitation": "Invocation wall time may include waitUntil work and is not client response time. Query strings, headers and console payloads were discarded."
+}

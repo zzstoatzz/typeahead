@@ -1,0 +1,19 @@
+{
+  "input_id": "a6abcb7028f836445805e4599212c363ce4cbbfdc01f0fa5caba28a0dfb25242",
+  "snapshot_sha256": "9a816cea707423dc12d23e0a181f2cbe3bb046b52e0bc503ef3bc85424f38004",
+  "prefix_sha256": "bf5dd0fb7e01a454d7d630a5fa67903fa7db7fd3fe42393a855c3fba5dc9b176",
+  "overlay_sha256": "8f08bcd7d99711a5b671cf52aacbaa55febf27a2fcaec64d47bf92e5bd6b0544",
+  "feed_sha256": "7b190d751e22d16bd0d2f335dc34ab60eb09844fde1afbc9b22ea904edaaf93d",
+  "cases_sha256": "1d35e13d0d8487d679170dbc648cb4e861cdc64f5a637476e6a7686ddd8aa184",
+  "captured_actors": 5000,
+  "guest": {
+    "cpu_ceiling": 2,
+    "memory_bytes": 1073741824,
+    "background_slots": 3
+  },
+  "writer": {
+    "mode": "mixed",
+    "batch_size": 500,
+    "scheduled_interval_ms": 5000
+  }
+}

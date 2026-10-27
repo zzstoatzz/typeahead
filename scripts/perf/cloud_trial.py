@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Supervised offline corpus profile. No network beyond the private loopback namespace."""
 import argparse
+import ctypes
 import hashlib
 import json
+import mmap
 import os
 from pathlib import Path
 import shutil
@@ -25,6 +27,26 @@ def digest(path):
         for chunk in iter(lambda: source.read(1024 * 1024), b''):
             result.update(chunk)
     return result.hexdigest()
+
+
+def residency(path):
+    size = path.stat().st_size
+    pages = (size + mmap.PAGESIZE - 1) // mmap.PAGESIZE
+    if not size:
+        return {'pages': 0, 'resident_pages': 0}
+    libc = ctypes.CDLL(None, use_errno=True)
+    libc.mincore.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.POINTER(ctypes.c_ubyte)]
+    libc.mincore.restype = ctypes.c_int
+    with path.open('rb') as source, mmap.mmap(source.fileno(), 0, flags=mmap.MAP_PRIVATE,
+                                              prot=mmap.PROT_READ | mmap.PROT_WRITE) as mapping:
+        address = ctypes.c_char.from_buffer(mapping)
+        try:
+            vector = (ctypes.c_ubyte * pages)()
+            if libc.mincore(ctypes.addressof(address), size, vector):
+                raise OSError(ctypes.get_errno(), 'private file residency check failed')
+            return {'pages': pages, 'resident_pages': sum(value & 1 for value in vector)}
+        finally:
+            del address
 
 
 def cleanup(scratch, evidence):
@@ -132,6 +154,9 @@ class Trial:
                'TYPEAHEAD_EVAL_FEED': str(self.payload / 'feed.json'), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
                'TYPEAHEAD_EVAL_WRITER_START': str(trigger), 'TYPEAHEAD_EVAL_WRITER_DELAY_MS': '5000',
                'TYPEAHEAD_EVAL_BACKGROUND_SLOTS': '3', 'PORT': str(port)}
+        if name != 'bootstrap':
+            env.update(TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT='1', TYPEAHEAD_EVAL_PRIVATE_ROOT=str(self.payload),
+                       TYPEAHEAD_EVAL_SKIP_PREFILL='1')
         executable = Path(self.args.bin_dir) / ('baseline' if name == 'bootstrap' else name)
         with (self.evidence / (name + '-server.log')).open('xb') as output:
             child = subprocess.Popen([str(executable)], env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
@@ -163,12 +188,19 @@ class Trial:
         with sqlite3.connect(overlay) as conn:
             busy, _, _ = conn.execute('PRAGMA wal_checkpoint(TRUNCATE)').fetchone()
             if busy: raise RuntimeError('private checkpoint busy before cache reset')
-        for path in [self.payload / 'index.db', self.payload / 'index.db.prefix', overlay]:
+        conn.close()
+        receipts = {}
+        for path in [self.payload / 'index.db', self.payload / 'index.db.prefix',
+                     self.payload / 'index.db.prefix.admitted', overlay]:
             if not path.resolve().is_relative_to(self.payload.resolve()) or path.is_symlink():
                 raise ValueError('cache reset outside owned scratch')
             with path.open('rb') as source:
                 os.fsync(source.fileno())
                 os.posix_fadvise(source.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
+            receipts[path.name] = residency(path)
+            if receipts[path.name]['resident_pages'] > max(1, receipts[path.name]['pages'] // 100):
+                raise RuntimeError('private file remains warm after advisory eviction')
+        return receipts
 
     def execute(self):
         self.payload.mkdir(exist_ok=False)
@@ -221,21 +253,27 @@ class Trial:
         input_id = hashlib.sha256(encoded).hexdigest()
         (self.evidence / 'inputs.json').write_text(json.dumps({'input_id': input_id, **inputs}, indent=2) + '\n')
         reference = self.evidence / 'reference.json'
+        def client(base, nonce):
+            return [sys.executable, str(Path(__file__).with_name('qualify.py')), '--url', base,
+                    '--nonce', nonce, '--input-id', input_id, '--cases', self.args.cases,
+                    '--rps', '10', '--concurrency', '4', '--duration', '250', '--timeout', '2.5']
+
         for name in ['baseline', 'candidate']:
             self.save(name + '-startup')
             overlay = self.payload / (name + '-overlay.db')
             shutil.copyfile(frozen, overlay)
             trigger = self.payload / (name + '-writer-start')
-            child, base, nonce, identity = self.start_server(name, overlay, input_id, trigger)
-            common = [sys.executable, str(Path(__file__).with_name('qualify.py')), '--url', base,
-                      '--nonce', nonce, '--input-id', input_id, '--cases', self.args.cases,
-                      '--rps', '10', '--concurrency', '4', '--duration', '250', '--timeout', '2.5']
             if name == 'baseline':
+                child, base, nonce, _ = self.start_server(name, overlay, input_id, trigger)
                 self.save('reference-capture')
-                code = self.run(common + ['--rounds', '1', '--output', str(reference)], 'reference', 300)
+                code = self.run(client(base, nonce) + ['--rounds', '1', '--output', str(reference)], 'reference', 300)
+                self.stop(child)
+                (self.evidence / 'baseline-server.log').rename(self.evidence / 'reference-server.log')
                 if code: raise RuntimeError('baseline reference capture failed')
-            self.evict_private(overlay)
-            self.report['runs'][name] = {'identity': identity, 'phases': {}}
+            cache_receipt = self.evict_private(overlay)
+            child, base, nonce, identity = self.start_server(name, overlay, input_id, trigger)
+            common = client(base, nonce)
+            self.report['runs'][name] = {'identity': identity, 'pre_start_residency': cache_receipt, 'phases': {}}
             for phase, rounds, p95, p99 in [('first-touch', 1, 250, 500), ('warm', 2, 50, 100), ('mixed', 2, 50, 100)]:
                 self.save(name + '-' + phase)
                 if phase == 'mixed': trigger.touch()

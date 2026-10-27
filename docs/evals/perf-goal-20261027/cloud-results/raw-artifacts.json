@@ -1,0 +1,44 @@
+{
+  "baseline-first-touch.json": {
+    "archive": "baseline-first-touch.json.gz",
+    "original_sha256": "a8293e6430eee03464919ea606d2977d61f6f21d739ff8327b6cb33c73d8c562",
+    "archive_sha256": "4e444ac209d13fb25b5d36dbb722e3b00fd3eaec9b0326bd20a15e094b99a3c2",
+    "attempts": 1008
+  },
+  "baseline-mixed.json": {
+    "archive": "baseline-mixed.json.gz",
+    "original_sha256": "321578d300a6df69b0dd88eae8f6249d9454ab7a207d18828f08c65475bf2c5e",
+    "archive_sha256": "1ff046424de276ae5b9e3efdc578a94585d25d09f09f551c4e95dbf83d313319",
+    "attempts": 2016
+  },
+  "baseline-warm.json": {
+    "archive": "baseline-warm.json.gz",
+    "original_sha256": "9af95992722ce6f02a7ffa9e24d7d8397a9436d25b6b623dbf6f759fbc3a1848",
+    "archive_sha256": "1d35dd440c9295edd1115195cf5627ff12ea9461e21f914238e1bb866ae7b94d",
+    "attempts": 2016
+  },
+  "candidate-first-touch.json": {
+    "archive": "candidate-first-touch.json.gz",
+    "original_sha256": "4601659802f1b04a616d91f6900fab344d90d6c848d39d310a589527517a58c7",
+    "archive_sha256": "2115a9848a40f9890ec19dd2daacee5fb79dafb11390bcc405cfd779aade3225",
+    "attempts": 1008
+  },
+  "candidate-mixed.json": {
+    "archive": "candidate-mixed.json.gz",
+    "original_sha256": "64f854ad262c07091d62d1747e1a30ed25cecb83935e30721bb2436bf4041a0e",
+    "archive_sha256": "55a5ddd5132b7edf8963498100a714ae2e86b19c8084cb755bb71f91a13211b7",
+    "attempts": 2016
+  },
+  "candidate-warm.json": {
+    "archive": "candidate-warm.json.gz",
+    "original_sha256": "d33b212337b2971eee630b6adeb8af04dc7e9f3e11255298e2264de142b06b76",
+    "archive_sha256": "0badd7fac9f4e12e2346a179335e22a012a9e4d3f14c6aae49fbd42b102b43d8",
+    "attempts": 2016
+  },
+  "reference.json": {
+    "archive": "reference.json.gz",
+    "original_sha256": "fb30f0e5608d790d0553a5fd627d3c26249ddae5d27349587557ff662436bbcf",
+    "archive_sha256": "0d6052dca33a24878d04443d054b85b46c510357787922c94180a93818aebe68",
+    "attempts": 1008
+  }
+}

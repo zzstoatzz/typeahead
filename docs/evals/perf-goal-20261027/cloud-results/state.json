@@ -1,0 +1,337 @@
+{
+  "kind": "offline-full-snapshot-profile",
+  "goal_qualified": false,
+  "limitations": [
+    "cloud SSD differs from Fly storage",
+    "captured 5000-actor overlay is smaller than live overlay",
+    "no Turso, discovery or live freshness qualification"
+  ],
+  "runs": {
+    "baseline": {
+      "identity": {
+        "nonce": "943769d3efb84f5abdee104094c04875",
+        "input_id": "a6abcb7028f836445805e4599212c363ce4cbbfdc01f0fa5caba28a0dfb25242",
+        "ready": true,
+        "writer": {
+          "batches": 0,
+          "rows": 0,
+          "failures": 0,
+          "changes": 208480,
+          "max_lag_ms": 0,
+          "active": false
+        }
+      },
+      "phases": {
+        "first-touch": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 1008,
+            "failures": 0,
+            "search_attempts": 1007,
+            "p50_ms": 17.98340491950512,
+            "p95_ms": 20.669613033533096,
+            "p99_ms": 22.548098117113113,
+            "max_ms": 95.01295909285545,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": null,
+          "process_before": {
+            "rchar": 7992029254,
+            "wchar": 431668170,
+            "syscr": 129716,
+            "syscw": 168631,
+            "read_bytes": 7725617152,
+            "write_bytes": 430718976,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 63460.0,
+            "VmHWM": 282853376,
+            "VmRSS": 282853376,
+            "RssAnon": 37814272,
+            "RssFile": 245039104
+          },
+          "process_after": {
+            "rchar": 8363446342,
+            "wchar": 431668170,
+            "syscr": 174786,
+            "syscw": 168631,
+            "read_bytes": 8067801088,
+            "write_bytes": 430718976,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 74220.0,
+            "VmHWM": 282890240,
+            "VmRSS": 282890240,
+            "RssAnon": 37851136,
+            "RssFile": 245039104
+          }
+        },
+        "warm": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 2016,
+            "failures": 0,
+            "search_attempts": 2014,
+            "p50_ms": 11.631876230239868,
+            "p95_ms": 13.668324798345566,
+            "p99_ms": 15.325939282774925,
+            "max_ms": 105.54196871817112,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": null,
+          "process_before": {
+            "rchar": 8363446342,
+            "wchar": 431668170,
+            "syscr": 174786,
+            "syscw": 168631,
+            "read_bytes": 8067801088,
+            "write_bytes": 430718976,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 74220.0,
+            "VmHWM": 282890240,
+            "VmRSS": 282890240,
+            "RssAnon": 37851136,
+            "RssFile": 245039104
+          },
+          "process_after": {
+            "rchar": 9106247750,
+            "wchar": 431668170,
+            "syscr": 264918,
+            "syscw": 168631,
+            "read_bytes": 8067801088,
+            "write_bytes": 430718976,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 94090.0,
+            "VmHWM": 283938816,
+            "VmRSS": 283639808,
+            "RssAnon": 38600704,
+            "RssFile": 245039104
+          }
+        },
+        "mixed": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 2016,
+            "failures": 0,
+            "search_attempts": 2014,
+            "p50_ms": 11.65856420993805,
+            "p95_ms": 13.743747025728226,
+            "p99_ms": 15.833897516131401,
+            "max_ms": 83.27903598546982,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": {
+            "batches": 41,
+            "sqlite_changes": 854661
+          },
+          "process_before": {
+            "rchar": 9106247750,
+            "wchar": 431668170,
+            "syscr": 264918,
+            "syscw": 168631,
+            "read_bytes": 8067801088,
+            "write_bytes": 430718976,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 94090.0,
+            "VmHWM": 283938816,
+            "VmRSS": 283639808,
+            "RssAnon": 38600704,
+            "RssFile": 245039104
+          },
+          "process_after": {
+            "rchar": 11621745462,
+            "wchar": 2206006186,
+            "syscr": 786634,
+            "syscw": 1024274,
+            "read_bytes": 8067809280,
+            "write_bytes": 2177880064,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 125500.0,
+            "VmHWM": 283938816,
+            "VmRSS": 197787648,
+            "RssAnon": 57012224,
+            "RssFile": 140775424
+          }
+        }
+      }
+    },
+    "candidate": {
+      "identity": {
+        "nonce": "d7eeace7136b45d9a196e42e1093670e",
+        "input_id": "a6abcb7028f836445805e4599212c363ce4cbbfdc01f0fa5caba28a0dfb25242",
+        "ready": true,
+        "writer": {
+          "batches": 0,
+          "rows": 0,
+          "failures": 0,
+          "changes": 0,
+          "max_lag_ms": 0,
+          "active": false
+        }
+      },
+      "phases": {
+        "first-touch": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 1008,
+            "failures": 0,
+            "search_attempts": 1007,
+            "p50_ms": 17.93574169278145,
+            "p95_ms": 21.24028652906418,
+            "p99_ms": 23.205235600471497,
+            "max_ms": 112.96107433736324,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": null,
+          "process_before": {
+            "rchar": 7301828149,
+            "wchar": 56975838,
+            "syscr": 6998,
+            "syscw": 16,
+            "read_bytes": 6935834624,
+            "write_bytes": 57020416,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 52940.0,
+            "VmHWM": 153890816,
+            "VmRSS": 153890816,
+            "RssAnon": 32268288,
+            "RssFile": 121622528
+          },
+          "process_after": {
+            "rchar": 7673245238,
+            "wchar": 56975908,
+            "syscr": 52069,
+            "syscw": 18,
+            "read_bytes": 7309238272,
+            "write_bytes": 57024512,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 63790.0,
+            "VmHWM": 277610496,
+            "VmRSS": 277610496,
+            "RssAnon": 33239040,
+            "RssFile": 244371456
+          }
+        },
+        "warm": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 2016,
+            "failures": 0,
+            "search_attempts": 2014,
+            "p50_ms": 11.649424210190773,
+            "p95_ms": 13.757197186350822,
+            "p99_ms": 15.69378562271595,
+            "max_ms": 103.19332405924797,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": null,
+          "process_before": {
+            "rchar": 7673245238,
+            "wchar": 56975908,
+            "syscr": 52069,
+            "syscw": 18,
+            "read_bytes": 7309238272,
+            "write_bytes": 57024512,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 63790.0,
+            "VmHWM": 277610496,
+            "VmRSS": 277610496,
+            "RssAnon": 33239040,
+            "RssFile": 244371456
+          },
+          "process_after": {
+            "rchar": 8416046646,
+            "wchar": 56975908,
+            "syscr": 142201,
+            "syscw": 18,
+            "read_bytes": 7309238272,
+            "write_bytes": 57024512,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 83770.0,
+            "VmHWM": 277794816,
+            "VmRSS": 277676032,
+            "RssAnon": 33304576,
+            "RssFile": 244371456
+          }
+        },
+        "mixed": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 2016,
+            "failures": 0,
+            "search_attempts": 2014,
+            "p50_ms": 11.67643629014492,
+            "p95_ms": 13.613149523735046,
+            "p99_ms": 15.767702832818031,
+            "max_ms": 121.56776897609234,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": {
+            "batches": 41,
+            "sqlite_changes": 427563
+          },
+          "process_before": {
+            "rchar": 8416046646,
+            "wchar": 56975908,
+            "syscr": 142201,
+            "syscw": 18,
+            "read_bytes": 7309238272,
+            "write_bytes": 57024512,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 83770.0,
+            "VmHWM": 277794816,
+            "VmRSS": 277676032,
+            "RssAnon": 33304576,
+            "RssFile": 244371456
+          },
+          "process_after": {
+            "rchar": 9787026998,
+            "wchar": 1283305604,
+            "syscr": 385696,
+            "syscw": 447850,
+            "read_bytes": 7309492224,
+            "write_bytes": 1283874816,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 116170.0,
+            "VmHWM": 277794816,
+            "VmRSS": 183037952,
+            "RssAnon": 41447424,
+            "RssFile": 141590528
+          }
+        }
+      }
+    }
+  },
+  "phase": "completed-offline-profile",
+  "limits": {
+    "memory.max": "1073741824",
+    "memory.swap.max": "0",
+    "cpu.max": "200000 100000"
+  },
+  "copied_bytes": 7247757312,
+  "source_bytes": 7292854272,
+  "bootstrap_metrics": {
+    "rchar": 7536373889,
+    "wchar": 355297162,
+    "syscr": 63620,
+    "syscw": 129223,
+    "read_bytes": 7315599360,
+    "write_bytes": 352296960,
+    "cancelled_write_bytes": 0,
+    "cpu_ms": 53480.0,
+    "VmHWM": 98828288,
+    "VmRSS": 80801792,
+    "RssAnon": 38580224,
+    "RssFile": 42221568
+  }
+}

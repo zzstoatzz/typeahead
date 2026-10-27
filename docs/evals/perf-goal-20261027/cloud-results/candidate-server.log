@@ -1,0 +1,5 @@
+info(local_db): opening /var/lib/typeahead-perf/20261027-800a5ec34a01/payload/candidate-overlay.db
+info(local_db): read pool: size=4 wait_budget_ms=250
+info(local_db): initialized
+info(local_db): snapshot attached: /var/lib/typeahead-perf/20261027-800a5ec34a01/payload/index.db
+warning(index_search): slow search: 103 ms (q_len=3 keys=4 merged=50)

@@ -170,3 +170,73 @@ CPUs / 1 GiB and native f67005b. Public freshness is healthy with 106 seconds
 lag. production-during-trial.json retains route, source, resource and health
 readbacks. This goal made no production mutation. The /stats 24h miss mean is
 259.20 ms, versus 168.83 ms over 7d; the difference is still unqualified.
+
+## Completed first offline comparison — 08:40 UTC
+
+Run 20261027-800a5ec34a01 completed; the systemd service is inactive and no
+experiment children remain. cloud-results/ retains the raw failure-inclusive
+reports (gzip, indexed by raw-artifacts.json), process counters and input identity.
+All 10,080 measured requests
+matched status, complete response hashes and PDS acknowledgments; the ten
+intentional excluded-scope responses remain in the accounting. Reference capture
+also passed all 1,008 cases.
+
+| Mixed phase | Baseline f67005b | Candidate ffd5d86 |
+| --- | ---: | ---: |
+| p95 scheduled-to-completion | 13.74 ms | 13.61 ms |
+| p99 scheduled-to-completion | 15.83 ms | 15.77 ms |
+| Maximum | 83.28 ms | 121.57 ms |
+| Completed 500-actor batches | 41 | 41 |
+| SQLite changes during measurement | 854,661 | 427,563 |
+| Process write_bytes increase | 1,747,161,088 | 1,226,850,304 |
+| Process CPU time | 31.41 s | 32.40 s |
+
+The mutation reduction is about 50%, process writes about 30% lower, and CPU
+about 3% higher. Both versions already meet the warm/mixed targets on this cloud
+SSD with a small overlay; there is no demonstrated latency improvement here.
+These single sequential arms do not establish performance on Fly or an aged
+1.56 GB overlay. Do not convert reduced process writes into an equal reduction
+in volume-billed I/O or public latency. The first-touch phase remains advisory
+because its process-local caches were not equally cold.
+
+cleanup.json records 7,576,793,088 bytes of owned payload removed and filesystem
+free space increasing from 104,110,546,944 to 111,624,867,840 bytes. Other host
+activity can affect that difference. retirement.json confirms no evaluation
+children or payload remain, and the uploaded executable copies were removed.
+Only small code/manifests and result receipts remain on the host; source archives
+and both Fly slots were not modified by this experiment.
+
+## Corrected cold protocol — local tested, corpus run pending
+
+The next harness version restarts the baseline after reference capture and starts
+both arms from the same frozen overlay without reprojecting it during startup.
+It uses the existing admitted snapshot for those fresh processes. Offline cached
+startup requires explicit private-root membership for the snapshot and overlay;
+the existing Fly evaluator guard remains. Eight real HTTP/native fixture tests
+pass, including cached compact restart, preservation of frozen overlay timestamps
+and rejection of a neighboring root prefix.
+
+Before each fresh process starts, the supervisor checkpoints and evicts only its
+private database, prefix payload and admission sidecar. Linux mincore records
+resident-page counts and rejects a cache reset retaining more than 1% of pages
+(with one-page tolerance). A real Linux file check passed with zero resident
+pages after eviction; residency-test.json retains the result. No global cache
+drop or publisher-file eviction is used. The writer lag counter now samples
+again after sleeping; the original run's zero lag omitted wakeup lateness and
+must not be read as a precise freshness guarantee. These changes were not applied
+to the completed corpus run.
+
+## Public routing cost — passive evidence and bounded diagnostics
+
+passive-edge-tail.json retains a 50-second tail: four transport searches took
+94–225 ms at one millisecond of Worker CPU. No search requests were generated.
+Public invocation wall times include waitUntil work and canceled invocations;
+they are not response-latency measurements and cannot be subtracted from native
+samples to estimate one request's routing cost.
+
+route-diagnostic.json records four uncached /route reads and paired guard-only
+404s on the same HTTPS connection, without touching Fly search. Route reads were
+119–374 ms; paired guard responses 62–85 ms. The difference includes scheduling
+and network variation, not a directly instrumented R2 span. The source currently
+awaits the route read before beginning the origin fetch. This motivates the
+separate local transport overlap candidate; it does not prove its live gain.
