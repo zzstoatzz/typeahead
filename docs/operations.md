@@ -708,7 +708,7 @@ and public error masking remain separate open RCA work.
 
 ## Safe performance qualification — October 27, 2026; active goal
 
-Status at 13:51 UTC: production remains healthy on two shared CPUs / 1 GiB,
+Status at 14:00 UTC: production remains healthy on two shared CPUs / 1 GiB,
 with native f670. Shared-hint version 40a014e4
 passed limited 10% and 50% observations; two full-traffic observations restored
 e8c21659 when a passive log observer disconnected. Neither established the
@@ -723,7 +723,7 @@ retained for rollback. Temporary Wrangler 4.153.0 passed a twelve-minute read-on
 liveness check, but its next single-stream canary rolled back on a reconnect.
 A ten-minute overlapping-observer test then passed forced replacement, real
 reconnects and total-loss rejection. A full-traffic retry with those observers
-and settled public counter reconciliation is prepared.
+and settled public counter reconciliation is active and has passed smoke.
 Native performance changes
 remain undeployed. The [qualification plan](evals/perf-goal-20261027/plan.md)
 records targets, frozen-input correctness gates, independent trial storage,
@@ -747,7 +747,7 @@ metadata-only prefault follow-up captured 200,000 actors but stopped at its
 unmeasured bootstrap preparation deadline. Its payload/VM are retired; the
 unattached volume is pending_destroy. A bounded retry retains the same native
 binaries and measurement gates with more time for offline preparation; retry
-963b8d20811d is privately capturing input after full admission.
+963b8d20811d has completed capture and is privately preparing its overlay.
 The earlier measured overlay was only 5,000 actors. Live freshness is separate.
 
 Two bounded 10% transport canaries passed credentialed smoke and freshness

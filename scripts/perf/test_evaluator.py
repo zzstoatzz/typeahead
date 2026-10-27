@@ -1,4 +1,5 @@
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
@@ -8,6 +9,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import uuid
@@ -95,6 +97,48 @@ class EvaluatorTest(unittest.TestCase):
         self.assertEqual(summary['failures'], 0)
         self.assertFalse(summary['enough_samples'])
         self.assertFalse(summary['passed'])
+
+    def test_saturated_task_budget_keeps_answers_exact_while_projection_runs(self):
+        self.snapshot = self.root / 'fixtures/builds/compact/index.db'
+        self.input_id = hashlib.sha256(self.snapshot.read_bytes()).hexdigest()
+        with sqlite3.connect(self.root / 'fixtures/builds/legacy/index.db') as conn:
+            did, blob = conn.execute('SELECT did,blob FROM actor_compact_base LIMIT 1').fetchone()
+        feed = self.root / 'feed.json'
+        feed.write_text(json.dumps([{'did': did, 'blob_hex': blob.hex()},
+                                   {'did': 'did:plc:saturationfixture', 'blob_hex': blob.hex()}]))
+        trigger = self.root / 'writer-start'
+        self.start(extra_env={'TYPEAHEAD_EVAL_FEED': str(feed),
+                              'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
+                              'TYPEAHEAD_EVAL_WRITER_START': str(trigger),
+                              'TYPEAHEAD_EVAL_WRITER_DELAY_MS': '5',
+                              'TYPEAHEAD_EVAL_BACKGROUND_SLOTS': '7'})
+        paths = ['/search?q=a&limit=10', '/search?q=zzzz&limit=10']
+        expected = {path: qualify.request(self.base, path, 1)[1] for path in paths}
+        self.assertTrue(json.loads(expected[paths[0]])['actors'])
+        trigger.touch()
+        deadline = time.monotonic() + 2
+        while qualify.verify_target(self.base, self.nonce, 1, self.input_id)['writer']['batches'] < 2:
+            if time.monotonic() > deadline:
+                self.fail('projection did not start')
+            time.sleep(.01)
+        before = qualify.verify_target(self.base, self.nonce, 1, self.input_id)['writer']['batches']
+        def request(index, barrier):
+            barrier.wait(timeout=2)
+            path = paths[index % len(paths)]
+            result, body = qualify.request(self.base, path, 1)
+            return path, result, body
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            for _ in range(20):
+                barrier = threading.Barrier(8)
+                futures = [pool.submit(request, index, barrier) for index in range(8)]
+                for future in futures:
+                    path, result, body = future.result(timeout=3)
+                    self.assertIsNone(result['error'], result)
+                    self.assertEqual(result['status'], 200, result)
+                    self.assertEqual(body, expected[path])
+        writer = qualify.verify_target(self.base, self.nonce, 1, self.input_id)['writer']
+        self.assertGreater(writer['batches'], before)
+        self.assertEqual(writer['failures'], 0)
 
     def test_nonempty_overlay_cannot_forge_pds_readiness(self):
         with sqlite3.connect(self.snapshot) as conn:

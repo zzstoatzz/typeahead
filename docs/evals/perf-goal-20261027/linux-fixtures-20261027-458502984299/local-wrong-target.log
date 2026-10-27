@@ -1,0 +1,197 @@
+EEEEEEE
+======================================================================
+ERROR: test_cached_private_restart_preserves_frozen_overlay_without_prefill (test_evaluator.EvaluatorTest.test_cached_private_restart_preserves_frozen_overlay_without_prefill)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 192, in test_cached_private_restart_preserves_frozen_overlay_without_prefill
+    self.start(extra_env=writer)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 57, in start
+    self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    stdout=output, stderr=output, start_new_session=True)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+OSError: [Errno 8] Exec format error: '/Users/nate/.codex/worktrees/search-monitoring/typeahead/services/zig-out/bin/eval-server'
+
+======================================================================
+ERROR: test_larger_feed_requires_explicit_budget_and_keeps_borrowed_fields_alive (test_evaluator.EvaluatorTest.test_larger_feed_requires_explicit_budget_and_keeps_borrowed_fields_alive)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 224, in test_larger_feed_requires_explicit_budget_and_keeps_borrowed_fields_alive
+    self.start(wait=False, extra_env=writer)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 57, in start
+    self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    stdout=output, stderr=output, start_new_session=True)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+OSError: [Errno 8] Exec format error: '/Users/nate/.codex/worktrees/search-monitoring/typeahead/services/zig-out/bin/eval-server'
+
+======================================================================
+ERROR: test_native_captured_projection_overlaps_reads_without_changing_results (test_evaluator.EvaluatorTest.test_native_captured_projection_overlaps_reads_without_changing_results)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 242, in test_native_captured_projection_overlaps_reads_without_changing_results
+    self.start(extra_env={'TYPEAHEAD_EVAL_FEED': str(feed), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                          'TYPEAHEAD_EVAL_WRITER_START': str(trigger), 'TYPEAHEAD_EVAL_WRITER_DELAY_MS': '10'})
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 57, in start
+    self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    stdout=output, stderr=output, start_new_session=True)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+OSError: [Errno 8] Exec format error: '/Users/nate/.codex/worktrees/search-monitoring/typeahead/services/zig-out/bin/eval-server'
+
+======================================================================
+ERROR: test_native_identity_reference_and_concurrent_response_equivalence (test_evaluator.EvaluatorTest.test_native_identity_reference_and_concurrent_response_equivalence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 73, in test_native_identity_reference_and_concurrent_response_equivalence
+    self.start()
+    ~~~~~~~~~~^^
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 57, in start
+    self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    stdout=output, stderr=output, start_new_session=True)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+OSError: [Errno 8] Exec format error: '/Users/nate/.codex/worktrees/search-monitoring/typeahead/services/zig-out/bin/eval-server'
+
+======================================================================
+ERROR: test_nonempty_overlay_cannot_forge_pds_readiness (test_evaluator.EvaluatorTest.test_nonempty_overlay_cannot_forge_pds_readiness)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 146, in test_nonempty_overlay_cannot_forge_pds_readiness
+    self.start()
+    ~~~~~~~~~~^^
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 57, in start
+    self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    stdout=output, stderr=output, start_new_session=True)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+OSError: [Errno 8] Exec format error: '/Users/nate/.codex/worktrees/search-monitoring/typeahead/services/zig-out/bin/eval-server'
+
+======================================================================
+ERROR: test_private_capture_exports_real_packed_actor_and_refuses_overwrite (test_evaluator.EvaluatorTest.test_private_capture_exports_real_packed_actor_and_refuses_overwrite)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 170, in test_private_capture_exports_real_packed_actor_and_refuses_overwrite
+    self.start(wait=False, extra_env=env)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 57, in start
+    self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    stdout=output, stderr=output, start_new_session=True)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+OSError: [Errno 8] Exec format error: '/Users/nate/.codex/worktrees/search-monitoring/typeahead/services/zig-out/bin/eval-server'
+
+======================================================================
+ERROR: test_saturated_task_budget_keeps_answers_exact_while_projection_runs (test_evaluator.EvaluatorTest.test_saturated_task_budget_keeps_answers_exact_while_projection_runs)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 110, in test_saturated_task_budget_keeps_answers_exact_while_projection_runs
+    self.start(extra_env={'TYPEAHEAD_EVAL_FEED': str(feed),
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                          'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                          'TYPEAHEAD_EVAL_WRITER_START': str(trigger),
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                          'TYPEAHEAD_EVAL_WRITER_DELAY_MS': '5',
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                          'TYPEAHEAD_EVAL_BACKGROUND_SLOTS': '7'})
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/nate/.codex/worktrees/search-monitoring/typeahead/scripts/perf/test_evaluator.py", line 57, in start
+    self.process = subprocess.Popen([os.environ['TYPEAHEAD_EVAL_SERVER']], env=env,
+                   ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                    stdout=output, stderr=output, start_new_session=True)
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1039, in __init__
+    self._execute_child(args, executable, preexec_fn, close_fds,
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        pass_fds, cwd, env,
+                        ^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+                        gid, gids, uid, umask,
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        start_new_session, process_group)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.4_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py", line 1990, in _execute_child
+    raise child_exception_type(errno_num, err_msg, err_filename)
+OSError: [Errno 8] Exec format error: '/Users/nate/.codex/worktrees/search-monitoring/typeahead/services/zig-out/bin/eval-server'
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.114s
+
+FAILED (errors=7)

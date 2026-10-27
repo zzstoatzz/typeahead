@@ -691,3 +691,29 @@ pins image 9e92c2ee; its baseline/candidate ELF hashes match the prior pair
 exactly. Only the two Python preparation-budget files changed. The rollback
 Machine remains protected. Full admission finished and input capture is active;
 measurement and retirement remain pending. No corpus data was sent home.
+
+
+### Native saturation correctness and active observation — 14:00 UTC
+
+The native fixture suite now includes 160 real HTTP attempts in eight-client
+simultaneous bursts with seven background task slots occupied, including a live
+two-actor projection loop. Every actor and empty response must match complete
+reference bytes, and writer batches must advance without failures. All seven
+fixture tests passed on macOS and on native Linux x86-64. The Linux unit had two
+CPU cores of quota, 1 GiB RAM, no swap, a private loopback network, a 256 MiB
+scratch cap and a three-minute outer limit. Its peak fixture payload was
+29,082,032 bytes; cleanup removed all payloads and retired temporary binaries.
+[The manifest and logs](linux-fixtures-20261027-458502984299/manifest.json) identify
+the exact qualified candidate ELF and test sources. An initial local invocation
+pointed to the Linux ELF and failed before starting any server; that invocation
+is retained separately, and the macOS executable was rebuilt before rerunning.
+These are small-fixture correctness/starvation checks, not corpus capacity or
+Fly latency evidence. No production behavior changed, so the README overview
+requires no additional change for this test.
+
+The overlapping-observer Worker observation began at 13:51 UTC and passed
+unchanged credentialed smoke. It remains active with deployment-ownership,
+freshness, HTTP/runtime/masked-failure and full observer-coverage gates. The
+qualified latency counter window will use complete post-smoke buckets starting
+at 13:55 UTC. Native retry 963b8d20811d has reached bootstrap admission/prefill;
+its measurement and retirement remain pending.
