@@ -1055,3 +1055,26 @@ receipt is preserved and no final provider-runtime count is inferred.
 Evidence: [settled counters](transport-overlap/native-plus-overlap-1755-1810.json)
 and [provider read](release/native-overlap-provider-final.json). README and
 operations were reviewed and updated against this result.
+
+### Public explanation and stats cross-check
+
+At Nate's request, published the [performance explanation](https://typeahead-faster-search.n80n8.chatgpt.site)
+with plain-language methods and a sanitized data download. The production stats
+page's 18:19 UTC browser data yields 251.90 ms for 24h and 165.41 ms for 7d;
+those include older traffic and do not contradict the 197.46 ms post-release
+15-minute window. The site separates these windows and the controlled engine
+tests, includes baseline failures and resource tradeoffs, and states the
+169 ms target remains unmet. No raw infrastructure receipts or traffic-source
+lists were published. Desktop/mobile visuals and controls were checked; a
+mobile decorative overflow was fixed and rechecked. Unauthenticated readback
+confirmed the reviewed body and exact CSS/JS/data assets. See
+[publication verification](release/public-performance-site.json). This artifact
+changes no Typeahead runtime behavior; README's shipped-state description
+remains accurate and needed no further change.
+
+Ten ordinary sequential diagnostic reads (four seconds apart) confirmed correct
+response pairs and transport placement in IAD, with route validation between
+0 and 142 ms and origin headers between 29 and 55 ms in those five transport
+reads. These are diagnostic samples, not a latency qualification or a causal
+public comparison. The R2 bucket is in ENAM and transport placement targets
+aws:us-east-1. No placement change is justified by these samples alone.

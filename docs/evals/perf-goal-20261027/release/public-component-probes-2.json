@@ -1,0 +1,125 @@
+{
+  "scope": "Ten sequential ordinary reads, four seconds apart; diagnostic only, not a load test or percentile qualification",
+  "rows": [
+    {
+      "name": "public",
+      "q": "nate",
+      "at": "2026-10-27T18:18:47.349Z",
+      "status": 200,
+      "elapsed_ms": 450.897,
+      "timing": "cache;desc=\"miss\";dur=17, origin_headers;dur=160;desc=\"01M5Z9C5G96HJWFRX6XHCREXKE-iad\", origin;dur=160, search;dur=177",
+      "ray": "a513b48f393e6c95-ATL",
+      "placement": null,
+      "actors": 50,
+      "sha256": "2729f01037eca73c03faa362140d3ce06693eda27b06f4fca5b16ae2477eb2c6"
+    },
+    {
+      "name": "transport",
+      "q": "nate",
+      "at": "2026-10-27T18:18:51.804Z",
+      "status": 200,
+      "elapsed_ms": 320.3891250000006,
+      "timing": "transport_route;dur=78, transport_origin_headers;dur=43, transport_mode;desc=\"overlap\"",
+      "ray": "a513b4ab0fedcba1-ATL",
+      "placement": "remote-IAD",
+      "actors": 50,
+      "sha256": "2729f01037eca73c03faa362140d3ce06693eda27b06f4fca5b16ae2477eb2c6"
+    },
+    {
+      "name": "public",
+      "q": "photographer",
+      "at": "2026-10-27T18:18:56.127Z",
+      "status": 200,
+      "elapsed_ms": 536.5759589999998,
+      "timing": "cache;desc=\"miss\";dur=28, origin_headers;dur=140;desc=\"01M5Z9CE5HJ2QYZ88G599KETBG-iad\", origin;dur=141, search;dur=169",
+      "ray": "a513b4c5ec68a6f4-ATL",
+      "placement": null,
+      "actors": 50,
+      "sha256": "b60db048436c2eb884cb1d1836e35c14b3e0c345e1065be1f6f806dec14d1020"
+    },
+    {
+      "name": "transport",
+      "q": "photographer",
+      "at": "2026-10-27T18:19:00.666Z",
+      "status": 200,
+      "elapsed_ms": 272.03870800000004,
+      "timing": "transport_route;dur=0, transport_origin_headers;dur=43, transport_mode;desc=\"overlap\"",
+      "ray": "a513b4e21f72bf95-ATL",
+      "placement": "remote-IAD",
+      "actors": 50,
+      "sha256": "b60db048436c2eb884cb1d1836e35c14b3e0c345e1065be1f6f806dec14d1020"
+    },
+    {
+      "name": "public",
+      "q": "alice",
+      "at": "2026-10-27T18:19:04.941Z",
+      "status": 200,
+      "elapsed_ms": 403.0031249999993,
+      "timing": "cache;desc=\"miss\";dur=22, origin_headers;dur=136;desc=\"01M5Z9CPN56WFD3V1Y4RN42VVS-iad\", origin;dur=137, search;dur=159",
+      "ray": "a513b4fcef11055a-ATL",
+      "placement": null,
+      "actors": 50,
+      "sha256": "7c698078811682534dac3cb3131c4be0a35f3181a4414adce53bdc8bb40538a7"
+    },
+    {
+      "name": "transport",
+      "q": "alice",
+      "at": "2026-10-27T18:19:09.345Z",
+      "status": 200,
+      "elapsed_ms": 333.31366699999853,
+      "timing": "transport_route;dur=127, transport_origin_headers;dur=55, transport_mode;desc=\"overlap\"",
+      "ray": "a513b5186899704d-ATL",
+      "placement": "remote-IAD",
+      "actors": 50,
+      "sha256": "7c698078811682534dac3cb3131c4be0a35f3181a4414adce53bdc8bb40538a7"
+    },
+    {
+      "name": "public",
+      "q": "zzstoatzz.io",
+      "at": "2026-10-27T18:19:13.679Z",
+      "status": 200,
+      "elapsed_ms": 295.9170000000013,
+      "timing": "cache;desc=\"miss\";dur=11, origin_headers;dur=104;desc=\"01M5Z9CZ429FNJT4GX9G2X3BP5-iad\", origin;dur=104, search;dur=115",
+      "ray": "a513b5339f1412d5-ATL",
+      "placement": null,
+      "actors": 4,
+      "sha256": "242a106e29ea99b8856469a2c6f71dea8b80d439f9bde7f3bb719970124db334"
+    },
+    {
+      "name": "transport",
+      "q": "zzstoatzz.io",
+      "at": "2026-10-27T18:19:17.976Z",
+      "status": 200,
+      "elapsed_ms": 378.05370799999946,
+      "timing": "transport_route;dur=142, transport_origin_headers;dur=29, transport_mode;desc=\"overlap\"",
+      "ray": "a513b54e79076773-ATL",
+      "placement": "remote-IAD",
+      "actors": 4,
+      "sha256": "242a106e29ea99b8856469a2c6f71dea8b80d439f9bde7f3bb719970124db334"
+    },
+    {
+      "name": "public",
+      "q": "bluesky",
+      "at": "2026-10-27T18:19:22.358Z",
+      "status": 200,
+      "elapsed_ms": 517.9640419999996,
+      "timing": "cache;desc=\"miss\";dur=24, origin_headers;dur=158;desc=\"01M5Z9D7R6FDEGKS3FTN0QM3D8-iad\", origin;dur=158, search;dur=182",
+      "ray": "a513b569bf4eb0c1-ATL",
+      "placement": null,
+      "actors": 50,
+      "sha256": "fa4e4dda7a2d845747377585f1f7f9e63096a64a87154d992faac694e39b14e0"
+    },
+    {
+      "name": "transport",
+      "q": "bluesky",
+      "at": "2026-10-27T18:19:26.877Z",
+      "status": 200,
+      "elapsed_ms": 286.44166699999914,
+      "timing": "transport_route;dur=105, transport_origin_headers;dur=50, transport_mode;desc=\"overlap\"",
+      "ray": "a513b585d8c8dec9-ATL",
+      "placement": "remote-IAD",
+      "actors": 50,
+      "sha256": "fa4e4dda7a2d845747377585f1f7f9e63096a64a87154d992faac694e39b14e0"
+    }
+  ]
+}

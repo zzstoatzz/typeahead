@@ -1,0 +1,19 @@
+{
+  "url": "https://typeahead-faster-search.n80n8.chatgpt.site",
+  "published_at_utc": "2026-10-27T18:27:12Z",
+  "audience": "public",
+  "source_commit": "aa4b7b59a32b3e446229ed49bfda5dad058fc4a5",
+  "verification": {
+    "public_stats_snapshot_utc": "2026-10-27T18:19:28Z",
+    "stats_24h_mean_ms": 251.90332397003746,
+    "stats_7d_mean_ms": 165.4123299200449,
+    "post_release_15min_mean_ms": 197.4622222222222,
+    "controlled_response_checks": 5040,
+    "desktop_and_phone_visual_review": true,
+    "comparison_controls_and_details_checked": true,
+    "mobile_overflow_fixed_and_rechecked": true,
+    "internal_identifiers_credentials_and_traffic_sources_excluded": true,
+    "unauthenticated_served_assets_match_reviewed_payload": true
+  },
+  "qualification": "Public observations, engine tests, failure accounting and limitations are distinct. The performance goal remains open."
+}
