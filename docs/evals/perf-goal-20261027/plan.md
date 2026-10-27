@@ -333,3 +333,11 @@ only its command with a bounded offline evaluator; it is published under the
 inactive app registry and is ineligible for the refresh app promotion path.
 README reviewed: its performance numbers remain acceptance targets, with corpus
 qualification and rollout explicitly pending; no deployed guarantee changed.
+
+The first Fly manager launch, 20261027-7088a95d9d9c, stopped before any
+resource creation: the public route rejects Python urllib’s default user agent
+with HTTP403 from the cloud host. An explicit typeahead-perf/1.0 agent returns
+HTTP200 with the expected route. Its cleanup receipt confirms zero owned
+resources. ExecStopPost also exposed a DynamicUser credential read failure;
+the retry uses a root supervisor restricted by systemd filesystem/capability
+controls, with its short-lived credential retained through cleanup.

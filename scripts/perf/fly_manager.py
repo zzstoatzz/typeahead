@@ -52,7 +52,7 @@ class Manager:
         token = 'isolated-fixture' if self.test else (Path(os.environ['CREDENTIALS_DIRECTORY']) / 'fly-token').read_text().strip()
         request = urllib.request.Request(self.api_origin + '/v1/apps/' + APP + '/' + path,
             data=None if body is None else json.dumps(body).encode(), method=method,
-            headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+            headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', 'User-Agent': 'typeahead-perf/1.0'})
         try:
             with urllib.request.urlopen(request, timeout=25) as response:
                 raw = response.read(2 * 1024 * 1024)
@@ -71,7 +71,7 @@ class Manager:
 
     def guard(self, deadline=True):
         route_url = self.api_origin + '/route' if self.test else 'https://typeahead-search-transport.n8-3e9.workers.dev/route'
-        with urllib.request.urlopen(route_url, timeout=10) as response:
+        with urllib.request.urlopen(urllib.request.Request(route_url, headers={'User-Agent': 'typeahead-perf/1.0'}), timeout=10) as response:
             route = json.load(response)
         if route != EXPECTED_ROUTE: raise RuntimeError('production route changed; stop private qualification')
         protected = self.identity(self.api('GET', 'machines/' + PROTECTED))
