@@ -1,3 +1,7 @@
+Current follow-up (21:50 UTC): cache512 rejected on the larger overlay; writer
+read-mode trial is local only. Clean public mean remains 247.57 ms. See
+storage-followup/README.md for failure-inclusive results and cleanup.
+
 # Safe performance goal — October 27, 2026
 
 Status: performance work in progress. Native source 62266a3 and retained

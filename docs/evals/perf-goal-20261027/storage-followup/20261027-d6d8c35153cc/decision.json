@@ -1,0 +1,99 @@
+{
+  "candidate": "cache512",
+  "qualified": false,
+  "input_overlay": {
+    "actor_overlay": 80518,
+    "prefix_overlay": 3454878
+  },
+  "summaries": {
+    "baseline-first-touch": {
+      "attempts": 1008,
+      "failures": 0,
+      "search_attempts": 1007,
+      "p50_ms": 24.876120999977047,
+      "p95_ms": 31.05752799996253,
+      "p99_ms": 37.562906000005114,
+      "max_ms": 42.31608899999628,
+      "passed": true,
+      "minimum_search_attempts": 1000,
+      "enough_samples": true
+    },
+    "candidate-first-touch": {
+      "attempts": 1008,
+      "failures": 0,
+      "search_attempts": 1007,
+      "p50_ms": 24.79355699995267,
+      "p95_ms": 30.407690999936676,
+      "p99_ms": 36.761726999998245,
+      "max_ms": 41.4355829999522,
+      "passed": true,
+      "minimum_search_attempts": 1000,
+      "enough_samples": true
+    },
+    "baseline-warm": {
+      "attempts": 2016,
+      "failures": 0,
+      "search_attempts": 2014,
+      "p50_ms": 21.861147999970854,
+      "p95_ms": 26.503899999966052,
+      "p99_ms": 31.66207000003851,
+      "max_ms": 46.63947699998516,
+      "passed": true,
+      "minimum_search_attempts": 1000,
+      "enough_samples": true
+    },
+    "candidate-warm": {
+      "attempts": 2016,
+      "failures": 0,
+      "search_attempts": 2014,
+      "p50_ms": 21.680072999970434,
+      "p95_ms": 26.03696599999239,
+      "p99_ms": 32.59958000012375,
+      "max_ms": 42.48594199998479,
+      "passed": true,
+      "minimum_search_attempts": 1000,
+      "enough_samples": true
+    },
+    "baseline-mixed": {
+      "attempts": 2016,
+      "failures": 23,
+      "search_attempts": 2014,
+      "p50_ms": 1152.1477789999608,
+      "p95_ms": 3828.1736349999846,
+      "p99_ms": 4270.288598999969,
+      "max_ms": 4498.1604379999,
+      "passed": false,
+      "minimum_search_attempts": 1000,
+      "enough_samples": true
+    },
+    "candidate-mixed": {
+      "attempts": 2016,
+      "failures": 172,
+      "search_attempts": 2014,
+      "p50_ms": 9818.357616999947,
+      "p95_ms": 60499.13761500011,
+      "p99_ms": 63832.32398699988,
+      "max_ms": 64695.53717600001,
+      "passed": false,
+      "minimum_search_attempts": 1000,
+      "enough_samples": true
+    }
+  },
+  "writer_overlap": {
+    "baseline-mixed": {
+      "batches": 20,
+      "sqlite_changes": 220534
+    },
+    "candidate-mixed": {
+      "batches": 6,
+      "sqlite_changes": 65733
+    }
+  },
+  "cleanup": {
+    "payload_removed": true,
+    "allocated_before": 8070086656,
+    "free_before": 11092742144,
+    "free_after": 19162836992
+  },
+  "archive_sha256": "687f3cb626e2447ec8f0604ebb01b8fdffdf850a8c07581364f010a7589b71a9"
+}

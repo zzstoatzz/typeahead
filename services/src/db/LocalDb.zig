@@ -150,6 +150,7 @@ fn openDb(self: *LocalDb, path_env: []const u8) !void {
     _ = self.conn.?.exec("PRAGMA synchronous=NORMAL", .{}) catch {}; // safe with WAL
     _ = self.conn.?.exec("PRAGMA cache_size=-20000", .{}) catch {}; // 20MB page cache
     _ = self.conn.?.exec("PRAGMA mmap_size=268435456", .{}) catch {}; // 256MB
+    _ = self.conn.?.exec("PRAGMA main.mmap_size=0", .{}) catch {};
 
     self.dropReplicaTables();
     try self.openReadPool(path);

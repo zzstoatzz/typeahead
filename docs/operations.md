@@ -863,10 +863,11 @@ the experiment directory; default transport source again matches qualified 40a01
 Fly CPU throttling was zero during the later window; disk busy time reached
 90.7%. Updated sync timings average 8.45 seconds in commit versus 1.06 seconds
 in projection, and live slow-search logs show immutable hydration taking over
-a second. The current overlay is larger than the earlier frozen capture. A
-local candidate expands the existing per-reader immutable-page cache from one
-to four MiB (four default readers: 16 MiB payload total). Native tests passed;
-performance and publication remain pending. See
+a second. The current overlay is larger than the earlier frozen capture. The later independent 80,518-actor trial rejected the cache expansion: retained
+engine had 23 failed attempts and 4.27-second mixed p99; cache512 had 172 failures
+and 63.83-second p99. Both missed the writer-throughput gate. Its private
+resources and credentials are retired. The source cache is restored to 128 pages;
+a writer-connection mmap disable is locally tested and awaits qualification. See
 [the storage evidence and qualification boundary](evals/perf-goal-20261027/storage-followup/README.md).
 
 ### Failure-inclusive cache-miss timing — October 27, 21:12 UTC

@@ -1,16 +1,16 @@
 # Performance goal completion audit
 
 Status: incomplete. Both routing candidates restored retained transport. The
-latest public window is 318.46 ms with incomplete accounting; live storage
-interference requires further optimization. A larger bounded immutable-page
-cache passes local native tests and is not deployed. Controlled qualification
+latest clean public window is 247.57 ms (114 fully reconciled attempts); live
+storage interference requires further optimization. The larger-cache trial was
+rejected. Even retained native code failed mixed load on the larger overlay. Controlled qualification
 for the earlier frozen input remains valid within its stated scope.
 Do not infer completion from smoke passing or from an earlier low-latency bucket.
 
 | Requirement | Evidence and scope | State |
 | --- | --- | --- |
 | Existing two shared CPU / 1 GiB configuration | `release/final-machines.json` records both managed Machines, separate volumes, unchanged serving and rollback instance IDs, and their exact image digests. Native source 62266a3 is the qualified image. | Verified at the dated readback; recheck after qualification |
-| Warm mixed search/sync p95 <=50 ms, p99 <=100 ms | Full-data independent Fly run `frozen-fly/20261027-45b615c88376/results.tgz`, candidate mixed: 2,016 attempts, p95 21.344 ms, p99 25.336 ms, zero failures, 40 real projection batches. Maximum was 548.85 ms; the percentile is not a maximum guarantee. | Verified |
+| Warm mixed search/sync p95 <=50 ms, p99 <=100 ms | Full-data independent Fly run `frozen-fly/20261027-45b615c88376/results.tgz`, candidate mixed: 2,016 attempts, p95 21.344 ms, p99 25.336 ms, zero failures, 40 real projection batches. Maximum was 548.85 ms; the percentile is not a maximum guarantee. | Contradicted at larger overlay: retained p99 4,270 ms, 23 failures; further qualification required |
 | Varied-prefix cold behavior | Same run and input identity, candidate first touch: 1,008 attempts, p95 28.195 ms, p99 33.510 ms, zero failures. Baseline p99 4,353.03 ms and four failures remain in the archive. | Verified for the captured full snapshot and actual overlay |
 | Ranking, moderation, scope, compatibility and aliases | 5,040 candidate status/body/scope-acknowledgment comparisons match the frozen reference. Intentional error cases remain visible. `release/checks/smoke.log`, `release/checks/ranking.log` and the conditional candidate's real workerd/R2/HTTP tests cover release semantics. Canary smoke passes at each percentage. | Verified for tested cases; conditional candidate rejected |
 | Failure-inclusive accounting and bounded saturation | Client queue time, timeouts, incorrect bodies and unexpected statuses are retained. `linux-fixtures-20261027-458502984299/test.log` records seven real native fixture tests, including 160 concurrent client requests with live projection and seven occupied background slots. Rejected cold/read-ahead runs remain recorded. | Verified; no claim of arbitrary future capacity |
@@ -48,3 +48,6 @@ guarantee inferred from the earlier 18,200-actor captured overlay. Existing
 controlled results remain valid for that input; current 53,610-actor behavior
 requires further qualification. See storage-followup/README.md. No goal
 requirement is waived. The bounded cache candidate is local and tests pass.
+
+At 21:50 UTC the larger-overlay trial is terminal and retired; neither arm
+qualifies. Writer mmap disable is local only. See storage-followup/README.md.

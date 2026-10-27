@@ -121,3 +121,38 @@ The accounting fix is now live: cc301d3a / source 8557617, full CI and productio
 smoke passed at about 21:12 UTC. Its predetermined ordinary-traffic observation
 is 21:15–21:30, read after 21:33; this is a before cohort while native code is
 unchanged, not a target PASS. See accounting-release/measurement-window.json.
+
+## Larger-overlay result and next read-mode trial — 21:50 UTC
+
+The cache512 trial completed on an independent inactive-B fork with 80,518
+actors and 3,454,878 prefixes in its frozen overlay. Both arms failed the mixed
+load gate. Retained 62266a3 had 23 failed attempts, p99 4,270 ms and 20 writer
+batches; cache512 had 172 failures, p99 63,832 ms and six batches. Each arm had
+2,016 attempts; queueing and deadline failures remain included. Neither met the
+minimum 30 writer batches. Cold and warm phases had zero failures. Sequential
+arms and storage variability prevent attributing the entire regression to cache
+capacity; the result still rejects publication. See 20261027-d6d8c35153cc/decision.json
+and its original results archive. The earlier small-overlay PASS does not prove
+current mixed-load capacity.
+
+The private Machine is deleted, its unattached volume is pending_destroy, payload
+cleanup reclaimed 8.07 GB, and both named credentials were revoked without error.
+No trial remains active. Local cache512 binaries and image context were removed
+with a free-space receipt in local-build-cleanup.json. The image remains only an
+offline evaluator. The source cache is restored to 128 pages per reader.
+
+The next local candidate disables mapped reads on the mutable writer connection,
+matching the already-shipped reader setting. Immutable snapshot mapping and all
+transaction, durability, concurrency and search semantics remain unchanged. This
+is a hypothesis about read amplification during projection/commit, not a proven
+fix. Native tests pass 154/160 with six platform skips. It requires the same
+independent-storage mixed-load and correctness gates before publication. Owner,
+20 GiB volume budget, bounded supervisor and cleanup contract above still apply.
+
+The fixed 21:15–21:30 public baseline now reconciles: 114 uncached attempts,
+28,223 ms total (247.57 ms mean), no cache hits and 114 HTTP-200 answers.
+All 114 timing events report success; no backend_error group is present.
+Mean backend-body time is 238.31 ms, route validation 102.25 ms and origin
+120.39 ms. This clean baseline still misses the public target. The legacy
+limitations string in the unchanged counter helper output predates the deployed
+accounting fix; these buckets use the broader failure-inclusive definition.
