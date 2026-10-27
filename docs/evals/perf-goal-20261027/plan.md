@@ -1,6 +1,7 @@
 # Safe performance goal — October 27, 2026
 
-Status: active; no production change. Owner: this Typeahead performance goal.
+Status: active; native performance changes remain unshipped and transport is under
+guarded qualification. Owner: this Typeahead performance goal. Dated state follows.
 The starting branch is codex/typeahead-io-audit at 5821bda, with locally tested
 write guards and phase instrumentation from faef0c8. Production is a separate
 verified release; do not treat the branch or a successful fixture as live.
@@ -620,3 +621,38 @@ No additional permissions were requested.
 
 Private run a944d3237145 completed its exact 200,000-actor capture and entered
 bootstrap admission/prefill. Its measurement and cleanup gates remain pending.
+
+
+### Large-overlay preparation failure and bounded retry — 13:30 UTC
+
+Run a944d3237145 captured exactly 200,000 actors, then timed out during the
+unmeasured bootstrap prefill at its 900-second preparation limit. It never ran
+a latency phase. The [failure and retirement evidence](fly-trial/run-20261027-a944d3237145/failure.json)
+retains that rejected attempt. At a checkpoint, the baseline process had written
+13.47 GB for a 225 MB overlay plus 123 MB WAL and was waiting in rq_qos_wait.
+This is bulk fixture construction, not a measured live arrival rate or a
+candidate regression. RSS was about 550 MiB; no memory failure was reported.
+
+Payload removal reclaimed 7,817,932,800 bytes by filesystem free-space difference.
+The VM is absent; its volume is unattached and pending_destroy. The protected
+rollback Machine identity is unchanged. The run token was revoked, its RAM
+source is absent, and its empty credential directory was removed.
+
+The retry retains all 200,000 actors and the same native binary pair, workload,
+case manifest, response comparisons, mixed writer requirement, 2.5-second wire
+budget and latency thresholds. Only unmeasured bootstrap preparation gets
+1,800 rather than 900 seconds. Other server startup limits remain 900 seconds;
+measured startup and post-ready payload residency remain reported. The inner
+trial wall bound grows from 50 to 65 minutes to accommodate that preparation;
+the independent manager still stops after 85 minutes and its systemd unit
+retains the 90-minute cap. Storage and resource limits are unchanged. This
+changes preparation allowance, not a failed latency result into a pass.
+
+Temporary Wrangler 4.153.0 completed its twelve-minute deployment-free liveness
+check with both child processes live at teardown. The
+[receipt](transport-overlap/shared-hint/observer-new-cli-preflight.json) explicitly
+does not prove gap-free delivery. A new guarded full-traffic observation uses
+that CLI, rejects announced reconnect gaps, retains all prior service gates and
+requires at least 100 post-smoke cache misses reconciled against search HTTP
+answer counts. Unknown or unmeasured answers reject continued rollout. Public
+latency improvement remains unqualified until that window completes.

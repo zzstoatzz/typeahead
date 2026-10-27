@@ -1,0 +1,12 @@
+{
+  "machine_absent": true,
+  "volume_state": "pending_destroy",
+  "volume_unattached": true,
+  "protected": {
+    "id": "080d415b734708",
+    "state": "started",
+    "instance_id": "01M5XZC04CDTFWZNSYYHQ8F8VD",
+    "version": "01M5XZC04CDTFWZNSYYHQ8F8VD"
+  },
+  "read_at": "2026-10-27T13:27:17.053192+00:00"
+}

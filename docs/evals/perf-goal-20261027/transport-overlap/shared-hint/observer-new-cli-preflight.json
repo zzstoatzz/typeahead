@@ -1,0 +1,20 @@
+{
+  "started_at": "2026-10-27T13:11:35.916266+00:00",
+  "stdin_held_open": true,
+  "production_mutations": 0,
+  "wrangler": "4.153.0",
+  "limitations": [
+    "process liveness does not establish gap-free log delivery"
+  ],
+  "status": "passed-twelve-minute-liveness-check",
+  "elapsed_s": 720.0,
+  "bytes_discarded": {
+    "typeahead": 1041726,
+    "typeahead-search-transport": 1047267
+  },
+  "exit_before_stop": {
+    "typeahead": null,
+    "typeahead-search-transport": null
+  },
+  "finished_at": "2026-10-27T13:23:37.850699+00:00"
+}

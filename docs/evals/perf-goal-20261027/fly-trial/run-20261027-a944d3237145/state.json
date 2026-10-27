@@ -1,0 +1,18 @@
+{
+  "kind": "private-fly-full-snapshot",
+  "goal_qualified": false,
+  "runs": {},
+  "limitations": [
+    "captured actor fence sample is biased and is not a live delta export",
+    "no Turso or live freshness qualification"
+  ],
+  "capture_method": "first 200000 actor-namespace page fences; deterministic shuffled order",
+  "machine_id": "d893105c150108",
+  "run_id": "20261027-a944d3237145",
+  "hardware": {
+    "cpus": 2,
+    "memory_kib": 984988,
+    "machine": "x86_64"
+  },
+  "phase": "bootstrap-admission-and-prefill"
+}

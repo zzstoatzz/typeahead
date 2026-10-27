@@ -37,7 +37,7 @@ class FlyTrial(Trial):
                        'hardware': {'cpus': os.cpu_count(), 'memory_kib': memory_kib, 'machine': os.uname().machine}}
 
     def guard(self):
-        if time.monotonic() - self.started > 3000:
+        if time.monotonic() - self.started > 3900:
             raise TimeoutError('measurement wall budget exceeded')
         if shutil.disk_usage(self.scratch).free < 2 * GIB:
             raise RuntimeError('private volume reserve breached')

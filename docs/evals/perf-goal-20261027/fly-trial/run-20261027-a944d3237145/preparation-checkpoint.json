@@ -1,0 +1,18 @@
+{
+  "observed_at": "2026-10-27T13:21:13Z",
+  "phase": "unmeasured-bootstrap-prefill",
+  "process": "baseline",
+  "rss_pages": 140759,
+  "page_size": 4096,
+  "read_bytes": 225497088,
+  "write_bytes": 13474623488,
+  "wchan": "rq_qos_wait",
+  "overlay_bytes": 225120256,
+  "wal_bytes": 123225112,
+  "feed_bytes": 108816969,
+  "free_bytes": 12043509760,
+  "limitations": [
+    "checkpoint during preparation, not final totals",
+    "bulk fixture construction does not represent live arrival rate"
+  ]
+}

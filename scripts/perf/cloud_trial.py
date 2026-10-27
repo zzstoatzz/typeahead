@@ -182,7 +182,7 @@ class Trial:
             child = subprocess.Popen([str(executable)], env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
         self.children.append(child)
         base = f'http://127.0.0.1:{port}'
-        deadline = time.monotonic() + 900
+        deadline = time.monotonic() + (1800 if name == 'bootstrap' else 900)
         while True:
             self.guard()
             if child.poll() is not None:

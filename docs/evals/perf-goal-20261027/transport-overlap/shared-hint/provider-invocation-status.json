@@ -1,0 +1,60 @@
+{
+  "data": {
+    "viewer": {
+      "accounts": [
+        {
+          "public": [
+            {
+              "dimensions": {
+                "status": "clientDisconnected"
+              },
+              "quantiles": {
+                "cpuTimeP50": 1373,
+                "cpuTimeP99": 33395,
+                "wallTimeP50": 125542,
+                "wallTimeP99": 14972018
+              },
+              "sum": {
+                "errors": 0,
+                "requests": 39
+              }
+            },
+            {
+              "dimensions": {
+                "status": "success"
+              },
+              "quantiles": {
+                "cpuTimeP50": 3588,
+                "cpuTimeP99": 18563,
+                "wallTimeP50": 999021,
+                "wallTimeP99": 9689533
+              },
+              "sum": {
+                "errors": 0,
+                "requests": 1020
+              }
+            }
+          ],
+          "transport": [
+            {
+              "dimensions": {
+                "status": "success"
+              },
+              "quantiles": {
+                "cpuTimeP50": 2212,
+                "cpuTimeP99": 5020,
+                "wallTimeP50": 131742,
+                "wallTimeP99": 290030
+              },
+              "sum": {
+                "errors": 0,
+                "requests": 105
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "errors": null
+}

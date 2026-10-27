@@ -1,0 +1,72 @@
+{
+  "run_id": "20261027-a944d3237145",
+  "image": "registry.fly.io/typeahead-startup-20261024@sha256:65b49a4219f7fcbaa62fea0e6ba349e06c43b4762493498a0cbbd6092561cb6a",
+  "goal_qualified": false,
+  "events": [],
+  "phase": "retired-private-resources",
+  "protected": {
+    "id": "080d415b734708",
+    "instance_id": "01M5XZC04CDTFWZNSYYHQ8F8VD",
+    "version": "01M5XZC04CDTFWZNSYYHQ8F8VD",
+    "state": "started",
+    "image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 20,
+        "volume": "vol_4915xomx28k0ml5r",
+        "name": "refresh_1793070293"
+      }
+    ],
+    "services": [
+      {
+        "protocol": "tcp",
+        "internal_port": 8080,
+        "autostop": false,
+        "autostart": false,
+        "ports": [
+          {
+            "port": 443,
+            "handlers": [
+              "tls",
+              "http"
+            ]
+          },
+          {
+            "port": 80,
+            "handlers": [
+              "http"
+            ]
+          }
+        ],
+        "force_instance_key": null
+      }
+    ],
+    "metadata": {
+      "build_id": "b1792908655-14d5-px05",
+      "owner": "typeahead-snapshot-refresh"
+    }
+  },
+  "creation_pending": null,
+  "volume_id": "vol_v8eyqz0kkkw8mpkv",
+  "machine_id": "d893105c150108",
+  "machine_state": "created",
+  "status": {
+    "phase": "results-ready",
+    "bytes": 1058,
+    "sha256": "a9dc9b4669b49a96f96fa3126976292d9c47518ab0e4871b03ee6e76255ecf4e",
+    "run_id": "20261027-a944d3237145",
+    "installation": "installed",
+    "measurement": "bootstrap-admission-and-prefill"
+  },
+  "evidence_bytes": 1058,
+  "evidence_sha256": "a9dc9b4669b49a96f96fa3126976292d9c47518ab0e4871b03ee6e76255ecf4e",
+  "volume_retirement_state": "pending_destroy",
+  "retired": true
+}
