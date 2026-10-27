@@ -868,3 +868,22 @@ local candidate expands the existing per-reader immutable-page cache from one
 to four MiB (four default readers: 16 MiB payload total). Native tests passed;
 performance and publication remain pending. See
 [the storage evidence and qualification boundary](evals/perf-goal-20261027/storage-followup/README.md).
+
+### Failure-inclusive cache-miss timing — October 27, 21:12 UTC
+
+Public Worker cc301d3a (source 8557617) passed CI and full production smoke.
+Its uncached latency counter now runs once at cache-miss completion, including
+backend errors, failed scope acknowledgment and failed SQL fallback. Valid
+queries that sanitize to empty are also counted. Cache hits remain separate;
+validation and emergency proxy handling are unchanged. No search responses,
+ranking, cache policy, Fly resources or routing selection changed.
+
+Older metrics omit those paths; new 5-minute buckets after this cutover use
+the broader definition. The HTTP-200 empty backend-error contract is still
+explicitly labeled backend_error in logs and must fail a release gate even
+when its HTTP counter reconciles. A response count or a lower mean alone is
+not proof of correctness. Real workerd/SQLite/Cache API/HTTP failure and recovery
+tests passed. A fixed ordinary-traffic observation covers 21:15–21:30 UTC,
+read after 21:33, alongside the independent native-cache trial; it is not a
+performance qualification or added production workload. Evidence is in
+[accounting-release](evals/perf-goal-20261027/storage-followup/accounting-release/).

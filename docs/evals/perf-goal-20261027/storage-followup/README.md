@@ -116,3 +116,8 @@ recovery, cache-hit separation, fail-closed PDS acknowledgment and an actual
 SQLite fallback error counted once. Fixture subprocesses, server and temporary
 files are retired in finally. The existing 104 Worker tests, typecheck, lint
 and upload dry run also pass. This is not yet a production measurement.
+
+The accounting fix is now live: cc301d3a / source 8557617, full CI and production
+smoke passed at about 21:12 UTC. Its predetermined ordinary-traffic observation
+is 21:15–21:30, read after 21:33; this is a before cohort while native code is
+unchanged, not a target PASS. See accounting-release/measurement-window.json.

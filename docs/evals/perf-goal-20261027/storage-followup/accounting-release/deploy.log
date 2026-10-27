@@ -1,0 +1,42 @@
+
+ ⛅️ wrangler 4.74.0 (update available 4.154.0)
+──────────────────────────────────────────────
+╭ Deploy Worker Versions by splitting traffic between multiple versions
+│
+├ Fetching latest deployment
+│
+├ Your current deployment has 1 version(s):
+│
+│ (100%) a0c42973-77c2-4895-9ee0-9207a7a4ffc0
+│       Created:  2026-10-27T20:15:28.397711Z
+│           Tag:  -
+│       Message:  5eeae7e query-free public phase timings; transport unchanged
+│
+├ Fetching deployable versions
+│
+├ Which version(s) do you want to deploy?
+├ 1 Worker Version(s) selected
+│
+├     Worker Version 1:  cc301d3a-1019-4809-99a7-e4bd738da670
+│              Created:  2026-10-27T21:10:45.239183Z
+│                  Tag:  -
+│              Message:  8557617 complete uncached attempt accounting; response behavior unchanged
+│
+├ What percentage of traffic should Worker Version 1 receive?
+├ 100% of traffic
+├
+├ Add a deployment message
+│ Deployment message search-accounting-8557617-20261027
+│
+├ Deploying 1 version(s)
+│
+├ Syncing non-versioned settings
+│
+│ Synced non-versioned settings:
+│                      logpush:  false
+│                observability:  enabled:             true
+│                                head_sampling_rate:  1
+│               tail_consumers:  <skipped>
+│     streaming_tail_consumers:  <skipped>
+│
+╰  SUCCESS  Deployed typeahead version cc301d3a-1019-4809-99a7-e4bd738da670 at 100% (1.03 sec)

@@ -1,0 +1,11 @@
+{
+  "purpose": "post-fix failure-inclusive counter reconciliation and native-before cohort",
+  "start_utc": "2026-10-27T21:15:00Z",
+  "end_utc": "2026-10-27T21:30:00Z",
+  "settled_read_after_utc": "2026-10-27T21:33:00Z",
+  "production_search_load": "ordinary traffic only",
+  "native_image_unchanged": true,
+  "public_version": "cc301d3a-1019-4809-99a7-e4bd738da670",
+  "transport_version": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "interpretation": "An observation baseline, not a performance PASS. Requires status and backend-error accounting; normalized-empty answers and failed cache misses now contribute to the public counter."
+}

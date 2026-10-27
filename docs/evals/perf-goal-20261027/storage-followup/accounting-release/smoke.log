@@ -1,0 +1,94 @@
+typeahead: https://typeahead.waow.tech
+
+--- response shape ---
+  [[32mpass[0m] returns valid JSON
+  [[32mpass[0m] has actors array
+
+--- canonical endpoint ---
+  [[32mpass[0m] canonical returns valid JSON
+  [[32mpass[0m] canonical has actors array
+  [[32mpass[0m] canonical matches alias results  (native=['did:plc:xbtmt2zjwlrfegqvch7fboei', 'did:plc:65sucjiel52gefhcdcypynsr', 'did:plc:o53crari67ge7bvbv273lxln'] alias=['did:plc:xbtmt2zjwlrfegqvch7fboei', 'did:plc:65sucjiel52gefhcdcypynsr', 'did:plc:o53crari67ge7bvbv273lxln'])
+  [[32mpass[0m] llms.txt documents the canonical endpoint
+
+--- getProfiles / getProfile ---
+  [[32mpass[0m] getProfiles returns zzstoatzz.io
+  [[32mpass[0m] profile has description
+  [[32mpass[0m] profile has banner
+  [[32mpass[0m] profile has followersCount
+  [[32mpass[0m] profile has indexedAt
+  [[32mpass[0m] getProfile unwraps the same view
+  [[32mpass[0m] getProfile missing actor → 400
+
+--- known handle ---
+  [[32mpass[0m] zzstoatzz.io in results  (got ['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'alt.zzstoatzz.io'])
+
+--- prefix match ---
+  [[32mpass[0m] prefix 'zzst' finds zzstoatzz.io  (got ['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'zzstop44.bsky.social'])
+  [[32mpass[0m] prefix 'typeahead.waow.te' (17 chars) finds typeahead.waow.tech  (got ['typeahead.waow.tech'])
+  [[32mpass[0m] prefix 'typeahead.waow.tx' (17 chars, no such handle) finds nothing  (got [])
+
+--- popularity ranking ---
+  [[32mpass[0m] zzstoatzz.io present for 'zzst'  (got ['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'zzstop44.bsky.social'])
+  [[32mpass[0m] zzstoatzz.io ranks above phi.zzstoatzz.io  (main@0 vs phi.zzstoatzz.io@1 — handles=['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'zzstop44.bsky.social'])
+  [[32mpass[0m] zzstoatzz.io ranks above zzstoatzzdevlog.bsky.social  (main@0 vs zzstoatzzdevlog.bsky.social@2 — handles=['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'zzstop44.bsky.social'])
+
+--- CORS headers ---
+  [[32mpass[0m] Access-Control-Allow-Origin: *  (got '*')
+
+--- deprecated param ---
+  [[32mpass[0m] ?term= returns same as ?q=  (q=5, term=5)
+
+--- limit bounds ---
+  [[32mpass[0m] limit=3 returns ≤3  (got 3)
+
+--- empty query ---
+  [[32mpass[0m] empty query returns 400  (got {'_http_error': 400})
+
+--- limit > 100 ---
+  [[32mpass[0m] limit>100 returns 400  (got {'_http_error': 400})
+
+--- stats page ---
+  [[32mpass[0m] stats returns 200
+  [[32mpass[0m] stats content-type is html  (got 'text/html; charset=utf-8')
+  [[32mpass[0m] stats contains actors indexed
+  [[32mpass[0m] stats contains sparkline heading
+  [[32mpass[0m] stats has home link
+  [[32mpass[0m] stats shows hidden count
+
+--- request indexing ---
+  [[32mpass[0m] GET redirects (302)  (got 302)
+  [[32mpass[0m] POST empty returns 400  (got {'_http_error': 400})
+  [[32mpass[0m] POST returns handle  (got zzstoatzz.io)
+  [[32mpass[0m] POST returns did  (got did:plc:xbtmt2zjwlrfegqvch7fboei)
+  [[32mpass[0m] POST returns hidden field  (keys: ['handle', 'did', 'hidden'])
+
+--- moderation filtering ---
+  [[32mpass[0m] actor objects have expected shape
+  [[32mpass[0m] labels is array  (got list)
+
+--- !no-unauthenticated inclusion ---
+  [[32mpass[0m] !no-unauthenticated actor @jcsalterego.bsky.social visible in search
+
+--- Link visibility ---
+  [[32mpass[0m] Link visible in search  (got ['spacelawshitpost.me'])
+
+--- mod_overrides admin API ---
+  [[33mskip[0m] skipped (use --secret or set TYPEAHEAD_SECRET)
+
+--- page script syntax ---
+  [[32mpass[0m] / inline scripts parse (2)
+  [[32mpass[0m] /reputation inline scripts parse (2)
+  [[32mpass[0m] /stats inline scripts parse (2)
+  [[32mpass[0m] /docs inline scripts parse (2)
+
+--- turso keyset query plan ---
+  [[32mpass[0m] keyset page query is an index SEARCH (not SCAN)  (SEARCH actors USING INDEX idx_actors_updated_at (updated_at>?))
+
+--- turso cron selector plans ---
+  [[32mpass[0m] quality walk uses idx_actors_visible_quality_score  (SEARCH actors USING INDEX idx_actors_visible_quality_score (quality_score>? AND quality_score<?))
+  [[32mpass[0m] event queue uses idx_actors_refresh_queue  (SCAN actors USING INDEX idx_actors_refresh_queue)
+
+--- comparison ---
+  [[33mskip[0m] skipped (use --compare)
+
+all checks passed.
