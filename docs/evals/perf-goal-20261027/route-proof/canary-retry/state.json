@@ -1,0 +1,80 @@
+{
+  "owner": "route-proof-retry-5eeae7e-20261027",
+  "old": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "new": "b9cedc8d-d677-4d7c-b075-05351ee52a8c",
+  "source": "5eeae7e",
+  "deadline_utc": "2026-10-27T21:23:51.859378+00:00",
+  "events": [
+    {
+      "id": "7e0347fd-3c67-46f9-a1c3-d6b6f8b8eef7",
+      "source": "wrangler",
+      "strategy": "percentage",
+      "author_email": "n8@zzstoatzz.io",
+      "annotations": {
+        "workers/message": "route-proof-retry-5eeae7e-20261027 50%",
+        "workers/triggered_by": "deployment"
+      },
+      "versions": [
+        {
+          "version_id": "b9cedc8d-d677-4d7c-b075-05351ee52a8c",
+          "percentage": 50
+        },
+        {
+          "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+          "percentage": 50
+        }
+      ],
+      "created_on": "2026-10-27T20:23:57.93858Z"
+    }
+  ],
+  "before": {
+    "id": "c5f3987d-715f-4067-bd5e-f28b24826532",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "route-proof-5eeae7e-20261027 restore retained transport",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T20:23:12.409294Z"
+  },
+  "phase": "restored-retained",
+  "percentage": 50,
+  "deployment_id": "7e0347fd-3c67-46f9-a1c3-d6b6f8b8eef7",
+  "last_health": {
+    "status": 200,
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 75,
+    "snapshot_age_s": 24158,
+    "build_id": "b1793109259-2b36-px05",
+    "probe_ok": true,
+    "reasons": []
+  },
+  "paired_start_utc": "2026-10-27T20:25:00+00:00",
+  "paired_end_utc": "2026-10-27T20:35:00+00:00",
+  "error": "{'insufficient_matched_sample': 0}",
+  "deployment": {
+    "id": "a05e474a-22af-48d0-8bd7-b5449554d2b1",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "author_email": "n8@zzstoatzz.io",
+    "annotations": {
+      "workers/message": "route-proof-retry-5eeae7e-20261027 restore retained transport",
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-27T20:37:04.109787Z"
+  }
+}

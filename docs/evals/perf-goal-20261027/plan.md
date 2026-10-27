@@ -1,11 +1,11 @@
 # Safe performance goal — October 27, 2026
 
-Status: final verification. Native source 62266a3 and transport 40a014e4 are live;
-the 18:20–18:35 UTC window measured 163.47 ms with full HTTP reconciliation.
-Confirmation measured 197.93 ms; final smoke passed, and the public goal remains
-open. The warm conditional-read canary failed and restored 40a014e4. A local proof-
-reuse candidate and query-free public timing seam are being prepared. Owner: this performance
-goal. Earlier starting state and dated experiments follow.
+Status: performance work in progress. Native source 62266a3 and retained
+transport 40a014e4 are live. Later ordinary traffic exposed storage interference
+and a 318.46 ms mean with incomplete latency accounting. The proof-reuse trial
+restored the retained transport at 20:37 UTC; it is not qualified. The next local
+candidate increases the existing bounded immutable-page cache, with no runtime
+resource change. See storage-followup/README.md. Earlier dated evidence follows.
 The starting branch is codex/typeahead-io-audit at 5821bda, with locally tested
 write guards and phase instrumentation from faef0c8. Production is a separate
 verified release; do not treat the branch or a successful fixture as live.

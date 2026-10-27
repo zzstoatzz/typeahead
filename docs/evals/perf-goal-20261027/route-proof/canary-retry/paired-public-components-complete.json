@@ -1,0 +1,4862 @@
+{
+  "at": "2026-10-27T20:37:43.988Z",
+  "request": {
+    "queryId": "typeahead-public-phase-20261027",
+    "dry": true,
+    "view": "calculations",
+    "ignoreSeries": true,
+    "limit": 50,
+    "timeframe": {
+      "from": 1793132700000,
+      "to": 1793133300000
+    },
+    "parameters": {
+      "limit": 100,
+      "filters": [
+        {
+          "key": "$metadata.service",
+          "operation": "eq",
+          "type": "string",
+          "value": "typeahead"
+        },
+        {
+          "key": "event",
+          "operation": "eq",
+          "type": "string",
+          "value": "search_response_timing"
+        }
+      ],
+      "calculations": [
+        {
+          "operator": "count",
+          "alias": "events"
+        },
+        {
+          "operator": "avg",
+          "key": "search_ms",
+          "keyType": "number",
+          "alias": "search_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "cache_ms",
+          "keyType": "number",
+          "alias": "cache_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "backend_headers_ms",
+          "keyType": "number",
+          "alias": "backend_headers_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "backend_ms",
+          "keyType": "number",
+          "alias": "backend_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "transport_route_ms",
+          "keyType": "number",
+          "alias": "transport_route_ms"
+        },
+        {
+          "operator": "avg",
+          "key": "transport_origin_ms",
+          "keyType": "number",
+          "alias": "transport_origin_ms"
+        }
+      ],
+      "groupBys": [
+        {
+          "type": "string",
+          "value": "backend_strategy"
+        },
+        {
+          "type": "string",
+          "value": "backend_route_class"
+        },
+        {
+          "type": "string",
+          "value": "ingress_colo"
+        },
+        {
+          "type": "string",
+          "value": "outcome"
+        }
+      ]
+    }
+  },
+  "status": 200,
+  "success": true,
+  "errors": [],
+  "statistics": {
+    "elapsed": 0.168405345,
+    "rows_read": 5002578,
+    "bytes_read": 1555755418,
+    "abr_level": 1
+  },
+  "calculations": [
+    {
+      "alias": "events",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 15,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 15
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "IAD"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ IAD ⬤ ok",
+          "value": 3,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 4,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 4
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MIA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MIA ⬤ ok",
+          "value": 6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DUS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DUS ⬤ ok",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "BOS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ BOS ⬤ ok",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 3,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 8,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 8
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 18,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 18
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 13,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "HAM"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ HAM ⬤ ok",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LAX"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LAX ⬤ ok",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 10,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 10
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 3,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 13,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "PER"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ PER ⬤ ok",
+          "value": 2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 9,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 9
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 12,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 12
+        }
+      ]
+    },
+    {
+      "alias": "search_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 282.93333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 15
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 226,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 337,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "IAD"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ IAD ⬤ ok",
+          "value": 103,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 104.75,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 4
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 219.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MIA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MIA ⬤ ok",
+          "value": 147.83333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DUS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DUS ⬤ ok",
+          "value": 281,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 267.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 401.8,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 221.33333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "BOS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ BOS ⬤ ok",
+          "value": 175,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 213.33333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 261.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 8
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 255.94444444444446,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 18
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 559,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 582.6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "HAM"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ HAM ⬤ ok",
+          "value": 307,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 162.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LAX"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LAX ⬤ ok",
+          "value": 232,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 301.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 160.2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 10
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 971.6666666666666,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 605.6153846153846,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "PER"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ PER ⬤ ok",
+          "value": 374.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 160.33333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 9
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 233.08333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 12
+        }
+      ]
+    },
+    {
+      "alias": "cache_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 11.333333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 15
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 9,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "IAD"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ IAD ⬤ ok",
+          "value": 12,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 5.75,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 4
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 3.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MIA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MIA ⬤ ok",
+          "value": 6.333333333333333,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DUS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DUS ⬤ ok",
+          "value": 37,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 13,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 6.4,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 8,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "BOS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ BOS ⬤ ok",
+          "value": 3,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 13.333333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 11.625,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 8
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 10.88888888888889,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 18
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 7.846153846153846,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 15.2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "HAM"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ HAM ⬤ ok",
+          "value": 12,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 4.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LAX"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LAX ⬤ ok",
+          "value": 32,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 3,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 11.3,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 10
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 6.666666666666667,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 6.769230769230769,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "PER"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ PER ⬤ ok",
+          "value": 12,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 6.666666666666667,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 9
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 12.833333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 12
+        }
+      ]
+    },
+    {
+      "alias": "backend_headers_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 271.6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 15
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 221,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 328,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "IAD"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ IAD ⬤ ok",
+          "value": 91,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 99,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 4
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 216,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MIA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MIA ⬤ ok",
+          "value": 141.33333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DUS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DUS ⬤ ok",
+          "value": 244,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 254.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 394.2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 212.83333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "BOS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ BOS ⬤ ok",
+          "value": 172,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 200,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 249.75,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 8
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 244.55555555555554,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 18
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 550.7692307692307,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 567.2,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "HAM"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ HAM ⬤ ok",
+          "value": 295,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 157,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LAX"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LAX ⬤ ok",
+          "value": 200,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 298.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 148.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 10
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 965,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 598.6923076923077,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "PER"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ PER ⬤ ok",
+          "value": 362,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 153.66666666666666,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 9
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 220.25,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 12
+        }
+      ]
+    },
+    {
+      "alias": "backend_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 271.6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 15
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 221,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 328,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "IAD"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ IAD ⬤ ok",
+          "value": 91,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 99,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 4
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 216,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MIA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MIA ⬤ ok",
+          "value": 141.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DUS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DUS ⬤ ok",
+          "value": 244,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 254.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 395.4,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 213.33333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "BOS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ BOS ⬤ ok",
+          "value": 172,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 200,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 249.875,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 8
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 245.05555555555554,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 18
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 551.1538461538462,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 567.4,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "HAM"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ HAM ⬤ ok",
+          "value": 295,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 158,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LAX"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LAX ⬤ ok",
+          "value": 200,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 298.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 148.9,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 10
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 965,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 598.8461538461538,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "PER"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ PER ⬤ ok",
+          "value": 362.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 153.66666666666666,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 9
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 220.25,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 12
+        }
+      ]
+    },
+    {
+      "alias": "transport_route_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 127.8,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 15
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 144,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 119,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "IAD"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ IAD ⬤ ok",
+          "value": 37.666666666666664,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 58.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 4
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 102,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MIA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MIA ⬤ ok",
+          "value": 87,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DUS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DUS ⬤ ok",
+          "value": 132,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 115.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 101.6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 99,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "BOS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ BOS ⬤ ok",
+          "value": 0,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 113.66666666666667,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 127.75,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 8
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 72.72222222222223,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 18
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 115.3076923076923,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 122.6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "HAM"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ HAM ⬤ ok",
+          "value": 130,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 111.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LAX"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LAX ⬤ ok",
+          "value": 115,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 107,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 93,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 10
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 124,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 97.23076923076923,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "PER"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ PER ⬤ ok",
+          "value": 64.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 97.44444444444444,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 9
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 104.25,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 12
+        }
+      ]
+    },
+    {
+      "alias": "transport_origin_ms",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 162.6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 15
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 33,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 103.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "IAD"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ IAD ⬤ ok",
+          "value": 54.333333333333336,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 45.25,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 4
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 27.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MIA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MIA ⬤ ok",
+          "value": 35.666666666666664,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DUS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DUS ⬤ ok",
+          "value": 33,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 26.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 325.6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MAN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MAN ⬤ ok",
+          "value": 33.333333333333336,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "BOS"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ BOS ⬤ ok",
+          "value": 143,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "DEN"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ DEN ⬤ ok",
+          "value": 53.333333333333336,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 50.375,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 8
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "ATL"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ ATL ⬤ ok",
+          "value": 165.05555555555554,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 18
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 360.7692307692308,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "FRA"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ FRA ⬤ ok",
+          "value": 392.8,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 5
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "HAM"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ HAM ⬤ ok",
+          "value": 30,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "MCI"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ MCI ⬤ ok",
+          "value": 70,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LAX"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ LAX ⬤ ok",
+          "value": 76,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "NRT"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ NRT ⬤ ok",
+          "value": 25,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 41.5,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 10
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "EWR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ EWR ⬤ ok",
+          "value": 854.3333333333334,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 3
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "WAW"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ WAW ⬤ ok",
+          "value": 413.53846153846155,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 13
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "PER"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ PER ⬤ ok",
+          "value": 32,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 2
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "retained"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "YYZ"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "retained ⬤ routed ⬤ YYZ ⬤ ok",
+          "value": 51.55555555555556,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 9
+        },
+        {
+          "groups": [
+            {
+              "key": "backend_strategy",
+              "value": "proof"
+            },
+            {
+              "key": "backend_route_class",
+              "value": "routed"
+            },
+            {
+              "key": "ingress_colo",
+              "value": "LHR"
+            },
+            {
+              "key": "outcome",
+              "value": "ok"
+            }
+          ],
+          "groupKey": "proof ⬤ routed ⬤ LHR ⬤ ok",
+          "value": 37.333333333333336,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 12
+        }
+      ]
+    }
+  ]
+}

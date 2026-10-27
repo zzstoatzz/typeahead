@@ -85,11 +85,13 @@ This is about 25% below the earlier 263 ms mean, but still misses both 185 ms
 and 169 ms targets. These temporal cohorts are not randomized comparisons.
 e8c21659 is retained for transport rollback.
 Dated traffic and qualification evidence is in the performance record.
-The conditional-read trial failed its public gate and restored 40a014e4. As of
-20:24 UTC a proof-reuse candidate is under guarded traffic qualification against
-40a014e4. It can reuse another instance's still-valid one-second proof only for a
-backend it already knows, while fresh R2 validation continues independently.
-Its performance is not yet qualified; failure restores 40a014e4. See [the candidate and measurements](docs/evals/perf-goal-20261027/route-proof/README.md).
+The later proof-reuse trial restored retained transport 40a014e4 at 20:37 UTC.
+Its fixed window recorded a 318.46 ms public mean and two unreconciled answers;
+the performance goal remains open. Read-only Fly and native timings now identify
+storage wait and commit interference during sync. A larger bounded immutable-page
+cache is locally tested, not deployed. See [the current follow-up](docs/evals/perf-goal-20261027/storage-followup/README.md).
+The proof candidate and failed qualification evidence remain in
+[the experiment record](docs/evals/perf-goal-20261027/route-proof/README.md).
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

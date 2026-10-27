@@ -37,3 +37,12 @@ control-plane 10500 error prevented progression and safely restored retained
 transport. The single retry is now at 50%, with fixed natural-traffic gates.
 This remains incomplete until that job has a terminal qualified result and all
 final correctness/freshness/counter and cleanup readbacks are checked.
+
+At 20:37 UTC the proof retry is terminal and retained 40a014e4 is live again.
+Corrected full-group data shows 318.70 / 360.61 ms matched means, but the full
+public window is 318.46 ms with two unreconciled answers. No full-traffic gate
+was reached. Later live storage waits contradict any general production latency
+guarantee inferred from the earlier 18,200-actor captured overlay. Existing
+controlled results remain valid for that input; current 53,610-actor behavior
+requires further qualification. See storage-followup/README.md. No goal
+requirement is waived. The bounded cache candidate is local and tests pass.

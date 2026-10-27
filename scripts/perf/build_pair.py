@@ -54,7 +54,11 @@ def main():
         sync = work / 'services/src/db/sync.zig'
         sync.write_text(sync.read_text().replace('const OverlayCtx = struct', 'pub const OverlayCtx = struct').replace('fn projectRow(', 'pub fn projectRow('))
         target = work / 'services/src/index/flat_prefix.zig'
-        target.write_text(target.read_text().replace('    pub fn close(self: Map)', capture + '    pub fn close(self: Map)', 1))
+        original = target.read_text()
+        add_capture = '    pub fn actorFenceKeys(' not in original
+        report['baseline_neutral_patches']['actor_fence_capture_applied'] = add_capture
+        if add_capture:
+            target.write_text(original.replace('    pub fn close(self: Map)', capture + '    pub fn close(self: Map)', 1))
         build(work / 'services')
         shutil.copy2(work / 'services/zig-out/bin/eval-server', args.output / 'baseline')
     build(root / 'services')

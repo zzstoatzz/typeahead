@@ -32,7 +32,7 @@ export function sharedHintsAllowed() {
 
 export function routeHintRecord() {
   if (cachedRoute && Date.now() < cachedRoute.hintExpiresAt) {
-    return { route: { version: 1 as const, current: cachedRoute.route }, expires_at: cachedRoute.hintExpiresAt, verified_until: cachedRoute.expiresAt };
+    return { route: { version: 1 as const, current: cachedRoute.route }, expires_at: cachedRoute.hintExpiresAt };
   }
   return undefined;
 }

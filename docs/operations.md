@@ -847,3 +847,24 @@ full-traffic mean <=169 ms with failure-inclusive reconciliation; otherwise it
 restores 40a014e4. Both Fly instance IDs, volumes and two-CPU / 1 GiB resources
 were verified unchanged at 20:23 UTC. See
 [the current bounded trial](evals/perf-goal-20261027/route-proof/README.md).
+
+### Current storage interference — October 27, 20:40 UTC
+
+The proof-reuse trial ended without qualification and restored retained transport
+40a014e4 at 20:37 UTC. Its initial group query was truncated; the corrected
+query reads the identical fixed window with the documented parameters.limit.
+Matched-location means are 318.70 ms candidate / 360.61 ms retained, with 57
+matched-minimum-count observations and substantial outliers. Overall public
+counters record 151 misses averaging 318.46 ms, 18 hits and 171 HTTP-200 answers:
+two answers remain unreconciled. This is not a public target PASS. The proof
+implementation is preserved at revision 5eeae7e and its real-runtime test in
+the experiment directory; default transport source again matches qualified 40a014e4.
+
+Fly CPU throttling was zero during the later window; disk busy time reached
+90.7%. Updated sync timings average 8.45 seconds in commit versus 1.06 seconds
+in projection, and live slow-search logs show immutable hydration taking over
+a second. The current overlay is larger than the earlier frozen capture. A
+local candidate expands the existing per-reader immutable-page cache from one
+to four MiB (four default readers: 16 MiB payload total). Native tests passed;
+performance and publication remain pending. See
+[the storage evidence and qualification boundary](evals/perf-goal-20261027/storage-followup/README.md).

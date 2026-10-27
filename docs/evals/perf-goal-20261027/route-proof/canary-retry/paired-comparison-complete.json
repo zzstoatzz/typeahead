@@ -1,0 +1,99 @@
+{
+  "groups_returned": 27,
+  "matched_minimum_count": 57,
+  "matched": [
+    {
+      "colo": "DEN",
+      "outcome": "ok",
+      "weight": 1,
+      "candidate_count": 1,
+      "reference_count": 3,
+      "candidate_mean_ms": 226,
+      "reference_mean_ms": 213.33333333333334
+    },
+    {
+      "colo": "NRT",
+      "outcome": "ok",
+      "weight": 2,
+      "candidate_count": 2,
+      "reference_count": 2,
+      "candidate_mean_ms": 337,
+      "reference_mean_ms": 301.5
+    },
+    {
+      "colo": "EWR",
+      "outcome": "ok",
+      "weight": 3,
+      "candidate_count": 4,
+      "reference_count": 3,
+      "candidate_mean_ms": 104.75,
+      "reference_mean_ms": 971.6666666666666
+    },
+    {
+      "colo": "MAN",
+      "outcome": "ok",
+      "weight": 2,
+      "candidate_count": 6,
+      "reference_count": 2,
+      "candidate_mean_ms": 221.33333333333334,
+      "reference_mean_ms": 219.5
+    },
+    {
+      "colo": "ATL",
+      "outcome": "ok",
+      "weight": 15,
+      "candidate_count": 18,
+      "reference_count": 15,
+      "candidate_mean_ms": 255.94444444444446,
+      "reference_mean_ms": 282.93333333333334
+    },
+    {
+      "colo": "FRA",
+      "outcome": "ok",
+      "weight": 2,
+      "candidate_count": 5,
+      "reference_count": 2,
+      "candidate_mean_ms": 582.6,
+      "reference_mean_ms": 267.5
+    },
+    {
+      "colo": "MCI",
+      "outcome": "ok",
+      "weight": 2,
+      "candidate_count": 2,
+      "reference_count": 5,
+      "candidate_mean_ms": 162.5,
+      "reference_mean_ms": 401.8
+    },
+    {
+      "colo": "YYZ",
+      "outcome": "ok",
+      "weight": 9,
+      "candidate_count": 10,
+      "reference_count": 9,
+      "candidate_mean_ms": 160.2,
+      "reference_mean_ms": 160.33333333333334
+    },
+    {
+      "colo": "WAW",
+      "outcome": "ok",
+      "weight": 13,
+      "candidate_count": 13,
+      "reference_count": 13,
+      "candidate_mean_ms": 605.6153846153846,
+      "reference_mean_ms": 559
+    },
+    {
+      "colo": "LHR",
+      "outcome": "ok",
+      "weight": 8,
+      "candidate_count": 12,
+      "reference_count": 8,
+      "candidate_mean_ms": 233.08333333333334,
+      "reference_mean_ms": 261.5
+    }
+  ],
+  "weighted_candidate_mean_ms": 318.69736842105266,
+  "weighted_reference_mean_ms": 360.61286549707603,
+  "error_groups": []
+}

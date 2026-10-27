@@ -4,13 +4,14 @@ const admission = @import("flat_admission.zig");
 extern "c" fn posix_fadvise(fd: c_int, offset: c.off_t, len: c.off_t, advice: c_int) c_int;
 const max_key = 8193;
 const normal_page = 8192;
+const cache_pages = 512;
 const max_extent = 16 * 1024 * 1024;
 const validation_read_size = 1024 * 1024;
 pub const Namespace = enum(u8) { actor = 1, prefix = 2 };
 
 pub const Cache = struct {
-    pages: [128]?usize,
-    bytes: [128][normal_page]u8,
+    pages: [cache_pages]?usize,
+    bytes: [cache_pages][normal_page]u8,
     root_pages: [256]?usize,
 
     pub fn clear(self: *Cache) void {

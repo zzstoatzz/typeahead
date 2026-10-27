@@ -64,3 +64,20 @@ a real loopback HTTP server. HTTPError responses are closed. All five cases
 passed, as did the 32 existing Python scope tests; the existing Python CI job
 now runs this failure-accounting regression. This changes the gate, not public
 API behavior or any running Worker version.
+
+### Terminal trial result — 20:37 UTC
+
+The retry restored retained transport after its grouped query returned ten
+groups and no matched pairs. This was a query-limit error, not proof of missing
+traffic: parameters.limit=100 returns 27 groups for the identical window. The
+complete data has 57 matched-minimum-count observations; weighted means are
+318.70 ms candidate and 360.61 ms retained. Overall counters average 318.46 ms
+and have two unreconciled answers. No full-traffic qualification followed.
+Native traces and Fly metrics identify additional storage interference; see
+../storage-followup/README.md. The failed query and corrected data both remain.
+
+Default transport source is restored to dae3c97 (the qualified 40a014e4
+implementation). Source revision 5eeae7e and test_route_proof.mjs preserve the tested
+proposal; its original source revision is 5eeae7e. The historical proof test
+requires that candidate source, rather than the retained implementation. No
+trial process, temporary resource or observer remains from these canaries.
