@@ -1078,3 +1078,15 @@ response pairs and transport placement in IAD, with route validation between
 reads. These are diagnostic samples, not a latency qualification or a causal
 public comparison. The R2 bucket is in ENAM and transport placement targets
 aws:us-east-1. No placement change is justified by these samples alone.
+
+### Conditional route-read candidate
+
+The next measured application bottleneck is R2 route validation. An eight-pair
+read-only diagnostic at the existing IAD placement alternated full and conditional
+GET order: full GET mean 107.75 ms, conditional GET mean 80.375 ms. All ETags
+matched; conditional results had no body. The temporary Worker is deleted.
+A small candidate retains the parsed body and ETag, preserving the one-second
+TTL and fail-closed validation. Real workerd/R2/HTTP tests cover expiry without
+a changed object, route change, deletion, corruption and recovery; shared
+hints remain advisory. No production change yet. README/operations identify
+this status; public API docs need no endpoint or shape changes.

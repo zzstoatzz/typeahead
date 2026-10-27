@@ -1,0 +1,17 @@
+{
+  "name": "typeahead-route-read-eval-20261027",
+  "main": "worker.mjs",
+  "compatibility_date": "2024-12-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "r2_buckets": [
+    {
+      "binding": "CONTROL",
+      "bucket_name": "typeahead-index"
+    }
+  ],
+  "placement": {
+    "region": "aws:us-east-1"
+  },
+  "account_id": "3e9ba01cd687b3c4d29033908177072e"
+}

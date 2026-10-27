@@ -784,3 +784,21 @@ The final provider analytics read was rate-limited, so no final provider-runtime
 error count is claimed. e8c21659 remains available for rollback.
 See [the release evidence](evals/perf-goal-20261027/release/overlay-pread-live.json)
 and [the performance record](evals/perf-goal-20261027/plan.md).
+
+### Conditional route validation — October 27, local qualification
+
+The transport candidate retains the parsed routing object with its R2 ETag.
+After the existing one-second memory cache expires, a conditional R2 GET
+revalidates that ETag. An unchanged object returns metadata only; a changed
+object returns and validates the full body before its route can authorize an
+answer. Missing, invalid and oversized objects still fail closed. Diagnostic
+route reads and authenticated refresh forwarding still force a full read.
+No routing TTL or advisory-hint authority changes.
+
+Eight alternating same-placement read comparisons averaged 107.75 ms for the
+full GET and 80.375 ms for conditional GET; this is diagnostic evidence, not
+a public latency guarantee. The temporary read-only profiling Worker was
+deleted. Worker tests, TypeScript and real workerd/R2/HTTP tests pass, including
+unchanged-route validation after expiry, changed/deleted/corrupt routes, scoped
+acknowledgment and hint failure/recovery. This candidate is not deployed yet.
+See [the bounded comparison](evals/perf-goal-20261027/route-read/README.md).

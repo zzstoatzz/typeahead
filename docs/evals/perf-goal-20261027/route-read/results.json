@@ -1,0 +1,204 @@
+{
+  "rows": [
+    {
+      "at": "2026-10-27T18:31:58.123Z",
+      "placement": "remote-IAD",
+      "rows": [
+        {
+          "kind": "get",
+          "ms": 96,
+          "headers_ms": 95,
+          "body": true,
+          "unchanged": true
+        },
+        {
+          "kind": "conditional",
+          "ms": 59,
+          "headers_ms": 59,
+          "body": false,
+          "unchanged": true
+        },
+        {
+          "kind": "head",
+          "ms": 124,
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T18:32:00.290Z",
+      "placement": "remote-IAD",
+      "rows": [
+        {
+          "kind": "conditional",
+          "ms": 100,
+          "headers_ms": 100,
+          "body": false,
+          "unchanged": true
+        },
+        {
+          "kind": "get",
+          "ms": 105,
+          "headers_ms": 104,
+          "body": true,
+          "unchanged": true
+        },
+        {
+          "kind": "head",
+          "ms": 56,
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T18:32:02.367Z",
+      "placement": "remote-IAD",
+      "rows": [
+        {
+          "kind": "get",
+          "ms": 87,
+          "headers_ms": 86,
+          "body": true,
+          "unchanged": true
+        },
+        {
+          "kind": "conditional",
+          "ms": 86,
+          "headers_ms": 86,
+          "body": false,
+          "unchanged": true
+        },
+        {
+          "kind": "head",
+          "ms": 58,
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T18:32:04.489Z",
+      "placement": "remote-IAD",
+      "rows": [
+        {
+          "kind": "conditional",
+          "ms": 58,
+          "headers_ms": 58,
+          "body": false,
+          "unchanged": true
+        },
+        {
+          "kind": "get",
+          "ms": 84,
+          "headers_ms": 83,
+          "body": true,
+          "unchanged": true
+        },
+        {
+          "kind": "head",
+          "ms": 94,
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T18:32:06.765Z",
+      "placement": "remote-IAD",
+      "rows": [
+        {
+          "kind": "get",
+          "ms": 157,
+          "headers_ms": 157,
+          "body": true,
+          "unchanged": true
+        },
+        {
+          "kind": "conditional",
+          "ms": 94,
+          "headers_ms": 94,
+          "body": false,
+          "unchanged": true
+        },
+        {
+          "kind": "head",
+          "ms": 84,
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T18:32:08.875Z",
+      "placement": "remote-IAD",
+      "rows": [
+        {
+          "kind": "conditional",
+          "ms": 71,
+          "headers_ms": 71,
+          "body": false,
+          "unchanged": true
+        },
+        {
+          "kind": "get",
+          "ms": 116,
+          "headers_ms": 113,
+          "body": true,
+          "unchanged": true
+        },
+        {
+          "kind": "head",
+          "ms": 59,
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T18:32:11.194Z",
+      "placement": "remote-IAD",
+      "rows": [
+        {
+          "kind": "get",
+          "ms": 121,
+          "headers_ms": 120,
+          "body": true,
+          "unchanged": true
+        },
+        {
+          "kind": "conditional",
+          "ms": 119,
+          "headers_ms": 119,
+          "body": false,
+          "unchanged": true
+        },
+        {
+          "kind": "head",
+          "ms": 64,
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-27T18:32:13.553Z",
+      "placement": "remote-IAD",
+      "rows": [
+        {
+          "kind": "conditional",
+          "ms": 56,
+          "headers_ms": 56,
+          "body": false,
+          "unchanged": true
+        },
+        {
+          "kind": "get",
+          "ms": 96,
+          "headers_ms": 96,
+          "body": true,
+          "unchanged": true
+        },
+        {
+          "kind": "head",
+          "ms": 90,
+          "unchanged": true
+        }
+      ]
+    }
+  ]
+}

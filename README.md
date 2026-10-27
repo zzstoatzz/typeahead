@@ -85,6 +85,8 @@ This is about 25% below the earlier 263 ms mean, but still misses both 185 ms
 and 169 ms targets. These temporal cohorts are not randomized comparisons.
 e8c21659 is retained for transport rollback.
 Dated traffic and qualification evidence is in the performance record.
+A conditional route-read optimization is locally tested, not deployed; it keeps
+the existing validation and cache lifetime. See [the comparison](docs/evals/perf-goal-20261027/route-read/README.md).
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

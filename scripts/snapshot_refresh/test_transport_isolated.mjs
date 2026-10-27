@@ -60,6 +60,11 @@ try {
   assert.equal(response.headers.get('X-Typeahead-Pds'), 'selfhosted.social');
   assert.match(response.headers.get('Server-Timing'), /transport_mode;desc="serial"/);
   assert.equal((await response.json()).actors[0].did, a.origin);
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  response = await search();
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('X-Typeahead-Pds'), 'selfhosted.social');
+  assert.equal((await response.json()).actors[0].did, a.origin, 'an unchanged R2 object can validate without returning its body');
   await put(b);
   response = await search();
   assert.equal((await response.json()).actors[0].did, a.origin, 'existing one-second cache window is preserved');
@@ -93,6 +98,13 @@ try {
   await response.body.cancel();
   await new Promise(resolve => setTimeout(resolve, 20));
   assert.equal(arrivals.length, afterFailure, 'failed route validation disables further speculative origin work');
+  await put(b);
+  await (await mf.dispatchFetch(base + '/route')).body.cancel();
+  await bucket.delete('control/search-routing.json');
+  await new Promise(resolve => setTimeout(resolve, 1100));
+  response = await search();
+  assert.equal(response.status, 503, 'a retained ETag cannot authorize a deleted route');
+  assert.deepEqual(await response.json(), { error: 'SearchRouteUnavailable' });
   await put(b);
   await (await mf.dispatchFetch(base + '/route')).body.cancel();
   server.closeAllConnections();
