@@ -738,3 +738,8 @@ At 09:34 UTC the transport candidate was uploaded as
 version still serves 100%. Public freshness remains healthy. See the
 [staged version readback](evals/perf-goal-20261027/transport-overlap/staged-version.json).
 No native optimization, Fly resource change or R2 routing promotion occurred.
+
+Private Fly qualification is prepared but has not started. It uses a new private
+2 shared CPU / 1 GiB Machine and independent volume in the inactive app, preserving
+the retained rollback Machine and slot pointer. The [resource and cleanup contract](evals/perf-goal-20261027/plan.md#private-fly-hardware-qualification--preparation)
+records its bounds; preparation is not evidence of a Fly performance pass.

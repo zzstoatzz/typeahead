@@ -129,7 +129,7 @@ def install(config):
     return m
 
 
-def main():
+def prepare():
     if os.environ.get('FLY_APP_NAME') not in ('typeahead-startup-20261024', 'typeahead-search-refresh'):
         raise RuntimeError('Installer is restricted to managed refresh slots')
     if not (os.environ.get('LOGFIRE_WRITE_TOKEN') or os.environ.get('LOGFIRE_TOKEN')):
@@ -143,10 +143,15 @@ def main():
                 raise ValueError('Invalid transport configuration')
             config.write(field + ' = ' + value + '\n')
         config.flush()
-        install(Path(config.name))
+        m = install(Path(config.name))
     os.environ['INDEX_BUILD_ROOT'] = str(ROOT)
     os.environ['LOCAL_DB_PATH'] = str(ROOT / 'overlay.db')
     os.environ['MODE'] = 'search'
+    return m
+
+
+def main():
+    prepare()
     os.execv('/app/typeahead-ingester', ['/app/typeahead-ingester'])
 
 

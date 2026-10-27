@@ -2,6 +2,7 @@
 """Supervised offline corpus profile. No network beyond the private loopback namespace."""
 import argparse
 import ctypes
+from contextlib import closing
 import hashlib
 import json
 import mmap
@@ -154,9 +155,10 @@ class Trial:
                'TYPEAHEAD_EVAL_FEED': str(self.payload / 'feed.json'), 'TYPEAHEAD_EVAL_WRITER_MODE': 'mixed',
                'TYPEAHEAD_EVAL_WRITER_START': str(trigger), 'TYPEAHEAD_EVAL_WRITER_DELAY_MS': '5000',
                'TYPEAHEAD_EVAL_BACKGROUND_SLOTS': '3', 'PORT': str(port)}
+        if name != 'bootstrap' or getattr(self.args, 'pre_admitted', False):
+            env.update(TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT='1', TYPEAHEAD_EVAL_PRIVATE_ROOT=str(self.payload))
         if name != 'bootstrap':
-            env.update(TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT='1', TYPEAHEAD_EVAL_PRIVATE_ROOT=str(self.payload),
-                       TYPEAHEAD_EVAL_SKIP_PREFILL='1')
+            env['TYPEAHEAD_EVAL_SKIP_PREFILL'] = '1'
         executable = Path(self.args.bin_dir) / ('baseline' if name == 'bootstrap' else name)
         with (self.evidence / (name + '-server.log')).open('xb') as output:
             child = subprocess.Popen([str(executable)], env=env, stdout=output, stderr=subprocess.STDOUT, start_new_session=True)
@@ -185,10 +187,9 @@ class Trial:
         return result
 
     def evict_private(self, overlay):
-        with sqlite3.connect(overlay) as conn:
+        with closing(sqlite3.connect(overlay)) as conn:
             busy, _, _ = conn.execute('PRAGMA wal_checkpoint(TRUNCATE)').fetchone()
             if busy: raise RuntimeError('private checkpoint busy before cache reset')
-        conn.close()
         receipts = {}
         for path in [self.payload / 'index.db', self.payload / 'index.db.prefix',
                      self.payload / 'index.db.prefix.admitted', overlay]:
@@ -198,7 +199,7 @@ class Trial:
                 os.fsync(source.fileno())
                 os.posix_fadvise(source.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
             receipts[path.name] = residency(path)
-            if receipts[path.name]['resident_pages'] > max(1, receipts[path.name]['pages'] // 100):
+            if receipts[path.name]['resident_pages'] > 1:
                 raise RuntimeError('private file remains warm after advisory eviction')
         return receipts
 
@@ -236,13 +237,17 @@ class Trial:
         feed = self.payload / 'feed.json'
         feed.write_text(json.dumps(actors, separators=(',', ':')))
         del actors
+        self.measure(manifest)
+
+    def measure(self, manifest):
+        feed = self.payload / 'feed.json'
         self.save('bootstrap-admission-and-prefill')
         overlay = self.payload / 'bootstrap.db'
         child, base, nonce, _ = self.start_server('bootstrap', overlay, '0' * 64, self.payload / 'never-start')
         self.report['bootstrap_metrics'] = self.metrics(child)
         self.stop(child)
         frozen = self.payload / 'frozen-overlay.db'
-        with sqlite3.connect('file:' + str(overlay) + '?mode=ro', uri=True) as incoming, sqlite3.connect(frozen) as output:
+        with closing(sqlite3.connect('file:' + str(overlay) + '?mode=ro', uri=True)) as incoming, closing(sqlite3.connect(frozen)) as output:
             incoming.backup(output)
         inputs = {'snapshot_sha256': manifest['sha256'], 'prefix_sha256': manifest['prefix_map']['sha256'],
                   'overlay_sha256': digest(frozen), 'feed_sha256': digest(feed),

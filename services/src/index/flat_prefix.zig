@@ -389,6 +389,18 @@ pub const Map = struct {
         return result;
     }
 
+    pub fn actorFenceKeys(self: Map, arena: std.mem.Allocator, limit: usize) ![]const []const u8 {
+        if (limit == 0 or limit > 5000) return error.InvalidCaptureLimit;
+        var keys: std.ArrayListUnmanaged([]const u8) = .empty;
+        for (0..@min(self.pages, limit)) |index| {
+            const root = try self.record(index);
+            if (root.key[0] != @backingInt(Namespace.actor)) break;
+            if (root.key.len < 2) return error.InvalidFlatDirectory;
+            try keys.append(arena, try arena.dupe(u8, root.key[1..]));
+        }
+        return keys.toOwnedSlice(arena);
+    }
+
     pub fn close(self: Map) void {
         if (self.admitted) |receipt| receipt.close();
         if (self.mapping) |value| {

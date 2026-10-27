@@ -50,6 +50,33 @@ pub fn main() !void {
             try local.exec("INSERT OR REPLACE INTO sync_meta(key,value) VALUES('pds_scope_policy',?)", .{policy});
         }
     }
+    if (std.c.getenv("TYPEAHEAD_EVAL_CAPTURE_FEED")) |output| {
+        var arena_state = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+        defer arena_state.deinit();
+        const arena = arena_state.allocator();
+        const count = try std.fmt.parseInt(usize, std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_CAPTURE_COUNT") orelse "5000"), 10);
+        const map = local.prefix_map orelse return error.NoCaptureSnapshot;
+        const dids = try map.actorFenceKeys(arena, count);
+        var bytes: std.Io.Writer.Allocating = .init(arena);
+        var jw: std.json.Stringify = .{ .writer = &bytes.writer };
+        try jw.beginArray();
+        for (dids) |did| {
+            const blob = (try map.findTagged(arena, .actor, did)) orelse return error.MissingCaptureActor;
+            const hex = try arena.alloc(u8, blob.len * 2);
+            for (blob, 0..) |value, index| {
+                hex[index * 2] = "0123456789abcdef"[value >> 4];
+                hex[index * 2 + 1] = "0123456789abcdef"[value & 15];
+            }
+            try jw.write(.{ .did = did, .blob_hex = hex });
+            if (bytes.written().len > 32 * 1024 * 1024) return error.CaptureTooLarge;
+        }
+        try jw.endArray();
+        const file = try std.Io.Dir.cwd().createFile(io, std.mem.span(output), .{ .exclusive = true });
+        defer file.close(io);
+        try file.writeStreamingAll(io, bytes.written());
+        try file.sync(io);
+        return;
+    }
     var writer_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer writer_arena.deinit();
     var writer = try EvalWriter.init(writer_arena.allocator(), &local);

@@ -118,6 +118,24 @@ class EvaluatorTest(unittest.TestCase):
         with sqlite3.connect(self.overlay) as conn:
             self.assertIsNone(conn.execute("SELECT value FROM sync_meta WHERE key='pds_scope_policy'").fetchone())
 
+    def test_private_capture_exports_real_packed_actor_and_refuses_overwrite(self):
+        self.snapshot = self.root / 'fixtures/builds/compact/index.db'
+        self.input_id = hashlib.sha256(self.snapshot.read_bytes()).hexdigest()
+        target = self.root / 'captured.json'
+        env = {'TYPEAHEAD_EVAL_CAPTURE_FEED': str(target), 'TYPEAHEAD_EVAL_CAPTURE_COUNT': '1'}
+        self.start(wait=False, extra_env=env)
+        self.assertEqual(self.process.wait(timeout=10), 0, self.log.read_text())
+        captured = json.loads(target.read_text())
+        self.assertEqual(len(captured), 1)
+        with sqlite3.connect(self.root / 'fixtures/builds/legacy/index.db') as conn:
+            expected = conn.execute('SELECT blob FROM actor_compact_base WHERE did=?', (captured[0]['did'],)).fetchone()
+        self.assertIsNotNone(expected)
+        self.assertEqual(bytes.fromhex(captured[0]['blob_hex']), expected[0])
+        before = target.read_bytes()
+        self.start(wait=False, extra_env=env)
+        self.assertNotEqual(self.process.wait(timeout=10), 0)
+        self.assertEqual(before, target.read_bytes())
+
     def test_cached_private_restart_preserves_frozen_overlay_without_prefill(self):
         self.snapshot = self.root / 'fixtures/builds/compact/index.db'
         self.input_id = hashlib.sha256(self.snapshot.read_bytes()).hexdigest()
