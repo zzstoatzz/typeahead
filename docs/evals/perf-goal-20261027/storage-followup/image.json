@@ -1,0 +1,13 @@
+{
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:5a702da462e33e1f2cba161f802efcd331f971aef6c9f1f18ca2f836bac5df1f",
+  "candidate_source": "fb8907d32bb2b7d5165668481e1b01fe22fcbb6c",
+  "base_image": "registry.fly.io/typeahead-startup-20261024@sha256:ce3e939708e59c3f39ccf05fb463ef5b95c3dfec6f99edec7d5867421ef49d9e",
+  "dockerfile_sha256": "e27c3cca7b24f7b573367a5db9348ac9077573525cc0bcf20bc3bd9f607c3c0c",
+  "command": "inherited bounded offline frozen_trial; no serving endpoints",
+  "source_app": "typeahead-search-refresh",
+  "source_volume": "vol_40o3xy5812d6kkk4",
+  "protected_serving_machine": "8e3d79b70dd748",
+  "protected_inactive_machine": "801539a6551778",
+  "scratch_budget_bytes": 21474836480,
+  "deployed_to_managed_backend": false
+}

@@ -60,3 +60,27 @@ in build-pair.json. Their scratch root is /tmp/typeahead-cache512-pair-20261027
 built or if this candidate is abandoned. No corpus payload is present locally.
 The 20:55 public probe was healthy with 131-second lag, and the transport API
 confirmed retained 40a014e4 alone.
+
+## Cache qualification launch
+
+Owner: this performance goal. The pending private run uses an independent fork
+of inactive B volume vol_40o3xy5812d6kkk4, build b1793081565-0228-px05. At 20:55
+B had 78,861 overlay actors; capture determines the exact frozen count and input
+hashes. Baseline is native 62266a3, candidate is fb8907d (only the immutable-page
+cache capacity differs). Both use identical evaluator and frozen workload.
+
+The supervisor guards the production routing object and both original Machine
+identities, creates no services, fixes the private guest to two shared CPUs /
+1 GiB without swap, budgets a 20 GiB volume / 16 GiB payload / 16 MiB evidence,
+and retires its Machine, volume and short-lived scoped token on every exit.
+Scratch is the owned private volume's /data/refresh; evidence is /data/evidence
+and this directory's run-ID subdirectory. The immutable snapshot stays in Fly.
+Local image context /tmp/typeahead-cache512-image-20261027 contains only the
+25 MiB ELF pair and small scripts; remove it and the binary pair after the image
+is pushed. The image is an offline evaluator and is ineligible for publication.
+The earlier source settings that referred to now-serving A are not used.
+
+The first Docker push failed before publication because its stored registry
+credential could not resolve this app repository. Normal Fly Docker
+authentication was refreshed before retrying the identical tag; no runtime
+deployment or production credential was changed.
