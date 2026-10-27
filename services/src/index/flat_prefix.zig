@@ -485,6 +485,38 @@ test "unified namespaces retain opaque empty and non posting values" {
     try std.testing.expectError(error.InvalidFlatDirectory, Map.validate(&invalid, &invalid_digest));
 }
 
+test "actor read ahead preserves opaque values and rejects corrupted payloads" {
+    const fixture = @embedFile("unified_fixture.bin");
+    const digest = digestOf(fixture);
+    var path = "/tmp/typeahead-prefetch-XXXXXX".*;
+    const writer = mkstemp(&path);
+    if (writer < 0) return error.TestFileCreateFailed;
+    defer _ = c.close(writer);
+    defer _ = c.unlink(&path);
+    var written: usize = 0;
+    while (written < fixture.len) {
+        const n = c.write(writer, fixture[written..].ptr, fixture.len - written);
+        if (n <= 0) return error.TestFileWriteFailed;
+        written += @intCast(n);
+    }
+    const receipt_path = try std.fmt.allocPrintSentinel(std.testing.allocator, "{s}.admitted", .{path}, 0);
+    defer std.testing.allocator.free(receipt_path);
+    defer _ = c.unlink(receipt_path);
+    const map = try Map.admitFile(std.testing.allocator, &path, &digest);
+    defer map.close();
+    try map.prefetchActors(&.{ "same", "same", "東京", "missing" }, null);
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    try std.testing.expectEqualSlices(u8, &.{0}, (try map.findTagged(arena.allocator(), .actor, "same")).?);
+    try std.testing.expectEqual(@as(usize, 0), (try map.findTagged(arena.allocator(), .actor, "東京")).?.len);
+    try std.testing.expect((try map.findTagged(arena.allocator(), .actor, "missing")) == null);
+    const offset = map.page_data + 100;
+    const changed = [_]u8{fixture[offset] ^ 1};
+    try std.testing.expectEqual(@as(isize, 1), c.pwrite(writer, &changed, 1, @intCast(offset)));
+    try map.prefetchActors(&.{"same"}, null);
+    try std.testing.expectError(error.FlatBlockChecksumMismatch, map.findTagged(arena.allocator(), .actor, "same"));
+}
+
 test "paged fences preserve all postings and boundary misses" {
     const fixture = @embedFile("flat_prefix_fixture.bin");
     const digest = digestOf(fixture);
