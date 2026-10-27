@@ -1,0 +1,375 @@
+{
+  "started_at": "2026-10-27T13:38:46.610578+00:00",
+  "production_mutations": 0,
+  "generated_requests": 0,
+  "unique_invocations": {
+    "transport": 196,
+    "public": 150
+  },
+  "replacements": [
+    {
+      "role": "public",
+      "elapsed_s": 30.3
+    },
+    {
+      "role": "transport",
+      "elapsed_s": 60.3
+    }
+  ],
+  "total_loss_rejected": true,
+  "status": "passed-real-overlap-replacement-and-total-loss-check",
+  "observer": {
+    "cli_sha256": "18dbf242b542e171c993d68cc41a4e58bc4f533392fc91b71e29ffeee7bf6c0c",
+    "instrumented_cli_sha256": "7b14ca0291212eb4008e7809fe0e886b9b9883b0978c700345864a3386ff6ff4",
+    "children": 6,
+    "events": [
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "d00b9860d3f94207b85af7578012d671",
+        "at": 1793108328208
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "d30561743c004b45b06436abfe79a9a5",
+        "at": 1793108328311
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108328624
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108328710
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "created",
+        "id": "d30561743c004b45b06436abfe79a9a5",
+        "at": 1793108329627
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793108329771
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "created",
+        "id": "d00b9860d3f94207b85af7578012d671",
+        "at": 1793108330268
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793108330400
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108360679
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "d30561743c004b45b06436abfe79a9a5",
+        "at": 1793108361107
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "e0053bda19924e3fb79a3865f3c89498",
+        "at": 1793108362269
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108362627
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108390685
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "deleted",
+        "id": "d00b9860d3f94207b85af7578012d671",
+        "at": 1793108391048
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "fd74bada5c9c445eaf179a7edcfca4eb",
+        "at": 1793108392124
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108392535
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108592700
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793108592701
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "e0053bda19924e3fb79a3865f3c89498",
+        "at": 1793108593424
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "51b5798d344442bb8894b98b5feac540",
+        "at": 1793108594918
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108595256
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108600477
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793108600477
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "created",
+        "id": "fd74bada5c9c445eaf179a7edcfca4eb",
+        "at": 1793108602275
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "connected",
+        "at": 1793108602422
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108602623
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793108602623
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "deleted",
+        "id": "fd74bada5c9c445eaf179a7edcfca4eb",
+        "at": 1793108603056
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "created",
+        "id": "c50868eda8d040ae881b365bcf36c239",
+        "at": 1793108604839
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108605173
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108606258
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793108606258
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "51b5798d344442bb8894b98b5feac540",
+        "at": 1793108606597
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "fc4d0204f7f9419e95b237f7657ff2a1",
+        "at": 1793108608500
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108608906
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108608932
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793108608932
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "fc4d0204f7f9419e95b237f7657ff2a1",
+        "at": 1793108609778
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "382eb119eecf4fc7bdcdb14ca43cd627",
+        "at": 1793108611250
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108611630
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108681683
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "cause": "reconnect",
+        "at": 1793108681683
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "382eb119eecf4fc7bdcdb14ca43cd627",
+        "at": 1793108682299
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "created",
+        "id": "47ab73ad8b164ad7905d840fe2cfc491",
+        "at": 1793108683858
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "connected",
+        "at": 1793108684159
+      },
+      {
+        "role": "public",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108930445
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108930913
+      },
+      {
+        "role": "public",
+        "slot": 0,
+        "event": "deleted",
+        "id": "47ab73ad8b164ad7905d840fe2cfc491",
+        "at": 1793108932184
+      },
+      {
+        "role": "transport",
+        "slot": 1,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108932302
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "disconnected",
+        "code": 1006,
+        "at": 1793108932714
+      },
+      {
+        "role": "transport",
+        "slot": 0,
+        "event": "deleted",
+        "id": "c50868eda8d040ae881b365bcf36c239",
+        "at": 1793108933076
+      }
+    ],
+    "all_owned_sessions_retired": true
+  },
+  "finished_at": "2026-10-27T13:48:53.188149+00:00"
+}

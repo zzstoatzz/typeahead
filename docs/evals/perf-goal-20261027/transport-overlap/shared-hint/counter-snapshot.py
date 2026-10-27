@@ -1,6 +1,7 @@
 import json,os,sys,time,urllib.request,datetime
 from pathlib import Path
-out=Path(sys.argv[1]); first=int(sys.argv[2]);last=first+24
+out=Path(sys.argv[1]); first=int(sys.argv[2]);last=int(sys.argv[3]) if len(sys.argv)>3 else first+24
+if not 0 < last-first <= 24:raise RuntimeError("bounded counter window required")
 if out.exists():raise RuntimeError("preserve counter evidence")
 queries={"metrics":"SELECT SUM(searches) AS searches,SUM(total_ms) AS total_ms,SUM(cache_hits) AS cache_hits,SUM(cache_ms) AS cache_ms FROM metrics WHERE hour >= ? AND hour < ?", "request_status":"SELECT status,SUM(hits) AS hits FROM request_buckets WHERE bucket >= ? AND bucket < ? AND endpoint='search' GROUP BY status ORDER BY status"}
 requests=[{"type":"execute","stmt":{"sql":sql,"args":[{"type":"integer","value":str(first)},{"type":"integer","value":str(last)}]}} for sql in queries.values()]+[{"type":"close"}]

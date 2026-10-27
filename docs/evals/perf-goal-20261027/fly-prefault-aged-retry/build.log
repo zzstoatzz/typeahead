@@ -1,0 +1,37 @@
+#0 building with "orbstack" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 292B done
+#1 DONE 0.0s
+
+#2 [auth] sharing credentials for registry.fly.io
+#2 DONE 0.0s
+
+#3 [internal] load metadata for registry.fly.io/typeahead-startup-20261024@sha256:65b49a4219f7fcbaa62fea0e6ba349e06c43b4762493498a0cbbd6092561cb6a
+#3 DONE 0.6s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.1s
+
+#5 [internal] load build context
+#5 transferring context: 27.88kB done
+#5 DONE 0.1s
+
+#6 [1/2] FROM registry.fly.io/typeahead-startup-20261024@sha256:65b49a4219f7fcbaa62fea0e6ba349e06c43b4762493498a0cbbd6092561cb6a
+#6 resolve registry.fly.io/typeahead-startup-20261024@sha256:65b49a4219f7fcbaa62fea0e6ba349e06c43b4762493498a0cbbd6092561cb6a 0.0s done
+#6 DONE 0.2s
+
+#7 [2/2] COPY cloud_trial.py fly_trial.py /app/perf/
+#7 DONE 0.2s
+
+#8 exporting to image
+#8 exporting layers 0.1s done
+#8 exporting manifest sha256:969cee03b8608a1f63d0473958e35e581ea7e143fb399e9edb6e3244beb4d6db
+#8 exporting manifest sha256:969cee03b8608a1f63d0473958e35e581ea7e143fb399e9edb6e3244beb4d6db 0.0s done
+#8 exporting config sha256:9b089883fd6a4cb0294aa47f1a2a351fa6dcca4f5e3dba519d51ad37f62bc5d1 0.0s done
+#8 exporting attestation manifest sha256:e8d5b36682b5d845dee9c0847897f5cb3413ec9a3bcec62898c82841dd354ab7 0.0s done
+#8 exporting manifest list sha256:9e92c2ee3f68d2f88aa9cd64191101ea64af47e2a335d87f154d19adaac81da5 0.0s done
+#8 naming to registry.fly.io/typeahead-startup-20261024:perf-prep-4ab1710f
+#8 naming to registry.fly.io/typeahead-startup-20261024:perf-prep-4ab1710f done
+#8 DONE 0.3s

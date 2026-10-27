@@ -708,7 +708,7 @@ and public error masking remain separate open RCA work.
 
 ## Safe performance qualification — October 27, 2026; active goal
 
-Status at 13:30 UTC: production remains healthy on two shared CPUs / 1 GiB,
+Status at 13:51 UTC: production remains healthy on two shared CPUs / 1 GiB,
 with native f670. Shared-hint version 40a014e4
 passed limited 10% and 50% observations; two full-traffic observations restored
 e8c21659 when a passive log observer disconnected. Neither established the
@@ -720,8 +720,10 @@ the timeout's cause. Unchanged smoke then passed on the retained version and
 on a new guarded full-traffic observation. That observation also restored
 e8c21659 when the transport tail exited at 13:08 UTC. Retained e8c21659 is
 retained for rollback. Temporary Wrangler 4.153.0 passed a twelve-minute read-only
-liveness check; a new guarded full-traffic observation is active with explicit
-reconnect-gap rejection and public counter reconciliation.
+liveness check, but its next single-stream canary rolled back on a reconnect.
+A ten-minute overlapping-observer test then passed forced replacement, real
+reconnects and total-loss rejection. A full-traffic retry with those observers
+and settled public counter reconciliation is prepared.
 Native performance changes
 remain undeployed. The [qualification plan](evals/perf-goal-20261027/plan.md)
 records targets, frozen-input correctness gates, independent trial storage,
@@ -744,7 +746,8 @@ is pending_destroy (a non-billable soft-deleted provider record). A locally test
 metadata-only prefault follow-up captured 200,000 actors but stopped at its
 unmeasured bootstrap preparation deadline. Its payload/VM are retired; the
 unattached volume is pending_destroy. A bounded retry retains the same native
-binaries and measurement gates with more time for offline preparation.
+binaries and measurement gates with more time for offline preparation; retry
+963b8d20811d is privately capturing input after full admission.
 The earlier measured overlay was only 5,000 actors. Live freshness is separate.
 
 Two bounded 10% transport canaries passed credentialed smoke and freshness

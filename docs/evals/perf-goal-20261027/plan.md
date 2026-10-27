@@ -656,3 +656,38 @@ that CLI, rejects announced reconnect gaps, retains all prior service gates and
 requires at least 100 post-smoke cache misses reconciled against search HTTP
 answer counts. Unknown or unmeasured answers reject continued rollout. Public
 latency improvement remains unqualified until that window completes.
+
+
+### Overlapping observer qualification and native retry — 13:51 UTC
+
+The single-stream 4.153.0 canary passed smoke but restored e8c21659 when the
+CLI announced a reconnect. The upgrade provides recovery, not continuous
+coverage from one stream. That rejected attempt remains recorded under
+transport-overlap/shared-hint/canary100-new-cli/.
+
+The bounded [real-service overlap test](transport-overlap/shared-hint/dual-observer-preflight.json)
+passed for ten minutes with two tails per Worker. It deliberately replaced one
+client for each Worker, survived six real reconnect episodes while a peer stayed
+connected, then proved total observer loss is rejected. It retained 150 unique
+public and 196 unique transport invocations, and retired all twelve created tail
+sessions. Only lifecycle metadata and counters are persisted; full traces are
+hashed for bounded in-memory deduplication and discarded.
+
+The observer uses a SHA-pinned copy of temporary Wrangler 4.153.0 with lifecycle
+messages added to stderr. The original package and project dependencies are
+unchanged. The guarded rollout starts an observer before deployment, adds its
+peer afterward, and rejects total coverage loss. A provider-side runtime-error
+query and search-counter reconciliation complement these real-time streams.
+Latency reconciliation uses complete five-minute buckets beginning after smoke
+and ending at least three minutes before readback; this avoids unsettled
+background writes. The whole thirty-minute observation still checks live search
+failures, freshness and deployment ownership. At least 100 measured cache misses
+and 100 complete transport timing events remain required.
+
+Native retry 20261027-963b8d20811d is supervised by the independent systemd unit
+of that name with the typeahead-perf-fly- prefix. It owns Machine 824021f7446768
+and volume vol_re1qj7o28ge0xod4. The [launch receipt](fly-trial/launch-20261027-963b8d20811d.json)
+pins image 9e92c2ee; its baseline/candidate ELF hashes match the prior pair
+exactly. Only the two Python preparation-budget files changed. The rollback
+Machine remains protected. Full admission finished and input capture is active;
+measurement and retirement remain pending. No corpus data was sent home.

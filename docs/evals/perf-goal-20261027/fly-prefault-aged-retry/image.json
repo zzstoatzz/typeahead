@@ -1,0 +1,18 @@
+{
+  "tag": "registry.fly.io/typeahead-startup-20261024:perf-prep-4ab1710f",
+  "digests": [
+    "registry.fly.io/typeahead-startup-20261024@sha256:9e92c2ee3f68d2f88aa9cd64191101ea64af47e2a335d87f154d19adaac81da5"
+  ],
+  "base": "registry.fly.io/typeahead-startup-20261024@sha256:65b49a4219f7fcbaa62fea0e6ba349e06c43b4762493498a0cbbd6092561cb6a",
+  "candidate_commit": "9b65d77c0b506fb62666196dd8c4c9295c8af556",
+  "harness_commit": "4ab1710fd024390f7331d64c7f20c94863657e6a",
+  "source_sha256": {
+    "cloud_trial.py": "f1358bbe49262f3c358600a79a0e69e239e735109bd37c2d94ae1f6d39190ca8",
+    "fly_trial.py": "b76c01a2be80eac7593ad02226fbf3dfc5e3129896e115eeac1ff1ae872a8ec6"
+  },
+  "captured_actor_target": 200000,
+  "preparation_timeout_s": 1800,
+  "measurement_wall_budget_s": 3900,
+  "outer_unit_budget_s": 5400,
+  "native_pair": "../fly-prefault-aged-trial/build-pair.json"
+}
