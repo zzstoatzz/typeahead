@@ -1,0 +1,76 @@
+{
+  "run_id": "20261027-263a043fc893",
+  "image": "registry.fly.io/typeahead-startup-20261024@sha256:efe3668957721a1379863868d462524a3b509227ab8066a6f61debd0750f5265",
+  "goal_qualified": false,
+  "events": [],
+  "source_volume": "vol_v8eyqk61q9dy9gkv",
+  "source_machine": "8e3d79b70dd748",
+  "disk_budget_bytes": 21474836480,
+  "deadline_seconds": 5100,
+  "phase": "retired-private-resources",
+  "protected": {
+    "id": "8e3d79b70dd748",
+    "instance_id": "01M5YZ6S1N8KM6WNHXX213J7E7",
+    "version": "01M5YZ6S1N8KM6WNHXX213J7E7",
+    "state": "started",
+    "image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 20,
+        "volume": "vol_v8eyqk61q9dy9gkv",
+        "name": "refresh_1793113768"
+      }
+    ],
+    "services": [
+      {
+        "protocol": "tcp",
+        "internal_port": 8080,
+        "autostop": false,
+        "autostart": false,
+        "ports": [
+          {
+            "port": 443,
+            "handlers": [
+              "tls",
+              "http"
+            ]
+          },
+          {
+            "port": 80,
+            "handlers": [
+              "http"
+            ]
+          }
+        ],
+        "force_instance_key": null
+      }
+    ],
+    "metadata": {
+      "build_id": "b1793109259-2b36-px05",
+      "owner": "typeahead-snapshot-refresh"
+    }
+  },
+  "creation_pending": null,
+  "volume_id": "vol_vjy7ol9opqz295pv",
+  "machine_id": "2870d11c723058",
+  "machine_state": "created",
+  "status": {
+    "phase": "results-ready",
+    "bytes": 5577,
+    "sha256": "d1ac347a19035125e773df02e085d37d6a91a4bb9d53d5f7965550a922221371",
+    "run_id": "20261027-263a043fc893",
+    "installation": "installed",
+    "measurement": "cold-diagnostics-complete"
+  },
+  "evidence_bytes": 5577,
+  "evidence_sha256": "d1ac347a19035125e773df02e085d37d6a91a4bb9d53d5f7965550a922221371",
+  "volume_retirement_state": "pending_destroy",
+  "retired": true
+}

@@ -1,0 +1,706 @@
+{
+  "kind": "private-fly-cold-phase-diagnostic",
+  "goal_qualified": false,
+  "runs": {},
+  "limitations": [
+    "current actual state only; no aged-capacity claim",
+    "no live Turso or freshness qualification"
+  ],
+  "capture_method": "actual private fork overlay; deterministic first 5000 non-tombstone source-zero actors",
+  "machine_id": "2870d11c723058",
+  "run_id": "20261027-263a043fc893",
+  "hardware": {
+    "cpus": 2,
+    "memory_kib": 984988,
+    "machine": "x86_64"
+  },
+  "overlay_counts": {
+    "actor_overlay": 16854,
+    "prefix_overlay": 684277
+  },
+  "diagnostics": [
+    {
+      "query": "nate",
+      "pre_start_residency": {
+        "index.db": {
+          "pages": 20,
+          "resident_pages": 0
+        },
+        "index.db.prefix": {
+          "pages": 1789834,
+          "resident_pages": 0
+        },
+        "index.db.prefix.admitted": {
+          "pages": 13984,
+          "resident_pages": 0
+        },
+        "diagnostic-overlay.db": {
+          "pages": 31729,
+          "resident_pages": 0
+        }
+      },
+      "http": {
+        "status": 200,
+        "sha256": "c1cba35c98ff98f16acc553a44255975334b38468e93e5efa68e2c094cbc07c4",
+        "elapsed_ms": 548.7957130000005,
+        "error": null,
+        "pds_ack": ""
+      },
+      "body": {
+        "actors": [
+          {
+            "did": "did:plc:dst5a7uf7wtatmp66p5ygzmw",
+            "handle": "mnateshyamalan.bsky.social",
+            "displayName": "soul nate",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:dst5a7uf7wtatmp66p5ygzmw/bafkreifbass2kyabkfzk5cdver7s3mj5y5sv2f36wbqm3vezni5lehf7km",
+            "associated": {
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-04-27T12:50:59.408Z"
+          },
+          {
+            "did": "did:plc:kgihv26oznpn6cu3p45jzydp",
+            "handle": "natetice.bsky.social",
+            "displayName": "Nate Tice",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:kgihv26oznpn6cu3p45jzydp/bafkreifritdbdehze56yb2ixz76vzncx56m4r22ujpr5dvfhyv7eejzone",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-11-13T16:43:32.880Z"
+          },
+          {
+            "did": "did:plc:jehkz3ubrqvdnq7rqp67pweo",
+            "handle": "nateatkins.bsky.social",
+            "displayName": "Nate Atkins",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jehkz3ubrqvdnq7rqp67pweo/bafkreigwfa5fp7zy22jqlr32cxxbpjw3kojqcjp6biekstx5q2wr73gebe",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-11-15T21:41:16.046Z"
+          },
+          {
+            "did": "did:plc:twd4pvmds7pyvvgrjsgoscdk",
+            "handle": "natedhernandez.bsky.social",
+            "displayName": "Nathan Daniel Hernandez",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:twd4pvmds7pyvvgrjsgoscdk/bafkreihlhmpowgmzeclrqkilfo54dairr5copysmyu7wjygggatcondi7m",
+            "associated": {
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-07-01T20:18:04.791Z"
+          },
+          {
+            "did": "did:plc:bqltstbdzc7keycyhdqtqhk2",
+            "handle": "nategrimes.bsky.social",
+            "displayName": "nate grimes",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:bqltstbdzc7keycyhdqtqhk2/bafkreidijcbgw2mqye5ew6zb3lmzvgu6ijyqvkh2kpd3gcp6nzeja2ctni",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-10-12T19:17:39.270Z"
+          },
+          {
+            "did": "did:plc:pffxichc3l3hnvyysin3zjbi",
+            "handle": "himmapaan.bsky.social",
+            "displayName": "Natee (they/them)",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:pffxichc3l3hnvyysin3zjbi/bafkreif4uy4kdi2tmnsxc3n75d3xlsqdjqlffsuldgvtufdnqhiaa5t6x4",
+            "associated": {
+              "chat": {
+                "allowIncoming": "following"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-05-05T19:31:58.628Z"
+          },
+          {
+            "did": "did:plc:zp4hh7r3nl66qzcemmjw5chi",
+            "handle": "nateinnovates.bsky.social",
+            "displayName": "Nate Innovates",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:zp4hh7r3nl66qzcemmjw5chi/bafkreibnto6t3ntbjpn6377loes4ozoam3awayjlxvsncq2g5lt7q7x44m",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-07-26T01:24:46.214Z"
+          },
+          {
+            "did": "did:plc:2qwpeisxhznwdjfylihurdp4",
+            "handle": "nateo.bsky.social",
+            "displayName": "Nate O",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:2qwpeisxhznwdjfylihurdp4/bafkreibenelyf5fuudl2k4im7rlpgvea7evtrf2sa6lii3wbsivojsy4ya",
+            "associated": {
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [
+              {
+                "src": "did:plc:2qwpeisxhznwdjfylihurdp4",
+                "uri": "at://did:plc:2qwpeisxhznwdjfylihurdp4/app.bsky.actor.profile/self",
+                "cid": "bafyreiht5wa7l6yoju74ia7le4gitvrkuyirpjmjkhhzy4ky7hc5xezpie",
+                "val": "!no-unauthenticated",
+                "cts": "1970-01-01T00:00:00.000Z"
+              }
+            ],
+            "createdAt": "2023-07-01T21:01:57.959Z"
+          },
+          {
+            "did": "did:plc:gn3jcqukhjkzvfoyuymof7hl",
+            "handle": "beynate.bsky.social",
+            "displayName": "Nate Erskine-Smith",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:gn3jcqukhjkzvfoyuymof7hl/bafkreigvmen5kft5gxv3thpf3lqehf7bxuxq5cxdlfbyc3w43ohks3uk3e",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-02-05T03:00:10.937Z"
+          },
+          {
+            "did": "did:plc:y7i6khpjx5rxzjnnpuayz65n",
+            "handle": "natesaunders.bsky.social",
+            "displayName": "Nate Saunders",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:y7i6khpjx5rxzjnnpuayz65n/bafkreiak7fsocjrltlqihtg3mmizihil6dokxw6keiwkrgduvcu6jb5mje",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-11-14T14:54:25.424Z"
+          }
+        ]
+      },
+      "before": {
+        "rchar": 2725619,
+        "wchar": 287,
+        "syscr": 63,
+        "syscw": 14,
+        "read_bytes": 91947008,
+        "write_bytes": 36864,
+        "cancelled_write_bytes": 0,
+        "cpu_ms": 100.0,
+        "VmHWM": 106999808,
+        "VmRSS": 106999808,
+        "RssAnon": 14360576,
+        "RssFile": 92639232
+      },
+      "after": {
+        "rchar": 3159795,
+        "wchar": 395,
+        "syscr": 116,
+        "syscw": 16,
+        "read_bytes": 105295872,
+        "write_bytes": 36864,
+        "cancelled_write_bytes": 0,
+        "cpu_ms": 140.0,
+        "VmHWM": 113827840,
+        "VmRSS": 113827840,
+        "RssAnon": 14573568,
+        "RssFile": 99254272
+      }
+    },
+    {
+      "query": "a",
+      "pre_start_residency": {
+        "index.db": {
+          "pages": 20,
+          "resident_pages": 0
+        },
+        "index.db.prefix": {
+          "pages": 1789834,
+          "resident_pages": 0
+        },
+        "index.db.prefix.admitted": {
+          "pages": 13984,
+          "resident_pages": 0
+        },
+        "diagnostic-overlay.db": {
+          "pages": 31729,
+          "resident_pages": 0
+        }
+      },
+      "http": {
+        "status": 200,
+        "sha256": "482b70409cb779bb1bbcba349c49a5daf6407aee3dd68eb2a011b7e42ad56cdc",
+        "elapsed_ms": 826.525494000002,
+        "error": null,
+        "pds_ack": ""
+      },
+      "body": {
+        "actors": [
+          {
+            "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+            "handle": "bsky.app",
+            "displayName": "Bluesky",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:z72i7hdynmk6r22z27h6tvur/bafkreihwihm6kpd6zuwhhlro75p5qks5qtrcu55jp3gddbfjsieiv7wuka",
+            "associated": {
+              "chat": {
+                "allowIncoming": "none"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-04-12T04:53:57.057Z"
+          },
+          {
+            "did": "did:plc:4llrhdclvdlmmynkwsmg5tdc",
+            "handle": "atrupar.com",
+            "displayName": "Aaron Rupar",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:4llrhdclvdlmmynkwsmg5tdc/bafkreibmhm3h6ar52pogvolisrzjdhwa2myras5vkxzj67twxn2l6pogwu",
+            "associated": {
+              "chat": {
+                "allowIncoming": "following"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-04-28T00:47:57.437Z"
+          },
+          {
+            "did": "did:plc:p7gxyfr5vii5ntpwo7f6dhe2",
+            "handle": "aoc.bsky.social",
+            "displayName": "Alexandria Ocasio-Cortez",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:p7gxyfr5vii5ntpwo7f6dhe2/bafkreia7pjciqmezep36yotfgas23eie47sy5ymcorzd7exejlxtiox6by",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-04-27T19:39:34.920Z"
+          },
+          {
+            "did": "did:plc:tsksqpjisdvtusxq6ide5tzj",
+            "handle": "adamkinzinger.substack.com",
+            "displayName": "Adam Kinzinger",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:tsksqpjisdvtusxq6ide5tzj/bafkreidsxdxp3kqmm7p6c34rjixibrazmnhjzzfgctjcrsov4v5wi2hbgi",
+            "associated": {
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-08-31T01:53:54.034Z"
+          },
+          {
+            "did": "did:plc:mxc7liuon6iq5gzapmmwkq22",
+            "handle": "youranoncentral.bsky.social",
+            "displayName": "Anonymous",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:mxc7liuon6iq5gzapmmwkq22/bafkreigmavzne5emzbgoyikoemh2dlj3zhq5ooapc6wegxu2apv2enkiqu",
+            "associated": {
+              "lists": 3,
+              "feedgens": 1,
+              "starterPacks": 1,
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-06-27T08:27:07.393Z"
+          },
+          {
+            "did": "did:plc:vpfavbhwv4okwh6ydgp5uxf6",
+            "handle": "sethabramson.bsky.social",
+            "displayName": "Seth Abramson",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:vpfavbhwv4okwh6ydgp5uxf6/bafkreigrtbp5xorddvi7o3jz6jfayv6avbi3izlvrlksfk4necyytgx3aa",
+            "associated": {
+              "lists": 3,
+              "starterPacks": 3,
+              "chat": {
+                "allowIncoming": "following"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-04-27T20:10:47.115Z"
+          },
+          {
+            "did": "did:plc:b2kutgxqlltwc6lhs724cfwr",
+            "handle": "theathletic.com",
+            "displayName": "The Athletic",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:b2kutgxqlltwc6lhs724cfwr/bafkreidtcbmryuwpaxyaaexazmibozi7oakpn6x4ktdow227xky7dnmfa4",
+            "associated": {
+              "chat": {
+                "allowIncoming": "none",
+                "allowGroupInvites": "none"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-05-22T18:10:58.179Z"
+          },
+          {
+            "did": "did:plc:ragtjsm2j2vknwkz3zp4oxrd",
+            "handle": "pfrazee.com",
+            "displayName": "P(aul) Frazee",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:ragtjsm2j2vknwkz3zp4oxrd/bafkreihhpqdyntku66himwor5wlhtdo44hllmngj2ofmbqnm25bdm454wq",
+            "associated": {
+              "chat": {
+                "allowIncoming": "following"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2022-11-17T00:35:16.391Z"
+          },
+          {
+            "did": "did:plc:62gdkmpwa7xme36getyqnem3",
+            "handle": "astrokatie.com",
+            "displayName": "Katie Mack",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:62gdkmpwa7xme36getyqnem3/bafkreia7wdfi6wwp5dfe3tn2urjnkkujdds6x2bjebf2bbjnxx2h36cnnu",
+            "associated": {
+              "chat": {
+                "allowIncoming": "following"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-04-21T05:03:00.394Z"
+          },
+          {
+            "did": "did:plc:lafbr3dznxdyvgup2umwssht",
+            "handle": "anneapplebaum.wsocial.eu",
+            "displayName": "Anne Applebaum",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:lafbr3dznxdyvgup2umwssht/bafkreiaesbbil3dcp657xsfy4nffev3hjsug5iotysh4x4argm2hx5le5m",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-10-07T14:09:39.855Z"
+          }
+        ]
+      },
+      "before": {
+        "rchar": 2725619,
+        "wchar": 287,
+        "syscr": 63,
+        "syscw": 14,
+        "read_bytes": 88981504,
+        "write_bytes": 36864,
+        "cancelled_write_bytes": 0,
+        "cpu_ms": 90.0,
+        "VmHWM": 107188224,
+        "VmRSS": 107188224,
+        "RssAnon": 14356480,
+        "RssFile": 92831744
+      },
+      "after": {
+        "rchar": 3172084,
+        "wchar": 397,
+        "syscr": 117,
+        "syscw": 16,
+        "read_bytes": 106668032,
+        "write_bytes": 36864,
+        "cancelled_write_bytes": 0,
+        "cpu_ms": 140.0,
+        "VmHWM": 116404224,
+        "VmRSS": 116183040,
+        "RssAnon": 14589952,
+        "RssFile": 101593088
+      }
+    },
+    {
+      "query": "photographer",
+      "pre_start_residency": {
+        "index.db": {
+          "pages": 20,
+          "resident_pages": 0
+        },
+        "index.db.prefix": {
+          "pages": 1789834,
+          "resident_pages": 0
+        },
+        "index.db.prefix.admitted": {
+          "pages": 13984,
+          "resident_pages": 0
+        },
+        "diagnostic-overlay.db": {
+          "pages": 31729,
+          "resident_pages": 0
+        }
+      },
+      "http": {
+        "status": 200,
+        "sha256": "d1864e7130e8ee5d9bc0fcbdd0c7c9cc00055a563f7b6133e79b658aa57771b0",
+        "elapsed_ms": 548.2860660000028,
+        "error": null,
+        "pds_ack": ""
+      },
+      "body": {
+        "actors": [
+          {
+            "did": "did:plc:ltz3l5a42q5g767ydnplrlmy",
+            "handle": "dfphotography.bsky.social",
+            "displayName": "Donna Feledichuk Photographer \ud83c\udde8\ud83c\udde6",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:ltz3l5a42q5g767ydnplrlmy/bafkreigt7gckzddkte7v2xvwvrzthbdlici7323mslsk7uyryg5hyvytte",
+            "associated": {
+              "chat": {
+                "allowIncoming": "following"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-11-20T13:39:22.369Z"
+          },
+          {
+            "did": "did:plc:7ja636k74y4qum7ztpeyfny4",
+            "handle": "mrkirby.photography",
+            "displayName": "Andy Kirby | Photographer",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:7ja636k74y4qum7ztpeyfny4/bafkreiacmrfibgg6owy5j4ebhd7fsoxa6g5f3qp4ppknbp2wvlerhguvm4",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2023-11-02T22:53:04.373Z"
+          },
+          {
+            "did": "did:plc:lbbcxcg2wp4yxbun7uevbvjx",
+            "handle": "alexandrakacha.bsky.social",
+            "displayName": "alex kacha / photographer",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:lbbcxcg2wp4yxbun7uevbvjx/bafkreidclpkkh3grukhvk3rzpxrc2jo667z4zizpxhpxrsux2q4rttk63a",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-11-17T18:35:11.035Z"
+          },
+          {
+            "did": "did:plc:pcldfgr5bd32y2wafwadt2jr",
+            "handle": "handle.invalid",
+            "displayName": "Carlos Rivera | Chicago Photographer",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:pcldfgr5bd32y2wafwadt2jr/bafkreidqvhkibguy4r5dp2y52dosxa3odlx3kn3xbqg4jzoe6enf5ezily",
+            "associated": {
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-01-31T18:31:53.061Z"
+          },
+          {
+            "did": "did:plc:eh7mc3i4foqgo2a3r5ln5cl2",
+            "handle": "dimitrymakphoto.bsky.social",
+            "displayName": "Dimitry Mak | Photographer",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:eh7mc3i4foqgo2a3r5ln5cl2/bafkreibb3febnao5xvbytp4wxmx5mpdmpay53d6flokentemgi6w5pa5fa",
+            "associated": {
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [
+              {
+                "src": "did:plc:eh7mc3i4foqgo2a3r5ln5cl2",
+                "uri": "at://did:plc:eh7mc3i4foqgo2a3r5ln5cl2/app.bsky.actor.profile/self",
+                "cid": "bafyreihgfkbardnsrzcglvpzqj2u6jjix7y7scf36qve4cdxmgvxqd7eda",
+                "val": "!no-unauthenticated",
+                "cts": "2024-09-28T01:06:18.341Z"
+              }
+            ],
+            "createdAt": "2024-09-28T01:06:19.807Z"
+          },
+          {
+            "did": "did:plc:hxbd6izpioxbhlk26qnnzvwe",
+            "handle": "craigpindell.bsky.social",
+            "displayName": "Craig P - Film Photographer \ud83c\udf9e\ufe0f\ud83d\udcf7",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:hxbd6izpioxbhlk26qnnzvwe/bafkreifkiy53mc5noqtqrvbskvps62qpwnwh6g5fiv6t5vzd7btfkabl4y",
+            "associated": {
+              "chat": {
+                "allowIncoming": "following"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [
+              {
+                "src": "did:plc:hxbd6izpioxbhlk26qnnzvwe",
+                "uri": "at://did:plc:hxbd6izpioxbhlk26qnnzvwe/app.bsky.actor.profile/self",
+                "cid": "bafyreics6ytwnqdyvxon6ncty4qugkor3ejrwxiieycchfoldck34r243m",
+                "val": "!no-unauthenticated",
+                "cts": "1970-01-01T00:00:00.000Z"
+              }
+            ],
+            "createdAt": "2023-09-09T18:22:57.967Z"
+          },
+          {
+            "did": "did:plc:e6jmhyr6whp2iiupo3e4kbdm",
+            "handle": "tarasmithson.bsky.social",
+            "displayName": "TARA SMITHSON -Wildlife & Nature Photographer \ud83d\udcf8",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:e6jmhyr6whp2iiupo3e4kbdm/bafkreiflr4w7wax57nmyyxno7cuzx6yu4xakcxvpgsaj3yohcv4a7fswai",
+            "associated": {
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-11-13T03:17:00.486Z"
+          },
+          {
+            "did": "did:plc:yxstzrdwhusrhbc2667otw7j",
+            "handle": "thomassynnamon.bsky.social",
+            "displayName": "Thomas Synnamon Photographer, AI creator",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:yxstzrdwhusrhbc2667otw7j/bafkreieqdxeuxubwzmbhyt4jqwarjmafzpl77hhppdkeqkfrv5qkyvbpua",
+            "associated": {
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [
+              {
+                "src": "did:plc:yxstzrdwhusrhbc2667otw7j",
+                "uri": "at://did:plc:yxstzrdwhusrhbc2667otw7j/app.bsky.actor.profile/self",
+                "cid": "bafyreifditqgizlln3mxpoe7ukwmzwut465ztm6zb476mika4so5732rre",
+                "val": "!no-unauthenticated",
+                "cts": "2024-11-15T21:28:07.031Z"
+              }
+            ],
+            "createdAt": "2024-11-15T21:28:07.824Z"
+          },
+          {
+            "did": "did:plc:2yphpchippttlu5kjlfclrgz",
+            "handle": "pocket-ireland.com",
+            "displayName": "Smartphone Photographer",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:2yphpchippttlu5kjlfclrgz/bafkreidko57ej4ha5tmuaa7kgqryxlpjlkro737qx5nqmryfsfuj4ykj3a",
+            "associated": {
+              "lists": 2,
+              "feedgens": 4,
+              "starterPacks": 2,
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2025-02-12T12:18:11.244Z"
+          },
+          {
+            "did": "did:plc:73gki4pibn74wkc4fveo53d7",
+            "handle": "barriespence.bsky.social",
+            "displayName": "Barrie Spence - Photographer & Bad Influencer\u2122 \ud83c\udff4\udb40\udc67\udb40\udc62\udb40\udc73\udb40\udc63\udb40\udc74\udb40\udc7f",
+            "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:73gki4pibn74wkc4fveo53d7/bafkreie42mie3koj6x37tmysuyszfxcr4c4w3prwlv46f67lnfuo33muxm",
+            "associated": {
+              "chat": {
+                "allowIncoming": "all"
+              },
+              "activitySubscription": {
+                "allowSubscriptions": "followers"
+              }
+            },
+            "labels": [],
+            "createdAt": "2024-11-16T13:53:58.280Z"
+          }
+        ]
+      },
+      "before": {
+        "rchar": 2725619,
+        "wchar": 287,
+        "syscr": 63,
+        "syscw": 14,
+        "read_bytes": 88981504,
+        "write_bytes": 36864,
+        "cancelled_write_bytes": 0,
+        "cpu_ms": 100.0,
+        "VmHWM": 107335680,
+        "VmRSS": 107335680,
+        "RssAnon": 14356480,
+        "RssFile": 92979200
+      },
+      "after": {
+        "rchar": 3159795,
+        "wchar": 396,
+        "syscr": 116,
+        "syscw": 16,
+        "read_bytes": 102219776,
+        "write_bytes": 36864,
+        "cancelled_write_bytes": 0,
+        "cpu_ms": 130.0,
+        "VmHWM": 114044928,
+        "VmRSS": 114044928,
+        "RssAnon": 14536704,
+        "RssFile": 99508224
+      }
+    }
+  ],
+  "phase": "cold-diagnostics-complete",
+  "retired_overlays": [
+    {
+      "name": "diagnostic-overlay.db",
+      "free_before": 12069847040,
+      "free_after": 12199841792
+    },
+    {
+      "name": "diagnostic-overlay.db",
+      "free_before": 12069834752,
+      "free_after": 12199829504
+    },
+    {
+      "name": "diagnostic-overlay.db",
+      "free_before": 12069822464,
+      "free_after": 12199817216
+    }
+  ]
+}

@@ -962,3 +962,16 @@ configuration. The writer and attached immutable index retain their existing
 mapping limits. The temporary evaluator override is removed; fresh baseline and
 candidate ELFs exercise their real reader configuration. Full same-input cold,
 warm and concurrent-writer qualification is required before release.
+
+The selected one-line reader configuration builds and passes native tests:
+154 passes / six platform skips, 14/14 build steps. Its immutable production
+image is d4c3111ee8ad058cb08f7ef02ffeb0a2826e1c328b61c12c29a6e9d3e93ca0ed,
+source 62266a3; it is built, not deployed. Full paired qualification is running
+as 45b615c88376 on an independent inactive-volume fork, with native source
+62266a3 and qualification image ce3e939708e59c3f39ccf05fb463ef5b95c3dfec6f99edec7d5867421ef49d9e.
+
+The short phase diagnostics 263a043fc893 and 58bd21dbc764 both completed,
+reclaimed their payloads and retired their private Machines/volumes. Their
+small raw archives retain all six paired responses, phase logs and process I/O.
+No performance candidate has been deployed. Main-source publication and CI do
+not deploy this repository; live native and transport versions remain unchanged.

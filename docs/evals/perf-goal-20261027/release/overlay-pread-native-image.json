@@ -1,0 +1,15 @@
+{
+  "status": "built-not-deployed; full isolated qualification running",
+  "source_commit": "62266a35bf1e8a1c5096ceee74cb914fd7147a9f",
+  "image": "registry.fly.io/typeahead-search-refresh@sha256:d4c3111ee8ad058cb08f7ef02ffeb0a2826e1c328b61c12c29a6e9d3e93ca0ed",
+  "binaries": {
+    "typeahead-ingester": {
+      "bytes": 23412520,
+      "sha256": "4bc298f5292753c9339d5cdc07f17886488624daa087dfdca344510649d3a035"
+    },
+    "admit-prefix": {
+      "bytes": 3680432,
+      "sha256": "66f77175a674024b69ece241cad9c3d6438fbe5ebe260305b935b287e4a17ecb"
+    }
+  }
+}
