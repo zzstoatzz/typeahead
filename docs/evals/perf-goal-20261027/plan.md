@@ -432,3 +432,15 @@ mandatory; the production installer’s transfer command is unchanged. The pinne
 rclone supports --ignore-checksum, which skips its post-copy checksum pass:
 https://rclone.org/flags/ . The retry’s corpus/storage/guest/cleanup bounds remain
 the same as the first private Fly run.
+
+At 10:58 UTC, corrected run 20261027-4e76e7937657 started with image
+6f7bf0e782ae5bed6215cb1ea96c7884b98df2832f7c5dbde9ce6ef193b65327,
+private Machine 85379da4691148 and volume vol_vxmq97z6m565ewj4. Its
+independent manager is active and installation is downloading at 10:59 UTC.
+The baseline/candidate ELF hashes are unchanged from the first Fly pair; only
+the private Python probe/installer wrapper changed. A real offline rclone copy
+through that wrapper passed a SHA256 comparison. Production freshness is healthy
+on b1793081565-0228-px05 with 141 seconds lag, and final transport readback
+confirms e8c21659 still receives 100%. No native optimization is deployed.
+README reviewed again: its numbers remain targets and corpus qualification/
+rollout remain pending, accurately reflecting this state.

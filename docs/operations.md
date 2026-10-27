@@ -771,3 +771,9 @@ Fly run retired its payload/Machine/volume after a harness-only mapping failure
 following 1,008 passing reference contracts. [Retirement proof](evals/perf-goal-20261027/fly-trial/run-20261027-04adaf220602/external-retirement.json).
 A corrected read-only cache probe and cleanup supervisor are locally tested;
 a new private run is being prepared. Native optimization remains undeployed.
+
+At 10:59 UTC, corrected private run 20261027-4e76e7937657 is downloading
+into its new independent Machine/volume. The [launch record](evals/perf-goal-20261027/fly-trial/launch-20261027-4e76e7937657.json)
+identifies its image, supervisor and cleanup owner. Production remains healthy
+at 2 shared CPUs / 1 GiB; neither native optimization nor either transport
+candidate is serving. Qualification is ongoing.
