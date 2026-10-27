@@ -1,0 +1,6 @@
+test_real_http_failures_and_false_empty_answers (scripts.test_smoke_failures.DeprecatedParameterFailureTest.test_real_http_failures_and_false_empty_answers) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.533s
+
+OK

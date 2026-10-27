@@ -53,7 +53,9 @@ def fetch(url: str, timeout: int = 15, method: str = "GET") -> tuple[dict | None
             headers = {k.lower(): v for k, v in resp.headers.items()}
             return json.loads(resp.read()), headers
     except urllib.error.HTTPError as e:
-        return {"_http_error": e.code}, {}
+        status = e.code
+        e.close()
+        return {"_http_error": status}, {}
     except Exception as e:
         return {"_error": str(e)}, {}
 
@@ -224,7 +226,7 @@ def test_deprecated_param(base_url: str):
 
     actors_q = {a.get("did") for a in data_q.get("actors", [])}
     actors_term = {a.get("did") for a in data_term.get("actors", [])}
-    check("?term= returns same as ?q=", actors_q == actors_term, f"q={len(actors_q)}, term={len(actors_term)}")
+    check("?term= returns same as ?q=", bool(actors_q) and actors_q == actors_term, f"q={len(actors_q)}, term={len(actors_term)}")
 
 
 def test_limit_bounds(base_url: str):

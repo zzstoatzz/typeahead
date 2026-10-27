@@ -55,3 +55,12 @@ and complete HTTP/counter reconciliation. Health/freshness and deployment
 ownership are checked throughout. The one-hour supervisor restores the retained
 transport on failure, interruption or deadline. No Fly resources or traffic
 rates are changed. See `canary-run.py` and its terminal `canary/state.json`.
+
+The deprecated-parameter smoke check also rejects matching HTTP-200 empty
+answers for its known `nate` fixture. `python3 -W error::ResourceWarning -m
+unittest scripts.test_smoke_failures` verifies matching valid responses, both
+HTTP failures, one HTTP failure, one false empty and two false empties through
+a real loopback HTTP server. HTTPError responses are closed. All five cases
+passed, as did the 32 existing Python scope tests; the existing Python CI job
+now runs this failure-accounting regression. This changes the gate, not public
+API behavior or any running Worker version.

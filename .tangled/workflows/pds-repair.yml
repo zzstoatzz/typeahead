@@ -7,4 +7,7 @@ dependencies:
   - python3
 steps:
   - name: verify
-    command: python3 -m unittest discover -s scripts -p 'test_pds_*.py'
+    command: |
+      set -eu
+      python3 -m unittest discover -s scripts -p 'test_pds_*.py'
+      python3 -W error::ResourceWarning -m unittest scripts.test_smoke_failures
