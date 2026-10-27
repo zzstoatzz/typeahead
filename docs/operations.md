@@ -708,72 +708,34 @@ and public error masking remain separate open RCA work.
 
 ## Safe performance qualification — October 27, 2026; active goal
 
-The [qualification plan](evals/perf-goal-20261027/plan.md) fixes target resources,
-semantic gates, experiment budgets and publisher/rollback protections. The new
-evaluator uses threaded I/O, an explicit nonce and frozen-input ID. Its special
-identity endpoint is absent from normal production connections. Nonempty overlay
-data with missing/mismatched PDS readiness is rejected rather than declared ready.
+Status at 11:29 UTC: production remains healthy on two shared CPUs / 1 GiB,
+with native f670 and retained transport version e8c21659. No performance
+optimization is deployed. The [qualification plan](evals/perf-goal-20261027/plan.md)
+records targets, frozen-input correctness gates, independent trial storage,
+failed attempts, offered-load queueing and publisher/rollback protections.
+Percentile admission requires at least 1,000 search attempts. The evaluation-only
+identity endpoint is absent from normal production connections; PDS readiness
+cannot be asserted over a nonempty mismatched overlay.
 
-The client refuses unmarked or non-loopback targets, captures complete response
-hashes, records failed attempts and offered-load queueing, and requires at least
-1,000 search attempts before a percentile qualification can pass. Eight real HTTP /
-native-fixture tests passed. Fixture timings do not qualify corpus capacity.
-Production and the active automatic refresh were not changed.
+The [first cloud comparison](evals/perf-goal-20261027/plan.md#completed-first-offline-comparison--0840-utc)
+cut process writes by 30% and SQLite mutations by 50%, with 3% more CPU and
+mixed p99 around 16 ms in both arms. Its 5,000-actor overlay and cloud SSD do not
+qualify Fly capacity or live latency. All cloud payloads/processes were retired.
+The [first full Fly trial](evals/perf-goal-20261027/fly-trial/run-20261027-04adaf220602/external-retirement.json)
+retired after 1,008 reference contracts passed but a cache-probe mapping failed.
+The corrected [private Fly run](evals/perf-goal-20261027/fly-trial/launch-20261027-4e76e7937657.json)
+is active on separate storage. Interim warm p95/p99 are below 50/100 ms, but
+cold p99 is 1.6–2.7 seconds: overall qualification has not passed. The overlay
+sample remains smaller than an aged live overlay, and live freshness is separate.
 
-The first [isolated corpus comparison](evals/perf-goal-20261027/plan.md#completed-first-offline-comparison--0840-utc)
-completed at 08:40 UTC. With 5,000 captured actors and identical source batches,
-guarded writes cut measured process writes by 30% and SQLite mutations by 50%;
-CPU increased 3%, and mixed-search p99 stayed about 16 ms in both arms. This is
-cloud SSD evidence with a small overlay, not a Fly latency guarantee or deployed
-change. Payloads and evaluation processes were retired.
-
-The [transport overlap candidate](evals/perf-goal-20261027/plan.md#transport-overlap-candidate--local-tested-not-deployed)
-is separately local tested and undeployed. It preserves route validation before
-response selection and the one-second metadata TTL. Existing transport version
-`e8c21659-0b2c-4cec-beb4-86b4ecf91191` is the verified rollback target; no R2
-route, Fly Machine or native image was changed for these Worker fixture tests.
-
-At 09:34 UTC the transport candidate was uploaded as
-`4a3b1424-ae73-4e0f-bb58-e838126678f9` with zero traffic; the existing transport
-version still serves 100%. Public freshness remains healthy. See the
-[staged version readback](evals/perf-goal-20261027/transport-overlap/staged-version.json).
-No native optimization, Fly resource change or R2 routing promotion occurred.
-
-Private Fly qualification is prepared but has not started. It uses a new private
-2 shared CPU / 1 GiB Machine and independent volume in the inactive app, preserving
-the retained rollback Machine and slot pointer. The [resource and cleanup contract](evals/perf-goal-20261027/plan.md#private-fly-hardware-qualification--preparation)
-records its bounds; preparation is not evidence of a Fly performance pass.
-
-At 10:23 UTC October 27, a bounded 10% canary of staged transport version
-4a3b1424 began after local tests; the credentialed smoke gate passed. Its
-[canary record](evals/perf-goal-20261027/transport-overlap/canary-10pct.json)
-is authoritative for the final outcome and percentage. The independent private
-Fly trial is running installation; no native performance qualification is claimed.
-
-A local follow-up removes per-isolate first-call timing bias by logging a
-query-free transport phase event for every search. It is separate from the first
-10% canary and is not deployed; native span sampling remains unchanged.
-
-At 10:33 UTC, the first canary restored the retained e8c21659 transport version
-to 100% because it lacked overlap evidence. Correctness/freshness gates passed,
-but no live speedup is claimed. [Final readback](evals/perf-goal-20261027/transport-overlap/canary-final-readback.json).
-
-At 10:38 UTC October 27, the full-timing version 7504eb57 began a second
-bounded 10% canary with the retained version at 90%; its credentialed smoke
-gate passed. [Its final record](evals/perf-goal-20261027/transport-overlap/full-timing-canary/canary-10pct.json)
-controls the eventual outcome. Initial events include both serial and overlapped
-requests; this small cohort does not establish a public latency percentile.
-
-At 10:48 UTC, the second transport canary also restored e8c21659 to 100%
-for insufficient overlap evidence (18 events, two overlaps). Correctness and
-freshness passed; both candidates now receive zero traffic. The first private
-Fly run retired its payload/Machine/volume after a harness-only mapping failure
-following 1,008 passing reference contracts. [Retirement proof](evals/perf-goal-20261027/fly-trial/run-20261027-04adaf220602/external-retirement.json).
-A corrected read-only cache probe and cleanup supervisor are locally tested;
-a new private run is being prepared. Native optimization remains undeployed.
-
-At 10:59 UTC, corrected private run 20261027-4e76e7937657 is downloading
-into its new independent Machine/volume. The [launch record](evals/perf-goal-20261027/fly-trial/launch-20261027-4e76e7937657.json)
-identifies its image, supervisor and cleanup owner. Production remains healthy
-at 2 shared CPUs / 1 GiB; neither native optimization nor either transport
-candidate is serving. Qualification is ongoing.
+Two bounded 10% transport canaries passed credentialed smoke and freshness
+checks but restored e8c21659 to 100% for insufficient overlap evidence.
+[Final readback](evals/perf-goal-20261027/transport-overlap/full-timing-canary/final-readback.json)
+confirms both candidates receive zero traffic. The second captured 18 complete
+phase events, including two overlaps; it does not establish a live speedup.
+A local follow-up shares bounded advisory hints through the Cache API while
+preserving authoritative route validation, the one-second metadata TTL and exact
+origin/build comparison. It passed real cache-persistence/restart and HTTP
+failure tests; it remains undeployed. Admin/health routing, R2 promotion and
+native serving resources remain unchanged. The retained e8c21659 version is
+the rollback target for any further guarded rollout.

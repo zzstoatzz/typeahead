@@ -1,4 +1,5 @@
-import { allowedRoute, readRoute, speculativeRoute } from "./search-route";
+import { allowedRoute, readRoute, routeHintRecord, sharedHintsAllowed, speculativeRoute } from "./search-route";
+import { HINT_CACHE, readSharedHint, rememberSharedHint, forgetSharedHint } from "./shared-route-hint";
 import { validatedSearch } from "./validated-search";
 
 const origins = new Set([
@@ -8,7 +9,7 @@ const origins = new Set([
 ]);
 
 export default {
-  async fetch(request: Request, env: SearchTransportEnv): Promise<Response> {
+  async fetch(request: Request, env: SearchTransportEnv, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (origins.has(url.origin)) {
       if (request.method !== "GET" || url.pathname !== "/search") return new Response("Not found", { status: 404 });
@@ -18,12 +19,21 @@ export default {
       return new Response("Not found", { status: 404 });
     }
     if (request.method === "GET" && url.pathname === "/search") {
-      return validatedSearch(readRoute(env.SEARCH_CONTROL, true), speculativeRoute(), (route, signal) => {
+      const current = readRoute(env.SEARCH_CONTROL, true);
+      const memoryHint = speculativeRoute();
+      const cache = Promise.resolve().then(() => caches.open(HINT_CACHE)).catch(() => undefined);
+      const hint = memoryHint ?? (sharedHintsAllowed() ? cache.then(value => value ? readSharedHint(value) : undefined) : undefined);
+      ctx.waitUntil(Promise.allSettled([
+        Promise.resolve(hint),
+        current.then(() => cache.then(value => value ? rememberSharedHint(value, routeHintRecord()) : undefined),
+          () => cache.then(value => value ? forgetSharedHint(value) : undefined)),
+      ]).then(() => undefined));
+      return validatedSearch(current, hint, (route, signal) => {
         const forwarded = new Request(new URL(url.pathname + url.search, route.origin), request);
         forwarded.headers.delete("Host");
         forwarded.headers.delete("X-Typeahead-Routed-Health");
         return fetch(forwarded, { signal, redirect: "manual" });
-      });
+      }, memoryHint ? "memory" : "shared");
     }
     let route;
     try {

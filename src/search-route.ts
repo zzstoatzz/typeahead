@@ -2,7 +2,7 @@ import * as z from "zod/mini";
 
 export const ROUTE_KEY = "control/search-routing.json";
 
-const routeSchema = z.pipe(z.object({
+export const routeSchema = z.pipe(z.object({
   version: z.literal(1),
   current: z.object({
     origin: z.enum([
@@ -24,6 +24,18 @@ export function allowedRoute(request: Request) {
 }
 
 let cachedRoute: { route: ReturnType<typeof parseRoute>; expiresAt: number; hintExpiresAt: number } | undefined;
+let sharedHintsEnabled = true;
+
+export function sharedHintsAllowed() {
+  return sharedHintsEnabled;
+}
+
+export function routeHintRecord() {
+  if (cachedRoute && Date.now() < cachedRoute.hintExpiresAt) {
+    return { route: { version: 1 as const, current: cachedRoute.route }, expires_at: cachedRoute.hintExpiresAt };
+  }
+  return undefined;
+}
 
 export function speculativeRoute() {
   if (cachedRoute && Date.now() < cachedRoute.hintExpiresAt) return cachedRoute.route;
@@ -39,9 +51,13 @@ export async function readRoute(bucket: R2Bucket, cache: boolean) {
     const route = parseRoute(await object.json());
     const validatedAt = Date.now();
     cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
+    sharedHintsEnabled = true;
     return route;
   } catch (error) {
-    if (cachedRoute && cachedRoute === before) cachedRoute.hintExpiresAt = 0;
+    if (cachedRoute === before) {
+      if (cachedRoute) cachedRoute.hintExpiresAt = 0;
+      sharedHintsEnabled = false;
+    }
     throw error;
   }
 }

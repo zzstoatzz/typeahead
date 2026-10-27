@@ -38,7 +38,10 @@ may be cached for one second; admin writes and diagnostic route reads bypass it.
 A local, undeployed [transport candidate](../evals/perf-goal-20261027/plan.md#transport-overlap-candidate--local-tested-not-deployed)
 overlaps read-only search with route validation while holding the response until
 selection is confirmed. It retains the one-second metadata TTL and may cancel
-one extra GET when a route changes. Admin and health routing stay on their
+one extra GET when a route changes. Its local follow-up shares advisory hints
+through a named Cache API entry for at most 60 seconds; those hints never
+authorize a response. Slow, corrupt or unavailable hint storage falls back to
+the validated route without delaying it. Admin and health routing stay on their
 existing paths; the R2 conditional promotion contract is unchanged.
 
 Before routing, require full artifact checksum/structural admission, current build

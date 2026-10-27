@@ -114,3 +114,43 @@ test("a real refused origin connection becomes explicit backend unavailability",
     expect(await response.text()).toBe(JSON.stringify({ error: "SearchBackendUnavailable" }));
   } finally { f.server.stop(true); }
 });
+
+test("an asynchronous hint overlaps real HTTP origin work without bypassing validation", async () => {
+  const f = fixture({ routeDelay: 120, originDelay: 5 });
+  try {
+    let returned = false;
+    const hint = fetch(new URL('/hint', f.server.url)).then(() => first);
+    const response = validatedSearch(f.current(), hint, f.origin, 'shared').then(value => { returned = true; return value; });
+    await Bun.sleep(40);
+    expect(f.arrivals).toContain('/' + first.build_id);
+    expect(returned).toBe(false);
+    expect((await response).status).toBe(200);
+  } finally { f.server.stop(true); }
+});
+
+test("a slow asynchronous hint cannot hold up an already validated route", async () => {
+  let release = () => {};
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  let hintFinished = false;
+  const server = Bun.serve({ hostname: '127.0.0.1', port: 0, async fetch(request) {
+    if (new URL(request.url).pathname === '/hint') {
+      await gate;
+      hintFinished = true;
+      return Response.json({ version: 1, current: first });
+    }
+    return Response.json({ actors: [{ did: 'fixture', handle: 'fixture.test' }] });
+  } });
+  const hint = fetch(new URL('/hint', server.url)).then(async response => parseRoute(await response.json()));
+  try {
+    const response = await Promise.race([
+      validatedSearch(Promise.resolve(first), hint, (_route, signal) => fetch(new URL('/origin', server.url), { signal }), 'shared'),
+      Bun.sleep(1000).then(() => { throw new Error('hint blocked validated route'); }),
+    ]);
+    expect(await response.text()).toBe(JSON.stringify({ actors: [{ did: 'fixture', handle: 'fixture.test' }] }));
+    expect(hintFinished).toBe(false);
+  } finally {
+    release();
+    await hint;
+    server.stop(true);
+  }
+});

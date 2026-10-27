@@ -1,0 +1,7 @@
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"serial","route_ms":3,"origin_headers_ms":14,"total_headers_ms":17,"hint_source":"none","hint_wait_ms":3,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":2,"origin_headers_ms":4,"total_headers_ms":6,"hint_source":"shared","hint_wait_ms":2,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":12,"origin_headers_ms":2,"total_headers_ms":14,"hint_source":"shared","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"serial","route_ms":3,"origin_headers_ms":0,"total_headers_ms":3,"hint_source":"none","hint_wait_ms":3,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"serial","route_ms":0,"origin_headers_ms":0,"total_headers_ms":0,"hint_source":"none","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"serial","route_ms":1,"origin_headers_ms":3,"total_headers_ms":4,"hint_source":"none","hint_wait_ms":0,"sample_rate":1}
+PASS: real persistent Cache API across workerd restart; bounded/expired/malformed hints, exact routing validation, PDS acknowledgment, cancellation and R2 failure/recovery

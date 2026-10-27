@@ -444,3 +444,40 @@ on b1793081565-0228-px05 with 141 seconds lag, and final transport readback
 confirms e8c21659 still receives 100%. No native optimization is deployed.
 README reviewed again: its numbers remain targets and corpus qualification/
 rollout remain pending, accurately reflecting this state.
+
+## Shared advisory route hints — local implementation in qualification
+
+The two canaries did not establish enough reuse of an isolate’s 60-second route
+hint. The next local candidate stores that same bounded advisory record in a
+named Cache API entry so a new isolate can reuse it. It adds no infrastructure
+binding or VM. Authoritative route reads, their one-second TTL and origin/build
+comparison remain unchanged; cached hints never authorize a response. Metadata
+and hint lookup race, so a slow/missing/corrupt hint cannot delay an already
+validated route. Records expire within 60 seconds of R2 validation and cached
+JSON is bounded to 16 KiB. Validation failure suppresses local hints and schedules
+cache eviction until a successful authoritative read. Complete phase events add
+hint_source and hint_wait_ms. Admin/health/diagnostic paths remain unchanged.
+
+Affected docs are README’s candidate overview, this plan, the operations status
+and the automatic-refresh runbook’s transport mechanism. This implementation is
+not deployed; real Cache API persistence/restart and HTTP failure tests, followed
+by guarded live qualification, are still required. The isolated Fly trial continues
+independently and is not evidence for Worker latency.
+
+The shared-hint implementation passed 104 Bun tests, type checking, targeted
+lint and both real-workerd fixture suites. The new suite restarts workerd over
+the same persisted Cache API/R2 stores, proves a cold isolate sees the hint,
+then changes the authoritative route and rejects the old hinted response. It
+checks oversized/malformed/expired/future/unmanaged entries, held HTTP validation,
+PDS acknowledgment and R2 failure/recovery. Async-hint tests also prove a slow
+hint cannot delay a validated route. No fixture reaches an external origin.
+
+At 11:18 UTC, the Fly baseline cold phase had zero incorrect responses but
+p99 1,611 ms, failing the explicit 500 ms cold gate. Its warm and mixed p99
+were about 23–24 ms. The candidate warm phase also passed around 24 ms p99;
+its cold p99 was 2,705 ms. These are interim results, not full admission.
+The private snapshot directory is 31,178,752 bytes and its block-hash sidecar
+about 57 MB. Both are lazily mapped. Prefaulting only these metadata mappings
+before readiness is the next native hypothesis; it must retain block checks
+and leave actor/prefix payload pages cold. No startup-time or memory guarantee
+is inferred before a measured isolated trial.
