@@ -289,3 +289,11 @@ Any eventual gradual rollout must preserve this version, run the smoke gate,
 watch actual failure events rather than HTTP200 alone, and stop or roll back on
 contract/freshness regressions. Do not claim the public mean target from these
 fixtures or the earlier native/cloud measurements.
+
+At 09:34 UTC, source ecd1904 was uploaded as transport version
+`4a3b1424-ae73-4e0f-bb58-e838126678f9` at **zero traffic**. Readback confirms
+the existing e8c21659 version still serves 100% under the unchanged deployment.
+Public freshness is healthy on build b1793081565-0228-px05 with 275 seconds lag.
+transport-overlap/staged-version.json records this state. The native write
+optimization remains undeployed. Fly cold/mixed qualification and demonstrated
+public-latency improvement remain necessary; the goal is active, not achieved.

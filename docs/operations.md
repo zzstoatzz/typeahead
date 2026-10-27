@@ -732,3 +732,9 @@ is separately local tested and undeployed. It preserves route validation before
 response selection and the one-second metadata TTL. Existing transport version
 `e8c21659-0b2c-4cec-beb4-86b4ecf91191` is the verified rollback target; no R2
 route, Fly Machine or native image was changed for these Worker fixture tests.
+
+At 09:34 UTC the transport candidate was uploaded as
+`4a3b1424-ae73-4e0f-bb58-e838126678f9` with zero traffic; the existing transport
+version still serves 100%. Public freshness remains healthy. See the
+[staged version readback](evals/perf-goal-20261027/transport-overlap/staged-version.json).
+No native optimization, Fly resource change or R2 routing promotion occurred.
