@@ -510,7 +510,8 @@ test "actor read ahead preserves opaque values and rejects corrupted payloads" {
     try std.testing.expectEqualSlices(u8, &.{0}, (try map.findTagged(arena.allocator(), .actor, "same")).?);
     try std.testing.expectEqual(@as(usize, 0), (try map.findTagged(arena.allocator(), .actor, "東京")).?.len);
     try std.testing.expect((try map.findTagged(arena.allocator(), .actor, "missing")) == null);
-    const offset = map.page_data + 100;
+    const actor_page = (try map.pageIndex("\x01same", null)).?;
+    const offset = (try map.extent(actor_page)).start + 100;
     const changed = [_]u8{fixture[offset] ^ 1};
     try std.testing.expectEqual(@as(isize, 1), c.pwrite(writer, &changed, 1, @intCast(offset)));
     try map.prefetchActors(&.{"same"}, null);
