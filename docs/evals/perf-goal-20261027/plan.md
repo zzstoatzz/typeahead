@@ -892,3 +892,17 @@ production source 016552a, with identical neutral baseline instrumentation.
 Native tests pass (14/14 build steps), including an actual admitted-file
 corruption test after read-ahead. Linux's documented WILLNEED behavior is
 nonblocking, advisory prefetch ([man-pages](https://man7.org/linux/man-pages/man2/posix_fadvise.2.html)); it provides no latency guarantee.
+
+The actor read-ahead experiment is rejected: on the fresh paired run its cold
+p99 is 1,463.50 ms versus baseline 4,056.40 ms, still above the unchanged 500 ms
+gate, and its median request cost increased. The read-ahead implementation and
+its dependent fixture were removed from the active source; commits and immutable
+image preserve the experiment. Release image c030acd is explicitly not eligible
+for deployment. No production change was made.
+
+The next private fork is a short cold diagnostic using the existing /debug/search
+phase report for three fixed human queries, each after independent file-cache
+reset and process startup. It uses the metadata-only candidate and the recovered
+actual overlay, then retires its payload and volume. Owner, root and budget remain
+the same: this goal, /data/refresh on an independent fork, 20 GiB / 90 minutes.
+No further optimization will be chosen before those phase costs are read.

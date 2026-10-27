@@ -5,11 +5,33 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
+import urllib.parse
+import qualify
 import sqlite3
 import tarfile
 import time
 
 from fly_trial import FlyTrial
+
+
+def diagnose(trial):
+    trial.report['kind'] = 'private-fly-cold-phase-diagnostic'
+    trial.report['diagnostics'] = []
+    for index, query in enumerate(['nate', 'a', 'photographer']):
+        overlay = trial.payload / 'diagnostic-overlay.db'
+        shutil.copyfile(trial.payload / 'frozen-overlay.db', overlay)
+        receipt = trial.evict_private(overlay)
+        trial.save('cold-diagnostic-' + str(index))
+        child, base, _, _ = trial.start_server('candidate', overlay, '0' * 64, trial.payload / 'never-start')
+        before = trial.metrics(child)
+        result, body = qualify.request(base, '/debug/search?q=' + urllib.parse.quote(query) + '&limit=10', 10)
+        trial.report['diagnostics'].append({'query': query, 'pre_start_residency': receipt,
+            'http': result, 'body': json.loads(body), 'before': before, 'after': trial.metrics(child)})
+        trial.stop(child)
+        (trial.evidence / 'candidate-server.log').rename(trial.evidence / ('diagnostic-' + str(index) + '-server.log'))
+        trial.retire_overlay(overlay)
+    trial.save('cold-diagnostics-complete')
 
 
 def main():
@@ -34,7 +56,8 @@ def main():
         trial.args.actor_count = len(rows)
         (payload / 'feed.json').write_text(json.dumps([{'did': did, 'blob_hex': blob.hex(), 'updated_at': timestamp} for did, blob, timestamp in rows], separators=(',', ':')))
         trial.report.update(capture_method='actual private fork overlay; deterministic first 5000 non-tombstone source-zero actors', limitations=['current actual state only; no aged-capacity claim', 'no live Turso or freshness qualification'])
-        trial.measure(manifest)
+        if os.environ.get("TYPEAHEAD_EVAL_DIAG_ONLY") == "1": diagnose(trial)
+        else: trial.measure(manifest)
     except BaseException as exc:
         (evidence / 'failure.json').write_text(json.dumps({'kind': type(exc).__name__, 'message': str(exc)[:1024]}) + '\n')
     finally:

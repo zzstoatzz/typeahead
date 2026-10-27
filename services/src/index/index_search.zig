@@ -470,8 +470,7 @@ fn hydrate(arena: Allocator, lease: LocalDb.ReadLease, dids: []const merge.Score
     {
         var need: std.ArrayListUnmanaged([]const u8) = .empty;
         for (did_list) |d| if (!ov_map.contains(d)) try need.append(arena, d);
-        if (lease.prefix_map) |map| {
-            try map.prefetchActors(need.items, lease.prefix_cache);
+        if (lease.prefix_map != null) {
             for (need.items) |did| {
                 if (try lease.baseActor(arena, did)) |blob| try base_map.put(arena, did, blob);
             }
