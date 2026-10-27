@@ -68,3 +68,33 @@ checks; no ranking or index format changed. The live workerd test also verifies
 503 classification against the deliberately unavailable empty managed slot.
 Cold requests can still exceed the transport deadline during overlay catch-up;
 this repair does not establish a new latency guarantee.
+
+## 20:00 Chicago freshness alert
+
+A later alert on October 26 was a transient serving timeout. Cloudflare recorded
+`/health` returning 503 after 3,211 ms at 01:00:56.536 UTC on October 27
+(20:00:56 Chicago, October 26), request `768aa3559b6697a4a034ce084dd4eae5`.
+The next recorded health request returned 200 at 01:01:02.956 UTC after 2,672 ms;
+the following one took 137 ms. The cron logged `freshness_stale` at 01:00:59.750
+and its Discord webhook returned 204 at 01:01:00.007.
+
+The overlay sync ran from 01:00:44.387 through 01:01:10.676 with status OK:
+461 updates, 107 clearances and 44 deletions. Search logs in that interval include
+an 8,393 ms query. Native health handlers that reached execution remained fast
+(about 0.4–12 ms). The accept loop's inline fallback can execute slow search on
+the accepting thread; queue starvation is consistent with these observations,
+but there is no accept-to-handler timing span proving that specific mechanism.
+There was no restart or new TLS failure in the inspected interval.
+
+This alert does not establish stale data. Missing health/index/probe responses
+leave lag and snapshot unknown; the notifier currently prints an unavailable probe
+as `FAILING`. It checks state transitions hourly, so recovery can remain unannounced
+until the next cron even when the public endpoint is already healthy. Serving
+latency, health-request isolation and notification semantics remain follow-up
+work. No code, thresholds, schedule or deployment changed during this investigation.
+The README's deployment description therefore remains unchanged.
+
+Evidence: Cloudflare Workers Observability query `73tzjqcet2ahf1vx5cxo8l4o`
+(transport, 00:59:40–01:02:00 UTC) and `jd25lb006rwqcgrggg0ma94u` (public
+Worker); native Logfire `http.health`, `search` and `sync.incremental` records in
+00:58:30–01:02:10 UTC. No extra production benchmarks were run.
