@@ -84,7 +84,7 @@ pub fn run(local: *LocalDb, allocator: Allocator, raw_query: []const u8, limit: 
     const t0 = milliTimestamp();
     defer {
         const elapsed = milliTimestamp() - t0;
-        if (elapsed >= slow_search_ms) log.warn("slow search: {d} ms (q_len={d} keys={d} merged={d})", .{ elapsed, norm.len, trace.keys.len, trace.merged });
+        if (elapsed >= slow_search_ms) log.warn("slow search: {d} ms (q_len={d} keys={d} merged={d} prefix_ms={d} merge_ms={d} hydrate_ms={d})", .{ elapsed, norm.len, trace.keys.len, trace.merged, trace.prefix_ms, trace.merge_ms, trace.hydrate_ms });
     }
     const candidates = try executeScoped(arena, lease, norm, &trace, true, pds);
     span.setAttribute("prefix_ms", trace.prefix_ms);

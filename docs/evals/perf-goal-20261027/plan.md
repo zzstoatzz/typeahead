@@ -900,8 +900,9 @@ its dependent fixture were removed from the active source; commits and immutable
 image preserve the experiment. Release image c030acd is explicitly not eligible
 for deployment. No production change was made.
 
-The next private fork is a short cold diagnostic using the existing /debug/search
-phase report for three fixed human queries, each after independent file-cache
+The next private fork is a short cold diagnostic exposing the existing prefix,
+merge and hydration counters in the query-free slow-search log for three fixed
+human queries, each after independent file-cache
 reset and process startup. It uses the metadata-only candidate and the recovered
 actual overlay, then retires its payload and volume. Owner, root and budget remain
 the same: this goal, /data/refresh on an independent fork, 20 GiB / 90 minutes.

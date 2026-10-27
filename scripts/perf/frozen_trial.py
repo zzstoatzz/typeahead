@@ -25,7 +25,7 @@ def diagnose(trial):
         trial.save('cold-diagnostic-' + str(index))
         child, base, _, _ = trial.start_server('candidate', overlay, '0' * 64, trial.payload / 'never-start')
         before = trial.metrics(child)
-        result, body = qualify.request(base, '/debug/search?q=' + urllib.parse.quote(query) + '&limit=10', 10)
+        result, body = qualify.request(base, '/search?q=' + urllib.parse.quote(query) + '&limit=10', 10)
         trial.report['diagnostics'].append({'query': query, 'pre_start_residency': receipt,
             'http': result, 'body': json.loads(body), 'before': before, 'after': trial.metrics(child)})
         trial.stop(child)
