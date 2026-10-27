@@ -15,9 +15,12 @@ class Fork(fm.Manager):
         self.started=time.monotonic(); self.machine=None; self.volume=None; self.protected=None
         self.report={'run_id':run,'image':image,'goal_qualified':False,'events':[],'source_volume':SOURCE_VOLUME,'source_machine':fm.PROTECTED,'disk_budget_bytes':20*1024**3,'deadline_seconds':5100}
         self.api_origin='https://api.machines.dev'; self.test=False
-        self.token=subprocess.check_output(['fly','auth','token','--quiet'],text=True).strip()
+        self.token_name='typeahead-perf-fork-'+(sys.argv[2] if len(sys.argv)>2 else run)
+        result=json.loads(subprocess.check_output(['fly','tokens','create','deploy','-a',fm.APP,'--expiry','90m','--name',self.token_name,'--json'],text=True))
+        self.token=result.get('token') if isinstance(result,dict) else result
+        if not isinstance(self.token,str) or not self.token: raise RuntimeError('invalid scoped credential')
     def read(self,method,url,body=None,authorized=True):
-        code="let s='';for await(const b of process.stdin)s+=b;const p=JSON.parse(s);const r=await fetch(p.url,{method:p.method,headers:{'Content-Type':'application/json',...(p.token?{Authorization:'Bearer '+p.token}:{})},...(p.body===null?{}:{body:JSON.stringify(p.body)}),signal:AbortSignal.timeout(25000)});const raw=await r.text();console.log(JSON.stringify({status:r.status,raw}));"
+        code="let s='';for await(const b of process.stdin)s+=b;const p=JSON.parse(s);const r=await fetch(p.url,{method:p.method,headers:{'User-Agent':'typeahead-perf/1.0','Content-Type':'application/json',...(p.token?{Authorization:'Bearer '+p.token}:{})},...(p.body===null?{}:{body:JSON.stringify(p.body)}),signal:AbortSignal.timeout(25000)});const raw=await r.text();console.log(JSON.stringify({status:r.status,raw}));"
         result=subprocess.run(['node','--input-type=module','-e',code],input=json.dumps({'url':url,'method':method,'body':body,'token':self.token if authorized else None}),text=True,capture_output=True,timeout=30)
         if result.returncode: raise RuntimeError('control request transport failed')
         value=json.loads(result.stdout)
@@ -39,7 +42,7 @@ class Fork(fm.Manager):
         self.args.run=run;self.args.image=self.report['image'];self.protected=self.report['protected']
         self.volume=self.api('GET','volumes/'+self.report['volume_id'])
         self.machine=self.api('GET','machines/'+self.report['machine_id'])
-        self.started=time.monotonic()-600
+        self.started=time.monotonic()-900
         self.guard();self.owned()
         try:
             while True:
@@ -72,4 +75,10 @@ def interrupted(*_):raise KeyboardInterrupt()
 signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupted)
 if __name__=='__main__':
     manager=Fork(sys.argv[1])
-    manager.resume(sys.argv[2]) if len(sys.argv)>2 else manager.run()
+    try:
+        manager.resume(sys.argv[2]) if len(sys.argv)>2 else manager.run()
+    finally:
+        rows=subprocess.check_output(['fly','tokens','list','-a',fm.APP,'--scope','app'],text=True).splitlines()
+        matches=[row.split()[0] for row in rows if manager.token_name in row.split()]
+        if len(matches)==1: subprocess.run(['fly','tokens','revoke',matches[0]],check=True,stdout=subprocess.DEVNULL)
+        elif len(matches)>1: raise RuntimeError('ambiguous scoped token retirement')

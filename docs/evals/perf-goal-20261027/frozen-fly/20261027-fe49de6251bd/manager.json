@@ -7,7 +7,7 @@
   "source_machine": "8e3d79b70dd748",
   "disk_budget_bytes": 21474836480,
   "deadline_seconds": 5100,
-  "phase": "private-trial-running",
+  "phase": "retired-private-resources",
   "protected": {
     "id": "8e3d79b70dd748",
     "instance_id": "01M5YZ6S1N8KM6WNHXX213J7E7",
@@ -62,8 +62,16 @@
   "machine_id": "894505b6d54718",
   "machine_state": "created",
   "status": {
-    "phase": "starting",
+    "phase": "results-ready",
+    "bytes": 900066,
+    "sha256": "d7a05989207a9ebffece4cd393bc8079b6c662ae5be87d737f9e4b20dbba06db",
+    "run_id": "20261027-fe49de6251bd",
     "installation": "installed",
-    "measurement": "reference-capture"
-  }
+    "measurement": "completed-offline-profile"
+  },
+  "error": "HTTPError: HTTP Error 403: Forbidden",
+  "evidence_bytes": 900066,
+  "evidence_sha256": "d7a05989207a9ebffece4cd393bc8079b6c662ae5be87d737f9e4b20dbba06db",
+  "volume_retirement_state": "pending_destroy",
+  "retired": true
 }

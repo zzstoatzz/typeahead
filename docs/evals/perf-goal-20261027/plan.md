@@ -862,3 +862,33 @@ checksum and response rule, and falls back to ordinary reads if advice fails.
 It requires a fresh isolated comparison; it is not deployed or qualified.
 The current private run will complete and retire before a new independent
 inactive-volume fork is created under the same 20 GiB / 90-minute budget.
+
+### Completed actual-state metadata-warming trial
+
+Run fe49de6251bd completed on the independent Fly fork at two shared CPUs /
+1 GiB, with 10,395 actor-overlay rows and 419,881 prefix-overlay rows.
+Candidate: 5,040/5,040 exact status/body/PDS outcomes; warm p95/p99 19.83/23.03 ms;
+mixed p95/p99 20.80/23.62 ms. Both arms applied 40 actual writer batches.
+Mixed physical writes were 2,581,725,184 baseline versus 1,777,827,840 candidate
+bytes (31.1% lower). SQLite changes halved (848,196 to 424,192), but CPU increased
+46.67 to 52.51 seconds (12.5%); this is an I/O reduction, not an across-the-board
+CPU or warm-latency improvement. Cold p99 failed as recorded above.
+
+The archive SHA256 is d7a05989207a9ebffece4cd393bc8079b6c662ae5be87d737f9e4b20dbba06db
+(900,066 bytes), retained under frozen-fly/20261027-fe49de6251bd/. Input hashes,
+all attempted requests, failures and server logs are preserved in that archive.
+The payload was removed; filesystem free space increased 7,473,881,088 bytes.
+Private Machine deletion and unattached pending_destroy volume state are
+confirmed; its app-scoped supervisor credential was revoked. Two earlier local
+supervisor interruptions reused Fly's explicitly short-lived CLI token. Guest
+measurements continued; resumed ownership/route checks matched. The supervisor
+now uses an app-scoped 90-minute credential held only in process memory and
+revokes it on completion. No production HTTP failures were hidden by those
+control errors.
+
+The read-ahead follow-up image is
+registry.fly.io/typeahead-startup-20261024@sha256:3d4c54cf7dda6243f8e5d3b46a643dfa959cf05041987e4fe7d55a013722b09a,
+production source 016552a, with identical neutral baseline instrumentation.
+Native tests pass (14/14 build steps), including an actual admitted-file
+corruption test after read-ahead. Linux's documented WILLNEED behavior is
+nonblocking, advisory prefetch ([man-pages](https://man7.org/linux/man-pages/man2/posix_fadvise.2.html)); it provides no latency guarantee.
