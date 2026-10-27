@@ -1,0 +1,24 @@
+{
+  "tag": "registry.fly.io/typeahead-startup-20261024:perf-current-f177d1a3",
+  "digests": [
+    "registry.fly.io/typeahead-startup-20261024@sha256:ce00b57d0d0e6c1d1eca0dbcdc7b5790ba6f5d0de053a971482905d385f8dfea"
+  ],
+  "base": "registry.fly.io/typeahead-startup-20261024@sha256:9e92c2ee3f68d2f88aa9cd64191101ea64af47e2a335d87f154d19adaac81da5",
+  "candidate_commit": "9b65d77c0b506fb62666196dd8c4c9295c8af556",
+  "harness_commit": "f177d1a3371f5191a98405ff43ffe094b65976a0",
+  "source_sha256": {
+    "cloud_trial.py": "f1358bbe49262f3c358600a79a0e69e239e735109bd37c2d94ae1f6d39190ca8",
+    "fly_trial.py": "dc0e247356e4023a685e229186b19ce9f0ff2af72e74010fa5e36f9613c8cadc"
+  },
+  "captured_actor_target": 50000,
+  "source_build": "b1793081565-0228-px05",
+  "source_pointer": "control/slots/typeahead-search-refresh/latest.json",
+  "preparation_timeout_s": 1800,
+  "outer_unit_budget_s": 5400,
+  "native_pair": "../fly-prefault-aged-trial/build-pair.json",
+  "run_id": "20261027-2caf472a9943",
+  "unit": "typeahead-perf-fly-20261027-2caf472a9943",
+  "remote_evidence": "/var/lib/typeahead-perf-fly/20261027-2caf472a9943",
+  "token_expiry": "2h from launch",
+  "manager_sha256": "9e99d752d06c985371b1ecd42fd887ed11abd08e8a35f4c51bdf96250e481581"
+}

@@ -708,13 +708,14 @@ and public error masking remain separate open RCA work.
 
 ## Safe performance qualification — October 27, 2026; active goal
 
-Status at 14:40 UTC: production remains on native f670 and retained transport
-e8c21659 at two shared CPUs / 1 GiB. Full-traffic transport observations rolled
+Status at 15:00 UTC: production remains on native f670 at two shared CPUs /
+1 GiB. Transport 40a014e4 is in a bounded provider-metrics qualification, with
+e8c21659 retained for rollback. Full-traffic transport observations rolled
 back after observer failures; no public latency gain is qualified. The user reset
 the original performance goal and observer development is parked. Native work
 focuses on the existing write guards and bounded metadata warming. A larger
 writer-cache experiment was rejected after journal writes stayed unchanged.
-Current-capacity qualification is prepared against the latest publication with
+Current-capacity qualification is running against the latest publication with
 50,000 overlay actors, above the 30,606 currently reported live. It does not
 establish 200,000-actor capacity. The [qualification plan](evals/perf-goal-20261027/plan.md)
 records targets, frozen-input correctness gates, independent trial storage,

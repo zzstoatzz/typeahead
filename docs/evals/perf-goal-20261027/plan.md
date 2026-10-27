@@ -756,3 +756,34 @@ hashes remain the 9b65d77c pair: no cache-tuning experiment is included. The pri
 200,000-actor retry also stopped during unmeasured preparation; its failure,
 cleanup and independent retirement receipts are retained. No latency failure was
 converted into a pass. The README targets remain accurate and unshipped.
+
+
+### Focused qualification in progress — 15:00 UTC
+
+Current-capacity run 20261027-2caf472a9943 is live under its independent manager
+(MainPID 2454248 at the check), on private Machine 802e5da6391d78 and volume
+vol_vz80lxy65o2p0wjv. The immutable image ce00b57d retains the original native
+binary pair and reads the current publication. It is admitting the full snapshot;
+no native latency phase has run yet. Its launch receipt and image manifest are
+under fly-current-capacity/ and fly-trial/.
+
+The existing transport version 40a014e4 is in a bounded qualification using
+provider-side invocation/error analytics, public freshness, exact-handle probes,
+credentialed smoke, deployment ownership and settled application counters.
+It does not depend on continuous live-log delivery. All gates restore e8c21659
+on rejection. The predetermined efficacy gate is mean <=185 ms with >=100
+natural uncached searches and HTTP answer counts fully reconciled against
+latency/cache counters. This is a milestone toward the original ~169 ms target,
+not a change to the goal's native/cold/correctness requirements. The observation
+runs thirty minutes plus three minutes for provider aggregation; there is no
+production benchmark load.
+
+The immediately preceding retained-version window (14:30–14:45 UTC) had 96
+uncached searches averaging 227.01 ms, plus one cache hit. All 97 HTTP-200
+answers reconcile. The candidate's first completed bucket (14:50–14:55 UTC)
+had 27 uncached searches averaging 169.96 ms and 27 HTTP-200 answers, also fully
+reconciled. These cohorts are temporal comparisons on the same deployment
+configuration, not a randomized causal estimate. The candidate sample is too
+small to qualify. Runtime errors remain zero in the provider readbacks so far;
+client disconnects remain explicitly recorded separately. Full-window and
+native qualification remain pending.
