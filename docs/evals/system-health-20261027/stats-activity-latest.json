@@ -1,0 +1,31 @@
+{
+  "fetched_at": "2026-10-27T06:38:06Z",
+  "activity": {
+    "24h": {
+      "searches": 12340,
+      "cacheHits": 370,
+      "totalMs": 3240804,
+      "cacheMs": 2545
+    },
+    "7d": {
+      "searches": 100687,
+      "cacheHits": 3335,
+      "totalMs": 16997049,
+      "cacheMs": 26079
+    },
+    "30d": {
+      "searches": 370084,
+      "cacheHits": 12678,
+      "totalMs": 66963168,
+      "cacheMs": 102324
+    },
+    "all": {
+      "searches": 924534,
+      "cacheHits": 65155,
+      "totalMs": 164577063,
+      "cacheMs": 501513
+    }
+  },
+  "five_minute_miss_peak": 238,
+  "series_last_bucket": 5976935
+}

@@ -140,3 +140,29 @@ server, persistent scratch dataset or recurring monitor was created.
 Metric units and API: https://docs.fly.io/monitoring/metrics
 Stream: https://tangled.org/zat.dev/stream/blob/923f2eae50a49c98b47fdff26ec45849e7ac2d09/docs/architecture.md
 Upstream: https://github.com/bluesky-social/jetstream/blob/2b2bf447c3fd995de975dc21dc4d491347a6a6b6/internal/ingest/writer.go
+
+## Recent search outcomes on /stats — read at 06:38 UTC
+
+The embedded ACTIVITY data reports 12,710 searches in its 24h window: 12,340
+cache misses averaging 262.63 ms and 370 cache hits averaging 6.88 ms. The
+cache-hit fraction is 2.91%. The 7d miss mean is 168.81 ms and the 30d miss
+mean 180.94 ms. Recent misses are about 56% slower than the 7d aggregate.
+
+The recorded daily search volume averages about 0.15 requests/second. The
+busiest retained five-minute source bucket has 238 cache misses, about 0.79/s;
+that aggregation conceals short bursts and excludes benchmark sources. These
+figures are evidence of modest observed demand, not a burst-capacity test.
+
+The page is materialized and is not a live post-cutover measurement. Its retained
+traffic/request series ends at 06:00 UTC. The search metrics also omit the
+backend-unreachable early-return path: that path emits neither recordMetric nor
+recordTrafficSource. Its HTTP200 empty fallback means displayed latency and
+search counts cannot prove successful outcomes or complete failed demand.
+
+At this observed load, low CPU and substantial I/O wait support a credible path
+to better performance on the same infrastructure. They do not prove an arbitrary
+p99 target. Qualification should preserve exact/global/scoped results, moderation,
+API aliases and freshness, and measure tail latency plus correct-result/error
+rates during sync, warm reuse and varied-prefix cold reads. Public miss latency
+needs a client-region/network budget distinct from native engine latency. A
+small cache-hit population makes uncached performance the primary target.
