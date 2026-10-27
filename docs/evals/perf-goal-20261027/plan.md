@@ -2,7 +2,8 @@
 
 Status: final verification. Native source 62266a3 and transport 40a014e4 are live;
 the 18:20–18:35 UTC window measured 163.47 ms with full HTTP reconciliation.
-A fixed confirmation window and final smoke are pending. Owner: this performance
+Confirmation measured 197.93 ms; final smoke passed, and the public goal remains
+open. A bounded warm-reuse canary is being prepared. Owner: this performance
 goal. Earlier starting state and dated experiments follow.
 The starting branch is codex/typeahead-io-audit at 5821bda, with locally tested
 write guards and phase instrumentation from faef0c8. Production is a separate
@@ -1117,3 +1118,21 @@ Current readback shows both managed Machines still at two shared CPUs / 1 GiB
 with the same serving/rollback image, volume and instance IDs. Serving lag is
 58 seconds. Logfire 18:10–18:45 contains seven successful incremental sync
 spans and 74 routed health spans, no error-level spans for these operations.
+
+### Confirmation and revised conditional-read qualification
+
+The predetermined 18:35–18:50 UTC window measured 215 misses averaging
+197.93 ms, three hits, and 218 reconciled HTTP-200 answers. The preceding
+163.47 ms window was not sustained. Combined 17:55–18:50 contains 809 misses
+averaging 185.92 ms, 27 hits, and 836 reconciled HTTP-200 answers; no HTTP
+errors. Final smoke passed. The goal remains open.
+
+Inspection of actual version timing records explains why the zero-percent
+conditional-read test was not representative of warm reuse: five of six
+candidate calls used shared hints from fresh isolates; only one used a memory
+hint and could reuse an ETag. The live version had 13 memory-hint calls among
+21 captured invocations. The failed-to-establish-efficacy result is preserved.
+The same locally/runtime-tested candidate is restored for a bounded 10%/50%
+and full-traffic qualification, with unchanged one-second validation and scoped
+rollback. No native/backend change. This is a different reuse condition, not
+a relabeling of the earlier result.

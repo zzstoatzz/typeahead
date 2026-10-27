@@ -801,3 +801,10 @@ The patch and failed-to-establish-efficacy evidence remain in
 [the experiment record](evals/perf-goal-20261027/route-read/README.md). The
 temporary read-only profiling Worker is deleted and its code has expired.
 No cache lifetime, API or production backend changes resulted.
+
+October 27 follow-up: the zero-percent comparison used memory hints on only one
+of six candidate requests, so it did not exercise normal reuse. The same
+conditional-read candidate is being prepared for a bounded warm-reuse canary.
+It is restored in source but is not live; 40a014e4 still serves all normal
+traffic. The 18:35–18:50 confirmation mean was 197.93 ms, so the 163.47 ms
+result was not sustained and the performance goal remains open.

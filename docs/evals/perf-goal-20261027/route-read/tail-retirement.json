@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-27T18:50:33.423384+00:00",
+  "ownership": {
+    "before_capture_tail_count": 0,
+    "cli_log": "wrangler-2026-10-27_18-38-42_692.log",
+    "cli_post_to_transport_tail_confirmed": true,
+    "provider_expiry_minus_six_hours_utc": "2026-10-27T18:38:43Z",
+    "matches_cli_creation_second": true
+  },
+  "owned_tail": "a99040b6afe3487398a1df9fd14b8d2f",
+  "deleted": true,
+  "remaining_tail_count": 0
+}

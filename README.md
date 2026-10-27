@@ -85,9 +85,9 @@ This is about 25% below the earlier 263 ms mean, but still misses both 185 ms
 and 169 ms targets. These temporal cohorts are not randomized comparisons.
 e8c21659 is retained for transport rollback.
 Dated traffic and qualification evidence is in the performance record.
-A conditional route-read experiment showed no material end-to-end gain in the
-bounded comparison and was retired without normal traffic. The qualified
-transport remains live; see [the experiment](docs/evals/perf-goal-20261027/route-read/README.md).
+A conditional route-read candidate is being qualified under normal reuse after
+an inconclusive zero-percent test dominated by fresh instances. It is restored
+in source but not live; see [the experiment](docs/evals/perf-goal-20261027/route-read/README.md).
 
 Profile cards use `/xrpc/app.bsky.actor.getProfiles?actors=…` (up to 25 actors)
 or `/xrpc/app.bsky.actor.getProfile?actor=…`. They include available profile

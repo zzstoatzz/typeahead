@@ -1,0 +1,47 @@
+{
+  "at": "2026-10-27T18:51:46.315742+00:00",
+  "scope": "17:55\u201318:50 UTC, all public Worker paths and transport invocations; status includes cancellations",
+  "result": {
+    "status": 200,
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "public": [
+              {
+                "dimensions": {
+                  "status": "clientDisconnected"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 131
+                }
+              },
+              {
+                "dimensions": {
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 4294
+                }
+              }
+            ],
+            "transport": [
+              {
+                "dimensions": {
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 367
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  }
+}
