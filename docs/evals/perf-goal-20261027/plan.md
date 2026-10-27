@@ -847,3 +847,18 @@ Retrospective durable provider analytics cover 14:49:37–15:19:37 UTC: public
 invocations, zero reported runtime errors in either service. Disconnects remain
 explicit and are not folded into successful HTTP outcomes. This resolves the
 analytics-read failure's coverage gap; the public mean still misses 185 ms.
+
+### Bounded actor-page read-ahead follow-up
+
+The actual-state metadata-warming candidate's cold p95 is 26.84 ms versus
+1,748.03 ms baseline, but cold p99 remains 1,168.54 ms (500 ms gate failed).
+Baseline has two failed requests; candidate has none. The candidate's initial
+populated searches spend 0.5–1.05 seconds in the engine, followed by client
+queueing. The hydration loop reads up to 50 separate 8 KiB actor pages serially.
+A follow-up requests Linux WILLNEED advice for at most 50 unique normal actor
+pages before hydration, skipping per-lease cached pages and oversized extents.
+This submits at most 400 KiB of read-ahead, adds no async tasks, retains every
+checksum and response rule, and falls back to ordinary reads if advice fails.
+It requires a fresh isolated comparison; it is not deployed or qualified.
+The current private run will complete and retire before a new independent
+inactive-volume fork is created under the same 20 GiB / 90-minute budget.

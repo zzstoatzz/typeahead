@@ -203,7 +203,7 @@ pub const Map = struct {
         return self.findCached(arena, target, null);
     }
 
-    fn findCached(self: Map, arena: std.mem.Allocator, target: []const u8, cache: ?*Cache) !?[]const u8 {
+    fn pageIndex(self: Map, target: []const u8, cache: ?*Cache) !?usize {
         var low: usize = 0;
         var high = self.pages;
         while (low < high) {
@@ -212,7 +212,32 @@ pub const Map = struct {
             if (std.mem.order(u8, item.key, target) != .gt) low = mid + 1 else high = mid;
         }
         if (low == 0) return null;
-        const page_index = low - 1;
+        return low - 1;
+    }
+
+    pub fn prefetchActors(self: Map, dids: []const []const u8, cache: ?*Cache) !void {
+        if (@import("builtin").os.tag != .linux) return;
+        const fd = self.fd orelse return;
+        var seen: [50]usize = undefined;
+        var count: usize = 0;
+        for (dids[0..@min(dids.len, seen.len)]) |did| {
+            if (did.len > max_key - 1) return error.FlatKeyTooLong;
+            var tagged: [max_key]u8 = undefined;
+            tagged[0] = @backingInt(Namespace.actor);
+            @memcpy(tagged[1..][0..did.len], did);
+            const index = (try self.pageIndex(tagged[0 .. did.len + 1], cache)) orelse continue;
+            if (cache) |cached| if (cached.pages[index % cached.pages.len] == index) continue;
+            if (std.mem.indexOfScalar(usize, seen[0..count], index) != null) continue;
+            const bounds = try self.extentCached(index, cache);
+            if (bounds.end - bounds.start != normal_page) continue;
+            seen[count] = index;
+            count += 1;
+            _ = posix_fadvise(fd, @intCast(bounds.start), normal_page, std.os.linux.POSIX_FADV.WILLNEED);
+        }
+    }
+
+    fn findCached(self: Map, arena: std.mem.Allocator, target: []const u8, cache: ?*Cache) !?[]const u8 {
+        const page_index = (try self.pageIndex(target, cache)) orelse return null;
         const bounds = try self.extentCached(page_index, cache);
         var scratch: [2 * normal_page]u8 = undefined;
         var temporary: ?[]u8 = null;
@@ -233,8 +258,8 @@ pub const Map = struct {
         const current = try parsePage(bytes);
         if (!std.mem.eql(u8, (try self.recordCached(page_index, cache)).key, try firstKey(try group(current, 0)))) return error.InvalidFlatDirectory;
         const groups = (current.count + 15) / 16;
-        low = 0;
-        high = groups;
+        var low: usize = 0;
+        var high = groups;
         while (low < high) {
             const mid = low + (high - low) / 2;
             const key = try firstKey(try group(current, mid));
