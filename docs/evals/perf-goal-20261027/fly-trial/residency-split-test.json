@@ -1,0 +1,1 @@
+{"before": {"pages": 2048, "resident_pages": 0, "metadata_pages": 1, "metadata_resident_pages": 0, "payload_pages": 2047, "payload_resident_pages": 0}, "after_header_read": {"pages": 2048, "resident_pages": 1, "metadata_pages": 1, "metadata_resident_pages": 1, "payload_pages": 2047, "payload_resident_pages": 0}, "payload": "temporary sparse fixture, retired on exit"}

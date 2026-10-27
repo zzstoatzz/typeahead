@@ -12,6 +12,7 @@ import shutil
 import signal
 import socket
 import sqlite3
+import struct
 import subprocess
 import sys
 import time
@@ -30,7 +31,7 @@ def digest(path):
     return result.hexdigest()
 
 
-def residency(path):
+def residency(path, split_at=None):
     size = path.stat().st_size
     pages = (size + mmap.PAGESIZE - 1) // mmap.PAGESIZE
     if not size:
@@ -50,7 +51,16 @@ def residency(path):
             vector = (ctypes.c_ubyte * pages)()
             if libc.mincore(address, size, vector):
                 raise OSError(ctypes.get_errno(), 'private file residency check failed')
-            return {'pages': pages, 'resident_pages': sum(value & 1 for value in vector)}
+            result = {'pages': pages, 'resident_pages': sum(value & 1 for value in vector)}
+            if split_at is not None:
+                if not 0 <= split_at <= size or split_at % mmap.PAGESIZE:
+                    raise ValueError('invalid metadata/payload split')
+                split_page = split_at // mmap.PAGESIZE
+                result.update(metadata_pages=split_page,
+                    metadata_resident_pages=sum(value & 1 for value in vector[:split_page]),
+                    payload_pages=pages - split_page,
+                    payload_resident_pages=sum(value & 1 for value in vector[split_page:]))
+            return result
         finally:
             if libc.munmap(address, size):
                 raise OSError(ctypes.get_errno(), 'private residency unmap failed')
@@ -283,9 +293,18 @@ class Trial:
                 (self.evidence / 'baseline-server.log').rename(self.evidence / 'reference-server.log')
                 if code: raise RuntimeError('baseline reference capture failed')
             cache_receipt = self.evict_private(overlay)
+            startup = time.monotonic()
             child, base, nonce, identity = self.start_server(name, overlay, input_id, trigger)
+            startup_ms = (time.monotonic() - startup) * 1000
+            with (self.payload / 'index.db.prefix').open('rb') as stream:
+                root_bytes = struct.unpack_from('<Q', stream.read(80), 32)[0]
+            post_ready = {'prefix': residency(self.payload / 'index.db.prefix', root_bytes),
+                          'admission': residency(self.payload / 'index.db.prefix.admitted')}
+            if post_ready['prefix']['payload_resident_pages'] * mmap.PAGESIZE > 2 * 1024 * 1024:
+                raise RuntimeError('payload pages warmed before first-touch measurement')
             common = client(base, nonce)
-            self.report['runs'][name] = {'identity': identity, 'pre_start_residency': cache_receipt, 'phases': {}}
+            self.report['runs'][name] = {'identity': identity, 'startup_ms': startup_ms,
+                'pre_start_residency': cache_receipt, 'post_ready_residency': post_ready, 'phases': {}}
             for phase, rounds, p95, p99 in [('first-touch', 1, 250, 500), ('warm', 2, 50, 100), ('mixed', 2, 50, 100)]:
                 self.save(name + '-' + phase)
                 if phase == 'mixed': trigger.touch()

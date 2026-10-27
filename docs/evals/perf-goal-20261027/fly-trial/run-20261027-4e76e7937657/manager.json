@@ -1,0 +1,70 @@
+{
+  "run_id": "20261027-4e76e7937657",
+  "image": "registry.fly.io/typeahead-startup-20261024@sha256:6f7bf0e782ae5bed6215cb1ea96c7884b98df2832f7c5dbde9ce6ef193b65327",
+  "goal_qualified": false,
+  "events": [],
+  "phase": "results-collected",
+  "protected": {
+    "id": "080d415b734708",
+    "instance_id": "01M5XZC04CDTFWZNSYYHQ8F8VD",
+    "version": "01M5XZC04CDTFWZNSYYHQ8F8VD",
+    "state": "started",
+    "image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 20,
+        "volume": "vol_4915xomx28k0ml5r",
+        "name": "refresh_1793070293"
+      }
+    ],
+    "services": [
+      {
+        "protocol": "tcp",
+        "internal_port": 8080,
+        "autostop": false,
+        "autostart": false,
+        "ports": [
+          {
+            "port": 443,
+            "handlers": [
+              "tls",
+              "http"
+            ]
+          },
+          {
+            "port": 80,
+            "handlers": [
+              "http"
+            ]
+          }
+        ],
+        "force_instance_key": null
+      }
+    ],
+    "metadata": {
+      "build_id": "b1792908655-14d5-px05",
+      "owner": "typeahead-snapshot-refresh"
+    }
+  },
+  "creation_pending": null,
+  "volume_id": "vol_vxmq97z6m565ewj4",
+  "machine_id": "85379da4691148",
+  "machine_state": "created",
+  "status": {
+    "phase": "results-ready",
+    "bytes": 907921,
+    "sha256": "d33bf27c25c5b13b0a546fd00cef911a72c207c4fda0ea9de506e43f3e8b8ee0",
+    "run_id": "20261027-4e76e7937657",
+    "installation": "installed",
+    "measurement": "completed-offline-profile"
+  },
+  "evidence_bytes": 907921,
+  "evidence_sha256": "d33bf27c25c5b13b0a546fd00cef911a72c207c4fda0ea9de506e43f3e8b8ee0"
+}

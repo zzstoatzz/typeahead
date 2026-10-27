@@ -708,9 +708,10 @@ and public error masking remain separate open RCA work.
 
 ## Safe performance qualification — October 27, 2026; active goal
 
-Status at 11:29 UTC: production remains healthy on two shared CPUs / 1 GiB,
-with native f670 and retained transport version e8c21659. No performance
-optimization is deployed. The [qualification plan](evals/perf-goal-20261027/plan.md)
+Status at 11:50 UTC: production remains healthy on two shared CPUs / 1 GiB,
+with native f670. Shared-hint transport version 40a014e4 is in a bounded 50%
+canary; retained e8c21659 is the rollback version. Native performance changes
+remain undeployed. The [qualification plan](evals/perf-goal-20261027/plan.md)
 records targets, frozen-input correctness gates, independent trial storage,
 failed attempts, offered-load queueing and publisher/rollback protections.
 Percentile admission requires at least 1,000 search attempts. The evaluation-only
@@ -724,8 +725,12 @@ qualify Fly capacity or live latency. All cloud payloads/processes were retired.
 The [first full Fly trial](evals/perf-goal-20261027/fly-trial/run-20261027-04adaf220602/external-retirement.json)
 retired after 1,008 reference contracts passed but a cache-probe mapping failed.
 The corrected [private Fly run](evals/perf-goal-20261027/fly-trial/launch-20261027-4e76e7937657.json)
-is active on separate storage. Interim warm p95/p99 are below 50/100 ms, but
-cold p99 is 1.6–2.7 seconds: overall qualification has not passed. The overlay
+completed on separate storage. All 10,080 attempts matched; warm/mixed p95/p99
+were below 50/100 ms, but cold p99 was 1.6–2.7 seconds: overall qualification
+has not passed. Payloads were reclaimed, VM destroyed, and the unattached volume
+is pending_destroy (a non-billable soft-deleted provider record). A locally tested
+metadata-only prefault follow-up is being prepared with startup and residency
+measurements; its corpus result remains unproven. The overlay
 sample remains smaller than an aged live overlay, and live freshness is separate.
 
 Two bounded 10% transport canaries passed credentialed smoke and freshness

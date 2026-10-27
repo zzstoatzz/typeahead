@@ -1,0 +1,310 @@
+{
+  "public_masked_failures": 0,
+  "public_status": {
+    "200": 85,
+    "400": 2,
+    "None": 17
+  },
+  "public_outcomes": {
+    "ok": 87,
+    "canceled": 17
+  },
+  "started_at": "2026-10-27T11:34:55.265110+00:00",
+  "old": "e8c21659-0b2c-4cec-beb4-86b4ecf91191",
+  "candidate": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "candidate_percentage": 10,
+  "generated_search_requests": 0,
+  "samples": [
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 68,
+      "origin_headers_ms": 29,
+      "total_headers_ms": 97,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 39
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 111,
+      "origin_headers_ms": 26,
+      "total_headers_ms": 137,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 22
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 110,
+      "origin_headers_ms": 21,
+      "total_headers_ms": 131,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 18
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 93,
+      "origin_headers_ms": 29,
+      "total_headers_ms": 93,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 62,
+      "origin_headers_ms": 20,
+      "total_headers_ms": 82,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 23
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 116,
+      "origin_headers_ms": 20,
+      "total_headers_ms": 116,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 20
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 95,
+      "origin_headers_ms": 41,
+      "total_headers_ms": 95,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 19
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 96,
+      "origin_headers_ms": 20,
+      "total_headers_ms": 96,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 23
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 62,
+      "origin_headers_ms": 22,
+      "total_headers_ms": 84,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 11
+    },
+    {
+      "status": 200,
+      "mode": "serial",
+      "route_ms": 113,
+      "origin_headers_ms": 68,
+      "total_headers_ms": 181,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "none",
+      "hint_wait_ms": 37
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 102,
+      "origin_headers_ms": 37,
+      "total_headers_ms": 102,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 14
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 172,
+      "origin_headers_ms": 50,
+      "total_headers_ms": 172,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "memory",
+      "hint_wait_ms": 0
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 115,
+      "origin_headers_ms": 41,
+      "total_headers_ms": 115,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 35
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 110,
+      "origin_headers_ms": 39,
+      "total_headers_ms": 110,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 15
+    },
+    {
+      "status": 200,
+      "mode": "overlap",
+      "route_ms": 98,
+      "origin_headers_ms": 64,
+      "total_headers_ms": 98,
+      "outcome": "http",
+      "sample_rate": 1,
+      "hint_source": "shared",
+      "hint_wait_ms": 13
+    }
+  ],
+  "health": [
+    {
+      "elapsed_s": 1.9,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 100,
+      "snapshot_age_s": 19332,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 61.6,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 173,
+      "snapshot_age_s": 19404,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 121.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 234,
+      "snapshot_age_s": 19465,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 181.4,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 293,
+      "snapshot_age_s": 19524,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 241.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 53,
+      "snapshot_age_s": 19585,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 302.0,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 113,
+      "snapshot_age_s": 19645,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 361.9,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 173,
+      "snapshot_age_s": 19705,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 421.4,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 232,
+      "snapshot_age_s": 19764,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 481.1,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 292,
+      "snapshot_age_s": 19824,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 541.7,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 52,
+      "snapshot_age_s": 19885,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    },
+    {
+      "elapsed_s": 601.0,
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 111,
+      "snapshot_age_s": 19944,
+      "build_id": "b1793081565-0228-px05",
+      "probe_ok": true,
+      "reasons": []
+    }
+  ],
+  "outcomes": {
+    "ok": 117
+  },
+  "status": "passed-limited-canary",
+  "deployment_message": "Typeahead perf shared-hint 2026-10-27T11:34:55.265110+00:00",
+  "deployment_id": "7e296874-ce85-4acd-93ed-b9eb466855d0",
+  "smoke_exit_code": 0,
+  "limitations": [
+    "small passive cohort cannot establish public latency percentiles or causal population gain",
+    "native and public goal gates remain separate"
+  ],
+  "shared_overlaps": 7,
+  "concurrent_phase_median_ms": 39,
+  "finished_at": "2026-10-27T11:45:09.553245+00:00"
+}

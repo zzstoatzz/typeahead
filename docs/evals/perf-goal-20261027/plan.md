@@ -481,3 +481,55 @@ about 57 MB. Both are lazily mapped. Prefaulting only these metadata mappings
 before readiness is the next native hypothesis; it must retain block checks
 and leave actor/prefix payload pages cold. No startup-time or memory guarantee
 is inferred before a measured isolated trial.
+
+## Completed first measured Fly pair and metadata-prefault retry
+
+Run 20261027-4e76e7937657 completed all 10,080 measurement attempts with
+zero incorrect status/body/PDS results. Mixed p95/p99 were 18.08/23.76 ms
+for baseline and 19.87/25.66 ms for guarded writes. Baseline ran 40 writer
+batches; candidate ran 41. Process writes were 1,916,862,464 versus
+1,342,849,024 bytes (30% less total, about 32% less per batch); CPU was
+42.78 versus 48.14 seconds (13% more total, with one extra batch). This
+shows reduced I/O, not a warm latency win. Both cold phases failed the
+unchanged p99 <=500 ms gate: 1,611 and 2,705 ms. Those tails include
+offered-load queueing, not only HTTP wire time. Raw attempts and hashes
+are retained in the run’s results.tgz and indexed by raw-artifacts.json.
+
+The payload was removed and filesystem free space increased by 7,593,119,744
+bytes. The VM is absent; the empty volume is unattached and pending_destroy.
+The provider keeps soft-deleted records that flyctl’s default list omits. The
+earlier “volume absent” receipt has been corrected to active-inventory absence,
+with the actual provider state retained. Pending-destroy volumes do not accrue
+charges: https://docs.fly.io/about/billing#volume-billing . The supervisor now
+recognizes that inactive state instead of waiting for provider record removal;
+real HTTP tests cover soft deletion and idempotent cleanup. Its token was
+revoked and its root-only RAM credential source is confirmed absent.
+
+The next native candidate prefaults only the root directory and block-hash
+metadata during cached snapshot preparation, each capped at 64 MiB. Larger
+metadata retains the existing lazy mapping. On Linux Zig 0.17 implements this
+option with MAP_POPULATE; unsupported platforms ignore the advisory option.
+Full admission, per-block checksum checks and file identity checks remain intact.
+No actor/prefix payload mapping is populated. All 154 native tests passed, with
+six platform skips, including corruption/recovery fixtures. This is local evidence,
+not a Fly cold-latency claim.
+
+A new private paired run uses the same inactive app, independent 20 GiB volume,
+2 shared CPUs/1 GiB/no swap, 16 GiB payload budget, 2 GiB reserve, <=16 MiB
+evidence and 90-minute lifetime. Owner: this goal; cleanup: the independent
+manager and volume retirement after payload reclamation. The retained rollback
+Machine, its volume, R2 slot pointer and serving route are protected as before.
+It retains the same input corpus, cases, request rate, percentile thresholds and
+reference equality checks. New neutral observer fields report startup time and
+post-readiness metadata/payload residency; more than 2 MiB resident payload
+before first-touch aborts qualification. Pre-start residency must still be cold.
+A native Linux split-residency test confirms the probe distinguishes a resident
+metadata page from untouched payload pages without warming them.
+
+The shared-hint version 40a014e4 passed a limited 10% canary with 15 timing
+events, seven shared-cache overlaps, median concurrent phase time 39 ms, zero
+observed masked backend failures, and passing credentialed smoke/freshness.
+Public outcomes include 17 client cancellations, retained as a separate category.
+A bounded 50% follow-up is active, retaining e8c21659 for rollback; this still
+does not establish the public mean target. Rollback checks deployment ownership
+so another writer’s deployment is preserved.

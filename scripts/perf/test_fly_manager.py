@@ -24,6 +24,7 @@ class ManagerTest(unittest.TestCase):
         self.lose_machine_response = False
         self.stale_deleted_volume = None
         self.delay_volume_deletion = False
+        self.soft_delete_volume = False
         fixture = self
         class Handler(BaseHTTPRequestHandler):
             def log_message(self, *_): pass
@@ -56,7 +57,9 @@ class ManagerTest(unittest.TestCase):
                     kind, key = path.split('/')
                     if kind == 'volumes' and fixture.delay_volume_deletion:
                         fixture.stale_deleted_volume = fixture.volumes[key]
-                    del (fixture.machines if kind == 'machines' else fixture.volumes)[key]
+                    if kind == 'volumes' and fixture.soft_delete_volume:
+                        fixture.volumes[key]['state'] = 'pending_destroy'
+                    else: del (fixture.machines if kind == 'machines' else fixture.volumes)[key]
                     return self.reply({})
                 self.reply({}, 404)
             def reply(self, body, status=200):
@@ -89,6 +92,17 @@ class ManagerTest(unittest.TestCase):
         self.manager.retire()
         self.assertTrue(self.manager.report['retired'])
         self.assertEqual(set(self.volumes), {'vol_old'})
+
+    def test_soft_deleted_volume_is_inactive_and_cleanup_is_idempotent(self):
+        self.soft_delete_volume = True
+        self.manager.create()
+        self.manager.retire()
+        self.assertEqual(self.manager.report['volume_retirement_state'], 'pending_destroy')
+        deletions = sum(method == 'DELETE' and '/volumes/' in path for method,path in self.requests)
+        self.manager.machine = None
+        self.manager.retire()
+        self.assertEqual(sum(method == 'DELETE' and '/volumes/' in path for method,path in self.requests), deletions)
+        self.assertEqual(self.volumes['vol_trial']['state'], 'pending_destroy')
 
     def test_cleanup_resolves_created_machine_when_post_response_was_lost(self):
         self.lose_machine_response = True

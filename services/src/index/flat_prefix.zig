@@ -324,7 +324,7 @@ pub const Map = struct {
             var mapping = try std.Io.File.MemoryMap.create(std.Options.debug_io, .{ .handle = fd, .flags = .{ .nonblocking = false } }, .{
                 .len = root_size,
                 .protection = .{ .read = true, .write = false },
-                .populate = false,
+                .populate = root_size <= admission.metadata_prefault_limit,
             });
             errdefer mapping.destroy(std.Options.debug_io);
             try receipt.?.verifyRoot(mapping.memory, 0, 84);

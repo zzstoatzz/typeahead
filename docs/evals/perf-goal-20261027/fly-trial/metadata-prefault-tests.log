@@ -1,0 +1,28 @@
+test
++- run test w
+[promote] (warn): size mismatch: got 6 want 7
+[promote] (warn): sha256 mismatch
+[promote] (warn): cjk_key_count 0 below floor 50000 for v2-cjk-bigram
+[promote_runner] (warn): sentinel: only 0/1 probes resolved to non-empty prefix rows
+[indexer] (warn): INDEX_CHANNEL='production' unrecognized; defaulting to local (no upload)
+[indexer] (warn): INDEX_CHANNEL='' unrecognized; defaulting to local (no upload)
+failed command: ./.zig-cache/o/30d08ad7f40cbaf379c4e44450df9f81/test --cache-dir=./.zig-cache --seed=0x25df946b --listen=-
+
+Build Summary: 14/14 steps succeeded; 154/160 tests passed (6 skipped)
+test success
++- run test 154 pass, 6 skip (160 total) 10s MaxRSS:50M
+|  +- compile test debug native success 5s MaxRSS:710M
+|     +- WriteFile  cached
+|     +- compile lib sqlite debug native cached 89ms MaxRSS:30M
+|     +- compile lib sqlite debug native (reused)
+|     +- translate-c cached 56ms MaxRSS:30M
++- run test cached
+   +- compile test debug native cached 68ms MaxRSS:31M
+      +- WriteFile cached
+      +- compile lib websocket-zlib debug native cached 75ms MaxRSS:30M
+      +- compile lib websocket-zlib debug native (reused)
+      +- options cached
+      +- options cached
+      +- options cached
+      +- options cached
+

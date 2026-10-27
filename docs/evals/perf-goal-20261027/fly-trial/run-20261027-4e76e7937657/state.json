@@ -1,0 +1,373 @@
+{
+  "kind": "private-fly-full-snapshot",
+  "goal_qualified": false,
+  "runs": {
+    "baseline": {
+      "identity": {
+        "nonce": "96a022d559144367a93e0168b97b1799",
+        "input_id": "309ec57eb20c48456ccab8426e218f0f1e1b3a5769c4df16573ea146b1db8adc",
+        "ready": true,
+        "writer": {
+          "batches": 0,
+          "rows": 0,
+          "failures": 0,
+          "changes": 0,
+          "max_lag_ms": 0,
+          "active": false
+        }
+      },
+      "pre_start_residency": {
+        "index.db": {
+          "pages": 20,
+          "resident_pages": 0
+        },
+        "index.db.prefix": {
+          "pages": 1780482,
+          "resident_pages": 0
+        },
+        "index.db.prefix.admitted": {
+          "pages": 13911,
+          "resident_pages": 0
+        },
+        "baseline-overlay.db": {
+          "pages": 10110,
+          "resident_pages": 0
+        }
+      },
+      "phases": {
+        "first-touch": {
+          "returncode": 1,
+          "summary": {
+            "attempts": 1008,
+            "failures": 0,
+            "search_attempts": 1007,
+            "p50_ms": 18.551519000084227,
+            "p95_ms": 29.27942700011954,
+            "p99_ms": 1611.4131229999202,
+            "max_ms": 1767.9560530001481,
+            "passed": false,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": null,
+          "process_before": {
+            "rchar": 2829093,
+            "wchar": 285,
+            "syscr": 63,
+            "syscw": 14,
+            "read_bytes": 282624,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 20.0,
+            "VmHWM": 22937600,
+            "VmRSS": 22937600,
+            "RssAnon": 18661376,
+            "RssFile": 4276224
+          },
+          "process_after": {
+            "rchar": 374262566,
+            "wchar": 2950,
+            "syscr": 45134,
+            "syscw": 90,
+            "read_bytes": 467697664,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 14090.0,
+            "VmHWM": 234975232,
+            "VmRSS": 234930176,
+            "RssAnon": 21598208,
+            "RssFile": 213331968
+          }
+        },
+        "warm": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 2016,
+            "failures": 0,
+            "search_attempts": 2014,
+            "p50_ms": 14.838566999969771,
+            "p95_ms": 17.926204999866968,
+            "p99_ms": 23.024567999982537,
+            "max_ms": 39.23308999992514,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": null,
+          "process_before": {
+            "rchar": 374262566,
+            "wchar": 2950,
+            "syscr": 45134,
+            "syscw": 90,
+            "read_bytes": 467697664,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 14090.0,
+            "VmHWM": 234975232,
+            "VmRSS": 234930176,
+            "RssAnon": 21598208,
+            "RssFile": 213331968
+          },
+          "process_after": {
+            "rchar": 1117080358,
+            "wchar": 2950,
+            "syscr": 135268,
+            "syscw": 90,
+            "read_bytes": 467697664,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 39950.0,
+            "VmHWM": 236797952,
+            "VmRSS": 236544000,
+            "RssAnon": 21635072,
+            "RssFile": 214908928
+          }
+        },
+        "mixed": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 2016,
+            "failures": 0,
+            "search_attempts": 2014,
+            "p50_ms": 14.89676000005602,
+            "p95_ms": 18.081016999985877,
+            "p99_ms": 23.762521999969977,
+            "max_ms": 38.4429519999685,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": {
+            "batches": 40,
+            "sqlite_changes": 872864
+          },
+          "process_before": {
+            "rchar": 1117080358,
+            "wchar": 2950,
+            "syscr": 135268,
+            "syscw": 90,
+            "read_bytes": 467697664,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 39950.0,
+            "VmHWM": 236797952,
+            "VmRSS": 236544000,
+            "RssAnon": 21635072,
+            "RssFile": 214908928
+          },
+          "process_after": {
+            "rchar": 3834172878,
+            "wchar": 1978852238,
+            "syscr": 706081,
+            "syscw": 946816,
+            "read_bytes": 468332544,
+            "write_bytes": 1916899328,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 82730.0,
+            "VmHWM": 300068864,
+            "VmRSS": 177610752,
+            "RssAnon": 44089344,
+            "RssFile": 133521408
+          }
+        }
+      }
+    },
+    "candidate": {
+      "identity": {
+        "nonce": "1f836cb0c9aa40e5afd63bbc1f043983",
+        "input_id": "309ec57eb20c48456ccab8426e218f0f1e1b3a5769c4df16573ea146b1db8adc",
+        "ready": true,
+        "writer": {
+          "batches": 0,
+          "rows": 0,
+          "failures": 0,
+          "changes": 0,
+          "max_lag_ms": 0,
+          "active": false
+        }
+      },
+      "pre_start_residency": {
+        "index.db": {
+          "pages": 20,
+          "resident_pages": 0
+        },
+        "index.db.prefix": {
+          "pages": 1780482,
+          "resident_pages": 0
+        },
+        "index.db.prefix.admitted": {
+          "pages": 13911,
+          "resident_pages": 0
+        },
+        "candidate-overlay.db": {
+          "pages": 10110,
+          "resident_pages": 0
+        }
+      },
+      "phases": {
+        "first-touch": {
+          "returncode": 1,
+          "summary": {
+            "attempts": 1008,
+            "failures": 0,
+            "search_attempts": 1007,
+            "p50_ms": 18.81069999990359,
+            "p95_ms": 1001.0044329999346,
+            "p99_ms": 2704.7726239998156,
+            "max_ms": 2865.777610999885,
+            "passed": false,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": null,
+          "process_before": {
+            "rchar": 2829093,
+            "wchar": 286,
+            "syscr": 63,
+            "syscw": 14,
+            "read_bytes": 3207168,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 10.0,
+            "VmHWM": 22818816,
+            "VmRSS": 22818816,
+            "RssAnon": 18661376,
+            "RssFile": 4157440
+          },
+          "process_after": {
+            "rchar": 374156070,
+            "wchar": 4002,
+            "syscr": 45121,
+            "syscw": 120,
+            "read_bytes": 470659072,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 14300.0,
+            "VmHWM": 233697280,
+            "VmRSS": 233406464,
+            "RssAnon": 20930560,
+            "RssFile": 212475904
+          }
+        },
+        "warm": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 2016,
+            "failures": 0,
+            "search_attempts": 2014,
+            "p50_ms": 15.008115999989968,
+            "p95_ms": 19.580716000064058,
+            "p99_ms": 23.83781999992607,
+            "max_ms": 26.353963000019576,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": null,
+          "process_before": {
+            "rchar": 374156070,
+            "wchar": 4002,
+            "syscr": 45121,
+            "syscw": 120,
+            "read_bytes": 470659072,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 14300.0,
+            "VmHWM": 233697280,
+            "VmRSS": 233406464,
+            "RssAnon": 20930560,
+            "RssFile": 212475904
+          },
+          "process_after": {
+            "rchar": 1116973862,
+            "wchar": 4002,
+            "syscr": 135255,
+            "syscw": 120,
+            "read_bytes": 470659072,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 40620.0,
+            "VmHWM": 236441600,
+            "VmRSS": 236138496,
+            "RssAnon": 21008384,
+            "RssFile": 215130112
+          }
+        },
+        "mixed": {
+          "returncode": 0,
+          "summary": {
+            "attempts": 2016,
+            "failures": 0,
+            "search_attempts": 2014,
+            "p50_ms": 15.122947000008935,
+            "p95_ms": 19.86842099995556,
+            "p99_ms": 25.66242400007468,
+            "max_ms": 32.34843600012027,
+            "passed": true,
+            "minimum_search_attempts": 1000,
+            "enough_samples": true
+          },
+          "writer_overlap": {
+            "batches": 41,
+            "sqlite_changes": 446497
+          },
+          "process_before": {
+            "rchar": 1116973862,
+            "wchar": 4002,
+            "syscr": 135255,
+            "syscw": 120,
+            "read_bytes": 470659072,
+            "write_bytes": 36864,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 40620.0,
+            "VmHWM": 236441600,
+            "VmRSS": 236138496,
+            "RssAnon": 21008384,
+            "RssFile": 215130112
+          },
+          "process_after": {
+            "rchar": 2637973982,
+            "wchar": 1343154258,
+            "syscr": 415251,
+            "syscw": 513230,
+            "read_bytes": 471298048,
+            "write_bytes": 1342885888,
+            "cancelled_write_bytes": 0,
+            "cpu_ms": 88760.0,
+            "VmHWM": 297992192,
+            "VmRSS": 179716096,
+            "RssAnon": 42889216,
+            "RssFile": 136826880
+          }
+        }
+      }
+    }
+  },
+  "limitations": [
+    "captured 5000-actor overlay is smaller than aged live overlay",
+    "no Turso or live freshness qualification"
+  ],
+  "capture_method": "first 5000 actor-namespace page fences",
+  "machine_id": "85379da4691148",
+  "run_id": "20261027-4e76e7937657",
+  "hardware": {
+    "cpus": 2,
+    "memory_kib": 984988,
+    "machine": "x86_64"
+  },
+  "phase": "completed-offline-profile",
+  "bootstrap_metrics": {
+    "rchar": 297712425,
+    "wchar": 325854938,
+    "syscr": 66933,
+    "syscw": 140185,
+    "read_bytes": 4096,
+    "write_bytes": 318582784,
+    "cancelled_write_bytes": 0,
+    "cpu_ms": 5680.0,
+    "VmHWM": 83509248,
+    "VmRSS": 83509248,
+    "RssAnon": 39395328,
+    "RssFile": 44113920
+  }
+}

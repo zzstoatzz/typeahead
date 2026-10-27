@@ -171,9 +171,15 @@ class Manager:
             if (actual['id'] in protected_volumes or actual['name'] != 'perf_' + self.args.run.replace('-', '_')
                     or actual.get('attached_machine_id')):
                 raise RuntimeError('unsafe private volume retirement')
-            self.api('DELETE', 'volumes/' + actual['id'])
+            if actual.get('state') != 'pending_destroy': self.api('DELETE', 'volumes/' + actual['id'])
             for _ in range(30):
-                if not any(v['id'] == actual['id'] for v in self.api('GET', 'volumes')): break
+                remaining = next((v for v in self.api('GET', 'volumes') if v['id'] == actual['id']), None)
+                if remaining is None:
+                    self.report['volume_retirement_state'] = 'absent'
+                    break
+                if remaining.get('state') == 'pending_destroy' and not remaining.get('attached_machine_id'):
+                    self.report['volume_retirement_state'] = 'pending_destroy'
+                    break
                 time.sleep(2)
             else: raise RuntimeError('private volume retirement not confirmed')
         self.report['retired'] = True

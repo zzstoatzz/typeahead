@@ -3,6 +3,7 @@ const c = std.c;
 const io = std.Options.debug_io;
 pub const block_size = 4096;
 pub const header_size = 128;
+pub const metadata_prefault_limit = 64 * 1024 * 1024;
 extern "c" fn mkstemp(template: [*:0]u8) c_int;
 
 fn file(fd: c.fd_t) std.Io.File {
@@ -76,7 +77,7 @@ pub const Admission = struct {
         const mapping = try std.Io.File.MemoryMap.create(io, receipt, .{
             .len = length,
             .protection = .{ .read = true, .write = false },
-            .populate = false,
+            .populate = length <= metadata_prefault_limit,
         });
         return .{ .mapping = mapping };
     }
