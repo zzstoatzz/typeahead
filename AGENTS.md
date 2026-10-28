@@ -141,6 +141,10 @@ regression is pinned). Extend it, don't prune it.
 ## conventions
 
 - worker tests: `bun test`. zig tests: `just test-services` (or `cd services && zig build test`).
+  Retrieval changes also require `just test-search-recall`: isolated native
+  builder/server regressions, run by CI on main. Known defects are strict expected
+  failures; retain each oracle case and remove its expected-failure reason when
+  fixed. New failures and unexpected passes must not be silently rebaselined.
 - never run work proportional to the corpus on the request/cron path (see the invariant above).
 - **the cron contract**: every cron selector must be an index SEARCH (smoke's
   `test_cron_selector_plans` EXPLAIN-guards this live against Turso), every batch size must

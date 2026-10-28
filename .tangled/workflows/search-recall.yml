@@ -1,0 +1,16 @@
+when:
+  - event: ["push"]
+    branch: main
+engine: microvm
+image: nixos
+dependencies:
+  - python3
+  - zig
+steps:
+  - name: native-search-recall
+    command: |
+      set -eu
+      test "$(zig version)" = "0.17.0"
+      mkdir -p "$HOME/.cache/zig/p"
+      cp services/.zig-pkg-vendor/*.tar.gz "$HOME/.cache/zig/p/"
+      python3 scripts/test_search_recall.py
