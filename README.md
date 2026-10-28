@@ -362,6 +362,7 @@ directly. `.claude/skills/` contains compatibility symlinks for Claude Code.
 ```sh
 just deploy-worker     # Cloudflare deploy, then smoke checks
 just deploy-ingest     # Fly ingester
+just refresh-search    # Prefect build, isolated qualification, then managed promotion
 ```
 
 These commands affect production. Backend refresh uses the isolated controller,
@@ -369,6 +370,14 @@ not `just deploy-search`, which remains guarded. Prepare binary changes on an
 independent target and qualify the installer image before changing its immutable
 pin in the publisher. Benchmarks and smoke scripts may default to production;
 check their target and whether they perform writes before running them.
+
+`just refresh-search` submits `typeahead-index/typeahead-index` through the
+`my-prefect-server` operator CLI wrapper, which selects the configured Prefect
+server. It uses the deployment's pinned source and image, not this checkout.
+The operations repository defaults to `~/tangled.org/zzstoatzz.io/my-prefect-server`;
+pass its path as the recipe argument if it lives elsewhere. The command submits
+the run; completion and traffic promotion happen asynchronously. A push to main
+only runs CI and does not invoke this command.
 
 The cloud builder and isolated refresh controller are deployed through Prefect;
 [the refresh runbook](docs/plans/automatic-snapshot-refresh.md) records current qualification

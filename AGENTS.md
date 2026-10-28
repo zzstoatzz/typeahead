@@ -131,6 +131,9 @@ regression is pinned). Extend it, don't prune it.
   verify active API/worker ownership against its migration records before changing
   them. Do not revive the obsolete home cadence or `services/fly.indexer.toml`
   as an automatic path. See [operations](docs/operations.md).
+  `just refresh-search` explicitly submits that managed deployment through the
+  operations repository's configured Prefect wrapper; it does not deploy the
+  current checkout. Main-branch CI never invokes it.
 - **`typeahead-plc-identity`** bulk-resolves DID -> handle/PDS from the PLC log
   for identities the appview cannot see. Its weekly cadence remains paused
   independently of the active snapshot publisher. Verify current ownership in
