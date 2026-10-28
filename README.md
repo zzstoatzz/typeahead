@@ -328,8 +328,19 @@ These are dated observations, not configuration sources. Fly role configs live i
 bun install
 just check             # Worker types, lint, tests, deployment dry-run
 just test-services     # Zig unit tests
+just test-search-recall # Native retrieval regressions, including strict expected failures
 bunx wrangler dev      # local Worker
 ```
+
+The search-recall gate runs the real Zig builder and loopback search server on
+synthetic profiles, without production access. CI runs it on every push to main.
+Known retrieval defects and one documented token-coverage limit remain visible
+as expected failures; new failures and unexpected successes fail the gate.
+When a fix lands, remove its expected-failure reason in
+`scripts/test_search_recall.py` while retaining the case. The suite covers
+multiword names, long prefixes, CJK/mixed scripts, query/token limits, PDS scope,
+hidden/deleted candidates and snapshot/overlay rebuild consistency. It checks
+result membership; it does not qualify ranking, capacity or production latency.
 
 The Zig binary requires `MODE=ingester`, `MODE=search`, or `MODE=indexer`.
 There is no default role. Use the role's configuration and credentials; a bare

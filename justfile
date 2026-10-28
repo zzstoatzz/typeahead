@@ -34,6 +34,9 @@ convert-quiet +args:
 test-services:
     cd services && zig build test --summary all
 
+test-search-recall:
+    python3 scripts/test_search_recall.py
+
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech":
     bunx tsc --noEmit
