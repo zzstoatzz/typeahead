@@ -1,0 +1,14 @@
+{
+  "kind": "synthetic-native-recall-scope",
+  "production_access": false,
+  "source": "65548649431f6388fb1c5c5a7d0885b837ba2355",
+  "cases": [],
+  "owner": "display-name-recall-20261028",
+  "scratch_budget_bytes": 536870912,
+  "scratch": "/private/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-scope-5sxq3av0",
+  "error": "RuntimeError: build.log failed",
+  "scratch_bytes_before_cleanup": 0,
+  "scratch_removed": true,
+  "children_terminal": true,
+  "wall_seconds": 0.21456541601219214
+}

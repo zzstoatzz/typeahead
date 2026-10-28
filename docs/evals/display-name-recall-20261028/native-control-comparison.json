@@ -1,0 +1,85 @@
+{
+  "scope": "990 synthetic actors; unchanged native query/hydration path. This cap-lift control is not a complete fix or production-scale result.",
+  "baseline": {
+    "matches_oracle": 13,
+    "mismatches": 14,
+    "snapshot_bytes": 3006464,
+    "posting_storage": {
+      "retained_memberships": 62226,
+      "packed_bytes": 1494158,
+      "keys": 16426
+    },
+    "native_projection": {
+      "writer": {
+        "batches": 0,
+        "rows": 0,
+        "failures": 0,
+        "changes": 162,
+        "max_lag_ms": 0,
+        "active": false
+      },
+      "actor_rows": 2,
+      "prefix_rows": 160
+    },
+    "timestamp_only_reprojection": {
+      "batches": 0,
+      "rows": 0,
+      "failures": 0,
+      "changes": 162,
+      "max_lag_ms": 0,
+      "active": false
+    }
+  },
+  "complete_membership_control": {
+    "matches_oracle": 17,
+    "mismatches": 10,
+    "snapshot_bytes": 3592192,
+    "posting_storage": {
+      "retained_memberships": 87818,
+      "packed_bytes": 2053500,
+      "keys": 16426
+    },
+    "native_projection": {
+      "writer": {
+        "batches": 0,
+        "rows": 0,
+        "failures": 0,
+        "changes": 162,
+        "max_lag_ms": 0,
+        "active": false
+      },
+      "actor_rows": 2,
+      "prefix_rows": 160
+    },
+    "timestamp_only_reprojection": {
+      "batches": 0,
+      "rows": 0,
+      "failures": 0,
+      "changes": 162,
+      "max_lag_ms": 0,
+      "active": false
+    }
+  },
+  "cases_changed": [
+    {
+      "id": "joint-broad",
+      "before": false,
+      "after": true
+    },
+    {
+      "id": "joint-reversed",
+      "before": false,
+      "after": true
+    },
+    {
+      "id": "scoped-joint-broad",
+      "before": false,
+      "after": true
+    },
+    {
+      "id": "fresh-rebuild-relapses",
+      "before": false,
+      "after": true
+    }
+  ]
+}

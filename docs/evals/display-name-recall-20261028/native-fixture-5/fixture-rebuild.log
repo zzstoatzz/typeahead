@@ -1,0 +1,19 @@
+info(ingester): MODE=indexer — running snapshot builder
+info(indexer): indexer start: sample_limit=0 top_n=(300/200/100)
+info(indexer): snapshot path: /private/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-scope-971_yt7y/rebuilt/build-b1793228216-8528/index.db
+info(indexer): source mode: export_http
+info(indexer): INDEX_REUSE_SOURCE set — skipping export, using /private/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-scope-971_yt7y/source.db
+info(indexer): exported DB validated: 789 searchable actors
+info(indexer): source_watermark from exported DB: 1800000001
+info(indexer): emissions phase done (export): rows_seen=789 actors=739 emissions=65246 watermark=1800000001
+info(indexer): phase start: create_index.emissions
+info(indexer): phase done: phase=create_index.emissions elapsed_s=1 staging.db=5693440B disk_free=0B
+info(indexer): building prefix_top_base via grouped scan…
+info(indexer): prefix_top_base done: distinct_keys=11744
+info(indexer): peak artifact footprint: staging.db=5693440B index.db=2400256B
+info(indexer): phase start: manifest sha256 + write (2404352B artifact)
+info(indexer): manifest written: byte_size=2404352 sha256=a32a7e02a05a2f03
+info(indexer): indexer done: build_id=b1793228216-8528 actors=739 emissions=65246 prefix_keys=11744 cjk_keys=32 cjk_actors=6 elapsed_ms=1067
+info(indexer): phase ms: turso_fetch=0 derive=3 actor_insert=1 emission_insert=21 index_build=25 group_pack=25 meta=5 analyze=1 manifest=1
+info(indexer): indexer resources: index_db_bytes=2404352 peak_rss_kb=0
+info(indexer): channel=local — R2 upload skipped; build on disk at /private/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-scope-971_yt7y/rebuilt/build-b1793228216-8528

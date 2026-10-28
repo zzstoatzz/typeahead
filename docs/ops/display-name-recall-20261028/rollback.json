@@ -1,0 +1,139 @@
+[
+  {
+    "engine": "index",
+    "q": "Justin Fa",
+    "normalized": "justin fa",
+    "mode": "intersect_all",
+    "hydrate_cap": 50,
+    "exact_hits": 0,
+    "merged": 0,
+    "query_cut": false,
+    "full_query_dropped": 0,
+    "keys": [
+      {
+        "key": "n:justin",
+        "base": 200,
+        "overlay": 62,
+        "overlay_bounded": false
+      },
+      {
+        "key": "n:fa",
+        "base": 300,
+        "overlay": 1297,
+        "overlay_bounded": false
+      }
+    ],
+    "candidates": []
+  },
+  {
+    "engine": "index",
+    "q": "Justin Fag",
+    "normalized": "justin fag",
+    "mode": "intersect_all",
+    "hydrate_cap": 50,
+    "exact_hits": 0,
+    "merged": 1,
+    "query_cut": false,
+    "full_query_dropped": 0,
+    "keys": [
+      {
+        "key": "n:justin",
+        "base": 200,
+        "overlay": 62,
+        "overlay_bounded": false
+      },
+      {
+        "key": "n:fag",
+        "base": 300,
+        "overlay": 24,
+        "overlay_bounded": false
+      }
+    ],
+    "candidates": [
+      {
+        "did": "did:plc:ec64xv7n5dszeizw56yr6b5h",
+        "handle": "justinfagnani.com",
+        "display_name": "Justin Fagnani",
+        "score": 858.8200073242188
+      }
+    ]
+  },
+  {
+    "engine": "index",
+    "q": "Justin Fagnani",
+    "normalized": "justin fagnani",
+    "mode": "intersect_all",
+    "hydrate_cap": 50,
+    "exact_hits": 0,
+    "merged": 1,
+    "query_cut": false,
+    "full_query_dropped": 0,
+    "keys": [
+      {
+        "key": "n:justin",
+        "base": 200,
+        "overlay": 62,
+        "overlay_bounded": false
+      },
+      {
+        "key": "n:fagnani",
+        "base": 1,
+        "overlay": 0,
+        "overlay_bounded": false
+      }
+    ],
+    "candidates": [
+      {
+        "did": "did:plc:ec64xv7n5dszeizw56yr6b5h",
+        "handle": "justinfagnani.com",
+        "display_name": "Justin Fagnani",
+        "score": 858.8200073242188
+      }
+    ]
+  },
+  {
+    "engine": "index",
+    "q": "fagnani",
+    "normalized": "fagnani",
+    "mode": "union_any",
+    "hydrate_cap": 50,
+    "exact_hits": 0,
+    "merged": 1,
+    "query_cut": false,
+    "full_query_dropped": 0,
+    "keys": [
+      {
+        "key": "h:fagnani",
+        "base": 0,
+        "overlay": 0,
+        "overlay_bounded": true
+      },
+      {
+        "key": "e:fagnani",
+        "base": 0,
+        "overlay": 0,
+        "overlay_bounded": false
+      },
+      {
+        "key": "d:fagnani",
+        "base": 0,
+        "overlay": 0,
+        "overlay_bounded": true
+      },
+      {
+        "key": "n:fagnani",
+        "base": 1,
+        "overlay": 0,
+        "overlay_bounded": true
+      }
+    ],
+    "candidates": [
+      {
+        "did": "did:plc:ec64xv7n5dszeizw56yr6b5h",
+        "handle": "justinfagnani.com",
+        "display_name": "Justin Fagnani",
+        "score": 429.4100036621094
+      }
+    ]
+  }
+]
