@@ -5,7 +5,7 @@ image, resource size or routing change is part of this goal. All new fixtures
 are synthetic and local. The earlier live report and bounded traces are in
 [the incident record](../../ops/display-name-recall-20261028/README.md).
 
-## Findings established so far
+## Established findings
 
 The final native fixture has 990 actors and 27 explicit oracle cases. Thirteen
 match the oracle; fourteen expose a defect or the separately identified eight-
@@ -140,5 +140,10 @@ space, empirical metrics, budget-exhaustion semantics and future guarded rollout
 The [native complete-membership control](native-control-comparison.json) is
 complete: it fixes four oracle cases and increases fixture snapshot size from
 3,006,464 to 3,592,192 bytes. Ten oracle cases still mismatch; timestamp-only
-write amplification is unchanged. Further native comparison
-is pending; this report does not qualify or authorize a production change.
+write amplification is unchanged. The [expanded native comparison](comparison-results.md) tests refill versus
+complete retrieval at 1k/10k actors with real mixed projection, plus static
+FTS5/rank-ID controls through 30k. Complete retrieval repairs the ASCII cases
+but exposes the cost of the existing representation. The
+[fix recommendation and cutover design](recommendation.md) calls for complete
+compressed memberships, ranked enumeration and eligibility before selection.
+The investigation is complete; no production fix is qualified or deployed.

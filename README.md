@@ -401,3 +401,12 @@ the seven confirmed bogus handles plus `handle.invalid`, including cached replie
 The /stats card now says “excluded from search”; its union count awaits the
 offline audit. Existing corpus repair is pending. See the
 [repair record](docs/ops/identity-repair-20261028/README.md).
+
+The [candidate-recall investigation](docs/evals/display-name-recall-20261028/README.md)
+uses local synthetic native fixtures to separate stored-list truncation,
+post-cap eligibility loss and query-semantics defects. Its
+[fix design and comparison](docs/evals/display-name-recall-20261028/recommendation.md)
+favor complete compressed memberships and eligibility before selection; removing
+caps from the current format repairs ASCII recall but increases request work.
+The investigation is complete. No deployed behavior changes or qualified fix
+result from these local experiments.

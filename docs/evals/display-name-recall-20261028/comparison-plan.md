@@ -1,6 +1,6 @@
 # Isolated native retrieval comparison
 
-2026-10-28. Proposed empirical stages; no production implementation or rollout is
+2026-10-28. Investigation stages; no production implementation or rollout is
 authorized by this investigation. Refill and historical caps are comparators,
 not architectural requirements. The intended matching predicate, measured costs
 and safe operational behavior decide which design merits implementation.
@@ -13,7 +13,10 @@ and safe operational behavior decide which design merits implementation.
    (`INDEX_TOP_N_*=65535`, below the format's u16 ceiling). This isolates base
    truncation; it fixes four cases, leaves ten mismatches and is not a candidate
    fix. See native-control-comparison.json.
-3. **Next local experiment:** generated 1k/10k/30k actor corpora with identical
+3. **Completed pilot:** generated 1k/10k native corpora and 1k/10k/30k static
+   FTS5/rank-ID plan controls; see [results](comparison-results.md). Native
+   alternative engines and full lifecycle/production-capacity qualification
+   remain future work. The broader comparison calls for identical
    authority scores, profiles, scopes and deterministic workload. Compare:
 
 | Variant | Purpose |
