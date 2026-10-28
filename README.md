@@ -380,3 +380,10 @@ inventory. Trailing compute extrapolations can lag resource deletion. Turso and 
 subscriptions are shared with other projects; their whole account invoices are
 not Typeahead's cost. [COSTS.md](COSTS.md) retains dated historical research;
 do not use its older resource sizes or totals as current estimates.
+
+## Handle lookup experiment
+
+The [October 28 FST versus sorted-handle evaluation](docs/evals/handle-sidecar-20261028/README.md)
+compares full-prefix recall, one-edit completion, memory and search under native
+sync load on independent storage. It is a standalone candidate-source prototype;
+it changes no deployed endpoint or snapshot format.

@@ -1,0 +1,14 @@
+{
+  "files": {
+    "Cargo.toml": "39d2adc0d88afc1624d66723cba95a21bc960a10002b8dfb9a1df69caa4bb2ed",
+    "Cargo.lock": "470217a000c3f9426befb06940df6d6b070ee0af1e8d6305ab5513c3481ee4fe",
+    "src/main.rs": "8d7080fde5e20f89e84fb70a8867d1562e99223dd2f4c663ee54f3f3a156a309",
+    "export.py": "6c40809cea4730f8e141fdd9717734f27e543dfb54a5ba8e62796054ce79c008",
+    "run_remote.py": "1b9ab7e47fee4b8b94ca8d153a62e4b2fc1e27db53bbc91fbad57d683bf042b7"
+  },
+  "cpus": 2,
+  "platform": "Linux-6.12.114-fly-x86_64-with-glibc2.36",
+  "swaps": "Filename\t\t\t\tType\t\tSize\t\tUsed\t\tPriority\n",
+  "meminfo": "MemTotal:         984988 kB\nMemFree:           65388 kB\nMemAvailable:     700440 kB\nBuffers:            1256 kB\nCached:           752124 kB\nSwapCached:            0 kB\nActive:           130092 kB\nInactive:         720944 kB\nActive(anon):       2924 kB\nInactive(anon):   100432 kB\nActive(file):     127168 kB\nInactive(file):   620512 kB\nUnevictable:           0 kB\nMlocked:               0 kB\nSwapTotal:             0 kB\nSwapFree:              0 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:              9420 kB\nWriteback:             0 kB\nAnonPages:         97756 kB\nMapped:           526092 kB\nShmem:              5604 kB\nKReclaimable:      30156 kB\nSlab:              49424 kB\nSReclaimable:      30156 kB\nSUnreclaim:        19268 kB\nKernelStack:        1536 kB\nPageTables:         4072 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:      492492 kB\nCommitted_AS:     202792 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:        7268 kB\nVmallocChunk:          0 kB\nPercpu:              536 kB\nAnonHugePages:         0 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nHugePages_Total:       0\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:               0 kB\nDirectMap4k:       18432 kB\nDirectMap2M:     1030144 kB\nDirectMap1G:           0 kB\n",
+  "source_bundle_sha256": "ac57ce9c97f98718f7676f4fe02d8b660f5e26ef8fe49317dc9804640b9feece"
+}

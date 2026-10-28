@@ -1,0 +1,182 @@
+{
+  "apps": {
+    "typeahead-startup-20261024": [
+      {
+        "id": "8e3d79b70dd748",
+        "instance_id": "01M5Z6NJ6RNKFMHR9FS8P0MBVN",
+        "state": "started",
+        "config": {
+          "env": {
+            "INDEX_BUILD_ROOT": "/data/refresh",
+            "INDEX_LATEST_KEY": "control/slots/typeahead-startup-20261024/latest.json",
+            "INDEX_POLL_SECS": "300",
+            "LOCAL_DB_PATH": "/data/refresh/overlay.db",
+            "MODE": "search",
+            "REFRESH_BUILD_ID": "b1793109259-2b36-px05",
+            "REFRESH_MIN_ACTOR_COUNT": "6404714",
+            "REFRESH_MIN_PREFIX_COUNT": "74316539"
+          },
+          "init": {
+            "cmd": [
+              "python3",
+              "/app/install-snapshot.py"
+            ]
+          },
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 2,
+            "memory_mb": 1024
+          },
+          "metadata": {
+            "build_id": "b1793109259-2b36-px05",
+            "owner": "typeahead-snapshot-refresh"
+          },
+          "mounts": [
+            {
+              "encrypted": true,
+              "path": "/data",
+              "size_gb": 20,
+              "volume": "vol_v8eyqk61q9dy9gkv",
+              "name": "refresh_1793113768"
+            }
+          ],
+          "services": [
+            {
+              "protocol": "tcp",
+              "internal_port": 8080,
+              "autostop": false,
+              "autostart": false,
+              "ports": [
+                {
+                  "port": 443,
+                  "handlers": [
+                    "tls",
+                    "http"
+                  ]
+                },
+                {
+                  "port": 80,
+                  "handlers": [
+                    "http"
+                  ]
+                }
+              ],
+              "force_instance_key": null
+            }
+          ],
+          "checks": {
+            "ready": {
+              "port": 8080,
+              "type": "http",
+              "interval": "15s",
+              "timeout": "2s",
+              "grace_period": "30s",
+              "method": "GET",
+              "path": "/ready"
+            }
+          },
+          "image": "registry.fly.io/typeahead-search-refresh@sha256:d4c3111ee8ad058cb08f7ef02ffeb0a2826e1c328b61c12c29a6e9d3e93ca0ed",
+          "restart": {
+            "policy": "on-failure",
+            "max_retries": 3
+          },
+          "stop_config": {
+            "timeout": "1m0s",
+            "signal": "SIGTERM"
+          }
+        }
+      }
+    ],
+    "typeahead-search-refresh": [
+      {
+        "id": "801539a6551778",
+        "instance_id": "01M5Y5TRPWTXKDFZKZ4VYRH5CZ",
+        "state": "started",
+        "config": {
+          "env": {
+            "INDEX_BUILD_ROOT": "/data/refresh",
+            "INDEX_LATEST_KEY": "control/slots/typeahead-search-refresh/latest.json",
+            "INDEX_POLL_SECS": "300",
+            "LOCAL_DB_PATH": "/data/refresh/overlay.db",
+            "MODE": "search",
+            "REFRESH_BUILD_ID": "b1793081565-0228-px05",
+            "REFRESH_MIN_ACTOR_COUNT": "6380470",
+            "REFRESH_MIN_PREFIX_COUNT": "73943095"
+          },
+          "init": {
+            "cmd": [
+              "python3",
+              "/app/install-snapshot.py"
+            ]
+          },
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 2,
+            "memory_mb": 1024
+          },
+          "metadata": {
+            "build_id": "b1793081565-0228-px05",
+            "owner": "typeahead-snapshot-refresh"
+          },
+          "mounts": [
+            {
+              "encrypted": true,
+              "path": "/data",
+              "size_gb": 20,
+              "volume": "vol_40o3xy5812d6kkk4",
+              "name": "refresh_1793087127"
+            }
+          ],
+          "services": [
+            {
+              "protocol": "tcp",
+              "internal_port": 8080,
+              "autostop": false,
+              "autostart": false,
+              "ports": [
+                {
+                  "port": 443,
+                  "handlers": [
+                    "tls",
+                    "http"
+                  ]
+                },
+                {
+                  "port": 80,
+                  "handlers": [
+                    "http"
+                  ]
+                }
+              ],
+              "force_instance_key": null
+            }
+          ],
+          "checks": {
+            "ready": {
+              "port": 8080,
+              "type": "http",
+              "interval": "15s",
+              "timeout": "2s",
+              "grace_period": "30s",
+              "method": "GET",
+              "path": "/ready"
+            }
+          },
+          "image": "registry.fly.io/typeahead-search-refresh@sha256:b0492f07c8237d94c854da8530b3af5eab905506e69ff0104fa1ba5d98449bcd",
+          "restart": {
+            "policy": "on-failure",
+            "max_retries": 3
+          },
+          "stop_config": {
+            "timeout": "1m0s",
+            "signal": "SIGTERM"
+          }
+        }
+      }
+    ]
+  },
+  "route": {
+    "origin": "https://typeahead-startup-20261024.fly.dev",
+    "build_id": "b1793109259-2b36-px05"
+  }
+}
