@@ -387,3 +387,8 @@ The [October 28 FST versus sorted-handle evaluation](docs/evals/handle-sidecar-2
 compares full-prefix recall, one-edit completion, memory and search under native
 sync load on independent storage. It is a standalone candidate-source prototype;
 it changes no deployed endpoint or snapshot format.
+
+A [bounded identity follow-up](docs/evals/handle-sidecar-20261028/identity-followup.md)
+confirmed invalid duplicated handle claims in three captured actors and identified
+an unverified PLC bulk-write path. The total affected count is unmeasured; no
+production repair was performed.

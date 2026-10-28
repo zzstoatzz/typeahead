@@ -69,7 +69,10 @@ systematic samples and in 25 of the 160 generated-query source samples, under
 many distinct DIDs. Those repeated queries hit the candidate budget. Both indexes
 retain the claims; neither verifies their ownership. This makes the workload
 partly a duplicate-handle stress test and prevents treating it as a clean verified
-identity-directory oracle. No production diagnosis or identity repair was done.
+identity-directory oracle. A subsequent [bounded identity check](identity-followup.md) found all three sampled
+associations invalid and identified an unverified PLC bulk-write path. No corpus-wide
+count or production identity repair was done. Here “valid” means the export's
+syntactic filter, not verified handle ownership.
 
 ## Latency
 

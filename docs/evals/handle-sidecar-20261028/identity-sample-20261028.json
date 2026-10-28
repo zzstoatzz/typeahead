@@ -1,0 +1,29 @@
+{
+  "checked_date": "2026-10-28",
+  "scope": "Three retained sample DIDs; public identity authorities and one public appview batch only. No serving backend, Turso or heavypad access.",
+  "dids": [
+    "did:plc:2222wwgiwub7vgzujm4oi7xv",
+    "did:plc:2224jxoasn2qedlvkpylnhvb",
+    "did:plc:2224urouejo7v3akjpufobhb"
+  ],
+  "all_three_alsoKnownAs": [
+    "at://donald.trump.com",
+    "at://jr.donald.trump.com",
+    "at://eric.trump.com",
+    "at://ivanka.trump.com",
+    "at://tiffany.trump.com",
+    "at://barron.trump.com",
+    "at://melania.trump.com"
+  ],
+  "all_three_pds": "https://pds.trump.com",
+  "dns": {
+    "_atproto.donald.trump.com TXT": "NXDOMAIN",
+    "pds.trump.com A": "NXDOMAIN"
+  },
+  "handle_https": "Name resolution failed for donald.trump.com",
+  "appview_getProfiles": {
+    "requested_dids": 3,
+    "profiles": []
+  },
+  "interpretation": "These three sampled associations are not currently bidirectionally valid handles. Pattern strongly suggests fabricated identity spam. Total affected rows, creation provenance and activity are not measured."
+}
