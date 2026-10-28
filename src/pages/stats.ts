@@ -11,7 +11,8 @@ export interface SnapshotPoint {
 
 export interface StatsData {
   total: number;
-  hiddenCount: number;
+  hiddenCount: number | null;
+  exclusionsAsOf?: string;
   rows: { hour: number; searches: number; total_ms: number; cache_hits: number; cache_ms: number }[];
   totalSearches: number;
   avgLatency: number;
@@ -505,8 +506,8 @@ export function statsPage(d: StatsData): string {
         <div class="value">${d.avatarPct}%</div>
       </div>
       <div class="metric">
-        <div class="label" tabindex="0" data-tip="indexed actors carrying a bluesky !hide, !takedown, !suspend or spam label as last observed by the refresh cron. PDS-level suspensions are deleted from the index, not hidden, so this is not an enforcement count">hidden by moderation</div>
-        <div class="value">${d.hiddenCount.toLocaleString()}</div>
+        <div class="label" tabindex="0" data-tip="Actors excluded by moderation or invalid identity, including quarantined handle claims. ${d.exclusionsAsOf ? `Audited ${esc(d.exclusionsAsOf)}.` : 'The offline audit is pending.'}">excluded from search</div>
+        <div class="value">${d.hiddenCount === null ? "Audit pending" : d.hiddenCount.toLocaleString()}</div>
       </div>
     </div>
 

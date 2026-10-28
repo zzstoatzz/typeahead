@@ -1,5 +1,6 @@
+import { identitySchema, verifyIdentityHandle } from "../verify-identity";
 import type { Stmt, TursoDB } from "../db";
-import type { Env, SlingshotResponse } from "../types";
+import type { Env } from "../types";
 import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL, MICROCOSM_UA } from "../types";
 import { clientIP, json, extractProfileFields, fetchProfileFromBlacksky, fetchProfileFromPds } from "../utils";
 import type { ProfileSource } from "../utils";
@@ -161,7 +162,11 @@ export async function handleRequestIndexing(
     return json({ error: `could not resolve "${identifier}". check that it's a valid handle or DID.` }, 404);
   }
 
-  const identity: SlingshotResponse = await res.json();
+  const parsedIdentity = identitySchema.safeParse(await res.json());
+  if (!parsedIdentity.success || !await verifyIdentityHandle(parsedIdentity.data)) {
+    return json({ error: "handle ownership could not be verified" }, 422);
+  }
+  const identity = parsedIdentity.data;
   lap("slingshot");
 
   // fetch profile from public API for display name + avatar + labels + metadata

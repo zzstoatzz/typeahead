@@ -4,7 +4,7 @@
 # dependencies = []
 # ///
 """
-Resolve DID -> (handle, pds) in bulk from the PLC log.
+Read DID-authorized claims from the PLC log; apply only PDS metadata.
 
 WHY THIS EXISTS
 ---------------
@@ -16,11 +16,12 @@ backlogs, they are permanent conditions. Batching phase 1 through getProfiles
 appview indexed; the residual is exactly the self-hosted-PDS accounts we care
 most about, and it does not return pds at all.
 
-The PLC log is the authoritative source for both fields, and fig's Allegedly
+PLC handle claims require independent reverse verification before admission.
+Handle writes are disabled here. Fig's Allegedly
 (https://tangled.org/@microcosm.blue/Allegedly, the tool behind plc.wtf) makes
 it bulk-readable: weekly gzipped bundles instead of paginated HTTP.
 
-    allegedly backfill --dir ./weekly | plc-identity-sync.py --apply
+    allegedly backfill --dir ./weekly | plc-identity-sync.py --apply --need pds
 
 BUNDLE SOURCES
 --------------
@@ -466,6 +467,9 @@ def main() -> int:
 
     if args.fetch:
         fetch_bundles(args.dest)
+    if args.apply and args.need != "pds":
+        sys.exit("PLC alsoKnownAs is an unverified claim; handle writes are disabled. Use --need pds for hosting metadata only.")
+
     if args.verify_bundles:
         verify_bundles(args.dest)
     if args.scrape_tail:
@@ -534,9 +538,8 @@ def main() -> int:
     # getProfiles or the firehose already supplied.
     sql = (
         "UPDATE actors SET "
-        "handle = COALESCE(NULLIF(j.value ->> '$.h', ''), handle), "
         "pds = COALESCE(NULLIF(j.value ->> '$.p', ''), pds), "
-        "identity_checked_at = unixepoch(), updated_at = unixepoch() "
+        "updated_at = unixepoch() "
         "FROM json_each(?1) AS j WHERE actors.did = j.value ->> '$.d'"
     )
 
@@ -545,7 +548,7 @@ def main() -> int:
     slow_batches = 0
     t_write = time.time()
     for did, (_, handle, pds) in resolved.items():
-        pending.append({"d": did, "h": handle or "", "p": pds or ""})
+        pending.append({"d": did, "p": pds or ""})
         if len(pending) >= args.batch:
             t_batch = time.time()
             turso_batch([(sql, [json.dumps(pending)])])

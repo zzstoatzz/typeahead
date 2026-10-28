@@ -120,9 +120,18 @@ table. Keyset on `rowid`, not `did`.
 
 ## the PLC bulk path
 
-The PLC log is the authoritative source for handle and pds, and both appear on
-100% of ops. Bundles are weekly gzipped files; details and gotchas are in the
-memory note `reference-plc-bulk-identity`.
+The PLC log supplies DID-authorized handle claims and PDS declarations. A handle
+claim alone does not prove ownership: the handle must also resolve back to the
+DID through DNS or HTTPS. The bulk script no longer writes handles or marks them
+verified; apply mode is restricted to PDS metadata. The weekly schedule remains
+inactive (verified October 28). Bundles are weekly gzipped files.
+
+Since October 28, raw relay handle hints only enqueue the DID for verification.
+Authenticated ingest accepts handle updates only with the verifier marker, or
+the explicit `handle.invalid` sentinel. Manual indexing checks the authority DID
+document and reverse handle resolution before writing. Existing invalid claims
+are contained at the response boundary while offline repair is pending. See the
+[repair record](ops/identity-repair-20261028/README.md).
 
 Writes use one statement per batch via `json_each`, not one statement per row.
 Each row change fires the `actors_au` trigger and rewrites FTS5, which is the

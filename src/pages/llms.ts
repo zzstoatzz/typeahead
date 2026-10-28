@@ -49,7 +49,8 @@ status — those need the caller's graph, which typeahead does not hold. edge-ca
 ## other endpoints
 
 - POST https://typeahead.waow.tech/request-indexing?handle=<handle-or-did> — surface an account
-  that predates the index. rate limited.
+  that predates the index. rate limited. Requires authority DID-document and reverse
+  handle verification; unverified claims return 422.
 - https://typeahead.waow.tech/docs — migration guide (html)
 - https://typeahead.waow.tech/stats — index health, latency, traffic (html)
 

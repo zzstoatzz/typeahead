@@ -106,7 +106,7 @@ pub fn decide(did: []const u8, lookup: ?Lookup, attempt: u8) Decision {
     const l = lookup orelse return .{ .event = .{ .did = did }, .retry = false };
     if (l.handle == null) return .{ .event = .{ .did = did, .pds = l.pds }, .retry = false };
     if (l.verified) {
-        return .{ .event = .{ .did = did, .handle = l.handle, .pds = l.pds }, .retry = false };
+        return .{ .event = .{ .did = did, .handle = l.handle, .handle_verified = true, .pds = l.pds }, .retry = false };
     }
     if (attempt < RETRY_DELAYS_SECS.len) {
         return .{ .event = .{ .did = did, .pds = l.pds }, .retry = true };

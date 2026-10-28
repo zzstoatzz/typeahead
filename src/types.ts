@@ -81,6 +81,7 @@ export interface ProfileRow extends ActorRow {
 export interface IngestEvent {
   did: string;
   handle?: string;
+  handle_verified?: boolean;
   display_name?: string;
   avatar_cid?: string;
   description?: string;

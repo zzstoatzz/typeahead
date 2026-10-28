@@ -395,5 +395,9 @@ production repair was performed.
 
 [Live validation on October 28](docs/ops/invalid-handle-claims-20261028.md) confirms
 the invalid handle claims are served by the public endpoint and present unhidden
-in Turso. This is an unresolved live data-integrity issue; affected totals are
-unknown, and no production repair has been applied.
+in Turso. Admission and response containment shipped October 28: the ingester sends only
+verified handle updates, and the Worker rejects unverified claims and suppresses
+the seven confirmed bogus handles plus `handle.invalid`, including cached replies.
+The /stats card now says “excluded from search”; its union count awaits the
+offline audit. Existing corpus repair is pending. See the
+[repair record](docs/ops/identity-repair-20261028/README.md).

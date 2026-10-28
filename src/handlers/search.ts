@@ -1,3 +1,4 @@
+import { filterIdentityBody, filterIdentityResponse, isSearchExcludedHandle } from "../identity-policy";
 import { normalizePds } from "../pds";
 export { normalizePds } from "../pds";
 import { rowsAs, type TursoDB } from "../db";
@@ -102,7 +103,7 @@ export async function handleSearch(
     const bskyUrl = `${BSKY_TYPEAHEAD_URL}?q=${encodeURIComponent(term)}&limit=${limit}`;
     try {
       const r = await fetch(bskyUrl, { signal: AbortSignal.timeout(5000) });
-      const body = await r.text();
+      const body = filterIdentityBody(await r.text(), "actors");
       return new Response(body, {
         status: r.status,
         headers: { "Content-Type": "application/json", ...CORS_HEADERS },
@@ -125,7 +126,7 @@ export async function handleSearch(
   const cached = await cache.match(cacheKey);
   if (cached) {
     ctx.waitUntil(recordCacheHit(db, Date.now() - t0));
-    const response = new Response(cached.body, cached);
+    const response = await filterIdentityResponse(cached, "actors");
     response.headers.set("Server-Timing", `cache;desc="hit";dur=${Date.now() - t0}`);
     return response;
   }
@@ -152,7 +153,7 @@ export async function handleSearch(
         if (!backendRes.ok) throw new Error(`backend_${backendRes.status}`);
         {
           const headersMs = Date.now() - backendStart;
-          const body = await backendRes.text();
+          const body = filterIdentityBody(await backendRes.text(), "actors");
           const backendMs = Date.now() - backendStart;
 
           // An EMPTY result from the replica falls through to Turso.
@@ -314,7 +315,7 @@ export async function handleSearch(
       takePrefix = !takePrefix;
     }
 
-    const actors = merged.map((r) => {
+    const actors = merged.filter((r) => !isSearchExcludedHandle(r.handle)).map((r) => {
       const view: ActorView = { did: r.did, handle: r.handle };
       if (r.display_name) view.displayName = r.display_name;
       if (r.avatar_url) {

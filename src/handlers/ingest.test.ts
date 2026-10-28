@@ -148,13 +148,26 @@ test("a new handle for an existing actor replaces the old one; a bare DID keeps 
   const env = fakeEnv({ ADMIN_SECRET: "s3cret" });
   const did = "did:plc:bjrgfiemnynipuvv4h6md4qi";
 
-  await handleIngest(mockReq([{ did, handle: "moltrust.bsky.social" }]), db, env, fakeCtx().ctx);
+  await handleIngest(mockReq([{ did, handle: "moltrust.bsky.social", handle_verified: true }]), db, env, fakeCtx().ctx);
   expect(handleOf(did)).toBe("moltrust.bsky.social");
 
-  const res = await handleIngest(mockReq([{ did, handle: "moltrust.ch" }]), db, env, fakeCtx().ctx);
+  const res = await handleIngest(mockReq([{ did, handle: "moltrust.ch", handle_verified: true }]), db, env, fakeCtx().ctx);
   expect(res.status).toBe(200);
   expect(handleOf(did)).toBe("moltrust.ch");
 
   await handleIngest(mockReq([{ did }]), db, env, fakeCtx().ctx);
   expect(handleOf(did)).toBe("moltrust.ch");
+});
+
+
+test("unverified identity claims never replace a verified handle or initialize a new one", async () => {
+  const { db, handleOf } = sqliteDb();
+  const env = fakeEnv({ ADMIN_SECRET: "s3cret" });
+  const did = "did:plc:verified";
+  await handleIngest(mockReq([{ did, handle: "verified.example", handle_verified: true }]), db, env, fakeCtx().ctx);
+  await handleIngest(mockReq([{ did, handle: "donald.trump.com" }, { did: "did:plc:bare", handle: "donald.trump.com" }]), db, env, fakeCtx().ctx);
+  expect(handleOf(did)).toBe("verified.example");
+  expect(handleOf("did:plc:bare")).toBe("");
+  await handleIngest(mockReq([{ did, handle: "handle.invalid" }]), db, env, fakeCtx().ctx);
+  expect(handleOf(did)).toBe("handle.invalid");
 });

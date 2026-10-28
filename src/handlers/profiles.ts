@@ -1,3 +1,4 @@
+import { filterIdentityResponse, isSearchExcludedHandle } from "../identity-policy";
 import type { TursoDB } from "../db";
 import type { ProfileRow, Env } from "../types";
 import { CORS_HEADERS } from "../types";
@@ -87,7 +88,7 @@ export async function handleGetProfiles(
   const cache = caches.default;
   const cacheKey = new Request(profilesCacheKey(actors), { method: "GET" });
   const cached = await cache.match(cacheKey);
-  if (cached) return cached;
+  if (cached) return filterIdentityResponse(cached, "profiles");
 
   // split into DIDs and handles
   const dids: string[] = [];
@@ -119,7 +120,7 @@ export async function handleGetProfiles(
      FROM actors WHERE (${conditions.join(" OR ")}) AND hidden = 0`
   ).bind(...binds).all<ProfileRow>();
 
-  const profiles = (results || []).map(profileView);
+  const profiles = (results || []).filter((row) => !isSearchExcludedHandle(row.handle)).map(profileView);
 
   const response = new Response(JSON.stringify({ profiles }), {
     headers: {

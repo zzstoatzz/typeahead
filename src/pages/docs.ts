@@ -283,7 +283,8 @@ export function docsPage(): string {
       if someone isn't showing up in results, you (or your users) can request indexing from the
       <a href="/">homepage</a>. newly created accounts are picked up automatically from the
       relay's event stream, but accounts created before the index existed — or hosted on a PDS
-      the relay doesn't crawl — may need a manual nudge.
+      the relay doesn't crawl — may need a manual nudge. The handle must resolve to the DID,
+      and the authority DID document must claim that handle; unverified claims are rejected.
     </p>
 
     <footer>
