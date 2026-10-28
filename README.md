@@ -392,3 +392,8 @@ A [bounded identity follow-up](docs/evals/handle-sidecar-20261028/identity-follo
 confirmed invalid duplicated handle claims in three captured actors and identified
 an unverified PLC bulk-write path. The total affected count is unmeasured; no
 production repair was performed.
+
+[Live validation on October 28](docs/ops/invalid-handle-claims-20261028.md) confirms
+the invalid handle claims are served by the public endpoint and present unhidden
+in Turso. This is an unresolved live data-integrity issue; affected totals are
+unknown, and no production repair has been applied.

@@ -37,3 +37,8 @@ then measure affected rows offline and revalidate ownership before changing them
 Blindly deleting every duplicate DID would conflate bad handle associations with
 account validity. No production changes, database audit or corpus transfer were
 performed in this follow-up.
+
+A subsequent [live-service check](../../ops/invalid-handle-claims-20261028.md)
+confirmed these claims in public results and the source database. That check also
+identified the raw identity-event write path as another admission gap; historical
+row provenance and the total affected count remain unproven.
