@@ -52,8 +52,12 @@ def stop():
    except subprocess.TimeoutExpired:os.killpg(child.pid,signal.SIGKILL);child.wait()
 def interrupted(*_):raise KeyboardInterrupt()
 def expired(*_):raise TimeoutError('bootstrap hard deadline')
-signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupted)
-signal.signal(signal.SIGALRM,expired);signal.alarm(DEADLINE)
+def wait_source_window(server,started,seconds=3600):
+ while True:
+  if server.poll() is not None:raise RuntimeError('dev search server stopped during source quota pause')
+  remaining=seconds-(time.monotonic()-started)
+  if remaining<=0:return
+  time.sleep(min(2,remaining))
 def main():
  ROOT.mkdir(exist_ok=True)
  # Successful imports survive service restarts; no artifact fetch on ordinary boot.
@@ -102,22 +106,25 @@ def serve():
    time.sleep(.5)
   status('serving-and-replaying')
   while server.poll() is None:
-   replay=subprocess.Popen(['python3','/app/input/sync.py','--policy-mode','snapshot','--status-file','/data/replay-status.json','--max-run-seconds','3600','--max-source-bytes','536870912'],stdout=open(ROOT/'replay.log','ab'),stderr=subprocess.STDOUT,start_new_session=True)
+   replay=subprocess.Popen(['python3','/app/input/sync.py','--policy-mode','snapshot','--status-file','/data/replay-status.json','--max-run-seconds','3600','--max-source-bytes','536870912','--anti-entropy-pages','64','--max-sweep-seconds','20','--max-cycle-seconds','30','--interval','40'],stdout=open(ROOT/'replay.log','ab'),stderr=subprocess.STDOUT,start_new_session=True)
    children.append(replay);started=time.monotonic()
    while replay.poll() is None:
     if server.poll() is not None:raise RuntimeError('dev search server stopped')
     time.sleep(2)
    children.remove(replay)
-   if time.monotonic()-started<30:
+   if replay.returncode:
     status('replay-process-failed',exit_code=replay.returncode)
-    time.sleep(30)
+   wait_source_window(server,started)
    # Bounded replay lifetimes rotate; index cursor survives each process restart.
    for name in ['replay.log','import.log','export.log']:
     path=ROOT/name
     if path.exists() and path.stat().st_size>16*1024*1024:path.replace(ROOT/(name+'.previous'))
   raise RuntimeError('dev search server exited')
  finally:stop()
-try:main()
-except BaseException as exc:
- stop();status('failed',error_type=type(exc).__name__)
- raise
+if __name__=='__main__':
+ signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupted)
+ signal.signal(signal.SIGALRM,expired);signal.alarm(DEADLINE)
+ try:main()
+ except BaseException as exc:
+  stop();status('failed',error_type=type(exc).__name__)
+  raise

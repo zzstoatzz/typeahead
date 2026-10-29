@@ -82,6 +82,15 @@ state and do not prove a speedup. The default two pages per minute remains far
 too slow for daily full reconciliation. Wire size, writer progress and completed
 round duration must all be verified on the actual candidate.
 
+The branch's dev supervisor now requests at most 64 anti-entropy pages and
+20 seconds of sweep work per cycle, following at most 30 seconds of discovery
+and a 40-second polling interval. The 512-MiB hourly source allowance is
+unchanged. Early reconciler exits wait out the original hour before another
+process can receive a fresh allowance; a real early-exit child and a live/dead
+server check verified that wait behavior locally. These are candidate settings,
+not a measured coverage guarantee, and they are not deployed. Complete daily
+rounds and concurrent-search behavior still require actual final-budget evidence.
+
 The [operator-state audit](../evals/tantivy-dev-20261028/native-operator-inventory.json)
 found source-one prefix writes only in tests across 13 revisions, with the flag
 explicitly documented as future work. That is not a demonstrated shipped-feature
