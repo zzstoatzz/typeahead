@@ -483,6 +483,18 @@ class PilotTests(unittest.TestCase):
         self.pilot.launch_reaper();self.assertEqual(len(self.control.ledger()['retired_pilots']),1)
         self.assertEqual(set(self.api.volumes),oldids)
         self.assertTrue(all(v['state']=='pending_destroy' for v in self.api.volumes.values()))
+    def test_prior_confirmed_retirement_survives_provider_purge_state_changes(self):
+        self.provision();self.api.pending_destroy_volumes=True;self.assertEqual(self.pilot.cleanup()['status'],'cleaned')
+        self.pilot.prepare(IMAGE,NATIVE,TANTIVY,run_id='1234abcd5678')
+        volume=next(iter(self.api.volumes.values()))
+        for state in ['scheduling_destroy','fork_cleanup','waiting_for_detach','destroying']:
+            volume['state']=state
+            self.assertTrue(self.pilot.retired_terminal('volume',volume,[]))
+        value=self.control.ledger();value['retired_pilots'][0]['terminal_dispositions']=[];self.control.save(value)
+        self.assertFalse(self.pilot.retired_terminal('volume',volume,[]))
+        volume['attached_machine_id']='unrelated'
+        self.assertFalse(self.pilot.retired_terminal('volume',volume,[]))
+
     def test_unrecorded_pending_or_live_retired_volume_blocks_new_allocation(self):
         self.provision();self.api.pending_destroy_volumes=True;self.assertEqual(self.pilot.cleanup()['status'],'cleaned')
         self.pilot.prepare(IMAGE,NATIVE,TANTIVY,run_id='1234abcd5678')

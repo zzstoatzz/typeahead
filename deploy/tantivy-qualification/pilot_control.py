@@ -148,7 +148,14 @@ class Pilot:
                 try:guardian.bind(kind,entry|{'id':actual['id']},actual)
                 except reaper.SafeError:raise PilotError('retired_identity_mismatch') from None
                 if kind=='machine':return actual.get('state')=='destroyed'
-                if actual.get('state') not in {'destroyed','pending_destroy'} or actual.get('attached_machine_id') or actual.get('attached_alloc_id'):return False
+                state=actual.get('state')
+                if state not in {'destroyed','pending_destroy'}:
+                    # Fly's SDK treats these as deletion states. Require our earlier
+                    # confirmed retirement as well; an unknown volume never qualifies.
+                    # https://github.com/superfly/fly-go/blob/master/flaps/flaps_volumes.go
+                    prior=next((row for row in retired.get('terminal_dispositions',[]) if row.get('id')==actual['id']),{})
+                    if state not in {'scheduling_destroy','fork_cleanup','waiting_for_detach','destroying'} or prior.get('state')!='pending_destroy' or prior.get('non_billable') is not True:return False
+                if actual.get('attached_machine_id') or actual.get('attached_alloc_id'):return False
                 for machine in machines:
                     if machine.get('state')=='destroyed':continue
                     mounts=machine.get('config',{}).get('mounts') or []
