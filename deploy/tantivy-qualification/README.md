@@ -80,6 +80,23 @@ write-ahead intent; retries must retain the original observer/receipt and never
 repeat a recorded POST. `reconcile` reports unresolved staged updates and any
 confirmed resize still awaiting its original completion receipt.
 
+Once both existing PREP guests have been started, run the bounded local supervisor
+in an independent process:
+
+```sh
+nohup python3 deploy/tantivy-qualification/pilot_control.py advance-to-measurement --run-id EXISTING_RUN_ID > /tmp/typeahead-qualification-supervisor.log 2>&1 &
+```
+
+It allocates nothing and retains the original deadline. A local file lock owns
+phase advancement; the ledger binds every step to the same manifest and resolved
+IDs. The supervisor consumes verified preparation receipts, configures final
+hardware, starts both engines and the generator, captures terminal generator
+logs (including provider `destroyed` records), and always attempts guarded
+cleanup. Captured results and errors remain under `pilot.supervisor`. A missing
+optional post-measurement runner is recorded as functional-inconclusive; it does
+not convert a performance result into readiness. Repeating a completed invocation
+returns its saved receipt without another mutation.
+
 ## Full-corpus runner
 
 `image/full_prepare.py` downloads the two pinned R2 objects directly into each

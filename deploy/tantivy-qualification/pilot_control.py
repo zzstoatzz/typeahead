@@ -26,6 +26,10 @@ and at most 900 seconds, without a source capability. Provider/runtime checks
 remain mandatory; synthetic lifecycle success never qualifies corpus or speed.
 """
 import argparse
+from contextlib import contextmanager
+import fcntl
+import os
+import tempfile
 import base64
 import copy
 import hashlib
@@ -35,6 +39,7 @@ import json
 from pathlib import Path
 import re
 import secrets
+import subprocess
 import time
 import urllib.parse
 
@@ -506,6 +511,143 @@ class Pilot:
         finish_pending=[role for role in ENGINE_ROLES if pilot.get('staged_attempts',{}).get(role+':resize',{}).get('state')=='committed' and role not in pilot.get('preparation_finished',{})]
         return {'resolved':pilot['resolved'],'unresolved_attempts':pending,'unresolved_configuration_attempts':unconfirmed,
                 'unresolved_staged_attempts':staged_pending,'staged_finish_receipt_required':finish_pending,'safe_to_recreate':False}
+    @contextmanager
+    def supervisor_lock(self):
+        ledger=Path(getattr(self.control,'LEDGER',getattr(self.control,'path',HERE/'resources.json')))
+        descriptor=os.open(ledger.with_suffix('.advance.lock'),os.O_CREAT|os.O_RDWR|os.O_NOFOLLOW,0o600)
+        try:
+            try:fcntl.flock(descriptor,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            except BlockingIOError:raise PilotError('another_supervisor_owns_lease') from None
+            yield
+        finally:os.close(descriptor)
+    def advance_to_measurement(self,run_id,poll_seconds=2):
+        if not isinstance(run_id,str) or not re.fullmatch('[a-f0-9]{8,16}',run_id) or not 1<=poll_seconds<=5:raise PilotError('supervisor_bounds')
+        with self.supervisor_lock():return self._advance_owned(run_id,poll_seconds)
+    def _advance_owned(self,run_id,poll):
+        _,initial=self.plan()
+        if initial['manifest']['run_id']!=run_id or not initial.get('staged_preparation'):raise PilotError('supervisor_run_binding')
+        expected_manifest=initial['manifest_sha256'];expected_ids=copy.deepcopy(initial['resolved'])
+        if initial.get('supervisor',{}).get('state') in {'completed','failed'} and initial.get('cleanup_receipt',{}).get('status')=='cleaned':return initial['supervisor']
+        required={'machine:'+role for role in ['native-control','tantivy-control','generator','reaper']}|{'volume:native','volume:tantivy'}
+        if not required.issubset(expected_ids) or not set(ENGINE_ROLES).issubset(initial.get('preparation_started',{})):raise PilotError('supervisor_requires_existing_started_preparation')
+        def bound():
+            value,pilot=self.plan()
+            if pilot['manifest']['run_id']!=run_id or pilot['manifest_sha256']!=expected_manifest or pilot['resolved']!=expected_ids:raise PilotError('supervisor_run_binding_changed')
+            return value,pilot
+        def journal(**fields):
+            value,pilot=bound();pilot.setdefault('supervisor',{}).update(fields,heartbeat_at=self.now(),owner_pid=os.getpid());self.save(value)
+        def observed(role):
+            _,pilot=bound()
+            for attempt in range(3):
+                try:actual=self.control.owned(expected_ids['machine:'+role]);break
+                except (RuntimeError,subprocess.TimeoutExpired):
+                    if attempt==2 or self.now()+attempt+1>=pilot['manifest']['deadline']-15:raise PilotError('supervisor_observation_unavailable') from None
+                    self.sleep(attempt+1)
+            if any(actual.get('config',{}).get('metadata',{}).get(key)!=wanted for key,wanted in self.metadata(pilot,role).items()):raise PilotError('supervisor_machine_identity')
+            return actual
+        def start_once(role):
+            value,pilot=bound();actual=observed(role)
+            if actual.get('state')=='started':
+                self.owned_machine(role)
+                keys=pilot.get('configuration_keys',{}).get(role,[])
+                if not keys or digest({key:actual['config']['env'].get(key) for key in keys})!=pilot.get('configured',{}).get(role):raise PilotError('configured_environment_changed')
+                if role not in pilot.get('started',[]):pilot.setdefault('started',[]).append(role);self.save(value)
+                return
+            attempted=role in pilot.get('supervisor',{}).get('start_attempts',{})
+            if not attempted:
+                pilot.setdefault('supervisor',{}).setdefault('start_attempts',{})[role]=self.now();self.save(value)
+                try:self.start(role)
+                except PilotError:pass
+            until=min(self.monotonic()+30,self.monotonic()+max(0,pilot['manifest']['deadline']-self.now()-15))
+            while self.monotonic()<until:
+                actual=observed(role)
+                if actual.get('state')=='started' or role=='generator' and actual.get('state') in {'destroyed','stopped','failed'}:return
+                if actual.get('state') not in {'created','stopped','starting','replacing','updating'}:raise PilotError('supervisor_start_terminal')
+                self.sleep(1)
+            raise PilotError('supervisor_start_unconfirmed_no_retry')
+        def final_observer(role):
+            _,pilot=bound();cached=pilot.get('supervisor',{}).get('observers',{}).get(role)
+            if cached:return cached
+            with tempfile.TemporaryDirectory(prefix='qualification-observer-') as directory:
+                observer=self.control.attest(expected_ids['machine:'+role],Path(directory)/'observer.json')
+            value,pilot=bound();pilot.setdefault('supervisor',{}).setdefault('observers',{})[role]=observer;self.save(value);return observer
+        journal(state='advancing',run_id=run_id,deadline=initial['manifest']['deadline'])
+        failure=None
+        try:
+            while True:
+                _,pilot=bound();self.lease(pilot,creating=True);self.alive_reaper(pilot);journal(phase='preparation')
+                for role in ENGINE_ROLES:
+                    _,pilot=bound()
+                    if role not in pilot.get('preparation_finished',{}):
+                        actual=observed(role)
+                        if actual.get('state')=='stopped':
+                            try:receipts=self.control.log_receipts(actual['id'])
+                            except (RuntimeError,subprocess.TimeoutExpired):continue
+                            matches=[row['receipt'] for row in receipts if row.get('marker')=='QUALIFICATION_PREPARATION_COMPLETE' and row.get('receipt',{}).get('nonce')==pilot['nonce']]
+                            if matches:self.finish_preparation(role,matches[-1])
+                            else:
+                                value,pilot=bound();seen=pilot.setdefault('supervisor',{}).setdefault('stopped_without_receipt',{}).setdefault(role,self.now());self.save(value)
+                                if self.now()-seen>=30:raise PilotError('supervisor_preparation_receipt_missing')
+                                continue
+                        elif actual.get('state') in {'destroyed','failed','launch_failed'}:raise PilotError('supervisor_preparation_terminal')
+                        else:continue
+                    _,pilot=bound()
+                    if role not in pilot.get('configured',{}):self.configure_engine(role,final_observer(role))
+                _,pilot=bound()
+                if set(ENGINE_ROLES).issubset(pilot.get('configured',{})):break
+                self.sleep(poll)
+            journal(phase='starting_final_engines')
+            for role in ENGINE_ROLES:start_once(role)
+            _,pilot=bound()
+            if 'generator' not in pilot.get('configured',{}):
+                def url(role,port):return 'http://'+expected_ids['machine:'+role]+'.vm.'+APP+'.internal:'+str(port)
+                self.configure_generator(url('native-control',8080),url('native-control',8082),url('tantivy-control',8080),url('tantivy-control',8082))
+            start_once('generator');journal(phase='measurement')
+            terminal_seen=None
+            while True:
+                _,pilot=bound()
+                if self.now()>=pilot['manifest']['deadline']-10:raise PilotError('supervisor_measurement_deadline')
+                actual=observed('generator')
+                try:logs=self.control.log_receipts(actual['id'])
+                except (RuntimeError,subprocess.TimeoutExpired):logs=[]
+                marker='QUALIFICATION_SYNTHETIC_STAGED_PILOT_RESULT' if pilot.get('synthetic_staged_pilot') else 'QUALIFICATION_FULL_RESULT'
+                for row in logs:
+                    if row.get('marker')!=marker:continue
+                    result=row.get('receipt')
+                    if not isinstance(result,dict) or type(result.get('passed')) is not bool or result.get('production_contact') is not False or len(encoded(result))>65536:raise PilotError('supervisor_generator_result_contract')
+                    checksum=result.get('metadata_sha256') if 'arms' not in result and binary_sha(result.get('metadata_sha256')) else digest(result)
+                    _,pilot=bound();prior=pilot.get('supervisor',{}).get('generator_result')
+                    if prior and prior['sha256']!=checksum:raise PilotError('supervisor_generator_result_changed')
+                    journal(generator_result={'receipt':result,'sha256':checksum,'truncated':'arms' not in result,'captured_at':self.now()})
+                _,pilot=bound();captured=pilot.get('supervisor',{}).get('generator_result')
+                if actual.get('state') in {'destroyed','stopped','failed','launch_failed'}:
+                    if captured:break
+                    if terminal_seen is None:terminal_seen=self.now()
+                    if self.now()-terminal_seen>=30:raise PilotError('supervisor_terminal_result_missing')
+                journal(phase='measurement');self.sleep(poll)
+            if not captured['receipt']['passed']:raise PilotError('supervisor_generator_reported_failure')
+            journal(phase='post_measurement')
+            _,pilot=bound();functional=pilot.get('supervisor',{}).get('functional')
+            if functional is None:
+                runner=getattr(self.control,'run_functional',None)
+                if callable(runner) and pilot['manifest']['deadline']-self.now()>=90 and all(observed(role).get('state')=='started' for role in ENGINE_ROLES):
+                    journal(functional={'state':'attempted','timed_result_sha256':captured['sha256']})
+                    try:
+                        receipt=runner(expected_ids['machine:tantivy-control'],expected_ids['machine:native-control'],run_id,pilot,captured['sha256'])
+                        if not isinstance(receipt,dict) or receipt.get('timed_result_sha256')!=captured['sha256'] or len(encoded(receipt))>65536:raise PilotError('supervisor_functional_contract')
+                        journal(functional={'state':'completed','receipt':receipt})
+                    except Exception:journal(functional={'state':'inconclusive','reason':'functional_execution_uncertain_no_retry'})
+                else:journal(functional={'state':'inconclusive','reason':'functional_runner_or_lease_unavailable'})
+            journal(phase='cleanup')
+        except Exception as error:
+            failure=str(error) if isinstance(error,PilotError) and re.fullmatch('[A-Za-z0-9_]{1,120}',str(error)) else type(error).__name__
+            journal(error=failure,phase='cleanup')
+        finally:
+            bound()
+            try:cleanup=self.cleanup()
+            except Exception as error:cleanup={'status':'cleanup_failed','class':type(error).__name__}
+            journal(state='failed' if failure or cleanup.get('status')!='cleaned' else 'completed',cleanup=cleanup)
+        return bound()[1]['supervisor']
     def cleanup(self):
         value,pilot=self.plan();guardian=self.guard(pilot)
         unresolved=[]
@@ -545,6 +687,7 @@ def arguments(argv=None):
     p=sub.add_parser('configure-generator')
     for key in ['native-url','native-control-url','tantivy-url','tantivy-control-url']:p.add_argument('--'+key,required=True)
     p=sub.add_parser('start');p.add_argument('--role',choices=['native-control','tantivy-control','generator'],required=True)
+    p=sub.add_parser('advance-to-measurement');p.add_argument('--run-id',required=True);p.add_argument('--poll-seconds',type=int,default=2)
     sub.add_parser('reconcile');sub.add_parser('cleanup');return parser.parse_args(argv)
 
 def main():
@@ -558,6 +701,7 @@ def main():
     elif args.action=='finish-preparation':result=pilot.finish_preparation(args.role,json.loads(args.receipt.read_text()))
     elif args.action=='configure-generator':result=pilot.configure_generator(args.native_url,args.native_control_url,args.tantivy_url,args.tantivy_control_url)
     elif args.action=='start':result=pilot.start(args.role)
+    elif args.action=='advance-to-measurement':result=pilot.advance_to_measurement(args.run_id,args.poll_seconds)
     elif args.action=='reconcile':result=pilot.reconcile()
     else:result=pilot.cleanup()
     print(json.dumps(result,separators=(',',':')))

@@ -6,6 +6,7 @@ import importlib.util
 import json
 from pathlib import Path
 import socket
+import subprocess
 import tempfile
 import threading
 import unittest
@@ -26,7 +27,7 @@ class Clock:
 
 class APIState:
     def __init__(self,ledger,clock):
-        self.ledger=ledger;self.clock=clock;self.machines={};self.volumes={};self.calls=[];self.violations=[];self.counter=0;self.lost={};self.lost_update={};self.tombstones={'machines':{},'volumes':{}};self.retain_destroyed=False;self.pending_destroy_volumes=False;self.update_transition={};self.pending_updates={};self.retirement_delay={};self.retiring={}
+        self.ledger=ledger;self.clock=clock;self.machines={};self.volumes={};self.calls=[];self.violations=[];self.counter=0;self.lost={};self.lost_update={};self.tombstones={'machines':{},'volumes':{}};self.retain_destroyed=False;self.pending_destroy_volumes=False;self.update_transition={};self.pending_updates={};self.retirement_delay={};self.retiring={};self.get_failures={}
         state=self
         class Handler(http.server.BaseHTTPRequestHandler):
             def do(self):
@@ -37,6 +38,8 @@ class APIState:
                 state.calls.append((self.command,kind,rid,action,copy.deepcopy(body)))
                 records=state.machines if kind=='machines' else state.volumes
                 if self.command=='GET':
+                    if state.get_failures.get(rid,0):
+                        state.get_failures[rid]-=1;self.respond(503,{});return
                     if kind=='machines' and rid in state.retiring:
                         remaining=state.retiring[rid]
                         if remaining==0:
@@ -119,6 +122,26 @@ class Control:
         except (OSError,http.client.HTTPException):raise RuntimeError('qualification API transport failed') from None
         finally:conn.close()
 
+    def owned(self,mid):
+        if mid in self.PROTECTED or mid not in [m['id'] for m in self.ledger()['machines']]:raise RuntimeError('unowned machine')
+        actual=self.api('GET','machines/'+mid)
+        if actual['config']['metadata']['owner']!=self.OWNER:raise RuntimeError('owner differs')
+        return actual
+    def attest(self,mid,destination):
+        actual=self.owned(mid);volumes={v['id']:v for v in self.api('GET','volumes')}
+        value={'app':p.APP,'machine_id':mid,'guest':actual['config']['guest'],'volume_ids':[m['volume'] for m in actual['config']['mounts']],
+               'final_volume_gib':sum(volumes[m['volume']]['size_gb'] for m in actual['config']['mounts']),'public_services':[],
+               'machines_api_response_sha256':'e'*64}
+        Path(destination).write_text(json.dumps(value));return value
+    def log_receipts(self,mid):
+        if getattr(self,'log_timeouts',0):
+            self.log_timeouts-=1;raise subprocess.TimeoutExpired('fixture-log-reader',25)
+        actual=self.owned(mid)
+        if actual['config']['metadata']['role']=='generator' and actual['state']=='started' and hasattr(self,'generator_result'):
+            actual=self.server.machines.pop(mid);actual['state']='destroyed';self.server.tombstones['machines'][mid]=actual
+            return [{'marker':'QUALIFICATION_FULL_RESULT','receipt':copy.deepcopy(self.generator_result)}]
+        return copy.deepcopy(getattr(self,'logs',{}).get(mid,[]))
+
 class PilotTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.path=Path(self.temp.name)/'ledger.json';self.clock=Clock()
@@ -155,6 +178,45 @@ class PilotTests(unittest.TestCase):
         return {'app':p.APP,'machine_id':actual['id'],'volume_id':plan['resolved']['volume:'+p.ENGINE_ROLES[role]],
                 'arm':p.ENGINE_ROLES[role],'nonce':plan['nonce'],'build_id':'b1793109259-fixture',
                 'checkpoint_sha256':'d'*64,'prepared':True,'guest':copy.deepcopy(p.PREP),'runtime_instance_id':actual['instance_id'],'prepared_at':self.clock.now()-.1}
+
+    def supervisor_ready(self):
+        self.staged();self.control.logs={}
+        for role in p.ENGINE_ROLES:
+            receipt=self.prepared_exit(role)
+            self.control.logs[receipt['machine_id']]=[{'marker':'QUALIFICATION_PREPARATION_COMPLETE','receipt':receipt}]
+        self.control.generator_result={'passed':True,'production_contact':False,'arms':{'native':{},'tantivy':{}}}
+        self.api.retain_destroyed=True
+    def test_supervisor_advances_captures_destroyed_generator_and_cleans_once(self):
+        self.supervisor_ready()
+        result=self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertEqual(result['state'],'completed');self.assertEqual(result['cleanup']['status'],'cleaned')
+        self.assertTrue(result['generator_result']['receipt']['passed']);self.assertFalse(result['generator_result']['truncated'])
+        self.assertEqual(result['functional']['state'],'inconclusive');self.assertFalse(self.api.machines);self.assertFalse(self.api.volumes)
+        mutations=[c for c in self.api.calls if c[0]!='GET']
+        again=self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertEqual(again,result);self.assertEqual(mutations,[c for c in self.api.calls if c[0]!='GET'])
+    def test_supervisor_transient_same_id_reads_and_log_timeout_do_not_abort(self):
+        self.supervisor_ready();_,plan=self.pilot.plan()
+        self.api.get_failures[plan['resolved']['machine:native-control']]=2;self.control.log_timeouts=1
+        result=self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertEqual(result['state'],'completed');self.assertFalse(self.api.machines)
+        self.assertEqual(len([call for call in self.api.calls if call[0]=='POST' and call[2] is None and call[1]=='machines']),4)
+    def test_supervisor_failed_result_preserved_and_cleanup_runs(self):
+        self.supervisor_ready();self.control.generator_result['passed']=False
+        result=self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertEqual(result['state'],'failed');self.assertEqual(result['error'],'supervisor_generator_reported_failure')
+        self.assertFalse(result['generator_result']['receipt']['passed']);self.assertFalse(self.api.machines)
+    def test_supervisor_missing_prep_receipt_is_bounded_and_cleans(self):
+        self.supervisor_ready();self.control.logs={};start=self.clock.now()
+        result=self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertEqual(result['state'],'failed');self.assertEqual(result['error'],'supervisor_preparation_receipt_missing')
+        self.assertLess(self.clock.now()-start,40);self.assertFalse(self.api.machines)
+    def test_supervisor_wrong_run_and_second_local_owner_do_not_mutate(self):
+        self.supervisor_ready();before=len(self.api.calls)
+        with self.assertRaisesRegex(p.PilotError,'supervisor_run_binding'):self.pilot.advance_to_measurement('ffffffff')
+        with self.pilot.supervisor_lock():
+            with self.assertRaisesRegex(p.PilotError,'another_supervisor_owns_lease'):self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertEqual(len(self.api.calls),before)
     def test_staged_preparation_full_lifecycle_preserves_volume_and_final_shape(self):
         self.staged();_,plan=self.pilot.plan()
         for role in p.ENGINE_ROLES:
