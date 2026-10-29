@@ -183,8 +183,12 @@ class AdmissionTests(unittest.TestCase):
                 for _ in range(2):self.assertEqual(publisher.publish_tantivy(root/'published',source_path),manifest['active_build'])
                 published_manifest=remote/f"releases/search-tantivy/{manifest['active_build']}/manifest.json"
                 published_bytes=published_manifest.read_bytes();self.assertEqual(json.loads(published_bytes),portable)
+                local_bundle=root/'published/index.tar';saved_bundle=root/'saved-index.tar';local_bundle.rename(saved_bundle)
+                self.assertEqual(publisher.verify_tantivy(root/'published',source_path),manifest['active_build'])
+                self.assertFalse(local_bundle.exists());saved_bundle.rename(local_bundle)
                 source_remote.write_bytes(source_bytes+b' ')
                 with self.assertRaisesRegex(ValueError,'remote verification'):publisher.publish_tantivy(root/'published',source_path)
+                with self.assertRaisesRegex(ValueError,'remote verification'):publisher.verify_tantivy(root/'published',source_path)
                 source_remote.write_bytes(source_bytes)
                 (remote/portable['object_key']).write_bytes(b'corrupt')
                 with self.assertRaisesRegex(ValueError,'remote verification'):publisher.publish_tantivy(root/'published',source_path)

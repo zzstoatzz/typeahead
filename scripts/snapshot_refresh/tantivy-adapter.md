@@ -40,6 +40,11 @@ The existing publisher accepts `--engine tantivy --generation DIR
 the exact native manifest is already published, then verifies immutable upload
 of the bundle and finally its portable manifest. Native and mutable-pointer
 arguments are prohibited in this mode; `latest.json` remains untouched.
+After a successful publication, the same command with `--verify-only` verifies
+the remote source manifest, bundle size/checksum and exact portable manifest
+against retained local metadata. It requires no local tar and never uploads or
+changes pointers. Publication retries retain their payloads; a separate owned
+cleanup step may retire the local tar/index only after verified success.
 
 The manifest pins `retrieval_strategy` (`per-segment` or `global-merge`).
 Installation binds the portable manifest to a separate target configuration:

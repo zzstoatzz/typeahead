@@ -1,0 +1,60 @@
+{
+  "kind": "final_score_preserving_policy_wire_sample",
+  "actors": 4000,
+  "policy_wire_bytes": 1310704,
+  "source_identity_wire_bytes": 244804,
+  "total_wire_bytes": 1555508,
+  "source_requests": 16,
+  "wall_s": 10.184,
+  "strata": [
+    {
+      "actors": 500,
+      "policy_wire_bytes": 167021,
+      "wall_s": 0.824
+    },
+    {
+      "actors": 500,
+      "policy_wire_bytes": 163071,
+      "wall_s": 0.966
+    },
+    {
+      "actors": 500,
+      "policy_wire_bytes": 164722,
+      "wall_s": 0.916
+    },
+    {
+      "actors": 500,
+      "policy_wire_bytes": 162784,
+      "wall_s": 0.835
+    },
+    {
+      "actors": 500,
+      "policy_wire_bytes": 170518,
+      "wall_s": 1.254
+    },
+    {
+      "actors": 500,
+      "policy_wire_bytes": 165206,
+      "wall_s": 1.581
+    },
+    {
+      "actors": 500,
+      "policy_wire_bytes": 166494,
+      "wall_s": 1.305
+    },
+    {
+      "actors": 500,
+      "policy_wire_bytes": 150888,
+      "wall_s": 0.659
+    }
+  ],
+  "read_only": true,
+  "max_bytes": 16777216,
+  "max_seconds": 90,
+  "observed_at": 1793317544,
+  "source_revision": "59e57ce",
+  "query_sha256": "a91609ad19f17705deac8ca65a67bd93fa4428a25ecdeb1c3d3a6ecfe29c75de",
+  "app": "typeahead-tantivy-dev",
+  "machine_id": "840e95a2153308",
+  "scope": "eight lexical slices, final SQL only, no backend writes or full round claim"
+}

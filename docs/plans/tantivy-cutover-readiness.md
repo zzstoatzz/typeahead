@@ -90,6 +90,11 @@ the final score-preserving encoding; sequential timings have uncontrolled cache
 state and do not prove a speedup. The default two pages per minute remains far
 too slow for daily full reconciliation. Wire size, writer progress and completed
 round duration must all be verified on the actual candidate.
+The [final score-preserving SQL sample](../evals/tantivy-dev-20261028/source-policy-final-wire-sample.json)
+then measured 1,310,704 profile/policy bytes for 4,000 profiles, plus 244,804
+identity-walk bytes. The final profile response is about 41% smaller than the
+earlier object projection. This remains a bounded read-only sample, not a
+completed-round or concurrent-search result.
 
 The branch's dev supervisor now requests at most 64 anti-entropy pages and
 20 seconds of sweep work per cycle, following at most 30 seconds of discovery
