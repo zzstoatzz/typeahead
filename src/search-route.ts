@@ -44,11 +44,26 @@ export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: str
   const current = parseRoute({ version: 1, current: candidate });
   const before = await bucket.get(ROUTE_KEY);
   if ((before?.etag ?? null) !== expectedEtag) return false;
-  const previous = before ? parseRoute(await before.json()) : null;
+  const envelope = before ? await before.json() : null;
+  const previous = before ? parseRoute(envelope) : null;
+  const retained = envelope === null ? undefined : z.object({
+    previous: z.optional(z.unknown()),
+    native_rollback: z.optional(z.unknown()),
+  }).parse(envelope);
+  let anchor = retained?.native_rollback == null ? null : parseRoute({ version: 1, current: retained.native_rollback });
+  if (anchor?.engine === "tantivy") throw new Error("Native rollback anchor must be native");
+  if (current.engine === "tantivy") {
+    if (previous && previous.engine !== "tantivy") anchor = previous;
+    if (!anchor && retained?.previous != null) {
+      const earlier = parseRoute({ version: 1, current: retained.previous });
+      if (earlier.engine !== "tantivy") anchor = earlier;
+    }
+    if (!anchor) throw new Error("Tantivy promotion requires a retained native rollback anchor");
+  }
   const options = expectedEtag === null
     ? { onlyIf: { etagDoesNotMatch: "*" } }
     : { onlyIf: { etagMatches: expectedEtag } };
-  const result = await bucket.put(ROUTE_KEY, JSON.stringify({ version: 1, current, previous }), options);
+  const result = await bucket.put(ROUTE_KEY, JSON.stringify({ version: 1, current, previous, ...(anchor ? { native_rollback: anchor } : {}) }), options);
   return result !== null;
 }
 

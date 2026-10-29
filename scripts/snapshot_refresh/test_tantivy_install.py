@@ -39,12 +39,12 @@ def start_strict(binary,data,log,secret,fixture_identity=False):
 
 class AdmissionTests(unittest.TestCase):
     def manifest(self):
-        return {'engine':'tantivy','manifest_version':1,'artifact_format':'tantivy-directory-tar-v1','backend_format':adapter.FORMAT,'active_build':'b1793236000-pilot','normalize_version':'v2-cjk-bigram','plan_version':'complete-prefix-groups-v1','source_policy':adapter.SOURCE_POLICY,'sha256':'a'*64,'binary_sha256':'b'*64,'canonical_rules_source_sha256':json.loads((ROOT/'src/moderation-regexes.json').read_text())['canonical_source_sha256'],'retrieval_strategy':'per-segment','image_digest':'registry.fly.io/tantivy-fixture@sha256:'+'e'*64,'guest':dict(adapter.GUEST),'volume_id':'vol_fixture','volume_size_gib':20,'public_service_ports':[],'provider_app':'tantivy-fixture','byte_size':10240,'source_actor_count':1,'object_key':'releases/search-tantivy/b1793236000-pilot/index.tar','files':[{'path':'index/meta.json','byte_size':1,'sha256':'a'*64}]}
+        return {'engine':'tantivy','manifest_version':1,'artifact_format':'tantivy-directory-tar-v1','backend_format':adapter.FORMAT,'active_build':'b1793236000-pilot','normalize_version':'v2-cjk-bigram','plan_version':'complete-prefix-groups-v1','source_policy':adapter.SOURCE_POLICY,'sha256':'a'*64,'binary_sha256':'b'*64,'canonical_rules_source_sha256':json.loads((ROOT/'src/moderation-regexes.json').read_text())['canonical_source_sha256'],'retrieval_strategy':'per-segment','image_digest':'registry.fly.io/tantivy-fixture@sha256:'+'e'*64,'guest':dict(adapter.GUEST),'volume_id':'vol_fixture','volume_size_gib':20,'public_service_ports':[],'provider_app':'tantivy-fixture','byte_size':10240,'source_actor_count':1,'source_build_id':'b1793236000-pilot','legacy_build_id':'b1793236000-native','source_manifest_sha256':'1'*64,'source_watermark':100,'source_database_sha256':'2'*64,'source_prefix_sha256':'3'*64,'source_actors_sha256':'f'*64,'object_key':'releases/search-tantivy/b1793236000-pilot/index.tar','files':[{'path':'index/meta.json','byte_size':1,'sha256':'a'*64}]}
 
     def status(self):
         now=1000000;m=self.manifest()
         cursor={'schema_version':1,'build_id':m['active_build'],'snapshot_watermark':100,'source_policy':adapter.SOURCE_POLICY,'through':now-5,'cycle':None,'reconciliation':{'schema_version':1,'last_completed_at':now-10,'last_completed_started_at':now-100}}
-        return {'engine':'tantivy','format':adapter.FORMAT,'build_id':m['active_build'],'normalize_version':m['normalize_version'],'plan_version':m['plan_version'],'watermark':now-5,'snapshot_watermark':100,'source_observation_revision':3,'source_cursor':cursor,'import_complete':True,'full_source':True,'source_manifest':{'partial':False,'actor_count':1,'source_actor_count':1},'input_actors':1,'actor_count':1,'ready':True,'cutover_source_ready':True,'expiry_coverage':{'schema_version':1,'import_complete':True,'full_source':True,'canonical_rules_source_sha256':m['canonical_rules_source_sha256'],'expected_input_actors':1,'source_actor_count':1,'input_actors_checked':1,'verified_input_actors_sha256':'f'*64,'classifier_sha256':'d'*64,'current':{'live_actors':1,'actors_with_unsupported_expiry':0,'actors_with_malformed_labels':0}},'pds_scope_version':1,'binary_sha256':m['binary_sha256'],'retrieval_strategy':'per-segment','app':'tantivy-fixture','machine_id':'abcdef12345678','instance_id':'fixture-instance','moderation':{'enabled':True,'complete':True,'fresh':True,'sha256':'c'*64,'source_observed_at':now-5,'canonical_rules_source_sha256':m['canonical_rules_source_sha256']}}
+        return {'engine':'tantivy','format':adapter.FORMAT,'build_id':m['active_build'],'normalize_version':m['normalize_version'],'plan_version':m['plan_version'],'watermark':now-5,'snapshot_watermark':100,'source_observation_revision':3,'source_cursor':cursor,'import_complete':True,'full_source':True,'source_manifest':{'build_id':m['source_build_id'],'source_watermark':m['source_watermark'],'source_database_sha256':m['source_database_sha256'],'source_prefix_sha256':m['source_prefix_sha256'],'partial':False,'actor_count':1,'source_actor_count':1},'input_actors':1,'actor_count':1,'ready':True,'cutover_source_ready':True,'expiry_coverage':{'schema_version':1,'import_complete':True,'full_source':True,'canonical_rules_source_sha256':m['canonical_rules_source_sha256'],'expected_input_actors':1,'source_actor_count':1,'input_actors_checked':1,'verified_input_actors_sha256':'f'*64,'classifier_sha256':'d'*64,'current':{'live_actors':1,'actors_with_unsupported_expiry':0,'actors_with_malformed_labels':0}},'pds_scope_version':1,'binary_sha256':m['binary_sha256'],'retrieval_strategy':'per-segment','app':'tantivy-fixture','machine_id':'abcdef12345678','instance_id':'fixture-instance','moderation':{'enabled':True,'complete':True,'fresh':True,'sha256':'c'*64,'source_observed_at':now-5,'canonical_rules_source_sha256':m['canonical_rules_source_sha256']}}
 
     def provider(self,now=1000000):
         manifest=self.manifest()
@@ -126,7 +126,8 @@ class AdmissionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='tantivy-install-') as temporary:
             root=Path(temporary);data=root/'data';seed=root/'seed.jsonl';manifest=self.manifest();now=int(time.time());manifest['binary_sha256']=hashlib.sha256(binary.read_bytes()).hexdigest()
             row=smoke.actor(1,'real.test','Real Actor');lines=json.dumps(row,separators=(',',':')).encode()+b'\n'
-            header={'type':'manifest','build_id':manifest['active_build'],'source_watermark':100,'actor_count':1,'source_actor_count':1,'normalize_version':manifest['normalize_version'],'partial':False}
+            header={'type':'manifest','build_id':manifest['active_build'],'source_watermark':100,'actor_count':1,'source_actor_count':1,'normalize_version':manifest['normalize_version'],'source_database_sha256':manifest['source_database_sha256'],'source_prefix_sha256':manifest['source_prefix_sha256'],'partial':False}
+            manifest['source_actors_sha256']=hashlib.sha256(lines).hexdigest()
             seed.write_bytes(json.dumps(header).encode()+b'\n'+lines+json.dumps({'type':'end','build_id':header['build_id'],'actor_count':1,'actors_sha256':hashlib.sha256(lines).hexdigest()}).encode()+b'\n')
             result=subprocess.run([str(binary),'import','--data',str(data),'--input',str(seed)],capture_output=True,timeout=30);self.assertEqual(result.returncode,0,result.stderr)
             secret=secrets.token_urlsafe(24)
@@ -141,12 +142,19 @@ class AdmissionTests(unittest.TestCase):
                     status=smoke.request(public,'/index/status')[2]
                     adapter.validate_runtime(status,manifest)
                 finally:smoke.stop(child)
-            bundle=root/'index.tar';manifest['files']=[]
-            with tarfile.open(bundle,'w') as archive:
-                for path in sorted((data/'index').iterdir()):
-                    if path.is_file() and not path.name.endswith('.lock'):
-                        name='index/'+path.name;archive.add(path,arcname=name,recursive=False);manifest['files'].append({'path':name,'byte_size':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
-            manifest.update(byte_size=bundle.stat().st_size,sha256=hashlib.sha256(bundle.read_bytes()).hexdigest(),binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest())
+            source={'manifest_version':2,'format_version':5,'active_build':manifest['source_build_id'],'source_watermark':100,'actor_count':1,'sha256':manifest['source_database_sha256'],'normalize_version':manifest['normalize_version'],'prefix_map':{'sha256':manifest['source_prefix_sha256']},'legacy_twin':{'build_id':manifest['legacy_build_id'],'source_watermark':100}}
+            source_bytes=json.dumps(source).encode();manifest['source_manifest_sha256']=hashlib.sha256(source_bytes).hexdigest()
+            portable=adapter.freeze_bundle(data,root/'published',manifest,source_bytes,binary)
+            adapter.validate_artifact_manifest(portable,manifest['active_build'])
+            self.assertNotIn('volume_id',portable)
+            self.assertEqual(json.loads((root/'published/manifest.json').read_bytes()),portable)
+            with self.assertRaisesRegex(ValueError,'byte identity'):adapter.validate_source_manifest(portable,source_bytes+b' ')
+            for field,value in [('source_build_id','b1793236000-other'),('legacy_build_id','b1793236000-other'),('source_database_sha256','4'*64),('source_actor_count',2)]:
+                with self.subTest(source=field),self.assertRaises(ValueError):adapter.validate_source_manifest(dict(portable,**{field:value}),source_bytes)
+            with self.assertRaises(ValueError):adapter.freeze_bundle(data,root/'published',manifest,source_bytes,binary)
+            with self.assertRaises(ValueError):adapter.freeze_bundle(data,root/'wrong-source',dict(manifest,source_actors_sha256='0'*64),source_bytes,binary)
+            self.assertFalse((root/'wrong-source').exists())
+            manifest.update(portable);bundle=root/'published/index.tar'
             receipt=adapter.install_bundle(bundle,root/'installed',manifest,binary)
             self.assertFalse(receipt['runtime_qualified']);self.assertTrue((root/'installed/index/meta.json').is_file());self.assertFalse((root/'installed/index.db').exists())
             qualified=adapter.qualify_route(status,manifest,receipt,provider_attestation=self.provider(now));self.assertEqual(qualified['route']['engine'],'tantivy');self.assertFalse(qualified['admission']['slo_empirically_qualified'])

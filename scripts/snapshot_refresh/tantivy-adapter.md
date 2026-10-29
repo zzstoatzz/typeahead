@@ -17,12 +17,35 @@ regular file as `{path, byte_size, sha256}`. Paths are single files under
 `index/`, including `index/meta.json`; no writer locks, links, directories,
 traversal paths, duplicate entries, or unlisted files are admitted. Create the
 bundle from an inactive, stopped generation, never from serving files.
-The manifest also pins `retrieval_strategy` (`per-segment` or `global-merge`),
+The portable manifest binds `source_build_id`, `source_manifest_sha256` (the
+SHA256 of the exact native manifest bytes), `legacy_build_id`, `source_watermark`,
+`source_database_sha256`, `source_prefix_sha256` and `source_actors_sha256`.
+The latter must equal the importer's verified raw actor-stream footer. Native
+source count, normalization, database/prefix hashes and legacy twin must agree
+with that immutable native manifest. Persist the portable manifest at
+`releases/search-tantivy/<active_build>/manifest.json` alongside `index.tar`.
+Retention resolves these immutable manifests, including previous generations;
+an old build cannot be identified by querying a URL now serving its replacement.
+
+The existing cloud publisher can call `freeze_bundle` in this same adapter after
+stopping its caught-up inactive checkpoint. It checks the pinned actual reader,
+complete source reconciliation and policy, inventories stable regular files,
+streams a tar and file checksums, and atomically publishes a new local artifact
+directory. Missing coverage fails before packaging; concurrent file changes
+reject the artifact. It does not upload, alter routing or claim runtime readiness.
+The publisher still owns R2 upload and exact checksum readback. A raw snapshot
+import without an authoritative sweep is not a publishable caught-up checkpoint.
+
+The manifest pins `retrieval_strategy` (`per-segment` or `global-merge`).
+Installation binds the portable manifest to a separate target configuration:
 `image_digest` (full `registry.fly.io/...@sha256:...`), `provider_app`,
 `guest: {cpu_kind: "shared", cpus: 2, memory_mb: 1024}`, `volume_id`, and
 `volume_size_gib: 20`, and `public_service_ports`. Qualification controls pin
 `[]`; an owned final `dev-tantivy` instance may pin exactly `[80, 443]` after
-the same 20 GiB and other admission gates. Provider observation timestamps belong in the separate
+the same 20 GiB and other admission gates. These deployment fields do not belong
+in the portable bundle returned by `freeze_bundle`; the installer receives a
+merged bound manifest and checks its own admission receipt against that binding.
+Provider observation timestamps belong in the separate
 fresh attestation, never in this immutable artifact manifest.
 
 ```sh
@@ -92,6 +115,9 @@ Tantivy and fails explicitly.
 
 `conditionalRouteUpdate` in `src/search-route.ts` is the internal R2 CAS primitive
 for a separately authorized controller. It preserves the previous route and
+seeds a native-only `native_rollback` anchor on native-to-Tantivy promotion.
+Successive Tantivy promotions retain that anchor independently of `previous`.
+An invalid or missing native anchor prevents a Tantivy promotion. It
 rejects a stale ETag. It exposes no public mutation endpoint and does not itself
 establish admission or authorize promotion. A controller must validate the
 qualification receipt and remaining release gates before calling it. Rollback

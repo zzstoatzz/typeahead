@@ -47,7 +47,7 @@ def artifact_path(value):
     return value
 
 
-def validate_manifest(manifest, expected):
+def validate_artifact_manifest(manifest, expected):
     if not isinstance(expected, str) or not BUILD.fullmatch(expected) or manifest.get('active_build') != expected:
         raise ValueError('Unexpected Tantivy generation')
     if manifest.get('engine') != 'tantivy' or manifest.get('manifest_version') != 1 or manifest.get('artifact_format') != 'tantivy-directory-tar-v1' or manifest.get('backend_format') != FORMAT:
@@ -58,16 +58,14 @@ def validate_manifest(manifest, expected):
         raise ValueError('Unsupported source observation policy')
     for field in ['sha256', 'binary_sha256', 'canonical_rules_source_sha256']:
         digest(manifest.get(field))
+    for field in ['source_manifest_sha256', 'source_database_sha256', 'source_prefix_sha256', 'source_actors_sha256']:
+        digest(manifest.get(field))
+    for field in ['source_build_id', 'legacy_build_id']:
+        if not isinstance(manifest.get(field), str) or not BUILD.fullmatch(manifest[field]):
+            raise ValueError('Invalid native source identity')
+    integer(manifest.get('source_watermark'), 'source watermark', 1)
     if manifest.get('retrieval_strategy') not in ('per-segment', 'global-merge'):
         raise ValueError('Unsupported retrieval strategy')
-    if not isinstance(manifest.get('image_digest'), str) or not re.fullmatch(r'registry\.fly\.io/[a-z0-9-]+@sha256:[a-f0-9]{64}', manifest['image_digest']):
-        raise ValueError('Immutable Fly image digest required')
-    if manifest.get('guest') != GUEST or manifest.get('volume_size_gib') != 20 or not isinstance(manifest.get('volume_id'), str) or not re.fullmatch(r'vol_[A-Za-z0-9]+', manifest['volume_id']):
-        raise ValueError('Final serving shape requires two shared CPUs, 1 GiB RAM and independent 20 GiB volume')
-    if not isinstance(manifest.get('provider_app'), str) or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', manifest['provider_app']):
-        raise ValueError('Expected provider app required')
-    if manifest.get('public_service_ports') not in ([], [80, 443]):
-        raise ValueError('Pinned provider ports must be isolated or the approved dev HTTPS interface')
     integer(manifest.get('byte_size'), 'bundle bytes', 1)
     integer(manifest.get('source_actor_count'), 'full source count', 1)
     if manifest.get('object_key') != f'releases/search-tantivy/{expected}/index.tar':
@@ -86,6 +84,106 @@ def validate_manifest(manifest, expected):
     if 'index/meta.json' not in names:
         raise ValueError('Tantivy commit metadata missing')
     return manifest
+
+
+def validate_source_manifest(manifest, source_bytes):
+    validate_artifact_manifest(manifest, manifest['active_build'])
+    if not isinstance(source_bytes, bytes) or len(source_bytes) > 1024 * 1024 or hashlib.sha256(source_bytes).hexdigest() != manifest['source_manifest_sha256']:
+        raise ValueError('Native source manifest byte identity mismatch')
+    source = json.loads(source_bytes)
+    if source.get('manifest_version') != 2 or source.get('format_version') != 5:
+        raise ValueError('Native source must be FLATPX05')
+    pairs = [('active_build', 'source_build_id'), ('source_watermark', 'source_watermark'), ('actor_count', 'source_actor_count'), ('sha256', 'source_database_sha256'), ('normalize_version', 'normalize_version')]
+    if any(source.get(key) != manifest[field] for key, field in pairs) or source.get('prefix_map', {}).get('sha256') != manifest['source_prefix_sha256']:
+        raise ValueError('Native source manifest content mismatch')
+    twin = source.get('legacy_twin', {})
+    if twin.get('build_id') != manifest['legacy_build_id'] or twin.get('source_watermark') != manifest['source_watermark']:
+        raise ValueError('Native rollback twin mismatch')
+    return source
+
+
+def validate_manifest(manifest, expected):
+    validate_artifact_manifest(manifest, expected)
+    if not isinstance(manifest.get('image_digest'), str) or not re.fullmatch(r'registry\.fly\.io/[a-z0-9-]+@sha256:[a-f0-9]{64}', manifest['image_digest']):
+        raise ValueError('Immutable Fly image digest required')
+    if manifest.get('guest') != GUEST or manifest.get('volume_size_gib') != 20 or not isinstance(manifest.get('volume_id'), str) or not re.fullmatch(r'vol_[A-Za-z0-9]+', manifest['volume_id']):
+        raise ValueError('Final serving shape requires two shared CPUs, 1 GiB RAM and independent 20 GiB volume')
+    if not isinstance(manifest.get('provider_app'), str) or not re.fullmatch(r'[a-z0-9][a-z0-9-]{0,62}', manifest['provider_app']):
+        raise ValueError('Expected provider app required')
+    if manifest.get('public_service_ports') not in ([], [80, 443]):
+        raise ValueError('Pinned provider ports must be isolated or the approved dev HTTPS interface')
+    return manifest
+
+
+def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None):
+    """Freeze an owned, stopped checkpoint into a portable, source-linked artifact."""
+    data, destination, binary = Path(data), Path(destination), Path(binary)
+    if destination.exists() or (data / 'index').is_symlink():
+        raise ValueError('A new artifact destination and regular index directory are required')
+    with binary.open('rb') as stream:
+        if hashlib.file_digest(stream, 'sha256').hexdigest() != manifest['binary_sha256']:
+            raise ValueError('Publisher reader binary identity mismatch')
+    result = subprocess.run([str(binary.resolve()), 'status', '--data', str(data), '--writer-memory-mb', '32'], capture_output=True, timeout=60)
+    if result.returncode or len(result.stdout) > 8 * 1024**2:
+        raise ValueError('Actual Tantivy reader rejected publisher checkpoint')
+    metadata = json.loads(result.stdout)
+    validate_source_manifest(manifest, source_bytes)
+    validate_metadata(metadata, manifest, now, require_fresh=False)
+    def inventory():
+        found = {}
+        for path in sorted((data / 'index').iterdir()):
+            if path.is_symlink() or not path.is_file():
+                raise ValueError('Publisher checkpoint contains nonregular files')
+            if path.name.endswith('.lock'):
+                continue
+            name = artifact_path('index/' + path.name)
+            stat = path.stat()
+            found[name] = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
+        return found
+    before = inventory()
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.tantivy-publish-', dir=destination.parent) as temporary:
+        staging = Path(temporary)
+        archive_path = staging / 'index.tar'
+        files = []
+        with tarfile.open(archive_path, 'w:') as archive:
+            for name, witness in before.items():
+                path = data / name
+                checksum = hashlib.sha256()
+                class Reader:
+                    def read(self, size=-1):
+                        chunk = stream.read(size)
+                        checksum.update(chunk)
+                        return chunk
+                item = tarfile.TarInfo(name)
+                item.size = witness[2]
+                item.mode = 0o600
+                with path.open('rb') as stream:
+                    archive.addfile(item, Reader())
+                files.append({'path': name, 'byte_size': item.size, 'sha256': checksum.hexdigest()})
+        if inventory() != before:
+            raise ValueError('Publisher checkpoint changed while freezing')
+        portable = {key: value for key, value in manifest.items() if key not in {'image_digest', 'guest', 'volume_id', 'volume_size_gib', 'public_service_ports', 'provider_app'}}
+        with archive_path.open('rb') as stream:
+            portable.update(files=files, byte_size=archive_path.stat().st_size, sha256=hashlib.file_digest(stream, 'sha256').hexdigest())
+        validate_source_manifest(portable, source_bytes)
+        validate_metadata(metadata, portable, now, require_fresh=False)
+        (staging / 'manifest.json').write_text(json.dumps(portable, sort_keys=True, separators=(',', ':')) + '\n')
+        for path in [archive_path, staging / 'manifest.json']:
+            with path.open('rb') as stream:
+                os.fsync(stream.fileno())
+        descriptor = os.open(staging, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+        staging.rename(destination)
+        descriptor = os.open(destination.parent, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    return portable
 
 
 def source_gates(metadata, now, max_poll_age=120, max_policy_age=300, max_sweep_age=86400, max_sweep_duration=86400, require_fresh=True):
@@ -131,6 +229,8 @@ def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True,
     if coverage.get('canonical_rules_source_sha256') != manifest['canonical_rules_source_sha256'] or any(coverage.get(field) != count for field in ['expected_input_actors', 'source_actor_count', 'input_actors_checked']):
         raise ValueError('Expiry coverage source count or canonical rules mismatch')
     input_hash = digest(coverage.get('verified_input_actors_sha256'))
+    if input_hash != manifest['source_actors_sha256'] or source.get('build_id') != manifest['source_build_id'] or source.get('source_watermark') != manifest['source_watermark'] or source.get('source_database_sha256') != manifest['source_database_sha256'] or source.get('source_prefix_sha256') != manifest['source_prefix_sha256']:
+        raise ValueError('Imported source differs from immutable artifact provenance')
     classifier_hash = digest(coverage.get('classifier_sha256'))
     current = coverage.get('current', {})
     if integer(current.get('live_actors'), 'expiry live actor count') != metadata['actor_count']:
@@ -306,18 +406,24 @@ def qualify_runtime(url, manifest, installation, allow_loopback=False, provider_
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation', choices=['install', 'qualify'])
+    parser.add_argument('operation', choices=['freeze', 'install', 'qualify'])
     parser.add_argument('--manifest', required=True)
     parser.add_argument('--bundle')
     parser.add_argument('--destination')
     parser.add_argument('--binary')
+    parser.add_argument('--data')
+    parser.add_argument('--source-manifest')
     parser.add_argument('--installation')
     parser.add_argument('--provider-attestation')
     parser.add_argument('--url', default=ORIGIN)
     parser.add_argument('--allow-loopback', action='store_true')
     args = parser.parse_args()
     manifest = json.loads(Path(args.manifest).read_text())
-    if args.operation == 'install':
+    if args.operation == 'freeze':
+        if not all([args.data, args.destination, args.binary, args.source_manifest]):
+            parser.error('freeze requires --data, --destination, --binary and --source-manifest')
+        result = freeze_bundle(args.data, args.destination, manifest, Path(args.source_manifest).read_bytes(), args.binary)
+    elif args.operation == 'install':
         if not all([args.bundle, args.destination, args.binary]):
             parser.error('install requires --bundle, --destination and --binary')
         result = install_bundle(args.bundle, args.destination, manifest, args.binary)

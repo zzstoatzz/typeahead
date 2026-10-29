@@ -27,7 +27,7 @@ test("engine route conditional promotion and rollback use isolated filesystem-ba
     const before = await control();
     expect((await update(candidate, before.etag)).status).toBe(200);
     const promoted = await control();
-    expect(promoted.value).toEqual({ version: 1, current: candidate, previous: native });
+    expect(promoted.value).toEqual({ version: 1, current: candidate, previous: native, native_rollback: native });
     expect((await update(native, before.etag)).status).toBe(409);
     expect((await control()).value).toEqual(promoted.value);
     expect((await mf.dispatchFetch(`${base}/route`)).status).toBe(200);
@@ -36,8 +36,14 @@ test("engine route conditional promotion and rollback use isolated filesystem-ba
     for(const q of ["wrongbinary","wrongstrategy"]) {const bad=await mf.dispatchFetch(`${base}/search?q=${q}`);expect(bad.status).toBe(503);expect(await bad.json()).toEqual({error:"SearchBackendIdentityMismatch"});}
     const refresh = await mf.dispatchFetch(`${base}/admin/refresh`, { method: "POST", body: "{}" }); expect(refresh.status).toBe(503); expect(await refresh.json()).toMatchObject({ error: "NativeRefreshUnsupported" });
     expect((await mf.dispatchFetch(`${base}/debug/index`)).status).toBe(503);
-    expect((await update(native, promoted.etag)).status).toBe(200);
-    expect((await control()).value).toEqual({ version: 1, current: native, previous: candidate });
+    const refreshedCandidate = { ...candidate, admission_sha256: "b".repeat(64) };
+    expect((await update(refreshedCandidate, promoted.etag)).status).toBe(200);
+    const refreshed = await control();
+    expect(refreshed.value).toEqual({ version: 1, current: refreshedCandidate, previous: candidate, native_rollback: native });
+    expect((await update(native, promoted.etag)).status).toBe(409);
+    expect((await control()).value).toEqual(refreshed.value);
+    expect((await update(native, refreshed.etag)).status).toBe(200);
+    expect((await control()).value).toEqual({ version: 1, current: native, previous: refreshedCandidate, native_rollback: native });
     await mf.dispatchFetch(`${base}/route`);
     expect((await mf.dispatchFetch(`${base}/admin/refresh`, { method: "POST", body: "{}" })).status).toBe(401);
     const rolledBack = await mf.dispatchFetch(`${base}/search?q=a`); expect(rolledBack.status).toBe(200); expect(rolledBack.headers.get("X-Typeahead-Engine")).toBe("native"); expect(await rolledBack.json()).toMatchObject({ origin: native.origin });
