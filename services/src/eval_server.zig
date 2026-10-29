@@ -18,12 +18,13 @@ pub fn main() !void {
     const snapshot = std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_SNAPSHOT") orelse return error.MissingEvaluationSnapshot);
     const overlay_path = std.mem.span(std.c.getenv("LOCAL_DB_PATH") orelse return error.MissingEvaluationOverlay);
     const port = try std.fmt.parseInt(u16, std.mem.span(std.c.getenv("PORT") orelse return error.MissingEvaluationPort), 10);
+    const qualification = try qualificationGuard(snapshot, overlay_path);
     var local = LocalDb.init(std.heap.page_allocator);
     defer local.deinit();
     try local.open();
     if (std.c.getenv("TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT") != null) {
         if (std.c.getenv("FLY_APP_NAME")) |value| {
-            if (!std.mem.startsWith(u8, std.mem.span(value), "typeahead-startup-")) return error.InvalidEvaluationApp;
+            if (!std.mem.startsWith(u8, std.mem.span(value), "typeahead-startup-") and !qualification) return error.InvalidEvaluationApp;
         } else {
             const root = std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_PRIVATE_ROOT") orelse return error.MissingEvaluationPrivateRoot);
             if (root.len < 2 or root[0] != '/' or root[root.len - 1] == '/') return error.InvalidEvaluationPrivateRoot;
@@ -105,4 +106,60 @@ pub fn main() !void {
 
 fn idleLoop() void {
     while (true) std.Options.debug_io.sleep(std.Io.Duration.fromSeconds(60), .awake) catch return;
+}
+
+fn qualificationInside(root: []const u8, path: []const u8) bool {
+    if (path.len <= root.len or !std.mem.startsWith(u8, path, root) or path[root.len] != '/') return false;
+    var parts = std.mem.splitScalar(u8, path, '/');
+    while (parts.next()) |part| if (std.mem.eql(u8, part, ".") or std.mem.eql(u8, part, "..")) return false;
+    return true;
+}
+fn qualificationPath(root: []const u8, path: []const u8) !void {
+    if (!qualificationInside(root, path)) return error.InvalidQualificationPath;
+    const io = std.Options.debug_io;
+    const allocator = std.heap.page_allocator;
+    const parent = std.fs.path.dirname(path) orelse return error.InvalidQualificationPath;
+    const real_parent = try std.Io.Dir.realPathFileAbsoluteAlloc(io, parent, allocator);
+    defer allocator.free(real_parent);
+    if (!std.mem.eql(u8, parent, real_parent)) return error.InvalidQualificationPath;
+    const real = std.Io.Dir.realPathFileAbsoluteAlloc(io, path, allocator) catch |err| {
+        if (err == error.FileNotFound) return;
+        return err;
+    };
+    defer allocator.free(real);
+    if (!std.mem.eql(u8, path, real)) return error.InvalidQualificationPath;
+}
+fn qualificationGuard(snapshot: []const u8, overlay: []const u8) !bool {
+    const io = std.Options.debug_io;
+    const allocator = std.heap.page_allocator;
+    if (std.c.getenv("FLY_MACHINE_ID")) |value| {
+        for ([_][]const u8{ "8e3d79b70dd748", "801539a6551778", "7845636a3d0ee8" }) |protected| {
+            if (std.mem.eql(u8, std.mem.span(value), protected)) return error.ProtectedEvaluationMachine;
+        }
+    }
+    const app = if (std.c.getenv("FLY_APP_NAME")) |value| std.mem.span(value) else "";
+    const qualification = std.mem.startsWith(u8, app, "typeahead-qual-") or std.c.getenv("TYPEAHEAD_EVAL_QUALIFICATION") != null;
+    if (!qualification) {
+        if (std.c.getenv("TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT") != null and app.len != 0 and !std.mem.startsWith(u8, app, "typeahead-startup-")) return error.InvalidEvaluationApp;
+        return false;
+    }
+    if (app.len != 0 and !std.mem.startsWith(u8, app, "typeahead-qual-")) return error.InvalidQualificationApp;
+    if (std.c.getenv("TYPEAHEAD_EVAL_FEED") != null) return error.UnexpectedQualificationBackgroundWriter;
+    const root = std.mem.span(std.c.getenv("TYPEAHEAD_EVAL_PRIVATE_ROOT") orelse return error.MissingEvaluationPrivateRoot);
+    if (root.len < 2 or root[0] != '/' or root[root.len - 1] == '/' or std.mem.eql(u8, root, "/data") or std.mem.startsWith(u8, root, "/data/refresh")) return error.InvalidQualificationRoot;
+    const real_root = try std.Io.Dir.realPathFileAbsoluteAlloc(io, root, allocator);
+    defer allocator.free(real_root);
+    if (!std.mem.eql(u8, root, real_root)) return error.InvalidQualificationRoot;
+    const marker = try std.fmt.allocPrint(allocator, "{s}/owner", .{root});
+    defer allocator.free(marker);
+    try qualificationPath(root, marker);
+    const owner = try std.Io.Dir.cwd().readFileAlloc(io, marker, allocator, .limited(100));
+    defer allocator.free(owner);
+    if (!std.mem.eql(u8, owner, "native-qualification-v1")) return error.InvalidQualificationOwner;
+    for ([_][]const u8{ snapshot, overlay, std.mem.span(std.c.getenv("SQLITE_TMPDIR") orelse return error.MissingQualificationScratch) }) |path| try qualificationPath(root, path);
+    const prefix = try std.fmt.allocPrint(allocator, "{s}.prefix", .{snapshot});
+    defer allocator.free(prefix);
+    try qualificationPath(root, prefix);
+    if (std.c.getenv("TYPEAHEAD_EVAL_CAPTURE_FEED")) |value| try qualificationPath(root, std.mem.span(value));
+    return true;
 }

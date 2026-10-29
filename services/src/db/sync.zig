@@ -736,7 +736,7 @@ pub fn projectRow(conn: zqlite.Conn, row: anytype, ctx: OverlayCtx) !void {
 
 /// Global tombstone in the overlay so serving suppresses the actor
 /// immediately. Used for both "became unsearchable" and "tombstoned".
-fn projectRemoval(conn: zqlite.Conn, did: []const u8, caller: []const u8, ctx: OverlayCtx) !void {
+pub fn projectRemoval(conn: zqlite.Conn, did: []const u8, caller: []const u8, ctx: OverlayCtx) !void {
     var old: OldRow = .{};
     if (!snapshotOldFromOverlayBase(ctx.local, did, &old)) {
         log.warn("{s}: old-row lookup failed for {s}; tombstoning without suppression", .{ caller, did });

@@ -1,0 +1,321 @@
+import copy
+from datetime import datetime,timezone
+import http.client
+import http.server
+import importlib.util
+import json
+from pathlib import Path
+import socket
+import tempfile
+import threading
+import unittest
+import urllib.parse
+
+HERE=Path(__file__).resolve().parent
+spec=importlib.util.spec_from_file_location('qualification_pilot',HERE/'pilot_control.py')
+p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
+IMAGE='registry.fly.io/'+p.APP+'@sha256:'+'a'*64
+NATIVE='b'*64
+TANTIVY='c'*64
+
+class Clock:
+    def __init__(self):self.value=1000.
+    def now(self):return self.value
+    def sleep(self,seconds):self.value+=seconds
+
+class APIState:
+    def __init__(self,ledger,clock):
+        self.ledger=ledger;self.clock=clock;self.machines={};self.volumes={};self.calls=[];self.violations=[];self.counter=0;self.lost={};self.lost_update={};self.tombstones={'machines':{},'volumes':{}};self.retain_destroyed=False;self.pending_destroy_volumes=False;self.update_transition={};self.pending_updates={};self.retirement_delay={};self.retiring={}
+        state=self
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do(self):
+                parsed=urllib.parse.urlsplit(self.path);prefix='/v1/apps/'+p.APP+'/'
+                if not parsed.path.startswith(prefix):self.respond(403,{});return
+                parts=parsed.path[len(prefix):].split('/');kind=parts[0];rid=parts[1] if len(parts)>1 else None;action=parts[2] if len(parts)>2 else None
+                length=int(self.headers.get('Content-Length','0'));body=json.loads(self.rfile.read(length)) if length else None
+                state.calls.append((self.command,kind,rid,action,copy.deepcopy(body)))
+                records=state.machines if kind=='machines' else state.volumes
+                if self.command=='GET':
+                    if kind=='machines' and rid in state.retiring:
+                        remaining=state.retiring[rid]
+                        if remaining==0:
+                            removed=records.pop(rid);removed['state']='destroyed';state.tombstones[kind][rid]=removed;state.retiring.pop(rid)
+                        elif remaining is not None:state.retiring[rid]-=1
+                    if kind=='machines' and rid in state.pending_updates:
+                        pending=state.pending_updates[rid]
+                        if pending['remaining']==0:
+                            records[rid]['config']=pending['config'];records[rid]['state']='stopped';state.pending_updates.pop(rid)
+                        elif pending['remaining'] is not None:pending['remaining']-=1
+                    actual=records.get(rid,state.tombstones[kind].get(rid))
+                    self.respond(200 if rid is None or actual is not None else 404,list(records.values()) if rid is None else actual or {});return
+                if self.command=='POST' and rid is None:
+                    data=json.loads(state.ledger.read_text());plan=data['pilot'];name=body['name']
+                    entries=plan['manifest']['machines']+[plan['manifest']['reaper']] if kind=='machines' else plan['manifest']['volumes']
+                    entry=next((e for e in entries if e['name']==name),None)
+                    key=('machine' if kind=='machines' else 'volume')+':'+entry['role'] if entry else ''
+                    if entry is None or plan['attempts'].get(key)!='attempted':state.violations.append('missing writeahead')
+                    if entry and entry['role']!='reaper' and not plan.get('armed'):state.violations.append('allocation before armed')
+                    state.counter+=1;newid=f'{state.counter:014x}' if kind=='machines' else 'vol_'+f'{state.counter:014x}'
+                    created=datetime.fromtimestamp(state.clock.now(),timezone.utc).isoformat()
+                    if kind=='machines':
+                        config=copy.deepcopy(body['config'])
+                        for mount in config.get('mounts',[]):mount.update(encrypted=True,name='derived-api-name',size_gb=20,unknown_safe_field={'value':1})
+                        actual={'id':newid,'name':name,'created_at':created,'config':config,'state':'created' if body.get('skip_launch') else 'started','private_ip':'fdaa::'+str(state.counter),'region':body['region'],'instance_id':'fixture-version'}
+                    else:actual={'id':newid,'name':name,'created_at':created,'size_gb':body['size_gb'],'encrypted':body['encrypted'],'region':body['region'],'attached_machine_id':None,'state':'created'}
+                    lose=state.lost.pop(key,None)
+                    if lose!='absent':records[newid]=actual
+                    if lose:
+                        self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
+                    self.respond(201,actual);return
+                if rid not in records:self.respond(404,{});return
+                if self.command=='POST' and action in {'start','stop'}:
+                    records[rid]['state']='started' if action=='start' else 'stopped';self.respond(200,{});return
+                if self.command=='POST':
+                    if records[rid]['config'].get('auto_destroy') is True:self.respond(400,{'error':'unable to update machine configured for auto destroy'});return
+                    role=records[rid]['config']['metadata']['role'];lose=state.lost_update.pop(role,None)
+                    if lose!='absent':
+                        if role in state.update_transition:
+                            state.pending_updates[rid]={'config':copy.deepcopy(body['config']),'remaining':state.update_transition.pop(role)}
+                            records[rid]['state']='updating'
+                        else:records[rid]['config']=body['config']
+                    if lose:
+                        self.connection.shutdown(socket.SHUT_RDWR);self.connection.close();return
+                    self.respond(200,records[rid]);return
+                if self.command=='DELETE':
+                    if kind=='machines' and rid in state.retirement_delay:
+                        records[rid]['state']='destroying';state.retiring[rid]=state.retirement_delay.pop(rid);self.respond(200,{});return
+                    if kind=='volumes' and state.pending_destroy_volumes:
+                        records[rid]['state']='pending_destroy';records[rid]['attached_machine_id']=None;self.respond(200,{});return
+                    removed=records.pop(rid)
+                    if state.retain_destroyed:removed['state']='destroyed';state.tombstones[kind][rid]=removed
+                    for vol in state.volumes.values():
+                        if vol.get('attached_machine_id')==rid:vol['attached_machine_id']=None
+                    self.respond(200,{})
+            def respond(self,status,value):
+                value=copy.deepcopy(value)
+                for actual in value if isinstance(value,list) else [value]:
+                    if isinstance(actual,dict) and isinstance(actual.get('config'),dict) and actual['config'].get('auto_destroy') is False:
+                        actual['config'].pop('auto_destroy')
+                raw=json.dumps(value).encode();self.send_response(status);self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+            do_GET=do;do_POST=do;do_DELETE=do
+            def log_message(self,*args):pass
+        self.server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler);self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+    def close(self):self.server.shutdown();self.server.server_close();self.thread.join(timeout=2)
+
+class Control:
+    APP=p.APP;OWNER=p.OWNER;PROTECTED=p.reaper.PROTECTED_MACHINES
+    def __init__(self,path,server):self.path=path;self.server=server;self.save({'schema':1,'app':self.APP,'owner':self.OWNER,'machines':[],'volumes':[]})
+    def ledger(self):return json.loads(self.path.read_text())
+    def save(self,value):
+        temporary=self.path.with_suffix('.tmp');temporary.write_text(json.dumps(value));temporary.replace(self.path)
+    def api(self,method,path,body=None):
+        conn=http.client.HTTPConnection('127.0.0.1',self.server.server.server_port,timeout=2)
+        try:
+            conn.request(method,'/v1/apps/'+self.APP+'/'+path,body=json.dumps(body) if body is not None else None,headers={'Content-Type':'application/json'})
+            response=conn.getresponse();raw=response.read()
+            if response.status>=400:raise RuntimeError('qualification API HTTP '+str(response.status))
+            return json.loads(raw) if raw and method!='DELETE' else None
+        except (OSError,http.client.HTTPException):raise RuntimeError('qualification API transport failed') from None
+        finally:conn.close()
+
+class PilotTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory();self.path=Path(self.temp.name)/'ledger.json';self.clock=Clock()
+        self.api=APIState(self.path,self.clock);self.control=Control(self.path,self.api)
+        self.pilot=p.Pilot(self.control,self.clock.now,self.clock.now,self.clock.sleep)
+        self.pilot.prepare(IMAGE,NATIVE,TANTIVY,run_id='ab12cd34ef56')
+    def tearDown(self):self.api.close();self.temp.cleanup()
+    def arm(self):
+        self.pilot.launch_reaper();_,plan=self.pilot.plan()
+        receipt={key:plan['manifest'][key] for key in ['app','owner','run_id','deadline']}
+        receipt.update(manifest_sha256=plan['manifest_sha256'],self={'id':plan['resolved']['machine:reaper'],'name':plan['manifest']['reaper']['name'],'auto_destroy':True})
+        self.pilot.record_armed(receipt);return receipt
+    def provision(self):self.arm();return self.pilot.provision()
+    def observer(self,role):
+        _,plan=self.pilot.plan();actual=self.pilot.owned_machine(role);vid=plan['resolved']['volume:'+p.ENGINE_ROLES[role]]
+        return {'app':p.APP,'machine_id':actual['id'],'guest':copy.deepcopy(p.ENGINE),'volume_ids':[vid],
+                'final_volume_gib':20,'public_services':[],'machines_api_response_sha256':'d'*64,'raw_should_not_be_copied':'discard'}
+    def configure_all(self):
+        for role in p.ENGINE_ROLES:self.pilot.configure_engine(role,self.observer(role))
+        _,plan=self.pilot.plan();native=plan['resolved']['machine:native-control'];tantivy=plan['resolved']['machine:tantivy-control']
+        def url(mid,port):return f'http://{mid}.vm.{p.APP}.internal:{port}'
+        self.pilot.configure_generator(url(native,8080),url(native,8082),url(tantivy,8080),url(tantivy,8082))
+    def test_reaper_first_writeahead_and_paused_matched_shapes(self):
+        with self.assertRaisesRegex(p.PilotError,'reaper_not_armed'):self.pilot.provision()
+        self.assertFalse(self.api.calls)
+        self.provision();self.assertFalse(self.api.violations)
+        creates=[c for c in self.api.calls if c[0]=='POST' and c[2] is None]
+        self.assertEqual([c[1] for c in creates],['machines','volumes','volumes','machines','machines','machines'])
+        self.assertEqual(creates[0][4]['config']['guest'],p.SMALL);self.assertFalse(creates[0][4]['config']['mounts'])
+        for call in creates[3:]:self.assertTrue(call[4]['skip_launch']);self.assertFalse(call[4]['config']['auto_destroy']);self.assertEqual(call[4]['config']['services'],[])
+        for role in p.ENGINE_ROLES:
+            actual=self.pilot.owned_machine(role);self.assertEqual(actual['state'],'created');self.assertEqual(actual['config']['guest'],p.ENGINE)
+        self.assertNotIn('ADMIN_SECRET',json.dumps([c[4] for c in creates]));self.assertNotIn('QUAL_CONTROL_SECRET',json.dumps([c[4] for c in creates]))
+    def test_lost_create_response_reconciles_name_without_duplicate(self):
+        self.api.lost['machine:reaper']='created';self.arm()
+        self.api.lost['volume:native']='created';self.pilot.provision()
+        creates=[c for c in self.api.calls if c[0]=='POST' and c[2] is None]
+        self.assertEqual(len(creates),6);self.assertEqual(len(self.control.ledger()['volumes']),2)
+    def test_unknown_create_absence_never_retried_or_early_reaper_retired(self):
+        self.arm();self.api.lost['volume:native']='absent'
+        with self.assertRaisesRegex(p.PilotError,'creation_outcome_unknown'):self.pilot.provision()
+        count=sum(c[0]=='POST' and c[1]=='volumes' and c[2] is None for c in self.api.calls)
+        with self.assertRaisesRegex(p.PilotError,'creation_outcome_unresolved'):self.pilot.provision()
+        self.assertEqual(sum(c[0]=='POST' and c[1]=='volumes' and c[2] is None for c in self.api.calls),count)
+        result=self.pilot.cleanup();self.assertEqual(result['status'],'cleanup_failed');self.assertTrue(result['reaper_retained'])
+        self.assertIn(self.control.ledger()['pilot']['resolved']['machine:reaper'],self.api.machines)
+    def test_configuration_attestation_then_start_and_no_secret_persistence(self):
+        self.provision()
+        with self.assertRaisesRegex(p.PilotError,'configuration_required'):self.pilot.start('native-control')
+        self.configure_all()
+        for role in ['native-control','tantivy-control','generator']:self.pilot.start(role)
+        _,plan=self.pilot.plan();self.assertEqual(set(plan['started']),{'native-control','tantivy-control','generator'})
+        native=self.api.machines[plan['resolved']['machine:native-control']]
+        observer=json.loads(native['config']['env']['QUAL_OBSERVER_JSON']);self.assertNotIn('raw_should_not_be_copied',observer)
+        gen=self.api.machines[plan['resolved']['machine:generator']]
+        self.assertEqual(gen['config']['env']['QUAL_NATIVE_BINARY_SHA256'],NATIVE);self.assertEqual(gen['config']['env']['QUAL_TANTIVY_BINARY_SHA256'],TANTIVY)
+    def test_final_update_enables_autodestroy_once_and_recovers_lost_reply(self):
+        self.provision();_,plan=self.pilot.plan();mid=plan['resolved']['machine:native-control']
+        self.assertFalse(self.api.machines[mid]['config']['auto_destroy'])
+        observer=self.observer('native-control');self.api.lost_update['native-control']='committed'
+        result=self.pilot.configure_engine('native-control',observer)
+        self.assertTrue(result['auto_destroy']);self.assertTrue(self.api.machines[mid]['config']['auto_destroy'])
+        updates=lambda:sum(c[0]=='POST' and c[2]==mid and c[3] is None for c in self.api.calls)
+        self.assertEqual(updates(),1)
+        self.pilot.configure_engine('native-control',observer);self.assertEqual(updates(),1)
+        changed=observer|{'machines_api_response_sha256':'e'*64}
+        with self.assertRaisesRegex(p.PilotError,'final_configuration_not_confirmed'):self.pilot.configure_engine('native-control',changed)
+        self.assertEqual(updates(),1)
+    def test_uncommitted_final_update_is_not_retried_or_started(self):
+        self.provision();observer=self.observer('native-control');self.api.lost_update['native-control']='absent'
+        with self.assertRaisesRegex(p.PilotError,'configuration_transition_unconfirmed_reconcile_only'):self.pilot.configure_engine('native-control',observer)
+        _,plan=self.pilot.plan();mid=plan['resolved']['machine:native-control']
+        before=sum(c[0]=='POST' and c[2]==mid and c[3] is None for c in self.api.calls)
+        with self.assertRaisesRegex(p.PilotError,'outcome_unresolved_no_retry'):self.pilot.configure_engine('native-control',observer)
+        self.assertEqual(sum(c[0]=='POST' and c[2]==mid and c[3] is None for c in self.api.calls),before)
+        with self.assertRaisesRegex(p.PilotError,'configuration_required'):self.pilot.start('native-control')
+        self.assertFalse(self.api.machines[mid]['config']['auto_destroy'])
+        desired=next(c[4]['config'] for c in reversed(self.api.calls) if c[0]=='POST' and c[2]==mid and c[3] is None)
+        self.api.machines[mid]['config']=copy.deepcopy(desired)
+        reconciled=self.pilot.reconcile();self.assertFalse(reconciled['unresolved_configuration_attempts'])
+        self.assertEqual(sum(c[0]=='POST' and c[2]==mid and c[3] is None for c in self.api.calls),before)
+    def test_false_autodestroy_allowed_only_unconfigured_paused(self):
+        self.provision();_,plan=self.pilot.plan();mid=plan['resolved']['machine:generator']
+        self.api.machines[mid]['state']='started'
+        with self.assertRaisesRegex(p.PilotError,'must_remain_paused'):self.pilot.owned_machine('generator')
+        self.api.machines[mid]['state']='created';self.configure_all();self.api.machines[mid]['config']['auto_destroy']=False
+        with self.assertRaisesRegex(p.PilotError,'auto_destroy_required'):self.pilot.start('generator')
+    def test_omitted_false_response_is_paused_only_and_provision_is_idempotent(self):
+        self.provision();_,plan=self.pilot.plan()
+        self.api.machines[plan['resolved']['machine:native-control']]['state']='stopped'
+        for role in ['native-control','tantivy-control','generator']:
+            actual=self.pilot.owned_machine(role)
+            self.assertNotIn('auto_destroy',actual['config']);self.assertIn(actual['state'],{'created','stopped'})
+        reaper=self.pilot.owned_machine('reaper');self.assertIs(reaper['config']['auto_destroy'],True)
+        creates=sum(c[0]=='POST' and c[2] is None for c in self.api.calls)
+        self.pilot.provision();self.assertEqual(sum(c[0]=='POST' and c[2] is None for c in self.api.calls),creates)
+        self.configure_all();mid=plan['resolved']['machine:generator'];self.api.machines[mid]['config'].pop('auto_destroy')
+        with self.assertRaisesRegex(p.PilotError,'auto_destroy_required'):self.pilot.start('generator')
+    def test_provider_transient_updating_old_false_is_observed_without_retry(self):
+        self.provision();observer=self.observer('native-control');self.api.update_transition['native-control']=2
+        started=self.clock.now();result=self.pilot.configure_engine('native-control',observer)
+        self.assertTrue(result['auto_destroy']);self.assertEqual(self.clock.now()-started,2)
+        _,plan=self.pilot.plan();mid=plan['resolved']['machine:native-control']
+        self.assertEqual(self.api.machines[mid]['state'],'stopped')
+        self.assertEqual(sum(c[0]=='POST' and c[2]==mid and c[3] is None for c in self.api.calls),1)
+        self.assertEqual(plan['configuration_attempts']['native-control']['state'],'committed')
+    def test_provider_neverending_update_has_bounded_wait_and_no_repost(self):
+        self.provision();observer=self.observer('native-control');self.api.update_transition['native-control']=None
+        started=self.clock.now()
+        with self.assertRaisesRegex(p.PilotError,'configuration_transition_unconfirmed_reconcile_only'):self.pilot.configure_engine('native-control',observer)
+        self.assertEqual(self.clock.now()-started,30)
+        _,plan=self.pilot.plan();mid=plan['resolved']['machine:native-control']
+        self.assertNotIn('native-control',plan.get('configured',{}))
+        self.assertEqual(sum(c[0]=='POST' and c[2]==mid and c[3] is None for c in self.api.calls),1)
+        with self.assertRaisesRegex(p.PilotError,'configuration_required'):self.pilot.start('native-control')
+        reconciled=self.pilot.reconcile();self.assertIn('native-control',reconciled['unresolved_configuration_attempts'])
+        self.assertEqual(sum(c[0]=='POST' and c[2]==mid and c[3] is None for c in self.api.calls),1)
+    def test_explicit_null_autodestroy_is_not_canonical_false(self):
+        self.provision();_,plan=self.pilot.plan();mid=plan['resolved']['machine:native-control']
+        self.api.machines[mid]['config']['auto_destroy']=None
+        with self.assertRaisesRegex(p.PilotError,'auto_destroy_must_be_explicit'):self.pilot.owned_machine('native-control')
+    def test_owner_verified_destroyed_get_tombstones_do_not_hold_cleanup(self):
+        self.provision();self.api.retain_destroyed=True
+        result=self.pilot.cleanup();self.assertEqual(result['status'],'cleaned');self.assertTrue(result['reaper_retired'])
+        self.assertFalse(self.api.machines);self.assertFalse(self.api.volumes)
+        self.assertTrue(all(item['state']=='destroyed' for item in self.api.tombstones['machines'].values()))
+        self.assertEqual(self.control.ledger()['phase'],'pilot-cleaned')
+    def test_foreign_or_public_generator_urls_rejected_without_update(self):
+        self.provision();_,plan=self.pilot.plan();a=plan['resolved']['machine:native-control'];b=plan['resolved']['machine:tantivy-control']
+        def url(mid,port):return f'http://{mid}.vm.{p.APP}.internal:{port}'
+        for bad in ['https://typeahead.waow.tech','http://fdaa::1','http://[fdaa::ffff]:8080',url('deadbeef',8080)]:
+            before=len(self.api.calls)
+            with self.assertRaises(p.PilotError):self.pilot.configure_generator(bad,url(a,8082),url(b,8080),url(b,8082))
+            self.assertFalse(any(c[0]=='POST' for c in self.api.calls[before:]))
+    def test_mount_derived_fields_accepted_but_independent_volume_size_checked(self):
+        self.provision();actual=self.pilot.owned_machine('native-control');self.assertIn('unknown_safe_field',actual['config']['mounts'][0])
+        _,plan=self.pilot.plan();vid=plan['resolved']['volume:native'];self.api.volumes[vid]['size_gb']=40
+        with self.assertRaisesRegex(p.PilotError,'volume_shape_mismatch'):self.pilot.owned_machine('native-control')
+    def test_wrong_armed_receipt_or_dead_reaper_blocks_disks(self):
+        self.arm();value=self.control.ledger();value['pilot']['armed']['manifest_sha256']='e'*64;bad=value['pilot']['armed']
+        with self.assertRaisesRegex(p.PilotError,'armed_binding'):self.pilot.record_armed(bad)
+        _,plan=self.pilot.plan();self.api.machines[plan['resolved']['machine:reaper']]['state']='stopped'
+        with self.assertRaisesRegex(p.PilotError,'reaper_not_running'):self.pilot.provision()
+        self.assertFalse(self.api.volumes)
+    def test_cleanup_receipt_persisted_before_reaper_retirement(self):
+        self.provision();result=self.pilot.cleanup();self.assertEqual(result['status'],'cleaned');self.assertTrue(result['reaper_retired']);self.assertFalse(self.api.machines);self.assertFalse(self.api.volumes)
+        value=self.control.ledger();self.assertEqual(value['pilot']['cleanup_receipt']['status'],'cleaned');self.assertEqual(value['phase'],'pilot-cleaned')
+    def test_reaper_retirement_two_pending_polls_then_destroyed_mutates_once(self):
+        self.provision();_,plan=self.pilot.plan();rid=plan['resolved']['machine:reaper'];self.api.retirement_delay[rid]=3
+        started=self.clock.now();result=self.pilot.cleanup()
+        self.assertEqual(result['status'],'cleaned');self.assertTrue(result['reaper_retired']);self.assertEqual(self.clock.now()-started,3)
+        calls=[c for c in self.api.calls if c[2]==rid]
+        self.assertEqual(sum(c[0]=='POST' and c[3]=='stop' for c in calls),1)
+        self.assertEqual(sum(c[0]=='DELETE' for c in calls),1)
+        deletion=next(i for i,c in enumerate(calls) if c[0]=='DELETE')
+        self.assertTrue(all(c[0]=='GET' for c in calls[deletion+1:]))
+        self.assertEqual(self.api.tombstones['machines'][rid]['state'],'destroyed')
+        self.assertTrue(self.control.ledger()['pilot']['reaper_retired'])
+    def test_neverterminal_reaper_retirement_is_bounded_and_unconfirmed(self):
+        self.provision();_,plan=self.pilot.plan();rid=plan['resolved']['machine:reaper'];self.api.retirement_delay[rid]=None
+        started=self.clock.now()
+        with self.assertRaisesRegex(p.PilotError,'reaper_retirement_unconfirmed'):self.pilot.cleanup()
+        self.assertEqual(self.clock.now()-started,30)
+        calls=[c for c in self.api.calls if c[2]==rid]
+        self.assertEqual(sum(c[0]=='POST' and c[3]=='stop' for c in calls),1)
+        self.assertEqual(sum(c[0]=='DELETE' for c in calls),1)
+        deletion=next(i for i,c in enumerate(calls) if c[0]=='DELETE')
+        self.assertTrue(all(c[0]=='GET' for c in calls[deletion+1:]))
+        value=self.control.ledger();self.assertFalse(value['pilot'].get('reaper_retired',False))
+        self.assertEqual(value['pilot']['cleanup_receipt']['status'],'cleaned')
+        self.assertNotEqual(value['phase'],'pilot-cleaned');self.assertTrue(value['machines'])
+    def test_protected_or_unknown_app_resource_blocks_allocation(self):
+        rogue={'id':'8e3d79b70dd748','name':'unknown','created_at':1000,'config':{'metadata':{'owner':'someone'}}}
+        self.api.machines[rogue['id']]=rogue
+        with self.assertRaisesRegex(p.PilotError,'unknown_app_resource'):self.pilot.launch_reaper()
+        self.assertFalse(any(c[0]=='POST' for c in self.api.calls))
+    def test_second_run_accepts_only_recorded_retired_unattached_pending_volumes(self):
+        self.provision();self.api.retain_destroyed=True;self.api.pending_destroy_volumes=True
+        self.assertEqual(self.pilot.cleanup()['status'],'cleaned');oldids=set(self.api.volumes)
+        self.pilot.prepare(IMAGE,NATIVE,TANTIVY,run_id='1234abcd5678')
+        self.pilot.launch_reaper();self.assertEqual(len(self.control.ledger()['retired_pilots']),1)
+        self.assertEqual(set(self.api.volumes),oldids)
+        self.assertTrue(all(v['state']=='pending_destroy' for v in self.api.volumes.values()))
+    def test_unrecorded_pending_or_live_retired_volume_blocks_new_allocation(self):
+        self.provision();self.api.pending_destroy_volumes=True;self.assertEqual(self.pilot.cleanup()['status'],'cleaned')
+        self.pilot.prepare(IMAGE,NATIVE,TANTIVY,run_id='1234abcd5678')
+        original=copy.deepcopy(next(iter(self.api.volumes.values())));clone=copy.deepcopy(original);clone['id']='vol_unrecorded'
+        self.api.volumes[clone['id']]=clone
+        before=len(self.api.calls)
+        with self.assertRaisesRegex(p.PilotError,'unknown_app_resource'):self.pilot.launch_reaper()
+        self.assertFalse(any(c[0]=='POST' for c in self.api.calls[before:]))
+        self.api.volumes.pop(clone['id']);self.api.volumes[original['id']]['state']='created'
+        with self.assertRaisesRegex(p.PilotError,'unknown_app_resource'):self.pilot.launch_reaper()
+        self.api.volumes[original['id']]['state']='pending_destroy';self.api.volumes[original['id']]['attached_machine_id']='unknown-machine'
+        with self.assertRaisesRegex(p.PilotError,'unknown_app_resource'):self.pilot.launch_reaper()
+    def test_expired_or_insufficient_lease_prevents_creation(self):
+        self.clock.value=1531
+        with self.assertRaisesRegex(p.PilotError,'insufficient_pilot_lease'):self.pilot.launch_reaper()
+        self.assertFalse(self.api.machines)
+
+if __name__=='__main__':unittest.main()

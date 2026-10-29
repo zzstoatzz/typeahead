@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "kind": "actual-local-HTTP-private-proxy",
+  "tests": 6,
+  "cloud_calls": 0,
+  "entrypoint_sha256": "3bbf0cca3e003110d5f37b0c2604e2ceca153e3b3070beae0cb66fe39fc22a7f"
+}

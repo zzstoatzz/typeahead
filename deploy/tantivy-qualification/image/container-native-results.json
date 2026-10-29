@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "actors": 32,
+  "actual_linux_builder": true,
+  "actual_native_search": true,
+  "actual_frozen_batch_commit": true,
+  "private_proxy": true,
+  "source_ready_attestation": false,
+  "provider_hardware_attested": false,
+  "network": "none",
+  "cloud_calls": 0,
+  "scratch_bytes": 287604
+}

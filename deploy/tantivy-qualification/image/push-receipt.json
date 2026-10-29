@@ -1,0 +1,8 @@
+{
+  "app": "typeahead-qual-20261029",
+  "tag": "registry.fly.io/typeahead-qual-20261029:pilot-b5b4babd9cef",
+  "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:15a0b844bcc7045655d05418a65dab3c8d6511904c59a10be3e9e3a39266dec9",
+  "build_metadata_sha256": "b5b4babd9cefd4990e460a9752b08a292e7de253e5b9b0aff4999b5629d5276c",
+  "pushed_at": 1793298547.8382561,
+  "machines_created": 0
+}

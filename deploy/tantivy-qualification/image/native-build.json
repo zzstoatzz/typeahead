@@ -1,0 +1,73 @@
+{
+  "target": "x86_64-linux-gnu",
+  "optimize": "ReleaseSafe",
+  "source_sha256": {
+    "services/src/admit_prefix.zig": "88518984a18ed985f134ff83ccfa36c546750b9e412991f6b840b7ed79b29d62",
+    "services/src/bloom.zig": "aa60931de16d48f9cf074105767fd133265b77ef4980a753adbd735ab1c22dad",
+    "services/src/compact.zig": "ff1da2802995ec41cd840cd7ff2790c2d2ca557e1276d6b1cccf6d4842ebf7e8",
+    "services/src/db/LocalDb.zig": "ba410e10ada1b3547acc9f8f6ebd21cb72bf0a11f81f6b89d0cca9158497f5a9",
+    "services/src/db/TursoClient.zig": "3f5d12b5c91885755c814e35a484bd9c080ad37493b56d84a5c1a33acb05a97c",
+    "services/src/db/migrations.zig": "8820ed5b686872ec9b2064f221eecb33c5b5e0516e29b52cc3543500e89e986c",
+    "services/src/db/sync.zig": "bec45612b3afefbd6c6349258a6675fbd7b32c9f8f03f66822c1de16daffb165",
+    "services/src/db/turso_schema.zig": "90e62e6014ec45c105826b42de0326cb3e79c4c3f9447a5bfc90454c6b7f6b16",
+    "services/src/db/zug_conn.zig": "f58100baeb5191531257e3d711e431e40745926c5c115cb54e346886ad9af45e",
+    "services/src/eval_lookup.zig": "becd94fd6dec1a6164cbad730fe20131cf51d54f9beb05b369bc34b2325addc0",
+    "services/src/eval_server.zig": "f17bae6b9ac19deaa75e1147e9ffa07789f8b196012ca183ea9f5058eff24a43",
+    "services/src/eval_writer.zig": "b2ffed80be93e2c730273cfcdc2fb9629876f89697005109269a8fc26e09cbe4",
+    "services/src/fatal.zig": "49a61e0ef8948170f93aaedaf616a2ac255fd24e042204ec78e5bd773969e4be",
+    "services/src/http_guard.zig": "0f079160d2773db809c9caa98382c01a9994035ca1bcac07c12ba4807276a302",
+    "services/src/identity.zig": "1dd599ad2e19a7b93b42c6edcebb2a6e8d3351d8b903335625866613307da4e7",
+    "services/src/index/builder.zig": "f6bbb3407190f3608c3ada8e323822b9c9c895df46bb9d181a397e74ae573328",
+    "services/src/index/flat_admission.zig": "5dc084524afb60a41fb9f902be086f187c2efb28eb358123f17894b073e9509c",
+    "services/src/index/flat_prefix.zig": "01d34deb3b72eba1d32e5827d00ae39371bc60483bd41c430b5ff6c47088b0a4",
+    "services/src/index/flat_prefix_fixture.bin": "bdccedc099258fce7a2e63365227d25051a6a5ea7c4204ea0d0591d0495c678c",
+    "services/src/index/index_search.zig": "fb999554a4d63838223a4d2cb767b92cc199096bb52db3ba4e18ecb4abaebb19",
+    "services/src/index/manifest.zig": "b1064998578d308df580ba3fd63f844c45404280b7baad901fe2bb4c2e9af097",
+    "services/src/index/merge.zig": "7bb27e2076c1a1b739d0c619865cf9745f81a7828d89d54b1470d06080aa7c6a",
+    "services/src/index/normalize.zig": "c9147195ab41e53989059672a1e60c468b210721cb1fce96aa09dd2054988634",
+    "services/src/index/overlay.zig": "e3fa5264da87cdd43c0676ecf6c291726bcc3e6dd653481b9a0ba0eae2047f18",
+    "services/src/index/pack.zig": "de89635c6afda350a5d81d6b8d356a5381f06176f85bc31280f5bff0062a1127",
+    "services/src/index/pds.zig": "bc1feb6d08b17395f6da82ef90a4378111923a2ec6c1210cf7be3ea03c7976a6",
+    "services/src/index/prefixes.zig": "acb3ca847473bbcba4e13fbb4317f40e47280dc0ada73f07de0dfb02fac7540d",
+    "services/src/index/promote.zig": "68654af51577575bf2acf80c6d42d79c17b286cc00fbc3817435f9b5a39fd28b",
+    "services/src/index/promote_runner.zig": "25a1f7138ccae26103e9d01c37f69a993c13e3212e54b4d868241598ca527db6",
+    "services/src/index/r2.zig": "315e7e340835b20140cc3cfb9012778aa1d5721c4c340a395fec3d15e52541c1",
+    "services/src/index/schema.zig": "7edbe10edd25d571008e95bd740b7d310f11544e375f830885f8b77084c83ffe",
+    "services/src/index/scoring.zig": "2bcb84e4a7d9dbc7de67817d5ac773c822714edf91e8e97c529ec77afaafe353",
+    "services/src/index/snapshot_state.zig": "1e1ade47431f15a7e7094d2d7ef039acc7fb5c359cfa4a12788e5868924f621b",
+    "services/src/index/unified_fixture.bin": "efa1194d38b8babbb552453ecfdd389fe4090d45737d35875174e4b60632d580",
+    "services/src/index/unified_fixture1.bin": "efa1194d38b8babbb552453ecfdd389fe4090d45737d35875174e4b60632d580",
+    "services/src/index/unified_fixture1.db": "c592b244629a11b9ca20a1673962a837346e4777f555ef251984e366339babf5",
+    "services/src/index/unified_fixture2.bin": "4657ecc0006c9443c73f6f8fb9555d51c9888a0957dd381f294580b6e73d56fa",
+    "services/src/index/unified_fixture2.db": "a61001edfcb1efdc35cba23a2dc9ef8f92637f17638958135c34a12ca765385c",
+    "services/src/ingest.zig": "b2ec31b9cd8331c0234954d61a3cb9e6ed81ffad61ba041bae378b79853b7995",
+    "services/src/main.zig": "ac3161c77424581630672e0014bfba01d04c4564e3c299cbaed979678478787e",
+    "services/src/qualification_native_api.zig": "20b07d830261e545f5bd591bd30c2fa418e2bb8e7d143d0f8d587a3f3c5708c3",
+    "services/src/search.zig": "0e17a7565b47dab3c791c293d11f286ff539dce55c079a571aebc9d9576a963c",
+    "services/src/server.zig": "4ec20d20a7da3d87a9adb690074de9f457d7a592b4c670873faaac7678aa369f",
+    "services/src/test_index.zig": "e637eec9e80519087880230521b785e18c70bfe40cc9a6472ba2d42e5d479253",
+    "services/build.zig": "592390184d6895fd0991fb21bb8a729d4a8928988a95f5918d1bf18b7eab489e",
+    "services/build.zig.zon": "bfcc083c51c47f8b42f70d48f0163abd733bca7dfcce71eb1c053a53a8f522b0",
+    "experiments/tantivy-qualification-native/main.zig": "6c487c1d21a2d4a8ad72cdd7943583f2420764447c7968181a6423207da49af6"
+  },
+  "binaries": {
+    "admit-prefix": {
+      "sha256": "0aaa81244b521f5a382380f58f79225dcfe30734d8541a515cd25b6fd8592da1",
+      "bytes": 3680424
+    },
+    "qualification-native": {
+      "sha256": "c2a1386f5014dc2913ce8b5e16269c313b9993f9d2a12ac3662aea43ee075012",
+      "bytes": 11819176
+    },
+    "eval-server": {
+      "sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
+      "bytes": 12628600
+    },
+    "typeahead-ingester": {
+      "sha256": "9c6952d49ad09911f7ed1209399c176c57e698d42589876d139fbb3defcf85bd",
+      "bytes": 23410144
+    }
+  },
+  "wall_s": 0.5480480830301531,
+  "cloud_calls": 0
+}

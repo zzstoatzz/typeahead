@@ -78,6 +78,32 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const qualification_api = b.createModule(.{
+        .root_source_file = b.path("src/qualification_native_api.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .imports = &.{
+            .{ .name = "zat", .module = zat.module("zat") },
+            .{ .name = "zqlite", .module = zqlite.module("zqlite") },
+            .{ .name = "logfire", .module = logfire.module("logfire") },
+            .{ .name = "zug", .module = zug.module("zug") },
+            .{ .name = "poolio", .module = poolio.module("poolio") },
+        },
+    });
+    const qualification_native = b.addExecutable(.{
+        .name = "qualification-native",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("../experiments/tantivy-qualification-native/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{.{ .name = "native", .module = qualification_api }},
+        }),
+    });
+    b.step("qualification-native", "Build isolated frozen-feed batch writer; no HTTP or source credentials")
+        .dependOn(&b.addInstallArtifact(qualification_native, .{}).step);
+
     const install_eval_server = b.addInstallArtifact(eval_server, .{});
     b.step("eval-server", "Build an isolated loopback search server with no sync or promotion").dependOn(&install_eval_server.step);
 
