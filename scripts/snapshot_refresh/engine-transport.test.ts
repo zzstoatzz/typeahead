@@ -15,7 +15,7 @@ test("engine route conditional promotion and rollback use isolated filesystem-ba
     { name: "origin", modules: true, script: `export default {fetch(r){const u=new URL(r.url);if(r.method==='POST')return Response.json({error:'native-auth-fixture'},{status:401});const h=new Headers({'Content-Type':'application/json'});if(u.hostname==='typeahead-tantivy-dev.fly.dev'&&u.searchParams.get('q')!=='wrong'){h.set('X-Typeahead-Engine','tantivy');h.set('X-Typeahead-Build','b1792908655-test');h.set('X-Typeahead-Format','tantivy-0.27-f32-did-expiry-v4');h.set('X-Typeahead-Binary-Sha256',(u.searchParams.get('q')==='wrongbinary'?'d':'c').repeat(64));h.set('X-Typeahead-Retrieval-Strategy',u.searchParams.get('q')==='wrongstrategy'?'global-merge':'per-segment')}return new Response(JSON.stringify({origin:u.origin,actors:[]}),{headers:h})}}` },
   ] });
   const base = "https://typeahead-search-transport.n8-3e9.workers.dev";
-  const native = { origin: "https://typeahead-startup-20261024.fly.dev", build_id: "b1792908655-test" };
+  const native = { origin: "https://typeahead-startup-20261024.fly.dev", build_id: "b1792908655-test", source_watermark: 1792908650, machine_id: "8e3d79b70dd748", volume_id: "vol_fixture", legacy_build_id: "b1792908655-legacy" };
   const candidate = { engine: "tantivy", origin: "https://typeahead-tantivy-dev.fly.dev", build_id: native.build_id, format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" };
   const control = async () => {
     const response = await mf.dispatchFetch(`${base}/__control`);

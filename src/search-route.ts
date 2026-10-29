@@ -28,6 +28,16 @@ export const routeSchema = z.pipe(z.object({
 
 export const parseRoute = routeSchema.parse;
 
+const retainedNativeSchema = z.looseObject({
+  engine: z.optional(z.literal("native")),
+  origin: z.enum(["https://typeahead-startup-20261024.fly.dev", "https://typeahead-search-refresh.fly.dev"]),
+  build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
+  source_watermark: z.optional(z.int().check(z.gte(0))),
+  machine_id: z.optional(z.string().check(z.regex(/^[a-f0-9]{14}$/))),
+  volume_id: z.optional(z.string().check(z.regex(/^vol_[A-Za-z0-9]+$/))),
+  legacy_build_id: z.optional(z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/))),
+});
+
 export function routeIdentity(route: ReturnType<typeof parseRoute>): string {
   return JSON.stringify(route.engine === "tantivy"
     ? [route.engine, route.origin, route.build_id, route.format, route.admission_sha256, route.binary_sha256, route.retrieval_strategy]
@@ -45,22 +55,24 @@ export function responseMatchesRoute(route: ReturnType<typeof parseRoute>, respo
 }
 
 export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: string | null, candidate: unknown): Promise<boolean> {
-  const current = parseRoute({ version: 1, current: candidate });
+  const parsedCurrent = parseRoute({ version: 1, current: candidate });
+  const current = parsedCurrent.engine === "tantivy" ? parsedCurrent : retainedNativeSchema.parse(candidate);
   const before = await bucket.get(ROUTE_KEY);
   if ((before?.etag ?? null) !== expectedEtag) return false;
   const envelope = before ? await before.json() : null;
-  const previous = before ? parseRoute(envelope) : null;
   const retained = envelope === null ? undefined : z.object({
+    current: z.unknown(),
     previous: z.optional(z.unknown()),
     native_rollback: z.optional(z.unknown()),
   }).parse(envelope);
-  let anchor = retained?.native_rollback == null ? null : parseRoute({ version: 1, current: retained.native_rollback });
-  if (anchor?.engine === "tantivy") throw new Error("Native rollback anchor must be native");
+  const parsedPrevious = before ? parseRoute(envelope) : null;
+  const previous = parsedPrevious?.engine === "tantivy" ? parsedPrevious : retained ? retainedNativeSchema.parse(retained.current) : null;
+  let anchor = retained?.native_rollback == null ? null : retainedNativeSchema.parse(retained.native_rollback);
   if (current.engine === "tantivy") {
     if (previous && previous.engine !== "tantivy") anchor = previous;
     if (!anchor && retained?.previous != null) {
       const earlier = parseRoute({ version: 1, current: retained.previous });
-      if (earlier.engine !== "tantivy") anchor = earlier;
+      if (earlier.engine !== "tantivy") anchor = retainedNativeSchema.parse(retained.previous);
     }
     if (!anchor) throw new Error("Tantivy promotion requires a retained native rollback anchor");
   }

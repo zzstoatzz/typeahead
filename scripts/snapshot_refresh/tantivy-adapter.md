@@ -136,6 +136,8 @@ Tantivy and fails explicitly.
 for a separately authorized controller. It preserves the previous route and
 seeds a native-only `native_rollback` anchor on native-to-Tantivy promotion.
 Successive Tantivy promotions retain that anchor independently of `previous`.
+The anchor preserves the original native target metadata, including source
+watermark, machine/volume identity and legacy twin, for refresh and retention.
 An invalid or missing native anchor prevents a Tantivy promotion. It
 rejects a stale ETag. It exposes no public mutation endpoint and does not itself
 establish admission or authorize promotion. A controller must validate the
