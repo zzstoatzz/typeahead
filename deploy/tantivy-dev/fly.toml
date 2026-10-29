@@ -1,0 +1,21 @@
+app = "typeahead-tantivy-dev"
+primary_region = "ewr"
+
+[env]
+  BOOTSTRAP_DEADLINE_SECONDS = "5400"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "off"
+  auto_start_machines = false
+  min_machines_running = 1
+
+[[mounts]]
+  source = "tantivy_dev_data"
+  destination = "/data"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 2
+  memory = "1gb"
