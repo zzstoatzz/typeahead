@@ -1,0 +1,41 @@
+{
+  "run_id": "285b6147c50e",
+  "deadline": 1793316252.692568,
+  "observations": [
+    {
+      "role": "native-control",
+      "machine_id": "781ee7df10eee8",
+      "state": "started",
+      "guest": {
+        "cpu_kind": "performance",
+        "cpus": 2,
+        "memory_mb": 4096
+      },
+      "observed_at": 1793311384.196254,
+      "progress": {
+        "files": {
+          "preparing/source/index.db.prefix.part": 2314551296
+        },
+        "free_bytes": 17536245760
+      }
+    },
+    {
+      "role": "tantivy-control",
+      "machine_id": "824021f7441e38",
+      "state": "started",
+      "guest": {
+        "cpu_kind": "performance",
+        "cpus": 2,
+        "memory_mb": 4096
+      },
+      "observed_at": 1793311384.930201,
+      "progress": {
+        "files": {
+          "preparing/source/index.db.prefix.part": 2348810240
+        },
+        "free_bytes": 17502048256
+      }
+    }
+  ],
+  "full_qualification": false
+}
