@@ -1,6 +1,7 @@
 """Bounded read-only current-source observations; never use as timestamp replay writes."""
 
 import json
+from contextlib import nullcontext
 
 
 def valid_did(value):
@@ -214,7 +215,13 @@ class ObservationWriter:
             expected = [item for item in expected if item["document_sha256"] is None]
             ordered = sorted(item["did"] for item in expected)
         policy_snapshot = None
-        if self.policy_mode == "snapshot":
+        if only_missing and not ordered:
+            observations = {"observations": []}
+            if watermark is not None:
+                raise self.replay.SafeError(
+                    "cursor-only sweep cannot refresh polling watermark"
+                )
+        elif self.policy_mode == "snapshot":
             observations = self.source.observe_with_policy(ordered)
             policy_snapshot = {
                 **observations["moderation"],
@@ -271,7 +278,15 @@ class ObservationWriter:
 
 class ObservedSynchronizer:
     def __init__(
-        self, source, admin, replay, anti_entropy_pages=2, policy_mode="off", **settings
+        self,
+        source,
+        admin,
+        replay,
+        anti_entropy_pages=2,
+        policy_mode="off",
+        sweep_cooldown_seconds=3600,
+        max_sweep_seconds=5,
+        **settings,
     ):
         import copy
 
@@ -289,7 +304,16 @@ class ObservedSynchronizer:
         self.writer = ObservationWriter(
             source, admin, replay, self.legacy.retries, self.legacy.backoff, policy_mode
         )
+        if (
+            type(sweep_cooldown_seconds) is not int
+            or not 0 <= sweep_cooldown_seconds <= 86400
+            or type(max_sweep_seconds) not in (int, float)
+            or not 0 < max_sweep_seconds <= 30
+        ):
+            raise replay.SafeError("invalid bounded sweep pacing")
         self.anti_entropy_pages = anti_entropy_pages
+        self.sweep_cooldown_seconds = sweep_cooldown_seconds
+        self.max_sweep_seconds = max_sweep_seconds
 
     def cursor(self, status):
         adapted = self.copy(status)
@@ -427,8 +451,28 @@ class ObservedSynchronizer:
             if cursor["cycle"] is None:
                 break
         sweep_pages = 0
+        sweep_started = time.monotonic()
+        sweep_pause = None
+        sweep = cursor.get("reconciliation") or {}
+        idle_round = not any(
+            sweep.get(key)
+            for key in [
+                "source_after_did",
+                "backend_after_did",
+                "source_done",
+                "backend_done",
+            ]
+        )
+        if (
+            sweep.get("last_completed_at") is not None
+            and idle_round
+            and now - sweep["last_completed_at"] < self.sweep_cooldown_seconds
+        ):
+            sweep_pause = "cooldown"
         while (
             cursor["cycle"] is None
+            and sweep_pause is None
+            and time.monotonic() - sweep_started < self.max_sweep_seconds
             and sweep_pages < self.anti_entropy_pages
             and time.monotonic() - started < self.legacy.max_seconds
         ):
@@ -447,38 +491,50 @@ class ObservedSynchronizer:
                     "last_completed_started_at": None,
                 },
             )
-            stream = "backend" if sweep["source_done"] else "source"
-            after = sweep[stream + "_after_did"]
-            dids = (
-                self.writer.source.source_page(after, self.legacy.page_size)
-                if stream == "source"
-                else self.writer.admin.page(after, self.legacy.page_size)
+            scope = (
+                self.source.budget_scope("sweep")
+                if hasattr(self.source, "budget_scope")
+                else nullcontext()
             )
-            if dids:
-                sweep[stream + "_after_did"] = dids[-1]
-            else:
-                sweep[stream + "_done"] = True
-            complete = sweep["source_done"] and sweep["backend_done"]
-            if complete:
-                completed = self.source.now()
-                if completed < sweep["round_started_at"]:
-                    raise self.replay.SafeError(
-                        "source clock is behind reconciliation start"
+            try:
+                with scope:
+                    if idle_round and sweep_pages == 0:
+                        sweep["round_started_at"] = now
+                    stream = "backend" if sweep["source_done"] else "source"
+                    after = sweep[stream + "_after_did"]
+                    dids = (
+                        self.writer.source.source_page(after, self.legacy.page_size)
+                        if stream == "source"
+                        else self.writer.admin.page(after, self.legacy.page_size)
                     )
-                completed_start = sweep["round_started_at"]
-                sweep.update(
-                    round=sweep["round"] + 1,
-                    source_after_did="",
-                    backend_after_did="",
-                    source_done=False,
-                    backend_done=False,
-                    round_started_at=completed,
-                    last_completed_at=completed,
-                    last_completed_started_at=completed_start,
-                )
-            receipt = self.writer.commit(
-                dids, previous, next_cursor, only_missing=stream == "source"
-            )
+                    if dids:
+                        sweep[stream + "_after_did"] = dids[-1]
+                    else:
+                        sweep[stream + "_done"] = True
+                    complete = sweep["source_done"] and sweep["backend_done"]
+                    if complete:
+                        completed = self.source.now()
+                        if completed < sweep["round_started_at"]:
+                            raise self.replay.SafeError(
+                                "source clock is behind reconciliation start"
+                            )
+                        completed_start = sweep["round_started_at"]
+                        sweep.update(
+                            round=sweep["round"] + 1,
+                            source_after_did="",
+                            backend_after_did="",
+                            source_done=False,
+                            backend_done=False,
+                            round_started_at=completed,
+                            last_completed_at=completed,
+                            last_completed_started_at=completed_start,
+                        )
+                    receipt = self.writer.commit(
+                        dids, previous, next_cursor, only_missing=stream == "source"
+                    )
+            except self.replay.SweepBudgetExhausted:
+                sweep_pause = "budget"
+                break
             applied += receipt.get("applied", 0)
             replayed += receipt.get("replayed", 0)
             ack_recoveries += int(receipt.get("ack_recovered", False))
@@ -488,7 +544,19 @@ class ObservedSynchronizer:
             previous = self.copy(cursor)
             if complete:
                 break
+        if sweep_pause is None and sweep_pages < self.anti_entropy_pages:
+            if cursor["cycle"] is not None:
+                sweep_pause = "discovery"
+            elif (
+                time.monotonic() - sweep_started >= self.max_sweep_seconds
+                or time.monotonic() - started >= self.legacy.max_seconds
+            ):
+                sweep_pause = "time-slice"
         result = {
+            "sweep_pause": sweep_pause,
+            "source_budget": self.source.accounting()
+            if hasattr(self.source, "accounting")
+            else None,
             "phase": "caught-up" if cursor["cycle"] is None else "bounded-pause",
             "caught_up": cursor["cycle"] is None,
             "through": cursor["through"],

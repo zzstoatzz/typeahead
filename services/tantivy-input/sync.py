@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Read-only Turso keyset replay into the isolated localhost Tantivy admin API."""
+from contextlib import contextmanager
 import argparse
 import copy
 import http.client
@@ -42,6 +43,8 @@ RETENTION_SECONDS=7*24*3600
 SOURCE_POLICY='turso-current-state-cutoff-v1'
 
 class SafeError(Exception):pass
+class SourceBudgetExhausted(SafeError):pass
+class SweepBudgetExhausted(SafeError):pass
 class Retryable(SafeError):pass
 class CursorConflict(SafeError):pass
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -94,8 +97,25 @@ class Http:
             raise Retryable('HTTP transport failure') from None
 
 class Turso:
-    def __init__(self,url,token,http=None,allow_test_loopback=False,retries=3,backoff=.5,max_bytes=512*1024*1024):
+    def __init__(self,url,token,http=None,allow_test_loopback=False,retries=3,backoff=.5,max_bytes=512*1024*1024,poll_reserve_bytes=None):
+        if type(max_bytes) is not int or max_bytes<2:raise SafeError('invalid source byte budget')
+        reserve=max_bytes//4 if poll_reserve_bytes is None else poll_reserve_bytes
+        if type(reserve) is not int or not 0<=reserve<=max_bytes:raise SafeError('invalid polling reserve')
         self.url=source_url(url,allow_test_loopback);self.token=token;self.http=http or Http();self.retries=retries;self.backoff=backoff;self.max_bytes=max_bytes;self.bytes=0;self.requests=0
+        self.poll_reserve_bytes=reserve;self.poll_bytes=0;self.sweep_bytes=0;self.budget_kind='poll'
+    @contextmanager
+    def budget_scope(self,kind):
+        if kind not in ['poll','sweep']:raise SafeError('unknown source budget scope')
+        previous=self.budget_kind;self.budget_kind=kind
+        try:yield
+        finally:self.budget_kind=previous
+    def remaining_bytes(self):
+        total=self.max_bytes-self.bytes
+        if self.budget_kind=='sweep':return min(total,self.max_bytes-self.poll_reserve_bytes-self.sweep_bytes)
+        return total
+    def accounting(self):
+        return {'source_bytes':self.bytes,'poll_bytes':self.poll_bytes,'sweep_bytes':self.sweep_bytes,'max_source_bytes':self.max_bytes,'poll_reserve_bytes':self.poll_reserve_bytes,'sweep_ceiling_bytes':self.max_bytes-self.poll_reserve_bytes,'remaining_source_bytes':max(0,self.max_bytes-self.bytes),'remaining_sweep_bytes':max(0,min(self.max_bytes-self.bytes,self.max_bytes-self.poll_reserve_bytes-self.sweep_bytes))}
+
     def select(self,sql,args):
         if sql not in SELECTS:raise SafeError('only fixed source SELECTs are permitted')
         values=[]
@@ -106,10 +126,22 @@ class Turso:
         body={'requests':[{'type':'execute','stmt':{'sql':sql,'args':values,'want_rows':True}},{'type':'close'}]}
         for attempt in range(self.retries):
             try:
-                if self.bytes>=self.max_bytes:raise SafeError('source byte budget exhausted')
+                remaining=self.remaining_bytes()
+                if remaining<=1:
+                    if self.budget_kind=='sweep':raise SweepBudgetExhausted('sweep byte budget exhausted; polling reserve retained')
+                    raise SourceBudgetExhausted('source byte budget exhausted')
                 before=self.http.received_bytes;self.requests+=1
-                try:result,size=self.http.request(self.url,self.token,body,max_bytes=min(4*1024*1024,self.max_bytes-self.bytes))
-                finally:self.bytes+=self.http.received_bytes-before
+                try:
+                    result,size=self.http.request(self.url,self.token,body,max_bytes=min(4*1024*1024,remaining-1))
+                except SafeError:
+                    if self.http.received_bytes-before>=remaining:
+                        if self.budget_kind=='sweep':raise SweepBudgetExhausted('sweep byte budget exhausted; polling reserve retained') from None
+                        raise SourceBudgetExhausted('source byte budget exhausted') from None
+                    raise
+                finally:
+                    received=self.http.received_bytes-before;self.bytes+=received
+                    if self.budget_kind=='sweep':self.sweep_bytes+=received
+                    else:self.poll_bytes+=received
                 break
             except Retryable:
                 if attempt+1==self.retries:raise
@@ -278,7 +310,8 @@ def parser():
     p.add_argument('--page-size',type=int,default=500);p.add_argument('--max-pages',type=int,default=256);p.add_argument('--max-cycle-seconds',type=float,default=300)
     p.add_argument('--policy-mode',choices=['off','snapshot'],default='off')
     p.add_argument('--source-mode',choices=['observed','timestamp'],default='observed');p.add_argument('--anti-entropy-pages',type=int,default=2)
-    p.add_argument('--lookback-seconds',type=int,default=300);p.add_argument('--max-source-bytes',type=int,default=512*1024*1024);p.add_argument('--http-timeout',type=float,default=15);p.add_argument('--interval',type=float,default=60)
+    p.add_argument('--sweep-cooldown-seconds',type=int,default=3600);p.add_argument('--max-sweep-seconds',type=float,default=5)
+    p.add_argument('--lookback-seconds',type=int,default=300);p.add_argument('--max-source-bytes',type=int,default=512*1024*1024);p.add_argument('--poll-reserve-bytes',type=int);p.add_argument('--http-timeout',type=float,default=15);p.add_argument('--interval',type=float,default=60)
     p.add_argument('--max-run-seconds',type=float,default=3600);p.add_argument('--status-file');p.add_argument('--once',action='store_true')
     return p
 
@@ -291,7 +324,7 @@ def main():
         value=os.environ.get(name)
         if not value:raise SafeError('missing required cloud-only credential variable '+name)
         secrets.append(value)
-    source=Turso(secrets[0],secrets[1],http=Http(args.http_timeout),max_bytes=args.max_source_bytes)
+    source=Turso(secrets[0],secrets[1],http=Http(args.http_timeout),max_bytes=args.max_source_bytes,poll_reserve_bytes=args.poll_reserve_bytes)
     admin=Admin(args.admin_url,secrets[2],args.status_url,http=Http(args.http_timeout))
     def expired(*_):raise SafeError('bounded replay process deadline')
     signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,args.max_run_seconds)
@@ -301,12 +334,12 @@ def main():
             settings=dict(page_size=args.page_size,max_pages=args.max_pages,max_seconds=args.max_cycle_seconds,status_file=args.status_file,lookback_seconds=args.lookback_seconds)
             if args.source_mode=='observed':
                 from current_state import ObservedSynchronizer
-                runner=ObservedSynchronizer(source,admin,sys.modules[__name__],anti_entropy_pages=args.anti_entropy_pages,policy_mode=args.policy_mode,**settings)
+                runner=ObservedSynchronizer(source,admin,sys.modules[__name__],anti_entropy_pages=args.anti_entropy_pages,policy_mode=args.policy_mode,sweep_cooldown_seconds=args.sweep_cooldown_seconds,max_sweep_seconds=args.max_sweep_seconds,**settings)
             else:runner=Synchronizer(source,admin,**settings)
             result=runner.run()
             print(json.dumps({k:v for k,v in result.items() if k!='source_cursor'}),flush=True)
         except SafeError as exc:
-            failure={'phase':'replay-error','caught_up':False,'source_mode':args.source_mode,'reason':str(exc)}
+            failure={'phase':'replay-error','caught_up':False,'source_mode':args.source_mode,'reason':str(exc),'source_budget':source.accounting()}
             if args.status_file:Synchronizer(source,admin,status_file=args.status_file).save(failure)
             print(json.dumps(failure),file=sys.stderr,flush=True)
             if args.once:raise

@@ -25,6 +25,30 @@ The default pacing is conservative, not a qualified full-corpus reconciliation
 SLO. A full source-and-backend round visits roughly twice the actor count;
 measure a page budget that meets admission deadlines. Polling freshness alone
 does not qualify sweep coverage. A source gap beyond seven days still fails closed.
+Completed rounds wait `--sweep-cooldown-seconds 3600` before another round;
+unfinished rounds resume their durable cursor. `--max-sweep-seconds 5` limits sweep
+work between pages in addition to the existing page/cycle limits. One in-flight
+page can finish after that soft slice under the existing HTTP deadlines. The first
+committed page records the new round's start, excluding cooldown; prior completed
+round timestamps stay intact.
+
+`--max-source-bytes` remains one shared response-body byte ceiling for the process,
+including retries. `--poll-reserve-bytes` defaults to one quarter of it (128 MiB of
+the default 512 MiB). Sweep consumption cannot use that reserved allocation;
+polling can use unused total capacity. Sweep exhaustion returns `sweep_pause:
+"budget"` while ordinary discovery and policy observations continue from remaining
+capacity. Counters do not reset between cycles or when bulk work pauses. Total
+exhaustion still fails polling explicitly until the normal process/window ends;
+immediate restarts are not a quota workaround. Consumed body bytes are not a
+billing estimate.
+
+Known-ID source pages with no missing backend records use cursor-only revision/CAS
+commits, omitting policy and watermark. They do not refresh policy TTL or polling
+freshness. Missing actors and backend profile observations still read actor data
+and complete policy in one SQL statement. `source_budget` reports poll/sweep usage;
+`sweep_pause` identifies budget, cooldown, time slice or discovery priority. None
+establishes full coverage or a one-day reconciliation SLO.
+
 `--policy-mode snapshot` is an explicit opt-in for complete operator-policy
 snapshots. The selected actor rows, DID overrides, domain blocks and source clock
 are read in one SQL statement. At most 10,000 overrides and 10,000 domain rules
@@ -51,6 +75,7 @@ Run small local checks with:
 python3 services/tantivy-input/test_export.py
 python3 services/tantivy-input/test_sync.py
 python3 services/tantivy-input/test_current_state.py
+python3 services/tantivy-input/test_source_pacing.py
 python3 services/tantivy-input/test_rust.py --binary /path/to/typeahead-tantivy
 python3 services/tantivy-input/test_rust.py --policy-checks --receipt /tmp/policy-receipt.json
 ```

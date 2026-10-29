@@ -74,6 +74,33 @@ source egress and write/merge pressure before choosing operational pacing or a
 readiness bound. Gaps exceeding seven-day tombstone retention still fail closed;
 automatic full-gap recovery is not implemented here.
 
+## Client pacing changes awaiting deployment
+
+The client separates accounted sweep consumption from reserved ordinary polling
+capacity within the existing process byte ceiling. Typed sweep exhaustion pauses
+bulk work and retains all consumed-byte counters; it neither restarts early nor
+grants another quota. Total exhaustion still fails explicitly. Defaults reserve
+one quarter of the 512 MiB ceiling, allow two additional pages, time-slice sweep
+work at five seconds between pages, and wait one hour after a completed round.
+Active rounds preserve durable start/progress. The first committed page after
+cooldown records a new start without changing prior completed-round timestamps.
+
+Known source identities require no profile/policy fetch when all backend documents
+exist. Those pages commit only identity progress and observation revision, without
+policy or polling-watermark refresh. Missing or changed profile observations retain
+the same-statement actor/policy path. There is no server API or binary change.
+Actual HTTP/SQLite + prebuilt Rust tests cover exhausted sweep allocation followed
+by ordinary polling on the same client, policy/watermark preservation, changed-page
+policy consistency, mid-page exhaustion without partial progress, explicit total
+exhaustion without quota resets, and sliced progress/cooldown across recreated runners.
+
+These client changes are local and are not deployed. Defaults do not meet a
+one-day whole-corpus sweep at the current corpus size. Measure source/backend page
+time and bytes, change fraction, metadata/segment writes and serving tail latency
+on an isolated final-size candidate before faster pacing or a larger approved byte
+allowance. Polling lag and completed-round coverage remain independent gates; no
+admission ceiling was relaxed.
+
 ## Moderation boundary
 
 Turso-backed moderation writes materialize `actors.hidden`; fresh observations

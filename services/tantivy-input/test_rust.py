@@ -107,7 +107,7 @@ def run(binary,scratch_root,policy_checks=False):
                 # Migrate the stalled legacy cursor through a separate source-owned observation API.
                 current_state=module('actual_current_state','current_state.py')
                 def observe(anti_pages=200):
-                    return current_state.ObservedSynchronizer(source.source(),admin,sync,page_size=2,max_pages=100,max_seconds=30,retries=1,backoff=0,anti_entropy_pages=anti_pages).run()
+                    return current_state.ObservedSynchronizer(source.source(),admin,sync,page_size=2,max_pages=100,max_seconds=30,retries=1,backoff=0,anti_entropy_pages=anti_pages,sweep_cooldown_seconds=0).run()
                 observed=observe()
                 assert observed['caught_up'] and observed['source_policy']==current_state.SOURCE_POLICY
                 assert http.request(public+'/search?q=late-equal-conflict',env['ADMIN_SECRET'])[0]['actors'][0]['did']==conflict_did
@@ -308,7 +308,7 @@ def run(binary,scratch_root,policy_checks=False):
                         db.execute("INSERT INTO mod_overrides(did,action) VALUES ('did:example:policy-blocked-00','show')")
                         db.execute("INSERT INTO mod_overrides(did,action) VALUES ('did:example:policy-eligible-00','hide')")
                     def policy_observe():
-                        return current_state.ObservedSynchronizer(source.source(),admin,sync,page_size=2,max_pages=200,max_seconds=30,retries=1,backoff=0,anti_entropy_pages=200,policy_mode='snapshot').run()
+                        return current_state.ObservedSynchronizer(source.source(),admin,sync,page_size=2,max_pages=200,max_seconds=30,retries=1,backoff=0,anti_entropy_pages=200,policy_mode='snapshot',sweep_cooldown_seconds=0).run()
                     assert policy_observe()['caught_up']
                     expected=['did:example:policy-blocked-00','did:example:policy-expired']+[f'did:example:policy-eligible-{i:02d}' for i in range(1,9)]
                     for suffix in ['', '&pds=local.test', '&prefer_pds=local.test&preference=pds_first', '&prefer_pds=local.test&boost=100']:
