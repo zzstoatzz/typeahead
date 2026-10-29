@@ -312,6 +312,44 @@ def at_dict(value,*keys):
         value=value.get(key)
     return value if isinstance(value,dict) else {}
 
+def memory_io_observation(samples):
+    def nonnegative(value):return number(value) and value>=0
+    def all_fields(value,keys):return isinstance(value,dict) and all(nonnegative(value.get(key)) for key in keys)
+    enough=len(samples)>=2
+    guest_memory=enough and all(all_fields(at_dict(row,'guest_meminfo_bytes'),['MemTotal','MemAvailable','Cached','Dirty','Writeback']) for row in samples)
+    processes=enough
+    for sample in samples:
+        rows=sample.get('processes') or []
+        live=[row for row in rows if row.get('present') is True]
+        processes &= sample.get('process_selection_complete') is True and bool(live) and not any(row.get('present') is None for row in rows)
+        for row in live:
+            processes &= integer(row.get('pid')) and integer(row.get('start_ticks')) and all_fields(row.get('memory_bytes'),['VmRSS','RssAnon','RssFile','RssShmem']) and all_fields(row.get('cpu_ticks'),['user','system']) and all_fields(row.get('io_bytes'),['read_bytes','write_bytes']) and nonnegative(row.get('major_faults'))
+    guest_cpu=enough and all(all_fields(at_dict(row,'guest_cpu_ticks'),['user','nice','system','idle','iowait','irq','softirq','steal']) for row in samples)
+    def devices(sample):
+        rows=sample.get('guest_diskstats')
+        if not isinstance(rows,list) or not rows:return None
+        result={}
+        for row in rows:
+            if not all_fields(row,['read_bytes','write_bytes','io_milliseconds','weighted_io_milliseconds']) or not integer(row.get('major')) or not integer(row.get('minor')) or not isinstance(row.get('device'),str):return None
+            result[(row['major'],row['minor'],row['device'])]=row
+        return result
+    disk_rows=[devices(row) for row in samples]
+    guest_io=enough and all(row is not None for row in disk_rows)
+    if guest_io:
+        common=set(disk_rows[0]).intersection(*[set(row) for row in disk_rows[1:]])
+        guest_io=bool(common) and all(b[device][key]>=a[device][key] for a,b in zip(disk_rows,disk_rows[1:]) for device in common for key in ['read_bytes','write_bytes','io_milliseconds','weighted_io_milliseconds'])
+    cg_missing=[at(row,'cgroup','memory_current_bytes') is None and not at_dict(row,'cgroup','memory_stat') for row in samples]
+    cg_complete=enough and all(nonnegative(at(row,'cgroup','memory_current_bytes')) and all_fields(at_dict(row,'cgroup','memory_stat'),['anon','file','shmem','file_mapped']) for row in samples)
+    cg_mode='cgroup_memory' if cg_complete else 'guest_memory_fallback' if enough and all(cg_missing) else 'incomplete_cgroup_memory'
+    checks={'guest_memory':bool(guest_memory),'selected_process_memory_cpu_io':bool(processes),'guest_cpu':bool(guest_cpu),'guest_block_io':bool(guest_io),'memory_accounting':cg_mode!='incomplete_cgroup_memory'}
+    optional={}
+    for name,path in [('guest_io_psi',('guest_io_pressure','some','total')),('guest_memory_psi',('guest_memory_pressure','some','total')),('cgroup_cpu_usage',('cgroup','cpu_stat','usage_usec')),('cgroup_cpu_throttling',('cgroup','cpu_stat','throttled_usec'))]:
+        optional[name]=enough and all(nonnegative(at(row,*path)) for row in samples)
+    return {'qualified':all(checks.values()),'checks':checks,'missing_required':[key for key,passed in checks.items() if not passed],
+            'memory_accounting_mode':cg_mode,'optional_observations':optional,
+            'scope':'guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable',
+            'directory_footprint_scope':'configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings'}
+
 def summarize_metrics(samples):
     def extrema(path,operation):
         values=[at(sample,*path) for sample in samples];values=[v for v in values if v is not None]
@@ -327,7 +365,8 @@ def summarize_metrics(samples):
         'cgroup_usage_usec_delta':delta(('cgroup','cpu_stat','usage_usec')),'cgroup_throttled_usec_delta':delta(('cgroup','cpu_stat','throttled_usec')),
         'cgroup_nr_throttled_delta':delta(('cgroup','cpu_stat','nr_throttled')),'guest_steal_ticks_delta':delta(('guest_cpu_ticks','steal')),
         'oom_kill_delta':delta(('guest_vmstat','oom_kill')),'psi_total_microseconds_delta':{},'block_device_deltas':[],
-        'merge_observation':'directory segment and temporary-file counts are heuristics; no completed-merge claim'}
+        'merge_observation':'directory segment and temporary-file counts are heuristics; no completed-merge claim',
+        'memory_io_observation':memory_io_observation(samples)}
     result.update(swap_in_pages_delta=delta(('guest_vmstat','pswpin')),swap_out_pages_delta=delta(('guest_vmstat','pswpout')),
                   free_disk_min_bytes=extrema(('qualification_free_bytes',),min))
     times=[at(sample,'observed_monotonic') for sample in samples]
@@ -350,14 +389,14 @@ def summarize_metrics(samples):
         for row in sample.get('processes') or []:
             if row.get('present') is True and integer(row.get('pid')) and integer(row.get('start_ticks')):
                 key=(row['pid'],row['start_ticks'])
-                if key not in process_ranges:process_ranges[key]=[row,row]
-                else:process_ranges[key][1]=row
+                if key not in process_ranges:process_ranges[key]=[row,row,1]
+                else:process_ranges[key][1]=row;process_ranges[key][2]+=1
     result['process_counter_deltas']=[]
-    for (pid,start),(before,after) in process_ranges.items():
+    for (pid,start),(before,after,observations) in process_ranges.items():
         def difference(path):
             a,b=at(before,*path),at(after,*path)
-            return b-a if a is not None and b is not None and b>=a else None
-        result['process_counter_deltas'].append({'pid':pid,'start_ticks':start,'major_faults':difference(('major_faults',)),
+            return b-a if observations>=2 and a is not None and b is not None and b>=a else None
+        result['process_counter_deltas'].append({'pid':pid,'start_ticks':start,'observations':observations,'major_faults':difference(('major_faults',)),
             'user_ticks':difference(('cpu_ticks','user')),'system_ticks':difference(('cpu_ticks','system')),
             'read_bytes':difference(('io_bytes','read_bytes')),'write_bytes':difference(('io_bytes','write_bytes'))})
     result['cgroup_io_device_deltas']=[]
@@ -508,8 +547,10 @@ def gates(arms):
         value=receipt.get('resources',{})
         complete=value.get('samples',0)>=2 and value.get('sample_failures')==0 and all(number(value.get(key)) for key in ['guest_available_min_bytes','guest_major_faults_delta','free_disk_min_bytes','oom_kill_delta','swap_in_pages_delta','swap_out_pages_delta','maximum_sample_gap_seconds'])
         resources[arm]=complete and value['oom_kill_delta']==0 and value['swap_in_pages_delta']==0 and value['swap_out_pages_delta']==0 and value['free_disk_min_bytes']>=1024**3 and value['maximum_sample_gap_seconds']<=8
-    passed=shared_transport and all_truth and absolute and all(row['passed'] for row in relative.values()) and all(resources.values())
-    return {'passed':passed,'comparison_status':'conclusive' if shared_transport else 'inconclusive_native_shared_transport_failures','tantivy_truth_and_transport_passed':all_truth,'tantivy_warm_mixed_absolute_slo_passed':absolute,'relative_every_phase':relative,'resource_observation_and_no_oom_swap':resources}
+    performance_passed=shared_transport and all_truth and absolute and all(row['passed'] for row in relative.values()) and all(resources.values())
+    observation={arm:receipt.get('resources',{}).get('memory_io_observation',{}).get('qualified') is True for arm,receipt in arms.items()}
+    passed=performance_passed and all(observation.values())
+    return {'passed':passed,'performance_component_passed':performance_passed,'memory_io_observation_qualified':observation,'comparison_status':'conclusive' if shared_transport else 'inconclusive_native_shared_transport_failures','tantivy_truth_and_transport_passed':all_truth,'tantivy_warm_mixed_absolute_slo_passed':absolute,'relative_every_phase':relative,'resource_observation_and_no_oom_swap':resources}
 
 def main():
     deadline=float(os.environ['QUAL_DEADLINE']);require(time.time()<deadline<=time.time()+5400,'generator_lease')

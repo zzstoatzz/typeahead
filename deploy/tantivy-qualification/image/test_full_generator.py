@@ -3,6 +3,9 @@ import copy
 import http.server
 import importlib.util
 import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import threading
@@ -165,12 +168,56 @@ class FullGenerator(unittest.TestCase):
     def test_qualification_requires_complete_resource_observation_and_rejects_swap(self):
         stats={'requests':1,'transport_failures':0,'truth_mismatches':0,'p95_ms':10,'p99_ms':10}
         phase={'all':stats,'shared_native_features':stats,'new_features':dict(stats,requests=0)}
-        resources={'samples':3,'sample_failures':0,'guest_available_min_bytes':1000000,'guest_major_faults_delta':0,'free_disk_min_bytes':2*1024**3,'oom_kill_delta':0,'swap_in_pages_delta':0,'swap_out_pages_delta':0,'maximum_sample_gap_seconds':2}
+        resources={'samples':3,'sample_failures':0,'guest_available_min_bytes':1000000,'guest_major_faults_delta':0,'free_disk_min_bytes':2*1024**3,'oom_kill_delta':0,'swap_in_pages_delta':0,'swap_out_pages_delta':0,'maximum_sample_gap_seconds':2,'memory_io_observation':{'qualified':True}}
         arms={arm:{'phases':{name:copy.deepcopy(phase)for name,_,_ in gen.PHASES},'post_restart_quiescent':copy.deepcopy(phase),'resources':dict(resources)}for arm in ['native','tantivy']}
         self.assertTrue(gen.gates(arms)['passed'])
-        for key,value in [('sample_failures',1),('swap_in_pages_delta',1),('swap_out_pages_delta',1),('oom_kill_delta',1),('maximum_sample_gap_seconds',9),('free_disk_min_bytes',1024),('guest_major_faults_delta',None)]:
+        for key,value in [('sample_failures',1),('swap_in_pages_delta',1),('swap_out_pages_delta',1),('oom_kill_delta',1),('maximum_sample_gap_seconds',9),('free_disk_min_bytes',1024),('guest_major_faults_delta',None),('memory_io_observation',{'qualified':False})]:
             bad=copy.deepcopy(arms);bad['tantivy']['resources'][key]=value
             with self.subTest(key=key):self.assertFalse(gen.gates(bad)['passed'])
+
+    @unittest.skipUnless(sys.platform=='linux','actual Linux proc/cgroup needed')
+    def test_actual_linux_memory_io_observation_and_explicit_fallback(self):
+        spec=importlib.util.spec_from_file_location('full_telemetry',HERE/'telemetry.py')
+        telemetry=importlib.util.module_from_spec(spec);spec.loader.exec_module(telemetry)
+        with tempfile.TemporaryDirectory() as directory:
+            target=Path(directory)/'write.data'
+            child=subprocess.Popen([sys.executable,'-u','-c',"import os,sys,time;payload=bytearray(4*1024*1024);print('ready',flush=True);time.sleep(.2);f=open(sys.argv[1],'wb');f.write(payload);f.flush();os.fsync(f.fileno());print('done',flush=True);time.sleep(5)",str(target)],stdout=subprocess.PIPE,text=True)
+            try:
+                self.assertEqual(child.stdout.readline().strip(),'ready')
+                sampler=telemetry.Sampler();first=sampler.snapshot([os.getpid(),child.pid])
+                self.assertEqual(child.stdout.readline().strip(),'done');last=sampler.snapshot([os.getpid(),child.pid])
+                samples=[first,last];summary=gen.summarize_metrics(samples)
+                observation=summary['memory_io_observation']
+                self.assertTrue(observation['qualified'],observation)
+                self.assertTrue(any(row['write_bytes']>0 for row in summary['process_counter_deltas'] if row['write_bytes'] is not None))
+                for name,path in [('RSS',('processes',0,'memory_bytes','RssFile')),('guestcache',('guest_meminfo_bytes','Cached')),('disk',('guest_diskstats',)),('selection',('process_selection_complete',))]:
+                    bad=copy.deepcopy(samples)
+                    for row in bad:
+                        value=row
+                        for key in path[:-1]:value=value[key]
+                        value[path[-1]]=None
+                    self.assertFalse(gen.memory_io_observation(bad)['qualified'],name)
+                fallback=copy.deepcopy(samples)
+                for row in fallback:row['cgroup']={}
+                evidence=gen.memory_io_observation(fallback)
+                self.assertTrue(evidence['qualified']);self.assertEqual(evidence['memory_accounting_mode'],'guest_memory_fallback')
+                partial=copy.deepcopy(fallback)
+                for row in partial:row['cgroup']['memory_current_bytes']=1
+                self.assertFalse(gen.memory_io_observation(partial)['qualified'])
+                one=gen.summarize_metrics([last])
+                for row in one['process_counter_deltas']:
+                    self.assertEqual(row['observations'],1);self.assertIsNone(row['write_bytes']);self.assertIsNone(row['user_ticks'])
+            finally:
+                child.terminate();child.wait(timeout=3);child.stdout.close()
+
+    def test_missing_memory_io_does_not_discard_performance_component(self):
+        stats={'requests':1,'transport_failures':0,'truth_mismatches':0,'p95_ms':10,'p99_ms':10}
+        phase={'all':stats,'shared_native_features':stats,'new_features':dict(stats,requests=0)}
+        resources={'samples':3,'sample_failures':0,'guest_available_min_bytes':1000000,'guest_major_faults_delta':0,'free_disk_min_bytes':2*1024**3,'oom_kill_delta':0,'swap_in_pages_delta':0,'swap_out_pages_delta':0,'maximum_sample_gap_seconds':2}
+        arms={arm:{'phases':{name:copy.deepcopy(phase)for name,_,_ in gen.PHASES},'post_restart_quiescent':copy.deepcopy(phase),'resources':dict(resources)}for arm in ['native','tantivy']}
+        gates=gen.gates(arms)
+        self.assertTrue(gates['performance_component_passed']);self.assertFalse(gates['passed'])
+        self.assertEqual(gates['memory_io_observation_qualified'],{'native':False,'tantivy':False})
 
     def test_native_wrong_ids_keep_timings_and_missing_metrics_remain_unknown(self):
         fixture=self.fixture();fixture.cases=fixture.cases[:1];fixture.override=(['did:fixture:wrong'],{'X-Qualification-Cursor-Min':0,'X-Qualification-Cursor-Max':0})
