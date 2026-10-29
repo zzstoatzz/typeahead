@@ -64,6 +64,9 @@ deploy-search:
     @echo "Direct search deployment is guarded; see docs/plans/automatic-snapshot-refresh.md."
     @exit 1
 
+refresh-search ops_repo=(env_var("HOME") / "tangled.org/zzstoatzz.io/my-prefect-server"):
+    just --justfile "{{ops_repo}}/justfile" prefect --no-prompt deployment run typeahead-index/typeahead-index -p snapshot_format=compact -p automatic_refresh=true
+
 # ─── benchmarking & health ───────────────────────────────────────────────
 # How to assess performance. Four layers, run from here. See AGENTS.md
 # "Performance & benchmarking" for what each measures and what "good" looks like.
