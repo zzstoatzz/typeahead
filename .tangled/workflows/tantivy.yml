@@ -1,0 +1,19 @@
+when:
+  - event: ["push"]
+    branch: main
+engine: microvm
+image: nixos
+dependencies:
+  - bash
+  - just
+  - python3
+  - zig
+  - rustc
+  - cargo
+  - gcc
+steps:
+  - name: tantivy-local-verification
+    command: |
+      set -eu
+      test "$(zig version)" = "0.17.0"
+      just --no-dotenv test-tantivy

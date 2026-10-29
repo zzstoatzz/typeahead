@@ -41,6 +41,7 @@ for parameters, moderation policy, caching and rate limits.
 
 Worker development uses [Bun](https://bun.sh/) and [just](https://just.systems/).
 the native services require Zig 0.17.0; offline tooling and retrieval checks use Python.
+the Tantivy backend also requires Rust/Cargo and a C compiler.
 
 ```sh
 bun install
@@ -48,6 +49,7 @@ bunx wrangler dev       # local Worker
 just check             # types, lint, tests and deployment dry-runs
 just test-services     # native unit tests
 just test-search-recall # real builder/server retrieval regressions
+just --no-dotenv test-tantivy # isolated engine, source and recovery checks
 ```
 
 runtime credentials and role settings are required to run services. the native

@@ -9,13 +9,18 @@ canonical Zig normalization/PDS code through `../tantivy-normalizer`.
 From the repository root:
 
 ```sh
-python3 services/tantivy-normalizer/build.py
-cargo build --manifest-path services/tantivy/Cargo.toml --release --locked
-python3 services/tantivy/tests/smoke.py
-python3 services/tantivy/tests/source_pds.py
-python3 services/tantivy/tests/conflict_diagnostics.py
-python3 services/tantivy/tests/expiry_coverage.py
+just --no-dotenv test-tantivy
 ```
+
+Requires Zig 0.17.0, Rust/Cargo, a C compiler, Python 3, Bash and Just. The recipe
+builds the canonical host normalizer, runs locked release-profile Rust tests and
+actual local HTTP/source/policy/expiry/admission suites, and exercises both
+retrieval strategies. Cargo jobs and test threads are bounded at two; no debug
+cache is built. Fixtures, receipts and a frozen test binary live in one owned
+temporary tree removed on exit. It does not deploy, load credentials or contact
+production. The separate [Tangled workflow](../../.tangled/workflows/tantivy.yml)
+runs this same command on main pushes; existing native and Worker checks remain
+separate.
 
 `TA_NORMALIZER_LIB_DIR` can select a target-specific directory containing
 `libtypeahead_normalizer.a`. Do not link a host archive into a Linux binary.
