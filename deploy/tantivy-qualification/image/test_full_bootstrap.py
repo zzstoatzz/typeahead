@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import signal
 import socket
 import sqlite3
 import struct
@@ -202,6 +203,58 @@ class Tests(unittest.TestCase):
             real.unlink(missing_ok=True)
             for path in [output,compact]:
                 if path.exists():bootstrap.remove_working(path)
+
+    @unittest.skipUnless(BIN.is_file(),'requires already built local Rust binary; does not compile')
+    def test_actual_entrypoint_terminates_engine_tree_and_observation_respects_control_lock(self):
+        for family,host,p in [(socket.AF_INET6,'::',8080),(socket.AF_INET,'127.0.0.1',18080),(socket.AF_INET,'127.0.0.1',18081)]:
+            with socket.socket(family) as probe:
+                try:probe.bind((host,p))
+                except OSError:self.skipTest('actual entrypoint fixed local port is in use')
+        s=self.service();self.baseline(s,True)
+        shutil.copy(BIN,self.app/'bin/typeahead-tantivy')
+        children=self.root/'entrypoint-children.jsonl'
+        program="""
+import json,os,pathlib,sys
+sys.path.insert(0,sys.argv[1])
+import entrypoint
+entrypoint.APP=pathlib.Path(sys.argv[2])
+original=entrypoint.subprocess.Popen
+receipt=pathlib.Path(sys.argv[4])
+def launch(*args,**kwargs):
+ child=original(*args,**kwargs)
+ with receipt.open('a') as stream:stream.write(json.dumps({'pid':child.pid})+'\\n')
+ return child
+entrypoint.subprocess.Popen=launch
+sys.argv=['entrypoint','--run',sys.argv[3]]
+entrypoint.main()
+"""
+        s.entrypoint_argv=lambda:[sys.executable,'-c',program,str(HERE),str(self.app),str(self.root/'run.json'),str(children)]
+        s.engine_env=lambda:{'ADMIN_SECRET':ADMIN,'PATH':os.environ.get('PATH',''),'FLY_APP_NAME':s.observer['app'],'FLY_MACHINE_ID':s.observer['machine_id'],'FLY_MACHINE_VERSION':'fixture-process-tree'}
+        def ready():
+            until=time.monotonic()+10
+            while time.monotonic()<until:
+                if s.child.poll() is not None:self.fail('actual entrypoint stopped before health')
+                connection=http.client.HTTPConnection('::1',8080,timeout=.5)
+                try:
+                    connection.request('GET','/health');response=connection.getresponse();response.read()
+                    if response.status==200:return
+                except OSError:time.sleep(.03)
+                finally:connection.close()
+            self.fail('actual entrypoint proxy did not start')
+        def absent(pid):
+            try:os.kill(pid,0)
+            except ProcessLookupError:return True
+            return False
+        s.serve();ready();parent=s.child.pid;engine=json.loads(children.read_text().splitlines()[-1])['pid']
+        self.assertFalse(absent(engine));s.pause();self.assertTrue(absent(parent));self.assertTrue(absent(engine))
+        s.serve();ready();engine=json.loads(children.read_text().splitlines()[-1])['pid']
+        os.killpg(s.child.pid,signal.SIGTERM);s.child.wait(timeout=10);self.assertTrue(absent(engine))
+        with s.lock:
+            observer=threading.Thread(target=s.observe_runtime);observer.start();observer.join(timeout=1)
+            self.assertFalse(observer.is_alive());self.assertEqual(s.state,'serving');self.assertEqual(s.failures,[])
+        s.observe_runtime();self.assertEqual(s.state,'paused');self.assertEqual(len(s.failures),1)
+        s.observe_runtime();self.assertEqual(len(s.failures),1)
+        self.assertGreater(bootstrap.ENTRYPOINT_SHUTDOWN_SECONDS,2*(3+3))
 
     @unittest.skipUnless(BIN.is_file(),'requires already built local Rust binary; does not compile')
     def test_actual_rust_control_commit_restart_replay_recovery_reset(self):

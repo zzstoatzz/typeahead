@@ -5,6 +5,8 @@ QUAL_MODE=full explicitly enables the 5,400-second guest lease. Preparation has 
 /reset operate only on this guest's owned working clone. Baseline SQLite/meta
 files are copied; immutable prefix/segment files are linked and never chmodded.
 Native prefix admission is repeated after linking because its ctime changed.
+Shutdown allows 20 seconds for the entrypoint to reap its isolated child groups;
+runtime-exit observation shares the control lock with restart/reset.
 
 GET /prepared exposes metadata. All other controls require the independent
 X-Pilot-Authorization capability: GET /inputs/{updates,cases,oracle} or /metrics; empty-body
@@ -48,6 +50,7 @@ OWNER = full_prepare.OWNER
 GIB = 1024 ** 3
 MAX_FEED = 8 * 1024 * 1024
 MAX_ACTOR = 8192
+ENTRYPOINT_SHUTDOWN_SECONDS = 20
 FIELDS = ('did','handle','display_name','avatar_url','labels','associated','pds','created_at','quality_score','hidden','deleted','version','followers_count','follows_count','posts_count','last_activity_at')
 NATIVE_FIELDS = FIELDS[:12]
 STAGES = ('rename','rescore','metadata','hide','show','delete','restore-deleted','pds-move','restore-baseline')
@@ -398,11 +401,20 @@ class FullQualification:
     def pause(self):
         if self.child and self.child.poll() is None:
             os.killpg(self.child.pid,signal.SIGTERM)
-            try:self.child.wait(timeout=10)
+            try:self.child.wait(timeout=ENTRYPOINT_SHUTDOWN_SECONDS)
             except subprocess.TimeoutExpired:os.killpg(self.child.pid,signal.SIGKILL);self.child.wait(timeout=2)
         if hasattr(self,'log'):self.log.close()
         self.state='paused' if self.prepared else self.state
         return {'serving':False,'acked':self.phase()['acked'] if self.prepared else 0}
+
+    def observe_runtime(self):
+        if not self.lock.acquire(blocking=False):return
+        try:
+            child=self.child
+            if child and child.poll() is not None and self.state=='serving':
+                self.state='paused'
+                self.failures.append({'error_class':'runtime_terminal','returncode':child.returncode})
+        finally:self.lock.release()
 
     def native_cursor(self):
         with closing(sqlite3.connect((self.working/'overlay.db').as_uri()+'?mode=ro',uri=True,timeout=1)) as db:
@@ -601,8 +613,7 @@ def main():
         print(json.dumps({'event':'FULL_PREPARED',**service.summary()}),flush=True)
         while time.time()<service.deadline-20:
             service.guard()
-            if service.child and service.child.poll() is not None and service.state=='serving':
-                service.state='paused';service.failures.append({'error_class':'runtime_terminal','returncode':service.child.returncode})
+            service.observe_runtime()
             time.sleep(.5)
     finally:
         server.shutdown();server.server_close();thread.join(timeout=2);service.close()
