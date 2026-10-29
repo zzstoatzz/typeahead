@@ -158,6 +158,10 @@
       "tantivy-control:configure": {
         "desired_sha256": "e3b66bb9b1b802fd68de508327f11b9f394c42c23ceca6ee6cfb2ae2ea6dc496",
         "state": "committed"
+      },
+      "native-control:resize": {
+        "desired_sha256": "8a0b66ab336cf89a453ec9faba5b6b88bc056248cf646493739a0e43b110dbbe",
+        "state": "committed"
       }
     },
     "preparation_configured": {
@@ -171,6 +175,62 @@
       "tantivy-control": {
         "requested_at": 1793311304.4358761
       }
+    },
+    "preparation_receipts": {
+      "native-control": {
+        "receipt_sha256": "6c7c8ef4d366a975e8b66cad4397cb3ce114422c5640e609099c78150ad897c3",
+        "receipt": {
+          "app": "typeahead-qual-20261029",
+          "machine_id": "781ee7df10eee8",
+          "volume_id": "vol_42kd1xez7g6zo214",
+          "arm": "native",
+          "nonce": "9acb47798ef84877ee3df05790ed3e30",
+          "build_id": "b1793109259-2b36-px05",
+          "runtime_instance_id": "01M64TXFJQXAP4JPED31EA8R92",
+          "prepared_at": 1793312176.8983552,
+          "checkpoint_sha256": "839fe3379fbeb1e261216beb299c02c7e032b9e2075bcbc9f975f75df2d7ce91",
+          "prepared": true,
+          "guest": {
+            "cpu_kind": "performance",
+            "cpus": 2,
+            "memory_mb": 4096
+          }
+        },
+        "exit_proof": {
+          "instance_id": "01M64TXFJQXAP4JPED31EA8R92",
+          "exit_event_timestamp": 1793312179823,
+          "exit_code": 0,
+          "oom_killed": false
+        }
+      }
+    },
+    "preparation_finished": {
+      "native-control": {
+        "checkpoint_sha256": "839fe3379fbeb1e261216beb299c02c7e032b9e2075bcbc9f975f75df2d7ce91",
+        "build_id": "b1793109259-2b36-px05",
+        "receipt_sha256": "6c7c8ef4d366a975e8b66cad4397cb3ce114422c5640e609099c78150ad897c3"
+      }
+    },
+    "configuration_attempts": {
+      "native-control": {
+        "sha256": "17c5c78efce87239aed285e055b7f545dc475ffca20a6672a6fa9a638d69c40e",
+        "keys": [
+          "QUAL_CHECKPOINT_SHA256",
+          "QUAL_OBSERVER_JSON",
+          "QUAL_PHASE"
+        ],
+        "state": "committed"
+      }
+    },
+    "configured": {
+      "native-control": "17c5c78efce87239aed285e055b7f545dc475ffca20a6672a6fa9a638d69c40e"
+    },
+    "configuration_keys": {
+      "native-control": [
+        "QUAL_CHECKPOINT_SHA256",
+        "QUAL_OBSERVER_JSON",
+        "QUAL_PHASE"
+      ]
     }
   },
   "retired_pilots": [

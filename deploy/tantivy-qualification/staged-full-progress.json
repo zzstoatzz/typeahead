@@ -1,22 +1,16 @@
 {
   "run_id": "285b6147c50e",
+  "observed_at": 1793313526,
   "deadline": 1793316252.692568,
   "observations": [
     {
       "role": "native-control",
       "machine_id": "781ee7df10eee8",
-      "state": "started",
+      "state": "stopped",
       "guest": {
-        "cpu_kind": "performance",
+        "cpu_kind": "shared",
         "cpus": 2,
-        "memory_mb": 4096
-      },
-      "observed_at": 1793311384.196254,
-      "progress": {
-        "files": {
-          "preparing/source/index.db.prefix.part": 2314551296
-        },
-        "free_bytes": 17536245760
+        "memory_mb": 1024
       }
     },
     {
@@ -27,15 +21,9 @@
         "cpu_kind": "performance",
         "cpus": 2,
         "memory_mb": 4096
-      },
-      "observed_at": 1793311384.930201,
-      "progress": {
-        "files": {
-          "preparing/source/index.db.prefix.part": 2348810240
-        },
-        "free_bytes": 17502048256
       }
     }
   ],
-  "full_qualification": false
+  "performance_qualified": false,
+  "note": "Native verified checkpoint resized/configured but not started; Tantivy final import/merge still in preparation. Start BOTH final engines only after Tantivy stopped checkpoint verified."
 }
