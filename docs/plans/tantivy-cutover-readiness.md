@@ -27,12 +27,39 @@ remained ready; production routing stayed on the native slot. The deployed dev
 still uses the earlier source-v2 binary. The expiry-v4 candidate has not replaced it.
 
 Full-corpus matched performance, complete expiry coverage, bounded reconciliation
-rounds, native operator-prefix state and engine-aware refresh ownership remain
+rounds and engine-aware refresh ownership remain
 open gates. The current MPS repository controller rejects a Tantivy route before
 mutating slots, but that also prevents its native rollback command; an origin
 allowlist change alone would leave installation, qualification and retention
 assuming FLATPX05. Prepare and test those adapters before a later promotion.
 No cutover readiness or production promotion is claimed.
+
+The [full-corpus trial](../evals/tantivy-dev-20261028/qualification-full-4d62ead649f7.json)
+stopped before comparison. Native preparation exited; its exact exception was
+not retained. The harness contained a fixed 120-second full-prefix admission
+bound and a writer that unnecessarily revalidated admitted input on startup.
+Tantivy committed 2.3 million actors before cancellation; a bounded sample
+reported 71.7% CPU steal with over 600 MB available memory. This is consistent
+with Fly shared-CPU throttling or contention, not proof of a memory shortage.
+Trial machines and billable volumes were retired. Query latency remains unqualified.
+
+The next trial separates temporary performance-CPU preparation from the final
+shared-CPU serving budget. It must resume the same verified files after restart,
+prove the final two-shared-CPU/1-GiB/20-GiB shape, and pass a tiny transition test
+before another full run. Preparation resources are reported separately; none of
+its timings qualify serving speed.
+
+The companion MPS branch `codex/tantivy-controller-compatibility` at `25e5509`
+adds strict engine identity, native rollback with conditional compensation,
+source-artifact retention and an explicit automatic-refresh fence. Its offline
+checks passed; it is not deployed. Complete engine-specific publication and
+installation remain open work.
+
+The [operator-state audit](../evals/tantivy-dev-20261028/native-operator-inventory.json)
+found source-one prefix writes only in tests across 13 revisions, with the flag
+explicitly documented as future work. That is not a demonstrated shipped-feature
+blocker. Production prefix-row absence remains unproven; no additional serving
+scan was performed.
 
 ## Acceptance gates
 

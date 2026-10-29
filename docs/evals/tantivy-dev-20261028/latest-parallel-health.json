@@ -1,0 +1,17 @@
+{
+  "recorded_at": "2026-10-29T20:36:39.211706+00:00",
+  "dev": {
+    "http_status": 200,
+    "actors": 12860199,
+    "build_id": "b1793109259-2b36-px05",
+    "engine": "tantivy",
+    "ready": true,
+    "sync_lag_s": 44
+  },
+  "production_route": {
+    "origin": "https://typeahead-startup-20261024.fly.dev",
+    "build_id": "b1793109259-2b36-px05"
+  },
+  "read_only": true,
+  "dev_is_frozen_trial_binary": false
+}

@@ -1,0 +1,184 @@
+{
+  "run_id": "4d62ead649f7",
+  "samples": [
+    {
+      "time": 1793307221.2639909,
+      "input_actors": 2300000,
+      "indexed_memberships": 107369820,
+      "free_bytes": 11703377920,
+      "available_bytes": 600817664,
+      "cpu": {
+        "guest": 0,
+        "guest_nice": 0,
+        "idle": 134628,
+        "iowait": 110434,
+        "irq": 0,
+        "nice": 0,
+        "softirq": 822,
+        "steal": 160251,
+        "system": 11544,
+        "user": 25536
+      },
+      "io_psi": {
+        "full": {
+          "avg10": 0.32,
+          "avg300": 1.87,
+          "avg60": 0.15,
+          "total": 838525436
+        },
+        "some": {
+          "avg10": 0.33,
+          "avg300": 1.9,
+          "avg60": 0.17,
+          "total": 849963672
+        }
+      },
+      "processes": [
+        {
+          "pid": 620,
+          "cpu": {
+            "system": 1782,
+            "user": 2841
+          },
+          "io": {
+            "cancelled_write_bytes": 0,
+            "rchar": 7344185575,
+            "read_bytes": 14606336,
+            "wchar": 7333432226,
+            "write_bytes": 7333601280
+          },
+          "rss": 36622336
+        },
+        {
+          "pid": 867,
+          "cpu": {
+            "system": 440,
+            "user": 5795
+          },
+          "io": {
+            "cancelled_write_bytes": 0,
+            "rchar": 7850678659,
+            "read_bytes": 7851327488,
+            "wchar": 1296853323,
+            "write_bytes": 0
+          },
+          "rss": 52056064
+        },
+        {
+          "pid": 868,
+          "cpu": {
+            "system": 11661,
+            "user": 22141
+          },
+          "io": {
+            "cancelled_write_bytes": 0,
+            "rchar": 1296818258,
+            "read_bytes": 9916416,
+            "wchar": 1922476237,
+            "write_bytes": 1924157440
+          },
+          "rss": 119214080
+        }
+      ]
+    },
+    {
+      "time": 1793307253.5027795,
+      "input_actors": 2300000,
+      "indexed_memberships": 107369820,
+      "free_bytes": 11684962304,
+      "available_bytes": 622821376,
+      "cpu": {
+        "guest": 0,
+        "guest_nice": 0,
+        "idle": 136201,
+        "iowait": 110442,
+        "irq": 0,
+        "nice": 0,
+        "softirq": 822,
+        "steal": 165537,
+        "system": 11714,
+        "user": 25867
+      },
+      "io_psi": {
+        "full": {
+          "avg10": 0.19,
+          "avg300": 1.67,
+          "avg60": 0.12,
+          "total": 838560655
+        },
+        "some": {
+          "avg10": 0.55,
+          "avg300": 1.72,
+          "avg60": 0.19,
+          "total": 850041671
+        }
+      },
+      "processes": [
+        {
+          "pid": 620,
+          "cpu": {
+            "system": 1800,
+            "user": 2895
+          },
+          "io": {
+            "cancelled_write_bytes": 0,
+            "rchar": 7344246285,
+            "read_bytes": 14606336,
+            "wchar": 7333432226,
+            "write_bytes": 7333601280
+          },
+          "rss": 36622336
+        },
+        {
+          "pid": 867,
+          "cpu": {
+            "system": 443,
+            "user": 5886
+          },
+          "io": {
+            "cancelled_write_bytes": 0,
+            "rchar": 7858821507,
+            "read_bytes": 7860502528,
+            "wchar": 1318500782,
+            "write_bytes": 0
+          },
+          "rss": 52056064
+        },
+        {
+          "pid": 868,
+          "cpu": {
+            "system": 11896,
+            "user": 22491
+          },
+          "io": {
+            "cancelled_write_bytes": 0,
+            "rchar": 1318455799,
+            "read_bytes": 9916416,
+            "wchar": 1940908183,
+            "write_bytes": 1942593536
+          },
+          "rss": 119214080
+        }
+      ]
+    }
+  ],
+  "performance_qualified": false,
+  "derived": {
+    "sample_seconds": 32.23878860473633,
+    "guest_cpu_tick_deltas": {
+      "user": 331,
+      "nice": 0,
+      "system": 170,
+      "idle": 1573,
+      "iowait": 8,
+      "irq": 0,
+      "softirq": 0,
+      "steal": 5286
+    },
+    "steal_percent": 71.74267100977198,
+    "committed_actor_delta": 0,
+    "interval_commit_count_is_not_instantaneous_throughput": true,
+    "cpu_provider_reference": "https://fly.io/docs/machines/cpu-performance/",
+    "interpretation": "Consistent with shared CPU quota throttling; observation does not establish exact cause or serving latency."
+  }
+}

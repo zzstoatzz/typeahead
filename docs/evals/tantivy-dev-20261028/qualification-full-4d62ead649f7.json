@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-29T21:11:08.870962+00:00",
+  "run_id": "4d62ead649f7",
+  "paired_performance_qualified": false,
+  "full_corpus_qualified": false,
+  "result": "stopped_before_measurement",
+  "native_terminal": {
+    "event": "FULL_BOOTSTRAP_TERMINAL",
+    "error_class": "full_bootstrap_failed",
+    "exact_exception_unavailable": true
+  },
+  "confirmed_harness_defects": [
+    "Native update writer ignored verified-admission cache and reread the full prefix on startup.",
+    "Native clone hardlinked the immutable prefix, changing its admission stamp and causing another full read with a fixed120-second timeout."
+  ],
+  "original_failure_cause": "Fixed120-second admission timeout is consistent with the24-minute exit timing but not retrospectively proven.",
+  "tantivy_import": {
+    "committed_actors_observed": 2300000,
+    "source_actor_count": 12816605,
+    "complete": false,
+    "sample_steal_percent": 71.74267100977198,
+    "minimum_available_bytes_in_samples": 600817664,
+    "interpretation": "ObservedCPUsteal is consistent with quota throttling or host contention, not proof of memory pressure.",
+    "provider_reference": "https://docs.fly.io/machines/cpu-performance"
+  },
+  "cleanup": {
+    "schema": 1,
+    "app": "typeahead-qual-20261029",
+    "owner": "tantivy-qualification-20261029",
+    "run_id": "4d62ead649f7",
+    "status": "cleaned",
+    "deadline": 1793310506.2230048,
+    "started_at": 1793307525.034734,
+    "finished_at": 1793307545.578402,
+    "attempts": 3,
+    "creation_settled_by_controller": true,
+    "resolved": [
+      {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "6835750a604018",
+        "name": "tq-4d62ead649f7-tantivy-control",
+        "role": "tantivy-control",
+        "run_id": "4d62ead649f7"
+      },
+      {
+        "event": "resolved",
+        "kind": "volume",
+        "id": "vol_v3gx6588djw8p2x4",
+        "name": "tq_4d62ead649f7_native",
+        "role": "native",
+        "run_id": "4d62ead649f7"
+      },
+      {
+        "event": "resolved",
+        "kind": "volume",
+        "id": "vol_v8ey9xwg3yol185v",
+        "name": "tq_4d62ead649f7_tantivy",
+        "role": "tantivy",
+        "run_id": "4d62ead649f7"
+      }
+    ],
+    "failures": [],
+    "remaining": [],
+    "remaining_whitelist_ids": [],
+    "unresolved_whitelist_names": [],
+    "self": null,
+    "api_timeout_seconds": 15,
+    "cleanup_grace_seconds": 300,
+    "volume_dispositions": [
+      {
+        "id": "vol_v3gx6588djw8p2x4",
+        "state": "pending_destroy",
+        "non_billable": true,
+        "physical_purge_confirmed": false
+      },
+      {
+        "id": "vol_v8ey9xwg3yol185v",
+        "state": "pending_destroy",
+        "non_billable": true,
+        "physical_purge_confirmed": false
+      }
+    ],
+    "limitations": [
+      "Provider outages may leave volumes; failed cleanup must be reconciled before another run.",
+      "Fly retains non-billable pending_destroy volume records for provider-managed purge; absence of those records is not required or claimed."
+    ]
+  },
+  "reaper_retired": true,
+  "production_changed": false,
+  "runtime_writer_override_installed": false,
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:c3d29aba045c9b2a57fe0080f61a480497eb68a85387b25853ad39e89ad9166a"
+}

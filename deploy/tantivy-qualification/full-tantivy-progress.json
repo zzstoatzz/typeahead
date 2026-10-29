@@ -1,0 +1,16 @@
+{
+  "machine_id": "6835750a604018",
+  "state": "started",
+  "observed_at": 1793307039.826575,
+  "progress": {
+    "state": "preparing",
+    "prepared": false,
+    "failures": [],
+    "bytes_by_directory": {
+      "owner": 23,
+      "preparing/import-metadata.json": 0,
+      "preparing/source": 7331243035,
+      "preparing/tantivy": 758269560
+    }
+  }
+}
