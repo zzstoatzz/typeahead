@@ -26,6 +26,9 @@ test("Tantivy requires explicit engine, bounded origin, source format and admiss
   const candidate = { engine: "tantivy", origin: "https://typeahead-tantivy-dev.fly.dev", build_id: "b1792908655-test", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" } as const;
   const route = parseRoute({ version: 1, current: candidate });
   expect(route).toEqual(candidate);
+  for (const origin of ["https://typeahead-tantivy-a.fly.dev", "https://typeahead-tantivy-b.fly.dev"] as const) {
+    expect(parseRoute({ version: 1, current: { ...candidate, origin } }).origin).toBe(origin);
+  }
   for (const changed of [{ engine: undefined }, { engine: "native" }, { origin: "https://typeahead-startup-20261024.fly.dev" }, { origin: "https://other.fly.dev" }, { format: "tantivy-0.27-f32-did-v1" }, { admission_sha256: "invalid" }, { binary_sha256: "invalid" }, { retrieval_strategy: "unknown" }]) expect(() => parseRoute({ version: 1, current: { ...candidate, ...changed } })).toThrow();
   expect(routeIdentity(route)).not.toBe(routeIdentity(parseRoute({ version: 1, current: { ...candidate, admission_sha256: "b".repeat(64) } })));
   expect(responseMatchesRoute(route, new Response("{}"))).toBe(false);

@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -101,6 +102,22 @@ class AdmissionTests(unittest.TestCase):
         for key,value in [('engine','native'),('artifact_format','FLATPX05'),('backend_format','tantivy-0.27-f32-did-source-v2'),('object_key','releases/search/b1793236000-pilot/index.db')]:
             with self.subTest(key=key),self.assertRaises(ValueError):adapter.validate_manifest(dict(manifest,**{key:value}),manifest['active_build'])
 
+    def test_managed_slots_bind_origin_provider_owner_and_installation(self):
+        for app in sorted(adapter.SLOT_APPS):
+            manifest=dict(self.manifest(),provider_app=app,public_service_ports=[80,443])
+            status=dict(self.status(),app=app)
+            provider=dict(self.provider(),app=app,role='tantivy-slot',owner='typeahead-snapshot-refresh',public_service_ports=[80,443],test_only=False)
+            installation={'passed':True,'manifest_sha256':adapter.digest_json(manifest),'binary_sha256':manifest['binary_sha256'],'bundle_sha256':manifest['sha256'],'build_id':manifest['active_build']}
+            result=adapter.qualify_route(status,manifest,installation,now=1000000,provider_attestation=provider)
+            self.assertEqual(result['route']['origin'],f'https://{app}.fly.dev')
+            self.assertFalse(result['admission']['runtime_http_verified'])
+            with self.assertRaises(ValueError):adapter.qualify_route(status,manifest,installation,now=1000000,observed_origin=adapter.ORIGIN,provider_attestation=provider)
+            for field,value in [('owner','other'),('app','unapproved'),('public_service_ports',[])]:
+                with self.subTest(app=app,field=field),self.assertRaises(ValueError):adapter.validate_provider(dict(provider,**{field:value}),manifest,status,1000000)
+        manifest=self.manifest();status=self.status();provider=dict(self.provider(),test_only=False)
+        installation={'passed':True,'manifest_sha256':adapter.digest_json(manifest),'binary_sha256':manifest['binary_sha256'],'bundle_sha256':manifest['sha256'],'build_id':manifest['active_build']}
+        with self.assertRaisesRegex(ValueError,'Private qualification'):adapter.qualify_route(status,manifest,installation,now=1000000,provider_attestation=provider)
+
     def test_actual_tar_rejects_traversal_links_and_extra_files_before_reader_execution(self):
         with tempfile.TemporaryDirectory(prefix='tantivy-tar-boundary-') as temporary:
             root=Path(temporary);binary=Path(sys.executable).resolve();outside=root/'outside';outside.write_text('untouched')
@@ -142,7 +159,7 @@ class AdmissionTests(unittest.TestCase):
                     status=smoke.request(public,'/index/status')[2]
                     adapter.validate_runtime(status,manifest)
                 finally:smoke.stop(child)
-            source={'manifest_version':2,'format_version':5,'active_build':manifest['source_build_id'],'source_watermark':100,'actor_count':1,'sha256':manifest['source_database_sha256'],'normalize_version':manifest['normalize_version'],'prefix_map':{'sha256':manifest['source_prefix_sha256']},'legacy_twin':{'build_id':manifest['legacy_build_id'],'source_watermark':100}}
+            source={'manifest_version':2,'format_version':5,'active_build':manifest['source_build_id'],'source_watermark':100,'actor_count':1,'sha256':manifest['source_database_sha256'],'normalize_version':manifest['normalize_version'],'snapshot_url':f"releases/search/{manifest['source_build_id']}/index.db",'prefix_map':{'sha256':manifest['source_prefix_sha256']},'legacy_twin':{'build_id':manifest['legacy_build_id'],'source_watermark':100}}
             source_bytes=json.dumps(source).encode();manifest['source_manifest_sha256']=hashlib.sha256(source_bytes).hexdigest()
             portable=adapter.freeze_bundle(data,root/'published',manifest,source_bytes,binary)
             adapter.validate_artifact_manifest(portable,manifest['active_build'])
@@ -154,6 +171,24 @@ class AdmissionTests(unittest.TestCase):
             with self.assertRaises(ValueError):adapter.freeze_bundle(data,root/'published',manifest,source_bytes,binary)
             with self.assertRaises(ValueError):adapter.freeze_bundle(data,root/'wrong-source',dict(manifest,source_actors_sha256='0'*64),source_bytes,binary)
             self.assertFalse((root/'wrong-source').exists())
+            if shutil.which('rclone'):
+                sys.path.insert(0,str(ROOT/'scripts/snapshot_compaction'))
+                from publish import Publisher
+                remote=root/'remote';source_path=root/'native-manifest.json';source_path.write_bytes(source_bytes)
+                source_remote=remote/f"releases/search/{manifest['source_build_id']}/manifest.json"
+                source_remote.parent.mkdir(parents=True);source_remote.write_bytes(source_bytes)
+                pointer=remote/'latest.json';pointer.write_bytes(b'production untouched')
+                config=root/'rclone.conf';config.write_text('[r2]\ntype = local\n')
+                publisher=Publisher(config,str(remote))
+                for _ in range(2):self.assertEqual(publisher.publish_tantivy(root/'published',source_path),manifest['active_build'])
+                published_manifest=remote/f"releases/search-tantivy/{manifest['active_build']}/manifest.json"
+                published_bytes=published_manifest.read_bytes();self.assertEqual(json.loads(published_bytes),portable)
+                source_remote.write_bytes(source_bytes+b' ')
+                with self.assertRaisesRegex(ValueError,'remote verification'):publisher.publish_tantivy(root/'published',source_path)
+                source_remote.write_bytes(source_bytes)
+                (remote/portable['object_key']).write_bytes(b'corrupt')
+                with self.assertRaisesRegex(ValueError,'remote verification'):publisher.publish_tantivy(root/'published',source_path)
+                self.assertEqual(published_manifest.read_bytes(),published_bytes);self.assertEqual(pointer.read_bytes(),b'production untouched')
             manifest.update(portable);bundle=root/'published/index.tar'
             receipt=adapter.install_bundle(bundle,root/'installed',manifest,binary)
             self.assertFalse(receipt['runtime_qualified']);self.assertTrue((root/'installed/index/meta.json').is_file());self.assertFalse((root/'installed/index.db').exists())

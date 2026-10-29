@@ -13,7 +13,11 @@ export const routeSchema = z.pipe(z.object({
     build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
   }), z.object({
     engine: z.literal("tantivy"),
-    origin: z.literal("https://typeahead-tantivy-dev.fly.dev"),
+    origin: z.enum([
+      "https://typeahead-tantivy-dev.fly.dev",
+      "https://typeahead-tantivy-a.fly.dev",
+      "https://typeahead-tantivy-b.fly.dev",
+    ]),
     build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
     format: z.literal("tantivy-0.27-f32-did-expiry-v4"),
     admission_sha256: z.string().check(z.regex(/^[a-f0-9]{64}$/)),

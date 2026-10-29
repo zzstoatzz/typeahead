@@ -17,6 +17,8 @@ from datetime import datetime
 FORMAT = 'tantivy-0.27-f32-did-expiry-v4'
 SOURCE_POLICY = 'turso-authoritative-observations-v2'
 ORIGIN = 'https://typeahead-tantivy-dev.fly.dev'
+SLOT_APPS = {'typeahead-tantivy-a', 'typeahead-tantivy-b'}
+PUBLIC_APPS = SLOT_APPS | {'typeahead-tantivy-dev'}
 BUILD = re.compile(r'b[0-9]{10}-[A-Za-z0-9_-]+')
 DIGEST = re.compile(r'[a-f0-9]{64}')
 PROTECTED_MACHINES = {'8e3d79b70dd748', '801539a6551778', '7845636a3d0ee8', '840e95a2153308'}
@@ -129,6 +131,10 @@ def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None):
     metadata = json.loads(result.stdout)
     validate_source_manifest(manifest, source_bytes)
     validate_metadata(metadata, manifest, now, require_fresh=False)
+    policy = metadata.get('policy_snapshot', {})
+    observed = integer(policy.get('source_observed_at'), 'publisher policy observation', 1)
+    if policy.get('complete') is not True or observed > (int(time.time()) if now is None else now):
+        raise ValueError('Publisher policy checkpoint is incomplete or in the future')
     def inventory():
         found = {}
         for path in sorted((data / 'index').iterdir()):
@@ -275,7 +281,7 @@ def validate_provider(attestation, manifest, status, now=None):
         raise ValueError('Invalid provider observation time') from None
     if not 0 <= now - observed <= 120:
         raise ValueError('Provider API observation is stale or in the future')
-    role_owner = {'tantivy-control':'tantivy-qualification-20261029', 'dev-tantivy':'tantivy-dev-20261028'}
+    role_owner = {'tantivy-control':'tantivy-qualification-20261029', 'dev-tantivy':'tantivy-dev-20261028', 'tantivy-slot':'typeahead-snapshot-refresh'}
     if attestation.get('owner') != role_owner.get(attestation.get('role')) or attestation.get('role') not in role_owner:
         raise ValueError('Provider ownership/role is not an isolated Tantivy candidate')
     machine = attestation.get('machine_id')
@@ -284,8 +290,10 @@ def validate_provider(attestation, manifest, status, now=None):
     if not isinstance(attestation.get('instance_id'), str) or not attestation['instance_id'] or attestation.get('state') != 'started':
         raise ValueError('Provider instance is not started')
     ports = manifest['public_service_ports']
-    if (attestation['role'] == 'tantivy-control' and ports != []) or (ports == [80, 443] and attestation['role'] != 'dev-tantivy'):
+    if (attestation['role'] == 'tantivy-control' and ports != []) or (ports == [80, 443] and attestation['role'] not in {'dev-tantivy', 'tantivy-slot'}):
         raise ValueError('Qualification controls cannot expose serving ports')
+    if attestation['role'] == 'tantivy-slot' and (manifest['provider_app'] not in SLOT_APPS or ports != [80, 443]):
+        raise ValueError('Managed Tantivy slot app or serving ports mismatch')
     if attestation.get('app') != manifest['provider_app'] or attestation.get('image_digest') != manifest['image_digest'] or attestation.get('guest') != manifest['guest'] or attestation.get('public_service_ports') != ports or attestation.get('provider_config_reserved_env_overrides') is not False:
         raise ValueError('Provider image, app, guest or isolated ports mismatch')
     mounts = attestation.get('mounts')
@@ -366,12 +374,18 @@ def qualify_route(status, manifest, installation, now=None, observed_origin=None
     validate_manifest(manifest, manifest['active_build'])
     gates = validate_runtime(status, manifest, now, **bounds)
     provider = validate_provider(provider_attestation, manifest, status, now)
+    app = manifest['provider_app']
+    if app not in PUBLIC_APPS and not provider['provider_attestation_test_only']:
+        raise ValueError('Private qualification app cannot become a serving route')
+    origin = f'https://{app}.fly.dev' if app in PUBLIC_APPS else ORIGIN
+    if observed_origin is not None and observed_origin != origin and not urllib.parse.urlsplit(observed_origin).hostname in ('127.0.0.1', 'localhost'):
+        raise ValueError('Observed origin differs from bound provider app')
     if installation.get('passed') is not True or installation.get('manifest_sha256') != digest_json(manifest) or installation.get('binary_sha256') != manifest['binary_sha256'] or installation.get('bundle_sha256') != manifest['sha256'] or installation.get('build_id') != manifest['active_build']:
         raise ValueError('Missing matching immutable installation receipt')
-    receipt = {'schema_version': 1, 'engine': 'tantivy', 'build_id': manifest['active_build'], 'origin': ORIGIN, 'format': FORMAT, 'manifest_sha256': digest_json(manifest), 'installed_binary_sha256': installation['binary_sha256'], 'qualified_at': int(time.time()) if now is None else now, 'source_cursor_sha256': digest_json(status['source_cursor']), 'policy_sha256': status['moderation']['sha256'], 'slo_empirically_qualified': False, 'runtime_http_verified': observed_origin == ORIGIN, 'runtime_observed_origin': observed_origin, 'test_only': observed_origin is not None and observed_origin != ORIGIN, **gates}
+    receipt = {'schema_version': 1, 'engine': 'tantivy', 'build_id': manifest['active_build'], 'origin': origin, 'format': FORMAT, 'manifest_sha256': digest_json(manifest), 'installed_binary_sha256': installation['binary_sha256'], 'qualified_at': int(time.time()) if now is None else now, 'source_cursor_sha256': digest_json(status['source_cursor']), 'policy_sha256': status['moderation']['sha256'], 'slo_empirically_qualified': False, 'runtime_http_verified': observed_origin == origin, 'runtime_observed_origin': observed_origin, 'test_only': observed_origin is not None and observed_origin != origin, **gates}
     receipt.update(provider)
     receipt['test_only'] = receipt['test_only'] or provider['provider_attestation_test_only']
-    route = {'engine': 'tantivy', 'origin': ORIGIN, 'build_id': manifest['active_build'], 'format': FORMAT, 'admission_sha256': digest_json(receipt), 'binary_sha256':manifest['binary_sha256'], 'retrieval_strategy':manifest['retrieval_strategy']}
+    route = {'engine': 'tantivy', 'origin': origin, 'build_id': manifest['active_build'], 'format': FORMAT, 'admission_sha256': digest_json(receipt), 'binary_sha256':manifest['binary_sha256'], 'retrieval_strategy':manifest['retrieval_strategy']}
     return {'route': route, 'admission': receipt}
 
 
@@ -383,7 +397,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 def qualify_runtime(url, manifest, installation, allow_loopback=False, provider_attestation=None, **bounds):
     parsed = urllib.parse.urlsplit(url)
     loopback = allow_loopback and parsed.scheme == 'http' and parsed.hostname in ('127.0.0.1', 'localhost')
-    if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/') or not (url.rstrip('/') == ORIGIN or loopback):
+    expected = f"https://{manifest['provider_app']}.fly.dev" if manifest['provider_app'] in PUBLIC_APPS else None
+    if parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/') or not (url.rstrip('/') == expected or loopback):
         raise ValueError('Admission requires the known isolated Tantivy origin')
     opener = urllib.request.build_opener(NoRedirect())
     values = []

@@ -35,13 +35,19 @@ directory. Missing coverage fails before packaging; concurrent file changes
 reject the artifact. It does not upload, alter routing or claim runtime readiness.
 The publisher still owns R2 upload and exact checksum readback. A raw snapshot
 import without an authoritative sweep is not a publishable caught-up checkpoint.
+The existing publisher accepts `--engine tantivy --generation DIR
+--source-manifest FILE`, using its existing R2 configuration. It verifies that
+the exact native manifest is already published, then verifies immutable upload
+of the bundle and finally its portable manifest. Native and mutable-pointer
+arguments are prohibited in this mode; `latest.json` remains untouched.
 
 The manifest pins `retrieval_strategy` (`per-segment` or `global-merge`).
 Installation binds the portable manifest to a separate target configuration:
 `image_digest` (full `registry.fly.io/...@sha256:...`), `provider_app`,
 `guest: {cpu_kind: "shared", cpus: 2, memory_mb: 1024}`, `volume_id`, and
 `volume_size_gib: 20`, and `public_service_ports`. Qualification controls pin
-`[]`; an owned final `dev-tantivy` instance may pin exactly `[80, 443]` after
+`[]`; an owned final `dev-tantivy` instance or managed `tantivy-slot` may pin
+exactly `[80, 443]` after
 the same 20 GiB and other admission gates. These deployment fields do not belong
 in the portable bundle returned by `freeze_bundle`; the installer receives a
 merged bound manifest and checks its own admission receipt against that binding.
@@ -72,6 +78,14 @@ python3 scripts/snapshot_refresh/tantivy_install.py qualify \
   --provider-attestation /cloud/provider-attestation.json \
   --url https://typeahead-tantivy-dev.fly.dev
 ```
+
+Managed slots use `typeahead-tantivy-a` and `typeahead-tantivy-b`, each with an
+independent HTTPS origin and volume. Their provider role is `tantivy-slot`,
+owned by `typeahead-snapshot-refresh`; the bound `provider_app` determines the
+only admissible public origin. The Worker accepts those two origins and the
+retained dev origin. A private qualification app cannot become a serving route.
+These contracts do not create or deploy slots; actual lifecycle qualification
+is still required before promotion.
 
 Qualification reads only `/index/status` and `/ready`, bounds response size and
 time, prohibits redirects, checks engine/build/format acknowledgements, and

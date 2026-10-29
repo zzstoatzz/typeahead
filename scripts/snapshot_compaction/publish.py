@@ -1,5 +1,6 @@
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -105,6 +106,28 @@ class Publisher:
         self.verify(manifest_path, pointer)
         return manifest['active_build']
 
+    def publish_tantivy(self, generation, source_manifest):
+        location = Path(__file__).resolve().parents[1] / 'snapshot_refresh/tantivy_install.py'
+        spec = importlib.util.spec_from_file_location('tantivy_install', location)
+        adapter = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(adapter)
+        generation, source_manifest = Path(generation), Path(source_manifest)
+        manifest_path = generation / 'manifest.json'
+        manifest = json.loads(manifest_path.read_bytes())
+        source = adapter.validate_source_manifest(manifest, source_manifest.read_bytes())
+        if any(field in manifest for field in ['image_digest', 'guest', 'volume_id', 'volume_size_gib', 'public_service_ports', 'provider_app']):
+            raise ValueError('Publish a portable Tantivy artifact without deployment bindings')
+        bundle = generation / 'index.tar'
+        if bundle.stat().st_size != manifest['byte_size'] or digest_file(bundle) != manifest['sha256']:
+            raise ValueError('local verification failed: index.tar')
+        source_key = f"releases/search/{source['active_build']}/manifest.json"
+        if source.get('snapshot_url') != source_key.removesuffix('manifest.json') + 'index.db':
+            raise ValueError('Native source object identity mismatch')
+        self.verify(source_manifest, source_key)
+        self.immutable(bundle, manifest['object_key'])
+        self.immutable(manifest_path, f"releases/search-tantivy/{manifest['active_build']}/manifest.json")
+        return manifest['active_build']
+
 
 @contextmanager
 def configuration(path):
@@ -130,18 +153,27 @@ def configuration(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--generation', type=Path, required=True)
-    parser.add_argument('--legacy-database', type=Path, required=True)
-    parser.add_argument('--legacy-manifest', type=Path, required=True)
+    parser.add_argument('--engine', choices=['native', 'tantivy'], default='native')
+    parser.add_argument('--legacy-database', type=Path)
+    parser.add_argument('--legacy-manifest', type=Path)
+    parser.add_argument('--source-manifest', type=Path)
     parser.add_argument('--config', type=Path)
     parser.add_argument('--bucket', default=os.environ.get('INDEX_R2_BUCKET'))
-    parser.add_argument('--pointer', required=True)
+    parser.add_argument('--pointer')
     parser.add_argument('--rclone', default=os.environ.get('INDEX_RCLONE_BIN', 'rclone'))
     args = parser.parse_args()
     if not args.bucket:
         parser.error('--bucket or INDEX_R2_BUCKET is required')
+    if args.engine == 'native' and not all([args.legacy_database, args.legacy_manifest, args.pointer]):
+        parser.error('native requires --legacy-database, --legacy-manifest and --pointer')
+    if args.engine == 'tantivy' and (not args.source_manifest or args.pointer or args.legacy_database or args.legacy_manifest):
+        parser.error('tantivy requires --source-manifest and prohibits native/pointer arguments')
     with configuration(args.config) as config:
         publisher = Publisher(config, args.bucket, args.rclone)
-        print(publisher.publish(args.generation, args.legacy_database, args.legacy_manifest, args.pointer))
+        if args.engine == 'tantivy':
+            print(publisher.publish_tantivy(args.generation, args.source_manifest))
+        else:
+            print(publisher.publish(args.generation, args.legacy_database, args.legacy_manifest, args.pointer))
 
 
 if __name__ == '__main__':
