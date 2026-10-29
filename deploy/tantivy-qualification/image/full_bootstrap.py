@@ -6,7 +6,8 @@ QUAL_MODE=full explicitly enables the 5,400-second guest lease. Preparation has 
 files are copied; immutable prefix/segment files are linked and never chmodded.
 Native prefix admission is repeated after linking because its ctime changed.
 Shutdown allows 20 seconds for the entrypoint to reap its isolated child groups;
-runtime-exit observation shares the control lock with restart/reset.
+runtime-exit observation shares the control lock with restart/reset. Native prefix
+re-admission uses the remaining preparation lease, not a small-fixture timeout.
 
 GET /prepared exposes metadata. All other controls require the independent
 X-Pilot-Authorization capability: GET /inputs/{updates,cases,oracle} or /metrics; empty-body
@@ -57,6 +58,19 @@ STAGES = ('rename','rescore','metadata','hide','show','delete','restore-deleted'
 
 class BootstrapError(Exception):
     pass
+
+
+def failure_diagnostic(error,stage):
+    code='full_bootstrap_failed'
+    if isinstance(error,(BootstrapError,full_prepare.PreparationError)):
+        candidate=str(error)
+        if re.fullmatch('[a-z][a-z0-9_]{0,80}',candidate):code=candidate
+    elif isinstance(error,subprocess.TimeoutExpired):code='subprocess_deadline'
+    elif isinstance(error,subprocess.CalledProcessError):code='subprocess_exit'
+    result={'event':'FULL_BOOTSTRAP_FAILURE','stage':stage,'error_class':code,
+            'exception_class':type(error).__name__,'source_ready_attestation':False}
+    if isinstance(error,subprocess.CalledProcessError):result['returncode']=error.returncode
+    return result
 
 
 def encoded(value):
@@ -218,7 +232,7 @@ class FullQualification:
         self.deadline=deadline;self.preparation_deadline=min(deadline-20,now+3600);self.started=now
         self.baseline=self.root/'baseline';self.working=self.root/'working';self.phase_path=self.root/'phase.json'
         self.lock=threading.RLock();self.child=None;self.prepared=False;self.reset_count=0;self.failures=[];self.preparation=None
-        self.state='preparing';self.feed=None;self.feed_bytes=None;self.feed_sha=None;self.baseline_proof=None
+        self.stage='initialization';self.state='preparing';self.feed=None;self.feed_bytes=None;self.feed_sha=None;self.baseline_proof=None
         self.admin_port=18081;self.metrics_calls=0;self.oracle_ready=False;self.oracle_sha=None;self.cases_sha=None;self.children=[];self.telemetry=None
 
     def guard(self,preparing=False):
@@ -240,7 +254,39 @@ class FullQualification:
             log=self.root/'engine.log'
             if log.exists() and log.stat().st_size>4*1024*1024:raise BootstrapError('engine_log_budget')
 
+    def set_stage(self,stage):
+        self.stage=stage
+        print(json.dumps({'event':'FULL_BOOTSTRAP_STAGE','stage':stage,'arm':self.arm}),flush=True)
+
+    def record_failure(self,error):
+        diagnostic=failure_diagnostic(error,self.stage)
+        self.failures.append({key:value for key,value in diagnostic.items() if key!='event'})
+        print(json.dumps(diagnostic),flush=True)
+        return diagnostic
+
+    def run_prefix_admission(self,command,env,preparing):
+        self.guard(preparing)
+        stop_at=min(self.preparation_deadline if preparing else self.deadline-20,self.deadline-20)
+        budget=stop_at-time.time()
+        if budget<=0:raise BootstrapError('guest_deadline')
+        began=time.monotonic();until=began+budget
+        child=subprocess.Popen(command,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+        self.children.append(child)
+        try:
+            while child.poll() is None:
+                remaining=until-time.monotonic()
+                if remaining<=0:raise subprocess.TimeoutExpired(command,budget)
+                self.guard(preparing)
+                try:child.wait(timeout=min(.1,remaining))
+                except subprocess.TimeoutExpired:pass
+            if child.returncode:raise subprocess.CalledProcessError(child.returncode,command)
+            self.guard(preparing)
+            return {'budget_s':round(budget,3),'elapsed_s':round(time.monotonic()-began,3),'returncode':child.returncode}
+        except BaseException:
+            self.stop_children();raise
+
     def prepare(self,access):
+        self.set_stage('source-preparation')
         if self.arm=='native' and not self.fixture:
             expected=os.environ.get('QUAL_ORACLE_BINARY_SHA256','')
             if not re.fullmatch('[0-9a-f]{64}',expected) or sha(self.app/'tantivy-raw-oracle')!=expected:
@@ -256,6 +302,7 @@ class FullQualification:
         if record.get('prepared') is not True or record.get('arm')!=self.arm or record.get('build_id')!=self.manifest['active_build'] or record.get('source_database_sha256')!=self.manifest['sha256'] or record.get('source_prefix_sha256')!=self.manifest['prefix_map']['sha256']:
             raise BootstrapError('prepared_baseline_binding')
         self.baseline_proof=tree_witness(self.baseline)
+        self.set_stage('feed-generation')
         self.feed,self.feed_bytes,self.feed_sha=generate_feed(self.manifest,self.baseline/'source',self.app/'input/export.py',self.preparation_deadline)
         path=self.root/'updates.json'
         with path.open('xb') as stream:stream.write(self.feed_bytes);stream.flush();os.fsync(stream.fileno())
@@ -263,7 +310,7 @@ class FullQualification:
         atomic(self.root/'observer.json',self.observer)
         self.clone(True)
         if self.arm=='native' and not self.fixture:self.prepare_oracle()
-        self.prepared=True;self.state='prepared'
+        self.prepared=True;self.state='prepared';self.set_stage('prepared')
 
     def wait_preparation(self,children):
         self.children.extend(child for child in children if child not in self.children)
@@ -291,6 +338,7 @@ class FullQualification:
     def prepare_oracle(self,fixture_cases=None):
         if self.arm!='native':raise BootstrapError('oracle_native_arm_required')
         if fixture_cases is not None and not self.fixture:raise BootstrapError('fixed_oracle_case_count')
+        self.set_stage('oracle-preparation')
         cases_count=512 if fixture_cases is None else fixture_cases
         self.guard(True);source=self.baseline/'source';sample=self.root/'oracle-sample.jsonl'
         exporter=export_module(self.app/'input/export.py')
@@ -350,11 +398,13 @@ class FullQualification:
         if self.baseline_proof!=tree_witness(self.baseline):raise BootstrapError('baseline_changed')
 
     def clone(self,preparing=False):
+        self.set_stage('working-clone')
         self.baseline_intact();self.clone_metrics=clone_baseline(self.baseline,self.working,lambda:self.guard(preparing))
         if self.arm=='native':
             env={key:value for key,value in os.environ.items() if key in {'PATH','HOME','LANG'}}
             env.update(TYPEAHEAD_ADMIT_PREFIX_PATH=str(self.working/'source/index.db.prefix'),TYPEAHEAD_ADMIT_PREFIX_SHA256=self.manifest['prefix_map']['sha256'])
-            subprocess.run([str(self.app/'bin/admit-prefix')],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True,timeout=max(.1,min(120,self.preparation_deadline-time.time() if preparing else self.deadline-time.time()-20)))
+            self.set_stage('native-prefix-readmission')
+            self.clone_metrics['native_prefix_readmission']=self.run_prefix_admission([str(self.app/'bin/admit-prefix')],env,preparing)
             prefix=self.working/'source/index.db.prefix';cache=prefix.with_name(prefix.name+'.admitted')
             if not cache.exists() or int.from_bytes(cache.read_bytes()[72:88],'little',signed=True)!=prefix.stat().st_ctime_ns:raise BootstrapError('native_prefix_revalidation')
         self.baseline_intact()
@@ -495,7 +545,7 @@ class FullQualification:
         return result
 
     def summary(self):
-        value={'schema_version':1,'mode':'full','arm':self.arm,'state':self.state,'prepared':self.prepared,'nonce':self.nonce,
+        value={'schema_version':1,'mode':'full','arm':self.arm,'state':self.state,'preparation_stage':self.stage,'prepared':self.prepared,'nonce':self.nonce,
             'app':self.observer['app'],'machine_id':self.observer['machine_id'],'guest':self.observer['guest'],
             'final_volume_gib':self.observer['final_volume_gib'],'public_services':self.observer['public_services'],
             'volume_id':self.observer['volume_ids'][0],'build_id':self.manifest['active_build'],'source_watermark':self.manifest['source_watermark'],
@@ -615,12 +665,14 @@ def main():
             service.guard()
             service.observe_runtime()
             time.sleep(.5)
+    except BaseException as error:
+        service.record_failure(error);raise
     finally:
         server.shutdown();server.server_close();thread.join(timeout=2);service.close()
 
 if __name__=='__main__':
     try:main()
     except BaseException as error:
-        code=str(error) if isinstance(error,(BootstrapError,full_prepare.PreparationError)) else 'full_bootstrap_failed'
-        print(json.dumps({'event':'FULL_BOOTSTRAP_TERMINAL','error_class':code,'source_ready_attestation':False}),flush=True)
+        diagnostic=failure_diagnostic(error,'bootstrap');diagnostic['event']='FULL_BOOTSTRAP_TERMINAL'
+        print(json.dumps(diagnostic),flush=True)
         raise SystemExit(1) from None

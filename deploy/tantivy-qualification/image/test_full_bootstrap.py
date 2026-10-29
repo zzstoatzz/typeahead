@@ -1,10 +1,11 @@
 """Local real-file and real-engine tests; no cloud or live source access."""
-from contextlib import closing
+from contextlib import closing, redirect_stdout
 import copy
 import hashlib
 import http.client
 import http.server
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -104,6 +105,58 @@ class Tests(unittest.TestCase):
                 if s.admin('/index/status').get('import_complete'):return
             except (OSError,bootstrap.BootstrapError):time.sleep(.03)
         self.fail('real engine did not start')
+    def test_prefix_admission_actual_success_uses_remaining_preparation_lease(self):
+        s=self.service();self.baseline(s)
+        s.preparation_deadline=time.time()+240
+        original=(s.preparation_deadline,s.deadline)
+        witness=self.root/'admitted-command'
+        receipt=s.run_prefix_admission([sys.executable,'-c','import pathlib,sys,time;time.sleep(.12);pathlib.Path(sys.argv[1]).write_text("complete")',str(witness)],{'PATH':os.environ.get('PATH','')},True)
+        self.assertGreater(receipt['budget_s'],120)
+        self.assertLess(receipt['elapsed_s'],1)
+        self.assertEqual(receipt['returncode'],0)
+        self.assertEqual(witness.read_text(),'complete')
+        self.assertEqual((s.preparation_deadline,s.deadline),original)
+        self.assertTrue(all(child.poll()==0 for child in s.children))
+
+    def test_prefix_admission_actual_deadline_reaps_process_group(self):
+        for preparing in [True,False]:
+            self.root=self.directory/('run-'+str(time.time_ns()))
+            s=self.service();self.baseline(s)
+            if preparing:s.preparation_deadline=time.time()+.35
+            else:
+                s.preparation_deadline=time.time()-10
+                s.deadline=time.time()+20.35
+            original=(s.preparation_deadline,s.deadline)
+            witness=self.root/'process-tree.json'
+            program="""
+import json,os,pathlib,signal,subprocess,sys,time
+child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)'])
+def stop(*_):
+ child.terminate();child.wait();raise SystemExit(0)
+signal.signal(signal.SIGTERM,stop)
+pathlib.Path(sys.argv[1]).write_text(json.dumps([os.getpid(),child.pid]))
+time.sleep(30)
+"""
+            started=time.monotonic()
+            with self.assertRaises(subprocess.TimeoutExpired) as raised:
+                s.run_prefix_admission([sys.executable,'-c',program,str(witness)],{'PATH':os.environ.get('PATH','')},preparing)
+            self.assertLess(time.monotonic()-started,3)
+            self.assertLess(raised.exception.timeout,.5)
+            self.assertEqual((s.preparation_deadline,s.deadline),original)
+            for pid in json.loads(witness.read_text()):
+                with self.assertRaises(ProcessLookupError):os.kill(pid,0)
+            self.assertEqual(s.children,[])
+
+    def test_failure_diagnostics_preserve_stage_and_type_without_payload(self):
+        s=self.service();self.baseline(s);s.stage='native-prefix-readmission'
+        for error in [subprocess.TimeoutExpired(['private-profile-and-secret'],1,output=b'secret-output'),subprocess.CalledProcessError(7,['private-command'],output=b'private-output'),ValueError('private-profile')]:
+            output=io.StringIO()
+            with redirect_stdout(output):value=s.record_failure(error)
+            self.assertEqual(value['stage'],'native-prefix-readmission')
+            self.assertEqual(value['exception_class'],type(error).__name__)
+            self.assertNotIn('private',output.getvalue());self.assertNotIn('secret',output.getvalue())
+        self.assertEqual(s.summary()['preparation_stage'],'native-prefix-readmission')
+
     def test_feed_determinism_and_all_fixed_lifecycle_states(self):
         first=bootstrap.generate_feed(self.manifest,self.release,self.app/'input/export.py',time.time()+10)
         second=bootstrap.generate_feed(self.manifest,self.release,self.app/'input/export.py',time.time()+10)
