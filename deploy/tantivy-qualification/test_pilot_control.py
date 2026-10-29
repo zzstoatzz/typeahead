@@ -181,6 +181,8 @@ class PilotTests(unittest.TestCase):
 
     def supervisor_ready(self):
         self.staged();self.control.logs={}
+        self.control.functional_script_sha256=lambda:p.controller.FUNCTIONAL_SCRIPT_SHA256
+        self.control.run_functional=lambda tv,native,run,pilot,timed:{'passed':True,'timed_result_sha256':timed}
         for role in p.ENGINE_ROLES:
             receipt=self.prepared_exit(role)
             self.control.logs[receipt['machine_id']]=[{'marker':'QUALIFICATION_PREPARATION_COMPLETE','receipt':receipt}]
@@ -191,7 +193,7 @@ class PilotTests(unittest.TestCase):
         result=self.pilot.advance_to_measurement('1234abcd5678')
         self.assertEqual(result['state'],'completed');self.assertEqual(result['cleanup']['status'],'cleaned')
         self.assertTrue(result['generator_result']['receipt']['passed']);self.assertFalse(result['generator_result']['truncated'])
-        self.assertEqual(result['functional']['state'],'inconclusive');self.assertFalse(self.api.machines);self.assertFalse(self.api.volumes)
+        self.assertEqual(result['functional']['state'],'completed');self.assertFalse(self.api.machines);self.assertFalse(self.api.volumes)
         mutations=[c for c in self.api.calls if c[0]!='GET']
         again=self.pilot.advance_to_measurement('1234abcd5678')
         self.assertEqual(again,result);self.assertEqual(mutations,[c for c in self.api.calls if c[0]!='GET'])
@@ -211,6 +213,10 @@ class PilotTests(unittest.TestCase):
         result=self.pilot.advance_to_measurement('1234abcd5678')
         self.assertEqual(result['state'],'failed');self.assertEqual(result['error'],'supervisor_preparation_receipt_missing')
         self.assertLess(self.clock.now()-start,40);self.assertFalse(self.api.machines)
+    def test_supervisor_full_requires_functional_preflight_before_mutations(self):
+        self.supervisor_ready();del self.control.run_functional;before=len(self.api.calls)
+        with self.assertRaisesRegex(p.PilotError,'supervisor_full_functional_runner_required'):self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertEqual(len(self.api.calls),before)
     def test_supervisor_wrong_run_and_second_local_owner_do_not_mutate(self):
         self.supervisor_ready();before=len(self.api.calls)
         with self.assertRaisesRegex(p.PilotError,'supervisor_run_binding'):self.pilot.advance_to_measurement('ffffffff')

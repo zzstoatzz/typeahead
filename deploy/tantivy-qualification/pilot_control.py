@@ -527,6 +527,9 @@ class Pilot:
         _,initial=self.plan()
         if initial['manifest']['run_id']!=run_id or not initial.get('staged_preparation'):raise PilotError('supervisor_run_binding')
         expected_manifest=initial['manifest_sha256'];expected_ids=copy.deepcopy(initial['resolved'])
+        if not initial.get('synthetic_staged_pilot'):
+            if not callable(getattr(self.control,'run_functional',None)) or not callable(getattr(self.control,'functional_script_sha256',None)):raise PilotError('supervisor_full_functional_runner_required')
+            if self.control.functional_script_sha256()!=controller.FUNCTIONAL_SCRIPT_SHA256:raise PilotError('supervisor_full_functional_binding')
         if initial.get('supervisor',{}).get('state') in {'completed','failed'} and initial.get('cleanup_receipt',{}).get('status')=='cleaned':return initial['supervisor']
         required={'machine:'+role for role in ['native-control','tantivy-control','generator','reaper']}|{'volume:native','volume:tantivy'}
         if not required.issubset(expected_ids) or not set(ENGINE_ROLES).issubset(initial.get('preparation_started',{})):raise PilotError('supervisor_requires_existing_started_preparation')

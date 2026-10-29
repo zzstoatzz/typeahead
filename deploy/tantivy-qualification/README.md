@@ -92,8 +92,11 @@ phase advancement; the ledger binds every step to the same manifest and resolved
 IDs. The supervisor consumes verified preparation receipts, configures final
 hardware, starts both engines and the generator, captures terminal generator
 logs (including provider `destroyed` records), and always attempts guarded
-cleanup. Captured results and errors remain under `pilot.supervisor`. A missing
-optional post-measurement runner is recorded as functional-inconclusive; it does
+cleanup. Captured results and errors remain under `pilot.supervisor`. Full advancement requires the committed functional script SHA and a working
+runner before any transition. After timed result capture, it uploads that public
+script in bounded chunks to the same Tantivy machine and executes it once under
+the original lease. An uncertain upload/exec becomes functional-inconclusive
+without retry. Synthetic pilots may omit this optional runner. The probe does
 not convert a performance result into readiness. Repeating a completed invocation
 returns its saved receipt without another mutation.
 
