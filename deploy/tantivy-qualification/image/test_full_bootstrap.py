@@ -105,6 +105,34 @@ class Tests(unittest.TestCase):
                 if s.admin('/index/status').get('import_complete'):return
             except (OSError,bootstrap.BootstrapError):time.sleep(.03)
         self.fail('real engine did not start')
+    @unittest.skipUnless(BIN.is_file(),'requires already built local Rust binary; does not compile')
+    def test_synthetic_local_source_keeps_explicit_scope_through_checkpoint_resume(self):
+        prep=copy.deepcopy(self.observer);prep['guest']=dict(bootstrap.PREPARATION_GUEST)
+        options=dict(root=self.root,manifest=copy.deepcopy(self.manifest),arm='tantivy',observer=prep,nonce='fixture-nonce-0123456789',deadline=time.time()+300,app=self.app,fixture=True,phase='prepare',synthetic_staged_pilot=True)
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'not_armed'):bootstrap.FullQualification(**options)
+        previous=os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT');version=os.environ.get('FLY_MACHINE_VERSION')
+        os.environ['QUAL_SYNTHETIC_STAGED_PILOT']='1';os.environ['FLY_MACHINE_VERSION']='fixture-preparation-instance'
+        source_root=self.directory/('synthetic-source-'+str(time.time_ns()))
+        try:
+            source_root.mkdir();(source_root/'owner').write_text('synthetic-staged-fixture-v1');source=source_root/'release';shutil.copytree(self.release,source)
+            shutil.copy(BIN,self.app/'bin/typeahead-tantivy')
+            with self.assertRaisesRegex(bootstrap.BootstrapError,'not_armed'):bootstrap.FullQualification(**(options|{'deadline':time.time()+1000}))
+            with self.assertRaisesRegex(bootstrap.BootstrapError,'actor_count'):bootstrap.FullQualification(**(options|{'manifest':self.manifest|{'actor_count':129}}))
+            s=bootstrap.FullQualification(**options);self.services.append(s);s.prepare_local(source)
+            receipt=s.preparation_checkpoint();manifest=bootstrap.checkpoint_manifest(self.root,receipt['checkpoint_sha256'])
+            self.assertEqual(manifest,self.manifest);self.assertEqual(s.summary()['source_kind'],'frozen-synthetic-controller')
+            self.assertEqual(s.summary()['source_actor_count'],128);self.assertFalse((s.baseline/'source/index.db.prefix').exists())
+            with self.assertRaisesRegex(bootstrap.BootstrapError,'identity_mismatch'):self.resumed_fixture(s,receipt)
+            resumed=self.resumed_fixture(s,receipt,synthetic_staged_pilot=True)
+            self.assertTrue(resumed.summary()['synthetic_staged_pilot']);self.assertEqual(resumed.config['source_kind'],'frozen-synthetic-controller')
+            self.assertEqual(resumed.manifest['source_watermark'],s.manifest['source_watermark'])
+        finally:
+            bootstrap.remove_working(source_root)
+            if previous is None:os.environ.pop('QUAL_SYNTHETIC_STAGED_PILOT',None)
+            else:os.environ['QUAL_SYNTHETIC_STAGED_PILOT']=previous
+            if version is None:os.environ.pop('FLY_MACHINE_VERSION',None)
+            else:os.environ['FLY_MACHINE_VERSION']=version
+
     def test_staged_phase_guest_contract_is_exclusive(self):
         prep=copy.deepcopy(self.observer);prep['guest']=dict(bootstrap.PREPARATION_GUEST)
         final=copy.deepcopy(self.observer)
@@ -155,6 +183,9 @@ boot.main()
             finally:
                 if previous is None:os.environ.pop('FLY_MACHINE_VERSION',None)
                 else:os.environ['FLY_MACHINE_VERSION']=previous
+        segments=[path for path in (s.baseline/'tantivy/index').iterdir() if bootstrap.immutable(Path('tantivy/index')/path.name)]
+        self.assertTrue(segments)
+        for path in segments:self.assertEqual(path.stat().st_ino,(s.working/'tantivy/index'/path.name).stat().st_ino)
         return s,receipt
 
     def resumed_fixture(self,s,receipt,**changes):
@@ -189,7 +220,7 @@ boot.main()
     @unittest.skipUnless(BIN.is_file(),'requires already built local Rust binary; does not compile')
     def test_new_process_resume_runs_real_http_update_restart_without_reimport(self):
         s,receipt=self.staged_fixture(actual_process=True);control,public,admin=port(),port(),port()
-        original_prefix=(s.baseline/'source/index.db.prefix').stat()
+        self.assertFalse((s.baseline/'source/index.db.prefix').exists());self.assertFalse((s.working/'source').exists())
         program="""
 import http.server,json,os,pathlib,signal,sys
 sys.path.insert(0,sys.argv[1]);import full_bootstrap as boot
@@ -224,7 +255,7 @@ boot.main()
                 if child.poll() is not None:self.fail('new resume process exited')
                 try:
                     status,value=request(p,path,auth=False)
-                    if status==200:return value
+                    if status==200 and (path!='/prepared' or value.get('prepared') is True):return value
                 except OSError:time.sleep(.03)
             self.fail('new resume process HTTP did not start')
         try:
@@ -236,8 +267,7 @@ boot.main()
             self.assertEqual(request(control,'/apply/2','POST')[0],200)
         finally:
             child.terminate();child.wait(timeout=10)
-        current=(s.baseline/'source/index.db.prefix').stat()
-        self.assertEqual((original_prefix.st_ino,original_prefix.st_size,original_prefix.st_mtime_ns,original_prefix.st_ctime_ns),(current.st_ino,current.st_size,current.st_mtime_ns,current.st_ctime_ns))
+        self.assertFalse((s.baseline/'source/index.db.prefix').exists());self.assertFalse((s.working/'source').exists())
 
     def test_failure_diagnostics_preserve_stage_and_type_without_payload(self):
         s=self.service();self.baseline(s);s.stage='working-clone'
@@ -262,11 +292,13 @@ boot.main()
         self.assertLess(len(data),bootstrap.MAX_FEED)
     def test_mutable_copies_immutable_links_and_symlink_guards(self):
         s=self.service();self.baseline(s)
-        p=s.baseline/'source/index.db.prefix';self.assertEqual(p.stat().st_ino,(s.working/'source/index.db.prefix').stat().st_ino)
-        self.assertNotEqual((s.baseline/'source/index.db').stat().st_ino,(s.working/'source/index.db').stat().st_ino)
-        with closing(sqlite3.connect(s.working/'source/index.db')) as db:db.execute("UPDATE index_meta SET value='changed' WHERE key='build_id'");db.commit()
-        s.baseline_intact();self.assertEqual(bootstrap.sha(s.baseline/'source/index.db'),self.manifest['sha256'])
-        s.reset();self.assertEqual(bootstrap.sha(s.working/'source/index.db'),self.manifest['sha256']);self.assertEqual(s.phase()['acked'],0)
+        self.assertFalse((s.working/'source').exists());self.assertFalse((s.baseline/'source/index.db.prefix').exists())
+        self.assertFalse((s.baseline/'source/index.db').exists());self.assertTrue((s.baseline/'source/manifest.json').is_file())
+        baseline=s.baseline/'prepared.json';working=s.working/'prepared.json'
+        self.assertNotEqual(baseline.stat().st_ino,working.stat().st_ino)
+        original=baseline.read_bytes();working.write_text('changed')
+        s.baseline_intact();self.assertEqual(baseline.read_bytes(),original)
+        s.reset();self.assertEqual(working.read_bytes(),original);self.assertEqual(s.phase()['acked'],0)
         (s.working/'unsafe').symlink_to('/tmp')
         with self.assertRaisesRegex(bootstrap.BootstrapError,'scratch_symlink'):s.guard()
         (s.working/'unsafe').unlink()
@@ -279,7 +311,7 @@ boot.main()
         with self.assertRaisesRegex(bootstrap.BootstrapError,'guest_deadline'):s.guard()
     @unittest.skipUnless((REPO/'experiments/tantivy-oracle/target/release/tantivy-raw-oracle').is_file(),'requires already built local independent oracle; does not compile')
     def test_actual_streamed_oracle_binds_feed_cases_full_footer(self):
-        s=self.service();self.baseline(s);s.arm='native'
+        s=self.service('native');self.baseline(s)
         shutil.copy(REPO/'experiments/tantivy-oracle/target/release/tantivy-raw-oracle',self.app/'tantivy-raw-oracle')
         shutil.copy(REPO/'src/identity-quarantine.json',self.app/'identity-quarantine.json')
         try:s.prepare_oracle(fixture_cases=128)

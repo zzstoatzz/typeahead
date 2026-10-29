@@ -3,7 +3,9 @@
 QUAL_MODE=full explicitly enables the 5,400-second guest lease. Preparation has a
 3,600-second cap. Neither engine starts before POST /serve; /pause, /restart and
 /reset operate only on this guest's owned working clone. Baseline SQLite/meta
-files are copied; immutable prefix/segment files are linked and never chmodded.
+files are copied; immutable Tantivy segment files are linked and never chmodded.
+Neither working clone contains source payloads. Tantivy retires its verified
+source DB/prefix after feed generation and keeps the small input/import receipts.
 Native snapshots stay in the immutable baseline; only the overlay is cloned.
 QUAL_PHASE=prepare admits only two performance CPUs / 4 GiB, writes a bounded
 preparation checkpoint and exits without serving. QUAL_PHASE=resume admits only
@@ -11,6 +13,9 @@ two shared CPUs / 1 GiB on the same 20 GiB volume. It checks the caller-pinned
 checkpoint, immutable file witnesses, fixed inputs and installed executables; no
 source download/import, prefix rehash or oracle pass is repeated. Original
 preparation/overall deadlines persist. Unset QUAL_PHASE keeps legacy full mode.
+An explicit QUAL_SYNTHETIC_STAGED_PILOT=1 restricts the staged lifecycle pilot to
+128 local synthetic actors and at most 900 seconds, with actual provider/ELF
+checks preserved. Its source kind and checkpoint stay marked synthetic.
 
 Shutdown allows 20 seconds for the entrypoint to reap its isolated child groups;
 runtime-exit observation shares the control lock with restart/reset.
@@ -111,6 +116,15 @@ def canonical(path):
     return path
 
 
+def checkpoint_manifest(root,expected):
+    root=canonical(root);path=canonical(root/'preparation-checkpoint.json')
+    if not isinstance(expected,str) or not re.fullmatch('[a-f0-9]{64}',expected) or not path.is_file() or path.stat().st_size>MAX_CHECKPOINT or sha(path)!=expected:
+        raise BootstrapError('checkpoint_digest_mismatch')
+    value=json.loads(path.read_bytes())
+    if value.get('synthetic_staged_pilot') is not True or not isinstance(value.get('source_manifest'),dict):raise BootstrapError('checkpoint_synthetic_manifest_missing')
+    return full_prepare.manifest_check(value['source_manifest'])
+
+
 def observer_check(observer, nonce, fixture=False, phase="legacy"):
     required={'app','machine_id','guest','volume_ids','final_volume_gib','public_services','machines_api_response_sha256'}
     if not isinstance(observer,dict) or not required<=observer.keys():raise BootstrapError('observer_shape')
@@ -161,7 +175,9 @@ def clone_baseline(baseline, destination, guard, exclude_source=False):
                     if stat.S_IMODE(source.stat().st_mode)&0o222:raise BootstrapError('mutable_baseline_segment')
                     os.link(source,target);counts['hardlinked_immutable_files']+=1
                 else:
-                    shutil.copyfile(source,target);target.chmod(0o600);counts['copied_mutable_files']+=1
+                    shutil.copyfile(source,target);target.chmod(0o600)
+                    with target.open('rb') as stream:os.fsync(stream.fileno())
+                    counts['copied_mutable_files']+=1
         guard()
         return counts
     except BaseException:
@@ -233,12 +249,15 @@ def generate_feed(manifest, source, exporter_path, deadline, count=64):
 
 
 class FullQualification:
-    def __init__(self,root,manifest,arm,observer,nonce,deadline,*,app='/app',fixture=False,phase='legacy'):
+    def __init__(self,root,manifest,arm,observer,nonce,deadline,*,app='/app',fixture=False,phase='legacy',synthetic_staged_pilot=False):
         now=time.time()
         if phase not in {'legacy','prepare','resume'}:raise BootstrapError('exclusive_qualification_phase')
+        if type(synthetic_staged_pilot) is not bool or synthetic_staged_pilot and (phase not in {'prepare','resume'} or os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT')!='1' or deadline>now+900):raise BootstrapError('synthetic_staged_pilot_not_armed')
+        self.synthetic_staged_pilot=synthetic_staged_pilot
         self.phase_mode=phase
         if not math.isfinite(deadline) or not now<deadline<=now+5400:raise BootstrapError('overall_deadline')
         self.root=canonical(root);self.app=Path(app);self.manifest=full_prepare.manifest_check(manifest);self.arm=arm
+        if synthetic_staged_pilot and self.manifest['actor_count']!=128:raise BootstrapError('synthetic_staged_actor_count')
         self.observer=observer_check(observer,nonce,fixture,phase);self.nonce=nonce;self.fixture=fixture
         if arm not in {'native','tantivy'}:raise BootstrapError('arm')
         if not fixture and self.root.parent!=Path('/data/qualification'):raise BootstrapError('owned_scratch_required')
@@ -288,6 +307,12 @@ class FullQualification:
         self.preparation.run(access)
         self.admit_prepared()
 
+    def prepare_local(self,source):
+        if not self.synthetic_staged_pilot or self.phase_mode!='prepare':raise BootstrapError('synthetic_staged_pilot_not_armed')
+        self.set_stage('synthetic-source-preparation')
+        self.preparation=full_prepare.Preparation(self.root,self.manifest,self.arm,self.preparation_deadline,app=self.app,allow_loopback_fixture=self.fixture)
+        self.preparation.run_local(source);self.admit_prepared()
+
     def admit_prepared(self):
         self.guard(True)
         record=json.loads((self.baseline/'prepared.json').read_text())
@@ -300,6 +325,7 @@ class FullQualification:
         with path.open('xb') as stream:stream.write(self.feed_bytes);stream.flush();os.fsync(stream.fileno())
         path.chmod(0o400)
         atomic(self.root/'observer.json',self.observer)
+        if self.arm=='tantivy':self.retire_source_payload(record)
         self.clone(True)
         if self.arm=='native' and not self.fixture:self.prepare_oracle()
         self.prepared=True;self.state='prepared';self.set_stage('prepared')
@@ -331,7 +357,7 @@ class FullQualification:
         if self.arm!='native':raise BootstrapError('oracle_native_arm_required')
         if fixture_cases is not None and not self.fixture:raise BootstrapError('fixed_oracle_case_count')
         self.set_stage('oracle-preparation')
-        cases_count=512 if fixture_cases is None else fixture_cases
+        cases_count=(128 if self.synthetic_staged_pilot else 512) if fixture_cases is None else fixture_cases
         self.guard(True);source=self.baseline/'source';sample=self.root/'oracle-sample.jsonl'
         exporter=export_module(self.app/'input/export.py')
         header={'type':'manifest','schema_version':1,'build_id':self.manifest['active_build'],
@@ -389,12 +415,31 @@ class FullQualification:
         for name in ['cases.json','oracle.json']:(self.root/name).chmod(0o400)
         self.cases_sha=sha(self.root/'cases.json');self.oracle_sha=sha(path);self.oracle_ready=True
 
+    def retire_source_payload(self,record):
+        evidence=record.get('evidence',{})
+        if evidence:
+            full_prepare.validate_import(self.manifest,evidence.get('export',{}),evidence.get('import',{}))
+        elif not self.fixture:raise BootstrapError('source_retirement_import_proof_missing')
+        self.baseline_intact();self.set_stage('retiring-tantivy-source')
+        source=canonical(self.baseline/'source');paths=[source/'index.db',source/'index.db.prefix']
+        expected=[self.manifest['byte_size'],self.manifest['prefix_map']['byte_size']]
+        for path,size in zip(paths,expected):
+            canonical(path);info=path.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1 or info.st_size!=size:raise BootstrapError('source_retirement_file_identity')
+        before=shutil.disk_usage(self.root).free;source.chmod(0o700);self.baseline.chmod(0o700)
+        try:
+            for path in paths:path.unlink()
+            record.update(source_payload_retired=True,retired_source_bytes=sum(expected),source_retired_at=time.time(),source_retirement_free_bytes_before=before,source_retirement_free_bytes_after=shutil.disk_usage(self.root).free)
+            atomic(self.baseline/'prepared.json',record);(self.baseline/'prepared.json').chmod(0o444)
+        finally:source.chmod(0o555);self.baseline.chmod(0o555)
+        self.baseline_proof=tree_witness(self.baseline)
+
     def baseline_intact(self):
         if self.baseline_proof!=tree_witness(self.baseline):raise BootstrapError('baseline_changed')
 
     def clone(self,preparing=False):
         self.set_stage('working-clone')
-        self.baseline_intact();self.clone_metrics=clone_baseline(self.baseline,self.working,lambda:self.guard(preparing),exclude_source=self.arm=='native')
+        self.baseline_intact();self.clone_metrics=clone_baseline(self.baseline,self.working,lambda:self.guard(preparing),exclude_source=True)
         self.baseline_intact()
         atomic(self.phase_path,{'schema':1,'acked':0,'inflight':None})
         self.configure()
@@ -404,7 +449,7 @@ class FullQualification:
             'guest':self.observer['guest'],'volume_id':self.observer['volume_ids'][0],'final_volume_gib':20,'nonce':self.nonce,
             'corpus_sha256':hashlib.sha256(encoded({'build_id':self.manifest['active_build'],'database_sha256':self.manifest['sha256'],'prefix_sha256':self.manifest['prefix_map']['sha256']})).hexdigest(),
             'updates_sha256':self.feed_sha,'observer_receipt':str(self.root/'observer.json'),'private_listen':'::',
-            'source_kind':'frozen-release-snapshot','allow_stale':True,'allow_partial':False,'measurement_deadline_s':900,
+            'source_kind':'frozen-synthetic-controller' if self.synthetic_staged_pilot else 'frozen-release-snapshot','allow_stale':True,'allow_partial':False,'measurement_deadline_s':900,
             'engine_settings':{'retrieval_strategy':'global-merge','writer_memory_mb':128,'concurrency':4,'max_candidates':10000},
             'paths':{key:str(value) for key,value in {'snapshot':(self.baseline if self.arm=='native' else self.working)/'source/index.db','overlay':self.working/'overlay.db',
                 'tmp':self.working/'tmp','request':self.working/'request.json','response':self.working/'response.json',
@@ -435,19 +480,28 @@ class FullQualification:
                 continue
             resolved=path.resolve()
             if not resolved.is_relative_to(self.app.resolve()) or not resolved.is_file():raise BootstrapError('checkpoint_binary_path')
+            if name in required and not self.fixture:
+                with path.open('rb') as stream:
+                    if stream.read(4)!=b'\x7fELF':raise BootstrapError('checkpoint_binary_not_elf')
             result[name]=sha(path)
         return result
 
     def preparation_checkpoint(self):
-        if self.phase_mode!='prepare' or not self.prepared or self.child is not None or any(child.poll() is None for child in self.children):
+        owned_children=self.children+([] if self.preparation is None else self.preparation.children)
+        if self.phase_mode!='prepare' or not self.prepared or self.child is not None or any(child.poll() is None for child in owned_children):
             raise BootstrapError('checkpoint_not_quiescent')
         self.guard(True);self.baseline_intact()
         if self.phase()!= {'schema':1,'acked':0,'inflight':None}:raise BootstrapError('checkpoint_cursor_not_zero')
         if self.arm=='native' and not self.oracle_ready:raise BootstrapError('checkpoint_oracle_missing')
         version=os.environ.get('FLY_MACHINE_VERSION')
         if not isinstance(version,str) or not 1<=len(version)<=128 or not version.isascii():raise BootstrapError('checkpoint_instance_missing')
+        for root in [self.baseline,self.working]:
+            for directory,dirs,files in os.walk(root,topdown=False):
+                descriptor=os.open(directory,os.O_RDONLY)
+                try:os.fsync(descriptor)
+                finally:os.close(descriptor)
         prepared_at=time.time()
-        checkpoint={'schema_version':1,'owner':OWNER,'app':self.observer['app'],'machine_id':self.observer['machine_id'],
+        checkpoint={'schema_version':1,'owner':OWNER,'synthetic_staged_pilot':self.synthetic_staged_pilot,'source_manifest':self.manifest,'app':self.observer['app'],'machine_id':self.observer['machine_id'],
             'volume_id':self.observer['volume_ids'][0],'arm':self.arm,'nonce':self.nonce,'manifest_sha256':hashlib.sha256(encoded(self.manifest)).hexdigest(),
             'build_id':self.manifest['active_build'],'source_watermark':self.manifest['source_watermark'],'guest':PREPARATION_GUEST,
             'runtime_instance_id':version,'prepared_at':prepared_at,'started':self.started,'overall_deadline':self.deadline,
@@ -472,7 +526,7 @@ class FullQualification:
         path=canonical(self.root/'preparation-checkpoint.json')
         if not path.is_file() or path.stat().st_size>MAX_CHECKPOINT or sha(path)!=expected:raise BootstrapError('checkpoint_digest_mismatch')
         checkpoint=json.loads(path.read_bytes())
-        identity={'schema_version':1,'owner':OWNER,'app':self.observer['app'],'machine_id':self.observer['machine_id'],
+        identity={'schema_version':1,'owner':OWNER,'synthetic_staged_pilot':self.synthetic_staged_pilot,'source_manifest':self.manifest,'app':self.observer['app'],'machine_id':self.observer['machine_id'],
             'volume_id':self.observer['volume_ids'][0],'arm':self.arm,'nonce':self.nonce,'build_id':self.manifest['active_build'],
             'source_watermark':self.manifest['source_watermark'],'manifest_sha256':hashlib.sha256(encoded(self.manifest)).hexdigest(),'guest':PREPARATION_GUEST}
         if any(checkpoint.get(key)!=value for key,value in identity.items()):raise BootstrapError('checkpoint_identity_mismatch')
@@ -614,7 +668,7 @@ class FullQualification:
         result=self.summary()|{'metrics_calls':self.metrics_calls,'free_bytes':shutil.disk_usage(self.root if self.root.exists() else self.root.parent).free}
         if self.telemetry is None:
             from telemetry import Sampler
-            paths=[self.working/'tantivy/index'] if self.arm=='tantivy' else [self.working/'overlay.db']
+            paths=[self.working/'tantivy'] if self.arm=='tantivy' else [self.baseline/'source',self.working]
             self.telemetry=Sampler(index_paths=paths)
         pids=[os.getpid()]
         if self.child and self.child.poll() is None:pids.append(self.child.pid)
@@ -626,9 +680,10 @@ class FullQualification:
             'app':self.observer['app'],'machine_id':self.observer['machine_id'],'guest':self.observer['guest'],
             'final_volume_gib':self.observer['final_volume_gib'],'public_services':self.observer['public_services'],
             'volume_id':self.observer['volume_ids'][0],'build_id':self.manifest['active_build'],'source_watermark':self.manifest['source_watermark'],
-            'oracle_ready':self.oracle_ready,'cases_sha256':self.cases_sha,'oracle_sha256':self.oracle_sha,
+            'synthetic_staged_pilot':self.synthetic_staged_pilot,'source_actor_count':self.manifest['actor_count'],'oracle_ready':self.oracle_ready,'cases_sha256':self.cases_sha,'oracle_sha256':self.oracle_sha,
             'actor_count':self.manifest['actor_count'],'updates_sha256':self.feed_sha,'affected_actors':64,'feed_batches':9,'reset_count':self.reset_count,
-            'source_kind':'frozen-release-snapshot','source_ready_attestation':False,'performance_qualified':False,
+            'source_kind':'frozen-synthetic-controller' if self.synthetic_staged_pilot else 'frozen-release-snapshot','source_ready_attestation':False,'performance_qualified':False,
+            'resource_path_scope':'tantivy-working-index' if self.arm=='tantivy' else 'native-baseline-source-and-working-overlay',
             'native_overlay_baseline':'fresh-empty-independent' if self.arm=='native' else None,'overall_deadline':self.deadline,'failures':list(self.failures[-4:])}
         if self.prepared:value.update(acked=self.phase()['acked'],clone=self.clone_metrics,corpus_sha256=self.config['corpus_sha256'],observer_receipt_sha256=sha(self.root/'observer.json'))
         return value
@@ -726,9 +781,30 @@ def main():
     if os.environ.get('QUAL_MODE')!='full':raise BootstrapError('explicit_full_mode_required')
     role=os.environ.get('QUAL_ROLE');arm={'native-control':'native','tantivy-control':'tantivy'}.get(role)
     if arm is None:raise BootstrapError('engine_role_required')
-    observer=json.loads(os.environ['QUAL_OBSERVER_JSON']);manifest=json.loads((APP/'source-manifest.json').read_text())
-    phase=os.environ.get('QUAL_PHASE','legacy')
-    service=FullQualification(os.environ.get('QUAL_ROOT','/data/qualification/run'),manifest,arm,observer,os.environ['QUAL_PILOT_NONCE'],float(os.environ['QUAL_DEADLINE']),phase=phase,app=APP)
+    observer=json.loads(os.environ['QUAL_OBSERVER_JSON']);phase=os.environ.get('QUAL_PHASE','legacy')
+    pilot_flag=os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT')
+    if pilot_flag not in {None,'1'}:raise BootstrapError('synthetic_staged_pilot_not_armed')
+    if phase!='resume' and 'QUAL_CHECKPOINT_SHA256' in os.environ:raise BootstrapError('prepare_checkpoint_capability_forbidden')
+    synthetic=pilot_flag=='1';pilot_source=None
+    root=Path(os.environ.get('QUAL_ROOT','/data/qualification/run'))
+    if synthetic:
+        if phase not in {'prepare','resume'}:raise BootstrapError('synthetic_staged_pilot_not_armed')
+        deadline=float(os.environ['QUAL_DEADLINE'])
+        if not math.isfinite(deadline) or not time.time()<deadline<=time.time()+900:raise BootstrapError('synthetic_staged_pilot_not_armed')
+        observer_check(observer,os.environ['QUAL_PILOT_NONCE'],False,phase)
+        if canonical(root).parent!=Path('/data/qualification'):raise BootstrapError('owned_scratch_required')
+        canonical(root.parent).mkdir(mode=0o700,exist_ok=True)
+        os.environ.pop('QUAL_SOURCE_ACCESS',None)
+        if phase=='prepare':
+            import full_fixture
+            try:local=full_fixture.build('/data/qualification/staged-pilot-input',app=APP)
+            except BaseException:
+                if Path('/data/qualification/staged-pilot-input').exists():full_fixture.cleanup('/data/qualification/staged-pilot-input')
+                raise
+            manifest=local['manifest'];pilot_source=local['source']
+        else:manifest=checkpoint_manifest(root,os.environ['QUAL_CHECKPOINT_SHA256'])
+    else:manifest=json.loads((APP/'source-manifest.json').read_text())
+    service=FullQualification(root,manifest,arm,observer,os.environ['QUAL_PILOT_NONCE'],float(os.environ['QUAL_DEADLINE']),phase=phase,app=APP,synthetic_staged_pilot=synthetic)
     parent=canonical(service.root.parent);parent.mkdir(mode=0o700,exist_ok=True)
     if not parent.is_dir():raise BootstrapError('owned_scratch_parent')
     server=None;thread=None
@@ -744,7 +820,11 @@ def main():
             service.resume_checkpoint(os.environ['QUAL_CHECKPOINT_SHA256'])
         else:
             if 'QUAL_CHECKPOINT_SHA256' in os.environ:raise BootstrapError('prepare_checkpoint_capability_forbidden')
-            access=json.loads(os.environ.pop('QUAL_SOURCE_ACCESS'));service.prepare(access);del access
+            if synthetic:
+                try:service.prepare_local(pilot_source)
+                finally:full_fixture.cleanup('/data/qualification/staged-pilot-input')
+            else:
+                access=json.loads(os.environ.pop('QUAL_SOURCE_ACCESS'));service.prepare(access);del access
             if phase=='prepare':
                 print('QUALIFICATION_PREPARATION_COMPLETE '+json.dumps(service.preparation_checkpoint(),separators=(',',':')),flush=True);return
         print(json.dumps({'event':'FULL_PREPARED',**service.summary()}),flush=True)
