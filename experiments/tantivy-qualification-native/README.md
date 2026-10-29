@@ -28,6 +28,18 @@ Pilot scratch has a 250 MiB payload budget and 180-second wall deadline; tempora
 payloads and child processes are removed on exit. Compiler caches/tool binaries
 are separate. `results.json`, when present, is local synthetic evidence only.
 
+## Admitted snapshot startup
+
+`TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT=1` opens an existing verified prefix admission
+cache. Missing, invalid, or stale admission fails closed. An unset flag or any
+other value retains full snapshot validation. This flag only changes the isolated
+writer; production serving and the native evaluator are unchanged.
+
+`test_admitted_startup.py` runs a real Linux writer against a synthetic 60 MiB
+FLATPX05 fixture. It checks admission failures, committed mutation, and process
+`rchar` evidence that admitted startup avoids a full prefix read. The small
+[receipt](admitted-startup.json) records the binary hash and cleaned scratch.
+
 ## Private file-inbox protocol
 
 Provision a fresh independent cloud directory, mode 0700, containing an `owner`

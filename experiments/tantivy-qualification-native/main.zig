@@ -149,7 +149,13 @@ pub fn main() !void {
     var local = native.LocalDb.init(alloc);
     defer local.deinit();
     try local.open();
-    try local.swapSnapshot(snapshot);
+    if (std.c.getenv("TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT")) |value| {
+        if (std.mem.eql(u8, std.mem.span(value), "1")) {
+            var prepared = try local.prepareAdmittedSnapshot(snapshot);
+            defer prepared.deinit();
+            local.activateSnapshot(&prepared);
+        } else try local.swapSnapshot(snapshot);
+    } else try local.swapSnapshot(snapshot);
     const conn = local.getConn() orelse return error.NoConn;
     try conn.exec("PRAGMA foreign_keys=ON", .{});
     try conn.exec("CREATE TABLE IF NOT EXISTS qualification_actor_state(did TEXT PRIMARY KEY, version INTEGER NOT NULL, hash TEXT NOT NULL) WITHOUT ROWID", .{});
