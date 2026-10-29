@@ -12,6 +12,13 @@ not order equal-second writes, moderation changes, or unversioned activity
 updates. The private reconciliation API orders accepted observations separately;
 legacy generic writes remain strict and are disabled after migration.
 
+Current-source reads encode ordered actor columns as bounded JSON tuples in one
+SQLite result. Combined profile/policy observations retain one SQL snapshot and
+source clock. The decoder validates tuple width, types, identity order and missing
+rows before reconciliation. Scores use 17-digit numeric text to preserve source
+float-to-f32 rounding. Byte quotas, polling reserves and restart persistence still
+charge the actual response body; compact encoding does not bypass those limits.
+
 `--anti-entropy-pages 2` bounds additional identity-sweep pages per polling cycle.
 The source-identity sweep discovers new backdated actors; the backend-identity
 sweep discovers changed existing actors and source deletions whose tombstones

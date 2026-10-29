@@ -1,6 +1,7 @@
 """Bounded read-only current-source observations; never use as timestamp replay writes."""
 
 import json
+import re
 from contextlib import nullcontext
 
 
@@ -12,6 +13,31 @@ def valid_did(value):
     ):
         raise ValueError("invalid bounded actor identity")
     return value
+
+
+def compact_array(raw, replay, label):
+    def reject_constant(_):raise ValueError()
+    try:value=json.loads(raw,parse_constant=reject_constant)
+    except (TypeError,ValueError):raise replay.SafeError('invalid compact '+label) from None
+    if not isinstance(value,list):raise replay.SafeError('invalid compact '+label+' array')
+    return value
+
+
+def compact_profile(values, expected, replay):
+    if not isinstance(values,list) or len(values)!=1+len(replay.ACTOR_COLUMNS):
+        raise replay.SafeError('compact actor row width differs')
+    if values[0]!=expected:raise replay.SafeError('compact actor identity order differs')
+    row=dict(zip(replay.ACTOR_COLUMNS,values[1:]))
+    text_columns={'did','handle','display_name','avatar_url','labels','created_at','associated','pds'}
+    for key,value in row.items():
+        if value is None:continue
+        if key in text_columns and not isinstance(value,str):raise replay.SafeError('compact actor text type differs')
+        if key not in text_columns and key!='quality_score' and type(value) is not int:raise replay.SafeError('compact actor integer type differs')
+        if key=='quality_score':
+            if not isinstance(value,str) or len(value)>64 or re.fullmatch(r'-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:e[+-]?[0-9]+)?',value) is None:raise replay.SafeError('compact actor score type differs')
+            row[key]=float(value)
+    if row['did'] is None and any(value is not None for value in row.values()):raise replay.SafeError('compact absent actor has payload')
+    return row
 
 
 class CurrentStateSource:
@@ -35,32 +61,26 @@ class CurrentStateSource:
         rows = self.source.select(
             self.replay.CURRENT_SQL, [json.dumps(ordered, separators=(",", ":"))]
         )
-        if len(rows) != len(ordered):
-            raise self.replay.SafeError("current-state observation is incomplete")
-        observations = []
-        source_now = None
-        for expected, row in zip(ordered, rows):
-            if row.get("requested_did") != expected:
-                raise self.replay.SafeError("current-state identity order differs")
-            observed_at = self.replay.number(
-                row.get("source_now"), "source observation clock"
-            )
-            if source_now is not None and source_now != observed_at:
-                raise self.replay.SafeError(
-                    "current-state source clock differs within one statement"
-                )
-            source_now = observed_at
-            if row.get("did") is None:
-                actor = self.replay.deletion(expected, 0)
-                source_updated_at = None
+        if not isinstance(rows,list) or len(rows)!=1 or not isinstance(rows[0],dict) or set(rows[0])!={'observations_json'}:
+            raise self.replay.SafeError('current-state compact envelope differs')
+        profiles=compact_array(rows[0]['observations_json'],self.replay,'observation')
+        if len(profiles)!=len(ordered):
+            raise self.replay.SafeError('current-state observation is incomplete')
+        observations=[];source_now=None
+        for expected,values in zip(ordered,profiles):
+            if not isinstance(values,list) or len(values)!=2+len(self.replay.ACTOR_COLUMNS):
+                raise self.replay.SafeError('compact observation row width differs')
+            observed_at=self.replay.number(values[1],'source observation clock')
+            if source_now is not None and source_now!=observed_at:
+                raise self.replay.SafeError('current-state source clock differs within one statement')
+            source_now=observed_at
+            row=compact_profile([values[0],*values[2:]],expected,self.replay)
+            if row['did'] is None:
+                actor=self.replay.deletion(expected,0);source_updated_at=None
             else:
-                if row["did"] != expected:
-                    raise self.replay.SafeError("current-state joined identity differs")
-                actor = self.replay.actor_record(row)
-                source_updated_at = actor["version"]
-            observations.append(
-                {"actor": actor, "source_updated_at": source_updated_at}
-            )
+                if row['did']!=expected:raise self.replay.SafeError('current-state joined identity differs')
+                actor=self.replay.actor_record(row);source_updated_at=actor['version']
+            observations.append({'actor':actor,'source_updated_at':source_updated_at})
         return {"source_now": source_now, "observations": observations}
 
     def source_page(self, after_did="", limit=500):
@@ -602,7 +622,7 @@ class CurrentPolicySource(CurrentStateSource):
         row = rows[0]
         now = self.replay.number(row.get("source_now"), "policy source clock")
         try:
-            profiles = json.loads(row["actors_json"])
+            profiles = compact_array(row["actors_json"], self.replay, "policy profiles")
             overrides = json.loads(row["overrides_json"])
             domains = json.loads(row["domains_json"])
         except (KeyError, TypeError, ValueError):
@@ -636,9 +656,8 @@ class CurrentPolicySource(CurrentStateSource):
             "blocked_domains": sorted({domain.lower() for domain in domains}),
         }
         observations = []
-        for did, profile in zip(ordered, profiles):
-            if not isinstance(profile, dict) or profile.get("requested_did") != did:
-                raise self.replay.SafeError("policy profile identity differs")
+        for did, values in zip(ordered, profiles):
+            profile = compact_profile(values, did, self.replay)
             if profile.get("did") is None:
                 actor = self.replay.deletion(did, 0)
                 stamp = None

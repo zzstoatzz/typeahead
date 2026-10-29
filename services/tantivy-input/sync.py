@@ -18,12 +18,16 @@ import urllib.parse
 import urllib.request
 
 ACTOR_COLUMNS=('did','handle','display_name','avatar_url','hidden','labels','created_at','associated','pds','followers_count','follows_count','posts_count','last_activity_at','quality_score','updated_at')
+ACTOR_TUPLE_SQL=tuple("CASE WHEN quality_score IS NULL THEN NULL WHEN typeof(quality_score) IN ('integer','real') THEN printf('%!.17g', quality_score) ELSE quality_score END" if column=='quality_score' else column for column in ACTOR_COLUMNS)
 CLOCK_SQL='SELECT unixepoch() AS source_now'
 ACTORS_SQL='SELECT '+', '.join(ACTOR_COLUMNS)+' FROM actors WHERE updated_at > ?1 AND updated_at >= ?2 AND (updated_at > ?2 OR did > ?3) AND updated_at <= ?4 ORDER BY updated_at, did LIMIT ?5'
 TOMBSTONES_SQL="SELECT t.did, t.deleted_at, CASE WHEN a.handle <> '' AND a.updated_at >= t.deleted_at AND a.updated_at <= ?4 THEN 1 ELSE 0 END AS superseded FROM tombstones AS t LEFT JOIN actors AS a ON a.did = t.did WHERE t.deleted_at > ?1 AND t.deleted_at >= ?2 AND (t.deleted_at > ?2 OR t.did > ?3) AND t.deleted_at <= ?4 ORDER BY t.deleted_at, t.did LIMIT ?5"
-CURRENT_SQL = ('WITH requested AS (SELECT value AS did FROM json_each(?1)) SELECT requested.did AS requested_did, '
+CURRENT_ROWS_SQL = ('WITH requested AS (SELECT value AS did FROM json_each(?1)) SELECT requested.did AS requested_did, unixepoch() AS source_now, '
     + ', '.join('a.' + column for column in ACTOR_COLUMNS)
-    + ', unixepoch() AS source_now FROM requested LEFT JOIN actors AS a ON a.did = requested.did ORDER BY requested.did')
+    + ' FROM requested LEFT JOIN actors AS a ON a.did = requested.did ORDER BY requested.did')
+CURRENT_SQL = ('SELECT json_group_array(json_array('
+    + ', '.join(['requested_did', 'source_now', *ACTOR_TUPLE_SQL])
+    + ')) AS observations_json FROM (' + CURRENT_ROWS_SQL + ')')
 SOURCE_WALK_SQL = 'SELECT did FROM actors WHERE did > ?1 ORDER BY did LIMIT ?2'
 CURRENT_POLICY_SQL = (
     'WITH requested AS (SELECT value AS did FROM json_each(?1)), '
@@ -32,8 +36,8 @@ CURRENT_POLICY_SQL = (
     + ' FROM requested LEFT JOIN actors AS a ON a.did = requested.did ORDER BY requested.did), '
     'policy_overrides AS (SELECT did, action FROM mod_overrides ORDER BY did LIMIT 10001), '
     'policy_domains AS (SELECT domain FROM blocked_domains ORDER BY domain LIMIT 10001) '
-    'SELECT (SELECT json_group_array(json_object('
-    + ', '.join("'" + name + "', " + name for name in ['requested_did', *ACTOR_COLUMNS])
+    'SELECT (SELECT json_group_array(json_array('
+    + ', '.join(['requested_did', *ACTOR_TUPLE_SQL])
     + ')) FROM profile_rows) AS actors_json, '
     "(SELECT json_group_array(json_object('did', did, 'action', action)) FROM policy_overrides) AS overrides_json, "
     '(SELECT json_group_array(domain) FROM policy_domains) AS domains_json, unixepoch() AS source_now'
@@ -153,7 +157,7 @@ class Turso:
             payload=execute['response']['result']
             if payload.get('affected_row_count',0)!=0:raise SafeError('source SELECT unexpectedly affected rows')
             columns=[c['name'] for c in payload['cols']]
-            expected=(['source_now'] if sql==CLOCK_SQL else list(ACTOR_COLUMNS) if sql==ACTORS_SQL else ['requested_did',*ACTOR_COLUMNS,'source_now'] if sql==CURRENT_SQL else ['actors_json','overrides_json','domains_json','source_now'] if sql==CURRENT_POLICY_SQL else ['did'] if sql==SOURCE_WALK_SQL else ['did','deleted_at','superseded'])
+            expected=(['source_now'] if sql==CLOCK_SQL else list(ACTOR_COLUMNS) if sql==ACTORS_SQL else ['observations_json'] if sql==CURRENT_SQL else ['actors_json','overrides_json','domains_json','source_now'] if sql==CURRENT_POLICY_SQL else ['did'] if sql==SOURCE_WALK_SQL else ['did','deleted_at','superseded'])
             if columns!=expected:raise SafeError('source response column contract changed')
             rows=[]
             for cells in payload['rows']:
