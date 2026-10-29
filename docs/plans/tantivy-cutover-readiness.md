@@ -56,11 +56,31 @@ replay and process restart completed. Tantivy had zero truth/transport failures;
 native mismatches remain recorded. Cleanup retired all trial resources. The
 128-actor fixture supplies lifecycle evidence only, not full-corpus performance.
 
-The companion MPS branch `codex/tantivy-controller-compatibility` at `25e5509`
-adds strict engine identity, native rollback with conditional compensation,
-source-artifact retention and an explicit automatic-refresh fence. Its offline
-checks passed; it is not deployed. Complete engine-specific publication and
-installation remain open work.
+The companion MPS branch `codex/tantivy-controller-compatibility` includes
+`ec61dbd` and `fba9ce8`: strict engine identity, a persistent native rollback
+anchor with conditional compensation, immutable source-artifact retention and
+checksum-pinned reuse of Typeahead's installer. Its actual HTTP/filesystem and
+tiny Rust freeze/install/restart checks passed; it is not deployed. The refresh
+fence remains until the complete cloud lifecycle is qualified.
+
+Typeahead commits `a9745b4` and `02cda68` add source-linked portable bundles,
+publication through the existing cloud-owned artifact publisher, and contracts
+for two independently addressed Tantivy slots. The native source manifest is
+verified by exact bytes before the immutable Tantivy manifest is published;
+this path cannot change a mutable production pointer. Real local Rust and
+rclone retry/corruption tests passed. Slot creation/deployment and complete live
+refresh remain unqualified. The README remains an accurate entry point; these
+branch-only contracts belong in the linked adapter documentation.
+
+The [bounded Fly source sample](../evals/tantivy-dev-20261028/source-policy-wire-comparison.json)
+measured the actual combined profile/policy response at 2,233,300 bytes for
+4,000 profiles, versus 1,285,283 for a tuple projection prototype (42.45% fewer
+response bytes). The earlier plain-current-state sample is not the combined
+policy path and cannot establish its quota requirement. The prototype precedes
+the final score-preserving encoding; sequential timings have uncontrolled cache
+state and do not prove a speedup. The default two pages per minute remains far
+too slow for daily full reconciliation. Wire size, writer progress and completed
+round duration must all be verified on the actual candidate.
 
 The [operator-state audit](../evals/tantivy-dev-20261028/native-operator-inventory.json)
 found source-one prefix writes only in tests across 13 revisions, with the flag

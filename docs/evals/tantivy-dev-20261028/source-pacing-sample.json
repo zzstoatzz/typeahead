@@ -1,0 +1,59 @@
+{
+  "kind": "source_pacing_sample",
+  "actors": 4000,
+  "wire_bytes": 3239384,
+  "source_requests": 16,
+  "wall_s": 11.106,
+  "serialized_actor_bytes": 1815052,
+  "actors_with_nonzero_counts_or_activity": 3377,
+  "strata": [
+    {
+      "actors": 500,
+      "wire_bytes": 407185,
+      "wall_s": 1.715
+    },
+    {
+      "actors": 500,
+      "wire_bytes": 404042,
+      "wall_s": 1.592
+    },
+    {
+      "actors": 500,
+      "wire_bytes": 405603,
+      "wall_s": 1.559
+    },
+    {
+      "actors": 500,
+      "wire_bytes": 404059,
+      "wall_s": 1.683
+    },
+    {
+      "actors": 500,
+      "wire_bytes": 410948,
+      "wall_s": 1.433
+    },
+    {
+      "actors": 500,
+      "wire_bytes": 405966,
+      "wall_s": 1.216
+    },
+    {
+      "actors": 500,
+      "wire_bytes": 407143,
+      "wall_s": 1.201
+    },
+    {
+      "actors": 500,
+      "wire_bytes": 394438,
+      "wall_s": 0.706
+    }
+  ],
+  "read_only": true,
+  "max_bytes": 33554432,
+  "max_seconds": 90,
+  "observed_at": 1793313063,
+  "machine_id": "840e95a2153308",
+  "app": "typeahead-tantivy-dev",
+  "source_client": "deployed-source-v2",
+  "sample_scope": "eight bounded lexical source slices; no backend writes or round coverage claim"
+}
