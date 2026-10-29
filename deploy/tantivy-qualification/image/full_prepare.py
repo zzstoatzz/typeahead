@@ -182,7 +182,8 @@ class Preparation:
             'NATIVE_QUAL_ROOT':str(self.root), 'TYPEAHEAD_EVAL_SNAPSHOT':str(database),
             'LOCAL_DB_PATH':str(self.stage/'overlay.db'), 'SQLITE_TMPDIR':str(self.stage/'tmp'),
             'NATIVE_QUAL_REQUEST':str(self.stage/'request.json'), 'NATIVE_QUAL_RESPONSE':str(self.stage/'response.json'),
-            'NATIVE_QUAL_FEED_SHA256':'0'*64, 'NATIVE_QUAL_SECONDS':'1'})
+            'NATIVE_QUAL_FEED_SHA256':'0'*64, 'NATIVE_QUAL_SECONDS':'1',
+            'TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT':'1'})
         self.wait([child])
         with closing(sqlite3.connect(f'file:{self.stage}/overlay.db?mode=ro', uri=True)) as db:
             if db.execute('SELECT count(*) FROM actor_overlay').fetchone()[0] or db.execute('SELECT count(*) FROM prefix_overlay').fetchone()[0]:
