@@ -4,10 +4,16 @@ QUAL_MODE=full explicitly enables the 5,400-second guest lease. Preparation has 
 3,600-second cap. Neither engine starts before POST /serve; /pause, /restart and
 /reset operate only on this guest's owned working clone. Baseline SQLite/meta
 files are copied; immutable prefix/segment files are linked and never chmodded.
-Native prefix admission is repeated after linking because its ctime changed.
+Native snapshots stay in the immutable baseline; only the overlay is cloned.
+QUAL_PHASE=prepare admits only two performance CPUs / 4 GiB, writes a bounded
+preparation checkpoint and exits without serving. QUAL_PHASE=resume admits only
+two shared CPUs / 1 GiB on the same 20 GiB volume. It checks the caller-pinned
+checkpoint, immutable file witnesses, fixed inputs and installed executables; no
+source download/import, prefix rehash or oracle pass is repeated. Original
+preparation/overall deadlines persist. Unset QUAL_PHASE keeps legacy full mode.
+
 Shutdown allows 20 seconds for the entrypoint to reap its isolated child groups;
-runtime-exit observation shares the control lock with restart/reset. Native prefix
-re-admission uses the remaining preparation lease, not a small-fixture timeout.
+runtime-exit observation shares the control lock with restart/reset.
 
 GET /prepared exposes metadata. All other controls require the independent
 X-Pilot-Authorization capability: GET /inputs/{updates,cases,oracle} or /metrics; empty-body
@@ -47,7 +53,11 @@ from types import SimpleNamespace
 
 import full_prepare
 
+APP = Path('/app')
 OWNER = full_prepare.OWNER
+PREPARATION_GUEST = {"cpu_kind":"performance","cpus":2,"memory_mb":4096}
+FINAL_GUEST = {"cpu_kind":"shared","cpus":2,"memory_mb":1024}
+MAX_CHECKPOINT = 4 * 1024 * 1024
 GIB = 1024 ** 3
 MAX_FEED = 8 * 1024 * 1024
 MAX_ACTOR = 8192
@@ -101,13 +111,13 @@ def canonical(path):
     return path
 
 
-def observer_check(observer, nonce, fixture=False):
+def observer_check(observer, nonce, fixture=False, phase="legacy"):
     required={'app','machine_id','guest','volume_ids','final_volume_gib','public_services','machines_api_response_sha256'}
     if not isinstance(observer,dict) or not required<=observer.keys():raise BootstrapError('observer_shape')
     if not isinstance(nonce,str) or not 16<=len(nonce)<=128 or not nonce.isascii():raise BootstrapError('run_nonce')
     if not observer['app'].startswith('typeahead-qual-') or observer['machine_id'] in full_prepare.PROTECTED:
         raise BootstrapError('protected_or_unowned_machine')
-    if observer['guest']!={'cpu_kind':'shared','cpus':2,'memory_mb':1024} or observer['final_volume_gib']!=20 or observer['public_services']!=[]:
+    if observer['guest']!=(PREPARATION_GUEST if phase=='prepare' else FINAL_GUEST) or observer['final_volume_gib']!=20 or observer['public_services']!=[]:
         raise BootstrapError('provider_shape')
     if len(observer['volume_ids'])!=1 or not re.fullmatch('[0-9a-f]{64}',observer['machines_api_response_sha256']):
         raise BootstrapError('provider_receipt')
@@ -132,13 +142,14 @@ def tree_witness(root):
     return result
 
 
-def clone_baseline(baseline, destination, guard):
+def clone_baseline(baseline, destination, guard, exclude_source=False):
     canonical(baseline);canonical(destination)
     if destination.exists():raise BootstrapError('working_copy_exists')
     destination.mkdir(mode=0o700)
     counts={'hardlinked_immutable_files':0,'copied_mutable_files':0}
     try:
         for directory,dirs,files in os.walk(baseline):
+            if exclude_source and Path(directory)==baseline and 'source' in dirs:dirs.remove('source')
             for name in dirs:
                 source=Path(directory)/name
                 if source.is_symlink():raise BootstrapError('baseline_symlink')
@@ -222,11 +233,13 @@ def generate_feed(manifest, source, exporter_path, deadline, count=64):
 
 
 class FullQualification:
-    def __init__(self,root,manifest,arm,observer,nonce,deadline,*,app='/app',fixture=False):
+    def __init__(self,root,manifest,arm,observer,nonce,deadline,*,app='/app',fixture=False,phase='legacy'):
         now=time.time()
+        if phase not in {'legacy','prepare','resume'}:raise BootstrapError('exclusive_qualification_phase')
+        self.phase_mode=phase
         if not math.isfinite(deadline) or not now<deadline<=now+5400:raise BootstrapError('overall_deadline')
         self.root=canonical(root);self.app=Path(app);self.manifest=full_prepare.manifest_check(manifest);self.arm=arm
-        self.observer=observer_check(observer,nonce,fixture);self.nonce=nonce;self.fixture=fixture
+        self.observer=observer_check(observer,nonce,fixture,phase);self.nonce=nonce;self.fixture=fixture
         if arm not in {'native','tantivy'}:raise BootstrapError('arm')
         if not fixture and self.root.parent!=Path('/data/qualification'):raise BootstrapError('owned_scratch_required')
         self.deadline=deadline;self.preparation_deadline=min(deadline-20,now+3600);self.started=now
@@ -263,27 +276,6 @@ class FullQualification:
         self.failures.append({key:value for key,value in diagnostic.items() if key!='event'})
         print(json.dumps(diagnostic),flush=True)
         return diagnostic
-
-    def run_prefix_admission(self,command,env,preparing):
-        self.guard(preparing)
-        stop_at=min(self.preparation_deadline if preparing else self.deadline-20,self.deadline-20)
-        budget=stop_at-time.time()
-        if budget<=0:raise BootstrapError('guest_deadline')
-        began=time.monotonic();until=began+budget
-        child=subprocess.Popen(command,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
-        self.children.append(child)
-        try:
-            while child.poll() is None:
-                remaining=until-time.monotonic()
-                if remaining<=0:raise subprocess.TimeoutExpired(command,budget)
-                self.guard(preparing)
-                try:child.wait(timeout=min(.1,remaining))
-                except subprocess.TimeoutExpired:pass
-            if child.returncode:raise subprocess.CalledProcessError(child.returncode,command)
-            self.guard(preparing)
-            return {'budget_s':round(budget,3),'elapsed_s':round(time.monotonic()-began,3),'returncode':child.returncode}
-        except BaseException:
-            self.stop_children();raise
 
     def prepare(self,access):
         self.set_stage('source-preparation')
@@ -371,12 +363,15 @@ class FullQualification:
                 self.wait_preparation([child])
         finally:sample.unlink(missing_ok=True)
         if (self.root/'cases.json').stat().st_size>4*1024*1024:raise BootstrapError('oracle_cases_budget')
+        verification=json.loads((self.baseline/'prepared.json').read_text()).get('source_verification_sha256')
+        if verification is None and not self.fixture:raise BootstrapError('source_verification_receipt_missing')
+        verified_args=[] if verification is None else full_prepare.verified_input_args(source,verification)
         seconds=max(1,min(1800,int(self.preparation_deadline-time.time())))
         with (self.root/'oracle-export.log').open('xb') as export_log,(self.root/'oracle-run.log').open('xb') as oracle_log:
             producer=subprocess.Popen([sys.executable,str(self.app/'input/export.py'),'--manifest',str(source/'manifest.json'),
                 '--database',str(source/'index.db'),'--prefix',str(source/'index.db.prefix'),'--build-id',self.manifest['active_build'],
                 '--scratch-root',str(self.root),'--output','-','--receipt',str(self.root/'oracle-export-receipt.json'),
-                '--max-seconds',str(seconds)],env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,start_new_session=True)
+                '--max-seconds',str(seconds),*verified_args],env=env,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,start_new_session=True)
             self.children.append(producer)
             try:
                 consumer=subprocess.Popen([str(oracle),'run','--input','-','--queries',str(self.root/'cases.json'),'--updates',str(self.root/'updates.json'),
@@ -399,26 +394,107 @@ class FullQualification:
 
     def clone(self,preparing=False):
         self.set_stage('working-clone')
-        self.baseline_intact();self.clone_metrics=clone_baseline(self.baseline,self.working,lambda:self.guard(preparing))
-        if self.arm=='native':
-            env={key:value for key,value in os.environ.items() if key in {'PATH','HOME','LANG'}}
-            env.update(TYPEAHEAD_ADMIT_PREFIX_PATH=str(self.working/'source/index.db.prefix'),TYPEAHEAD_ADMIT_PREFIX_SHA256=self.manifest['prefix_map']['sha256'])
-            self.set_stage('native-prefix-readmission')
-            self.clone_metrics['native_prefix_readmission']=self.run_prefix_admission([str(self.app/'bin/admit-prefix')],env,preparing)
-            prefix=self.working/'source/index.db.prefix';cache=prefix.with_name(prefix.name+'.admitted')
-            if not cache.exists() or int.from_bytes(cache.read_bytes()[72:88],'little',signed=True)!=prefix.stat().st_ctime_ns:raise BootstrapError('native_prefix_revalidation')
+        self.baseline_intact();self.clone_metrics=clone_baseline(self.baseline,self.working,lambda:self.guard(preparing),exclude_source=self.arm=='native')
         self.baseline_intact()
         atomic(self.phase_path,{'schema':1,'acked':0,'inflight':None})
+        self.configure()
+
+    def configure(self):
         self.config={'schema':1,'arm':self.arm,'root':str(self.root),'app':self.observer['app'],'machine_id':self.observer['machine_id'],
             'guest':self.observer['guest'],'volume_id':self.observer['volume_ids'][0],'final_volume_gib':20,'nonce':self.nonce,
             'corpus_sha256':hashlib.sha256(encoded({'build_id':self.manifest['active_build'],'database_sha256':self.manifest['sha256'],'prefix_sha256':self.manifest['prefix_map']['sha256']})).hexdigest(),
             'updates_sha256':self.feed_sha,'observer_receipt':str(self.root/'observer.json'),'private_listen':'::',
             'source_kind':'frozen-release-snapshot','allow_stale':True,'allow_partial':False,'measurement_deadline_s':900,
             'engine_settings':{'retrieval_strategy':'global-merge','writer_memory_mb':128,'concurrency':4,'max_candidates':10000},
-            'paths':{key:str(value) for key,value in {'snapshot':self.working/'source/index.db','overlay':self.working/'overlay.db',
+            'paths':{key:str(value) for key,value in {'snapshot':(self.baseline if self.arm=='native' else self.working)/'source/index.db','overlay':self.working/'overlay.db',
                 'tmp':self.working/'tmp','request':self.working/'request.json','response':self.working/'response.json',
                 'tantivy_data':self.working/'tantivy','phase_state':self.phase_path}.items()}}
         atomic(self.root/'run.json',self.config)
+
+    def persistent_witness(self,path):
+        result={}
+        canonical(path)
+        if not path.is_dir():raise BootstrapError('checkpoint_tree_missing')
+        for directory,dirs,files in os.walk(path):
+            for name in dirs+files:
+                item=Path(directory)/name;info=item.lstat()
+                if stat.S_ISLNK(info.st_mode) or not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)):
+                    raise BootstrapError('checkpoint_special_file')
+                result[str(item.relative_to(path))]=[info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns,stat.S_IMODE(info.st_mode)]
+                if len(result)>10000:raise BootstrapError('checkpoint_inventory_budget')
+        return result
+
+    def installed_fingerprints(self):
+        required=['bin/typeahead-tantivy'] if self.arm=='tantivy' else ['bin/eval-server','bin/qualification-native','bin/admit-prefix','tantivy-raw-oracle']
+        optional=['entrypoint.py','full_bootstrap.py','full_prepare.py','telemetry.py','input/export.py','source-manifest.json','identity-quarantine.json']
+        result={}
+        for name in required+optional:
+            path=self.app/name
+            if not path.exists():
+                if name in required:raise BootstrapError('checkpoint_binary_missing')
+                continue
+            resolved=path.resolve()
+            if not resolved.is_relative_to(self.app.resolve()) or not resolved.is_file():raise BootstrapError('checkpoint_binary_path')
+            result[name]=sha(path)
+        return result
+
+    def preparation_checkpoint(self):
+        if self.phase_mode!='prepare' or not self.prepared or self.child is not None or any(child.poll() is None for child in self.children):
+            raise BootstrapError('checkpoint_not_quiescent')
+        self.guard(True);self.baseline_intact()
+        if self.phase()!= {'schema':1,'acked':0,'inflight':None}:raise BootstrapError('checkpoint_cursor_not_zero')
+        if self.arm=='native' and not self.oracle_ready:raise BootstrapError('checkpoint_oracle_missing')
+        version=os.environ.get('FLY_MACHINE_VERSION')
+        if not isinstance(version,str) or not 1<=len(version)<=128 or not version.isascii():raise BootstrapError('checkpoint_instance_missing')
+        prepared_at=time.time()
+        checkpoint={'schema_version':1,'owner':OWNER,'app':self.observer['app'],'machine_id':self.observer['machine_id'],
+            'volume_id':self.observer['volume_ids'][0],'arm':self.arm,'nonce':self.nonce,'manifest_sha256':hashlib.sha256(encoded(self.manifest)).hexdigest(),
+            'build_id':self.manifest['active_build'],'source_watermark':self.manifest['source_watermark'],'guest':PREPARATION_GUEST,
+            'runtime_instance_id':version,'prepared_at':prepared_at,'started':self.started,'overall_deadline':self.deadline,
+            'preparation_deadline':self.preparation_deadline,'baseline_witness':self.persistent_witness(self.baseline),
+            'working_witness':self.persistent_witness(self.working),'updates_sha256':self.feed_sha,'cases_sha256':self.cases_sha,
+            'oracle_sha256':self.oracle_sha,'oracle_ready':self.oracle_ready,'binaries':self.installed_fingerprints(),'clone':self.clone_metrics}
+        if len(encoded(checkpoint))>MAX_CHECKPOINT:raise BootstrapError('checkpoint_byte_budget')
+        atomic(self.root/'preparation-checkpoint.json',checkpoint)
+        descriptor=os.open(self.root,os.O_RDONLY)
+        try:os.fsync(descriptor)
+        finally:os.close(descriptor)
+        receipt={key:checkpoint[key] for key in ['app','machine_id','volume_id','arm','nonce','build_id','runtime_instance_id','prepared_at']}
+        receipt.update(checkpoint_sha256=sha(self.root/'preparation-checkpoint.json'),prepared=True,guest=dict(PREPARATION_GUEST))
+        return receipt
+
+    def resume_checkpoint(self,expected):
+        if self.phase_mode!='resume' or not isinstance(expected,str) or not re.fullmatch('[a-f0-9]{64}',expected):raise BootstrapError('checkpoint_phase_or_digest')
+        canonical(self.root/'owner')
+        if not stat.S_ISREG((self.root/'owner').lstat().st_mode):raise BootstrapError('checkpoint_owner')
+        self.guard();canonical(self.root)
+        if self.root.stat().st_uid!=os.geteuid() or (self.root/'owner').stat().st_uid!=os.geteuid():raise BootstrapError('checkpoint_owner')
+        path=canonical(self.root/'preparation-checkpoint.json')
+        if not path.is_file() or path.stat().st_size>MAX_CHECKPOINT or sha(path)!=expected:raise BootstrapError('checkpoint_digest_mismatch')
+        checkpoint=json.loads(path.read_bytes())
+        identity={'schema_version':1,'owner':OWNER,'app':self.observer['app'],'machine_id':self.observer['machine_id'],
+            'volume_id':self.observer['volume_ids'][0],'arm':self.arm,'nonce':self.nonce,'build_id':self.manifest['active_build'],
+            'source_watermark':self.manifest['source_watermark'],'manifest_sha256':hashlib.sha256(encoded(self.manifest)).hexdigest(),'guest':PREPARATION_GUEST}
+        if any(checkpoint.get(key)!=value for key,value in identity.items()):raise BootstrapError('checkpoint_identity_mismatch')
+        start=checkpoint.get('started');prepared=checkpoint.get('prepared_at');prep_deadline=checkpoint.get('preparation_deadline')
+        if any(type(value) not in (int,float) or not math.isfinite(value) for value in [start,prepared,prep_deadline]) or checkpoint.get('overall_deadline')!=self.deadline or not start<=prepared<=prep_deadline<=self.deadline-20 or not 0<prep_deadline-start<=3600 or not 0<self.deadline-start<=5400:
+            raise BootstrapError('checkpoint_deadline_mismatch')
+        if checkpoint.get('baseline_witness')!=self.persistent_witness(self.baseline) or checkpoint.get('working_witness')!=self.persistent_witness(self.working):raise BootstrapError('checkpoint_file_witness_mismatch')
+        if checkpoint.get('binaries')!=self.installed_fingerprints():raise BootstrapError('checkpoint_binary_mismatch')
+        fixed=[('updates.json','updates_sha256',MAX_FEED)]
+        if self.arm=='native':
+            if checkpoint.get('oracle_ready') is not True:raise BootstrapError('checkpoint_oracle_missing')
+            fixed.extend([('cases.json','cases_sha256',4*1024*1024),('oracle.json','oracle_sha256',64*1024*1024)])
+        for name,key,limit in fixed:
+            file=canonical(self.root/name);checksum=checkpoint.get(key)
+            if not isinstance(checksum,str) or not re.fullmatch('[a-f0-9]{64}',checksum) or not file.is_file() or file.stat().st_size>limit or sha(file)!=checksum:raise BootstrapError('checkpoint_fixed_input_mismatch')
+        if self.phase()!= {'schema':1,'acked':0,'inflight':None}:raise BootstrapError('checkpoint_cursor_not_zero')
+        self.started=start;self.preparation_deadline=prep_deadline;self.feed_bytes=(self.root/'updates.json').read_bytes();self.feed=json.loads(self.feed_bytes)
+        if self.feed.get('build_id')!=self.manifest['active_build'] or self.feed.get('source_watermark')!=self.manifest['source_watermark'] or [batch.get('batch_id') for batch in self.feed.get('batches',[])]!=list(STAGES):raise BootstrapError('checkpoint_feed_identity')
+        self.feed_sha=checkpoint['updates_sha256'];self.cases_sha=checkpoint.get('cases_sha256');self.oracle_sha=checkpoint.get('oracle_sha256');self.oracle_ready=checkpoint['oracle_ready']
+        self.clone_metrics=checkpoint['clone'];self.baseline_proof=tree_witness(self.baseline)
+        atomic(self.root/'observer.json',self.observer);self.configure();self.prepared=True;self.state='prepared';self.set_stage('resumed-final-shape')
+        self.guard()
 
     def phase(self):
         if self.phase_path.stat().st_size>1024:raise BootstrapError('phase_budget')
@@ -437,6 +513,7 @@ class FullQualification:
         return env
 
     def serve(self):
+        if self.phase_mode=='prepare':raise BootstrapError('preparation_cannot_serve')
         self.guard()
         if not self.prepared:raise BootstrapError('not_prepared')
         if self.child and self.child.poll() is None:return {'serving':True,'already_started':True}
@@ -545,7 +622,7 @@ class FullQualification:
         return result
 
     def summary(self):
-        value={'schema_version':1,'mode':'full','arm':self.arm,'state':self.state,'preparation_stage':self.stage,'prepared':self.prepared,'nonce':self.nonce,
+        value={'qualification_phase':self.phase_mode,'schema_version':1,'mode':'full','arm':self.arm,'state':self.state,'preparation_stage':self.stage,'prepared':self.prepared,'nonce':self.nonce,
             'app':self.observer['app'],'machine_id':self.observer['machine_id'],'guest':self.observer['guest'],
             'final_volume_gib':self.observer['final_volume_gib'],'public_services':self.observer['public_services'],
             'volume_id':self.observer['volume_ids'][0],'build_id':self.manifest['active_build'],'source_watermark':self.manifest['source_watermark'],
@@ -649,17 +726,27 @@ def main():
     if os.environ.get('QUAL_MODE')!='full':raise BootstrapError('explicit_full_mode_required')
     role=os.environ.get('QUAL_ROLE');arm={'native-control':'native','tantivy-control':'tantivy'}.get(role)
     if arm is None:raise BootstrapError('engine_role_required')
-    observer=json.loads(os.environ['QUAL_OBSERVER_JSON']);manifest=json.loads(Path('/app/source-manifest.json').read_text())
-    service=FullQualification(os.environ.get('QUAL_ROOT','/data/qualification/run'),manifest,arm,observer,os.environ['QUAL_PILOT_NONCE'],float(os.environ['QUAL_DEADLINE']))
+    observer=json.loads(os.environ['QUAL_OBSERVER_JSON']);manifest=json.loads((APP/'source-manifest.json').read_text())
+    phase=os.environ.get('QUAL_PHASE','legacy')
+    service=FullQualification(os.environ.get('QUAL_ROOT','/data/qualification/run'),manifest,arm,observer,os.environ['QUAL_PILOT_NONCE'],float(os.environ['QUAL_DEADLINE']),phase=phase,app=APP)
     parent=canonical(service.root.parent);parent.mkdir(mode=0o700,exist_ok=True)
     if not parent.is_dir():raise BootstrapError('owned_scratch_parent')
-    server=ControlServer(('::',8082),control_handler(service,os.environ['QUAL_CONTROL_SECRET']))
-    thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+    server=None;thread=None
+    if phase!='prepare':
+        server=ControlServer(('::',8082),control_handler(service,os.environ['QUAL_CONTROL_SECRET']))
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     def interrupted(*_):raise BootstrapError('guest_interrupted')
     signal.signal(signal.SIGTERM,interrupted);signal.signal(signal.SIGINT,interrupted)
     signal.signal(signal.SIGALRM,interrupted);signal.setitimer(signal.ITIMER_REAL,max(.001,service.deadline-time.time()-15))
     try:
-        access=json.loads(os.environ.pop('QUAL_SOURCE_ACCESS'));service.prepare(access);del access
+        if phase=='resume':
+            os.environ.pop('QUAL_SOURCE_ACCESS',None)
+            service.resume_checkpoint(os.environ['QUAL_CHECKPOINT_SHA256'])
+        else:
+            if 'QUAL_CHECKPOINT_SHA256' in os.environ:raise BootstrapError('prepare_checkpoint_capability_forbidden')
+            access=json.loads(os.environ.pop('QUAL_SOURCE_ACCESS'));service.prepare(access);del access
+            if phase=='prepare':
+                print('QUALIFICATION_PREPARATION_COMPLETE '+json.dumps(service.preparation_checkpoint(),separators=(',',':')),flush=True);return
         print(json.dumps({'event':'FULL_PREPARED',**service.summary()}),flush=True)
         while time.time()<service.deadline-20:
             service.guard()
@@ -668,7 +755,8 @@ def main():
     except BaseException as error:
         service.record_failure(error);raise
     finally:
-        server.shutdown();server.server_close();thread.join(timeout=2);service.close()
+        if server is not None:server.shutdown();server.server_close();thread.join(timeout=2)
+        service.close()
 
 if __name__=='__main__':
     try:main()

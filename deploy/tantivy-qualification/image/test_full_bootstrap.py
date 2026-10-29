@@ -29,7 +29,7 @@ import full_bootstrap as bootstrap
 sys.path.insert(0,str(REPO/'scripts/snapshot_compaction'))
 from reference_build import build
 BIN=Path(os.environ.get('TA_BINARY',REPO/'services/tantivy/target/release/typeahead-tantivy'))
-TOOLS=REPO/'experiments/tantivy-qualification-native/.tools/bin'
+TOOLS=Path(os.environ.get('TA_NATIVE_TOOLS',REPO/'experiments/tantivy-qualification-native/.tools/bin'))
 SECRET='local-fixture-control-capability'
 ADMIN='local-fixture-admin-capability'
 
@@ -105,57 +105,149 @@ class Tests(unittest.TestCase):
                 if s.admin('/index/status').get('import_complete'):return
             except (OSError,bootstrap.BootstrapError):time.sleep(.03)
         self.fail('real engine did not start')
-    def test_prefix_admission_actual_success_uses_remaining_preparation_lease(self):
-        s=self.service();self.baseline(s)
-        s.preparation_deadline=time.time()+240
-        original=(s.preparation_deadline,s.deadline)
-        witness=self.root/'admitted-command'
-        receipt=s.run_prefix_admission([sys.executable,'-c','import pathlib,sys,time;time.sleep(.12);pathlib.Path(sys.argv[1]).write_text("complete")',str(witness)],{'PATH':os.environ.get('PATH','')},True)
-        self.assertGreater(receipt['budget_s'],120)
-        self.assertLess(receipt['elapsed_s'],1)
-        self.assertEqual(receipt['returncode'],0)
-        self.assertEqual(witness.read_text(),'complete')
-        self.assertEqual((s.preparation_deadline,s.deadline),original)
-        self.assertTrue(all(child.poll()==0 for child in s.children))
+    def test_staged_phase_guest_contract_is_exclusive(self):
+        prep=copy.deepcopy(self.observer);prep['guest']=dict(bootstrap.PREPARATION_GUEST)
+        final=copy.deepcopy(self.observer)
+        for phase,observer in [('legacy',prep),('resume',prep),('prepare',final)]:
+            with self.assertRaisesRegex(bootstrap.BootstrapError,'provider_shape'):
+                bootstrap.FullQualification(self.root,self.manifest,'tantivy',observer,'fixture-nonce-0123456789',time.time()+300,app=self.app,fixture=True,phase=phase)
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'exclusive_qualification_phase'):
+            bootstrap.FullQualification(self.root,self.manifest,'tantivy',final,'fixture-nonce-0123456789',time.time()+300,app=self.app,fixture=True,phase='other')
 
-    def test_prefix_admission_actual_deadline_reaps_process_group(self):
-        for preparing in [True,False]:
-            self.root=self.directory/('run-'+str(time.time_ns()))
-            s=self.service();self.baseline(s)
-            if preparing:s.preparation_deadline=time.time()+.35
-            else:
-                s.preparation_deadline=time.time()-10
-                s.deadline=time.time()+20.35
-            original=(s.preparation_deadline,s.deadline)
-            witness=self.root/'process-tree.json'
+    def staged_fixture(self,actual_process=False):
+        observer=copy.deepcopy(self.observer);observer['guest']=dict(bootstrap.PREPARATION_GUEST)
+        deadline=time.time()+300;shutil.copy(BIN,self.app/'bin/typeahead-tantivy')
+        s=bootstrap.FullQualification(self.root,copy.deepcopy(self.manifest),'tantivy',observer,'fixture-nonce-0123456789',deadline,app=self.app,fixture=True,phase='prepare')
+        self.services.append(s)
+        if actual_process:
+            release=self.release
+            class Files(http.server.BaseHTTPRequestHandler):
+                def do_GET(self):
+                    name=self.path.rsplit('/',1)[-1]
+                    if name not in {'index.db','index.db.prefix'}:self.send_error(404);return
+                    data=(release/name).read_bytes();self.send_response(200);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+                def log_message(self,*args):pass
+            (self.app/'source-manifest.json').write_bytes(bootstrap.encoded(self.manifest))
+            server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Files);thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            origin=f'http://127.0.0.1:{server.server_port}'
+            access={'build_id':self.manifest['active_build'],'database':origin+'/'+self.manifest['snapshot_url'],'prefix':origin+'/'+self.manifest['prefix_map']['object_key']}
             program="""
-import json,os,pathlib,signal,subprocess,sys,time
-child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)'])
-def stop(*_):
- child.terminate();child.wait();raise SystemExit(0)
-signal.signal(signal.SIGTERM,stop)
-pathlib.Path(sys.argv[1]).write_text(json.dumps([os.getpid(),child.pid]))
-time.sleep(30)
+import pathlib,sys
+sys.path.insert(0,sys.argv[1]);import full_bootstrap as boot
+boot.APP=pathlib.Path(sys.argv[2])
+Original=boot.FullQualification
+class Fixture(Original):
+ def __init__(self,*args,**kwargs):super().__init__(*args,**(kwargs|{'fixture':True}))
+boot.FullQualification=Fixture
+boot.main()
 """
-            started=time.monotonic()
-            with self.assertRaises(subprocess.TimeoutExpired) as raised:
-                s.run_prefix_admission([sys.executable,'-c',program,str(witness)],{'PATH':os.environ.get('PATH','')},preparing)
-            self.assertLess(time.monotonic()-started,3)
-            self.assertLess(raised.exception.timeout,.5)
-            self.assertEqual((s.preparation_deadline,s.deadline),original)
-            for pid in json.loads(witness.read_text()):
-                with self.assertRaises(ProcessLookupError):os.kill(pid,0)
-            self.assertEqual(s.children,[])
+            env={'PATH':os.environ.get('PATH',''),'QUAL_MODE':'full','QUAL_PHASE':'prepare','QUAL_ROLE':'tantivy-control','QUAL_OBSERVER_JSON':json.dumps(observer),'QUAL_PILOT_NONCE':s.nonce,'QUAL_DEADLINE':str(deadline),'QUAL_ROOT':str(self.root),'QUAL_SOURCE_ACCESS':json.dumps(access),'FLY_MACHINE_VERSION':'fixture-preparation-instance'}
+            try:result=subprocess.run([sys.executable,'-c',program,str(HERE),str(self.app)],env=env,capture_output=True,text=True,timeout=30)
+            finally:server.shutdown();server.server_close();thread.join()
+            self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+            line=next(line for line in result.stdout.splitlines() if line.startswith('QUALIFICATION_PREPARATION_COMPLETE '))
+            receipt=json.loads(line.removeprefix('QUALIFICATION_PREPARATION_COMPLETE '))
+            self.assertFalse(s.prepared);self.assertIsNone(s.child)
+        else:
+            self.baseline(s,True)
+            previous=os.environ.get('FLY_MACHINE_VERSION');os.environ['FLY_MACHINE_VERSION']='fixture-preparation-instance'
+            try:receipt=s.preparation_checkpoint()
+            finally:
+                if previous is None:os.environ.pop('FLY_MACHINE_VERSION',None)
+                else:os.environ['FLY_MACHINE_VERSION']=previous
+        return s,receipt
+
+    def resumed_fixture(self,s,receipt,**changes):
+        options=dict(root=self.root,manifest=copy.deepcopy(self.manifest),arm='tantivy',observer=copy.deepcopy(self.observer),nonce=s.nonce,deadline=s.deadline,app=self.app,fixture=True,phase='resume')
+        options.update(changes)
+        resumed=bootstrap.FullQualification(**options);self.services.append(resumed)
+        resumed.resume_checkpoint(receipt['checkpoint_sha256']);return resumed
+
+    @unittest.skipUnless(BIN.is_file(),'requires already built local Rust binary; does not compile')
+    def test_staged_resume_rejects_tampered_bindings_without_bulk_work(self):
+        s,receipt=self.staged_fixture()
+        self.assertEqual(receipt['guest'],bootstrap.PREPARATION_GUEST);self.assertEqual(receipt['runtime_instance_id'],'fixture-preparation-instance')
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'preparation_cannot_serve'):s.serve()
+        wrong=copy.deepcopy(self.observer);wrong['volume_ids']=['vol_wrong']
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'identity_mismatch'):self.resumed_fixture(s,receipt,observer=wrong)
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'deadline_mismatch'):self.resumed_fixture(s,receipt,deadline=s.deadline+1)
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'digest_mismatch'):self.resumed_fixture(s,receipt|{'checkpoint_sha256':'0'*64})
+        bootstrap.atomic(s.phase_path,{'schema':1,'acked':0,'inflight':1})
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'cursor_not_zero'):self.resumed_fixture(s,receipt)
+        bootstrap.atomic(s.phase_path,{'schema':1,'acked':0,'inflight':None})
+        feed=self.root/'updates.json';original=feed.read_bytes();feed.chmod(0o600);feed.write_bytes(original+b' ')
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'fixed_input_mismatch'):self.resumed_fixture(s,receipt)
+        feed.write_bytes(original)
+        binary=self.app/'bin/typeahead-tantivy'
+        try:
+            with binary.open('ab') as stream:stream.write(b'changed')
+            with self.assertRaisesRegex(bootstrap.BootstrapError,'binary_mismatch'):self.resumed_fixture(s,receipt)
+        finally:shutil.copy(BIN,binary)
+        metadata=s.working/'tantivy/index/meta.json';metadata.write_bytes(metadata.read_bytes()+b' ')
+        with self.assertRaisesRegex(bootstrap.BootstrapError,'file_witness_mismatch'):self.resumed_fixture(s,receipt)
+
+    @unittest.skipUnless(BIN.is_file(),'requires already built local Rust binary; does not compile')
+    def test_new_process_resume_runs_real_http_update_restart_without_reimport(self):
+        s,receipt=self.staged_fixture(actual_process=True);control,public,admin=port(),port(),port()
+        original_prefix=(s.baseline/'source/index.db.prefix').stat()
+        program="""
+import http.server,json,os,pathlib,signal,sys
+sys.path.insert(0,sys.argv[1]);import full_bootstrap as boot
+root,app=pathlib.Path(sys.argv[2]),pathlib.Path(sys.argv[3])
+observer=json.loads(sys.argv[4]);deadline=float(sys.argv[5]);expected=sys.argv[6]
+control,public,admin=map(int,sys.argv[7:10])
+def forbidden(*args,**kwargs):raise AssertionError('bulk work forbidden on resume')
+boot.full_prepare.Preparation.run=forbidden;boot.generate_feed=forbidden
+original_sha=boot.sha
+def bounded_sha(path):
+ if str(path).endswith('index.db.prefix'):raise AssertionError('prefix rehash forbidden')
+ return original_sha(path)
+boot.sha=bounded_sha
+class Runtime(boot.FullQualification):
+ def __init__(self,*args,**kwargs):
+  super().__init__(*args,**(kwargs|{'fixture':True}));self.admin_port=admin
+ def entrypoint_argv(self):return [str(app/'bin/typeahead-tantivy'),'serve','--data',str(self.working/'tantivy'),'--listen',f'127.0.0.1:{public}','--admin-listen',f'127.0.0.1:{admin}','--allow-stale','true','--retrieval','global-merge']
+ def engine_env(self):return {'PATH':os.environ.get('PATH',''),'ADMIN_SECRET':os.environ['ADMIN_SECRET']}
+ prepare_oracle=forbidden
+import socket
+class Control(boot.ControlServer):
+ address_family=socket.AF_INET
+ def __init__(self,address,handler):super().__init__(('127.0.0.1',control),handler)
+boot.APP=app;boot.FullQualification=Runtime;boot.ControlServer=Control
+os.environ.update(QUAL_MODE='full',QUAL_PHASE='resume',QUAL_ROLE='tantivy-control',QUAL_OBSERVER_JSON=json.dumps(observer),QUAL_PILOT_NONCE='fixture-nonce-0123456789',QUAL_ROOT=str(root),QUAL_DEADLINE=str(deadline),QUAL_CHECKPOINT_SHA256=expected,QUAL_SOURCE_ACCESS='invalid-unused-inherited-capability')
+boot.main()
+"""
+        child=subprocess.Popen([sys.executable,'-c',program,str(HERE),str(self.root),str(self.app),json.dumps(self.observer),str(s.deadline),receipt['checkpoint_sha256'],str(control),str(public),str(admin)],env={'PATH':os.environ.get('PATH',''),'ADMIN_SECRET':ADMIN,'QUAL_CONTROL_SECRET':SECRET},stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+        def wait_http(p,path):
+            until=time.monotonic()+10
+            while time.monotonic()<until:
+                if child.poll() is not None:self.fail('new resume process exited')
+                try:
+                    status,value=request(p,path,auth=False)
+                    if status==200:return value
+                except OSError:time.sleep(.03)
+            self.fail('new resume process HTTP did not start')
+        try:
+            ready=wait_http(control,'/prepared');self.assertTrue(ready['prepared']);self.assertEqual(ready['guest'],bootstrap.FINAL_GUEST);self.assertEqual(ready['overall_deadline'],s.deadline);self.assertEqual(ready['qualification_phase'],'resume')
+            self.assertEqual(request(control,'/serve','POST')[0],200);wait_http(public,'/health')
+            self.assertEqual(request(control,'/apply/1','POST')[0],200)
+            self.assertEqual(request(control,'/restart','POST')[0],200);wait_http(public,'/health')
+            self.assertEqual(request(control,'/apply/1','POST')[1]['receipt']['replayed'],64)
+            self.assertEqual(request(control,'/apply/2','POST')[0],200)
+        finally:
+            child.terminate();child.wait(timeout=10)
+        current=(s.baseline/'source/index.db.prefix').stat()
+        self.assertEqual((original_prefix.st_ino,original_prefix.st_size,original_prefix.st_mtime_ns,original_prefix.st_ctime_ns),(current.st_ino,current.st_size,current.st_mtime_ns,current.st_ctime_ns))
 
     def test_failure_diagnostics_preserve_stage_and_type_without_payload(self):
-        s=self.service();self.baseline(s);s.stage='native-prefix-readmission'
+        s=self.service();self.baseline(s);s.stage='working-clone'
         for error in [subprocess.TimeoutExpired(['private-profile-and-secret'],1,output=b'secret-output'),subprocess.CalledProcessError(7,['private-command'],output=b'private-output'),ValueError('private-profile')]:
             output=io.StringIO()
             with redirect_stdout(output):value=s.record_failure(error)
-            self.assertEqual(value['stage'],'native-prefix-readmission')
+            self.assertEqual(value['stage'],'working-clone')
             self.assertEqual(value['exception_class'],type(error).__name__)
             self.assertNotIn('private',output.getvalue());self.assertNotIn('secret',output.getvalue())
-        self.assertEqual(s.summary()['preparation_stage'],'native-prefix-readmission')
+        self.assertEqual(s.summary()['preparation_stage'],'working-clone')
 
     def test_feed_determinism_and_all_fixed_lifecycle_states(self):
         first=bootstrap.generate_feed(self.manifest,self.release,self.app/'input/export.py',time.time()+10)
@@ -225,17 +317,24 @@ time.sleep(30)
             s.manifest['prefix_map'].update(sha256=bootstrap.sha(compact/'index.db.prefix'),byte_size=(compact/'index.db.prefix').stat().st_size)
             self.root.mkdir();(self.root/'owner').write_text(bootstrap.OWNER);source=s.baseline/'source';source.mkdir(parents=True)
             for name in ['index.db','index.db.prefix']:shutil.copy(compact/name,source/name)
+            for name in ['index.db','index.db.prefix']:(source/name).chmod(0o444)
+            subprocess.run([str(TOOLS/'admit-prefix')],env={'TYPEAHEAD_ADMIT_PREFIX_PATH':str(source/'index.db.prefix'),'TYPEAHEAD_ADMIT_PREFIX_SHA256':s.manifest['prefix_map']['sha256']},check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=5)
             # Use the actual native schema writer to initialize the independent empty overlay.
             (s.baseline/'tmp').mkdir()
-            native_env={'PATH':os.environ.get('PATH',''),'NATIVE_QUAL_ROOT':str(self.root),'TYPEAHEAD_EVAL_SNAPSHOT':str(source/'index.db'),'LOCAL_DB_PATH':str(s.baseline/'overlay.db'),'SQLITE_TMPDIR':str(s.baseline/'tmp'),'NATIVE_QUAL_REQUEST':str(s.baseline/'request.json'),'NATIVE_QUAL_RESPONSE':str(s.baseline/'response.json'),'NATIVE_QUAL_FEED_SHA256':'0'*64,'NATIVE_QUAL_SECONDS':'1'}
+            native_env={'PATH':os.environ.get('PATH',''),'NATIVE_QUAL_ROOT':str(self.root),'TYPEAHEAD_EVAL_SNAPSHOT':str(source/'index.db'),'LOCAL_DB_PATH':str(s.baseline/'overlay.db'),'SQLITE_TMPDIR':str(s.baseline/'tmp'),'NATIVE_QUAL_REQUEST':str(s.baseline/'request.json'),'NATIVE_QUAL_RESPONSE':str(s.baseline/'response.json'),'NATIVE_QUAL_FEED_SHA256':'0'*64,'NATIVE_QUAL_SECONDS':'1','TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT':'1'}
             r=subprocess.run([str(TOOLS/'qualification-native')],env=native_env,capture_output=True,timeout=5);self.assertEqual(r.returncode,0,r.stderr.decode())
             (s.baseline/'prepared.json').write_bytes(bootstrap.encoded({'prepared':True,'arm':'native','build_id':s.manifest['active_build'],'source_database_sha256':s.manifest['sha256'],'source_prefix_sha256':s.manifest['prefix_map']['sha256']}))
             for directory,dirs,files in os.walk(s.baseline,topdown=False):
-                for name in files:(Path(directory)/name).chmod(0o444)
+                for name in files:
+                    item=Path(directory)/name
+                    if item.stat().st_mode & 0o777 != 0o444:item.chmod(0o444)
                 Path(directory).chmod(0o555)
-            s.admit_prepared();self.assertEqual(s.native_cursor(),0)
+            native_app=self.root/'app-without-admitter';(native_app/'input').mkdir(parents=True)
+            shutil.copy(REPO/'services/tantivy-input/export.py',native_app/'input/export.py');s.app=native_app
+            prefix_before=(s.baseline/'source/index.db.prefix').stat()
+            s.admit_prepared();self.assertEqual(s.native_cursor(),0);self.assertEqual(s.children,[])
             s.entrypoint_argv=lambda:[str(TOOLS/'qualification-native')]
-            s.engine_env=lambda: {'PATH':os.environ.get('PATH',''),'NATIVE_QUAL_ROOT':str(self.root),'TYPEAHEAD_EVAL_SNAPSHOT':str(s.working/'source/index.db'),'LOCAL_DB_PATH':str(s.working/'overlay.db'),'SQLITE_TMPDIR':str(s.working/'tmp'),'NATIVE_QUAL_REQUEST':str(s.working/'request.json'),'NATIVE_QUAL_RESPONSE':str(s.working/'response.json'),'NATIVE_QUAL_FEED_SHA256':s.feed_sha,'NATIVE_QUAL_SECONDS':'60'}
+            s.engine_env=lambda: {'PATH':os.environ.get('PATH',''),'NATIVE_QUAL_ROOT':str(self.root),'TYPEAHEAD_EVAL_SNAPSHOT':str(s.baseline/'source/index.db'),'LOCAL_DB_PATH':str(s.working/'overlay.db'),'SQLITE_TMPDIR':str(s.working/'tmp'),'NATIVE_QUAL_REQUEST':str(s.working/'request.json'),'NATIVE_QUAL_RESPONSE':str(s.working/'response.json'),'NATIVE_QUAL_FEED_SHA256':s.feed_sha,'NATIVE_QUAL_SECONDS':'60','TYPEAHEAD_EVAL_ADMITTED_SNAPSHOT':'1'}
             s.serve()
             for cursor in range(1,10):
                 value=s.apply(cursor);self.assertTrue(value['receipt']['accepted']);self.assertEqual(s.native_cursor(),cursor)
@@ -249,8 +348,12 @@ time.sleep(30)
                     self.assertTrue(s.apply(cursor)['replay']);s.pause();s.serve()
             self.assertTrue(s.apply(9)['replay']);s.pause();s.baseline_intact()
             s.reset();self.assertEqual(s.native_cursor(),0);self.assertEqual(s.phase()['acked'],0)
-            prefix=s.working/'source/index.db.prefix';cache=Path(str(prefix)+'.admitted')
+            self.assertFalse((s.working/'source').exists())
+            self.assertEqual(s.config['paths']['snapshot'],str(s.baseline/'source/index.db'))
+            prefix=s.baseline/'source/index.db.prefix';cache=Path(str(prefix)+'.admitted')
             self.assertEqual(int.from_bytes(cache.read_bytes()[72:88],'little',signed=True),prefix.stat().st_ctime_ns)
+            self.assertEqual(prefix.stat().st_ctime_ns,prefix_before.st_ctime_ns)
+            self.assertEqual(s.children,[])
         finally:
             for service in self.services:service.close()
             real.unlink(missing_ok=True)
