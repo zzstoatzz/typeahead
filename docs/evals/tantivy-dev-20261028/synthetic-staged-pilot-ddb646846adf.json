@@ -1,0 +1,3137 @@
+{
+  "recorded_at": "2026-10-29T21:46:58.204583+00:00",
+  "run_id": "ddb646846adf",
+  "pilot": {
+    "arms": {
+      "native": {
+        "arm": "native",
+        "durable_cursor_replay_confirmed": true,
+        "identity": {
+          "engine_binary_sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
+          "engine_settings": {
+            "concurrency": 4,
+            "max_candidates": 10000,
+            "retrieval_strategy": "global-merge",
+            "writer_memory_mb": 128
+          },
+          "observer_receipt_sha256": "100376b5b122c132fdc1d4f571ce31be3240823355c9230e194ac8266127402d",
+          "provider": {
+            "app": "typeahead-qual-20261029",
+            "encrypted": true,
+            "guest": {
+              "cpu_kind": "shared",
+              "cpus": 2,
+              "memory_mb": 1024
+            },
+            "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+            "instance_id": "01M64SS7VC1YTHRYM2CQZYAZEX",
+            "machine_id": "89d52ec63e35d8",
+            "observed_at": 1793310139.0105786,
+            "public_services": [],
+            "volume_gib": 20,
+            "volume_id": "vol_r1j7e7en8knkkw0r"
+          },
+          "runtime_process_verified": true
+        },
+        "phases": {
+          "first_touch": {
+            "all": {
+              "p50_ms": 4.400228000001505,
+              "p95_ms": 7.715839999999474,
+              "p99_ms": 7.715839999999474,
+              "requests": 16,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "new_features": {
+              "p50_ms": null,
+              "p95_ms": null,
+              "p99_ms": null,
+              "requests": 0,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "performance_phase": false,
+            "queue_capacity": 32,
+            "queue_deadline_seconds": 3,
+            "resources": {
+              "block_device_deltas": [
+                {
+                  "device": "loop0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd8",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd9",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd10",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd11",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd12",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd13",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd14",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd15",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vda",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdb",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdc",
+                  "io_milliseconds": 4,
+                  "read_bytes": 49152,
+                  "weighted_io_milliseconds": 3,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdd",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "cgroup_io_device_deltas": [],
+              "cgroup_memory_peak_bytes": null,
+              "cgroup_nr_throttled_delta": null,
+              "cgroup_throttled_usec_delta": null,
+              "cgroup_usage_usec_delta": null,
+              "directory_bytes_peak": 124918,
+              "directory_merge_temporary_files_peak": 0,
+              "directory_segment_groups_peak": 0,
+              "free_disk_min_bytes": 19849998336,
+              "guest_available_min_bytes": 782864384,
+              "guest_cache_min_bytes": 73822208,
+              "guest_cache_peak_bytes": 73871360,
+              "guest_major_faults_delta": 0,
+              "guest_steal_percent": 0.0,
+              "guest_steal_ticks_delta": 0,
+              "maximum_sample_gap_seconds": 1.514321409999999,
+              "memory_io_observation": {
+                "checks": {
+                  "guest_block_io": true,
+                  "guest_cpu": true,
+                  "guest_memory": true,
+                  "memory_accounting": true,
+                  "selected_process_memory_cpu_io": true
+                },
+                "directory_footprint_scope": "configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings",
+                "memory_accounting_mode": "guest_memory_fallback",
+                "missing_required": [],
+                "optional_observations": {
+                  "cgroup_cpu_throttling": false,
+                  "cgroup_cpu_usage": false,
+                  "guest_io_psi": true,
+                  "guest_memory_psi": true
+                },
+                "qualified": true,
+                "scope": "guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable"
+              },
+              "merge_observation": "directory segment and temporary-file counts are heuristics; no completed-merge claim",
+              "oom_kill_delta": 0,
+              "process_counter_deltas": [
+                {
+                  "major_faults": 0,
+                  "observations": 2,
+                  "pid": 623,
+                  "read_bytes": 0,
+                  "start_ticks": 43,
+                  "system_ticks": 0,
+                  "user_ticks": 1,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 2,
+                  "pid": 631,
+                  "read_bytes": 0,
+                  "start_ticks": 2675,
+                  "system_ticks": 1,
+                  "user_ticks": 3,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 2,
+                  "pid": 633,
+                  "read_bytes": 49152,
+                  "start_ticks": 2684,
+                  "system_ticks": 0,
+                  "user_ticks": 1,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 2,
+                  "pid": 635,
+                  "read_bytes": 0,
+                  "start_ticks": 2690,
+                  "system_ticks": 1,
+                  "user_ticks": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "psi_total_microseconds_delta": {
+                "cgroup_io_full": null,
+                "cgroup_io_some": null,
+                "cgroup_memory_full": null,
+                "cgroup_memory_some": null,
+                "guest_io_full": 1861,
+                "guest_io_some": 1868,
+                "guest_memory_full": 0,
+                "guest_memory_some": 0
+              },
+              "samples": 2,
+              "summed_rss_may_double_count_shared_pages": true,
+              "summed_rss_peak_bytes": 83025920,
+              "swap_in_pages_delta": 0,
+              "swap_out_pages_delta": 0
+            },
+            "scheduled_requests": 16,
+            "shared_native_features": {
+              "p50_ms": 4.400228000001505,
+              "p95_ms": 7.715839999999474,
+              "p99_ms": 7.715839999999474,
+              "requests": 16,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "wall_seconds": 1.5061138100000004,
+            "workers": 4
+          },
+          "mixed": {
+            "all": {
+              "p50_ms": 5.1895370000032415,
+              "p95_ms": 7.744852000001856,
+              "p99_ms": 9.752916000000056,
+              "requests": 64,
+              "transport_failures": 0,
+              "truth_mismatches": 6
+            },
+            "new_features": {
+              "p50_ms": 5.891042000000013,
+              "p95_ms": 7.722504000001962,
+              "p99_ms": 7.722504000001962,
+              "requests": 6,
+              "transport_failures": 0,
+              "truth_mismatches": 3
+            },
+            "performance_phase": false,
+            "queue_capacity": 32,
+            "queue_deadline_seconds": 3,
+            "resources": {
+              "block_device_deltas": [
+                {
+                  "device": "loop0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd8",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd9",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd10",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd11",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd12",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd13",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd14",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd15",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vda",
+                  "io_milliseconds": 0,
+                  "read_bytes": 335872,
+                  "weighted_io_milliseconds": 1,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdb",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 10,
+                  "write_bytes": 7229440
+                },
+                {
+                  "device": "vdc",
+                  "io_milliseconds": 40,
+                  "read_bytes": 36864,
+                  "weighted_io_milliseconds": 90,
+                  "write_bytes": 25337856
+                },
+                {
+                  "device": "vdd",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "cgroup_io_device_deltas": [],
+              "cgroup_memory_peak_bytes": null,
+              "cgroup_nr_throttled_delta": null,
+              "cgroup_throttled_usec_delta": null,
+              "cgroup_usage_usec_delta": null,
+              "directory_bytes_peak": 124918,
+              "directory_merge_temporary_files_peak": 0,
+              "directory_segment_groups_peak": 0,
+              "free_disk_min_bytes": 19841662976,
+              "guest_available_min_bytes": 773271552,
+              "guest_cache_min_bytes": 73871360,
+              "guest_cache_peak_bytes": 82579456,
+              "guest_major_faults_delta": 2,
+              "guest_steal_percent": 0.31821797931583135,
+              "guest_steal_ticks_delta": 4,
+              "maximum_sample_gap_seconds": 2.008725700000001,
+              "memory_io_observation": {
+                "checks": {
+                  "guest_block_io": true,
+                  "guest_cpu": true,
+                  "guest_memory": true,
+                  "memory_accounting": true,
+                  "selected_process_memory_cpu_io": true
+                },
+                "directory_footprint_scope": "configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings",
+                "memory_accounting_mode": "guest_memory_fallback",
+                "missing_required": [],
+                "optional_observations": {
+                  "cgroup_cpu_throttling": false,
+                  "cgroup_cpu_usage": false,
+                  "guest_io_psi": true,
+                  "guest_memory_psi": true
+                },
+                "qualified": true,
+                "scope": "guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable"
+              },
+              "merge_observation": "directory segment and temporary-file counts are heuristics; no completed-merge claim",
+              "oom_kill_delta": 0,
+              "process_counter_deltas": [
+                {
+                  "major_faults": 2,
+                  "observations": 5,
+                  "pid": 623,
+                  "read_bytes": 335872,
+                  "start_ticks": 43,
+                  "system_ticks": 7,
+                  "user_ticks": 22,
+                  "write_bytes": 643072
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 5,
+                  "pid": 631,
+                  "read_bytes": 0,
+                  "start_ticks": 2675,
+                  "system_ticks": 2,
+                  "user_ticks": 9,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 5,
+                  "pid": 633,
+                  "read_bytes": 36864,
+                  "start_ticks": 2684,
+                  "system_ticks": 3,
+                  "user_ticks": 5,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 5,
+                  "pid": 635,
+                  "read_bytes": 0,
+                  "start_ticks": 2690,
+                  "system_ticks": 13,
+                  "user_ticks": 263,
+                  "write_bytes": 21221376
+                }
+              ],
+              "psi_total_microseconds_delta": {
+                "cgroup_io_full": null,
+                "cgroup_io_some": null,
+                "cgroup_memory_full": null,
+                "cgroup_memory_some": null,
+                "guest_io_full": 17054,
+                "guest_io_some": 17433,
+                "guest_memory_full": 0,
+                "guest_memory_some": 0
+              },
+              "samples": 5,
+              "summed_rss_may_double_count_shared_pages": true,
+              "summed_rss_peak_bytes": 86831104,
+              "swap_in_pages_delta": 0,
+              "swap_out_pages_delta": 0
+            },
+            "scheduled_requests": 64,
+            "shared_native_features": {
+              "p50_ms": 5.112918000001798,
+              "p95_ms": 8.261576000002435,
+              "p99_ms": 9.752916000000056,
+              "requests": 58,
+              "transport_failures": 0,
+              "truth_mismatches": 3
+            },
+            "wall_seconds": 6.305791983000002,
+            "workers": 4
+          },
+          "warm": {
+            "all": {
+              "p50_ms": 4.0801640000012185,
+              "p95_ms": 6.724721999999517,
+              "p99_ms": 6.724721999999517,
+              "requests": 16,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "new_features": {
+              "p50_ms": null,
+              "p95_ms": null,
+              "p99_ms": null,
+              "requests": 0,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "performance_phase": false,
+            "queue_capacity": 32,
+            "queue_deadline_seconds": 3,
+            "resources": {
+              "block_device_deltas": [
+                {
+                  "device": "loop0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd8",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd9",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd10",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd11",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd12",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd13",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd14",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd15",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vda",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdb",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdc",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdd",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "cgroup_io_device_deltas": [],
+              "cgroup_memory_peak_bytes": null,
+              "cgroup_nr_throttled_delta": null,
+              "cgroup_throttled_usec_delta": null,
+              "cgroup_usage_usec_delta": null,
+              "directory_bytes_peak": 124918,
+              "directory_merge_temporary_files_peak": 0,
+              "directory_segment_groups_peak": 0,
+              "free_disk_min_bytes": 19849998336,
+              "guest_available_min_bytes": 782663680,
+              "guest_cache_min_bytes": 73871360,
+              "guest_cache_peak_bytes": 73871360,
+              "guest_major_faults_delta": 0,
+              "guest_steal_percent": 0.0,
+              "guest_steal_ticks_delta": 0,
+              "maximum_sample_gap_seconds": 1.271492695000001,
+              "memory_io_observation": {
+                "checks": {
+                  "guest_block_io": true,
+                  "guest_cpu": true,
+                  "guest_memory": true,
+                  "memory_accounting": true,
+                  "selected_process_memory_cpu_io": true
+                },
+                "directory_footprint_scope": "configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings",
+                "memory_accounting_mode": "guest_memory_fallback",
+                "missing_required": [],
+                "optional_observations": {
+                  "cgroup_cpu_throttling": false,
+                  "cgroup_cpu_usage": false,
+                  "guest_io_psi": true,
+                  "guest_memory_psi": true
+                },
+                "qualified": true,
+                "scope": "guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable"
+              },
+              "merge_observation": "directory segment and temporary-file counts are heuristics; no completed-merge claim",
+              "oom_kill_delta": 0,
+              "process_counter_deltas": [
+                {
+                  "major_faults": 0,
+                  "observations": 3,
+                  "pid": 623,
+                  "read_bytes": 0,
+                  "start_ticks": 43,
+                  "system_ticks": 0,
+                  "user_ticks": 1,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 3,
+                  "pid": 631,
+                  "read_bytes": 0,
+                  "start_ticks": 2675,
+                  "system_ticks": 0,
+                  "user_ticks": 2,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 3,
+                  "pid": 633,
+                  "read_bytes": 0,
+                  "start_ticks": 2684,
+                  "system_ticks": 0,
+                  "user_ticks": 1,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 3,
+                  "pid": 635,
+                  "read_bytes": 0,
+                  "start_ticks": 2690,
+                  "system_ticks": 1,
+                  "user_ticks": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "psi_total_microseconds_delta": {
+                "cgroup_io_full": null,
+                "cgroup_io_some": null,
+                "cgroup_memory_full": null,
+                "cgroup_memory_some": null,
+                "guest_io_full": 0,
+                "guest_io_some": 0,
+                "guest_memory_full": 0,
+                "guest_memory_some": 0
+              },
+              "samples": 3,
+              "summed_rss_may_double_count_shared_pages": true,
+              "summed_rss_peak_bytes": 83034112,
+              "swap_in_pages_delta": 0,
+              "swap_out_pages_delta": 0
+            },
+            "scheduled_requests": 16,
+            "shared_native_features": {
+              "p50_ms": 4.0801640000012185,
+              "p95_ms": 6.724721999999517,
+              "p99_ms": 6.724721999999517,
+              "requests": 16,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "wall_seconds": 1.5078372000000009,
+            "workers": 4
+          }
+        },
+        "post_restart_quiescent": {
+          "all": {
+            "p50_ms": 5.053571000001256,
+            "p95_ms": 7.933479000001853,
+            "p99_ms": 9.997214999998505,
+            "requests": 128,
+            "transport_failures": 0,
+            "truth_mismatches": 4
+          },
+          "new_features": {
+            "p50_ms": 7.397911000001756,
+            "p95_ms": 10.109468999999649,
+            "p99_ms": 10.109468999999649,
+            "requests": 6,
+            "transport_failures": 0,
+            "truth_mismatches": 3
+          },
+          "performance_phase": false,
+          "queue_capacity": 32,
+          "queue_deadline_seconds": 3,
+          "scheduled_requests": 128,
+          "shared_native_features": {
+            "p50_ms": 5.03132999999778,
+            "p95_ms": 7.389854999999557,
+            "p99_ms": 9.02354300000141,
+            "requests": 122,
+            "transport_failures": 0,
+            "truth_mismatches": 1
+          },
+          "wall_seconds": 12.705337222,
+          "workers": 4
+        },
+        "resources": {
+          "block_device_deltas": [
+            {
+              "device": "loop0",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop1",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop2",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop3",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop4",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop5",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop6",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop7",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd0",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd1",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd2",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd3",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd4",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd5",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd6",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd7",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd8",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd9",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd10",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd11",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd12",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd13",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd14",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd15",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "vda",
+              "io_milliseconds": 0,
+              "read_bytes": 335872,
+              "weighted_io_milliseconds": 1,
+              "write_bytes": 0
+            },
+            {
+              "device": "vdb",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 10,
+              "write_bytes": 7249920
+            },
+            {
+              "device": "vdc",
+              "io_milliseconds": 44,
+              "read_bytes": 86016,
+              "weighted_io_milliseconds": 95,
+              "write_bytes": 25608192
+            },
+            {
+              "device": "vdd",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            }
+          ],
+          "cgroup_io_device_deltas": [],
+          "cgroup_memory_peak_bytes": null,
+          "cgroup_nr_throttled_delta": null,
+          "cgroup_throttled_usec_delta": null,
+          "cgroup_usage_usec_delta": null,
+          "directory_bytes_peak": 124918,
+          "directory_merge_temporary_files_peak": 0,
+          "directory_segment_groups_peak": 0,
+          "free_disk_min_bytes": 19841662976,
+          "guest_available_min_bytes": 773271552,
+          "guest_cache_min_bytes": 73793536,
+          "guest_cache_peak_bytes": 82579456,
+          "guest_major_faults_delta": 2,
+          "guest_steal_percent": 0.17578554163920018,
+          "guest_steal_ticks_delta": 8,
+          "maximum_sample_gap_seconds": 2.0104390499999987,
+          "memory_io_observation": {
+            "checks": {
+              "guest_block_io": true,
+              "guest_cpu": true,
+              "guest_memory": true,
+              "memory_accounting": true,
+              "selected_process_memory_cpu_io": true
+            },
+            "directory_footprint_scope": "configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings",
+            "memory_accounting_mode": "guest_memory_fallback",
+            "missing_required": [],
+            "optional_observations": {
+              "cgroup_cpu_throttling": false,
+              "cgroup_cpu_usage": false,
+              "guest_io_psi": true,
+              "guest_memory_psi": true
+            },
+            "qualified": true,
+            "scope": "guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable"
+          },
+          "merge_observation": "directory segment and temporary-file counts are heuristics; no completed-merge claim",
+          "oom_kill_delta": 0,
+          "process_counter_deltas": [
+            {
+              "major_faults": 2,
+              "observations": 19,
+              "pid": 623,
+              "read_bytes": 540672,
+              "start_ticks": 43,
+              "system_ticks": 10,
+              "user_ticks": 33,
+              "write_bytes": 21946368
+            },
+            {
+              "major_faults": 0,
+              "observations": 11,
+              "pid": 631,
+              "read_bytes": 0,
+              "start_ticks": 2675,
+              "system_ticks": 3,
+              "user_ticks": 20,
+              "write_bytes": 0
+            },
+            {
+              "major_faults": 0,
+              "observations": 11,
+              "pid": 633,
+              "read_bytes": 86016,
+              "start_ticks": 2684,
+              "system_ticks": 3,
+              "user_ticks": 7,
+              "write_bytes": 0
+            },
+            {
+              "major_faults": 0,
+              "observations": 11,
+              "pid": 635,
+              "read_bytes": 0,
+              "start_ticks": 2690,
+              "system_ticks": 15,
+              "user_ticks": 263,
+              "write_bytes": 21221376
+            },
+            {
+              "major_faults": 0,
+              "observations": 8,
+              "pid": 771,
+              "read_bytes": 0,
+              "start_ticks": 3685,
+              "system_ticks": 8,
+              "user_ticks": 15,
+              "write_bytes": 0
+            },
+            {
+              "major_faults": 0,
+              "observations": 8,
+              "pid": 773,
+              "read_bytes": 0,
+              "start_ticks": 3693,
+              "system_ticks": 3,
+              "user_ticks": 9,
+              "write_bytes": 0
+            },
+            {
+              "major_faults": 0,
+              "observations": 8,
+              "pid": 775,
+              "read_bytes": 0,
+              "start_ticks": 3698,
+              "system_ticks": 7,
+              "user_ticks": 0,
+              "write_bytes": 4096
+            }
+          ],
+          "psi_total_microseconds_delta": {
+            "cgroup_io_full": null,
+            "cgroup_io_some": null,
+            "cgroup_memory_full": null,
+            "cgroup_memory_some": null,
+            "guest_io_full": 19923,
+            "guest_io_some": 20322,
+            "guest_memory_full": 0,
+            "guest_memory_some": 0
+          },
+          "raw_detail_bytes": 175119,
+          "sample_failures": 0,
+          "samples": 19,
+          "summed_rss_may_double_count_shared_pages": true,
+          "summed_rss_peak_bytes": 86831104,
+          "swap_in_pages_delta": 0,
+          "swap_out_pages_delta": 0
+        },
+        "restart_identity": {
+          "engine_binary_sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
+          "engine_settings": {
+            "concurrency": 4,
+            "max_candidates": 10000,
+            "retrieval_strategy": "global-merge",
+            "writer_memory_mb": 128
+          },
+          "observer_receipt_sha256": "100376b5b122c132fdc1d4f571ce31be3240823355c9230e194ac8266127402d",
+          "provider": {
+            "app": "typeahead-qual-20261029",
+            "encrypted": true,
+            "guest": {
+              "cpu_kind": "shared",
+              "cpus": 2,
+              "memory_mb": 1024
+            },
+            "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+            "instance_id": "01M64SS7VC1YTHRYM2CQZYAZEX",
+            "machine_id": "89d52ec63e35d8",
+            "observed_at": 1793310145.7320466,
+            "public_services": [],
+            "volume_gib": 20,
+            "volume_id": "vol_r1j7e7en8knkkw0r"
+          },
+          "runtime_process_verified": true
+        },
+        "updates": [
+          {
+            "cursor": 1,
+            "replay_confirmed": true,
+            "seconds": 0.37645145699999993
+          },
+          {
+            "cursor": 2,
+            "replay_confirmed": true,
+            "seconds": 0.3323662399999989
+          },
+          {
+            "cursor": 3,
+            "replay_confirmed": true,
+            "seconds": 0.3110534119999997
+          },
+          {
+            "cursor": 4,
+            "replay_confirmed": true,
+            "seconds": 0.33710109999999993
+          },
+          {
+            "cursor": 5,
+            "replay_confirmed": true,
+            "seconds": 0.3384003989999993
+          },
+          {
+            "cursor": 6,
+            "replay_confirmed": true,
+            "seconds": 0.3145116720000001
+          },
+          {
+            "cursor": 7,
+            "replay_confirmed": true,
+            "seconds": 0.2923659920000006
+          },
+          {
+            "cursor": 8,
+            "replay_confirmed": true,
+            "seconds": 0.4875410510000009
+          },
+          {
+            "cursor": 9,
+            "replay_confirmed": true,
+            "seconds": 0.49016739099999995
+          }
+        ]
+      },
+      "tantivy": {
+        "arm": "tantivy",
+        "durable_cursor_replay_confirmed": true,
+        "identity": {
+          "engine_binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+          "engine_settings": {
+            "concurrency": 4,
+            "max_candidates": 10000,
+            "retrieval_strategy": "global-merge",
+            "writer_memory_mb": 128
+          },
+          "observer_receipt_sha256": "be719ab98aea9c6be13a1a42ae776d828e2d541e5920393cc9d73e26ebe55f95",
+          "provider": {
+            "app": "typeahead-qual-20261029",
+            "encrypted": true,
+            "guest": {
+              "cpu_kind": "shared",
+              "cpus": 2,
+              "memory_mb": 1024
+            },
+            "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+            "instance_id": "01M64SSHPHZ42BFYZG7H0RXBY5",
+            "machine_id": "824031c7424678",
+            "observed_at": 1793310139.0132637,
+            "public_services": [],
+            "volume_gib": 20,
+            "volume_id": "vol_4y8gkgkej82mmp1r"
+          },
+          "runtime_process_verified": true
+        },
+        "phases": {
+          "first_touch": {
+            "all": {
+              "p50_ms": 4.904811999999481,
+              "p95_ms": 7.731681999999296,
+              "p99_ms": 7.731681999999296,
+              "requests": 16,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "new_features": {
+              "p50_ms": null,
+              "p95_ms": null,
+              "p99_ms": null,
+              "requests": 0,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "performance_phase": false,
+            "queue_capacity": 32,
+            "queue_deadline_seconds": 3,
+            "resources": {
+              "block_device_deltas": [
+                {
+                  "device": "loop0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd8",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd9",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd10",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd11",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd12",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd13",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd14",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd15",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vda",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdb",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdc",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdd",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "cgroup_io_device_deltas": [],
+              "cgroup_memory_peak_bytes": null,
+              "cgroup_nr_throttled_delta": null,
+              "cgroup_throttled_usec_delta": null,
+              "cgroup_usage_usec_delta": null,
+              "directory_bytes_peak": 18718,
+              "directory_merge_temporary_files_peak": 0,
+              "directory_segment_groups_peak": 1,
+              "free_disk_min_bytes": 19850547200,
+              "guest_available_min_bytes": 806391808,
+              "guest_cache_min_bytes": 53231616,
+              "guest_cache_peak_bytes": 53231616,
+              "guest_major_faults_delta": 0,
+              "guest_steal_percent": 0.32679738562091504,
+              "guest_steal_ticks_delta": 1,
+              "maximum_sample_gap_seconds": 1.5131823999999998,
+              "memory_io_observation": {
+                "checks": {
+                  "guest_block_io": true,
+                  "guest_cpu": true,
+                  "guest_memory": true,
+                  "memory_accounting": true,
+                  "selected_process_memory_cpu_io": true
+                },
+                "directory_footprint_scope": "configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings",
+                "memory_accounting_mode": "guest_memory_fallback",
+                "missing_required": [],
+                "optional_observations": {
+                  "cgroup_cpu_throttling": false,
+                  "cgroup_cpu_usage": false,
+                  "guest_io_psi": true,
+                  "guest_memory_psi": true
+                },
+                "qualified": true,
+                "scope": "guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable"
+              },
+              "merge_observation": "directory segment and temporary-file counts are heuristics; no completed-merge claim",
+              "oom_kill_delta": 0,
+              "process_counter_deltas": [
+                {
+                  "major_faults": 0,
+                  "observations": 2,
+                  "pid": 623,
+                  "read_bytes": 0,
+                  "start_ticks": 41,
+                  "system_ticks": 0,
+                  "user_ticks": 1,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 2,
+                  "pid": 627,
+                  "read_bytes": 0,
+                  "start_ticks": 1676,
+                  "system_ticks": 2,
+                  "user_ticks": 1,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 2,
+                  "pid": 629,
+                  "read_bytes": 0,
+                  "start_ticks": 1685,
+                  "system_ticks": 0,
+                  "user_ticks": 1,
+                  "write_bytes": 0
+                }
+              ],
+              "psi_total_microseconds_delta": {
+                "cgroup_io_full": null,
+                "cgroup_io_some": null,
+                "cgroup_memory_full": null,
+                "cgroup_memory_some": null,
+                "guest_io_full": 0,
+                "guest_io_some": 0,
+                "guest_memory_full": 0,
+                "guest_memory_some": 0
+              },
+              "samples": 2,
+              "summed_rss_may_double_count_shared_pages": true,
+              "summed_rss_peak_bytes": 77561856,
+              "swap_in_pages_delta": 0,
+              "swap_out_pages_delta": 0
+            },
+            "scheduled_requests": 16,
+            "shared_native_features": {
+              "p50_ms": 4.904811999999481,
+              "p95_ms": 7.731681999999296,
+              "p99_ms": 7.731681999999296,
+              "requests": 16,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "wall_seconds": 1.50580302,
+            "workers": 4
+          },
+          "mixed": {
+            "all": {
+              "p50_ms": 4.627563999999751,
+              "p95_ms": 7.528042999998874,
+              "p99_ms": 8.259117000001481,
+              "requests": 64,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "new_features": {
+              "p50_ms": 5.0564009999991555,
+              "p95_ms": 7.528042999998874,
+              "p99_ms": 7.528042999998874,
+              "requests": 6,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "performance_phase": false,
+            "queue_capacity": 32,
+            "queue_deadline_seconds": 3,
+            "resources": {
+              "block_device_deltas": [
+                {
+                  "device": "loop0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd8",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd9",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd10",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd11",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd12",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd13",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd14",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd15",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vda",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdb",
+                  "io_milliseconds": 4,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 55,
+                  "write_bytes": 6955008
+                },
+                {
+                  "device": "vdc",
+                  "io_milliseconds": 56,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 57,
+                  "write_bytes": 9490432
+                },
+                {
+                  "device": "vdd",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "cgroup_io_device_deltas": [],
+              "cgroup_memory_peak_bytes": null,
+              "cgroup_nr_throttled_delta": null,
+              "cgroup_throttled_usec_delta": null,
+              "cgroup_usage_usec_delta": null,
+              "directory_bytes_peak": 18718,
+              "directory_merge_temporary_files_peak": 0,
+              "directory_segment_groups_peak": 1,
+              "free_disk_min_bytes": 19850502144,
+              "guest_available_min_bytes": 791932928,
+              "guest_cache_min_bytes": 53231616,
+              "guest_cache_peak_bytes": 53276672,
+              "guest_major_faults_delta": 0,
+              "guest_steal_percent": 0.15822784810126583,
+              "guest_steal_ticks_delta": 2,
+              "maximum_sample_gap_seconds": 2.008415911,
+              "memory_io_observation": {
+                "checks": {
+                  "guest_block_io": true,
+                  "guest_cpu": true,
+                  "guest_memory": true,
+                  "memory_accounting": true,
+                  "selected_process_memory_cpu_io": true
+                },
+                "directory_footprint_scope": "configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings",
+                "memory_accounting_mode": "guest_memory_fallback",
+                "missing_required": [],
+                "optional_observations": {
+                  "cgroup_cpu_throttling": false,
+                  "cgroup_cpu_usage": false,
+                  "guest_io_psi": true,
+                  "guest_memory_psi": true
+                },
+                "qualified": true,
+                "scope": "guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable"
+              },
+              "merge_observation": "directory segment and temporary-file counts are heuristics; no completed-merge claim",
+              "oom_kill_delta": 0,
+              "process_counter_deltas": [
+                {
+                  "major_faults": 0,
+                  "observations": 5,
+                  "pid": 623,
+                  "read_bytes": 0,
+                  "start_ticks": 41,
+                  "system_ticks": 5,
+                  "user_ticks": 10,
+                  "write_bytes": 184320
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 5,
+                  "pid": 627,
+                  "read_bytes": 0,
+                  "start_ticks": 1676,
+                  "system_ticks": 3,
+                  "user_ticks": 7,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 5,
+                  "pid": 629,
+                  "read_bytes": 0,
+                  "start_ticks": 1685,
+                  "system_ticks": 10,
+                  "user_ticks": 20,
+                  "write_bytes": 1073152
+                }
+              ],
+              "psi_total_microseconds_delta": {
+                "cgroup_io_full": null,
+                "cgroup_io_some": null,
+                "cgroup_memory_full": null,
+                "cgroup_memory_some": null,
+                "guest_io_full": 28486,
+                "guest_io_some": 29272,
+                "guest_memory_full": 0,
+                "guest_memory_some": 0
+              },
+              "samples": 5,
+              "summed_rss_may_double_count_shared_pages": true,
+              "summed_rss_peak_bytes": 97406976,
+              "swap_in_pages_delta": 0,
+              "swap_out_pages_delta": 0
+            },
+            "scheduled_requests": 64,
+            "shared_native_features": {
+              "p50_ms": 4.606752999997354,
+              "p95_ms": 7.625851999998545,
+              "p99_ms": 8.259117000001481,
+              "requests": 58,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "wall_seconds": 6.304638204,
+            "workers": 4
+          },
+          "warm": {
+            "all": {
+              "p50_ms": 4.6257219999983334,
+              "p95_ms": 6.675185999998945,
+              "p99_ms": 6.675185999998945,
+              "requests": 16,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "new_features": {
+              "p50_ms": null,
+              "p95_ms": null,
+              "p99_ms": null,
+              "requests": 0,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "performance_phase": false,
+            "queue_capacity": 32,
+            "queue_deadline_seconds": 3,
+            "resources": {
+              "block_device_deltas": [
+                {
+                  "device": "loop0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "loop7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd0",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd1",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd2",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd3",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd4",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd5",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd6",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd7",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd8",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd9",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd10",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd11",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd12",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd13",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd14",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "nbd15",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vda",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdb",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdc",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                },
+                {
+                  "device": "vdd",
+                  "io_milliseconds": 0,
+                  "read_bytes": 0,
+                  "weighted_io_milliseconds": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "cgroup_io_device_deltas": [],
+              "cgroup_memory_peak_bytes": null,
+              "cgroup_nr_throttled_delta": null,
+              "cgroup_throttled_usec_delta": null,
+              "cgroup_usage_usec_delta": null,
+              "directory_bytes_peak": 18718,
+              "directory_merge_temporary_files_peak": 0,
+              "directory_segment_groups_peak": 1,
+              "free_disk_min_bytes": 19850547200,
+              "guest_available_min_bytes": 805703680,
+              "guest_cache_min_bytes": 53231616,
+              "guest_cache_peak_bytes": 53231616,
+              "guest_major_faults_delta": 0,
+              "guest_steal_percent": 0.0,
+              "guest_steal_ticks_delta": 0,
+              "maximum_sample_gap_seconds": 1.258344534999999,
+              "memory_io_observation": {
+                "checks": {
+                  "guest_block_io": true,
+                  "guest_cpu": true,
+                  "guest_memory": true,
+                  "memory_accounting": true,
+                  "selected_process_memory_cpu_io": true
+                },
+                "directory_footprint_scope": "configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings",
+                "memory_accounting_mode": "guest_memory_fallback",
+                "missing_required": [],
+                "optional_observations": {
+                  "cgroup_cpu_throttling": false,
+                  "cgroup_cpu_usage": false,
+                  "guest_io_psi": true,
+                  "guest_memory_psi": true
+                },
+                "qualified": true,
+                "scope": "guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable"
+              },
+              "merge_observation": "directory segment and temporary-file counts are heuristics; no completed-merge claim",
+              "oom_kill_delta": 0,
+              "process_counter_deltas": [
+                {
+                  "major_faults": 0,
+                  "observations": 3,
+                  "pid": 623,
+                  "read_bytes": 0,
+                  "start_ticks": 41,
+                  "system_ticks": 0,
+                  "user_ticks": 1,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 3,
+                  "pid": 627,
+                  "read_bytes": 0,
+                  "start_ticks": 1676,
+                  "system_ticks": 2,
+                  "user_ticks": 2,
+                  "write_bytes": 0
+                },
+                {
+                  "major_faults": 0,
+                  "observations": 3,
+                  "pid": 629,
+                  "read_bytes": 0,
+                  "start_ticks": 1685,
+                  "system_ticks": 1,
+                  "user_ticks": 0,
+                  "write_bytes": 0
+                }
+              ],
+              "psi_total_microseconds_delta": {
+                "cgroup_io_full": null,
+                "cgroup_io_some": null,
+                "cgroup_memory_full": null,
+                "cgroup_memory_some": null,
+                "guest_io_full": 0,
+                "guest_io_some": 0,
+                "guest_memory_full": 0,
+                "guest_memory_some": 0
+              },
+              "samples": 3,
+              "summed_rss_may_double_count_shared_pages": true,
+              "summed_rss_peak_bytes": 77651968,
+              "swap_in_pages_delta": 0,
+              "swap_out_pages_delta": 0
+            },
+            "scheduled_requests": 16,
+            "shared_native_features": {
+              "p50_ms": 4.6257219999983334,
+              "p95_ms": 6.675185999998945,
+              "p99_ms": 6.675185999998945,
+              "requests": 16,
+              "transport_failures": 0,
+              "truth_mismatches": 0
+            },
+            "wall_seconds": 1.5062327509999989,
+            "workers": 4
+          }
+        },
+        "post_restart_quiescent": {
+          "all": {
+            "p50_ms": 4.994516000000004,
+            "p95_ms": 6.523183000002319,
+            "p99_ms": 8.095754000002842,
+            "requests": 128,
+            "transport_failures": 0,
+            "truth_mismatches": 0
+          },
+          "new_features": {
+            "p50_ms": 5.2305790000026775,
+            "p95_ms": 5.683957000002238,
+            "p99_ms": 5.683957000002238,
+            "requests": 6,
+            "transport_failures": 0,
+            "truth_mismatches": 0
+          },
+          "performance_phase": false,
+          "queue_capacity": 32,
+          "queue_deadline_seconds": 3,
+          "scheduled_requests": 128,
+          "shared_native_features": {
+            "p50_ms": 4.9809830000029365,
+            "p95_ms": 6.523183000002319,
+            "p99_ms": 8.095754000002842,
+            "requests": 122,
+            "transport_failures": 0,
+            "truth_mismatches": 0
+          },
+          "wall_seconds": 12.705215522,
+          "workers": 4
+        },
+        "resources": {
+          "block_device_deltas": [
+            {
+              "device": "loop0",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop1",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop2",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop3",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop4",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop5",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop6",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "loop7",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd0",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd1",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd2",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd3",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd4",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd5",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd6",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd7",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd8",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd9",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd10",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd11",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd12",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd13",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd14",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "nbd15",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "vda",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            },
+            {
+              "device": "vdb",
+              "io_milliseconds": 4,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 66,
+              "write_bytes": 14196736
+            },
+            {
+              "device": "vdc",
+              "io_milliseconds": 60,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 58,
+              "write_bytes": 9740288
+            },
+            {
+              "device": "vdd",
+              "io_milliseconds": 0,
+              "read_bytes": 0,
+              "weighted_io_milliseconds": 0,
+              "write_bytes": 0
+            }
+          ],
+          "cgroup_io_device_deltas": [],
+          "cgroup_memory_peak_bytes": null,
+          "cgroup_nr_throttled_delta": null,
+          "cgroup_throttled_usec_delta": null,
+          "cgroup_usage_usec_delta": null,
+          "directory_bytes_peak": 18718,
+          "directory_merge_temporary_files_peak": 0,
+          "directory_segment_groups_peak": 1,
+          "free_disk_min_bytes": 19850502144,
+          "guest_available_min_bytes": 791932928,
+          "guest_cache_min_bytes": 53202944,
+          "guest_cache_peak_bytes": 53276672,
+          "guest_major_faults_delta": 0,
+          "guest_steal_percent": 0.11020498126515318,
+          "guest_steal_ticks_delta": 5,
+          "maximum_sample_gap_seconds": 2.011914100000002,
+          "memory_io_observation": {
+            "checks": {
+              "guest_block_io": true,
+              "guest_cpu": true,
+              "guest_memory": true,
+              "memory_accounting": true,
+              "selected_process_memory_cpu_io": true
+            },
+            "directory_footprint_scope": "configured paths only; excludes unconfigured immutable source files and SQLite WAL siblings",
+            "memory_accounting_mode": "guest_memory_fallback",
+            "missing_required": [],
+            "optional_observations": {
+              "cgroup_cpu_throttling": false,
+              "cgroup_cpu_usage": false,
+              "guest_io_psi": true,
+              "guest_memory_psi": true
+            },
+            "qualified": true,
+            "scope": "guest and selected processes; RSS may double count shared pages; no cgroup usage inferred when unavailable"
+          },
+          "merge_observation": "directory segment and temporary-file counts are heuristics; no completed-merge claim",
+          "oom_kill_delta": 0,
+          "process_counter_deltas": [
+            {
+              "major_faults": 0,
+              "observations": 19,
+              "pid": 623,
+              "read_bytes": 77824,
+              "start_ticks": 41,
+              "system_ticks": 8,
+              "user_ticks": 20,
+              "write_bytes": 1269760
+            },
+            {
+              "major_faults": 0,
+              "observations": 11,
+              "pid": 627,
+              "read_bytes": 0,
+              "start_ticks": 1676,
+              "system_ticks": 7,
+              "user_ticks": 14,
+              "write_bytes": 0
+            },
+            {
+              "major_faults": 0,
+              "observations": 11,
+              "pid": 629,
+              "read_bytes": 0,
+              "start_ticks": 1685,
+              "system_ticks": 11,
+              "user_ticks": 21,
+              "write_bytes": 1073152
+            },
+            {
+              "major_faults": 0,
+              "observations": 8,
+              "pid": 809,
+              "read_bytes": 0,
+              "start_ticks": 2685,
+              "system_ticks": 4,
+              "user_ticks": 18,
+              "write_bytes": 0
+            },
+            {
+              "major_faults": 0,
+              "observations": 8,
+              "pid": 811,
+              "read_bytes": 0,
+              "start_ticks": 2693,
+              "system_ticks": 7,
+              "user_ticks": 3,
+              "write_bytes": 8192
+            }
+          ],
+          "psi_total_microseconds_delta": {
+            "cgroup_io_full": null,
+            "cgroup_io_some": null,
+            "cgroup_memory_full": null,
+            "cgroup_memory_some": null,
+            "guest_io_full": 30773,
+            "guest_io_some": 31631,
+            "guest_memory_full": 0,
+            "guest_memory_some": 0
+          },
+          "raw_detail_bytes": 158037,
+          "sample_failures": 0,
+          "samples": 19,
+          "summed_rss_may_double_count_shared_pages": true,
+          "summed_rss_peak_bytes": 97406976,
+          "swap_in_pages_delta": 0,
+          "swap_out_pages_delta": 0
+        },
+        "restart_identity": {
+          "engine_binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+          "engine_settings": {
+            "concurrency": 4,
+            "max_candidates": 10000,
+            "retrieval_strategy": "global-merge",
+            "writer_memory_mb": 128
+          },
+          "observer_receipt_sha256": "be719ab98aea9c6be13a1a42ae776d828e2d541e5920393cc9d73e26ebe55f95",
+          "provider": {
+            "app": "typeahead-qual-20261029",
+            "encrypted": true,
+            "guest": {
+              "cpu_kind": "shared",
+              "cpus": 2,
+              "memory_mb": 1024
+            },
+            "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+            "instance_id": "01M64SSHPHZ42BFYZG7H0RXBY5",
+            "machine_id": "824031c7424678",
+            "observed_at": 1793310145.7336638,
+            "public_services": [],
+            "volume_gib": 20,
+            "volume_id": "vol_4y8gkgkej82mmp1r"
+          },
+          "runtime_process_verified": true
+        },
+        "updates": [
+          {
+            "cursor": 1,
+            "replay_confirmed": true,
+            "seconds": 0.04993086700000049
+          },
+          {
+            "cursor": 2,
+            "replay_confirmed": true,
+            "seconds": 0.05829255699999969
+          },
+          {
+            "cursor": 3,
+            "replay_confirmed": true,
+            "seconds": 0.06719834599999963
+          },
+          {
+            "cursor": 4,
+            "replay_confirmed": true,
+            "seconds": 0.056478825999999316
+          },
+          {
+            "cursor": 5,
+            "replay_confirmed": true,
+            "seconds": 0.04888210699999895
+          },
+          {
+            "cursor": 6,
+            "replay_confirmed": true,
+            "seconds": 0.03989762700000021
+          },
+          {
+            "cursor": 7,
+            "replay_confirmed": true,
+            "seconds": 0.05122637699999899
+          },
+          {
+            "cursor": 8,
+            "replay_confirmed": true,
+            "seconds": 0.051040616999999955
+          },
+          {
+            "cursor": 9,
+            "replay_confirmed": true,
+            "seconds": 0.046623816999998624
+          }
+        ]
+      }
+    },
+    "case_count": 128,
+    "execution": "parallel-private-arms",
+    "full_corpus_qualified": false,
+    "full_qualification": false,
+    "gates": {
+      "durable_replay_and_restart_passed": true,
+      "full_corpus_qualified": false,
+      "native_truth_mismatches_recorded": true,
+      "passed": true,
+      "performance_qualified": false,
+      "scope": "synthetic-staged-provider-lifecycle",
+      "shared_transport_passed": true,
+      "tantivy_truth_and_transport_passed": true
+    },
+    "input_hashes": {
+      "cases_sha256": "573b3cbb42ae88c1b3f807f89ba3596ab1ea12d67a78cd26a983977206e051dc",
+      "corpus_sha256": "e46c7e844d000d9054323ec2ee474cc108767d10345e6232ac5ac6d4aa311239",
+      "oracle_sha256": "b7a9a1a5386144c98ee5120b1877da36ccd8b48b1742069f89adcf49242eac08",
+      "updates_sha256": "570ae8c94841129c129145ae14871ab78eb8650df2c1c6ca23a06077075447eb"
+    },
+    "live_policy_source_qualified": false,
+    "oracle": {
+      "actor_stream_sha256": "c3dd700bd29181e94004c3e03099d346869e05ffce5fd3730214b9a78216f751",
+      "identity_policy_sha256": "1ed23ca57f8c03e841a703c55ca1b4335897de01c9dc58f642dbf6aca5529a09",
+      "oracle_binary_sha256": "df91a1647580edf77d31fac4ce825c3205ca77781396bce0b620e96e2661ef61",
+      "raw_source_sha256": "c806aed2ce4c3cc2e77d51b0a245d703ed6d73e76cdc3f30e9723ea47a06059b"
+    },
+    "passed": true,
+    "performance_qualified": false,
+    "preparation_observation_failures": {
+      "native": 1,
+      "tantivy": 0
+    },
+    "production_contact": false,
+    "raw_detail_location": "cloud-local ephemeral generator /tmp/qualification-full-generator",
+    "schema_version": 1,
+    "scope": "synthetic-staged-provider-lifecycle",
+    "shared_case_count": 122
+  },
+  "cleanup": {
+    "schema": 1,
+    "app": "typeahead-qual-20261029",
+    "owner": "tantivy-qualification-20261029",
+    "run_id": "ddb646846adf",
+    "status": "cleaned",
+    "deadline": 1793310648.982534,
+    "started_at": 1793310241.6764002,
+    "finished_at": 1793310261.4270542,
+    "attempts": 3,
+    "creation_settled_by_controller": true,
+    "resolved": [
+      {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "89d52ec63e35d8",
+        "name": "tq-ddb646846adf-native-control",
+        "role": "native-control",
+        "run_id": "ddb646846adf"
+      },
+      {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "824031c7424678",
+        "name": "tq-ddb646846adf-tantivy-control",
+        "role": "tantivy-control",
+        "run_id": "ddb646846adf"
+      },
+      {
+        "event": "resolved",
+        "kind": "volume",
+        "id": "vol_r1j7e7en8knkkw0r",
+        "name": "tq_ddb646846adf_native",
+        "role": "native",
+        "run_id": "ddb646846adf"
+      },
+      {
+        "event": "resolved",
+        "kind": "volume",
+        "id": "vol_4y8gkgkej82mmp1r",
+        "name": "tq_ddb646846adf_tantivy",
+        "role": "tantivy",
+        "run_id": "ddb646846adf"
+      }
+    ],
+    "failures": [],
+    "remaining": [],
+    "remaining_whitelist_ids": [],
+    "unresolved_whitelist_names": [],
+    "self": null,
+    "api_timeout_seconds": 15,
+    "cleanup_grace_seconds": 300,
+    "volume_dispositions": [
+      {
+        "id": "vol_r1j7e7en8knkkw0r",
+        "state": "pending_destroy",
+        "non_billable": true,
+        "physical_purge_confirmed": false
+      },
+      {
+        "id": "vol_4y8gkgkej82mmp1r",
+        "state": "pending_destroy",
+        "non_billable": true,
+        "physical_purge_confirmed": false
+      }
+    ],
+    "limitations": [
+      "Provider outages may leave volumes; failed cleanup must be reconciled before another run.",
+      "Fly retains non-billable pending_destroy volume records for provider-managed purge; absence of those records is not required or claimed."
+    ]
+  },
+  "reaper_retired": true,
+  "preparation": {
+    "native-control": {
+      "provider_preparation": {
+        "schema": 1,
+        "provider": "fly",
+        "observed_at": "2026-10-29T21:39:12.965488+00:00",
+        "app": "typeahead-qual-20261029",
+        "machine_id": "89d52ec63e35d8",
+        "instance_id": "01M64SMDC7N5X397271YEW1167",
+        "state": "stopped",
+        "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+        "guest": {
+          "cpu_kind": "performance",
+          "cpus": 2,
+          "memory_mb": 4096
+        },
+        "mounts": [
+          {
+            "volume_id": "vol_r1j7e7en8knkkw0r",
+            "path": "/data",
+            "size_gib": 20,
+            "encrypted": true
+          }
+        ],
+        "owner": "tantivy-qualification-20261029",
+        "role": "native-control",
+        "public_service_ports": [],
+        "provider_config_reserved_env_overrides": false,
+        "volume_ids": [
+          "vol_r1j7e7en8knkkw0r"
+        ],
+        "final_volume_gib": 20,
+        "public_services": [],
+        "machines_api_response_sha256": "39f0ef75dd75f7d340912cd22b5e58bfa21ba95771faf3302c6e47aaa48a8947"
+      },
+      "completion_receipt": {
+        "app": "typeahead-qual-20261029",
+        "machine_id": "89d52ec63e35d8",
+        "volume_id": "vol_r1j7e7en8knkkw0r",
+        "arm": "native",
+        "nonce": "8d4b50143c815dc6688ee244d49f275b",
+        "build_id": "b1793309688-pilot-ddb646846adf",
+        "runtime_instance_id": "01M64SMMKC4S077T42M9BH5KBT",
+        "prepared_at": 1793309961.4050033,
+        "checkpoint_sha256": "a1f8c6954c6ef96e99e16121ce27a8209bbd2e05ff313062166a03e857e7aebe",
+        "prepared": true,
+        "guest": {
+          "cpu_kind": "performance",
+          "cpus": 2,
+          "memory_mb": 4096
+        }
+      },
+      "provider_final": {
+        "schema": 1,
+        "provider": "fly",
+        "observed_at": "2026-10-29T21:41:43.779839+00:00",
+        "app": "typeahead-qual-20261029",
+        "machine_id": "89d52ec63e35d8",
+        "instance_id": "01M64SS46DK8164X0715FRQAMH",
+        "state": "stopped",
+        "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "mounts": [
+          {
+            "volume_id": "vol_r1j7e7en8knkkw0r",
+            "path": "/data",
+            "size_gib": 20,
+            "encrypted": true
+          }
+        ],
+        "owner": "tantivy-qualification-20261029",
+        "role": "native-control",
+        "public_service_ports": [],
+        "provider_config_reserved_env_overrides": false,
+        "volume_ids": [
+          "vol_r1j7e7en8knkkw0r"
+        ],
+        "final_volume_gib": 20,
+        "public_services": [],
+        "machines_api_response_sha256": "33b2292b3fa8807b8e0afbc3d56488594264991385f66940f35b901c7e2232ed"
+      }
+    },
+    "tantivy-control": {
+      "provider_preparation": {
+        "schema": 1,
+        "provider": "fly",
+        "observed_at": "2026-10-29T21:39:18.594400+00:00",
+        "app": "typeahead-qual-20261029",
+        "machine_id": "824031c7424678",
+        "instance_id": "01M64SMG4AP6N1GRPZGCCFQYV0",
+        "state": "stopped",
+        "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+        "guest": {
+          "cpu_kind": "performance",
+          "cpus": 2,
+          "memory_mb": 4096
+        },
+        "mounts": [
+          {
+            "volume_id": "vol_4y8gkgkej82mmp1r",
+            "path": "/data",
+            "size_gib": 20,
+            "encrypted": true
+          }
+        ],
+        "owner": "tantivy-qualification-20261029",
+        "role": "tantivy-control",
+        "public_service_ports": [],
+        "provider_config_reserved_env_overrides": false,
+        "volume_ids": [
+          "vol_4y8gkgkej82mmp1r"
+        ],
+        "final_volume_gib": 20,
+        "public_services": [],
+        "machines_api_response_sha256": "749fe69c13c5d35e23cca3bdfff3f081efab0127db74b5b188cf30e6870ceb07"
+      },
+      "completion_receipt": {
+        "app": "typeahead-qual-20261029",
+        "machine_id": "824031c7424678",
+        "volume_id": "vol_4y8gkgkej82mmp1r",
+        "arm": "tantivy",
+        "nonce": "8d4b50143c815dc6688ee244d49f275b",
+        "build_id": "b1793309688-pilot-ddb646846adf",
+        "runtime_instance_id": "01M64SMT39WPC89ESK32R3NEM6",
+        "prepared_at": 1793309965.7745044,
+        "checkpoint_sha256": "cb268c4c935884ec06b82e829247aff86034ced2dcfb29d944c75377b1f1ef73",
+        "prepared": true,
+        "guest": {
+          "cpu_kind": "performance",
+          "cpus": 2,
+          "memory_mb": 4096
+        }
+      },
+      "provider_final": {
+        "schema": 1,
+        "provider": "fly",
+        "observed_at": "2026-10-29T21:41:53.744412+00:00",
+        "app": "typeahead-qual-20261029",
+        "machine_id": "824031c7424678",
+        "instance_id": "01M64SSE0P2TF8TPXDQACZA4GR",
+        "state": "stopped",
+        "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "mounts": [
+          {
+            "volume_id": "vol_4y8gkgkej82mmp1r",
+            "path": "/data",
+            "size_gib": 20,
+            "encrypted": true
+          }
+        ],
+        "owner": "tantivy-qualification-20261029",
+        "role": "tantivy-control",
+        "public_service_ports": [],
+        "provider_config_reserved_env_overrides": false,
+        "volume_ids": [
+          "vol_4y8gkgkej82mmp1r"
+        ],
+        "final_volume_gib": 20,
+        "public_services": [],
+        "machines_api_response_sha256": "ba84f5ece2127840dec3f1600d81352f5d3e38679574b7d5fc595a4c71bcd8c2"
+      }
+    }
+  },
+  "full_corpus_qualified": false,
+  "performance_qualified": false,
+  "production_changed": false
+}

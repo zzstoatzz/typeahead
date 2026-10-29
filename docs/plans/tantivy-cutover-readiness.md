@@ -47,7 +47,14 @@ The next trial separates temporary performance-CPU preparation from the final
 shared-CPU serving budget. It must resume the same verified files after restart,
 prove the final two-shared-CPU/1-GiB/20-GiB shape, and pass a tiny transition test
 before another full run. Preparation resources are reported separately; none of
-its timings qualify serving speed.
+its timings qualify serving speed. The
+[synthetic staged cloud pilot](../evals/tantivy-dev-20261028/synthetic-staged-pilot-ddb646846adf.json)
+passed: both original 20-GiB volumes survived preparation on two performance
+CPUs/4 GiB and restart on two shared CPUs/1 GiB. Independent provider and running
+executable checks passed; 224 queries per arm, nine update batches, durable
+replay and process restart completed. Tantivy had zero truth/transport failures;
+native mismatches remain recorded. Cleanup retired all trial resources. The
+128-actor fixture supplies lifecycle evidence only, not full-corpus performance.
 
 The companion MPS branch `codex/tantivy-controller-compatibility` at `25e5509`
 adds strict engine identity, native rollback with conditional compensation,

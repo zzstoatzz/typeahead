@@ -23,49 +23,49 @@
   },
   "pilot": {
     "phase": "cleaned",
-    "image": "registry.fly.io/typeahead-qual-20261029@sha256:c3d29aba045c9b2a57fe0080f61a480497eb68a85387b25853ad39e89ad9166a",
+    "image": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
     "region": "ewr",
     "manifest": {
       "schema": 1,
       "app": "typeahead-qual-20261029",
       "owner": "tantivy-qualification-20261029",
-      "run_id": "4d62ead649f7",
+      "run_id": "ddb646846adf",
       "mode": "full",
-      "created_after": 1793305076.2230048,
-      "created_before": 1793310506.2230048,
-      "deadline": 1793310506.2230048,
+      "created_after": 1793309718.982534,
+      "created_before": 1793310648.982534,
+      "deadline": 1793310648.982534,
       "machines": [
         {
-          "name": "tq-4d62ead649f7-native-control",
+          "name": "tq-ddb646846adf-native-control",
           "role": "native-control"
         },
         {
-          "name": "tq-4d62ead649f7-tantivy-control",
+          "name": "tq-ddb646846adf-tantivy-control",
           "role": "tantivy-control"
         },
         {
-          "name": "tq-4d62ead649f7-generator",
+          "name": "tq-ddb646846adf-generator",
           "role": "generator"
         }
       ],
       "volumes": [
         {
-          "name": "tq_4d62ead649f7_native",
+          "name": "tq_ddb646846adf_native",
           "role": "native"
         },
         {
-          "name": "tq_4d62ead649f7_tantivy",
+          "name": "tq_ddb646846adf_tantivy",
           "role": "tantivy"
         }
       ],
       "reaper": {
-        "name": "tq-4d62ead649f7-reaper",
+        "name": "tq-ddb646846adf-reaper",
         "role": "reaper"
       }
     },
-    "manifest_sha256": "70852ba4f1f8d00ffa156344f55930957ace8958dee249cda3c60f6fec207878",
-    "nonce": "e66d605c462ac7d6f562c0489bc9cdca",
-    "watermark": 1793305046,
+    "manifest_sha256": "ea719c3ba3767b1367e2f4d4420b3bc45d39532bade16b2dfcfb3f505afbbf6d",
+    "nonce": "8d4b50143c815dc6688ee244d49f275b",
+    "watermark": 1793309688,
     "attempts": {
       "machine:reaper": "resolved",
       "volume:native": "resolved",
@@ -75,59 +75,161 @@
       "machine:generator": "resolved"
     },
     "resolved": {
-      "machine:reaper": "801249a6d20e38",
-      "volume:native": "vol_v3gx6588djw8p2x4",
-      "volume:tantivy": "vol_v8ey9xwg3yol185v",
-      "machine:native-control": "8e236dc727e538",
-      "machine:tantivy-control": "6835750a604018",
-      "machine:generator": "6835102ae1d028"
+      "machine:reaper": "d893431f056758",
+      "volume:native": "vol_r1j7e7en8knkkw0r",
+      "volume:tantivy": "vol_4y8gkgkej82mmp1r",
+      "machine:native-control": "89d52ec63e35d8",
+      "machine:tantivy-control": "824031c7424678",
+      "machine:generator": "781e7e3add7368"
     },
     "armed": {
       "app": "typeahead-qual-20261029",
       "owner": "tantivy-qualification-20261029",
-      "run_id": "4d62ead649f7",
-      "deadline": 1793310506.2230048,
+      "run_id": "ddb646846adf",
+      "deadline": 1793310648.982534,
       "self": {
-        "id": "801249a6d20e38",
-        "name": "tq-4d62ead649f7-reaper",
+        "id": "d893431f056758",
+        "name": "tq-ddb646846adf-reaper",
         "auto_destroy": true
       },
-      "manifest_sha256": "70852ba4f1f8d00ffa156344f55930957ace8958dee249cda3c60f6fec207878"
+      "manifest_sha256": "ea719c3ba3767b1367e2f4d4420b3bc45d39532bade16b2dfcfb3f505afbbf6d"
     },
     "native_binary_sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
     "tantivy_binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
     "required_platform_secrets": [
       "ADMIN_SECRET",
       "QUAL_CONTROL_SECRET",
-      "QUAL_REAPER_CAPABILITY",
-      "QUAL_SOURCE_ACCESS"
+      "QUAL_REAPER_CAPABILITY"
     ],
+    "staged_preparation": true,
+    "synthetic_staged_pilot": true,
+    "synthetic_actor_count": 128,
     "oracle_binary_sha256": "df91a1647580edf77d31fac4ce825c3205ca77781396bce0b620e96e2661ef61",
     "creation_request_sha256": {
-      "machine:reaper": "9d2cc867b1fa0b4e8e6222a0fdd2eb9d7928e806730293a1ca09e61f2d0754b9",
-      "volume:native": "5ab88de8208db789ff5c66b8ee1b5503a1e00b08081a0db49dfd62bcc93653e7",
-      "volume:tantivy": "ae6e7efe5bfdbbb91e525f51b949a8cd1ec8230bc6ab5f8de0b268d53f4836a3",
-      "machine:native-control": "c5ae384f8fb0eed8702e23bdf3a90b1d9db3eb2da993c06088a7096155898b3d",
-      "machine:tantivy-control": "3ec8137d0b0c0dcc29d31e5bca756e6683f72026e4094091d65d9c5d2526bb8a",
-      "machine:generator": "66f709899ee80742590597a29d9678533c112ee78a96ba911c1a08bcfd96ffaa"
+      "machine:reaper": "0c57436fb8690705fe6db1a91747f2f2df8b232b976c9cd565b48d96365f4355",
+      "volume:native": "48ab2e195e5a611cc8a16e893eedb8bcbed90038ed4e09fc554d6e2d13ae0faa",
+      "volume:tantivy": "c1b3e363540522b38c008a179e37c95f5f25a036fd8c217df9e3a6e5a3ef26d4",
+      "machine:native-control": "b0908714ab3f0319f889590dd47bbae401e3749db045d3b940e785158d46a77f",
+      "machine:tantivy-control": "08f5c4d8e2bcff4fa1717cfeb1a5aee4a1b5afea610c7d3c5b8476ba88af9fff",
+      "machine:generator": "4c92cb1180bd7176fe218976e13f4517426eab7adc0a0ae596cc91a60cde54d0"
+    },
+    "staged_attempts": {
+      "native-control:configure": {
+        "desired_sha256": "d9c31800ae9d759f9e0206e4d134a86b1e70772bd956cfccaad24e55217f30bd",
+        "state": "committed"
+      },
+      "tantivy-control:configure": {
+        "desired_sha256": "128447177ee904a4aab57b391d8b70b0e1c004aae44d19704e6e05e9acaaf25b",
+        "state": "committed"
+      },
+      "native-control:resize": {
+        "desired_sha256": "e7be6bd65a8ae92758652fdde526cbdf283cb5887a4a0728bf79765bf6eae7f0",
+        "state": "committed"
+      },
+      "tantivy-control:resize": {
+        "desired_sha256": "cfaf139bac229721a6e571e0dfc9c5ab30cadd8480843ed759c82052ba20862c",
+        "state": "committed"
+      }
+    },
+    "preparation_configured": {
+      "native-control": "4b310ce61a454d373c56d3980f62c777b213b0dd0da83265f63674d4c1642b92",
+      "tantivy-control": "ea7b4f43fca4718106949313e050d70cb50dd9d8ba87938422a8effd09c97478"
+    },
+    "preparation_started": {
+      "native-control": {
+        "requested_at": 1793309957.048756
+      },
+      "tantivy-control": {
+        "requested_at": 1793309962.652647
+      }
+    },
+    "preparation_receipts": {
+      "native-control": {
+        "receipt_sha256": "70b5feb3b5945b8063b4ee43de40e9637f2474db903150ad0f4720853e6fc33b",
+        "receipt": {
+          "app": "typeahead-qual-20261029",
+          "machine_id": "89d52ec63e35d8",
+          "volume_id": "vol_r1j7e7en8knkkw0r",
+          "arm": "native",
+          "nonce": "8d4b50143c815dc6688ee244d49f275b",
+          "build_id": "b1793309688-pilot-ddb646846adf",
+          "runtime_instance_id": "01M64SMMKC4S077T42M9BH5KBT",
+          "prepared_at": 1793309961.4050033,
+          "checkpoint_sha256": "a1f8c6954c6ef96e99e16121ce27a8209bbd2e05ff313062166a03e857e7aebe",
+          "prepared": true,
+          "guest": {
+            "cpu_kind": "performance",
+            "cpus": 2,
+            "memory_mb": 4096
+          }
+        },
+        "exit_proof": {
+          "instance_id": "01M64SMMKC4S077T42M9BH5KBT",
+          "exit_event_timestamp": 1793309963276,
+          "exit_code": 0,
+          "oom_killed": false
+        }
+      },
+      "tantivy-control": {
+        "receipt_sha256": "4cadfbb883794cea5bf23df1f72e9ceb71f537dfd8c92dbeaa92e0fa457b3903",
+        "receipt": {
+          "app": "typeahead-qual-20261029",
+          "machine_id": "824031c7424678",
+          "volume_id": "vol_4y8gkgkej82mmp1r",
+          "arm": "tantivy",
+          "nonce": "8d4b50143c815dc6688ee244d49f275b",
+          "build_id": "b1793309688-pilot-ddb646846adf",
+          "runtime_instance_id": "01M64SMT39WPC89ESK32R3NEM6",
+          "prepared_at": 1793309965.7745044,
+          "checkpoint_sha256": "cb268c4c935884ec06b82e829247aff86034ced2dcfb29d944c75377b1f1ef73",
+          "prepared": true,
+          "guest": {
+            "cpu_kind": "performance",
+            "cpus": 2,
+            "memory_mb": 4096
+          }
+        },
+        "exit_proof": {
+          "instance_id": "01M64SMT39WPC89ESK32R3NEM6",
+          "exit_event_timestamp": 1793309967645,
+          "exit_code": 0,
+          "oom_killed": false
+        }
+      }
+    },
+    "preparation_finished": {
+      "native-control": {
+        "checkpoint_sha256": "a1f8c6954c6ef96e99e16121ce27a8209bbd2e05ff313062166a03e857e7aebe",
+        "build_id": "b1793309688-pilot-ddb646846adf",
+        "receipt_sha256": "70b5feb3b5945b8063b4ee43de40e9637f2474db903150ad0f4720853e6fc33b"
+      },
+      "tantivy-control": {
+        "checkpoint_sha256": "cb268c4c935884ec06b82e829247aff86034ced2dcfb29d944c75377b1f1ef73",
+        "build_id": "b1793309688-pilot-ddb646846adf",
+        "receipt_sha256": "4cadfbb883794cea5bf23df1f72e9ceb71f537dfd8c92dbeaa92e0fa457b3903"
+      }
     },
     "configuration_attempts": {
       "native-control": {
-        "sha256": "44e7adebc66115b0dd0e7a2c81d714995f45c5c3e5ea71697305848f1f37c04f",
+        "sha256": "3301af8b8fe8808db1386f6f3a38d607e08673b8f00f1dc14fcbc5f8691b4802",
         "keys": [
-          "QUAL_OBSERVER_JSON"
+          "QUAL_CHECKPOINT_SHA256",
+          "QUAL_OBSERVER_JSON",
+          "QUAL_PHASE"
         ],
         "state": "committed"
       },
       "tantivy-control": {
-        "sha256": "ac932599759703d0ef1fe3b234e11c36232b1789f7554787a96b919a996d4a19",
+        "sha256": "f9b52a2be8125f5d855a5fa1093cf4039603cf871c97a9dea37c54cd2fb8f566",
         "keys": [
-          "QUAL_OBSERVER_JSON"
+          "QUAL_CHECKPOINT_SHA256",
+          "QUAL_OBSERVER_JSON",
+          "QUAL_PHASE"
         ],
         "state": "committed"
       },
       "generator": {
-        "sha256": "b14b58fb0cca0691596f07e7b7d9ff343535136b5bc4bd57786acdbc36ba2c69",
+        "sha256": "95154778e2500a9048c48043713e5e4f6e2a51dcd706bb5bf94365d69379d158",
         "keys": [
           "QUAL_NATIVE_BINARY_SHA256",
           "QUAL_NATIVE_CONTROL_URL",
@@ -141,16 +243,20 @@
       }
     },
     "configured": {
-      "native-control": "44e7adebc66115b0dd0e7a2c81d714995f45c5c3e5ea71697305848f1f37c04f",
-      "tantivy-control": "ac932599759703d0ef1fe3b234e11c36232b1789f7554787a96b919a996d4a19",
-      "generator": "b14b58fb0cca0691596f07e7b7d9ff343535136b5bc4bd57786acdbc36ba2c69"
+      "native-control": "3301af8b8fe8808db1386f6f3a38d607e08673b8f00f1dc14fcbc5f8691b4802",
+      "tantivy-control": "f9b52a2be8125f5d855a5fa1093cf4039603cf871c97a9dea37c54cd2fb8f566",
+      "generator": "95154778e2500a9048c48043713e5e4f6e2a51dcd706bb5bf94365d69379d158"
     },
     "configuration_keys": {
       "native-control": [
-        "QUAL_OBSERVER_JSON"
+        "QUAL_CHECKPOINT_SHA256",
+        "QUAL_OBSERVER_JSON",
+        "QUAL_PHASE"
       ],
       "tantivy-control": [
-        "QUAL_OBSERVER_JSON"
+        "QUAL_CHECKPOINT_SHA256",
+        "QUAL_OBSERVER_JSON",
+        "QUAL_PHASE"
       ],
       "generator": [
         "QUAL_NATIVE_BINARY_SHA256",
@@ -171,37 +277,45 @@
       "schema": 1,
       "app": "typeahead-qual-20261029",
       "owner": "tantivy-qualification-20261029",
-      "run_id": "4d62ead649f7",
+      "run_id": "ddb646846adf",
       "status": "cleaned",
-      "deadline": 1793310506.2230048,
-      "started_at": 1793307525.034734,
-      "finished_at": 1793307545.578402,
+      "deadline": 1793310648.982534,
+      "started_at": 1793310241.6764002,
+      "finished_at": 1793310261.4270542,
       "attempts": 3,
       "creation_settled_by_controller": true,
       "resolved": [
         {
           "event": "resolved",
           "kind": "machine",
-          "id": "6835750a604018",
-          "name": "tq-4d62ead649f7-tantivy-control",
+          "id": "89d52ec63e35d8",
+          "name": "tq-ddb646846adf-native-control",
+          "role": "native-control",
+          "run_id": "ddb646846adf"
+        },
+        {
+          "event": "resolved",
+          "kind": "machine",
+          "id": "824031c7424678",
+          "name": "tq-ddb646846adf-tantivy-control",
           "role": "tantivy-control",
-          "run_id": "4d62ead649f7"
+          "run_id": "ddb646846adf"
         },
         {
           "event": "resolved",
           "kind": "volume",
-          "id": "vol_v3gx6588djw8p2x4",
-          "name": "tq_4d62ead649f7_native",
+          "id": "vol_r1j7e7en8knkkw0r",
+          "name": "tq_ddb646846adf_native",
           "role": "native",
-          "run_id": "4d62ead649f7"
+          "run_id": "ddb646846adf"
         },
         {
           "event": "resolved",
           "kind": "volume",
-          "id": "vol_v8ey9xwg3yol185v",
-          "name": "tq_4d62ead649f7_tantivy",
+          "id": "vol_4y8gkgkej82mmp1r",
+          "name": "tq_ddb646846adf_tantivy",
           "role": "tantivy",
-          "run_id": "4d62ead649f7"
+          "run_id": "ddb646846adf"
         }
       ],
       "failures": [],
@@ -213,13 +327,13 @@
       "cleanup_grace_seconds": 300,
       "volume_dispositions": [
         {
-          "id": "vol_v3gx6588djw8p2x4",
+          "id": "vol_r1j7e7en8knkkw0r",
           "state": "pending_destroy",
           "non_billable": true,
           "physical_purge_confirmed": false
         },
         {
-          "id": "vol_v8ey9xwg3yol185v",
+          "id": "vol_4y8gkgkej82mmp1r",
           "state": "pending_destroy",
           "non_billable": true,
           "physical_purge_confirmed": false
@@ -353,6 +467,69 @@
         },
         {
           "id": "vol_4oj6xngem023nyor",
+          "state": "pending_destroy",
+          "non_billable": true,
+          "physical_purge_confirmed": false
+        }
+      ]
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "app": "typeahead-qual-20261029",
+        "owner": "tantivy-qualification-20261029",
+        "run_id": "4d62ead649f7",
+        "mode": "full",
+        "created_after": 1793305076.2230048,
+        "created_before": 1793310506.2230048,
+        "deadline": 1793310506.2230048,
+        "machines": [
+          {
+            "name": "tq-4d62ead649f7-native-control",
+            "role": "native-control"
+          },
+          {
+            "name": "tq-4d62ead649f7-tantivy-control",
+            "role": "tantivy-control"
+          },
+          {
+            "name": "tq-4d62ead649f7-generator",
+            "role": "generator"
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tq_4d62ead649f7_native",
+            "role": "native"
+          },
+          {
+            "name": "tq_4d62ead649f7_tantivy",
+            "role": "tantivy"
+          }
+        ],
+        "reaper": {
+          "name": "tq-4d62ead649f7-reaper",
+          "role": "reaper"
+        }
+      },
+      "manifest_sha256": "70852ba4f1f8d00ffa156344f55930957ace8958dee249cda3c60f6fec207878",
+      "resolved": {
+        "machine:reaper": "801249a6d20e38",
+        "volume:native": "vol_v3gx6588djw8p2x4",
+        "volume:tantivy": "vol_v8ey9xwg3yol185v",
+        "machine:native-control": "8e236dc727e538",
+        "machine:tantivy-control": "6835750a604018",
+        "machine:generator": "6835102ae1d028"
+      },
+      "terminal_dispositions": [
+        {
+          "id": "vol_v3gx6588djw8p2x4",
+          "state": "pending_destroy",
+          "non_billable": true,
+          "physical_purge_confirmed": false
+        },
+        {
+          "id": "vol_v8ey9xwg3yol185v",
           "state": "pending_destroy",
           "non_billable": true,
           "physical_purge_confirmed": false

@@ -48,7 +48,7 @@
     "services/src/test_index.zig": "e637eec9e80519087880230521b785e18c70bfe40cc9a6472ba2d42e5d479253",
     "services/build.zig": "592390184d6895fd0991fb21bb8a729d4a8928988a95f5918d1bf18b7eab489e",
     "services/build.zig.zon": "bfcc083c51c47f8b42f70d48f0163abd733bca7dfcce71eb1c053a53a8f522b0",
-    "experiments/tantivy-qualification-native/main.zig": "6c487c1d21a2d4a8ad72cdd7943583f2420764447c7968181a6423207da49af6"
+    "experiments/tantivy-qualification-native/main.zig": "c83645a374b2b2a08eb926ac5797ef8c4528d7510b06da54387fbdd2f368bfb6"
   },
   "binaries": {
     "admit-prefix": {
@@ -56,8 +56,8 @@
       "bytes": 3680424
     },
     "qualification-native": {
-      "sha256": "c2a1386f5014dc2913ce8b5e16269c313b9993f9d2a12ac3662aea43ee075012",
-      "bytes": 11819176
+      "sha256": "0da5f170dd247452a78157d2e76796a927ca4c0d1e28cf852abac36f70c0f36a",
+      "bytes": 11819384
     },
     "eval-server": {
       "sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
@@ -68,6 +68,6 @@
       "bytes": 23410144
     }
   },
-  "wall_s": 0.5480480830301531,
+  "wall_s": 0.5943926659529097,
   "cloud_calls": 0
 }

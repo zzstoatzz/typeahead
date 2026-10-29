@@ -1,0 +1,17 @@
+{
+  "app": "typeahead-qual-20261029",
+  "machine_id": "824031c7424678",
+  "volume_id": "vol_4y8gkgkej82mmp1r",
+  "arm": "tantivy",
+  "nonce": "8d4b50143c815dc6688ee244d49f275b",
+  "build_id": "b1793309688-pilot-ddb646846adf",
+  "runtime_instance_id": "01M64SMT39WPC89ESK32R3NEM6",
+  "prepared_at": 1793309965.7745044,
+  "checkpoint_sha256": "cb268c4c935884ec06b82e829247aff86034ced2dcfb29d944c75377b1f1ef73",
+  "prepared": true,
+  "guest": {
+    "cpu_kind": "performance",
+    "cpus": 2,
+    "memory_mb": 4096
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+  "pushed_at": 1793309649.1287649,
+  "local_image": "typeahead-qualification:full-local",
+  "app": "typeahead-qual-20261029",
+  "scope": "staged preparation and synthetic transition pilot"
+}
