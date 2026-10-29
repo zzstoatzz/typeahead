@@ -3,6 +3,7 @@ from contextlib import closing
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import sqlite3
@@ -27,7 +28,11 @@ def build(root, app='/app'):
     root.mkdir(mode=0o700)
     (root/'owner').write_text(OWNER)
     source = root/'source.db'
-    floor = int(time.time()) - 60
+    floor = int(os.environ.get('QUAL_WATERMARK',str(int(time.time())-60)))
+    run = os.environ.get('QUAL_RUN_ID','offlinefixture')
+    if not 10**9<=floor<10**10 or not re.fullmatch('[a-z0-9]{8,16}',run):
+        raise ValueError('synthetic fixture shared identity')
+    deterministic_build = f'b{floor}-pilot-{run}'
     with closing(sqlite3.connect(source)) as db:
         db.execute('CREATE TABLE actors(did TEXT PRIMARY KEY,handle TEXT,display_name TEXT,avatar_url TEXT,labels TEXT,pds TEXT,created_at TEXT,associated TEXT,hidden INTEGER,quality_score REAL,updated_at INTEGER)')
         db.executemany('INSERT INTO actors VALUES(?,?,?,?,?,?,?,?,?,?,?)', [
@@ -49,6 +54,9 @@ def build(root, app='/app'):
     legacy = list((root/'build').glob('build-*/index.db'))
     if len(legacy) != 1:
         raise ValueError('synthetic fixture generation identity')
+    with closing(sqlite3.connect(legacy[0])) as db:
+        db.executemany('INSERT OR REPLACE INTO index_meta(key,value) VALUES(?,?)', [('build_id',deterministic_build),('built_at',str(floor)),('source_watermark',str(floor))])
+        db.commit();db.execute('VACUUM')
     compact(legacy[0], root/'release')
     database = root/'release/index.db'
     prefix = root/'release/index.db.prefix'

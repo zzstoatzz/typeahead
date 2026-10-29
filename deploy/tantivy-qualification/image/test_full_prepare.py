@@ -117,7 +117,11 @@ class Tests(unittest.TestCase):
     def test_explicit_synthetic_local_source_uses_real_native_and_rust_without_http(self):
         spec=importlib.util.spec_from_file_location('full_fixture',HERE/'full_fixture.py')
         fixture_module=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture_module)
+        previous_identity={key:os.environ.get(key)for key in ['QUAL_WATERMARK','QUAL_RUN_ID']}
+        os.environ.update(QUAL_WATERMARK='1793230000',QUAL_RUN_ID='abcdef123456')
         source_root=self.directory/'synthetic-local-source';fixture=fixture_module.build(source_root)
+        second_root=self.directory/'independent-synthetic-source';second=fixture_module.build(second_root)
+        self.assertEqual(fixture['manifest'],second['manifest']);fixture_module.cleanup(second_root)
         previous=os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT')
         try:
             os.environ.pop('QUAL_SYNTHETIC_STAGED_PILOT',None)
@@ -137,6 +141,9 @@ class Tests(unittest.TestCase):
         finally:
             if previous is None:os.environ.pop('QUAL_SYNTHETIC_STAGED_PILOT',None)
             else:os.environ['QUAL_SYNTHETIC_STAGED_PILOT']=previous
+            for key,value in previous_identity.items():
+                if value is None:os.environ.pop(key,None)
+                else:os.environ[key]=value
 
     @unittest.skipUnless(Path('/app/bin/typeahead-tantivy').is_file(),'requires frozen Linux qualification image')
     def test_actual_exporter_importer_and_native_overlay(self):
