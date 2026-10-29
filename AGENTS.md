@@ -8,6 +8,10 @@ directly when no ancestor `CLAUDE.md` overrides it. Paths are repository-relativ
 
 ## documentation is part of the change
 
+- The README is an entry point: purpose, use, design, development and documentation
+  links. Do not append task summaries, dated deployment inventories, release
+  readbacks, incident narration or experiment results. Put those in the relevant
+  existing docs; update the README when durable usage or architecture changes.
 - Before changing behavior, identify affected README sections, operational docs,
   public API docs, diagrams, and agent instructions. Update them in the same task
   as the implementation; do not wait for Nate to notice drift.
