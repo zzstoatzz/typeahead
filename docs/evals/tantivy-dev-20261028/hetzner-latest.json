@@ -1,0 +1,6 @@
+{
+  "checked_at": "2026-10-29T04:20:01.506554+00:00",
+  "project_credential_label": "hetzner-prefect-server-api-token",
+  "servers": [],
+  "purpose": "read-only inventory of cloud builder project; no home API or VM work initiated"
+}

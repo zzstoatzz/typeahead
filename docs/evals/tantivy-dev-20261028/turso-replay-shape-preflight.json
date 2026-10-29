@@ -1,0 +1,13 @@
+{
+  "checked_at": 1793248750,
+  "actor_rows": 1,
+  "tombstone_rows": 1,
+  "source_requests": 3,
+  "source_bytes": 2406,
+  "source_clock": 1793248750,
+  "snapshot_floor": 1793109254,
+  "upstream_writes": false,
+  "raw_profile_left_cloud": false,
+  "actor_source_shape_valid": true,
+  "tombstone_source_shape_valid": true
+}

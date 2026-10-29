@@ -1,0 +1,9 @@
+{
+  "source_clock": 1793248704,
+  "vm_clock": 1793248704,
+  "source_requests": 1,
+  "source_bytes": 367,
+  "upstream_writes": false,
+  "statement": "SELECT unixepoch() AS source_now",
+  "machine_id": "840e95a2153308"
+}

@@ -1,0 +1,17 @@
+{"passed": true, "checks": ["verified_manifest_footer_stream_import", "multiword_complete_intersection", "pds_before_selection_and_ack", "exact_priority_f32_rounding_and_zero_ties", "cjk_contiguity_verification_refills_past_70_false_candidates", "moderation_before_topk_and_profile_hydration", "aliases_public_write_exclusion_auth_and_input_bounds", "renames_pds_migration_tombstones_stale_rejection_and_cursor_atomicity", "durable_restart_version_tombstone_and_cursor_barriers", "crash_before_commit_rolls_back_after_commit_recovers_profile_and_cursor", "concurrent_generation_consistent_profile_hydration", "partial_or_corrupt_import_never_ready"], "actor_count": 82, "cloud_resources": false, "payload_removed": true}
+{"passed": true, "checks": ["malformed_optional_pds_does_not_skip_any_actor", "invalid_source_never_matches_scope_or_preference_even_with_spoofed_host", "unscopable_localhost_port_url_cannot_form_derived_avatar_url_explicit_avatar_preserved", "invalid_query_scopes_and_preferences_remain_rejected", "invalid_missing_valid_delete_counters_transition_atomically", "relaxed_optional_metadata_does_not_relax_score_or_lexical_admission", "raw_invalid_pds_and_long_value_survive_committed_restart_and_replay", "longest_valid_native_host_and_wrapper_are_not_misclassified"], "actors_retained": 7, "source_invalid_initial": 5, "source_missing_initial": 1, "fixed_reason_categories": ["invalid_hostname", "too_long"], "cloud_resources": false, "payload_removed": true, "binary_sha256": "ccf4282b37b8c1f118c1fd402cfa5832e619fb49bf9c77f8e9a90b6a9928f066"}
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 1.879s
+
+OK
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 1.388s
+
+OK
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 7.138s
+
+OK

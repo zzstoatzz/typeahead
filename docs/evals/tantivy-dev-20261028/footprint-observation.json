@@ -1,0 +1,8 @@
+{
+  "observed_at": 1793250739.3819396,
+  "tantivy_logical_bytes": 4596791747,
+  "native_snapshot_prefix_bytes": 7331160064,
+  "source_actor_count": 12816605,
+  "method": "sum regular-file logical lengths under owned Tantivy data directory; live replay/merge files included",
+  "limitation": "native overlay and allocated volume sizes are not compared"
+}

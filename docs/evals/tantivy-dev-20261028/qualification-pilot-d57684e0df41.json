@@ -1,0 +1,191 @@
+{
+  "observed_at": 1793297975.496656,
+  "status": "operational-pilot-stopped-before-measurement",
+  "failure": "Fly rejects updates to machines already configured auto_destroy=true",
+  "measurements_started": false,
+  "ledger": {
+    "schema": 1,
+    "app": "typeahead-qual-20261029",
+    "owner": "tantivy-qualification-20261029",
+    "machines": [],
+    "volumes": [],
+    "phase": "pilot-cleaned",
+    "budget": {
+      "pilot_engine_guests": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "pilot_generator_guest": {
+        "cpu_kind": "shared",
+        "cpus": 1,
+        "memory_mb": 256
+      },
+      "pilot_final_volume_gib_each": 20,
+      "pilot_total_wall_seconds": 600,
+      "scratch_root": "/data/qualification/run",
+      "cleanup": "destroy only ledger-owned temporary machines and volumes, revoke temporary control capability; preserve production and parallel dev app"
+    },
+    "pilot": {
+      "phase": "cleaned",
+      "image": "registry.fly.io/typeahead-qual-20261029@sha256:488a3693289d6d7e454f0950f84763677a6397376345307ee1dfd606c092a2c8",
+      "region": "ewr",
+      "manifest": {
+        "schema": 1,
+        "app": "typeahead-qual-20261029",
+        "owner": "tantivy-qualification-20261029",
+        "run_id": "d57684e0df41",
+        "mode": "pilot",
+        "created_after": 1793297533.2828832,
+        "created_before": 1793298163.2828832,
+        "deadline": 1793298163.2828832,
+        "machines": [
+          {
+            "name": "tq-d57684e0df41-native-control",
+            "role": "native-control"
+          },
+          {
+            "name": "tq-d57684e0df41-tantivy-control",
+            "role": "tantivy-control"
+          },
+          {
+            "name": "tq-d57684e0df41-generator",
+            "role": "generator"
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tq_d57684e0df41_native",
+            "role": "native"
+          },
+          {
+            "name": "tq_d57684e0df41_tantivy",
+            "role": "tantivy"
+          }
+        ],
+        "reaper": {
+          "name": "tq-d57684e0df41-reaper",
+          "role": "reaper"
+        }
+      },
+      "manifest_sha256": "8388372dd2c0320904b83c36833fd22b910deace310db3b1fb59d9e9861fa186",
+      "nonce": "bda3e39f5d6f9cd9dd7f26fa7faabd8b",
+      "watermark": 1793297503,
+      "attempts": {
+        "machine:reaper": "resolved",
+        "volume:native": "resolved",
+        "volume:tantivy": "resolved",
+        "machine:native-control": "resolved",
+        "machine:tantivy-control": "resolved",
+        "machine:generator": "resolved"
+      },
+      "resolved": {
+        "machine:reaper": "8716e0c0960028",
+        "volume:native": "vol_rkgd28y8kkdxmpo4",
+        "volume:tantivy": "vol_rnz1d6y3y230m0pr",
+        "machine:native-control": "8716d7a0e41e68",
+        "machine:tantivy-control": "e820359b161e28",
+        "machine:generator": "2872410b9e0d08"
+      },
+      "armed": {
+        "app": "typeahead-qual-20261029",
+        "owner": "tantivy-qualification-20261029",
+        "run_id": "d57684e0df41",
+        "deadline": 1793298163.2828832,
+        "self": {
+          "id": "8716e0c0960028",
+          "name": "tq-d57684e0df41-reaper",
+          "auto_destroy": true
+        },
+        "manifest_sha256": "8388372dd2c0320904b83c36833fd22b910deace310db3b1fb59d9e9861fa186"
+      },
+      "native_binary_sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
+      "tantivy_binary_sha256": "758f525b2f3036b2322ff5a32a695743e1fcf7e6326743c931a2e9a47d9c29d7",
+      "required_platform_secrets": [
+        "ADMIN_SECRET",
+        "QUAL_CONTROL_SECRET",
+        "QUAL_REAPER_CAPABILITY"
+      ],
+      "creation_request_sha256": {
+        "machine:reaper": "329a71ad8b0ea6676df038a1f44d8e6b01c4857bc29cd3a561d0b23a6c87dae7",
+        "volume:native": "08df9c3566805d28f438d28be117780416adc1f387bfa4a6e6d7cc4fab898810",
+        "volume:tantivy": "58df7cee2ae96f3cd26a3cd1107512ed4ad6533c03ad4ac3cce905bae5136cf9",
+        "machine:native-control": "6ccd0af1df5511782dfd4ed4560bc7577d632a9d270d2405bcb81d6ffee27f24",
+        "machine:tantivy-control": "9e004cc6128aa9debea25d02cd2f699ac51652bba9fdeca88240463c34c7e833",
+        "machine:generator": "aa60671a0b9fc6daab136f3543f8ff72188756c898e4ef5c926eaeeb5b9e5a9f"
+      },
+      "cleanup_receipt": {
+        "schema": 1,
+        "app": "typeahead-qual-20261029",
+        "owner": "tantivy-qualification-20261029",
+        "run_id": "d57684e0df41",
+        "status": "cleaned",
+        "deadline": 1793298163.2828832,
+        "started_at": 1793297948.083133,
+        "finished_at": 1793297949.988883,
+        "attempts": 1,
+        "creation_settled_by_controller": true,
+        "resolved": [
+          {
+            "event": "resolved",
+            "kind": "volume",
+            "id": "vol_rkgd28y8kkdxmpo4",
+            "name": "tq_d57684e0df41_native",
+            "role": "native",
+            "run_id": "d57684e0df41"
+          },
+          {
+            "event": "resolved",
+            "kind": "volume",
+            "id": "vol_rnz1d6y3y230m0pr",
+            "name": "tq_d57684e0df41_tantivy",
+            "role": "tantivy",
+            "run_id": "d57684e0df41"
+          }
+        ],
+        "failures": [],
+        "remaining": [],
+        "remaining_whitelist_ids": [],
+        "unresolved_whitelist_names": [],
+        "self": null,
+        "api_timeout_seconds": 15,
+        "cleanup_grace_seconds": 300,
+        "volume_dispositions": [
+          {
+            "id": "vol_rkgd28y8kkdxmpo4",
+            "state": "pending_destroy",
+            "non_billable": true,
+            "physical_purge_confirmed": false
+          },
+          {
+            "id": "vol_rnz1d6y3y230m0pr",
+            "state": "pending_destroy",
+            "non_billable": true,
+            "physical_purge_confirmed": false
+          }
+        ],
+        "limitations": [
+          "Provider outages may leave volumes; failed cleanup must be reconciled before another run.",
+          "Fly retains non-billable pending_destroy volume records for provider-managed purge; absence of those records is not required or claimed."
+        ]
+      },
+      "reaper_retired": true
+    }
+  },
+  "post_cleanup": {
+    "machines": [],
+    "volumes": [
+      {
+        "id": "vol_rkgd28y8kkdxmpo4",
+        "state": "pending_destroy",
+        "attached_machine_id": null
+      },
+      {
+        "id": "vol_rnz1d6y3y230m0pr",
+        "state": "pending_destroy",
+        "attached_machine_id": null
+      }
+    ]
+  },
+  "provider_retention_reference": "https://docs.fly.io/about/billing"
+}

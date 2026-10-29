@@ -1,0 +1,24 @@
+{
+  "checked_at": 1793251125,
+  "pending_rows": 500,
+  "superseded_rows": 8,
+  "superseded_did_sha256": [
+    "f3b494779689736108c465ce9638cc4e95b5b0851a171a2c0fe8d279daac9080",
+    "834ef2d87a0bf81f042d4d8340bdae4ff20450e536bef01ab01bf1de139e06ae",
+    "19504c6eed98bf9f42a541f3bb3320682a43b4e664d02d43a11d973d2e071ed3",
+    "40ed41c54ce91bc612f9fd3eb04aa467649b008e51e66cecb400c64623bc4368",
+    "a1cfc2f7dd7be42818870f777635cedb8400ef0bca8bf1d0de2115f13342883a",
+    "17a49c89a6957d06fc387d567ee7ae2e69f378cbe77ca8c0e0ad2527d1caf446",
+    "e93e25e642edf4c7d81e0453a4606e85e47ecfca5e4416b240e67a3df830d9e5",
+    "6af26b9512464b803d05d360191114db0d2bde912b26ab8b5cf7cd1978b59ed7"
+  ],
+  "query_sha256": "b84a1d22898b48b5f2a297412c64577a546dd871112b5af94265ac5af6c2996c",
+  "query_plan": [
+    "SEARCH t USING INDEX idx_tombstones_deleted_at (deleted_at>? AND deleted_at<?)",
+    "SEARCH a USING INDEX sqlite_autoindex_actors_1 (did=?) LEFT-JOIN",
+    "USE TEMP B-TREE FOR LAST TERM OF ORDER BY"
+  ],
+  "source_bytes": 67381,
+  "upstream_writes": false,
+  "live_replay_modified": false
+}

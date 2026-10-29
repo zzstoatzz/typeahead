@@ -1,0 +1,217 @@
+bun test v1.4.0 (34cbb9a40)
+
+src/utils.test.ts:
+(pass) computeAuthorityScoreBreakdown matches the legacy total [0.21ms]
+(pass) computeAuthorityScoreBreakdown penalizes very fresh accounts [0.02ms]
+(pass) computeAuthorityScoreBreakdown floors fresh-account penalties at zero [0.01ms]
+(pass) pdsOrigin accepts a plain https origin [0.08ms]
+(pass) pdsOrigin rejects non-https, credentials, paths, and single-label hosts [0.06ms]
+
+src/index.test.ts:
+(pass) records the real status of a served response [0.70ms]
+(pass) an uncaught throw is counted as 500 and still propagates [0.11ms]
+(pass) OPTIONS preflights are answered without being counted [0.04ms]
+{"event":"search_response_timing","outcome":"backend_error","status":503,"backend_strategy":"unknown","backend_route_class":"other","ingress_colo":"unknown","search_ms":0,"cache_ms":0}
+{"event":"search_backend_unreachable","term":"nate","error":"connect ECONNREFUSED"}
+(pass) an unreachable engine returns unavailable without touching Turso [1.69ms]
+
+src/validated-search.test.ts:
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":25,"origin_headers_ms":0,"total_headers_ms":25,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) a changed admission identity discards a same-origin same-build hinted response [27.91ms]
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"serial","route_ms":123,"origin_headers_ms":161,"total_headers_ms":284,"hint_source":"none","hint_wait_ms":1,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":121,"origin_headers_ms":161,"total_headers_ms":161,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) real HTTP control and origin reads overlap while complete responses stay identical [445.28ms]
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":122,"origin_headers_ms":6,"total_headers_ms":122,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) a completed hinted response waits for fresh route validation [122.39ms]
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":32,"origin_headers_ms":152,"total_headers_ms":184,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) route change discards hinted bytes and cancels the old HTTP request: https://typeahead-search-refresh.fly.dev [184.02ms]
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":32,"origin_headers_ms":151,"total_headers_ms":184,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) route change discards hinted bytes and cancels the old HTTP request: https://typeahead-startup-20261024.fly.dev [184.44ms]
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"reselected","route_ms":82,"origin_headers_ms":6,"total_headers_ms":88,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) a completed response from the previous origin is discarded after validation [88.41ms]
+{"event":"search_transport_timing","outcome":"route_unavailable","status":503,"mode":"overlap","route_ms":27,"origin_headers_ms":26,"total_headers_ms":27,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) route failure fails closed and cancels a slow hinted request [37.39ms]
+{"event":"search_transport_timing","outcome":"http","status":503,"mode":"overlap","route_ms":11,"origin_headers_ms":11,"total_headers_ms":11,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) an HTTP scope error passes through unchanged [12.18ms]
+{"event":"search_transport_timing","outcome":"backend_unavailable","status":503,"mode":"overlap","route_ms":11,"origin_headers_ms":0,"total_headers_ms":11,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) a real refused origin connection becomes explicit backend unavailability [11.61ms]
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":121,"origin_headers_ms":5,"total_headers_ms":121,"hint_source":"shared","hint_wait_ms":7,"sample_rate":1}
+(pass) an asynchronous hint overlaps real HTTP origin work without bypassing validation [121.30ms]
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"serial","route_ms":0,"origin_headers_ms":1,"total_headers_ms":1,"hint_source":"none","hint_wait_ms":0,"sample_rate":1}
+(pass) a slow asynchronous hint cannot hold up an already validated route [1.35ms]
+
+src/metrics.test.ts:
+(pass) endpointLabel: known routes get stable labels, everything else is 'other' [0.07ms]
+(pass) trafficDomain: X-Client > Origin > Referer(self→homepage) > unknown; non-hostnames rejected [0.09ms]
+(pass) recordRequest: one UPSERT keyed by the full (bucket, domain, endpoint, status) [0.14ms]
+
+src/db.test.ts:
+(pass) getDb hands every caller its own client [0.05ms]
+
+src/cron.test.ts:
+(pass) isProfileIdentical > true when every field matches [0.40ms]
+(pass) isProfileIdentical > avatar change forces a write (the pckt.blog bug) [0.05ms]
+(pass) isProfileIdentical > display_name change forces a write [0.02ms]
+(pass) isProfileIdentical > follower count change forces a write (popularity drift) [0.01ms]
+(pass) isProfileIdentical > a different profile source forces a write even when every field matches [0.02ms]
+{"event":"moderation_refresh","checked":0,"changed":1,"skipped":0,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":0}
+(pass) refreshModeration takes counts from the Blacksky appview on a Bluesky takedown > takedown → blacksky profile → UPDATE with counts and profile_source='blacksky' [1.82ms]
+{"event":"moderation_refresh","checked":1,"changed":1,"skipped":0,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":0}
+(pass) refreshModeration advances the freshness cursor > CHANGED profile: cursor advances for the actor [0.28ms]
+{"event":"moderation_refresh","checked":1,"changed":0,"skipped":1,"deleted":0,"walk":1,"events":0,"walk_cursor_qs":null,"ms":0}
+(pass) refreshModeration advances the freshness cursor > UNCHANGED profile: cursor STILL advances (the starvation bug) [0.10ms]
+{"event":"moderation_refresh","status":"empty"}
+(pass) refreshModeration quality-walk cursor > keyset cursor is inlined as literals, not bound params (Turso plan degradation) [0.11ms]
+{"event":"moderation_refresh","status":"empty"}
+(pass) refreshModeration quality-walk cursor > a poisoned cursor cannot inject SQL — non-numeric values are dropped [0.04ms]
+{"event":"moderation_refresh","status":"empty"}
+(pass) refreshModeration quality-walk cursor > short walk page wraps the cursor (pool exhausted) [0.06ms]
+
+src/moderation.test.ts:
+(pass) isDomainBlocked: apex + subdomains match, look-alikes do not [0.03ms]
+(pass) resolveHidden: precedence — show override is the final word [0.05ms]
+
+src/labelers.test.ts:
+(pass) applyLabelHistory > a negation withdraws the earlier label of the same val [0.35ms]
+(pass) applyLabelHistory > order in the response does not matter, the latest record wins [0.02ms]
+(pass) applyLabelHistory > an expired label is not applied [0.02ms]
+(pass) percentileFromQuantiles > finds the band a score falls in [0.03ms]
+(pass) percentileFromQuantiles > no quantiles or no positive score means no percentile
+(pass) labelers.json > every entry has a resolvable endpoint and the appview operators are pinned [0.03ms]
+
+src/search-transport.test.ts:
+(pass) routing records accept only managed backend origins and exact build identities [1.07ms]
+(pass) Tantivy requires explicit engine, bounded origin, source format and admission identity [0.38ms]
+(pass) router exposes only existing backend read paths and authenticated refresh path [0.10ms]
+
+src/identity-policy.test.ts:
+(pass) ingest requires verification evidence and accepts explicit invalidation [0.05ms]
+(pass) containment filters cached and fresh search/profile bodies without changing healthy bytes [1.00ms]
+
+deploy/tantivy-dev-ui/worker.test.ts:
+(pass) actual workerd preview is read-only and preserves HTML and dev search semantics [75.42ms]
+
+scripts/snapshot_refresh/engine-transport.test.ts:
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":0,"origin_headers_ms":2,"total_headers_ms":2,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":0,"origin_headers_ms":0,"total_headers_ms":0,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+{"event":"search_transport_timing","outcome":"http","status":200,"mode":"overlap","route_ms":0,"origin_headers_ms":0,"total_headers_ms":0,"hint_source":"memory","hint_wait_ms":0,"sample_rate":1}
+(pass) engine route conditional promotion and rollback use isolated filesystem-backed R2 [120.15ms]
+
+src/pages/reputation.test.ts:
+(pass) reputation page script > every inline script parses [0.28ms]
+(pass) reputation page script > the deep-link load runs after the last top-level declaration [0.09ms]
+
+src/pages/service-description.test.ts:
+(pass) service messaging > llms.txt carries no experimental disclaimer [0.03ms]
+(pass) service messaging > the homepage no longer carries the experimental badge [0.19ms]
+
+src/pages/stats.test.ts:
+(pass) traffic source chart > the source section has one chart and one app list, without a table [0.20ms]
+(pass) domain escaping > no raw script tag survives into the document [0.07ms]
+(pass) domain escaping > the JSON payload cannot close the script element [0.04ms]
+(pass) domain escaping > the quote cannot break out of the data-domain attribute [0.04ms]
+(pass) link previews > a shared comparison names what is being compared [0.22ms]
+(pass) link previews > the card image is handed the same params as the page [0.12ms]
+(pass) link previews > apps with no traffic in the window are dropped, not previewed as zero [0.12ms]
+(pass) link previews > unfiltered falls back to describing the service [0.09ms]
+(pass) request slices > the same volume is summed down to endpoint and status-class maps [0.03ms]
+(pass) request slices > the view switch is rendered with the source view active [0.09ms]
+(pass) stylesheet has no orphaned declarations [0.61ms]
+(pass) everything else > the tail beyond the top 12 is drawn as one slice and named in the legend [0.18ms]
+(pass) everything else > percentages divide by the whole table, not the rows fetched [0.18ms]
+(pass) everything else > no rest slice when the ring already holds everything [0.20ms]
+(pass) the long tail > every source and exact count is available to recursive navigation [3.55ms]
+
+src/handlers/ingest.test.ts:
+{"event":"ingest_done","count":3,"statements":3,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+(pass) counts ALL new actors — bare-DID AND handle-bearing — not just bare [0.73ms]
+{"event":"ingest_done","count":2,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+(pass) counts zero new when all actors already exist [0.17ms]
+{"event":"ingest_done","count":1,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+{"event":"ingest_done","count":1,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+{"event":"ingest_done","count":1,"statements":1,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+(pass) a new handle for an existing actor replaces the old one; a bare DID keeps it [1.98ms]
+{"event":"ingest_done","count":1,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+{"event":"ingest_done","count":2,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+{"event":"ingest_done","count":1,"statements":2,"database_ms":0,"cursor_ms":0,"cursor_supplied":false,"cursor_written":false}
+(pass) unverified identity claims never replace a verified handle or initialize a new one [0.52ms]
+
+src/handlers/search-worker.test.ts:
+{"event":"search_response_timing","outcome":"backend_error","status":503,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0}
+{"event":"search_backend_unreachable","term":"broken","error":"Unexpected token 'b', \"badjson\" is not valid JSON"}
+{"event":"search_response_timing","outcome":"backend_error","status":503,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0}
+{"event":"search_backend_unreachable","term":"missing","error":"Invalid search backend envelope"}
+{"event":"search_response_timing","outcome":"backend_error","status":503,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0}
+{"event":"search_backend_unreachable","term":"duplicate","error":"Invalid search backend actor"}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":true}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":0,"backend_headers_ms":1,"backend_ms":1,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":0,"backend_headers_ms":1,"backend_ms":1,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+(pass) workerd search forwards acknowledged scopes, separates edge cache and preserves failures [205.88ms]
+
+src/handlers/freshness.test.ts:
+(pass) freshness > a healthy pipeline is not stale [0.40ms]
+(pass) freshness > catches the 2026-07-28 failure: replica far behind, everything else green [0.05ms]
+(pass) freshness > normal sync jitter does not trip it [0.04ms]
+(pass) freshness > a stalled snapshot rebuild is stale even with a healthy replica [0.04ms]
+(pass) freshness > legacy and compact snapshots retain age alerts through real HTTP [3.06ms]
+(pass) freshness > a serving path that cannot find the probe handle is not ok [0.07ms]
+(pass) freshness > an unreachable backend is reported, not thrown [0.07ms]
+{"event":"freshness_notify","ok":true,"status":200,"body":"{}"}
+(pass) freshness notification > fires when it goes stale [0.30ms]
+{"event":"freshness_notify","ok":true,"status":200,"body":"{}"}
+(pass) freshness notification > fires once on recovery, not on every healthy run [0.06ms]
+(pass) freshness notification > does not repeat while it stays broken [0.02ms]
+(pass) freshness notification > silent when no webhook is configured [0.03ms]
+
+src/handlers/admin.test.ts:
+(pass) extractProfileFields: populated profile writes counts + qualityScore [0.05ms]
+(pass) extractProfileFields: description + banner CID come through [0.03ms]
+(pass) extractProfileFields: countless profile → qualityScore 0 (no age-bonus clobber) [0.02ms]
+(pass) extractProfileFields: genuine zero-follower profile still scores (counts present) [0.02ms]
+(pass) extractProfileFields: label-hidden profile → hidden=1 [0.02ms]
+(pass) extractProfileFields: domain-blocked profile (no override) → hidden=1 [0.01ms]
+(pass) extractProfileFields: per-DID show override beats domain-block + labels [0.01ms]
+{"event":"auth_failure","endpoint":"/admin/mod-override","ip":"unknown"}
+(pass) handleEnrichProfiles: missing/wrong Bearer → 401 [0.14ms]
+(pass) handleEnrichProfiles: body.dids not an array → 400 [0.06ms]
+(pass) handleEnrichProfiles: > 100 DIDs → 400 (hard server-side cap) [0.11ms]
+(pass) handleEnrichProfiles: invalid DID shape → 400 [0.05ms]
+(pass) handleEnrichProfiles: empty array → 200 with zeros [0.05ms]
+
+src/handlers/search.test.ts:
+(pass) tursoFallbackOnEmpty > off by default: the engine's empty answer is final at every limit [0.01ms]
+(pass) tursoFallbackOnEmpty > when enabled, interactive limits keep the second look
+(pass) tursoFallbackOnEmpty > when enabled, bulk limits still take the engine's answer as final
+(pass) PDS scope is an exact normalized hostname, never a handle suffix or URL path [0.15ms]
+
+src/handlers/profiles.test.ts:
+(pass) cache key is independent of actor order [0.05ms]
+(pass) cache key lowercases handles but preserves DID case [0.02ms]
+(pass) cache key dedupes repeated actors
+(pass) mixed dids and handles produce a stable key regardless of order [0.01ms]
+(pass) profileView renders the profile-card fields [0.11ms]
+(pass) profileView omits counts until the enrich path has seen the actor [0.10ms]
+(pass) profileView keeps known counts while a re-check is queued [0.04ms]
+(pass) profileView omits empty description and banner [0.02ms]
+
+src/handlers/search-contract.test.ts:
+(pass) PDS public search contract > canonical host aliases and defaults produce one cache identity [0.06ms]
+(pass) PDS public search contract > hard filtering and soft preference are orthogonal and cannot collide [0.13ms]
+(pass) PDS public search contract > finite boost is canonical f32 including zero and equivalent spellings [0.04ms]
+(pass) PDS public search contract > unsupported or incomplete semantics fail instead of becoming global search [0.09ms]
+(pass) PDS public search contract > old backends and wrong scope/boost acknowledgements fail closed [0.11ms]
+
+src/handlers/og.test.ts:
+(pass) compact: millions to one decimal, thousands rounded, small numbers exact [0.20ms]
+(pass) overviewFigures: latest snapshot, every search ever, every app ever [0.12ms]
+(pass) the default card carries the compact figures and does not define itself by bluesky [0.16ms]
+
+ 117 pass
+ 0 fail
+ 824 expect() calls
+Ran 117 tests across 23 files. [1.80s]

@@ -1,0 +1,29 @@
+{
+  "checked_at": "2026-10-29T16:29:54.445Z",
+  "html_identical": true,
+  "pages": [
+    {
+      "status": 200,
+      "sha256": "87e07da69aeb85a0a015f555fda30e9b6201bf130a21ee520c087d85f10a7d07"
+    },
+    {
+      "status": 200,
+      "sha256": "87e07da69aeb85a0a015f555fda30e9b6201bf130a21ee520c087d85f10a7d07"
+    }
+  ],
+  "dev_mutation_rejected": true,
+  "denial": {
+    "error": "DevReadOnly",
+    "message": "This dev preview is read-only. Indexing and administrator mutations are disabled."
+  },
+  "dev_health": {
+    "actors": 12850762,
+    "build_id": "b1793109259-2b36-px05",
+    "engine": "tantivy",
+    "normalize_version": "v2-cjk-bigram",
+    "plan_version": "complete-prefix-groups-v1",
+    "ready": true,
+    "status": "ok",
+    "sync_lag_s": 9
+  }
+}

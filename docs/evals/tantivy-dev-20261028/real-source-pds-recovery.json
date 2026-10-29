@@ -1,0 +1,12 @@
+{
+  "source_position": 11284974,
+  "retained_actor_count": 1,
+  "unscopable_pds_count": 1,
+  "invalid_reason_counts": {
+    "invalid_hostname": 1
+  },
+  "synthetic_manifest": true,
+  "fixture_version": 100,
+  "raw_profile_left_cloud": false,
+  "temporary_index_removed": true
+}

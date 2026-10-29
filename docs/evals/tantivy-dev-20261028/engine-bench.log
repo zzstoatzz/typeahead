@@ -1,0 +1,140 @@
+
+[1m=== typeahead benchmark ===[0m
+  target:   https://typeahead-tantivy-dev.fly.dev  (direct search service — engine latency, no edge cache)
+  baseline: https://public.api.bsky.app
+  corpus:   44 queries, 3 run(s) each
+  date:     2026-10-29 06:23 UTC
+
+[36m[1/4] latency comparison (cold + warm)[0m
+  latency: 1/352  latency: 2/352  latency: 3/352  latency: 4/352  latency: 5/352  latency: 6/352  latency: 7/352  latency: 8/352  latency: 9/352  latency: 10/352  latency: 11/352  latency: 12/352  latency: 13/352  latency: 14/352  latency: 15/352  latency: 16/352  latency: 17/352  latency: 18/352  latency: 19/352  latency: 20/352  latency: 21/352  latency: 22/352  latency: 23/352  latency: 24/352  latency: 25/352  latency: 26/352  latency: 27/352  latency: 28/352  latency: 29/352  latency: 30/352  latency: 31/352  latency: 32/352  latency: 33/352  latency: 34/352  latency: 35/352  latency: 36/352  latency: 37/352  latency: 38/352  latency: 39/352  latency: 40/352  latency: 41/352  latency: 42/352  latency: 43/352  latency: 44/352  latency: 45/352  latency: 46/352  latency: 47/352  latency: 48/352  latency: 49/352  latency: 50/352  latency: 51/352  latency: 52/352  latency: 53/352  latency: 54/352  latency: 55/352  latency: 56/352  latency: 57/352  latency: 58/352  latency: 59/352  latency: 60/352  latency: 61/352  latency: 62/352  latency: 63/352  latency: 64/352  latency: 65/352  latency: 66/352  latency: 67/352  latency: 68/352  latency: 69/352  latency: 70/352  latency: 71/352  latency: 72/352  latency: 73/352  latency: 74/352  latency: 75/352  latency: 76/352  latency: 77/352  latency: 78/352  latency: 79/352  latency: 80/352  latency: 81/352  latency: 82/352  latency: 83/352  latency: 84/352  latency: 85/352  latency: 86/352  latency: 87/352  latency: 88/352  latency: 89/352  latency: 90/352  latency: 91/352  latency: 92/352  latency: 93/352  latency: 94/352  latency: 95/352  latency: 96/352  latency: 97/352  latency: 98/352  latency: 99/352  latency: 100/352  latency: 101/352  latency: 102/352  latency: 103/352  latency: 104/352  latency: 105/352  latency: 106/352  latency: 107/352  latency: 108/352  latency: 109/352  latency: 110/352  latency: 111/352  latency: 112/352  latency: 113/352  latency: 114/352  latency: 115/352  latency: 116/352  latency: 117/352  latency: 118/352  latency: 119/352  latency: 120/352  latency: 121/352  latency: 122/352  latency: 123/352  latency: 124/352  latency: 125/352  latency: 126/352  latency: 127/352  latency: 128/352  latency: 129/352  latency: 130/352  latency: 131/352  latency: 132/352  latency: 133/352  latency: 134/352  latency: 135/352  latency: 136/352  latency: 137/352  latency: 138/352  latency: 139/352  latency: 140/352  latency: 141/352  latency: 142/352  latency: 143/352  latency: 144/352  latency: 145/352  latency: 146/352  latency: 147/352  latency: 148/352  latency: 149/352  latency: 150/352  latency: 151/352  latency: 152/352  latency: 153/352  latency: 154/352  latency: 155/352  latency: 156/352  latency: 157/352  latency: 158/352  latency: 159/352  latency: 160/352  latency: 161/352  latency: 162/352  latency: 163/352  latency: 164/352  latency: 165/352  latency: 166/352  latency: 167/352  latency: 168/352  latency: 169/352  latency: 170/352  latency: 171/352  latency: 172/352  latency: 173/352  latency: 174/352  latency: 175/352  latency: 176/352  latency: 177/352  latency: 178/352  latency: 179/352  latency: 180/352  latency: 181/352  latency: 182/352  latency: 183/352  latency: 184/352  latency: 185/352  latency: 186/352  latency: 187/352  latency: 188/352  latency: 189/352  latency: 190/352  latency: 191/352  latency: 192/352  latency: 193/352  latency: 194/352  latency: 195/352  latency: 196/352  latency: 197/352  latency: 198/352  latency: 199/352  latency: 200/352  latency: 201/352  latency: 202/352  latency: 203/352  latency: 204/352  latency: 205/352  latency: 206/352  latency: 207/352  latency: 208/352  latency: 209/352  latency: 210/352  latency: 211/352  latency: 212/352  latency: 213/352  latency: 214/352  latency: 215/352  latency: 216/352  latency: 217/352  latency: 218/352  latency: 219/352  latency: 220/352  latency: 221/352  latency: 222/352  latency: 223/352  latency: 224/352  latency: 225/352  latency: 226/352  latency: 227/352  latency: 228/352  latency: 229/352  latency: 230/352  latency: 231/352  latency: 232/352  latency: 233/352  latency: 234/352  latency: 235/352  latency: 236/352  latency: 237/352  latency: 238/352  latency: 239/352  latency: 240/352  latency: 241/352  latency: 242/352  latency: 243/352  latency: 244/352  latency: 245/352  latency: 246/352  latency: 247/352  latency: 248/352  latency: 249/352  latency: 250/352  latency: 251/352  latency: 252/352  latency: 253/352  latency: 254/352  latency: 255/352  latency: 256/352  latency: 257/352  latency: 258/352  latency: 259/352  latency: 260/352  latency: 261/352  latency: 262/352  latency: 263/352  latency: 264/352  latency: 265/352  latency: 266/352  latency: 267/352  latency: 268/352  latency: 269/352  latency: 270/352  latency: 271/352  latency: 272/352  latency: 273/352  latency: 274/352  latency: 275/352  latency: 276/352  latency: 277/352  latency: 278/352  latency: 279/352  latency: 280/352  latency: 281/352  latency: 282/352  latency: 283/352  latency: 284/352  latency: 285/352  latency: 286/352  latency: 287/352  latency: 288/352  latency: 289/352  latency: 290/352  latency: 291/352  latency: 292/352  latency: 293/352  latency: 294/352  latency: 295/352  latency: 296/352  latency: 297/352  latency: 298/352  latency: 299/352  latency: 300/352  latency: 301/352  latency: 302/352  latency: 303/352  latency: 304/352  latency: 305/352  latency: 306/352  latency: 307/352  latency: 308/352  latency: 309/352  latency: 310/352  latency: 311/352  latency: 312/352  latency: 313/352  latency: 314/352  latency: 315/352  latency: 316/352  latency: 317/352  latency: 318/352  latency: 319/352  latency: 320/352  latency: 321/352  latency: 322/352  latency: 323/352  latency: 324/352  latency: 325/352  latency: 326/352  latency: 327/352  latency: 328/352  latency: 329/352  latency: 330/352  latency: 331/352  latency: 332/352  latency: 333/352  latency: 334/352  latency: 335/352  latency: 336/352  latency: 337/352  latency: 338/352  latency: 339/352  latency: 340/352  latency: 341/352  latency: 342/352  latency: 343/352  latency: 344/352  latency: 345/352  latency: 346/352  latency: 347/352  latency: 348/352  latency: 349/352  latency: 350/352  latency: 351/352  latency: 352/352                                                                      
+[1m--- latency (cold, cache-busted) ---[0m
+  query                      ours       bsky      delta   winner
+  ──────────────────── ────────── ────────── ────────── ────────
+  a                          53ms      200ms     -147ms     [32mours[0m
+  na                         44ms      155ms     -110ms     [32mours[0m
+  sky                        52ms      107ms      -56ms     [32mours[0m
+  bl                         48ms      137ms      -88ms     [32mours[0m
+  j                          41ms      284ms     -243ms     [32mours[0m
+  nate                       44ms       93ms      -50ms     [32mours[0m
+  sarah                      41ms       96ms      -55ms     [32mours[0m
+  alex                       46ms      103ms      -57ms     [32mours[0m
+  dan                        46ms      113ms      -66ms     [32mours[0m
+  paul                       58ms      114ms      -57ms     [32mours[0m
+  sam                        41ms      104ms      -63ms     [32mours[0m
+  chris                      44ms      106ms      -62ms     [32mours[0m
+  jordan                     44ms       92ms      -48ms     [32mours[0m
+  mike                       45ms       93ms      -48ms     [32mours[0m
+  anna                       39ms       99ms      -61ms     [32mours[0m
+  boorkie                    48ms       84ms      -36ms     [32mours[0m
+  kohari                     54ms       85ms      -31ms     [32mours[0m
+  zzstoatzz                  44ms       94ms      -50ms     [32mours[0m
+  pfrazee                    43ms       86ms      -43ms     [32mours[0m
+  jay.bsky.team              39ms       86ms      -46ms     [32mours[0m
+  alice                      43ms       96ms      -53ms     [32mours[0m
+  bob                        43ms       98ms      -55ms     [32mours[0m
+  André                      52ms      102ms      -50ms     [32mours[0m
+  naïve                      58ms       92ms      -34ms     [32mours[0m
+  café                       41ms       88ms      -47ms     [32mours[0m
+  nate kohari                39ms       89ms      -50ms     [32mours[0m
+  paul frazee                59ms       92ms      -33ms     [32mours[0m
+  nate.io                    53ms       82ms      -29ms     [32mours[0m
+  the                        42ms      132ms      -90ms     [32mours[0m
+  test                       45ms      102ms      -57ms     [32mours[0m
+  bot                        37ms       88ms      -51ms     [32mours[0m
+  news                       38ms      112ms      -74ms     [32mours[0m
+  art                        41ms      101ms      -60ms     [32mours[0m
+  dev                        44ms       95ms      -51ms     [32mours[0m
+  music                      42ms       88ms      -47ms     [32mours[0m
+  photographer               38ms       86ms      -48ms     [32mours[0m
+  designer                   51ms       98ms      -47ms     [32mours[0m
+  engineer                   40ms       93ms      -53ms     [32mours[0m
+  journalist                 49ms       92ms      -43ms     [32mours[0m
+  tokyo                      48ms       95ms      -47ms     [32mours[0m
+  berlin                     39ms       93ms      -54ms     [32mours[0m
+  podcast                    42ms       90ms      -48ms     [32mours[0m
+  crypto                     51ms      105ms      -55ms     [32mours[0m
+  gaming                     50ms       92ms      -42ms     [32mours[0m
+
+  [1mcold:[0m  ours p50=44ms p95=70ms | bsky p50=97ms p95=239ms
+  ours faster on 44/44 queries (cold)
+  [1mwarm:[0m  ours p50=43ms p95=67ms (repeat query — CF cache hit via worker; engine warm via --appb-direct)
+
+[36m[2/4] coverage + field completeness[0m
+  coverage+fields: 1/44  coverage+fields: 2/44  coverage+fields: 3/44  coverage+fields: 4/44  coverage+fields: 5/44  coverage+fields: 6/44  coverage+fields: 7/44  coverage+fields: 8/44  coverage+fields: 9/44  coverage+fields: 10/44  coverage+fields: 11/44  coverage+fields: 12/44  coverage+fields: 13/44  coverage+fields: 14/44  coverage+fields: 15/44  coverage+fields: 16/44  coverage+fields: 17/44  coverage+fields: 18/44  coverage+fields: 19/44  coverage+fields: 20/44  coverage+fields: 21/44  coverage+fields: 22/44  coverage+fields: 23/44  coverage+fields: 24/44  coverage+fields: 25/44  coverage+fields: 26/44  coverage+fields: 27/44  coverage+fields: 28/44  coverage+fields: 29/44  coverage+fields: 30/44  coverage+fields: 31/44  coverage+fields: 32/44  coverage+fields: 33/44  coverage+fields: 34/44  coverage+fields: 35/44  coverage+fields: 36/44  coverage+fields: 37/44  coverage+fields: 38/44  coverage+fields: 39/44  coverage+fields: 40/44  coverage+fields: 41/44  coverage+fields: 42/44  coverage+fields: 43/44  coverage+fields: 44/44                                                                      
+[1m--- coverage ---[0m
+  query                   overlap   ours   bsky    pct   rank Δ
+  ──────────────────── ────────── ────── ────── ────── ────────
+  a                      4/10         10     10    40%      3.8
+  na                     4/10         10     10    40%      3.0
+  sky                    4/10         10     10    40%      1.0
+  bl                     4/10         10     10    40%      2.5
+  j                      5/10         10     10    50%      1.2
+  nate                   6/10         10     10    60%      1.5
+  sarah                  5/10         10     10    50%      2.8
+  alex                   7/10         10     10    70%      1.7
+  dan                    5/10         10     10    50%      3.6
+  paul                   4/10         10     10    40%      3.5
+  sam                    5/10         10     10    50%      2.6
+  chris                  6/10         10     10    60%      1.0
+  jordan                 6/10         10     10    60%      2.8
+  mike                   3/10         10     10    30%      0.7
+  anna                   4/10         10     10    40%      3.8
+  boorkie                1/1           1      1   100%      0.0
+  kohari                 7/10         10     10    70%      2.1
+  zzstoatzz              2/2           6      2   100%      0.5
+  pfrazee                2/2           3      2   100%      0.5
+  jay.bsky.team          1/1           1      1   100%      0.0
+  alice                  5/10         10     10    50%      2.0
+  bob                    7/10         10     10    70%      3.0
+  André                  7/10         10     10    70%      2.1
+  naïve                  4/9          10      9    44%      1.2
+  café                   5/10         10     10    50%      2.0
+  nate kohari            2/10          2     10    20%      0.0
+  paul frazee            1/10          1     10    10%      0.0
+  nate.io                1/1           1      1   100%      0.0
+  the                    6/10         10     10    60%      0.7
+  test                   1/8          10      8    12%      5.0
+  bot                    2/9          10      9    22%      1.5
+  news                   4/10         10     10    40%      2.5
+  art                    2/10         10     10    20%      2.0
+  dev                    3/10         10     10    30%      2.0
+  music                  1/10         10     10    10%      1.0
+  photographer           5/9          10      9    55%      2.2
+  designer               6/9          10      9    66%      0.7
+  engineer               5/10         10     10    50%      1.4
+  journalist             7/10         10     10    70%      1.4
+  tokyo                  6/10         10     10    60%      1.8
+  berlin                 4/10         10     10    40%      1.0
+  podcast                6/10         10     10    60%      0.5
+  crypto                 1/10         10     10    10%      4.0
+  gaming                 8/10         10     10    80%      2.2
+
+  [1mmean overlap:[0m 47%
+  complete misses (ours=0, bsky>0): 0/44
+  queries where we have more results: 7/44
+
+[1m--- field completeness ---[0m
+  field                ours     bsky
+  ──────────────── ──────── ────────
+  displayName           99%      99%
+  avatar                99%     100%
+  createdAt             99%     100%
+  associated            96%     100%
+  ──────────────── ──────── ────────
+  total actors          385      391
+
+[36m[3/4] display name search[0m
+
+[1m--- display name search ---[0m
+  query                  found?   ours   bsky  samples
+  ──────────────────── ──────── ────── ──────  ──────────────────────────────
+  boorkie                   [32myes[0m      1      1  brookie.puppygirl.app
+  kohari                    [32myes[0m     10     10  nate.io, kohari.bsky.social, onizumikohari.bsky.social
+  nate kohari               [32myes[0m      2     10  nate.io, nkohari.bsky.social
+  paul frazee               [32myes[0m      1     10  maatheusz.bsky.social
+
+[36m[4/4] stress test[0m
+  [33mskipped[0m
+
+  full report: docs/evals/tantivy-dev-20261028/engine-bench.json
+

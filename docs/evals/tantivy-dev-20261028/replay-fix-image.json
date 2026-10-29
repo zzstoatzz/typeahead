@@ -1,0 +1,7 @@
+{
+  "image": "registry.fly.io/typeahead-tantivy-dev@sha256:5342a3b41539777658b2a5e8a64935593ee82a6609f4798e2f12da5bc91d48ec",
+  "binary_sha256": "f4e092d37b4f4e42b3de363a57b0649dced8bbeb1db4b017dabc62870387f7c9",
+  "runtime_source_sha256": "c682233ed16e7fe0c7fca70f8278dce666619e1b91ff196579c52f45844f4c6a",
+  "sync_source_sha256": "6b738881dfd5c1fce544e2c2af092e279b8733537890ccf41f1ad94351410642",
+  "source_policy": "turso-current-state-cutoff-v1"
+}

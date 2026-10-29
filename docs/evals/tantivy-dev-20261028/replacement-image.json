@@ -1,0 +1,5 @@
+{
+  "image": "registry.fly.io/typeahead-tantivy-dev@sha256:84c5e0fff5f969d52ba1b2ab36b733c81df9b1d0e1f0d91407a8d1a96c24b23a",
+  "binary_sha256": "ccf4282b37b8c1f118c1fd402cfa5832e619fb49bf9c77f8e9a90b6a9928f066",
+  "runtime_source_sha256": "da18275d3dd1361fbc6dcacad07c4efab454752dd8323df266d95a2f0ff8d59b"
+}

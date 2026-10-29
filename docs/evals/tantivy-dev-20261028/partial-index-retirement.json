@@ -1,0 +1,9 @@
+{
+  "retired_at": 1793247272.8555572,
+  "retired_path": "/data/tantivy",
+  "retired_partial_input_actors": 11250000,
+  "retired_partial_import_complete": false,
+  "free_before": 28448276480,
+  "free_after": 32445374464,
+  "source_files_retained_for_verified_reuse": true
+}

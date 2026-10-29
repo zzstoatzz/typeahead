@@ -1,0 +1,103 @@
+{
+  "status": {
+    "actor_count": 12835166,
+    "build_id": "b1793109259-2b36-px05",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-v1",
+    "full_source": true,
+    "import_complete": true,
+    "indexed_memberships": 603233738,
+    "input_actors": 12816605,
+    "last_commit_epoch": 1793249838,
+    "normalize_version": "v2-cjk-bigram",
+    "pds_invalid_actor_count": 1,
+    "pds_invalid_reason_counts": {
+      "invalid_hostname": 1
+    },
+    "pds_missing_actor_count": 9934163,
+    "pds_scope_policy": "all-recorded-canonical-hosts",
+    "pds_scope_version": 1,
+    "pds_unknown_actor_count": 9934164,
+    "plan_version": "complete-prefix-groups-v1",
+    "prefix_count": null,
+    "ready": false,
+    "searchable_actor_count": 12813972,
+    "segments": 13,
+    "snapshot_watermark": 1793109254,
+    "source_build_id": "b1793109259-2b36-px05",
+    "source_cursor": {
+      "actors": {
+        "did": "did:plc:5ruj5unaqu62e2ls6ega2xbn",
+        "updated_at": 1793220160
+      },
+      "build_id": "b1793109259-2b36-px05",
+      "cycle": {
+        "stream": "actors",
+        "upper_bound": 1793249712
+      },
+      "lookback_seconds": 300,
+      "schema_version": 1,
+      "snapshot_watermark": 1793109254,
+      "through": 1793109254,
+      "tombstones": {
+        "deleted_at": 1793109254,
+        "did": ""
+      }
+    },
+    "source_manifest": {
+      "actor_count": 12816605,
+      "build_id": "b1793109259-2b36-px05",
+      "normalize_version": "v2-cjk-bigram",
+      "partial": false,
+      "schema_version": 1,
+      "scoring_version": "v1-quality-score",
+      "source_actor_count": 12816605,
+      "source_database_sha256": "bdf118c9fce9bfad65d6b04d5f3b041b85c024ef0f4f5d193a036a488c0ebfc2",
+      "source_format": "FLATPX05/actor-v1",
+      "source_prefix_sha256": "1428137ae31e1195a4301f4eb41e170a09b9f2905d34b3956322116bd30684c1",
+      "source_watermark": 1793109254,
+      "type": "manifest",
+      "version_kind": "snapshot_watermark",
+      "watermark": "1793109254"
+    },
+    "source_snapshot_watermark": 1793109254,
+    "sync_lag_s": 140584,
+    "tombstone_count": 19,
+    "watermark": 1793109254
+  },
+  "bootstrap": {
+    "phase": "serving-and-replaying",
+    "elapsed_s": 2434.38
+  },
+  "source_payload_exists": false,
+  "free_bytes": 35204558848,
+  "admitted": {
+    "complete": true,
+    "build_id": "b1793109259-2b36-px05",
+    "actor_count": 12816605,
+    "source_watermark": 1793109254,
+    "export_receipt": {
+      "actor_pages": 330497,
+      "actors_sha256": "13649577b47b4847bfac2e614dd2f906d2e584fffff6e17750be9a2798622a06",
+      "build_id": "b1793109259-2b36-px05",
+      "cloud_local_paths_only": true,
+      "emitted_actor_count": 12816605,
+      "max_page_bytes": 16777216,
+      "output": "-",
+      "output_bytes": 7210337379,
+      "owner": "tantivy-dev-20261028",
+      "partial": false,
+      "per_actor_source_versions_available": false,
+      "physical_read_bytes": 10070020176,
+      "root_directory_bytes": 31346688,
+      "scratch_root": "/data",
+      "source_actor_count": 12816605,
+      "source_database_sha256": "bdf118c9fce9bfad65d6b04d5f3b041b85c024ef0f4f5d193a036a488c0ebfc2",
+      "source_prefix_sha256": "1428137ae31e1195a4301f4eb41e170a09b9f2905d34b3956322116bd30684c1",
+      "source_unchanged": true,
+      "source_watermark": 1793109254,
+      "version_kind": "snapshot_watermark",
+      "wall_seconds": 1694.06111118
+    }
+  }
+}

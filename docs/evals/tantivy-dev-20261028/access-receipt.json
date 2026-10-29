@@ -1,0 +1,14 @@
+{
+  "app": "typeahead-tantivy-dev",
+  "runtime_secret_names": [
+    "ADMIN_SECRET",
+    "TANTIVY_SOURCE_ACCESS",
+    "TURSO_AUTH_TOKEN",
+    "TURSO_URL"
+  ],
+  "runtime_all_present": true,
+  "source_credential_matches_canonical": true,
+  "r2_access": "GET-only capabilities for two pinned objects,4h expiry",
+  "upstream_database_writes": false,
+  "installation_note": "Secrets applied; CLI deployment watch returned failure. Explicit owned-machine bootstrap update succeeded; runtime verified by hash without printing values."
+}

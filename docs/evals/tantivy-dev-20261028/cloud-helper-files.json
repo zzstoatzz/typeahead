@@ -1,0 +1,20 @@
+{
+  "/tmp/tantivy-dev-qualify-real.py": {
+    "sha256": "26f3da44a3f31689529f373248fb18c05a0efa8f08b418845a2a694396b6d16f",
+    "bytes": 22310,
+    "cloud_verified": true,
+    "machine_id": "840e95a2153308"
+  },
+  "/tmp/tantivy-dev-sample-resources.py": {
+    "sha256": "11a96e370e70f4eccd354e9f4e3886187dba54b30bab324b4838906b0be685f1",
+    "bytes": 1367,
+    "cloud_verified": true,
+    "machine_id": "840e95a2153308"
+  },
+  "/tmp/tantivy-dev-summarize-resources.py": {
+    "sha256": "3d5b758db1f52dfb6abeea482bb2377ae2959b12015387089ffe7b75eb9a5a4f",
+    "bytes": 3613,
+    "cloud_verified": true,
+    "machine_id": "840e95a2153308"
+  }
+}

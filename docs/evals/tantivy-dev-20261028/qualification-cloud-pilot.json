@@ -1,0 +1,193 @@
+{
+  "passed": true,
+  "kind": "cloud-operational-pilot",
+  "synthetic_corpus": true,
+  "actors": 32,
+  "observed_at": 1793299075.301395,
+  "result": {
+    "passed": true,
+    "synthetic": true,
+    "arms": [
+      {
+        "arm": "native",
+        "passed": true,
+        "identity": {
+          "nonce": "02e372ea4c09ccddceced827118438e3",
+          "arm": "native",
+          "machine_id": "d8d2126f979758",
+          "volume_id": "vol_re1qpdj0m85k8gd4",
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 2,
+            "memory_mb": 1024
+          },
+          "corpus_sha256": "9b8042442ad68a7da3abfeefbf090bf59dd263f0ae05375fe366d01a3a69c28d",
+          "updates_sha256": "45883d198b5ecb77e32f19f0cc614932dc618717ad3a06a201821cf9947c728b",
+          "control_machine_id": "d8d2126f979758",
+          "control_volume_id": "vol_re1qpdj0m85k8gd4",
+          "ready": true,
+          "observer_receipt_sha256": "3ed6a30caeb9c2696857fb3da3e19986157ca0ea97175e661061b8c5be137914",
+          "engine_binary_sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
+          "runtime_process_verified": true,
+          "process_executable_sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
+          "synthetic_local_fixture": false,
+          "source_kind": "frozen-synthetic-controller",
+          "source_ready_attestation": false,
+          "engine_settings": {}
+        },
+        "commit": {
+          "accepted": true,
+          "applied": 1,
+          "cursor": 1,
+          "replayed": 0,
+          "sqlite_changes": 129,
+          "stale": 0,
+          "transactions": 1
+        },
+        "replay": {
+          "accepted": true,
+          "applied": 0,
+          "cursor": 1,
+          "replayed": 1,
+          "sqlite_changes": 0,
+          "stale": 0,
+          "transactions": 0
+        },
+        "commit_restart_replay_seconds": 0.4371265040000001,
+        "searches": 6,
+        "provider_hardware_attested": false,
+        "performance_qualified": false,
+        "full_corpus_qualified": false
+      },
+      {
+        "arm": "tantivy",
+        "passed": true,
+        "identity": {
+          "nonce": "02e372ea4c09ccddceced827118438e3",
+          "arm": "tantivy",
+          "machine_id": "85379da469d698",
+          "volume_id": "vol_4oj6xngem023nyor",
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 2,
+            "memory_mb": 1024
+          },
+          "corpus_sha256": "9b8042442ad68a7da3abfeefbf090bf59dd263f0ae05375fe366d01a3a69c28d",
+          "updates_sha256": "45883d198b5ecb77e32f19f0cc614932dc618717ad3a06a201821cf9947c728b",
+          "control_machine_id": "85379da469d698",
+          "control_volume_id": "vol_4oj6xngem023nyor",
+          "ready": true,
+          "observer_receipt_sha256": "04fba9f051e363e9f88e8b6ecb66d71c241a164f1616e381204fb269cfe0e69a",
+          "engine_binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+          "runtime_process_verified": true,
+          "process_executable_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+          "synthetic_local_fixture": false,
+          "source_kind": "frozen-synthetic-controller",
+          "source_ready_attestation": false,
+          "engine_settings": {
+            "retrieval_strategy": "per-segment",
+            "writer_memory_mb": 128,
+            "concurrency": 4,
+            "max_candidates": 10000
+          }
+        },
+        "commit": {
+          "applied": 1,
+          "opstamp": 44,
+          "replayed": 0,
+          "source_cursor": null,
+          "source_observation_revision": 0,
+          "stale": 0,
+          "watermark": 1793298503
+        },
+        "replay": {
+          "applied": 0,
+          "opstamp": 44,
+          "replayed": 1,
+          "source_cursor": null,
+          "source_observation_revision": 0,
+          "stale": 0,
+          "watermark": 1793298503
+        },
+        "commit_restart_replay_seconds": 1.1034752040000004,
+        "searches": 6,
+        "provider_hardware_attested": false,
+        "performance_qualified": false,
+        "full_corpus_qualified": false
+      }
+    ],
+    "production_contact": false
+  },
+  "independent_provider_receipts": {
+    "native": {
+      "schema": 1,
+      "provider": "fly",
+      "observed_at": "2026-10-29T18:37:54.814325+00:00",
+      "app": "typeahead-qual-20261029",
+      "machine_id": "d8d2126f979758",
+      "instance_id": "01M64EWRJKKGY6K3XH9DA7SZQZ",
+      "state": "started",
+      "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:15a0b844bcc7045655d05418a65dab3c8d6511904c59a10be3e9e3a39266dec9",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "mounts": [
+        {
+          "volume_id": "vol_re1qpdj0m85k8gd4",
+          "path": "/data",
+          "size_gib": 20,
+          "encrypted": true
+        }
+      ],
+      "owner": "tantivy-qualification-20261029",
+      "role": "native-control",
+      "public_service_ports": [],
+      "provider_config_reserved_env_overrides": false,
+      "volume_ids": [
+        "vol_re1qpdj0m85k8gd4"
+      ],
+      "final_volume_gib": 20,
+      "public_services": [],
+      "machines_api_response_sha256": "72d45f79831535b86fbbdc55add5675ecf1f416db2bc03c788e65c7b9ecb6b85"
+    },
+    "tantivy": {
+      "schema": 1,
+      "provider": "fly",
+      "observed_at": "2026-10-29T18:37:55.300878+00:00",
+      "app": "typeahead-qual-20261029",
+      "machine_id": "85379da469d698",
+      "instance_id": "01M64F69QJEC5DQB1TNKECZPYW",
+      "state": "started",
+      "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:15a0b844bcc7045655d05418a65dab3c8d6511904c59a10be3e9e3a39266dec9",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "mounts": [
+        {
+          "volume_id": "vol_4oj6xngem023nyor",
+          "path": "/data",
+          "size_gib": 20,
+          "encrypted": true
+        }
+      ],
+      "owner": "tantivy-qualification-20261029",
+      "role": "tantivy-control",
+      "public_service_ports": [],
+      "provider_config_reserved_env_overrides": false,
+      "volume_ids": [
+        "vol_4oj6xngem023nyor"
+      ],
+      "final_volume_gib": 20,
+      "public_services": [],
+      "machines_api_response_sha256": "c9094f4b251e7e953367addc9e30d7ee1d3b5ace46faa22268c52552fcaedddd"
+    }
+  },
+  "provider_matched": true,
+  "performance_qualified": false,
+  "full_corpus_qualified": false,
+  "source_freshness_qualified": false
+}
