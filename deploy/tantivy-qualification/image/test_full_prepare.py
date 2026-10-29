@@ -114,6 +114,31 @@ class Tests(unittest.TestCase):
         self.assertIsNotNone(child.poll())
 
     @unittest.skipUnless(Path('/app/bin/typeahead-tantivy').is_file(),'requires frozen Linux qualification image')
+    def test_explicit_synthetic_local_source_uses_real_native_and_rust_without_http(self):
+        spec=importlib.util.spec_from_file_location('full_fixture',HERE/'full_fixture.py')
+        fixture_module=importlib.util.module_from_spec(spec);spec.loader.exec_module(fixture_module)
+        source_root=self.directory/'synthetic-local-source';fixture=fixture_module.build(source_root)
+        previous=os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT')
+        try:
+            os.environ.pop('QUAL_SYNTHETIC_STAGED_PILOT',None)
+            denied=prepare.Preparation(self.directory/'denied-local',fixture['manifest'],'tantivy',time.time()+90,allow_loopback_fixture=True)
+            with self.assertRaisesRegex(prepare.PreparationError,'explicit_synthetic'):denied.run_local(fixture['source'])
+            self.assertFalse(denied.root.exists())
+            os.environ['QUAL_SYNTHETIC_STAGED_PILOT']='1'
+            for arm in ['native','tantivy']:
+                job=prepare.Preparation(self.directory/('local-'+arm),fixture['manifest'],arm,time.time()+90,allow_loopback_fixture=True)
+                result=job.run_local(fixture['source']);self.assertTrue(result['prepared']);self.assertTrue(result['synthetic_staged_pilot'])
+                self.assertEqual(result['actor_count'],128);self.assertEqual(self.requests,[])
+                if arm=='tantivy':
+                    self.assertEqual(result['evidence']['import']['input_actors'],128)
+                    self.assertEqual(result['evidence']['export']['input_verification']['mode'],'verified-local-receipt')
+                else:self.assertTrue(result['evidence']['independent_empty_overlay'])
+            fixture_module.cleanup(source_root);self.assertFalse(source_root.exists())
+        finally:
+            if previous is None:os.environ.pop('QUAL_SYNTHETIC_STAGED_PILOT',None)
+            else:os.environ['QUAL_SYNTHETIC_STAGED_PILOT']=previous
+
+    @unittest.skipUnless(Path('/app/bin/typeahead-tantivy').is_file(),'requires frozen Linux qualification image')
     def test_actual_exporter_importer_and_native_overlay(self):
         job=self.job();result=job.run(self.access())
         self.assertTrue(result['prepared']);self.assertFalse(result['serving_started'])

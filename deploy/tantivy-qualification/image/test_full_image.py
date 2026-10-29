@@ -12,19 +12,11 @@ import full_generator as gen
 sys.path.insert(0,'/reference')
 from reference_build import build as compact
 root=pathlib.Path(tempfile.mkdtemp(prefix='full-image-integration-'))
-source=root/'source.db';floor=int(time.time())-60
-with sqlite3.connect(source) as db:
- db.execute('CREATE TABLE actors(did TEXT PRIMARY KEY,handle TEXT,display_name TEXT,avatar_url TEXT,labels TEXT,pds TEXT,created_at TEXT,associated TEXT,hidden INTEGER,quality_score REAL,updated_at INTEGER)')
- db.executemany('INSERT INTO actors VALUES(?,?,?,?,?,?,?,?,?,?,?)',[(f'did:fixture:{i:03}',f'actor{i}.fixture.test',f'Actor {i}','','[]','https://local.test' if i%2 else 'https://remote.test','','{}',0,i,floor)for i in range(128)])
-env={**os.environ,'MODE':'indexer','INDEX_CHANNEL':'local','INDEX_SOURCE':'export','INDEX_SAMPLE_LIMIT':'0','INDEX_PDS_MAX_ACTORS':'10000','INDEX_REUSE_SOURCE':str(source),'INDEX_BUILD_ROOT':str(root/'build'),'INDEXER_VERSION':'full-offline-image-integration'}
-with (root/'builder.log').open('w') as log:subprocess.run(['/app/bin/typeahead-ingester'],env=env,stdout=log,stderr=log,check=True,timeout=60)
-legacy=next((root/'build').glob('build-*/index.db'));compact(legacy,root/'release')
-database=root/'release/index.db';prefix=pathlib.Path(str(database)+'.prefix')
-with sqlite3.connect(database) as db:meta=dict(db.execute('SELECT key,value FROM index_meta'))
+import full_fixture
+fixture=full_fixture.build(root/'source-fixture')
+manifest=fixture['manifest'];database=fixture['source']/'index.db';prefix=fixture['source']/'index.db.prefix';build=manifest['active_build']
 def sha(p):
  with p.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
-build=meta['build_id']
-manifest={'manifest_version':2,'format_version':5,'active_build':build,'source_watermark':floor,'actor_count':128,'prefix_count':int(meta['prefix_count']),'normalize_version':meta['normalize_version'],'scoring_version':meta['scoring_version'],'byte_size':database.stat().st_size,'sha256':sha(database),'snapshot_url':f'releases/search/{build}/index.db','prefix_map':{'object_key':f'releases/search/{build}/index.db.prefix','byte_size':prefix.stat().st_size,'sha256':sha(prefix)}}
 class Files(http.server.BaseHTTPRequestHandler):
  def do_GET(self):
   p=prefix if self.path.endswith('.prefix') else database

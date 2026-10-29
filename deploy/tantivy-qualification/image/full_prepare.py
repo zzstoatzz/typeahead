@@ -159,6 +159,35 @@ class Preparation:
         except Exception: raise PreparationError('source_download_failed') from None
         finally: part.unlink(missing_ok=True)
 
+    def copy_local(self, origin, destination, expected):
+        if os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT')!='1' or self.manifest['actor_count']!=128:
+            raise PreparationError('explicit_synthetic_pilot_required')
+        origin=Path(origin)
+        if origin.is_symlink() or origin.resolve()!=origin or not origin.is_file() or origin.stat().st_size>8*1024*1024:
+            raise PreparationError('synthetic_input_path_or_budget')
+        before=file_identity(origin);digest=hashlib.sha256();count=0
+        part=destination.with_name(destination.name+'.part')
+        try:
+            with origin.open('rb') as source,part.open('xb') as output:
+                while chunk:=source.read(1024*1024):
+                    self.guard();count+=len(chunk)
+                    if count>expected['byte_size']:raise PreparationError('source_size')
+                    output.write(chunk);digest.update(chunk)
+                output.flush();os.fsync(output.fileno())
+            if before!=file_identity(origin) or count!=expected['byte_size'] or digest.hexdigest()!=expected['sha256']:
+                raise PreparationError('synthetic_source_changed_or_digest')
+            part.replace(destination);destination.chmod(0o444)
+            return {'name':destination.name,'identity':file_identity(destination),'sha256':digest.hexdigest()}
+        finally:part.unlink(missing_ok=True)
+
+    def run_local(self, source):
+        source=Path(source).absolute()
+        if os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT')!='1' or self.manifest['actor_count']!=128 or source.resolve()!=source or source.is_symlink():
+            raise PreparationError('explicit_synthetic_pilot_required')
+        if (source.parent/'owner').read_text()!='synthetic-staged-fixture-v1':
+            raise PreparationError('synthetic_source_owner')
+        return self.run({'build_id':self.manifest['active_build']},local_source=source)
+
     def spawn(self, command, *, stdin=None, stdout=None, env=None):
         # Capabilities never enter a subprocess environment or command line.
         safe_env = {key:value for key,value in os.environ.items() if key in {'PATH', 'HOME', 'LANG', 'FLY_APP_NAME'}}
@@ -225,7 +254,7 @@ class Preparation:
         # Source remains available in the immutable baseline; no JSONL corpus file is written.
         return {'export':exported, 'import':imported, 'direct_stream':True}
 
-    def run(self, access):
+    def run(self, access, *, local_source=None):
         self.root.mkdir(mode=0o700); (self.root/'owner').write_text(OWNER); self.stage.mkdir()
         source = self.stage/'source'; source.mkdir()
         try:
@@ -233,7 +262,7 @@ class Preparation:
             if access.get('build_id') != self.manifest['active_build']: raise PreparationError('source_release_binding')
             verified={}
             for field,name,item in [('database','index.db',self.manifest), ('prefix','index.db.prefix',self.manifest['prefix_map'])]:
-                verified[field]=self.download(access[field], source/name, item, f'releases/search/{self.manifest["active_build"]}/{name}')
+                verified[field]=self.copy_local(local_source/name,source/name,item) if local_source is not None else self.download(access[field],source/name,item,f'releases/search/{self.manifest["active_build"]}/{name}')
             atomic(source/'manifest.json', self.manifest);(source/'manifest.json').chmod(0o444)
             for kind,record in verified.items():
                 if record['identity']!=file_identity(source/record['name']):raise PreparationError('verified_source_changed')
@@ -256,6 +285,7 @@ class Preparation:
                 'wall_seconds':time.monotonic()-self.started, 'free_bytes':shutil.disk_usage(self.root).free,
                 'min_free_bytes':self.min_free, 'max_payload_bytes':self.max_bytes, 'baseline_path':str(self.base),
                 'serving_started':False, 'performance_qualified':False, 'live_source_ready':False,
+                'synthetic_staged_pilot':local_source is not None,
                 'baseline_immutable':True, 'benchmark_working_copy_created':False}
             atomic(self.stage/'prepared.json',result)
             for directory,dirs,files in os.walk(self.stage, topdown=False):

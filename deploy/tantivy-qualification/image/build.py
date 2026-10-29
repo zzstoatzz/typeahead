@@ -59,6 +59,8 @@ def main():
     (context/'input').mkdir()
     for name in ['export.py','fixture.py']:shutil.copyfile(REPO/'services/tantivy-input'/name,context/'input'/name)
     shutil.copyfile(REPO/'deploy/tantivy-qualification/reaper.py',context/'input/reaper.py')
+    for name in ['reference_build.py','verify.py']:
+        shutil.copyfile(REPO/'scripts/snapshot_compaction'/name,context/'input'/name)
     engines=['native']
     if args.rust_binary:
         linux_elf(args.rust_binary)
@@ -71,7 +73,7 @@ def main():
         if not args.oracle_sha256 or sha(args.oracle_binary)!=args.oracle_sha256:raise ValueError('frozen oracle binary hash required')
         shutil.copy2(args.oracle_binary,context/'bin/tantivy-raw-oracle')
         if sha(context/'bin/tantivy-raw-oracle')!=args.oracle_sha256:raise ValueError('oracle binary changed during copy')
-    guest_sources=['entrypoint.py','pilot_bootstrap.py','generator.py','full_prepare.py','full_bootstrap.py','full_generator.py','telemetry.py']
+    guest_sources=['entrypoint.py','pilot_bootstrap.py','generator.py','full_prepare.py','full_bootstrap.py','full_generator.py','telemetry.py','full_fixture.py']
     for name in ['Dockerfile',*guest_sources]:shutil.copyfile(HERE/name,context/name)
     shutil.copyfile(REPO/'docs/evals/tantivy-dev-20261028/source-manifest.json',context/'source-manifest.json')
     shutil.copyfile(REPO/'src/identity-quarantine.json',context/'identity-quarantine.json')

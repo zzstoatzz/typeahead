@@ -4,7 +4,7 @@ COPY --chmod=0755 bin/ /app/bin/
 COPY input/ /app/input/
 COPY entrypoint.py /app/entrypoint.py
 COPY pilot_bootstrap.py generator.py full_prepare.py source-manifest.json /app/
-COPY full_bootstrap.py full_generator.py telemetry.py identity-quarantine.json /app/
+COPY full_bootstrap.py full_generator.py telemetry.py full_fixture.py identity-quarantine.json /app/
 RUN ln -s bin/tantivy-raw-oracle /app/tantivy-raw-oracle
 COPY build-metadata.json /app/build-metadata.json
 ENV PYTHONUNBUFFERED=1
