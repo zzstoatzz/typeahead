@@ -1,0 +1,24 @@
+{
+  "app": "typeahead-qual-20261029",
+  "build_id": "b1793109259-2b36-px05",
+  "staged_at": 1793305100.595079,
+  "capability_expiry_seconds": 7200,
+  "source_endpoint_is_r2": true,
+  "methods": [
+    "GET"
+  ],
+  "objects": [
+    {
+      "kind": "database",
+      "bytes": 81920,
+      "expected_sha256": "bdf118c9fce9bfad65d6b04d5f3b041b85c024ef0f4f5d193a036a488c0ebfc2"
+    },
+    {
+      "kind": "prefix",
+      "bytes": 7331160064,
+      "expected_sha256": "1428137ae31e1195a4301f4eb41e170a09b9f2905d34b3956322116bd30684c1"
+    }
+  ],
+  "corpus_downloaded_to_operator": false,
+  "heavypad_used": false
+}

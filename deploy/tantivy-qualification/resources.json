@@ -2,9 +2,47 @@
   "schema": 1,
   "app": "typeahead-qual-20261029",
   "owner": "tantivy-qualification-20261029",
-  "machines": [],
-  "volumes": [],
-  "phase": "pilot-cleaned",
+  "machines": [
+    {
+      "id": "801249a6d20e38",
+      "name": "tq-4d62ead649f7-reaper",
+      "role": "reaper",
+      "run_id": "4d62ead649f7"
+    },
+    {
+      "id": "8e236dc727e538",
+      "name": "tq-4d62ead649f7-native-control",
+      "role": "native-control",
+      "run_id": "4d62ead649f7"
+    },
+    {
+      "id": "6835750a604018",
+      "name": "tq-4d62ead649f7-tantivy-control",
+      "role": "tantivy-control",
+      "run_id": "4d62ead649f7"
+    },
+    {
+      "id": "6835102ae1d028",
+      "name": "tq-4d62ead649f7-generator",
+      "role": "generator",
+      "run_id": "4d62ead649f7"
+    }
+  ],
+  "volumes": [
+    {
+      "id": "vol_v3gx6588djw8p2x4",
+      "name": "tq_4d62ead649f7_native",
+      "role": "native",
+      "run_id": "4d62ead649f7"
+    },
+    {
+      "id": "vol_v8ey9xwg3yol185v",
+      "name": "tq_4d62ead649f7_tantivy",
+      "role": "tantivy",
+      "run_id": "4d62ead649f7"
+    }
+  ],
+  "phase": "pilot-provisioned-paused",
   "budget": {
     "pilot_engine_guests": {
       "cpu_kind": "shared",
@@ -22,50 +60,50 @@
     "cleanup": "destroy only ledger-owned temporary machines and volumes, revoke temporary control capability; preserve production and parallel dev app"
   },
   "pilot": {
-    "phase": "cleaned",
-    "image": "registry.fly.io/typeahead-qual-20261029@sha256:15a0b844bcc7045655d05418a65dab3c8d6511904c59a10be3e9e3a39266dec9",
+    "phase": "provisioned-paused",
+    "image": "registry.fly.io/typeahead-qual-20261029@sha256:c3d29aba045c9b2a57fe0080f61a480497eb68a85387b25853ad39e89ad9166a",
     "region": "ewr",
     "manifest": {
       "schema": 1,
       "app": "typeahead-qual-20261029",
       "owner": "tantivy-qualification-20261029",
-      "run_id": "b21a25b813d0",
-      "mode": "pilot",
-      "created_after": 1793298532.8259578,
-      "created_before": 1793299162.8259578,
-      "deadline": 1793299162.8259578,
+      "run_id": "4d62ead649f7",
+      "mode": "full",
+      "created_after": 1793305076.2230048,
+      "created_before": 1793310506.2230048,
+      "deadline": 1793310506.2230048,
       "machines": [
         {
-          "name": "tq-b21a25b813d0-native-control",
+          "name": "tq-4d62ead649f7-native-control",
           "role": "native-control"
         },
         {
-          "name": "tq-b21a25b813d0-tantivy-control",
+          "name": "tq-4d62ead649f7-tantivy-control",
           "role": "tantivy-control"
         },
         {
-          "name": "tq-b21a25b813d0-generator",
+          "name": "tq-4d62ead649f7-generator",
           "role": "generator"
         }
       ],
       "volumes": [
         {
-          "name": "tq_b21a25b813d0_native",
+          "name": "tq_4d62ead649f7_native",
           "role": "native"
         },
         {
-          "name": "tq_b21a25b813d0_tantivy",
+          "name": "tq_4d62ead649f7_tantivy",
           "role": "tantivy"
         }
       ],
       "reaper": {
-        "name": "tq-b21a25b813d0-reaper",
+        "name": "tq-4d62ead649f7-reaper",
         "role": "reaper"
       }
     },
-    "manifest_sha256": "22b85042ada606f027e70a7a6553109eb5c798c808555a5b34b70b5025998cbc",
-    "nonce": "02e372ea4c09ccddceced827118438e3",
-    "watermark": 1793298502,
+    "manifest_sha256": "70852ba4f1f8d00ffa156344f55930957ace8958dee249cda3c60f6fec207878",
+    "nonce": "e66d605c462ac7d6f562c0489bc9cdca",
+    "watermark": 1793305046,
     "attempts": {
       "machine:reaper": "resolved",
       "volume:native": "resolved",
@@ -75,61 +113,64 @@
       "machine:generator": "resolved"
     },
     "resolved": {
-      "machine:reaper": "0803736c31ee08",
-      "volume:native": "vol_re1qpdj0m85k8gd4",
-      "volume:tantivy": "vol_4oj6xngem023nyor",
-      "machine:native-control": "d8d2126f979758",
-      "machine:tantivy-control": "85379da469d698",
-      "machine:generator": "8dd96dce366228"
+      "machine:reaper": "801249a6d20e38",
+      "volume:native": "vol_v3gx6588djw8p2x4",
+      "volume:tantivy": "vol_v8ey9xwg3yol185v",
+      "machine:native-control": "8e236dc727e538",
+      "machine:tantivy-control": "6835750a604018",
+      "machine:generator": "6835102ae1d028"
     },
     "armed": {
       "app": "typeahead-qual-20261029",
       "owner": "tantivy-qualification-20261029",
-      "run_id": "b21a25b813d0",
-      "deadline": 1793299162.8259578,
+      "run_id": "4d62ead649f7",
+      "deadline": 1793310506.2230048,
       "self": {
-        "id": "0803736c31ee08",
-        "name": "tq-b21a25b813d0-reaper",
+        "id": "801249a6d20e38",
+        "name": "tq-4d62ead649f7-reaper",
         "auto_destroy": true
       },
-      "manifest_sha256": "22b85042ada606f027e70a7a6553109eb5c798c808555a5b34b70b5025998cbc"
+      "manifest_sha256": "70852ba4f1f8d00ffa156344f55930957ace8958dee249cda3c60f6fec207878"
     },
     "native_binary_sha256": "4a3d71491c8187de33a5639fa4cf35b313ff428f6ec9d74159a36fa1a17f1598",
     "tantivy_binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
     "required_platform_secrets": [
       "ADMIN_SECRET",
       "QUAL_CONTROL_SECRET",
-      "QUAL_REAPER_CAPABILITY"
+      "QUAL_REAPER_CAPABILITY",
+      "QUAL_SOURCE_ACCESS"
     ],
+    "oracle_binary_sha256": "df91a1647580edf77d31fac4ce825c3205ca77781396bce0b620e96e2661ef61",
     "creation_request_sha256": {
-      "machine:reaper": "8db8ada8a56a62cc64595a82aa5e2b9e16f5ea3480df519d17cab463eb07cb69",
-      "volume:native": "3e165ab8ff22d065058578cd603f4e9b6ec67da1c7f01ee165cb4774790ee8ac",
-      "volume:tantivy": "5b5ab3bfc71b2e8f8536a53c2ca1945d256af7ca86f1fc3e6135273f1867acde",
-      "machine:native-control": "9ba270f02cf52ba386e7a2a078e0d6668bb775a6fd8aa8b7776738c6c701b8dc",
-      "machine:tantivy-control": "c32e57eb38186a96345829202bfb0e4981d0feb280c790561a4ecdf85239a3fb",
-      "machine:generator": "72ea63a59da221cdb7232836d97278b5b42ace158b6cbc938cac3407c827261c"
+      "machine:reaper": "9d2cc867b1fa0b4e8e6222a0fdd2eb9d7928e806730293a1ca09e61f2d0754b9",
+      "volume:native": "5ab88de8208db789ff5c66b8ee1b5503a1e00b08081a0db49dfd62bcc93653e7",
+      "volume:tantivy": "ae6e7efe5bfdbbb91e525f51b949a8cd1ec8230bc6ab5f8de0b268d53f4836a3",
+      "machine:native-control": "c5ae384f8fb0eed8702e23bdf3a90b1d9db3eb2da993c06088a7096155898b3d",
+      "machine:tantivy-control": "3ec8137d0b0c0dcc29d31e5bca756e6683f72026e4094091d65d9c5d2526bb8a",
+      "machine:generator": "66f709899ee80742590597a29d9678533c112ee78a96ba911c1a08bcfd96ffaa"
     },
     "configuration_attempts": {
       "native-control": {
-        "sha256": "39d31a8238f29cb97d2d3a6eee108ca09dd645159723cabfa4f55bf5bc3d769d",
+        "sha256": "44e7adebc66115b0dd0e7a2c81d714995f45c5c3e5ea71697305848f1f37c04f",
         "keys": [
           "QUAL_OBSERVER_JSON"
         ],
         "state": "committed"
       },
       "tantivy-control": {
-        "sha256": "d60e48f8d6d6b02498ec11f6610c86e37d82f04b91c104087d1183dcc95bbc10",
+        "sha256": "ac932599759703d0ef1fe3b234e11c36232b1789f7554787a96b919a996d4a19",
         "keys": [
           "QUAL_OBSERVER_JSON"
         ],
         "state": "committed"
       },
       "generator": {
-        "sha256": "e2e0f5d1b470329976cbe84322fea6bdf95ff98cd181edbd670fc6561cd68eb3",
+        "sha256": "b14b58fb0cca0691596f07e7b7d9ff343535136b5bc4bd57786acdbc36ba2c69",
         "keys": [
           "QUAL_NATIVE_BINARY_SHA256",
           "QUAL_NATIVE_CONTROL_URL",
           "QUAL_NATIVE_URL",
+          "QUAL_ORACLE_BINARY_SHA256",
           "QUAL_TANTIVY_BINARY_SHA256",
           "QUAL_TANTIVY_CONTROL_URL",
           "QUAL_TANTIVY_URL"
@@ -138,9 +179,9 @@
       }
     },
     "configured": {
-      "native-control": "39d31a8238f29cb97d2d3a6eee108ca09dd645159723cabfa4f55bf5bc3d769d",
-      "tantivy-control": "d60e48f8d6d6b02498ec11f6610c86e37d82f04b91c104087d1183dcc95bbc10",
-      "generator": "e2e0f5d1b470329976cbe84322fea6bdf95ff98cd181edbd670fc6561cd68eb3"
+      "native-control": "44e7adebc66115b0dd0e7a2c81d714995f45c5c3e5ea71697305848f1f37c04f",
+      "tantivy-control": "ac932599759703d0ef1fe3b234e11c36232b1789f7554787a96b919a996d4a19",
+      "generator": "b14b58fb0cca0691596f07e7b7d9ff343535136b5bc4bd57786acdbc36ba2c69"
     },
     "configuration_keys": {
       "native-control": [
@@ -153,6 +194,7 @@
         "QUAL_NATIVE_BINARY_SHA256",
         "QUAL_NATIVE_CONTROL_URL",
         "QUAL_NATIVE_URL",
+        "QUAL_ORACLE_BINARY_SHA256",
         "QUAL_TANTIVY_BINARY_SHA256",
         "QUAL_TANTIVY_CONTROL_URL",
         "QUAL_TANTIVY_URL"
@@ -162,63 +204,7 @@
       "native-control",
       "tantivy-control",
       "generator"
-    ],
-    "cleanup_receipt": {
-      "schema": 1,
-      "app": "typeahead-qual-20261029",
-      "owner": "tantivy-qualification-20261029",
-      "run_id": "b21a25b813d0",
-      "status": "cleaned",
-      "deadline": 1793299162.8259578,
-      "started_at": 1793299213.977052,
-      "finished_at": 1793299216.416893,
-      "attempts": 1,
-      "creation_settled_by_controller": true,
-      "resolved": [
-        {
-          "event": "resolved",
-          "kind": "volume",
-          "id": "vol_re1qpdj0m85k8gd4",
-          "name": "tq_b21a25b813d0_native",
-          "role": "native",
-          "run_id": "b21a25b813d0"
-        },
-        {
-          "event": "resolved",
-          "kind": "volume",
-          "id": "vol_4oj6xngem023nyor",
-          "name": "tq_b21a25b813d0_tantivy",
-          "role": "tantivy",
-          "run_id": "b21a25b813d0"
-        }
-      ],
-      "failures": [],
-      "remaining": [],
-      "remaining_whitelist_ids": [],
-      "unresolved_whitelist_names": [],
-      "self": null,
-      "api_timeout_seconds": 15,
-      "cleanup_grace_seconds": 300,
-      "volume_dispositions": [
-        {
-          "id": "vol_re1qpdj0m85k8gd4",
-          "state": "pending_destroy",
-          "non_billable": true,
-          "physical_purge_confirmed": false
-        },
-        {
-          "id": "vol_4oj6xngem023nyor",
-          "state": "pending_destroy",
-          "non_billable": true,
-          "physical_purge_confirmed": false
-        }
-      ],
-      "limitations": [
-        "Provider outages may leave volumes; failed cleanup must be reconciled before another run.",
-        "Fly retains non-billable pending_destroy volume records for provider-managed purge; absence of those records is not required or claimed."
-      ]
-    },
-    "reaper_retired": true
+    ]
   },
   "retired_pilots": [
     {
@@ -278,6 +264,69 @@
         },
         {
           "id": "vol_rnz1d6y3y230m0pr",
+          "state": "pending_destroy",
+          "non_billable": true,
+          "physical_purge_confirmed": false
+        }
+      ]
+    },
+    {
+      "manifest": {
+        "schema": 1,
+        "app": "typeahead-qual-20261029",
+        "owner": "tantivy-qualification-20261029",
+        "run_id": "b21a25b813d0",
+        "mode": "pilot",
+        "created_after": 1793298532.8259578,
+        "created_before": 1793299162.8259578,
+        "deadline": 1793299162.8259578,
+        "machines": [
+          {
+            "name": "tq-b21a25b813d0-native-control",
+            "role": "native-control"
+          },
+          {
+            "name": "tq-b21a25b813d0-tantivy-control",
+            "role": "tantivy-control"
+          },
+          {
+            "name": "tq-b21a25b813d0-generator",
+            "role": "generator"
+          }
+        ],
+        "volumes": [
+          {
+            "name": "tq_b21a25b813d0_native",
+            "role": "native"
+          },
+          {
+            "name": "tq_b21a25b813d0_tantivy",
+            "role": "tantivy"
+          }
+        ],
+        "reaper": {
+          "name": "tq-b21a25b813d0-reaper",
+          "role": "reaper"
+        }
+      },
+      "manifest_sha256": "22b85042ada606f027e70a7a6553109eb5c798c808555a5b34b70b5025998cbc",
+      "resolved": {
+        "machine:reaper": "0803736c31ee08",
+        "volume:native": "vol_re1qpdj0m85k8gd4",
+        "volume:tantivy": "vol_4oj6xngem023nyor",
+        "machine:native-control": "d8d2126f979758",
+        "machine:tantivy-control": "85379da469d698",
+        "machine:generator": "8dd96dce366228"
+      },
+      "terminal_dispositions": [
+        {
+          "id": "vol_re1qpdj0m85k8gd4",
+          "state": "pending_destroy",
+          "non_billable": true,
+          "physical_purge_confirmed": false
+        },
+        {
+          "id": "vol_4oj6xngem023nyor",
           "state": "pending_destroy",
           "non_billable": true,
           "physical_purge_confirmed": false
