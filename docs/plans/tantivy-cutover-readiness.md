@@ -63,6 +63,15 @@ checksum-pinned reuse of Typeahead's installer. Its actual HTTP/filesystem and
 tiny Rust freeze/install/restart checks passed; it is not deployed. The refresh
 fence remains until the complete cloud lifecycle is qualified.
 
+The [staged full run `285b6147c50e`](../evals/tantivy-dev-20261028/qualification-full-285b6147c50e.json)
+completed both preparations. Tantivy exited successfully at 22:47 UTC, but the
+operator failed to advance that checkpoint into measurement before the 23:24 UTC
+lease deadline. The independent reaper then removed every trial machine and
+retired both volumes. No snapshots were available. This is an orchestration
+failure, not an engine failure or performance result. Another full import must
+wait for an independently running phase supervisor and a small real lifecycle
+check that proves automatic advancement, result capture and cleanup.
+
 Typeahead commits `a9745b4` and `02cda68` add source-linked portable bundles,
 publication through the existing cloud-owned artifact publisher, and contracts
 for two independently addressed Tantivy slots. The native source manifest is

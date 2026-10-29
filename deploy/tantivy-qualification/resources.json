@@ -2,47 +2,9 @@
   "schema": 1,
   "app": "typeahead-qual-20261029",
   "owner": "tantivy-qualification-20261029",
-  "machines": [
-    {
-      "id": "e82676db367dd8",
-      "name": "tq-285b6147c50e-reaper",
-      "role": "reaper",
-      "run_id": "285b6147c50e"
-    },
-    {
-      "id": "781ee7df10eee8",
-      "name": "tq-285b6147c50e-native-control",
-      "role": "native-control",
-      "run_id": "285b6147c50e"
-    },
-    {
-      "id": "824021f7441e38",
-      "name": "tq-285b6147c50e-tantivy-control",
-      "role": "tantivy-control",
-      "run_id": "285b6147c50e"
-    },
-    {
-      "id": "7841712c140468",
-      "name": "tq-285b6147c50e-generator",
-      "role": "generator",
-      "run_id": "285b6147c50e"
-    }
-  ],
-  "volumes": [
-    {
-      "id": "vol_42kd1xez7g6zo214",
-      "name": "tq_285b6147c50e_native",
-      "role": "native",
-      "run_id": "285b6147c50e"
-    },
-    {
-      "id": "vol_r7y5knjzn13508nr",
-      "name": "tq_285b6147c50e_tantivy",
-      "role": "tantivy",
-      "run_id": "285b6147c50e"
-    }
-  ],
-  "phase": "pilot-provisioned-paused",
+  "machines": [],
+  "volumes": [],
+  "phase": "pilot-cleaned",
   "budget": {
     "pilot_engine_guests": {
       "cpu_kind": "shared",
@@ -60,7 +22,7 @@
     "cleanup": "destroy only ledger-owned temporary machines and volumes, revoke temporary control capability; preserve production and parallel dev app"
   },
   "pilot": {
-    "phase": "provisioned-paused",
+    "phase": "cleaned",
     "image": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
     "region": "ewr",
     "manifest": {
@@ -231,7 +193,63 @@
         "QUAL_OBSERVER_JSON",
         "QUAL_PHASE"
       ]
-    }
+    },
+    "cleanup_receipt": {
+      "schema": 1,
+      "app": "typeahead-qual-20261029",
+      "owner": "tantivy-qualification-20261029",
+      "run_id": "285b6147c50e",
+      "status": "cleaned",
+      "deadline": 1793316252.692568,
+      "started_at": 1793317296.142762,
+      "finished_at": 1793317297.8945558,
+      "attempts": 1,
+      "creation_settled_by_controller": true,
+      "resolved": [
+        {
+          "event": "resolved",
+          "kind": "volume",
+          "id": "vol_42kd1xez7g6zo214",
+          "name": "tq_285b6147c50e_native",
+          "role": "native",
+          "run_id": "285b6147c50e"
+        },
+        {
+          "event": "resolved",
+          "kind": "volume",
+          "id": "vol_r7y5knjzn13508nr",
+          "name": "tq_285b6147c50e_tantivy",
+          "role": "tantivy",
+          "run_id": "285b6147c50e"
+        }
+      ],
+      "failures": [],
+      "remaining": [],
+      "remaining_whitelist_ids": [],
+      "unresolved_whitelist_names": [],
+      "self": null,
+      "api_timeout_seconds": 15,
+      "cleanup_grace_seconds": 300,
+      "volume_dispositions": [
+        {
+          "id": "vol_42kd1xez7g6zo214",
+          "state": "pending_destroy",
+          "non_billable": true,
+          "physical_purge_confirmed": false
+        },
+        {
+          "id": "vol_r7y5knjzn13508nr",
+          "state": "pending_destroy",
+          "non_billable": true,
+          "physical_purge_confirmed": false
+        }
+      ],
+      "limitations": [
+        "Provider outages may leave volumes; failed cleanup must be reconciled before another run.",
+        "Fly retains non-billable pending_destroy volume records for provider-managed purge; absence of those records is not required or claimed."
+      ]
+    },
+    "reaper_retired": true
   },
   "retired_pilots": [
     {
