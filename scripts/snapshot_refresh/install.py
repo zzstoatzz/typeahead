@@ -37,6 +37,8 @@ def atomic_json(path, value):
 
 
 def validate_manifest(m, expected):
+    if m.get('engine', 'native') != 'native':
+        raise ValueError('Native installer requires native artifacts; use tantivy_install.py for Tantivy directories')
     if not re.fullmatch(r'b[0-9]{10}-[A-Za-z0-9_-]+', expected) or m['active_build'] != expected:
         raise ValueError('Unexpected generation')
     if m['manifest_version'] != 2 or m['format_version'] != 5:

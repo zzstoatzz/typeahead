@@ -9,6 +9,26 @@ const second = parseRoute({ version: 1, current: {
   origin: "https://typeahead-search-refresh.fly.dev", build_id: "b1793081565-0228-px05",
 } });
 
+test("a changed admission identity discards a same-origin same-build hinted response", async () => {
+  const candidate = { engine: "tantivy", origin: "https://typeahead-tantivy-dev.fly.dev", build_id: "b1792908655-test", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" } as const;
+  const previous = parseRoute({ version: 1, current: candidate });
+  const next = parseRoute({ version: 1, current: { ...candidate, admission_sha256: "b".repeat(64) } });
+  const arrivals: string[] = [];
+  const server = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch(request) {
+    arrivals.push(new URL(request.url).pathname);
+    return new Response(new URL(request.url).pathname, { headers: { "X-Typeahead-Engine": "tantivy", "X-Typeahead-Build": candidate.build_id, "X-Typeahead-Format": candidate.format, "X-Typeahead-Binary-Sha256": candidate.binary_sha256, "X-Typeahead-Retrieval-Strategy": candidate.retrieval_strategy } });
+  } });
+  try {
+    const result = await validatedSearch(Bun.sleep(25).then(() => next), previous, (route, signal) => {
+      if (route.engine !== "tantivy") throw new Error("Expected Tantivy fixture route");
+      return fetch(new URL('/' + route.admission_sha256, server.url), { signal });
+    });
+    expect(await result.text()).toBe('/' + 'b'.repeat(64));
+    expect(arrivals).toEqual(['/' + 'a'.repeat(64), '/' + 'b'.repeat(64)]);
+    expect(result.headers.get("Server-Timing")).toContain('transport_mode;desc="reselected"');
+  } finally { server.stop(true); }
+});
+
 function fixture(options: { routeDelay: number; originDelay: number; selected?: typeof first; controlStatus?: number; originStatus?: number }) {
   const arrivals: string[] = [];
   const aborted: string[] = [];

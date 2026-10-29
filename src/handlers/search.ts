@@ -1,5 +1,5 @@
 import { filterIdentityBody, filterIdentityResponse, isSearchExcludedHandle } from "../identity-policy";
-import { normalizePds } from "../pds";
+import { parseSearchScope, scopeAcknowledged, scopeParams, searchCacheGeneration, searchCacheUrl, validateBackendBody, type SearchScope } from "./search-contract";
 export { normalizePds } from "../pds";
 import { rowsAs, type TursoDB } from "../db";
 import type { ActorRow, Env } from "../types";
@@ -70,7 +70,7 @@ export async function handleSearch(
   const url = new URL(request.url);
   const q = url.searchParams.get("q") || url.searchParams.get("term") || "";
   const limitRaw = url.searchParams.get("limit");
-  const limitParam = limitRaw !== null ? parseInt(limitRaw, 10) : 10;
+  const limitParam = limitRaw !== null && /^\d+$/.test(limitRaw) ? Number(limitRaw) : limitRaw === null ? 10 : NaN;
 
   if (!q.trim()) {
     return json({ error: "InvalidRequest", message: "Error: Params must have the property \"q\"" }, 400);
@@ -79,13 +79,13 @@ export async function handleSearch(
     return json({ error: "InvalidRequest", message: "Error: limit must be between 1 and 100" }, 400);
   }
 
-  const rawPds = url.searchParams.get("pds");
-  const pds = rawPds === null ? null : normalizePds(rawPds);
-  if (rawPds !== null && pds === null) {
-    return json({ error: "InvalidRequest", message: "pds must be a DNS hostname or HTTP(S) origin without a port" }, 400);
-  }
+  let scope: SearchScope;
+  try { scope = parseSearchScope(url.searchParams); }
+  catch (error) { return json({ error: "InvalidRequest", message: error instanceof Error ? error.message : "Invalid PDS parameters" }, 400); }
+  const { pds, preference } = scope;
+  const scoped = Boolean(pds || preference);
   const unavailable = () => json({ error: "PdsScopeUnavailable", message: "PDS-scoped search is unavailable" }, 503);
-  if (pds && (env.PDS_SEARCH_DISABLED === "1" || env.EMERGENCY_PROXY_BSKY || !env.SEARCH_BACKEND_URL)) return unavailable();
+  if (scoped && (env.PDS_SEARCH_DISABLED === "1" || env.EMERGENCY_PROXY_BSKY || !env.SEARCH_BACKEND_URL)) return unavailable();
 
   const limit = limitParam;
   const t0 = Date.now();
@@ -118,8 +118,11 @@ export async function handleSearch(
   // cache API — edge cache for hot queries
   // hostname must belong to this zone so the CF zone-purge API can target it
   const host = new URL(request.url).host;
+  let cacheGeneration: string;
+  try { cacheGeneration = searchCacheGeneration(env.SEARCH_CACHE_GENERATION); }
+  catch { return json({ error: "SearchConfigurationUnavailable" }, 503); }
   const cacheKey = new Request(
-    `https://${host}/__cache/${encodeURIComponent(term)}:${limit}${pds ? `?pds=${encodeURIComponent(pds)}` : ""}`,
+    searchCacheUrl(host, term, limit, scope, cacheGeneration),
     request
   );
   const cache = caches.default;
@@ -139,7 +142,8 @@ export async function handleSearch(
       let backendStrategy: "retained" | "proof" | "unknown" = "unknown";
       let backendRouteClass: "routed" | "direct" | "other" = "other";
       try {
-        const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}${pds ? `&pds=${encodeURIComponent(pds)}` : ""}`;
+        const extra = scopeParams(scope).toString();
+        const backendUrl = `${env.SEARCH_BACKEND_URL}/search?q=${encodeURIComponent(term)}&limit=${limit}${extra ? `&${extra}` : ""}`;
         const parsedBackend = new URL(backendUrl);
         backendRouteClass = parsedBackend.origin === "https://typeahead-search-transport.n8-3e9.workers.dev" ? "routed"
           : parsedBackend.hostname.endsWith(".fly.dev") ? "direct" : "other";
@@ -149,11 +153,25 @@ export async function handleSearch(
           ? await env.SEARCH_TRANSPORT.fetch(backendUrl, init)
           : await fetch(backendUrl, init);
         backendStrategy = backendRes.headers.get("X-Typeahead-Route-Strategy") === "proof" ? "proof" : "retained";
-        if (pds && backendRes.headers.get("X-Typeahead-Pds") !== pds) return unavailable();
-        if (!backendRes.ok) throw new Error(`backend_${backendRes.status}`);
+        if (backendRes.status === 400) {
+          await backendRes.body?.cancel().catch(() => {});
+          return json({ error: "InvalidRequest", message: "Search engine rejected the query or parameters" }, 400);
+        }
+        if (scoped && !scopeAcknowledged(scope, backendRes.headers)) {
+          await backendRes.body?.cancel().catch(() => {});
+          return unavailable();
+        }
+        if (!backendRes.ok) {
+          await backendRes.body?.cancel().catch(() => {});
+          if (scoped) return unavailable();
+          if (!tursoFallbackOnUnreachable(env.TURSO_FALLBACK_ON_UNREACHABLE === "1")) return json({ error: "SearchBackendUnavailable", message: "Search engine is unavailable" }, 503);
+          throw new Error(`backend_${backendRes.status}`);
+        }
         {
           const headersMs = Date.now() - backendStart;
-          const body = filterIdentityBody(await backendRes.text(), "actors");
+          const upstreamBody = await backendRes.text();
+          validateBackendBody(upstreamBody, limit);
+          const body = filterIdentityBody(upstreamBody, "actors");
           const backendMs = Date.now() - backendStart;
 
           // An EMPTY result from the replica falls through to Turso.
@@ -173,7 +191,7 @@ export async function handleSearch(
           } catch {
             empty = false;   // unparseable is the backend's problem, not a miss
           }
-          if (!pds && empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1")) throw new Error("backend_empty");
+          if (!scoped && empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1")) throw new Error("backend_empty");
 
           const elapsedMs = Date.now() - t0;
           ctx.waitUntil(recordTrafficSource(db, request));
@@ -190,6 +208,11 @@ export async function handleSearch(
             headers: { "Content-Type": "application/json", ...CORS_HEADERS,
               "Server-Timing": `cache;desc="miss";dur=${cacheMs}, origin_headers;dur=${headersMs};desc="${backendRes.headers.get("fly-request-id") || "unknown"}", origin;dur=${backendMs}, search;dur=${Date.now() - t0}` },
           });
+          response.headers.set("X-Typeahead-Cache-Generation", cacheGeneration);
+          for (const header of ["X-Typeahead-Engine", "X-Typeahead-Format", "X-Typeahead-Build", "X-Typeahead-Binary-Sha256", "X-Typeahead-Retrieval-Strategy", "X-Typeahead-Machine-Id", "X-Typeahead-Machine-Version"]) {
+            const value = backendRes.headers.get(header);
+            if (value !== null) response.headers.set(header, value);
+          }
 
           const cacheable = new Response(response.clone().body, response);
           cacheable.headers.set("Cache-Control", "public, max-age=60");
@@ -198,16 +221,14 @@ export async function handleSearch(
           return response;
         }
       } catch (e: unknown) {
-        if (pds) return unavailable();
+        if (scoped) return unavailable();
         const reason = e instanceof Error ? e.message : String(e);
         if (reason !== "backend_empty" && !tursoFallbackOnUnreachable(env.TURSO_FALLBACK_ON_UNREACHABLE === "1")) {
-          console.log(JSON.stringify({ event: "search_response_timing", outcome: "backend_error", status: 200,
+          console.log(JSON.stringify({ event: "search_response_timing", outcome: "backend_error", status: 503,
             backend_strategy: backendStrategy, backend_route_class: backendRouteClass, ingress_colo: ingressColo,
             search_ms: Date.now() - t0, cache_ms: cacheMs }));
           console.log(JSON.stringify({ event: "search_backend_unreachable", term, error: reason }));
-          // not cached: the engine restarts in ~15 s and the next keystroke
-          // should reach it, not a pinned empty answer
-          return json({ actors: [] });
+          return json({ error: "SearchBackendUnavailable", message: "Search engine is unavailable" }, 503);
         }
         // opted in: Turso answers below
       }

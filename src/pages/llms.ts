@@ -22,6 +22,22 @@ GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=<prefix>
   (the shape of app.bsky.actor.defs#profileViewBasic minus the authenticated "viewer" field)
 - lexicon: https://tangled.org/zzstoatzz.io/typeahead/blob/main/lexicons/tech.waow.typeahead.searchActors.json
 
+## capability-gated PDS preference
+
+Candidate backends can support prefer_pds=<hostname>, independently of the hard pds filter.
+With no other preference parameters, same-PDS actors rank first within each exact/ordinary
+category. preference=pds_first makes this explicit. For a finite nonnegative score boost,
+use preference=boost&boost=<decimal>; boost alone also selects boost mode. Exact eligible
+handles retain priority. A boost is rounded to f32; supplying pds_first with boost is invalid.
+Missing prefer_pds, unknown modes, malformed limits and invalid boosts return 400.
+Support is acknowledged by the backend and included in edge cache identity. Unsupported
+preference returns 503 PdsScopeUnavailable, never silently unpreferred results.
+Native scope limits above remain specific to the selected native snapshot; the Tantivy
+candidate can filter any recorded canonical host. Unknown source PDS cannot match either
+a hard filter or a preference. These candidate changes are not a production cutover.
+Backend query rejection is 400; unavailable, stale or invalid backend responses are 503,
+not successful empty results. Canonical and compatibility endpoint bodies remain equal.
+
 ## bluesky-compatible alias
 
 GET https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=<prefix>&limit=10

@@ -4,16 +4,53 @@ export const ROUTE_KEY = "control/search-routing.json";
 
 export const routeSchema = z.pipe(z.object({
   version: z.literal(1),
-  current: z.object({
+  current: z.union([z.object({
+    engine: z.optional(z.literal("native")),
     origin: z.enum([
       "https://typeahead-startup-20261024.fly.dev",
       "https://typeahead-search-refresh.fly.dev",
     ]),
     build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
-  }),
+  }), z.object({
+    engine: z.literal("tantivy"),
+    origin: z.literal("https://typeahead-tantivy-dev.fly.dev"),
+    build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
+    format: z.literal("tantivy-0.27-f32-did-expiry-v4"),
+    admission_sha256: z.string().check(z.regex(/^[a-f0-9]{64}$/)),
+    binary_sha256: z.string().check(z.regex(/^[a-f0-9]{64}$/)),
+    retrieval_strategy: z.enum(["per-segment", "global-merge"]),
+  })]),
 }), z.transform(({ current }) => current));
 
 export const parseRoute = routeSchema.parse;
+
+export function routeIdentity(route: ReturnType<typeof parseRoute>): string {
+  return JSON.stringify(route.engine === "tantivy"
+    ? [route.engine, route.origin, route.build_id, route.format, route.admission_sha256, route.binary_sha256, route.retrieval_strategy]
+    : ["native", route.origin, route.build_id]);
+}
+
+export function responseMatchesRoute(route: ReturnType<typeof parseRoute>, response: Response): boolean {
+  return route.engine !== "tantivy" || !response.ok || (
+    response.headers.get("X-Typeahead-Engine") === "tantivy"
+    && response.headers.get("X-Typeahead-Build") === route.build_id
+    && response.headers.get("X-Typeahead-Format") === route.format
+    && response.headers.get("X-Typeahead-Binary-Sha256") === route.binary_sha256
+    && response.headers.get("X-Typeahead-Retrieval-Strategy") === route.retrieval_strategy
+  );
+}
+
+export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: string | null, candidate: unknown): Promise<boolean> {
+  const current = parseRoute({ version: 1, current: candidate });
+  const before = await bucket.get(ROUTE_KEY);
+  if ((before?.etag ?? null) !== expectedEtag) return false;
+  const previous = before ? parseRoute(await before.json()) : null;
+  const options = expectedEtag === null
+    ? { onlyIf: { etagDoesNotMatch: "*" } }
+    : { onlyIf: { etagMatches: expectedEtag } };
+  const result = await bucket.put(ROUTE_KEY, JSON.stringify({ version: 1, current, previous }), options);
+  return result !== null;
+}
 
 export function allowedRoute(request: Request) {
   const path = new URL(request.url).pathname;
