@@ -1,6 +1,7 @@
 import { z } from "zod";
+import quarantine from "./identity-quarantine.json";
 
-const quarantinedHandles = new Set(["donald.trump.com", "jr.donald.trump.com", "eric.trump.com", "ivanka.trump.com", "tiffany.trump.com", "barron.trump.com", "melania.trump.com"]);
+const quarantinedHandles = new Set(quarantine);
 
 export function isSearchExcludedHandle(handle: string): boolean {
   const normalized = handle.toLowerCase();

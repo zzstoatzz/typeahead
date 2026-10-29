@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "checks": [
+    "malformed_optional_pds_does_not_skip_any_actor",
+    "invalid_source_never_matches_scope_or_preference_even_with_spoofed_host",
+    "unscopable_localhost_port_url_cannot_form_derived_avatar_url_explicit_avatar_preserved",
+    "invalid_query_scopes_and_preferences_remain_rejected",
+    "invalid_missing_valid_delete_counters_transition_atomically",
+    "relaxed_optional_metadata_does_not_relax_score_or_lexical_admission",
+    "raw_invalid_pds_and_long_value_survive_committed_restart_and_replay",
+    "longest_valid_native_host_and_wrapper_are_not_misclassified"
+  ],
+  "actors_retained": 7,
+  "source_invalid_initial": 5,
+  "source_missing_initial": 1,
+  "fixed_reason_categories": [
+    "invalid_hostname",
+    "too_long"
+  ],
+  "cloud_resources": false,
+  "payload_removed": true,
+  "binary_sha256": "f0b4fb9b0f14a474a4e82c7332e55de14b501a67d8bea58c2010e83be52b4667"
+}

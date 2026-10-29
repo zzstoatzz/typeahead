@@ -1,0 +1,10 @@
+{
+  "admin_mutations": 10,
+  "build_id": "fixture-native-http-input",
+  "checks": 21,
+  "passed": true,
+  "production_contact": false,
+  "restart_qualified": false,
+  "synthetic": true,
+  "wall_seconds": 0.5720612080185674
+}

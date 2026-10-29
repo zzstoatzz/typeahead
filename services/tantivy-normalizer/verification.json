@@ -1,0 +1,19 @@
+{
+  "zig": "0.17.0",
+  "normalize_version": "v2-cjk-bigram",
+  "plan_version": "complete-prefix-groups-v1",
+  "native_adapter_tests": 6,
+  "c_abi_tests": 9,
+  "canonical_normalizer_tests": 23,
+  "canonical_pds_tests": 1,
+  "canonical_search_tests": 1,
+  "production_changes": false,
+  "linux_x86_64_gnu_static_cross_build": true,
+  "source_sha256": {
+    "services/tantivy-normalizer/adapter.zig": "387a409e5adb153695f9d10bf256c246a7b29620464fb1494c531fe61c651df0",
+    "services/src/index/normalize.zig": "c9147195ab41e53989059672a1e60c468b210721cb1fce96aa09dd2054988634",
+    "services/src/index/pds.zig": "bc1feb6d08b17395f6da82ef90a4378111923a2ec6c1210cf7be3ea03c7976a6",
+    "services/src/search.zig": "0e17a7565b47dab3c791c293d11f286ff539dce55c079a571aebc9d9576a963c"
+  },
+  "linux_x86_64_gnu_static_cross_build_source_sha256": "387a409e5adb153695f9d10bf256c246a7b29620464fb1494c531fe61c651df0"
+}

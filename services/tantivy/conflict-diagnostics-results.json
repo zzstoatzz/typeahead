@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "checks": [
+    "cursor_cas_failure_retains_state_and_identical_retry_with_current_cursor_succeeds",
+    "equal_version_conflict_does_not_commit_any_actor_or_cursor_and_valid_replay_still_succeeds",
+    "same_version_live_deleted_ambiguity_is_rejected_in_both_directions",
+    "committed_cursor_tombstone_and_identical_replay_survive_restart",
+    "fixed_diagnostic_events_distinguish_cursor_cas_and_actor_version_conflicts",
+    "stderr_contains_no_raw_did_profile_cursor_or_secret_and_events_are_bounded"
+  ],
+  "cursor_conflict_events": 1,
+  "actor_conflict_events": 2,
+  "maximum_diagnostic_bytes": 311,
+  "public_409_body_unchanged": true,
+  "conflict_policy_unchanged": true,
+  "payload_removed": true,
+  "cloud_resources": false,
+  "binary_sha256": "f0b4fb9b0f14a474a4e82c7332e55de14b501a67d8bea58c2010e83be52b4667"
+}

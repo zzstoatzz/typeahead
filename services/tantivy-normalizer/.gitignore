@@ -1,0 +1,6 @@
+.zig-cache/
+__pycache__/
+libtypeahead_normalizer*.a
+libtypeahead_normalizer*.a.o
+libtypeahead_normalizer*.dylib
+libtypeahead_normalizer*.so

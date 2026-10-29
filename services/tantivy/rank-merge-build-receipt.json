@@ -1,0 +1,28 @@
+{
+  "hash_algorithm": "SHA256 of sorted compact JSON file-to-SHA256 map",
+  "runtime_source_sha256": "b31ba0458b99b6f9b565fed566467f0921279b868884ebbcc8bf5ec1d8efe52f",
+  "files": {
+    "services/tantivy/Cargo.toml": "7df7e28212c41cd039cca0b34665807247da3a39cf1ab97bafbab415184f7162",
+    "services/tantivy/Cargo.lock": "730a2506d4ee1e2e3ea88c807d4af20187af616c4195feb616c8ccdbf430f67f",
+    "services/tantivy/build.rs": "7fd77abe9524def66af62480d4be778190fc11ae4c4e7169dacdf64d7d76fe0d",
+    "services/tantivy/src/actor.rs": "a653b8e77355c850520e818e19e95f5fa74624f886b42819f99007071e24c6ff",
+    "services/tantivy/src/engine/boost.rs": "764968e8dd336f0a18451db4e6de3c7c1940825223d2efd150eaa8792fc9e60c",
+    "services/tantivy/src/engine/rank_merge.rs": "00f08e70cbcfa5675b6887fb05a4cfd62c27085c8ff5f41a693adc6fc7c2435f",
+    "services/tantivy/src/engine/rank_merge_tests.rs": "a1e02018ea670f7a5f19a6ca33b3e4d746761b74627e30b89747226f9287cd1e",
+    "services/tantivy/src/engine/source.rs": "deebb7af6aa8f416c35a4edde4bfb8a9b890777824ab01b9c2f6ab62744a9452",
+    "services/tantivy/src/engine/source_page.rs": "159bd858db466fea6551ee2a1c5682245d007114501220df24a5ef69faed35d9",
+    "services/tantivy/src/engine.rs": "b4e33acc77e4f61904796e9c01790bd40ee05fba8819dcea6245b339c472bf3c",
+    "services/tantivy/src/lib.rs": "1dfbced93fd6e886c137ef65fbec6b6aeb2554c227a95fd932e80e9cd3262452",
+    "services/tantivy/src/main.rs": "dfc738257f35bfcac4edfa5e77f968c4be198c8307e55930856148f8799b8505",
+    "services/tantivy/src/moderation.rs": "2a452a6a60ade216ca4bced56963cf38bf5f1a95ee617384e269b87a7b042aa8",
+    "services/tantivy/src/normalizer.rs": "ce87f35532b7bb76d542ec1b79f7ef19b33bbecfac67c930d6d29114b3bd361e",
+    "services/tantivy/src/server.rs": "76617e18058cc7c0758f111c0a274791c4325d3d86cb491fe8d5c2630440d2f1",
+    "src/identity-quarantine.json": "1ed23ca57f8c03e841a703c55ca1b4335897de01c9dc58f642dbf6aca5529a09",
+    "src/moderation-regexes.json": "ae860b571234e867c757fbbcec5c25fb80aab0e046496edb6e945cffd0fdf46f"
+  },
+  "binary_sha256": "990c3d73c807e5f54634cd6cd4197e78aa3eb5c6e550226d7abf0d98e324a864",
+  "default_retrieval_strategy": "per-segment",
+  "opt_in_retrieval_strategy": "global-merge",
+  "timing_claim": false,
+  "production_contact": false
+}
