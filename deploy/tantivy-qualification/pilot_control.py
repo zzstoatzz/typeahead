@@ -20,6 +20,10 @@ auto_destroy. Start both final engines before starting the separate generator.
 Retry an ambiguous update only with its original observer/receipt; reconciliation
 reads the same IDs and never reposts a recorded update. This is preparation
 capacity, not final serving or benchmark hardware.
+
+--synthetic-staged-pilot additionally bounds this lifecycle to 128 local actors
+and at most 900 seconds, without a source capability. Provider/runtime checks
+remain mandatory; synthetic lifecycle success never qualifies corpus or speed.
 """
 import argparse
 import base64
@@ -91,7 +95,7 @@ class Pilot:
     def call(self,method,path,body=None):
         try:return self.control.api(method,path,body)
         except RuntimeError:raise PilotError('qualification_api_failed') from None
-    def prepare(self,image,native_binary_sha256,tantivy_binary_sha256,seconds=600,region='ewr',run_id=None,mode='pilot',oracle_binary_sha256=None,staged_preparation=False):
+    def prepare(self,image,native_binary_sha256,tantivy_binary_sha256,seconds=600,region='ewr',run_id=None,mode='pilot',oracle_binary_sha256=None,staged_preparation=False,synthetic_staged_pilot=False):
         value=self.state()
         if value.get('machines') or value.get('volumes') or value.get('pilot',{}).get('phase') not in (None,'cleaned'):
             raise PilotError('existing_run_requires_cleanup')
@@ -101,6 +105,7 @@ class Pilot:
         if mode=='full' and not binary_sha(oracle_binary_sha256):raise PilotError('frozen_oracle_binary_hash_required')
         if type(seconds) is not int or not 1<=seconds<=LEASE_SECONDS[mode] or region!='ewr':raise PilotError('pilot_budget_or_region')
         if type(staged_preparation) is not bool or staged_preparation and mode!='full':raise PilotError('staged_preparation_requires_full')
+        if type(synthetic_staged_pilot) is not bool or synthetic_staged_pilot and (mode!='full' or not staged_preparation or seconds>900):raise PilotError('synthetic_staged_pilot_bounds')
         run_id=run_id or secrets.token_hex(6);now=self.now();deadline=now+seconds
         def entry(role,kind='machine'):
             return {'name':('tq-' if kind=='machine' else 'tq_')+run_id+('-' if kind=='machine' else '_')+role,'role':role}
@@ -120,8 +125,9 @@ class Pilot:
         pilot={'phase':'prepared','image':image,'region':region,'manifest':manifest,'manifest_sha256':digest(manifest),
                'nonce':secrets.token_hex(16),'watermark':int(now)-60,'attempts':{},'resolved':{},'armed':None,
                'native_binary_sha256':native_binary_sha256,'tantivy_binary_sha256':tantivy_binary_sha256,
-               'required_platform_secrets':sorted(SECRETS if mode=='full' else PILOT_SECRETS)}
+               'required_platform_secrets':sorted(SECRETS if mode=='full' and not synthetic_staged_pilot else PILOT_SECRETS)}
         if staged_preparation:pilot['staged_preparation']=True
+        if synthetic_staged_pilot:pilot['synthetic_staged_pilot']=True;pilot['synthetic_actor_count']=128
         if mode=='full':pilot['oracle_binary_sha256']=oracle_binary_sha256
         value.update(pilot=pilot,phase='pilot-prepared');self.save(value)
         return {'phase':'prepared','run_id':run_id,'deadline':deadline,'manifest_sha256':pilot['manifest_sha256']}
@@ -193,6 +199,7 @@ class Pilot:
         values={'QUAL_MODE':pilot['manifest']['mode'],'QUAL_RUN_ID':pilot['manifest']['run_id'],'QUAL_PILOT_NONCE':pilot['nonce'],
                 'QUAL_WATERMARK':str(pilot['watermark']),'QUAL_DEADLINE':str(pilot['manifest']['deadline'])}
         if role in ENGINE_ROLES:values['QUAL_ROLE']=role
+        if pilot.get('synthetic_staged_pilot'):values['QUAL_SYNTHETIC_STAGED_PILOT']='1'
         if pilot['manifest']['mode']=='full':values['QUAL_IMAGE_DIGEST']=pilot['image']
         if pilot['manifest']['mode']=='full' and role in {'native-control','generator'}:
             oracle=pilot.get('oracle_binary_sha256')
@@ -521,7 +528,7 @@ class Pilot:
 
 def arguments(argv=None):
     parser=argparse.ArgumentParser(description=__doc__);sub=parser.add_subparsers(dest='action',required=True)
-    p=sub.add_parser('prepare');p.add_argument('--image',required=True);p.add_argument('--native-binary-sha256',required=True);p.add_argument('--tantivy-binary-sha256',required=True);p.add_argument('--seconds',type=int,default=600);p.add_argument('--mode',choices=sorted(LEASE_SECONDS),default='pilot');p.add_argument('--oracle-binary-sha256');p.add_argument('--staged-preparation',action='store_true')
+    p=sub.add_parser('prepare');p.add_argument('--image',required=True);p.add_argument('--native-binary-sha256',required=True);p.add_argument('--tantivy-binary-sha256',required=True);p.add_argument('--seconds',type=int,default=600);p.add_argument('--mode',choices=sorted(LEASE_SECONDS),default='pilot');p.add_argument('--oracle-binary-sha256');p.add_argument('--staged-preparation',action='store_true');p.add_argument('--synthetic-staged-pilot',action='store_true',help='128 synthetic actors, no R2 source; requires staged full mode and at most 900 seconds')
     sub.add_parser('launch-reaper');p=sub.add_parser('provision');p.add_argument('--armed-receipt',type=Path,required=True)
     p=sub.add_parser('configure-engine');p.add_argument('--role',choices=sorted(ENGINE_ROLES),required=True);p.add_argument('--observer',type=Path,required=True)
     for action in ['configure-preparation','start-preparation','finish-preparation']:
@@ -535,7 +542,7 @@ def arguments(argv=None):
 
 def main():
     args=arguments();pilot=Pilot()
-    if args.action=='prepare':result=pilot.prepare(args.image,args.native_binary_sha256,args.tantivy_binary_sha256,args.seconds,mode=args.mode,oracle_binary_sha256=args.oracle_binary_sha256,staged_preparation=args.staged_preparation)
+    if args.action=='prepare':result=pilot.prepare(args.image,args.native_binary_sha256,args.tantivy_binary_sha256,args.seconds,mode=args.mode,oracle_binary_sha256=args.oracle_binary_sha256,staged_preparation=args.staged_preparation,synthetic_staged_pilot=args.synthetic_staged_pilot)
     elif args.action=='launch-reaper':result=pilot.launch_reaper()
     elif args.action=='provision':result=pilot.provision(json.loads(args.armed_receipt.read_text()))
     elif args.action=='configure-engine':result=pilot.configure_engine(args.role,json.loads(args.observer.read_text()))

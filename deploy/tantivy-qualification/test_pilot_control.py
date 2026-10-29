@@ -196,6 +196,27 @@ class PilotTests(unittest.TestCase):
         with self.assertRaisesRegex(p.PilotError,'preparation_unsuccessful_exit'):self.pilot.finish_preparation('native-control',original)
         self.api.machines[mid]['events']=[]
         with self.assertRaisesRegex(p.PilotError,'preparation_exit_evidence_missing'):self.pilot.finish_preparation('native-control',original)
+    def test_synthetic_staged_pilot_is_small_explicit_and_has_no_source_capability(self):
+        self.control.save({'schema':1,'app':p.APP,'owner':p.OWNER,'machines':[],'volumes':[]})
+        self.pilot.prepare(IMAGE,NATIVE,TANTIVY,mode='full',seconds=900,oracle_binary_sha256=ORACLE,staged_preparation=True,synthetic_staged_pilot=True)
+        _,plan=self.pilot.plan();self.assertEqual(plan['synthetic_actor_count'],128)
+        self.assertNotIn('QUAL_SOURCE_ACCESS',plan['required_platform_secrets'])
+        self.assertEqual(plan['manifest']['deadline']-self.clock.now(),900)
+        self.provision()
+        for role in ['native-control','tantivy-control','generator']:
+            actual=self.pilot.owned_machine(role)
+            self.assertEqual(actual['config']['env']['QUAL_SYNTHETIC_STAGED_PILOT'],'1')
+            self.assertFalse(actual['config'].get('auto_destroy',False));self.assertEqual(actual['config']['services'],[])
+        self.assertFalse(self.api.violations)
+        args=p.arguments(['prepare','--image',IMAGE,'--native-binary-sha256',NATIVE,'--tantivy-binary-sha256',TANTIVY,'--mode','full','--seconds','900','--oracle-binary-sha256',ORACLE,'--staged-preparation','--synthetic-staged-pilot'])
+        self.assertTrue(args.synthetic_staged_pilot)
+    def test_synthetic_pilot_rejects_large_or_nonstaged_runs_before_http(self):
+        for mode,staged,seconds in [('pilot',False,600),('full',False,900),('full',True,901)]:
+            self.control.save({'schema':1,'app':p.APP,'owner':p.OWNER,'machines':[],'volumes':[]})
+            with self.assertRaisesRegex(p.PilotError,'synthetic_staged_pilot_bounds'):
+                self.pilot.prepare(IMAGE,NATIVE,TANTIVY,mode=mode,seconds=seconds,oracle_binary_sha256=ORACLE,staged_preparation=staged,synthetic_staged_pilot=True)
+        self.assertFalse(self.api.calls)
+
     def test_staged_finish_never_extends_original_lease(self):
         self.staged();receipt=self.prepared_exit('native-control')
         _,plan=self.pilot.plan();deadline=plan['manifest']['deadline'];self.clock.value=deadline-60

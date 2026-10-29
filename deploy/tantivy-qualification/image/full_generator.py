@@ -1,4 +1,8 @@
-"""Private full-corpus performance component; never a production cutover decision."""
+"""Private frozen-feed component; never a production cutover decision.
+
+An explicit synthetic staged pilot uses 128 actors and short lifecycle phases.
+It retains provider/executable verification and cannot qualify corpus or speed.
+"""
 import hashlib
 import http.client
 import json
@@ -19,6 +23,7 @@ SHAPE={'cpu_kind':'shared','cpus':2,'memory_mb':1024}
 HEX=re.compile(r'[0-9a-f]{64}\Z')
 TERMINAL={'destroyed','failed','launch_failed'}
 PHASES=(('first_touch',512,10),('warm',1200,10),('mixed',3000,10))
+SYNTHETIC_PHASES=(('first_touch',16,10),('warm',16,10),('mixed',64,10))
 
 class QualificationError(Exception):pass
 class ObservationError(Exception):pass
@@ -177,14 +182,15 @@ def wait_prepared(arms,until,nonce,provider=None,pause=2):
         time.sleep(min(pause,max(0,until-time.time())))
     raise QualificationError('preparation_deadline_observation_unknown')
 
-def validate_prepared(values,nonce,fixture=False):
+def validate_prepared(values,nonce,fixture=False,synthetic_staged_pilot=False):
     for arm,value in values.items():
         require(value.get('mode')=='full' and value.get('arm')==arm and value.get('prepared') is True and value.get('nonce')==nonce,'prepared_identity')
         require(value.get('guest')==SHAPE and value.get('final_volume_gib')==20 and value.get('public_services')==[],'prepared_resource_shape')
-        require(value.get('source_ready_attestation') is False and value.get('source_kind')=='frozen-release-snapshot','frozen_source_scope')
+        require(value.get('source_ready_attestation') is False and value.get('source_kind')==('frozen-synthetic-controller' if synthetic_staged_pilot else 'frozen-release-snapshot'),'frozen_source_scope')
         require(value.get('affected_actors')==64 and value.get('feed_batches')==9,'prepared_feed_shape')
         for key in ['corpus_sha256','updates_sha256','observer_receipt_sha256']:require(sha(value.get(key)),'prepared_hash_'+key)
         require(integer(value.get('actor_count')) and value['actor_count']>0 and integer(value.get('source_watermark')),'prepared_source_shape')
+        if synthetic_staged_pilot:require(value.get('actor_count')==128 and value.get('source_actor_count')==128,'synthetic_actor_count')
         require(isinstance(value.get('build_id'),str) and value['build_id'],'prepared_build')
         if not fixture:require(value.get('app')==APP,'prepared_app')
     left,right=values['native'],values['tantivy']
@@ -192,7 +198,7 @@ def validate_prepared(values,nonce,fixture=False):
     require(left.get('machine_id')!=right.get('machine_id') and left.get('volume_id')!=right.get('volume_id'),'arm_resource_isolation')
     require(left.get('oracle_ready') is True and sha(left.get('cases_sha256')) and sha(left.get('oracle_sha256')),'native_oracle_not_ready')
 
-def load_inputs(control,prepared,expected_oracle,root,fixture=False):
+def load_inputs(control,prepared,expected_oracle,root,fixture=False,synthetic_staged_pilot=False):
     require(sha(expected_oracle),'expected_oracle_hash')
     directory=Path(root)/('inputs-'+str(time.monotonic_ns()));directory.mkdir(mode=0o700)
     cases,cases_sha=control.download('/inputs/cases',directory/'cases.json',prepared['cases_sha256'],4*1024*1024)
@@ -200,7 +206,7 @@ def load_inputs(control,prepared,expected_oracle,root,fixture=False):
     feed,feed_sha=control.download('/inputs/updates',directory/'updates.json',prepared['updates_sha256'],8*1024*1024)
     require(cases_sha==prepared['cases_sha256'] and oracle_sha==prepared['oracle_sha256'] and feed_sha==prepared['updates_sha256'],'input_content_hash')
     require(cases.get('schema_version')==1 and cases.get('source_kind')=='frozen-materialized-hidden','cases_schema')
-    rows=cases.get('cases');require(isinstance(rows,list) and (1<=len(rows)<=512 if fixture else len(rows)==512),'case_count')
+    rows=cases.get('cases');require(isinstance(rows,list) and (len(rows)==128 if synthetic_staged_pilot else 1<=len(rows)<=512 if fixture else len(rows)==512),'case_count')
     ids=set()
     for case in rows:
         require(isinstance(case,dict) and isinstance(case.get('id'),str) and case['id'] not in ids,'case_identity');ids.add(case['id'])
@@ -421,7 +427,7 @@ def statistics(results):
                 'transport_failures':sum(r['failure'] not in {None,'wrong_ids'} for r in rows),'truth_mismatches':sum(r['failure']=='wrong_ids' for r in rows)}
     return {'all':summarize(results),'shared_native_features':summarize([r for r in results if r['shared']]),'new_features':summarize([r for r in results if not r['shared']])}
 
-def phase(client,cases,truth,state,count,rate,detail,*,job_deadline=3,workers=4,queue_size=32,updates=None,arm=None):
+def phase(client,cases,truth,state,count,rate,detail,*,job_deadline=3,workers=4,queue_size=32,updates=None,arm=None,cancellation=None):
     require(workers==4 and queue_size<=32 and count>0 and rate>0,'phase_bounds')
     jobs=queue.Queue(maxsize=queue_size);results=[];detail_errors=[];lock=threading.Lock();started=time.monotonic()
     def finish(case,due,failure,status=None):
@@ -449,7 +455,11 @@ def phase(client,cases,truth,state,count,rate,detail,*,job_deadline=3,workers=4,
         updater=threading.Thread(target=updates,args=(started,),daemon=True);updater.start()
     for i in range(count):
         due=started+i/rate;remaining=due-time.monotonic()
-        if remaining>0:time.sleep(remaining)
+        if cancellation is not None and cancellation.is_set():break
+        if remaining>0:
+            if cancellation is not None:
+                if cancellation.wait(remaining):break
+            else:time.sleep(remaining)
         case=cases[i%len(cases)]
         try:jobs.put_nowait((case,due))
         except queue.Full:finish(case,due,'queue_full')
@@ -458,15 +468,20 @@ def phase(client,cases,truth,state,count,rate,detail,*,job_deadline=3,workers=4,
     require(not any(thread.is_alive() for thread in threads),'query_worker_not_drained')
     if updater:
         updater.join(32);require(not updater.is_alive(),'update_worker_not_drained')
+    if cancellation is not None and cancellation.is_set():raise QualificationError('paired_arm_cancelled')
     require(len(results)==count and not detail_errors,'request_recording_incomplete')
     return statistics(results)|{'wall_seconds':time.monotonic()-started,'scheduled_requests':count,'queue_deadline_seconds':job_deadline,'workers':workers,'queue_capacity':queue_size}
 
-def updates_runner(control,state,records,errors,*,offset=15,interval=30):
+def updates_runner(control,state,records,errors,*,offset=15,interval=30,cancellation=None):
     def run(started):
         try:
             for cursor in range(1,10):
                 delay=started+offset+interval*(cursor-1)-time.monotonic()
-                if delay>0:time.sleep(delay)
+                if cancellation is not None and cancellation.is_set():return
+                if delay>0:
+                    if cancellation is not None:
+                        if cancellation.wait(delay):return
+                    else:time.sleep(delay)
                 state.begin(cursor);begin=time.monotonic();ack,_=control.ok('/apply/'+str(cursor),method='POST',seconds=15)
                 require(ack.get('acked')==cursor and ack.get('replay') is False,'batch_ack_state');state.commit(cursor)
                 replay,_=control.ok('/apply/'+str(cursor),method='POST',seconds=15)
@@ -483,7 +498,7 @@ def verify_identity(search,control,arm,prepared,nonce,binary,fixture=False,expec
     value,_=search.ok('/__evaluation',seconds=3)
     if value.get('ready') is False:raise NotReady()
     require(value.get('ready') is True and value.get('source_ready_attestation') is False,'evaluation_boolean_types')
-    for key,target in [('arm',arm),('nonce',nonce),('machine_id',prepared['machine_id']),('volume_id',prepared['volume_id']),('guest',SHAPE),('corpus_sha256',prepared['corpus_sha256']),('updates_sha256',prepared['updates_sha256']),('observer_receipt_sha256',prepared['observer_receipt_sha256']),('engine_binary_sha256',binary),('source_ready_attestation',False),('source_kind','frozen-release-snapshot'),('ready',True)]:require(value.get(key)==target,'evaluation_'+key)
+    for key,target in [('arm',arm),('nonce',nonce),('machine_id',prepared['machine_id']),('volume_id',prepared['volume_id']),('guest',SHAPE),('corpus_sha256',prepared['corpus_sha256']),('updates_sha256',prepared['updates_sha256']),('observer_receipt_sha256',prepared['observer_receipt_sha256']),('engine_binary_sha256',binary),('source_ready_attestation',False),('source_kind',prepared['source_kind']),('ready',True)]:require(value.get(key)==target,'evaluation_'+key)
     require(value.get('runtime_process_verified') is True and value.get('process_executable_sha256')==binary or fixture and value.get('synthetic_local_fixture') is True,'runtime_binary_not_verified')
     if arm=='tantivy':require(value.get('engine_settings')=={'retrieval_strategy':'global-merge','writer_memory_mb':128,'concurrency':4,'max_candidates':10000},'engine_configuration')
     if expected_cursor is not None:require(current.get('acked')==expected_cursor,'phase_cursor_state')
@@ -497,7 +512,7 @@ def wait_identity(*args,until,**kwargs):
         except (OSError,ValueError,ObservationError,NotReady,http.client.HTTPException):time.sleep(.2)
     raise QualificationError('engine_start_deadline')
 
-def exercise(arm,search,control,prepared,cases,truth,nonce,binary,root,deadline,fixture=False,phases=PHASES,update_offset=15,update_interval=30):
+def exercise(arm,search,control,prepared,cases,truth,nonce,binary,root,deadline,fixture=False,phases=PHASES,update_offset=15,update_interval=30,cancellation=None):
     state=State();receipt={'arm':arm,'phases':{},'updates':[]};detail=Detail(root/(arm+'-requests.jsonl'));metrics=Metrics(control,root/(arm+'-resources.jsonl'))
     try:
         control.ok('/serve',method='POST');serve_started=time.monotonic()
@@ -506,16 +521,17 @@ def exercise(arm,search,control,prepared,cases,truth,nonce,binary,root,deadline,
         for name,count,rate in phases:
             require(time.time()+count/rate+40<deadline and time.monotonic()-serve_started+count/rate+40<900,'arm_measurement_budget')
             receipt['identity']=wait_identity(search,control,arm,prepared,nonce,binary,fixture,expected_cursor=state.get()[0],until=time.monotonic()+20)
-            update=updates_runner(control,state,receipt['updates'],update_errors,offset=update_offset,interval=update_interval) if name=='mixed' else None
+            update=updates_runner(control,state,receipt['updates'],update_errors,offset=update_offset,interval=update_interval,cancellation=cancellation) if name=='mixed' else None
             resource_start=len(metrics.samples);metrics.sample()
-            receipt['phases'][name]=phase(search,cases,truth,state,count,rate,detail,updates=update,arm=None if fixture else arm)
+            receipt['phases'][name]=phase(search,cases,truth,state,count,rate,detail,updates=update,arm=None if fixture else arm,cancellation=cancellation)
+            if prepared.get('source_kind')=='frozen-synthetic-controller':receipt['phases'][name]['performance_phase']=False
             metrics.sample();receipt['phases'][name]['resources']=summarize_metrics(metrics.samples[resource_start:])
             require(not update_errors,'update_protocol_failed_'+(update_errors[0] if update_errors else 'unknown'))
             if name=='mixed':require(state.get()==(9,None) and len(receipt['updates'])==9,'feed_not_drained')
         require(state.get()==(9,None),'final_cursor_not_nine')
         control.ok('/restart',method='POST');receipt['restart_identity']=wait_identity(search,control,arm,prepared,nonce,binary,fixture,expected_cursor=9,until=time.monotonic()+20)
         replay,_=control.ok('/apply/9',method='POST');require(replay.get('acked')==9 and replay.get('replay') is True,'durable_replay_not_current')
-        receipt['post_restart_quiescent']=phase(search,cases,truth,state,len(cases),10 if not fixture else 1000,detail,arm=None if fixture else arm)
+        receipt['post_restart_quiescent']=phase(search,cases,truth,state,len(cases),10 if not fixture else 100,detail,arm=None if fixture else arm,cancellation=cancellation)
         receipt['post_restart_quiescent']['performance_phase']=False
         require(time.monotonic()-serve_started<900,'arm_measurement_window_exceeded')
         receipt['durable_cursor_replay_confirmed']=True
@@ -552,8 +568,58 @@ def gates(arms):
     passed=performance_passed and all(observation.values())
     return {'passed':passed,'performance_component_passed':performance_passed,'memory_io_observation_qualified':observation,'comparison_status':'conclusive' if shared_transport else 'inconclusive_native_shared_transport_failures','tantivy_truth_and_transport_passed':all_truth,'tantivy_warm_mixed_absolute_slo_passed':absolute,'relative_every_phase':relative,'resource_observation_and_no_oom_swap':resources}
 
+def run_private_arms(searches,controls,prepared,cases,truth,nonce,binaries,root,deadline,*,fixture=False,options=None):
+    require(set(searches)==set(controls)==set(prepared)==set(binaries)=={'native','tantivy'},'parallel_arm_pair')
+    results={};failures={};lock=threading.Lock();cancellation=threading.Event()
+    def run(arm):
+        try:
+            result=exercise(arm,searches[arm],controls[arm],prepared[arm],cases,truth,nonce,binaries[arm],root,deadline,fixture=fixture,cancellation=cancellation,**(options or {}))
+            with lock:results[arm]=result
+        except BaseException as error:
+            code=str(error) if isinstance(error,QualificationError) and re.fullmatch('[A-Za-z0-9_]{1,100}',str(error)) else type(error).__name__
+            with lock:failures[arm]=code
+    threads=[threading.Thread(target=run,args=(arm,),daemon=True) for arm in ['native','tantivy']]
+    for thread in threads:thread.start()
+    until=time.monotonic()+max(0,deadline-time.time()-15)
+    while any(thread.is_alive() for thread in threads):
+        with lock:failed=bool(failures)
+        if failed or time.monotonic()>=until:break
+        for thread in threads:thread.join(min(.05,max(0,until-time.monotonic())))
+    with lock:failed=dict(failures);complete=set(results)=={'native','tantivy'}
+    if failed or not complete:
+        cancellation.set()
+        for arm in ['native','tantivy']:
+            try:controls[arm].ok('/pause',method='POST',seconds=3)
+            except Exception:pass
+        drain_until=min(until,time.monotonic()+12)
+        for thread in threads:thread.join(max(0,drain_until-time.monotonic()))
+        if failed:
+            arm=sorted(failed)[0];raise QualificationError('parallel_arm_failed_'+arm+'_'+failed[arm])
+        raise QualificationError('parallel_arms_deadline')
+    return results
+
+def synthetic_lifecycle_gates(arms):
+    require(set(arms)=={'native','tantivy'},'synthetic_arm_pair')
+    transport=True;truth=True;durable=True
+    for arm,receipt in arms.items():
+        durable &= receipt.get('durable_cursor_replay_confirmed') is True and [row.get('cursor') for row in receipt.get('updates',[])]==list(range(1,10)) and all(row.get('replay_confirmed') is True for row in receipt.get('updates',[]))
+        for name,count,_ in SYNTHETIC_PHASES:
+            phase=receipt['phases'][name]
+            require(phase.get('scheduled_requests')==count and phase.get('performance_phase') is False,'synthetic_phase_count')
+            transport &= phase['shared_native_features']['transport_failures']==0
+            if arm=='tantivy':truth &= phase['all']['transport_failures']==0 and phase['all']['truth_mismatches']==0
+        post=receipt['post_restart_quiescent']
+        require(post['all']['requests']==128 and post.get('performance_phase') is False,'synthetic_restart_case_count')
+        transport &= post['shared_native_features']['transport_failures']==0
+        if arm=='tantivy':truth &= post['all']['transport_failures']==0 and post['all']['truth_mismatches']==0
+    return {'passed':bool(transport and truth and durable),'scope':'synthetic-staged-provider-lifecycle',
+            'shared_transport_passed':bool(transport),'tantivy_truth_and_transport_passed':bool(truth),'durable_replay_and_restart_passed':bool(durable),
+            'full_corpus_qualified':False,'performance_qualified':False,'native_truth_mismatches_recorded':True}
+
 def main():
-    deadline=float(os.environ['QUAL_DEADLINE']);require(time.time()<deadline<=time.time()+5400,'generator_lease')
+    flag=os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT');require(flag in {None,'1'},'synthetic_pilot_flag')
+    synthetic=flag=='1';reserve=120 if synthetic else 1200
+    deadline=float(os.environ['QUAL_DEADLINE']);require(time.time()<deadline<=time.time()+(900 if synthetic else 5400),'generator_lease')
     def expired(*_):raise QualificationError('generator_hard_deadline')
     signal.signal(signal.SIGALRM,expired);signal.alarm(max(1,int(deadline-time.time())))
     require(os.environ.get('FLY_APP_NAME')==APP,'generator_app')
@@ -563,26 +629,26 @@ def main():
     require(all(searches[arm].machine==controls[arm].machine for arm in searches) and searches['native'].machine!=searches['tantivy'].machine,'owned_control_association')
     binaries={arm:os.environ['QUAL_'+arm.upper()+'_BINARY_SHA256'] for arm in searches};require(all(sha(value) for value in binaries.values()),'frozen_binary_hashes')
     root=Path('/tmp/qualification-full-generator');root.mkdir(mode=0o700);(root/'owner').write_text('full-generator-v1')
-    require(time.time()+1200<deadline,'insufficient_comparison_lease')
-    observed,observation_failures=wait_prepared(controls,deadline-1200,nonce,provider=lambda machine:provider_state(machine,os.environ.get('QUAL_REAPER_CAPABILITY')))
-    validate_prepared(observed,nonce)
+    require(time.time()+reserve<deadline,'insufficient_comparison_lease')
+    observed,observation_failures=wait_prepared(controls,deadline-reserve,nonce,provider=lambda machine:provider_state(machine,os.environ.get('QUAL_REAPER_CAPABILITY')))
+    validate_prepared(observed,nonce,synthetic_staged_pilot=synthetic)
     require(all(observed[arm]['machine_id']==controls[arm].machine for arm in controls),'prepared_owned_machine')
-    cases,truth,oracle_proof=load_inputs(controls['native'],observed['native'],os.environ['QUAL_ORACLE_BINARY_SHA256'],root)
-    arms={}
-    for arm in ['native','tantivy']:
-        arms[arm]=exercise(arm,searches[arm],controls[arm],observed[arm],cases,truth,nonce,binaries[arm],root,deadline)
-    result={'schema_version':1,'scope':'full-corpus-performance-component/frozen-feed','passed':False,'full_qualification':False,'live_policy_source_qualified':False,'production_contact':False,
-        'gates':gates(arms),'case_count':len(cases),'shared_case_count':sum(case['native_shared_features'] for case in cases),'oracle':oracle_proof,
+    cases,truth,oracle_proof=load_inputs(controls['native'],observed['native'],os.environ['QUAL_ORACLE_BINARY_SHA256'],root,synthetic_staged_pilot=synthetic)
+    options={'phases':SYNTHETIC_PHASES,'update_offset':.1,'update_interval':.2} if synthetic else {}
+    arms=run_private_arms(searches,controls,observed,cases,truth,nonce,binaries,root,deadline,options=options)
+    result={'schema_version':1,'execution':'parallel-private-arms','scope':'synthetic-staged-provider-lifecycle' if synthetic else 'full-corpus-performance-component/frozen-feed','passed':False,'full_qualification':False,'full_corpus_qualified':False,'performance_qualified':False,'live_policy_source_qualified':False,'production_contact':False,
+        'gates':synthetic_lifecycle_gates(arms) if synthetic else gates(arms),'case_count':len(cases),'shared_case_count':sum(case['native_shared_features'] for case in cases),'oracle':oracle_proof,
         'input_hashes':{key:observed['native'][key] for key in ['corpus_sha256','updates_sha256','cases_sha256','oracle_sha256']},'preparation_observation_failures':observation_failures,
         'arms':arms,'raw_detail_location':'cloud-local ephemeral generator /tmp/qualification-full-generator'}
     result['passed']=result['gates']['passed'];raw=encoded(result);require(len(raw)<=128*1024,'receipt_byte_budget')
     (root/'receipt.json').write_bytes(raw+b'\n')
     log=result if len(raw)<=64*1024 else {key:value for key,value in result.items() if key!='arms'}|{'metadata_file':str(root/'receipt.json'),'metadata_sha256':digest(raw),'metadata_bytes':len(raw)}
-    lograw=encoded(log);require(len(lograw)<=64*1024,'log_receipt_byte_budget');print('QUALIFICATION_FULL_RESULT '+lograw.decode(),flush=True)
+    lograw=encoded(log);require(len(lograw)<=64*1024,'log_receipt_byte_budget');print(('QUALIFICATION_SYNTHETIC_STAGED_PILOT_RESULT ' if synthetic else 'QUALIFICATION_FULL_RESULT ')+lograw.decode(),flush=True)
     if not result['passed']:raise SystemExit(2)
 
 if __name__=='__main__':
     try:main()
     except Exception as error:
-        print('QUALIFICATION_FULL_RESULT '+json.dumps({'passed':False,'full_qualification':False,'production_contact':False,'status':'resource_inconclusive' if isinstance(error,QualificationError) and str(error).startswith('input_resource_cap_') else 'failed','error_class':type(error).__name__,'error_code':str(error) if isinstance(error,QualificationError) else 'generator_failed'},separators=(',',':')),flush=True)
+        marker='QUALIFICATION_SYNTHETIC_STAGED_PILOT_RESULT ' if os.environ.get('QUAL_SYNTHETIC_STAGED_PILOT')=='1' else 'QUALIFICATION_FULL_RESULT '
+        print(marker+json.dumps({'passed':False,'full_qualification':False,'full_corpus_qualified':False,'performance_qualified':False,'production_contact':False,'status':'resource_inconclusive' if isinstance(error,QualificationError) and str(error).startswith('input_resource_cap_') else 'failed','error_class':type(error).__name__,'error_code':str(error) if isinstance(error,QualificationError) else 'generator_failed'},separators=(',',':')),flush=True)
         raise SystemExit(1)

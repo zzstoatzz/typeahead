@@ -89,7 +89,7 @@ def log_receipts(machine_id):
     decoder = json.JSONDecoder()
     receipts = []
     markers = ['QUALIFICATION_REAPER_ARMED ', 'QUALIFICATION_REAPER_RECEIPT ',
-               'QUALIFICATION_REAPER_RESOLVED ', 'QUALIFICATION_PILOT_RESULT ', 'QUALIFICATION_FULL_RESULT ', 'QUALIFICATION_PREPARATION_COMPLETE ', 'PILOT_PREPARED ']
+               'QUALIFICATION_REAPER_RESOLVED ', 'QUALIFICATION_PILOT_RESULT ', 'QUALIFICATION_FULL_RESULT ', 'QUALIFICATION_PREPARATION_COMPLETE ', 'QUALIFICATION_SYNTHETIC_STAGED_PILOT_RESULT ', 'PILOT_PREPARED ']
     while data.strip():
         item, consumed = decoder.raw_decode(data.lstrip())
         data = data.lstrip()[consumed:]

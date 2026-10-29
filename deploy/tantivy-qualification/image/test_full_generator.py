@@ -24,7 +24,7 @@ ORACLE='b'*64
 class Fixture:
     def __init__(self,root,arm='native'):
         self.arm=arm;self.root=root;self.state_path=root/(arm+'-state.json');self.state_path.write_text('0')
-        self.lock=threading.Lock();self.acked=0;self.pending=None;self.calls=[];self.delay=0;self.override=None;self.prep_status=200;self.metrics_count=0
+        self.lock=threading.Lock();self.acked=0;self.pending=None;self.calls=[];self.delay=0;self.override=None;self.prep_status=200;self.metrics_count=0;self.evaluation_override={};self.served_at=None;self.serve_status=200;self.serve_barrier=None
         self.cases=[{'id':'a','q':'alpha','limit':10,'native_shared_features':True},{'id':'b','q':'beta','limit':10,'prefer_pds':'local.test','native_shared_features':False}]
         cases={'schema_version':1,'source_kind':'frozen-materialized-hidden','cases':self.cases}
         actors=[{'did':f'did:fixture:{i}'}for i in range(64)]
@@ -49,6 +49,7 @@ class Fixture:
                 if path=='/__evaluation':
                     value={key:owner.summary()[key]for key in ['arm','nonce','machine_id','volume_id','guest','corpus_sha256','updates_sha256','observer_receipt_sha256','source_kind','source_ready_attestation']}
                     value.update(ready=True,runtime_process_verified=True,process_executable_sha256=BINARY,engine_binary_sha256=BINARY,engine_settings={'retrieval_strategy':'global-merge','writer_memory_mb':128,'concurrency':4,'max_candidates':10000})
+                    value.update(owner.evaluation_override)
                     self.emit(200,value);return
                 if path=='/search':
                     with owner.lock:low=owner.acked;high=max(low,owner.pending or 0)
@@ -68,6 +69,10 @@ class Fixture:
                 if self.headers.get('X-Pilot-Authorization')!=SECRET:self.emit(403,{});return
                 if self.headers.get('Content-Length','0')!='0':self.emit(400,{});return
                 owner.calls.append(self.path)
+                if self.path=='/serve':
+                    owner.served_at=time.monotonic()
+                    if owner.serve_barrier is not None:owner.serve_barrier.wait(timeout=2)
+                    if owner.serve_status!=200:self.emit(owner.serve_status,{'error':'serve_failure'});return
                 if self.path.startswith('/apply/'):
                     cursor=int(self.path.split('/')[-1])
                     with owner.lock:
@@ -138,6 +143,74 @@ class FullGenerator(unittest.TestCase):
         self.assertEqual(result['post_restart_quiescent']['all']['truth_mismatches'],0);self.assertFalse(result['post_restart_quiescent']['performance_phase'])
         self.assertTrue(all(result['phases'][name]['all']['transport_failures']==0 for name,_,_ in phases))
         self.assertGreater(result['resources']['samples'],1)
+    def test_parallel_private_arms_overlap_real_http_and_propagate_failure(self):
+        native=self.fixture();tantivy=self.fixture('tantivy')
+        fixtures={'native':native,'tantivy':tantivy}
+        barrier=threading.Barrier(2);native.serve_barrier=barrier;tantivy.serve_barrier=barrier
+        searches={arm:fixture.search for arm,fixture in fixtures.items()};controls={arm:fixture.control for arm,fixture in fixtures.items()}
+        prepared={arm:fixture.summary() for arm,fixture in fixtures.items()};binaries={arm:BINARY for arm in fixtures}
+        options={'phases':(('first_touch',4,50),('warm',4,50),('mixed',16,100)),'update_offset':.001,'update_interval':.004}
+        results=gen.run_private_arms(searches,controls,prepared,native.cases,native.truth,NONCE,binaries,self.root,time.time()+120,fixture=True,options=options)
+        self.assertEqual(set(results),{'native','tantivy'})
+        self.assertFalse(barrier.broken);self.assertEqual(barrier.n_waiting,0)
+        self.assertTrue(all(value['durable_cursor_replay_confirmed'] for value in results.values()))
+        for fixture in fixtures.values():self.assertEqual(fixture.calls.count('/serve'),1)
+        # A second independent pair fails immediately on one control; it must not
+        # wait for the other arm's scheduled long phase before reporting failure.
+        badroot=self.root/'failed-pair';badroot.mkdir()
+        for fixture in fixtures.values():fixture.state_path.write_text('0');fixture.acked=0;fixture.pending=None
+        native.serve_status=503
+        begin=time.monotonic()
+        with self.assertRaisesRegex(gen.QualificationError,'parallel_arm_failed_native'):
+            gen.run_private_arms(searches,controls,prepared,native.cases,native.truth,NONCE,binaries,badroot,time.time()+120,fixture=True,options={'phases':(('first_touch',1000,1),)})
+        self.assertLess(time.monotonic()-begin,5)
+        self.assertIn('/pause',tantivy.calls)
+
+    def test_synthetic_scope_requires_exact_count_and_keeps_real_runtime_guard(self):
+        native=self.fixture();tantivy=self.fixture('tantivy')
+        for fixture in [native,tantivy]:fixture.prepared.update(source_kind='frozen-synthetic-controller',actor_count=128,source_actor_count=128)
+        prepared={'native':native.summary(),'tantivy':tantivy.summary()}
+        gen.validate_prepared(prepared,NONCE,synthetic_staged_pilot=True)
+        with self.assertRaisesRegex(gen.QualificationError,'frozen_source_scope'):gen.validate_prepared(prepared,NONCE)
+        wrong=copy.deepcopy(prepared);wrong['native']['source_actor_count']=129
+        with self.assertRaisesRegex(gen.QualificationError,'synthetic_actor_count'):gen.validate_prepared(wrong,NONCE,synthetic_staged_pilot=True)
+        # A synthetic source must not activate the local runtime-proof bypass.
+        native.evaluation_override={'runtime_process_verified':False,'synthetic_local_fixture':True}
+        with self.assertRaisesRegex(gen.QualificationError,'runtime_binary_not_verified'):
+            gen.verify_identity(native.search,native.control,'native',prepared['native'],NONCE,BINARY)
+        with self.assertRaisesRegex(gen.QualificationError,'case_count'):
+            gen.load_inputs(native.control,prepared['native'],ORACLE,self.root,fixture=True,synthetic_staged_pilot=True)
+        native.evaluation_override={}
+        code="""import importlib.util,json,sys
+spec=importlib.util.spec_from_file_location('provider_guard',sys.argv[1]);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+search=m.Client(sys.argv[2],8080,fixture=True);control=m.Client(sys.argv[2],8082,sys.argv[3],fixture=True)
+try:m.verify_identity(search,control,'native',json.loads(sys.argv[4]),sys.argv[5],sys.argv[6])
+except m.QualificationError as error:
+ assert str(error)=='provider_expected_image_run',str(error)
+else:raise AssertionError('synthetic source bypassed actual provider verification')
+"""
+        subprocess.run([sys.executable,'-c',code,str(HERE/'full_generator.py'),f'http://127.0.0.1:{native.server.server_port}',SECRET,json.dumps(prepared['native']),NONCE,BINARY],env={'PYTHONDONTWRITEBYTECODE':'1'},check=True,timeout=5)
+
+    def test_synthetic_short_actual_http_lifecycle_cannot_claim_performance(self):
+        arms={}
+        for arm in ['native','tantivy']:
+            fixture=self.fixture(arm);fixture.prepared.update(source_kind='frozen-synthetic-controller',actor_count=128,source_actor_count=128)
+            # Repeated raw-profile cases exercise 128 post-restart HTTP answers here;
+            # production load_inputs separately requires 128 unique oracle-bound IDs.
+            cases=fixture.cases*64
+            phases=tuple((name,count,100) for name,count,_ in gen.SYNTHETIC_PHASES)
+            result=gen.exercise(arm,fixture.search,fixture.control,fixture.summary(),cases,fixture.truth,NONCE,BINARY,self.root,time.time()+120,fixture=True,phases=phases,update_offset=.001,update_interval=.004)
+            arms[arm]=result
+        result=gen.synthetic_lifecycle_gates(arms)
+        self.assertTrue(result['passed'],result);self.assertFalse(result['performance_qualified']);self.assertFalse(result['full_corpus_qualified'])
+        self.assertTrue(result['native_truth_mismatches_recorded'])
+        bad=copy.deepcopy(arms);bad['tantivy']['post_restart_quiescent']['all']['truth_mismatches']=1
+        self.assertFalse(gen.synthetic_lifecycle_gates(bad)['passed'])
+        bad=copy.deepcopy(arms);bad['native']['durable_cursor_replay_confirmed']=False
+        self.assertFalse(gen.synthetic_lifecycle_gates(bad)['passed'])
+        bad=copy.deepcopy(arms);bad['native']['phases']['warm']['all']['truth_mismatches']=2
+        self.assertTrue(gen.synthetic_lifecycle_gates(bad)['passed'])
+
     def test_failed_http_observation_requires_authoritative_terminal_state(self):
         fixture=self.fixture();fixture.prep_status=503;observed=[]
         def provider(machine):observed.append(machine);return 'destroyed'
