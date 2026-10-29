@@ -22,7 +22,7 @@ a matched native/Tantivy speed ratio. This trial must use the same workloads.
 ## Resource and time bounds
 
 Start with a cloud operational pilot before any full-corpus run. Each engine
-uses two shared CPUs, 1 GiB, an independent volume and no production route.
+measures on two shared CPUs, 1 GiB, an independent volume and no production route.
 A separate generator uses one shared CPU/256 MiB, no volume/public service.
 Cloud copies stay cloud-local. The native control comes from immutable R2,
 never a protected serving/rollback disk. Snapshot download, build and import are
@@ -53,6 +53,32 @@ state, then records those terminal dispositions. Pending-destroy volumes are
 [not billed](https://docs.fly.io/about/billing); physical purge is managed by Fly
 and is not claimed by the cleanup receipt. A new run ignores only validated
 terminal resources from its own archived runs, never unknown live resources.
+
+## Staged preparation
+
+The controller has a full-mode-only `prepare --staged-preparation` option.
+Preparation uses two performance CPUs and 4 GiB; final serving and every timed
+request still require two shared CPUs and 1 GiB. Volumes remain 20 GiB and the
+original 90-minute reaper deadline is never extended. This controller path is
+locally tested; a provider run must establish its actual transition separately.
+
+After provisioning paused guests, obtain a PREP provider attestation, call
+`configure-preparation --role … --observer …`, then `start-preparation --role …`.
+Preparation retains `auto_destroy:false` and the independent hard timer/reaper.
+The guest prints `QUALIFICATION_PREPARATION_COMPLETE` and exits. Pass its receipt
+to `finish-preparation --role … --receipt …`. The controller requires the same
+machine/volume, runtime instance, nonce and checkpoint, plus a stopped provider
+exit after preparation with both exit codes zero and no OOM or requested stop.
+It resizes the same paused guest and volume to final hardware.
+
+Obtain a fresh FINAL attestation, then use ordinary `configure-engine` to bind
+`QUAL_PHASE=resume`, the checkpoint hash and FINAL observer while enabling
+`auto_destroy:true`. Start both final engines before starting the separate
+generator. Resume must use the durable checkpoint without another import or
+source copy. Ambiguous configuration/resize outcomes are read back under their
+write-ahead intent; retries must retain the original observer/receipt and never
+repeat a recorded POST. `reconcile` reports unresolved staged updates and any
+confirmed resize still awaiting its original completion receipt.
 
 ## Full-corpus runner
 

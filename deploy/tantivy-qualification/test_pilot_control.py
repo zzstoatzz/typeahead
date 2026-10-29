@@ -134,13 +134,102 @@ class PilotTests(unittest.TestCase):
     def provision(self):self.arm();return self.pilot.provision()
     def observer(self,role):
         _,plan=self.pilot.plan();actual=self.pilot.owned_machine(role);vid=plan['resolved']['volume:'+p.ENGINE_ROLES[role]]
-        return {'app':p.APP,'machine_id':actual['id'],'guest':copy.deepcopy(p.ENGINE),'volume_ids':[vid],
+        return {'app':p.APP,'machine_id':actual['id'],'guest':copy.deepcopy(actual['config']['guest']),'volume_ids':[vid],
                 'final_volume_gib':20,'public_services':[],'machines_api_response_sha256':'d'*64,'raw_should_not_be_copied':'discard'}
     def configure_all(self):
         for role in p.ENGINE_ROLES:self.pilot.configure_engine(role,self.observer(role))
         _,plan=self.pilot.plan();native=plan['resolved']['machine:native-control'];tantivy=plan['resolved']['machine:tantivy-control']
         def url(mid,port):return f'http://{mid}.vm.{p.APP}.internal:{port}'
         self.pilot.configure_generator(url(native,8080),url(native,8082),url(tantivy,8080),url(tantivy,8082))
+    def staged(self):
+        self.control.save({'schema':1,'app':p.APP,'owner':p.OWNER,'machines':[],'volumes':[]})
+        self.pilot.prepare(IMAGE,NATIVE,TANTIVY,mode='full',seconds=5400,oracle_binary_sha256=ORACLE,staged_preparation=True,run_id='1234abcd5678')
+        self.provision()
+    def prepared_exit(self,role):
+        self.pilot.configure_preparation(role,self.observer(role));self.pilot.start_preparation(role)
+        self.clock.sleep(1)
+        _,plan=self.pilot.plan();actual=self.pilot.owned_machine(role)
+        self.api.machines[actual['id']]['state']='stopped'
+        self.api.machines[actual['id']]['events']=[{'type':'exit','status':'stopped','source':'flyd','timestamp':self.clock.now()*1000,
+            'request':{'exit_event':{'requested_stop':False,'restarting':False,'guest_exit_code':0,'guest_signal':-1,'guest_error':'','exit_code':0,'signal':-1,'error':'','oom_killed':False}}}]
+        return {'app':p.APP,'machine_id':actual['id'],'volume_id':plan['resolved']['volume:'+p.ENGINE_ROLES[role]],
+                'arm':p.ENGINE_ROLES[role],'nonce':plan['nonce'],'build_id':'b1793109259-fixture',
+                'checkpoint_sha256':'d'*64,'prepared':True,'guest':copy.deepcopy(p.PREP),'runtime_instance_id':actual['instance_id'],'prepared_at':self.clock.now()-.1}
+    def test_staged_preparation_full_lifecycle_preserves_volume_and_final_shape(self):
+        self.staged();_,plan=self.pilot.plan()
+        for role in p.ENGINE_ROLES:
+            actual=self.pilot.owned_machine(role);self.assertEqual(actual['config']['guest'],p.PREP)
+            self.assertEqual(actual['config']['env']['QUAL_PHASE'],'prepare');self.assertFalse(actual['config'].get('auto_destroy',False))
+            with self.assertRaisesRegex(p.PilotError,'preparation_not_finished'):self.pilot.configure_engine(role,self.observer(role))
+            with self.assertRaisesRegex(p.PilotError,'preparation_not_finished'):self.pilot.update_env(role,{'QUAL_OBSERVER_JSON':'{}'})
+            receipt=self.prepared_exit(role)
+            before=self.pilot.owned_machine(role);self.pilot.finish_preparation(role,receipt)
+            resized=self.pilot.owned_machine(role)
+            self.assertEqual(resized['id'],before['id']);self.assertEqual(resized['config']['guest'],p.ENGINE)
+            self.assertEqual(resized['config']['mounts'],before['config']['mounts'])
+            self.assertFalse(resized['config'].get('auto_destroy',False));self.assertEqual(resized['state'],'stopped')
+            self.pilot.configure_engine(role,self.observer(role));final=self.pilot.owned_machine(role)
+            self.assertTrue(final['config']['auto_destroy']);self.assertEqual(final['config']['env']['QUAL_PHASE'],'resume')
+            self.assertEqual(final['config']['env']['QUAL_CHECKPOINT_SHA256'],receipt['checkpoint_sha256'])
+        self.configure_all()
+        with self.assertRaisesRegex(p.PilotError,'both_final_engines_must_be_running'):self.pilot.start('generator')
+        for role in ['native-control','tantivy-control','generator']:self.pilot.start(role)
+        self.assertEqual(len(self.api.volumes),2);self.assertEqual(len(self.api.machines),4)
+        self.assertFalse(self.api.violations)
+        self.assertEqual(self.pilot.cleanup()['status'],'cleaned')
+    def test_staged_requires_full_opt_in_and_successful_authoritative_exit(self):
+        self.control.save({'schema':1,'app':p.APP,'owner':p.OWNER,'machines':[],'volumes':[]})
+        with self.assertRaisesRegex(p.PilotError,'staged_preparation_requires_full'):self.pilot.prepare(IMAGE,NATIVE,TANTIVY,staged_preparation=True)
+        self.staged();receipt=self.prepared_exit('native-control');mid=receipt['machine_id']
+        event=copy.deepcopy(self.api.machines[mid]['events'][0]);original=copy.deepcopy(receipt)
+        posts=lambda:sum(call[0]=='POST' and call[2]==mid and call[3] is None for call in self.api.calls)
+        before=posts()
+        for key,value in [('exit_code',1),('guest_exit_code',1),('oom_killed',True),('requested_stop',True),('guest_error','failure'),('signal',9)]:
+            self.api.machines[mid]['events']=[copy.deepcopy(event)];self.api.machines[mid]['events'][0]['request']['exit_event'][key]=value
+            with self.subTest(key=key),self.assertRaisesRegex(p.PilotError,'preparation_unsuccessful_exit'):self.pilot.finish_preparation('native-control',receipt)
+        self.api.machines[mid]['events']=[event]
+        for key,value in [('runtime_instance_id','different'),('checkpoint_sha256','invalid'),('guest',p.ENGINE),('nonce','different'),('prepared_at',self.clock.now()+10),('prepared',1)]:
+            receipt=copy.deepcopy(original);receipt[key]=value
+            with self.subTest(key=key),self.assertRaises(p.PilotError):self.pilot.finish_preparation('native-control',receipt)
+        self.assertEqual(posts(),before)
+        self.api.machines[mid]['events']=[copy.deepcopy(event)];self.api.machines[mid]['events'][0]['timestamp']=(original['prepared_at']-1)*1000
+        with self.assertRaisesRegex(p.PilotError,'preparation_unsuccessful_exit'):self.pilot.finish_preparation('native-control',original)
+        self.api.machines[mid]['events']=[]
+        with self.assertRaisesRegex(p.PilotError,'preparation_exit_evidence_missing'):self.pilot.finish_preparation('native-control',original)
+    def test_staged_finish_never_extends_original_lease(self):
+        self.staged();receipt=self.prepared_exit('native-control')
+        _,plan=self.pilot.plan();deadline=plan['manifest']['deadline'];self.clock.value=deadline-60
+        before=len([call for call in self.api.calls if call[0]=='POST'])
+        with self.assertRaisesRegex(p.PilotError,'insufficient_pilot_lease'):self.pilot.finish_preparation('native-control',receipt)
+        self.assertEqual(len([call for call in self.api.calls if call[0]=='POST']),before)
+        self.assertEqual(self.pilot.plan()[1]['manifest']['deadline'],deadline)
+
+    def test_staged_resize_lost_reply_and_transition_reconcile_without_repost(self):
+        self.staged();self.api.lost_update['native-control']='created';self.api.update_transition['native-control']=2
+        receipt=self.prepared_exit('native-control');mid=receipt['machine_id']
+        self.api.lost_update['native-control']='created';self.api.update_transition['native-control']=2
+        self.pilot.finish_preparation('native-control',receipt)
+        posts=lambda:sum(call[0]=='POST' and call[2]==mid and call[3] is None for call in self.api.calls)
+        before=posts();self.assertTrue(self.pilot.finish_preparation('native-control',receipt)['idempotent']);self.assertEqual(posts(),before)
+        bad=dict(receipt,checkpoint_sha256='e'*64)
+        with self.assertRaisesRegex(p.PilotError,'preparation_receipt_changed'):self.pilot.finish_preparation('native-control',bad)
+    def test_staged_unknown_resize_never_reposts_or_enables_final_start(self):
+        self.staged();receipt=self.prepared_exit('native-control');mid=receipt['machine_id']
+        self.api.lost_update['native-control']='absent'
+        with self.assertRaisesRegex(p.PilotError,'staged_transition_unconfirmed'):self.pilot.finish_preparation('native-control',receipt)
+        before=sum(call[0]=='POST' and call[2]==mid and call[3] is None for call in self.api.calls)
+        with self.assertRaisesRegex(p.PilotError,'staged_transition_unconfirmed'):self.pilot.finish_preparation('native-control',receipt)
+        self.assertEqual(sum(call[0]=='POST' and call[2]==mid and call[3] is None for call in self.api.calls),before)
+        with self.assertRaisesRegex(p.PilotError,'preparation_not_finished'):self.pilot.configure_engine('native-control',self.observer('native-control'))
+        with self.assertRaisesRegex(p.PilotError,'configuration_required_before_start'):self.pilot.start('native-control')
+        self.assertFalse(self.api.machines[mid]['config'].get('auto_destroy',False))
+        status=self.pilot.reconcile();self.assertIn('native-control:resize',status['unresolved_staged_attempts'])
+        self.api.machines[mid]['config']['guest']=copy.deepcopy(p.ENGINE)
+        status=self.pilot.reconcile();self.assertEqual(status['unresolved_staged_attempts'],[]);self.assertEqual(status['staged_finish_receipt_required'],['native-control'])
+        self.pilot.finish_preparation('native-control',receipt)
+        self.assertEqual(sum(call[0]=='POST' and call[2]==mid and call[3] is None for call in self.api.calls),before)
+        self.assertEqual(self.pilot.owned_machine('native-control')['config']['guest'],p.ENGINE)
+
     def test_default_pilot_remains_600_seconds_and_original_programs(self):
         _,plan=self.pilot.plan()
         self.assertEqual(plan['manifest']['mode'],'pilot')

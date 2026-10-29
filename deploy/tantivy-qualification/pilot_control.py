@@ -9,6 +9,17 @@ reply is confirmed by GET, never retried against an auto-destroy guest. Platform
 QUAL_REAPER_CAPABILITY; full mode additionally requires QUAL_SOURCE_ACCESS.
 Secret values never enter this module, requests or ledger. Pilot remains the
 default 600-second lease; full requires --mode full and allows at most 5400 seconds.
+
+Full-only --staged-preparation creates performance/2CPU/4096MiB preparation
+engines, retaining the same 20GiB volumes and original reaper deadline. Use
+configure-preparation with a PREP provider observer, then start-preparation.
+finish-preparation requires its bound checkpoint receipt plus authoritative
+successful stopped/no-OOM exit evidence, then resizes paused guests to FINAL.
+Fresh FINAL attestation and configure-engine bind resume/checkpoint and enable
+auto_destroy. Start both final engines before starting the separate generator.
+Retry an ambiguous update only with its original observer/receipt; reconciliation
+reads the same IDs and never reposts a recorded update. This is preparation
+capacity, not final serving or benchmark hardware.
 """
 import argparse
 import base64
@@ -34,6 +45,7 @@ reaper=local_module('reaper')
 APP=reaper.APP
 OWNER=reaper.OWNER
 ENGINE={'cpu_kind':'shared','cpus':2,'memory_mb':1024}
+PREP={'cpu_kind':'performance','cpus':2,'memory_mb':4096}
 SMALL={'cpu_kind':'shared','cpus':1,'memory_mb':256}
 ENGINE_ROLES={'native-control':'native','tantivy-control':'tantivy'}
 SECRETS={'ADMIN_SECRET','QUAL_CONTROL_SECRET','QUAL_REAPER_CAPABILITY','QUAL_SOURCE_ACCESS'}
@@ -79,7 +91,7 @@ class Pilot:
     def call(self,method,path,body=None):
         try:return self.control.api(method,path,body)
         except RuntimeError:raise PilotError('qualification_api_failed') from None
-    def prepare(self,image,native_binary_sha256,tantivy_binary_sha256,seconds=600,region='ewr',run_id=None,mode='pilot',oracle_binary_sha256=None):
+    def prepare(self,image,native_binary_sha256,tantivy_binary_sha256,seconds=600,region='ewr',run_id=None,mode='pilot',oracle_binary_sha256=None,staged_preparation=False):
         value=self.state()
         if value.get('machines') or value.get('volumes') or value.get('pilot',{}).get('phase') not in (None,'cleaned'):
             raise PilotError('existing_run_requires_cleanup')
@@ -88,6 +100,7 @@ class Pilot:
         if mode not in LEASE_SECONDS:raise PilotError('qualification_mode')
         if mode=='full' and not binary_sha(oracle_binary_sha256):raise PilotError('frozen_oracle_binary_hash_required')
         if type(seconds) is not int or not 1<=seconds<=LEASE_SECONDS[mode] or region!='ewr':raise PilotError('pilot_budget_or_region')
+        if type(staged_preparation) is not bool or staged_preparation and mode!='full':raise PilotError('staged_preparation_requires_full')
         run_id=run_id or secrets.token_hex(6);now=self.now();deadline=now+seconds
         def entry(role,kind='machine'):
             return {'name':('tq-' if kind=='machine' else 'tq_')+run_id+('-' if kind=='machine' else '_')+role,'role':role}
@@ -108,6 +121,7 @@ class Pilot:
                'nonce':secrets.token_hex(16),'watermark':int(now)-60,'attempts':{},'resolved':{},'armed':None,
                'native_binary_sha256':native_binary_sha256,'tantivy_binary_sha256':tantivy_binary_sha256,
                'required_platform_secrets':sorted(SECRETS if mode=='full' else PILOT_SECRETS)}
+        if staged_preparation:pilot['staged_preparation']=True
         if mode=='full':pilot['oracle_binary_sha256']=oracle_binary_sha256
         value.update(pilot=pilot,phase='pilot-prepared');self.save(value)
         return {'phase':'prepared','run_id':run_id,'deadline':deadline,'manifest_sha256':pilot['manifest_sha256']}
@@ -188,8 +202,13 @@ class Pilot:
     def hard_command(self,command,reaper_mode=False):
         script="import os,sys,time;d=float(os.environ['QUAL_DEADLINE'])+%d-time.time();sys.exit(0) if d<=0 else None;os.execvp('timeout',['timeout','--signal=TERM','--kill-after=5',str(max(1,int(d)))]+sys.argv[1:])"%(330 if reaper_mode else 0)
         return ['python3','-c',script,*command]
+    def staged(self,pilot,role):return pilot.get('staged_preparation') is True and role in ENGINE_ROLES
+    def guest(self,pilot,role):
+        if self.staged(pilot,role) and role not in pilot.get('preparation_finished',{}):return PREP
+        return ENGINE if role in ENGINE_ROLES else SMALL
     def machine_payload(self,pilot,role):
         entry=self.entry(pilot,'machine',role);env=self.env(pilot,role);mounts=[]
+        if self.staged(pilot,role):env['QUAL_PHASE']='prepare'
         if role=='reaper':
             data=base64.b64encode(encoded(pilot['manifest'])).decode();env['QUAL_REAPER_MANIFEST_B64']=data
             script="import base64,os,pathlib,sys;p=pathlib.Path('/tmp/reaper.json');b=base64.b64decode(os.environ['QUAL_REAPER_MANIFEST_B64']);f=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600);os.write(f,b);os.close(f);os.execv(sys.executable,[sys.executable,'/app/input/reaper.py','--daemon','--manifest',str(p)])"
@@ -202,7 +221,7 @@ class Pilot:
                 vid=self.registered(pilot,'volume',ENGINE_ROLES[role])
                 if not vid:raise PilotError('engine_volume_unresolved')
                 mounts=[{'volume':vid,'path':'/data'}]
-        config={'image':pilot['image'],'auto_destroy':role=='reaper','guest':copy.deepcopy(ENGINE if role in ENGINE_ROLES else SMALL),
+        config={'image':pilot['image'],'auto_destroy':role=='reaper','guest':copy.deepcopy(self.guest(pilot,role)),
                 'services':[],'mounts':mounts,'restart':{'policy':'no'},'metadata':self.metadata(pilot,role),
                 'init':{'exec':command},'env':env,'stop_config':{'signal':'SIGTERM','timeout':5000000000}}
         return {'name':entry['name'],'region':pilot['region'],'skip_service_registration':True,'skip_launch':role!='reaper','config':config}
@@ -212,7 +231,10 @@ class Pilot:
             if config.get(key)!=expected[key]:raise PilotError('machine_shape_or_image_mismatch')
         auto=config.get('auto_destroy',False)
         if type(auto) is not bool:raise PilotError('auto_destroy_must_be_explicit')
-        if role=='reaper' or role in pilot.get('configured',{}):
+        if self.staged(pilot,role) and role not in pilot.get('preparation_finished',{}):
+            if auto:raise PilotError('preparation_autodestroy_forbidden')
+            if actual.get('state') not in {'created','stopped'} and not (actual.get('state')=='started' and role in pilot.get('preparation_started',{})):raise PilotError('preparation_state_unexpected')
+        elif role=='reaper' or role in pilot.get('configured',{}):
             if not auto:raise PilotError('auto_destroy_required')
         elif not auto and actual.get('state') not in {'created','stopped'}:raise PilotError('unconfigured_guest_must_remain_paused')
         mounts=config.get('mounts') or []
@@ -228,6 +250,11 @@ class Pilot:
         environment=config.get('env',{})
         if not isinstance(environment,dict) or any(key in SECRETS or key.startswith('FLY_') and key!='FLY_PROCESS_GROUP' for key in environment):raise PilotError('reserved_or_inline_secret_environment')
         if any(environment.get(key)!=value for key,value in self.env(pilot,role).items()):raise PilotError('run_environment_binding_mismatch')
+        if self.staged(pilot,role):
+            finished=pilot.get('preparation_finished',{}).get(role)
+            if finished and auto:
+                if environment.get('QUAL_PHASE')!='resume' or environment.get('QUAL_CHECKPOINT_SHA256')!=finished['checkpoint_sha256']:raise PilotError('resume_checkpoint_binding')
+            elif environment.get('QUAL_PHASE')!='prepare' or 'QUAL_CHECKPOINT_SHA256' in environment:raise PilotError('preparation_phase_binding')
     def verify_volume(self,pilot,actual):
         if not isinstance(actual,dict) or actual.get('size_gb')!=20 or actual.get('encrypted') is not True:raise PilotError('volume_shape_mismatch')
     def create(self,kind,role,payload):
@@ -269,7 +296,7 @@ class Pilot:
         for role in ['native','tantivy']:
             entry=self.entry(pilot,'volume',role)
             self.create('volume',role,{'name':entry['name'],'region':pilot['region'],'size_gb':20,'encrypted':True,
-                'auto_backup_enabled':False,'compute':copy.deepcopy(ENGINE)})
+                'auto_backup_enabled':False,'compute':copy.deepcopy(PREP if pilot.get('staged_preparation') else ENGINE)})
         for role in ['native-control','tantivy-control','generator']:
             _,pilot=self.plan();actual=self.create('machine',role,self.machine_payload(pilot,role))
             if actual.get('state') not in {'created','stopped'}:raise PilotError('provision_requires_paused_guests')
@@ -293,6 +320,7 @@ class Pilot:
     def update_env(self,role,values):
         value,pilot=self.plan();self.lease(pilot);self.alive_reaper(pilot);actual=self.owned_machine(role)
         if role=='reaper' or actual.get('state') not in {'created','stopped'}:raise PilotError('configuration_requires_paused_owned_guest')
+        if self.staged(pilot,role) and role not in pilot.get('preparation_finished',{}):raise PilotError('preparation_not_finished')
         if not isinstance(values,dict) or any(not key.startswith('QUAL_') or key in SECRETS or not isinstance(v,str) for key,v in values.items()):raise PilotError('public_configuration_only')
         desired=digest(values);keys=sorted(values)
         if actual['config'].get('auto_destroy') is True:
@@ -314,13 +342,99 @@ class Pilot:
                 raise PilotError('unexpected_configuration_transition')
             if self.monotonic()>=until:raise PilotError('configuration_transition_unconfirmed_reconcile_only')
             self.sleep(1)
+    def staged_signature(self,config):
+        return {key:copy.deepcopy(config.get(key)) for key in ['image','guest','init','env','restart']}|{
+            'auto_destroy':config.get('auto_destroy',False),'services':config.get('services') or [],
+            'metadata':{key:config.get('metadata',{}).get(key) for key in ['owner','run_id','role']},
+            'mounts':[{key:mount.get(key) for key in ['volume','path']} for mount in config.get('mounts') or []]}
+    def staged_update(self,role,kind,config):
+        value,pilot=self.plan();self.lease(pilot);self.alive_reaper(pilot)
+        desired=self.staged_signature(config);key=role+':'+kind
+        attempt=pilot.get('staged_attempts',{}).get(key)
+        if attempt and attempt['desired_sha256']!=digest(desired):raise PilotError('staged_update_intent_changed')
+        if not attempt:
+            actual=self.owned_machine(role)
+            if actual.get('state') not in {'created','stopped'} or actual['config'].get('auto_destroy',False):raise PilotError('staged_update_requires_paused_mutable_guest')
+            pilot.setdefault('staged_attempts',{})[key]={'desired_sha256':digest(desired),'state':'attempted'};self.save(value)
+            try:self.call('POST','machines/'+actual['id'],{'config':config,'skip_launch':True})
+            except PilotError:
+                value,pilot=self.plan();pilot['staged_attempts'][key]['state']='unknown';self.save(value)
+        until=min(self.monotonic()+30,self.monotonic()+max(0,pilot['manifest']['deadline']-self.now()))
+        while True:
+            _,pilot=self.plan();actual=self.resolve('machine',self.entry(pilot,'machine',role))
+            if actual is None:raise PilotError('staged_target_missing')
+            if actual.get('state') in {'created','stopped'} and self.staged_signature(actual.get('config',{}))==desired:
+                value,pilot=self.plan();pilot['staged_attempts'][key]['state']='committed';self.save(value);return actual
+            if actual.get('state') not in {'created','stopped','updating','replacing','stopping'} or actual.get('config',{}).get('auto_destroy',False):raise PilotError('staged_transition_unexpected')
+            if self.monotonic()>=until:raise PilotError('staged_transition_unconfirmed_reconcile_only')
+            self.sleep(1)
+    def configure_preparation(self,role,observer):
+        _,pilot=self.plan()
+        if not self.staged(pilot,role) or role in pilot.get('preparation_finished',{}):raise PilotError('staged_preparation_not_pending')
+        actual=self.owned_machine(role);vid=self.registered(pilot,'volume',ENGINE_ROLES[role])
+        expected={'app':APP,'machine_id':actual['id'],'guest':PREP,'volume_ids':[vid],'final_volume_gib':20,'public_services':[]}
+        if any(observer.get(key)!=wanted for key,wanted in expected.items()) or not binary_sha(observer.get('machines_api_response_sha256')):raise PilotError('preparation_observer_mismatch')
+        safe={key:copy.deepcopy(observer[key]) for key in [*expected,'machines_api_response_sha256']}
+        config=copy.deepcopy(actual['config']);config.setdefault('env',{})['QUAL_OBSERVER_JSON']=json.dumps(safe,sort_keys=True,separators=(',',':'));config['auto_destroy']=False
+        observed=self.staged_update(role,'configure',config);self.verify_machine(self.plan()[1],role,observed)
+        value,pilot=self.plan();pilot.setdefault('preparation_configured',{})[role]=digest(safe);self.save(value)
+        return {'id':observed['id'],'role':role,'preparation_configured':True,'auto_destroy':False}
+    def start_preparation(self,role):
+        value,pilot=self.plan();self.lease(pilot,creating=True);self.alive_reaper(pilot)
+        if not self.staged(pilot,role) or role not in pilot.get('preparation_configured',{}) or role in pilot.get('preparation_finished',{}):raise PilotError('preparation_configuration_required')
+        actual=self.owned_machine(role)
+        observer=json.loads(actual['config']['env'].get('QUAL_OBSERVER_JSON','{}'))
+        if digest(observer)!=pilot['preparation_configured'][role]:raise PilotError('preparation_observer_changed')
+        if role in pilot.get('preparation_started',{}):return {'id':actual['id'],'role':role,'preparation_start_previously_requested':True,'state':actual['state']}
+        if actual.get('state') not in {'created','stopped'}:raise PilotError('preparation_start_requires_paused')
+        pilot.setdefault('preparation_started',{})[role]={'requested_at':self.now()};self.save(value)
+        self.call('POST','machines/'+actual['id']+'/start')
+        return {'id':actual['id'],'role':role,'preparation_start_requested':True,'auto_destroy':False}
+    def validate_preparation_exit(self,pilot,role,actual,receipt):
+        volume=self.registered(pilot,'volume',ENGINE_ROLES[role])
+        expected={'app':APP,'machine_id':actual['id'],'volume_id':volume,'arm':ENGINE_ROLES[role],
+                  'nonce':pilot['nonce'],'prepared':True,'guest':PREP,'runtime_instance_id':actual.get('instance_id')}
+        if any(receipt.get(key)!=wanted for key,wanted in expected.items()) or receipt.get('prepared') is not True or not actual.get('instance_id'):raise PilotError('preparation_receipt_binding')
+        if not binary_sha(receipt.get('checkpoint_sha256')) or not isinstance(receipt.get('build_id'),str) or not re.fullmatch('[A-Za-z0-9._-]{1,120}',receipt['build_id']):raise PilotError('preparation_checkpoint_identity')
+        begin=pilot.get('preparation_started',{}).get(role,{}).get('requested_at');prepared=receipt.get('prepared_at')
+        if type(prepared) not in {int,float} or begin is None or not begin<=prepared<=self.now()+2:raise PilotError('preparation_receipt_time')
+        if actual.get('state')!='stopped':raise PilotError('preparation_not_stopped')
+        exits=[event for event in actual.get('events',[]) if event.get('type')=='exit' and type(event.get('timestamp')) in {int,float}]
+        if not exits:raise PilotError('preparation_exit_evidence_missing')
+        event=max(exits,key=lambda item:item['timestamp']);exit=event.get('request',{}).get('exit_event',{})
+        if event.get('source')!='flyd' or event.get('status')!='stopped' or event['timestamp']/1000<prepared or event['timestamp']/1000>self.now()+2 or any(exit.get(key)!=wanted for key,wanted in {'exit_code':0,'guest_exit_code':0,'oom_killed':False,'requested_stop':False,'restarting':False,'guest_error':'','error':''}.items()) or type(exit.get('exit_code')) is not int or type(exit.get('guest_exit_code')) is not int or exit.get('oom_killed') is not False or exit.get('requested_stop') is not False or exit.get('restarting') is not False or exit.get('signal') not in {-1,0} or exit.get('guest_signal') not in {-1,0}:raise PilotError('preparation_unsuccessful_exit')
+        return {'instance_id':actual['instance_id'],'exit_event_timestamp':event['timestamp'],'exit_code':0,'oom_killed':False}
+    def finish_preparation(self,role,receipt):
+        value,pilot=self.plan();self.lease(pilot,creating=True);self.alive_reaper(pilot)
+        if not self.staged(pilot,role):raise PilotError('staged_preparation_required')
+        prior=pilot.get('preparation_finished',{}).get(role)
+        if prior:
+            if prior['receipt_sha256']!=digest(receipt):raise PilotError('preparation_receipt_changed')
+            self.owned_machine(role);return {'role':role,'preparation_finished':True,'idempotent':True}
+        recorded=pilot.get('preparation_receipts',{}).get(role)
+        actual=self.resolve('machine',self.entry(pilot,'machine',role))
+        if actual is None:raise PilotError('preparation_machine_missing')
+        if recorded:
+            if recorded['receipt_sha256']!=digest(receipt):raise PilotError('preparation_receipt_changed')
+        else:
+            self.verify_machine(pilot,role,actual)
+            proof=self.validate_preparation_exit(pilot,role,actual,receipt)
+            pilot.setdefault('preparation_receipts',{})[role]={'receipt_sha256':digest(receipt),'receipt':copy.deepcopy(receipt),'exit_proof':proof};self.save(value)
+        config=copy.deepcopy(actual['config']);config['guest']=copy.deepcopy(ENGINE);config['auto_destroy']=False
+        observed=self.staged_update(role,'resize',config)
+        value,pilot=self.plan();pilot.setdefault('preparation_finished',{})[role]={'checkpoint_sha256':receipt['checkpoint_sha256'],'build_id':receipt['build_id'],'receipt_sha256':digest(receipt)};self.save(value)
+        self.verify_machine(pilot,role,observed)
+        return {'id':observed['id'],'role':role,'preparation_finished':True,'guest':ENGINE,'volume_id':self.registered(pilot,'volume',ENGINE_ROLES[role]),'auto_destroy':False}
     def configure_engine(self,role,observer):
         if role not in ENGINE_ROLES:raise PilotError('invalid_engine_role')
         actual=self.owned_machine(role);_,pilot=self.plan();volume=self.registered(pilot,'volume',ENGINE_ROLES[role])
+        if self.staged(pilot,role) and role not in pilot.get('preparation_finished',{}):raise PilotError('preparation_not_finished')
         expected={'app':APP,'machine_id':actual['id'],'guest':ENGINE,'volume_ids':[volume],'final_volume_gib':20,'public_services':[]}
         if any(observer.get(key)!=target for key,target in expected.items()) or not binary_sha(observer.get('machines_api_response_sha256')):raise PilotError('provider_observer_mismatch')
         safe={key:copy.deepcopy(observer[key]) for key in [*expected,'machines_api_response_sha256']}
-        return self.update_env(role,{'QUAL_OBSERVER_JSON':json.dumps(safe,sort_keys=True,separators=(',',':'))})
+        values={'QUAL_OBSERVER_JSON':json.dumps(safe,sort_keys=True,separators=(',',':'))}
+        if self.staged(pilot,role):values.update(QUAL_PHASE='resume',QUAL_CHECKPOINT_SHA256=pilot['preparation_finished'][role]['checkpoint_sha256'])
+        return self.update_env(role,values)
     def private_url(self,value,port):
         parsed=urllib.parse.urlsplit(value)
         host=parsed.hostname or ''
@@ -345,6 +459,10 @@ class Pilot:
     def start(self,role):
         value,pilot=self.plan();self.lease(pilot);self.alive_reaper(pilot)
         if role not in ['native-control','tantivy-control','generator'] or role not in pilot.get('configured',{}):raise PilotError('configuration_required_before_start')
+        if role=='generator' and pilot.get('staged_preparation') and (set(pilot.get('preparation_finished',{}))!=set(ENGINE_ROLES) or not set(ENGINE_ROLES).issubset(pilot.get('configured',{}))):raise PilotError('both_final_engines_required')
+        if role=='generator' and pilot.get('staged_preparation'):
+            for engine in ENGINE_ROLES:
+                if self.owned_machine(engine).get('state')!='started':raise PilotError('both_final_engines_must_be_running')
         actual=self.owned_machine(role)
         keys=pilot['configuration_keys'][role]
         if digest({key:actual['config']['env'].get(key) for key in keys})!=pilot['configured'][role]:raise PilotError('configured_environment_changed')
@@ -362,7 +480,18 @@ class Pilot:
             if attempt.get('state')=='committed':continue
             try:self.confirm_configuration(role,self.owned_machine(role),attempt['sha256'],attempt['keys'])
             except PilotError:unconfirmed.append(role)
-        return {'resolved':self.plan()[1]['resolved'],'unresolved_attempts':pending,'unresolved_configuration_attempts':unconfirmed,'safe_to_recreate':False}
+        _,pilot=self.plan();staged_pending=[]
+        for key,attempt in pilot.get('staged_attempts',{}).items():
+            if attempt.get('state')=='committed':continue
+            role,kind=key.rsplit(':',1)
+            actual=self.resolve('machine',self.entry(pilot,'machine',role))
+            if actual is not None and actual.get('state') in {'created','stopped'} and digest(self.staged_signature(actual.get('config',{})))==attempt['desired_sha256']:
+                value,current=self.plan();current['staged_attempts'][key]['state']='committed';self.save(value)
+            else:staged_pending.append(key)
+        _,pilot=self.plan()
+        finish_pending=[role for role in ENGINE_ROLES if pilot.get('staged_attempts',{}).get(role+':resize',{}).get('state')=='committed' and role not in pilot.get('preparation_finished',{})]
+        return {'resolved':pilot['resolved'],'unresolved_attempts':pending,'unresolved_configuration_attempts':unconfirmed,
+                'unresolved_staged_attempts':staged_pending,'staged_finish_receipt_required':finish_pending,'safe_to_recreate':False}
     def cleanup(self):
         value,pilot=self.plan();guardian=self.guard(pilot)
         unresolved=[]
@@ -392,9 +521,13 @@ class Pilot:
 
 def arguments(argv=None):
     parser=argparse.ArgumentParser(description=__doc__);sub=parser.add_subparsers(dest='action',required=True)
-    p=sub.add_parser('prepare');p.add_argument('--image',required=True);p.add_argument('--native-binary-sha256',required=True);p.add_argument('--tantivy-binary-sha256',required=True);p.add_argument('--seconds',type=int,default=600);p.add_argument('--mode',choices=sorted(LEASE_SECONDS),default='pilot');p.add_argument('--oracle-binary-sha256')
+    p=sub.add_parser('prepare');p.add_argument('--image',required=True);p.add_argument('--native-binary-sha256',required=True);p.add_argument('--tantivy-binary-sha256',required=True);p.add_argument('--seconds',type=int,default=600);p.add_argument('--mode',choices=sorted(LEASE_SECONDS),default='pilot');p.add_argument('--oracle-binary-sha256');p.add_argument('--staged-preparation',action='store_true')
     sub.add_parser('launch-reaper');p=sub.add_parser('provision');p.add_argument('--armed-receipt',type=Path,required=True)
     p=sub.add_parser('configure-engine');p.add_argument('--role',choices=sorted(ENGINE_ROLES),required=True);p.add_argument('--observer',type=Path,required=True)
+    for action in ['configure-preparation','start-preparation','finish-preparation']:
+        p=sub.add_parser(action);p.add_argument('--role',choices=sorted(ENGINE_ROLES),required=True)
+        if action=='configure-preparation':p.add_argument('--observer',type=Path,required=True)
+        if action=='finish-preparation':p.add_argument('--receipt',type=Path,required=True)
     p=sub.add_parser('configure-generator')
     for key in ['native-url','native-control-url','tantivy-url','tantivy-control-url']:p.add_argument('--'+key,required=True)
     p=sub.add_parser('start');p.add_argument('--role',choices=['native-control','tantivy-control','generator'],required=True)
@@ -402,10 +535,13 @@ def arguments(argv=None):
 
 def main():
     args=arguments();pilot=Pilot()
-    if args.action=='prepare':result=pilot.prepare(args.image,args.native_binary_sha256,args.tantivy_binary_sha256,args.seconds,mode=args.mode,oracle_binary_sha256=args.oracle_binary_sha256)
+    if args.action=='prepare':result=pilot.prepare(args.image,args.native_binary_sha256,args.tantivy_binary_sha256,args.seconds,mode=args.mode,oracle_binary_sha256=args.oracle_binary_sha256,staged_preparation=args.staged_preparation)
     elif args.action=='launch-reaper':result=pilot.launch_reaper()
     elif args.action=='provision':result=pilot.provision(json.loads(args.armed_receipt.read_text()))
     elif args.action=='configure-engine':result=pilot.configure_engine(args.role,json.loads(args.observer.read_text()))
+    elif args.action=='configure-preparation':result=pilot.configure_preparation(args.role,json.loads(args.observer.read_text()))
+    elif args.action=='start-preparation':result=pilot.start_preparation(args.role)
+    elif args.action=='finish-preparation':result=pilot.finish_preparation(args.role,json.loads(args.receipt.read_text()))
     elif args.action=='configure-generator':result=pilot.configure_generator(args.native_url,args.native_control_url,args.tantivy_url,args.tantivy_control_url)
     elif args.action=='start':result=pilot.start(args.role)
     elif args.action=='reconcile':result=pilot.reconcile()
