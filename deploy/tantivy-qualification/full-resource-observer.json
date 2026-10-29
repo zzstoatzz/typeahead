@@ -1,0 +1,12 @@
+{
+  "run_id": "4d62ead649f7",
+  "generator_machine_id": "6835102ae1d028",
+  "helper_sha256": "587db80db120eb47b6a72d2af1ab5b86a1dbde8b48e9edbe68e7656cf7fadba1",
+  "source_commit": "0c3cf0f",
+  "process": {
+    "pid": 1065
+  },
+  "corpus_transferred": false,
+  "source_credentials_used": false,
+  "frozen_engine_or_generator_code_changed": false
+}
