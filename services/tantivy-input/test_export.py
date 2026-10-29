@@ -1,7 +1,9 @@
+from contextlib import closing
 import copy
 import hashlib
 import importlib.util
 import io
+import os
 import json
 from pathlib import Path
 import sqlite3
@@ -29,13 +31,13 @@ class Tests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory(dir=ROOT,prefix='.test-');self.addCleanup(self.tmp.cleanup);self.root=Path(self.tmp.name)
         source=self.root/'legacy.db'
-        with sqlite3.connect(source) as db:
+        with closing(sqlite3.connect(source)) as db:
             db.executescript('CREATE TABLE actor_compact_base(did TEXT PRIMARY KEY,blob BLOB NOT NULL) WITHOUT ROWID;CREATE TABLE prefix_top_base(key TEXT PRIMARY KEY,dids BLOB NOT NULL) WITHOUT ROWID;CREATE TABLE index_meta(key TEXT PRIMARY KEY,value TEXT);')
             actors=[(f'did:example:{i:04d}',packed(handle=f'actor{i:04d}.fixture.test',hidden=i==16,avatar='https://cdn.test/'+('x'*9000 if i==18 else str(i)))) for i in range(19)]
             db.executemany('INSERT INTO actor_compact_base VALUES(?,?)',actors)
             db.execute('INSERT INTO prefix_top_base VALUES(?,?)',('n:alice',b'not consumed for actor export'))
             meta={'build_id':'fixture-px05','normalize_version':'v2-cjk-bigram','scoring_version':'v1-quality-score','source_watermark':'1793230000','actor_count':'19','prefix_count':'1'}
-            db.executemany('INSERT INTO index_meta VALUES(?,?)',meta.items())
+            db.executemany('INSERT INTO index_meta VALUES(?,?)',meta.items());db.commit()
         self.snapshot=self.root/'snapshot';build(source,self.snapshot)
         self.manifest={'manifest_version':2,'format_version':5,'active_build':'fixture-px05','source_watermark':1793230000,'actor_count':19,'prefix_count':1,'normalize_version':'v2-cjk-bigram','scoring_version':'v1-quality-score','byte_size':(self.snapshot/'index.db').stat().st_size,'sha256':digest(self.snapshot/'index.db'),'prefix_map':{'object_key':'releases/search/fixture-px05/index.db.prefix','byte_size':(self.snapshot/'index.db.prefix').stat().st_size,'sha256':digest(self.snapshot/'index.db.prefix')}}
         self.manifest_path=self.root/'release.json';self.write_manifest()
@@ -44,7 +46,7 @@ class Tests(unittest.TestCase):
         return export.parser().parse_args(['--manifest',str(self.manifest_path),'--database',str(self.snapshot/'index.db'),'--prefix',str(self.snapshot/'index.db.prefix'),'--build-id','fixture-px05','--scratch-root',str(self.root),'--output','-','--receipt',str(self.root/'receipt.json'),*extra])
     def resign(self):
         sha=digest(self.snapshot/'index.db.prefix');self.manifest['prefix_map']['sha256']=sha;self.manifest['prefix_map']['byte_size']=(self.snapshot/'index.db.prefix').stat().st_size
-        with sqlite3.connect(self.snapshot/'index.db') as db:db.execute("UPDATE index_meta SET value=? WHERE key='flat_prefix_sha256'",(sha,))
+        with closing(sqlite3.connect(self.snapshot/'index.db')) as db:db.execute("UPDATE index_meta SET value=? WHERE key='flat_prefix_sha256'",(sha,));db.commit()
         self.manifest['sha256']=digest(self.snapshot/'index.db');self.manifest['byte_size']=(self.snapshot/'index.db').stat().st_size;self.write_manifest()
     def test_actual_reference_writer_roundtrip_hydration_and_footer(self):
         output=io.BytesIO();receipt=export.run_export(self.args(),output);lines=output.getvalue().splitlines(keepends=True);rows=[json.loads(x) for x in lines]
@@ -52,6 +54,31 @@ class Tests(unittest.TestCase):
         self.assertEqual([x['did'] for x in rows[1:-1]],[f'did:example:{i:04d}' for i in range(19)])
         actor=rows[1];self.assertEqual(actor['display_name'],'Alice 東京');self.assertEqual(actor['avatar_url'],'https://cdn.test/0');self.assertEqual(actor['labels'],[{'val':'test-label'}]);self.assertEqual(actor['associated'],{'chat':{'allowIncoming':'all'}});self.assertEqual(actor['pds'],'https://local.test');self.assertEqual(actor['created_at'],'2026-10-28T00:00:00Z');self.assertEqual(actor['quality_score'],struct.unpack('<f',struct.pack('<f',0.1))[0]);self.assertEqual(actor['quality_score_f32_bits'],'3dcccccd');self.assertEqual(actor['version'],1793230000);self.assertIsNone(actor['source_updated_at']);self.assertEqual(actor['followers_count'],0);self.assertTrue(rows[17]['hidden']);self.assertGreater(len(rows[-2]['avatar_url']),8192)
         self.assertEqual(rows[-1]['actors_sha256'],hashlib.sha256(b''.join(lines[1:-1])).hexdigest());self.assertEqual(receipt['actors_sha256'],rows[-1]['actors_sha256']);self.assertTrue(receipt['source_unchanged'])
+    def verified_args(self,*extra):
+        for path in [self.manifest_path,self.snapshot/'index.db',self.snapshot/'index.db.prefix']:path.chmod(0o444)
+        proof={'schema_version':1,'build_id':self.manifest['active_build'],'manifest_sha256':digest(self.manifest_path),'files':{kind:{'name':path.name,'identity':list(export.identity(path)),'sha256':digest(path)}for kind,path in [('database',self.snapshot/'index.db'),('prefix',self.snapshot/'index.db.prefix')]}}
+        path=self.root/'verified-inputs.json';path.chmod(0o600)if path.exists()else None;path.write_text(json.dumps(proof));path.chmod(0o444)
+        return self.args('--verified-inputs',str(path),'--verified-inputs-sha256',digest(path),*extra)
+    def test_verified_inputs_preserve_exact_export_without_rehashing_prefix(self):
+        normal=io.BytesIO();baseline=export.run_export(self.args(),normal)
+        cached=io.BytesIO();receipt=export.run_export(self.verified_args('--receipt',str(self.root/'cached-receipt.json')),cached)
+        self.assertEqual(cached.getvalue(),normal.getvalue());self.assertEqual(receipt['actors_sha256'],baseline['actors_sha256'])
+        self.assertEqual(receipt['input_verification']['mode'],'verified-local-receipt')
+        self.assertLess(receipt['physical_read_bytes'],baseline['physical_read_bytes']-(self.snapshot/'index.db.prefix').stat().st_size+4096)
+    def test_verified_inputs_reject_changed_file_even_with_preserved_mtime(self):
+        args=self.verified_args();prefix=self.snapshot/'index.db.prefix';before=prefix.stat();data=bytearray(prefix.read_bytes());data[-1]^=1
+        prefix.chmod(0o600);prefix.write_bytes(data);os.utime(prefix,ns=(before.st_atime_ns,before.st_mtime_ns));prefix.chmod(0o444)
+        out=io.BytesIO()
+        with self.assertRaisesRegex(ValueError,'verified input changed'):export.run_export(args,out)
+        self.assertEqual(out.getvalue(),b'');self.assertFalse((self.root/'receipt.json').exists())
+    def test_verified_inputs_reject_receipt_tampering_missing_digest_and_writable_files(self):
+        args=self.verified_args();path=self.root/'verified-inputs.json';path.chmod(0o600);path.write_text('{}');path.chmod(0o444)
+        with self.assertRaisesRegex(ValueError,'receipt checksum'):export.run_export(args,io.BytesIO())
+        args=self.verified_args();args.verified_inputs_sha256=None
+        with self.assertRaisesRegex(ValueError,'path and checksum'):export.run_export(args,io.BytesIO())
+        args=self.verified_args();(self.snapshot/'index.db').chmod(0o600)
+        with self.assertRaisesRegex(ValueError,'verified input changed'):export.run_export(args,io.BytesIO())
+        self.assertFalse((self.root/'receipt.json').exists())
     def test_partial_is_explicit_and_output_is_atomic(self):
         path=self.root/'actors.jsonl';receipt=export.run_export(self.args('--output',str(path),'--limit-actors','3'))
         rows=[json.loads(x) for x in path.read_bytes().splitlines()];self.assertTrue(rows[0]['partial']);self.assertEqual(rows[0]['source_actor_count'],19);self.assertEqual(rows[0]['actor_count'],3);self.assertEqual(receipt['emitted_actor_count'],3);self.assertEqual(len(rows),5);self.assertFalse(path.with_name(path.name+'.partial').exists())
@@ -70,9 +97,11 @@ class Tests(unittest.TestCase):
         path=self.root/'actors.jsonl'
         with self.assertRaisesRegex(ValueError,'restart'):export.run_export(self.args('--output',str(path)))
         self.assertFalse(path.exists());self.assertFalse(path.with_name(path.name+'.partial').exists());self.assertFalse((self.root/'receipt.json').exists())
+        with self.assertRaisesRegex(ValueError,'restart'):export.run_export(self.verified_args('--output',str(path)))
+        self.assertFalse(path.exists());self.assertFalse((self.root/'receipt.json').exists())
     def test_forged_actor_count_cannot_silently_truncate(self):
         self.manifest['actor_count']=18
-        with sqlite3.connect(self.snapshot/'index.db') as db:db.execute("UPDATE index_meta SET value='18' WHERE key='actor_count'")
+        with closing(sqlite3.connect(self.snapshot/'index.db')) as db:db.execute("UPDATE index_meta SET value='18' WHERE key='actor_count'");db.commit()
         self.manifest['sha256']=digest(self.snapshot/'index.db');self.write_manifest();out=io.BytesIO()
         with self.assertRaisesRegex(ValueError,'more actors'):export.run_export(self.args(),out)
         self.assertNotEqual(json.loads(out.getvalue().splitlines()[-1])['type'],'end');self.assertFalse((self.root/'receipt.json').exists())

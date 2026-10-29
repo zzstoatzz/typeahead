@@ -22,8 +22,9 @@ consistent full-source snapshot. Concurrent changes behind a cursor can require
 the next round. Polling freshness and sweep coverage are distinct measures.
 
 The default pacing is conservative, not a qualified full-corpus reconciliation
-SLO. A source gap beyond seven days still fails closed. Native operator-only
-moderation rows outside Turso require a separate ownership/migration decision.
+SLO. A full source-and-backend round visits roughly twice the actor count;
+measure a page budget that meets admission deadlines. Polling freshness alone
+does not qualify sweep coverage. A source gap beyond seven days still fails closed.
 `--policy-mode snapshot` is an explicit opt-in for complete operator-policy
 snapshots. The selected actor rows, DID overrides, domain blocks and source clock
 are read in one SQL statement. At most 10,000 overrides and 10,000 domain rules
@@ -35,6 +36,14 @@ source-observation rollout until that backend is qualified. See
 
 Timestamp mode remains available explicitly for legacy diagnostics and cannot
 write after observation-mode migration.
+
+The exporter normally verifies both snapshot files with SHA256. An owned cloud
+preparation process can pass `--verified-inputs` and `--verified-inputs-sha256`
+to reuse its download verification. The pinned, read-only receipt binds the
+manifest digest and each input's digest, inode, device, size and modification/change
+times. Any mismatch fails closed. Export still validates the flat format, metadata,
+actor count and stream footer, and checks that the files remain unchanged. This
+avoids rereading the whole prefix file solely to hash it again.
 
 Run small local checks with:
 

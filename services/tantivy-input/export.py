@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Cloud-local, bounded-memory FLATPX05 actor export; no network or credential access."""
 import argparse
+from contextlib import closing
 import hashlib
 import json
 import math
@@ -70,11 +71,30 @@ def validate_release(args,budget):
     side=manifest.get('prefix_map',{})
     expected=[(database,integer(manifest.get('byte_size'),'database size'),checksum(manifest.get('sha256'))),(prefix,integer(side.get('byte_size'),'prefix size'),checksum(side.get('sha256')))]
     if sum(n for _,n,_ in expected)>args.max_input_bytes:raise ValueError('source size budget exceeded')
-    for path,size,sha in expected:
-        if path.stat().st_size!=size or budget.digest(path)!=sha:raise ValueError('source size/checksum mismatch: '+path.name)
+    verification=getattr(args,'verified_inputs',None)
+    verification_sha=getattr(args,'verified_inputs_sha256',None)
+    if bool(verification)!=bool(verification_sha):raise ValueError('verified inputs require path and checksum together')
+    if verification:
+        witness=Path(verification).absolute()
+        if witness.is_symlink() or witness.resolve()!=witness or witness.parent!=manifest_path.parent or witness.stat().st_size>16384:
+            raise ValueError('invalid verified-input receipt path or budget')
+        if witness.stat().st_mode&0o222:raise ValueError('verified-input receipt must be read-only')
+        raw=witness.read_bytes();budget.read_bytes+=len(raw)
+        if hashlib.sha256(raw).hexdigest()!=checksum(verification_sha):raise ValueError('verified-input receipt checksum mismatch')
+        proof=json.loads(raw)
+        if proof.get('schema_version')!=1 or proof.get('build_id')!=build or proof.get('manifest_sha256')!=budget.digest(manifest_path):
+            raise ValueError('verified-input release identity mismatch')
+        if not isinstance(proof.get('files'),dict) or set(proof['files'])!={'database','prefix'}:raise ValueError('verified-input files mismatch')
+        for kind,(path,size,sha) in zip(['database','prefix'],expected):
+            record=proof['files'][kind]
+            if not isinstance(record,dict) or record.get('name')!=path.name or record.get('sha256')!=sha or record.get('identity')!=list(originals[path]) or originals[path][2]!=size or path.stat().st_mode&0o222:
+                raise ValueError('verified input changed or differs from release')
+    else:
+        for path,size,sha in expected:
+            if path.stat().st_size!=size or budget.digest(path)!=sha:raise ValueError('source size/checksum mismatch: '+path.name)
     for suffix in ['-wal','-journal']:
         if Path(str(database)+suffix).exists():raise ValueError('metadata database is not a closed immutable checkpoint')
-    with sqlite3.connect(database.as_uri()+'?mode=ro&immutable=1',uri=True) as db:
+    with closing(sqlite3.connect(database.as_uri()+'?mode=ro&immutable=1',uri=True)) as db:
         if db.execute('PRAGMA quick_check').fetchone()!=('ok',):raise ValueError('metadata SQLite integrity failure')
         metadata=dict(db.execute('SELECT key,value FROM index_meta'))
     for key in ['build_id','normalize_version','scoring_version','source_watermark','actor_count','prefix_count']:
@@ -214,7 +234,7 @@ def run_export(args,stream=None):
             if output is not None:
                 os.fsync(out.fileno());out.close();out=None
                 os.link(temporary,output);output_published=True;temporary.unlink()
-        result={'owner':args.owner,'build_id':manifest['active_build'],'source_watermark':manifest['source_watermark'],'source_actor_count':manifest['actor_count'],'emitted_actor_count':emitted,'partial':partial,'actors_sha256':actors_hash.hexdigest(),'output_bytes':budget.output_bytes,'physical_read_bytes':budget.read_bytes,'wall_seconds':time.monotonic()-budget.started,'root_directory_bytes':flat.pagedata,'actor_pages':flat.actor_pages,'max_page_bytes':MAX_EXTENT,'source_prefix_sha256':manifest['prefix_map']['sha256'],'source_database_sha256':manifest['sha256'],'source_unchanged':True,'cloud_local_paths_only':True,'scratch_root':str(scratch),'output':args.output,'version_kind':'snapshot_watermark','per_actor_source_versions_available':False}
+        result={'owner':args.owner,'build_id':manifest['active_build'],'source_watermark':manifest['source_watermark'],'source_actor_count':manifest['actor_count'],'emitted_actor_count':emitted,'partial':partial,'actors_sha256':actors_hash.hexdigest(),'output_bytes':budget.output_bytes,'physical_read_bytes':budget.read_bytes,'wall_seconds':time.monotonic()-budget.started,'root_directory_bytes':flat.pagedata,'actor_pages':flat.actor_pages,'max_page_bytes':MAX_EXTENT,'source_prefix_sha256':manifest['prefix_map']['sha256'],'source_database_sha256':manifest['sha256'],'source_unchanged':True,'cloud_local_paths_only':True,'scratch_root':str(scratch),'output':args.output,'version_kind':'snapshot_watermark','per_actor_source_versions_available':False,'input_verification':{'mode':'verified-local-receipt','receipt_sha256':args.verified_inputs_sha256} if getattr(args,'verified_inputs',None) else {'mode':'full-sha256'}}
         with receipt_temporary.open('xb') as receipt_file:
             receipt_staged=True;receipt_file.write(jsonline(result));receipt_file.flush();os.fsync(receipt_file.fileno())
         os.link(receipt_temporary,receipt);receipt_published=True;receipt_temporary.unlink();receipt_staged=False
@@ -235,6 +255,7 @@ def parser():
     p.add_argument('--max-input-bytes',type=int,default=8*1024**3);p.add_argument('--max-output-bytes',type=int,default=16*1024**3)
     p.add_argument('--max-root-bytes',type=int,default=128*1024**2);p.add_argument('--max-actors',type=int,default=20_000_000)
     p.add_argument('--limit-actors',type=int)
+    p.add_argument('--verified-inputs');p.add_argument('--verified-inputs-sha256')
     return p
 if __name__=='__main__':
     try:

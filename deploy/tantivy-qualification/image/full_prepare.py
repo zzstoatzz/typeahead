@@ -70,6 +70,20 @@ def manifest_check(value):
         raise PreparationError('manifest_versions')
     return value
 
+
+def file_sha(path):
+    with Path(path).open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
+
+def file_identity(path):
+    info=Path(path).stat()
+    return [info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns]
+
+def verified_input_args(source,expected_sha256):
+    path=Path(source)/'verified-inputs.json'
+    if not re.fullmatch('[a-f0-9]{64}',expected_sha256 or '') or path.is_symlink() or path.stat().st_size>16384 or file_sha(path)!=expected_sha256:
+        raise PreparationError('source_verification_receipt_changed')
+    return ['--verified-inputs',str(path),'--verified-inputs-sha256',expected_sha256]
+
 class Preparation:
     def __init__(self, root, manifest, arm, deadline, *, app='/app', min_free=GIB,
                  max_bytes=19 * GIB, allow_loopback_fixture=False):
@@ -139,7 +153,8 @@ class Preparation:
                 output.flush(); os.fsync(output.fileno())
             if count != expected['byte_size']: raise PreparationError('source_size')
             if digest.hexdigest() != expected['sha256']: raise PreparationError('source_sha256')
-            part.replace(destination)
+            part.replace(destination);destination.chmod(0o444)
+            return {'name':destination.name,'identity':file_identity(destination),'sha256':digest.hexdigest()}
         except PreparationError: raise
         except Exception: raise PreparationError('source_download_failed') from None
         finally: part.unlink(missing_ok=True)
@@ -173,7 +188,8 @@ class Preparation:
 
     def native(self, source):
         database = source / 'index.db'; prefix = source / 'index.db.prefix'
-        database.chmod(0o444); prefix.chmod(0o444)
+        for path in [database,prefix]:
+            if path.stat().st_mode&0o777!=0o444:path.chmod(0o444)
         child = self.spawn([str(self.app/'bin/admit-prefix')], stdout=subprocess.DEVNULL,
                            env={'TYPEAHEAD_ADMIT_PREFIX_PATH':str(prefix), 'TYPEAHEAD_ADMIT_PREFIX_SHA256':self.manifest['prefix_map']['sha256']})
         self.wait([child])
@@ -196,7 +212,8 @@ class Preparation:
         producer = self.spawn([sys.executable, str(self.app/'input/export.py'), '--manifest', str(source/'manifest.json'),
             '--database', str(source/'index.db'), '--prefix', str(source/'index.db.prefix'), '--build-id', self.manifest['active_build'],
             '--scratch-root', str(self.root), '--output', '-', '--receipt', str(receipt),
-            '--max-seconds', str(max(1,int(self.deadline-time.time())))], stdout=subprocess.PIPE)
+            '--max-seconds', str(max(1,int(self.deadline-time.time()))),
+            *verified_input_args(source,self.source_verification_sha256)], stdout=subprocess.PIPE)
         with metadata_path.open('xb') as metadata_output:
             consumer = self.spawn([str(self.app/'bin/typeahead-tantivy'), 'import', '--data', str(self.stage/'tantivy'),
                 '--input', '-', '--build-id', self.manifest['active_build'], '--writer-memory-mb', '128', '--batch-size', '50000'],
@@ -214,9 +231,15 @@ class Preparation:
         try:
             self.guard()
             if access.get('build_id') != self.manifest['active_build']: raise PreparationError('source_release_binding')
+            verified={}
             for field,name,item in [('database','index.db',self.manifest), ('prefix','index.db.prefix',self.manifest['prefix_map'])]:
-                self.download(access[field], source/name, item, f'releases/search/{self.manifest["active_build"]}/{name}')
-            atomic(source/'manifest.json', self.manifest)
+                verified[field]=self.download(access[field], source/name, item, f'releases/search/{self.manifest["active_build"]}/{name}')
+            atomic(source/'manifest.json', self.manifest);(source/'manifest.json').chmod(0o444)
+            for kind,record in verified.items():
+                if record['identity']!=file_identity(source/record['name']):raise PreparationError('verified_source_changed')
+            proof={'schema_version':1,'build_id':self.manifest['active_build'],'manifest_sha256':file_sha(source/'manifest.json'),'files':verified}
+            atomic(source/'verified-inputs.json',proof);(source/'verified-inputs.json').chmod(0o444)
+            self.source_verification_sha256=file_sha(source/'verified-inputs.json')
             # DB identity is checked independently for both arms, before native preparation.
             with closing(sqlite3.connect(f'file:{source}/index.db?mode=ro&immutable=1', uri=True)) as db:
                 metadata = dict(db.execute('SELECT key,value FROM index_meta'))
@@ -229,7 +252,7 @@ class Preparation:
             result = {'schema_version':1, 'owner':OWNER, 'arm':self.arm, 'prepared':True,
                 'build_id':self.manifest['active_build'], 'source_watermark':self.manifest['source_watermark'],
                 'actor_count':self.manifest['actor_count'], 'source_database_sha256':self.manifest['sha256'],
-                'source_prefix_sha256':self.manifest['prefix_map']['sha256'], 'evidence':evidence,
+                'source_prefix_sha256':self.manifest['prefix_map']['sha256'], 'source_verification_sha256':self.source_verification_sha256, 'evidence':evidence,
                 'wall_seconds':time.monotonic()-self.started, 'free_bytes':shutil.disk_usage(self.root).free,
                 'min_free_bytes':self.min_free, 'max_payload_bytes':self.max_bytes, 'baseline_path':str(self.base),
                 'serving_started':False, 'performance_qualified':False, 'live_source_ready':False,
