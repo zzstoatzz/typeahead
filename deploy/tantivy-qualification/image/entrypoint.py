@@ -20,6 +20,7 @@ APP=Path('/app')
 UPSTREAM_PORT=18080
 ALLOWED={'/search','/health','/ready','/index/status','/debug/search',
          '/xrpc/tech.waow.typeahead.searchActors','/xrpc/app.bsky.actor.searchActorsTypeahead'}
+SEARCH_PATHS={'/search','/debug/search','/xrpc/tech.waow.typeahead.searchActors','/xrpc/app.bsky.actor.searchActorsTypeahead'}
 
 def sha(path):
     with path.open('rb') as stream:return hashlib.file_digest(stream,'sha256').hexdigest()
@@ -41,6 +42,8 @@ def load(path):
     if (root/'owner').read_text()!='native-qualification-v1':raise ValueError('qualification owner mismatch')
     if config['schema']!=1 or config['arm'] not in {'native','tantivy'} or not config['app'].startswith('typeahead-qual-'):
         raise ValueError('unsupported qualification role/owner')
+    if config.get('source_kind','frozen-synthetic-controller') not in {'frozen-synthetic-controller','frozen-release-snapshot'}:
+        raise ValueError('unsupported frozen source kind')
     if os.environ.get('FLY_APP_NAME')!=config['app'] or os.environ.get('FLY_MACHINE_ID')!=config['machine_id'] or config['machine_id'] in PROTECTED:
         raise ValueError('runtime app/machine ownership mismatch')
     if not 16<=len(config['nonce'])<=128:raise ValueError('nonce budget')
@@ -86,6 +89,20 @@ def upstream(path):
         headers={k.lower():v for k,v in response.getheaders() if k.lower() in admitted_headers}
         return response.status,headers,bytes(body)
     finally:conn.close()
+
+def phase(config):
+    name=config.get('paths',{}).get('phase_state')
+    if name is None:return None
+    path=owned_path(Path(config['root']),name)
+    with path.open('rb') as stream:data=stream.read(1025)
+    if len(data)>1024:raise ValueError('phase budget')
+    value=json.loads(data)
+    if not isinstance(value,dict) or set(value)!={'schema','acked','inflight'} or type(value['schema']) is not int or value['schema']!=1:
+        raise ValueError('phase schema')
+    ack=value['acked'];pending=value['inflight']
+    if type(ack) is not int or not 0<=ack<=1_000_000 or pending is not None and (type(pending) is not int or pending!=ack+1):
+        raise ValueError('phase cursor')
+    return ack,pending
 
 def handler(config,binary):
     class Handler(http.server.BaseHTTPRequestHandler):
@@ -143,12 +160,25 @@ def handler(config,binary):
                     actual_binary=None;ready=False
                 data={key:config[key] for key in ['nonce','arm','machine_id','volume_id','guest','corpus_sha256','updates_sha256']}
                 data.update({'control_machine_id':config['machine_id'],'control_volume_id':config['volume_id'],'ready':ready,
+                             'runtime_machine_id':os.environ.get('FLY_MACHINE_ID'),'runtime_instance_id':os.environ.get('FLY_MACHINE_VERSION'),
                              'observer_receipt_sha256':config['_observer_sha256'],'engine_binary_sha256':actual_binary,'runtime_process_verified':process_verified,
                              'process_executable_sha256':executable_sha256,'synthetic_local_fixture':config.get('_synthetic_local_fixture',False),
-                             'source_kind':'frozen-synthetic-controller','source_ready_attestation':False,'engine_settings':config.get('engine_settings',{})})
+                             'source_kind':config.get('source_kind','frozen-synthetic-controller'),'source_ready_attestation':False,'engine_settings':config.get('engine_settings',{})})
                 self.emit(200,{'Content-Type':'application/json'},json.dumps(data,separators=(',',':')).encode());return
             if path.path not in ALLOWED or path.scheme or path.netloc:self.send_error(404);return
-            try:self.emit(*upstream(self.path))
+            try:
+                before=phase(config) if path.path in SEARCH_PATHS else None
+            except (OSError,ValueError):self.emit(503,{'Content-Type':'application/json'},b'{"error":"qualification phase unavailable"}');return
+            try:
+                status,headers,body=upstream(self.path)
+                if before is not None:
+                    try:
+                        after=phase(config)
+                        if after is None or after[0]<before[0]:raise ValueError('phase regressed')
+                        headers['X-Qualification-Cursor-Min']=str(before[0])
+                        headers['X-Qualification-Cursor-Max']=str(max(x for x in [*before,*after] if x is not None))
+                    except (OSError,ValueError):self.emit(503,{'Content-Type':'application/json'},b'{"error":"qualification phase unavailable"}');return
+                self.emit(status,headers,body)
             except Exception:self.emit(502,{'Content-Type':'application/json'},b'{"error":"qualification upstream failed"}')
         def do_POST(self):self.send_error(405)
         def log_message(self,*args):pass

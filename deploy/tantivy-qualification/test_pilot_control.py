@@ -17,6 +17,7 @@ p=importlib.util.module_from_spec(spec);spec.loader.exec_module(p)
 IMAGE='registry.fly.io/'+p.APP+'@sha256:'+'a'*64
 NATIVE='b'*64
 TANTIVY='c'*64
+ORACLE='d'*64
 
 class Clock:
     def __init__(self):self.value=1000.
@@ -140,6 +141,77 @@ class PilotTests(unittest.TestCase):
         _,plan=self.pilot.plan();native=plan['resolved']['machine:native-control'];tantivy=plan['resolved']['machine:tantivy-control']
         def url(mid,port):return f'http://{mid}.vm.{p.APP}.internal:{port}'
         self.pilot.configure_generator(url(native,8080),url(native,8082),url(tantivy,8080),url(tantivy,8082))
+    def test_default_pilot_remains_600_seconds_and_original_programs(self):
+        _,plan=self.pilot.plan()
+        self.assertEqual(plan['manifest']['mode'],'pilot')
+        self.assertEqual(plan['manifest']['deadline']-self.clock.now(),600)
+        self.assertEqual(set(plan['required_platform_secrets']),p.PILOT_SECRETS)
+        self.provision()
+        for role in ['native-control','tantivy-control','generator']:
+            actual=self.pilot.owned_machine(role)
+            self.assertEqual(actual['config']['env']['QUAL_MODE'],'pilot')
+            self.assertIn('/app/generator.py' if role=='generator' else '/app/pilot_bootstrap.py',actual['config']['init']['exec'])
+        args=p.arguments(['prepare','--image',IMAGE,'--native-binary-sha256',NATIVE,'--tantivy-binary-sha256',TANTIVY])
+        self.assertEqual((args.mode,args.seconds),('pilot',600))
+
+    def test_full_mode_http_provision_configuration_and_secret_contract(self):
+        self.control.save({'schema':1,'app':p.APP,'owner':p.OWNER,'machines':[],'volumes':[]})
+        result=self.pilot.prepare(IMAGE,NATIVE,TANTIVY,seconds=5400,mode='full',run_id='1234abcd5678',oracle_binary_sha256=ORACLE)
+        self.assertEqual(result['deadline']-self.clock.now(),5400)
+        self.assertFalse(self.api.calls)
+        _,plan=self.pilot.plan()
+        self.assertEqual(plan['manifest']['mode'],'full')
+        self.assertEqual(set(plan['required_platform_secrets']),p.SECRETS)
+        p.reaper.validate_manifest(plan['manifest'])
+        with self.assertRaisesRegex(p.PilotError,'reaper_not_armed'):self.pilot.provision()
+        self.provision();self.configure_all()
+        for role in ['native-control','tantivy-control','generator']:
+            before=self.pilot.owned_machine(role)
+            self.assertEqual(before['state'],'created')
+            self.assertIs(before['config']['auto_destroy'],True)
+            self.assertEqual(before['config']['env']['QUAL_MODE'],'full')
+            self.assertEqual(float(before['config']['env']['QUAL_DEADLINE']),result['deadline'])
+            self.assertIn('/app/full_generator.py' if role=='generator' else '/app/full_bootstrap.py',before['config']['init']['exec'])
+            self.assertEqual(before['config']['guest'],p.SMALL if role=='generator' else p.ENGINE)
+            self.assertEqual(before['config']['services'],[])
+            self.assertNotIn('QUAL_SOURCE_ACCESS',before['config']['env'])
+            if role in {'native-control','generator'}:self.assertEqual(before['config']['env']['QUAL_ORACLE_BINARY_SHA256'],ORACLE)
+            else:self.assertNotIn('QUAL_ORACLE_BINARY_SHA256',before['config']['env'])
+            self.pilot.start(role)
+        self.assertFalse(self.api.violations)
+        self.assertEqual({v['size_gb'] for v in self.api.volumes.values()},{20})
+        _,plan=self.pilot.plan();self.assertEqual(len(plan['started']),3)
+        self.assertEqual(self.pilot.cleanup()['status'],'cleaned')
+
+    def test_mode_lease_limits_and_cli_opt_in(self):
+        for mode,seconds in [('pilot',601),('full',5401),('unknown',600),('full',True),('full',0)]:
+            self.control.save({'schema':1,'app':p.APP,'owner':p.OWNER,'machines':[],'volumes':[]})
+            with self.assertRaises(p.PilotError):self.pilot.prepare(IMAGE,NATIVE,TANTIVY,seconds=seconds,mode=mode,oracle_binary_sha256=ORACLE)
+        self.assertFalse(self.api.calls)
+        self.pilot.prepare(IMAGE,NATIVE,TANTIVY,mode='full',oracle_binary_sha256=ORACLE)
+        _,plan=self.pilot.plan();self.assertEqual(plan['manifest']['deadline']-self.clock.now(),600)
+        args=p.arguments(['prepare','--image',IMAGE,'--native-binary-sha256',NATIVE,'--tantivy-binary-sha256',TANTIVY,'--mode','full','--seconds','5400','--oracle-binary-sha256',ORACLE])
+        self.assertEqual((args.mode,args.seconds),('full',5400));self.assertEqual(args.oracle_binary_sha256,ORACLE)
+
+    def test_full_requires_frozen_oracle_binding_before_any_allocation(self):
+        for oracle in [None,'','x'*64,'a'*63]:
+            self.control.save({'schema':1,'app':p.APP,'owner':p.OWNER,'machines':[],'volumes':[]})
+            with self.assertRaisesRegex(p.PilotError,'frozen_oracle_binary_hash_required'):
+                self.pilot.prepare(IMAGE,NATIVE,TANTIVY,mode='full',oracle_binary_sha256=oracle)
+        self.assertFalse(self.api.calls)
+        self.pilot.prepare(IMAGE,NATIVE,TANTIVY)
+        _,plan=self.pilot.plan();self.assertNotIn('oracle_binary_sha256',plan)
+        self.assertNotIn('QUAL_ORACLE_BINARY_SHA256',self.pilot.env(plan,'native-control'))
+
+    def test_source_access_is_never_accepted_inline_in_any_mode(self):
+        self.provision()
+        with self.assertRaisesRegex(p.PilotError,'public_configuration_only'):
+            self.pilot.update_env('native-control',{'QUAL_SOURCE_ACCESS':'synthetic-not-a-real-capability'})
+        actual=self.pilot.owned_machine('native-control')
+        self.api.machines[actual['id']]['config']['env']['QUAL_SOURCE_ACCESS']='synthetic-not-a-real-capability'
+        with self.assertRaisesRegex(p.PilotError,'reserved_or_inline_secret_environment'):self.pilot.owned_machine('native-control')
+        self.assertNotIn('synthetic-not-a-real-capability',self.path.read_text())
+
     def test_reaper_first_writeahead_and_paused_matched_shapes(self):
         with self.assertRaisesRegex(p.PilotError,'reaper_not_armed'):self.pilot.provision()
         self.assertFalse(self.api.calls)

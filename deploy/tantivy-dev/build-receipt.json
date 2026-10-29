@@ -1,6 +1,6 @@
 {
   "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
-  "normalizer_archive_sha256": "10962389993f0dfdca19f846dad3b2f846d3ed82a22f373997ea47a512dac351",
+  "normalizer_archive_sha256": "9d38c525399f223da9599dfc955db5a16c205b03d4eb832baf73437e7d5fc396",
   "sources": {
     "Cargo.toml": "7df7e28212c41cd039cca0b34665807247da3a39cf1ab97bafbab415184f7162",
     "smoke-results.json": "1cde562850d76dda7bac63f956244e9fdefb5ef8c17365e3fb53fadaeeb5be1e",
@@ -12,7 +12,7 @@
     "Cargo.lock": "730a2506d4ee1e2e3ea88c807d4af20187af616c4195feb616c8ccdbf430f67f",
     "build.rs": "7fd77abe9524def66af62480d4be778190fc11ae4c4e7169dacdf64d7d76fe0d",
     "source-version-only-v4-receipt.json": "7342366e5c9ac6bd3849732f5a46c161f52988660711ee383b2e8f7edf616481",
-    "README.md": "eec49c1e225e4664cadc06b861353394bdb9fb2838b3e24cbc4011a5aa35571b",
+    "README.md": "d2526aff2b962baf2082dea7a6346d8a3d03bff63b3fb69a770c78a29fad9165",
     "source-pds-results.json": "189fd6fc85e3776a5c60314f9a07a01a8d3bf9a6301c2e9545c3e3f4622a245d",
     "runtime-identity-receipt.json": "90f27229bf2f59dfb8c529446c0809e0886fc93599cce96bdb20087aba2c4d71",
     ".gitignore": "337613937fda3acd2ba7834aa3e1b1eacfe04c9cafb336dfd6dfb7b6827d8f3e",
@@ -48,8 +48,17 @@
     "tests/moderation/cases.json": "79743ee6b7094828aefa9e22e20a2db27405db2d6f59a63c01f988b84ef7b6ed",
     "tests/moderation/generate.ts": "7146f23c233f4fe2a26cf2fb543605c0693d5cfc75bb4286ee9a392f18693866"
   },
-  "cross_compile_seconds": 14.872547833016142,
+  "cross_compile_seconds": 16.123543624999,
   "target": "x86_64-unknown-linux-gnu.2.28",
+  "normalizer_sources": {
+    "services/tantivy-normalizer/adapter.zig": "387a409e5adb153695f9d10bf256c246a7b29620464fb1494c531fe61c651df0",
+    "services/src/index/normalize.zig": "c9147195ab41e53989059672a1e60c468b210721cb1fce96aa09dd2054988634",
+    "services/src/index/pds.zig": "bc1feb6d08b17395f6da82ef90a4378111923a2ec6c1210cf7be3ea03c7976a6",
+    "services/src/search.zig": "0e17a7565b47dab3c791c293d11f286ff539dce55c079a571aebc9d9576a963c"
+  },
+  "normalizer_builder_sha256": "4e81f2629c0eab247a8f54b933f621e8f2aebc05f1389292e1bc46695a08e272",
+  "normalizer_target": "x86_64-linux-gnu",
+  "normalizer_zig_version": "0.17.0",
   "input_sources": {
     "sync.py": "1e6b31e8aa701c083a008f41b923a6f16e8ab6d04dc31b12d985369f0ced50d9",
     "fixture.py": "c8bf534753c22c247a7382e219d16561cc6b3f4bcbde9454481ecc3f24f11fef",

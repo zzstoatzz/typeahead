@@ -27,8 +27,12 @@ remained ready; production routing stayed on the native slot. The deployed dev
 still uses the earlier source-v2 binary. The expiry-v4 candidate has not replaced it.
 
 Full-corpus matched performance, complete expiry coverage, bounded reconciliation
-rounds and native operator-prefix state remain open gates. No cutover readiness
-or production promotion is claimed.
+rounds, native operator-prefix state and engine-aware refresh ownership remain
+open gates. The current MPS repository controller rejects a Tantivy route before
+mutating slots, but that also prevents its native rollback command; an origin
+allowlist change alone would leave installation, qualification and retention
+assuming FLATPX05. Prepare and test those adapters before a later promotion.
+No cutover readiness or production promotion is claimed.
 
 ## Acceptance gates
 

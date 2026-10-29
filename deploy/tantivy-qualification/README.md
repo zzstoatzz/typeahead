@@ -31,8 +31,8 @@ preparation, measured separately; do not call a 32-second load a 32-second pilot
 | Stage | Initial bound |
 | --- | --- |
 | Tiny preparation and lifecycle pilot | 32–100 actors, at most 60 requests per arm, at most 90 seconds of measurement per arm; 5-minute preparation deadline |
-| Full preparation after pilot passes | One snapshot per independent cloud volume; at most 60 minutes for Tantivy and 10 minutes for native, stop/review if exceeded; at most 40 GiB temporary disk per arm, with a separate 20 GiB serving qualification |
-| Full measurement | One pass per engine, at most 15 minutes per arm, 10 requests/second, concurrency at most 8, response budget 512 KiB, request deadline 3 seconds |
+| Full preparation after pilot passes | One snapshot per independent cloud volume; at most 60 minutes per arm, including the native arm’s independent raw-profile oracle; 20 GiB throughout, with at least 1 GiB free |
+| Full measurement | One pass per engine, at most 15 minutes per arm, 10 requests/second, concurrency at most 4, response budget 512 KiB, request deadline 3 seconds |
 | First touch | 512 frozen distinct prefix/query cases, once each, 10 requests/second; no search seeding on measured index beforehand |
 | Warm | 1,200 frozen requests over 120 seconds at 10 requests/second |
 | Mixed | 3,000 frozen requests over 300 seconds, same frozen update feed and schedule for both engines |
@@ -53,6 +53,33 @@ state, then records those terminal dispositions. Pending-destroy volumes are
 [not billed](https://docs.fly.io/about/billing); physical purge is managed by Fly
 and is not claimed by the cleanup receipt. A new run ignores only validated
 terminal resources from its own archived runs, never unknown live resources.
+
+## Full-corpus runner
+
+`image/full_prepare.py` downloads the two pinned R2 objects directly into each
+owned Fly volume, verifies hashes and admits native data or imports Tantivy.
+`image/full_bootstrap.py` keeps a pristine baseline and runs the same nine-stage,
+64-actor update feed on each working engine. The native arm also streams all raw
+profiles through `experiments/tantivy-oracle` to derive 512 query expectations.
+Neither search engine's responses determine those expectations. The source is a
+frozen snapshot; this component cannot qualify live ingestion or policy freshness.
+
+`image/full_generator.py` measures the two arms sequentially, starting each
+engine only when it is ready to measure. It checks actual Machines/Volumes API
+records against runtime identity before each phase. Every request contributes to
+latency and failure counts, including incorrect native results. Tantivy must have
+zero truth/transport failures, meet 50 ms p95 / 100 ms p99 in warm and mixed phases,
+and match or beat native shared-feature p95 and p99 in every phase. Missing
+resource evidence, OOM, swap, insufficient disk reserve or telemetry gaps fail the
+gate. Raw request/resource details remain on the temporary generator; bounded
+summary receipts are retained from logs before cleanup.
+
+The controller's explicit `--mode full --seconds 5400` selects this path;
+default mode remains the tiny pilot. The independent reaper starts before either
+volume exists and expires the entire run after 90 minutes. Download capabilities
+are staged platform secrets limited to GET of the two immutable R2 objects. The
+image and receipts contain no source credentials. A passing result remains only
+the performance and frozen-feed component of the broader cutover qualification.
 
 ## Inputs and API contract
 

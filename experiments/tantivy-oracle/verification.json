@@ -1,0 +1,52 @@
+{
+  "actual_binary_test_groups": 6,
+  "binary_sha256": {
+    "target/release/tantivy-raw-oracle": "622148e740739a7e5468d777fb5f2792d644484f551556801a2db2bc54e773f2",
+    "target/x86_64-unknown-linux-gnu/release/tantivy-raw-oracle": "df91a1647580edf77d31fac4ce825c3205ca77781396bce0b620e96e2661ef61"
+  },
+  "full_corpus_or_cloud_claim": false,
+  "observed_at": "2026-10-29T19:35:12.673057+00:00",
+  "python_fraction_comparisons": 128,
+  "rust_exact_sum_unit_test_passed": true,
+  "schema_version": 1,
+  "scope": "bounded synthetic host verification; Linux cross-build only",
+  "source_sha256": {
+    "experiments/tantivy-oracle/Cargo.lock": "214602ed3f3749c23abea01fe78fbf8468ac0588c81a7448a81618cb7f609363",
+    "experiments/tantivy-oracle/Cargo.toml": "fc572dfbe5bdb47a7038a3817823bf3e7c9fabba01ea333931ba5d5167ef228b",
+    "experiments/tantivy-oracle/build.py": "988c52eb71194950c567607621d1caf232e7d8e3b52607fb9dc22b71c45f8f0b",
+    "experiments/tantivy-oracle/build.rs": "188fa69677bb768e9abf0cedbb823976666ffa33bb5af1be0d0fb0c5492d5807",
+    "experiments/tantivy-oracle/projection.zig": "25617550bc4608a28867a97d50144275f90e59fa53a8c01d00f466e842b30050",
+    "experiments/tantivy-oracle/src/ffi.rs": "5bcede152d82f1a646b094acbf17230479df31618e88f5209c7695b59d486f32",
+    "experiments/tantivy-oracle/src/main.rs": "13fcf71a8e71ca7a677faf36ff3f6b3f454155ca3ea7597857dc43190b679d38",
+    "experiments/tantivy-oracle/src/matching.rs": "a7c90c62a14dddc2895abf0a563b514d78de6162e06d4a7eed11fd02fb8985d5",
+    "experiments/tantivy-oracle/src/queries.rs": "8b5e8224370553b21a43b36091776aa046f559f12ec0a05a667a7e26a667d93f",
+    "experiments/tantivy-oracle/src/wide.rs": "d1f68d3b2ada6c2359e5d22ab6b84b65f49d9a74476f8de087213395689fec47",
+    "experiments/tantivy-oracle/test_oracle.py": "f0d703899989e9d5bbe1b10f050578014aaffea85f27b34912d8fd084eb287c4",
+    "services/src/index/normalize.zig": "c9147195ab41e53989059672a1e60c468b210721cb1fce96aa09dd2054988634",
+    "services/src/index/pds.zig": "bc1feb6d08b17395f6da82ef90a4378111923a2ec6c1210cf7be3ea03c7976a6",
+    "services/src/search.zig": "0e17a7565b47dab3c791c293d11f286ff539dce55c079a571aebc9d9576a963c",
+    "services/tantivy-normalizer/adapter.zig": "387a409e5adb153695f9d10bf256c246a7b29620464fb1494c531fe61c651df0",
+    "src/identity-quarantine.json": "1ed23ca57f8c03e841a703c55ca1b4335897de01c9dc58f642dbf6aca5529a09"
+  },
+  "synthetic_pilot": {
+    "actors": 10000,
+    "full_corpus_or_cloud_claim": false,
+    "queries": 512,
+    "runner": {
+      "actors_checked": 10000,
+      "cases": 512,
+      "checkpoints": 1,
+      "full_live_policy_qualification": false,
+      "output_bytes": 126410,
+      "output_sha256": "f3870c176bc22719c99d68dc2a22569fdc04b5929a9c0d799c1b68b17fe9aeb8",
+      "passed": true,
+      "peak_rss_mb": 6,
+      "queries_sha256": "70401431d085aa125d2945a36b519024d1f119f6be4c782c5f9cbfa4cc396e8f",
+      "scope": "frozen-raw-profile-oracle",
+      "source_sha256": "111ebae308747a3c8e5cfe0c39dc6c3cc33d69848d15f0fe7502e64160dd2f2f",
+      "wall_seconds": 0.058459167
+    },
+    "seconds": 0.06327212502947077
+  },
+  "test_only": true
+}

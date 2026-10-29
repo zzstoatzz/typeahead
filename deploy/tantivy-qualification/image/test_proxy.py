@@ -20,6 +20,7 @@ class Proxy(unittest.TestCase):
         class Upstream(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 cls.calls.append(self.path)
+                if self.path=='/search?phaseadvance=1':cls.phase_path.write_text(json.dumps({'schema':1,'acked':1,'inflight':None}))
                 if self.path=='/health':body=b'{"ready":true}'
                 elif self.path=='/search?large=1':body=b'x'*524289
                 else:body=b'{"actors":[{"did":"did:fixture:a"}]}'
@@ -31,6 +32,7 @@ class Proxy(unittest.TestCase):
         cls.binary=Path(cls.fixture.name)/'binary';cls.binary.write_text('fixture-executable')
         config={'nonce':'synthetic-qualification-proxy','arm':'native','machine_id':'fixture-machine','volume_id':'fixture-volume',
                 'guest':{'cpu_kind':'shared','cpus':2,'memory_mb':1024},'corpus_sha256':'a'*64,'updates_sha256':'b'*64,'_observer_sha256':'c'*64}
+        cls.config=config;cls.phase_path=Path(cls.fixture.name)/'phase.json'
         cls.proxy=entry.PrivateHTTPServer(('::1',0),entry.handler(config,cls.binary))
         for server in [cls.up,cls.proxy]:threading.Thread(target=server.serve_forever,daemon=True).start()
     @classmethod
@@ -60,6 +62,24 @@ class Proxy(unittest.TestCase):
         self.assertTrue(response.startswith(b'HTTP/1.1 414'));self.assertEqual(len(self.calls),before)
     def test_identity_explicitly_synthetic(self):
         code,_,body=self.request('/__evaluation');data=json.loads(body);self.assertEqual(code,200);self.assertTrue(data['ready']);self.assertFalse(data['source_ready_attestation']);self.assertEqual(data['source_kind'],'frozen-synthetic-controller');self.assertEqual(data['engine_binary_sha256'],hashlib.sha256(self.binary.read_bytes()).hexdigest())
+    def test_phase_headers_cover_a_commit_during_real_http_forwarding(self):
+        self.config.update(root=self.fixture.name,paths={'phase_state':str(self.phase_path)})
+        try:
+            self.phase_path.write_text(json.dumps({'schema':1,'acked':0,'inflight':1}))
+            code,headers,body=self.request('/search?phaseadvance=1')
+            self.assertEqual(code,200);self.assertEqual(json.loads(body)['actors'][0]['did'],'did:fixture:a')
+            self.assertEqual(headers['X-Qualification-Cursor-Min'],'0');self.assertEqual(headers['X-Qualification-Cursor-Max'],'1')
+        finally:
+            self.config.pop('root');self.config.pop('paths')
+    def test_bad_phase_fails_before_engine_work(self):
+        self.config.update(root=self.fixture.name,paths={'phase_state':str(self.phase_path)})
+        try:
+            for data in [b'x'*1025,b'{"schema":1,"acked":true,"inflight":null}',b'{"schema":1,"acked":2,"inflight":4}']:
+                self.phase_path.write_bytes(data);before=len(self.calls)
+                code,_,body=self.request('/search?q=a');self.assertEqual(code,503);self.assertEqual(len(self.calls),before)
+                self.assertEqual(json.loads(body)['error'],'qualification phase unavailable')
+        finally:
+            self.config.pop('root');self.config.pop('paths')
 
 if __name__=='__main__':
     program=unittest.main(exit=False)

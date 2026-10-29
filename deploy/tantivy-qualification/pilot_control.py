@@ -1,4 +1,4 @@
-"""Explicit cloud pilot preparation/provisioning; importing performs no API calls.
+"""Explicit cloud pilot/full preparation/provisioning; importing performs no API calls.
 
 prepare pins image/binary hashes and writes all pending names before creation.
 launch_reaper is the only first paid guest. provision requires its matching ARMED
@@ -6,7 +6,9 @@ receipt and checks its running ownership before every subsequent allocation.
 Engines/generator are created paused with auto_destroy false. Their final public
 configuration atomically enables auto_destroy before explicit start. A lost update
 reply is confirmed by GET, never retried against an auto-destroy guest. Platform supplies ADMIN_SECRET, QUAL_CONTROL_SECRET and
-QUAL_REAPER_CAPABILITY; values never enter this module, requests or ledger.
+QUAL_REAPER_CAPABILITY; full mode additionally requires QUAL_SOURCE_ACCESS.
+Secret values never enter this module, requests or ledger. Pilot remains the
+default 600-second lease; full requires --mode full and allows at most 5400 seconds.
 """
 import argparse
 import base64
@@ -34,7 +36,9 @@ OWNER=reaper.OWNER
 ENGINE={'cpu_kind':'shared','cpus':2,'memory_mb':1024}
 SMALL={'cpu_kind':'shared','cpus':1,'memory_mb':256}
 ENGINE_ROLES={'native-control':'native','tantivy-control':'tantivy'}
-SECRETS={'ADMIN_SECRET','QUAL_CONTROL_SECRET','QUAL_REAPER_CAPABILITY'}
+SECRETS={'ADMIN_SECRET','QUAL_CONTROL_SECRET','QUAL_REAPER_CAPABILITY','QUAL_SOURCE_ACCESS'}
+PILOT_SECRETS=SECRETS-{'QUAL_SOURCE_ACCESS'}
+LEASE_SECONDS={'pilot':600,'full':5400}
 
 class PilotError(Exception):pass
 
@@ -75,17 +79,19 @@ class Pilot:
     def call(self,method,path,body=None):
         try:return self.control.api(method,path,body)
         except RuntimeError:raise PilotError('qualification_api_failed') from None
-    def prepare(self,image,native_binary_sha256,tantivy_binary_sha256,seconds=600,region='ewr',run_id=None):
+    def prepare(self,image,native_binary_sha256,tantivy_binary_sha256,seconds=600,region='ewr',run_id=None,mode='pilot',oracle_binary_sha256=None):
         value=self.state()
         if value.get('machines') or value.get('volumes') or value.get('pilot',{}).get('phase') not in (None,'cleaned'):
             raise PilotError('existing_run_requires_cleanup')
         if not re.fullmatch(re.escape('registry.fly.io/'+APP+'@sha256:')+'[a-f0-9]{64}',image):raise PilotError('immutable_qualification_image_required')
         if not binary_sha(native_binary_sha256) or not binary_sha(tantivy_binary_sha256):raise PilotError('frozen_binary_hashes_required')
-        if type(seconds) is not int or not 1<=seconds<=600 or region!='ewr':raise PilotError('pilot_budget_or_region')
+        if mode not in LEASE_SECONDS:raise PilotError('qualification_mode')
+        if mode=='full' and not binary_sha(oracle_binary_sha256):raise PilotError('frozen_oracle_binary_hash_required')
+        if type(seconds) is not int or not 1<=seconds<=LEASE_SECONDS[mode] or region!='ewr':raise PilotError('pilot_budget_or_region')
         run_id=run_id or secrets.token_hex(6);now=self.now();deadline=now+seconds
         def entry(role,kind='machine'):
             return {'name':('tq-' if kind=='machine' else 'tq_')+run_id+('-' if kind=='machine' else '_')+role,'role':role}
-        manifest={'schema':1,'app':APP,'owner':OWNER,'run_id':run_id,'mode':'pilot','created_after':now-30,
+        manifest={'schema':1,'app':APP,'owner':OWNER,'run_id':run_id,'mode':mode,'created_after':now-30,
                   'created_before':deadline,'deadline':deadline,'machines':[entry('native-control'),entry('tantivy-control'),entry('generator')],
                   'volumes':[entry('native','volume'),entry('tantivy','volume')],'reaper':entry('reaper')}
         try:reaper.validate_manifest(manifest)
@@ -101,7 +107,8 @@ class Pilot:
         pilot={'phase':'prepared','image':image,'region':region,'manifest':manifest,'manifest_sha256':digest(manifest),
                'nonce':secrets.token_hex(16),'watermark':int(now)-60,'attempts':{},'resolved':{},'armed':None,
                'native_binary_sha256':native_binary_sha256,'tantivy_binary_sha256':tantivy_binary_sha256,
-               'required_platform_secrets':sorted(SECRETS)}
+               'required_platform_secrets':sorted(SECRETS if mode=='full' else PILOT_SECRETS)}
+        if mode=='full':pilot['oracle_binary_sha256']=oracle_binary_sha256
         value.update(pilot=pilot,phase='pilot-prepared');self.save(value)
         return {'phase':'prepared','run_id':run_id,'deadline':deadline,'manifest_sha256':pilot['manifest_sha256']}
     def entry(self,pilot,kind,role):
@@ -169,9 +176,14 @@ class Pilot:
         if actual is None or actual.get('state')!='started':raise PilotError('reaper_not_running')
     def metadata(self,pilot,role):return {'owner':OWNER,'run_id':pilot['manifest']['run_id'],'role':role}
     def env(self,pilot,role):
-        values={'QUAL_RUN_ID':pilot['manifest']['run_id'],'QUAL_PILOT_NONCE':pilot['nonce'],
+        values={'QUAL_MODE':pilot['manifest']['mode'],'QUAL_RUN_ID':pilot['manifest']['run_id'],'QUAL_PILOT_NONCE':pilot['nonce'],
                 'QUAL_WATERMARK':str(pilot['watermark']),'QUAL_DEADLINE':str(pilot['manifest']['deadline'])}
         if role in ENGINE_ROLES:values['QUAL_ROLE']=role
+        if pilot['manifest']['mode']=='full':values['QUAL_IMAGE_DIGEST']=pilot['image']
+        if pilot['manifest']['mode']=='full' and role in {'native-control','generator'}:
+            oracle=pilot.get('oracle_binary_sha256')
+            if not binary_sha(oracle):raise PilotError('frozen_oracle_binary_hash_required')
+            values['QUAL_ORACLE_BINARY_SHA256']=oracle
         return values
     def hard_command(self,command,reaper_mode=False):
         script="import os,sys,time;d=float(os.environ['QUAL_DEADLINE'])+%d-time.time();sys.exit(0) if d<=0 else None;os.execvp('timeout',['timeout','--signal=TERM','--kill-after=5',str(max(1,int(d)))]+sys.argv[1:])"%(330 if reaper_mode else 0)
@@ -183,7 +195,9 @@ class Pilot:
             script="import base64,os,pathlib,sys;p=pathlib.Path('/tmp/reaper.json');b=base64.b64decode(os.environ['QUAL_REAPER_MANIFEST_B64']);f=os.open(p,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600);os.write(f,b);os.close(f);os.execv(sys.executable,[sys.executable,'/app/input/reaper.py','--daemon','--manifest',str(p)])"
             command=self.hard_command(['python3','-c',script],True)
         else:
-            command=self.hard_command(['python3','/app/pilot_bootstrap.py' if role in ENGINE_ROLES else '/app/generator.py'])
+            full=pilot['manifest']['mode']=='full'
+            program=('full_bootstrap.py' if full else 'pilot_bootstrap.py') if role in ENGINE_ROLES else ('full_generator.py' if full else 'generator.py')
+            command=self.hard_command(['python3','/app/'+program])
             if role in ENGINE_ROLES:
                 vid=self.registered(pilot,'volume',ENGINE_ROLES[role])
                 if not vid:raise PilotError('engine_volume_unresolved')
@@ -326,6 +340,7 @@ class Pilot:
                 host=urllib.parse.urlsplit(values[key]).hostname
                 if host!=expected and host!=actual.get('private_ip'):raise PilotError('private_origin_is_not_owned_engine')
         values.update(QUAL_NATIVE_BINARY_SHA256=pilot['native_binary_sha256'],QUAL_TANTIVY_BINARY_SHA256=pilot['tantivy_binary_sha256'])
+        if pilot['manifest']['mode']=='full':values['QUAL_ORACLE_BINARY_SHA256']=pilot['oracle_binary_sha256']
         return self.update_env('generator',values)
     def start(self,role):
         value,pilot=self.plan();self.lease(pilot);self.alive_reaper(pilot)
@@ -375,16 +390,19 @@ class Pilot:
         value,pilot=self.plan();pilot['reaper_retired']=True;value['machines']=[];value['volumes']=[];value['phase']='pilot-cleaned';self.save(value)
         return result|{'reaper_retired':True}
 
-def main():
+def arguments(argv=None):
     parser=argparse.ArgumentParser(description=__doc__);sub=parser.add_subparsers(dest='action',required=True)
-    p=sub.add_parser('prepare');p.add_argument('--image',required=True);p.add_argument('--native-binary-sha256',required=True);p.add_argument('--tantivy-binary-sha256',required=True);p.add_argument('--seconds',type=int,default=600)
+    p=sub.add_parser('prepare');p.add_argument('--image',required=True);p.add_argument('--native-binary-sha256',required=True);p.add_argument('--tantivy-binary-sha256',required=True);p.add_argument('--seconds',type=int,default=600);p.add_argument('--mode',choices=sorted(LEASE_SECONDS),default='pilot');p.add_argument('--oracle-binary-sha256')
     sub.add_parser('launch-reaper');p=sub.add_parser('provision');p.add_argument('--armed-receipt',type=Path,required=True)
     p=sub.add_parser('configure-engine');p.add_argument('--role',choices=sorted(ENGINE_ROLES),required=True);p.add_argument('--observer',type=Path,required=True)
     p=sub.add_parser('configure-generator')
     for key in ['native-url','native-control-url','tantivy-url','tantivy-control-url']:p.add_argument('--'+key,required=True)
     p=sub.add_parser('start');p.add_argument('--role',choices=['native-control','tantivy-control','generator'],required=True)
-    sub.add_parser('reconcile');sub.add_parser('cleanup');args=parser.parse_args();pilot=Pilot()
-    if args.action=='prepare':result=pilot.prepare(args.image,args.native_binary_sha256,args.tantivy_binary_sha256,args.seconds)
+    sub.add_parser('reconcile');sub.add_parser('cleanup');return parser.parse_args(argv)
+
+def main():
+    args=arguments();pilot=Pilot()
+    if args.action=='prepare':result=pilot.prepare(args.image,args.native_binary_sha256,args.tantivy_binary_sha256,args.seconds,mode=args.mode,oracle_binary_sha256=args.oracle_binary_sha256)
     elif args.action=='launch-reaper':result=pilot.launch_reaper()
     elif args.action=='provision':result=pilot.provision(json.loads(args.armed_receipt.read_text()))
     elif args.action=='configure-engine':result=pilot.configure_engine(args.role,json.loads(args.observer.read_text()))

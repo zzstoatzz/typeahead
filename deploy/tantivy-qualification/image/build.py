@@ -22,6 +22,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--rust-binary',type=Path)
     parser.add_argument('--rust-sha256')
+    parser.add_argument('--oracle-binary',type=Path)
+    parser.add_argument('--oracle-sha256')
     parser.add_argument('--skip-native-build',action='store_true')
     parser.add_argument('--docker',action='store_true')
     parser.add_argument('--tag',default='typeahead-qualification:local')
@@ -64,9 +66,21 @@ def main():
         shutil.copy2(args.rust_binary,context/'bin/typeahead-tantivy')
         if sha(context/'bin/typeahead-tantivy')!=args.rust_sha256:raise ValueError('Rust binary changed during copy')
         engines.append('tantivy')
-    for name in ['Dockerfile','entrypoint.py','pilot_bootstrap.py','generator.py']:shutil.copyfile(HERE/name,context/name)
+    if args.oracle_binary:
+        linux_elf(args.oracle_binary)
+        if not args.oracle_sha256 or sha(args.oracle_binary)!=args.oracle_sha256:raise ValueError('frozen oracle binary hash required')
+        shutil.copy2(args.oracle_binary,context/'bin/tantivy-raw-oracle')
+        if sha(context/'bin/tantivy-raw-oracle')!=args.oracle_sha256:raise ValueError('oracle binary changed during copy')
+    guest_sources=['entrypoint.py','pilot_bootstrap.py','generator.py','full_prepare.py','full_bootstrap.py','full_generator.py','telemetry.py']
+    for name in ['Dockerfile',*guest_sources]:shutil.copyfile(HERE/name,context/name)
+    shutil.copyfile(REPO/'docs/evals/tantivy-dev-20261028/source-manifest.json',context/'source-manifest.json')
+    shutil.copyfile(REPO/'src/identity-quarantine.json',context/'identity-quarantine.json')
     metadata={'kind':'private-matched-qualification-image','base':BASE,'engines':engines,'native':receipt,
               'rust_binary_sha256':args.rust_sha256,'entrypoint_sha256':sha(HERE/'entrypoint.py'),
+              'full_prepare_sha256':sha(HERE/'full_prepare.py'),'source_manifest_sha256':sha(context/'source-manifest.json'),
+              'full_preparation_enabled':args.oracle_binary is not None and args.rust_binary is not None,
+              'oracle_binary_sha256':args.oracle_sha256,'guest_sources_sha256':{name:sha(HERE/name) for name in guest_sources},
+              'identity_policy_sha256':sha(context/'identity-quarantine.json'),
               'pilot_bootstrap_sha256':sha(HERE/'pilot_bootstrap.py'),'generator_sha256':sha(HERE/'generator.py'),
               'input_sources_sha256':{p.name:sha(p) for p in (context/'input').iterdir()},
               'fixture_max_actors':100,'final_guest':{'cpu_kind':'shared','cpus':2,'memory_mb':1024},

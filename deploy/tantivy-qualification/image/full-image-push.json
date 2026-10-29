@@ -1,0 +1,6 @@
+{
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:c3d29aba045c9b2a57fe0080f61a480497eb68a85387b25853ad39e89ad9166a",
+  "pushed_at": 1793305093.067641,
+  "local_image": "typeahead-qualification:full-local",
+  "app": "typeahead-qual-20261029"
+}
