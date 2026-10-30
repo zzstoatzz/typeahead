@@ -1,5 +1,8 @@
 """Durable cloud identity verification queue; independent of profile timestamps."""
 import sqlite3
+import re
+import zlib
+import urllib.parse
 import time
 import uuid
 from contextlib import closing
@@ -30,6 +33,25 @@ class Queue:
         with closing(sqlite3.connect(self.path)) as db, db:
             db.executemany('INSERT OR IGNORE INTO identities(did,due_at) VALUES(?,?)', [(did, now) for did in dids])
             db.execute("INSERT INTO cursors VALUES('source_rowid',?) ON CONFLICT(name) DO UPDATE SET value=MAX(value,excluded.value)", (cursor,))
+
+    def discover_records(self, records, cursor, now=None):
+        now = int(time.time()) if now is None else now
+        inserted = excluded = 0
+        with closing(sqlite3.connect(self.path)) as db, db:
+            db.execute('BEGIN IMMEDIATE')
+            for _, did, pds in records:
+                if not (re.fullmatch(r'did:plc:[a-z2-7]{24}', did) or did.startswith('did:web:')):
+                    excluded += 1
+                    continue
+                parsed = urllib.parse.urlsplit(pds or '')
+                known = parsed.scheme == 'https' and bool(parsed.hostname) and not parsed.username and not parsed.password and parsed.path in ('', '/') and not parsed.query and not parsed.fragment
+                delay = zlib.crc32(did.encode()) % (30 * 86400) if known else 0
+                result = db.execute('INSERT OR IGNORE INTO identities(did,due_at) VALUES(?,?)', (did, now + delay))
+                inserted += result.rowcount
+            db.execute("INSERT INTO cursors VALUES('source_rowid',?) ON CONFLICT(name) DO UPDATE SET value=MAX(value,excluded.value)", (cursor,))
+            for name, amount in (('discovered_rows', len(records)), ('excluded_identity_rows', excluded)):
+                db.execute('INSERT INTO cursors VALUES(?,?) ON CONFLICT(name) DO UPDATE SET value=value+excluded.value', (name, amount))
+        return {'inserted': inserted, 'excluded': excluded}
 
     def cursor(self):
         with closing(sqlite3.connect(self.path)) as db:

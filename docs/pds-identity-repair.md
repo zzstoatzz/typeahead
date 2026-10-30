@@ -176,3 +176,18 @@ Bounded qualification has a shared 64 MiB response-body transfer ceiling across
 source, PLC authority, health and search requests, in addition to the runtime and
 identity caps. It records bytes consumed on completion. This is a response-body
 budget, not a measurement of TLS/network overhead or Fly billing.
+
+`pds_freshness_discover.py` populates a cloud queue using a saved source rowid
+cursor. Each invocation has page, transfer, time and disk bounds and takes the
+same writer lock as freshness execution. It reads only DID and PDS fields;
+queue inserts and the cursor advance commit together. Repeated discovery does
+not reset existing verification times. Unknown hosting is due immediately;
+known hosting is spread across the first 30 days, then revalidated 30 days after
+each successful check. Malformed/unsupported DID rows are counted as exclusions.
+`did:web` rows are retained, but the current runner only resolves PLC and will
+back off web identities until that resolution path is implemented.
+
+A cloud discovery pilot read 1,000 source rows in 0.157 seconds (155,860 response
+bytes), retained 999 identities and excluded one malformed DID. Its queue is on
+the dedicated persistent volume. This confirms bounded deployed discovery, not
+full source coverage, machine-restart durability or a recurring schedule.
