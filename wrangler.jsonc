@@ -7,7 +7,8 @@
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "vars": {
     "SERVICE_DID": "did:plc:y6kywgnb7xletjpa5hhxmd4k",
-    "PDS_UI_ENABLED": "1"
+    "PDS_UI_ENABLED": "1",
+    "SEARCH_CACHE_GENERATION": "tantivy-b1793346536-cp-7c8322df79-cutover"
   },
   "services": [{ "binding": "SEARCH_TRANSPORT", "service": "typeahead-search-transport" }],
   "kv_namespaces": [
