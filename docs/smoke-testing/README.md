@@ -1,15 +1,15 @@
 # Community smoke testing
 
 [Invitation](invitation.md) and [agent prompt](agent-prompt.md).
-The prompt is also available as a [Tangled string](https://next.tangled.org/strings/zzstoatzz.io/3mz4cjm4mnn22).
+The prompt is also available as a [Tangled string](https://next.tangled.org/strings/zzstoatzz.io/3mz4crmo6db22).
 
 Tagged smoke traffic remains in operational request/error/search totals, but
 `smoke-testing` and the earlier `community-smoke-test` label are excluded from
 public app lists and app counts. No stored traffic is deleted. Hourly materialized
 app counts and link previews adopt the exclusion on their next scheduled refresh.
 
-The agent asks for accounts and expected queries first, then runs a read-only
-20-request maximum at no more than one request every two seconds. UI behavior
+The agent asks for accounts and expected queries first. The current prompt
+sets no request-count or pacing cap; it respects the service's rate-limit responses. UI behavior
 requires browser interaction; API requests alone do not verify it. Testers can
 write small scripts with the same limits. Reports distinguish unexpected results
 from source-coverage uncertainty and subjective ranking preferences.
@@ -18,7 +18,7 @@ Pi's cached Codex credential was rejected despite its future stored expiry.
 A forced refresh through `pi auth print-bearer-token --provider openai-codex
 --min-expiry 168h > /dev/null` recovered it without exposing the token.
 The no-tools intake rehearsal then asked for accounts and expectations as intended.
-The subsequent [API rehearsal](pi-rehearsal.md) completed eight paced GETs,
+The prior, longer prompt's [API rehearsal](pi-rehearsal.md) completed eight paced GETs,
 covering three exact handles, prefixes and alias equivalence. No UI interaction
 was claimed.
 Run from a scratch directory:

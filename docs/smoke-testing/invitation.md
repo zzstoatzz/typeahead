@@ -1,21 +1,18 @@
-hey folks!
+# Bluesky thread draft
 
-anyone wanna help me smoke test https://typeahead.waow.tech?
+hey folks! anyone wanna help me test https://typeahead.waow.tech?
 
-we've switched the search engine, and i'd love some searches from people who
-know what they're looking for. any of these would help:
+we’ve switched the search engine. try finding yourself or people you know, and tell me if anything’s missing, oddly ranked, or broken on your phone.
 
-- try the homepage with your own account or people you know
-- try partial handles, display names, multiple words, or non-latin names
-- if you know your PDS, try filtering to it or preferring accounts hosted there
-- if you build things, try the API—or write a small script for accounts you care about
+---
 
-missing someone? weird ordering? something broken on your phone? send me what
-you typed, who you expected, and what happened. a screenshot or search URL helps.
+partial handles, display names, multiple words, non-latin names—all useful. you can also filter to a PDS or prefer accounts hosted there.
 
-if you'd rather hand it to an agent, here's a prompt that asks which accounts
-you care about and walks through a small test: https://next.tangled.org/strings/zzstoatzz.io/3mz4cjm4mnn22
+if something surprises you, send what you typed, who you expected, and what happened. screenshots or search URLs help!
 
-API docs: https://typeahead.waow.tech/docs · agents: https://typeahead.waow.tech/llms.txt
+---
 
-please keep scripts gentle—this is smoke testing, not a load test :)
+you can try the API or write scripts too—please use X-Client: smoke-testing so we can distinguish test traffic.
+
+or hand this prompt to an agent; it’ll ask which accounts you care about and help test them:
+https://next.tangled.org/strings/zzstoatzz.io/3mz4crmo6db22
