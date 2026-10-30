@@ -40,7 +40,8 @@ bun test scripts/snapshot_refresh/route-rehearsal.test.ts -t 'approved live back
 
 The evidence file must be new. The owning route parser validates the input, and
 live mode permits only the two approved native origins and parallel Tantivy A/B.
-The adapter forwards only `GET /search?q=zzstoatzz.io&limit=10`, strips credentials,
+The adapter forwards `GET /search?q=zzstoatzz.io&limit=10` plus fixed read-only
+`/health` and `/index/status` probes on the selected native origin. It strips credentials,
 rejects redirects, limits responses to 1 MiB, starts requests at least one second
 apart, and stops at sixteen attempts or a sixty-second network budget. Each
 upstream request has a two-second timeout. Unexpected egress is rejected before
@@ -49,7 +50,12 @@ network access.
 The sequence verifies both public aliases, switches the local R2 object to the
 candidate, rejects a stale ETag, then rolls that local object back to native.
 Search responses must identify the expected engine/build and the candidate's
-actual binary/strategy; the known handle must be first. Alias bodies must agree.
+actual binary/strategy; the known handle must be first. Native search omits a
+build header on existing deployments, so native identity is established by
+health/index probes before and after each native phase. These must report the
+selected build, an attached FLATPX05 snapshot and unchanged snapshot watermark.
+An absent native search build header stays null in evidence; any present header
+must match. No identity header is fabricated. Alias bodies must agree.
 Each phase uses a separate local cache generation after a 1.1-second local route
 settling interval. This is functional evidence, not a propagation or latency
 measurement. The report retains body hashes and counts, not actor payloads.
@@ -67,3 +73,10 @@ reads:
 ```sh
 bun test scripts/snapshot_refresh/rehearsal-live-origin.test.ts scripts/snapshot_refresh/route-rehearsal.test.ts
 ```
+
+The October 30 [real-origin receipt](../evals/tantivy-dev-20261028/checkpoint-live-route-rehearsal.json)
+passes native→A→native using the installed checkpoint candidate. It preserves
+the earlier [failed header-assumption receipt](../evals/tantivy-dev-20261028/checkpoint-live-route-rehearsal-failed-native-header.json).
+Native searches omit their build header; the corrected proof uses their actual
+health/index contract. All route mutations in this run were local R2 operations;
+production routing and serving machines were unchanged.

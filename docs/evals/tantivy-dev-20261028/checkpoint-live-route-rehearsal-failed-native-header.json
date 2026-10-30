@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-30T09:18:11.668Z",
+  "passed": false,
+  "scope": "local-Worker-and-R2-with-approved-live-GET-backends",
+  "source_sha256": {
+    "src/handlers/search.ts": "c06e881de1f72ba5638bb799a0ffd03d8a35dfb912f47f69ec587d5576a7af7a",
+    "src/handlers/search-contract.ts": "8453f50d6e4e6806d8dfcbbace5aaec26418fe250c533fa207e4ee909ecb4eb7",
+    "src/search-transport.ts": "ece8570d46361e2498bf313b72be8f2592c9b80c216e081f53c2991facb2708a",
+    "src/search-route.ts": "503d6be86adeed3b4618d7bcfc94bde731c6f134f2dfc0f9203b4e30f91912d7",
+    "src/validated-search.ts": "05a97a942c37a9a204dc79f50c0909a6bc1fd12fccf5e63a651358d6da956802",
+    "scripts/snapshot_refresh/route-rehearsal.test.ts": "20a782625edd7dc292eb4b7c8398cc96fdecb272ead27ceecf1f716a5f8ee848",
+    "scripts/snapshot_refresh/rehearsal-live-origin.ts": "d80694100391902cf597ec777c60f7c613d5073dcff644c997e122d4d2d9410a"
+  },
+  "configuration_sha256": "0cf43f7f85348535cce383967979287e8864a3468f8e3643b0ecd0bfbc74cbda",
+  "configuration": {
+    "native": {
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "build_id": "b1793109259-2b36-px05"
+    },
+    "candidate": {
+      "engine": "tantivy",
+      "origin": "https://typeahead-tantivy-a.fly.dev",
+      "build_id": "b1793346536-cp-7c8322df79",
+      "format": "tantivy-0.27-f32-did-expiry-v4",
+      "admission_sha256": "4196e7b356375ba005f502c933fae00153fa13e440237a10aeaf95f458b1d69d",
+      "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+      "retrieval_strategy": "global-merge"
+    }
+  },
+  "limits_and_requests": {
+    "request_count": 1,
+    "maximum_requests": 16,
+    "minimum_interval_ms": 1000,
+    "maximum_response_bytes": 1048576,
+    "request_timeout_ms": 2000,
+    "maximum_wall_ms": 60000,
+    "calls": [
+      {
+        "origin": "https://typeahead-startup-20261024.fly.dev",
+        "status": 200,
+        "bytes": 2191,
+        "started_ms": 1395.86975
+      }
+    ]
+  },
+  "samples": [],
+  "remote_route_writes": 0,
+  "remote_non_GET_requests": 0,
+  "remote_corpus_copies": 0,
+  "route_settle_wait_ms": 1100,
+  "source_freshness_qualified": false,
+  "release_qualified": false,
+  "production_route_changed": false
+}

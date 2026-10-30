@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { createServer } from "node:http";
-import { liveConfiguration, liveOriginAdapter } from "./rehearsal-live-origin";
+import { liveConfiguration, liveOriginAdapter, nativeIdentity } from "./rehearsal-live-origin";
 
 const input = {
   schema_version: 1,
@@ -49,5 +49,24 @@ test("approved live adapter uses bounded credential-free GETs and rejects redire
     await expect(adapter.request(new Request(url))).rejects.toThrow();
     expect(calls.every(call => call.method === "GET" && !call.authorization && !call.cookie)).toBe(true);
     expect(adapter.evidence().request_count).toBe(4);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+}, 10000);
+
+test("native identity uses real health/index HTTP metadata and rejects a different build", async () => {
+  let wrongBuild = false;
+  const server = createServer((request, response) => {
+    const value = request.url === "/health" ? { ready: true } : { attached: true, snapshot_format: "FLATPX05", build_id: wrongBuild ? "b1792908655-other" : input.native.build_id, source_watermark: 100, actor_count: 10 };
+    response.setHeader("Content-Type", "application/json"); response.end(JSON.stringify(value));
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Loopback server unavailable");
+  const configuration = liveConfiguration(input);
+  const adapter = liveOriginAdapter(configuration, (url, options) => fetch(`http://127.0.0.1:${address.port}${url.pathname}`, options));
+  try {
+    expect((await nativeIdentity(configuration, adapter)).build_id).toBe(input.native.build_id);
+    wrongBuild = true;
+    await expect(nativeIdentity(configuration, adapter)).rejects.toThrow("build identity mismatch");
+    await expect(adapter.request(new Request(input.candidate.origin + "/index/status"))).rejects.toThrow("egress rejected");
   } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 }, 10000);

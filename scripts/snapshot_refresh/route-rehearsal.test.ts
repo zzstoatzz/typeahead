@@ -7,7 +7,7 @@ import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { z } from "zod";
-import { liveConfiguration, liveOriginAdapter } from "./rehearsal-live-origin";
+import { liveConfiguration, liveOriginAdapter, nativeIdentity } from "./rehearsal-live-origin";
 
 const aliases = ["/xrpc/tech.waow.typeahead.searchActors", "/xrpc/app.bsky.actor.searchActorsTypeahead"];
 const transportOrigin = "https://typeahead-search-transport.n8-3e9.workers.dev";
@@ -176,12 +176,15 @@ async function runLiveRehearsal(configuration: ReturnType<typeof liveConfigurati
     const response = await dispatch("/__fixture/route", { method: "POST", headers: etag ? { "If-Match": etag } : {}, body: JSON.stringify(candidate) });
     await response.arrayBuffer(); return response.status;
   };
-  const samples: { engine: string; build: string; body_sha256: string; actors: number }[] = [];
+  const samples: { engine: string; expected_build: string; build_header: string | null; body_sha256: string; actors: number }[] = [];
+  const nativeChecks: { phase: string; boundary: string; identity: Awaited<ReturnType<typeof nativeIdentity>> }[] = [];
   let passed = false;
   try {
     const db = await mf.getD1Database("DB", "public");
     await db.exec("CREATE TABLE metrics(hour INTEGER PRIMARY KEY, searches INTEGER DEFAULT 0,total_ms REAL DEFAULT 0,cache_hits INTEGER DEFAULT 0,cache_ms REAL DEFAULT 0); CREATE TABLE traffic_sources(domain TEXT PRIMARY KEY,hits INTEGER); CREATE TABLE traffic_buckets(bucket INTEGER,domain TEXT,hits INTEGER,PRIMARY KEY(bucket,domain));");
     const phase = async (expected: typeof configuration.native | typeof configuration.candidate, generation: string) => {
+      const before = expected.engine === "tantivy" ? null : await nativeIdentity(configuration, adapter);
+      if (before) nativeChecks.push({ phase: generation, boundary: "before", identity: before });
       await Bun.sleep(1100);
       const transport = await mf.getWorker("transport");
       await (await transport.fetch(transportOrigin + "/route")).arrayBuffer();
@@ -192,7 +195,8 @@ async function runLiveRehearsal(configuration: ReturnType<typeof liveConfigurati
         const body = await response.text();
         expect(response.status).toBe(200);
         expect(response.headers.get("X-Typeahead-Engine")).toBe(expected.engine ?? "native");
-        expect(response.headers.get("X-Typeahead-Build")).toBe(expected.build_id);
+        const buildHeader = response.headers.get("X-Typeahead-Build");
+        if (expected.engine === "tantivy" || buildHeader !== null) expect(buildHeader).toBe(expected.build_id);
         const result = actors.parse(JSON.parse(body));
         expect(result.actors[0]?.handle.toLowerCase()).toBe("zzstoatzz.io");
         if (expected.engine === "tantivy") {
@@ -200,9 +204,15 @@ async function runLiveRehearsal(configuration: ReturnType<typeof liveConfigurati
           expect(response.headers.get("X-Typeahead-Retrieval-Strategy")).toBe(expected.retrieval_strategy);
         }
         bodies.push(body);
-        samples.push({ engine: expected.engine ?? "native", build: expected.build_id, body_sha256: createHash("sha256").update(body).digest("hex"), actors: result.actors.length });
+        samples.push({ engine: expected.engine ?? "native", expected_build: expected.build_id, build_header: buildHeader, body_sha256: createHash("sha256").update(body).digest("hex"), actors: result.actors.length });
       }
       expect(bodies[0]).toBe(bodies[1]);
+      if (before) {
+        const after = await nativeIdentity(configuration, adapter);
+        expect(after.build_id).toBe(before.build_id);
+        expect(after.source_watermark).toBe(before.source_watermark);
+        nativeChecks.push({ phase: generation, boundary: "after", identity: after });
+      }
     };
     expect(await update(configuration.native, null)).toBe(200);
     const initial = await control();
@@ -222,7 +232,7 @@ async function runLiveRehearsal(configuration: ReturnType<typeof liveConfigurati
     passed = true;
   } finally {
     await mf.dispose(); await rm(directory, { recursive: true, force: true });
-    if (evidencePath) await writeFile(evidencePath, JSON.stringify({ schema_version: 1, observed_at: new Date().toISOString(), passed, scope: "local-Worker-and-R2-with-approved-live-GET-backends", source_sha256: sourceHashes, configuration_sha256: configurationSha256, configuration, limits_and_requests: adapter.evidence(), samples, remote_route_writes: 0, remote_non_GET_requests: 0, remote_corpus_copies: 0, route_settle_wait_ms: 1100, source_freshness_qualified: false, release_qualified: false, production_route_changed: false }, null, 2) + "\n", { flag: "wx" });
+    if (evidencePath) await writeFile(evidencePath, JSON.stringify({ schema_version: 1, observed_at: new Date().toISOString(), passed, scope: "local-Worker-and-R2-with-approved-live-GET-backends", source_sha256: sourceHashes, configuration_sha256: configurationSha256, configuration, limits_and_requests: adapter.evidence(), samples, native_identity_checks: nativeChecks, native_identity_method: "read-only health/index probes bracketing native search; absent search build headers retained as null", remote_route_writes: 0, remote_non_GET_requests: 0, remote_corpus_copies: 0, route_settle_wait_ms: 1100, source_freshness_qualified: false, release_qualified: false, production_route_changed: false }, null, 2) + "\n", { flag: "wx" });
   }
 }
 
@@ -233,8 +243,10 @@ test("live rehearsal path uses the same Worker/R2 sequence with loopback HTTP fi
     const tv = request.headers["x-fixture-origin"] === tantivy.origin;
     response.setHeader("Content-Type", "application/json");
     response.setHeader("X-Typeahead-Engine", tv ? "tantivy" : "native");
-    response.setHeader("X-Typeahead-Build", tv ? tantivy.build_id : native.build_id);
+    if (request.url === "/health") { response.end(JSON.stringify({ ready: true, sync_lag_s: 1 })); return; }
+    if (request.url === "/index/status") { response.end(JSON.stringify({ attached: true, snapshot_format: "FLATPX05", build_id: native.build_id, source_watermark: 1792908650, actor_count: 100 })); return; }
     if (tv) {
+      response.setHeader("X-Typeahead-Build", tantivy.build_id);
       response.setHeader("X-Typeahead-Format", tantivy.format);
       response.setHeader("X-Typeahead-Binary-Sha256", tantivy.binary_sha256);
       response.setHeader("X-Typeahead-Retrieval-Strategy", tantivy.retrieval_strategy);
@@ -244,7 +256,7 @@ test("live rehearsal path uses the same Worker/R2 sequence with loopback HTTP fi
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Loopback server unavailable");
-  const adapter = liveOriginAdapter(configuration, (url, options) => fetch(`http://127.0.0.1:${address.port}/search`, { ...options, headers: { "X-Fixture-Origin": url.origin } }));
+  const adapter = liveOriginAdapter(configuration, (url, options) => fetch(`http://127.0.0.1:${address.port}${url.pathname}`, { ...options, headers: { "X-Fixture-Origin": url.origin } }));
   try {
     await runLiveRehearsal(configuration, adapter);
     expect(adapter.evidence().calls.some(call => call.origin === tantivy.origin)).toBe(true);
