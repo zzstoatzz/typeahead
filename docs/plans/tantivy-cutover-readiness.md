@@ -17,7 +17,15 @@ This clears the frozen-feed performance component, not live-source or slot relea
 qualification. Candidate cloud publication uses the existing publisher with
 immutable source/twin artifacts and no channel/routing updates; its
 [run receipt](../evals/tantivy-dev-20261028/candidate-cloud-publication.json)
-records exact pins and bounds.
+records exact pins and bounds. The attempt failed before tasks: the worker-poll
+response omitted per-run job variables, so the executable and pulled source
+remained on the old deployment pin. The dedicated metadata-only probe reproduced
+that omission and was cancelled without creating a VM. The failed builder VM is
+confirmed deleted. The seven-to-eight-hour row-walk bootstrap is abandoned at
+Nate's direction; do not retry that launch recipe. The next bootstrap must reuse
+a consistent bulk SQLite checkpoint, prove its freshness and full policy coverage
+without inventing a completed reconciliation round, and pass a minutes-scale pilot
+before any full run.
 
 October 29: the expiry-v4 candidate passed actual Linux HTTP source, policy,
 crash/restart, expiry-coverage and exact boost tests under a two-CPU/1-GiB

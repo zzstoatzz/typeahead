@@ -1,0 +1,13 @@
+{
+  "observed_at": 1793325499.970685,
+  "probe_run_id": "afaa50b5-31a2-4edb-b14e-ae3dac3fe41e",
+  "scope": "metadata-only future scheduled probe; cancelled before it can run",
+  "scheduled_for": "2026-11-29T01:58:19.796528+00:00",
+  "vm_created": false,
+  "direct_job_variables_match": true,
+  "scheduled_job_variables_match": false,
+  "scheduled_job_variables_present": false,
+  "scheduled_job_variable_keys": [],
+  "final_state": "Cancelled",
+  "infrastructure_pid": null
+}

@@ -1,0 +1,10 @@
+{
+  "observed_at": 1793324917.2733922,
+  "flow_run_id": "726dbf49-21cf-43aa-bb77-a88356f077d2",
+  "state": "Crashed",
+  "state_type": "StateType.CRASHED",
+  "start_time": "2026-10-30 01:47:35.973310+00:00",
+  "end_time": "2026-10-30 01:47:35.973310+00:00",
+  "tasks": [],
+  "production_changed": false
+}
