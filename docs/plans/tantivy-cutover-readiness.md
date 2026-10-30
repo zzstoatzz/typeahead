@@ -263,6 +263,40 @@ owner. No new corpus-scale write begins before its storage budget, scratch root,
 supervision and teardown are recorded. Only code and bounded receipts cross the
 operator connection; source corpus stays cloud-to-cloud.
 
+## Prepared operator inputs
+
+The [cutover proposal](../evals/tantivy-dev-20261028/cutover-proposal.json) contains
+the exact candidate, native anchor, plan SHA and expected route ETag, plus the
+promotion and rollback parameter shapes. It is deliberately not executable until
+the release receipt is complete and Nate authorizes the production change.
+A changed route/ETag requires a freshly prepared plan; do not substitute a current
+ETag into an older plan.
+
+After approval and after landing the reviewed controller/Worker source on main,
+use the existing cloud deployment with its reviewed immutable job pins. The
+initial promotion is an explicit `tantivy_operation=promote`, never an automatic
+refresh. The rollback invocation is:
+
+```sh
+just prefect --no-prompt deployment run typeahead-index/typeahead-index -p rollback=true
+```
+
+This restores the independent native anchor through conditional routing; it does
+not stop, rebuild or resize a serving machine. The controller must be running the
+reviewed engine-aware revision before either command is used. Promotion must use
+the complete `promotion_parameters` from the proposal after its release-proof
+fields are filled and revalidated; null fields are not approved placeholders.
+
+The compatible Worker and transport are deployed while native is still selected.
+Their isolated real-origin rehearsal passed both aliases and native → candidate →
+native recovery. Both backends remain running during the eventual conditional
+route change. Existing cached responses may temporarily retain the previous
+backend; the response-cache TTL is 60 seconds and the controller permits 120
+seconds for its public identity/canary verification. These configuration values
+are not a measured global propagation guarantee. Do not promise an outage or a
+zero-downtime bound: no backend shutdown or DNS transition is planned, and failed
+verification conditionally restores the previous routing record.
+
 ## Review and cutover planning
 
 Commit scoped changes on this branch, preserving unrelated local work. Keep

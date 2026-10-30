@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "production_authorized": false,
+  "ready_to_execute": false,
+  "plan_sha256": "7f547a14b234180083cff854cdb5a00163faf214301f9a96467bb6b40624173b",
+  "candidate": {
+    "admission_sha256": "4196e7b356375ba005f502c933fae00153fa13e440237a10aeaf95f458b1d69d",
+    "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+    "build_id": "b1793346536-cp-7c8322df79",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "origin": "https://typeahead-tantivy-a.fly.dev",
+    "retrieval_strategy": "global-merge"
+  },
+  "expected_current_etag": "\"7708a624fb56373f2ddc8ce84361cc52\"",
+  "expected_route": {
+    "current": {
+      "build_id": "b1793109259-2b36-px05",
+      "legacy_build_id": "b1793109259-2b36",
+      "machine_id": "8e3d79b70dd748",
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "source_watermark": 1793109254,
+      "volume_id": "vol_v8eyqk61q9dy9gkv"
+    },
+    "previous": {
+      "build_id": "b1793081565-0228-px05",
+      "legacy_build_id": "b1793081565-0228",
+      "machine_id": "801539a6551778",
+      "origin": "https://typeahead-search-refresh.fly.dev",
+      "source_watermark": 1793081555,
+      "volume_id": "vol_40o3xy5812d6kkk4"
+    },
+    "promoted_at": 1793122313,
+    "version": 1
+  },
+  "native_rollback": {
+    "build_id": "b1793109259-2b36-px05",
+    "legacy_build_id": "b1793109259-2b36",
+    "machine_id": "8e3d79b70dd748",
+    "origin": "https://typeahead-startup-20261024.fly.dev",
+    "source_watermark": 1793109254,
+    "volume_id": "vol_v8eyqk61q9dy9gkv"
+  },
+  "promotion_parameters": {
+    "tantivy_operation": {
+      "operation": "promote",
+      "plan_sha256": "7f547a14b234180083cff854cdb5a00163faf214301f9a96467bb6b40624173b",
+      "expected_current_etag": "\"7708a624fb56373f2ddc8ce84361cc52\"",
+      "release_receipt_key": null,
+      "release_receipt_sha256": null
+    }
+  },
+  "rollback_parameters": {
+    "rollback": true
+  },
+  "requires_before_execution": [
+    "explicit user approval",
+    "production source/configuration landed on main with immutable pins",
+    "completed and published empirical release receipt",
+    "native-first compatible Worker/transport rollout and smoke",
+    "fresh plan preconditions and cache-generation barrier"
+  ],
+  "no_machine_restart_or_dns_change": true
+}
