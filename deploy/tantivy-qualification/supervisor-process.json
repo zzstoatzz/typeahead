@@ -1,0 +1,15 @@
+{
+  "run_id": "672c3d51434a",
+  "pid": 18712,
+  "started_at": 1793318764.420924,
+  "deadline": 1793323981.145359,
+  "synthetic_staged_pilot": false,
+  "log": "/tmp/typeahead-qualification-supervisor.log",
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+  "source_build_id": "b1793109259-2b36-px05",
+  "actor_count": 12816605,
+  "production_changed": false,
+  "restarted_at": 1793318863.713639,
+  "prior_supervisor_pid": 18371,
+  "restart_reason": "load verified API transport and preserve functional evidence on performance failure"
+}

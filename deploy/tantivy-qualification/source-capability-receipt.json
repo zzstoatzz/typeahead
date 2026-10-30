@@ -1,24 +1,16 @@
 {
   "app": "typeahead-qual-20261029",
-  "build_id": "b1793109259-2b36-px05",
-  "staged_at": 1793310852.59418,
-  "capability_expiry_seconds": 7200,
-  "source_endpoint_is_r2": true,
-  "methods": [
-    "GET"
+  "staged_at": 1793318547.623063,
+  "source_build_id": "b1793109259-2b36-px05",
+  "source_capability_ttl_seconds": 7200,
+  "control_capability_ttl_seconds": 14400,
+  "prior_control_capability_revoked": true,
+  "runtime_secret_names": [
+    "ADMIN_SECRET",
+    "QUAL_CONTROL_SECRET",
+    "QUAL_REAPER_CAPABILITY",
+    "QUAL_SOURCE_ACCESS"
   ],
-  "objects": [
-    {
-      "kind": "database",
-      "bytes": 81920,
-      "expected_sha256": "bdf118c9fce9bfad65d6b04d5f3b041b85c024ef0f4f5d193a036a488c0ebfc2"
-    },
-    {
-      "kind": "prefix",
-      "bytes": 7331160064,
-      "expected_sha256": "1428137ae31e1195a4301f4eb41e170a09b9f2905d34b3956322116bd30684c1"
-    }
-  ],
-  "corpus_downloaded_to_operator": false,
-  "heavypad_used": false
+  "corpus_transit": "R2 directly to Fly; GET-only two fixed source objects",
+  "production_changed": false
 }
