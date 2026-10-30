@@ -48,10 +48,22 @@
       "expected_current_etag": "\"7708a624fb56373f2ddc8ce84361cc52\"",
       "release_receipt_key": "control/tantivy-releases/058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083.json",
       "release_receipt_sha256": "058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083"
-    }
+    },
+    "ref": null,
+    "automatic_refresh": false,
+    "reuse_source": null,
+    "resume_generation": null,
+    "rollback": false,
+    "resume_rollout": false,
+    "snapshot_engine": "native"
   },
   "rollback_parameters": {
-    "rollback": true
+    "rollback": true,
+    "automatic_refresh": false,
+    "reuse_source": null,
+    "resume_generation": null,
+    "resume_rollout": false,
+    "snapshot_engine": "native"
   },
   "requires_before_execution": [
     "explicit user approval",

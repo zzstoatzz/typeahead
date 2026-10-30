@@ -45,7 +45,7 @@ instructions to repeat their builds or trials.
 | Moderation | Same-D1 controlled hide/unhide/expiry tests and complete fresh canonical policy | No existing operator hide override supplied a live sampled witness |
 | Native rollback | Real-origin isolated Worker rehearsal passes; native remains independently healthy | Production cache propagation duration is not measured |
 | Publisher and installation | Actual cloud checkpoint publication, immutable manifest/bundle, A install and cached restart pass | Automatic composition and failure paths pass bounded HTTP/filesystem tests; its existing components were verified on the real candidate. No production automatic run was performed |
-| Review and rollout | [Typeahead draft PR](https://github.com/zzstoatzz/typeahead/pull/1) and [controller draft PR](https://github.com/zzstoatzz/my-prefect-server/pull/5) | Explicit cutover approval and landing the reviewed source/configuration on main precede production execution |
+| Review and rollout | [Typeahead PR](https://github.com/zzstoatzz/typeahead/pull/1) and [controller PR](https://github.com/zzstoatzz/my-prefect-server/pull/5) | Explicit cutover approval and landing the reviewed source/configuration on main precede production execution |
 
 Controller commit `39c753cc6193d22d77a3646571787b8180ef89d9` composes automatic
 refresh through the existing publisher after an explicitly approved Tantivy
@@ -287,7 +287,7 @@ initial promotion is an explicit `tantivy_operation=promote`, never an automatic
 refresh. The rollback invocation is:
 
 ```sh
-just prefect --no-prompt deployment run typeahead-index/typeahead-index -p rollback=true
+just prefect --no-prompt deployment run typeahead-index/typeahead-index -p rollback=true -p automatic_refresh=false
 ```
 
 This restores the independent native anchor through conditional routing; it does
@@ -297,7 +297,8 @@ pause scheduled refresh until the original native ref and two-day cadence from
 the proposal are restored; do not leave native refresh building a floating main
 branch through the Tantivy configuration's `ref:null`. Promotion must use
 the complete `promotion_parameters` from the proposal after its release-proof
-fields are filled and revalidated; the supplied immutable receipt must still validate at execution time.
+fields are revalidated. Include `automatic_refresh:false` to override the existing
+deployment default; the supplied immutable receipt must still validate at execution time.
 
 The compatible Worker and transport are deployed while native is still selected.
 Their isolated real-origin rehearsal passed both aliases and native → candidate →
@@ -350,7 +351,8 @@ cutover is authorized.
    preserve and independently check that path so rollback stays fresh after
    request-indexing pushes stop reaching the native route.
 5. Recheck the candidate's actual provider instance, final two-shared-CPU/1-GiB/
-   20-GiB allocation, source/policy freshness, completed-round coverage and
+   20-GiB allocation, source/policy freshness, admitted checkpoint or completed renewal
+   coverage and
    HTTP identity. Recheck native rollback health. Refresh the prepared plan if
    the expected route or ETag changed. A mutation lease can protect an inactive
    slot; it must not change the current target and must survive an intervening
