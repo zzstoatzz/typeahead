@@ -110,3 +110,17 @@ Counts, activity and every other Actor field remain real payload changes. The
 adapter must not infer latest source time from a stored document timestamp or
 claim that replayed unchanged profiles establish missing expiry coverage. See
 [the write experiment](../../docs/evals/tantivy-dev-20261028/source-version-only.md).
+
+## Archive PDS fallback pilot
+
+The shared actor conversion has an opt-in `pds_fallback(path, sha256)` context.
+It reads an immutable SQLite `pds_fallback(did PRIMARY KEY, pds)` table (schema
+version 1), fills only empty source PDS values, and preserves source identity,
+moderation, versions and deletion behavior. Without that context, behavior is
+unchanged. It is not enabled by the production CLI or slot supervisor yet.
+
+The [cloud pilot](../../docs/ops/archive-pds-join-pilot-20261030/README.md)
+measured the import/storage cost and verified profile updates, migration,
+deletion and restart against a real isolated Rust index. A production release
+must bundle and bind the mapping to the build, catch-up and runtime adapters;
+joining only the initial snapshot would let live reconciliation erase it.

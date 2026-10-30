@@ -4,6 +4,9 @@ from contextlib import contextmanager
 import argparse
 import copy
 import http.client
+import hashlib
+import sqlite3
+import re
 import json
 import math
 import os
@@ -205,6 +208,54 @@ def text(row,key,default=''):
 def deletion(did,version):
     return {'did':did,'version':version,'deleted':True,'hidden':False,'handle':'','display_name':'','avatar_url':'','labels':[],'associated':{},'created_at':'','pds':'','quality_score':0.0,'followers_count':0,'follows_count':0,'posts_count':0,'last_activity_at':0}
 
+class PdsFallback:
+    def __init__(self, path, sha256):
+        self.path=Path(path).resolve()
+        if not re.fullmatch(r'[a-f0-9]{64}',sha256):raise SafeError('invalid fallback digest')
+        with self.path.open('rb') as stream:
+            if hashlib.file_digest(stream,'sha256').hexdigest()!=sha256:raise SafeError('fallback checksum differs')
+        self.sha256=sha256
+        self.db=sqlite3.connect(self.path.as_uri()+'?mode=ro&immutable=1',uri=True)
+        try:
+            if self.db.execute('PRAGMA user_version').fetchone()[0]!=1:raise SafeError('unsupported fallback schema')
+            columns=self.db.execute('PRAGMA table_info(pds_fallback)').fetchall()
+            if [(r[1],r[2],r[5]) for r in columns]!=[('did','TEXT',1),('pds','TEXT',0)]:raise SafeError('invalid fallback schema')
+        except BaseException:
+            self.db.close();raise
+
+    def lookup(self, did):
+        row=self.db.execute('SELECT pds FROM pds_fallback WHERE did=?',(did,)).fetchone()
+        if row is None:return ''
+        pds=row[0]
+        if canonical_archive_pds(pds)!=pds:raise SafeError('invalid archive PDS')
+        return pds
+
+    def close(self):self.db.close()
+
+
+def canonical_archive_pds(value):
+    if not isinstance(value,str):return None
+    try:url=urllib.parse.urlsplit(value)
+    except ValueError:return None
+    host=url.hostname or ''
+    if (url.scheme!='https' or url.netloc!=host or url.path or url.query or url.fragment
+        or host in {'unknown','invalid-pds','bsky.network','relay1.us-east.bsky.network','bridgy-hubble.microcosm.blue'}
+        or len(host)>253 or '.' not in host
+        or any(not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?',label) for label in host.split('.'))):return None
+    return 'https://'+host
+
+
+_active_pds_fallback=None
+
+@contextmanager
+def pds_fallback(path, sha256):
+    global _active_pds_fallback
+    if _active_pds_fallback is not None:raise SafeError('fallback already configured')
+    fallback=PdsFallback(path,sha256);_active_pds_fallback=fallback
+    try:yield fallback
+    finally:_active_pds_fallback=None;fallback.close()
+
+
 def actor_record(row):
     did=text(row,'did');version=number(row.get('updated_at'),'actor source version')
     if not did.startswith('did:') or len(did.encode())>2048:raise SafeError('invalid source actor DID')
@@ -215,6 +266,8 @@ def actor_record(row):
     if not math.isfinite(score):raise SafeError('source quality score is not finite f32')
     result={'did':did,'version':version,'deleted':False,'hidden':bool(row.get('hidden')),'quality_score':score}
     for field in ['handle','display_name','avatar_url','created_at','pds']:result[field]=text(row,field)
+    if not result['pds'] and _active_pds_fallback is not None:
+        result['pds']=_active_pds_fallback.lookup(did)
     for field,kind,default in [('labels',list,'[]'),('associated',dict,'{}')]:
         try:value=json.loads(text(row,field,default))
         except ValueError:raise SafeError('invalid source hydration JSON: '+field) from None
