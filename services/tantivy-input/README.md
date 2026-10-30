@@ -39,14 +39,25 @@ page can finish after that soft slice under the existing HTTP deadlines. The fir
 committed page records the new round's start, excluding cooldown; prior completed
 round timestamps stay intact.
 
-`--max-source-bytes` remains one shared response-body byte ceiling for the process,
-including retries. `--poll-reserve-bytes` defaults to one quarter of it (128 MiB of
+`--max-source-bytes` is one shared response-body byte ceiling, including retries. `--poll-reserve-bytes` defaults to one quarter of it (128 MiB of
 the default 512 MiB). Sweep consumption cannot use that reserved allocation;
 polling can use unused total capacity. Sweep exhaustion returns `sweep_pause:
 "budget"` while ordinary discovery and policy observations continue from remaining
 capacity. Counters do not reset between cycles or when bulk work pauses. Total
-exhaustion still fails polling explicitly until the normal process/window ends;
-immediate restarts are not a quota workaround. Consumed body bytes are not a
+exhaustion still fails polling explicitly until the applicable budget window ends.
+
+Managed slots pass `--budget-file` and `--budget-build-id` to enable shared
+`budget.py` accounting. It holds a single-writer file lock, persists actual
+poll/sweep bytes with fsync, and reserves the one outstanding capped response
+(up to 4 MiB plus one byte) before each HTTP attempt. Completed attempts settle
+actual received bytes; a SIGKILL retains that reservation conservatively.
+A normal cached restart restores remaining capacity and continues polling,
+without another full allowance or an hour-long restart pause. The fixed hourly
+window renews only after its durable deadline; sweep cannot consume the 128-MiB
+poll reserve. Corrupt identity/accounting fails closed. Offline publisher clients
+reuse this factory in cumulative mode with no hourly renewal. Calls without a
+budget file retain the original in-process accounting behavior; their owner must
+preserve its quota window across process rotation. Consumed body bytes are not a
 billing estimate.
 
 Known-ID source pages with no missing backend records use cursor-only revision/CAS

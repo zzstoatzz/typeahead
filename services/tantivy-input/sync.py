@@ -120,6 +120,9 @@ class Turso:
     def accounting(self):
         return {'source_bytes':self.bytes,'poll_bytes':self.poll_bytes,'sweep_bytes':self.sweep_bytes,'max_source_bytes':self.max_bytes,'poll_reserve_bytes':self.poll_reserve_bytes,'sweep_ceiling_bytes':self.max_bytes-self.poll_reserve_bytes,'remaining_source_bytes':max(0,self.max_bytes-self.bytes),'remaining_sweep_bytes':max(0,min(self.max_bytes-self.bytes,self.max_bytes-self.poll_reserve_bytes-self.sweep_bytes))}
 
+    def _before_request(self,max_response_bytes):pass
+    def _after_request(self):pass
+
     def select(self,sql,args):
         if sql not in SELECTS:raise SafeError('only fixed source SELECTs are permitted')
         values=[]
@@ -135,8 +138,10 @@ class Turso:
                     if self.budget_kind=='sweep':raise SweepBudgetExhausted('sweep byte budget exhausted; polling reserve retained')
                     raise SourceBudgetExhausted('source byte budget exhausted')
                 before=self.http.received_bytes;self.requests+=1
+                response_limit=min(4*1024*1024,remaining-1)
+                self._before_request(response_limit+1)
                 try:
-                    result,size=self.http.request(self.url,self.token,body,max_bytes=min(4*1024*1024,remaining-1))
+                    result,size=self.http.request(self.url,self.token,body,max_bytes=response_limit)
                 except SafeError:
                     if self.http.received_bytes-before>=remaining:
                         if self.budget_kind=='sweep':raise SweepBudgetExhausted('sweep byte budget exhausted; polling reserve retained') from None
@@ -146,6 +151,7 @@ class Turso:
                     received=self.http.received_bytes-before;self.bytes+=received
                     if self.budget_kind=='sweep':self.sweep_bytes+=received
                     else:self.poll_bytes+=received
+                    self._after_request()
                 break
             except Retryable:
                 if attempt+1==self.retries:raise
@@ -316,7 +322,7 @@ def parser():
     p.add_argument('--source-mode',choices=['observed','timestamp'],default='observed');p.add_argument('--anti-entropy-pages',type=int,default=2)
     p.add_argument('--sweep-cooldown-seconds',type=int,default=3600);p.add_argument('--max-sweep-seconds',type=float,default=5)
     p.add_argument('--lookback-seconds',type=int,default=300);p.add_argument('--max-source-bytes',type=int,default=512*1024*1024);p.add_argument('--poll-reserve-bytes',type=int);p.add_argument('--http-timeout',type=float,default=15);p.add_argument('--interval',type=float,default=60)
-    p.add_argument('--max-run-seconds',type=float,default=3600);p.add_argument('--status-file');p.add_argument('--once',action='store_true')
+    p.add_argument('--budget-file');p.add_argument('--budget-build-id');p.add_argument('--max-run-seconds',type=float,default=3600);p.add_argument('--status-file');p.add_argument('--once',action='store_true')
     return p
 
 def main():
@@ -328,7 +334,11 @@ def main():
         value=os.environ.get(name)
         if not value:raise SafeError('missing required cloud-only credential variable '+name)
         secrets.append(value)
-    source=Turso(secrets[0],secrets[1],http=Http(args.http_timeout),max_bytes=args.max_source_bytes,poll_reserve_bytes=args.poll_reserve_bytes)
+    if bool(args.budget_file)!=bool(args.budget_build_id):raise SafeError('durable source budget requires file and build identity')
+    if args.budget_file:
+        from budget import accounted_source
+        source=accounted_source(sys.modules[__name__],secrets[0],secrets[1],Path(args.budget_file),args.budget_build_id,args.max_source_bytes,poll_reserve_bytes=args.poll_reserve_bytes,window_seconds=3600,min_request_interval=0,http=Http(args.http_timeout))
+    else:source=Turso(secrets[0],secrets[1],http=Http(args.http_timeout),max_bytes=args.max_source_bytes,poll_reserve_bytes=args.poll_reserve_bytes)
     admin=Admin(args.admin_url,secrets[2],args.status_url,http=Http(args.http_timeout))
     def expired(*_):raise SafeError('bounded replay process deadline')
     signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,args.max_run_seconds)
