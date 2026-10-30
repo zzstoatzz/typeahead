@@ -308,6 +308,7 @@ def validate_manifest(manifest, expected):
 
 def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None, *, allow_checkpoint_fixture=False):
     """Freeze an owned, stopped checkpoint into a portable, source-linked artifact."""
+    now = int(time.time()) if now is None else now
     checkpoint_fixture_gate(manifest, allow_checkpoint_fixture)
     data, destination, binary = Path(data), Path(destination), Path(binary)
     if destination.exists() or (data / 'index').is_symlink():
