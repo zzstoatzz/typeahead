@@ -121,7 +121,7 @@ Read-only observations on October 25:
 
 1. Capture fresh `wrangler deployments list --json` for both named Workers and
    require the expected current versions. Preserve a pre-cutover receipt.
-2. Deploy only `wrangler.search-transport.jsonc` from the reviewed revision. Its
+2. Deploy only `deploy/search-transport/wrangler.jsonc` from the reviewed revision. Its
    only intended source change adds the candidate's exact HTTPS origin to the
    existing GET `/search` allowlist. Keep the two existing origins allowed.
 3. Change only the public Worker's `SEARCH_BACKEND_URL` via `wrangler secret put
@@ -150,7 +150,7 @@ the freshness alert. Do not hide that distinction or mute the alert.
 Retain production's current machine and volume through acceptance. The expanded
 transport allowlist can safely retain both origins while traffic rolls back.
 If the transport deployment itself fails, restore its captured pre-cutover
-version using `wrangler rollback --config wrangler.search-transport.jsonc
+version using `wrangler rollback --config deploy/search-transport/wrangler.jsonc
 786da370-0cc2-499b-9238-25e25de81267 --yes`; first check that no unrelated update
 has occurred. Do not roll back the entire public Worker to an old source version
 when a binding-only restoration is sufficient.

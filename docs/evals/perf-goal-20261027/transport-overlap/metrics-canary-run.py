@@ -5,9 +5,9 @@ root=Path('docs/evals/perf-goal-20261027/transport-overlap/metrics-canary');root
 record={'started_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'status':'preparing','old':OLD,'candidate':NEW,'health':[],'provider':[],'generated_transport_probes':0,'public_mean_gate_ms':185,'public_miss_minimum':100};owned=None;success=False;changed=False;smoke=None
 
 def save(): (root/'result.json').write_text(json.dumps(record,indent=2)+'\n')
-def deployment():return max(json.loads(subprocess.check_output(['node_modules/.bin/wrangler','deployments','list','-c','wrangler.search-transport.jsonc','--json'],timeout=45)),key=lambda x:x['created_on'])
+def deployment():return max(json.loads(subprocess.check_output(['node_modules/.bin/wrangler','deployments','list','-c','deploy/search-transport/wrangler.jsonc','--json'],timeout=45)),key=lambda x:x['created_on'])
 def deploy(version,message):
- with (root/('rollback.log' if version==OLD else 'deploy.log')).open('ab') as f:subprocess.run(['node_modules/.bin/wrangler','versions','deploy',version+'@100%','-c','wrangler.search-transport.jsonc','--yes','--message',message],stdout=f,stderr=subprocess.STDOUT,check=True,timeout=90)
+ with (root/('rollback.log' if version==OLD else 'deploy.log')).open('ab') as f:subprocess.run(['node_modules/.bin/wrangler','versions','deploy',version+'@100%','-c','deploy/search-transport/wrangler.jsonc','--yes','--message',message],stdout=f,stderr=subprocess.STDOUT,check=True,timeout=90)
 def get(url):
  r=urllib.request.Request(url,headers={'User-Agent':'typeahead-perf/1.0'})
  with urllib.request.urlopen(r,timeout=12) as f:

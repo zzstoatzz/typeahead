@@ -19,7 +19,7 @@ lint:
 # what CI runs, locally
 check: typecheck lint test
     bunx wrangler deploy --dry-run
-    bunx wrangler deploy -c wrangler.search-transport.jsonc --dry-run
+    bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
 
 # run the zig unit tests for the services (ingester/search/indexer)
 build-compactor:
@@ -87,7 +87,7 @@ deploy-worker url="https://typeahead.waow.tech":
 # Deploy the private origin transport before adding its binding to the public Worker.
 deploy-search-transport url="https://typeahead.waow.tech":
     bunx tsc --noEmit
-    bunx wrangler deploy -c wrangler.search-transport.jsonc
+    bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc
     just smoke {{url}}
 
 # deploy the worker WITHOUT the post-deploy smoke gate (escape hatch)

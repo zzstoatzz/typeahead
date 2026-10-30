@@ -15,11 +15,11 @@ def save(phase,**values):
 def run(args,**kwargs):
  return subprocess.run(args,cwd=root,check=True,text=True,capture_output=True,timeout=45,**kwargs).stdout
 def current():
- return max(json.loads(run(['bunx','wrangler','deployments','list','--config','wrangler.search-transport.jsonc','--json'])),key=lambda x:x['created_on'])
+ return max(json.loads(run(['bunx','wrangler','deployments','list','--config','deploy/search-transport/wrangler.jsonc','--json'])),key=lambda x:x['created_on'])
 def deploy(percent):
  global owned
  d=current();assert d['id']==owned,'Deployment ownership changed'
- args=['bunx','wrangler','versions','deploy',new+'@'+str(percent),old+'@'+str(100-percent),'--config','wrangler.search-transport.jsonc','--yes','--message',owner+' '+str(percent)+'%']
+ args=['bunx','wrangler','versions','deploy',new+'@'+str(percent),old+'@'+str(100-percent),'--config','deploy/search-transport/wrangler.jsonc','--yes','--message',owner+' '+str(percent)+'%']
  (folder/('deploy-'+str(percent)+'.log')).write_text(run(args))
  d=current();assert d['annotations']['workers/message']==owner+' '+str(percent)+'%';owned=d['id'];state['events'].append(d);save('deployed',percentage=percent,deployment_id=owned)
 def health():
@@ -85,7 +85,7 @@ finally:
   try:
    d=current()
    if d['annotations'].get('workers/message','').startswith(owner):
-    (folder/'rollback.log').write_text(run(['bunx','wrangler','versions','deploy',old+'@100','--config','wrangler.search-transport.jsonc','--yes','--message',owner+' restore retained transport']))
+    (folder/'rollback.log').write_text(run(['bunx','wrangler','versions','deploy',old+'@100','--config','deploy/search-transport/wrangler.jsonc','--yes','--message',owner+' restore retained transport']))
     save('restored-retained',deployment=current())
    else:save('ownership-changed-no-rollback',deployment=d)
   except Exception as error:save('rollback-needs-attention',error=str(error))

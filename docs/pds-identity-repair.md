@@ -54,3 +54,54 @@ The suite uses real temporary SQLite databases and loopback HTTP servers. It
 covers retained transfer budgets, interrupted receipts, conditional conflicts,
 deletions, identity changes, PLC tail continuity and health rejection. These
 checks do not substitute for production rollout, recovery or throughput gates.
+
+## Cloud pilot and freshness plan
+
+Status: proposed; no pilot or replacement schedule is deployed. The obsolete home
+flow, deployment definitions, bulk writer and installer are removed from source.
+Historical run records and retained payloads are not deleted by this cleanup.
+
+1. Run a manual, bounded cloud job using the existing cloud Prefect execution
+   environment and an independent scratch directory. No HeavyPad execution,
+   relay through home, corpus copy, or PLC bundle download for the pilot.
+2. Start with five known missing-PDS accounts: bsky.app, safety.bsky.app,
+   status.bsky.app, jay.bsky.team and emilyliu.me. Read fresh source rows and
+   authoritative DID documents. Dry-run the proposed changes first, recording
+   source version, old value, authority and timestamp. Reject ambiguous or
+   invalid endpoints; leave handles and profile fields alone.
+3. Apply only those five empty-PDS repairs with compare-and-set against the
+   observed source version/value. Retry reads with backoff; reconcile uncertain
+   writes before retrying. Limit the pilot to ten minutes and a few MiB of
+   receipts; cancel on elevated source or serving errors. Existing conditional
+   repair tooling must pass its behavioral tests and cloud admission first.
+4. Verify each source write reaches the deployed Tantivy generation and the
+   public API. Each exact handle must remain globally visible, appear under its
+   authoritative PDS, and disappear under an unrelated PDS. Include unchanged
+   controls and one isolated migration/conflict test. Record propagation time,
+   request counts, errors, source read/write work, and cost; remove scratch data.
+5. Review the pilot before expanding to 100, then 1,000 identities. Use a
+   resumable keyset scan in cloud for discovery, not repeated full-table missing
+   PDS queries or interactive request-time resolution. Do not extrapolate a
+   five-account run into a full-backlog completion estimate.
+6. Choose bulk execution from measured costs: bounded direct DID resolution for
+   initial batches; cloud-local, resumable PLC reconstruction only if the pilot
+   economics justify it for millions of records. Check existing usable cloud
+   artifacts before downloading anything. Every bulk phase needs an explicit
+   storage/transfer budget and cleanup owner. Validate freshness before applying
+   historical declarations. did:web requires its own authority resolution path.
+
+Keep the live identity-event resolver as the fast path. Add a durable cloud
+repair/reconciliation queue for newly discovered identities with unknown PDSs,
+failed identity resolutions, and bounded periodic revalidation of known PDSs.
+Track last successful authority check separately from profile updated_at; profile
+refresh does not prove hosting freshness. A later migration may replace a
+nonempty PDS only with fresh authority and a source-version precondition.
+Transient resolution failure must not clear a previously known PDS.
+
+Measure unknown/invalid coverage, queue age, successful verification age, migration
+propagation and error/retry rates. Preserve explicit failures and unresolved
+records in the denominator. Neither a snapshot rebuild nor source reconciliation
+can discover identity data absent from the source.
+
+The five-account pilot is the next implementation step after this cleanup and
+plan review. Full-backlog execution is gated on pilot results, not scheduled here.

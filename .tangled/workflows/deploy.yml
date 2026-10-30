@@ -24,4 +24,4 @@ steps:
       bunx oxlint --deny-warnings src
       bun test
       bunx wrangler deploy --dry-run
-      bunx wrangler deploy -c wrangler.search-transport.jsonc --dry-run
+      bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run

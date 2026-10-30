@@ -663,8 +663,7 @@ export async function enrichProfileDids(
 
   // build upsert stmts via the canonical extractProfileFields path. PDS is
   // intentionally NOT in the SET — bsky's getProfiles doesn't return it, and
-  // we'd rather preserve any existing value than zero it; scripts/plc-identity-sync.py is
-  // the separate concern for filling PDS.
+  // preserve existing hosting identity when refreshing profile fields.
   const stmts: Stmt[] = [];
   let hiddenCount = 0;
   for (const [did, profile] of fetched) {

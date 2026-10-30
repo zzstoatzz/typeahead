@@ -5,7 +5,6 @@ import argparse
 import datetime
 import gzip
 import hashlib
-import importlib.util
 import json
 import sqlite3
 import time
@@ -13,9 +12,7 @@ from pathlib import Path
 
 from pds_coverage import pds_from_document
 
-spec = importlib.util.spec_from_file_location('plc_reader', Path(__file__).with_name('plc-identity-sync.py'))
-reader = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(reader)
+from pds_plc_json import iter_json_values
 
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS plc_latest(
@@ -88,7 +85,7 @@ def consume_bundle(db, candidates, path, expected_sha256=None):
         with gzip.GzipFile(fileobj=digest) as compressed:
             import io
             with io.TextIOWrapper(compressed) as text:
-                for record in reader._iter_json_values(text):
+                for record in iter_json_values(text):
                     seen+=1
                     if record.get('did') not in candidates:
                         continue

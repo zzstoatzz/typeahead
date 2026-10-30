@@ -1,6 +1,6 @@
 {
   "name": "typeahead-search-transport",
-  "main": "src/search-transport.ts",
+  "main": "../../src/search-transport.ts",
   "compatibility_date": "2024-12-01",
   "workers_dev": true,
   "preview_urls": false,

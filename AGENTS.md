@@ -137,10 +137,8 @@ regression is pinned). Extend it, don't prune it.
   `just refresh-search` explicitly submits that managed deployment through the
   operations repository's configured Prefect wrapper; it does not deploy the
   current checkout. Main-branch CI never invokes it.
-- **`typeahead-plc-identity`** bulk-resolves DID -> handle/PDS from the PLC log
-  for identities the appview cannot see. Its weekly cadence remains paused
-  independently of the active snapshot publisher. Verify current ownership in
-  `my-prefect-server` before resuming it. See [discovery and identity](docs/discovery-and-identity.md).
+- PDS backlog repair and freshness work must run in cloud infrastructure, never HeavyPad.
+  The retired PLC home job must not be restored. See [repair contracts](docs/pds-identity-repair.md).
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
 
@@ -157,8 +155,8 @@ regression is pinned). Extend it, don't prune it.
   state what it honestly covers against measured arrival rates (~2,900 new actors/hour), and
   the cron NEVER claims to drain a corpus-scale backlog — backlogs belong to the bulk paths
   (the `typeahead-enrich-backfill` Prefect deployment for profiles, `typeahead-identity-hourly`
-  for new actors' handles, `typeahead-plc-identity` weekly for what the appview cannot see —
-  all on heavypad, defined in the `my-prefect-server` repo), run off-worker. Since 2026-09-03
+  for new actors' handles, defined in `my-prefect-server`), run off-worker.
+  Missing PDS metadata requires a separately qualified cloud repair, never HeavyPad. Since 2026-09-03
   the worker cron does NO enrichment at all: freshness, stats, and the moderation refresh
   only, inside a 12-minute budget (`CRON_BUDGET_MS`) so the 15-minute wall kill — which took
   120 of 140 runs, silently — cannot recur. Every run logs `cron_done` with per-phase ms.

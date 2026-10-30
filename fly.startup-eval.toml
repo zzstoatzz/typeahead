@@ -1,4 +1,0 @@
-app = 'typeahead-startup-20261024'
-primary_region = 'ewr'
-[build]
-  dockerfile = 'services/Dockerfile.startup-eval'

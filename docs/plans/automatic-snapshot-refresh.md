@@ -140,7 +140,7 @@ Local checks:
 python3 -m unittest discover -s scripts/snapshot_refresh -p 'test_install.py' -v
 bun test src/search-transport.test.ts
 bunx --no-install tsc --noEmit
-bunx --no-install wrangler deploy --config wrangler.search-transport.jsonc --dry-run --outdir /tmp/typeahead-route-test
+bunx --no-install wrangler deploy --config deploy/search-transport/wrangler.jsonc --dry-run --outdir /tmp/typeahead-route-test
 node scripts/snapshot_refresh/test_transport.mjs /tmp/typeahead-route-test/search-transport.js
 ```
 

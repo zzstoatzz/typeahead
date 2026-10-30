@@ -18,16 +18,16 @@ def counters(name,first=None,last=None):
 def save(): output.write_text(json.dumps(record,indent=2)+'\n')
 def deploy(spec,message):
  with (root/('canary-rollback.log' if spec==[OLD+'@100%'] else 'canary-deploy.log')).open('ab') as log:
-  subprocess.run(['node_modules/.bin/wrangler','versions','deploy',*spec,'-c','wrangler.search-transport.jsonc','--yes','--message',message],stdout=log,stderr=subprocess.STDOUT,check=True,timeout=120)
+  subprocess.run(['node_modules/.bin/wrangler','versions','deploy',*spec,'-c','deploy/search-transport/wrangler.jsonc','--yes','--message',message],stdout=log,stderr=subprocess.STDOUT,check=True,timeout=120)
 def deployment():
- return max(json.loads(subprocess.check_output(['node_modules/.bin/wrangler','deployments','list','-c','wrangler.search-transport.jsonc','--json'],timeout=60)),key=lambda d:d['created_on'])
+ return max(json.loads(subprocess.check_output(['node_modules/.bin/wrangler','deployments','list','-c','deploy/search-transport/wrangler.jsonc','--json'],timeout=60)),key=lambda d:d['created_on'])
 def health():
  request=urllib.request.Request('https://typeahead.waow.tech/health/freshness',headers={'User-Agent':'typeahead-perf/1.0'})
  with urllib.request.urlopen(request,timeout=15) as response:data=json.load(response)
  record['health'].append({'elapsed_s':round(time.monotonic()-started,1),**data})
  if not data.get('ok') or data.get('build_id')!='b1793081565-0228-px05':raise RuntimeError('public freshness/build gate failed')
 try:
- current=json.loads(subprocess.check_output(['node_modules/.bin/wrangler','deployments','list','-c','wrangler.search-transport.jsonc','--json'],timeout=60))
+ current=json.loads(subprocess.check_output(['node_modules/.bin/wrangler','deployments','list','-c','deploy/search-transport/wrangler.jsonc','--json'],timeout=60))
  if max(current,key=lambda d:d['created_on'])['versions'] != [{'version_id':OLD,'percentage':100}]:raise RuntimeError('live transport changed')
  health()
  observer=TailObserver()

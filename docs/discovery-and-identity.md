@@ -57,13 +57,11 @@ Resolving one DID per HTTP request does not work at corpus scale.
    against arrivals (~2,900 new accounts/hour), not against the backlog.
 2. **The ingester's identity pool** — every `#identity` event, new DID or
    existing (see below). Posts `pds` along with the handle.
-3. **`scripts/plc-identity-sync.py`** — bulk PLC identity processing. The
-   registered weekly job used the default missing-handle selector, so it missed
-   actors with a handle but no PDS. That omission left bulk PDS coverage incomplete. Its home schedule is paused as of October 20, 2026 to avoid bulk
-   ISP traffic while a cloud replacement is qualified. Do not simply enable
-   missing-PDS selection with the old generic writer: it can overwrite nonempty
-   identity fields. See [repair contracts](pds-identity-repair.md) and the
-   [schedule hold](evals/pds-parser-cutover-20261020.md#bulk-home-schedule-hold--october-20-2327-utc).
+3. **Cloud PDS repair (planned)** — the retired bulk PLC job selected missing
+   handles, leaving actors with handles but no PDS untouched. Its home flow,
+   deployment definitions and generic writer have been removed. The retained
+   offline reconstruction and conditional repair tools are described in
+   [repair contracts](pds-identity-repair.md). No recurring replacement is deployed.
 
 ## identity: handle changes are the live consumer's job
 
@@ -122,9 +120,8 @@ table. Keyset on `rowid`, not `did`.
 
 The PLC log supplies DID-authorized handle claims and PDS declarations. A handle
 claim alone does not prove ownership: the handle must also resolve back to the
-DID through DNS or HTTPS. The bulk script no longer writes handles or marks them
-verified; apply mode is restricted to PDS metadata. The weekly schedule remains
-inactive (verified October 28). Bundles are weekly gzipped files.
+DID through DNS or HTTPS. The retired bulk writer and weekly deployment definitions have been removed.
+Retained offline tools read weekly gzipped bundles; they do not authorize writes.
 
 Since October 28, raw relay handle hints only enqueue the DID for verification.
 Authenticated ingest accepts handle updates only with the verifier marker, or
