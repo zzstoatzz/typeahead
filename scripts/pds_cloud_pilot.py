@@ -21,11 +21,16 @@ CANDIDATES = {
 API = 'https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors'
 
 
-def read_json(url):
+def read_json(url, byte_budget=None):
     request = urllib.request.Request(url, headers={
         'User-Agent': 'typeahead-community-smoke/1.0', 'X-Client': 'smoke-testing'})
     with urllib.request.urlopen(request, timeout=10) as response:
-        raw = response.read(1024 * 1024 + 1)
+        bound = 1024 * 1024 if byte_budget is None else min(1024 * 1024, max(0, byte_budget['remaining']))
+        raw = response.read(bound + 1)
+        if byte_budget is not None:
+            byte_budget['remaining'] -= len(raw)
+            if byte_budget['remaining'] < 0:
+                raise ValueError('Response transfer budget exhausted')
         if len(raw) > 1024 * 1024:
             raise ValueError('Response exceeds pilot budget')
         return json.loads(raw)

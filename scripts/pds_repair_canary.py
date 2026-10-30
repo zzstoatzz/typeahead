@@ -35,16 +35,24 @@ def baseline_budget(path):
 
 
 class Turso:
-    def __init__(self,credentials):
+    def __init__(self,credentials,byte_budget=None):
         self.url=credentials['url'].replace('libsql://','https://').rstrip('/')+'/v2/pipeline'
         if urllib.parse.urlsplit(self.url).scheme!='https':raise ValueError('Turso requires HTTPS')
         self.token=credentials['token']
+        self.byte_budget=byte_budget
 
     def execute(self,sql,params):
         args=[{'name':key,'value':{'type':'integer' if isinstance(value,int) else 'text','value':str(value)}} for key,value in params.items()]
         body={'requests':[{'type':'execute','stmt':{'sql':sql,'named_args':args}},{'type':'close'}]}
         request=urllib.request.Request(self.url,data=json.dumps(body).encode(),headers={'Authorization':'Bearer '+self.token,'Content-Type':'application/json'})
-        with urllib.request.urlopen(request,timeout=5) as response:data=json.load(response)
+        with urllib.request.urlopen(request,timeout=5) as response:
+            if self.byte_budget is None:
+                data=json.load(response)
+            else:
+                raw=response.read(max(0,self.byte_budget['remaining'])+1)
+                self.byte_budget['remaining']-=len(raw)
+                if self.byte_budget['remaining']<0:raise ValueError('Source transfer budget exhausted')
+                data=json.loads(raw)
         result=data['results'][0]
         if result['type']!='ok':
             raise RuntimeError('Turso statement failed: '+str(result.get('error',{}).get('code','unknown')))

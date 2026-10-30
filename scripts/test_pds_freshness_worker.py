@@ -70,6 +70,14 @@ class RefreshTests(unittest.TestCase):
         self.assertEqual(self.db.execute('SELECT pds FROM actors').fetchone()[0],'https://concurrent.test')
         self.assertEqual(self.queue.metrics()['states'],{'pending':1})
 
+    def test_authority_response_budget_is_enforced(self):
+        url = 'http://127.0.0.1:' + str(self.server.server_port) + '/did'
+        budget = {'remaining': 4096}
+        self.assertEqual(read_json(url, byte_budget=budget)['id'], 'did:plc:test')
+        self.assertLess(budget['remaining'], 4096)
+        with self.assertRaisesRegex(ValueError, 'transfer budget'):
+            read_json(url, byte_budget={'remaining': 1})
+
     def test_batch_commits_once_and_lost_response_is_held(self):
         self.db.execute("INSERT INTO actors VALUES('did:plc:other','',1,'other.test')")
         self.db.commit()

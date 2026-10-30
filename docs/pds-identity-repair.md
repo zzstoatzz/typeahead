@@ -171,3 +171,8 @@ ledger between invocations. It does not populate the queue, install a schedule,
 or prove restart durability by itself. Cloud deployment and ongoing discovery
 remain required. The 1,000-account qualification runner also uses ten-identity
 write batches; it refuses authority observations older than 60 seconds.
+
+Bounded qualification has a shared 64 MiB response-body transfer ceiling across
+source, PLC authority, health and search requests, in addition to the runtime and
+identity caps. It records bytes consumed on completion. This is a response-body
+budget, not a measurement of TLS/network overhead or Fly billing.

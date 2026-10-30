@@ -45,7 +45,11 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
         raise ValueError('Expected bounded 100/1000 stage')
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    client = Turso({'url': os.environ['TURSO_URL'], 'token': os.environ['TURSO_AUTH_TOKEN']})
+    transfer = {'remaining': 64 * 1024 * 1024}
+    client = Turso({'url': os.environ['TURSO_URL'], 'token': os.environ['TURSO_AUTH_TOKEN']}, byte_budget=transfer)
+
+    def fetch(url):
+        return read_json(url, byte_budget=transfer)
     queue = Queue(output / 'queue.db')
     ledger = Ledger(output / 'ledger.db')
     started = time.monotonic()
@@ -71,7 +75,7 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
 
         def health():
             budget()
-            value = read_json(backend + '/health')
+            value = fetch(backend + '/health')
             if not value.get('ready') or value.get('sync_lag_s', 9999) > 120:
                 raise ValueError('Serving health gate failed')
             return value
@@ -89,10 +93,10 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
             if pds:
                 params['pds'] = pds
             counts['public_requests' if public else 'backend_requests'] += 1
-            value = read_json((API if public else backend + '/search') + '?' + urllib.parse.urlencode(params))
+            value = fetch((API if public else backend + '/search') + '?' + urllib.parse.urlencode(params))
             return any(actor['did'] == item['did'] for actor in value['actors'])
 
-        event('start', apply=apply, limit=limit, health=health())
+        event('start', apply=apply, limit=limit, response_byte_budget=64 * 1024 * 1024, health=health())
         items, scanned = discover(execute, queue, limit)
         event('discovery', selected=len(items), scanned=scanned, source_cursor=queue.cursor())
         by_did = {item['did']: item for item in items}
@@ -145,7 +149,7 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
             health()
             counts['authority_requests'] += 1
             try:
-                proposal = prepare(execute, did, item['handle'], read_json('https://plc.directory/' + did))
+                proposal = prepare(execute, did, item['handle'], fetch('https://plc.directory/' + did))
             except (ValueError, OSError) as error:
                 queue.failed(did, token, type(error).__name__)
                 event('unresolved', did=did, reason=type(error).__name__)
@@ -174,7 +178,7 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
                 event('verification', did=item['did'], passed=good, public_checked=sample)
                 if not good:
                     raise ValueError('Search verification failed; stop expansion')
-        event('complete', confirmed=len(confirmed), seconds=time.monotonic()-started, counts=counts, queue=queue.metrics(), health=health())
+        event('complete', confirmed=len(confirmed), seconds=time.monotonic()-started, response_bytes=64 * 1024 * 1024 - transfer['remaining'], counts=counts, queue=queue.metrics(), health=health())
 
 
 if __name__ == '__main__':
