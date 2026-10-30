@@ -23,6 +23,11 @@ request, including the visible request-indexing form, returns `503 DevReadOnly`
 without forwarding to production. The preview holds no write credentials and
 blocks administrator requests.
 Search results bypass caching so manual checks see the dev engine directly.
+Successful scoped searches must acknowledge the normalized PDS filter, preference
+mode and exact f32 boost using the shared public search contract. Missing or
+incorrect acknowledgements return `503 PdsScopeUnavailable`; malformed scope
+parameters return `400 InvalidRequest`. This keeps an older backend from silently
+answering a preference request as global search.
 
 Deploy only this configuration:
 

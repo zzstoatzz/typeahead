@@ -1,3 +1,5 @@
+import { parseSearchScope, scopeAcknowledged, type SearchScope } from "../../src/handlers/search-contract";
+
 const backends = new Set([
   "https://typeahead-tantivy-dev.fly.dev",
   "https://typeahead-tantivy-a.fly.dev",
@@ -35,13 +37,24 @@ export default {
       if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method not allowed", { status: 405 });
       }
+      const search = url.pathname === "/search" || url.pathname.startsWith("/xrpc/");
+      let scope: SearchScope | null;
+      try { scope = search ? parseSearchScope(url.searchParams) : null; }
+      catch (error) {
+        return Response.json({ error: "InvalidRequest", message: error instanceof Error ? error.message : "Invalid PDS parameters" }, { status: 400, headers: { "Cache-Control": "no-store" } });
+      }
       try {
-        return previewResponse(await fetch(new URL(url.pathname + url.search, backend), {
+        const upstream = await fetch(new URL(url.pathname + url.search, backend), {
           method: request.method,
           headers: { Accept: "application/json" },
           signal: AbortSignal.timeout(5000),
           redirect: "manual",
-        }), backend);
+        });
+        if (upstream.ok && scope && !scopeAcknowledged(scope, upstream.headers)) {
+          await upstream.body?.cancel().catch(() => {});
+          return previewResponse(Response.json({ error: "PdsScopeUnavailable", message: "PDS-scoped search is unavailable" }, { status: 503 }), backend);
+        }
+        return previewResponse(upstream, backend);
       } catch {
         return Response.json({ error: "SearchBackendUnavailable" }, { status: 503, headers: { "Cache-Control": "no-store" } });
       }
@@ -55,3 +68,4 @@ export default {
     return previewResponse(await env.PRODUCTION_UI.fetch(new Request(url, request)), backend);
   },
 } satisfies ExportedHandler<Env>;
+
