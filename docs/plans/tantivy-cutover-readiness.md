@@ -7,6 +7,18 @@ This task prepares evidence and a later cutover proposal; it does not authorize 
 
 ## Qualification evidence
 
+The [matched full-corpus component](../evals/tantivy-dev-20261028/full-corpus-performance.md)
+passed on the required two-shared-CPU/1-GiB/20-GiB serving shape. Shared-feature
+mixed p95 was 8.20 ms for Tantivy versus 37.28 ms native; p99 was 9.95 versus
+41.95 ms. Tantivy had zero oracle/transport failures across 5,224 requests,
+nine durable update stages, restart and the additional functional witnesses.
+Cleanup completed and a fresh provider read showed zero trial machines.
+This clears the frozen-feed performance component, not live-source or slot release
+qualification. Candidate cloud publication uses the existing publisher with
+immutable source/twin artifacts and no channel/routing updates; its
+[run receipt](../evals/tantivy-dev-20261028/candidate-cloud-publication.json)
+records exact pins and bounds.
+
 October 29: the expiry-v4 candidate passed actual Linux HTTP source, policy,
 crash/restart, expiry-coverage and exact boost tests under a two-CPU/1-GiB
 container limit. A separate 5,000-profile replay experiment preserved all stored
@@ -39,8 +51,8 @@ rejects those unsupported preferences with 503 using the shared public scope
 contract; malformed scope returns 400. Both aliases and byte-identical production
 HTML remain verified. This removes silent fallback, not the backend capability gap.
 
-Full-corpus matched performance, live-source completed-round coverage and actual
-cloud slot/refresh qualification remain open gates. Branch-only code now includes
+Live-source completed-round coverage and actual cloud slot/refresh qualification
+remain open gates; the frozen-feed performance component is now proven above. Branch-only code now includes
 engine-aware publication, installation, retention and native rollback; its local
 checks are distinct from deployment or release qualification. The deployed dev
 and production services have not been cut over to this branch. No cutover
@@ -53,7 +65,7 @@ bound and a writer that unnecessarily revalidated admitted input on startup.
 Tantivy committed 2.3 million actors before cancellation; a bounded sample
 reported 71.7% CPU steal with over 600 MB available memory. This is consistent
 with Fly shared-CPU throttling or contention, not proof of a memory shortage.
-Trial machines and billable volumes were retired. Query latency remains unqualified.
+Trial machines and billable volumes were retired. That trial supplied no query latency result.
 
 The next trial separates temporary performance-CPU preparation from the final
 shared-CPU serving budget. It must resume the same verified files after restart,

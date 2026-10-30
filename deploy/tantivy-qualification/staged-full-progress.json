@@ -1,35 +1,21 @@
 {
-  "run_id": "672c3d51434a",
-  "observed_at": 1793319016.4704142,
-  "deadline": 1793323981.145359,
+  "run_id": "1ca2a04e4c8b",
+  "observed_at": 1793324875.778794,
+  "deadline": 1793327439.002526,
   "supervisor": {
-    "owner_pid": 18712,
-    "phase": "preparation",
-    "state": "advancing",
-    "heartbeat_at": 1793319015.0481799
+    "state": "completed",
+    "phase": "cleanup",
+    "owner_pid": 31719,
+    "heartbeat_at": 1793324506.273261,
+    "error": null,
+    "advance_failures": 2
   },
-  "observations": [
-    {
-      "role": "native-control",
-      "machine_id": "e820351a140558",
-      "state": "started",
-      "guest": {
-        "cpu_kind": "performance",
-        "cpus": 2,
-        "memory_mb": 4096
-      }
-    },
-    {
-      "role": "tantivy-control",
-      "machine_id": "8e240df7017748",
-      "state": "started",
-      "guest": {
-        "cpu_kind": "performance",
-        "cpus": 2,
-        "memory_mb": 4096
-      }
-    }
-  ],
-  "performance_qualified": false,
+  "performance_component_passed": true,
+  "functional_passed": true,
+  "scope": "full-corpus-performance-component/frozen-feed",
+  "release_qualified": false,
+  "cleanup_status": "cleaned",
+  "remaining_qualification_machines": 0,
+  "reaper_retired": true,
   "production_changed": false
 }
