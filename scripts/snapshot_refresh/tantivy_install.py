@@ -16,6 +16,8 @@ from datetime import datetime
 
 FORMAT = 'tantivy-0.27-f32-did-expiry-v4'
 SOURCE_POLICY = 'turso-authoritative-observations-v2'
+CHECKPOINT_SOURCE = 'sqlite-committed-prefix'
+CHECKPOINT_POLICY = 'sqlite-checkpoint-observations-v1'
 ORIGIN = 'https://typeahead-tantivy-dev.fly.dev'
 SLOT_APPS = {'typeahead-tantivy-a', 'typeahead-tantivy-b'}
 PUBLIC_APPS = SLOT_APPS | {'typeahead-tantivy-dev'}
@@ -49,6 +51,107 @@ def artifact_path(value):
     return value
 
 
+def checkpoint_source(manifest):
+    return manifest.get('source_kind') == CHECKPOINT_SOURCE
+
+
+def validate_checkpoint_contract(manifest):
+    if not checkpoint_source(manifest) or manifest.get('source_policy') != CHECKPOINT_POLICY:
+        raise ValueError('Explicit checkpoint-only source identity required')
+    if not isinstance(manifest.get('source_build_id'), str) or not BUILD.fullmatch(manifest['source_build_id']) or manifest.get('normalize_version') != 'v2-cjk-bigram':
+        raise ValueError('Invalid primary checkpoint seed identity')
+    bootstrap = manifest.get('source_bootstrap')
+    if not isinstance(bootstrap, dict) or type(bootstrap.get('schema_version')) is not int or bootstrap.get('schema_version') != 1 or bootstrap.get('kind') != CHECKPOINT_SOURCE or bootstrap.get('coverage') != 'checkpoint-only' or bootstrap.get('live_coverage_verified') is not False:
+        raise ValueError('Explicit unqualified checkpoint coverage required')
+    receipt = bootstrap.get('checkpoint_receipt')
+    if not isinstance(receipt, dict) or type(receipt.get('schema_version')) is not int or receipt.get('schema_version') != 1 or receipt.get('kind') != CHECKPOINT_SOURCE or type(receipt.get('fixture')) is not bool:
+        raise ValueError('Checkpoint receipt identity missing')
+    if receipt.get('sqlite_replay_verified') is not True or receipt.get('boundary_kind') != 'successful-short-WAL-batch' or receipt.get('live_coverage_verified') is not False or receipt.get('policy_freshness_attested') is not False:
+        raise ValueError('Verified checkpoint prefix is not a live-source proof')
+    generation = integer(receipt.get('generation'), 'checkpoint generation')
+    if integer(receipt.get('generation_after'), 'later checkpoint generation') < generation:
+        raise ValueError('Checkpoint generation regressed')
+    before = integer(receipt.get('source_clock_before'), 'checkpoint source clock', 1)
+    if integer(receipt.get('source_clock_after'), 'later source clock', 1) < before:
+        raise ValueError('Checkpoint source clock regressed')
+    for key in ['source_origin_sha256', 'base_db_sha256', 'committed_provider_frames_sha256', 'replayed_wal_sha256', 'database_sha256']:
+        digest(receipt.get(key))
+    for key in ['base_db_bytes', 'database_bytes']:
+        size = integer(receipt.get(key), key, 4096)
+        if size % 4096 or size > 8 * 1024**3:
+            raise ValueError('Checkpoint database byte bound differs')
+    committed = integer(receipt.get('committed_frame'), 'committed WAL frame')
+    received = integer(receipt.get('received_wal_frames'), 'received WAL frames')
+    if received < committed or received * 4120 > 512 * 1024**2 or integer(receipt.get('sqlite_verified_wal_frames'), 'SQLite verified WAL frames') != committed or integer(receipt.get('replayed_wal_bytes'), 'replayed WAL bytes') != 32 + committed * 4120:
+        raise ValueError('Committed WAL prefix accounting differs')
+    integer(receipt.get('received_source_bytes'), 'received source bytes', receipt['base_db_bytes'] + received * 4120)
+    integer(receipt.get('source_requests'), 'source request count', 1)
+    elapsed = receipt.get('wall_seconds')
+    if type(elapsed) not in (int, float) or not 0 <= elapsed <= 180:
+        raise ValueError('Checkpoint wall-time bound differs')
+    overlap = integer(bootstrap.get('replay_overlap_seconds'), 'replay overlap', 1)
+    floor = integer(bootstrap.get('replay_floor'), 'replay floor', 1)
+    if overlap > 3600 or floor != before - overlap or manifest.get('source_watermark') != floor:
+        raise ValueError('Replay floor must precede the cut by its explicit overlap')
+    counts = bootstrap.get('counts')
+    names = {'raw_actor_rows', 'orphan_tombstones', 'input_documents', 'live_actor_documents', 'deleted_actor_documents', 'native_visible_actors'}
+    if not isinstance(counts, dict) or set(counts) != names:
+        raise ValueError('Explicit raw/input/live/native count contract required')
+    for key in names - {'native_visible_actors'}:
+        integer(counts[key], key)
+    if counts['input_documents'] < 1 or counts['input_documents'] != counts['raw_actor_rows'] + counts['orphan_tombstones'] or counts['input_documents'] != counts['live_actor_documents'] + counts['deleted_actor_documents'] or counts['deleted_actor_documents'] < counts['orphan_tombstones'] or counts['live_actor_documents'] > counts['raw_actor_rows']:
+        raise ValueError('Checkpoint input/live/deleted count equation differs')
+    if counts['native_visible_actors'] is not None:
+        native_count = integer(counts['native_visible_actors'], 'same-checkpoint native visible actors')
+        if native_count > counts['live_actor_documents'] or bootstrap.get('native_visible_database_sha256') != receipt['database_sha256']:
+            raise ValueError('Same-checkpoint visible count exceeds live actors')
+    if manifest.get('source_actor_count') != counts['input_documents'] or digest(bootstrap.get('actors_sha256')) != manifest.get('source_actors_sha256'):
+        raise ValueError('Checkpoint actor count/footer binding differs')
+    receipt_sha = digest(bootstrap.get('checkpoint_receipt_sha256'))
+    if manifest.get('source_manifest_sha256') != receipt_sha or manifest.get('source_database_sha256') != receipt['database_sha256'] or 'source_prefix_sha256' in manifest:
+        raise ValueError('Primary checkpoint provenance cannot be a native prefix source')
+    anchor = manifest.get('rollback_native_anchor')
+    if not isinstance(anchor, dict):
+        raise ValueError('Independent rollback-native anchor required')
+    for key in ['build_id', 'legacy_build_id']:
+        if not isinstance(anchor.get(key), str) or not BUILD.fullmatch(anchor[key]):
+            raise ValueError('Invalid rollback-native identity')
+    for key in ['manifest_sha256', 'database_sha256', 'prefix_sha256']:
+        digest(anchor.get(key))
+    integer(anchor.get('actor_count'), 'rollback-native actor count', 1)
+    integer(anchor.get('source_watermark'), 'rollback-native watermark', 1)
+    if manifest.get('legacy_build_id') != anchor['legacy_build_id']:
+        raise ValueError('Rollback-native twin binding differs')
+    return bootstrap, anchor
+
+
+def validate_checkpoint_provenance(manifest, checkpoint_receipt_bytes, native_anchor_manifest_bytes):
+    bootstrap, anchor = validate_checkpoint_contract(manifest)
+    if not isinstance(checkpoint_receipt_bytes, bytes) or len(checkpoint_receipt_bytes) > 1024 * 1024 or hashlib.sha256(checkpoint_receipt_bytes).hexdigest() != bootstrap['checkpoint_receipt_sha256'] or json.loads(checkpoint_receipt_bytes) != bootstrap['checkpoint_receipt']:
+        raise ValueError('Exact primary checkpoint receipt bytes differ')
+    if not isinstance(native_anchor_manifest_bytes, bytes) or len(native_anchor_manifest_bytes) > 1024 * 1024 or hashlib.sha256(native_anchor_manifest_bytes).hexdigest() != anchor['manifest_sha256']:
+        raise ValueError('Exact rollback-native manifest bytes differ')
+    native = json.loads(native_anchor_manifest_bytes)
+    if not isinstance(native, dict):
+        raise ValueError('Rollback-native manifest must be an object')
+    integer(native.get('actor_count'), 'retained native actor count', 1)
+    integer(native.get('source_watermark'), 'retained native watermark', 1)
+    fields = [('active_build', 'build_id'), ('actor_count', 'actor_count'), ('source_watermark', 'source_watermark'), ('sha256', 'database_sha256')]
+    if native.get('manifest_version') != 2 or native.get('format_version') != 5 or any(native.get(key) != anchor[field] for key, field in fields) or native.get('prefix_map', {}).get('sha256') != anchor['prefix_sha256'] or native.get('normalize_version') != manifest.get('normalize_version'):
+        raise ValueError('Rollback-native provenance differs from its independent anchor')
+    twin = native.get('legacy_twin', {})
+    if twin.get('build_id') != anchor['legacy_build_id'] or twin.get('source_watermark') != anchor['source_watermark']:
+        raise ValueError('Rollback-native twin provenance differs')
+    return {'source_kind': CHECKPOINT_SOURCE, 'structurally_valid': True, 'coverage': 'checkpoint-only', 'live_admission': False, 'fixture': bootstrap['checkpoint_receipt']['fixture'], 'counts': dict(bootstrap['counts']), 'checkpoint_receipt_sha256': bootstrap['checkpoint_receipt_sha256'], 'rollback_manifest_sha256': anchor['manifest_sha256']}
+
+
+def reject_unqualified_checkpoint(manifest):
+    if checkpoint_source(manifest):
+        raise ValueError('Checkpoint-only source is not admitted for freeze/install/runtime; fresh remote catch-up proof is required')
+    if manifest.get('source_kind') not in (None, 'flatpx05'):
+        raise ValueError('Unsupported source kind')
+
+
 def validate_artifact_manifest(manifest, expected):
     if not isinstance(expected, str) or not BUILD.fullmatch(expected) or manifest.get('active_build') != expected:
         raise ValueError('Unexpected Tantivy generation')
@@ -56,11 +159,13 @@ def validate_artifact_manifest(manifest, expected):
         raise ValueError('Unsupported Tantivy generation')
     if manifest.get('normalize_version') != 'v2-cjk-bigram' or manifest.get('plan_version') != 'complete-prefix-groups-v1':
         raise ValueError('Unsupported normalization contract')
-    if manifest.get('source_policy') != SOURCE_POLICY:
+    if checkpoint_source(manifest):
+        validate_checkpoint_contract(manifest)
+    elif manifest.get('source_kind') not in (None, 'flatpx05') or manifest.get('source_policy') != SOURCE_POLICY:
         raise ValueError('Unsupported source observation policy')
     for field in ['sha256', 'binary_sha256', 'canonical_rules_source_sha256']:
         digest(manifest.get(field))
-    for field in ['source_manifest_sha256', 'source_database_sha256', 'source_prefix_sha256', 'source_actors_sha256']:
+    for field in ['source_manifest_sha256', 'source_database_sha256', 'source_actors_sha256'] + ([] if checkpoint_source(manifest) else ['source_prefix_sha256']):
         digest(manifest.get(field))
     for field in ['source_build_id', 'legacy_build_id']:
         if not isinstance(manifest.get(field), str) or not BUILD.fullmatch(manifest[field]):
@@ -88,8 +193,10 @@ def validate_artifact_manifest(manifest, expected):
     return manifest
 
 
-def validate_source_manifest(manifest, source_bytes):
+def validate_source_manifest(manifest, source_bytes, *, checkpoint_receipt_bytes=None):
     validate_artifact_manifest(manifest, manifest['active_build'])
+    if checkpoint_source(manifest):
+        return validate_checkpoint_provenance(manifest, checkpoint_receipt_bytes, source_bytes)
     if not isinstance(source_bytes, bytes) or len(source_bytes) > 1024 * 1024 or hashlib.sha256(source_bytes).hexdigest() != manifest['source_manifest_sha256']:
         raise ValueError('Native source manifest byte identity mismatch')
     source = json.loads(source_bytes)
@@ -119,6 +226,7 @@ def validate_manifest(manifest, expected):
 
 def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None):
     """Freeze an owned, stopped checkpoint into a portable, source-linked artifact."""
+    reject_unqualified_checkpoint(manifest)
     data, destination, binary = Path(data), Path(destination), Path(binary)
     if destination.exists() or (data / 'index').is_symlink():
         raise ValueError('A new artifact destination and regular index directory are required')
@@ -227,6 +335,7 @@ def source_gates(metadata, now, max_poll_age=120, max_policy_age=300, max_sweep_
 
 
 def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True, require_source_ready=True, **bounds):
+    reject_unqualified_checkpoint(manifest)
     now = int(time.time()) if now is None else now
     for field, expected in [('format', FORMAT), ('build_id', manifest['active_build']), ('normalize_version', manifest['normalize_version']), ('plan_version', manifest['plan_version'])]:
         if metadata.get(field) != expected:
@@ -317,6 +426,7 @@ def validate_provider(attestation, manifest, status, now=None):
 
 
 def install_bundle(bundle, destination, manifest, binary, now=None, **bounds):
+    reject_unqualified_checkpoint(manifest)
     """Prepare one new inactive directory; caller owns starting and qualifying its service."""
     validate_manifest(manifest, manifest['active_build'])
     bundle, destination, binary = Path(bundle), Path(destination), Path(binary)

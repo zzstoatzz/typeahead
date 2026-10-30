@@ -51,6 +51,111 @@ class AdmissionTests(unittest.TestCase):
         manifest=self.manifest()
         return {'schema':1,'provider':'fly','observed_at':datetime.fromtimestamp(now,timezone.utc).isoformat().replace('+00:00','Z'),'app':manifest['provider_app'],'machine_id':'abcdef12345678','instance_id':'fixture-instance','state':'started','image_digest':manifest['image_digest'],'guest':manifest['guest'],'mounts':[{'volume_id':manifest['volume_id'],'path':'/data','size_gib':20,'encrypted':True}],'owner':'tantivy-qualification-20261029','role':'tantivy-control','public_service_ports':[],'provider_config_reserved_env_overrides':False,'test_only':True}
 
+    def checkpoint_manifest(self):
+        manifest = self.manifest()
+        native = {'manifest_version':2,'format_version':5,'active_build':'b1792000000-rollback-px05',
+                  'actor_count':7,'source_watermark':50,'sha256':'2'*64,
+                  'normalize_version':manifest['normalize_version'],'prefix_map':{'sha256':'3'*64},
+                  'legacy_twin':{'build_id':'b1792000000-rollback','source_watermark':50}}
+        native_raw = json.dumps(native,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        receipt = {'schema_version':1,'kind':adapter.CHECKPOINT_SOURCE,'fixture':True,
+                   'generation':7,'generation_after':8,'source_origin_sha256':'4'*64,
+                   'source_clock_before':1000000,'source_clock_after':1000002,
+                   'base_db_sha256':'5'*64,'base_db_bytes':4096,'received_wal_frames':2,
+                   'committed_frame':1,'committed_provider_frames_sha256':'6'*64,
+                   'replayed_wal_sha256':'7'*64,'replayed_wal_bytes':4152,
+                   'database_sha256':'8'*64,'database_bytes':8192,
+                   'sqlite_replay_verified':True,'sqlite_verified_wal_frames':1,
+                   'boundary_kind':'successful-short-WAL-batch','received_source_bytes':12350,
+                   'source_requests':6,'wall_seconds':0.1,'live_coverage_verified':False,
+                   'policy_freshness_attested':False}
+        receipt_raw = json.dumps(receipt,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        receipt_sha = hashlib.sha256(receipt_raw).hexdigest()
+        anchor = {'build_id':native['active_build'],'manifest_sha256':hashlib.sha256(native_raw).hexdigest(),
+                  'database_sha256':native['sha256'],'prefix_sha256':native['prefix_map']['sha256'],
+                  'actor_count':native['actor_count'],'source_watermark':native['source_watermark'],
+                  'legacy_build_id':native['legacy_twin']['build_id']}
+        manifest.update(source_kind=adapter.CHECKPOINT_SOURCE,source_policy=adapter.CHECKPOINT_POLICY,
+                        source_build_id='b1793236000-primary',source_manifest_sha256=receipt_sha,
+                        source_database_sha256=receipt['database_sha256'],source_actor_count=4,
+                        source_watermark=999700,legacy_build_id=anchor['legacy_build_id'],
+                        rollback_native_anchor=anchor,
+                        source_bootstrap={'schema_version':1,'kind':adapter.CHECKPOINT_SOURCE,
+                            'coverage':'checkpoint-only','live_coverage_verified':False,
+                            'checkpoint_receipt_sha256':receipt_sha,'checkpoint_receipt':receipt,
+                            'replay_floor':999700,'replay_overlap_seconds':300,
+                            'actors_sha256':manifest['source_actors_sha256'],
+                            'counts':{'raw_actor_rows':3,'orphan_tombstones':1,'input_documents':4,
+                                      'live_actor_documents':2,'deleted_actor_documents':2,'native_visible_actors':None}})
+        del manifest['source_prefix_sha256']
+        return manifest,receipt_raw,native_raw
+
+    def test_checkpoint_primary_counts_and_independent_rollback_are_structural_only(self):
+        manifest,receipt_raw,native_raw = self.checkpoint_manifest()
+        adapter.validate_artifact_manifest(manifest,manifest['active_build'])
+        result = adapter.validate_checkpoint_provenance(manifest,receipt_raw,native_raw)
+        self.assertTrue(result['structurally_valid'])
+        self.assertFalse(result['live_admission'])
+        self.assertEqual(result['coverage'],'checkpoint-only')
+        self.assertIsNone(result['counts']['native_visible_actors'])
+        self.assertNotEqual(result['counts']['input_documents'],manifest['rollback_native_anchor']['actor_count'])
+        self.assertNotEqual(manifest['source_watermark'],manifest['rollback_native_anchor']['source_watermark'])
+        self.assertEqual(adapter.validate_source_manifest(manifest,native_raw,checkpoint_receipt_bytes=receipt_raw),result)
+        with self.assertRaises(ValueError):adapter.validate_source_manifest(manifest,native_raw)
+        with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(manifest,receipt_raw+b' ',native_raw)
+        with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(manifest,receipt_raw,native_raw+b' ')
+        known=copy.deepcopy(manifest)
+        known['source_bootstrap']['counts']['native_visible_actors']=1
+        with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(known,receipt_raw,native_raw)
+        known['source_bootstrap']['native_visible_database_sha256']=manifest['source_database_sha256']
+        self.assertEqual(adapter.validate_checkpoint_provenance(known,receipt_raw,native_raw)['counts']['native_visible_actors'],1)
+
+    def test_checkpoint_provenance_rejects_floor_prefix_wal_count_and_anchor_confusion(self):
+        original,receipt_raw,native_raw = self.checkpoint_manifest()
+        cases=[(('source_bootstrap','counts','raw_actor_rows'),4),
+               (('source_bootstrap','counts','live_actor_documents'),1),
+               (('source_bootstrap','counts','deleted_actor_documents'),3),
+               (('source_bootstrap','counts','orphan_tombstones'),2),
+               (('source_bootstrap','counts','input_documents'),7),
+               (('source_bootstrap','counts','native_visible_actors'),7),
+               (('source_bootstrap','counts','input_documents'),True),
+               (('source_bootstrap','replay_floor'),1000000),
+               (('source_bootstrap','replay_overlap_seconds'),0),
+               (('source_bootstrap','live_coverage_verified'),True),
+               (('source_bootstrap','schema_version'),True),
+               (('source_bootstrap','checkpoint_receipt','source_clock_after'),999999),
+               (('source_bootstrap','checkpoint_receipt','generation_after'),6),
+               (('source_bootstrap','checkpoint_receipt','committed_frame'),3),
+               (('source_bootstrap','checkpoint_receipt','sqlite_verified_wal_frames'),0),
+               (('source_bootstrap','checkpoint_receipt','sqlite_replay_verified'),False),
+               (('source_bootstrap','checkpoint_receipt','replayed_wal_bytes'),4153),
+               (('source_bootstrap','checkpoint_receipt','boundary_kind'),'error-EOF'),
+               (('source_bootstrap','checkpoint_receipt','policy_freshness_attested'),True),
+               (('source_bootstrap','actors_sha256'),'9'*64),
+               (('rollback_native_anchor','actor_count'),4),
+               (('rollback_native_anchor','source_watermark'),999700),
+               (('source_database_sha256',),'2'*64),
+               (('source_manifest_sha256',),original['rollback_native_anchor']['manifest_sha256']),
+               (('source_policy',),adapter.SOURCE_POLICY),
+               (('source_prefix_sha256',),'3'*64)]
+        for path,value in cases:
+            changed=copy.deepcopy(original);target=changed
+            for key in path[:-1]:target=target[key]
+            target[path[-1]]=value
+            with self.subTest(path=path),self.assertRaises(ValueError):
+                adapter.validate_checkpoint_provenance(changed,receipt_raw,native_raw)
+
+    def test_checkpoint_only_cannot_freeze_install_or_claim_runtime_even_with_ready_flags(self):
+        manifest,_,_=self.checkpoint_manifest()
+        with self.assertRaisesRegex(ValueError,'Checkpoint-only source is not admitted'):
+            adapter.freeze_bundle('/missing/data','/missing/destination',manifest,b'','/missing/binary')
+        with self.assertRaisesRegex(ValueError,'Checkpoint-only source is not admitted'):
+            adapter.install_bundle('/missing/bundle','/missing/destination',manifest,'/missing/binary')
+        with self.assertRaisesRegex(ValueError,'Checkpoint-only source is not admitted'):
+            adapter.validate_runtime({'ready':True,'cutover_source_ready':True},manifest)
+        with self.assertRaisesRegex(ValueError,'Checkpoint-only source is not admitted'):
+            adapter.validate_metadata({},manifest,require_source_ready=False,require_coverage_ready=False)
+
     def test_independent_runtime_gates_reject_claimed_readiness_with_missing_evidence(self):
         manifest=self.manifest();status=self.status();adapter.validate_manifest(manifest,manifest['active_build']);adapter.validate_runtime(status,manifest,1000000)
         mutations=[('format','tantivy-0.27-f32-did-source-v2'),('full_source',False),('input_actors',2),('source_observation_revision',0),('ready',False),('cutover_source_ready',False),('watermark',1),('binary_sha256','0'*64),('retrieval_strategy','global-merge')]
