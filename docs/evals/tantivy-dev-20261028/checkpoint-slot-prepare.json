@@ -19,5 +19,26 @@
   "temporary_deployment": true,
   "flow_run_id": "593831df-7c9d-4c03-9a5c-9e211ed83537",
   "flow_run_state": "Scheduled",
-  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/593831df-7c9d-4c03-9a5c-9e211ed83537"
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/593831df-7c9d-4c03-9a5c-9e211ed83537",
+  "latest": {
+    "observed_at": 1793349489.148403,
+    "id": "593831df-7c9d-4c03-9a5c-9e211ed83537",
+    "state": "Failed",
+    "start": "2026-10-30 08:35:48.506302+00:00",
+    "end": "2026-10-30 08:36:06.287084+00:00",
+    "infrastructure_pid": "prefect-build-593831df7c9d4c039a5c9e211ed83537-r0",
+    "message": "Flow run encountered an exception: RuntimeError: Owned Tantivy candidate configuration changed",
+    "tasks": [
+      {
+        "name": "clone_repo-cb6",
+        "state": "Completed"
+      }
+    ]
+  },
+  "provider_cleanup": {
+    "remaining_servers": 0,
+    "server_name": "prefect-build-593831df7c9d4c039a5c9e211ed83537-r0",
+    "observed_at": 1793349503.818028
+  },
+  "temporary_deployment_retired_at": 1793349504.868046
 }
