@@ -208,6 +208,7 @@ class PilotTests(unittest.TestCase):
         result=self.pilot.advance_to_measurement('1234abcd5678')
         self.assertEqual(result['state'],'failed');self.assertEqual(result['error'],'supervisor_generator_reported_failure')
         self.assertFalse(result['generator_result']['receipt']['passed']);self.assertFalse(self.api.machines)
+        self.assertEqual(result['functional']['state'],'completed');self.assertTrue(result['functional']['receipt']['passed'])
     def test_supervisor_missing_prep_receipt_is_bounded_and_cleans(self):
         self.supervisor_ready();self.control.logs={};start=self.clock.now()
         result=self.pilot.advance_to_measurement('1234abcd5678')

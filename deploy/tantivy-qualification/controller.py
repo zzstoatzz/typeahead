@@ -6,6 +6,8 @@ from pathlib import Path
 import secrets
 import subprocess
 import time
+import urllib.request
+import urllib.error
 
 APP = 'typeahead-qual-20261029'
 OWNER = 'tantivy-qualification-20261029'
@@ -47,14 +49,23 @@ def credential():
 def api(method, path, body=None):
     if path.startswith('/') or '..' in path:
         raise ValueError('invalid qualification API path')
-    source = "let s='';for await(const b of process.stdin)s+=b;const p=JSON.parse(s);const r=await fetch(p.url,{method:p.method,headers:{Authorization:'Bearer '+p.token,'Content-Type':'application/json'},...(p.body===null?{}:{body:JSON.stringify(p.body)}),signal:AbortSignal.timeout(60000)});console.log(JSON.stringify({status:r.status,body:await r.text()}));"
-    result = subprocess.run(['node', '--input-type=module', '-e', source], input=json.dumps({'url':'https://api.machines.dev/v1/apps/'+APP+'/'+path,'method':method,'body':body,'token':credential()}), capture_output=True,text=True,timeout=65)
-    if result.returncode:
-        raise RuntimeError('qualification API transport failed')
-    response = json.loads(result.stdout)
-    if response['status'] >= 400:
-        raise RuntimeError('qualification API HTTP '+str(response['status']))
-    return json.loads(response['body']) if response['body'] and method != 'DELETE' else None
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *args, **kwargs):
+            raise RuntimeError('qualification API redirect rejected')
+    request = urllib.request.Request('https://api.machines.dev/v1/apps/'+APP+'/'+path,
+        method=method, data=None if body is None else json.dumps(body).encode(),
+        headers={'Authorization':'Bearer '+credential(),'Content-Type':'application/json'})
+    timeout = max(15,body.get('timeout',0)+10) if isinstance(body,dict) and path.endswith('/exec') else 15
+    try:
+        with urllib.request.build_opener(NoRedirect()).open(request,timeout=timeout) as response:
+            raw=response.read(4*1024*1024+1)
+        if len(raw)>4*1024*1024:raise RuntimeError('qualification API response budget')
+        return json.loads(raw) if raw and method!='DELETE' else None
+    except urllib.error.HTTPError as error:
+        code=error.code;error.close()
+        raise RuntimeError('qualification API HTTP '+str(code)) from None
+    except (OSError,ValueError):
+        raise RuntimeError('qualification API transport failed') from None
 
 
 def owned(machine_id):

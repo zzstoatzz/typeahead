@@ -628,7 +628,6 @@ class Pilot:
                     if terminal_seen is None:terminal_seen=self.now()
                     if self.now()-terminal_seen>=30:raise PilotError('supervisor_terminal_result_missing')
                 journal(phase='measurement');self.sleep(poll)
-            if not captured['receipt']['passed']:raise PilotError('supervisor_generator_reported_failure')
             journal(phase='post_measurement')
             _,pilot=bound();functional=pilot.get('supervisor',{}).get('functional')
             if functional is None:
@@ -641,6 +640,8 @@ class Pilot:
                         journal(functional={'state':'completed','receipt':receipt})
                     except Exception:journal(functional={'state':'inconclusive','reason':'functional_execution_uncertain_no_retry'})
                 else:journal(functional={'state':'inconclusive','reason':'functional_runner_or_lease_unavailable'})
+            if not captured['receipt']['passed']:
+                failure='supervisor_generator_reported_failure';journal(error=failure)
             journal(phase='cleanup')
         except Exception as error:
             failure=str(error) if isinstance(error,PilotError) and re.fullmatch('[A-Za-z0-9_]{1,120}',str(error)) else type(error).__name__

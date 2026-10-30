@@ -72,6 +72,26 @@ failure, not an engine failure or performance result. Another full import must
 wait for an independently running phase supervisor and a small real lifecycle
 check that proves automatic advancement, result capture and cleanup.
 
+The automatic supervisor subsequently passed two real 128-actor Fly pilots:
+[`b34d01d0cf2f`](../evals/tantivy-dev-20261028/supervised-pilot-b34d01d0cf2f.json)
+proved phase advancement, result capture and cleanup;
+[`08552ca2adfa`](../evals/tantivy-dev-20261028/supervised-pilot-08552ca2adfa.json)
+also uploaded and ran the SHA-bound post-measurement probe. Its 25 queries,
+nine update stages, three hydration witnesses and hide/delete/PDS-change checks
+passed with actual provider/runtime evidence; native remained unchanged and
+cleanup completed. Neither synthetic pilot qualifies full-corpus performance.
+
+Full retry `672c3d51434a` is running under that independent supervisor, with
+the same frozen image and binaries. Its original deadline is recorded in
+`deploy/tantivy-qualification/supervisor-process.json`; the reaper remains an
+independent cleanup owner. A provisioning observation failed through Node fetch
+while the same read succeeded through Python's standard HTTP client. The
+controller now uses that client, with fixed HTTPS origin, no redirects and a
+bounded response. The original owned machine/configuration intent was
+reconciled without recreating it or repeating an uncertain write. The local
+supervisor was restarted during preparation to load that fix; neither cloud
+preparation was restarted. No performance result is claimed yet.
+
 Typeahead commits `a9745b4` and `02cda68` add source-linked portable bundles,
 publication through the existing cloud-owned artifact publisher, and contracts
 for two independently addressed Tantivy slots. The native source manifest is
