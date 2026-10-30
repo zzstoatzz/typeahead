@@ -57,11 +57,12 @@ Resolving one DID per HTTP request does not work at corpus scale.
    against arrivals (~2,900 new accounts/hour), not against the backlog.
 2. **The ingester's identity pool** — every `#identity` event, new DID or
    existing (see below). Posts `pds` along with the handle.
-3. **Cloud PDS repair (planned)** — the retired bulk PLC job selected missing
-   handles, leaving actors with handles but no PDS untouched. Its home flow,
-   deployment definitions and generic writer have been removed. The retained
-   offline reconstruction and conditional repair tools are described in
-   [repair contracts](pds-identity-repair.md). No recurring replacement is deployed.
+3. **Cloud PDS backlog repair** — a one-off, checkpointed repair uses existing
+   Stream archive metadata for actors with empty PDS fields. It preserves
+   nonempty values and concurrent source changes; archive coverage is partial.
+   See [repair status and evidence](pds-identity-repair.md). The old home PLC
+   flow, deployment definitions and generic writer remain removed. No recurring
+   replacement is deployed.
 
 ## identity: handle changes are the live consumer's job
 
@@ -167,7 +168,7 @@ and `did:web` accounts that are not in PLC at all. Expect low thousands.
 | symptom | cause | what to do |
 | --- | --- | --- |
 | never-attempted count growing over many hours | phase 1 not keeping pace with arrivals | raise `IDENTITY_LIMIT`, or check for 429s from `getProfiles` |
-| attempted count growing | accounts the appview cannot see | bulk PLC repair is required; the home schedule is currently paused |
+| attempted count growing | unresolved accounts, including those the appview cannot see | inspect resolution failures and cloud enrichment; do not restore the retired home PLC job |
 | hour missing from `snapshots` | cron did not fire, or a step failed | compare `cron_last_attempt` in KV — it is written before any step |
 | ingester `pending` climbing | worker writes are slow or failing | check Turso write latency; see the single-writer note below |
 
