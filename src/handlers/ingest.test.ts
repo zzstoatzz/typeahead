@@ -137,7 +137,9 @@ function sqliteDb() {
   };
   const handleOf = (did: string) =>
     sqlite.query<{ handle: string }, [string]>("SELECT handle FROM actors WHERE did = ?").get(did)?.handle;
-  return { db, handleOf };
+  const pdsOf = (did: string) =>
+    sqlite.query<{ pds: string }, [string]>("SELECT pds FROM actors WHERE did = ?").get(did)?.pds;
+  return { db, handleOf, pdsOf };
 }
 
 test("a new handle for an existing actor replaces the old one; a bare DID keeps it", async () => {
@@ -170,4 +172,25 @@ test("unverified identity claims never replace a verified handle or initialize a
   expect(handleOf("did:plc:bare")).toBe("");
   await handleIngest(mockReq([{ did, handle: "handle.invalid" }]), db, env, fakeCtx().ctx);
   expect(handleOf(did)).toBe("handle.invalid");
+});
+
+
+test("PDS migrations replace old hosting identity and failed lookups preserve it", async () => {
+  const { db, pdsOf } = sqliteDb();
+  const env = fakeEnv({ ADMIN_SECRET: "s3cret" });
+  const did = "did:plc:migrated";
+  for (const pds of ["https://old.example", "https://new.example"]) {
+    const { ctx, promises } = fakeCtx();
+    const response = await handleIngest(mockReq([{ did, pds }]), db, env, ctx);
+    await Promise.all(promises);
+    expect(response.status).toBe(200);
+    expect(pdsOf(did)).toBe(pds);
+  }
+  for (const event of [{ did }, { did, pds: "", display_name: "Updated profile" }]) {
+    const { ctx, promises } = fakeCtx();
+    const response = await handleIngest(mockReq([event]), db, env, ctx);
+    await Promise.all(promises);
+    expect(response.status).toBe(200);
+    expect(pdsOf(did)).toBe("https://new.example");
+  }
 });
