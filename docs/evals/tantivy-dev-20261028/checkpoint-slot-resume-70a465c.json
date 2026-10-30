@@ -21,18 +21,24 @@
   "flow_run_state": "Scheduled",
   "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/262f4506-916e-4e08-98b0-42a7c3938515",
   "latest": {
-    "observed_at": 1793350828.812157,
+    "observed_at": 1793351540.950819,
     "id": "262f4506-916e-4e08-98b0-42a7c3938515",
-    "state": "Running",
+    "state": "Failed",
     "start": "2026-10-30 08:59:04.109764+00:00",
-    "end": "None",
+    "end": "2026-10-30 09:06:46.980506+00:00",
     "infrastructure_pid": "prefect-build-262f4506916e4e0898b042a7c3938515-r0",
-    "message": null,
+    "message": "Flow run encountered an exception: HTTPError: HTTP Error 503: Service Unavailable",
     "tasks": [
       {
         "name": "clone_repo-cfc",
         "state": "Completed"
       }
     ]
-  }
+  },
+  "provider_cleanup": {
+    "observed_at": 1793351526.716747,
+    "server_name": "prefect-build-262f4506916e4e0898b042a7c3938515-r0",
+    "remaining_servers": 0
+  },
+  "temporary_deployment_retired_at": 1793351542.0995898
 }
