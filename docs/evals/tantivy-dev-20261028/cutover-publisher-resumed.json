@@ -1,0 +1,14 @@
+{
+  "observed_at": 1793371447.725027,
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "paused": false,
+  "schedule": {
+    "cron": "0 6,18 * * *",
+    "timezone": "UTC",
+    "day_or": true
+  },
+  "active": true,
+  "controller_revision": "39c753cc6193d22d77a3646571787b8180ef89d9",
+  "work_pool": "typeahead-ephemeral",
+  "passed": true
+}

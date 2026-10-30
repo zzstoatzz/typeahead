@@ -1,5 +1,14 @@
 # operations / edge gotchas
 
+## Current search engine — October 30, 2026
+
+Production now serves Tantivy on managed slot A with the native backend retained
+for rollback. The public URL and frontend are unchanged. See the
+[cutover record](plans/tantivy-cutover-readiness.md#production-cutover--october-30-2026)
+for the exact deployment and verification receipts. Dated native inventories below
+are historical.
+
+
 ## Current automatic refresh — October 27, 2026
 
 Latest readback at 08:15 UTC: the scheduled cloud refresh completed at 08:03:05

@@ -1,0 +1,52 @@
+{
+  "passed": true,
+  "observed_at": 1793371437.580229,
+  "method": "fresh generation; both aliases observed miss then hit with byte-identical correct Tantivy responses after old TTL drained",
+  "deployment_completed_before_utc": "2026-10-30T14:38:48Z",
+  "hit_miss_observable": true,
+  "limitation": "Original smoke parser collapsed duplicate Server-Timing headers. Followup preserves all values and confirms cache behavior.",
+  "requests": [
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "status": 200,
+      "body_sha256": "2f79f9c0354a71eb98888c17d5ccce784729fa1db4f69e00826fe1703f4cc3bb",
+      "generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+      "server_timing": [
+        "cache;desc=\"miss\";dur=22, origin_headers;dur=161;desc=\"01M66M8SKJQ94GVPXZTVD8VDSW-iad\", origin;dur=161, search;dur=183",
+        "cfEdge;dur=20,cfOrigin;dur=0,cfWorker;dur=187"
+      ]
+    },
+    {
+      "endpoint": "app.bsky.actor.searchActorsTypeahead",
+      "status": 200,
+      "body_sha256": "2f79f9c0354a71eb98888c17d5ccce784729fa1db4f69e00826fe1703f4cc3bb",
+      "generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+      "server_timing": [
+        "cache;desc=\"miss\";dur=19, origin_headers;dur=103;desc=\"01M66M8V24JQGF63J1C622Q45E-iad\", origin;dur=103, search;dur=122",
+        "cfEdge;dur=203,cfOrigin;dur=0,cfWorker;dur=136"
+      ]
+    },
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "status": 200,
+      "body_sha256": "2f79f9c0354a71eb98888c17d5ccce784729fa1db4f69e00826fe1703f4cc3bb",
+      "generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+      "server_timing": [
+        "cache;desc=\"hit\";dur=11",
+        "cfCacheStatus;desc=\"HIT\"",
+        "cfEdge;dur=35,cfOrigin;dur=0,cfWorker;dur=14"
+      ]
+    },
+    {
+      "endpoint": "app.bsky.actor.searchActorsTypeahead",
+      "status": 200,
+      "body_sha256": "2f79f9c0354a71eb98888c17d5ccce784729fa1db4f69e00826fe1703f4cc3bb",
+      "generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+      "server_timing": [
+        "cache;desc=\"hit\";dur=6",
+        "cfCacheStatus;desc=\"HIT\"",
+        "cfEdge;dur=27,cfOrigin;dur=0,cfWorker;dur=8"
+      ]
+    }
+  ]
+}

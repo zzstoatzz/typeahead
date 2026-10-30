@@ -48,12 +48,11 @@ and correct the docs rather than assuming one automatically describes production
 
 ## the serving invariant
 
-The target is predictable, bounded request work. The snapshot contains precomputed
-prefix lists and the merge caps hydration at 50 candidates before exact promotion.
-Union-prefix additions use the partial ranking index in this branch; exact keys
-and intersections still read every matching row. The index is installed in the
-production database; the schema initialization change is on this branch. See
-[the lookup evaluation](docs/evals/bounded-overlay.md) for local experiments.
+The target is predictable, bounded request work. Production uses Tantivy with
+complete postings, global ranked retrieval and durable live updates. Retained
+native rollback uses precomputed prefix lists and a capped hydration merge;
+its limitations are not the serving contract for Tantivy. Verify matching,
+ranking and PDS scope against the deployed engine before changing retrieval.
 
 Avoid corpus-proportional request work and full-scan Worker cron selectors. Full
 index builds are deliberately corpus-scale offline jobs; this is not permission

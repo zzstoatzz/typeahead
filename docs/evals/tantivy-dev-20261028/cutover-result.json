@@ -1,0 +1,47 @@
+{
+  "observed_at": 1793371477.647083,
+  "status": "production_cutover_verified",
+  "authorized_by": "Nate: lgtm after reviewing parallel frontend",
+  "public_url": "https://typeahead.waow.tech",
+  "dev_url": "https://typeahead-tantivy-dev-ui.n8-3e9.workers.dev/",
+  "engine": "tantivy",
+  "build_id": "b1793346536-cp-7c8322df79",
+  "promotion_flow_run_id": "93520430-fe68-48d1-898d-06a741aebd75",
+  "public_worker_version": "d9d9c1e6-0616-47fa-8820-75fc120a9c5c",
+  "transport_worker_version": "27de9b54-deaa-4d07-a1b1-d70141135993",
+  "resources": {
+    "shared_cpus": 2,
+    "memory_mib": 1024,
+    "disk_gib": 20
+  },
+  "verification": {
+    "functional_smoke_passed": true,
+    "initial_smoke_requests": 29,
+    "cache_followup_requests": 4,
+    "cache_both_aliases_miss_then_hit": true,
+    "initial_smoke_caveat": "Two cache checks falsely failed because duplicate Server-Timing headers were collapsed; followup retains all headers.",
+    "freshness_passed": true,
+    "native_rollback_ready": true,
+    "provider_controller_servers_remaining": 0
+  },
+  "publisher": {
+    "active": true,
+    "cron": "0 6,18 * * *",
+    "timezone": "UTC",
+    "pool": "typeahead-ephemeral",
+    "first_scheduled_tantivy_refresh_completed": false
+  },
+  "native_rollback_origin": "https://typeahead-startup-20261024.fly.dev",
+  "ingester_changed": false,
+  "heavypad_bulk_work": false,
+  "receipts": [
+    "cutover-promotion-run.json",
+    "cutover-operation.json",
+    "cutover-route.json",
+    "cutover-public-smoke.json",
+    "cutover-cache-verification.json",
+    "cutover-provider.json",
+    "cutover-publisher-resumed.json"
+  ],
+  "rollback": "Run existing typeahead-index deployment with rollback=true and automatic_refresh=false, then rotate response cache generation after native route convergence. Restore original native publisher configuration before resuming native schedule."
+}

@@ -1,0 +1,87 @@
+{
+  "observed_at": 1793371268.783468,
+  "temporary_controller_servers": 0,
+  "apps": {
+    "typeahead-tantivy-a": [
+      {
+        "id": "e820354f119698",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "volumes": [
+          {
+            "id": "vol_r7y5xnxql7kldngr",
+            "size_gb": 20
+          }
+        ]
+      }
+    ],
+    "typeahead-tantivy-b": [],
+    "typeahead-startup-20261024": [
+      {
+        "id": "8e3d79b70dd748",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "volumes": [
+          {
+            "id": "vol_v8eyqk61q9dy9gkv",
+            "size_gb": 20
+          }
+        ]
+      }
+    ],
+    "typeahead-search-refresh": [
+      {
+        "id": "801539a6551778",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "volumes": [
+          {
+            "id": "vol_40o3xy5812d6kkk4",
+            "size_gb": 20
+          }
+        ]
+      }
+    ],
+    "typeahead-ingester": [
+      {
+        "id": "7845636a3d0ee8",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 1,
+          "memory_mb": 256
+        },
+        "volumes": []
+      }
+    ],
+    "typeahead-tantivy-dev": [
+      {
+        "id": "840e95a2153308",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "volumes": [
+          {
+            "id": "vol_4oj6mqjpnlgeyqxr",
+            "size_gb": 40
+          }
+        ]
+      }
+    ]
+  }
+}

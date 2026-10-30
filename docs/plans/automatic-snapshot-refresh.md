@@ -1,6 +1,12 @@
 # Automatic isolated snapshot refresh
 
-Current readback October 27, 17:43 UTC: `typeahead-startup-20261024` / Machine
+Current production uses the managed Tantivy A/B controller with a 12-hour cloud
+publisher cadence. Native remains an independent rollback anchor. See the
+[October 30 cutover record](tantivy-cutover-readiness.md#production-cutover--october-30-2026)
+for the current route, exact pins and verification. The native rollout history
+below describes the retained fallback and its original procedure.
+
+Historical native readback October 27, 17:43 UTC: `typeahead-startup-20261024` / Machine
 `8e3d79b70dd748` serves build `b1793109259-2b36-px05`, with performance image
 `d4c3111e` / native `62266a3`. The guarded resume completed at 17:34 UTC after
 cached restart and public verification. `typeahead-search-refresh` / Machine

@@ -25,9 +25,9 @@ for parameters, moderation policy, caching and rate limits.
 - **continuous discovery** — a Zig ingester follows the relay's `subscribeRepos`
   firehose and writes actor updates to Turso. identity changes are resolved from
   DID authority and verified against the claimed handle.
-- **local search** — compact snapshots in R2 supply the base index; a mutable
-  overlay supplies changes between builds. HTTP serving stays separate from
-  corpus-scale preparation.
+- **local search** — Tantivy serves an immutable base snapshot from R2 plus
+  durable live updates from Turso. HTTP serving stays separate from corpus-scale
+  preparation.
 - **edge serving** — a Cloudflare Worker handles public endpoints, caching,
   profile APIs and request accounting. a private transport routes search to Fly.
 - **explicit policy** — moderation labels, domain blocks and per-DID overrides

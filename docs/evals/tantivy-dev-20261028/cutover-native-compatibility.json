@@ -1,0 +1,32 @@
+{
+  "observed_at": 1793370463.4962828,
+  "passed": true,
+  "routing_target": "native",
+  "worker_version": "441bfaa9-b293-4aa8-9e0d-49c1b8db44a0",
+  "transport_version": "27de9b54-deaa-4d07-a1b1-d70141135993",
+  "previous_worker_version": "15ea44b7-e1df-464e-a728-713bdf516b4a",
+  "previous_transport_version": "40a014e4-5ec0-467d-a8e7-214b626436ce",
+  "aliases": [
+    {
+      "alias": "tech.waow.typeahead.searchActors",
+      "status": 200,
+      "engine": "native",
+      "body_sha256": "0b9e5305a0c40c17824e4cc0c0925970f34b78abea8606381327d3a73009ef41"
+    },
+    {
+      "alias": "app.bsky.actor.searchActorsTypeahead",
+      "status": 200,
+      "engine": "native",
+      "body_sha256": "0b9e5305a0c40c17824e4cc0c0925970f34b78abea8606381327d3a73009ef41"
+    }
+  ],
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 49,
+    "snapshot_age_s": 261204,
+    "build_id": "b1793109259-2b36-px05",
+    "probe_ok": true,
+    "reasons": []
+  }
+}

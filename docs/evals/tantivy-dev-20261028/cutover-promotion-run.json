@@ -1,0 +1,27 @@
+{
+  "observed_at": 1793370676.416249,
+  "flow_run_id": "93520430-fe68-48d1-898d-06a741aebd75",
+  "state": "Scheduled",
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "controller_revision": "39c753cc6193d22d77a3646571787b8180ef89d9",
+  "plan_sha256": "7f547a14b234180083cff854cdb5a00163faf214301f9a96467bb6b40624173b",
+  "idempotency_key": "53adac54e8401c5f637fa5b9e6cbf8a7945dac4e4856069ece8dad2c349735f8",
+  "production_authorized": true,
+  "authorization": "User lgtm after dev UI smoke and twelve-hour cadence acceptance",
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/93520430-fe68-48d1-898d-06a741aebd75",
+  "latest": {
+    "observed_at": 1793371128.1830132,
+    "id": "93520430-fe68-48d1-898d-06a741aebd75",
+    "state": "Completed",
+    "start": "2026-10-30 14:34:21.901967+00:00",
+    "end": "2026-10-30 14:34:41.647363+00:00",
+    "infrastructure_pid": "prefect-build-93520430fe6848d1898d06a741aebd75-r0",
+    "message": null,
+    "tasks": [
+      {
+        "name": "clone_repo-07f",
+        "state": "Completed"
+      }
+    ]
+  }
+}

@@ -3,7 +3,19 @@
 Owner: `codex/tantivy-cutover-readiness`. Started October 29, 2026.
 Production routing, serving/rollback machines and live ingester remain protected.
 The dev API and production-identical frontend remain parallel to production.
-This task prepares evidence and a later cutover proposal; it does not authorize promotion.
+Nate approved production promotion after reviewing the parallel frontend.
+
+## Production cutover — October 30, 2026
+
+The approved guarded promotion completed in Prefect run
+`93520430-fe68-48d1-898d-06a741aebd75`. Production routes to managed slot A,
+build `b1793346536-cp-7c8322df79`, on two shared CPUs, 1 GiB RAM and 20 GiB disk.
+The native backend remains the independent rollback anchor; the ingester and
+Turso ownership are unchanged. The production-identical dev URL remains available.
+See the [cutover result](../evals/tantivy-dev-20261028/cutover-result.json) for
+public verification, cache generation, publisher cadence and cleanup receipts.
+
+The following readiness records describe the state before promotion.
 
 ## Cutover-ready state — October 30, 2026
 
@@ -32,7 +44,7 @@ were retired. The production-identical dev preview now points at A. Its
 [real-origin rollback rehearsal](../evals/tantivy-dev-20261028/checkpoint-live-route-rehearsal.json)
 passed native → A → native with 13 bounded GETs, both aliases and stale-ETag
 rejection. Its routing object was isolated; production routing was not changed.
-Production remains native. Historical attempts below are evidence, not current
+At that preflight, production remained native. Historical attempts below are evidence, not current
 instructions to repeat their builds or trials.
 
 ## Readiness requirements

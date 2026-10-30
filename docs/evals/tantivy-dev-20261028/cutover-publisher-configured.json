@@ -1,0 +1,12 @@
+{
+  "observed_at": 1793370510.122547,
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "controller_revision": "39c753cc6193d22d77a3646571787b8180ef89d9",
+  "paused": true,
+  "schedule": "0 6,18 * * *",
+  "timezone": "UTC",
+  "job_variables_sha256": "885c6a55871e671e5172278f9c68536e3e19f4491d3832aab0899ddd0883c111",
+  "work_pool": "typeahead-ephemeral",
+  "passed": true,
+  "production_route_changed": false
+}
