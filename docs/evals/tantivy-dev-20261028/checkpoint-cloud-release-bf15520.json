@@ -1,0 +1,59 @@
+{
+  "observed_at": 1793343740.813174,
+  "state": "submitted",
+  "mps_revision": "bf15520efd898d9371b43d3d14df1b993fd0627b",
+  "typeahead_revision": "34d69939898b814dbce091bbcc1ecfb7edc375d8",
+  "deployment_id": "e77d3d48-617b-471b-8e75-97aa9e4fb0e4",
+  "idempotency_key": "162638ed586276cedbb53c421a576a5610c8ede428d55a1c643a725237928dbb",
+  "work_pool": "typeahead-ephemeral",
+  "server_type": "cpx32",
+  "location": "fsn1",
+  "worker_timeout_seconds": 2100,
+  "preparation_task_timeout_seconds": 1800,
+  "checkpoint_soft_deadline_seconds": 900,
+  "source_byte_limit": 8589934592,
+  "sample_document_limit": 100000,
+  "publishes_immutable_candidate": true,
+  "cuts_over_production": false,
+  "production_changed": false,
+  "original_deployment_sha256": "f0b7eea4676a3d5a9074161cc92f38a0029e11f2c324abf0fd2d1d4edcac58d9",
+  "temporary_deployment": true,
+  "flow_run_id": "ad6ec2e4-2e0b-44f0-b1e3-94e01ca5b35c",
+  "flow_run_state": "Scheduled",
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/ad6ec2e4-2e0b-44f0-b1e3-94e01ca5b35c",
+  "latest": {
+    "observed_at": 1793346083.788842,
+    "id": "ad6ec2e4-2e0b-44f0-b1e3-94e01ca5b35c",
+    "state": "Failed",
+    "start": "2026-10-30 07:04:57.189734+00:00",
+    "end": "2026-10-30 07:33:03.195749+00:00",
+    "infrastructure_pid": "prefect-build-ad6ec2e42e0b44f0b1e394e01ca5b35c-r0",
+    "message": "Flow run encountered an exception: ValueError: Checkpoint producer or D1 importer failed",
+    "tasks": [
+      {
+        "name": "prepare_checkpoint_generation-023",
+        "state": "Failed"
+      },
+      {
+        "name": "clone_repo-3ea",
+        "state": "Completed"
+      }
+    ]
+  },
+  "provider_cleanup": {
+    "observed_at": 1793346082.682,
+    "remaining_servers": 0,
+    "server_name": "prefect-build-ad6ec2e42e0b44f0b1e394e01ca5b35c-r0"
+  },
+  "temporary_deployment_retired_at": 1793346150.004381,
+  "result": {
+    "passed": false,
+    "phase": "full-import",
+    "reason": "Both child processes exited before status inspection; underlying error class was not persisted",
+    "deadline_exhaustion_suspected": true,
+    "import_elapsed_seconds": 1071,
+    "publication_performed": false,
+    "release_qualified": false,
+    "automatic_retry": false
+  }
+}
