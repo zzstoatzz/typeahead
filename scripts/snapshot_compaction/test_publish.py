@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -37,6 +39,39 @@ class Tests(unittest.TestCase):
                 publisher.publish(*args)
             self.assertEqual(pointer.read_bytes(), before)
             self.assertEqual(side.read_bytes(), bytes(bytes_))
+
+    def test_immutable_only_cli_preserves_channels_on_success_retry_and_collision(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / 'source'
+            create(source)
+            remote = root / 'remote'
+            pointers = [remote / 'control/builds/latest.json', remote / 'latest.json']
+            for pointer in pointers:
+                pointer.parent.mkdir(parents=True, exist_ok=True)
+                pointer.write_bytes(b'prior channel bytes')
+            config = root / 'rclone.conf'
+            config.write_text('[r2]\ntype = local\n')
+            command = [sys.executable, str(Path(__file__).with_name('publish.py')),
+                       '--generation', str(source / 'builds/compact'),
+                       '--legacy-database', str(source / 'builds/legacy/index.db'),
+                       '--legacy-manifest', str(source / 'builds/legacy/manifest.json'),
+                       '--config', str(config), '--bucket', str(remote), '--immutable-only']
+            rejected = subprocess.run(command + ['--pointer', 'control/builds/latest.json'], capture_output=True, timeout=10)
+            self.assertEqual(rejected.returncode, 2)
+            self.assertFalse((remote / 'builds').exists())
+            for _ in range(2):
+                subprocess.run(command, check=True, capture_output=True, timeout=15)
+                for path in (source / 'builds').rglob('*'):
+                    if path.is_file():
+                        self.assertEqual(path.read_bytes(), (remote / path.relative_to(source)).read_bytes())
+            side = remote / 'builds/compact/index.db.prefix'
+            side.write_bytes(b'conflicting immutable bytes')
+            failed = subprocess.run(command, capture_output=True, timeout=15)
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertEqual(side.read_bytes(), b'conflicting immutable bytes')
+            for pointer in pointers:
+                self.assertEqual(pointer.read_bytes(), b'prior channel bytes')
 
     def test_bad_local_pair_never_changes_pointer(self):
         with tempfile.TemporaryDirectory() as temp:

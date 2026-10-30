@@ -33,7 +33,13 @@ complete source reconciliation and policy, inventories stable regular files,
 streams a tar and file checksums, and atomically publishes a new local artifact
 directory. Missing coverage fails before packaging; concurrent file changes
 reject the artifact. It does not upload, alter routing or claim runtime readiness.
-The publisher still owns R2 upload and exact checksum readback. A raw snapshot
+The publisher still owns R2 upload and exact checksum readback. Candidate source
+publication uses the same native publisher with `--immutable-only`, its compact
+generation and legacy twin. This publishes and verifies the immutable artifacts
+without changing any channel pointer. `--pointer` and `--immutable-only` are
+mutually exclusive; normal native publication still requires its explicit
+pointer. Actual CLI/rclone tests cover success, retries, immutable collisions and
+preservation of both managed and production pointer bytes. A raw snapshot
 import without an authoritative sweep is not a publishable caught-up checkpoint.
 The existing publisher accepts `--engine tantivy --generation DIR
 --source-manifest FILE`, using its existing R2 configuration. It verifies that

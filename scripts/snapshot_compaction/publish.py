@@ -57,8 +57,12 @@ class Publisher:
         )
         self.verify(local, object_key)
 
-    def publish(self, generation, legacy_database, legacy_manifest, pointer):
-        key(pointer)
+    def publish(self, generation, legacy_database, legacy_manifest, pointer=None, *, immutable_only=False):
+        if immutable_only:
+            if pointer is not None:
+                raise ValueError('immutable-only publication prohibits a pointer')
+        else:
+            key(pointer)
         if pointer == 'latest.json' and os.environ.get('INDEX_ALLOW_PROD') != '1':
             raise ValueError('production pointer requires INDEX_ALLOW_PROD=1')
         generation = Path(generation)
@@ -94,7 +98,8 @@ class Publisher:
         ]
         keys = [item['object_key'] for _, item in artifacts]
         manifest_key = key(manifest['snapshot_url'].rsplit('/', 1)[0] + '/manifest.json')
-        if len(set([*keys, manifest_key, pointer])) != len(keys) + 2:
+        publication_keys = [*keys, manifest_key] + ([] if immutable_only else [pointer])
+        if len(set(publication_keys)) != len(publication_keys):
             raise ValueError('artifact/pointer key collision')
         for local, artifact in artifacts:
             key(artifact['object_key'])
@@ -103,6 +108,8 @@ class Publisher:
         for local, artifact in artifacts:
             self.immutable(local, artifact['object_key'])
         self.immutable(manifest_path, manifest_key)
+        if immutable_only:
+            return manifest['active_build']
         print(f'publish pointer {pointer}', flush=True)
         subprocess.run([*self.command, 'copyto', str(manifest_path), self.remote(pointer)], check=True)
         self.verify(manifest_path, pointer)
@@ -173,16 +180,18 @@ def main():
     parser.add_argument('--verify-only', action='store_true')
     parser.add_argument('--config', type=Path)
     parser.add_argument('--bucket', default=os.environ.get('INDEX_R2_BUCKET'))
-    parser.add_argument('--pointer')
+    routing = parser.add_mutually_exclusive_group()
+    routing.add_argument('--pointer')
+    routing.add_argument('--immutable-only', action='store_true')
     parser.add_argument('--rclone', default=os.environ.get('INDEX_RCLONE_BIN', 'rclone'))
     args = parser.parse_args()
     if not args.bucket:
         parser.error('--bucket or INDEX_R2_BUCKET is required')
-    if args.engine == 'native' and not all([args.legacy_database, args.legacy_manifest, args.pointer]):
-        parser.error('native requires --legacy-database, --legacy-manifest and --pointer')
+    if args.engine == 'native' and not all([args.legacy_database, args.legacy_manifest, args.pointer or args.immutable_only]):
+        parser.error('native requires --legacy-database, --legacy-manifest and either --pointer or --immutable-only')
     if args.engine == 'native' and args.verify_only:
         parser.error('--verify-only applies to immutable Tantivy publication only')
-    if args.engine == 'tantivy' and (not args.source_manifest or args.pointer or args.legacy_database or args.legacy_manifest):
+    if args.engine == 'tantivy' and (not args.source_manifest or args.pointer or args.immutable_only or args.legacy_database or args.legacy_manifest):
         parser.error('tantivy requires --source-manifest and prohibits native/pointer arguments')
     with configuration(args.config) as config:
         publisher = Publisher(config, args.bucket, args.rclone)
@@ -190,7 +199,7 @@ def main():
             operation = publisher.verify_tantivy if args.verify_only else publisher.publish_tantivy
             print(operation(args.generation, args.source_manifest))
         else:
-            print(publisher.publish(args.generation, args.legacy_database, args.legacy_manifest, args.pointer))
+            print(publisher.publish(args.generation, args.legacy_database, args.legacy_manifest, args.pointer, immutable_only=args.immutable_only))
 
 
 if __name__ == '__main__':
