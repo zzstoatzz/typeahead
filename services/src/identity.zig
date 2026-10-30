@@ -103,7 +103,7 @@ pub const Decision = struct {
 ///     and pds meanwhile; once they are spent it is recorded as handle.invalid
 ///   - the DID (and any pds) is always recorded
 pub fn decide(did: []const u8, lookup: ?Lookup, attempt: u8) Decision {
-    const l = lookup orelse return .{ .event = .{ .did = did }, .retry = false };
+    const l = lookup orelse return .{ .event = .{ .did = did }, .retry = attempt < RETRY_DELAYS_SECS.len };
     if (l.handle == null) return .{ .event = .{ .did = did, .pds = l.pds }, .retry = false };
     if (l.verified) {
         return .{ .event = .{ .did = did, .handle = l.handle, .handle_verified = true, .pds = l.pds }, .retry = false };
@@ -280,7 +280,7 @@ pub const RetryPool = poolio.Pool(Delayed, Retrier);
 
 const testing = std.testing;
 
-test "decide: an unreachable DID document still records the DID" {
+test "decide: an unreachable DID document records the DID and retries within budget" {
     // Regression: dropping here meant a DID whose identity could not be
     // resolved never became a row — and the handle drain, which retries
     // `WHERE handle = ''`, only ever sees rows. birdlover.selfhosted.social sat
@@ -289,7 +289,14 @@ test "decide: an unreachable DID document still records the DID" {
     try testing.expectEqualStrings("did:plc:iu2klrrbxplyyqgltk7sg5l3", d.event.did);
     try testing.expect(d.event.handle == null);
     try testing.expect(d.event.pds == null);
-    try testing.expect(!d.retry);
+    try testing.expect(d.retry);
+    const second = decide(d.event.did, null, 1);
+    try testing.expect(second.retry);
+    const exhausted = decide(d.event.did, null, RETRY_DELAYS_SECS.len);
+    try testing.expect(!exhausted.retry);
+    try testing.expectEqualStrings(d.event.did, exhausted.event.did);
+    try testing.expect(exhausted.event.handle == null);
+    try testing.expect(exhausted.event.pds == null);
 }
 
 test "decide: a verified handle change is written immediately" {

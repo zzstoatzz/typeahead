@@ -45,6 +45,20 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(self.db.execute('SELECT pds FROM actors ORDER BY did').fetchall(),[('https://pds.test',),('https://moved.test',),('',)])
         with self.assertRaises(ValueError):self.ledger.send_batch([self.attempt,second],self.execute)
 
+    def test_large_batch_preserves_concurrent_changes_and_atomic_preparation(self):
+        rows=[{'did':f'did:plc:bulk{i}','pds':'https://archive.test','observed_updated_at':10} for i in range(1000)]
+        self.db.executemany('INSERT INTO actors VALUES(?,?,?)',[(r['did'],'',10) for r in rows])
+        self.db.execute("UPDATE actors SET pds='https://moved.test' WHERE did='did:plc:bulk5'")
+        self.db.execute("UPDATE actors SET updated_at=11 WHERE did='did:plc:bulk6'")
+        self.db.commit()
+        attempts=self.ledger.prepare_batch(rows)
+        self.assertEqual(self.ledger.send_batch(attempts,self.execute),{'confirmed':998,'conflict':2})
+        self.assertEqual(self.db.execute("SELECT count(*) FROM actors WHERE pds='https://archive.test'").fetchone(),(998,))
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.ledger.prepare_batch([{'did':'did:plc:new','pds':'https://archive.test','observed_updated_at':10},rows[0]])
+        with sqlite3.connect(self.ledger.path) as db:
+            self.assertEqual(db.execute("SELECT count(*) FROM attempts WHERE did='did:plc:new'").fetchone(),(0,))
+
     def test_batch_commit_with_lost_response_is_not_replayed(self):
         self.db.executescript("INSERT INTO actors VALUES('did:plc:b','',10);")
         second=self.ledger.prepare('did:plc:b',10,'https://pds.test')

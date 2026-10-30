@@ -80,7 +80,8 @@ is", and the bsky relay omits the optional `handle` (21/21 events sampled
    meanwhile; if it still fails it is recorded as `handle.invalid`, the atproto
    convention the appview also serves, rather than keeping a previous handle
    that no longer resolves to the DID either. A failed POST is retried on the
-   same schedule. An unreachable DID document still records the bare DID.
+   same schedule. The pending ingester change also retries an unreachable DID
+   document on that schedule while recording the bare DID; it is not deployed yet.
 
 `handle.invalid` rows recover when the handle verifies again: the next
 `#identity` event re-resolves them, and appview enrichment writes whatever

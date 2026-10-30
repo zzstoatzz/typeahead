@@ -38,6 +38,15 @@ class Ledger:
                        (attempt,did,observed_updated_at,pds,time.time(),'prepared'))
         return attempt
 
+    def prepare_batch(self, rows):
+        if not 1<=len(rows)<=1000:
+            raise ValueError('Batch requires one to 1000 rows')
+        prepared_at=time.time()
+        attempts=[(str(uuid.uuid4()),r['did'],r['observed_updated_at'],r['pds'],prepared_at,'prepared') for r in rows]
+        with closing(sqlite3.connect(self.path)) as db,db:
+            db.executemany('INSERT INTO attempts VALUES(?,?,?,?,?,?,NULL)',attempts)
+        return [r[0] for r in attempts]
+
     def get(self, attempt):
         with closing(sqlite3.connect(self.path)) as db:
             db.row_factory=sqlite3.Row
@@ -85,8 +94,8 @@ class Ledger:
             raise
 
     def send_batch(self, attempts, execute):
-        if not 1<=len(attempts)<=100 or len(set(attempts))!=len(attempts):
-            raise ValueError('Batch requires one to 100 distinct attempts')
+        if not 1<=len(attempts)<=1000 or len(set(attempts))!=len(attempts):
+            raise ValueError('Batch requires one to 1000 distinct attempts')
         items=[self.get(a) for a in attempts]
         with closing(sqlite3.connect(self.path)) as db,db:
             for item in items:
