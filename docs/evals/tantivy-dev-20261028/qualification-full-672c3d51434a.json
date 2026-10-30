@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "manifest": {
+    "schema": 1,
+    "app": "typeahead-qual-20261029",
+    "owner": "tantivy-qualification-20261029",
+    "run_id": "672c3d51434a",
+    "mode": "full",
+    "created_after": 1793318551.145359,
+    "created_before": 1793323981.145359,
+    "deadline": 1793323981.145359,
+    "machines": [
+      {
+        "name": "tq-672c3d51434a-native-control",
+        "role": "native-control"
+      },
+      {
+        "name": "tq-672c3d51434a-tantivy-control",
+        "role": "tantivy-control"
+      },
+      {
+        "name": "tq-672c3d51434a-generator",
+        "role": "generator"
+      }
+    ],
+    "volumes": [
+      {
+        "name": "tq_672c3d51434a_native",
+        "role": "native"
+      },
+      {
+        "name": "tq_672c3d51434a_tantivy",
+        "role": "tantivy"
+      }
+    ],
+    "reaper": {
+      "name": "tq-672c3d51434a-reaper",
+      "role": "reaper"
+    }
+  },
+  "resolved": {
+    "machine:reaper": "0803736c317038",
+    "volume:native": "vol_42kdpg7ldzzonm04",
+    "volume:tantivy": "vol_vz802kq81yxm5lev",
+    "machine:native-control": "e820351a140558",
+    "machine:tantivy-control": "8e240df7017748",
+    "machine:generator": "080330df7e0718"
+  },
+  "supervisor": {
+    "state": "failed",
+    "run_id": "672c3d51434a",
+    "deadline": 1793323981.145359,
+    "heartbeat_at": 1793319832.464413,
+    "owner_pid": 18712,
+    "phase": "cleanup",
+    "observers": {
+      "native-control": {
+        "schema": 1,
+        "provider": "fly",
+        "observed_at": "2026-10-30T00:22:22.909737+00:00",
+        "app": "typeahead-qual-20261029",
+        "machine_id": "e820351a140558",
+        "instance_id": "01M652Z88J99HQYQEMX6SJ1WH5",
+        "state": "stopped",
+        "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "mounts": [
+          {
+            "volume_id": "vol_42kdpg7ldzzonm04",
+            "path": "/data",
+            "size_gib": 20,
+            "encrypted": true
+          }
+        ],
+        "owner": "tantivy-qualification-20261029",
+        "role": "native-control",
+        "public_service_ports": [],
+        "provider_config_reserved_env_overrides": false,
+        "volume_ids": [
+          "vol_42kdpg7ldzzonm04"
+        ],
+        "final_volume_gib": 20,
+        "public_services": [],
+        "machines_api_response_sha256": "add0aa48b4fdaef653ef8650bbb18630a9f785ca8320681d7ac63c35153db87b"
+      }
+    },
+    "error": "reaper_ownership_or_runtime_failed",
+    "cleanup": {
+      "schema": 1,
+      "app": "typeahead-qual-20261029",
+      "owner": "tantivy-qualification-20261029",
+      "run_id": "672c3d51434a",
+      "status": "cleaned",
+      "deadline": 1793323981.145359,
+      "started_at": 1793319811.8510048,
+      "finished_at": 1793319831.216208,
+      "attempts": 3,
+      "creation_settled_by_controller": true,
+      "resolved": [
+        {
+          "event": "resolved",
+          "kind": "machine",
+          "id": "e820351a140558",
+          "name": "tq-672c3d51434a-native-control",
+          "role": "native-control",
+          "run_id": "672c3d51434a"
+        },
+        {
+          "event": "resolved",
+          "kind": "machine",
+          "id": "8e240df7017748",
+          "name": "tq-672c3d51434a-tantivy-control",
+          "role": "tantivy-control",
+          "run_id": "672c3d51434a"
+        },
+        {
+          "event": "resolved",
+          "kind": "machine",
+          "id": "080330df7e0718",
+          "name": "tq-672c3d51434a-generator",
+          "role": "generator",
+          "run_id": "672c3d51434a"
+        },
+        {
+          "event": "resolved",
+          "kind": "volume",
+          "id": "vol_42kdpg7ldzzonm04",
+          "name": "tq_672c3d51434a_native",
+          "role": "native",
+          "run_id": "672c3d51434a"
+        },
+        {
+          "event": "resolved",
+          "kind": "volume",
+          "id": "vol_vz802kq81yxm5lev",
+          "name": "tq_672c3d51434a_tantivy",
+          "role": "tantivy",
+          "run_id": "672c3d51434a"
+        },
+        {
+          "event": "resolved",
+          "kind": "machine",
+          "id": "0803736c317038",
+          "name": "tq-672c3d51434a-reaper",
+          "role": "reaper",
+          "run_id": "672c3d51434a"
+        }
+      ],
+      "failures": [],
+      "remaining": [],
+      "remaining_whitelist_ids": [],
+      "unresolved_whitelist_names": [],
+      "self": null,
+      "api_timeout_seconds": 15,
+      "cleanup_grace_seconds": 300,
+      "volume_dispositions": [
+        {
+          "id": "vol_42kdpg7ldzzonm04",
+          "state": "pending_destroy",
+          "non_billable": true,
+          "physical_purge_confirmed": false
+        },
+        {
+          "id": "vol_vz802kq81yxm5lev",
+          "state": "pending_destroy",
+          "non_billable": true,
+          "physical_purge_confirmed": false
+        }
+      ],
+      "limitations": [
+        "Provider outages may leave volumes; failed cleanup must be reconciled before another run.",
+        "Fly retains non-billable pending_destroy volume records for provider-managed purge; absence of those records is not required or claimed."
+      ],
+      "reaper_retired": true
+    }
+  },
+  "cleanup_receipt": {
+    "schema": 1,
+    "app": "typeahead-qual-20261029",
+    "owner": "tantivy-qualification-20261029",
+    "run_id": "672c3d51434a",
+    "status": "cleaned",
+    "deadline": 1793323981.145359,
+    "started_at": 1793319811.8510048,
+    "finished_at": 1793319831.216208,
+    "attempts": 3,
+    "creation_settled_by_controller": true,
+    "resolved": [
+      {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "e820351a140558",
+        "name": "tq-672c3d51434a-native-control",
+        "role": "native-control",
+        "run_id": "672c3d51434a"
+      },
+      {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "8e240df7017748",
+        "name": "tq-672c3d51434a-tantivy-control",
+        "role": "tantivy-control",
+        "run_id": "672c3d51434a"
+      },
+      {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "080330df7e0718",
+        "name": "tq-672c3d51434a-generator",
+        "role": "generator",
+        "run_id": "672c3d51434a"
+      },
+      {
+        "event": "resolved",
+        "kind": "volume",
+        "id": "vol_42kdpg7ldzzonm04",
+        "name": "tq_672c3d51434a_native",
+        "role": "native",
+        "run_id": "672c3d51434a"
+      },
+      {
+        "event": "resolved",
+        "kind": "volume",
+        "id": "vol_vz802kq81yxm5lev",
+        "name": "tq_672c3d51434a_tantivy",
+        "role": "tantivy",
+        "run_id": "672c3d51434a"
+      }
+    ],
+    "failures": [],
+    "remaining": [],
+    "remaining_whitelist_ids": [],
+    "unresolved_whitelist_names": [],
+    "self": null,
+    "api_timeout_seconds": 15,
+    "cleanup_grace_seconds": 300,
+    "volume_dispositions": [
+      {
+        "id": "vol_42kdpg7ldzzonm04",
+        "state": "pending_destroy",
+        "non_billable": true,
+        "physical_purge_confirmed": false
+      },
+      {
+        "id": "vol_vz802kq81yxm5lev",
+        "state": "pending_destroy",
+        "non_billable": true,
+        "physical_purge_confirmed": false
+      }
+    ],
+    "limitations": [
+      "Provider outages may leave volumes; failed cleanup must be reconciled before another run.",
+      "Fly retains non-billable pending_destroy volume records for provider-managed purge; absence of those records is not required or claimed."
+    ]
+  },
+  "reaper_retired": true,
+  "performance_qualified": false,
+  "engine_failure": false,
+  "production_changed": false,
+  "status": "observation_guard_error_triggered_premature_cleanup",
+  "limitations": "Original underlying API/guard error subtype was discarded. Reaper terminal proof separately shows controller-requested stop and valid retained identity; no engine conclusion."
+}

@@ -522,7 +522,26 @@ class Pilot:
         finally:os.close(descriptor)
     def advance_to_measurement(self,run_id,poll_seconds=2):
         if not isinstance(run_id,str) or not re.fullmatch('[a-f0-9]{8,16}',run_id) or not 1<=poll_seconds<=5:raise PilotError('supervisor_bounds')
-        with self.supervisor_lock():return self._advance_owned(run_id,poll_seconds)
+        with self.supervisor_lock():
+            _,initial=self.plan();binding=(initial['manifest_sha256'],copy.deepcopy(initial['resolved']))
+            while True:
+                _,pilot=self.plan()
+                if pilot['manifest']['run_id']!=run_id or (pilot['manifest_sha256'],pilot['resolved'])!=binding:raise PilotError('supervisor_run_binding_changed')
+                result=self._advance_owned(run_id,poll_seconds)
+                if result.get('phase')=='cleanup' and result.get('cleanup',{}).get('status')!='cleaned':
+                    while self.now()<pilot['manifest']['deadline']+reaper.GRACE:
+                        self.sleep(min(30,pilot['manifest']['deadline']+reaper.GRACE-self.now()))
+                        value,pilot=self.plan()
+                        if pilot['manifest']['run_id']!=run_id or (pilot['manifest_sha256'],pilot['resolved'])!=binding:raise PilotError('supervisor_run_binding_changed')
+                        try:cleanup=self.cleanup()
+                        except Exception as error:cleanup={'status':'cleanup_failed','class':type(error).__name__}
+                        value,pilot=self.plan();result=pilot['supervisor']
+                        result.update(cleanup=cleanup,heartbeat_at=self.now(),phase='cleanup',state='failed' if result.get('error') or cleanup.get('status')!='cleaned' else 'completed')
+                        self.save(value)
+                        if cleanup.get('status')=='cleaned':break
+                    return result
+                if result['state'] not in {'observation_wait','retained_for_diagnosis'}:return result
+                self.sleep(min(30,max(.01,pilot['manifest']['deadline']-self.now())))
     def _advance_owned(self,run_id,poll):
         _,initial=self.plan()
         if initial['manifest']['run_id']!=run_id or not initial.get('staged_preparation'):raise PilotError('supervisor_run_binding')
@@ -574,9 +593,14 @@ class Pilot:
             with tempfile.TemporaryDirectory(prefix='qualification-observer-') as directory:
                 observer=self.control.attest(expected_ids['machine:'+role],Path(directory)/'observer.json')
             value,pilot=bound();pilot.setdefault('supervisor',{}).setdefault('observers',{})[role]=observer;self.save(value);return observer
-        journal(state='advancing',run_id=run_id,deadline=initial['manifest']['deadline'])
+        journal(state='advancing',run_id=run_id,deadline=initial['manifest']['deadline'],error=None)
         failure=None
+        result_verified=False
         try:
+            retained=initial.get('supervisor',{}).get('retained_result_failure')
+            if retained:
+                failure=retained
+                raise PilotError(retained)
             while True:
                 _,pilot=bound();self.lease(pilot,creating=True);self.alive_reaper(pilot);journal(phase='preparation')
                 for role in ENGINE_ROLES:
@@ -642,15 +666,27 @@ class Pilot:
                 else:journal(functional={'state':'inconclusive','reason':'functional_runner_or_lease_unavailable'})
             if not captured['receipt']['passed']:
                 failure='supervisor_generator_reported_failure';journal(error=failure)
+            _,pilot=bound();functional=pilot.get('supervisor',{}).get('functional',{})
+            if failure is None and (functional.get('state')!='completed' or functional.get('receipt',{}).get('passed') is not True):failure='supervisor_functional_inconclusive'
+            if failure:
+                journal(retained_result_failure=failure)
+                raise PilotError(failure)
+            result_verified=True
             journal(phase='cleanup')
         except Exception as error:
             failure=str(error) if isinstance(error,PilotError) and re.fullmatch('[A-Za-z0-9_]{1,120}',str(error)) else type(error).__name__
-            journal(error=failure,phase='cleanup')
+            _,pilot=bound()
+            prior=pilot.get('supervisor',{})
+            journal(error=failure,first_failure=prior.get('first_failure',{'code':failure,'observed_at':self.now()}),last_api_failure=getattr(self.control,'LAST_API_FAILURE',None),advance_failures=prior.get('advance_failures',0)+1)
         finally:
-            bound()
-            try:cleanup=self.cleanup()
-            except Exception as error:cleanup={'status':'cleanup_failed','class':type(error).__name__}
-            journal(state='failed' if failure or cleanup.get('status')!='cleaned' else 'completed',cleanup=cleanup)
+            _,pilot=bound()
+            if result_verified or self.now()>=pilot['manifest']['deadline']:
+                if not result_verified:failure=pilot.get('supervisor',{}).get('retained_result_failure') or pilot.get('supervisor',{}).get('first_failure',{}).get('code') or failure
+                try:cleanup=self.cleanup()
+                except Exception as error:cleanup={'status':'cleanup_failed','class':type(error).__name__}
+                journal(error=failure,state='failed' if failure or cleanup.get('status')!='cleaned' else 'completed',phase='cleanup',cleanup=cleanup)
+            else:
+                journal(state='retained_for_diagnosis' if pilot.get('supervisor',{}).get('retained_result_failure') else 'observation_wait',phase='retained_until_original_deadline')
         return bound()[1]['supervisor']
     def cleanup(self):
         value,pilot=self.plan();guardian=self.guard(pilot)

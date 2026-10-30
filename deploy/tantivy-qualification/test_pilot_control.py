@@ -117,7 +117,9 @@ class Control:
         try:
             conn.request(method,'/v1/apps/'+self.APP+'/'+path,body=json.dumps(body) if body is not None else None,headers={'Content-Type':'application/json'})
             response=conn.getresponse();raw=response.read()
-            if response.status>=400:raise RuntimeError('qualification API HTTP '+str(response.status))
+            if response.status>=400:
+                self.LAST_API_FAILURE={'method':method,'path':path,'status':response.status,'error_class':'HTTPError'}
+                raise RuntimeError('qualification API HTTP '+str(response.status))
             return json.loads(raw) if raw and method!='DELETE' else None
         except (OSError,http.client.HTTPException):raise RuntimeError('qualification API transport failed') from None
         finally:conn.close()
@@ -205,15 +207,47 @@ class PilotTests(unittest.TestCase):
         self.assertEqual(len([call for call in self.api.calls if call[0]=='POST' and call[2] is None and call[1]=='machines']),4)
     def test_supervisor_failed_result_preserved_and_cleanup_runs(self):
         self.supervisor_ready();self.control.generator_result['passed']=False
+        deadline=self.control.ledger()['pilot']['manifest']['deadline'];original_sleep=self.pilot.sleep;retained=[]
+        def sleep(seconds):
+            if self.control.ledger()['pilot'].get('supervisor',{}).get('state')=='retained_for_diagnosis':
+                self.assertTrue(self.api.machines);self.assertFalse(any(call[0]=='DELETE' for call in self.api.calls));retained.append(True)
+            original_sleep(seconds)
+        self.pilot.sleep=sleep
         result=self.pilot.advance_to_measurement('1234abcd5678')
         self.assertEqual(result['state'],'failed');self.assertEqual(result['error'],'supervisor_generator_reported_failure')
         self.assertFalse(result['generator_result']['receipt']['passed']);self.assertFalse(self.api.machines)
         self.assertEqual(result['functional']['state'],'completed');self.assertTrue(result['functional']['receipt']['passed'])
+        self.assertTrue(retained);self.assertGreaterEqual(self.clock.now(),deadline)
     def test_supervisor_missing_prep_receipt_is_bounded_and_cleans(self):
         self.supervisor_ready();self.control.logs={};start=self.clock.now()
         result=self.pilot.advance_to_measurement('1234abcd5678')
         self.assertEqual(result['state'],'failed');self.assertEqual(result['error'],'supervisor_preparation_receipt_missing')
-        self.assertLess(self.clock.now()-start,40);self.assertFalse(self.api.machines)
+        self.assertGreaterEqual(self.clock.now()-start,5300);self.assertFalse(self.api.machines)
+    def test_supervisor_reaper_read_failure_preserves_all_data_and_resumes(self):
+        self.supervisor_ready();plan=self.control.ledger()['pilot'];rid=plan['resolved']['machine:reaper'];self.api.get_failures[rid]=1
+        original_sleep=self.pilot.sleep;waits=[]
+        def sleep(seconds):
+            if self.control.ledger()['pilot'].get('supervisor',{}).get('state')=='observation_wait':
+                self.assertEqual(len(self.api.machines),4);self.assertEqual(len(self.api.volumes),2)
+                self.assertFalse(any(call[0]=='DELETE' for call in self.api.calls));waits.append(True)
+            original_sleep(seconds)
+        self.pilot.sleep=sleep
+        result=self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertTrue(waits);self.assertEqual(result['state'],'completed');self.assertIsNone(result['error'])
+        self.assertEqual(result['last_api_failure']['status'],503);self.assertEqual(result['last_api_failure']['path'],'machines/'+rid)
+        self.assertFalse(self.api.machines);self.assertFalse(self.api.volumes)
+        self.assertEqual(len([call for call in self.api.calls if call[0]=='POST' and call[1]=='machines' and call[2] is None]),4)
+    def test_supervisor_cleanup_read_error_retries_only_cleanup(self):
+        self.supervisor_ready();original_cleanup=self.pilot.cleanup;attempts=[];functional=[]
+        self.control.run_functional=lambda tv,native,run,pilot,timed:functional.append(timed) or {'passed':True,'timed_result_sha256':timed}
+        def cleanup():
+            attempts.append(True)
+            if len(attempts)==1:raise RuntimeError('qualification API transport failed')
+            return original_cleanup()
+        self.pilot.cleanup=cleanup
+        result=self.pilot.advance_to_measurement('1234abcd5678')
+        self.assertEqual(result['state'],'completed');self.assertEqual(len(attempts),2);self.assertEqual(len(functional),1)
+        self.assertEqual(result['cleanup']['status'],'cleaned');self.assertFalse(self.api.machines)
     def test_supervisor_full_requires_functional_preflight_before_mutations(self):
         self.supervisor_ready();del self.control.run_functional;before=len(self.api.calls)
         with self.assertRaisesRegex(p.PilotError,'supervisor_full_functional_runner_required'):self.pilot.advance_to_measurement('1234abcd5678')

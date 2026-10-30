@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent
 LEDGER = ROOT/'resources.json'
 PRIVATE = Path('/tmp/typeahead-qual-20261029.control.private.json')
 PROTECTED = {'8e3d79b70dd748', '801539a6551778', '7845636a3d0ee8', '840e95a2153308'}
+LAST_API_FAILURE = None
 
 
 def ledger():
@@ -47,6 +48,7 @@ def credential():
 
 
 def api(method, path, body=None):
+    global LAST_API_FAILURE
     if path.startswith('/') or '..' in path:
         raise ValueError('invalid qualification API path')
     class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -63,8 +65,10 @@ def api(method, path, body=None):
         return json.loads(raw) if raw and method!='DELETE' else None
     except urllib.error.HTTPError as error:
         code=error.code;error.close()
+        LAST_API_FAILURE={'method':method,'path':path,'error_class':'HTTPError','status':code,'observed_at':time.time()}
         raise RuntimeError('qualification API HTTP '+str(code)) from None
-    except (OSError,ValueError):
+    except (OSError,ValueError) as error:
+        LAST_API_FAILURE={'method':method,'path':path,'error_class':type(error).__name__,'status':None,'observed_at':time.time()}
         raise RuntimeError('qualification API transport failed') from None
 
 

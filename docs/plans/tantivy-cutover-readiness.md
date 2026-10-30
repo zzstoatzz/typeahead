@@ -26,13 +26,12 @@ The [parallel dev health readback](../evals/tantivy-dev-20261028/post-pilot-live
 remained ready; production routing stayed on the native slot. The deployed dev
 still uses the earlier source-v2 binary. The expiry-v4 candidate has not replaced it.
 
-Full-corpus matched performance, complete expiry coverage, bounded reconciliation
-rounds and engine-aware refresh ownership remain
-open gates. The current MPS repository controller rejects a Tantivy route before
-mutating slots, but that also prevents its native rollback command; an origin
-allowlist change alone would leave installation, qualification and retention
-assuming FLATPX05. Prepare and test those adapters before a later promotion.
-No cutover readiness or production promotion is claimed.
+Full-corpus matched performance, live-source completed-round coverage and actual
+cloud slot/refresh qualification remain open gates. Branch-only code now includes
+engine-aware publication, installation, retention and native rollback; its local
+checks are distinct from deployment or release qualification. The deployed dev
+and production services have not been cut over to this branch. No cutover
+readiness or production promotion is claimed.
 
 The [full-corpus trial](../evals/tantivy-dev-20261028/qualification-full-4d62ead649f7.json)
 stopped before comparison. Native preparation exited; its exact exception was
@@ -81,16 +80,20 @@ nine update stages, three hydration witnesses and hide/delete/PDS-change checks
 passed with actual provider/runtime evidence; native remained unchanged and
 cleanup completed. Neither synthetic pilot qualifies full-corpus performance.
 
-Full retry `672c3d51434a` is running under that independent supervisor, with
-the same frozen image and binaries. Its original deadline is recorded in
-`deploy/tantivy-qualification/supervisor-process.json`; the reaper remains an
-independent cleanup owner. A provisioning observation failed through Node fetch
-while the same read succeeded through Python's standard HTTP client. The
-controller now uses that client, with fixed HTTPS origin, no redirects and a
-bounded response. The original owned machine/configuration intent was
-reconciled without recreating it or repeating an uncertain write. The local
-supervisor was restarted during preparation to load that fix; neither cloud
-preparation was restarted. No performance result is claimed yet.
+Full retry `672c3d51434a` also ended before measurement: an observation/guard
+error reached an unconditional cleanup path. The
+[terminal reaper proof](../evals/tantivy-dev-20261028/full-672c-reaper-terminal-proof.json)
+shows that its retained identity/runtime shape still validates and its stop was
+requested by controller cleanup. The original underlying error subtype was lost;
+no provider-status or engine-failure conclusion is supported. All resources were
+retired. The corrected supervisor retains work on uncertain reads, retries the
+same IDs/intents, preserves failed results for diagnosis until the original lease,
+and retries cleanup separately. Forty-three local lifecycle HTTP tests passed.
+The [real Fly observation-fault pilot](../evals/tantivy-dev-20261028/observation-fault-pilot-b736d9888c4a.json)
+then retained resources through one deliberately injected local client read
+failure, resumed without recreating them, completed the functional probe and
+cleaned up. Provider history confirms no controller destruction before result
+capture. The injection was local; this is not a claim of a real Fly outage.
 
 Typeahead commits `a9745b4` and `02cda68` add source-linked portable bundles,
 publication through the existing cloud-owned artifact publisher, and contracts
