@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Read-only Turso keyset replay into the isolated localhost Tantivy admin API."""
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 import argparse
 import copy
 import http.client
@@ -223,6 +223,9 @@ class PdsFallback:
         except BaseException:
             self.db.close();raise
 
+    def identity(self):
+        return {'schema_version':1,'path':'pds-fallback.sqlite','sha256':self.sha256,'byte_size':self.path.stat().st_size,'policy':'empty-source-pds-only-v1'}
+
     def lookup(self, did):
         row=self.db.execute('SELECT pds FROM pds_fallback WHERE did=?',(did,)).fetchone()
         if row is None:return ''
@@ -371,6 +374,7 @@ def parser():
     p.add_argument('--admin-url',default='http://127.0.0.1:8081');p.add_argument('--status-url',default='http://127.0.0.1:8080/index/status')
     p.add_argument('--admin-secret-env',default='ADMIN_SECRET');p.add_argument('--turso-url-env',default='TURSO_URL');p.add_argument('--turso-token-env',default='TURSO_AUTH_TOKEN')
     p.add_argument('--page-size',type=int,default=500);p.add_argument('--max-pages',type=int,default=256);p.add_argument('--max-cycle-seconds',type=float,default=300)
+    p.add_argument('--pds-fallback');p.add_argument('--pds-fallback-sha256')
     p.add_argument('--policy-mode',choices=['off','snapshot'],default='off')
     p.add_argument('--source-mode',choices=['observed','timestamp'],default='observed');p.add_argument('--anti-entropy-pages',type=int,default=2)
     p.add_argument('--sweep-cooldown-seconds',type=int,default=3600);p.add_argument('--max-sweep-seconds',type=float,default=5)
@@ -380,6 +384,11 @@ def parser():
 
 def main():
     args=parser().parse_args()
+    if bool(args.pds_fallback)!=bool(args.pds_fallback_sha256):raise SafeError('fallback path and checksum required together')
+    context=pds_fallback(args.pds_fallback,args.pds_fallback_sha256) if args.pds_fallback else nullcontext()
+    with context:run(args)
+
+def run(args):
     if args.source_mode=='timestamp' and args.policy_mode!='off':raise SafeError('policy snapshot requires observed source mode')
     if not 0<args.http_timeout<=60 or not 1<=args.interval<=3600 or not 0<args.max_run_seconds<=24*3600:raise SafeError('invalid HTTP/poll/run bounds')
     secrets=[]
@@ -393,6 +402,9 @@ def main():
         source=accounted_source(sys.modules[__name__],secrets[0],secrets[1],Path(args.budget_file),args.budget_build_id,args.max_source_bytes,poll_reserve_bytes=args.poll_reserve_bytes,window_seconds=3600,min_request_interval=0,http=Http(args.http_timeout))
     else:source=Turso(secrets[0],secrets[1],http=Http(args.http_timeout),max_bytes=args.max_source_bytes,poll_reserve_bytes=args.poll_reserve_bytes)
     admin=Admin(args.admin_url,secrets[2],args.status_url,http=Http(args.http_timeout))
+    required=admin.status().get('source_manifest',{}).get('pds_fallback')
+    actual=None if _active_pds_fallback is None else _active_pds_fallback.identity()
+    if required!=actual:raise SafeError('runtime fallback differs from imported source')
     def expired(*_):raise SafeError('bounded replay process deadline')
     signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,args.max_run_seconds)
     started=time.monotonic()

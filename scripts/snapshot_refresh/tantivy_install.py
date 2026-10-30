@@ -44,11 +44,32 @@ def digest(value):
 
 
 def artifact_path(value):
+    if value == 'pds-fallback.sqlite':return value
     if not isinstance(value, str) or not re.fullmatch(r'index/[A-Za-z0-9_.-]+', value) or value.split('/')[-1] in ('.', '..'):
         raise ValueError('Invalid Tantivy artifact path')
     if value.endswith('.lock') or value.endswith('.tmp'):
         raise ValueError('Live writer files are not immutable artifacts')
     return value
+
+
+def fallback_identity(manifest):
+    value=manifest.get('pds_fallback')
+    if value is None:return None
+    if not isinstance(value,dict) or set(value)!={'schema_version','path','sha256','byte_size','policy'} or value['schema_version']!=1 or value['path']!='pds-fallback.sqlite' or value['policy']!='empty-source-pds-only-v1':raise ValueError('Invalid PDS fallback identity')
+    digest(value['sha256'])
+    if not 4096<=integer(value['byte_size'],'fallback bytes')<=3*1024**3:raise ValueError('Fallback size outside bound')
+    return value
+
+
+def validate_fallback_file(data,manifest):
+    value=fallback_identity(manifest)
+    path=Path(data)/'pds-fallback.sqlite'
+    if value is None:
+        if path.exists():raise ValueError('Unbound PDS fallback file')
+        return
+    if path.is_symlink() or not path.is_file() or path.stat().st_size!=value['byte_size']:raise ValueError('Required fallback file missing or differs')
+    with path.open('rb') as stream:
+        if hashlib.file_digest(stream,'sha256').hexdigest()!=value['sha256']:raise ValueError('Fallback checksum differs')
 
 
 def checkpoint_source(manifest):
@@ -244,6 +265,11 @@ def validate_artifact_manifest(manifest, expected):
         names.add(path)
         integer(item.get('byte_size'), 'file bytes')
         digest(item.get('sha256'))
+    fallback=fallback_identity(manifest)
+    if fallback:
+        actual=next((r for r in files if r['path']==fallback['path']),None)
+        if actual!={k:fallback[k] for k in ('path','byte_size','sha256')}:raise ValueError('Fallback inventory differs')
+    elif 'pds-fallback.sqlite' in names:raise ValueError('Unbound fallback inventory')
     if 'index/meta.json' not in names:
         raise ValueError('Tantivy commit metadata missing')
     return manifest
@@ -299,14 +325,17 @@ def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None, *
     observed = integer(policy.get('source_observed_at'), 'publisher policy observation', 1)
     if policy.get('complete') is not True or observed > (int(time.time()) if now is None else now):
         raise ValueError('Publisher policy checkpoint is incomplete or in the future')
+    validate_fallback_file(data,manifest)
     def inventory():
         found = {}
-        for path in sorted((data / 'index').iterdir()):
+        paths=list((data/'index').iterdir())
+        if fallback_identity(manifest):paths.append(data/'pds-fallback.sqlite')
+        for path in sorted(paths):
             if path.is_symlink() or not path.is_file():
                 raise ValueError('Publisher checkpoint contains nonregular files')
             if path.name.endswith('.lock'):
                 continue
-            name = artifact_path('index/' + path.name)
+            name = artifact_path(str(path.relative_to(data)))
             stat = path.stat()
             found[name] = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns)
         return found
@@ -488,6 +517,7 @@ def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True,
     if metadata.get('import_complete') is not True or metadata.get('full_source') is not True:
         raise ValueError('Tantivy full import is not admitted')
     source = metadata.get('source_manifest', {})
+    if source.get('pds_fallback')!=fallback_identity(manifest):raise ValueError('Imported fallback provenance differs')
     count = manifest['source_actor_count']
     if source.get('partial') is not False or source.get('actor_count') != count or source.get('source_actor_count') != count or metadata.get('input_actors') != count:
         raise ValueError('Full source coverage count mismatch')
@@ -639,7 +669,9 @@ def install_bundle(bundle, destination, manifest, binary, now=None, allow_checkp
         with (staging / 'installation.json').open('x') as output:
             output.write(json.dumps(receipt, sort_keys=True) + '\n'); output.flush(); os.fsync(output.fileno())
         destination.mkdir()
+        validate_fallback_file(staging,manifest)
         (staging / 'index').rename(destination / 'index')
+        if fallback_identity(manifest):(staging/'pds-fallback.sqlite').rename(destination/'pds-fallback.sqlite')
         (staging / 'installation.json').rename(destination / 'installation.json')
         for path in [destination / 'index', destination, destination.parent]:
             descriptor = os.open(path, os.O_RDONLY)

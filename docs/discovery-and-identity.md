@@ -57,12 +57,13 @@ Resolving one DID per HTTP request does not work at corpus scale.
    against arrivals (~2,900 new accounts/hour), not against the backlog.
 2. **The ingester's identity pool** — every `#identity` event, new DID or
    existing (see below). Posts `pds` along with the handle.
-3. **Cloud PDS backlog repair** — a one-off, checkpointed repair uses existing
-   Stream archive metadata for actors with empty PDS fields. It preserves
-   nonempty values and concurrent source changes; archive coverage is partial.
-   See [repair status and evidence](pds-identity-repair.md). The old home PLC
-   flow, deployment definitions and generic writer remain removed. No recurring
-   replacement is deployed.
+3. **Archive metadata join (candidate)** — snapshot construction can fill empty
+   PDS values from existing Stream archive metadata. The same checksum-bound
+   mapping accompanies the index and is used by live reconciliation, so profile
+   updates do not erase the joined value. Nonempty source PDS and deletions win.
+   Coverage is partial; this is not fresh DID resolution. Production has not
+   enabled the join. See [coverage and verification](pds-identity-repair.md).
+   The bulk live-database repair is stopped; the old home PLC job remains removed.
 
 ## identity: handle changes are the live consumer's job
 

@@ -179,6 +179,7 @@ class Slot:
         self.check_coverage(value)
     def start_reader(self,value,listen='0.0.0.0:8080',admin_listen='127.0.0.1:8081'):
         self.configured_source(value);self.check_coverage(value)
+        installer.validate_fallback_file(self.root,value)
         server=subprocess.Popen([str(self.binary),'serve','--data',str(self.root),'--listen',listen,'--admin-listen',admin_listen,'--max-sync-lag-s','120','--retrieval',value['retrieval_strategy']],env=self.env)
         self.children.append(server);return server
     def serve(self,value):
@@ -188,8 +189,10 @@ class Slot:
             self.check_coverage(value)
             logpath=self.root/'source.log'
             if logpath.exists() and logpath.stat().st_size>16*1024**2:logpath.replace(self.root/'source.previous.log')
+            fallback=installer.fallback_identity(value)
+            fallback_args=[] if fallback is None else ['--pds-fallback',str(self.root/fallback['path']),'--pds-fallback-sha256',fallback['sha256']]
             with logpath.open('ab') as log:
-                source=subprocess.Popen(['python3','/app/input/sync.py','--source-mode','observed','--policy-mode','snapshot','--status-file',str(self.root/'source-status.json'),'--budget-file',str(self.root/'source-budget.json'),'--budget-build-id',value['active_build'],'--max-run-seconds','3600','--max-source-bytes','536870912','--poll-reserve-bytes','134217728','--anti-entropy-pages','64','--max-sweep-seconds','20','--max-cycle-seconds','30','--interval','40'],env=self.env,stdout=log,stderr=subprocess.STDOUT)
+                source=subprocess.Popen(['python3','/app/input/sync.py','--source-mode','observed','--policy-mode','snapshot','--status-file',str(self.root/'source-status.json'),'--budget-file',str(self.root/'source-budget.json'),'--budget-build-id',value['active_build'],'--max-run-seconds','3600','--max-source-bytes','536870912','--poll-reserve-bytes','134217728','--anti-entropy-pages','64','--max-sweep-seconds','20','--max-cycle-seconds','30','--interval','40',*fallback_args],env=self.env,stdout=log,stderr=subprocess.STDOUT)
             self.children.append(source)
             while source.poll() is None and server.poll() is None:self.check_coverage(value);self.runtime_gates(value);time.sleep(5)
             if source.poll() is None:

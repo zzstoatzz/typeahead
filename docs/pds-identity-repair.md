@@ -48,7 +48,9 @@ All five became visible in their correct scope and remained absent from a wrong
 scope within 38 seconds. The next 1,000 source writes were verified, with 30/30 sampled scoped-search
 checks passing. A checkpointed source-rowid scan then repaired another 4,909;
 100/100 of those sampled mappings matched current DID documents. The full
-backfill remains in progress. Failed DID-document lookups now use the existing
+backfill was subsequently stopped at 13,747 confirmed writes in that resumed
+ledger (14,752 including its earlier stages). Its receipts remain retained;
+it must not be restarted as the snapshot-join implementation. Failed DID-document lookups use the existing
 bounded retry path (deployed October 30); retries do not guarantee recovery from
 a permanent resolution failure. See [pilot evidence](ops/archive-pds-pilot-20261030/README.md).
 
@@ -57,6 +59,27 @@ then simplifying the public `/docs` page (`src/pages/docs.ts`): concise quicksta
 verified parameter/response guidance, fewer duplicated explanations, and a cleaner
 layout. Keep `/llms.txt` and README consistent with the final deployed behavior.
 That public-page cleanup remains pending until the repair outcome is known.
+
+## Snapshot join candidate
+
+The small [cloud pilot](ops/archive-pds-join-pilot-20261030/README.md) passed
+scoped search, profile updates, explicit PDS migration, deletion and restart.
+The full candidate uses a read-only SQLite DID→PDS mapping exported from the
+existing archive, without copying repository contents or updating Turso.
+
+`pds_fallback` in the imported source manifest binds the mapping checksum,
+size and `empty-source-pds-only-v1` policy. Publication includes the mapping;
+installation and restart validate it. The live reconciler requires that exact
+mapping, using the same actor conversion as snapshot construction and catch-up.
+Missing or mismatched required mappings fail closed.
+
+The publisher accepts `INDEX_PDS_FALLBACK_SHA256` to fetch the immutable object
+`releases/pds-fallback/<sha256>/pds-fallback.sqlite`. That pin must be included in
+the eventual publisher configuration before enabling joined generations, or a
+later refresh would revert to source-only coverage. Updating the pin takes effect
+at the next snapshot build, never by changing a running generation's mapping.
+Production configuration is unchanged. Full measurements and qualification are
+recorded in the [candidate evidence](ops/archive-pds-candidate-20261030/README.md).
 
 ## Retained historical tooling
 

@@ -1,0 +1,14 @@
+{
+  "archive_rows": 16300003,
+  "mapped": 16249268,
+  "excluded": 50735,
+  "started_at": 1793394716.5220764,
+  "finished_at": 1793395178.997851,
+  "seconds": 462.4757754802704,
+  "byte_size": 1478053888,
+  "sha256": "1b1fa39e7b5d8f5224fafb08b23cb3a8e277da680f39ff6899280283ffd65e47",
+  "schema_version": 1,
+  "source": "existing Stream repo host metadata",
+  "authority": "archive-fallback-only",
+  "live_source_writes": 0
+}
