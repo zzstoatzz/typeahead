@@ -18,9 +18,8 @@ Pi's cached Codex credential was rejected despite its future stored expiry.
 A forced refresh through `pi auth print-bearer-token --provider openai-codex
 --min-expiry 168h > /dev/null` recovered it without exposing the token.
 The no-tools intake rehearsal then asked for accounts and expectations as intended.
-The prior, longer prompt's [API rehearsal](pi-rehearsal.md) completed eight paced GETs,
-covering three exact handles, prefixes and alias equivalence. No UI interaction
-was claimed.
+The shortened prompt's [API rehearsal](pi-rehearsal.md) passed exact-handle,
+prefix, profile and compatibility-alias checks. No UI interaction was claimed.
 Run from a scratch directory:
 
 ```sh

@@ -1,24 +1,32 @@
 # Pi smoke-prompt rehearsal
 
-Pi 0.87.0, openai-codex provider, default model. Extensions, skills and project
-context were disabled; only read/bash tools were enabled. The supplied rehearsal
-accounts were zzstoatzz.io, typeahead.waow.tech and bsky.app. The request budget
-was ten GETs, at least two seconds apart, ten-second timeout, restricted to the
-public Typeahead origin. Headers: `X-Client: smoke-testing` and
-`User-Agent: typeahead-community-smoke/1.0`.
+Rerun October 30, 2026 with the shortened current `agent-prompt.md`, Pi 0.87.0,
+openai-codex provider and default model. Extensions, skills and project context
+were disabled. No request-count or pacing cap was added.
 
-The following is Pi's final report; timing is not a performance benchmark.
+The no-tools intake asked which accounts mattered, what the user would type,
+and whether they wanted a PDS filter or preference.
 
-**API smoke test:** 8 GET requests, including one `llms.txt` read and one alias check. Run October 30, 2026, 17:29:06–17:29:35 UTC. UI interaction was **not tested**; browser tools were unavailable.
+The live rehearsal enabled read/bash and supplied zzstoatzz.io,
+typeahead.waow.tech and bsky.app, their exact handles and prefixes, and no PDS
+preference. Browser tools were unavailable. This verifies the API rehearsal,
+not browser behavior or sustained load handling.
 
-| Query | Expected account / behavior | Observed | Result |
-|---|---|---|---|
-| `zzstoatzz.io` | Exact handle first | `zzstoatzz.io` #1; HTTP 200 | Pass |
-| `zzstoatzz` | Prefix presence, exploratory | `zzstoatzz.io` #1; HTTP 200 | Pass |
-| `typeahead.waow.tech` | Exact handle first | `typeahead.waow.tech` #1; HTTP 200 | Pass |
-| `typeahead` | Prefix presence, exploratory | `typeahead.waow.tech` #1; HTTP 200 | Pass |
-| `bsky.app` | Exact handle first | `bsky.app` #1; HTTP 200 | Pass |
-| `bsky` | Prefix presence, exploratory | `bsky.app` #1; HTTP 200 | Pass |
-| `zzstoatzz.io` (compatibility alias) | Same result as canonical endpoint | HTTP 200; same results and order, checked at 17:29:35 UTC versus 17:29:23 UTC | Pass |
+## Pi's report
 
-No unexpected results to prepare for reporting. Nothing was published or sent.
+I tested the public API only; browser tools were unavailable. No PDS filter or preference was applied.
+
+| Search | Expected | Observed |
+|---|---|---|
+| `zzstoatzz.io`, `typeahead.waow.tech`, `bsky.app` | Each exact eligible handle first | Each was **#1** in its search |
+| `zzstoatzz`, `typeahead`, `bsky` | Prefix ranking exploratory | The corresponding account was **#1** for each prefix |
+
+The profile API also returned all three accounts, so none was missing. The compatibility alias returned the same results as the canonical endpoint for `zzstoatzz.io`. All requests succeeded with HTTP 200; no rate-limit or other errors occurred.
+
+Reproduce the searches by substituting any of the six terms above for `QUERY`:
+`https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=QUERY&limit=10`
+
+Alias checked:
+`https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=10`
+
+Do these findings match your experience?
