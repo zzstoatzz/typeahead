@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-30T00:12:05.805486+00:00",
+  "scope": "local-slot-image-and-loopback-fixtures",
+  "production_contact": false,
+  "provider_resources_qualified": false,
+  "slot_deployed": false,
+  "image": "typeahead-tantivy-slot:local",
+  "image_id": "sha256:c13e205f2acb1b3338753767b8d392a6f055cb8e070878f22bfde38054319252",
+  "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+  "container_limits": {
+    "cpus": 2,
+    "memory_bytes": 1073741824,
+    "network": "none; loopback fixtures only"
+  },
+  "tests": {
+    "host_slot": {
+      "passed": 5,
+      "wall_seconds": 2.776
+    },
+    "existing_installer": {
+      "passed": 6,
+      "wall_seconds": 1.094
+    },
+    "linux_installed_slot_module": {
+      "passed": 5,
+      "wall_seconds": 5.3
+    }
+  },
+  "checks": [
+    "real Rust import and authoritative policy checkpoint",
+    "verified portable/source manifests and tar install",
+    "actual Rust search and source-policy-expiry validation",
+    "separate-process cached restart without R2 credentials or network",
+    "corrupt tar and index rejected",
+    "stale deployment and installation receipt rejected",
+    "durable source quota window survives restart and early exit"
+  ],
+  "source_sha256": {
+    "tantivy-slot.py": "b6d368631f2611f59bd002f95362b10e43dffaa43867540b18c94f6f84e29095",
+    "Dockerfile.tantivy": "aa16ba105aa5b08d2adb89706bdbe8bb90d603e22013ebfeb0bd2e0a2f44dec3",
+    "build-tantivy.py": "3978ad0f20eefed1b4ad6c3338ddfda071ecae6902c921fbad76a1e695a1694a",
+    "test_tantivy_slot.py": "145e86c872d8408200612a726adccf6e7b4a6e30544d94aaf2052192c45e7a7c",
+    "tantivy_install.py": "92adc0dcabc0afd8cc7e6f6b33714cdbdd199cecf7906b140a0be575d2de5a9b"
+  }
+}

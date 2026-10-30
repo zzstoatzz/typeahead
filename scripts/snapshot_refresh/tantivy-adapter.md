@@ -92,6 +92,47 @@ retained dev origin. A private qualification app cannot become a serving route.
 These contracts do not create or deploy slots; actual lifecycle qualification
 is still required before promotion.
 
+The locally implemented `tantivy-slot.py` is the fixed guest command
+`python3 /app/tantivy-slot.py`. It reuses `install_bundle` and the existing
+read-only source clients. Build its separate image with `build-tantivy.py
+--binary FROZEN_LINUX_READER --binary-sha256 SHA --image LOCAL_TAG`; this only
+builds locally and does not publish or alter the benchmark image. The guest
+requires `TANTIVY_DEPLOYMENT_KEY=control/tantivy-slots/APP/REQUEST_ID.json`,
+`EXPECTED_DEPLOYMENT_SHA256` (exact object bytes), and `EXPECTED_BUILD_ID`.
+Only the two managed slot apps and a 32-hex-character request ID are accepted.
+
+The deployment object is the flat portable manifest plus the target fields
+above and `deployment_schema_version: 1`, `request_id`,
+`artifact_manifest_key`, `artifact_manifest_sha256`, and `source_manifest_key`.
+The latter keys must name the exact immutable portable/native source manifests.
+All portable fields must agree with the separately fetched portable bytes.
+The guest checks its actual reader SHA and requires its platform-provided
+`FLY_IMAGE_REF` to equal the bound digest reference. An owned Fly qualification guest verified this digest representation when its
+provider config pinned an immutable image. There is no caller override or
+guest-only proof of provider resources; admission still requires independent
+provider evidence for the actual slot.
+
+R2 uses the native installer's `INDEX_R2_ENDPOINT`, `INDEX_R2_BUCKET`,
+`INDEX_R2_ACCESS_KEY_ID`, and `INDEX_R2_SECRET_ACCESS_KEY` configuration and
+GET-only `rclone cat` transfers. Credentials remain in a temporary mode-0600
+configuration and never enter receipts or logs. The durable metadata-only
+receipt is `/data/tantivy/installation.json`, readable by an owner-checked
+controller exec. Cached restart binds the same deployment bytes, receipt and
+actual reader/index without R2 fetch, import or corpus copy. A changed request
+or an incomplete/corrupt installation fails closed; replacement requires an
+owned inactive recovery or a fresh volume, not an in-place overwrite.
+
+The strict reader serves public port 8080 and binds admin only to
+`127.0.0.1:8081`. Existing observed source/policy polling uses the candidate
+512-MiB/hour budget, 64 sweep pages, 20-second sweep, 30-second cycle and
+40-second interval. A durable source-window file prevents a process restart or
+early exit from renewing that hourly allowance. These settings do not prove
+daily full coverage. Installation alone records `runtime_qualified: false`;
+the receipt changes to true only after the existing actual runtime source,
+policy and expiry validators pass, and is reevaluated while serving.
+Independent provider/public endpoint qualification and all release gates remain
+required before route promotion. No slot has been deployed by this change.
+
 Qualification reads only `/index/status` and `/ready`, bounds response size and
 time, prohibits redirects, checks engine/build/format acknowledgements, and
 requires full source counts, expiry-v4 format, positive observation revision,
