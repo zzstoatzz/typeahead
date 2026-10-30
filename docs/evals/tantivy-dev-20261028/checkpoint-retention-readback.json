@@ -1,0 +1,22 @@
+{
+  "observed_at": 1793352450.823904,
+  "passed": true,
+  "scope": "actual production metadata, read-only retention policy evaluation",
+  "adapter_sha256": "8257ef4aa117ea2ac31ee78a834cd0b993f3860aa514f956fd3eb852f4985df0",
+  "required_candidate_and_native_builds": [
+    "b1793109259-2b36",
+    "b1793109259-2b36-px05",
+    "b1793346536-cp-7c8322df79"
+  ],
+  "actual_retained_build_ids": [
+    "b1793081565-0228",
+    "b1793081565-0228-px05",
+    "b1793109259-2b36",
+    "b1793109259-2b36-px05",
+    "b1793346536-cp-7c8322df79"
+  ],
+  "route_unchanged": true,
+  "remote_writes": 0,
+  "remote_payload_reads": 0,
+  "two_slot_retirement_verified": false
+}
