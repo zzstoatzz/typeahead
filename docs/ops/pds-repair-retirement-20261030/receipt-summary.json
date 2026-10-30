@@ -1,0 +1,19 @@
+{
+  "archive": "/Users/nate/Documents/Codex/2026-10-28/new-realtime-voice-chat-2/output/pds-cloud-pilot/retired-repair-receipts.tgz",
+  "bytes": 361852,
+  "sha256": "485f57b0024ed83c0649e5d2d02daf3ada4f4cdb5dcdf5c18a9e4787c932992e",
+  "events": {
+    "start": 1,
+    "discovery": 1,
+    "would_write": 1000,
+    "write": 1000,
+    "verification": 286
+  },
+  "last_event": {
+    "event": "verification",
+    "at": 1793386720.2325268,
+    "did": "did:plc:dhbaxpbhpr74hme2af4jeirf",
+    "passed": true,
+    "public_checked": true
+  }
+}

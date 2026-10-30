@@ -1,5 +1,7 @@
 # Cloud PDS repair: 100-account stage
 
+Historical evidence: this experiment is [retired](../pds-repair-retirement-20261030/README.md); its new execution tooling and cloud resources have been removed.
+
 October 30, 2026. Dedicated Fly app `typeahead-pds-repair`, machine
 `d897350c349e98`, one shared CPU and 256 MiB RAM. The machine was destroyed
 following receipt collection. Production allocation and routing were unchanged.

@@ -1,5 +1,7 @@
 # Cloud PDS pilot
 
+Historical evidence: this experiment is [retired](../pds-repair-retirement-20261030/README.md); its new execution tooling and cloud resources have been removed.
+
 Five conditional empty-field repairs completed on October 30, 2026, on a dedicated
 Fly shared-cpu-1x/256 MiB machine in ewr. No HeavyPad work, corpus download, or
 volume allocation. The pilot machine `185d5e7bd04568` was destroyed after receipt
