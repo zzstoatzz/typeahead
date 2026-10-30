@@ -45,8 +45,12 @@ DID documents matched. This is sampled overlap, not a full-backlog count.
 Five authoritative-checked candidates were conditionally repaired through the
 existing ledger, preserving nonempty PDS values and concurrent source changes.
 All five became visible in their correct scope and remained absent from a wrong
-scope within 38 seconds. The full backfill and freshness verification are still
-pending. See [pilot evidence](ops/archive-pds-pilot-20261030/README.md).
+scope within 38 seconds. The next 1,000 source writes were verified, with 30/30 sampled scoped-search
+checks passing. A checkpointed source-rowid scan then repaired another 4,909;
+100/100 of those sampled mappings matched current DID documents. The full
+backfill remains in progress. Failed DID-document lookups now use the existing
+bounded retry path (deployed October 30); retries do not guarantee recovery from
+a permanent resolution failure. See [pilot evidence](ops/archive-pds-pilot-20261030/README.md).
 
 Completion also includes reconciling relevant operations/API documentation and
 then simplifying the public `/docs` page (`src/pages/docs.ts`): concise quickstart,

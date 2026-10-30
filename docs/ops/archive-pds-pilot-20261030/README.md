@@ -52,3 +52,43 @@ in memory, never saved in the audit files. Both attempt records are retained.
   and reconciliation of the rejected attempt.
 - `pilot-events.jsonl`: before/after health and scoped-search assertions.
 - `public-checks.json`: canonical and legacy public endpoint results.
+
+## Expanded stages and freshness fix
+
+The next stage confirmed 1,000 conditional writes. All 1,000 source PDS values
+were reread successfully, and 30/30 sampled accounts passed correct/wrong-scope
+backend checks. The sequential backfill then scanned 10,000 missing-PDS source
+rows and confirmed 4,909 writes; 5,057 had no archive row, 29 had excluded hosts,
+and five were hidden. Another 100 authoritative DID-document comparisons all
+matched those newly written values. These are separate from the original five
+repairs and the earlier 1,000-account stage: 5,914 repairs in this effort so far.
+
+The sequential run checkpoint is source rowid 13,279, with a fixed upper rowid
+14,326,909. The operation resumes with conditional empty-PDS writes and refuses
+to resume past ambiguous or unfinished ledger attempts. It uses the existing
+repair ledger, with a qualified maximum batch size of 1,000 and atomic batch
+preparation. Nine ledger tests pass, including concurrent changes, failed batch
+preparation, and lost response after commit; all 33 PDS tooling tests pass.
+
+The one-off operation is `backfill.py` here. Its owner is this Typeahead repair;
+it runs on the existing Stream cloud host, reads `/data/stream/meta.rocksdb`
+read-only, and stores checkpoints/receipts under `/tmp/typeahead-archive-backfill`.
+The scratch budget is 4 GiB. Each invocation bounds time and successful writes;
+`STOP` stops after the current page, and a file lock prevents concurrent writers.
+Credentials arrive only through stdin. The prebuilt rocksdict 0.3.29 reader is
+under `/tmp/typeahead-overlap-reader`. Preserve small final receipts and remove
+these temporary paths when the repair is complete. No archive payload is copied.
+
+The deployed identity fix adds existing 60-second/15-minute retries after a
+failed DID-document lookup, keeping the bare-DID discovery behavior and avoiding
+writes of unknown identity fields. Native service tests passed (180 tests,
+six skipped). Production ingester machine `7845636a3d0ee8` now runs image
+`sha256:784caa98f4a1e0d68a8f39f3852e35dd94c99e09fa52e4d40fb89b5994d45cc0`.
+The restart is replaying buffered relay traffic. Bulk repair waits for source
+events less than 30 seconds old, recent successful ingestion, no backpressure,
+and a ready search index with bounded sync lag. The retry fix is deployed;
+complete freshness qualification and the full backfill are not yet claimed.
+
+README review: the architecture, API and deployment entry points are unchanged;
+the retry behavior belongs in `docs/discovery-and-identity.md`. No README edit
+was needed for this stage. Public `/docs` cleanup remains pending.
