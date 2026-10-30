@@ -1,7 +1,7 @@
 # Community smoke testing
 
 [Invitation](invitation.md) and [agent prompt](agent-prompt.md).
-The prompt is also available as a [Tangled string](https://next.tangled.org/strings/zzstoatzz.io/3mz4crmo6db22).
+The prompt is also available as a [Tangled string](https://tangled.org/strings/zzstoatzz.io/3mz4crmo6db22).
 
 Tagged smoke traffic remains in operational request/error/search totals, but
 `smoke-testing` and the earlier `community-smoke-test` label are excluded from

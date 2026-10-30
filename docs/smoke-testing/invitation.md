@@ -15,4 +15,4 @@ if something surprises you, send what you typed, who you expected, and what happ
 you can try the API or write scripts too—please use X-Client: smoke-testing so we can distinguish test traffic.
 
 or hand this prompt to an agent; it’ll ask which accounts you care about and help test them:
-https://next.tangled.org/strings/zzstoatzz.io/3mz4crmo6db22
+https://tangled.org/strings/zzstoatzz.io/3mz4crmo6db22
