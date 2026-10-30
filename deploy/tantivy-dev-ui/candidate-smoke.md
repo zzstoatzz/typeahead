@@ -143,3 +143,42 @@ retrieval strategy and serving shape match its receipts. This pass adds current
 checkpoint/import/source-handoff/managed-slot/preview integration evidence. It
 neither repeats that performance comparison nor establishes production downtime,
 exhaustive recall, complete PDS identity coverage or permission to cut over.
+
+## Audit a few actual source records
+
+`live-source-audit.py` runs on the new managed slot itself, using its existing
+`TURSO_URL`, `TURSO_AUTH_TOKEN` and loopback `ADMIN_SECRET`. The controller can stage
+this script, `candidate-smoke.py`, and the existing `qualify-real.py` under a small
+scratch tree preserving `deploy/tantivy-dev-ui/` and `deploy/tantivy-dev/` relative
+paths. It reuses `/app/input/{sync,current_state}.py` from the admitted image; no
+image build or corpus copy is needed. Run only after installation/readiness:
+
+```sh
+python3 "$SCRATCH/deploy/tantivy-dev-ui/live-source-audit.py" \
+  --candidate https://typeahead-tantivy-a.fly.dev \
+  --build-id "$EXPECTED_BUILD_ID" --binary-sha256 "$EXPECTED_BINARY_SHA256" \
+  --output "$NEW_AUDIT_RECEIPT"
+```
+
+It uses the existing indexed keyset SELECTs for at most8 actors and8 tombstones
+in the last covered hour, two canonical PK/profile+policy observations of those
+at most16 identities, and read-only `/admin/source-state` twice. Five source
+SELECTs total; at most64 network requests at1/second,120seconds total,5seconds/call,
+16MiB source/admin responses and32MiB public responses. It never calls apply,
+reconcile, refresh or a source write, and never advances the serving cursor.
+
+For returned live records it checks exact handle/hydration and a source-backed
+positive/exclusion hard-PDS pair, plus PDS preference/boost acknowledgements.
+Actual preference rank movement remains covered by the controlled benchmark.
+Guaranteed moderation absence uses current DID hide overrides or blocked domains
+with no show override. It does not introduce another slur/expiry implementation;
+other missing records have unverified visibility rather than a fabricated pass.
+
+Tombstones do not retain their old handle. An optional `--known-handles` private
+JSON object with at most16 independently retained DID-to-handle witnesses enables
+public deletion/cleared-handle absence checks. Otherwise the receipt labels those
+witnesses unavailable. Current live actors coexisting with retained tombstones are
+counted separately, not mistaken for deleted actors. Stable hydration divergence
+fails; selected source/document/policy changes make affected results inconclusive.
+Source cursor/policy freshness is checked before and after without repairing it.
+All receipts contain hashes/counts/checks, not profiles, private policy or tokens.
