@@ -7,6 +7,17 @@ service binding. It changes no HTML, CSS or client JavaScript. Relative search
 requests, both XRPC aliases, health and index metadata go to the isolated
 `https://typeahead-tantivy-dev.fly.dev` backend. Production routing is unchanged.
 
+The branch's `DEV_SEARCH_BACKEND` configuration can select that retained dev
+backend or `https://typeahead-tantivy-a.fly.dev` / `https://typeahead-tantivy-b.fly.dev`.
+Other origins fail closed. This changes the backend binding and response identity
+header; frontend bytes still come unchanged from production. The default remains
+the retained dev backend until a managed slot is actually qualified. Regenerate
+binding types after changing the configuration:
+
+```sh
+bunx wrangler types deploy/tantivy-dev-ui/worker-configuration.d.ts --include-runtime false --config deploy/tantivy-dev-ui/wrangler.jsonc
+```
+
 Other read-only pages retain their existing production owner. Every non-GET/HEAD
 request, including the visible request-indexing form, returns `503 DevReadOnly`
 without forwarding to production. The preview holds no write credentials and

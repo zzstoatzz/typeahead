@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-29",
   "workers_dev": true,
   "main": "worker.ts",
+  "vars": { "DEV_SEARCH_BACKEND": "https://typeahead-tantivy-dev.fly.dev" },
   "services": [{ "binding": "PRODUCTION_UI", "service": "typeahead" }],
   "observability": { "enabled": true, "head_sampling_rate": 1 }
 }
