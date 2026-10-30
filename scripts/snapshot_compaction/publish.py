@@ -140,7 +140,12 @@ class Publisher:
         generation, source_manifest = Path(generation), Path(source_manifest)
         manifest_path = generation / 'manifest.json'
         manifest = json.loads(manifest_path.read_bytes())
-        source = adapter.validate_source_manifest(manifest, source_manifest.read_bytes())
+        source_raw = source_manifest.read_bytes()
+        adapter.validate_source_manifest(manifest, source_raw)
+        source = json.loads(source_raw)
+        native_build, _ = adapter.native_anchor_binding(manifest)
+        if source.get('active_build') != native_build:
+            raise ValueError('Native rollback anchor identity mismatch')
         if any(field in manifest for field in ['image_digest', 'guest', 'volume_id', 'volume_size_gib', 'public_service_ports', 'provider_app']):
             raise ValueError('Publish a portable Tantivy artifact without deployment bindings')
         source_key = f"releases/search/{source['active_build']}/manifest.json"

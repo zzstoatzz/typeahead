@@ -137,7 +137,10 @@ The optional checkpoint adapter is locally verified, not deployed. It binds the
 exact provider receipt (at most 900 seconds of fetch work), materialized SQLite/WAL proof, full stream count
 and engine-verified footer hash. The raw checkpoint and independently retained
 native rollback anchor have separate counts and identities; a native prefix hash
-is never substituted for the raw source. Public import metadata retains policy
+is never substituted for the raw source. The existing immutable publisher verifies
+the exact retained anchor manifest under its native build ID, then publishes only
+the Tantivy bundle/manifest. It does not create a native artifact under the raw
+checkpoint build or move the native publisher pointer. Public import metadata retains policy
 hashes/counts, never operator rules.
 
 `verified-checkpoint-import` records the actual completed import without claiming

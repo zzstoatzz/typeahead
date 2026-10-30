@@ -55,6 +55,7 @@ class AdmissionTests(unittest.TestCase):
         manifest = self.manifest()
         native = {'manifest_version':2,'format_version':5,'active_build':'b1792000000-rollback-px05',
                   'actor_count':7,'source_watermark':50,'sha256':'2'*64,
+                  'snapshot_url':'releases/search/b1792000000-rollback-px05/index.db',
                   'normalize_version':manifest['normalize_version'],'prefix_map':{'sha256':'3'*64},
                   'legacy_twin':{'build_id':'b1792000000-rollback','source_watermark':50}}
         native_raw = json.dumps(native,sort_keys=True,separators=(',',':')).encode()+b'\n'
@@ -279,6 +280,23 @@ class AdmissionTests(unittest.TestCase):
             with checkpoint_runtime_fixture(Path(temporary),binary) as case:
                 destination=Path(temporary)/'installed'
                 manifest=case['manifest']
+                if shutil.which('rclone'):
+                    sys.path.insert(0,str(ROOT/'scripts/snapshot_compaction'))
+                    from publish import Publisher
+                    root=Path(temporary);remote=root/'remote'
+                    source_path=root/'native-anchor.json';source_path.write_bytes(case['native'])
+                    native_build,_=adapter.native_anchor_binding(manifest)
+                    retained=remote/f'releases/search/{native_build}/manifest.json'
+                    retained.parent.mkdir(parents=True);retained.write_bytes(case['native'])
+                    pointer=remote/'control/builds/latest.json';pointer.parent.mkdir(parents=True);pointer.write_bytes(b'unchanged native publisher')
+                    config=root/'rclone.conf';config.write_text('[r2]\ntype = local\n')
+                    publisher=Publisher(config,str(remote));generation=case['bundle'].parent
+                    for _ in range(2):self.assertEqual(publisher.publish_tantivy(generation,source_path),manifest['active_build'])
+                    self.assertFalse((remote/f"releases/search/{manifest['source_build_id']}").exists())
+                    self.assertEqual(publisher.verify_tantivy(generation,source_path),manifest['active_build'])
+                    retained.write_bytes(case['native']+b' ')
+                    with self.assertRaisesRegex(ValueError,'remote verification'):publisher.verify_tantivy(generation,source_path)
+                    self.assertEqual(pointer.read_bytes(),b'unchanged native publisher')
                 installation=adapter.install_bundle(case['bundle'],destination,manifest,binary,allow_checkpoint_fixture=True)
                 child,public,_=start_strict(binary,destination,case['log'],case['secret'],fixture_identity=True,max_sync_lag=120)
                 try:
