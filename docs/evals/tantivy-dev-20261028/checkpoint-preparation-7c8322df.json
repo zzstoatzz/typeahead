@@ -1,0 +1,56 @@
+{
+  "flow_run_id": "7c8322df-793b-4f53-903d-67a96efa7e2d",
+  "artifact_id": "01a1933b-f039-4609-b3f6-b34f269fcef5",
+  "data": [
+    {
+      "engine": "tantivy",
+      "active_build": "b1793346536-cp-7c8322df79",
+      "source_revision": "305f5da9c90f16697a1128ca39200214c71eac40",
+      "adapter_sha256": "8257ef4aa117ea2ac31ee78a834cd0b993f3860aa514f956fd3eb852f4985df0",
+      "checkpoint": {
+        "schema_version": 1,
+        "kind": "sqlite-committed-prefix",
+        "fixture": false,
+        "generation": 1572058,
+        "generation_after": 1572097,
+        "source_origin_sha256": "0818c9c820acb855e1737b519e5ae554b6f56597ce5267e73fc4e916a085d872",
+        "source_clock_before": 1793346536,
+        "source_clock_after": 1793347039,
+        "base_db_sha256": "a28b4c09981f855844a320163be5460efe68c178be3e7fa5863c31699c4bc0db",
+        "base_db_bytes": 6989676544,
+        "received_wal_frames": 293,
+        "committed_frame": 293,
+        "committed_provider_frames_sha256": "7fc3a5f98196243269eda91bb84fec8c6e9fc8f137cbfb65205f636d3bbee773",
+        "replayed_wal_sha256": "b9b071b1e4cbc201780fbc4c22ec85f98a18e534a3d6b634def52b02e8d0f4c4",
+        "replayed_wal_bytes": 1207192,
+        "database_sha256": "dd8ab0d517c6e5be87ec3e25905afa3dc3b1bc8d68a085afb9afa8bfc1467332",
+        "database_bytes": 6989676544,
+        "sqlite_replay_verified": true,
+        "sqlite_verified_wal_frames": 293,
+        "boundary_kind": "successful-short-WAL-batch",
+        "received_source_bytes": 6990884679,
+        "source_requests": 8,
+        "wall_seconds": 513.9340163319999,
+        "live_coverage_verified": false,
+        "policy_freshness_attested": false
+      },
+      "sample": {
+        "sample_bytes": 31547392,
+        "sample_seconds": 2.6704672680000385,
+        "requested_document_limit": 100000,
+        "input_documents": 100000,
+        "rust_live_documents": 99907,
+        "export_seconds": 1.9091605630000004,
+        "import_and_smoke_seconds": 12.848761479000018,
+        "index_bytes": 36654594,
+        "restart_checked": false,
+        "release_qualified": false
+      },
+      "import_seconds": 1714.842755825,
+      "promotion_permitted": false,
+      "release_qualified": false,
+      "frozen_bundle_bytes": 4712079360,
+      "source_handoff_verified": true
+    }
+  ]
+}
