@@ -58,7 +58,19 @@
     "production source/configuration landed on main with immutable pins",
     "completed and published empirical release receipt",
     "native-first compatible Worker/transport rollout and smoke",
-    "fresh plan preconditions and cache-generation barrier"
+    "fresh plan preconditions and independently fresh native fallback"
   ],
-  "no_machine_restart_or_dns_change": true
+  "no_machine_restart_or_dns_change": true,
+  "cache_transition_order": [
+    "conditional route change",
+    "uncached transport identity convergence",
+    "new SEARCH_CACHE_GENERATION deployment",
+    "both public aliases cache miss and hit verification"
+  ],
+  "rollback_cache_transition_order": [
+    "conditional native rollback",
+    "uncached native transport identity convergence",
+    "another new SEARCH_CACHE_GENERATION deployment",
+    "both public aliases cache miss and hit verification"
+  ]
 }

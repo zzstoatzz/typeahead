@@ -293,8 +293,7 @@ native recovery. Both backends remain running during the eventual conditional
 route change. Existing cached responses may temporarily retain the previous
 backend; the response-cache TTL is 60 seconds and the controller permits 120
 seconds for its public identity/canary verification. These configuration values
-are not a measured global propagation guarantee. Do not promise an outage or a
-zero-downtime bound: no backend shutdown or DNS transition is planned, and failed
+are not a measured global propagation guarantee. Do not infer a numeric downtime bound: no backend shutdown or DNS transition is planned, and failed
 verification conditionally restores the previous routing record.
 
 ## Review and cutover planning
@@ -341,9 +340,12 @@ waived by this document. No production cutover is authorized.
    the expected route or ETag changed. A mutation lease can protect an inactive
    slot; it must not change the current target and must survive an intervening
    native rollback.
-6. Establish a new `SEARCH_CACHE_GENERATION` barrier, or prove that the existing
-   60-second response-cache TTL has drained, as rehearsed. Use the explicit
-   guarded promotion operation with the exact approved plan SHA and ETag.
+6. Use the explicit guarded promotion operation with the exact approved plan
+   SHA and ETag. After the uncached transport identifies the new target, deploy
+   a new `SEARCH_CACHE_GENERATION` and verify both aliases on cache miss and hit.
+   A generation rotated before CAS can be filled with native responses, so it
+   is not a post-cutover cache barrier. Alternatively, explicitly wait for and
+   verify the existing 60-second response-cache TTL has drained.
    Preserve the complete native anchor and previous target in the conditional
    routing update. DNS, public URLs and frontend markup stay the same; the
    already-running candidate takes new backend requests without stopping the
