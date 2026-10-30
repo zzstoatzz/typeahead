@@ -212,7 +212,11 @@ class CheckpointExpiryTests(unittest.TestCase):
                 instance=slot.Slot(env,work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
                 reconciler=None
                 try:
-                    value=instance.install();public,admin=smoke.port(),smoke.port()
+                    value=instance.install();public,admin=8080,smoke.port()
+                    wrong_source=slot.Slot(dict(env,TURSO_URL='https://different-source.invalid'),work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
+                    with self.assertRaisesRegex(ValueError,'source differs'):
+                        wrong_source.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
+                    self.assertEqual(wrong_source.children,[])
                     reader=instance.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
                     for _ in range(100):
                         try:
@@ -232,8 +236,18 @@ class CheckpointExpiryTests(unittest.TestCase):
                     self.assertTrue(marker.exists())
                     deadline=instance.coverage_deadline
                     instance.runtime_gates(value)
+                    self.assertTrue(slot.metadata(instance.root/'installation.json')['runtime_qualified'])
                     self.assertEqual(instance.coverage_deadline,deadline,'ordinary polling renewed full coverage')
                     self.assertIsNone(reader.poll());self.assertIsNone(reconciler.poll())
+                    case['source'].now=int(time.time())
+                    remote_source=case['source'].source()
+                    remote_admin=case['replay'].Admin(f'http://127.0.0.1:{admin}',case['secret'],f'http://127.0.0.1:{public}/index/status')
+                    case['current'].ObservedSynchronizer(remote_source,remote_admin,case['replay'],policy_mode='snapshot',anti_entropy_pages=4,safety_lag=0,max_pages=10,max_seconds=5,retries=1,backoff=0).run()
+                    self.assertTrue(smoke.request(f'http://127.0.0.1:{public}','/index/status')[2]['cutover_source_ready'])
+                    clock[0]=time.time();instance.runtime_gates(value)
+                    self.assertTrue(slot.metadata(instance.root/'installation.json')['runtime_qualified'])
+                    self.assertGreater(instance.coverage_deadline,deadline)
+                    deadline=instance.coverage_deadline
                     clock[0]=deadline-59
                     with self.assertRaisesRegex(ValueError,'coverage expired'):
                         instance.check_coverage(value)

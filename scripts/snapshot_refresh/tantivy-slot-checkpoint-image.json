@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-30T06:36:35.712584+00:00",
+  "scope": "Python-only checkpoint slot image publication; local fixtures only",
+  "source_commit": "34d69939898b814dbce091bbcc1ecfb7edc375d8",
+  "registry_image": "registry.fly.io/typeahead-qual-20261029@sha256:34aef86a7d9bf7256d80681728022a3ba56c2b7de59129f269da4bc14df0f929",
+  "tag": "registry.fly.io/typeahead-qual-20261029:tantivy-slot-checkpoint-34aef86a7d9b",
+  "linux_amd64_manifest_sha256": "9ec6f29eace65d08b8444b4874f8686767ba4da27b21261d71a0fbc36a2e14bd",
+  "registry_manifest_readback_verified": true,
+  "installed_source_sha256": {
+    "/app/typeahead-tantivy": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+    "/app/tantivy-slot.py": "218d29722aa04e071aae53c41fa069e57101fa3bc838277fd3ca9cdca39970fb",
+    "/app/tantivy_install.py": "8257ef4aa117ea2ac31ee78a834cd0b993f3860aa514f956fd3eb852f4985df0",
+    "/app/install.py": "98f4931f5987093f57972ad57349ce6f862add73f3d59942976bd68d07653efc",
+    "/app/input/sync.py": "8a7ae1876dfb5b4a109d340770bff35ab03f8ffe4bc7a41d170fba52b9d8504a",
+    "/app/input/current_state.py": "e049781acd5ac993031100cc180f14137f2bcf98369e7926576e21450fdf0d86",
+    "/app/input/budget.py": "2e36f2db59038382650cdeb08ab03fa13e29239afd1f4daec395a5f82e68d75c"
+  },
+  "installed_sources_match_current_tree": true,
+  "elf_rebuilt": false,
+  "production_changed": false,
+  "slot_deployed": false,
+  "provider_resources_qualified": false,
+  "tests": {
+    "passed": 9,
+    "skipped": 0,
+    "framework_wall_seconds": 31.465,
+    "container_wall_seconds": 34.37715899996692,
+    "command": "python3 /repo/scripts/snapshot_refresh/test_tantivy_slot.py",
+    "env": {
+      "TA_SLOT_MODULE": "/app/tantivy-slot.py",
+      "TA_BINARY": "/app/typeahead-tantivy",
+      "TA_SLOT_SERVE_TEST": "1",
+      "TA_INPUT_ROOT": "/app/input",
+      "TA_MPS_REPOSITORY": "/fixture"
+    },
+    "test_source_sha256": "d4e1f80d97a09655678d72483d676e3c292e3a4b17018e9627bdda212070271e",
+    "producer_fixture_source_sha256": {
+      "typeahead_sqlite_seed.py": "7193bd72276a8c8e80c28aa0dbb6803f435fd94bff25330cc80b71e7dd8b4516",
+      "typeahead_checkpoint_stream.py": "143a4fbfe91966e5e528abfa7e98bf94ddb692c8401f25851070f161a5cf01c1",
+      "typeahead_checkpoint.py": "51c19c86112c3993dfdfc4fcab52e0c61e72fee4388b50fddec23369e08e9edb",
+      "typeahead_tantivy.py": "48c6b41ab5fc9757a64fc9002b3bb10095914547bf9c6fb7c9e350cc9e681732"
+    },
+    "fixture_package_note": "Actual MPS helper modules copied unchanged into a temporary stdlib-only mps namespace; unrelated package __init__ dependencies omitted. No production modules replaced."
+  },
+  "container_limits": {
+    "platform": "linux/amd64",
+    "cpus": 2,
+    "cpu_max": "200000 100000",
+    "memory_bytes": 1073741824,
+    "swap_bytes": 0,
+    "network": "none; loopback fixtures only",
+    "pids": 128,
+    "root_filesystem": "read-only",
+    "scratch": "owned private Docker volume removed after tests; tiny synthetic payloads only"
+  },
+  "checks": [
+    "source-origin mismatch rejected before starting a reader",
+    "actual strict D1 import/freeze/install and search",
+    "Slot.serve real TLS/SQLite polling continues across separate processes with same hourly budget and no artifact re-fetch",
+    "successful runtime_gates reads actual reader on port8080",
+    "ordinary polling does not renew coverage deadline",
+    "actual complete remote identity round renews coverage deadline",
+    "reader and reconciler terminated before renewed coverage expiry",
+    "expired cached restart refuses without artifact download",
+    "fixture clock cannot be enabled through production entrypoint"
+  ],
+  "cleanup": {
+    "test_container_absent": true,
+    "scratch_volume_removed": true
+  },
+  "initial_fixture_setup_failure": "256MiB tmpfs correctly failed the unchanged4GiB-free installation guard; rerun used owned private scratch volume without weakening guard"
+}
