@@ -1,0 +1,33 @@
+{
+  "observed_at": 1793351665.709229,
+  "state": "submitted",
+  "mps_revision": "ffe86a0958b4b5a7f3125452e3fe0ded748b4322",
+  "typeahead_revision": "305f5da9c90f16697a1128ca39200214c71eac40",
+  "deployment_id": "703a268a-f7dc-43ed-85fc-e8f93c134c97",
+  "idempotency_key": "58efa012426e976fa23a82303c555ca7e97d80d294269449874e85c7e485623b",
+  "work_pool": "typeahead-ephemeral",
+  "server_type": "cpx32",
+  "location": "fsn1",
+  "worker_timeout_seconds": 3000,
+  "build_id": "b1793346536-cp-7c8322df79",
+  "operation": "prepare",
+  "app": "typeahead-tantivy-a",
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:34aef86a7d9bf7256d80681728022a3ba56c2b7de59129f269da4bc14df0f929",
+  "cuts_over_production": false,
+  "production_changed": false,
+  "original_deployment_sha256": "f0b7eea4676a3d5a9074161cc92f38a0029e11f2c324abf0fd2d1d4edcac58d9",
+  "temporary_deployment": true,
+  "flow_run_id": "da93cc3b-15fb-423d-bcce-a5f672fe0d44",
+  "flow_run_state": "Scheduled",
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/da93cc3b-15fb-423d-bcce-a5f672fe0d44",
+  "latest": {
+    "observed_at": 1793351739.9026308,
+    "id": "da93cc3b-15fb-423d-bcce-a5f672fe0d44",
+    "state": "Submitting",
+    "start": "None",
+    "end": "None",
+    "infrastructure_pid": null,
+    "message": null,
+    "tasks": []
+  }
+}

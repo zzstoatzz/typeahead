@@ -5,6 +5,27 @@ Production routing, serving/rollback machines and live ingester remain protected
 The dev API and production-identical frontend remain parallel to production.
 This task prepares evidence and a later cutover proposal; it does not authorize promotion.
 
+## Current deployed status — October 30, 2026
+
+The checkpoint publisher completed build `b1793346536-cp-7c8322df79` and
+published its immutable 4,712,079,360-byte bundle. Managed slot A installed it
+on two shared CPUs, 1 GiB RAM and a 20-GiB disk; public health is ready and
+ordinary source polling advances. The
+[live-source audit](../evals/tantivy-dev-20261028/checkpoint-live-source-audit-first.json)
+passed 51 requests and five bounded source reads: eight recent actors matched
+canonical identity, hydration and PDS inclusion/exclusion. This sample did not
+supply moderation or known-old-handle deletion witnesses and does not claim
+causal mutation verification.
+
+The preparation controller stopped on a startup HTTP 503 after installation.
+MPS `ffe86a0958b4b5a7f3125452e3fe0ded748b4322` fixes transient urllib startup
+retries within the existing deadline. The same operation is resuming against
+the installed volume to complete cached restart and emit its prepared plan;
+no new corpus build or download is required. Public preview rebinding, final
+HTTP smoke and isolated live-origin rollback remain pending that qualification.
+Production remains native. Historical attempts below are evidence, not current
+instructions to repeat their builds or trials.
+
 ## Qualification evidence
 
 The [matched full-corpus component](../evals/tantivy-dev-20261028/full-corpus-performance.md)
