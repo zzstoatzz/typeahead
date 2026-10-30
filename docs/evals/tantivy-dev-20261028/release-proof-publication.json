@@ -1,0 +1,11 @@
+{
+  "observed_at": 1793354573.2354078,
+  "passed": true,
+  "key": "control/tantivy-releases/058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083.json",
+  "sha256": "058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083",
+  "objects_verified": 22,
+  "bytes": 251852,
+  "conditional_immutable_writes": true,
+  "production_route_changed": false,
+  "production_cutover_authorized": false
+}

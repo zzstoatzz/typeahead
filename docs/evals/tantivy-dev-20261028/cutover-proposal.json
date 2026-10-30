@@ -46,8 +46,8 @@
       "operation": "promote",
       "plan_sha256": "7f547a14b234180083cff854cdb5a00163faf214301f9a96467bb6b40624173b",
       "expected_current_etag": "\"7708a624fb56373f2ddc8ce84361cc52\"",
-      "release_receipt_key": null,
-      "release_receipt_sha256": null
+      "release_receipt_key": "control/tantivy-releases/058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083.json",
+      "release_receipt_sha256": "058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083"
     }
   },
   "rollback_parameters": {
@@ -56,7 +56,7 @@
   "requires_before_execution": [
     "explicit user approval",
     "production source/configuration landed on main with immutable pins",
-    "completed and published empirical release receipt",
+    "revalidate the published release receipt and fresh runtime preconditions",
     "native-first compatible Worker/transport rollout and smoke",
     "fresh plan preconditions and independently fresh native fallback"
   ],
@@ -72,5 +72,63 @@
     "uncached native transport identity convergence",
     "another new SEARCH_CACHE_GENERATION deployment",
     "both public aliases cache miss and hit verification"
-  ]
+  ],
+  "publisher_rollout": {
+    "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+    "work_pool": "typeahead-ephemeral",
+    "apply_only_after_explicit_cutover_approval": true,
+    "pause_during_transition": true,
+    "baseline_cron": "0 6 */2 * *",
+    "proposed_cron": "0 6,18 * * *",
+    "timezone": "UTC",
+    "cadence_reason": "Checkpoint admission expires after 24 hours unless a genuine full-source reconciliation round renews it; the existing two-day cadence is not sufficient on its own.",
+    "cost_note": "Approximately four times the current build frequency until measured reconciliation renewal supports relaxing this cadence; serving resources remain unchanged.",
+    "parameters": {
+      "ref": null,
+      "snapshot_format": "compact",
+      "snapshot_engine": "native",
+      "automatic_refresh": true
+    },
+    "worker_timeout_seconds": 7200,
+    "controller_revision": "39c753cc6193d22d77a3646571787b8180ef89d9",
+    "env_delta": {
+      "PREFECT_PLUGINS_ENABLED": "true",
+      "PREFECT_PLUGINS_ALLOW": "mps-secrets",
+      "FLY_PRIMARY_TOKEN": "prefect-block://typeahead-startup-fly-deploy-token",
+      "FLY_REFRESH_TOKEN": "prefect-block://typeahead-refresh-fly-deploy-token",
+      "FLY_TANTIVY_A_TOKEN": "prefect-block://typeahead-tantivy-a-fly-deploy-token",
+      "FLY_TANTIVY_B_TOKEN": "prefect-block://typeahead-tantivy-b-fly-deploy-token",
+      "INDEX_R2_ENDPOINT": "prefect-block://index-r2-endpoint",
+      "INDEX_R2_BUCKET": "prefect-block://index-r2-bucket",
+      "INDEX_R2_ACCESS_KEY_ID": "prefect-block://index-r2-access-key-id",
+      "INDEX_R2_SECRET_ACCESS_KEY": "prefect-block://index-r2-secret-access-key",
+      "INDEX_TANTIVY_ADAPTER_SHA256": "8257ef4aa117ea2ac31ee78a834cd0b993f3860aa514f956fd3eb852f4985df0",
+      "INDEX_REFRESH_IMAGE": "registry.fly.io/typeahead-search-refresh@sha256:d4c3111ee8ad058cb08f7ef02ffeb0a2826e1c328b61c12c29a6e9d3e93ca0ed",
+      "INDEXER_HOME": "/var/lib/typeahead-indexer/work",
+      "INDEX_ALLOW_PROD": "0",
+      "INDEX_TANTIVY_SOURCE_REVISION": "305f5da9c90f16697a1128ca39200214c71eac40",
+      "TA_RETRIEVAL_STRATEGY": "global-merge",
+      "INDEX_TANTIVY_BINARY_SHA256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+      "INDEX_TANTIVY_RELEASE_RECEIPT_KEY": "control/tantivy-releases/058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083.json",
+      "INDEX_TANTIVY_RELEASE_RECEIPT_SHA256": "058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083",
+      "MPS_PIN": "@39c753cc6193d22d77a3646571787b8180ef89d9"
+    },
+    "resume_schedule_after_verified_explicit_promotion": true,
+    "live_deployment_changed": false,
+    "restore_after_native_rollback": {
+      "pause_automatic_schedule_until_restored": true,
+      "parameters": {
+        "ref": "pds-compact-31ec142-20261020",
+        "snapshot_format": "compact",
+        "snapshot_engine": "native",
+        "automatic_refresh": true
+      },
+      "cron": "0 6 */2 * *",
+      "timezone": "UTC",
+      "reason": "Avoid floating native main builds after restoring the native route."
+    },
+    "command": "env PREFECT_PLUGINS_ENABLED=true PREFECT_PLUGINS_ALLOW=mps-secrets uv run --no-project --with 'my-prefect-server @ git+https://github.com/zzstoatzz/my-prefect-server.git@39c753cc6193d22d77a3646571787b8180ef89d9' --with prefect==3.8.2 prefect flow-run execute"
+  },
+  "technical_readiness_verified": true,
+  "authorization_pending": true
 }

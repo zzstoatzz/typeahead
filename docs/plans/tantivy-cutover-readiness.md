@@ -5,7 +5,7 @@ Production routing, serving/rollback machines and live ingester remain protected
 The dev API and production-identical frontend remain parallel to production.
 This task prepares evidence and a later cutover proposal; it does not authorize promotion.
 
-## Current deployed status — October 30, 2026
+## Cutover-ready state — October 30, 2026
 
 The checkpoint publisher completed build `b1793346536-cp-7c8322df79` and
 published its immutable 4,712,079,360-byte bundle. Managed slot A installed it
@@ -44,15 +44,24 @@ instructions to repeat their builds or trials.
 | Source freshness and durable deletion | Live source audit, eight canonical deleted-document hashes, cached restart and [freshness readback](../evals/tantivy-dev-20261028/checkpoint-final-freshness.json) pass | Public disappearance of these specific old handles was not observed |
 | Moderation | Same-D1 controlled hide/unhide/expiry tests and complete fresh canonical policy | No existing operator hide override supplied a live sampled witness |
 | Native rollback | Real-origin isolated Worker rehearsal passes; native remains independently healthy | Production cache propagation duration is not measured |
-| Publisher and installation | Actual cloud checkpoint publication, immutable manifest/bundle, A install and cached restart pass | Recurring two-slot retirement/refresh is not yet qualified on live slots |
-| Review and rollout | [Typeahead draft PR](https://github.com/zzstoatzz/typeahead/pull/1) and [controller draft PR](https://github.com/zzstoatzz/my-prefect-server/pull/5) | Release proof and exact approved rollout commands remain to be finalized after open gates |
+| Publisher and installation | Actual cloud checkpoint publication, immutable manifest/bundle, A install and cached restart pass | Automatic composition and failure paths pass bounded HTTP/filesystem tests; its existing components were verified on the real candidate. No production automatic run was performed |
+| Review and rollout | [Typeahead draft PR](https://github.com/zzstoatzz/typeahead/pull/1) and [controller draft PR](https://github.com/zzstoatzz/my-prefect-server/pull/5) | Explicit cutover approval and landing the reviewed source/configuration on main precede production execution |
+
+Controller commit `39c753cc6193d22d77a3646571787b8180ef89d9` composes automatic
+refresh through the existing publisher after an explicitly approved Tantivy
+cutover. Initial native-to-Tantivy promotion remains forbidden in that path.
+Rollback verification retries transient failures without automatically bouncing
+back to Tantivy on an observation failure.
 
 The candidate's typed checkpoint admission is valid and fresh. Its background
 full-source reconciliation is still on its first round; ordinary polling is not
 being represented as completed full coverage. The expiry supervisor remains
-active. Neither a positive final release proof nor production promotion is claimed.
+active. The [immutable release proof](../evals/tantivy-dev-20261028/release-proof-publication.json)
+is published, and the [final live preflight](../evals/tantivy-dev-20261028/release-final-preflight.json)
+validated it against the deployed candidate and fresh native fallback. No production
+promotion or scheduling change was made.
 
-## Qualification evidence
+## Historical component evidence and earlier attempts
 
 The [matched full-corpus component](../evals/tantivy-dev-20261028/full-corpus-performance.md)
 passed on the required two-shared-CPU/1-GiB/20-GiB serving shape. Shared-feature
@@ -267,8 +276,8 @@ operator connection; source corpus stays cloud-to-cloud.
 
 The [cutover proposal](../evals/tantivy-dev-20261028/cutover-proposal.json) contains
 the exact candidate, native anchor, plan SHA and expected route ETag, plus the
-promotion and rollback parameter shapes. It is deliberately not executable until
-the release receipt is complete and Nate authorizes the production change.
+promotion and rollback parameter shapes. Its technical preflight passed and its release-proof fields are complete.
+It remains unauthorized until Nate approves the production change.
 A changed route/ETag requires a freshly prepared plan; do not substitute a current
 ETag into an older plan.
 
@@ -283,9 +292,12 @@ just prefect --no-prompt deployment run typeahead-index/typeahead-index -p rollb
 
 This restores the independent native anchor through conditional routing; it does
 not stop, rebuild or resize a serving machine. The controller must be running the
-reviewed engine-aware revision before either command is used. Promotion must use
+reviewed engine-aware revision before either command is used. On native rollback,
+pause scheduled refresh until the original native ref and two-day cadence from
+the proposal are restored; do not leave native refresh building a floating main
+branch through the Tantivy configuration's `ref:null`. Promotion must use
 the complete `promotion_parameters` from the proposal after its release-proof
-fields are filled and revalidated; null fields are not approved placeholders.
+fields are filled and revalidated; the supplied immutable receipt must still validate at execution time.
 
 The compatible Worker and transport are deployed while native is still selected.
 Their isolated real-origin rehearsal passed both aliases and native → candidate →
@@ -300,18 +312,21 @@ verification conditionally restores the previous routing record.
 
 Commit scoped changes on this branch, preserving unrelated local work. Keep
 current deployment state distinct from branch-only changes and dated receipts.
-The following procedure is prepared for later approval; its open gates are not
-waived by this document. No production cutover is authorized.
+The following procedure is prepared for approval. Its qualification results are
+recorded above; fresh runtime checks still apply at execution. No production
+cutover is authorized.
 
-1. Finish the matched full-corpus comparison, post-measurement functional
-   witnesses, live-source completed-round test, final-budget resource checks,
+1. Use the recorded matched full-corpus comparison, post-measurement functional
+   witnesses, complete checkpoint and remote handoff, final-budget resource checks,
    slot restart/refresh recovery and production-identical dev UI/API smoke.
+   Full reconciliation renewal has not yet completed; the proposal uses a 12-hour
+   publisher cadence rather than assuming ordinary polling renews coverage.
    Bind their actual receipts to the exact proposed slot image, executable,
    strategy, source generation and deployment manifest. The frozen benchmark
    image supplies engine-component evidence; it cannot by itself qualify a
    different serving image. Publish no positive release proof while any gate
    remains missing or inconclusive.
-2. Rehearse the complete controlled route change and compensation against an
+2. Use the verified controlled route change and compensation against an
    isolated routing record and the same Worker/transport code. Exercise cached
    and uncached requests, both public search aliases, hard PDS filtering and
    contextual preference. Record failures, backend identity, source lag and
@@ -356,10 +371,11 @@ waived by this document. No production cutover is authorized.
    anchor. An operator's newer routing change wins. Re-establish the cache
    barrier, verify actual native identity/freshness, and retain the failed slot
    for bounded diagnosis. Never rebuild or resize the native anchor as part of
-   rollback. Resume future automatic Tantivy refresh only under the separately
-   qualified two-slot retirement/lease/retention policy.
+   rollback. Restore the original native publisher parameters and cadence before
+   resuming its schedule. The Tantivy continuation path is used only while an
+   explicitly approved Tantivy route remains selected.
 
-The intended change has no planned backend stop or DNS transition. A zero-downtime
-claim and a numeric propagation bound remain unproven until the isolated public
-rehearsal passes. Worker deployment and R2 routing are separate updates; the
+The intended change has no planned backend stop or DNS transition. The isolated
+real-origin rehearsal passed. It does not establish a global zero-downtime claim
+or a numeric production propagation bound. Worker deployment and R2 routing are separate updates; the
 procedure and compensation must account for that explicitly.
