@@ -184,4 +184,69 @@ class SlotTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Deployment byte identity'):self.instance(stale).install()
         self.assertEqual(len(self.store.keys),4)
 
+
+
+
+class CheckpointExpiryTests(unittest.TestCase):
+    def test_real_reader_and_canonical_reconciler_stop_and_cached_restart_refuses_expired_coverage(self):
+        if not BINARY.is_file():self.skipTest('actual Rust binary unavailable')
+        with tempfile.TemporaryDirectory(prefix='checkpoint-expiry-') as directory:
+            work=Path(directory).resolve()
+            with fixtures.checkpoint_runtime_fixture(work/'case',BINARY,slot_app='typeahead-tantivy-a') as case:
+                portable=case['portable'];bound={**case['manifest'],
+                    'deployment_schema_version':1,'request_id':'e'*32,
+                    'artifact_manifest_key':f"releases/search-tantivy/{portable['active_build']}/manifest.json",
+                    'artifact_manifest_sha256':hashlib.sha256(json.dumps(portable).encode()).hexdigest(),
+                    'source_manifest_key':f"releases/search/{portable['rollback_native_anchor']['build_id']}/manifest.json"}
+                key='control/tantivy-slots/typeahead-tantivy-a/'+('e'*32)+'.json'
+                deployment=json.dumps(bound).encode()
+                store=Store({key:deployment,bound['artifact_manifest_key']:json.dumps(portable).encode(),
+                    bound['source_manifest_key']:case['native'],bound['object_key']:case['bundle'].read_bytes()})
+                env=dict(os.environ,FLY_APP_NAME='typeahead-tantivy-a',FLY_MACHINE_ID='abcdef12345678',
+                    FLY_MACHINE_VERSION='fixture-instance',FLY_IMAGE_REF=bound['image_digest'],
+                    EXPECTED_BUILD_ID=bound['active_build'],TANTIVY_DEPLOYMENT_KEY=key,
+                    EXPECTED_DEPLOYMENT_SHA256=hashlib.sha256(deployment).hexdigest(),
+                    ADMIN_SECRET=case['secret'],TURSO_URL=case['source'].url,TURSO_AUTH_TOKEN=case['source'].source_secret,
+                    TANTIVY_TEST_FIXTURE='1')
+                clock=[time.time()]
+                instance=slot.Slot(env,work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
+                reconciler=None
+                try:
+                    value=instance.install();public,admin=smoke.port(),smoke.port()
+                    reader=instance.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
+                    for _ in range(100):
+                        try:
+                            if smoke.request(f'http://127.0.0.1:{public}','/index/status')[0]==200:break
+                        except OSError:pass
+                        time.sleep(.02)
+                    self.assertEqual(smoke.request(f'http://127.0.0.1:{public}','/search?q=real')[0],200)
+                    marker=work/'source-polled.json'
+                    program="import sys,time,json\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1]);import sync,current_state\nsource=sync.Turso(sys.argv[2],sys.argv[3],allow_test_loopback=True,retries=1,backoff=0,max_bytes=1048576)\nadmin=sync.Admin(sys.argv[4],sys.argv[5],sys.argv[6])\nresult=current_state.ObservedSynchronizer(source,admin,sync,policy_mode='snapshot',anti_entropy_pages=0,safety_lag=0,max_pages=10,max_seconds=5,retries=1,backoff=0).run()\nPath(sys.argv[7]).write_text(json.dumps(result));time.sleep(10)\n"
+                    reconciler=subprocess.Popen([sys.executable,'-c',program,str(ROOT/'services/tantivy-input'),
+                        case['source'].url,case['source'].source_secret,f'http://127.0.0.1:{admin}',case['secret'],
+                        f'http://127.0.0.1:{public}/index/status',str(marker)],stdout=case['log'],stderr=case['log'])
+                    instance.children.append(reconciler)
+                    until=time.monotonic()+5
+                    while not marker.exists() and time.monotonic()<until:
+                        self.assertIsNone(reconciler.poll());time.sleep(.02)
+                    self.assertTrue(marker.exists())
+                    deadline=instance.coverage_deadline
+                    instance.runtime_gates(value)
+                    self.assertEqual(instance.coverage_deadline,deadline,'ordinary polling renewed full coverage')
+                    self.assertIsNone(reader.poll());self.assertIsNone(reconciler.poll())
+                    clock[0]=deadline-59
+                    with self.assertRaisesRegex(ValueError,'coverage expired'):
+                        instance.check_coverage(value)
+                    self.assertIsNotNone(reader.poll());self.assertIsNotNone(reconciler.poll())
+                    with self.assertRaisesRegex(ValueError,'coverage expired'):
+                        instance.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
+                    restarted=slot.Slot(env,work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
+                    with self.assertRaisesRegex(ValueError,'coverage expired'):
+                        restarted.install()
+                    self.assertEqual(len(store.keys),4,'cached restart fetched artifacts')
+                    with self.assertRaisesRegex(ValueError,'unavailable in production'):
+                        slot.Slot({k:v for k,v in env.items() if k!='TANTIVY_TEST_FIXTURE'},work/'other',BINARY,store,fixture_clock=lambda:0)
+                finally:
+                    instance.stop();store.close()
+
 if __name__=='__main__':unittest.main()

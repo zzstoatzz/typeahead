@@ -129,3 +129,37 @@ an additional revision. Synthetic payloads and servers are removed after the
 run, with core dumps disabled. Earlier transient storage failures coincided
 with a full local filesystem; the unchanged binary passed after owned build/test
 cache cleanup. This is not a cloud deployment or a full-corpus sweep-time result.
+
+
+## Checkpoint admission and serving expiry
+
+The optional checkpoint adapter is locally verified, not deployed. It binds the
+exact bounded provider receipt, materialized SQLite/WAL proof, full stream count
+and engine-verified footer hash. The raw checkpoint and independently retained
+native rollback anchor have separate counts and identities; a native prefix hash
+is never substituted for the raw source. Public import metadata retains policy
+hashes/counts, never operator rules.
+
+`verified-checkpoint-import` records the actual completed import without claiming
+an additional identity walk. A subsequent source-authoritative CAS binds that
+record to the same replay floor and source origin. Admission requires a genuinely
+completed remote poll and fresh canonical policy after the provider cut, strict
+query settings, complete expiry coverage, and the unchanged handoff hashes. The
+reader's traditional `cutover_source_ready` stays false until an actual remote
+full round completes. Fixtures remain test-only and cannot qualify production.
+
+Coverage expires one day after the verified provider clock before the cut; the
+full export/import pipeline must also complete within one day. Ordinary polls
+cannot renew that deadline. Only a genuinely completed remote full round can
+renew it. The existing slot supervisor stops both reader and reconciler sixty
+seconds before coverage expiry and refuses an expired cached restart. This adds
+no search proxy or reader change. It requires an independently qualified refresh
+and fallback procedure before production use.
+
+The installer suite passes twelve tests, including actual SQLite/WAL fetch,
+canonical stream, strict Rust import, live SQL polling/policy, freeze/install and
+HTTP admission. The slot suite passes eight tests with one optional Linux image
+test skipped; actual reader/reconciler processes terminate at the coverage
+boundary, cached restart fails without another artifact download, ordinary polls
+do not renew coverage, and an actual remote full round does. No cloud release or
+full-corpus source qualification is inferred from these local fixtures.

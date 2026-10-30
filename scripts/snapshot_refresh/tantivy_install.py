@@ -55,6 +55,31 @@ def checkpoint_source(manifest):
     return manifest.get('source_kind') == CHECKPOINT_SOURCE
 
 
+def embedded_checkpoint_receipt(manifest):
+    bootstrap = manifest.get('source_bootstrap', {})
+    raw = bootstrap.get('checkpoint_receipt_json')
+    if not isinstance(raw, str) or len(raw.encode('utf8')) > 16384:
+        raise ValueError('Exact bounded checkpoint receipt JSON required')
+    raw = raw.encode('utf8')
+    if hashlib.sha256(raw).hexdigest() != bootstrap.get('checkpoint_receipt_sha256') or json.loads(raw) != bootstrap.get('checkpoint_receipt'):
+        raise ValueError('Embedded checkpoint receipt byte identity differs')
+    return raw
+
+
+def native_anchor_binding(manifest):
+    if checkpoint_source(manifest):
+        anchor = manifest['rollback_native_anchor']
+        return anchor['build_id'], anchor['manifest_sha256']
+    return manifest['source_build_id'], manifest['source_manifest_sha256']
+
+
+def source_origin_sha256(value, allow_test_loopback=False):
+    parsed = urllib.parse.urlsplit(value.replace('libsql://', 'https://'))
+    if parsed.scheme not in ('https', 'http') or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or parsed.path not in ('', '/', '/v2/pipeline') or (parsed.scheme == 'http' and not (allow_test_loopback and parsed.hostname in ('127.0.0.1', 'localhost', '::1'))):
+        raise ValueError('Invalid configured source origin')
+    return hashlib.sha256(urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, '', '', '')).encode()).hexdigest()
+
+
 def validate_checkpoint_contract(manifest):
     if not checkpoint_source(manifest) or manifest.get('source_policy') != CHECKPOINT_POLICY:
         raise ValueError('Explicit checkpoint-only source identity required')
@@ -63,9 +88,18 @@ def validate_checkpoint_contract(manifest):
     bootstrap = manifest.get('source_bootstrap')
     if not isinstance(bootstrap, dict) or type(bootstrap.get('schema_version')) is not int or bootstrap.get('schema_version') != 1 or bootstrap.get('kind') != CHECKPOINT_SOURCE or bootstrap.get('coverage') != 'checkpoint-only' or bootstrap.get('live_coverage_verified') is not False:
         raise ValueError('Explicit unqualified checkpoint coverage required')
+    allowed_bootstrap = {'schema_version','kind','coverage','live_coverage_verified','checkpoint_receipt_sha256','checkpoint_receipt','replay_floor','replay_overlap_seconds','actors_sha256','counts','fixture','native_visible_database_sha256','checkpoint_receipt_json','policy_freshness_attested','checkpoint_policy_sha256','checkpoint_policy_counts','raw_tombstone_rows'}
+    if 'checkpoint_policy' in bootstrap:raise ValueError('Public checkpoint header must not expose full moderation policy')
+    if set(bootstrap) - allowed_bootstrap:
+        raise ValueError('Unknown public checkpoint bootstrap field')
     receipt = bootstrap.get('checkpoint_receipt')
     if not isinstance(receipt, dict) or type(receipt.get('schema_version')) is not int or receipt.get('schema_version') != 1 or receipt.get('kind') != CHECKPOINT_SOURCE or type(receipt.get('fixture')) is not bool:
         raise ValueError('Checkpoint receipt identity missing')
+    receipt_fields = {'schema_version','kind','fixture','generation','generation_after','source_origin_sha256','source_clock_before','source_clock_after','base_db_sha256','base_db_bytes','received_wal_frames','committed_frame','committed_provider_frames_sha256','replayed_wal_sha256','replayed_wal_bytes','database_sha256','database_bytes','sqlite_replay_verified','sqlite_verified_wal_frames','boundary_kind','received_source_bytes','source_requests','wall_seconds','live_coverage_verified','policy_freshness_attested'}
+    if set(receipt) != receipt_fields:
+        raise ValueError('Unknown or missing public checkpoint receipt field')
+    if 'checkpoint_receipt_json' in bootstrap:
+        embedded_checkpoint_receipt(manifest)
     if receipt.get('sqlite_replay_verified') is not True or receipt.get('boundary_kind') != 'successful-short-WAL-batch' or receipt.get('live_coverage_verified') is not False or receipt.get('policy_freshness_attested') is not False:
         raise ValueError('Verified checkpoint prefix is not a live-source proof')
     generation = integer(receipt.get('generation'), 'checkpoint generation')
@@ -105,8 +139,24 @@ def validate_checkpoint_contract(manifest):
         native_count = integer(counts['native_visible_actors'], 'same-checkpoint native visible actors')
         if native_count > counts['live_actor_documents'] or bootstrap.get('native_visible_database_sha256') != receipt['database_sha256']:
             raise ValueError('Same-checkpoint visible count exceeds live actors')
-    if manifest.get('source_actor_count') != counts['input_documents'] or digest(bootstrap.get('actors_sha256')) != manifest.get('source_actors_sha256'):
+    footer_hash = digest(manifest.get('source_actors_sha256'))
+    if 'raw_tombstone_rows' in bootstrap:
+        total_tombs = integer(bootstrap['raw_tombstone_rows'],'raw tombstone rows')
+        if not counts['orphan_tombstones'] <= total_tombs <= counts['input_documents']:
+            raise ValueError('Raw tombstone counts differ')
+    if 'policy_freshness_attested' in bootstrap and bootstrap['policy_freshness_attested'] is not False:
+        raise ValueError('Checkpoint policy cannot claim live freshness')
+    if 'checkpoint_policy_sha256' in bootstrap:digest(bootstrap['checkpoint_policy_sha256'])
+    if 'checkpoint_policy_counts' in bootstrap:
+        policy_counts=bootstrap['checkpoint_policy_counts']
+        if not isinstance(policy_counts,dict) or set(policy_counts) != {'overrides','blocked_domains'}:
+            raise ValueError('Invalid safe checkpoint policy counts')
+        for field in policy_counts:
+            if integer(policy_counts[field],'checkpoint policy count')>10000:raise ValueError('Checkpoint policy exceeds cap')
+    if manifest.get('source_actor_count') != counts['input_documents'] or ('actors_sha256' in bootstrap and digest(bootstrap['actors_sha256']) != footer_hash):
         raise ValueError('Checkpoint actor count/footer binding differs')
+    if 'fixture' in bootstrap and bootstrap['fixture'] is not receipt['fixture']:
+        raise ValueError('Checkpoint fixture identities differ')
     receipt_sha = digest(bootstrap.get('checkpoint_receipt_sha256'))
     if manifest.get('source_manifest_sha256') != receipt_sha or manifest.get('source_database_sha256') != receipt['database_sha256'] or 'source_prefix_sha256' in manifest:
         raise ValueError('Primary checkpoint provenance cannot be a native prefix source')
@@ -145,11 +195,17 @@ def validate_checkpoint_provenance(manifest, checkpoint_receipt_bytes, native_an
     return {'source_kind': CHECKPOINT_SOURCE, 'structurally_valid': True, 'coverage': 'checkpoint-only', 'live_admission': False, 'fixture': bootstrap['checkpoint_receipt']['fixture'], 'counts': dict(bootstrap['counts']), 'checkpoint_receipt_sha256': bootstrap['checkpoint_receipt_sha256'], 'rollback_manifest_sha256': anchor['manifest_sha256']}
 
 
-def reject_unqualified_checkpoint(manifest):
-    if checkpoint_source(manifest):
-        raise ValueError('Checkpoint-only source is not admitted for freeze/install/runtime; fresh remote catch-up proof is required')
-    if manifest.get('source_kind') not in (None, 'flatpx05'):
+def checkpoint_fixture_gate(manifest, allow_checkpoint_fixture=False):
+    if manifest.get('source_kind') not in (None, 'flatpx05', CHECKPOINT_SOURCE):
         raise ValueError('Unsupported source kind')
+    if not checkpoint_source(manifest):
+        return False
+    bootstrap, _ = validate_checkpoint_contract(manifest)
+    embedded_checkpoint_receipt(manifest)
+    fixture = bootstrap['checkpoint_receipt']['fixture'] or manifest.get('test_only') is True
+    if fixture and not allow_checkpoint_fixture:
+        raise ValueError('Fixture checkpoint is not eligible for production admission')
+    return bool(fixture or allow_checkpoint_fixture)
 
 
 def validate_artifact_manifest(manifest, expected):
@@ -196,7 +252,7 @@ def validate_artifact_manifest(manifest, expected):
 def validate_source_manifest(manifest, source_bytes, *, checkpoint_receipt_bytes=None):
     validate_artifact_manifest(manifest, manifest['active_build'])
     if checkpoint_source(manifest):
-        return validate_checkpoint_provenance(manifest, checkpoint_receipt_bytes, source_bytes)
+        return validate_checkpoint_provenance(manifest, embedded_checkpoint_receipt(manifest) if checkpoint_receipt_bytes is None else checkpoint_receipt_bytes, source_bytes)
     if not isinstance(source_bytes, bytes) or len(source_bytes) > 1024 * 1024 or hashlib.sha256(source_bytes).hexdigest() != manifest['source_manifest_sha256']:
         raise ValueError('Native source manifest byte identity mismatch')
     source = json.loads(source_bytes)
@@ -224,9 +280,9 @@ def validate_manifest(manifest, expected):
     return manifest
 
 
-def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None):
+def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None, *, allow_checkpoint_fixture=False):
     """Freeze an owned, stopped checkpoint into a portable, source-linked artifact."""
-    reject_unqualified_checkpoint(manifest)
+    checkpoint_fixture_gate(manifest, allow_checkpoint_fixture)
     data, destination, binary = Path(data), Path(destination), Path(binary)
     if destination.exists() or (data / 'index').is_symlink():
         raise ValueError('A new artifact destination and regular index directory are required')
@@ -238,7 +294,7 @@ def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None):
         raise ValueError('Actual Tantivy reader rejected publisher checkpoint')
     metadata = json.loads(result.stdout)
     validate_source_manifest(manifest, source_bytes)
-    validate_metadata(metadata, manifest, now, require_fresh=False)
+    validate_metadata(metadata, manifest, now, require_fresh=checkpoint_source(manifest), allow_checkpoint_fixture=allow_checkpoint_fixture)
     policy = metadata.get('policy_snapshot', {})
     observed = integer(policy.get('source_observed_at'), 'publisher policy observation', 1)
     if policy.get('complete') is not True or observed > (int(time.time()) if now is None else now):
@@ -278,10 +334,11 @@ def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None):
         if inventory() != before:
             raise ValueError('Publisher checkpoint changed while freezing')
         portable = {key: value for key, value in manifest.items() if key not in {'image_digest', 'guest', 'volume_id', 'volume_size_gib', 'public_service_ports', 'provider_app'}}
+        if allow_checkpoint_fixture:portable['test_only'] = True
         with archive_path.open('rb') as stream:
             portable.update(files=files, byte_size=archive_path.stat().st_size, sha256=hashlib.file_digest(stream, 'sha256').hexdigest())
         validate_source_manifest(portable, source_bytes)
-        validate_metadata(metadata, portable, now, require_fresh=False)
+        validate_metadata(metadata, portable, now, require_fresh=checkpoint_source(manifest), allow_checkpoint_fixture=allow_checkpoint_fixture)
         (staging / 'manifest.json').write_text(json.dumps(portable, sort_keys=True, separators=(',', ':')) + '\n')
         for path in [archive_path, staging / 'manifest.json']:
             with path.open('rb') as stream:
@@ -334,8 +391,96 @@ def source_gates(metadata, now, max_poll_age=120, max_policy_age=300, max_sweep_
     return {'poll_age_s': now - watermark, 'sweep_age_s': now - end, 'sweep_duration_s': end - start}
 
 
-def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True, require_source_ready=True, **bounds):
-    reject_unqualified_checkpoint(manifest)
+def checkpoint_source_gates(metadata, manifest, now, max_poll_age=120, max_policy_age=300, max_sweep_age=86400, max_sweep_duration=86400, require_fresh=True, require_complete_poll=True):
+    for value, maximum in [(max_poll_age,120),(max_policy_age,300),(max_sweep_age,86400),(max_sweep_duration,86400)]:
+        if type(value) is not int or not 1 <= value <= maximum:
+            raise ValueError('Admission bounds may only be tightened')
+    bootstrap, _ = validate_checkpoint_contract(manifest)
+    receipt = bootstrap['checkpoint_receipt']
+    cursor, watermark = source_identity(metadata, now)
+    if require_complete_poll and (cursor.get('cycle') is not None or any(cursor.get(stream) != {column:watermark,'did':''} for stream,column in [('actors','updated_at'),('tombstones','deleted_at')])):
+        raise ValueError('Checkpoint handoff requires an actually completed remote poll cycle')
+    if integer(cursor.get('lookback_seconds'),'remote lookback') < bootstrap['replay_overlap_seconds']:
+        raise ValueError('Remote replay overlap regressed')
+    record = cursor.get('checkpoint_reconciliation')
+    if not isinstance(record,dict) or type(record.get('schema_version')) is not int or record.get('schema_version') != 1 or record.get('kind') not in ('checkpoint-only','verified-checkpoint-import'):
+        raise ValueError('Complete checkpoint-scoped reconciliation required')
+    bootstrap_sha = digest_json(bootstrap)
+    record_sha = digest_json(record)
+    if digest(record.get('bootstrap_receipt_sha256')) != bootstrap_sha or digest(manifest.get('checkpoint_reconciliation_sha256')) != record_sha or digest(record.get('actors_sha256')) != manifest['source_actors_sha256']:
+        raise ValueError('Checkpoint reconciliation immutable binding differs')
+    counts = bootstrap['counts']
+    if record['kind'] == 'checkpoint-only':
+        if record.get('source_done') is not True or record.get('backend_done') is not True:
+            raise ValueError('Both checkpoint-scoped identity walks must be complete')
+        bindings = [('source_input_documents','input_documents'),('raw_actor_rows','raw_actor_rows'),('live_actor_documents','live_actor_documents'),('deleted_actor_documents','deleted_actor_documents'),('documents_checked','input_documents')]
+    else:
+        if any(key in record for key in ('source_done','backend_done','documents_checked')):
+            raise ValueError('Verified import cannot claim unperformed identity walks')
+        bindings = [('verified_input_actors','input_documents'),('raw_actor_rows','raw_actor_rows'),('initial_live_actor_documents','live_actor_documents'),('initial_deleted_actor_documents','deleted_actor_documents')]
+    if any(type(record.get(key)) is not int or record[key] != counts[field] for key,field in bindings):
+        raise ValueError('Checkpoint reconciliation document counts differ')
+    started = integer(record.get('started_at'),'local checkpoint walk start',1)
+    completed = integer(record.get('completed_at'),'local checkpoint walk completion',1)
+    before,after = receipt['source_clock_before'],receipt['source_clock_after']
+    if not before <= after <= completed <= now or not started <= completed or completed - started > max_sweep_duration or completed - before > max_sweep_duration:
+        raise ValueError('Checkpoint export/import/reconciliation duration is invalid or too slow')
+    handoff = cursor.get('checkpoint_handoff')
+    if not isinstance(handoff,dict) or type(handoff.get('schema_version')) is not int or handoff.get('schema_version') != 1 or handoff.get('kind') != 'sqlite-checkpoint-to-turso-v2':
+        raise ValueError('Explicit checkpoint-to-remote handoff required')
+    digest(handoff.get('prior_cursor_sha256'))
+    prior_revision = integer(handoff.get('prior_observation_revision'),'prior checkpoint observation revision')
+    if integer(metadata.get('source_observation_revision'),'current observation revision',1) <= prior_revision:
+        raise ValueError('Remote source observations did not advance past the checkpoint CAS')
+    if handoff.get('checkpoint_reconciliation_sha256') != record_sha or handoff.get('bootstrap_receipt_sha256') != bootstrap_sha or handoff.get('source_origin_sha256') != receipt['source_origin_sha256'] or handoff.get('replay_floor') != manifest['source_watermark'] or digest(manifest.get('checkpoint_handoff_sha256')) != digest_json(handoff):
+        raise ValueError('Checkpoint handoff lineage/source binding differs')
+    first_through = integer(handoff.get('first_remote_through'),'first complete remote watermark',1)
+    if not after <= first_through <= watermark:
+        raise ValueError('Remote catch-up does not cover the verified checkpoint cut')
+    policy = metadata.get('policy_snapshot')
+    if isinstance(policy,dict):
+        if policy.get('complete') is not True:raise ValueError('Complete post-cut remote policy required')
+        if policy.get('schema_version') != 1 or not isinstance(policy.get('overrides'),list) or not isinstance(policy.get('blocked_domains'),list):raise ValueError('Complete post-cut policy shape required')
+        policy_sha=digest_json({key:value for key,value in policy.items() if key!='source_observed_at'})
+    else:
+        policy = metadata.get('moderation',{})
+        if policy.get('enabled') is not True or policy.get('complete') is not True or policy.get('canonical_rules_source_sha256') != manifest['canonical_rules_source_sha256']:
+            raise ValueError('Complete canonical post-cut remote policy required')
+        policy_sha=digest(policy.get('sha256'))
+    observed_policy = integer(policy.get('source_observed_at'),'post-cut remote policy observation',1)
+    if not after <= observed_policy <= now or (require_fresh and now-observed_policy > max_policy_age):
+        raise ValueError('Remote policy is stale, future, or predates the verified checkpoint cut')
+    anchor = before
+    remote = cursor.get('reconciliation') or {}
+    renewed = False
+    if remote.get('last_completed_at') is not None or remote.get('last_completed_started_at') is not None:
+        start = integer(remote.get('last_completed_started_at'),'remote full-round start',1)
+        end = integer(remote.get('last_completed_at'),'remote full-round completion',1)
+        if integer(remote.get('round'),'remote reconciliation round',2)<2 or any(not isinstance(remote.get(field),str) for field in ['source_after_did','backend_after_did']) or any(type(remote.get(field)) is not bool for field in ['source_done','backend_done']) or integer(remote.get('round_started_at'),'current remote round start',1)<end:
+            raise ValueError('Canonical remote full-round state is incomplete')
+        if remote.get('schema_version') != 1 or not first_through <= start <= end <= now or end-start > max_sweep_duration:
+            raise ValueError('Checkpoint markers cannot be relabeled as a completed remote full round')
+        anchor = max(anchor,end)
+        renewed = end > before
+    if require_fresh and (now-watermark > max_poll_age or now-anchor > max_sweep_age):
+        raise ValueError('Checkpoint coverage or actual remote polling is stale')
+    return {'poll_age_s':now-watermark,'source_coverage_kind':CHECKPOINT_SOURCE,'checkpoint_cut_age_s':now-before,
+            'coverage_age_s':now-anchor,'coverage_deadline':anchor+max_sweep_age,'checkpoint_pipeline_duration_s':completed-before,
+            'checkpoint_round_duration_s':completed-started,'checkpoint_reconciliation_sha256':record_sha,
+            'checkpoint_handoff_sha256':digest_json(handoff),'checkpoint_receipt_sha256':bootstrap['checkpoint_receipt_sha256'],
+            'post_cut_policy_sha256':policy_sha,'checkpoint_renewed_by_remote_round':renewed,'remote_full_round_present':remote.get('last_completed_at') is not None}
+
+
+def checkpoint_coverage_deadline(metadata, manifest, now=None, allow_checkpoint_fixture=False):
+    if not checkpoint_source(manifest):
+        return None
+    checkpoint_fixture_gate(manifest,allow_checkpoint_fixture)
+    clock = int(time.time()) if now is None else now
+    return checkpoint_source_gates(metadata,manifest,clock,require_fresh=False,require_complete_poll=False)['coverage_deadline']
+
+
+def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True, require_source_ready=True, allow_checkpoint_fixture=False, **bounds):
+    checkpoint_test_only = checkpoint_fixture_gate(manifest, allow_checkpoint_fixture)
     now = int(time.time()) if now is None else now
     for field, expected in [('format', FORMAT), ('build_id', manifest['active_build']), ('normalize_version', manifest['normalize_version']), ('plan_version', manifest['plan_version'])]:
         if metadata.get(field) != expected:
@@ -353,8 +498,11 @@ def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True,
     if coverage.get('canonical_rules_source_sha256') != manifest['canonical_rules_source_sha256'] or any(coverage.get(field) != count for field in ['expected_input_actors', 'source_actor_count', 'input_actors_checked']):
         raise ValueError('Expiry coverage source count or canonical rules mismatch')
     input_hash = digest(coverage.get('verified_input_actors_sha256'))
-    if metadata.get('snapshot_watermark') != manifest['source_watermark'] or input_hash != manifest['source_actors_sha256'] or source.get('build_id') != manifest['source_build_id'] or source.get('source_watermark') != manifest['source_watermark'] or source.get('source_database_sha256') != manifest['source_database_sha256'] or source.get('source_prefix_sha256') != manifest['source_prefix_sha256']:
+    if metadata.get('snapshot_watermark') != manifest['source_watermark'] or input_hash != manifest['source_actors_sha256'] or source.get('build_id') != manifest['source_build_id'] or source.get('source_watermark') != manifest['source_watermark'] or source.get('source_database_sha256') != manifest['source_database_sha256'] or (not checkpoint_source(manifest) and source.get('source_prefix_sha256') != manifest['source_prefix_sha256']):
         raise ValueError('Imported source differs from immutable artifact provenance')
+    if checkpoint_source(manifest):
+        if source.get('source_format') != 'sqlite-committed-prefix-v1' or source.get('source_kind') != CHECKPOINT_SOURCE or source.get('source_policy') != CHECKPOINT_POLICY or source.get('source_bootstrap') != manifest['source_bootstrap'] or source.get('rollback_native_anchor') != manifest['rollback_native_anchor'] or source.get('legacy_build_id') != manifest['legacy_build_id'] or 'source_prefix_sha256' in source:
+            raise ValueError('Imported checkpoint header provenance differs')
     classifier_hash = digest(coverage.get('classifier_sha256'))
     current = coverage.get('current', {})
     if integer(current.get('live_actors'), 'expiry live actor count') != metadata['actor_count']:
@@ -364,22 +512,32 @@ def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True,
     if require_coverage_ready and (unsupported or malformed):
         raise ValueError('Unsupported or malformed source labels prevent expiry readiness')
     if not require_source_ready:source_identity(metadata, now)
-    gates = source_gates(metadata, now, **bounds) if require_source_ready else {}
+    gates = checkpoint_source_gates(metadata,manifest,now,**dict(bounds,require_fresh=bounds.get('require_fresh',True) if require_source_ready else False,require_complete_poll=require_source_ready)) if checkpoint_source(manifest) else source_gates(metadata, now, **bounds) if require_source_ready else {}
+    if checkpoint_source(manifest):gates['checkpoint_test_only'] = checkpoint_test_only
     gates.update(expiry_actors_checked=count, expiry_input_actors_sha256=input_hash, expiry_classifier_sha256=classifier_hash, expiry_current_live_actors=current['live_actors'], expiry_coverage_ready=not (unsupported or malformed))
     return gates
 
 
 def validate_runtime(status, manifest, now=None, **bounds):
+    if any(bounds.get(key,True) is not True for key in ['require_fresh','require_source_ready','require_coverage_ready','require_complete_poll']):raise ValueError('Runtime admission cannot disable freshness, coverage or completed-poll gates')
     now = int(time.time()) if now is None else now
     gates = validate_metadata(status, manifest, now, **bounds)
     if status.get('binary_sha256') != manifest['binary_sha256'] or status.get('retrieval_strategy') != manifest['retrieval_strategy']:
         raise ValueError('Live runtime binary or retrieval strategy mismatch')
-    if status.get('engine') != 'tantivy' or status.get('ready') is not True or status.get('cutover_source_ready') is not True or status.get('pds_scope_version') != 1:
+    if status.get('engine') != 'tantivy' or status.get('ready') is not True or (not checkpoint_source(manifest) and status.get('cutover_source_ready') is not True) or status.get('pds_scope_version') != 1:
         raise ValueError('Tantivy runtime is not ready for admission')
+    if checkpoint_source(manifest):
+        config = status.get('query_config', {})
+        if config.get('allow_partial') is not False or config.get('allow_stale') is not False or config.get('retrieval_strategy') != manifest['retrieval_strategy'] or type(config.get('max_sync_lag_s')) is not int or not 1 <= config['max_sync_lag_s'] <= 120:
+            raise ValueError('Checkpoint serving requires strict non-fixture query settings')
+        if type(status.get('cutover_source_ready')) is not bool or status['cutover_source_ready'] != gates['remote_full_round_present']:
+            raise ValueError('Traditional reader full-round gate disagrees with explicit coverage kind')
     policy = status.get('moderation', {})
     policy_age = now - integer(policy.get('source_observed_at'), 'moderation observation', 1)
     if any(policy.get(key) is not True for key in ['enabled', 'complete', 'fresh']) or not 0 <= policy_age <= bounds.get('max_policy_age', 300):
         raise ValueError('Moderation policy is missing or stale')
+    if checkpoint_source(manifest) and policy['source_observed_at'] < manifest['source_bootstrap']['checkpoint_receipt']['source_clock_after']:
+        raise ValueError('Remote policy predates the verified checkpoint cut')
     digest(policy.get('sha256'))
     if policy.get('canonical_rules_source_sha256') != manifest['canonical_rules_source_sha256']:
         raise ValueError('Canonical moderation rules differ')
@@ -425,8 +583,8 @@ def validate_provider(attestation, manifest, status, now=None):
     return {'provider_config_verified':True, 'provider_runtime_instance_bound':instance_bound, 'provider_resources_qualified':instance_bound and not test_only, 'provider_attestation_sha256':digest_json(attestation), 'provider_observed_at':attestation['observed_at'], 'provider_machine_id':machine, 'provider_instance_id':attestation['instance_id'], 'provider_image_digest':attestation['image_digest'], 'provider_attestation_test_only':test_only}
 
 
-def install_bundle(bundle, destination, manifest, binary, now=None, **bounds):
-    reject_unqualified_checkpoint(manifest)
+def install_bundle(bundle, destination, manifest, binary, now=None, allow_checkpoint_fixture=False, **bounds):
+    checkpoint_fixture_gate(manifest, allow_checkpoint_fixture)
     """Prepare one new inactive directory; caller owns starting and qualifying its service."""
     validate_manifest(manifest, manifest['active_build'])
     bundle, destination, binary = Path(bundle), Path(destination), Path(binary)
@@ -471,13 +629,13 @@ def install_bundle(bundle, destination, manifest, binary, now=None, **bounds):
         if result.returncode or len(result.stdout) > 8 * 1024**2:
             raise ValueError('Actual Tantivy reader rejected generation')
         metadata = json.loads(result.stdout)
-        gates = validate_metadata(metadata, manifest, now, require_coverage_ready=False, require_fresh=False, **bounds)
+        gates = validate_metadata(metadata, manifest, now, require_coverage_ready=False, require_fresh=False, allow_checkpoint_fixture=allow_checkpoint_fixture, **bounds)
         policy = metadata.get('policy_snapshot', {})
         observed = integer(policy.get('source_observed_at'), 'installed policy observation', 1)
         clock = int(time.time()) if now is None else now
         if policy.get('complete') is not True or clock < observed:
             raise ValueError('Installed policy is incomplete or stale')
-        receipt = {'engine': 'tantivy', 'build_id': manifest['active_build'], 'format': FORMAT, 'manifest_sha256': digest_json(manifest), 'bundle_sha256': manifest['sha256'], 'binary_sha256': manifest['binary_sha256'], 'installed_at': clock, 'passed': True, 'runtime_qualified': False, **gates}
+        receipt = {'engine': 'tantivy', 'build_id': manifest['active_build'], 'format': FORMAT, 'manifest_sha256': digest_json(manifest), 'bundle_sha256': manifest['sha256'], 'binary_sha256': manifest['binary_sha256'], 'installed_at': clock, 'passed': True, 'runtime_qualified': False, 'test_only': bool(allow_checkpoint_fixture), **gates}
         with (staging / 'installation.json').open('x') as output:
             output.write(json.dumps(receipt, sort_keys=True) + '\n'); output.flush(); os.fsync(output.fileno())
         destination.mkdir()
@@ -492,7 +650,9 @@ def install_bundle(bundle, destination, manifest, binary, now=None, **bounds):
 
 def qualify_route(status, manifest, installation, now=None, observed_origin=None, provider_attestation=None, **bounds):
     validate_manifest(manifest, manifest['active_build'])
-    gates = validate_runtime(status, manifest, now, **bounds)
+    if 'allow_checkpoint_fixture' in bounds:raise ValueError('Checkpoint fixture admission must be explicitly provider-test-only')
+    fixture_mode = bool(provider_attestation and provider_attestation.get('test_only') is True and observed_origin and urllib.parse.urlsplit(observed_origin).hostname in ('127.0.0.1','localhost','::1'))
+    gates = validate_runtime(status, manifest, now, allow_checkpoint_fixture=fixture_mode, **bounds)
     provider = validate_provider(provider_attestation, manifest, status, now)
     app = manifest['provider_app']
     if app not in PUBLIC_APPS and not provider['provider_attestation_test_only']:
@@ -504,7 +664,7 @@ def qualify_route(status, manifest, installation, now=None, observed_origin=None
         raise ValueError('Missing matching immutable installation receipt')
     receipt = {'schema_version': 1, 'engine': 'tantivy', 'build_id': manifest['active_build'], 'origin': origin, 'format': FORMAT, 'manifest_sha256': digest_json(manifest), 'installed_binary_sha256': installation['binary_sha256'], 'qualified_at': int(time.time()) if now is None else now, 'source_cursor_sha256': digest_json(status['source_cursor']), 'policy_sha256': status['moderation']['sha256'], 'slo_empirically_qualified': False, 'runtime_http_verified': observed_origin == origin, 'runtime_observed_origin': observed_origin, 'test_only': observed_origin is not None and observed_origin != origin, **gates}
     receipt.update(provider)
-    receipt['test_only'] = receipt['test_only'] or provider['provider_attestation_test_only']
+    receipt['test_only'] = receipt['test_only'] or provider['provider_attestation_test_only'] or gates.get('checkpoint_test_only',False)
     route = {'engine': 'tantivy', 'origin': origin, 'build_id': manifest['active_build'], 'format': FORMAT, 'admission_sha256': digest_json(receipt), 'binary_sha256':manifest['binary_sha256'], 'retrieval_strategy':manifest['retrieval_strategy']}
     return {'route': route, 'admission': receipt}
 

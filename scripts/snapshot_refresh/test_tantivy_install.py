@@ -23,11 +23,11 @@ sys.path.insert(0, str(ROOT / 'services/tantivy/tests'))
 import smoke
 
 
-def start_strict(binary,data,log,secret,fixture_identity=False):
+def start_strict(binary,data,log,secret,fixture_identity=False,max_sync_lag=1800):
     public,admin=smoke.port(),smoke.port()
     environment=dict(os.environ,ADMIN_SECRET=secret)
     if fixture_identity:environment.update(FLY_MACHINE_ID='abcdef12345678',FLY_MACHINE_VERSION='fixture-instance')
-    child=subprocess.Popen([str(binary),'serve','--data',str(data),'--listen',f'127.0.0.1:{public}','--admin-listen',f'127.0.0.1:{admin}'],env=environment,stdout=log,stderr=log)
+    child=subprocess.Popen([str(binary),'serve','--data',str(data),'--listen',f'127.0.0.1:{public}','--admin-listen',f'127.0.0.1:{admin}','--max-sync-lag-s',str(max_sync_lag)],env=environment,stdout=log,stderr=log)
     base=f'http://127.0.0.1:{public}';private=f'http://127.0.0.1:{admin}'
     for _ in range(100):
         if child.poll() is not None:raise RuntimeError('Strict server exited')
@@ -82,7 +82,7 @@ class AdmissionTests(unittest.TestCase):
                         rollback_native_anchor=anchor,
                         source_bootstrap={'schema_version':1,'kind':adapter.CHECKPOINT_SOURCE,
                             'coverage':'checkpoint-only','live_coverage_verified':False,
-                            'checkpoint_receipt_sha256':receipt_sha,'checkpoint_receipt':receipt,
+                            'checkpoint_receipt_sha256':receipt_sha,'checkpoint_receipt':receipt,'checkpoint_receipt_json':receipt_raw.decode(),
                             'replay_floor':999700,'replay_overlap_seconds':300,
                             'actors_sha256':manifest['source_actors_sha256'],
                             'counts':{'raw_actor_rows':3,'orphan_tombstones':1,'input_documents':4,
@@ -101,7 +101,10 @@ class AdmissionTests(unittest.TestCase):
         self.assertNotEqual(result['counts']['input_documents'],manifest['rollback_native_anchor']['actor_count'])
         self.assertNotEqual(manifest['source_watermark'],manifest['rollback_native_anchor']['source_watermark'])
         self.assertEqual(adapter.validate_source_manifest(manifest,native_raw,checkpoint_receipt_bytes=receipt_raw),result)
-        with self.assertRaises(ValueError):adapter.validate_source_manifest(manifest,native_raw)
+        single_pass=copy.deepcopy(manifest)
+        del single_pass['source_bootstrap']['actors_sha256']
+        self.assertTrue(adapter.validate_checkpoint_provenance(single_pass,receipt_raw,native_raw)['structurally_valid'])
+        self.assertEqual(adapter.validate_source_manifest(manifest,native_raw),result)
         with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(manifest,receipt_raw+b' ',native_raw)
         with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(manifest,receipt_raw,native_raw+b' ')
         known=copy.deepcopy(manifest)
@@ -145,16 +148,126 @@ class AdmissionTests(unittest.TestCase):
             with self.subTest(path=path),self.assertRaises(ValueError):
                 adapter.validate_checkpoint_provenance(changed,receipt_raw,native_raw)
 
-    def test_checkpoint_only_cannot_freeze_install_or_claim_runtime_even_with_ready_flags(self):
+    def test_fixture_checkpoint_cannot_freeze_install_or_claim_runtime_in_production(self):
         manifest,_,_=self.checkpoint_manifest()
-        with self.assertRaisesRegex(ValueError,'Checkpoint-only source is not admitted'):
+        with self.assertRaisesRegex(ValueError,'Fixture checkpoint is not eligible'):
             adapter.freeze_bundle('/missing/data','/missing/destination',manifest,b'','/missing/binary')
-        with self.assertRaisesRegex(ValueError,'Checkpoint-only source is not admitted'):
+        with self.assertRaisesRegex(ValueError,'Fixture checkpoint is not eligible'):
             adapter.install_bundle('/missing/bundle','/missing/destination',manifest,'/missing/binary')
-        with self.assertRaisesRegex(ValueError,'Checkpoint-only source is not admitted'):
+        with self.assertRaisesRegex(ValueError,'Fixture checkpoint is not eligible'):
             adapter.validate_runtime({'ready':True,'cutover_source_ready':True},manifest)
-        with self.assertRaisesRegex(ValueError,'Checkpoint-only source is not admitted'):
+        with self.assertRaisesRegex(ValueError,'Fixture checkpoint is not eligible'):
             adapter.validate_metadata({},manifest,require_source_ready=False,require_coverage_ready=False)
+
+    def checkpoint_status(self):
+        manifest,_,_ = self.checkpoint_manifest()
+        status = self.status()
+        now = 1000040
+        floor = manifest['source_watermark']
+        status.update(snapshot_watermark=floor,watermark=now-5,input_actors=4,actor_count=2,tombstone_count=2,source_observation_revision=4,cutover_source_ready=False)
+        status['source_manifest']={'type':'manifest','schema_version':1,'build_id':manifest['source_build_id'],
+            'source_watermark':floor,'source_database_sha256':manifest['source_database_sha256'],
+            'source_format':'sqlite-committed-prefix-v1','source_kind':adapter.CHECKPOINT_SOURCE,'source_policy':adapter.CHECKPOINT_POLICY,'rollback_native_anchor':copy.deepcopy(manifest['rollback_native_anchor']),'legacy_build_id':manifest['legacy_build_id'],'partial':False,'actor_count':4,'source_actor_count':4,
+            'source_bootstrap':copy.deepcopy(manifest['source_bootstrap'])}
+        status['expiry_coverage'].update(expected_input_actors=4,source_actor_count=4,input_actors_checked=4)
+        status['expiry_coverage']['current']['live_actors']=2
+        status['moderation']['source_observed_at']=now-5
+        status['query_config']={'allow_partial':False,'allow_stale':False,'max_sync_lag_s':120,'retrieval_strategy':manifest['retrieval_strategy']}
+        bootstrap_sha=adapter.digest_json(manifest['source_bootstrap'])
+        record={'schema_version':1,'kind':'verified-checkpoint-import','bootstrap_receipt_sha256':bootstrap_sha,
+                'actors_sha256':manifest['source_actors_sha256'],'verified_input_actors':4,'raw_actor_rows':3,
+                'initial_live_actor_documents':2,'initial_deleted_actor_documents':2,
+                'started_at':1000010,'completed_at':1000012}
+        record_sha=adapter.digest_json(record)
+        handoff={'schema_version':1,'kind':'sqlite-checkpoint-to-turso-v2','prior_cursor_sha256':adapter.digest_json(None),
+                 'prior_observation_revision':0,'checkpoint_reconciliation_sha256':record_sha,
+                 'bootstrap_receipt_sha256':bootstrap_sha,'source_origin_sha256':'4'*64,
+                 'replay_floor':floor,'first_remote_through':1000025}
+        status['source_cursor']={'schema_version':1,'source_policy':adapter.SOURCE_POLICY,'build_id':manifest['active_build'],
+            'snapshot_watermark':floor,'through':now-5,'cycle':None,'lookback_seconds':300,
+            'actors':{'updated_at':now-5,'did':''},'tombstones':{'deleted_at':now-5,'did':''},
+            'checkpoint_reconciliation':record,'checkpoint_handoff':handoff,'reconciliation':{'schema_version':1}}
+        manifest['checkpoint_reconciliation_sha256']=record_sha
+        manifest['checkpoint_handoff_sha256']=adapter.digest_json(handoff)
+        return manifest,status,now
+
+    def test_checkpoint_runtime_requires_explicit_post_cut_remote_handoff_and_no_fixture_production(self):
+        manifest,status,now=self.checkpoint_status()
+        with self.assertRaisesRegex(ValueError,'Fixture checkpoint'):
+            adapter.validate_runtime(status,manifest,now)
+        gates=adapter.validate_runtime(status,manifest,now,allow_checkpoint_fixture=True)
+        self.assertEqual(gates['source_coverage_kind'],adapter.CHECKPOINT_SOURCE)
+        self.assertTrue(gates['checkpoint_test_only'])
+        self.assertFalse(status['cutover_source_ready'])
+        self.assertEqual(gates['coverage_deadline'],1000000+86400)
+        cases=[(('full_source',),False),(('import_complete',),False),(('input_actors',),3),
+               (('expiry_coverage','current','actors_with_unsupported_expiry'),1),
+               (('expiry_coverage','verified_input_actors_sha256'),'0'*64),
+               (('source_manifest','source_bootstrap','replay_floor'),999999),
+               (('source_cursor','checkpoint_handoff','first_remote_through'),1000001),
+               (('source_cursor','checkpoint_handoff','source_origin_sha256'),'0'*64),
+               (('source_cursor','checkpoint_handoff','prior_observation_revision'),4),
+               (('source_cursor','checkpoint_reconciliation','raw_actor_rows'),4),
+               (('source_cursor','checkpoint_reconciliation','documents_checked'),8),
+               (('source_cursor','cycle'),{'stream':'actors'}),
+               (('source_cursor','actors','updated_at'),999999),
+               (('source_cursor','source_policy'),adapter.CHECKPOINT_POLICY),
+               (('query_config','allow_partial'),True),(('query_config','allow_stale'),True),
+               (('query_config','max_sync_lag_s'),1800),(('moderation','source_observed_at'),1000001),
+               (('cutover_source_ready',),True)]
+        for path,value in cases:
+            changed=copy.deepcopy(status);target=changed
+            for key in path[:-1]:target=target[key]
+            target[path[-1]]=value
+            with self.subTest(path=path),self.assertRaises(ValueError):
+                adapter.validate_runtime(changed,manifest,now,allow_checkpoint_fixture=True)
+        for flag in ['require_fresh','require_source_ready','require_coverage_ready','require_complete_poll']:
+            with self.subTest(flag=flag),self.assertRaisesRegex(ValueError,'cannot disable'):
+                adapter.validate_runtime(status,manifest,now,allow_checkpoint_fixture=True,**{flag:False})
+        for bound,value in [('max_poll_age',121),('max_policy_age',301),('max_sweep_age',86401),('max_sweep_duration',86401)]:
+            with self.subTest(bound=bound),self.assertRaises(ValueError):
+                adapter.validate_runtime(status,manifest,now,allow_checkpoint_fixture=True,**{bound:value})
+
+    def test_checkpoint_ordinary_poll_does_not_renew_coverage_and_local_markers_cannot_be_relabelled(self):
+        manifest,status,now=self.checkpoint_status()
+        later=now+90000
+        status['watermark']=later-5
+        status['source_cursor']['through']=later-5
+        status['source_cursor']['actors']['updated_at']=later-5
+        status['source_cursor']['tombstones']['deleted_at']=later-5
+        status['moderation']['source_observed_at']=later-5
+        with self.assertRaisesRegex(ValueError,'coverage.*stale'):
+            adapter.validate_runtime(status,manifest,later,allow_checkpoint_fixture=True)
+        status['source_cursor']['reconciliation']={'schema_version':1,'round':2,'source_after_did':'','backend_after_did':'','source_done':False,'backend_done':False,'round_started_at':1000012,'last_completed_started_at':999702,'last_completed_at':1000012}
+        status['cutover_source_ready']=True
+        with self.assertRaisesRegex(ValueError,'cannot be relabeled'):
+            adapter.validate_runtime(status,manifest,later,allow_checkpoint_fixture=True)
+        status['source_cursor']['reconciliation'].update(last_completed_started_at=later-20,last_completed_at=later-5,round_started_at=later-5)
+        gates=adapter.validate_runtime(status,manifest,later,allow_checkpoint_fixture=True)
+        self.assertTrue(gates['checkpoint_renewed_by_remote_round'])
+        self.assertEqual(gates['coverage_deadline'],later-5+86400)
+
+    def test_actual_checkpoint_wal_stream_import_catchup_and_test_only_admission(self):
+        binary=Path(os.environ.get('TA_BINARY',ROOT/'services/tantivy/target/release/typeahead-tantivy')).resolve()
+        if not binary.is_file():self.skipTest('actual Rust binary unavailable')
+        with tempfile.TemporaryDirectory(prefix='checkpoint-runtime-') as temporary:
+            with checkpoint_runtime_fixture(Path(temporary),binary) as case:
+                destination=Path(temporary)/'installed'
+                manifest=case['manifest']
+                installation=adapter.install_bundle(case['bundle'],destination,manifest,binary,allow_checkpoint_fixture=True)
+                child,public,_=start_strict(binary,destination,case['log'],case['secret'],fixture_identity=True,max_sync_lag=120)
+                try:
+                    status=smoke.request(public,'/index/status')[2]
+                    self.assertFalse(status['cutover_source_ready'])
+                    provider=self.provider(int(time.time()))
+                    qualified=adapter.qualify_runtime(public,manifest,installation,allow_loopback=True,provider_attestation=provider)
+                    self.assertTrue(qualified['admission']['test_only'])
+                    self.assertEqual(qualified['admission']['source_coverage_kind'],adapter.CHECKPOINT_SOURCE)
+                    self.assertEqual(smoke.request(public,'/search?q=real')[2]['actors'][0]['handle'],'real.test')
+                    with self.assertRaisesRegex(ValueError,'Fixture checkpoint'):
+                        adapter.validate_runtime(status,manifest)
+                    self.assertEqual(status['source_manifest']['source_bootstrap'],manifest['source_bootstrap'])
+                finally:smoke.stop(child)
 
     def test_independent_runtime_gates_reject_claimed_readiness_with_missing_evidence(self):
         manifest=self.manifest();status=self.status();adapter.validate_manifest(manifest,manifest['active_build']);adapter.validate_runtime(status,manifest,1000000)
@@ -317,6 +430,109 @@ class AdmissionTests(unittest.TestCase):
             staged=adapter.install_bundle(bundle,root/'stale-stage',manifest,binary,now=now+400)
             self.assertFalse(staged['runtime_qualified'])
             with self.assertRaises(ValueError):adapter.qualify_route(status,manifest,staged,now=now+400)
+
+
+
+from contextlib import contextmanager
+
+@contextmanager
+def checkpoint_runtime_fixture(root,binary,slot_app=None):
+    import sqlite3
+    import struct
+    mps_root=os.environ.get('TA_MPS_REPOSITORY')
+    if not mps_root:raise unittest.SkipTest('requires existing MPS checkpoint producer helpers')
+    sys.path.insert(0,str(Path(mps_root)/'packages/mps/src'))
+    from mps.typeahead_checkpoint import fetch_checkpoint
+    from mps.typeahead_checkpoint_stream import stream_checkpoint,file_witness
+    sys.path.insert(0,str(ROOT/'services/tantivy-input'))
+    import test_sync
+    import sync as replay
+    import current_state
+    root=root.resolve();root.mkdir(parents=True,exist_ok=True)
+    provider_root=root/'provider';provider_root.mkdir()
+    source=test_sync.Fixture(provider_root,now=int(time.time())-4)
+    keeper=sqlite3.connect(source.path)
+    child=None
+    log=(root/'checkpoint-reader.log').open('wb')
+    try:
+        source.actor('did:plc:fixture000001',source.now-1,handle='real.test')
+        keeper.execute('PRAGMA journal_mode=WAL');keeper.execute('PRAGMA wal_autocheckpoint=0')
+        keeper.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+        base=source.path.read_bytes()
+        source.actor('did:plc:fixture000002',source.now-1,handle='second.test')
+        keeper.execute('UPDATE actors SET followers_count=12345 WHERE did=?',('did:plc:fixture000001',));keeper.commit()
+        wal=Path(str(source.path)+'-wal').read_bytes();frames=wal[32:]
+        original_handler=source.server.RequestHandlerClass
+        class Combined(original_handler):
+            def do_GET(self):
+                if self.headers.get('Authorization')!='Bearer '+source.source_secret:self.send_error(401);return
+                if self.path=='/info':raw=json.dumps({'current_generation':7}).encode()
+                elif self.path=='/export/7':raw=base
+                elif self.path.startswith('/sync/7/'):
+                    start,end=map(int,self.path.split('/')[-2:]);raw=frames[(start-1)*4120:(end-1)*4120]
+                else:self.send_error(404);return
+                self.send_response(200);self.send_header('Content-Length',str(len(raw)));self.end_headers();self.wfile.write(raw)
+        source.server.RequestHandlerClass=Combined
+        database=root/'materialized.db'
+        checkpoint=fetch_checkpoint(source.url,source.source_secret,database,max_seconds=5,max_bytes=1024*1024,max_wal_bytes=1024*1024,allow_test_loopback=True)
+        if not checkpoint['sqlite_replay_verified'] or checkpoint['committed_frame']<1:raise AssertionError('real committed WAL was not replayed')
+        raw_receipt=json.dumps(checkpoint,sort_keys=True,separators=(',',':')).encode()+b'\n'
+        manifest,_,native=AdmissionTests().checkpoint_manifest()
+        if slot_app is not None:manifest.update(provider_app=slot_app,public_service_ports=[80,443])
+        manifest['binary_sha256']=hashlib.sha256(binary.read_bytes()).hexdigest()
+        seed=root/'source.jsonl';started=int(time.time())
+        with seed.open('wb') as output:
+            stream=stream_checkpoint(database,output,ROOT,receipt_bytes=raw_receipt,receipt_sha256=hashlib.sha256(raw_receipt).hexdigest(),
+                expected_source_origin_sha256=checkpoint['source_origin_sha256'],expected_file_witness=file_witness(database),
+                native_manifest_bytes=native,native_manifest_sha256=hashlib.sha256(native).hexdigest(),
+                build_id=manifest['active_build'],max_seconds=30,allow_fixture=True)
+        header=stream['source_manifest'];bootstrap=header['source_bootstrap'];counts=bootstrap['counts']
+        manifest.update(source_build_id=header['build_id'],source_watermark=header['source_watermark'],source_actor_count=stream['input_documents'],
+            source_database_sha256=checkpoint['database_sha256'],source_manifest_sha256=hashlib.sha256(raw_receipt).hexdigest(),
+            source_actors_sha256=stream['actors_sha256'],source_bootstrap=bootstrap,rollback_native_anchor=header['rollback_native_anchor'],
+            legacy_build_id=header['legacy_build_id'])
+        data=root/'data'
+        result=subprocess.run([str(binary),'import','--data',str(data),'--input',str(seed)],capture_output=True,timeout=30)
+        if result.returncode:raise AssertionError(result.stderr[-2000:])
+        metadata=json.loads(subprocess.check_output([str(binary),'status','--data',str(data)],timeout=30))
+        if (metadata['input_actors'],metadata['actor_count'],metadata['tombstone_count'])!=(counts['input_documents'],counts['live_actor_documents'],counts['deleted_actor_documents']):raise AssertionError('actual import counts differ')
+        record={'schema_version':1,'kind':'verified-checkpoint-import','bootstrap_receipt_sha256':adapter.digest_json(bootstrap),
+            'actors_sha256':stream['actors_sha256'],'verified_input_actors':metadata['input_actors'],'raw_actor_rows':counts['raw_actor_rows'],
+            'initial_live_actor_documents':metadata['actor_count'],'initial_deleted_actor_documents':metadata['tombstone_count'],
+            'started_at':started,'completed_at':int(time.time())}
+        handoff={'schema_version':1,'kind':'sqlite-checkpoint-to-turso-v2','prior_cursor_sha256':adapter.digest_json(None),
+            'prior_observation_revision':0,'checkpoint_reconciliation_sha256':adapter.digest_json(record),
+            'bootstrap_receipt_sha256':adapter.digest_json(bootstrap),'source_origin_sha256':checkpoint['source_origin_sha256'],
+            'replay_floor':manifest['source_watermark'],'first_remote_through':None}
+        secret=secrets.token_urlsafe(24)
+        child,public,admin_url=start_strict(binary,data,log,secret,fixture_identity=True,max_sync_lag=120)
+        admin=replay.Admin(admin_url,secret,public+'/index/status');writer=current_state.ObservationAdmin(admin,replay)
+        state,revision=writer.state([])
+        cursor={'schema_version':1,'build_id':manifest['active_build'],'snapshot_watermark':manifest['source_watermark'],'source_policy':adapter.SOURCE_POLICY,
+            'through':manifest['source_watermark'],'cycle':None,'lookback_seconds':300,
+            'actors':{'updated_at':manifest['source_watermark'],'did':''},'tombstones':{'deleted_at':manifest['source_watermark'],'did':''},
+            'checkpoint_reconciliation':record,'checkpoint_handoff':handoff}
+        writer.reconcile([],[],revision,state['source_cursor'],cursor)
+        source.now=int(time.time())
+        observed=current_state.ObservedSynchronizer(source.source(),admin,replay,policy_mode='snapshot',anti_entropy_pages=0,safety_lag=0,max_pages=10,max_seconds=10,retries=1,backoff=0).run()
+        if not observed['caught_up']:raise AssertionError('actual remote poll did not drain')
+        state,revision=writer.state([]);cursor=copy.deepcopy(state['source_cursor'])
+        cursor['checkpoint_handoff']['first_remote_through']=cursor['through']
+        writer.reconcile([],[],revision,state['source_cursor'],cursor)
+        manifest['checkpoint_reconciliation_sha256']=adapter.digest_json(record)
+        manifest['checkpoint_handoff_sha256']=adapter.digest_json(cursor['checkpoint_handoff'])
+        status=smoke.request(public,'/index/status')[2]
+        if status['cutover_source_ready'] is not False:raise AssertionError('checkpoint falsely advertised traditional remote round')
+        adapter.validate_runtime(status,manifest,allow_checkpoint_fixture=True)
+        smoke.stop(child);child=None
+        publication=root/'publication'
+        portable=adapter.freeze_bundle(data,publication,manifest,native,binary,allow_checkpoint_fixture=True)
+        manifest.update(portable)
+        yield {'manifest':manifest,'portable':portable,'bundle':publication/'index.tar','native':native,'source':source,'secret':secret,
+               'checkpoint':checkpoint,'record':record,'binary':binary,'log':log,'data':data,'replay':replay,'current':current_state}
+    finally:
+        if child is not None:smoke.stop(child)
+        keeper.close();source.close();log.close()
 
 
 if __name__=='__main__':unittest.main()
