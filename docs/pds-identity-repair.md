@@ -131,3 +131,11 @@ writes or mark a reclaimed identity verified. Writing/uncertain states never
 expire into automatic retry. Failed authority reads preserve the last verified
 PDS and use bounded backoff. This queue is tested but not yet wired to a deployed
 recurring worker; it is not evidence that backlog repair or freshness is complete.
+
+The [five-account cloud pilot](ops/pds-cloud-pilot-20261030/README.md) passed and its
+machine was removed. `pds_cloud_batch.py` prepares the next bounded 100/1,000 stages:
+rowid keyset discovery, fresh authority/source reads, conditional writes and
+source/direct-backend/public verification. It defaults to dry-run and records
+unresolved candidates separately. Its queue and ledger are stage-local; a durable
+recurring deployment remains outstanding. Do not infer a backlog repair from a
+successful bounded stage.

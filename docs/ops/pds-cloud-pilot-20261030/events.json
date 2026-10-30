@@ -1,0 +1,223 @@
+[
+  {
+    "event": "start",
+    "at": 1793384122.0292962,
+    "apply": true,
+    "health": {
+      "actors": 12886669,
+      "build_id": "b1793346536-cp-7c8322df79",
+      "engine": "tantivy",
+      "normalize_version": "v2-cjk-bigram",
+      "plan_version": "complete-prefix-groups-v1",
+      "ready": true,
+      "status": "ok",
+      "sync_lag_s": 46
+    }
+  },
+  {
+    "event": "would_write",
+    "at": 1793384122.7966568,
+    "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+    "pds": "",
+    "updated_at": 1788549361,
+    "handle": "bsky.app",
+    "proposed_pds": "https://puffball.us-east.host.bsky.network",
+    "authority_checked_at": 1793384122.7078946
+  },
+  {
+    "event": "write",
+    "at": 1793384123.069403,
+    "receipt": {
+      "id": "c9c14e15-9838-4a55-8df0-657a24ced657",
+      "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+      "observed_updated_at": 1788549361,
+      "pds": "https://puffball.us-east.host.bsky.network",
+      "prepared_at": 1793384122.797315,
+      "state": "confirmed",
+      "receipt": "[\"did:plc:z72i7hdynmk6r22z27h6tvur\", \"https://puffball.us-east.host.bsky.network\", 1793384123]"
+    },
+    "seconds": 0.2723165699999992
+  },
+  {
+    "event": "verified",
+    "at": 1793384184.6150153,
+    "did": "did:plc:z72i7hdynmk6r22z27h6tvur",
+    "propagation_seconds": 61.801225794,
+    "health": {
+      "actors": 12886681,
+      "build_id": "b1793346536-cp-7c8322df79",
+      "engine": "tantivy",
+      "normalize_version": "v2-cjk-bigram",
+      "plan_version": "complete-prefix-groups-v1",
+      "ready": true,
+      "status": "ok",
+      "sync_lag_s": 46
+    }
+  },
+  {
+    "event": "would_write",
+    "at": 1793384185.19213,
+    "did": "did:plc:eon2iu7v3x2ukgxkqaf7e5np",
+    "pds": "",
+    "updated_at": 1788549361,
+    "handle": "safety.bsky.app",
+    "proposed_pds": "https://enoki.us-east.host.bsky.network",
+    "authority_checked_at": 1793384184.9605446
+  },
+  {
+    "event": "write",
+    "at": 1793384186.2214599,
+    "receipt": {
+      "id": "eaf4bb60-0b00-47d7-9445-37323fb63289",
+      "did": "did:plc:eon2iu7v3x2ukgxkqaf7e5np",
+      "observed_updated_at": 1788549361,
+      "pds": "https://enoki.us-east.host.bsky.network",
+      "prepared_at": 1793384185.1927488,
+      "state": "confirmed",
+      "receipt": "[\"did:plc:eon2iu7v3x2ukgxkqaf7e5np\", \"https://enoki.us-east.host.bsky.network\", 1793384186]"
+    },
+    "seconds": 1.0289157360000019
+  },
+  {
+    "event": "verified",
+    "at": 1793384247.5957694,
+    "did": "did:plc:eon2iu7v3x2ukgxkqaf7e5np",
+    "propagation_seconds": 62.390704146999994,
+    "health": {
+      "actors": 12886689,
+      "build_id": "b1793346536-cp-7c8322df79",
+      "engine": "tantivy",
+      "normalize_version": "v2-cjk-bigram",
+      "plan_version": "complete-prefix-groups-v1",
+      "ready": true,
+      "status": "ok",
+      "sync_lag_s": 45
+    }
+  },
+  {
+    "event": "would_write",
+    "at": 1793384248.155188,
+    "did": "did:plc:4dtbz2ivhp5app3sbntcccxc",
+    "pds": "",
+    "updated_at": 1791425508,
+    "handle": "status.bsky.app",
+    "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+    "authority_checked_at": 1793384247.9335735
+  },
+  {
+    "event": "write",
+    "at": 1793384249.2074716,
+    "receipt": {
+      "id": "67853651-eeab-428f-8049-0e3554028c89",
+      "did": "did:plc:4dtbz2ivhp5app3sbntcccxc",
+      "observed_updated_at": 1791425508,
+      "pds": "https://stropharia.us-west.host.bsky.network",
+      "prepared_at": 1793384248.1559372,
+      "state": "confirmed",
+      "receipt": "[\"did:plc:4dtbz2ivhp5app3sbntcccxc\", \"https://stropharia.us-west.host.bsky.network\", 1793384249]"
+    },
+    "seconds": 1.0517934710000247
+  },
+  {
+    "event": "verified",
+    "at": 1793384310.6053963,
+    "did": "did:plc:4dtbz2ivhp5app3sbntcccxc",
+    "propagation_seconds": 62.43722685,
+    "health": {
+      "actors": 12886702,
+      "build_id": "b1793346536-cp-7c8322df79",
+      "engine": "tantivy",
+      "normalize_version": "v2-cjk-bigram",
+      "plan_version": "complete-prefix-groups-v1",
+      "ready": true,
+      "status": "ok",
+      "sync_lag_s": 44
+    }
+  },
+  {
+    "event": "would_write",
+    "at": 1793384310.9740434,
+    "did": "did:plc:oky5czdrnfjpqslsw2a5iclo",
+    "pds": "",
+    "updated_at": 1788391139,
+    "handle": "jay.bsky.team",
+    "proposed_pds": "https://morel.us-east.host.bsky.network",
+    "authority_checked_at": 1793384310.7504168
+  },
+  {
+    "event": "write",
+    "at": 1793384312.6296453,
+    "receipt": {
+      "id": "7cb2abf4-dae9-4748-8296-98bb026c6742",
+      "did": "did:plc:oky5czdrnfjpqslsw2a5iclo",
+      "observed_updated_at": 1788391139,
+      "pds": "https://morel.us-east.host.bsky.network",
+      "prepared_at": 1793384310.974643,
+      "state": "confirmed",
+      "receipt": "[\"did:plc:oky5czdrnfjpqslsw2a5iclo\", \"https://morel.us-east.host.bsky.network\", 1793384312]"
+    },
+    "seconds": 1.6552162790000011
+  },
+  {
+    "event": "verified",
+    "at": 1793384374.1467533,
+    "did": "did:plc:oky5czdrnfjpqslsw2a5iclo",
+    "propagation_seconds": 63.15967211400002,
+    "health": {
+      "actors": 12886722,
+      "build_id": "b1793346536-cp-7c8322df79",
+      "engine": "tantivy",
+      "normalize_version": "v2-cjk-bigram",
+      "plan_version": "complete-prefix-groups-v1",
+      "ready": true,
+      "status": "ok",
+      "sync_lag_s": 41
+    }
+  },
+  {
+    "event": "would_write",
+    "at": 1793384374.447027,
+    "did": "did:plc:vjug55kidv6sye7ykr5faxxn",
+    "pds": "",
+    "updated_at": 1788486861,
+    "handle": "emilyliu.me",
+    "proposed_pds": "https://morel.us-east.host.bsky.network",
+    "authority_checked_at": 1793384374.3535192
+  },
+  {
+    "event": "write",
+    "at": 1793384374.6270003,
+    "receipt": {
+      "id": "010fa31a-ac56-46b4-ab8b-bee536d3ec8b",
+      "did": "did:plc:vjug55kidv6sye7ykr5faxxn",
+      "observed_updated_at": 1788486861,
+      "pds": "https://morel.us-east.host.bsky.network",
+      "prepared_at": 1793384374.4476354,
+      "state": "confirmed",
+      "receipt": "[\"did:plc:vjug55kidv6sye7ykr5faxxn\", \"https://morel.us-east.host.bsky.network\", 1793384374]"
+    },
+    "seconds": 0.1795809609999992
+  },
+  {
+    "event": "verified",
+    "at": 1793384436.194895,
+    "did": "did:plc:vjug55kidv6sye7ykr5faxxn",
+    "propagation_seconds": 61.73511959299998,
+    "health": {
+      "actors": 12886734,
+      "build_id": "b1793346536-cp-7c8322df79",
+      "engine": "tantivy",
+      "normalize_version": "v2-cjk-bigram",
+      "plan_version": "complete-prefix-groups-v1",
+      "ready": true,
+      "status": "ok",
+      "sync_lag_s": 40
+    }
+  },
+  {
+    "event": "complete",
+    "at": 1793384436.195581,
+    "seconds": 314.234698791,
+    "apply": true
+  }
+]
