@@ -2,10 +2,12 @@ import { expect, test } from "bun:test";
 import { Miniflare } from "miniflare";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { createServer } from "node:http";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { z } from "zod";
+import { liveConfiguration, liveOriginAdapter } from "./rehearsal-live-origin";
 
 const aliases = ["/xrpc/tech.waow.typeahead.searchActors", "/xrpc/app.bsky.actor.searchActorsTypeahead"];
 const transportOrigin = "https://typeahead-search-transport.n8-3e9.workers.dev";
@@ -16,12 +18,10 @@ const route = z.object({ version: z.literal(1), current: z.object({ origin: z.st
 const stats = z.object({ unexpected: z.number(), calls: z.array(z.object({ origin: z.string(), q: z.string(), pds: z.string().nullable(), preferred: z.string().nullable(), preference: z.string().nullable(), boost: z.string().nullable(), ack: z.string() })) });
 const actors = z.object({ actors: z.array(z.object({ did: z.string(), handle: z.string() })) });
 
-test("local public handler, actual transport and R2 CAS rehearse promotion and compensation", async () => {
-  const started = performance.now();
-  const sourcePaths = ["src/handlers/search.ts", "src/handlers/search-contract.ts", "src/search-transport.ts", "src/search-route.ts", "src/validated-search.ts", "scripts/snapshot_refresh/route-rehearsal.test.ts"];
-  const fingerprints = async () => Object.fromEntries(await Promise.all(sourcePaths.map(async path => [path, createHash("sha256").update(await readFile(path)).digest("hex")] as const)));
-  const sourceHashes = await fingerprints();
-  const directory = await mkdtemp(join(tmpdir(), "typeahead-route-rehearsal-"));
+const sourcePaths = ["src/handlers/search.ts", "src/handlers/search-contract.ts", "src/search-transport.ts", "src/search-route.ts", "src/validated-search.ts", "scripts/snapshot_refresh/route-rehearsal.test.ts", "scripts/snapshot_refresh/rehearsal-live-origin.ts"];
+const fingerprints = async () => Object.fromEntries(await Promise.all(sourcePaths.map(async path => [path, createHash("sha256").update(await readFile(path)).digest("hex")] as const)));
+
+async function rehearsalScripts(directory: string) {
   const publicEntry = join(directory, "public.ts");
   const transportEntry = join(directory, "transport.ts");
   await writeFile(publicEntry, `import {handleSearch} from ${JSON.stringify(resolve("src/handlers/search.ts"))};
@@ -42,9 +42,17 @@ return transport.fetch(r,e,c)}}`);
     execFileSync("bun", ["build", entry, "--target", "browser", "--outfile", output], { stdio: "pipe", timeout: 10000 });
     return readFile(output, "utf8");
   }
+  return { publicScript: await bundle(publicEntry), transportScript: await bundle(transportEntry) };
+}
+
+test("local public handler, actual transport and R2 CAS rehearse promotion and compensation", async () => {
+  const started = performance.now();
+  const sourceHashes = await fingerprints();
+  const directory = await mkdtemp(join(tmpdir(), "typeahead-route-rehearsal-"));
+  const scripts = await rehearsalScripts(directory);
   const mf = new Miniflare({ r2Persist: join(directory, "r2"), cachePersist: join(directory, "cache"), workers: [
-    { name: "public", modules: true, script: await bundle(publicEntry), compatibilityDate: "2026-10-29", d1Databases: ["DB"], bindings: { SEARCH_BACKEND_URL: transportOrigin }, serviceBindings: { SEARCH_TRANSPORT: "transport", ORIGIN: "origin" }, outboundService: "origin" },
-    { name: "transport", modules: true, script: await bundle(transportEntry), compatibilityDate: "2026-10-29", r2Buckets: ["SEARCH_CONTROL"], outboundService: "origin" },
+    { name: "public", modules: true, script: scripts.publicScript, compatibilityDate: "2026-10-29", d1Databases: ["DB"], bindings: { SEARCH_BACKEND_URL: transportOrigin }, serviceBindings: { SEARCH_TRANSPORT: "transport", ORIGIN: "origin" }, outboundService: "origin" },
+    { name: "transport", modules: true, script: scripts.transportScript, compatibilityDate: "2026-10-29", r2Buckets: ["SEARCH_CONTROL"], outboundService: "origin" },
     { name: "origin", modules: true, compatibilityDate: "2026-10-29", script: `let ack='normal',unexpected=0;const calls=[];
 const builds=${JSON.stringify({ [native.origin]: native.build_id, [tantivy.origin]: tantivy.build_id, [operator.origin]: operator.build_id })};
 export default{fetch(r){const u=new URL(r.url);if(u.pathname==='/__fixture/control'){if(u.searchParams.has('ack'))ack=u.searchParams.get('ack');return Response.json({unexpected,calls})}
@@ -150,3 +158,105 @@ if(p.has('pds'))rows=rows.slice(1);else if(p.has('prefer_pds'))rows.reverse();re
     if (Bun.env.TYPEAHEAD_REHEARSAL_EVIDENCE) await writeFile(Bun.env.TYPEAHEAD_REHEARSAL_EVIDENCE, JSON.stringify(evidence, null, 2) + "\n");
   } finally { await mf.dispose(); await rm(directory, { recursive: true, force: true }); }
 }, 30000);
+
+
+async function runLiveRehearsal(configuration: ReturnType<typeof liveConfiguration>, adapter: ReturnType<typeof liveOriginAdapter>, evidencePath?: string, configurationSha256?: string) {
+  const sourceHashes = await fingerprints();
+  const directory = await mkdtemp(join(tmpdir(), "typeahead-live-route-"));
+  const scripts = await rehearsalScripts(directory);
+  const outbound = (request: Request) => adapter.request(new Request(request.url, { method: request.method }));
+  const mf = new Miniflare({ r2Persist: join(directory, "r2"), cachePersist: join(directory, "cache"), workers: [
+    { name: "public", modules: true, script: scripts.publicScript, compatibilityDate: "2026-10-29", d1Databases: ["DB"], bindings: { SEARCH_BACKEND_URL: transportOrigin }, serviceBindings: { SEARCH_TRANSPORT: "transport" }, outboundService: outbound },
+    { name: "transport", modules: true, script: scripts.transportScript, compatibilityDate: "2026-10-29", r2Buckets: ["SEARCH_CONTROL"], outboundService: outbound },
+  ] });
+  const publicOrigin = "https://public-rehearsal.test";
+  const dispatch = (path: string, init?: Parameters<Miniflare["dispatchFetch"]>[1]) => mf.dispatchFetch(publicOrigin + path, init);
+  const control = async () => { const response = await dispatch("/__fixture/route"); return { etag: response.headers.get("ETag"), value: route.parse(await response.json()) }; };
+  const update = async (candidate: object, etag: string | null) => {
+    const response = await dispatch("/__fixture/route", { method: "POST", headers: etag ? { "If-Match": etag } : {}, body: JSON.stringify(candidate) });
+    await response.arrayBuffer(); return response.status;
+  };
+  const samples: { engine: string; build: string; body_sha256: string; actors: number }[] = [];
+  let passed = false;
+  try {
+    const db = await mf.getD1Database("DB", "public");
+    await db.exec("CREATE TABLE metrics(hour INTEGER PRIMARY KEY, searches INTEGER DEFAULT 0,total_ms REAL DEFAULT 0,cache_hits INTEGER DEFAULT 0,cache_ms REAL DEFAULT 0); CREATE TABLE traffic_sources(domain TEXT PRIMARY KEY,hits INTEGER); CREATE TABLE traffic_buckets(bucket INTEGER,domain TEXT,hits INTEGER,PRIMARY KEY(bucket,domain));");
+    const phase = async (expected: typeof configuration.native | typeof configuration.candidate, generation: string) => {
+      await Bun.sleep(1100);
+      const transport = await mf.getWorker("transport");
+      await (await transport.fetch(transportOrigin + "/route")).arrayBuffer();
+      await (await dispatch("/__fixture/generation?value=" + generation)).arrayBuffer();
+      const bodies = [];
+      for (const alias of aliases) {
+        const response = await dispatch(alias + "?q=zzstoatzz.io&limit=10");
+        const body = await response.text();
+        expect(response.status).toBe(200);
+        expect(response.headers.get("X-Typeahead-Engine")).toBe(expected.engine ?? "native");
+        expect(response.headers.get("X-Typeahead-Build")).toBe(expected.build_id);
+        const result = actors.parse(JSON.parse(body));
+        expect(result.actors[0]?.handle.toLowerCase()).toBe("zzstoatzz.io");
+        if (expected.engine === "tantivy") {
+          expect(response.headers.get("X-Typeahead-Binary-Sha256")).toBe(expected.binary_sha256);
+          expect(response.headers.get("X-Typeahead-Retrieval-Strategy")).toBe(expected.retrieval_strategy);
+        }
+        bodies.push(body);
+        samples.push({ engine: expected.engine ?? "native", build: expected.build_id, body_sha256: createHash("sha256").update(body).digest("hex"), actors: result.actors.length });
+      }
+      expect(bodies[0]).toBe(bodies[1]);
+    };
+    expect(await update(configuration.native, null)).toBe(200);
+    const initial = await control();
+    await phase(configuration.native, "live-native-before");
+    expect(await update(configuration.candidate, initial.etag)).toBe(200);
+    const promoted = await control();
+    expect(promoted.value.native_rollback).toEqual(configuration.native);
+    await phase(configuration.candidate, "live-tantivy");
+    expect(await update(configuration.native, initial.etag)).toBe(409);
+    expect((await control()).value).toEqual(promoted.value);
+    expect(await update(configuration.native, promoted.etag)).toBe(200);
+    const restored = await control();
+    expect(restored.value.current).toEqual(configuration.native);
+    expect(restored.value.native_rollback).toEqual(configuration.native);
+    await phase(configuration.native, "live-native-after");
+    expect(await fingerprints()).toEqual(sourceHashes);
+    passed = true;
+  } finally {
+    await mf.dispose(); await rm(directory, { recursive: true, force: true });
+    if (evidencePath) await writeFile(evidencePath, JSON.stringify({ schema_version: 1, observed_at: new Date().toISOString(), passed, scope: "local-Worker-and-R2-with-approved-live-GET-backends", source_sha256: sourceHashes, configuration_sha256: configurationSha256, configuration, limits_and_requests: adapter.evidence(), samples, remote_route_writes: 0, remote_non_GET_requests: 0, remote_corpus_copies: 0, route_settle_wait_ms: 1100, source_freshness_qualified: false, release_qualified: false, production_route_changed: false }, null, 2) + "\n", { flag: "wx" });
+  }
+}
+
+
+test("live rehearsal path uses the same Worker/R2 sequence with loopback HTTP fixtures", async () => {
+  const configuration = liveConfiguration({ schema_version: 1, native, candidate: tantivy });
+  const server = createServer((request, response) => {
+    const tv = request.headers["x-fixture-origin"] === tantivy.origin;
+    response.setHeader("Content-Type", "application/json");
+    response.setHeader("X-Typeahead-Engine", tv ? "tantivy" : "native");
+    response.setHeader("X-Typeahead-Build", tv ? tantivy.build_id : native.build_id);
+    if (tv) {
+      response.setHeader("X-Typeahead-Format", tantivy.format);
+      response.setHeader("X-Typeahead-Binary-Sha256", tantivy.binary_sha256);
+      response.setHeader("X-Typeahead-Retrieval-Strategy", tantivy.retrieval_strategy);
+    }
+    response.end(JSON.stringify({ actors: [{ did: "did:plc:rehearsalfixture", handle: "zzstoatzz.io", labels: [] }] }));
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Loopback server unavailable");
+  const adapter = liveOriginAdapter(configuration, (url, options) => fetch(`http://127.0.0.1:${address.port}/search`, { ...options, headers: { "X-Fixture-Origin": url.origin } }));
+  try {
+    await runLiveRehearsal(configuration, adapter);
+    expect(adapter.evidence().calls.some(call => call.origin === tantivy.origin)).toBe(true);
+    expect(adapter.evidence().request_count).toBeLessThanOrEqual(16);
+  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
+}, 30000);
+
+test.skipIf(Bun.env.TYPEAHEAD_REHEARSAL_LIVE !== "1")("approved live backends switch and roll back through isolated Worker R2", async () => {
+  const input = Bun.env.TYPEAHEAD_REHEARSAL_LIVE_CONFIG;
+  const evidencePath = Bun.env.TYPEAHEAD_REHEARSAL_LIVE_EVIDENCE;
+  if (!input || !evidencePath || Bun.file(input).size > 65536 || await Bun.file(evidencePath).exists()) throw new Error("New evidence path and bounded explicit live configuration required");
+  const raw = await readFile(input);
+  const configuration = liveConfiguration(JSON.parse(raw.toString()));
+  await runLiveRehearsal(configuration, liveOriginAdapter(configuration), evidencePath, createHash("sha256").update(raw).digest("hex"));
+}, 90000);
