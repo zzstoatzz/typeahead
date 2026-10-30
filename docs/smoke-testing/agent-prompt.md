@@ -1,7 +1,7 @@
 Help me test https://typeahead.waow.tech.
 
 Ask which accounts I care about, what I'd type to find them, and whether I want
-to filter to or prefer a particular PDS. If I've already told you, start testing.
+to filter to a particular PDS. If I've already told you, start testing.
 
 Read /llms.txt. Try exact handles, prefixes, display names and multi-word searches
 based on my answers. Check the homepage if you have browser tools; otherwise say

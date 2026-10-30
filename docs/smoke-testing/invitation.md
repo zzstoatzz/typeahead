@@ -6,7 +6,7 @@ we’ve switched the search engine. try finding yourself or people you know, and
 
 ---
 
-partial handles, display names, multiple words, non-latin names—all useful. you can also filter to a PDS or prefer accounts hosted there.
+partial handles, display names, multiple words, non-latin names—all useful. you can also filter to a PDS on the homepage.
 
 if something surprises you, send what you typed, who you expected, and what happened. screenshots or search URLs help!
 
