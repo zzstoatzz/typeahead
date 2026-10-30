@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 import time
 import urllib.parse
 from pathlib import Path
@@ -25,7 +26,7 @@ def discover(execute, queue, limit, max_pages=10):
         for rowid, did, handle, pds, updated, hidden in rows:
             cursor = rowid
             scanned += 1
-            if pds == '' and handle and handle != 'handle.invalid' and not hidden and did.startswith('did:plc:'):
+            if pds == '' and handle and handle != 'handle.invalid' and not hidden and re.fullmatch(r'did:plc:[a-z2-7]{24}', did):
                 selected.append({'did': did, 'handle': handle})
             if len(selected) >= limit:
                 break

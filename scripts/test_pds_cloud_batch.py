@@ -12,7 +12,7 @@ class DiscoveryTests(unittest.TestCase):
             db = sqlite3.connect(':memory:')
             self.addCleanup(db.close)
             db.execute('CREATE TABLE actors(did TEXT,handle TEXT,pds TEXT,updated_at INTEGER,hidden INTEGER)')
-            db.executemany('INSERT INTO actors VALUES(?,?,?,?,?)', [(f'did:plc:{i}', f'{i}.test', '' if i%2 else 'https://known.test', 1, 0) for i in range(100)])
+            db.executemany('INSERT INTO actors VALUES(?,?,?,?,?)', [('did:plc:' + format(i, '024b').translate(str.maketrans('01','ab')), f'{i}.test', '' if i%2 else 'https://known.test', 1, 0) for i in range(100)])
             def execute(sql, params):
                 return db.execute(sql, params).fetchall()
             queue = Queue(Path(temp)/'queue.db')

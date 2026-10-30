@@ -21,7 +21,7 @@ class Queue:
                     lease_token TEXT,
                     last_error TEXT
                 );
-                CREATE INDEX IF NOT EXISTS identities_due ON identities(state,due_at);
+                CREATE INDEX IF NOT EXISTS identities_due ON identities(state,due_at,did);
                 CREATE TABLE IF NOT EXISTS cursors(name TEXT PRIMARY KEY,value INTEGER NOT NULL);
             ''')
 
