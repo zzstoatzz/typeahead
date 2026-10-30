@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "passed": false,
+  "promotion_permitted": false,
+  "pending": [
+    "automatic refresh composition and bounded failure tests",
+    "rollback transient-verification correction and tests",
+    "final release-binding audit"
+  ],
+  "gates": {
+    "matched_performance": {
+      "evidence": [
+        {
+          "path": "docs/evals/tantivy-dev-20261028/qualification-full-1ca2a04e4c8b.json",
+          "sha256": "f21fa8ead99bde79d568084ecd893742d1140dd650881a8c5144e68095baf6e0"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-final-provider.json",
+          "sha256": "9fd5788ee64fc016b328dd140f488d601b9cf14756dcb1be38b42bdc96702ec6"
+        }
+      ]
+    },
+    "full_functional": {
+      "evidence": [
+        {
+          "path": "docs/evals/tantivy-dev-20261028/qualification-full-1ca2a04e4c8b.json",
+          "sha256": "f21fa8ead99bde79d568084ecd893742d1140dd650881a8c5144e68095baf6e0"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-public-smoke.json",
+          "sha256": "c5b09cefcede6d98add8f3a7d7ce07e41ec7606475d6b009d357696932748c9c"
+        }
+      ]
+    },
+    "live_source_coverage": {
+      "evidence": [
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-preparation-7c8322df.json",
+          "sha256": "5dcb60f03a8101fcba4e41ecedb38227f5888144508683c5fd1864f54130f80d"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/published-candidate-manifest.json",
+          "sha256": "a8e18818a441b49786bdbf7a5774cb768b454f283c781c72edadee69e365948d"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-live-source-audit-first.json",
+          "sha256": "302ef3f160926633205c87b5874a1d5db2a7dc77fea0a22bad3a6ad93b0c7ed4"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-live-deleted-document-hash.json",
+          "sha256": "e307ad602d7690c2325e2a9833064fc57609a59a9dd8ff8f73c0c6902d961dc5"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-final-freshness.json",
+          "sha256": "98c98a115312a6ddb5c2da618364662be425d518ff2f64a5c4492ca87de4d187"
+        }
+      ]
+    },
+    "worker_http_smoke": {
+      "evidence": [
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-public-smoke.json",
+          "sha256": "c5b09cefcede6d98add8f3a7d7ce07e41ec7606475d6b009d357696932748c9c"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-live-route-rehearsal.json",
+          "sha256": "4e59e4c154ed4bb187e655fb85177eb8c9827d413b029c35ba05c661c5647873"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-preview-deployment.json",
+          "sha256": "ab7b5b537950d4ef4a395052a2762deb723369f163ba705b784bb289535a3ea8"
+        }
+      ]
+    },
+    "recovery": {
+      "evidence": [
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-slot-resume-ffe86a0.json",
+          "sha256": "758b7d73b54599207807d9d65909e4474b804ad0ee91f1a08c2517b07718a592"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/slot-a-prepared-plan.json",
+          "sha256": "7f547a14b234180083cff854cdb5a00163faf214301f9a96467bb6b40624173b"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-live-route-rehearsal.json",
+          "sha256": "4e59e4c154ed4bb187e655fb85177eb8c9827d413b029c35ba05c661c5647873"
+        }
+      ]
+    },
+    "refresh_lifecycle": {
+      "evidence": [
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-cloud-release-ae58281.json",
+          "sha256": "ef1d602a415a1c3758b1acf8e0d97c1e536ee1c6724ac822fff6535a76ac537a"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-slot-resume-ffe86a0.json",
+          "sha256": "758b7d73b54599207807d9d65909e4474b804ad0ee91f1a08c2517b07718a592"
+        },
+        {
+          "path": "docs/evals/tantivy-dev-20261028/checkpoint-retention-readback.json",
+          "sha256": "390bb116fa58c6a409e23e0a68f8c8fe004266d38244a66b64aee702db3dccfe"
+        }
+      ]
+    }
+  }
+}
