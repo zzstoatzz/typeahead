@@ -25,7 +25,16 @@ confirmed deleted. The seven-to-eight-hour row-walk bootstrap is abandoned at
 Nate's direction; do not retry that launch recipe. The next bootstrap must reuse
 a consistent bulk SQLite checkpoint, prove its freshness and full policy coverage
 without inventing a completed reconciliation round, and pass a minutes-scale pilot
-before any full run.
+before any full run. The bounded SQLite/WAL fixtures now preserve full
+actor data and policy; a 100,000-document synthetic host import took 4.509 seconds,
+which is not a production estimate. The existing reader retains typed checkpoint
+provenance and a checkpoint-only walk can compare unchanged documents without
+reindexing. The [provider committed-prefix probe](../evals/tantivy-dev-20261028/wal-committed-prefix-probe.json)
+observed a short successful batch ending at committed frame 71 in 1.023 seconds.
+Only bounded source/WAL metadata returned from the dev guest; no corpus crossed
+the operator connection. This establishes an observed finite WAL prefix, not that
+a complete exported database has been replayed or live coverage qualified.
+
 
 October 29: the expiry-v4 candidate passed actual Linux HTTP source, policy,
 crash/restart, expiry-coverage and exact boost tests under a two-CPU/1-GiB
