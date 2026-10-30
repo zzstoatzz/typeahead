@@ -1,0 +1,2919 @@
+{
+  "original": [
+    {
+      "event": "start",
+      "at": 1793384788.3337874,
+      "apply": true,
+      "limit": 100,
+      "health": {
+        "actors": 12887223,
+        "build_id": "b1793346536-cp-7c8322df79",
+        "engine": "tantivy",
+        "normalize_version": "v2-cjk-bigram",
+        "plan_version": "complete-prefix-groups-v1",
+        "ready": true,
+        "status": "ok",
+        "sync_lag_s": 13
+      }
+    },
+    {
+      "event": "discovery",
+      "at": 1793384788.533208,
+      "selected": 100,
+      "scanned": 105,
+      "source_cursor": 121
+    },
+    {
+      "event": "would_write",
+      "at": 1793384788.8217492,
+      "did": "did:plc:2eqfasvcchmrdxwbg2z4egah",
+      "pds": "",
+      "updated_at": 1792788933,
+      "handle": "poesbericht.bsky.social",
+      "proposed_pds": "https://meadow.us-east.host.bsky.network",
+      "authority_checked_at": 1793384788.8217394
+    },
+    {
+      "event": "write",
+      "at": 1793384788.9371195,
+      "receipt": {
+        "id": "7915a223-4016-4096-93d3-0f2774eb5f2d",
+        "did": "did:plc:2eqfasvcchmrdxwbg2z4egah",
+        "observed_updated_at": 1792788933,
+        "pds": "https://meadow.us-east.host.bsky.network",
+        "prepared_at": 1793384788.8236074,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:2eqfasvcchmrdxwbg2z4egah\", \"https://meadow.us-east.host.bsky.network\", 1793384788]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384790.0770993,
+      "did": "did:plc:32jgywxeosv2jvisqni72nro",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "czarkowskidentist.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384790.077091
+    },
+    {
+      "event": "write",
+      "at": 1793384790.3766663,
+      "receipt": {
+        "id": "67d46a32-fa25-4c2c-bad7-b4dfcb7e2fc9",
+        "did": "did:plc:32jgywxeosv2jvisqni72nro",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384790.0786586,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:32jgywxeosv2jvisqni72nro\", \"https://stropharia.us-west.host.bsky.network\", 1793384790]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384791.260586,
+      "did": "did:plc:3diwzpmtxhfy36riiydseqp6",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "reda-althawab2006.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384791.260577
+    },
+    {
+      "event": "write",
+      "at": 1793384791.623997,
+      "receipt": {
+        "id": "4cdd6ad2-56e2-42b2-90ff-c3e71c266a73",
+        "did": "did:plc:3diwzpmtxhfy36riiydseqp6",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384791.2624137,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:3diwzpmtxhfy36riiydseqp6\", \"https://stropharia.us-west.host.bsky.network\", 1793384791]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384792.1302638,
+      "did": "did:plc:3ydrna7zupic56d77mpeo4uk",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "karuvuaryo.bsky.social",
+      "proposed_pds": "https://lobster.us-east.host.bsky.network",
+      "authority_checked_at": 1793384792.130254
+    },
+    {
+      "event": "write",
+      "at": 1793384794.089764,
+      "receipt": {
+        "id": "8c948ebb-d4df-4e9f-ae6a-309533e42ba3",
+        "did": "did:plc:3ydrna7zupic56d77mpeo4uk",
+        "observed_updated_at": 1778909614,
+        "pds": "https://lobster.us-east.host.bsky.network",
+        "prepared_at": 1793384792.132234,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:3ydrna7zupic56d77mpeo4uk\", \"https://lobster.us-east.host.bsky.network\", 1793384793]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384794.401883,
+      "did": "did:plc:3ztpuhre7itlwwp7ocrlarv7",
+      "pds": "",
+      "updated_at": 1778724161,
+      "handle": "therenocasinos.bsky.social",
+      "proposed_pds": "https://goldenear.us-west.host.bsky.network",
+      "authority_checked_at": 1793384794.4018722
+    },
+    {
+      "event": "write",
+      "at": 1793384794.5528145,
+      "receipt": {
+        "id": "67c1f7d5-62a6-4957-84f7-251943d39727",
+        "did": "did:plc:3ztpuhre7itlwwp7ocrlarv7",
+        "observed_updated_at": 1778724161,
+        "pds": "https://goldenear.us-west.host.bsky.network",
+        "prepared_at": 1793384794.403941,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:3ztpuhre7itlwwp7ocrlarv7\", \"https://goldenear.us-west.host.bsky.network\", 1793384794]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384795.5297368,
+      "did": "did:plc:3zx3zfdytcsz7kvcnxktgevh",
+      "pds": "",
+      "updated_at": 1793372843,
+      "handle": "hakamadashuka.bsky.social",
+      "proposed_pds": "https://blewit.us-west.host.bsky.network",
+      "authority_checked_at": 1793384795.5297287
+    },
+    {
+      "event": "write",
+      "at": 1793384795.7400002,
+      "receipt": {
+        "id": "f123446b-e46a-4cdb-8995-b73a76256c77",
+        "did": "did:plc:3zx3zfdytcsz7kvcnxktgevh",
+        "observed_updated_at": 1793372843,
+        "pds": "https://blewit.us-west.host.bsky.network",
+        "prepared_at": 1793384795.53141,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:3zx3zfdytcsz7kvcnxktgevh\", \"https://blewit.us-west.host.bsky.network\", 1793384795]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384796.5190716,
+      "did": "did:plc:4dretko7ffagnzub4cnrixuf",
+      "pds": "",
+      "updated_at": 1777576598,
+      "handle": "yemenicaca.bsky.social",
+      "proposed_pds": "https://scarletina.us-east.host.bsky.network",
+      "authority_checked_at": 1793384796.5190635
+    },
+    {
+      "event": "write",
+      "at": 1793384796.7577903,
+      "receipt": {
+        "id": "be9a99cb-d981-42f2-a6e2-f8f127b9e4e0",
+        "did": "did:plc:4dretko7ffagnzub4cnrixuf",
+        "observed_updated_at": 1777576598,
+        "pds": "https://scarletina.us-east.host.bsky.network",
+        "prepared_at": 1793384796.5208423,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:4dretko7ffagnzub4cnrixuf\", \"https://scarletina.us-east.host.bsky.network\", 1793384796]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384797.7756572,
+      "did": "did:plc:4htc6e2pkm2eqlnwbxqrtwza",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "vmorris1592.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384797.7756488
+    },
+    {
+      "event": "write",
+      "at": 1793384798.077252,
+      "receipt": {
+        "id": "14e48114-6b9d-4ce2-8e18-35259e2d4f1b",
+        "did": "did:plc:4htc6e2pkm2eqlnwbxqrtwza",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384797.777277,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:4htc6e2pkm2eqlnwbxqrtwza\", \"https://stropharia.us-west.host.bsky.network\", 1793384798]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384798.8612864,
+      "did": "did:plc:4pxajvjz2fghz64yrnhthgh2",
+      "pds": "",
+      "updated_at": 1793384744,
+      "handle": "shoko3168.bsky.social",
+      "proposed_pds": "https://morel.us-east.host.bsky.network",
+      "authority_checked_at": 1793384798.8612761
+    },
+    {
+      "event": "write",
+      "at": 1793384798.9696283,
+      "receipt": {
+        "id": "f03b3daf-b793-4d66-86b5-45990f61d62e",
+        "did": "did:plc:4pxajvjz2fghz64yrnhthgh2",
+        "observed_updated_at": 1793384744,
+        "pds": "https://morel.us-east.host.bsky.network",
+        "prepared_at": 1793384798.8628864,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:4pxajvjz2fghz64yrnhthgh2\", \"https://morel.us-east.host.bsky.network\", 1793384798]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384799.9622467,
+      "did": "did:plc:4y5crph5ihapeqemr67737iq",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "jnm81.bsky.social",
+      "proposed_pds": "https://splitgill.us-east.host.bsky.network",
+      "authority_checked_at": 1793384799.9622388
+    },
+    {
+      "event": "write",
+      "at": 1793384800.2322586,
+      "receipt": {
+        "id": "2142275e-391e-4af9-a2ba-ab7c44a5c4b7",
+        "did": "did:plc:4y5crph5ihapeqemr67737iq",
+        "observed_updated_at": 1778909614,
+        "pds": "https://splitgill.us-east.host.bsky.network",
+        "prepared_at": 1793384799.9637928,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:4y5crph5ihapeqemr67737iq\", \"https://splitgill.us-east.host.bsky.network\", 1793384799]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384800.944135,
+      "did": "did:plc:657xdd632bwlxrdkfkgulrf7",
+      "pds": "",
+      "updated_at": 1791756822,
+      "handle": "gengarai.bsky.social",
+      "proposed_pds": "https://woodear.us-west.host.bsky.network",
+      "authority_checked_at": 1793384800.9441247
+    },
+    {
+      "event": "write",
+      "at": 1793384801.3860908,
+      "receipt": {
+        "id": "e1688a43-012a-4d37-b318-5b7dadcfba0e",
+        "did": "did:plc:657xdd632bwlxrdkfkgulrf7",
+        "observed_updated_at": 1791756822,
+        "pds": "https://woodear.us-west.host.bsky.network",
+        "prepared_at": 1793384800.9465954,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:657xdd632bwlxrdkfkgulrf7\", \"https://woodear.us-west.host.bsky.network\", 1793384801]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384802.105443,
+      "did": "did:plc:6gnwpqkdnp2cwi7k6xey2mb7",
+      "pds": "",
+      "updated_at": 1791673710,
+      "handle": "cutransplants.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384802.1054351
+    },
+    {
+      "event": "write",
+      "at": 1793384802.2141488,
+      "receipt": {
+        "id": "74748a79-6b7c-4a6b-b552-22b90f77957c",
+        "did": "did:plc:6gnwpqkdnp2cwi7k6xey2mb7",
+        "observed_updated_at": 1791673710,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384802.1074462,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:6gnwpqkdnp2cwi7k6xey2mb7\", \"https://jellybaby.us-east.host.bsky.network\", 1793384802]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384803.2954526,
+      "did": "did:plc:6wpso6mhqxwdwzkfvrtwons5",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "iori135.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384803.2954426
+    },
+    {
+      "event": "write",
+      "at": 1793384803.6134107,
+      "receipt": {
+        "id": "5526270c-74e0-425c-ba4f-40e8ab5a4e6e",
+        "did": "did:plc:6wpso6mhqxwdwzkfvrtwons5",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384803.297117,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:6wpso6mhqxwdwzkfvrtwons5\", \"https://jellybaby.us-east.host.bsky.network\", 1793384803]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384804.2351027,
+      "did": "did:plc:7itp2y2wanzc76sjn7zfw6ba",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "presh04.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384804.2350938
+    },
+    {
+      "event": "write",
+      "at": 1793384804.3558145,
+      "receipt": {
+        "id": "4f90a354-e948-4f0b-8624-1798175a5e0f",
+        "did": "did:plc:7itp2y2wanzc76sjn7zfw6ba",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384804.2366853,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:7itp2y2wanzc76sjn7zfw6ba\", \"https://stropharia.us-west.host.bsky.network\", 1793384804]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384805.3782713,
+      "did": "did:plc:7mi7h5ecdvj4tnhco677dwl2",
+      "pds": "",
+      "updated_at": 1791929607,
+      "handle": "tsum1k1.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384805.3782623
+    },
+    {
+      "event": "write",
+      "at": 1793384805.7630568,
+      "receipt": {
+        "id": "d5d7a4dd-50c5-4638-9f6c-fd189ed36dfc",
+        "did": "did:plc:7mi7h5ecdvj4tnhco677dwl2",
+        "observed_updated_at": 1791929607,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384805.3802614,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:7mi7h5ecdvj4tnhco677dwl2\", \"https://jellybaby.us-east.host.bsky.network\", 1793384805]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384806.7089424,
+      "did": "did:plc:7oxit5f53wn64vnqmaxaefsi",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "lemuelrivera.bsky.social",
+      "proposed_pds": "https://bankera.us-west.host.bsky.network",
+      "authority_checked_at": 1793384806.708931
+    },
+    {
+      "event": "write",
+      "at": 1793384806.943936,
+      "receipt": {
+        "id": "e3bfd0b4-33cd-4886-8ea9-7e0d21bc535d",
+        "did": "did:plc:7oxit5f53wn64vnqmaxaefsi",
+        "observed_updated_at": 1778909614,
+        "pds": "https://bankera.us-west.host.bsky.network",
+        "prepared_at": 1793384806.710654,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:7oxit5f53wn64vnqmaxaefsi\", \"https://bankera.us-west.host.bsky.network\", 1793384806]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384807.5691469,
+      "did": "did:plc:al7ml2uhs246zftopa7secea",
+      "pds": "",
+      "updated_at": 1792874978,
+      "handle": "neolovin.bsky.social",
+      "proposed_pds": "https://shiitake.us-east.host.bsky.network",
+      "authority_checked_at": 1793384807.569139
+    },
+    {
+      "event": "write",
+      "at": 1793384807.8250809,
+      "receipt": {
+        "id": "98018a82-582d-4d65-b1fd-3b1cc4559fea",
+        "did": "did:plc:al7ml2uhs246zftopa7secea",
+        "observed_updated_at": 1792874978,
+        "pds": "https://shiitake.us-east.host.bsky.network",
+        "prepared_at": 1793384807.57065,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:al7ml2uhs246zftopa7secea\", \"https://shiitake.us-east.host.bsky.network\", 1793384807]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384808.6689513,
+      "did": "did:plc:aucsicjkcszkvxz2xfxsrgcm",
+      "pds": "",
+      "updated_at": 1792701522,
+      "handle": "hundreddollarman.bsky.social",
+      "proposed_pds": "https://inkcap.us-east.host.bsky.network",
+      "authority_checked_at": 1793384808.6689432
+    },
+    {
+      "event": "write",
+      "at": 1793384808.8077602,
+      "receipt": {
+        "id": "9416e743-bd7b-4813-af8e-1aee1899184e",
+        "did": "did:plc:aucsicjkcszkvxz2xfxsrgcm",
+        "observed_updated_at": 1792701522,
+        "pds": "https://inkcap.us-east.host.bsky.network",
+        "prepared_at": 1793384808.6703727,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:aucsicjkcszkvxz2xfxsrgcm\", \"https://inkcap.us-east.host.bsky.network\", 1793384808]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384809.877945,
+      "did": "did:plc:bmyxfoub5iybn5nvcexkpg3t",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "st-mac333.bsky.social",
+      "proposed_pds": "https://leccinum.us-west.host.bsky.network",
+      "authority_checked_at": 1793384809.8779337
+    },
+    {
+      "event": "write",
+      "at": 1793384810.0638878,
+      "receipt": {
+        "id": "9affe7f9-8ee5-472f-9ee6-bf360fb93084",
+        "did": "did:plc:bmyxfoub5iybn5nvcexkpg3t",
+        "observed_updated_at": 1778909614,
+        "pds": "https://leccinum.us-west.host.bsky.network",
+        "prepared_at": 1793384809.8802626,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:bmyxfoub5iybn5nvcexkpg3t\", \"https://leccinum.us-west.host.bsky.network\", 1793384809]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384810.983697,
+      "did": "did:plc:bny2fm57m4i5m4wczmim3wec",
+      "pds": "",
+      "updated_at": 1791662697,
+      "handle": "passingfair.bsky.social",
+      "proposed_pds": "https://oyster.us-east.host.bsky.network",
+      "authority_checked_at": 1793384810.9836874
+    },
+    {
+      "event": "write",
+      "at": 1793384812.2051008,
+      "receipt": {
+        "id": "6601e343-8d75-462a-8f5d-f41e51ae1d67",
+        "did": "did:plc:bny2fm57m4i5m4wczmim3wec",
+        "observed_updated_at": 1791662697,
+        "pds": "https://oyster.us-east.host.bsky.network",
+        "prepared_at": 1793384810.985957,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:bny2fm57m4i5m4wczmim3wec\", \"https://oyster.us-east.host.bsky.network\", 1793384812]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384812.6902633,
+      "did": "did:plc:c6fraelnnp4qaas3z5ezussh",
+      "pds": "",
+      "updated_at": 1792273465,
+      "handle": "nishinauchiko.bsky.social",
+      "proposed_pds": "https://mottlegill.us-west.host.bsky.network",
+      "authority_checked_at": 1793384812.6902552
+    },
+    {
+      "event": "write",
+      "at": 1793384812.8159928,
+      "receipt": {
+        "id": "c5535c9b-7bfe-4338-ac26-272710acec1b",
+        "did": "did:plc:c6fraelnnp4qaas3z5ezussh",
+        "observed_updated_at": 1792273465,
+        "pds": "https://mottlegill.us-west.host.bsky.network",
+        "prepared_at": 1793384812.6919513,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:c6fraelnnp4qaas3z5ezussh\", \"https://mottlegill.us-west.host.bsky.network\", 1793384812]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384813.5738575,
+      "did": "did:plc:ccmoznkbjp2e7kanm5ccsxqc",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "jiangcai06.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384813.5738492
+    },
+    {
+      "event": "write",
+      "at": 1793384813.6802928,
+      "receipt": {
+        "id": "ce7b98a9-0ca3-4fc0-a5dc-a7fadd3a0979",
+        "did": "did:plc:ccmoznkbjp2e7kanm5ccsxqc",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384813.5754843,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ccmoznkbjp2e7kanm5ccsxqc\", \"https://stropharia.us-west.host.bsky.network\", 1793384813]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384814.7441945,
+      "did": "did:plc:cinpxepqdwwdg4lnlerlijua",
+      "pds": "",
+      "updated_at": 1792446766,
+      "handle": "brookiato.bsky.social",
+      "proposed_pds": "https://waxcap.us-west.host.bsky.network",
+      "authority_checked_at": 1793384814.7441866
+    },
+    {
+      "event": "write",
+      "at": 1793384814.862372,
+      "receipt": {
+        "id": "be6601f5-c245-4954-8e24-6a565ee20319",
+        "did": "did:plc:cinpxepqdwwdg4lnlerlijua",
+        "observed_updated_at": 1792446766,
+        "pds": "https://waxcap.us-west.host.bsky.network",
+        "prepared_at": 1793384814.745917,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:cinpxepqdwwdg4lnlerlijua\", \"https://waxcap.us-west.host.bsky.network\", 1793384814]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384815.8826613,
+      "did": "did:plc:cknvku2k7rwagfwtrxj7ywgy",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "kurome04.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384815.882653
+    },
+    {
+      "event": "write",
+      "at": 1793384816.0362084,
+      "receipt": {
+        "id": "3af24019-5220-442e-8f96-901a10b21745",
+        "did": "did:plc:cknvku2k7rwagfwtrxj7ywgy",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384815.8844564,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:cknvku2k7rwagfwtrxj7ywgy\", \"https://jellybaby.us-east.host.bsky.network\", 1793384815]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384816.8254135,
+      "did": "did:plc:cn7e7lsgud7fmwfu6tgm2dae",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "qihua.bsky.social",
+      "proposed_pds": "https://oyster.us-east.host.bsky.network",
+      "authority_checked_at": 1793384816.8254051
+    },
+    {
+      "event": "write",
+      "at": 1793384817.07645,
+      "receipt": {
+        "id": "f2cac95e-9de5-420d-903e-028a95439cd0",
+        "did": "did:plc:cn7e7lsgud7fmwfu6tgm2dae",
+        "observed_updated_at": 1778909614,
+        "pds": "https://oyster.us-east.host.bsky.network",
+        "prepared_at": 1793384816.8269553,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:cn7e7lsgud7fmwfu6tgm2dae\", \"https://oyster.us-east.host.bsky.network\", 1793384816]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384818.1203928,
+      "did": "did:plc:ddto7ejzfz5icpzcnxkrd6hc",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "rinna0917.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384818.1203845
+    },
+    {
+      "event": "write",
+      "at": 1793384818.7458804,
+      "receipt": {
+        "id": "69a415fc-215a-44db-9580-fb5b9de3583a",
+        "did": "did:plc:ddto7ejzfz5icpzcnxkrd6hc",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384818.1221206,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ddto7ejzfz5icpzcnxkrd6hc\", \"https://jellybaby.us-east.host.bsky.network\", 1793384818]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384819.1531088,
+      "did": "did:plc:dxfthb34ybzptbm3bnuzlotp",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "wngusxo.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384819.1531005
+    },
+    {
+      "event": "write",
+      "at": 1793384819.5242043,
+      "receipt": {
+        "id": "2758c3b1-26e0-442b-bf0a-84bbdb30eb91",
+        "did": "did:plc:dxfthb34ybzptbm3bnuzlotp",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384819.15467,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:dxfthb34ybzptbm3bnuzlotp\", \"https://jellybaby.us-east.host.bsky.network\", 1793384819]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384820.1897004,
+      "did": "did:plc:ej3xb4s5idgu7g3cphnsvgaf",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "backnew.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384820.1896923
+    },
+    {
+      "event": "write",
+      "at": 1793384820.3332958,
+      "receipt": {
+        "id": "a65c8923-ae1c-4492-83d4-5a3cc472e92e",
+        "did": "did:plc:ej3xb4s5idgu7g3cphnsvgaf",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384820.191316,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ej3xb4s5idgu7g3cphnsvgaf\", \"https://jellybaby.us-east.host.bsky.network\", 1793384820]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384821.4341135,
+      "did": "did:plc:epnyg6u5d7tshz7njs5omj42",
+      "pds": "",
+      "updated_at": 1787882545,
+      "handle": "kay-jay.bsky.social",
+      "proposed_pds": "https://enoki.us-east.host.bsky.network",
+      "authority_checked_at": 1793384821.434105
+    },
+    {
+      "event": "write",
+      "at": 1793384821.6773098,
+      "receipt": {
+        "id": "1852aefc-bb38-4eb4-9018-97a7a1633c54",
+        "did": "did:plc:epnyg6u5d7tshz7njs5omj42",
+        "observed_updated_at": 1787882545,
+        "pds": "https://enoki.us-east.host.bsky.network",
+        "prepared_at": 1793384821.435909,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:epnyg6u5d7tshz7njs5omj42\", \"https://enoki.us-east.host.bsky.network\", 1793384821]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384822.442529,
+      "did": "did:plc:erkhof4y45ladw5hek7fwamp",
+      "pds": "",
+      "updated_at": 1791751693,
+      "handle": "gayfurrr.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384822.4425187
+    },
+    {
+      "event": "write",
+      "at": 1793384822.5920897,
+      "receipt": {
+        "id": "2bfd7dd3-422b-49ae-baef-cc7c782de3d7",
+        "did": "did:plc:erkhof4y45ladw5hek7fwamp",
+        "observed_updated_at": 1791751693,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384822.4441562,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:erkhof4y45ladw5hek7fwamp\", \"https://jellybaby.us-east.host.bsky.network\", 1793384822]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384823.4292297,
+      "did": "did:plc:f2at44647etxrydddupn2s3n",
+      "pds": "",
+      "updated_at": 1776669434,
+      "handle": "spacekittensmut.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384823.4292204
+    },
+    {
+      "event": "write",
+      "at": 1793384823.548132,
+      "receipt": {
+        "id": "96dc66d6-142e-4967-81f0-6bd78ad18e15",
+        "did": "did:plc:f2at44647etxrydddupn2s3n",
+        "observed_updated_at": 1776669434,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384823.431363,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:f2at44647etxrydddupn2s3n\", \"https://stropharia.us-west.host.bsky.network\", 1793384823]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384824.5990028,
+      "did": "did:plc:f67ssmknjvlddaijweybwbel",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "applle00.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384824.5989912
+    },
+    {
+      "event": "write",
+      "at": 1793384824.712265,
+      "receipt": {
+        "id": "6664e95f-3001-4ef6-94f7-e98e267851b1",
+        "did": "did:plc:f67ssmknjvlddaijweybwbel",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384824.601173,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:f67ssmknjvlddaijweybwbel\", \"https://stropharia.us-west.host.bsky.network\", 1793384824]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384825.6388755,
+      "did": "did:plc:fdvhpoqqu3uxlu4r7gf2az43",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "unlikely98.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384825.6388657
+    },
+    {
+      "event": "write",
+      "at": 1793384825.8476653,
+      "receipt": {
+        "id": "d816dbfb-0cb0-4d30-a5ef-744ec85fabfe",
+        "did": "did:plc:fdvhpoqqu3uxlu4r7gf2az43",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384825.6408134,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:fdvhpoqqu3uxlu4r7gf2az43\", \"https://stropharia.us-west.host.bsky.network\", 1793384825]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384826.808175,
+      "did": "did:plc:fks4zrlngkazwwufu7lkhoel",
+      "pds": "",
+      "updated_at": 1791752278,
+      "handle": "jurassicoutpost.bsky.social",
+      "proposed_pds": "https://ganoderma.us-west.host.bsky.network",
+      "authority_checked_at": 1793384826.808165
+    },
+    {
+      "event": "write",
+      "at": 1793384826.9174225,
+      "receipt": {
+        "id": "69231e16-885e-466f-a0aa-d3b9c3083e4c",
+        "did": "did:plc:fks4zrlngkazwwufu7lkhoel",
+        "observed_updated_at": 1791752278,
+        "pds": "https://ganoderma.us-west.host.bsky.network",
+        "prepared_at": 1793384826.80997,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:fks4zrlngkazwwufu7lkhoel\", \"https://ganoderma.us-west.host.bsky.network\", 1793384826]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384828.1216831,
+      "did": "did:plc:fyrdynpv5nrb7nt36n764w4u",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "otterty.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384828.121673
+    },
+    {
+      "event": "write",
+      "at": 1793384828.361232,
+      "receipt": {
+        "id": "dd2ae4a8-73a6-4b42-b48b-416102fed07c",
+        "did": "did:plc:fyrdynpv5nrb7nt36n764w4u",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384828.1237452,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:fyrdynpv5nrb7nt36n764w4u\", \"https://jellybaby.us-east.host.bsky.network\", 1793384828]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384829.0749142,
+      "did": "did:plc:g5utkeumaifitqma6gtqog3y",
+      "pds": "",
+      "updated_at": 1790629865,
+      "handle": "5ofcrones.bsky.social",
+      "proposed_pds": "https://bracket.us-west.host.bsky.network",
+      "authority_checked_at": 1793384829.0749066
+    },
+    {
+      "event": "write",
+      "at": 1793384829.3036644,
+      "receipt": {
+        "id": "57f0b55a-bf6c-4189-811c-0b1c08adb222",
+        "did": "did:plc:g5utkeumaifitqma6gtqog3y",
+        "observed_updated_at": 1790629865,
+        "pds": "https://bracket.us-west.host.bsky.network",
+        "prepared_at": 1793384829.0764365,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:g5utkeumaifitqma6gtqog3y\", \"https://bracket.us-west.host.bsky.network\", 1793384829]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384830.0975213,
+      "did": "did:plc:gduqwditomvai3xt3ntq6lnr",
+      "pds": "",
+      "updated_at": 1774407807,
+      "handle": "ang3lovsk0u.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384830.0975134
+    },
+    {
+      "event": "write",
+      "at": 1793384830.246658,
+      "receipt": {
+        "id": "223b92ce-ce43-4118-b704-130efbe5a086",
+        "did": "did:plc:gduqwditomvai3xt3ntq6lnr",
+        "observed_updated_at": 1774407807,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384830.099688,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:gduqwditomvai3xt3ntq6lnr\", \"https://stropharia.us-west.host.bsky.network\", 1793384830]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384831.1904817,
+      "did": "did:plc:gekcar5si4aqdyk7jt2j3peo",
+      "pds": "",
+      "updated_at": 1793315521,
+      "handle": "bigdumbunbun.bsky.social",
+      "proposed_pds": "https://calocybe.us-west.host.bsky.network",
+      "authority_checked_at": 1793384831.1904705
+    },
+    {
+      "event": "write",
+      "at": 1793384831.331585,
+      "receipt": {
+        "id": "28a28cc0-25ad-4f63-bc6f-225c3c5a98c5",
+        "did": "did:plc:gekcar5si4aqdyk7jt2j3peo",
+        "observed_updated_at": 1793315521,
+        "pds": "https://calocybe.us-west.host.bsky.network",
+        "prepared_at": 1793384831.1925068,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:gekcar5si4aqdyk7jt2j3peo\", \"https://calocybe.us-west.host.bsky.network\", 1793384831]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384832.3126924,
+      "did": "did:plc:gtit575hv5aceggyi75yj6mb",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "himelilies.bsky.social",
+      "proposed_pds": "https://amanita.us-east.host.bsky.network",
+      "authority_checked_at": 1793384832.3126817
+    },
+    {
+      "event": "write",
+      "at": 1793384832.489335,
+      "receipt": {
+        "id": "85d7c342-a3c3-4d42-847d-675cdf025049",
+        "did": "did:plc:gtit575hv5aceggyi75yj6mb",
+        "observed_updated_at": 1778909614,
+        "pds": "https://amanita.us-east.host.bsky.network",
+        "prepared_at": 1793384832.314788,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:gtit575hv5aceggyi75yj6mb\", \"https://amanita.us-east.host.bsky.network\", 1793384832]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384833.3663042,
+      "did": "did:plc:h673pjbhpv7lnftbjey5erdv",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "vitor191293.bsky.social",
+      "proposed_pds": "https://woodear.us-west.host.bsky.network",
+      "authority_checked_at": 1793384833.3662968
+    },
+    {
+      "event": "write",
+      "at": 1793384833.4904597,
+      "receipt": {
+        "id": "f9cc18b3-a6d4-442e-8f85-c177f0bd0fe5",
+        "did": "did:plc:h673pjbhpv7lnftbjey5erdv",
+        "observed_updated_at": 1778909614,
+        "pds": "https://woodear.us-west.host.bsky.network",
+        "prepared_at": 1793384833.3678055,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:h673pjbhpv7lnftbjey5erdv\", \"https://woodear.us-west.host.bsky.network\", 1793384833]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384834.451017,
+      "did": "did:plc:hmvje5dssvkrueo3pxuc7cof",
+      "pds": "",
+      "updated_at": 1791240011,
+      "handle": "sexystarpirate.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384834.4510095
+    },
+    {
+      "event": "write",
+      "at": 1793384834.5666287,
+      "receipt": {
+        "id": "85406a8f-33b0-4606-97d3-7a44a56e984c",
+        "did": "did:plc:hmvje5dssvkrueo3pxuc7cof",
+        "observed_updated_at": 1791240011,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384834.452648,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:hmvje5dssvkrueo3pxuc7cof\", \"https://stropharia.us-west.host.bsky.network\", 1793384834]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384835.644005,
+      "did": "did:plc:hnwtpwb5jcfywp5o4abgpxtk",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "mhndrma.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384835.6439965
+    },
+    {
+      "event": "write",
+      "at": 1793384835.816447,
+      "receipt": {
+        "id": "55fb5a6f-de14-46b3-8e03-58108e7da458",
+        "did": "did:plc:hnwtpwb5jcfywp5o4abgpxtk",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384835.645902,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:hnwtpwb5jcfywp5o4abgpxtk\", \"https://stropharia.us-west.host.bsky.network\", 1793384835]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384836.7862566,
+      "did": "did:plc:hsfv3jqdgxzmiukoevy2qjdn",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "iduki0830.bsky.social",
+      "proposed_pds": "https://coral.us-east.host.bsky.network",
+      "authority_checked_at": 1793384836.786248
+    },
+    {
+      "event": "write",
+      "at": 1793384836.909497,
+      "receipt": {
+        "id": "8853ea4a-d237-4c69-9503-a1ca751647ef",
+        "did": "did:plc:hsfv3jqdgxzmiukoevy2qjdn",
+        "observed_updated_at": 1778909614,
+        "pds": "https://coral.us-east.host.bsky.network",
+        "prepared_at": 1793384836.7879696,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:hsfv3jqdgxzmiukoevy2qjdn\", \"https://coral.us-east.host.bsky.network\", 1793384836]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384837.7980719,
+      "did": "did:plc:htsmka6u7g7zhqsmuwkc64h4",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "jiunzips.bsky.social",
+      "proposed_pds": "https://conocybe.us-west.host.bsky.network",
+      "authority_checked_at": 1793384837.7980633
+    },
+    {
+      "event": "write",
+      "at": 1793384837.9063692,
+      "receipt": {
+        "id": "c1a64c9e-0209-4617-9ade-b977b49bd833",
+        "did": "did:plc:htsmka6u7g7zhqsmuwkc64h4",
+        "observed_updated_at": 1778909614,
+        "pds": "https://conocybe.us-west.host.bsky.network",
+        "prepared_at": 1793384837.7997181,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:htsmka6u7g7zhqsmuwkc64h4\", \"https://conocybe.us-west.host.bsky.network\", 1793384837]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384838.8647766,
+      "did": "did:plc:i464vxfcwdaneorhnfemvrpo",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "thequietgod.bsky.social",
+      "proposed_pds": "https://chaga.us-west.host.bsky.network",
+      "authority_checked_at": 1793384838.8647676
+    },
+    {
+      "event": "write",
+      "at": 1793384839.1237752,
+      "receipt": {
+        "id": "ed7a4f22-934b-4194-b409-2a5421c9a4e0",
+        "did": "did:plc:i464vxfcwdaneorhnfemvrpo",
+        "observed_updated_at": 1778909614,
+        "pds": "https://chaga.us-west.host.bsky.network",
+        "prepared_at": 1793384838.8663416,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:i464vxfcwdaneorhnfemvrpo\", \"https://chaga.us-west.host.bsky.network\", 1793384839]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384839.943498,
+      "did": "did:plc:iiaxikqnbbtcctums5qpq23k",
+      "pds": "",
+      "updated_at": 1793317740,
+      "handle": "hazelartz.bsky.social",
+      "proposed_pds": "https://hollowfoot.us-west.host.bsky.network",
+      "authority_checked_at": 1793384839.9434898
+    },
+    {
+      "event": "write",
+      "at": 1793384840.0638368,
+      "receipt": {
+        "id": "d257ade6-dc53-440a-9f69-53de8239eda1",
+        "did": "did:plc:iiaxikqnbbtcctums5qpq23k",
+        "observed_updated_at": 1793317740,
+        "pds": "https://hollowfoot.us-west.host.bsky.network",
+        "prepared_at": 1793384839.9450717,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:iiaxikqnbbtcctums5qpq23k\", \"https://hollowfoot.us-west.host.bsky.network\", 1793384839]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384841.0123587,
+      "did": "did:plc:iv3cb5obgei2q6njshx3utgw",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "sugapop.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384841.0123498
+    },
+    {
+      "event": "write",
+      "at": 1793384841.1236327,
+      "receipt": {
+        "id": "d04afce4-3d0a-4501-aea1-9193b4404a76",
+        "did": "did:plc:iv3cb5obgei2q6njshx3utgw",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384841.0138514,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:iv3cb5obgei2q6njshx3utgw\", \"https://stropharia.us-west.host.bsky.network\", 1793384841]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384842.3037763,
+      "did": "did:plc:j74bmy3c7ls2u4mgl6xegder",
+      "pds": "",
+      "updated_at": 1793347313,
+      "handle": "tomastomatoma.bsky.social",
+      "proposed_pds": "https://milkcap.us-west.host.bsky.network",
+      "authority_checked_at": 1793384842.3037674
+    },
+    {
+      "event": "write",
+      "at": 1793384842.4141936,
+      "receipt": {
+        "id": "c61377eb-a374-4c38-ba13-fbe5740dc3f3",
+        "did": "did:plc:j74bmy3c7ls2u4mgl6xegder",
+        "observed_updated_at": 1793347313,
+        "pds": "https://milkcap.us-west.host.bsky.network",
+        "prepared_at": 1793384842.3054616,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:j74bmy3c7ls2u4mgl6xegder\", \"https://milkcap.us-west.host.bsky.network\", 1793384842]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384843.232017,
+      "did": "did:plc:jd6j3c5vjwwo2khg4gsoo23y",
+      "pds": "",
+      "updated_at": 1791422152,
+      "handle": "just-duane.bsky.social",
+      "proposed_pds": "https://hygrophorus.us-west.host.bsky.network",
+      "authority_checked_at": 1793384843.232009
+    },
+    {
+      "event": "write",
+      "at": 1793384843.3439207,
+      "receipt": {
+        "id": "cdcbe2d0-b42b-4a9d-ad74-f5aa827eaa1c",
+        "did": "did:plc:jd6j3c5vjwwo2khg4gsoo23y",
+        "observed_updated_at": 1791422152,
+        "pds": "https://hygrophorus.us-west.host.bsky.network",
+        "prepared_at": 1793384843.2335536,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:jd6j3c5vjwwo2khg4gsoo23y\", \"https://hygrophorus.us-west.host.bsky.network\", 1793384843]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384844.4024634,
+      "did": "did:plc:jf4sxtgbff2ec3sp3cekl3ix",
+      "pds": "",
+      "updated_at": 1776714811,
+      "handle": "pokiedokie123.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384844.402453
+    },
+    {
+      "event": "write",
+      "at": 1793384844.5466583,
+      "receipt": {
+        "id": "27e36962-eec5-4f88-b165-bd2934ca74a5",
+        "did": "did:plc:jf4sxtgbff2ec3sp3cekl3ix",
+        "observed_updated_at": 1776714811,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384844.4044688,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:jf4sxtgbff2ec3sp3cekl3ix\", \"https://stropharia.us-west.host.bsky.network\", 1793384844]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384845.4936926,
+      "did": "did:plc:joslofe73fev6dlhckhpj747",
+      "pds": "",
+      "updated_at": 1791923624,
+      "handle": "shortyattack.bsky.social",
+      "proposed_pds": "https://ganoderma.us-west.host.bsky.network",
+      "authority_checked_at": 1793384845.4936829
+    },
+    {
+      "event": "write",
+      "at": 1793384845.6345127,
+      "receipt": {
+        "id": "cc3b435f-5cf0-4619-a037-cb571ad87717",
+        "did": "did:plc:joslofe73fev6dlhckhpj747",
+        "observed_updated_at": 1791923624,
+        "pds": "https://ganoderma.us-west.host.bsky.network",
+        "prepared_at": 1793384845.4953167,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:joslofe73fev6dlhckhpj747\", \"https://ganoderma.us-west.host.bsky.network\", 1793384845]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384846.7023716,
+      "did": "did:plc:k64oek5hqb3fgoiugyzbwvue",
+      "pds": "",
+      "updated_at": 1787878909,
+      "handle": "i2kaveh.bsky.social",
+      "proposed_pds": "https://puffball.us-east.host.bsky.network",
+      "authority_checked_at": 1793384846.7023604
+    },
+    {
+      "event": "write",
+      "at": 1793384846.8130863,
+      "receipt": {
+        "id": "1c59c8f8-7564-4134-9e89-6f9b9251dd1e",
+        "did": "did:plc:k64oek5hqb3fgoiugyzbwvue",
+        "observed_updated_at": 1787878909,
+        "pds": "https://puffball.us-east.host.bsky.network",
+        "prepared_at": 1793384846.7044501,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:k64oek5hqb3fgoiugyzbwvue\", \"https://puffball.us-east.host.bsky.network\", 1793384846]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384847.6834092,
+      "did": "did:plc:kir7dniymz5uyl7oiapdorlw",
+      "pds": "",
+      "updated_at": 1793227684,
+      "handle": "vons0dergren.no",
+      "proposed_pds": "https://shimeji.us-east.host.bsky.network",
+      "authority_checked_at": 1793384847.6833992
+    },
+    {
+      "event": "write",
+      "at": 1793384847.959123,
+      "receipt": {
+        "id": "d18bc71d-71eb-4f8e-b341-db137efe99a3",
+        "did": "did:plc:kir7dniymz5uyl7oiapdorlw",
+        "observed_updated_at": 1793227684,
+        "pds": "https://shimeji.us-east.host.bsky.network",
+        "prepared_at": 1793384847.6852498,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:kir7dniymz5uyl7oiapdorlw\", \"https://shimeji.us-east.host.bsky.network\", 1793384847]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384848.8696504,
+      "did": "did:plc:ksvzs7f5qew6rkofbtxqzj3i",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "sidejfdl.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384848.8696413
+    },
+    {
+      "event": "write",
+      "at": 1793384849.0169623,
+      "receipt": {
+        "id": "797ace54-7d89-45ed-b457-ea6e451097c4",
+        "did": "did:plc:ksvzs7f5qew6rkofbtxqzj3i",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384848.8712623,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ksvzs7f5qew6rkofbtxqzj3i\", \"https://stropharia.us-west.host.bsky.network\", 1793384848]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384849.974036,
+      "did": "did:plc:l24hwuey62fr4zzgzrw46nve",
+      "pds": "",
+      "updated_at": 1791413899,
+      "handle": "berets2020.bsky.social",
+      "proposed_pds": "https://shaggymane.us-west.host.bsky.network",
+      "authority_checked_at": 1793384849.9740283
+    },
+    {
+      "event": "write",
+      "at": 1793384850.637847,
+      "receipt": {
+        "id": "51046b90-73c4-419c-bb5d-f2fe27f19c8f",
+        "did": "did:plc:l24hwuey62fr4zzgzrw46nve",
+        "observed_updated_at": 1791413899,
+        "pds": "https://shaggymane.us-west.host.bsky.network",
+        "prepared_at": 1793384849.9756482,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:l24hwuey62fr4zzgzrw46nve\", \"https://shaggymane.us-west.host.bsky.network\", 1793384850]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384850.9649074,
+      "did": "did:plc:l526wufa7njxhl6dfi2ooiuh",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "hiipotermia.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384850.9648976
+    },
+    {
+      "event": "write",
+      "at": 1793384851.1906142,
+      "receipt": {
+        "id": "ae71fa2f-a4c8-4df4-9fb4-68225ba70fc9",
+        "did": "did:plc:l526wufa7njxhl6dfi2ooiuh",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384850.9666104,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:l526wufa7njxhl6dfi2ooiuh\", \"https://stropharia.us-west.host.bsky.network\", 1793384851]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384852.2938097,
+      "did": "did:plc:lf3ru3ewwrmntnctp6xdcnk3",
+      "pds": "",
+      "updated_at": 1776012040,
+      "handle": "rosaskapning.bsky.social",
+      "proposed_pds": "https://yellowfoot.us-west.host.bsky.network",
+      "authority_checked_at": 1793384852.2938018
+    },
+    {
+      "event": "write",
+      "at": 1793384852.4307263,
+      "receipt": {
+        "id": "9f5942f7-88ea-45c4-8715-aeb299764d16",
+        "did": "did:plc:lf3ru3ewwrmntnctp6xdcnk3",
+        "observed_updated_at": 1776012040,
+        "pds": "https://yellowfoot.us-west.host.bsky.network",
+        "prepared_at": 1793384852.2953708,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:lf3ru3ewwrmntnctp6xdcnk3\", \"https://yellowfoot.us-west.host.bsky.network\", 1793384852]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384853.240217,
+      "did": "did:plc:ljayahvft5lld57cx6fi4s4d",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "xc13fsf.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384853.240207
+    },
+    {
+      "event": "write",
+      "at": 1793384853.7788172,
+      "receipt": {
+        "id": "34e35594-fda5-4645-ace6-44daba6d3c22",
+        "did": "did:plc:ljayahvft5lld57cx6fi4s4d",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384853.2420337,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ljayahvft5lld57cx6fi4s4d\", \"https://jellybaby.us-east.host.bsky.network\", 1793384853]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384854.28235,
+      "did": "did:plc:m6dqj2qcopbp3o22w3s52qsl",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "gambit-99.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384854.2823424
+    },
+    {
+      "event": "write",
+      "at": 1793384854.550007,
+      "receipt": {
+        "id": "9e54289b-7862-44f6-9bc0-204c6a0d6e81",
+        "did": "did:plc:m6dqj2qcopbp3o22w3s52qsl",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384854.284393,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:m6dqj2qcopbp3o22w3s52qsl\", \"https://stropharia.us-west.host.bsky.network\", 1793384854]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384855.3900616,
+      "did": "did:plc:mexbd4l44s6ucwo24jsg3g4r",
+      "pds": "",
+      "updated_at": 1778947196,
+      "handle": "felixbuzzard.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384855.3900526
+    },
+    {
+      "event": "write",
+      "at": 1793384855.5615373,
+      "receipt": {
+        "id": "73406ada-8a90-4916-9b1c-c08c0ae0073d",
+        "did": "did:plc:mexbd4l44s6ucwo24jsg3g4r",
+        "observed_updated_at": 1778947196,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384855.391701,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:mexbd4l44s6ucwo24jsg3g4r\", \"https://stropharia.us-west.host.bsky.network\", 1793384855]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384856.4969513,
+      "did": "did:plc:mheitwlev2kdbqbfctnu6s2o",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "levy46d.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384856.4969435
+    },
+    {
+      "event": "write",
+      "at": 1793384856.6142287,
+      "receipt": {
+        "id": "85fe9e7f-5bb3-4783-b222-7698b173c084",
+        "did": "did:plc:mheitwlev2kdbqbfctnu6s2o",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384856.4986145,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:mheitwlev2kdbqbfctnu6s2o\", \"https://stropharia.us-west.host.bsky.network\", 1793384856]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384857.6937625,
+      "did": "did:plc:miwckfx3m5yz3eeczzxessb7",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "gadiskaktus32.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384857.693747
+    },
+    {
+      "event": "write",
+      "at": 1793384858.7872212,
+      "receipt": {
+        "id": "6cca043d-c356-4ce3-82b8-f374fb67c7bb",
+        "did": "did:plc:miwckfx3m5yz3eeczzxessb7",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384857.695794,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:miwckfx3m5yz3eeczzxessb7\", \"https://jellybaby.us-east.host.bsky.network\", 1793384858]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384859.1732955,
+      "did": "did:plc:mjkcez5bbbabf6y6nx3pimp6",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "turtleyman356.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384859.173289
+    },
+    {
+      "event": "write",
+      "at": 1793384859.4106774,
+      "receipt": {
+        "id": "f11cca54-98e9-4c6b-b123-498363bccd64",
+        "did": "did:plc:mjkcez5bbbabf6y6nx3pimp6",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384859.174842,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:mjkcez5bbbabf6y6nx3pimp6\", \"https://jellybaby.us-east.host.bsky.network\", 1793384859]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384860.1748557,
+      "did": "did:plc:mo2hicmwvvzcme2rtbqxgdp7",
+      "pds": "",
+      "updated_at": 1792359543,
+      "handle": "tnt.misskey.yukineko.me.ap.brid.gy",
+      "proposed_pds": "https://atproto.brid.gy",
+      "authority_checked_at": 1793384860.1748457
+    },
+    {
+      "event": "write",
+      "at": 1793384860.6590202,
+      "receipt": {
+        "id": "bb0e498b-eb96-4978-9872-495d4eacf4ed",
+        "did": "did:plc:mo2hicmwvvzcme2rtbqxgdp7",
+        "observed_updated_at": 1792359543,
+        "pds": "https://atproto.brid.gy",
+        "prepared_at": 1793384860.1771417,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:mo2hicmwvvzcme2rtbqxgdp7\", \"https://atproto.brid.gy\", 1793384860]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384861.4094303,
+      "did": "did:plc:mudf4an3msh6yljjet3vmtte",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "ttttttttttt1102.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384861.4094188
+    },
+    {
+      "event": "write",
+      "at": 1793384861.7226238,
+      "receipt": {
+        "id": "42923804-a161-4164-8579-2cfcedc1f5f9",
+        "did": "did:plc:mudf4an3msh6yljjet3vmtte",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384861.4112177,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:mudf4an3msh6yljjet3vmtte\", \"https://jellybaby.us-east.host.bsky.network\", 1793384861]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384862.2688212,
+      "did": "did:plc:n5j4yrrgpjedkvmzuzki7yra",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "jahmeelahl.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384862.2688134
+    },
+    {
+      "event": "write",
+      "at": 1793384862.5116806,
+      "receipt": {
+        "id": "0ec820f6-bf9e-4e2b-89b1-29b0cbb05f76",
+        "did": "did:plc:n5j4yrrgpjedkvmzuzki7yra",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384862.2707083,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:n5j4yrrgpjedkvmzuzki7yra\", \"https://jellybaby.us-east.host.bsky.network\", 1793384862]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384863.6513984,
+      "did": "did:plc:o3ixe3eyb55sgr4mgdscr6sh",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "nomaf00.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384863.6513891
+    },
+    {
+      "event": "write",
+      "at": 1793384863.7940185,
+      "receipt": {
+        "id": "f4293e59-e91b-43eb-ba15-0bce5110bd0d",
+        "did": "did:plc:o3ixe3eyb55sgr4mgdscr6sh",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384863.6529498,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:o3ixe3eyb55sgr4mgdscr6sh\", \"https://jellybaby.us-east.host.bsky.network\", 1793384863]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384864.7199671,
+      "did": "did:plc:orqtqqdq55cslovyatwpejbm",
+      "pds": "",
+      "updated_at": 1792273771,
+      "handle": "gerdti.bsky.social",
+      "proposed_pds": "https://russula.us-west.host.bsky.network",
+      "authority_checked_at": 1793384864.7199583
+    },
+    {
+      "event": "write",
+      "at": 1793384864.9067593,
+      "receipt": {
+        "id": "ef49cf4b-1c21-4448-b25e-c6ffeee069a3",
+        "did": "did:plc:orqtqqdq55cslovyatwpejbm",
+        "observed_updated_at": 1792273771,
+        "pds": "https://russula.us-west.host.bsky.network",
+        "prepared_at": 1793384864.7216437,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:orqtqqdq55cslovyatwpejbm\", \"https://russula.us-west.host.bsky.network\", 1793384864]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384865.6373558,
+      "did": "did:plc:phryubexkmmu7nsqb4wsjat5",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "goldenduckie.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384865.637346
+    },
+    {
+      "event": "write",
+      "at": 1793384865.800538,
+      "receipt": {
+        "id": "ac179c7a-fcfb-4af0-b554-9281ce1a9c5c",
+        "did": "did:plc:phryubexkmmu7nsqb4wsjat5",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384865.6391957,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:phryubexkmmu7nsqb4wsjat5\", \"https://jellybaby.us-east.host.bsky.network\", 1793384865]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384866.7845345,
+      "did": "did:plc:pmafxwuzefqnw2lu3ubynnpv",
+      "pds": "",
+      "updated_at": 1788134579,
+      "handle": "markguyer.bsky.social",
+      "proposed_pds": "https://mazegill.us-west.host.bsky.network",
+      "authority_checked_at": 1793384866.784523
+    },
+    {
+      "event": "write",
+      "at": 1793384867.1036005,
+      "receipt": {
+        "id": "11d784f6-b24b-4136-a7d7-06bca65314d0",
+        "did": "did:plc:pmafxwuzefqnw2lu3ubynnpv",
+        "observed_updated_at": 1788134579,
+        "pds": "https://mazegill.us-west.host.bsky.network",
+        "prepared_at": 1793384866.7864017,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:pmafxwuzefqnw2lu3ubynnpv\", \"https://mazegill.us-west.host.bsky.network\", 1793384867]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384867.7813368,
+      "did": "did:plc:rvlyeda73kxm7l2weegk73pa",
+      "pds": "",
+      "updated_at": 1793384852,
+      "handle": "hillelwayne.com",
+      "proposed_pds": "https://lionsmane.us-east.host.bsky.network",
+      "authority_checked_at": 1793384867.7813287
+    },
+    {
+      "event": "write",
+      "at": 1793384868.4709458,
+      "receipt": {
+        "id": "16662d0b-e88a-4f5b-a3dc-bc287e3e8497",
+        "did": "did:plc:rvlyeda73kxm7l2weegk73pa",
+        "observed_updated_at": 1793384852,
+        "pds": "https://lionsmane.us-east.host.bsky.network",
+        "prepared_at": 1793384867.7829397,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:rvlyeda73kxm7l2weegk73pa\", \"https://lionsmane.us-east.host.bsky.network\", 1793384868]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384868.9670022,
+      "did": "did:plc:s3vm23wx6lrn5qsfohosc646",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "thatonefox907.bsky.social",
+      "proposed_pds": "https://blewit.us-west.host.bsky.network",
+      "authority_checked_at": 1793384868.9669938
+    },
+    {
+      "event": "write",
+      "at": 1793384869.1099901,
+      "receipt": {
+        "id": "45a15e6b-3b1a-4625-9fad-36fc8a326d04",
+        "did": "did:plc:s3vm23wx6lrn5qsfohosc646",
+        "observed_updated_at": 1778909614,
+        "pds": "https://blewit.us-west.host.bsky.network",
+        "prepared_at": 1793384868.968596,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:s3vm23wx6lrn5qsfohosc646\", \"https://blewit.us-west.host.bsky.network\", 1793384869]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384870.073528,
+      "did": "did:plc:s6vljx2zsenb3s4apsblnp6g",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "aetherales.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384870.0735207
+    },
+    {
+      "event": "write",
+      "at": 1793384870.2186632,
+      "receipt": {
+        "id": "b4550663-557a-4198-ae9c-0adb5b8f80d7",
+        "did": "did:plc:s6vljx2zsenb3s4apsblnp6g",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384870.0756347,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:s6vljx2zsenb3s4apsblnp6g\", \"https://jellybaby.us-east.host.bsky.network\", 1793384870]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384871.1029644,
+      "did": "did:plc:skwbdsq6patx4ej6zdrqmpro",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "nexday.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384871.1029565
+    },
+    {
+      "event": "write",
+      "at": 1793384871.3934963,
+      "receipt": {
+        "id": "76eae3a8-c084-4ea0-a88d-c39c46f40a41",
+        "did": "did:plc:skwbdsq6patx4ej6zdrqmpro",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384871.104584,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:skwbdsq6patx4ej6zdrqmpro\", \"https://jellybaby.us-east.host.bsky.network\", 1793384871]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384872.2553449,
+      "did": "did:plc:svqcagxsxcwpb3tcvgscgu3j",
+      "pds": "",
+      "updated_at": 1793372880,
+      "handle": "thewalkersray.bsky.social",
+      "proposed_pds": "https://lionsmane.us-east.host.bsky.network",
+      "authority_checked_at": 1793384872.2553341
+    },
+    {
+      "event": "write",
+      "at": 1793384872.4514043,
+      "receipt": {
+        "id": "ebd925cd-bac6-479f-8061-18b0e39be33a",
+        "did": "did:plc:svqcagxsxcwpb3tcvgscgu3j",
+        "observed_updated_at": 1793372880,
+        "pds": "https://lionsmane.us-east.host.bsky.network",
+        "prepared_at": 1793384872.2576811,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:svqcagxsxcwpb3tcvgscgu3j\", \"https://lionsmane.us-east.host.bsky.network\", 1793384872]"
+      }
+    },
+    {
+      "event": "unresolved",
+      "at": 1793384873.3594792,
+      "did": "did:plc:test123",
+      "reason": "HTTPError"
+    },
+    {
+      "event": "would_write",
+      "at": 1793384874.3850965,
+      "did": "did:plc:tomvm77t2byoxqyw2mfo6cs6",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "ahabthemawlover.bsky.social",
+      "proposed_pds": "https://pholiota.us-west.host.bsky.network",
+      "authority_checked_at": 1793384874.3850884
+    },
+    {
+      "event": "write",
+      "at": 1793384875.3125,
+      "receipt": {
+        "id": "010162e7-15c6-45fd-8616-04404b87f353",
+        "did": "did:plc:tomvm77t2byoxqyw2mfo6cs6",
+        "observed_updated_at": 1778909614,
+        "pds": "https://pholiota.us-west.host.bsky.network",
+        "prepared_at": 1793384874.3866904,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:tomvm77t2byoxqyw2mfo6cs6\", \"https://pholiota.us-west.host.bsky.network\", 1793384875]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384875.5791178,
+      "did": "did:plc:tr33px6rdxcexbqx4dxqscvx",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "ariadtoney.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384875.5791082
+    },
+    {
+      "event": "write",
+      "at": 1793384875.6897047,
+      "receipt": {
+        "id": "8b9c240b-feef-48d7-9d02-bbb19de88fde",
+        "did": "did:plc:tr33px6rdxcexbqx4dxqscvx",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384875.5812836,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:tr33px6rdxcexbqx4dxqscvx\", \"https://stropharia.us-west.host.bsky.network\", 1793384875]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384876.9414165,
+      "did": "did:plc:tr3fjny5zkp7mhmhfese4hov",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "stmdon.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384876.941407
+    },
+    {
+      "event": "write",
+      "at": 1793384877.584092,
+      "receipt": {
+        "id": "12b1bb89-9a00-440f-bf43-aa926f6d7c98",
+        "did": "did:plc:tr3fjny5zkp7mhmhfese4hov",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384876.9431973,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:tr3fjny5zkp7mhmhfese4hov\", \"https://jellybaby.us-east.host.bsky.network\", 1793384877]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384877.909165,
+      "did": "did:plc:u4nmbt5djzgsa76wzk72dtys",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "thefazbeargang4.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384877.9091558
+    },
+    {
+      "event": "write",
+      "at": 1793384878.2665043,
+      "receipt": {
+        "id": "2ce0fe4f-2240-414a-8d3f-f8a54a7fec77",
+        "did": "did:plc:u4nmbt5djzgsa76wzk72dtys",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384877.910996,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:u4nmbt5djzgsa76wzk72dtys\", \"https://jellybaby.us-east.host.bsky.network\", 1793384878]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384878.9652832,
+      "did": "did:plc:ueovt6iqajdfkddkxoqbxhyt",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "mischabrton.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384878.9652758
+    },
+    {
+      "event": "write",
+      "at": 1793384879.3992066,
+      "receipt": {
+        "id": "43e23752-bac8-4dfd-b65a-8bea688eff24",
+        "did": "did:plc:ueovt6iqajdfkddkxoqbxhyt",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384878.967186,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ueovt6iqajdfkddkxoqbxhyt\", \"https://stropharia.us-west.host.bsky.network\", 1793384879]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384880.1994803,
+      "did": "did:plc:ujmzuziars24i2puloigiuk3",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "sso97.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384880.19947
+    },
+    {
+      "event": "write",
+      "at": 1793384880.5817041,
+      "receipt": {
+        "id": "167b1d12-54ae-44e5-a7d6-e271a53f1793",
+        "did": "did:plc:ujmzuziars24i2puloigiuk3",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384880.2014039,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ujmzuziars24i2puloigiuk3\", \"https://jellybaby.us-east.host.bsky.network\", 1793384880]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384881.3647256,
+      "did": "did:plc:uz7t5c5h4gjotghcb4wyydjo",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "fallzzyy.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384881.364717
+    },
+    {
+      "event": "write",
+      "at": 1793384881.511431,
+      "receipt": {
+        "id": "acb73cd5-abe0-4ace-835f-31c9b0f73ee9",
+        "did": "did:plc:uz7t5c5h4gjotghcb4wyydjo",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384881.3663583,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:uz7t5c5h4gjotghcb4wyydjo\", \"https://stropharia.us-west.host.bsky.network\", 1793384881]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384882.2344816,
+      "did": "did:plc:v4rr4eovjsoajonae25kxron",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "maatc.bsky.social",
+      "proposed_pds": "https://inkcap.us-east.host.bsky.network",
+      "authority_checked_at": 1793384882.2344701
+    },
+    {
+      "event": "write",
+      "at": 1793384882.4603324,
+      "receipt": {
+        "id": "686cb61e-e734-40b3-8d32-951a0f876315",
+        "did": "did:plc:v4rr4eovjsoajonae25kxron",
+        "observed_updated_at": 1778909614,
+        "pds": "https://inkcap.us-east.host.bsky.network",
+        "prepared_at": 1793384882.2363503,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:v4rr4eovjsoajonae25kxron\", \"https://inkcap.us-east.host.bsky.network\", 1793384882]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384883.6477542,
+      "did": "did:plc:vbfi24zkzyu2kia42jfdxqbk",
+      "pds": "",
+      "updated_at": 1793316216,
+      "handle": "charmartist.bsky.social",
+      "proposed_pds": "https://shimeji.us-east.host.bsky.network",
+      "authority_checked_at": 1793384883.6477454
+    },
+    {
+      "event": "write",
+      "at": 1793384883.9065068,
+      "receipt": {
+        "id": "0f9c128d-7f22-48b8-8193-3d4fd46d8300",
+        "did": "did:plc:vbfi24zkzyu2kia42jfdxqbk",
+        "observed_updated_at": 1793316216,
+        "pds": "https://shimeji.us-east.host.bsky.network",
+        "prepared_at": 1793384883.6493423,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:vbfi24zkzyu2kia42jfdxqbk\", \"https://shimeji.us-east.host.bsky.network\", 1793384883]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384884.4228568,
+      "did": "did:plc:ve45kexkrg6he3fhk3d6vuxm",
+      "pds": "",
+      "updated_at": 1775579281,
+      "handle": "spiritual-ronin.bsky.social",
+      "proposed_pds": "https://panthercap.us-east.host.bsky.network",
+      "authority_checked_at": 1793384884.4228485
+    },
+    {
+      "event": "write",
+      "at": 1793384884.72556,
+      "receipt": {
+        "id": "d8701dfc-ec4c-4e6b-b2ff-db2869b66d68",
+        "did": "did:plc:ve45kexkrg6he3fhk3d6vuxm",
+        "observed_updated_at": 1775579281,
+        "pds": "https://panthercap.us-east.host.bsky.network",
+        "prepared_at": 1793384884.4245617,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ve45kexkrg6he3fhk3d6vuxm\", \"https://panthercap.us-east.host.bsky.network\", 1793384884]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384885.5773222,
+      "did": "did:plc:vvo6vqqqemtmsr5sbuw3vdrw",
+      "pds": "",
+      "updated_at": 1777688805,
+      "handle": "lbdgba.bsky.social",
+      "proposed_pds": "https://pholiota.us-west.host.bsky.network",
+      "authority_checked_at": 1793384885.5773144
+    },
+    {
+      "event": "write",
+      "at": 1793384885.778391,
+      "receipt": {
+        "id": "13678bbb-ae79-4480-a79b-65a6fcd48a1c",
+        "did": "did:plc:vvo6vqqqemtmsr5sbuw3vdrw",
+        "observed_updated_at": 1777688805,
+        "pds": "https://pholiota.us-west.host.bsky.network",
+        "prepared_at": 1793384885.5790372,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:vvo6vqqqemtmsr5sbuw3vdrw\", \"https://pholiota.us-west.host.bsky.network\", 1793384885]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384886.8280778,
+      "did": "did:plc:w45ks6x3yifyudgaw4rbzrbf",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "lol3563.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384886.82807
+    },
+    {
+      "event": "write",
+      "at": 1793384887.0173879,
+      "receipt": {
+        "id": "f4808d25-675b-4df9-ad75-0ac5450bec8a",
+        "did": "did:plc:w45ks6x3yifyudgaw4rbzrbf",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384886.8297603,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:w45ks6x3yifyudgaw4rbzrbf\", \"https://jellybaby.us-east.host.bsky.network\", 1793384886]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384887.75948,
+      "did": "did:plc:wcd234fjxmctmwujcqk36pgy",
+      "pds": "",
+      "updated_at": 1791840575,
+      "handle": "lloydkrypton.bsky.social",
+      "proposed_pds": "https://lepista.us-west.host.bsky.network",
+      "authority_checked_at": 1793384887.7594695
+    },
+    {
+      "event": "write",
+      "at": 1793384887.865603,
+      "receipt": {
+        "id": "81ef0964-f05a-49ea-8fd9-db4914f3ee68",
+        "did": "did:plc:wcd234fjxmctmwujcqk36pgy",
+        "observed_updated_at": 1791840575,
+        "pds": "https://lepista.us-west.host.bsky.network",
+        "prepared_at": 1793384887.761067,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:wcd234fjxmctmwujcqk36pgy\", \"https://lepista.us-west.host.bsky.network\", 1793384887]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384888.8285077,
+      "did": "did:plc:ww2oi77e56i4ev2sbnzmucsc",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "saenana.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384888.8284984
+    },
+    {
+      "event": "write",
+      "at": 1793384889.9427168,
+      "receipt": {
+        "id": "c4d3e674-0c5f-4ed2-a822-281d645a9f6a",
+        "did": "did:plc:ww2oi77e56i4ev2sbnzmucsc",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384888.8301435,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:ww2oi77e56i4ev2sbnzmucsc\", \"https://stropharia.us-west.host.bsky.network\", 1793384889]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384890.1981091,
+      "did": "did:plc:xao5uq4g3sfv77o6gnil2vrz",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "zaks27b.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384890.1980991
+    },
+    {
+      "event": "write",
+      "at": 1793384890.3241801,
+      "receipt": {
+        "id": "ef494d0a-f478-489f-8c43-4bdac1a50b68",
+        "did": "did:plc:xao5uq4g3sfv77o6gnil2vrz",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384890.2000139,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:xao5uq4g3sfv77o6gnil2vrz\", \"https://jellybaby.us-east.host.bsky.network\", 1793384890]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384891.3113744,
+      "did": "did:plc:xfgket3e4aipbxhqlxqfynwc",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "gaaaaal93.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384891.3113654
+    },
+    {
+      "event": "write",
+      "at": 1793384891.6126955,
+      "receipt": {
+        "id": "e89dbe28-4c26-4ecd-a607-86df6bce3d27",
+        "did": "did:plc:xfgket3e4aipbxhqlxqfynwc",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384891.3143306,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:xfgket3e4aipbxhqlxqfynwc\", \"https://jellybaby.us-east.host.bsky.network\", 1793384891]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384892.4197526,
+      "did": "did:plc:xoadmmu5cczj2vre7naal6k3",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "ansr749206.bsky.social",
+      "proposed_pds": "https://fibercap.us-west.host.bsky.network",
+      "authority_checked_at": 1793384892.4197423
+    },
+    {
+      "event": "write",
+      "at": 1793384892.55544,
+      "receipt": {
+        "id": "8866c1cd-5f0d-4d95-8c4e-fab58cd015db",
+        "did": "did:plc:xoadmmu5cczj2vre7naal6k3",
+        "observed_updated_at": 1778909614,
+        "pds": "https://fibercap.us-west.host.bsky.network",
+        "prepared_at": 1793384892.4217641,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:xoadmmu5cczj2vre7naal6k3\", \"https://fibercap.us-west.host.bsky.network\", 1793384892]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384893.521832,
+      "did": "did:plc:y2oqdjvlf6iy5tezskrt653y",
+      "pds": "",
+      "updated_at": 1787446880,
+      "handle": "tsumuntema.com",
+      "proposed_pds": "https://porcini.us-east.host.bsky.network",
+      "authority_checked_at": 1793384893.521823
+    },
+    {
+      "event": "write",
+      "at": 1793384893.7538934,
+      "receipt": {
+        "id": "9548ae00-a201-40c6-9450-11e914368720",
+        "did": "did:plc:y2oqdjvlf6iy5tezskrt653y",
+        "observed_updated_at": 1787446880,
+        "pds": "https://porcini.us-east.host.bsky.network",
+        "prepared_at": 1793384893.5234504,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:y2oqdjvlf6iy5tezskrt653y\", \"https://porcini.us-east.host.bsky.network\", 1793384893]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384894.6089315,
+      "did": "did:plc:y3u2efl72vspb2thw3elnuc2",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "thiaxx.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384894.608924
+    },
+    {
+      "event": "write",
+      "at": 1793384894.7186286,
+      "receipt": {
+        "id": "4a1fe94b-6330-4e53-805b-5f9076d4b3ac",
+        "did": "did:plc:y3u2efl72vspb2thw3elnuc2",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384894.6111455,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:y3u2efl72vspb2thw3elnuc2\", \"https://stropharia.us-west.host.bsky.network\", 1793384894]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384895.7618678,
+      "did": "did:plc:y6sqk3ptjxocs6trc5oviokw",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "fandomhorder976.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384895.761858
+    },
+    {
+      "event": "write",
+      "at": 1793384895.8658216,
+      "receipt": {
+        "id": "d738fe1b-d75f-4338-aed3-49bc52a331b3",
+        "did": "did:plc:y6sqk3ptjxocs6trc5oviokw",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384895.7639563,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:y6sqk3ptjxocs6trc5oviokw\", \"https://jellybaby.us-east.host.bsky.network\", 1793384895]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384896.872023,
+      "did": "did:plc:yixtrdnowjkptpffb6jvo2j4",
+      "pds": "",
+      "updated_at": 1793308025,
+      "handle": "malleyricon.bsky.social",
+      "proposed_pds": "https://shimeji.us-east.host.bsky.network",
+      "authority_checked_at": 1793384896.8720162
+    },
+    {
+      "event": "write",
+      "at": 1793384896.9835224,
+      "receipt": {
+        "id": "13458e02-f0e6-4e3b-9484-a2e0bbe4787c",
+        "did": "did:plc:yixtrdnowjkptpffb6jvo2j4",
+        "observed_updated_at": 1793308025,
+        "pds": "https://shimeji.us-east.host.bsky.network",
+        "prepared_at": 1793384896.873559,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:yixtrdnowjkptpffb6jvo2j4\", \"https://shimeji.us-east.host.bsky.network\", 1793384896]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384898.0142884,
+      "did": "did:plc:yjtpadhov2yyasfzuno6rqgv",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "btws-sakphon.bsky.social",
+      "proposed_pds": "https://stropharia.us-west.host.bsky.network",
+      "authority_checked_at": 1793384898.0142782
+    },
+    {
+      "event": "write",
+      "at": 1793384898.2965846,
+      "receipt": {
+        "id": "9ee6f35c-81b3-4ca5-be90-7d3293c15af2",
+        "did": "did:plc:yjtpadhov2yyasfzuno6rqgv",
+        "observed_updated_at": 1778909614,
+        "pds": "https://stropharia.us-west.host.bsky.network",
+        "prepared_at": 1793384898.0162485,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:yjtpadhov2yyasfzuno6rqgv\", \"https://stropharia.us-west.host.bsky.network\", 1793384898]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384898.9776914,
+      "did": "did:plc:z7754ccxlhoi6qz7ay6rzn44",
+      "pds": "",
+      "updated_at": 1788584540,
+      "handle": "clydebqllz.bsky.social",
+      "proposed_pds": "https://agrocybe.us-west.host.bsky.network",
+      "authority_checked_at": 1793384898.9776838
+    },
+    {
+      "event": "write",
+      "at": 1793384899.5445132,
+      "receipt": {
+        "id": "8bb00e7a-f275-4acd-9feb-04b8694f361a",
+        "did": "did:plc:z7754ccxlhoi6qz7ay6rzn44",
+        "observed_updated_at": 1788584540,
+        "pds": "https://agrocybe.us-west.host.bsky.network",
+        "prepared_at": 1793384898.9793506,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:z7754ccxlhoi6qz7ay6rzn44\", \"https://agrocybe.us-west.host.bsky.network\", 1793384899]"
+      }
+    },
+    {
+      "event": "would_write",
+      "at": 1793384900.106227,
+      "did": "did:plc:zgzvch5mb6lh6ot6phdychyw",
+      "pds": "",
+      "updated_at": 1778909614,
+      "handle": "syobai.bsky.social",
+      "proposed_pds": "https://jellybaby.us-east.host.bsky.network",
+      "authority_checked_at": 1793384900.1062188
+    },
+    {
+      "event": "write",
+      "at": 1793384900.553814,
+      "receipt": {
+        "id": "dd86282b-6743-47a3-bb13-434cb96146f0",
+        "did": "did:plc:zgzvch5mb6lh6ot6phdychyw",
+        "observed_updated_at": 1778909614,
+        "pds": "https://jellybaby.us-east.host.bsky.network",
+        "prepared_at": 1793384900.107828,
+        "state": "confirmed",
+        "receipt": "[\"did:plc:zgzvch5mb6lh6ot6phdychyw\", \"https://jellybaby.us-east.host.bsky.network\", 1793384900]"
+      }
+    },
+    {
+      "event": "verification",
+      "at": 1793384978.0963707,
+      "did": "did:plc:2eqfasvcchmrdxwbg2z4egah",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793384981.3437839,
+      "did": "did:plc:32jgywxeosv2jvisqni72nro",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793384984.6990724,
+      "did": "did:plc:3diwzpmtxhfy36riiydseqp6",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793384987.9606898,
+      "did": "did:plc:3ydrna7zupic56d77mpeo4uk",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793384991.261,
+      "did": "did:plc:3ztpuhre7itlwwp7ocrlarv7",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793384994.5227818,
+      "did": "did:plc:3zx3zfdytcsz7kvcnxktgevh",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793384997.9810596,
+      "did": "did:plc:4dretko7ffagnzub4cnrixuf",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385001.2353659,
+      "did": "did:plc:4htc6e2pkm2eqlnwbxqrtwza",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385004.4751189,
+      "did": "did:plc:4pxajvjz2fghz64yrnhthgh2",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385007.8354294,
+      "did": "did:plc:4y5crph5ihapeqemr67737iq",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385011.0725641,
+      "did": "did:plc:657xdd632bwlxrdkfkgulrf7",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385014.4447856,
+      "did": "did:plc:6gnwpqkdnp2cwi7k6xey2mb7",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385017.6900473,
+      "did": "did:plc:6wpso6mhqxwdwzkfvrtwons5",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385020.9783664,
+      "did": "did:plc:7itp2y2wanzc76sjn7zfw6ba",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385024.2413793,
+      "did": "did:plc:7mi7h5ecdvj4tnhco677dwl2",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385027.5279784,
+      "did": "did:plc:7oxit5f53wn64vnqmaxaefsi",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385030.891186,
+      "did": "did:plc:al7ml2uhs246zftopa7secea",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385034.2909818,
+      "did": "did:plc:aucsicjkcszkvxz2xfxsrgcm",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385037.485922,
+      "did": "did:plc:bmyxfoub5iybn5nvcexkpg3t",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385040.740552,
+      "did": "did:plc:bny2fm57m4i5m4wczmim3wec",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385044.095182,
+      "did": "did:plc:c6fraelnnp4qaas3z5ezussh",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385047.3805861,
+      "did": "did:plc:ccmoznkbjp2e7kanm5ccsxqc",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385050.7560422,
+      "did": "did:plc:cinpxepqdwwdg4lnlerlijua",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385053.968496,
+      "did": "did:plc:cknvku2k7rwagfwtrxj7ywgy",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385057.211441,
+      "did": "did:plc:cn7e7lsgud7fmwfu6tgm2dae",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385060.585956,
+      "did": "did:plc:ddto7ejzfz5icpzcnxkrd6hc",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385063.8625867,
+      "did": "did:plc:dxfthb34ybzptbm3bnuzlotp",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385067.1713421,
+      "did": "did:plc:ej3xb4s5idgu7g3cphnsvgaf",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385070.4404845,
+      "did": "did:plc:epnyg6u5d7tshz7njs5omj42",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385073.7564788,
+      "did": "did:plc:erkhof4y45ladw5hek7fwamp",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385077.1880176,
+      "did": "did:plc:f2at44647etxrydddupn2s3n",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385080.4391453,
+      "did": "did:plc:f67ssmknjvlddaijweybwbel",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385083.7196572,
+      "did": "did:plc:fdvhpoqqu3uxlu4r7gf2az43",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385087.0046613,
+      "did": "did:plc:fks4zrlngkazwwufu7lkhoel",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385090.3008173,
+      "did": "did:plc:fyrdynpv5nrb7nt36n764w4u",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385093.5794296,
+      "did": "did:plc:g5utkeumaifitqma6gtqog3y",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385096.8654969,
+      "did": "did:plc:gduqwditomvai3xt3ntq6lnr",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385100.2065642,
+      "did": "did:plc:gekcar5si4aqdyk7jt2j3peo",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385103.5110118,
+      "did": "did:plc:gtit575hv5aceggyi75yj6mb",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385106.8144622,
+      "did": "did:plc:h673pjbhpv7lnftbjey5erdv",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385110.2102404,
+      "did": "did:plc:hmvje5dssvkrueo3pxuc7cof",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385113.4080663,
+      "did": "did:plc:hnwtpwb5jcfywp5o4abgpxtk",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385117.2517755,
+      "did": "did:plc:hsfv3jqdgxzmiukoevy2qjdn",
+      "passed": true
+    }
+  ],
+  "resumed": [
+    {
+      "event": "start",
+      "at": 1793385405.4867797,
+      "confirmed": 99,
+      "previously_passed": 43
+    },
+    {
+      "event": "verification",
+      "at": 1793385414.804798,
+      "did": "did:plc:htsmka6u7g7zhqsmuwkc64h4",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385423.991359,
+      "did": "did:plc:i464vxfcwdaneorhnfemvrpo",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385433.0325732,
+      "did": "did:plc:iiaxikqnbbtcctums5qpq23k",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385442.414196,
+      "did": "did:plc:iv3cb5obgei2q6njshx3utgw",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385451.5916817,
+      "did": "did:plc:j74bmy3c7ls2u4mgl6xegder",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385461.0536332,
+      "did": "did:plc:jd6j3c5vjwwo2khg4gsoo23y",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385470.071895,
+      "did": "did:plc:jf4sxtgbff2ec3sp3cekl3ix",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385479.4981194,
+      "did": "did:plc:joslofe73fev6dlhckhpj747",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385488.7645106,
+      "did": "did:plc:k64oek5hqb3fgoiugyzbwvue",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385497.9652603,
+      "did": "did:plc:kir7dniymz5uyl7oiapdorlw",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385507.0061657,
+      "did": "did:plc:ksvzs7f5qew6rkofbtxqzj3i",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385516.1456606,
+      "did": "did:plc:l24hwuey62fr4zzgzrw46nve",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385525.4830997,
+      "did": "did:plc:l526wufa7njxhl6dfi2ooiuh",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385534.65906,
+      "did": "did:plc:lf3ru3ewwrmntnctp6xdcnk3",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385543.7262175,
+      "did": "did:plc:ljayahvft5lld57cx6fi4s4d",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385552.839079,
+      "did": "did:plc:m6dqj2qcopbp3o22w3s52qsl",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385562.1085155,
+      "did": "did:plc:mexbd4l44s6ucwo24jsg3g4r",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385571.3767653,
+      "did": "did:plc:mheitwlev2kdbqbfctnu6s2o",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385580.4936345,
+      "did": "did:plc:miwckfx3m5yz3eeczzxessb7",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385589.8936598,
+      "did": "did:plc:mjkcez5bbbabf6y6nx3pimp6",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385599.0174193,
+      "did": "did:plc:mo2hicmwvvzcme2rtbqxgdp7",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385608.1201463,
+      "did": "did:plc:mudf4an3msh6yljjet3vmtte",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385617.2964687,
+      "did": "did:plc:n5j4yrrgpjedkvmzuzki7yra",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385626.3057587,
+      "did": "did:plc:o3ixe3eyb55sgr4mgdscr6sh",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385635.3247006,
+      "did": "did:plc:orqtqqdq55cslovyatwpejbm",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385644.5099938,
+      "did": "did:plc:phryubexkmmu7nsqb4wsjat5",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385653.7304697,
+      "did": "did:plc:pmafxwuzefqnw2lu3ubynnpv",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385662.970857,
+      "did": "did:plc:rvlyeda73kxm7l2weegk73pa",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385672.2754676,
+      "did": "did:plc:s3vm23wx6lrn5qsfohosc646",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385681.349159,
+      "did": "did:plc:s6vljx2zsenb3s4apsblnp6g",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385690.5328877,
+      "did": "did:plc:skwbdsq6patx4ej6zdrqmpro",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385699.7921286,
+      "did": "did:plc:svqcagxsxcwpb3tcvgscgu3j",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385708.906967,
+      "did": "did:plc:tomvm77t2byoxqyw2mfo6cs6",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385718.0617185,
+      "did": "did:plc:tr33px6rdxcexbqx4dxqscvx",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385727.2502496,
+      "did": "did:plc:tr3fjny5zkp7mhmhfese4hov",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385736.3639467,
+      "did": "did:plc:u4nmbt5djzgsa76wzk72dtys",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385745.5032637,
+      "did": "did:plc:ueovt6iqajdfkddkxoqbxhyt",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385754.4590738,
+      "did": "did:plc:ujmzuziars24i2puloigiuk3",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385763.657586,
+      "did": "did:plc:uz7t5c5h4gjotghcb4wyydjo",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385772.7552383,
+      "did": "did:plc:v4rr4eovjsoajonae25kxron",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385781.8882923,
+      "did": "did:plc:vbfi24zkzyu2kia42jfdxqbk",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385790.8953223,
+      "did": "did:plc:ve45kexkrg6he3fhk3d6vuxm",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385800.124904,
+      "did": "did:plc:vvo6vqqqemtmsr5sbuw3vdrw",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385809.2407818,
+      "did": "did:plc:w45ks6x3yifyudgaw4rbzrbf",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385818.3206425,
+      "did": "did:plc:wcd234fjxmctmwujcqk36pgy",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385827.3841147,
+      "did": "did:plc:ww2oi77e56i4ev2sbnzmucsc",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385836.3401992,
+      "did": "did:plc:xao5uq4g3sfv77o6gnil2vrz",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385845.4039767,
+      "did": "did:plc:xfgket3e4aipbxhqlxqfynwc",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385854.3844655,
+      "did": "did:plc:xoadmmu5cczj2vre7naal6k3",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385863.3372538,
+      "did": "did:plc:y2oqdjvlf6iy5tezskrt653y",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385872.3059194,
+      "did": "did:plc:y3u2efl72vspb2thw3elnuc2",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385881.4050014,
+      "did": "did:plc:y6sqk3ptjxocs6trc5oviokw",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385890.5078592,
+      "did": "did:plc:yixtrdnowjkptpffb6jvo2j4",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385899.5705652,
+      "did": "did:plc:yjtpadhov2yyasfzuno6rqgv",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385908.923843,
+      "did": "did:plc:z7754ccxlhoi6qz7ay6rzn44",
+      "passed": true
+    },
+    {
+      "event": "verification",
+      "at": 1793385917.9467053,
+      "did": "did:plc:zgzvch5mb6lh6ot6phdychyw",
+      "passed": true
+    },
+    {
+      "event": "complete",
+      "at": 1793385917.9471858,
+      "confirmed": 99,
+      "newly_verified": 56,
+      "seconds": 512.4551140530001
+    }
+  ]
+}
