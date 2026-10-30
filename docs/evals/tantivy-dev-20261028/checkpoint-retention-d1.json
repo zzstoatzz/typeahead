@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "scope": "existing-Linux-D1-synthetic-metadata-retention-only",
+  "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+  "passed": true,
+  "production_contact": false,
+  "rust_sources_changed": false,
+  "binary_rebuilt": false,
+  "release_qualified": false,
+  "wal_boundary_verified": false,
+  "live_source_coverage_verified": false,
+  "policy_freshness_attested": false,
+  "import_requires_allow_partial": true,
+  "import_stdout_and_persisted_CLI_manifest_equal": true,
+  "source_bootstrap_retained_exactly_before_and_after_process_restart": true,
+  "source_bootstrap_json_sha256": "589ab5d95c2b60388d11a904ad9e14522f4369bf939c87d3892091d0f80e950a",
+  "counts": {
+    "raw_actor_rows": 1,
+    "orphan_tombstones": 1,
+    "input_documents": 2,
+    "rust_live_documents": 1,
+    "native_snapshot_actor_count": null
+  },
+  "states": [
+    {
+      "full_source": false,
+      "cutover_source_ready": false,
+      "source_observation_revision": 0,
+      "source_cursor": null
+    },
+    {
+      "full_source": false,
+      "cutover_source_ready": false,
+      "source_observation_revision": 0,
+      "source_cursor": null
+    }
+  ],
+  "wall_seconds": 0.9554276589988149,
+  "limitations": [
+    "Synthetic component hashes and declared generation/frame metadata test retention only; no SQLite checkpoint or WAL boundary is verified",
+    "Partial fixture remains unqualified and no live round or policy freshness is invented"
+  ],
+  "observed_at": "2026-10-30T02:21:43.053400+00:00",
+  "existing_local_image": {
+    "name": "typeahead-tantivy-slot:local",
+    "id": "sha256:317f144c4bb6c346faa484557013b5cf8bc2629738f63ad134389f98afe9938e",
+    "network": "none; loopback metadata HTTP only",
+    "cpus": 2,
+    "memory_bytes": 1073741824
+  },
+  "retained_provenance": {
+    "kind": "sqlite-checkpoint",
+    "coverage": "checkpoint-only",
+    "fixture": true,
+    "declared_generation": 7,
+    "declared_durable_frame_num": 17
+  },
+  "permanent_regression_owner": "my-prefect-server/tests/test_typeahead_sqlite_seed.py actual32/WAL fixture: exact source_bootstrap equality before and after restart"
+}
