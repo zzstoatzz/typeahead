@@ -26,6 +26,15 @@ The [parallel dev health readback](../evals/tantivy-dev-20261028/post-pilot-live
 remained ready; production routing stayed on the native slot. The deployed dev
 still uses the earlier source-v2 binary. The expiry-v4 candidate has not replaced it.
 
+The [October 30 deployed-preview HTTP smoke](../evals/tantivy-dev-20261028/current-preview-http-smoke.json)
+returned 200 for both public aliases, a hard PDS filter and a contextual
+preference request. The aliases were byte-identical and the hard filter was
+acknowledged, but the earlier backend did not acknowledge the preference.
+This smoke therefore failed its preference gate. An empty filtered result
+does not establish filter recall, and these four sequential requests are not
+a performance benchmark. The candidate must pass these semantics on its actual
+deployed public path before the dev site can supply release evidence.
+
 Full-corpus matched performance, live-source completed-round coverage and actual
 cloud slot/refresh qualification remain open gates. Branch-only code now includes
 engine-aware publication, installation, retention and native rollback; its local
