@@ -163,3 +163,11 @@ The 100 stage checks every confirmed identity publicly. Each receipt records
 whether public checks were performed. These are bounded qualification stages,
 not the bulk writer: bulk application must use the ledger's batched conditional
 statement and pace against live ingestion health.
+
+`pds_freshness_run.py` executes an existing queue under a single-writer file
+lock, bounded wall time and identity count, a disk reserve, and serving-health
+gates. It uses ten-identity conditional batches and preserves its queue and
+ledger between invocations. It does not populate the queue, install a schedule,
+or prove restart durability by itself. Cloud deployment and ongoing discovery
+remain required. The 1,000-account qualification runner also uses ten-identity
+write batches; it refuses authority observations older than 60 seconds.

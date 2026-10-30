@@ -7,7 +7,7 @@ import time
 import urllib.parse
 from pathlib import Path
 
-from pds_cloud_pilot import API, read_json, prepare, apply_prepared, source
+from pds_cloud_pilot import API, read_json, prepare, source
 from pds_freshness_queue import Queue
 from pds_repair_canary import Turso
 from pds_repair_ledger import Ledger
@@ -97,6 +97,41 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
         event('discovery', selected=len(items), scanned=scanned, source_cursor=queue.cursor())
         by_did = {item['did']: item for item in items}
         confirmed = []
+        pending = []
+
+        def flush():
+            if not pending:
+                return
+            health()
+            if any(time.time() - proposal['authority_checked_at'] > 60 for _, proposal in pending):
+                raise ValueError('Authority observations expired; resolve again before writing')
+            attempts = []
+            for claim, proposal in pending:
+                queue.begin_write(claim['did'], claim['token'])
+                attempts.append(ledger.prepare(claim['did'], proposal['updated_at'], proposal['proposed_pds']))
+            try:
+                ledger.send_batch(attempts, execute)
+            except Exception as error:
+                for claim, _ in pending:
+                    queue.failed(claim['did'], claim['token'], type(error).__name__)
+                event('batch_failed', attempts=attempts, reason=type(error).__name__)
+                raise
+            for (claim, proposal), attempt in zip(pending, attempts):
+                did, token = claim['did'], claim['token']
+                receipt = ledger.get(attempt)
+                if receipt['state'] == 'conflict':
+                    queue.conflict(did, token)
+                    event('conflict', did=did, receipt=receipt)
+                    continue
+                current = source(execute, did)
+                if current['pds'] != proposal['proposed_pds'] or current['handle'] != proposal['handle']:
+                    queue.failed(did, token, 'source readback differs')
+                    raise ValueError('Source verification failed')
+                queue.verified(did, token, proposal['proposed_pds'], int(proposal['authority_checked_at']))
+                confirmed.append(proposal)
+                event('write', receipt=receipt)
+            pending.clear()
+
         claims = []
         for offset in range(0, len(items), 100):
             claims.extend(queue.claim(limit=min(100, len(items)-offset), lease_seconds=wall_seconds))
@@ -118,20 +153,10 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
             event('would_write', **proposal)
             if not apply:
                 continue
-            queue.begin_write(did, token)
-            try:
-                receipt = apply_prepared(ledger, execute, proposal)
-            except Exception as error:
-                queue.failed(did, token, type(error).__name__)
-                event('write_failed', did=did, reason=type(error).__name__)
-                raise
-            current = source(execute, did)
-            if current['pds'] != proposal['proposed_pds'] or current['handle'] != item['handle']:
-                queue.failed(did, token, 'source readback differs')
-                raise ValueError('Source verification failed')
-            queue.verified(did, token, proposal['proposed_pds'], int(proposal['authority_checked_at']))
-            confirmed.append(proposal)
-            event('write', receipt=receipt)
+            pending.append((claim, proposal))
+            if len(pending) == 10:
+                flush()
+        flush()
         if apply and confirmed:
             budget()
             time.sleep(min(75, max(0, wall_seconds - (time.monotonic()-started))))
