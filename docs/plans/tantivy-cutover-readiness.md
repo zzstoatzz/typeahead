@@ -175,6 +175,57 @@ operator connection; source corpus stays cloud-to-cloud.
 
 Commit scoped changes on this branch, preserving unrelated local work. Keep
 current deployment state distinct from branch-only changes and dated receipts.
-Once the gates pass, prepare conditional routing, cache propagation, request
-draining, ingestion ownership, health checks and rollback steps with downtime
-expectations. Discuss that concrete plan with Nate before changing production.
+The following procedure is prepared for later approval; its open gates are not
+waived by this document. No production cutover is authorized.
+
+1. Finish the matched full-corpus comparison, post-measurement functional
+   witnesses, live-source completed-round test, final-budget resource checks,
+   slot restart/refresh recovery and production-identical dev UI/API smoke.
+   Bind their actual receipts to the exact proposed slot image, executable,
+   strategy, source generation and deployment manifest. The frozen benchmark
+   image supplies engine-component evidence; it cannot by itself qualify a
+   different serving image. Publish no positive release proof while any gate
+   remains missing or inconclusive.
+2. Rehearse the complete controlled route change and compensation against an
+   isolated routing record and the same Worker/transport code. Exercise cached
+   and uncached requests, both public search aliases, hard PDS filtering and
+   contextual preference. Record failures, backend identity, source lag and
+   latency through the change. Establish the cache barrier and measured
+   propagation interval from that rehearsal before giving a downtime estimate.
+3. Present Nate the exact candidate plan, current production route/ETag,
+   immutable image and artifact identities, empirical release proof, native
+   rollback anchor and rollback command. Obtain explicit cutover approval.
+   Production Worker/transport deployments and the routing-target change remain
+   deferred until that approval.
+4. Deploy the engine-aware Worker/transport compatibility code while the native
+   route remains selected. Smoke the actual native public path before proceeding.
+   Keep the existing relay ingester, Turso writer and cloud snapshot publisher
+   ownership unchanged. Native search has its own background Turso projection;
+   preserve and independently check that path so rollback stays fresh after
+   request-indexing pushes stop reaching the native route.
+5. Recheck the candidate's actual provider instance, final two-shared-CPU/1-GiB/
+   20-GiB allocation, source/policy freshness, completed-round coverage and
+   HTTP identity. Recheck native rollback health. Refresh the prepared plan if
+   the expected route or ETag changed. A mutation lease can protect an inactive
+   slot; it must not change the current target and must survive an intervening
+   native rollback.
+6. Establish a new `SEARCH_CACHE_GENERATION` barrier, or prove that the existing
+   60-second response-cache TTL has drained, as rehearsed. Use the explicit
+   guarded promotion operation with the exact approved plan SHA and ETag.
+   Preserve the complete native anchor and previous target in the conditional
+   routing update. DNS, public URLs and frontend markup stay the same; the
+   already-running candidate takes new backend requests without stopping the
+   native process. Check uncached canonical/alias/filter/preference responses
+   immediately, then cached responses after the measured propagation barrier.
+7. If verification fails, compensate only while the failed candidate record and
+   its ETag are still current; restore the exact prior envelope and its native
+   anchor. An operator's newer routing change wins. Re-establish the cache
+   barrier, verify actual native identity/freshness, and retain the failed slot
+   for bounded diagnosis. Never rebuild or resize the native anchor as part of
+   rollback. Resume future automatic Tantivy refresh only under the separately
+   qualified two-slot retirement/lease/retention policy.
+
+The intended change has no planned backend stop or DNS transition. A zero-downtime
+claim and a numeric propagation bound remain unproven until the isolated public
+rehearsal passes. Worker deployment and R2 routing are separate updates; the
+procedure and compensation must account for that explicitly.
