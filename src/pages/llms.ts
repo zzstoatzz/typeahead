@@ -54,7 +54,7 @@ The current 12-hour rebuild cadence renews source-coverage evidence, not a Tanti
 ## etiquette
 
 - smoke tests should set X-Client: smoke-testing. They remain in operational totals
-  but are excluded from public app/adoption counts. Keep tests sequential and low-volume.
+  but are excluded from public app/adoption counts.
 - scripts should send a descriptive User-Agent (e.g. typeahead-community-smoke/1.0).
   Cloudflare can reject default library user agents with 403/error 1010 before the API.
 - rate limit: 60 req/min per IP. responses are edge-cached for 60s.
@@ -77,7 +77,7 @@ status — those need the caller's graph, which typeahead does not hold. edge-ca
 - POST https://typeahead.waow.tech/request-indexing?handle=<handle-or-did> — surface an account
   that predates the index. rate limited. Requires authority DID-document and reverse
   handle verification; unverified claims return 422.
-- https://typeahead.waow.tech/docs — migration guide (html)
+- https://typeahead.waow.tech/docs — API quickstart and reference (html)
 - https://typeahead.waow.tech/stats — index health, latency, traffic (html)
 
 source: https://tangled.org/zzstoatzz.io/typeahead

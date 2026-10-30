@@ -7,314 +7,121 @@ export function docsPage(): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  ${ogTags({ title: "typeahead — docs", description: "Point your app at typeahead in one line. The canonical tech.waow.typeahead.searchActors endpoint, a compatible app.bsky.actor.searchActorsTypeahead alias, and profile cards without viewer state.", path: "/docs" })}
+  ${ogTags({ title: "typeahead — docs", description: "Search AT Protocol accounts, filter by hosting PDS, and fetch profile cards. A public API with no authentication required.", path: "/docs" })}
   ${FAVICON}
   ${THEME_HEAD}
   <style>${THEME_CSS}
-    body { display: flex; justify-content: center;
-           padding: calc(1.5rem + env(safe-area-inset-top)) 1rem calc(2rem + env(safe-area-inset-bottom)); }
-    .container { max-width: 620px; width: 100%; }
-    .header { display: flex; align-items: baseline; gap: 0.4rem; margin-bottom: 0.4rem; }
-    h1 { font-size: 1.1rem; font-weight: 400; color: var(--muted); }
-    .subtitle { font-size: 0.8rem; color: var(--dim); margin-bottom: 1.5rem; }
-    h2 { font-size: 0.85rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.6rem; }
-    h3 { font-size: 0.8rem; font-weight: 600; color: var(--muted); margin: 1.2rem 0 0.5rem; }
-    p, li { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
-    p { margin-bottom: 0.7rem; }
-    ul { margin: 0 0 0.7rem 1.2rem; }
-    li { margin-bottom: 0.3rem; }
-    code { font-size: 0.75rem; background: var(--panel-2);
-           border: 1px solid var(--line); border-radius: 4px; padding: 0.1rem 0.35rem; color: var(--text); }
-    pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 0.8rem;
-          overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 0.7rem; }
-    pre code { background: none; border: none; padding: 0; font-size: 0.72rem; color: var(--text); }
-    .diff-add { color: var(--accent); }
-    .diff-del { color: var(--red); }
-    .kw { color: var(--violet); }
-    .str { color: var(--accent); }
-    .fn { color: var(--blue); }
-    .cm { color: var(--dim); font-style: italic; }
-    .op { color: var(--muted); }
-    .callout { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent);
-               border-radius: 8px; padding: 0.7rem 0.9rem; margin-bottom: 1rem;
-               font-size: 0.78rem; color: var(--muted); line-height: 1.6; }
-    .callout strong { color: var(--text); }
-    .callout.warn { border-left-color: var(--amber); }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.75rem; }
-    th { text-align: left; color: var(--dim); font-weight: 400; padding: 0.4rem 0.6rem;
-         border-bottom: 1px solid var(--line); }
-    td { padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--line); color: var(--muted); }
-    td code { font-size: 0.7rem; }
-    .yes { color: var(--accent); }
-    .no { color: var(--dim); }
-    footer { padding-top: 1.5rem; border-top: 1px solid var(--line); font-size: 0.7rem;
-             color: var(--faint); display: flex; align-items: center; justify-content: center;
-             flex-wrap: wrap; gap: 0.4rem 0.6rem; }
-    footer a { color: var(--dim); text-decoration: none; padding: 0.35rem 0.15rem; }
-    footer a:hover { color: var(--muted); }
-    a { color: var(--blue); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    body { padding: calc(2rem + env(safe-area-inset-top)) 1.25rem calc(2rem + env(safe-area-inset-bottom)); }
+    .container { max-width: 760px; margin: 0 auto; }
+    header, footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    h1 { font-size: 1.1rem; font-weight: 400; }
+    .intro { margin: 1rem 0; color: var(--muted); }
+    nav { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; padding: 0.5rem 0 1.5rem; }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    nav a, footer a { font-size: 0.85rem; }
+    section { padding: 1.75rem 0; border-top: 1px solid var(--line); scroll-margin-top: 1rem; }
+    h2 { color: var(--bright); font-size: 1rem; margin-bottom: 1rem; }
+    p, li { line-height: 1.75; }
+    p + p, p + pre, pre + p, dl + p, details + p { margin-top: 0.8rem; }
+    ul { margin: 0.8rem 0 0 1.25rem; }
+    li + li { margin-top: 0.4rem; }
+    code { overflow-wrap: anywhere; font-size: 0.85em; color: var(--text); background: var(--panel-2); padding: 0.15em 0.3em; border-radius: 3px; }
+    pre { padding: 1rem; overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; line-height: 1.65; }
+    pre code { padding: 0; background: none; overflow-wrap: normal; }
+    .parameters { display: grid; grid-template-columns: 6rem minmax(0, 1fr); gap: 0; margin-top: 1rem; }
+    dt, dd { padding: 0.75rem 0; border-bottom: 1px solid var(--line); }
+    dd { padding-left: 0.75rem; }
+    .note { border-left: 3px solid var(--accent); padding-left: 1rem; margin-top: 1rem; color: var(--muted); }
+    details { margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: 8px; }
+    summary { cursor: pointer; color: var(--text); }
+    details p { margin-top: 0.8rem; }
+    footer { border-top: 1px solid var(--line); padding-top: 1.5rem; justify-content: flex-start; }
+    .theme-btn { color: var(--muted); min-height: 40px; }
+    @media (max-width: 480px) {
+      body { padding-left: 1rem; padding-right: 1rem; }
+      .parameters { grid-template-columns: 4.5rem minmax(0, 1fr); }
+      pre { padding: 0.75rem; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1><a href="/" class="wordmark">typeahead</a> docs</h1>
-    </div>
-    <p class="subtitle">community actor search for atproto</p>
-
-    <div class="callout">
-      <strong>tl;dr</strong> — use
-      <code>/xrpc/tech.waow.typeahead.searchActors</code> on <code>typeahead.waow.tech</code>.
-      migrating from bluesky's typeahead? just swap the base URL — your existing
-      <code>app.bsky.*</code> path keeps working (see
-      <a href="#switching-from-bluesky">switching from bluesky</a>).
-    </div>
-
-    <h2>what this is</h2>
-    <p>
-      typeahead is a community-run actor search for <a href="https://atproto.com">atproto</a>,
-      served under its own lexicon. it covers everything bluesky's
-      <code>app.bsky.actor.searchActorsTypeahead</code> does — same query params, compatible
-      but slimmer response (see <a href="#response-comparison">response comparison</a> below) —
-      without bluesky in the request path.
-    </p>
-    <p>
-      accounts are discovered from the relay's event stream
-      (<a href="https://atproto.com/specs/event-stream">com.atproto.sync.subscribeRepos</a>) —
-      the relay announces every new identity and handle change, and we also pick up anyone
-      who writes a profile, post, like, or follow, wherever their PDS is hosted.
-      accounts that predate the index and have been quiet since, or whose PDS the relay
-      doesn't crawl, can be surfaced on demand
-      (see <a href="#request-indexing">request indexing</a> below).
-    </p>
-    <p>
-      search is served from our own Tantivy index, initialized from verified snapshots and
-      updated continuously from Turso for renames, deletes, moderation changes and new
-      accounts. Responses are edge-cached for 60s. Full rebuilds happen on an independent
-      backend before qualification and a routing switch; live updates do not wait for them.
-      The search path does not fall back to Bluesky or a full source-database query.
-    </p>
-
-    <h2>the endpoint</h2>
-    <p>
-      the canonical endpoint lives under our own
-      <a href="https://atproto.com/specs/lexicon">lexicon</a> namespace
-      (<a href="https://tangled.org/zzstoatzz.io/typeahead/blob/main/lexicons/tech.waow.typeahead.searchActors.json">schema</a>):
-    </p>
-    <pre><code>GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=...&amp;limit=10</code></pre>
-    <p>
-      params are <code>q</code>, <code>limit</code> (1–100), and optional <code>pds</code>, returning
-      <code>{ "actors": [...] }</code>. this is the endpoint to use —
-      <code>app.bsky.*</code> names belong to bluesky's lexicons, and this service isn't
-      bluesky. there's also a machine-readable summary at <a href="/llms.txt">/llms.txt</a>.
-    </p>
-
-    <p>
-      <code>?q=bob&amp;pds=acme.com</code> searches within the indexed hosting PDS before
-      candidate selection and ranking, including custom-domain handles. The hostname match is
-      exact and case-insensitive; subdomains are separate. HTTP(S) origins and a trailing
-      slash/dot are accepted; ports, paths, and empty values return 400. An unknown PDS returns
-      an empty list. Tantivy supports every recorded canonical hostname without a per-PDS
-      actor-count cutoff. Accounts with unknown hosting metadata cannot match a PDS filter.
-      Unavailable scope support returns <code>503 PdsScopeUnavailable</code>;
-      scoped requests never fall back to unfiltered results. This extension works on both
-      endpoint names here; it is not a Bluesky API parameter.
-    </p>
-
-    <h2 id="switching-from-bluesky">switching from bluesky</h2>
-    <p>
-      for backwards compatibility, the bluesky path
-      <code>/xrpc/app.bsky.actor.searchActorsTypeahead</code> is served as an alias — it behaves
-      identically to the canonical endpoint and is kept indefinitely, so migrating an existing
-      integration is just a base-URL swap:
-    </p>
-    <pre><code><span class="diff-del">- https://public.api.bsky.app</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10
-<span class="diff-add">+ https://typeahead.waow.tech</span>/xrpc/app.bsky.actor.searchActorsTypeahead?q=...&amp;limit=10</code></pre>
-
-    <h3>before</h3>
-    <pre><code><span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
-  <span class="str">\`https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>
-);</code></pre>
-
-    <h3>after</h3>
-    <pre><code><span class="kw">const</span> TYPEAHEAD_URL <span class="op">=</span> <span class="str">'https://typeahead.waow.tech'</span>;
-
-<span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
-  <span class="str">\`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>
-);</code></pre>
-
-    <p>
-      extracting the base URL into a constant (or env var) makes it easy to switch back
-      if you ever need to. that rollback only works while you're on the alias path —
-      bluesky doesn't serve <code>tech.waow.typeahead.searchActors</code>. once you no
-      longer need the escape hatch, move the path to the canonical endpoint too — the
-      response is identical.
-    </p>
-
-    <h2>identify your app</h2>
-    <p>
-      set the <code>X-Client</code> header so your app shows up by name in our
-      <a href="/stats">traffic stats</a> instead of as "unknown":
-    </p>
-    <pre><code><span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
-  <span class="str">\`https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>,
-  { headers: { <span class="str">'X-Client'</span>: <span class="str">'my-app.example.com'</span> } }
-);</code></pre>
-    <p>
-      ideally use your domain — the <a href="/stats">stats page</a> links each source
-      to <code>https://&lt;your-value&gt;</code>, so a domain gives you a working link
-      (a bare app name works too, it just won't link anywhere).
-      browser-based apps will also be identified automatically via the <code>Origin</code> header,
-      but <code>X-Client</code> is preferred since it works everywhere (server-side, CLI, native apps).
-      For smoke tests, use <code>X-Client: smoke-testing</code>. These requests remain in
-      operational totals, including errors, but are excluded from public app counts.
-    </p>
-
-    <h2 id="response-comparison">response comparison</h2>
-    <p>
-      both return <code>{ "actors": [...] }</code>. the actor objects differ:
-    </p>
-    <table>
-      <tr><th>field</th><th>bluesky</th><th>typeahead</th></tr>
-      <tr><td><code>did</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>handle</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>displayName</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>avatar</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>associated</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>labels</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>createdAt</code></td><td class="yes">✓</td><td class="yes">✓</td></tr>
-      <tr><td><code>viewer</code></td><td class="yes">✓</td><td class="no">—</td></tr>
-    </table>
-
-    <div class="callout warn">
-      <strong>if you depend on <code>viewer</code></strong> — this API doesn't return it
-      (it requires authentication). we return did + handle + displayName + avatar +
-      associated + labels + createdAt, which covers the full <code>profileViewBasic</code>
-      surface minus <code>viewer</code>.
-    </div>
-
-    <h2 id="pds-preference">PDS ranking preference</h2>
-    <p>
-      production accepts <code>prefer_pds=acme.com</code> to prefer
-      that hosting PDS while retaining global matches. This defaults to
-      <code>preference=pds_first</code>. For a finite nonnegative score boost instead,
-      use <code>preference=boost&amp;boost=10</code>; exact eligible handles retain priority.
-      The hard <code>pds</code> filter is independent. Preferences apply before selection,
-      and their canonical context is part of the cache key. Unsupported preference returns
-      <code>503 PdsScopeUnavailable</code>, never silent global fallback.
-    </p>
-    <p>
-      hosting metadata comes from indexed identity, not handle suffixes. Retained native
-      rollback backends may have narrower scope support and reject unsupported requests.
-      Neither engine can infer missing hosting metadata. Query or parameter
-      rejection returns <code>400</code>; unavailable, stale or invalid backend answers return
-      <code>503</code> rather than successful empty results.
-    </p>
-
-    <h2 id="profiles">profiles</h2>
-    <p>
-      once a user picks an actor, render a card without a second trip to bluesky.
-      <code>app.bsky.actor.getProfiles</code> (up to 25 <code>actors</code>) and
-      <code>app.bsky.actor.getProfile</code> (one <code>actor</code>) serve the profile-card
-      subset of <code>profileViewDetailed</code>: <code>displayName</code>, <code>description</code>,
-      <code>avatar</code>, <code>banner</code>, <code>followersCount</code> / <code>followsCount</code> /
-      <code>postsCount</code>, <code>associated</code>, <code>labels</code>, <code>createdAt</code>,
-      and <code>indexedAt</code> (when our row was last written).
-    </p>
-    <pre><code>GET https://typeahead.waow.tech/xrpc/app.bsky.actor.getProfile?actor=zzstoatzz.io</code></pre>
-    <p>
-      counts come from the bluesky appview via enrichment and are <em>omitted</em>, not zero,
-      until that path has seen the actor. viewer state, verification, and live status are not
-      served — they need the caller's social graph, which typeahead does not hold.
-    </p>
-
-    <h2>operational notes</h2>
-    <ul>
-      <li><strong>rate limited</strong> — 60 req/min per IP</li>
-      <li><strong>cached</strong> — results are edge-cached for 60s, so very recent profile changes may lag</li>
-      <li><strong>limit range</strong> — <code>1–100</code> (bluesky defaults to 10)</li>
-      <li><strong>moderation</strong> — see <a href="#moderation">moderation</a> below</li>
-      <li><strong>CORS</strong> — enabled, so browser-based apps can call it directly</li>
-    </ul>
-
-    <h2>inspect ranking</h2>
-    <p>
-      if a result looks surprising, use the <a href="/reputation">ranking report</a>.
-      it shows the stored ranking score, the score if recalculated now, percentile among
-      visible scored actors, and a few example query positions.
-    </p>
-    <p>
-      ranking score and visibility are separate. follower/post/age signals affect the score;
-      fresh accounts are penalized while very new. moderation labels, domain blocks, and
-      overrides decide whether an actor can appear at all.
-    </p>
-
-    <h2 id="moderation">moderation</h2>
-    <p>
-      atproto is a network, not a single app. bluesky PBC runs the largest appview and applies its
-      own moderation labels — <code>!hide</code>, <code>!takedown</code>, <code>!suspend</code>,
-      <code>spam</code> — which hide actors from its search results. we respect these labels by
-      default: actors flagged by bluesky's moderation service
-      (<code>did:plc:ar7c4by46qjdydhdevvrndac</code>) are excluded from search.
-    </p>
-    <p>
-      however, not every account banned by bluesky PBC is harmful. some were suspended for policy
-      disputes, handle issues, or reasons unrelated to abuse. because atproto is designed for
-      <a href="https://atproto.com/articles/intent">credible exit</a>, we think these people should
-      still be findable — identity is not content moderation.
-    </p>
-    <p>
-      to support this, when bluesky's API refuses to serve an account the index enriches it from
-      <a href="https://blacksky.community" target="_blank" rel="noopener">blacksky's</a> appview or
-      from its PDS directly (<code>com.atproto.repo.getRecord</code>), so the profile stays
-      discoverable. an appview takedown alone does not hide an account here; the labels above,
-      the slur filter below, and admin overrides do. accounts a PDS has suspended or deleted leave
-      the network's event stream as inactive and are removed from the index.
-    </p>
-    <p>
-      handles containing explicit slurs are filtered by default. An explicit per-DID show
-      override is the final decision and can rescue a false positive. These
-      regexes are
-      <a href="https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/handle/explicit-slurs.ts">ported
-      from bluesky's own PDS</a> and catch Unicode diacritics, Cyrillic substitutions, and leetspeak.
-    </p>
-
-    <h2>example: plyr.fm</h2>
-    <p>
-      <a href="https://tangled.sh/zzstoatzz.io/plyr.fm">plyr.fm</a> uses typeahead for actor
-      search. the integration looks roughly like:
-    </p>
-    <pre><code><span class="cm">// config.ts</span>
-<span class="kw">export const</span> TYPEAHEAD_URL <span class="op">=</span> <span class="str">'https://typeahead.waow.tech'</span>;
-
-<span class="cm">// HandleSearch.svelte</span>
-<span class="kw">const</span> response <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span>(
-  <span class="str">\`\${TYPEAHEAD_URL}/xrpc/app.bsky.actor.searchActorsTypeahead?q=\${<span class="fn">encodeURIComponent</span>(query)}&amp;limit=10\`</span>
-);
-<span class="kw">const</span> data <span class="op">=</span> <span class="kw">await</span> response.<span class="fn">json</span>();
-<span class="kw">const</span> actors <span class="op">=</span> (data.actors ?? []).<span class="fn">map</span>(actor <span class="op">=></span> ({
-  did: actor.did,
-  handle: actor.handle,
-  display_name: actor.displayName ?? actor.handle,
-  avatar_url: actor.avatar ?? <span class="kw">null</span>,
-}));</code></pre>
-
-    <h2 id="request-indexing">request indexing</h2>
-    <p>
-      if someone isn't showing up in results, you (or your users) can request indexing from the
-      <a href="/">homepage</a>. newly created accounts are picked up automatically from the
-      relay's event stream, but accounts created before the index existed — or hosted on a PDS
-      the relay doesn't crawl — may need a manual nudge. The handle must resolve to the DID,
-      and the authority DID document must claim that handle; unverified claims are rejected.
-    </p>
-
-    <footer>
-      <a href="/">&larr; home</a>
-      · <a href="/stats">stats</a>
+  <main class="container">
+    <header>
+      <h1><a href="/" class="wordmark">typeahead</a> / docs</h1>
       <button class="theme-btn" id="theme-toggle" type="button">theme: auto</button>
-    </footer>
-  </div>
+    </header>
+    <p class="intro">Search AT Protocol accounts from your app. Public API, no authentication required.</p>
+    <nav aria-label="On this page">
+      <a href="#search">search</a><a href="#pds">PDS filters</a><a href="#profiles">profiles</a><a href="#behavior">behavior</a>
+    </nav>
+
+    <section id="search">
+      <h2>Search accounts</h2>
+      <pre><code>curl 'https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&amp;limit=10' \\
+  -H 'X-Client: my-app.example.com'</code></pre>
+      <dl class="parameters">
+        <dt><code>q</code></dt><dd>Required. Search handles and display names.</dd>
+        <dt><code>limit</code></dt><dd>1–100 results; defaults to 10.</dd>
+        <dt><code>pds</code></dt><dd>Optional hosting PDS filter. <a href="#pds">Details below.</a></dd>
+      </dl>
+      <p>Returns <code>{ "actors": [...] }</code>. Actors include <code>did</code> and <code>handle</code>, plus available <code>displayName</code>, <code>avatar</code>, <code>associated</code>, <code>labels</code> and <code>createdAt</code>. Authenticated <code>viewer</code> state is not included.</p>
+      <p><a href="https://tangled.org/zzstoatzz.io/typeahead/blob/main/lexicons/tech.waow.typeahead.searchActors.json">Response schema</a> · <a href="/llms.txt">Agent reference</a></p>
+      <details id="switching-from-bluesky">
+        <summary>Switching from Bluesky’s typeahead</summary>
+        <p>Replace <code>https://public.api.bsky.app</code> with <code>https://typeahead.waow.tech</code>. Keep <code>/xrpc/app.bsky.actor.searchActorsTypeahead</code>: it is a permanent alias with the same behavior as our canonical endpoint.</p>
+        <p id="response-comparison">The response is a basic profile list without <code>viewer</code> state. If you need authenticated relationship information, obtain it separately through the user’s appview.</p>
+      </details>
+      <p>Use your domain in <code>X-Client</code> for attribution on <a href="/stats">/stats</a>. Browser requests can also be attributed through <code>Origin</code>.</p>
+      <p class="note">For tests, send <code>X-Client: smoke-testing</code>. Requests and errors stay in operational totals, but do not count toward public app adoption.</p>
+    </section>
+
+    <section id="pds">
+      <h2>Filter by hosting PDS</h2>
+      <pre><code>GET /xrpc/tech.waow.typeahead.searchActors?q=bob&amp;pds=acme.com</code></pre>
+      <p>The filter uses recorded hosting identity, so it includes custom-domain handles. It applies before ranking and result selection; there is no per-PDS account-count cutoff.</p>
+      <ul>
+        <li>Hostnames match exactly, ignoring case. Subdomains are separate.</li>
+        <li>HTTP(S) origins and a trailing slash or dot are accepted. Ports, paths and empty values return <code>400</code>.</li>
+        <li>An unknown PDS returns an empty list. Accounts with missing hosting metadata cannot match the filter.</li>
+        <li>Unavailable scope support returns <code>503 PdsScopeUnavailable</code>, never unfiltered results.</li>
+      </ul>
+      <p class="note">PDS metadata coverage is incomplete. A missing scoped result does not establish that an account is hosted elsewhere.</p>
+      <details id="pds-preference">
+        <summary>Advanced: prefer a PDS without filtering</summary>
+        <p><code>prefer_pds=acme.com</code> keeps global matches and defaults to <code>preference=pds_first</code>. Alternatively, <code>preference=boost&amp;boost=10</code> adds a finite, nonnegative score boost; exact eligible handles retain priority.</p>
+        <p>The independent <code>pds</code> filter still applies. Preference and boost options require <code>prefer_pds</code>. Missing hosting metadata also limits preferences. These extensions work on both endpoint names here; they are not Bluesky API parameters.</p>
+      </details>
+    </section>
+
+    <section id="profiles">
+      <h2>Fetch profile cards</h2>
+      <pre><code>GET /xrpc/app.bsky.actor.getProfile?actor=zzstoatzz.io
+GET /xrpc/app.bsky.actor.getProfiles?actors=zzstoatzz.io&amp;actors=...</code></pre>
+      <p>Accepts handles or DIDs; the batch endpoint accepts up to 25 actors. Responses include available profile text, images, account counts, labels and timestamps. They omit viewer state, verification and live status.</p>
+      <p>Counts come from enrichment and are omitted until known. <code>indexedAt</code> is the source row’s last write time. Profile responses are cached for five minutes.</p>
+    </section>
+
+    <section id="behavior">
+      <h2>Limits and freshness</h2>
+      <ul>
+        <li>60 requests per minute per IP. Browser CORS is enabled.</li>
+        <li>Search responses are edge-cached for 60 seconds; changes may take longer to arrive through ingestion.</li>
+        <li>Invalid query parameters return <code>400</code>; rate limits return <code>429</code>; an unavailable search backend returns <code>503</code>.</li>
+        <li>Tantivy receives continuous source updates. Live updates do not wait for full snapshot rebuilds.</li>
+      </ul>
+      <p>For surprising ordering, see the <a href="/reputation">ranking report</a>. Ranking and visibility are separate decisions.</p>
+      <details id="moderation">
+        <summary>Moderation and visibility</summary>
+        <p>Search respects Bluesky moderation labels <code>!hide</code>, <code>!takedown</code>, <code>!suspend</code> and <code>spam</code>, as well as domain blocks and explicit-slur filtering. Per-DID overrides can change visibility; an explicit show override is the final decision.</p>
+        <p>An appview refusing to serve a profile does not by itself hide that account. Profiles can be enriched through another appview or directly from a PDS. PDS account deactivation or deletion removes the account from search.</p>
+      </details>
+      <details id="request-indexing">
+        <summary>An account is missing</summary>
+        <p>Request indexing from the <a href="/">homepage</a>. Accounts outside the relay’s coverage or quiet since before indexing began may need this. The handle and authoritative DID document must resolve to each other.</p>
+      </details>
+    </section>
+    <footer><a href="/">home</a><a href="/stats">stats</a><a href="/llms.txt">llms.txt</a><a href="https://tangled.org/zzstoatzz.io/typeahead">source</a></footer>
+  </main>
   <script>${THEME_SCRIPT}</script>
 </body>
 </html>`;
