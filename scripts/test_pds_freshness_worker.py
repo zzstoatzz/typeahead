@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pds_cloud_pilot import read_json
 from pds_freshness_queue import Queue
-from pds_freshness_worker import refresh_one
+from pds_freshness_worker import refresh_one, refresh_batch
 from pds_repair_ledger import Ledger
 
 
@@ -35,7 +35,7 @@ class RefreshTests(unittest.TestCase):
                     owner.db.commit()
                 self.send_response(owner.status)
                 self.end_headers()
-                self.wfile.write(json.dumps({'id':'did:plc:test','service':[{'id':'#atproto_pds','type':'AtprotoPersonalDataServer','serviceEndpoint':'https://new.test'}]}).encode())
+                self.wfile.write(json.dumps({'id':self.path.removeprefix('/') if self.path.startswith('/did:') else 'did:plc:test','service':[{'id':'#atproto_pds','type':'AtprotoPersonalDataServer','serviceEndpoint':'https://new.test'}]}).encode())
             def log_message(self, *args):
                 pass
         self.server = ThreadingHTTPServer(('127.0.0.1',0),Handler)
@@ -69,6 +69,29 @@ class RefreshTests(unittest.TestCase):
         self.assertEqual(self.run_one()['outcome'],'conflict')
         self.assertEqual(self.db.execute('SELECT pds FROM actors').fetchone()[0],'https://concurrent.test')
         self.assertEqual(self.queue.metrics()['states'],{'pending':1})
+
+    def test_batch_commits_once_and_lost_response_is_held(self):
+        self.db.execute("INSERT INTO actors VALUES('did:plc:other','',1,'other.test')")
+        self.db.commit()
+        self.queue.discover(['did:plc:other'], 2)
+        writes = []
+
+        def lost_response(sql, params):
+            rows = self.execute(sql, params)
+            if sql.startswith('UPDATE'):
+                writes.append(sql)
+                raise OSError('committed response lost')
+            return rows
+
+        claims = self.queue.claim()
+        with self.assertRaises(OSError):
+            refresh_batch(lost_response, self.ledger, self.queue, claims,
+                          lambda did: read_json('http://127.0.0.1:' + str(self.server.server_port) + '/' + did))
+        self.assertEqual(len(writes), 1)
+        self.assertEqual(self.db.execute("SELECT count(*) FROM actors WHERE pds='https://new.test'").fetchone()[0], 2)
+        self.assertEqual(self.queue.metrics()['states'], {'uncertain': 2})
+        self.assertEqual(self.queue.claim(now=int(time.time()) + 86400), [])
+        self.assertEqual({self.ledger.current(c['did'])['state'] for c in claims}, {'unknown'})
 
 
 if __name__ == '__main__':

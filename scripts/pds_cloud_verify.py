@@ -5,6 +5,7 @@ import os
 import time
 import urllib.error
 import urllib.parse
+import uuid
 from pathlib import Path
 
 from pds_cloud_pilot import API, read_json, source
@@ -21,9 +22,15 @@ def verify(directory, backend):
     proposals = {r['did']: r for r in rows if r['event'] == 'would_write'}
     written = {r['receipt']['did'] for r in rows if r['event'] == 'write' and r['receipt']['state'] == 'confirmed'}
     passed = {r['did'] for r in rows if r['event'] == 'verification' and r['passed']}
+    for receipt in directory.glob('verification-*.jsonl'):
+        for line in receipt.read_text().splitlines():
+            row = json.loads(line)
+            if row['event'] == 'verification' and row['passed']:
+                passed.add(row['did'])
+    passed &= written
     client = Turso({'url': os.environ['TURSO_URL'], 'token': os.environ['TURSO_AUTH_TOKEN']})
     started = time.monotonic()
-    with (directory / 'verification-resumed.jsonl').open('x') as log:
+    with (directory / ('verification-' + uuid.uuid4().hex + '.jsonl')).open('x') as log:
         def event(kind, **values):
             log.write(json.dumps({'event': kind, 'at': time.time(), **values}) + '\n')
             log.flush()

@@ -1,16 +1,15 @@
 # PDS identity repair tooling
 
-Status: October 20, 2026. Full coverage repair and recurring coverage are
-unfinished. [Cleanup](pds-repair-cleanup-20261020.md) removed the abandoned
-controllers and unconnected framework; execution is stopped. Two guarded source repairs were verified in native and public
-search. Offline reconstruction and larger-cutoff experiments are not deployed
-coverage. Production still uses the 10,000-actor cutoff.
+Status: October 30, 2026. Production uses Tantivy and has no native 10,000-actor
+PDS cutoff. Missing source PDS metadata remains the coverage problem. The
+five-account cloud pilot passed; larger qualification and recurring freshness
+are still in progress. No full-backlog repair or recurring writer is deployed.
 
-The weekly identity path defaults to missing handles, omitting actors that
-already have handles but lack PDS values. Simply changing its selection would
-also expose an older writer that overwrites existing identity fields. The tools
-here separate discovery, authoritative reconstruction, conditional writes and
-verification.
+The retired home PLC path selected missing handles and omitted actors with
+handles but no PDS. It has been removed; do not restore it. The current tools
+separate discovery, authoritative resolution, conditional writes and verification.
+Historical native canary and reconstruction tooling below is retained evidence,
+not the current serving architecture.
 
 ## Data preparation
 
@@ -22,7 +21,8 @@ history and validate tail continuity. Their output is not approval to apply.
 `pds_reconstruction_report.py` accounts for unresolved and excluded identities.
 
 The abandoned full-export downloader and duplicate cloud reconstruction controller
-were removed during cleanup. No further bulk downloads or repair jobs are enabled.
+were removed during cleanup. No full-backlog downloads or repair jobs are enabled; the bounded cloud stages
+are separate from that retired controller.
 Retained HeavyPad results, cloud snapshot/candidate data, and the completed PLC
 tail remain evidence, not approval to apply. `pds_bundle_download.py` remains a
 dependency of the retained tail capture's durable transfer budget.
@@ -32,8 +32,9 @@ dependency of the retained tail capture's durable transfer budget.
 `pds_repair_canary.py` permits at most five identities, with fresh authority and
 source reads, a completed health baseline, conditional writes and receipts.
 `pds_repair_ledger.py` records prepared, sent, confirmed and ambiguous attempts;
-unknown writes must be reconciled, never blindly retried. Updates only fill an
-empty PDS when the observed source version still matches. `Ledger.retry`
+unknown writes must be reconciled, never blindly retried. Pilot updates only fill an
+empty PDS. Freshness migration updates compare both the observed PDS and source
+version before replacing hosting; neither path changes unrelated fields. `Ledger.retry`
 requires the current attempt to have a definite `confirmed` or `conflict`
 outcome and retains its original receipt in `attempt_history`. Only one current
 attempt per DID is allowed. Ambiguous outcomes remain ineligible even after
@@ -142,11 +143,12 @@ successful bounded stage.
 
 ### Migration refresh and verification recovery
 
-`pds_freshness_worker.refresh_one` refreshes one leased identity from fresh
+`pds_freshness_worker.refresh_batch` refreshes up to 100 leased identities from fresh
 source and authoritative DID reads. It compares both the observed PDS and source
 version before changing hosting, preserves unrelated columns, backs off failed
 resolution, and reschedules successful checks independently of profile updates.
-A definite concurrent-write conflict returns to the queue; ambiguous writes stay
+It applies the prepared changes in one conditional SQL statement and retains
+per-identity results. A definite concurrent-write conflict returns to the queue; ambiguous writes stay
 held for reconciliation. The primitive is locally tested, not a recurring deployment.
 
 `pds_cloud_verify.py` resumes read-only checks after an interrupted bounded stage.
