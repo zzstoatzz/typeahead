@@ -139,6 +139,11 @@ policy and expiry validators pass, and is reevaluated while serving.
 Independent provider/public endpoint qualification and all release gates remain
 required before route promotion. No slot has been deployed by this change.
 
+The [published slot-image receipt](tantivy-slot-image-push.json) pins the tested
+Linux image to an immutable registry digest and records executable and installed
+source hashes. Publishing the image does not deploy a slot or qualify its
+provider resources, live coverage or serving performance.
+
 Qualification reads only `/index/status` and `/ready`, bounds response size and
 time, prohibits redirects, checks engine/build/format acknowledgements, and
 requires full source counts, expiry-v4 format, positive observation revision,
