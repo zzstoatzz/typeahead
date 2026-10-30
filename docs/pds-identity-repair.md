@@ -16,11 +16,32 @@ first two stages; the final stage stopped after 286 passing identity checks and
 must not be described as fully verified. Receipts and cleanup details are in the
 [retirement record](ops/pds-repair-retirement-20261030/README.md).
 
-Before selecting another backfill implementation, inspect the existing network
-archive and Hubble for reusable current identity data. Hubble documents a PDS
-field on its per-account `getRepoInfo`; bulk DID-to-PDS availability is not yet
-verified. Do not infer that repository archives themselves contain hosting
-identity or launch another PLC reconstruction on that assumption.
+## Hubble export approach
+
+Hubble stores per-DID PDS and identity-resolution time in its repo identity
+metadata (`DbRepoIdentity` at source revision `52960bf`). Its
+[public API](https://web.hubble.microcosm.blue/api/) exposes PDS through
+`getRepoInfo`, but `listRepos` omits it. The live API was checked; no published
+bulk identity export was found in the API docs or current server routes. Export
+availability therefore requires an operator response, not another crawler.
+
+Our existing Stream instance reports 16.3 million repos. Its metadata contains
+`host` and `pds`, but normal bootstrap can leave `pds` empty and store the final
+download host separately. Archive identity events contain no PDS. This is not
+proof of complete, fresh hosting coverage and does not justify replaying records.
+
+Next dependency: request a metadata-only `did, pds, resolved_at` export from
+Hubble, preferably with account status and an export timestamp. No message has
+been sent. Once available, inspect provenance/freshness, validate a small sample,
+then conditionally fill missing source values in cloud and verify scoped search.
+Use individual resolution only for a measured residual. No new mirror or generic
+freshness framework is planned; preserve the existing live identity-event path.
+
+Completion also includes reconciling relevant operations/API documentation and
+then simplifying the public `/docs` page (`src/pages/docs.ts`): concise quickstart,
+verified parameter/response guidance, fewer duplicated explanations, and a cleaner
+layout. Keep `/llms.txt` and README consistent with the final deployed behavior.
+That public-page cleanup remains pending until the repair outcome is known.
 
 ## Retained historical tooling
 
