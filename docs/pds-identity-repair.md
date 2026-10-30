@@ -120,3 +120,14 @@ script. The previous native canary remains historical tooling, not this runner.
 Local verification: `uv run python -m unittest discover -s scripts -p 'test_pds_*.py'`.
 The added tests exercise real SQLite writes, concurrent profile/hosting changes,
 stale authority, subject mismatch, and a committed write with a lost response.
+
+### Freshness queue primitive
+
+`scripts/pds_freshness_queue.py` provides the local SQLite state intended for a
+persistent cloud volume. Discovery checkpoints and identity inserts commit
+atomically. Verification age is independent of source profile timestamps.
+Read leases expire and carry unique ownership tokens; stale workers cannot start
+writes or mark a reclaimed identity verified. Writing/uncertain states never
+expire into automatic retry. Failed authority reads preserve the last verified
+PDS and use bounded backoff. This queue is tested but not yet wired to a deployed
+recurring worker; it is not evidence that backlog repair or freshness is complete.
