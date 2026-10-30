@@ -28,10 +28,29 @@ the installed volume, including cached restart and requalification. Its
 exact admission and provider binding. The temporary controller VM and deployment
 were retired. The production-identical dev preview now points at A. Its
 [public smoke](../evals/tantivy-dev-20261028/checkpoint-public-smoke.json) passed
-53 requests with no failures or inconclusive checks. Isolated live-origin rollback
-verification remains in progress.
+53 requests with no failures or inconclusive checks. The
+[real-origin rollback rehearsal](../evals/tantivy-dev-20261028/checkpoint-live-route-rehearsal.json)
+passed native → A → native with 13 bounded GETs, both aliases and stale-ETag
+rejection. Its routing object was isolated; production routing was not changed.
 Production remains native. Historical attempts below are evidence, not current
 instructions to repeat their builds or trials.
+
+## Readiness requirements
+
+| Requirement | Current evidence | Remaining limit |
+| --- | --- | --- |
+| Complete matching and PDS semantics | Full-corpus functional oracle and 53 deployed preview requests pass | Source PDS metadata remains incomplete; missing hosts cannot be inferred by either engine |
+| Serving speed and resources | Matched 5,224-request trials beat native; [live provider readback](../evals/tantivy-dev-20261028/checkpoint-final-provider.json) confirms 2 shared CPUs / 1 GiB / 20 GiB | No production traffic replay or RAM-reduction claim |
+| Source freshness and durable deletion | Live source audit, eight canonical deleted-document hashes, cached restart and [freshness readback](../evals/tantivy-dev-20261028/checkpoint-final-freshness.json) pass | Public disappearance of these specific old handles was not observed |
+| Moderation | Same-D1 controlled hide/unhide/expiry tests and complete fresh canonical policy | No existing operator hide override supplied a live sampled witness |
+| Native rollback | Real-origin isolated Worker rehearsal passes; native remains independently healthy | Production cache propagation duration is not measured |
+| Publisher and installation | Actual cloud checkpoint publication, immutable manifest/bundle, A install and cached restart pass | Recurring two-slot retirement/refresh is not yet qualified on live slots |
+| Review and rollout | [Typeahead draft PR](https://github.com/zzstoatzz/typeahead/pull/1) and [controller draft PR](https://github.com/zzstoatzz/my-prefect-server/pull/5) | Release proof and exact approved rollout commands remain to be finalized after open gates |
+
+The candidate's typed checkpoint admission is valid and fresh. Its background
+full-source reconciliation is still on its first round; ordinary polling is not
+being represented as completed full coverage. The expiry supervisor remains
+active. Neither a positive final release proof nor production promotion is claimed.
 
 ## Qualification evidence
 
