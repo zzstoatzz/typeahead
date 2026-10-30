@@ -1,0 +1,8 @@
+{
+  "runtime_source_unchanged": true,
+  "filesystem_free_bytes_after_cleanup": 11052466176,
+  "evidence_bytes": 636192,
+  "cleanup_audit": "comparison-summary.json",
+  "production_access": false,
+  "compiler_cache": "Shared Zig dependency/global cache retained; owned source copies, build cache and install binaries removed."
+}

@@ -1,0 +1,4 @@
+info(local_db): opening /var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-comparison-2t69el9p/10000/complete-overlay.db
+info(local_db): read pool: size=4 wait_budget_ms=250
+info(local_db): initialized
+info(local_db): snapshot attached: /var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-comparison-2t69el9p/10000/build-complete/build-b1793229781-abd2/index.db

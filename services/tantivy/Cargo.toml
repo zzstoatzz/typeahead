@@ -1,0 +1,21 @@
+[package]
+name = "typeahead-tantivy"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[dependencies]
+tantivy = "=0.27.0"
+regex = "=1.13.1"
+time = { version = "=0.3.55", features = ["parsing"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.145"
+sha2 = "=0.10.9"
+axum = "=0.8.6"
+tokio = { version = "=1.48.0", features = ["rt-multi-thread", "macros", "net", "signal", "time", "sync"] }
+
+[dev-dependencies]
+tempfile = "=3.27.0"
+
+[profile.release]
+debug = false

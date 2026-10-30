@@ -1,0 +1,429 @@
+{
+  "native": [
+    {
+      "actors": 1000,
+      "variant": "baseline",
+      "snapshot_bytes": 3043328,
+      "memberships": 63026,
+      "keys": 16556,
+      "warm_correct": 15,
+      "cases_per_phase": 20,
+      "post_update_correct": 12,
+      "warm_engine_us": {
+        "count": 200,
+        "p50": 108,
+        "p95": 401,
+        "p99": 473,
+        "max": 525
+      },
+      "warm_http_us": {
+        "count": 200,
+        "p50": 311.417,
+        "p95": 620.75,
+        "p99": 712.083,
+        "max": 745.167
+      },
+      "mixed_engine_us": {
+        "count": 6740,
+        "p50": 126,
+        "p95": 570,
+        "p99": 724,
+        "max": 920
+      },
+      "mixed_http_us": {
+        "count": 6740,
+        "p50": 343.667,
+        "p95": 813.166,
+        "p99": 950.5,
+        "max": 4411.125
+      },
+      "mixed_rss_bytes_after": 20103168,
+      "mixed_attempts": 6740,
+      "mixed_seconds": 3.005419916007668,
+      "mixed_committed_batches": 30,
+      "mixed_committed_rows": 3000,
+      "mixed_sqlite_changes": 139260,
+      "mixed_lag_ms": 2629,
+      "overlay_bytes": 1568768
+    },
+    {
+      "actors": 1000,
+      "variant": "refill200",
+      "snapshot_bytes": 3043328,
+      "memberships": 63026,
+      "keys": 16556,
+      "warm_correct": 17,
+      "cases_per_phase": 20,
+      "post_update_correct": 15,
+      "warm_engine_us": {
+        "count": 200,
+        "p50": 102,
+        "p95": 371,
+        "p99": 457,
+        "max": 484
+      },
+      "warm_http_us": {
+        "count": 200,
+        "p50": 338.583,
+        "p95": 650.625,
+        "p99": 730.625,
+        "max": 881.125
+      },
+      "mixed_engine_us": {
+        "count": 6240,
+        "p50": 127,
+        "p95": 667,
+        "p99": 757,
+        "max": 2405
+      },
+      "mixed_http_us": {
+        "count": 6240,
+        "p50": 354.334,
+        "p95": 899.333,
+        "p99": 994.917,
+        "max": 6312.709
+      },
+      "mixed_rss_bytes_after": 20430848,
+      "mixed_attempts": 6240,
+      "mixed_seconds": 3.008266624994576,
+      "mixed_committed_batches": 31,
+      "mixed_committed_rows": 3100,
+      "mixed_sqlite_changes": 143902,
+      "mixed_lag_ms": 2725,
+      "overlay_bytes": 1568768
+    },
+    {
+      "actors": 1000,
+      "variant": "complete",
+      "snapshot_bytes": 4542464,
+      "memberships": 102866,
+      "keys": 26720,
+      "warm_correct": 20,
+      "cases_per_phase": 20,
+      "post_update_correct": 20,
+      "warm_engine_us": {
+        "count": 200,
+        "p50": 93,
+        "p95": 501,
+        "p99": 589,
+        "max": 624
+      },
+      "warm_http_us": {
+        "count": 200,
+        "p50": 328.209,
+        "p95": 756.75,
+        "p99": 862.25,
+        "max": 5699.292
+      },
+      "mixed_engine_us": {
+        "count": 6040,
+        "p50": 110,
+        "p95": 1039,
+        "p99": 1283,
+        "max": 6032
+      },
+      "mixed_http_us": {
+        "count": 6040,
+        "p50": 334.917,
+        "p95": 1316.25,
+        "p99": 1546.708,
+        "max": 7558.625
+      },
+      "mixed_rss_bytes_after": 21708800,
+      "mixed_attempts": 6040,
+      "mixed_seconds": 3.012711582996417,
+      "mixed_committed_batches": 27,
+      "mixed_committed_rows": 2700,
+      "mixed_sqlite_changes": 144126,
+      "mixed_lag_ms": 2765,
+      "overlay_bytes": 1826816
+    },
+    {
+      "actors": 10000,
+      "variant": "baseline",
+      "snapshot_bytes": 10162176,
+      "memberships": 167902,
+      "keys": 54734,
+      "warm_correct": 15,
+      "cases_per_phase": 20,
+      "post_update_correct": 12,
+      "warm_engine_us": {
+        "count": 200,
+        "p50": 191,
+        "p95": 398,
+        "p99": 461,
+        "max": 553
+      },
+      "warm_http_us": {
+        "count": 200,
+        "p50": 434.5,
+        "p95": 701.75,
+        "p99": 913.25,
+        "max": 944.625
+      },
+      "mixed_engine_us": {
+        "count": 4820,
+        "p50": 238,
+        "p95": 645,
+        "p99": 767,
+        "max": 996
+      },
+      "mixed_http_us": {
+        "count": 4820,
+        "p50": 457.959,
+        "p95": 896.791,
+        "p99": 1010.458,
+        "max": 7633.708
+      },
+      "mixed_rss_bytes_after": 24641536,
+      "mixed_attempts": 4820,
+      "mixed_seconds": 3.0084311249956954,
+      "mixed_committed_batches": 32,
+      "mixed_committed_rows": 3200,
+      "mixed_sqlite_changes": 148544,
+      "mixed_lag_ms": 2712,
+      "overlay_bytes": 1568768
+    },
+    {
+      "actors": 10000,
+      "variant": "refill200",
+      "snapshot_bytes": 10162176,
+      "memberships": 167902,
+      "keys": 54734,
+      "warm_correct": 17,
+      "cases_per_phase": 20,
+      "post_update_correct": 15,
+      "warm_engine_us": {
+        "count": 200,
+        "p50": 226,
+        "p95": 435,
+        "p99": 491,
+        "max": 537
+      },
+      "warm_http_us": {
+        "count": 200,
+        "p50": 469.542,
+        "p95": 710.458,
+        "p99": 867.375,
+        "max": 924.417
+      },
+      "mixed_engine_us": {
+        "count": 4620,
+        "p50": 259,
+        "p95": 665,
+        "p99": 744,
+        "max": 1071
+      },
+      "mixed_http_us": {
+        "count": 4620,
+        "p50": 490.667,
+        "p95": 901.583,
+        "p99": 998.0,
+        "max": 10112.375
+      },
+      "mixed_rss_bytes_after": 24608768,
+      "mixed_attempts": 4620,
+      "mixed_seconds": 3.007395333988825,
+      "mixed_committed_batches": 32,
+      "mixed_committed_rows": 3200,
+      "mixed_sqlite_changes": 148544,
+      "mixed_lag_ms": 2685,
+      "overlay_bytes": 1568768
+    },
+    {
+      "actors": 10000,
+      "variant": "complete",
+      "snapshot_bytes": 57688064,
+      "memberships": 1361066,
+      "keys": 298898,
+      "warm_correct": 20,
+      "cases_per_phase": 20,
+      "post_update_correct": 20,
+      "warm_engine_us": {
+        "count": 200,
+        "p50": 152,
+        "p95": 10336,
+        "p99": 17613,
+        "max": 17835
+      },
+      "warm_http_us": {
+        "count": 200,
+        "p50": 440.916,
+        "p95": 10762.125,
+        "p99": 17979.083,
+        "max": 18219.25
+      },
+      "mixed_engine_us": {
+        "count": 880,
+        "p50": 177,
+        "p95": 15472,
+        "p99": 24464,
+        "max": 26087
+      },
+      "mixed_http_us": {
+        "count": 880,
+        "p50": 433.667,
+        "p95": 16043.333,
+        "p99": 25000.041,
+        "max": 26588.917
+      },
+      "mixed_rss_bytes_after": 63520768,
+      "mixed_attempts": 880,
+      "mixed_seconds": 3.0485253329970874,
+      "mixed_committed_batches": 24,
+      "mixed_committed_rows": 2400,
+      "mixed_sqlite_changes": 128112,
+      "mixed_lag_ms": 2779,
+      "overlay_bytes": 1826816
+    }
+  ],
+  "static_controls": [
+    {
+      "actors": 1000,
+      "fts_cases_correct": 19,
+      "rank_id_cases_correct": 19,
+      "fts_broad_predicate_rows": 16,
+      "fts_broad_vm_steps_approx": 400,
+      "rank_broad_id_iterations_and_seeks": 20,
+      "rank_id_wire_bytes_u32": 490985,
+      "rank_memberships": 50605,
+      "fts_sqlite_file_bytes": 233472,
+      "fts_plan": [
+        [
+          5,
+          0,
+          156,
+          "SCAN terms VIRTUAL TABLE INDEX 0:M2"
+        ],
+        [
+          10,
+          0,
+          45,
+          "SEARCH a USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          35,
+          0,
+          0,
+          "USE TEMP B-TREE FOR ORDER BY"
+        ]
+      ]
+    },
+    {
+      "actors": 10000,
+      "fts_cases_correct": 19,
+      "rank_id_cases_correct": 19,
+      "fts_broad_predicate_rows": 9016,
+      "fts_broad_vm_steps_approx": 180400,
+      "rank_broad_id_iterations_and_seeks": 20,
+      "rank_id_wire_bytes_u32": 6838598,
+      "rank_memberships": 670705,
+      "fts_sqlite_file_bytes": 2531328,
+      "fts_plan": [
+        [
+          5,
+          0,
+          156,
+          "SCAN terms VIRTUAL TABLE INDEX 0:M2"
+        ],
+        [
+          10,
+          0,
+          45,
+          "SEARCH a USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          35,
+          0,
+          0,
+          "USE TEMP B-TREE FOR ORDER BY"
+        ]
+      ]
+    },
+    {
+      "actors": 30000,
+      "fts_cases_correct": 19,
+      "rank_id_cases_correct": 19,
+      "fts_broad_predicate_rows": 29016,
+      "fts_broad_vm_steps_approx": 580900,
+      "rank_broad_id_iterations_and_seeks": 20,
+      "rank_id_wire_bytes_u32": 20941458,
+      "rank_memberships": 2048705,
+      "fts_sqlite_file_bytes": 8323072,
+      "fts_plan": [
+        [
+          5,
+          0,
+          156,
+          "SCAN terms VIRTUAL TABLE INDEX 0:M2"
+        ],
+        [
+          10,
+          0,
+          45,
+          "SEARCH a USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          35,
+          0,
+          0,
+          "USE TEMP B-TREE FOR ORDER BY"
+        ]
+      ]
+    }
+  ],
+  "retired_runs": [
+    {
+      "name": "native-comparison-1",
+      "scratch": "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-comparison-2t69el9p",
+      "scratch_removed": true,
+      "error": null,
+      "complete": true,
+      "children_terminal": true,
+      "scratch_bytes_before_cleanup": 178535335
+    },
+    {
+      "name": "native-comparison-2",
+      "scratch": "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-comparison-f7y8rtwx",
+      "scratch_removed": true,
+      "error": null,
+      "complete": true,
+      "children_terminal": true,
+      "scratch_bytes_before_cleanup": 178535335
+    },
+    {
+      "name": "static-plan-controls-1",
+      "scratch": "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-plan-controls-pgf1odhl",
+      "scratch_removed": true,
+      "error": "table actors has 8 columns but 9 values were supplied",
+      "complete": false,
+      "children_terminal": null,
+      "scratch_bytes_before_cleanup": 24576
+    },
+    {
+      "name": "static-plan-controls-2",
+      "scratch": "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-plan-controls-q2mk_77h",
+      "scratch_removed": true,
+      "error": null,
+      "complete": true,
+      "children_terminal": null,
+      "scratch_bytes_before_cleanup": 0
+    },
+    {
+      "name": "static-plan-controls-3",
+      "scratch": "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-plan-controls-49iafdvo",
+      "scratch_removed": true,
+      "error": null,
+      "complete": true,
+      "children_terminal": null,
+      "scratch_bytes_before_cleanup": 0
+    }
+  ],
+  "files": {
+    "native-comparison-1/results.json.gz": "918e35d23e8bfd5092589ed3add08ac6a14df8ae63d4c17c8fb081ca9848a14f",
+    "native-comparison-2/results.json.gz": "dee93345e7b618516f5f905de91eb9923f1c928a7c2888ea4134651c788518c8",
+    "static-plan-controls-1/results.json": "2cfe69192df7078da6a3162e2a9f3b9cf035bae782004fc7c93aa5dfaf182274",
+    "static-plan-controls-2/results.json": "bcba67296097a223f5cb0f4dd5f6b78f428210073b32581bd125ebdd7579c58d",
+    "static-plan-controls-3/results.json": "916ce9a41d077e766bbaed4962925daf0735f6c78a1ef9388993927119c6c2c7"
+  }
+}

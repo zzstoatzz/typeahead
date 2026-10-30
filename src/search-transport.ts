@@ -1,4 +1,4 @@
-import { allowedRoute, readRoute, routeHintRecord, sharedHintsAllowed, speculativeRoute } from "./search-route";
+import { allowedRoute, readRoute, routeHintRecord, sharedHintsAllowed, speculativeRoute, responseMatchesRoute } from "./search-route";
 import { HINT_CACHE, readSharedHint, rememberSharedHint, forgetSharedHint } from "./shared-route-hint";
 import { validatedSearch } from "./validated-search";
 
@@ -42,13 +42,29 @@ export default {
       return Response.json({ error: "SearchRouteUnavailable" }, { status: 503 });
     }
     if (url.pathname === "/route") return Response.json(route, { headers: { "Cache-Control": "no-store" } });
+    if (route.engine === "tantivy" && request.method === "POST") {
+      return Response.json({ error: "NativeRefreshUnsupported", message: "Tantivy accepts authoritative source reconciliation only; indexing freshness is provided by source polling." }, { status: 503 });
+    }
+    if (route.engine === "tantivy" && url.pathname === "/debug/index") {
+      return Response.json({ error: "BackendCapabilityUnavailable" }, { status: 503 });
+    }
     const target = new URL(url.pathname + url.search, route.origin);
     const forwarded = new Request(target, request);
     forwarded.headers.delete("Host");
     forwarded.headers.delete("X-Typeahead-Routed-Health");
     if (url.pathname === "/health") forwarded.headers.set("X-Typeahead-Routed-Health", "1");
     try {
-      return await fetch(forwarded, { signal: AbortSignal.timeout(url.pathname === "/admin/refresh" ? 5000 : 3000), redirect: "manual" });
+      const response = await fetch(forwarded, { signal: AbortSignal.timeout(url.pathname === "/admin/refresh" ? 5000 : 3000), redirect: "manual" });
+      if (!responseMatchesRoute(route, response)) {
+        await response.body?.cancel().catch(() => {});
+        return Response.json({ error: "SearchBackendIdentityMismatch" }, { status: 503 });
+      }
+      if (route.engine !== "tantivy" && response.ok && !response.headers.has("X-Typeahead-Engine")) {
+        const identified = new Response(response.body, response);
+        identified.headers.set("X-Typeahead-Engine", "native");
+        return identified;
+      }
+      return response;
     } catch {
       return Response.json({ error: "SearchBackendUnavailable" }, { status: 503 });
     }

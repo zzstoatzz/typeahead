@@ -1,0 +1,43 @@
+{
+  "release_validated": {
+    "key": "control/tantivy-releases/058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083.json",
+    "sha256": "058cbb2081c5f4cf729e4b652c943b040185b572dc3c27fd212713b3ec022083",
+    "passed": true
+  },
+  "candidate_requalified": true,
+  "prepared_route_preconditions_match": true,
+  "native_fallback_fresh": true,
+  "provider_machine_id": "e820354f119698",
+  "binding": {
+    "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+    "retrieval_strategy": "global-merge",
+    "canonical_rules_source_sha256": "34559d8f0ed07567505523adb363e8a5f77ae279308c5776340ad25d184077ee",
+    "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:34aef86a7d9bf7256d80681728022a3ba56c2b7de59129f269da4bc14df0f929",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "volume_size_gib": 20
+  },
+  "observed_at": 1793354679.062005,
+  "passed": true,
+  "scope": "actual production metadata, read-only retention policy evaluation",
+  "adapter_sha256": "8257ef4aa117ea2ac31ee78a834cd0b993f3860aa514f956fd3eb852f4985df0",
+  "required_candidate_and_native_builds": [
+    "b1793109259-2b36",
+    "b1793109259-2b36-px05",
+    "b1793346536-cp-7c8322df79"
+  ],
+  "actual_retained_build_ids": [
+    "b1793081565-0228",
+    "b1793081565-0228-px05",
+    "b1793109259-2b36",
+    "b1793109259-2b36-px05",
+    "b1793346536-cp-7c8322df79"
+  ],
+  "route_unchanged": true,
+  "remote_writes": 0,
+  "remote_payload_reads": 0,
+  "two_slot_retirement_verified": false
+}

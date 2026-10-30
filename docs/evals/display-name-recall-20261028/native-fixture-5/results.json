@@ -1,0 +1,1452 @@
+{
+  "kind": "synthetic-native-recall-scope",
+  "production_access": false,
+  "source": "65548649431f6388fb1c5c5a7d0885b837ba2355",
+  "cases": [
+    {
+      "id": "joint-broad",
+      "group": "candidate-recall",
+      "query": "Justin Fa",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:displayonlytarget",
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fa",
+        "normalized": "justin fa",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 0,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin",
+            "base": 102,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:fa",
+            "base": 300,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "joint-reversed",
+      "group": "candidate-recall",
+      "query": "Fa Justin",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:displayonlytarget",
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Fa Justin",
+        "normalized": "fa justin",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 0,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:fa",
+            "base": 300,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:justin",
+            "base": 102,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "joint-narrow",
+      "group": "candidate-recall",
+      "query": "Justin Fag",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [
+        "did:plc:justintarget"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fag",
+        "normalized": "justin fag",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin",
+            "base": 102,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:fag",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:justintarget",
+            "handle": "justinfagnani.com",
+            "display_name": "Justin Fagnani",
+            "score": 858
+          }
+        ]
+      }
+    },
+    {
+      "id": "joint-complete",
+      "group": "candidate-recall",
+      "query": "Justin Fagnani",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [
+        "did:plc:justintarget"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fagnani",
+        "normalized": "justin fagnani",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin",
+            "base": 102,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:fagnani",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:justintarget",
+            "handle": "justinfagnani.com",
+            "display_name": "Justin Fagnani",
+            "score": 858
+          }
+        ]
+      }
+    },
+    {
+      "id": "single-selective",
+      "group": "candidate-recall",
+      "query": "fagnani",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [
+        "did:plc:justintarget"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "fagnani",
+        "normalized": "fagnani",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "h:fagnani",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:fagnani",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:fagnani",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:fagnani",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:justintarget",
+            "handle": "justinfagnani.com",
+            "display_name": "Justin Fagnani",
+            "score": 429
+          }
+        ]
+      }
+    },
+    {
+      "id": "display-only-complete",
+      "group": "candidate-recall",
+      "query": "Justin Falconer",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:displayonlytarget"
+      ],
+      "actual_dids": [
+        "did:plc:displayonlytarget"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Falconer",
+        "normalized": "justin falconer",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin",
+            "base": 102,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:falconer",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:displayonlytarget",
+            "handle": "separate.fixture.test",
+            "display_name": "Justin Falconer",
+            "score": 856
+          }
+        ]
+      }
+    },
+    {
+      "id": "scoped-joint-broad",
+      "group": "candidate-recall",
+      "query": "Justin Fa",
+      "pds": "scope.test",
+      "expected_dids": [
+        "did:plc:displayonlytarget",
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fa",
+        "normalized": "justin fa",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 0,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin\u001fscope.test",
+            "base": 102,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:fa\u001fscope.test",
+            "base": 300,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "scoped-joint-narrow",
+      "group": "candidate-recall",
+      "query": "Justin Fag",
+      "pds": "scope.test",
+      "expected_dids": [
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [
+        "did:plc:justintarget"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fag",
+        "normalized": "justin fag",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin\u001fscope.test",
+            "base": 102,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:fag\u001fscope.test",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:justintarget",
+            "handle": "justinfagnani.com",
+            "display_name": "Justin Fagnani",
+            "score": 858
+          }
+        ]
+      }
+    },
+    {
+      "id": "unknown-scope",
+      "group": "scope-control",
+      "query": "Justin Fa",
+      "pds": "unknown.test",
+      "expected_dids": [],
+      "actual_dids": [],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fa",
+        "normalized": "justin fa",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 0,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [],
+        "candidates": []
+      }
+    },
+    {
+      "id": "long-handle-builder-cap",
+      "group": "candidate-recall",
+      "query": "abcdefghijklmnopneed",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:longcaptarget"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "abcdefghijklmnopneed",
+        "normalized": "abcdefghijklmnopneed",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 50,
+        "query_cut": true,
+        "full_query_dropped": 50,
+        "keys": [
+          {
+            "key": "h:abcdefghijklmnop",
+            "base": 100,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:abcdefghijklmnopneed",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:abcdefghijklmnop",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:abcdefghijklmnop",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "long-handle-hydration-cap",
+      "group": "candidate-recall",
+      "query": "qrstuvwxyzabcdefneed",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:longhydratetarget"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "qrstuvwxyzabcdefneed",
+        "normalized": "qrstuvwxyzabcdefneed",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 50,
+        "query_cut": true,
+        "full_query_dropped": 50,
+        "keys": [
+          {
+            "key": "h:qrstuvwxyzabcdef",
+            "base": 61,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:qrstuvwxyzabcdefneed",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:qrstuvwxyzabcdef",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:qrstuvwxyzabcdef",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "long-handle-exact-promotion",
+      "group": "candidate-recall",
+      "query": "qrstuvwxyzabcdefneedle.test",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:longhydratetarget"
+      ],
+      "actual_dids": [
+        "did:plc:longhydratetarget"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "qrstuvwxyzabcdefneedle.test",
+        "normalized": "qrstuvwxyzabcdefneedle.test",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 1,
+        "merged": 51,
+        "query_cut": true,
+        "full_query_dropped": 50,
+        "keys": [
+          {
+            "key": "h:qrstuvwxyzabcdef",
+            "base": 61,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:qrstuvwxyzabcdefneedle.test",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:qrstuvwxyzabcdef",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:qrstuvwxyzabcdef",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:longhydratetarget",
+            "handle": "qrstuvwxyzabcdefneedle.test",
+            "display_name": "Hydration Target",
+            "score": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "long-display-hydration-cap",
+      "group": "candidate-recall",
+      "query": "longdisplaytokenneed",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:displaylongtarget"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "longdisplaytokenneed",
+        "normalized": "longdisplaytokenneed",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 50,
+        "query_cut": true,
+        "full_query_dropped": 50,
+        "keys": [
+          {
+            "key": "h:longdisplaytoken",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:longdisplaytokenneed",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:longdisplaytoken",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:longdisplaytoken",
+            "base": 61,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "cjk-single-token",
+      "group": "query-semantics",
+      "query": "\u65e5\u672c\u592a\u90ce",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:cjkwhole"
+      ],
+      "actual_dids": [
+        "did:plc:cjkwhole",
+        "did:plc:cjkfirst",
+        "did:plc:cjkmiddle",
+        "did:plc:cjklast",
+        "did:plc:mixedwhole",
+        "did:plc:mixedjapan"
+      ],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "\u65e5\u672c\u592a\u90ce",
+        "normalized": "\u65e5\u672c\u592a\u90ce",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 6,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "h:\u65e5\u672c\u592a\u90ce",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:\u65e5\u672c\u592a\u90ce",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:\u65e5\u672c\u592a\u90ce",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:\u65e5\u672c",
+            "base": 4,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:\u672c\u592a",
+            "base": 2,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:\u592a\u90ce",
+            "base": 2,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:cjkwhole",
+            "handle": "cjkwhole.fixture.test",
+            "display_name": "\u65e5\u672c\u592a\u90ce",
+            "score": 90
+          },
+          {
+            "did": "did:plc:cjkfirst",
+            "handle": "cjkfirst.fixture.test",
+            "display_name": "\u65e5\u672c\u82b1\u5b50",
+            "score": 80
+          },
+          {
+            "did": "did:plc:cjkmiddle",
+            "handle": "cjkmiddle.fixture.test",
+            "display_name": "\u672c\u592a",
+            "score": 70
+          },
+          {
+            "did": "did:plc:cjklast",
+            "handle": "cjklast.fixture.test",
+            "display_name": "\u592a\u90ce",
+            "score": 60
+          },
+          {
+            "did": "did:plc:mixedwhole",
+            "handle": "mixedwhole.fixture.test",
+            "display_name": "Alice \u65e5\u672c",
+            "score": 50
+          },
+          {
+            "did": "did:plc:mixedjapan",
+            "handle": "mixedjapan.fixture.test",
+            "display_name": "\u65e5\u672c",
+            "score": 30
+          }
+        ]
+      }
+    },
+    {
+      "id": "cjk-spaced",
+      "group": "query-semantics",
+      "query": "\u65e5\u672c \u592a\u90ce",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:cjkwhole"
+      ],
+      "actual_dids": [
+        "did:plc:cjkwhole"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "\u65e5\u672c \u592a\u90ce",
+        "normalized": "\u65e5\u672c \u592a\u90ce",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:\u65e5\u672c",
+            "base": 4,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:\u592a\u90ce",
+            "base": 2,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:cjkwhole",
+            "handle": "cjkwhole.fixture.test",
+            "display_name": "\u65e5\u672c\u592a\u90ce",
+            "score": 180
+          }
+        ]
+      }
+    },
+    {
+      "id": "mixed-script-single-token",
+      "group": "query-semantics",
+      "query": "alice\u65e5\u672c",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:mixedwhole"
+      ],
+      "actual_dids": [
+        "did:plc:cjkwhole",
+        "did:plc:cjkfirst",
+        "did:plc:mixedwhole",
+        "did:plc:mixedlatin",
+        "did:plc:mixedjapan"
+      ],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "alice\u65e5\u672c",
+        "normalized": "alice\u65e5\u672c",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 5,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "h:alice\u65e5\u672c",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:alice\u65e5\u672c",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:alice\u65e5\u672c",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:alice",
+            "base": 2,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:\u65e5\u672c",
+            "base": 4,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:cjkwhole",
+            "handle": "cjkwhole.fixture.test",
+            "display_name": "\u65e5\u672c\u592a\u90ce",
+            "score": 90
+          },
+          {
+            "did": "did:plc:cjkfirst",
+            "handle": "cjkfirst.fixture.test",
+            "display_name": "\u65e5\u672c\u82b1\u5b50",
+            "score": 80
+          },
+          {
+            "did": "did:plc:mixedwhole",
+            "handle": "mixedwhole.fixture.test",
+            "display_name": "Alice \u65e5\u672c",
+            "score": 50
+          },
+          {
+            "did": "did:plc:mixedlatin",
+            "handle": "mixedlatin.fixture.test",
+            "display_name": "Alice",
+            "score": 40
+          },
+          {
+            "did": "did:plc:mixedjapan",
+            "handle": "mixedjapan.fixture.test",
+            "display_name": "\u65e5\u672c",
+            "score": 30
+          }
+        ]
+      }
+    },
+    {
+      "id": "mixed-script-spaced",
+      "group": "query-semantics",
+      "query": "alice \u65e5\u672c",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:mixedwhole"
+      ],
+      "actual_dids": [
+        "did:plc:mixedwhole"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "alice \u65e5\u672c",
+        "normalized": "alice \u65e5\u672c",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:alice",
+            "base": 2,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:\u65e5\u672c",
+            "base": 4,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:mixedwhole",
+            "handle": "mixedwhole.fixture.test",
+            "display_name": "Alice \u65e5\u672c",
+            "score": 100
+          }
+        ]
+      }
+    },
+    {
+      "id": "query-nine-tokens",
+      "group": "query-limit",
+      "query": "one two three four five six seven eight nine",
+      "pds": null,
+      "expected_dids": [],
+      "actual_dids": [
+        "did:plc:eighttokens"
+      ],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "one two three four five six seven eight nine",
+        "normalized": "one two three four five six seven eight nine",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:one",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:two",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:three",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:four",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:five",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:six",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:seven",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:eight",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:eighttokens",
+            "handle": "eighttokens.fixture.test",
+            "display_name": "one two three four five six seven eight",
+            "score": 8
+          }
+        ]
+      }
+    },
+    {
+      "id": "display-ninth-token",
+      "group": "documented-index-limit",
+      "query": "ninth",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:ninthtoken"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "ninth",
+        "normalized": "ninth",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 0,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "h:ninth",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:ninth",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:ninth",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:ninth",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "hidden-top50",
+      "group": "post-cap-eligibility",
+      "query": "veil unique",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:veilsurvivor"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "veil unique",
+        "normalized": "veil unique",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 50,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:veil",
+            "base": 51,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:unique",
+            "base": 51,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "hidden-top50-scoped",
+      "group": "post-cap-eligibility",
+      "query": "veil unique",
+      "pds": "scope.test",
+      "expected_dids": [
+        "did:plc:veilsurvivor"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "veil unique",
+        "normalized": "veil unique",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 50,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:veil\u001fscope.test",
+            "base": 51,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:unique\u001fscope.test",
+            "base": 51,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "deleted-base-top200",
+      "group": "base-cap-eligibility",
+      "query": "churn",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:churnsurvivor"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "churn",
+        "normalized": "churn",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 50,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "h:churn",
+            "base": 200,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:churn",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:churn",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:churn",
+            "base": 200,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "native-reprojection-rescues",
+      "group": "snapshot-overlay-lifecycle",
+      "query": "Justin Fa",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:displayonlytarget",
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [
+        "did:plc:justintarget",
+        "did:plc:displayonlytarget"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fa",
+        "normalized": "justin fa",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 2,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin",
+            "base": 102,
+            "overlay": 2,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:fa",
+            "base": 300,
+            "overlay": 2,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:justintarget",
+            "handle": "justinfagnani.com",
+            "display_name": "Justin Fagnani",
+            "score": 858
+          },
+          {
+            "did": "did:plc:displayonlytarget",
+            "handle": "separate.fixture.test",
+            "display_name": "Justin Falconer",
+            "score": 856
+          }
+        ]
+      }
+    },
+    {
+      "id": "native-reprojection-rescues-scoped",
+      "group": "snapshot-overlay-lifecycle",
+      "query": "Justin Fa",
+      "pds": "scope.test",
+      "expected_dids": [
+        "did:plc:displayonlytarget",
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [
+        "did:plc:justintarget",
+        "did:plc:displayonlytarget"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fa",
+        "normalized": "justin fa",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 2,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin\u001fscope.test",
+            "base": 102,
+            "overlay": 2,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:fa\u001fscope.test",
+            "base": 300,
+            "overlay": 2,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:justintarget",
+            "handle": "justinfagnani.com",
+            "display_name": "Justin Fagnani",
+            "score": 858
+          },
+          {
+            "did": "did:plc:displayonlytarget",
+            "handle": "separate.fixture.test",
+            "display_name": "Justin Falconer",
+            "score": 856
+          }
+        ]
+      }
+    },
+    {
+      "id": "fresh-rebuild-relapses",
+      "group": "snapshot-overlay-lifecycle",
+      "query": "Justin Fa",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:displayonlytarget",
+        "did:plc:justintarget"
+      ],
+      "actual_dids": [],
+      "matches_oracle": false,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "Justin Fa",
+        "normalized": "justin fa",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 0,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:justin",
+            "base": 102,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:fa",
+            "base": 300,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": []
+      }
+    },
+    {
+      "id": "rebuild-refills-hidden",
+      "group": "snapshot-overlay-lifecycle",
+      "query": "veil unique",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:veilsurvivor"
+      ],
+      "actual_dids": [
+        "did:plc:veilsurvivor"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "veil unique",
+        "normalized": "veil unique",
+        "mode": "intersect_all",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "n:veil",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "n:unique",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": false
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:veilsurvivor",
+            "handle": "veilsurvivor.fixture.test",
+            "display_name": "Veil Unique Survivor",
+            "score": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "rebuild-refills-deleted",
+      "group": "snapshot-overlay-lifecycle",
+      "query": "churn",
+      "pds": null,
+      "expected_dids": [
+        "did:plc:churnsurvivor"
+      ],
+      "actual_dids": [
+        "did:plc:churnsurvivor"
+      ],
+      "matches_oracle": true,
+      "status": 200,
+      "trace": {
+        "engine": "index",
+        "q": "churn",
+        "normalized": "churn",
+        "mode": "union_any",
+        "hydrate_cap": 50,
+        "exact_hits": 0,
+        "merged": 1,
+        "query_cut": false,
+        "full_query_dropped": 0,
+        "keys": [
+          {
+            "key": "h:churn",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "e:churn",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": false
+          },
+          {
+            "key": "d:churn",
+            "base": 0,
+            "overlay": 0,
+            "overlay_bounded": true
+          },
+          {
+            "key": "n:churn",
+            "base": 1,
+            "overlay": 0,
+            "overlay_bounded": true
+          }
+        ],
+        "candidates": [
+          {
+            "did": "did:plc:churnsurvivor",
+            "handle": "churnsurvivor.fixture.test",
+            "display_name": "Churn Survivor",
+            "score": 1
+          }
+        ]
+      }
+    }
+  ],
+  "owner": "display-name-recall-20261028",
+  "scratch_budget_bytes": 536870912,
+  "scratch": "/private/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-scope-971_yt7y",
+  "binaries": {
+    "admit-prefix": "2718f22db116c0b76e83f9c30679e8017bd4b960fc7833383ae6148ff6c33db9",
+    "eval-server": "dd05edb8a287fb23c69f0ebc7b6290f018199c4006f967a1cff4428f2274260f",
+    "typeahead-ingester": "0f3642bc91c61df1d9465df9bd4a367d7d8a6afb211202af31f000669bc7ddc6"
+  },
+  "actor_count": 990,
+  "snapshot_meta": {
+    "pds_scope_policy": "2bd36fb69959dec418e089a7aa038553ddbe1ef4c9a1b22b584a28649d88ca67",
+    "pds_max_actors": "10000",
+    "pds_scope_version": "1",
+    "build_id": "b1793228215-7ba5",
+    "built_at": "1793228216",
+    "source_watermark": "1800000000",
+    "builder_version": "65548649431f6388fb1c5c5a7d0885b837ba2355",
+    "normalize_version": "v2-cjk-bigram",
+    "scoring_version": "v1-quality-score",
+    "top_n_short": "300",
+    "top_n_medium": "200",
+    "top_n_long": "100",
+    "overlay_top_n": "100",
+    "hydrate_cap": "50",
+    "actor_count": "990",
+    "prefix_count": "16426",
+    "cjk_key_count": "32",
+    "cjk_actor_count": "6",
+    "score_quantiles": "[1.00,50.00,1003.00,1013.00,1023.00,1033.00,1043.00,1053.00,1063.00,1073.00,1082.00,1092.00,2002.00,2012.00,2022.00,2032.00,2042.00,2052.00,2062.00,2071.00,2081.00,2091.00,2101.00,2111.00,2121.00,2131.00,2141.00,2151.00,2160.00,2170.00,2180.00,2190.00,2200.00,2210.00,2220.00,2230.00,2240.00,2249.00,2259.00,2269.00,2279.00,2289.00,2299.00,3008.00,3018.00,3028.00,3037.00,3047.00,4007.00,4017.00,4027.00,4037.00,4047.00,4057.00,4067.00,4076.00,4086.00,4096.00,4106.00,4116.00,4126.00,4136.00,4146.00,4156.00,4165.00,4175.00,4185.00,4195.00,5004.00,5014.00,5024.00,5034.00,5044.00,5053.00,5063.00,5073.00,5083.00,5093.00,6002.00,6012.00,6022.00,6032.00,6041.00,6051.00,7001.00,7011.00,7021.00,7031.00,7041.00,7051.00,8001.00,8010.00,8020.00,8030.00,8040.00,8050.00,8060.00,8070.00,8080.00,8090.00,8100.00]"
+  },
+  "snapshot_bytes": 3006464,
+  "exact_duplicate_trace": {
+    "merged": 100,
+    "candidates": 100,
+    "hydrate_cap": 50
+  },
+  "rebuilt_snapshot_bytes": 2404352,
+  "matches_oracle": 13,
+  "mismatches": 14,
+  "complete": true,
+  "scratch_bytes_before_cleanup": 16309537,
+  "scratch_removed": true,
+  "children_terminal": true,
+  "wall_seconds": 3.855889083992224
+}

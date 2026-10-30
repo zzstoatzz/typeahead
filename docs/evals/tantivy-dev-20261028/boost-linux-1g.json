@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "checks": 192,
+  "oracle": "independent Python Fraction.from_float(f32(base)) + Fraction.from_float(f32(boost))",
+  "covers": [
+    "huge_boost",
+    "subnormals",
+    "negative_base",
+    "cancellation",
+    "maximum_f32",
+    "true_equal_sum_DID_ties",
+    "exact_priority",
+    "hard_PDS",
+    "PDS_first",
+    "multi_segment",
+    "K_prefix_consistency"
+  ],
+  "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+  "production_contact": false,
+  "runtime": "Linux x86_64 container",
+  "memory_limit_bytes": 1073741824,
+  "cpu_limit": 2,
+  "network": "none"
+}

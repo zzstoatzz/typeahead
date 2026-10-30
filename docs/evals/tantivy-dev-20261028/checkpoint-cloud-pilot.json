@@ -1,0 +1,57 @@
+{
+  "observed_at": 1793331271.925751,
+  "state": "submitted",
+  "mps_revision": "ef8c1cebe42664c98c9355d1f710e3565fb6e603",
+  "typeahead_revision": "557021cebe0cf94dc7f4e90e0625b4a583bc3e49",
+  "deployment_id": "a414ca4e-6c89-4918-b5dc-a5016e027595",
+  "idempotency_key": "c5ef702d4cfbc774cd8c0141f4060b07491367c4f3b46bf9d172074e63facbef",
+  "work_pool": "typeahead-ephemeral",
+  "server_type": "cpx32",
+  "location": "fsn1",
+  "worker_timeout_seconds": 600,
+  "flow_timeout_seconds": 420,
+  "checkpoint_soft_deadline_seconds": 180,
+  "source_byte_limit": 8589934592,
+  "document_limits": [
+    32,
+    100000
+  ],
+  "publishes_index": false,
+  "production_changed": false,
+  "original_deployment_sha256": "f0b7eea4676a3d5a9074161cc92f38a0029e11f2c324abf0fd2d1d4edcac58d9",
+  "temporary_deployment": true,
+  "flow_run_id": "a3b85e44-a3e3-40ad-b4c8-48c324ad3f9c",
+  "flow_run_state": "Scheduled",
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/a3b85e44-a3e3-40ad-b4c8-48c324ad3f9c",
+  "latest": {
+    "observed_at": 1793341024.751434,
+    "id": "a3b85e44-a3e3-40ad-b4c8-48c324ad3f9c",
+    "state": "Failed",
+    "start": "2026-10-30 03:37:12.863890+00:00",
+    "end": "2026-10-30 03:40:17.692191+00:00",
+    "infrastructure_pid": "prefect-build-a3b85e44a3e340adb4c848c324ad3f9c-r0",
+    "message": "Flow run encountered an exception: CheckpointError: Checkpoint deadline exceeded",
+    "tasks": [
+      {
+        "name": "clone_repo-6c3",
+        "state": "Completed"
+      }
+    ]
+  },
+  "provider_cleanup": {
+    "observed_at": 1793341078.4881332,
+    "remaining_servers": 0,
+    "server_name": "prefect-build-a3b85e44a3e340adb4c848c324ad3f9c-r0"
+  },
+  "temporary_deployment_retired_at": 1793341157.735588,
+  "result": {
+    "passed": false,
+    "phase": "base-export",
+    "reason": "180-second acquisition deadline exceeded",
+    "downloaded_bytes": null,
+    "import_started": false,
+    "publication_performed": false,
+    "release_qualified": false,
+    "automatic_retry": false
+  }
+}

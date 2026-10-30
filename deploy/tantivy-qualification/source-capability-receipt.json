@@ -1,0 +1,12 @@
+{
+  "app": "typeahead-qual-20261029",
+  "staged_at": 1793321961.4576058,
+  "source_build_id": "b1793109259-2b36-px05",
+  "source_capability_ttl_seconds": 7200,
+  "control_capability_expires_at": 1793332947.282133,
+  "runtime_secret_names": [
+    "QUAL_SOURCE_ACCESS"
+  ],
+  "corpus_transit": "R2 directly to Fly; GET-only two fixed source objects",
+  "production_changed": false
+}

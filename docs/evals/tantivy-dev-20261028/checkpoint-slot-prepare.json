@@ -1,0 +1,44 @@
+{
+  "observed_at": 1793349176.882802,
+  "state": "submitted",
+  "mps_revision": "f9a3f86df0c7c5ab0f14bbe9f3539c5bcfc418c5",
+  "typeahead_revision": "305f5da9c90f16697a1128ca39200214c71eac40",
+  "deployment_id": "5df6645a-9517-409d-8f4f-564f27bbe189",
+  "idempotency_key": "9cc694d88e6f78be045c1a326f6db18c823d795da56b5323ddc8f597ce47661f",
+  "work_pool": "typeahead-ephemeral",
+  "server_type": "cpx32",
+  "location": "fsn1",
+  "worker_timeout_seconds": 3000,
+  "build_id": "b1793346536-cp-7c8322df79",
+  "operation": "prepare",
+  "app": "typeahead-tantivy-a",
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:34aef86a7d9bf7256d80681728022a3ba56c2b7de59129f269da4bc14df0f929",
+  "cuts_over_production": false,
+  "production_changed": false,
+  "original_deployment_sha256": "f0b7eea4676a3d5a9074161cc92f38a0029e11f2c324abf0fd2d1d4edcac58d9",
+  "temporary_deployment": true,
+  "flow_run_id": "593831df-7c9d-4c03-9a5c-9e211ed83537",
+  "flow_run_state": "Scheduled",
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/593831df-7c9d-4c03-9a5c-9e211ed83537",
+  "latest": {
+    "observed_at": 1793349489.148403,
+    "id": "593831df-7c9d-4c03-9a5c-9e211ed83537",
+    "state": "Failed",
+    "start": "2026-10-30 08:35:48.506302+00:00",
+    "end": "2026-10-30 08:36:06.287084+00:00",
+    "infrastructure_pid": "prefect-build-593831df7c9d4c039a5c9e211ed83537-r0",
+    "message": "Flow run encountered an exception: RuntimeError: Owned Tantivy candidate configuration changed",
+    "tasks": [
+      {
+        "name": "clone_repo-cb6",
+        "state": "Completed"
+      }
+    ]
+  },
+  "provider_cleanup": {
+    "remaining_servers": 0,
+    "server_name": "prefect-build-593831df7c9d4c039a5c9e211ed83537-r0",
+    "observed_at": 1793349503.818028
+  },
+  "temporary_deployment_retired_at": 1793349504.868046
+}

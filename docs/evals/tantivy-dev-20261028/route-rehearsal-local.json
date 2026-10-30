@@ -1,0 +1,944 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-30T01:31:12.348Z",
+  "source_sha256": {
+    "src/handlers/search.ts": "c06e881de1f72ba5638bb799a0ffd03d8a35dfb912f47f69ec587d5576a7af7a",
+    "src/handlers/search-contract.ts": "8453f50d6e4e6806d8dfcbbace5aaec26418fe250c533fa207e4ee909ecb4eb7",
+    "src/search-transport.ts": "ece8570d46361e2498bf313b72be8f2592c9b80c216e081f53c2991facb2708a",
+    "src/search-route.ts": "503d6be86adeed3b4618d7bcfc94bde731c6f134f2dfc0f9203b4e30f91912d7",
+    "src/validated-search.ts": "05a97a942c37a9a204dc79f50c0909a6bc1fd12fccf5e63a651358d6da956802",
+    "scripts/snapshot_refresh/route-rehearsal.test.ts": "cef1f67347b327c9ba84eb45444a57581f4b3499b25ce09fa2fb0ff22292c06f"
+  },
+  "scope": "local-workerd-public-handler-transport-R2-CAS",
+  "passed": true,
+  "production_contact": false,
+  "release_qualified": false,
+  "production_downtime_measured": false,
+  "aliases": [
+    "/xrpc/tech.waow.typeahead.searchActors",
+    "/xrpc/app.bsky.actor.searchActorsTypeahead"
+  ],
+  "components": [
+    "handleSearch",
+    "search-transport.fetch",
+    "conditionalRouteUpdate",
+    "filesystem-backed Miniflare R2",
+    "workerd Cache API",
+    "local D1 metrics"
+  ],
+  "fixture_only": [
+    "public alias dispatcher and cache-generation config control",
+    "bounded deterministic origin responses; no native or Rust engine",
+    "all Worker fetch egress confined to the local origin service binding",
+    "scope acknowledgements validated upstream by actual handler"
+  ],
+  "checks": {
+    "native_tantivy_native_compensation": true,
+    "old_cache_identity_retained": true,
+    "transport_identity_verified_before_new_cache_generation": true,
+    "cache_generation_barrier": true,
+    "cache_hits_no_origin_work": true,
+    "hard_pds": true,
+    "pds_first_and_f32_boost": true,
+    "missing_or_wrong_scope_ack_rejected_without_cache_poisoning": true,
+    "stale_etags_rejected": true,
+    "operator_change_wins": true,
+    "external_origin_requests": 0
+  },
+  "wall_ms": 3389.081375,
+  "propagation": [
+    {
+      "label": "native-to-tantivy",
+      "cas_to_first_matching_uncached_response_ms": 1044.509917,
+      "stale_uncached_responses": 18
+    },
+    {
+      "label": "tantivy-to-native",
+      "cas_to_first_matching_uncached_response_ms": 996.3679589999999,
+      "stale_uncached_responses": 17
+    },
+    {
+      "label": "operator-native-change",
+      "cas_to_first_matching_uncached_response_ms": 987.5753749999999,
+      "stale_uncached_responses": 17
+    }
+  ],
+  "public_requests": 91,
+  "intentional_scope_rejections": 3,
+  "origin_requests": 72,
+  "samples": [
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 14.028250000000014
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "hit",
+      "wall_ms": 1.602958000000001
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "hit",
+      "wall_ms": 1.26804199999998
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "hit",
+      "wall_ms": 1.2147920000000454
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-0",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 4.059042000000034
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-1",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 4.331124999999986
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-2",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 3.988916999999958
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-3",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 4.282167000000072
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-4",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 3.9662920000000668
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-5",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 3.825749999999971
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-6",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 6.605540999999903
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-7",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 8.475166000000058
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-8",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 7.038084000000026
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-9",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 8.70195799999999
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-10",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 4.493875000000003
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-11",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 4.092540999999983
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-12",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 4.474583000000166
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-13",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 3.6917920000000777
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-14",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 3.8295419999999467
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-15",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 5.252500000000055
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-16",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 7.329707999999982
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-17",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 6.20270800000003
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=native-to-tantivy-uncached-18",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "A",
+      "cache": "miss",
+      "wall_ms": 10.879041000000143
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "hit",
+      "wall_ms": 1.9672499999999218
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "hit",
+      "wall_ms": 1.1140419999999267
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "A",
+      "cache": "hit",
+      "wall_ms": 0.9001670000000104
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 3.582582999999886
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 1.443083999999999
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 0.9747499999998581
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=baseline",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 0.8995840000000044
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=hard&pds=https%3A%2F%2FLOCAL.test",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 3.389041000000134
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=combined&pds=local.test&prefer_pds=local.test&boost=0.25",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 3.1526249999999436
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=preferred&prefer_pds=local.test&preference=pds_first",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 4.372875000000022
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=preferred&prefer_pds=local.test&boost=0.25",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 3.5601250000001983
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=hard&pds=https%3A%2F%2FLOCAL.test",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 1.0104579999999714
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=combined&pds=local.test&prefer_pds=local.test&boost=0.25",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 0.803333000000066
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=preferred&prefer_pds=local.test&preference=pds_first",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 0.9597089999999753
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=preferred&prefer_pds=local.test&boost=0.25",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 0.9148749999999382
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=reject-pds&pds=local.test",
+      "status": 503,
+      "engine": null,
+      "build": null,
+      "cache_generation": null,
+      "cache": "miss",
+      "wall_ms": 2.199583000000075
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=reject-pds&pds=local.test",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 2.7587499999999636
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=reject-preference&prefer_pds=local.test&boost=0.25",
+      "status": 503,
+      "engine": null,
+      "build": null,
+      "cache_generation": null,
+      "cache": "miss",
+      "wall_ms": 1.766458000000057
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=reject-preference&prefer_pds=local.test&boost=0.25",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 3.621667000000116
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=reject-boost&prefer_pds=local.test&boost=0.25",
+      "status": 503,
+      "engine": null,
+      "build": null,
+      "cache_generation": null,
+      "cache": "miss",
+      "wall_ms": 1.6478340000001026
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=reject-boost&prefer_pds=local.test&boost=0.25",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 2.685791999999992
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-0",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 2.4964590000001863
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-1",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 4.286124999999856
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-2",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 4.503165999999965
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-3",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 3.9433329999999387
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-4",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 5.131249999999909
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-5",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 7.09174999999982
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-6",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 7.06679199999985
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-7",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 6.725416999999879
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-8",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 8.126209000000017
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-9",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 6.315209000000095
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-10",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 6.424750000000131
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-11",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 6.371290999999928
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-12",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 6.696790999999848
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-13",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 7.187875000000076
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-14",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 6.418749999999818
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-15",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 5.415583999999853
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-16",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 7.760834000000159
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=tantivy-to-native-uncached-17",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "B",
+      "cache": "miss",
+      "wall_ms": 12.41229199999998
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 1.37304099999983
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 1.3007920000000013
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=baseline",
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1792908655-tantivy",
+      "cache_generation": "B",
+      "cache": "hit",
+      "wall_ms": 1.0534159999997428
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 3.66537500000004
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "hit",
+      "wall_ms": 0.9495829999996204
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "hit",
+      "wall_ms": 0.9468329999999696
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "hit",
+      "wall_ms": 0.8064999999996871
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-0",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 3.8646669999998267
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-1",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 5.11679200000026
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-2",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 5.3133749999997235
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-3",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 7.934792000000016
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-4",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 6.444750000000113
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-5",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 5.014166999999816
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-6",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 9.057874999999967
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-7",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 4.782750000000306
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-8",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 7.157833999999639
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-9",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 9.238584000000174
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-10",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 4.570083000000068
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-11",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 4.67450000000008
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-12",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 3.894249999999829
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-13",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 3.8715830000001006
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-14",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 4.337625000000116
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-15",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 4.70895900000005
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-16",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-native",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 4.746084000000337
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=operator-native-change-uncached-17",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-operator",
+      "cache_generation": "C",
+      "cache": "miss",
+      "wall_ms": 6.202708000000257
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-operator",
+      "cache_generation": "D",
+      "cache": "miss",
+      "wall_ms": 5.292249999999967
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-operator",
+      "cache_generation": "D",
+      "cache": "hit",
+      "wall_ms": 1.048917000000074
+    },
+    {
+      "label": "/xrpc/tech.waow.typeahead.searchActors?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-operator",
+      "cache_generation": "D",
+      "cache": "hit",
+      "wall_ms": 1.1858750000001237
+    },
+    {
+      "label": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=baseline",
+      "status": 200,
+      "engine": "native",
+      "build": "b1792908655-operator",
+      "cache_generation": "D",
+      "cache": "hit",
+      "wall_ms": 0.918999999999869
+    }
+  ],
+  "limitations": [
+    "One local fixture sequence with 50ms unique-key polling and a 2s test bound, not a latency benchmark or production propagation estimate",
+    "No Cloudflare deployment/config propagation, real engines, source readiness, Fly network, release admission or downtime measured",
+    "Alias paths enter the actual handler through a local dispatcher; production router covered separately by index tests"
+  ],
+  "verification_context": {
+    "rehearsal": {
+      "command": "TYPEAHEAD_REHEARSAL_EVIDENCE=docs/evals/tantivy-dev-20261028/route-rehearsal-local.json bun test scripts/snapshot_refresh/route-rehearsal.test.ts",
+      "passed": 1,
+      "failed": 0,
+      "expectations": 148,
+      "reported_wall_ms": 3404.3
+    },
+    "standalone_test_typecheck": {
+      "command": "bunx tsc --ignoreConfig --noEmit --strict --skipLibCheck --module esnext --moduleResolution bundler --target es2022 --types @cloudflare/workers-types,bun-types scripts/snapshot_refresh/route-rehearsal.test.ts",
+      "passed": true
+    },
+    "separate_root_verification": {
+      "reported_by": "root agent; executed separately from this rehearsal",
+      "revision": "868c008",
+      "source_tests": {
+        "command": "bun test src",
+        "passed": 118,
+        "failed": 0,
+        "expectations": 792,
+        "files": 23,
+        "wall_seconds": 1.82
+      },
+      "source_typecheck": {
+        "command": "bunx tsc --noEmit",
+        "passed": true
+      },
+      "scope": "broader source/router unit tests; not an engine or production release qualification"
+    }
+  },
+  "ordering_guard": {
+    "sequence": [
+      "CAS the admitted target with the current ETag",
+      "Probe fresh unique public query keys until engine/build and Tantivy format/binary/strategy match the target",
+      "Rotate the cache generation only after that transport identity barrier",
+      "Verify both public aliases on misses and settled hits with the expected identity",
+      "Compensate using a fresh ETag and repeat the identity/cache barrier; a newer operator ETag wins"
+    ],
+    "retained_transport_route_ms": 1000,
+    "public_cache_ttl_seconds": 60,
+    "fixture_poll_interval_ms": 50,
+    "fixture_identity_wait_bound_ms": 2000,
+    "production_deadlines_established": false
+  },
+  "tools": {
+    "bun": "1.4.0",
+    "miniflare": "4.20260312.1",
+    "compatibility_date": "2026-10-29"
+  }
+}

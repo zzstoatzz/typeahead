@@ -1,0 +1,488 @@
+{
+  "owner": "tantivy-dev-20261028",
+  "kind": "cloud-separated-load-generator",
+  "target": "https://typeahead-tantivy-dev.fly.dev",
+  "initial": {
+    "build_id": "b1793109259-2b36-px05",
+    "source_build_id": "b1793109259-2b36-px05",
+    "actor_count": 12836973,
+    "watermark": 1793252618,
+    "snapshot_watermark": 1793109254,
+    "source_cursor": {
+      "actors": {
+        "did": "",
+        "updated_at": 1793252618
+      },
+      "build_id": "b1793109259-2b36-px05",
+      "cycle": null,
+      "lookback_seconds": 300,
+      "schema_version": 1,
+      "snapshot_watermark": 1793109254,
+      "source_policy": "turso-current-state-cutoff-v1",
+      "through": 1793252618,
+      "tombstones": {
+        "deleted_at": 1793252618,
+        "did": ""
+      }
+    },
+    "segments": 5,
+    "ready": true,
+    "sync_lag_s": 55,
+    "pds_missing_actor_count": 9935846,
+    "pds_invalid_actor_count": 1,
+    "pds_unknown_actor_count": 9935847,
+    "pds_invalid_reason_counts": {
+      "invalid_hostname": 1
+    }
+  },
+  "checks": [
+    {
+      "path": "/ready",
+      "expected_status": 200,
+      "status": 200,
+      "correct": true
+    },
+    {
+      "path": "/admin/apply",
+      "expected_status": 404,
+      "status": 404,
+      "correct": true
+    },
+    {
+      "path": "/search",
+      "expected_status": 400,
+      "status": 400,
+      "correct": true
+    },
+    {
+      "path": "/search?q=a&limit=10&pds=bad%40host.test",
+      "expected_status": 400,
+      "status": 400,
+      "correct": true
+    },
+    {
+      "path": "/search?q=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected_status": 400,
+      "status": 400,
+      "correct": true
+    },
+    {
+      "case": "alias-byte-equivalent-shape",
+      "correct": true
+    }
+  ],
+  "diverse_seed": {
+    "seed_requests": 26,
+    "distinct_cases": 512,
+    "case_paths_sha256": "c9d790e65abae75a3dc9594c5736a87ba31a2545be91190bba3a1874ef1dac9f",
+    "derivation": "26 alphabet queries at limit100; deterministic sample of handle prefixes2..12; no source reads"
+  },
+  "phases": [
+    {
+      "phase": "post-restart-varied-prefix",
+      "started_at": 1793252673.9043028,
+      "finished_at": 1793252691.9218876,
+      "attempts": 37,
+      "failures": 0,
+      "failure_examples": [],
+      "target_rps": 2,
+      "concurrency": 1,
+      "before": {
+        "build_id": "b1793109259-2b36-px05",
+        "source_build_id": "b1793109259-2b36-px05",
+        "actor_count": 12836973,
+        "watermark": 1793252618,
+        "snapshot_watermark": 1793109254,
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793252618
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793252618,
+          "tombstones": {
+            "deleted_at": 1793252618,
+            "did": ""
+          }
+        },
+        "segments": 5,
+        "ready": true,
+        "sync_lag_s": 55,
+        "pds_missing_actor_count": 9935846,
+        "pds_invalid_actor_count": 1,
+        "pds_unknown_actor_count": 9935847,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        }
+      },
+      "after": {
+        "build_id": "b1793109259-2b36-px05",
+        "source_build_id": "b1793109259-2b36-px05",
+        "actor_count": 12836972,
+        "watermark": 1793252680,
+        "snapshot_watermark": 1793109254,
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793252680
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793252680,
+          "tombstones": {
+            "deleted_at": 1793252680,
+            "did": ""
+          }
+        },
+        "segments": 7,
+        "ready": true,
+        "sync_lag_s": 11,
+        "pds_missing_actor_count": 9935845,
+        "pds_invalid_actor_count": 1,
+        "pds_unknown_actor_count": 9935846,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        }
+      },
+      "latency": {
+        "request_ms": {
+          "0.5": 13.837168000000233,
+          "0.95": 26.99395399999993,
+          "0.99": 43.691333000000384,
+          "1": 43.691333000000384
+        },
+        "queue_ms": {
+          "0.5": 0.11392500000040329,
+          "0.95": 0.14469500000036106,
+          "0.99": 10.602517000000145,
+          "1": 10.602517000000145
+        },
+        "total_ms": {
+          "0.5": 13.95384200000116,
+          "0.95": 27.13736000000022,
+          "0.99": 54.31543000000039,
+          "1": 54.31543000000039
+        }
+      }
+    },
+    {
+      "phase": "diverse-handle-prefixes",
+      "started_at": 1793252692.956198,
+      "finished_at": 1793252744.0750847,
+      "attempts": 512,
+      "failures": 0,
+      "failure_examples": [],
+      "target_rps": 10,
+      "concurrency": 4,
+      "before": {
+        "build_id": "b1793109259-2b36-px05",
+        "source_build_id": "b1793109259-2b36-px05",
+        "actor_count": 12836972,
+        "watermark": 1793252680,
+        "snapshot_watermark": 1793109254,
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793252680
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793252680,
+          "tombstones": {
+            "deleted_at": 1793252680,
+            "did": ""
+          }
+        },
+        "segments": 7,
+        "ready": true,
+        "sync_lag_s": 12,
+        "pds_missing_actor_count": 9935845,
+        "pds_invalid_actor_count": 1,
+        "pds_unknown_actor_count": 9935846,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        }
+      },
+      "after": {
+        "build_id": "b1793109259-2b36-px05",
+        "source_build_id": "b1793109259-2b36-px05",
+        "actor_count": 12836972,
+        "watermark": 1793252680,
+        "snapshot_watermark": 1793109254,
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793252680
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793252680,
+          "tombstones": {
+            "deleted_at": 1793252680,
+            "did": ""
+          }
+        },
+        "segments": 7,
+        "ready": true,
+        "sync_lag_s": 64,
+        "pds_missing_actor_count": 9935845,
+        "pds_invalid_actor_count": 1,
+        "pds_unknown_actor_count": 9935846,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        }
+      },
+      "latency": {
+        "request_ms": {
+          "0.5": 10.34025600000632,
+          "0.95": 155.7630130000014,
+          "0.99": 389.8297709999987,
+          "1": 720.6015850000007
+        },
+        "queue_ms": {
+          "0.5": 0.11725399998852026,
+          "0.95": 0.14479099999675782,
+          "0.99": 5.121699000000035,
+          "1": 100.78239099999564
+        },
+        "total_ms": {
+          "0.5": 10.472726000003263,
+          "0.95": 170.17822399999716,
+          "0.99": 390.2791989999983,
+          "1": 720.7355779999994
+        }
+      }
+    },
+    {
+      "phase": "warm",
+      "started_at": 1793252744.0793576,
+      "finished_at": 1793252863.9964576,
+      "attempts": 1200,
+      "failures": 0,
+      "failure_examples": [],
+      "target_rps": 10,
+      "concurrency": 4,
+      "before": {
+        "build_id": "b1793109259-2b36-px05",
+        "source_build_id": "b1793109259-2b36-px05",
+        "actor_count": 12836972,
+        "watermark": 1793252680,
+        "snapshot_watermark": 1793109254,
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793252680
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793252680,
+          "tombstones": {
+            "deleted_at": 1793252680,
+            "did": ""
+          }
+        },
+        "segments": 7,
+        "ready": true,
+        "sync_lag_s": 64,
+        "pds_missing_actor_count": 9935845,
+        "pds_invalid_actor_count": 1,
+        "pds_unknown_actor_count": 9935846,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        }
+      },
+      "after": {
+        "build_id": "b1793109259-2b36-px05",
+        "source_build_id": "b1793109259-2b36-px05",
+        "actor_count": 12836967,
+        "watermark": 1793252804,
+        "snapshot_watermark": 1793109254,
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793252804
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793252804,
+          "tombstones": {
+            "deleted_at": 1793252804,
+            "did": ""
+          }
+        },
+        "segments": 11,
+        "ready": true,
+        "sync_lag_s": 59,
+        "pds_missing_actor_count": 9935843,
+        "pds_invalid_actor_count": 1,
+        "pds_unknown_actor_count": 9935844,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        }
+      },
+      "latency": {
+        "request_ms": {
+          "0.5": 6.414043000006586,
+          "0.95": 8.914100999987795,
+          "0.99": 12.76002400000209,
+          "1": 27.789557000005516
+        },
+        "queue_ms": {
+          "0.5": 0.1170180000116261,
+          "0.95": 0.14195899998981076,
+          "0.99": 0.17233500000202184,
+          "1": 0.24966099999801372
+        },
+        "total_ms": {
+          "0.5": 6.552540000001272,
+          "0.95": 9.063289000010855,
+          "0.99": 12.936375999998972,
+          "1": 28.052838000007796
+        }
+      }
+    },
+    {
+      "phase": "live-replay",
+      "started_at": 1793252864.0012543,
+      "finished_at": 1793253163.9212534,
+      "attempts": 3000,
+      "failures": 0,
+      "failure_examples": [],
+      "target_rps": 10,
+      "concurrency": 4,
+      "before": {
+        "build_id": "b1793109259-2b36-px05",
+        "source_build_id": "b1793109259-2b36-px05",
+        "actor_count": 12836967,
+        "watermark": 1793252804,
+        "snapshot_watermark": 1793109254,
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793252804
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793252804,
+          "tombstones": {
+            "deleted_at": 1793252804,
+            "did": ""
+          }
+        },
+        "segments": 11,
+        "ready": true,
+        "sync_lag_s": 59,
+        "pds_missing_actor_count": 9935843,
+        "pds_invalid_actor_count": 1,
+        "pds_unknown_actor_count": 9935844,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        }
+      },
+      "after": {
+        "build_id": "b1793109259-2b36-px05",
+        "source_build_id": "b1793109259-2b36-px05",
+        "actor_count": 12836956,
+        "watermark": 1793253113,
+        "snapshot_watermark": 1793109254,
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793253113
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793253113,
+          "tombstones": {
+            "deleted_at": 1793253113,
+            "did": ""
+          }
+        },
+        "segments": 7,
+        "ready": true,
+        "sync_lag_s": 50,
+        "pds_missing_actor_count": 9935841,
+        "pds_invalid_actor_count": 1,
+        "pds_unknown_actor_count": 9935842,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        }
+      },
+      "latency": {
+        "request_ms": {
+          "0.5": 6.383261999985734,
+          "0.95": 8.63291999996818,
+          "0.99": 12.838454999950955,
+          "1": 37.3262600000146
+        },
+        "queue_ms": {
+          "0.5": 0.11782399997173343,
+          "0.95": 0.1475599999878341,
+          "0.99": 0.1963070000101652,
+          "1": 1.114126999993914
+        },
+        "total_ms": {
+          "0.5": 6.527311000013469,
+          "0.95": 8.78137800003742,
+          "0.99": 13.004208000040762,
+          "1": 37.56415099999799
+        }
+      }
+    }
+  ],
+  "overload": {
+    "attempts": 256,
+    "concurrency": 32,
+    "failures": 0,
+    "failure_examples": [],
+    "admission_rejections": 147,
+    "admission_exhaustion_observed": true,
+    "accepted": 109,
+    "recovered": true,
+    "request_p99_ms": 519.0694020000137
+  },
+  "passed_correctness": true,
+  "latency_gate": true,
+  "limitations": [
+    "Source is live; exact expected topK for broad real queries is checked separately, not inferred from response shape.",
+    "Post-restart phase is not a provider-physical-disk cold guarantee.",
+    "Real replay mutation count must be corroborated with source/application receipts; empty cursor commits are not actor batches.",
+    "Burst admission rejection is expected and reported separately from normal-rate correctness/latency."
+  ],
+  "wall_s": 492.793243754,
+  "started_at": 1793252671.7151816,
+  "finished_at": 1793253164.5158293
+}

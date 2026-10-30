@@ -1,0 +1,70 @@
+{
+  "html_identical": true,
+  "pages": [
+    {
+      "url": "https://typeahead.waow.tech",
+      "status": 200,
+      "sha256": "87e07da69aeb85a0a015f555fda30e9b6201bf130a21ee520c087d85f10a7d07"
+    },
+    {
+      "url": "https://typeahead-tantivy-dev-ui.n8-3e9.workers.dev",
+      "status": 200,
+      "sha256": "87e07da69aeb85a0a015f555fda30e9b6201bf130a21ee520c087d85f10a7d07"
+    }
+  ],
+  "checks": [
+    {
+      "path": "/health",
+      "status": 200,
+      "backend": "https://typeahead-tantivy-dev.fly.dev",
+      "keys": [
+        "actors",
+        "build_id",
+        "engine",
+        "normalize_version",
+        "plan_version",
+        "ready",
+        "status",
+        "sync_lag_s"
+      ],
+      "actors": 12837786,
+      "engine": "tantivy",
+      "ready": true
+    },
+    {
+      "path": "/search?q=justin%20fa&limit=8",
+      "status": 200,
+      "backend": "https://typeahead-tantivy-dev.fly.dev",
+      "keys": [
+        "actors"
+      ],
+      "actors": [
+        "did:plc:6kur3itxmcq7cenf3knk3nvz",
+        "did:plc:4hu6jqsyq5uw6tvifa3b7q74",
+        "did:plc:ec64xv7n5dszeizw56yr6b5h",
+        "did:plc:3j5e6pjz2ztfrex7wrbhwuvo",
+        "did:plc:rjnwrrrxvog2uuot34hi7dgn",
+        "did:plc:qekxrhtqmwzpqorrraregekm",
+        "did:plc:ikc6u6dsxabpbkhbpptyddrn",
+        "did:plc:jzavbr7biep467wzkmjdthwu"
+      ]
+    }
+  ],
+  "xrpc": {
+    "aliases_identical": true,
+    "checks": [
+      {
+        "path": "/xrpc/tech.waow.typeahead.searchActors?q=justin%20fa&limit=8",
+        "status": 200,
+        "backend": "https://typeahead-tantivy-dev.fly.dev",
+        "hash": "5e4b5d9c367d27b06210b381b089cd12dbb868b31069cca9d3a9be21f9b5085a"
+      },
+      {
+        "path": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=justin%20fa&limit=8",
+        "status": 200,
+        "backend": "https://typeahead-tantivy-dev.fly.dev",
+        "hash": "5e4b5d9c367d27b06210b381b089cd12dbb868b31069cca9d3a9be21f9b5085a"
+      }
+    ]
+  }
+}

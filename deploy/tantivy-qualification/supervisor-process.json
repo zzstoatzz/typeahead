@@ -1,0 +1,13 @@
+{
+  "run_id": "1ca2a04e4c8b",
+  "pid": 31719,
+  "started_at": 1793322061.948887,
+  "deadline": 1793327439.002526,
+  "synthetic_staged_pilot": false,
+  "log": "/tmp/typeahead-qualification-supervisor.log",
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+  "source_build_id": "b1793109259-2b36-px05",
+  "actor_count": 12816605,
+  "source_transfer": "R2 directly to Fly; no operator corpus transit",
+  "production_changed": false
+}

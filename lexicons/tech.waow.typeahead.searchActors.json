@@ -7,7 +7,9 @@
       "description": "Prefix search for atproto actors, ordered for typeahead use. Served entirely from a community-run index (https://typeahead.waow.tech); unauthenticated, CORS-enabled, results edge-cached for 60s. Also served at app.bsky.actor.searchActorsTypeahead as a drop-in migration alias with an identical response.",
       "parameters": {
         "type": "params",
-        "required": ["q"],
+        "required": [
+          "q"
+        ],
         "properties": {
           "q": {
             "type": "string",
@@ -23,20 +25,50 @@
             "maximum": 100,
             "default": 10,
             "description": "Maximum number of actors to return."
+          },
+          "prefer_pds": {
+            "type": "string",
+            "description": "Capability-gated candidate extension: prefer this canonical hosting PDS without filtering global results. Defaults to PDS-first ranking; exact eligible handles retain priority. Unsupported preference returns503 PdsScopeUnavailable. Independent of the hard pds filter."
+          },
+          "preference": {
+            "type": "string",
+            "enum": [
+              "pds_first",
+              "boost"
+            ],
+            "description": "PDS preference mode; requires prefer_pds. pds_first is the default unless boost is supplied. boost mode requires boost. Combining pds_first with boost is invalid."
+          },
+          "boost": {
+            "type": "string",
+            "description": "Finite nonnegative decimal score boost, rounded to f32. Requires prefer_pds and implies boost mode unless preference is explicit. Unknown source hosting metadata receives no preference."
           }
         }
       },
-      "errors": [{ "name": "PdsScopeUnavailable", "description": "PDS-scoped search is not available on the current backend or snapshot." }],
+      "errors": [
+        {
+          "name": "PdsScopeUnavailable",
+          "description": "PDS-scoped search is not available on the current backend or snapshot."
+        },
+        {
+          "name": "SearchBackendUnavailable",
+          "description": "The selected search backend is unavailable, stale or returned an invalid response; never a successful empty fallback."
+        }
+      ],
       "output": {
         "encoding": "application/json",
         "schema": {
           "type": "object",
-          "required": ["actors"],
+          "required": [
+            "actors"
+          ],
           "properties": {
             "actors": {
               "type": "array",
               "description": "Matching actors, best match first. Ranking blends prefix quality with a stored popularity score; actors hidden by moderation are excluded.",
-              "items": { "type": "ref", "ref": "#actorBasic" }
+              "items": {
+                "type": "ref",
+                "ref": "#actorBasic"
+              }
             }
           }
         }
@@ -45,7 +77,10 @@
     "actorBasic": {
       "type": "object",
       "description": "Basic actor profile. Matches the shape of app.bsky.actor.defs#profileViewBasic minus the authenticated viewer state, so results are interchangeable with bluesky's for unauthenticated use.",
-      "required": ["did", "handle"],
+      "required": [
+        "did",
+        "handle"
+      ],
       "properties": {
         "did": {
           "type": "string",

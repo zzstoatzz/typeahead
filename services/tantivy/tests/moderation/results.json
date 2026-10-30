@@ -1,0 +1,15 @@
+{
+  "canonical_source_sha256": "34559d8f0ed07567505523adb363e8a5f77ae279308c5776340ad25d184077ee",
+  "cases": 2170,
+  "unsupported_expiry_cases": 27,
+  "passed": true,
+  "kind": "actual-Bun-Rust-moderation-differential",
+  "cloud_calls": 0,
+  "canonical_source_matches_artifact": true,
+  "fixture_sha256": "79743ee6b7094828aefa9e22e20a2db27405db2d6f59a63c01f988b84ef7b6ed",
+  "runtime_module_sha256": "2a452a6a60ade216ca4bced56963cf38bf5f1a95ee617384e269b87a7b042aa8",
+  "limitations": [
+    "Unsupported expiry formats fail closed; source format coverage remains required before cutover.",
+    "This synthetic differential fixture is not source-wide expiry coverage or deployed qualification."
+  ]
+}

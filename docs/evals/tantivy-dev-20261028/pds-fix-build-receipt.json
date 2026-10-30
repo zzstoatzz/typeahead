@@ -1,0 +1,25 @@
+{
+  "binary_sha256": "ccf4282b37b8c1f118c1fd402cfa5832e619fb49bf9c77f8e9a90b6a9928f066",
+  "normalizer_archive_sha256": "10962389993f0dfdca19f846dad3b2f846d3ed82a22f373997ea47a512dac351",
+  "sources": {
+    "Cargo.toml": "61b96824d44ab913fba7329e10063ba6467cb8d90ff3ea622db384022ed5246e",
+    "smoke-results.json": "2156c2da74c05e5b07e0c04405fcb7fd52cc210a7ddb9334febc0984d7d59b4e",
+    "build-receipt.json": "a6c0e5d68069ac58ed9d4c8eaf912e3e14bc2c51e29443f837e577b767b0faa7",
+    "Cargo.lock": "1cce20b29f7761af70835552e009d5aa3df26774ecb70d9827058d38e9c25011",
+    "build.rs": "3b0908e0e6d51e996596253774727f32d0c98259c85ff904e8823d4fc141d253",
+    "README.md": "80910a93ef7da01f7d778bacdfa433903aae8b1217f8ded5b5ae9196c625daf3",
+    "source-pds-results.json": "0e060ab557d16b88f799f576c16d3b1b2aab22e436fbe0ff267e7ba1486e8daf",
+    ".gitignore": "337613937fda3acd2ba7834aa3e1b1eacfe04c9cafb336dfd6dfb7b6827d8f3e",
+    "tests/source_pds.py": "bff24a1aa71d58c11bf6745193881885cc3aa4f92175ac8aca224febfb73b50a",
+    "tests/smoke.py": "006c5d761ea243cb36b2405aef2ba0c4b42f5187a989a44bcbea9ce10d330c7f",
+    "src/lib.rs": "7785596a5eb358973d644871f3cb6a0e4e1ce7eec6aca64b95b1442e43a935d4",
+    "src/server.rs": "d4d303f6d3c4c621a3e8cd5750bb204fe4ed859ee8933cf2c9240ad981f21d48",
+    "src/normalizer.rs": "ce87f35532b7bb76d542ec1b79f7ef19b33bbecfac67c930d6d29114b3bd361e",
+    "src/actor.rs": "c2da82fcd20ca05ebc3df3257027289512feeddb7998099f23634691e42947bf",
+    "src/main.rs": "32f16148eb1aabea177b2613dcce439af1aa552b961edc396ccf2936aaf0277e",
+    "src/engine.rs": "973a490b8651757329e66b5d39f491f64743ebbc57fcc3ae88fc9f630958af44"
+  },
+  "cross_compile_seconds": 10.600688166974578,
+  "target": "x86_64-unknown-linux-gnu.2.28",
+  "image_tag": "registry.fly.io/typeahead-tantivy-dev:dev-ccf4282b37b8"
+}

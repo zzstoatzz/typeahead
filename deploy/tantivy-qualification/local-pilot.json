@@ -1,0 +1,9 @@
+{
+  "kind": "synthetic-local-HTTP-pilot",
+  "correctness_passed": true,
+  "attempts": 8,
+  "intentional_recall_difference_checked": true,
+  "full_qualification": false,
+  "cloud_calls": 0,
+  "performance_claim": null
+}

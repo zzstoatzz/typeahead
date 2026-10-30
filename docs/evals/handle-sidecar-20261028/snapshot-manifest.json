@@ -1,0 +1,37 @@
+{
+  "manifest_version": 2,
+  "active_build": "b1793081565-0228-px05",
+  "previous_build": "b1793081565-0228",
+  "promoted_at": 1793084975,
+  "snapshot_url": "releases/search/b1793081565-0228-px05/index.db",
+  "byte_size": 81920,
+  "sha256": "cedf9ac229dcbcf5b4c9658595efe065b20e4de6b5fff512d954451431231817",
+  "source_watermark": 1793081555,
+  "actor_count": 12809429,
+  "prefix_count": 148633078,
+  "normalize_version": "v2-cjk-bigram",
+  "scoring_version": "v1-quality-score",
+  "top_n_short": 300,
+  "top_n_medium": 200,
+  "top_n_long": 100,
+  "overlay_top_n": 100,
+  "hydrate_cap": 50,
+  "builder_version": "hetzner-cloud",
+  "cjk_key_count": 2400450,
+  "cjk_actor_count": 594680,
+  "format_version": 5,
+  "prefix_map": {
+    "object_key": "releases/search/b1793081565-0228-px05/index.db.prefix",
+    "byte_size": 7326593024,
+    "sha256": "86417bcd4a1125e5216024927b9d32e0bc537c47948931cc7a962e85b034f9ef"
+  },
+  "legacy_twin": {
+    "manifest": {
+      "object_key": "releases/search/b1793081565-0228/manifest.json",
+      "byte_size": 587,
+      "sha256": "f088fd0e7399c0bfbc1c65134d0dc1e19017af7e197456ba4146c61f1b723eda"
+    },
+    "build_id": "b1793081565-0228",
+    "source_watermark": 1793081555
+  }
+}

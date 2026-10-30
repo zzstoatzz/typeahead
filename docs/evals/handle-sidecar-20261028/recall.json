@@ -1,0 +1,62 @@
+{
+  "sorted": {
+    "exact": {
+      "cases": 160,
+      "truncated": 25,
+      "intended_handle_in_top10": 160,
+      "actual_typos": 0,
+      "typos_recovered": 0
+    },
+    "fuzzy": {
+      "cases": 160,
+      "truncated": 25,
+      "intended_handle_in_top10": 160,
+      "actual_typos": 155,
+      "typos_recovered": 155
+    },
+    "scope": {
+      "cases": 10,
+      "truncated": 0,
+      "intended_handle_in_top10": 10,
+      "actual_typos": 0,
+      "typos_recovered": 0
+    },
+    "fixed": {
+      "cases": 7,
+      "truncated": 2,
+      "intended_handle_in_top10": 0,
+      "actual_typos": 0,
+      "typos_recovered": 0
+    }
+  },
+  "fst": {
+    "exact": {
+      "cases": 160,
+      "truncated": 25,
+      "intended_handle_in_top10": 160,
+      "actual_typos": 0,
+      "typos_recovered": 0
+    },
+    "fuzzy": {
+      "cases": 160,
+      "truncated": 25,
+      "intended_handle_in_top10": 160,
+      "actual_typos": 155,
+      "typos_recovered": 155
+    },
+    "scope": {
+      "cases": 10,
+      "truncated": 0,
+      "intended_handle_in_top10": 10,
+      "actual_typos": 0,
+      "typos_recovered": 0
+    },
+    "fixed": {
+      "cases": 7,
+      "truncated": 2,
+      "intended_handle_in_top10": 0,
+      "actual_typos": 0,
+      "typos_recovered": 0
+    }
+  }
+}

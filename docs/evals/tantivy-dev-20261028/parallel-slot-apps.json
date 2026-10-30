@@ -1,0 +1,55 @@
+{
+  "observed_at": 1793344058.41936,
+  "purpose": "parallel Tantivy candidate and refresh slots",
+  "production_routing_changed": false,
+  "apps": [
+    {
+      "name": "typeahead-tantivy-a",
+      "ips": [
+        {
+          "ID": "",
+          "Address": "2a09:8280:1::1d7:7fc:0",
+          "Type": "v6",
+          "Region": "global",
+          "CreatedAt": "2026-10-30T07:05:22.534Z",
+          "ServiceName": "",
+          "Network": null
+        },
+        {
+          "ID": "",
+          "Address": "66.241.124.247",
+          "Type": "shared_v4",
+          "Region": "",
+          "CreatedAt": "0001-01-01T00:00:00Z",
+          "ServiceName": "",
+          "Network": null
+        }
+      ],
+      "machine_count": 0
+    },
+    {
+      "name": "typeahead-tantivy-b",
+      "ips": [
+        {
+          "ID": "",
+          "Address": "2a09:8280:1::1d7:803:0",
+          "Type": "v6",
+          "Region": "global",
+          "CreatedAt": "2026-10-30T07:05:23.454Z",
+          "ServiceName": "",
+          "Network": null
+        },
+        {
+          "ID": "",
+          "Address": "66.241.124.121",
+          "Type": "shared_v4",
+          "Region": "",
+          "CreatedAt": "0001-01-01T00:00:00Z",
+          "ServiceName": "",
+          "Network": null
+        }
+      ],
+      "machine_count": 0
+    }
+  ]
+}

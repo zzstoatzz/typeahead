@@ -19,6 +19,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const range = ["24h", "7d", "30d", "all"].includes(reqUrl.searchParams.get("range") ?? "")
     ? reqUrl.searchParams.get("range")! : "7d";
   const norm = new URL("/stats", request.url);
+  norm.searchParams.set("metric", "search-exclusions-v1");
   if (apps.length) norm.searchParams.set("apps", apps.join(","));
   if (range !== "7d") norm.searchParams.set("range", range);
   const cacheKey = new Request(norm.href);
@@ -32,9 +33,10 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const t0 = performance.now();
 
   // materialized data from KV (written by cron) — never hits turso
-  const [kvData, reqData] = await Promise.all([
+  const [kvData, reqData, exclusions] = await Promise.all([
     env.KV.get<StatsKvData>("stats_data", "json"),
     env.KV.get<RequestKvData>("request_data", "json"),
+    env.KV.get<{ count: number; as_of: string }>("search_exclusions", "json"),
   ]);
 
   const trafficWhere = TRAFFIC_SOURCE_WHERE;
@@ -88,7 +90,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const total = latest.total;
   const withHandles = latest.with_handles;
   const withAvatars = latest.with_avatars;
-  const hiddenCount = dbSnapshots.length > 0 ? (dbSnapshots[dbSnapshots.length - 1].hidden ?? 0) : 0;
+  const hiddenCount = exclusions?.count ?? null;
 
   const totalSearches = rows.reduce((s, r) => s + r.searches + (r.cache_hits ?? 0), 0);
   // avg latency over last 24h only (288 five-min buckets) so transient spikes age out quickly
@@ -104,7 +106,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   const tProcess = performance.now();
 
-  const body = statsPage({ total, hiddenCount, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficAll, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [], trafficDaily: kvData?.traffic_daily ?? [],
+  const body = statsPage({ total, hiddenCount, exclusionsAsOf: exclusions?.as_of, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficAll, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [], trafficDaily: kvData?.traffic_daily ?? [],
     requestSeries: reqData?.series ?? [], requestSeries5m: reqData?.series_5m ?? [], requestDaily: reqData?.daily ?? [],
     view: { apps, range, origin: reqUrl.origin } });
 

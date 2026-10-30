@@ -1,0 +1,56 @@
+{
+  "run_id": "672c3d51434a",
+  "observed_at": 1793320759.319305,
+  "scope": "terminal-reaper-identity",
+  "identity_guard_passed": true,
+  "identity": {
+    "id": "0803736c317038",
+    "name": "tq-672c3d51434a-reaper",
+    "auto_destroy": true
+  },
+  "provider_state": "destroyed",
+  "provider_events": [
+    {
+      "type": "destroy",
+      "source": "flyd",
+      "timestamp": 1793319832150,
+      "exit": null
+    },
+    {
+      "type": "destroy",
+      "source": "flyd",
+      "timestamp": 1793319832064,
+      "exit": null
+    },
+    {
+      "type": "exit",
+      "source": "flyd",
+      "timestamp": 1793319832056,
+      "exit": {
+        "requested_stop": true,
+        "restarting": false,
+        "guest_exit_code": 0,
+        "guest_signal": -1,
+        "guest_error": "",
+        "exit_code": 143,
+        "signal": -1,
+        "error": "",
+        "oom_killed": false,
+        "exited_at": "2026-10-30T00:23:52.006Z"
+      }
+    },
+    {
+      "type": "destroy",
+      "source": "user",
+      "timestamp": 1793319831899,
+      "exit": null
+    },
+    {
+      "type": "stop",
+      "source": "user",
+      "timestamp": 1793319831681,
+      "exit": null
+    }
+  ],
+  "conclusion": "The reaper identity/runtime shape still validates. Its provider history shows controller-requested termination during cleanup, not an earlier reaper crash. The original observation error subtype was discarded and cannot be recovered from this proof."
+}

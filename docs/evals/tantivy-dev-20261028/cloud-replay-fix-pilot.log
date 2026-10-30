@@ -1,0 +1,20 @@
+{"passed": true, "checks": ["verified_manifest_footer_stream_import", "multiword_complete_intersection", "pds_before_selection_and_ack", "exact_priority_f32_rounding_and_zero_ties", "cjk_contiguity_verification_refills_past_70_false_candidates", "moderation_before_topk_and_profile_hydration", "aliases_public_write_exclusion_auth_and_input_bounds", "renames_pds_migration_tombstones_stale_rejection_and_cursor_atomicity", "durable_restart_version_tombstone_and_cursor_barriers", "crash_before_commit_rolls_back_after_commit_recovers_profile_and_cursor", "concurrent_generation_consistent_profile_hydration", "partial_or_corrupt_import_never_ready"], "actor_count": 82, "cloud_resources": false, "payload_removed": true}
+{"passed": true, "checks": ["malformed_optional_pds_does_not_skip_any_actor", "invalid_source_never_matches_scope_or_preference_even_with_spoofed_host", "unscopable_localhost_port_url_cannot_form_derived_avatar_url_explicit_avatar_preserved", "invalid_query_scopes_and_preferences_remain_rejected", "invalid_missing_valid_delete_counters_transition_atomically", "relaxed_optional_metadata_does_not_relax_score_or_lexical_admission", "raw_invalid_pds_and_long_value_survive_committed_restart_and_replay", "longest_valid_native_host_and_wrapper_are_not_misclassified"], "actors_retained": 7, "source_invalid_initial": 5, "source_missing_initial": 1, "fixed_reason_categories": ["invalid_hostname", "too_long"], "cloud_resources": false, "payload_removed": true, "binary_sha256": "f4e092d37b4f4e42b3de363a57b0649dced8bbeb1db4b017dabc62870387f7c9"}
+{"passed": true, "checks": ["cursor_cas_failure_retains_state_and_identical_retry_with_current_cursor_succeeds", "equal_version_conflict_does_not_commit_any_actor_or_cursor_and_valid_replay_still_succeeds", "same_version_live_deleted_ambiguity_is_rejected_in_both_directions", "committed_cursor_tombstone_and_identical_replay_survive_restart", "fixed_diagnostic_events_distinguish_cursor_cas_and_actor_version_conflicts", "stderr_contains_no_raw_did_profile_cursor_or_secret_and_events_are_bounded"], "cursor_conflict_events": 1, "actor_conflict_events": 2, "maximum_diagnostic_bytes": 311, "public_409_body_unchanged": true, "conflict_policy_unchanged": true, "payload_removed": true, "cloud_resources": false, "binary_sha256": "f4e092d37b4f4e42b3de363a57b0649dced8bbeb1db4b017dabc62870387f7c9"}
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 0.241s
+
+OK
+.........
+----------------------------------------------------------------------
+Ran 9 tests in 0.139s
+
+OK
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 8.379s
+
+OK
+{"passed": true, "source": "real HTTP stub executing read-only SQLite queries", "backend": "actual compiled Rust Tantivy", "backend_binary_sha256": "f4e092d37b4f4e42b3de363a57b0649dced8bbeb1db4b017dabc62870387f7c9", "sync_source_sha256": "6b738881dfd5c1fce544e2c2af092e279b8733537890ccf41f1ad94351410642", "new_actor_imported": true, "cleared_handle_removed": true, "tombstone_removed": true, "cursor_survives_restart": true, "replay_after_restart_passed": true, "replay_did_not_reindex": true, "bounded_lookback_recovers_late_actor": true, "source_requests": 68, "source_policy": "turso-current-state-cutoff-v1", "stable_live_tombstone_tie_preserved": true, "hidden_tombstone_tie_preserved": true, "older_live_tombstone_applied": true, "future_restore_respects_cycle_cutoff": true, "legacy_cursor_policy_upgrade_passed": true, "late_equal_restore_still_conflicts": true, "production_contact": false, "temporary_payloads_removed": true}
+CLOUD_REPLAY_FIX_PILOT_PASSED

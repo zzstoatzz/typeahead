@@ -1,0 +1,12 @@
+{
+  "app": "typeahead-qual-20261029",
+  "owner": "tantivy-qualification-20261029",
+  "run_id": "b21a25b813d0",
+  "deadline": 1793299162.8259578,
+  "self": {
+    "id": "0803736c31ee08",
+    "name": "tq-b21a25b813d0-reaper",
+    "auto_destroy": true
+  },
+  "manifest_sha256": "22b85042ada606f027e70a7a6553109eb5c798c808555a5b34b70b5025998cbc"
+}

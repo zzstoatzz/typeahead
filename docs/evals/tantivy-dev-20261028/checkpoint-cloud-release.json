@@ -1,0 +1,49 @@
+{
+  "observed_at": 1793343409.4685152,
+  "state": "submitted",
+  "mps_revision": "10b6b338a1624a6041caf9cf939e7da5b4411999",
+  "typeahead_revision": "34d69939898b814dbce091bbcc1ecfb7edc375d8",
+  "deployment_id": "4e29f27d-161e-4314-9478-03446c89ad05",
+  "idempotency_key": "21e48d4b7ecb2fb89d3d57e8b82b36e0b94061bf5cec0be7f0a6b108e7c581c0",
+  "work_pool": "typeahead-ephemeral",
+  "server_type": "cpx32",
+  "location": "fsn1",
+  "worker_timeout_seconds": 2100,
+  "preparation_task_timeout_seconds": 1800,
+  "checkpoint_soft_deadline_seconds": 900,
+  "source_byte_limit": 8589934592,
+  "sample_document_limit": 100000,
+  "publishes_immutable_candidate": true,
+  "cuts_over_production": false,
+  "production_changed": false,
+  "original_deployment_sha256": "f0b7eea4676a3d5a9074161cc92f38a0029e11f2c324abf0fd2d1d4edcac58d9",
+  "temporary_deployment": true,
+  "flow_run_id": "c1674e97-4d6f-4e51-b7b7-9754c2ab275a",
+  "flow_run_state": "Scheduled",
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/c1674e97-4d6f-4e51-b7b7-9754c2ab275a",
+  "latest": {
+    "observed_at": 1793343607.798029,
+    "id": "c1674e97-4d6f-4e51-b7b7-9754c2ab275a",
+    "state": "Failed",
+    "start": "2026-10-30 06:59:53.905968+00:00",
+    "end": "2026-10-30 06:59:57.551549+00:00",
+    "infrastructure_pid": "prefect-build-c1674e974d6f4e51b7b79754c2ab275a-r0",
+    "message": "Flow run encountered an exception: ValueError: Cloud release requires a flow execution",
+    "tasks": [
+      {
+        "name": "prepare_checkpoint_generation-edb",
+        "state": "Failed"
+      },
+      {
+        "name": "clone_repo-03b",
+        "state": "Completed"
+      }
+    ]
+  },
+  "provider_cleanup": {
+    "observed_at": 1793343671.6504278,
+    "remaining_servers": 0,
+    "server_name": "prefect-build-c1674e974d6f4e51b7b79754c2ab275a-r0"
+  },
+  "temporary_deployment_retired_at": 1793343739.351685
+}

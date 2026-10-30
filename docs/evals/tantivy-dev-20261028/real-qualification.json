@@ -1,0 +1,2385 @@
+{
+  "owner": "tantivy-dev-20261028",
+  "kind": "bounded-real-corpus-correctness-properties",
+  "passed": true,
+  "source_verified": true,
+  "source_backed_scope_witnesses": 21,
+  "source_backed_pds_pair_verified": true,
+  "pds_pair_status": "verified",
+  "historical_witness_pds_state": "missing",
+  "observed_source_pds_counts": {
+    "missing": 89,
+    "invalid": 0,
+    "canonical": 34
+  },
+  "pds_witness": {
+    "origin_case": "hard-pds",
+    "did_sha256": "5e4a4f1a3c4f89a62d965772d042a4f462ed42e7df2b729e435ee8c27c5a67a7",
+    "host_sha256": "820637184f036ff4159749a6b40b014242db7efc99b38aa5d7d7b15ca1fea540",
+    "positive_and_negative_verified": true
+  },
+  "full_topk_oracle": false,
+  "checks": [
+    {
+      "case": "known-exact-regression-witness",
+      "passed": true,
+      "classification": "covered-source-witness-regression"
+    },
+    {
+      "case": "joint-known-witness-presence",
+      "passed": true,
+      "returned": 23,
+      "classification": "covered-source-witness-regression"
+    },
+    {
+      "case": "joint-reversed-known-witness-presence",
+      "passed": true,
+      "returned": 23,
+      "classification": "covered-source-witness-regression"
+    },
+    {
+      "case": "full-name-known-witness-presence",
+      "passed": true,
+      "returned": 1,
+      "classification": "covered-source-witness-regression"
+    },
+    {
+      "case": "returned-lexical-soundness-known-exact-regression-witness",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-full-name",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-broad-a",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-han-japan",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-han-japan",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-han-japan",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-first",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "returned-lexical-soundness-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "independent-lexical-predicate-exercised",
+      "passed": true,
+      "verified": 142,
+      "unverified": 46,
+      "han_verified": 4
+    },
+    {
+      "case": "stable-word-order",
+      "passed": true
+    },
+    {
+      "case": "stable-ascii-case",
+      "passed": true
+    },
+    {
+      "case": "source-visible-known-exact-regression-witness",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-known-exact-regression-witness",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-known-exact-regression-witness",
+      "passed": true,
+      "verified": 1
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-joint",
+      "passed": true,
+      "verified": 23
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-visible-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-joint-reversed",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-joint-reversed",
+      "passed": true,
+      "verified": 23
+    },
+    {
+      "case": "source-visible-full-name",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-full-name",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-full-name",
+      "passed": true,
+      "verified": 1
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-visible-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-broad-a",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-broad-a",
+      "passed": true,
+      "verified": 20
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-visible-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-latin-eric",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-latin-eric",
+      "passed": true,
+      "verified": 20
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-japan",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-han-tokyo",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-visible-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-pds-membership-hard-pds",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-hard-pds",
+      "passed": true,
+      "verified": 20
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-first",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-pds-first",
+      "passed": true,
+      "verified": 20
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-visible-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-handle-hydration-pds-boost",
+      "passed": true
+    },
+    {
+      "case": "source-returned-order-pds-boost",
+      "passed": true,
+      "verified": 20
+    },
+    {
+      "case": "source-real-witness-hard-pds-positive",
+      "passed": true
+    },
+    {
+      "case": "source-real-witness-hard-pds-exclusion",
+      "passed": true
+    },
+    {
+      "case": "source-verification-covered-rows",
+      "passed": true,
+      "covered": 188,
+      "source_requests": 3,
+      "unverified": 0
+    },
+    {
+      "case": "generation-identity-preserved",
+      "passed": true
+    }
+  ],
+  "inconclusive": [],
+  "requests": 29,
+  "received_bytes": 170181,
+  "wall_seconds": 3.87166919099991,
+  "initial": {
+    "build_id": "b1793109259-2b36-px05",
+    "source_build_id": "b1793109259-2b36-px05",
+    "actor_count": 12837779,
+    "watermark": 1793255053,
+    "pds_missing_actor_count": 9936700,
+    "pds_invalid_actor_count": 1,
+    "pds_unknown_actor_count": 9936701,
+    "pds_invalid_reason_counts": {
+      "invalid_hostname": 1
+    }
+  },
+  "final": {
+    "build_id": "b1793109259-2b36-px05",
+    "source_build_id": "b1793109259-2b36-px05",
+    "actor_count": 12837779,
+    "watermark": 1793255053,
+    "pds_missing_actor_count": 9936700,
+    "pds_invalid_actor_count": 1,
+    "pds_unknown_actor_count": 9936701,
+    "pds_invalid_reason_counts": {
+      "invalid_hostname": 1
+    }
+  },
+  "response_receipts": [
+    {
+      "case": "known-exact-regression-witness",
+      "returned": 1,
+      "body_sha256": "9ac5e00ea04fed365854e569869351eda2c88e552dc67c00258b838dfa50439c"
+    },
+    {
+      "case": "joint",
+      "returned": 23,
+      "body_sha256": "c4e2b6c6865da5de61aad0479972090f965391e8e72d2117cd3cc1708b5daeb8"
+    },
+    {
+      "case": "joint-reversed",
+      "returned": 23,
+      "body_sha256": "c4e2b6c6865da5de61aad0479972090f965391e8e72d2117cd3cc1708b5daeb8"
+    },
+    {
+      "case": "full-name",
+      "returned": 1,
+      "body_sha256": "9ac5e00ea04fed365854e569869351eda2c88e552dc67c00258b838dfa50439c"
+    },
+    {
+      "case": "broad-a",
+      "returned": 20,
+      "body_sha256": "b730b3a0d37a20dc663465158285d270c534c38a477793fedb6ced83d460c5f4"
+    },
+    {
+      "case": "latin-eric",
+      "returned": 20,
+      "body_sha256": "af4fee8592152e31fcc2688bafeb47b849d16601c8739839164904d8d4db13a0"
+    },
+    {
+      "case": "han-japan",
+      "returned": 20,
+      "body_sha256": "4adb43664323d125c25415317be964565d6453d35e74a211c3e767de82adc96f"
+    },
+    {
+      "case": "han-tokyo",
+      "returned": 20,
+      "body_sha256": "43caf3388d99fc4821d15510adfa532dc55a5823b34beb6ebbed31fc3c3ecb6c"
+    },
+    {
+      "case": "hard-pds",
+      "returned": 20,
+      "body_sha256": "4f6dacdec0f71e7572f76d567e1e8fbdbb80e94facafc787f207cc3ecf8c727e"
+    },
+    {
+      "case": "pds-first",
+      "returned": 20,
+      "body_sha256": "4f6dacdec0f71e7572f76d567e1e8fbdbb80e94facafc787f207cc3ecf8c727e"
+    },
+    {
+      "case": "pds-boost",
+      "returned": 20,
+      "body_sha256": "1a2e0b9718daf3dacf13de7cf5cd9aaf9f98353bff9723902940f0a05e750cde"
+    },
+    {
+      "case": "source-real-witness-global-exact",
+      "returned": 1,
+      "body_sha256": "26b1996b6c44a4d97e87ba0f3c8d084960c8360c754d67cb0709c1418bddb0e0"
+    },
+    {
+      "case": "source-real-witness-hard-pds-positive",
+      "returned": 1,
+      "body_sha256": "26b1996b6c44a4d97e87ba0f3c8d084960c8360c754d67cb0709c1418bddb0e0"
+    },
+    {
+      "case": "source-real-witness-hard-pds-exclusion",
+      "returned": 0,
+      "body_sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840"
+    }
+  ],
+  "limitations": [
+    "Known witness assertions are regression requirements, not complete expected topK lists.",
+    "Independent lexical checks intentionally abstain on non-ASCII folds outside their small ASCII/pure-Han predicate.",
+    "Source comparison checks returned rows/order and scope eligibility, not absent candidates or full topK recall.",
+    "Source updated_at/commit timestamp guarantees remain a separate replay contract.",
+    "No source writes, production requests, admin mutations or raw actor/source payloads in this receipt."
+  ]
+}

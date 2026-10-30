@@ -1,0 +1,18 @@
+{
+  "source_position": 11284974,
+  "did_sha256": "540a144f8ce5f4a396cf4ff4713c67a4516b55cbac4d812d07cc1f148c75a114",
+  "pds_bytes": 21,
+  "is_ascii": true,
+  "contains_whitespace": false,
+  "contains_underscore": false,
+  "wall_s": 36.289786279,
+  "source_bytes_read": 2414948432,
+  "has_explicit_scheme": true,
+  "has_userinfo": false,
+  "has_path": false,
+  "has_query": false,
+  "has_fragment": false,
+  "has_port_separator": true,
+  "hostname_has_dot": false,
+  "hostname_is_localhost": true
+}

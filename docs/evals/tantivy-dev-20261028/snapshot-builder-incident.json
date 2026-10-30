@@ -1,0 +1,25 @@
+{
+  "recorded_at": "2026-10-29T06:29:37.598087+00:00",
+  "failed_run": "af85f86a-746b-4587-9edf-dcee15ef6271",
+  "diagnosis_run": "09e7dab0-d16f-40b2-8056-869943ac05e6",
+  "observed_secondary_error": "FileNotFoundError services/build.zig.zon.gh",
+  "local_config_typeahead_tag": "pds-compact-31ec142-20261020",
+  "tag_commit": "8c24887bbed3dab88cebed1df80fa47a81881c18",
+  "retired_fallback_commit": "9115a75cd462fe0ea5b5ed2876e051389729029b",
+  "pinned_vendor_tarballs": 13,
+  "actual_failed_run_source_pin_verified": false,
+  "original_build_error_known": false,
+  "logs_blocker": "Connected Prefect app requires reauthentication; home API was not queried",
+  "repair_repository": "my-prefect-server",
+  "repair_files": [
+    "flows/typeahead_index.py",
+    "tests/test_typeahead_build.py"
+  ],
+  "repair": "Seed pinned vendored tarballs into isolated Zig global package cache; preserve primary build error if explicit legacy fallback absent; restore original manifest after legacy fallback",
+  "targeted_tests_passed": 17,
+  "real_zig_dependency_build_passed": true,
+  "lint_format_typecheck_passed": true,
+  "deployed": false,
+  "new_flow_triggered": false,
+  "production_routing_changed": false
+}

@@ -1,0 +1,12 @@
+Image: registry.fly.io/typeahead-search-refresh@sha256:38c69e5d497ad1ccd27ab226f19c21cd135418bddfbd24c97f524f3ea3268acc
+Image size: 157 MB
+
+Success! A Machine has been successfully launched in app typeahead-search-refresh
+ Machine ID: 2870d15f795d28
+ Version: 01M61YFAR3H5SMYF1QG0842K04
+ State: created
+
+ Attempting to start machine...
+
+Machine started, you can connect via the following private ip
+  fdaa:12:4e15:a7b:4a:dbdf:7699:2

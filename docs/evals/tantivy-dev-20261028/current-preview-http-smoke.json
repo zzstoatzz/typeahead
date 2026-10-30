@@ -1,0 +1,80 @@
+{
+  "observed_at": 1793323176.9784079,
+  "scope": "bounded deployed earlier source-v2 dev preview HTTP smoke; not expiry-v4 release qualification",
+  "production_changed": false,
+  "cases": [
+    {
+      "name": "canonical",
+      "curl_exit": 0,
+      "status_line": "HTTP/2 200 ",
+      "wall_seconds": 0.491,
+      "actors": 10,
+      "body_sha256": "27c352c18edbd72effc98e076fe9432763a5349960ca4575ec9a04cb8dfee60b",
+      "error": null,
+      "headers": {
+        "cache-control": "no-store",
+        "x-typeahead-search-backend": "https://typeahead-tantivy-dev.fly.dev",
+        "x-typeahead-build": "b1793109259-2b36-px05",
+        "x-typeahead-pds": ""
+      }
+    },
+    {
+      "name": "alias",
+      "curl_exit": 0,
+      "status_line": "HTTP/2 200 ",
+      "wall_seconds": 0.238,
+      "actors": 10,
+      "body_sha256": "27c352c18edbd72effc98e076fe9432763a5349960ca4575ec9a04cb8dfee60b",
+      "error": null,
+      "headers": {
+        "cache-control": "no-store",
+        "x-typeahead-search-backend": "https://typeahead-tantivy-dev.fly.dev",
+        "x-typeahead-build": "b1793109259-2b36-px05",
+        "x-typeahead-pds": ""
+      }
+    },
+    {
+      "name": "pds-filter",
+      "curl_exit": 0,
+      "status_line": "HTTP/2 200 ",
+      "wall_seconds": 0.297,
+      "actors": 0,
+      "body_sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840",
+      "error": null,
+      "headers": {
+        "cache-control": "no-store",
+        "x-typeahead-search-backend": "https://typeahead-tantivy-dev.fly.dev",
+        "x-typeahead-build": "b1793109259-2b36-px05",
+        "x-typeahead-pds": "bsky.social"
+      }
+    },
+    {
+      "name": "pds-prefer",
+      "curl_exit": 0,
+      "status_line": "HTTP/2 200 ",
+      "wall_seconds": 0.301,
+      "actors": 10,
+      "body_sha256": "27c352c18edbd72effc98e076fe9432763a5349960ca4575ec9a04cb8dfee60b",
+      "error": null,
+      "headers": {
+        "cache-control": "no-store",
+        "x-typeahead-search-backend": "https://typeahead-tantivy-dev.fly.dev",
+        "x-typeahead-build": "b1793109259-2b36-px05",
+        "x-typeahead-pds": ""
+      }
+    }
+  ],
+  "aliases_byte_identical": true,
+  "checks": {
+    "all_http_200": true,
+    "aliases_byte_identical": true,
+    "hard_filter_acknowledged": true,
+    "preference_acknowledged": false
+  },
+  "passed": false,
+  "limitations": [
+    "Four sequential HTTP requests are smoke observations, not a latency benchmark.",
+    "Empty hard-filter output proves acknowledgement only, not filter recall.",
+    "The earlier deployed source-v2 dev backend did not acknowledge contextual preference; its unchanged result does not prove preference semantics. The expiry-v4 candidate remains undeployed."
+  ]
+}

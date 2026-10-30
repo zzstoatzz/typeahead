@@ -1,0 +1,6 @@
+{
+  "image": "registry.fly.io/typeahead-tantivy-dev@sha256:6b7b1e8ed22dfa5b1de5b71fd67cf6e0505f4650c5fd2392c3d45ecbe9ce2de5",
+  "binary_sha256": "5754276f712c35b7ff571b3bbc1f6344dc275a041228b8872b524ed53880b2c5",
+  "pilot_passed": true,
+  "purpose": "Repair stalled source replay; moderation generation qualification remains pending"
+}

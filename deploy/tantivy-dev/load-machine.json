@@ -1,0 +1,17 @@
+{
+  "machine_id": "d8d0e70c5922e8",
+  "serving_machine_id": "840e95a2153308",
+  "app": "typeahead-tantivy-dev",
+  "created_at": 1793252677.2565818,
+  "deadline_seconds": 900,
+  "auto_destroy": true,
+  "image": "registry.fly.io/typeahead-tantivy-dev@sha256:5342a3b41539777658b2a5e8a64935593ee82a6609f4798e2f12da5bc91d48ec",
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 1,
+    "memory_mb": 256
+  },
+  "load_source_sha256": "43506660d9cedf9f50cfe5530725acb749e4c06588d2d795be9f70ed996c237b",
+  "source_bytes": 9093,
+  "compressed_bytes": 3720
+}

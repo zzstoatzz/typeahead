@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "provider": "fly",
+  "observed_at": "2026-10-29T20:19:08.895541+00:00",
+  "app": "typeahead-qual-20261029",
+  "machine_id": "6835750a604018",
+  "instance_id": "01M64N1A6KAA9Y3R88BHH3R2S6",
+  "state": "stopped",
+  "image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:c3d29aba045c9b2a57fe0080f61a480497eb68a85387b25853ad39e89ad9166a",
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 2,
+    "memory_mb": 1024
+  },
+  "mounts": [
+    {
+      "volume_id": "vol_v8ey9xwg3yol185v",
+      "path": "/data",
+      "size_gib": 20,
+      "encrypted": true
+    }
+  ],
+  "owner": "tantivy-qualification-20261029",
+  "role": "tantivy-control",
+  "public_service_ports": [],
+  "provider_config_reserved_env_overrides": false,
+  "volume_ids": [
+    "vol_v8ey9xwg3yol185v"
+  ],
+  "final_volume_gib": 20,
+  "public_services": [],
+  "machines_api_response_sha256": "0ecdaa620e982107951a0dc1cac8b201cf366e23b3cc090675c427c961b75e84"
+}

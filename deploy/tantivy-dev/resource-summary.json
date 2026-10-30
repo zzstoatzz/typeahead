@@ -1,0 +1,71 @@
+{
+  "samples": 174,
+  "incomplete_final_samples": 0,
+  "start": 1793252597.6090953,
+  "end": 1793253463.320692,
+  "span_s": 865.7115967273712,
+  "source_sha256": "b17addab73aa9ae828ea162402672f7e4995ca689ab25faacc391a8484ee2e55",
+  "source_bytes": 2465271,
+  "vm_memory_total_bytes": [
+    1011351552
+  ],
+  "minimum_available_bytes": 707440640,
+  "maximum_server_rss_bytes": 695300096,
+  "maximum_swap_used_bytes": 0,
+  "server_pids": [
+    623
+  ],
+  "vmstat_delta": {
+    "oom_kill": 0,
+    "allocstall_normal": 0,
+    "pswpout": 0,
+    "pswpin": 0,
+    "pgscan_kswapd": 187792,
+    "pgmajfault": 6617,
+    "allocstall_dma32": 0,
+    "pgfault": 57126,
+    "pgscan_direct": 0
+  },
+  "cgroup_memory_events_delta": null,
+  "cgroup_cpu_delta": null,
+  "memory_pressure": {
+    "total_us_delta": {
+      "some": 28742,
+      "full": 27679
+    },
+    "percent_of_elapsed": {
+      "some": 0.003320043315655317,
+      "full": 0.0031972541553831856
+    }
+  },
+  "io_pressure": {
+    "total_us_delta": {
+      "some": 5217747,
+      "full": 5164731
+    },
+    "percent_of_elapsed": {
+      "some": 0.6027119215827216,
+      "full": 0.5965879421650477
+    }
+  },
+  "same_server_pids_at_endpoints": true,
+  "server_io_delta_by_pid": {
+    "623": {
+      "write_bytes": 50794496,
+      "read_bytes": 783769600,
+      "syscr": 112,
+      "syscw": 27303,
+      "rchar": 242158,
+      "cancelled_write_bytes": 0,
+      "wchar": 74261696
+    }
+  },
+  "limitations": [
+    "VM-wide fault/pressure totals include replay and telemetry work.",
+    "RSS includes resident mapped pages; it is not heap allocation.",
+    "Filesystem cache warmth is not a physical-disk cold guarantee."
+  ],
+  "stderr_tail": "",
+  "sampler_stopped": true,
+  "covers_load_window": true
+}

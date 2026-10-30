@@ -191,6 +191,24 @@ export function docsPage(): string {
       surface minus <code>viewer</code>.
     </div>
 
+    <h2 id="pds-preference">PDS ranking preference</h2>
+    <p>
+      capability-gated candidate backends accept <code>prefer_pds=acme.com</code> to prefer
+      that hosting PDS while retaining global matches. This defaults to
+      <code>preference=pds_first</code>. For a finite nonnegative score boost instead,
+      use <code>preference=boost&amp;boost=10</code>; exact eligible handles retain priority.
+      The hard <code>pds</code> filter is independent. Preferences apply before selection,
+      and their canonical context is part of the cache key. Unsupported preference returns
+      <code>503 PdsScopeUnavailable</code>, never silent global fallback.
+    </p>
+    <p>
+      these candidate changes do not indicate a production cutover. Native snapshot scopes
+      retain their documented size limit; the Tantivy candidate supports all recorded
+      canonical hosts. Neither engine can infer missing hosting metadata. Query or parameter
+      rejection returns <code>400</code>; unavailable, stale or invalid backend answers return
+      <code>503</code> rather than successful empty results.
+    </p>
+
     <h2 id="profiles">profiles</h2>
     <p>
       once a user picks an actor, render a card without a second trip to bluesky.
@@ -252,7 +270,8 @@ export function docsPage(): string {
       the network's event stream as inactive and are removed from the index.
     </p>
     <p>
-      handles containing explicit slurs are always filtered, regardless of override status. these
+      handles containing explicit slurs are filtered by default. An explicit per-DID show
+      override is the final decision and can rescue a false positive. These
       regexes are
       <a href="https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/handle/explicit-slurs.ts">ported
       from bluesky's own PDS</a> and catch Unicode diacritics, Cyrillic substitutions, and leetspeak.
@@ -283,7 +302,8 @@ export function docsPage(): string {
       if someone isn't showing up in results, you (or your users) can request indexing from the
       <a href="/">homepage</a>. newly created accounts are picked up automatically from the
       relay's event stream, but accounts created before the index existed — or hosted on a PDS
-      the relay doesn't crawl — may need a manual nudge.
+      the relay doesn't crawl — may need a manual nudge. The handle must resolve to the DID,
+      and the authority DID document must claim that handle; unverified claims are rejected.
     </p>
 
     <footer>

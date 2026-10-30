@@ -1,0 +1,9 @@
+{
+  "phase": {
+    "phase": "sorting-full-handles",
+    "elapsed_s": 279.676052979
+  },
+  "source_sha256": "efcb62f5e5d8d79f3ef54a1a6b69589e47a1296e5e1b43b609c908fabff1496e",
+  "binary_sha256": "b0bcb75eb327a5604f38a7d8bc26b1c952a36d5823d7edc9742fd870af9e0a8e",
+  "build_log": "   Compiling handle-sidecar v0.1.0 (/opt/research)\n    Finished `release` profile [optimized] target(s) in 8.89s\n.\n----------------------------------------------------------------------\nRan 1 test in 4.175s\n\nOK\n"
+}

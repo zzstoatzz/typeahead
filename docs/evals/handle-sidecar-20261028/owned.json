@@ -1,0 +1,34 @@
+{
+  "machine": "2870d15f795d28",
+  "volume": "vol_re1ql0132o3qxw34",
+  "config": {
+    "image": "registry.fly.io/typeahead-search-refresh@sha256:38c69e5d497ad1ccd27ab226f19c21cd135418bddfbd24c97f524f3ea3268acc",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 20,
+        "volume": "vol_re1ql0132o3qxw34",
+        "name": "fst_research_20261028"
+      }
+    ],
+    "services": null,
+    "metadata": {
+      "owner": "handle-sidecar-20261028"
+    },
+    "init": {
+      "exec": [
+        "/bin/sleep",
+        "5400"
+      ]
+    },
+    "restart": {
+      "policy": "no"
+    }
+  }
+}

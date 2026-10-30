@@ -267,7 +267,7 @@ def test_stats_page(base_url: str):
             check("stats contains actors indexed", "actors indexed" in body)
             check("stats contains sparkline heading", "searches / 5 min" in body)
             check("stats has home link", 'href="/"' in body)
-            check("stats shows hidden count", "hidden by moderation" in body)
+            check("stats shows search exclusions", "excluded from search" in body)
     except urllib.error.HTTPError as e:
         check("stats returns 200", False, f"got {e.code}")
     except Exception as e:

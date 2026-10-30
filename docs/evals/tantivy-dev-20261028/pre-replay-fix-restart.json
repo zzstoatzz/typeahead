@@ -1,0 +1,70 @@
+{
+  "checked_at": 1793251203.7590487,
+  "status": {
+    "actor_count": 12842241,
+    "build_id": "b1793109259-2b36-px05",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-v1",
+    "full_source": true,
+    "import_complete": true,
+    "indexed_memberships": 606483359,
+    "input_actors": 12816605,
+    "last_commit_epoch": 1793249979,
+    "normalize_version": "v2-cjk-bigram",
+    "pds_invalid_actor_count": 1,
+    "pds_invalid_reason_counts": {
+      "invalid_hostname": 1
+    },
+    "pds_missing_actor_count": 9937467,
+    "pds_scope_policy": "all-recorded-canonical-hosts",
+    "pds_scope_version": 1,
+    "pds_unknown_actor_count": 9937468,
+    "plan_version": "complete-prefix-groups-v1",
+    "prefix_count": null,
+    "ready": false,
+    "searchable_actor_count": 12820039,
+    "segments": 12,
+    "snapshot_watermark": 1793109254,
+    "source_build_id": "b1793109259-2b36-px05",
+    "source_cursor": {
+      "actors": {
+        "did": "",
+        "updated_at": 1793249712
+      },
+      "build_id": "b1793109259-2b36-px05",
+      "cycle": {
+        "stream": "tombstones",
+        "upper_bound": 1793249712
+      },
+      "lookback_seconds": 300,
+      "schema_version": 1,
+      "snapshot_watermark": 1793109254,
+      "through": 1793109254,
+      "tombstones": {
+        "deleted_at": 1793147292,
+        "did": "did:plc:ct3gkvytimzrfveons57whuo"
+      }
+    },
+    "source_manifest": {
+      "actor_count": 12816605,
+      "build_id": "b1793109259-2b36-px05",
+      "normalize_version": "v2-cjk-bigram",
+      "partial": false,
+      "schema_version": 1,
+      "scoring_version": "v1-quality-score",
+      "source_actor_count": 12816605,
+      "source_database_sha256": "bdf118c9fce9bfad65d6b04d5f3b041b85c024ef0f4f5d193a036a488c0ebfc2",
+      "source_format": "FLATPX05/actor-v1",
+      "source_prefix_sha256": "1428137ae31e1195a4301f4eb41e170a09b9f2905d34b3956322116bd30684c1",
+      "source_watermark": 1793109254,
+      "type": "manifest",
+      "version_kind": "snapshot_watermark",
+      "watermark": "1793109254"
+    },
+    "source_snapshot_watermark": 1793109254,
+    "sync_lag_s": 141949,
+    "tombstone_count": 24997,
+    "watermark": 1793109254
+  },
+  "replay_log_tail": "se\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n{\"phase\": \"replay-error\", \"reason\": \"admin rejected source cursor or source version conflict\"}\n"
+}

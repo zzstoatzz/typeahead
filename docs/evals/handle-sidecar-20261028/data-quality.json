@@ -1,0 +1,12 @@
+{
+  "sample_count": 638,
+  "most_frequent_sample_handle": [
+    "donald.trump.com",
+    92
+  ],
+  "repeated_handle_cases_first_160": 25,
+  "genuine_typo_cases": 155,
+  "distinct_genuine_typo_handle_query_pairs": 131,
+  "intended_dids_not_recorded": true,
+  "limitation": "Handle-string recovery does not establish intended-DID recall. No production identity verification performed."
+}

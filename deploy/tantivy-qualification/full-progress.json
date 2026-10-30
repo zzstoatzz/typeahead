@@ -1,0 +1,112 @@
+{
+  "observed_at": 1793305939.640484,
+  "run_id": "4d62ead649f7",
+  "observations": [
+    {
+      "role": "native-control",
+      "machine_id": "8e236dc727e538",
+      "state": "started",
+      "progress": {
+        "state": "preparing",
+        "prepared": false,
+        "oracle_ready": false,
+        "failures": [],
+        "free_bytes": 12519694336,
+        "available_bytes": 696180736,
+        "processes": [
+          {
+            "pid": 620,
+            "cpu_ticks": {
+              "system": 1244,
+              "user": 1523
+            },
+            "io_bytes": {
+              "cancelled_write_bytes": 0,
+              "rchar": 7346101222,
+              "read_bytes": 16297984,
+              "wchar": 7333432226,
+              "write_bytes": 7333601280
+            },
+            "rss_bytes": 36294656
+          },
+          {
+            "pid": 867,
+            "cpu_ticks": {
+              "system": 202,
+              "user": 5664
+            },
+            "io_bytes": {
+              "cancelled_write_bytes": 0,
+              "rchar": 5457732440,
+              "read_bytes": 5456338944,
+              "wchar": 0,
+              "write_bytes": 0
+            },
+            "rss_bytes": 91639808
+          }
+        ]
+      }
+    },
+    {
+      "role": "tantivy-control",
+      "machine_id": "6835750a604018",
+      "state": "started",
+      "progress": {
+        "state": "preparing",
+        "prepared": false,
+        "oracle_ready": false,
+        "failures": [],
+        "free_bytes": 12519677952,
+        "available_bytes": 769425408,
+        "processes": [
+          {
+            "pid": 620,
+            "cpu_ticks": {
+              "system": 1190,
+              "user": 1000
+            },
+            "io_bytes": {
+              "cancelled_write_bytes": 0,
+              "rchar": 7344125411,
+              "read_bytes": 14606336,
+              "wchar": 7333432226,
+              "write_bytes": 7333601280
+            },
+            "rss_bytes": 36622336
+          },
+          {
+            "pid": 867,
+            "cpu_ticks": {
+              "system": 156,
+              "user": 324
+            },
+            "io_bytes": {
+              "cancelled_write_bytes": 0,
+              "rchar": 5410703647,
+              "read_bytes": 5412147200,
+              "wchar": 0,
+              "write_bytes": 0
+            },
+            "rss_bytes": 21712896
+          },
+          {
+            "pid": 868,
+            "cpu_ticks": {
+              "system": 0,
+              "user": 0
+            },
+            "io_bytes": {
+              "cancelled_write_bytes": 0,
+              "rchar": 16089,
+              "read_bytes": 5865472,
+              "wchar": 3523,
+              "write_bytes": 12288
+            },
+            "rss_bytes": 10797056
+          }
+        ]
+      }
+    }
+  ],
+  "performance_qualified": false
+}

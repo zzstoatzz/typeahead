@@ -1,0 +1,44 @@
+{
+  "observed_at": 1793349622.2882292,
+  "state": "submitted",
+  "mps_revision": "d65f794ae8e1f138ffbb7cb7678bc51fa0b7f100",
+  "typeahead_revision": "305f5da9c90f16697a1128ca39200214c71eac40",
+  "deployment_id": "071c078f-c404-4c72-b3dc-c7994df76f6f",
+  "idempotency_key": "2a9af12a7420ed9ac36de1a88c8d793ac95a0d72cab59a59469374be321c1c99",
+  "work_pool": "typeahead-ephemeral",
+  "server_type": "cpx32",
+  "location": "fsn1",
+  "worker_timeout_seconds": 3000,
+  "build_id": "b1793346536-cp-7c8322df79",
+  "operation": "prepare",
+  "app": "typeahead-tantivy-a",
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:34aef86a7d9bf7256d80681728022a3ba56c2b7de59129f269da4bc14df0f929",
+  "cuts_over_production": false,
+  "production_changed": false,
+  "original_deployment_sha256": "f0b7eea4676a3d5a9074161cc92f38a0029e11f2c324abf0fd2d1d4edcac58d9",
+  "temporary_deployment": true,
+  "flow_run_id": "febb3591-66f3-40ee-95e3-e8575d2bdc6a",
+  "flow_run_state": "Scheduled",
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/febb3591-66f3-40ee-95e3-e8575d2bdc6a",
+  "latest": {
+    "observed_at": 1793350416.354795,
+    "id": "febb3591-66f3-40ee-95e3-e8575d2bdc6a",
+    "state": "Failed",
+    "start": "2026-10-30 08:42:49.332991+00:00",
+    "end": "2026-10-30 08:52:25.297603+00:00",
+    "infrastructure_pid": "prefect-build-febb359166f340ee95e3e8575d2bdc6a-r0",
+    "message": "Flow run encountered an exception: ReadTimeout: The read operation timed out",
+    "tasks": [
+      {
+        "name": "clone_repo-e45",
+        "state": "Completed"
+      }
+    ]
+  },
+  "provider_cleanup": {
+    "remaining_servers": 0,
+    "server_name": "prefect-build-febb359166f340ee95e3e8575d2bdc6a-r0",
+    "observed_at": 1793350439.879487
+  },
+  "temporary_deployment_retired_at": 1793350440.9220538
+}

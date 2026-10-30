@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "observed_at": 1793318923.059753,
+  "app": "typeahead-qual-20261029",
+  "machine_id": "8e240df7017748",
+  "provider_image_digest": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+  "runtime_image_ref": "registry.fly.io/typeahead-qual-20261029@sha256:3a473a462ad8e1c53b034419f94b5eb3609a52fd449f1a3c913ecbfc8fa5d45f",
+  "matched": true,
+  "source": "independent Machines API config and owned guest exec",
+  "phase": "preparation",
+  "production_changed": false
+}

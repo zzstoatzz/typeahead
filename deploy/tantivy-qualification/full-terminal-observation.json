@@ -1,0 +1,30 @@
+{
+  "observations": [
+    {
+      "role": "native-control",
+      "machine_id": "8e236dc727e538",
+      "events": [
+        {
+          "event": "FULL_BOOTSTRAP_TERMINAL",
+          "error_class": "full_bootstrap_failed",
+          "source_ready_attestation": false
+        }
+      ]
+    },
+    {
+      "role": "generator",
+      "machine_id": "6835102ae1d028",
+      "events": [
+        {
+          "passed": false,
+          "full_qualification": false,
+          "production_contact": false,
+          "status": "failed",
+          "error_class": "QualificationError",
+          "error_code": "provider_terminal_destroyed"
+        }
+      ]
+    }
+  ],
+  "paired_performance_qualified": false
+}

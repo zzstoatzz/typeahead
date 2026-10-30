@@ -1,0 +1,21 @@
+{
+  "run_id": "1ca2a04e4c8b",
+  "observed_at": 1793324875.778794,
+  "deadline": 1793327439.002526,
+  "supervisor": {
+    "state": "completed",
+    "phase": "cleanup",
+    "owner_pid": 31719,
+    "heartbeat_at": 1793324506.273261,
+    "error": null,
+    "advance_failures": 2
+  },
+  "performance_component_passed": true,
+  "functional_passed": true,
+  "scope": "full-corpus-performance-component/frozen-feed",
+  "release_qualified": false,
+  "cleanup_status": "cleaned",
+  "remaining_qualification_machines": 0,
+  "reaper_retired": true,
+  "production_changed": false
+}

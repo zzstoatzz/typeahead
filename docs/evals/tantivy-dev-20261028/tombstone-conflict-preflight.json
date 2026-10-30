@@ -1,0 +1,22 @@
+{
+  "checked_at": 1793250286,
+  "pending_tombstones": 500,
+  "matching_actor_rows": 8,
+  "equal_timestamp_rows": 1,
+  "equal_timestamp_nonempty_valid_handles": 1,
+  "equal_timestamp_invalid_placeholders": 0,
+  "equal_timestamp_cleared_handles": 0,
+  "tie_examples": [
+    {
+      "did_sha256": "e93e25e642edf4c7d81e0453a4606e85e47ecfca5e4416b240e67a3df830d9e5",
+      "version": 1793147768,
+      "handle_empty": false,
+      "handle_invalid_placeholder": false,
+      "hidden": false
+    }
+  ],
+  "source_requests": 6,
+  "source_bytes": 54530,
+  "upstream_writes": false,
+  "raw_profile_left_cloud": false
+}

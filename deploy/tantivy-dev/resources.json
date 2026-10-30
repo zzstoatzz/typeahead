@@ -1,0 +1,8 @@
+{
+  "app": "typeahead-tantivy-dev",
+  "owner": "tantivy-dev-20261028",
+  "volume_id": "vol_4oj6mqjpnlgeyqxr",
+  "machine_id": "840e95a2153308",
+  "image": "registry.fly.io/typeahead-tantivy-dev@sha256:6b7b1e8ed22dfa5b1de5b71fd67cf6e0505f4650c5fd2392c3d45ecbe9ce2de5",
+  "phase": "readiness-repair-started"
+}

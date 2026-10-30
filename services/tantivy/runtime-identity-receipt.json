@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "checks": 20,
+  "actual_startup_environment_read": true,
+  "local_missing_identity_is_null": true,
+  "invalid_runtime_metadata_rejected": true,
+  "binary_sha256": "990c3d73c807e5f54634cd6cd4197e78aa3eb5c6e550226d7abf0d98e324a864",
+  "production_contact": false,
+  "payload_removed": true
+}

@@ -1,0 +1,2127 @@
+{
+  "owner": "display-name-recall-20261028",
+  "production_access": false,
+  "scratch": "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-plan-controls-q2mk_77h",
+  "scratch_budget_bytes": 536870912,
+  "wall_budget_seconds": 300,
+  "disk_cold": false,
+  "sqlite_version": "3.53.0",
+  "runs": [
+    {
+      "actors": 1000,
+      "fts": {
+        "cases": [
+          {
+            "q": "Justin Fa",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 2,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "Fa Justin",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 2,
+            "vm_steps_approx": 100
+          },
+          {
+            "q": "Justin Fag",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "Justin Fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 200
+          },
+          {
+            "q": "Justin Falconer",
+            "expected": [
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "Justin",
+            "expected": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "actual": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "predicate_rows": 102,
+            "vm_steps_approx": 2300
+          },
+          {
+            "q": "fa",
+            "expected": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "actual": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "predicate_rows": 303,
+            "vm_steps_approx": 6200
+          },
+          {
+            "q": "background",
+            "expected": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "actual": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "predicate_rows": 16,
+            "vm_steps_approx": 500
+          },
+          {
+            "q": "common",
+            "expected": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "actual": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "predicate_rows": 16,
+            "vm_steps_approx": 600
+          },
+          {
+            "q": "common member",
+            "expected": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "actual": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "predicate_rows": 16,
+            "vm_steps_approx": 400
+          },
+          {
+            "q": "abcdefghijklmnopneed",
+            "expected": [
+              "did:plc:longcaptarget"
+            ],
+            "actual": [
+              "did:plc:longcaptarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 100
+          },
+          {
+            "q": "qrstuvwxyzabcdefneed",
+            "expected": [
+              "did:plc:longhydratetarget"
+            ],
+            "actual": [
+              "did:plc:longhydratetarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "longdisplaytokenneed",
+            "expected": [
+              "did:plc:displaylongtarget"
+            ],
+            "actual": [
+              "did:plc:displaylongtarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 200
+          },
+          {
+            "q": "veil unique",
+            "expected": [
+              "did:plc:veilsurvivor"
+            ],
+            "actual": [
+              "did:plc:veilsurvivor"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 400
+          },
+          {
+            "q": "churn",
+            "expected": [
+              "did:plc:churnsurvivor"
+            ],
+            "actual": [
+              "did:plc:churnsurvivor"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 1000
+          },
+          {
+            "q": "noresultsxyz",
+            "expected": [],
+            "actual": [],
+            "predicate_rows": 0,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "duplicate.fixture.test",
+            "expected": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "actual": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "predicate_rows": 101,
+            "vm_steps_approx": 2100
+          },
+          {
+            "q": "justinfagnani.com",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 100
+          }
+        ],
+        "correct": 19,
+        "build_seconds": 0.0049454170220997185,
+        "sqlite_file_bytes": 233472,
+        "plan": [
+          [
+            5,
+            0,
+            156,
+            "SCAN terms VIRTUAL TABLE INDEX 0:M2"
+          ],
+          [
+            10,
+            0,
+            45,
+            "SEARCH a USING INTEGER PRIMARY KEY (rowid=?)"
+          ],
+          [
+            35,
+            0,
+            0,
+            "USE TEMP B-TREE FOR ORDER BY"
+          ]
+        ],
+        "metrics": {
+          "sql_and_python_us": {
+            "count": 95,
+            "p50": 40.334,
+            "p95": 245.542,
+            "p99": 261.458,
+            "max": 337.084
+          },
+          "predicate_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 102,
+            "p99": 303,
+            "max": 303
+          },
+          "vm_steps_approx": {
+            "count": 95,
+            "p50": 200,
+            "p95": 2300,
+            "p99": 6300,
+            "max": 6300
+          },
+          "profile_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 10,
+            "p99": 10,
+            "max": 10
+          },
+          "profile_bytes": {
+            "count": 95,
+            "p50": 46,
+            "p95": 556,
+            "p99": 556,
+            "max": 556
+          }
+        }
+      },
+      "rank_id_control": {
+        "cases": [
+          {
+            "q": "Justin Fa",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 204
+          },
+          {
+            "q": "Fa Justin",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 204
+          },
+          {
+            "q": "Justin Fag",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "Justin Fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "Justin Falconer",
+            "expected": [
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "Justin",
+            "expected": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "actual": [],
+            "id_iterations_and_seeks": 0
+          },
+          {
+            "q": "fa",
+            "expected": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "actual": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "id_iterations_and_seeks": 19
+          },
+          {
+            "q": "background",
+            "expected": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "actual": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "id_iterations_and_seeks": 19
+          },
+          {
+            "q": "common",
+            "expected": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "actual": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "id_iterations_and_seeks": 10
+          },
+          {
+            "q": "common member",
+            "expected": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "actual": [
+              "did:plc:background000015",
+              "did:plc:background000014",
+              "did:plc:background000013",
+              "did:plc:background000012",
+              "did:plc:background000011",
+              "did:plc:background000010",
+              "did:plc:background000009",
+              "did:plc:background000008",
+              "did:plc:background000007",
+              "did:plc:background000006"
+            ],
+            "id_iterations_and_seeks": 20
+          },
+          {
+            "q": "abcdefghijklmnopneed",
+            "expected": [
+              "did:plc:longcaptarget"
+            ],
+            "actual": [
+              "did:plc:longcaptarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "qrstuvwxyzabcdefneed",
+            "expected": [
+              "did:plc:longhydratetarget"
+            ],
+            "actual": [
+              "did:plc:longhydratetarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "longdisplaytokenneed",
+            "expected": [
+              "did:plc:displaylongtarget"
+            ],
+            "actual": [
+              "did:plc:displaylongtarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "veil unique",
+            "expected": [
+              "did:plc:veilsurvivor"
+            ],
+            "actual": [
+              "did:plc:veilsurvivor"
+            ],
+            "id_iterations_and_seeks": 102
+          },
+          {
+            "q": "churn",
+            "expected": [
+              "did:plc:churnsurvivor"
+            ],
+            "actual": [
+              "did:plc:churnsurvivor"
+            ],
+            "id_iterations_and_seeks": 404
+          },
+          {
+            "q": "noresultsxyz",
+            "expected": [],
+            "actual": [],
+            "id_iterations_and_seeks": 0
+          },
+          {
+            "q": "duplicate.fixture.test",
+            "expected": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "actual": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "id_iterations_and_seeks": 10
+          },
+          {
+            "q": "justinfagnani.com",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          }
+        ],
+        "correct": 18,
+        "build_seconds": 0.014487665990600362,
+        "keys": 12438,
+        "memberships": 50605,
+        "wire_bytes_u32": 490985,
+        "decoded_membership_payload_bytes": 202420,
+        "metrics": {
+          "python_us": {
+            "count": 95,
+            "p50": 14.75,
+            "p95": 139.042,
+            "p99": 978.25,
+            "max": 997.75
+          },
+          "id_iterations_and_seeks": {
+            "count": 95,
+            "p50": 2,
+            "p95": 204,
+            "p99": 404,
+            "max": 404
+          },
+          "profile_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 10,
+            "p99": 10,
+            "max": 10
+          }
+        }
+      }
+    },
+    {
+      "actors": 10000,
+      "fts": {
+        "cases": [
+          {
+            "q": "Justin Fa",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 2,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "Fa Justin",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 2,
+            "vm_steps_approx": 200
+          },
+          {
+            "q": "Justin Fag",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "Justin Fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 200
+          },
+          {
+            "q": "Justin Falconer",
+            "expected": [
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 100
+          },
+          {
+            "q": "Justin",
+            "expected": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "actual": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "predicate_rows": 102,
+            "vm_steps_approx": 2300
+          },
+          {
+            "q": "fa",
+            "expected": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "actual": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "predicate_rows": 303,
+            "vm_steps_approx": 6200
+          },
+          {
+            "q": "background",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "predicate_rows": 9016,
+            "vm_steps_approx": 180500
+          },
+          {
+            "q": "common",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "predicate_rows": 9016,
+            "vm_steps_approx": 180600
+          },
+          {
+            "q": "common member",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "predicate_rows": 9016,
+            "vm_steps_approx": 180400
+          },
+          {
+            "q": "abcdefghijklmnopneed",
+            "expected": [
+              "did:plc:longcaptarget"
+            ],
+            "actual": [
+              "did:plc:longcaptarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 200
+          },
+          {
+            "q": "qrstuvwxyzabcdefneed",
+            "expected": [
+              "did:plc:longhydratetarget"
+            ],
+            "actual": [
+              "did:plc:longhydratetarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 100
+          },
+          {
+            "q": "longdisplaytokenneed",
+            "expected": [
+              "did:plc:displaylongtarget"
+            ],
+            "actual": [
+              "did:plc:displaylongtarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 100
+          },
+          {
+            "q": "veil unique",
+            "expected": [
+              "did:plc:veilsurvivor"
+            ],
+            "actual": [
+              "did:plc:veilsurvivor"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 400
+          },
+          {
+            "q": "churn",
+            "expected": [
+              "did:plc:churnsurvivor"
+            ],
+            "actual": [
+              "did:plc:churnsurvivor"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 1000
+          },
+          {
+            "q": "noresultsxyz",
+            "expected": [],
+            "actual": [],
+            "predicate_rows": 0,
+            "vm_steps_approx": 0
+          },
+          {
+            "q": "duplicate.fixture.test",
+            "expected": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "actual": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "predicate_rows": 101,
+            "vm_steps_approx": 2200
+          },
+          {
+            "q": "justinfagnani.com",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 100
+          }
+        ],
+        "correct": 19,
+        "build_seconds": 0.047609000001102686,
+        "sqlite_file_bytes": 2531328,
+        "plan": [
+          [
+            5,
+            0,
+            156,
+            "SCAN terms VIRTUAL TABLE INDEX 0:M2"
+          ],
+          [
+            10,
+            0,
+            45,
+            "SEARCH a USING INTEGER PRIMARY KEY (rowid=?)"
+          ],
+          [
+            35,
+            0,
+            0,
+            "USE TEMP B-TREE FOR ORDER BY"
+          ]
+        ],
+        "metrics": {
+          "sql_and_python_us": {
+            "count": 95,
+            "p50": 78.917,
+            "p95": 10555.333,
+            "p99": 11996.084,
+            "max": 12055.542
+          },
+          "predicate_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 9016,
+            "p99": 9016,
+            "max": 9016
+          },
+          "vm_steps_approx": {
+            "count": 95,
+            "p50": 200,
+            "p95": 180600,
+            "p99": 180600,
+            "max": 180600
+          },
+          "profile_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 10,
+            "p99": 10,
+            "max": 10
+          },
+          "profile_bytes": {
+            "count": 95,
+            "p50": 46,
+            "p95": 560,
+            "p99": 560,
+            "max": 560
+          }
+        }
+      },
+      "rank_id_control": {
+        "cases": [
+          {
+            "q": "Justin Fa",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 204
+          },
+          {
+            "q": "Fa Justin",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 204
+          },
+          {
+            "q": "Justin Fag",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "Justin Fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "Justin Falconer",
+            "expected": [
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "Justin",
+            "expected": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "actual": [],
+            "id_iterations_and_seeks": 0
+          },
+          {
+            "q": "fa",
+            "expected": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "actual": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "id_iterations_and_seeks": 19
+          },
+          {
+            "q": "background",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "id_iterations_and_seeks": 19
+          },
+          {
+            "q": "common",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "id_iterations_and_seeks": 10
+          },
+          {
+            "q": "common member",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "id_iterations_and_seeks": 20
+          },
+          {
+            "q": "abcdefghijklmnopneed",
+            "expected": [
+              "did:plc:longcaptarget"
+            ],
+            "actual": [
+              "did:plc:longcaptarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "qrstuvwxyzabcdefneed",
+            "expected": [
+              "did:plc:longhydratetarget"
+            ],
+            "actual": [
+              "did:plc:longhydratetarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "longdisplaytokenneed",
+            "expected": [
+              "did:plc:displaylongtarget"
+            ],
+            "actual": [
+              "did:plc:displaylongtarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "veil unique",
+            "expected": [
+              "did:plc:veilsurvivor"
+            ],
+            "actual": [
+              "did:plc:veilsurvivor"
+            ],
+            "id_iterations_and_seeks": 102
+          },
+          {
+            "q": "churn",
+            "expected": [
+              "did:plc:churnsurvivor"
+            ],
+            "actual": [
+              "did:plc:churnsurvivor"
+            ],
+            "id_iterations_and_seeks": 404
+          },
+          {
+            "q": "noresultsxyz",
+            "expected": [],
+            "actual": [],
+            "id_iterations_and_seeks": 0
+          },
+          {
+            "q": "duplicate.fixture.test",
+            "expected": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "actual": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "id_iterations_and_seeks": 10
+          },
+          {
+            "q": "justinfagnani.com",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          }
+        ],
+        "correct": 18,
+        "build_seconds": 0.20594625000376254,
+        "keys": 139521,
+        "memberships": 670705,
+        "wire_bytes_u32": 6838598,
+        "decoded_membership_payload_bytes": 2682820,
+        "metrics": {
+          "python_us": {
+            "count": 95,
+            "p50": 25.666,
+            "p95": 156.416,
+            "p99": 984.334,
+            "max": 1000.084
+          },
+          "id_iterations_and_seeks": {
+            "count": 95,
+            "p50": 2,
+            "p95": 204,
+            "p99": 404,
+            "max": 404
+          },
+          "profile_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 10,
+            "p99": 10,
+            "max": 10
+          }
+        }
+      }
+    },
+    {
+      "actors": 30000,
+      "fts": {
+        "cases": [
+          {
+            "q": "Justin Fa",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 2,
+            "vm_steps_approx": 200
+          },
+          {
+            "q": "Fa Justin",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 2,
+            "vm_steps_approx": 300
+          },
+          {
+            "q": "Justin Fag",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 300
+          },
+          {
+            "q": "Justin Fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 400
+          },
+          {
+            "q": "Justin Falconer",
+            "expected": [
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:displayonlytarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 400
+          },
+          {
+            "q": "fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 100
+          },
+          {
+            "q": "Justin",
+            "expected": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "actual": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "predicate_rows": 102,
+            "vm_steps_approx": 2500
+          },
+          {
+            "q": "fa",
+            "expected": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "actual": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "predicate_rows": 303,
+            "vm_steps_approx": 6300
+          },
+          {
+            "q": "background",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "predicate_rows": 29016,
+            "vm_steps_approx": 580800
+          },
+          {
+            "q": "common",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "predicate_rows": 29016,
+            "vm_steps_approx": 580700
+          },
+          {
+            "q": "common member",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "predicate_rows": 29016,
+            "vm_steps_approx": 580900
+          },
+          {
+            "q": "abcdefghijklmnopneed",
+            "expected": [
+              "did:plc:longcaptarget"
+            ],
+            "actual": [
+              "did:plc:longcaptarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 200
+          },
+          {
+            "q": "qrstuvwxyzabcdefneed",
+            "expected": [
+              "did:plc:longhydratetarget"
+            ],
+            "actual": [
+              "did:plc:longhydratetarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 200
+          },
+          {
+            "q": "longdisplaytokenneed",
+            "expected": [
+              "did:plc:displaylongtarget"
+            ],
+            "actual": [
+              "did:plc:displaylongtarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 300
+          },
+          {
+            "q": "veil unique",
+            "expected": [
+              "did:plc:veilsurvivor"
+            ],
+            "actual": [
+              "did:plc:veilsurvivor"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 700
+          },
+          {
+            "q": "churn",
+            "expected": [
+              "did:plc:churnsurvivor"
+            ],
+            "actual": [
+              "did:plc:churnsurvivor"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 1100
+          },
+          {
+            "q": "noresultsxyz",
+            "expected": [],
+            "actual": [],
+            "predicate_rows": 0,
+            "vm_steps_approx": 100
+          },
+          {
+            "q": "duplicate.fixture.test",
+            "expected": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "actual": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "predicate_rows": 101,
+            "vm_steps_approx": 2800
+          },
+          {
+            "q": "justinfagnani.com",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "predicate_rows": 1,
+            "vm_steps_approx": 300
+          }
+        ],
+        "correct": 19,
+        "build_seconds": 0.14585637499112636,
+        "sqlite_file_bytes": 8323072,
+        "plan": [
+          [
+            5,
+            0,
+            156,
+            "SCAN terms VIRTUAL TABLE INDEX 0:M2"
+          ],
+          [
+            10,
+            0,
+            45,
+            "SEARCH a USING INTEGER PRIMARY KEY (rowid=?)"
+          ],
+          [
+            35,
+            0,
+            0,
+            "USE TEMP B-TREE FOR ORDER BY"
+          ]
+        ],
+        "metrics": {
+          "sql_and_python_us": {
+            "count": 95,
+            "p50": 116.0,
+            "p95": 33786.333,
+            "p99": 38140.0,
+            "max": 38204.0
+          },
+          "predicate_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 29016,
+            "p99": 29016,
+            "max": 29016
+          },
+          "vm_steps_approx": {
+            "count": 95,
+            "p50": 400,
+            "p95": 580900,
+            "p99": 581000,
+            "max": 581000
+          },
+          "profile_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 10,
+            "p99": 10,
+            "max": 10
+          },
+          "profile_bytes": {
+            "count": 95,
+            "p50": 46,
+            "p95": 560,
+            "p99": 560,
+            "max": 560
+          }
+        }
+      },
+      "rank_id_control": {
+        "cases": [
+          {
+            "q": "Justin Fa",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 204
+          },
+          {
+            "q": "Fa Justin",
+            "expected": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:justintarget",
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 204
+          },
+          {
+            "q": "Justin Fag",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "Justin Fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "Justin Falconer",
+            "expected": [
+              "did:plc:displayonlytarget"
+            ],
+            "actual": [
+              "did:plc:displayonlytarget"
+            ],
+            "id_iterations_and_seeks": 2
+          },
+          {
+            "q": "fagnani",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "Justin",
+            "expected": [
+              "did:plc:justin0099",
+              "did:plc:justin0098",
+              "did:plc:justin0097",
+              "did:plc:justin0096",
+              "did:plc:justin0095",
+              "did:plc:justin0094",
+              "did:plc:justin0093",
+              "did:plc:justin0092",
+              "did:plc:justin0091",
+              "did:plc:justin0090"
+            ],
+            "actual": [],
+            "id_iterations_and_seeks": 0
+          },
+          {
+            "q": "fa",
+            "expected": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "actual": [
+              "did:plc:fa0300",
+              "did:plc:fa0299",
+              "did:plc:fa0298",
+              "did:plc:fa0297",
+              "did:plc:fa0296",
+              "did:plc:fa0295",
+              "did:plc:fa0294",
+              "did:plc:fa0293",
+              "did:plc:fa0292",
+              "did:plc:fa0291"
+            ],
+            "id_iterations_and_seeks": 19
+          },
+          {
+            "q": "background",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "id_iterations_and_seeks": 19
+          },
+          {
+            "q": "common",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "id_iterations_and_seeks": 10
+          },
+          {
+            "q": "common member",
+            "expected": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "actual": [
+              "did:plc:background000199",
+              "did:plc:background000399",
+              "did:plc:background000599",
+              "did:plc:background000799",
+              "did:plc:background000999",
+              "did:plc:background001199",
+              "did:plc:background001399",
+              "did:plc:background001599",
+              "did:plc:background001799",
+              "did:plc:background001999"
+            ],
+            "id_iterations_and_seeks": 20
+          },
+          {
+            "q": "abcdefghijklmnopneed",
+            "expected": [
+              "did:plc:longcaptarget"
+            ],
+            "actual": [
+              "did:plc:longcaptarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "qrstuvwxyzabcdefneed",
+            "expected": [
+              "did:plc:longhydratetarget"
+            ],
+            "actual": [
+              "did:plc:longhydratetarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "longdisplaytokenneed",
+            "expected": [
+              "did:plc:displaylongtarget"
+            ],
+            "actual": [
+              "did:plc:displaylongtarget"
+            ],
+            "id_iterations_and_seeks": 1
+          },
+          {
+            "q": "veil unique",
+            "expected": [
+              "did:plc:veilsurvivor"
+            ],
+            "actual": [
+              "did:plc:veilsurvivor"
+            ],
+            "id_iterations_and_seeks": 102
+          },
+          {
+            "q": "churn",
+            "expected": [
+              "did:plc:churnsurvivor"
+            ],
+            "actual": [
+              "did:plc:churnsurvivor"
+            ],
+            "id_iterations_and_seeks": 404
+          },
+          {
+            "q": "noresultsxyz",
+            "expected": [],
+            "actual": [],
+            "id_iterations_and_seeks": 0
+          },
+          {
+            "q": "duplicate.fixture.test",
+            "expected": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "actual": [
+              "did:plc:dupe0100",
+              "did:plc:dupe0099",
+              "did:plc:dupe0098",
+              "did:plc:dupe0097",
+              "did:plc:dupe0096",
+              "did:plc:dupe0095",
+              "did:plc:dupe0094",
+              "did:plc:dupe0093",
+              "did:plc:dupe0092",
+              "did:plc:dupe0091"
+            ],
+            "id_iterations_and_seeks": 10
+          },
+          {
+            "q": "justinfagnani.com",
+            "expected": [
+              "did:plc:justintarget"
+            ],
+            "actual": [
+              "did:plc:justintarget"
+            ],
+            "id_iterations_and_seeks": 2
+          }
+        ],
+        "correct": 18,
+        "build_seconds": 0.707511374988826,
+        "keys": 421743,
+        "memberships": 2048705,
+        "wire_bytes_u32": 20941458,
+        "decoded_membership_payload_bytes": 8194820,
+        "metrics": {
+          "python_us": {
+            "count": 95,
+            "p50": 25.75,
+            "p95": 162.25,
+            "p99": 1022.959,
+            "max": 1040.75
+          },
+          "id_iterations_and_seeks": {
+            "count": 95,
+            "p50": 2,
+            "p95": 204,
+            "p99": 404,
+            "max": 404
+          },
+          "profile_rows": {
+            "count": 95,
+            "p50": 1,
+            "p95": 10,
+            "p99": 10,
+            "max": 10
+          }
+        }
+      }
+    }
+  ],
+  "complete": true,
+  "scratch_bytes_before_cleanup": 0,
+  "scratch_removed": true,
+  "wall_seconds": 6.981678333017044
+}

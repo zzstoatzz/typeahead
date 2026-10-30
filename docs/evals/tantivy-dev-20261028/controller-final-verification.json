@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "mps_revision": "39c753cc6193d22d77a3646571787b8180ef89d9",
+  "command": "TA_REPOSITORY=/Users/nate/.codex/worktrees/handle-sidecar/typeahead uv run pytest tests/test_typeahead_tantivy_automatic.py tests/test_typeahead_tantivy_slots.py tests/test_typeahead_checkpoint_release.py tests/test_typeahead_tantivy_preparation.py tests/test_typeahead_engine_compatibility.py -q",
+  "passed_tests": 63,
+  "skipped_tests": 1,
+  "seconds": 57.41,
+  "skip": {
+    "test": "test_actual_native_compact_export_streams_directly_into_rust",
+    "reason": "Linux native ELF on macOS; TA_PREPARATION_DOCKER_IMAGE unset",
+    "current_publication_path": "verified-checkpoint import, separately exercised by actual cloud release"
+  },
+  "ruff_passed": true,
+  "source_types_passed": true,
+  "deployment_hooks_passed": true,
+  "production_operations_executed": false,
+  "source_sha256": {
+    "flows/typeahead_index.py": "607ad7cf8e89f35e4ac1b53e7fb3faa3eb93711d82fead1f438f801c9cd2832a",
+    "packages/mps/src/mps/typeahead_refresh.py": "3a056588a8a03f4abd4c8d60ad9403b45be0f57d4a8baa62574dae0d996b42b8",
+    "packages/mps/src/mps/typeahead_tantivy_slots.py": "29aaa1414e954bf0f1d741bd0e6cb2ba1e963d0ad47ba96768973e59b98c9eba",
+    "packages/mps/src/mps/typeahead_tantivy_automatic.py": "b743671f6f730fea2729de1f70025fa409cf12fff35a5ceebd898c1d732b04e0"
+  },
+  "limitations": [
+    "Automatic composition tested with bounded HTTP/filesystem failure cases; real publication/install/restart/retention components verified separately. No production automatic refresh was executed.",
+    "A crash after immutable publication and before a pending preparation journal exists can cause a later fresh cadence to publish again; resume-only recovery refuses a new export."
+  ]
+}

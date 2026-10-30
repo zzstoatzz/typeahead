@@ -1,0 +1,67 @@
+{
+  "observed_at": 1793323913.63631,
+  "worker_version": "74247ecf-6a2a-4058-88d6-7e0812311a1b",
+  "source_commit": "1bf2287",
+  "scope": "deployed preview fail-closed semantics; earlier source-v2 backend remains",
+  "release_qualified": false,
+  "production_changed": false,
+  "checks": [
+    {
+      "name": "canonical",
+      "status": 200,
+      "expected_status": 200,
+      "passed": true,
+      "error": null,
+      "body_sha256": "27c352c18edbd72effc98e076fe9432763a5349960ca4575ec9a04cb8dfee60b"
+    },
+    {
+      "name": "alias",
+      "status": 200,
+      "expected_status": 200,
+      "passed": true,
+      "error": null,
+      "body_sha256": "27c352c18edbd72effc98e076fe9432763a5349960ca4575ec9a04cb8dfee60b"
+    },
+    {
+      "name": "filter",
+      "status": 200,
+      "expected_status": 200,
+      "passed": true,
+      "error": null,
+      "body_sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840"
+    },
+    {
+      "name": "unsupported-preference",
+      "status": 503,
+      "expected_status": 503,
+      "passed": true,
+      "error": "PdsScopeUnavailable",
+      "body_sha256": "6f2769c89a997660bf1bacb57332cfbcc7f04b9f57c8761e439623d9b34b5241"
+    },
+    {
+      "name": "invalid-scope",
+      "status": 400,
+      "expected_status": 400,
+      "passed": true,
+      "error": "InvalidRequest",
+      "body_sha256": "93fdf7c9473f01046f42c60ef972ff809f972f702866c96356efedc23b0d4b10"
+    },
+    {
+      "name": "preview-html",
+      "status": 200,
+      "expected_status": 200,
+      "passed": true,
+      "error": null,
+      "body_sha256": "87e07da69aeb85a0a015f555fda30e9b6201bf130a21ee520c087d85f10a7d07"
+    }
+  ],
+  "production_html_byte_identical": true,
+  "aliases_byte_identical": true,
+  "passed": true,
+  "local_checks": {
+    "preview_workerd_tests_passed": 2,
+    "expectations": 91,
+    "typecheck_passed": true,
+    "dry_run_passed": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "scope": "read-only WAL metadata; no export or disk writes",
+  "requests": 3,
+  "received_bytes": 527602,
+  "generation_before": 1570164,
+  "first_sync_status": 200,
+  "sync_response_bytes": 527360,
+  "sync_response_sha256": "54ac3dc9ad0b8a4d110be6bb49712d4341ebd746e9d8dd3f17c8221a72ec806d",
+  "frames_received": 128,
+  "last_frame_commit_db_pages": 0,
+  "generation_after": 1570164,
+  "generation_stable": true,
+  "freshness_qualified": false,
+  "observed_at": 1793326749.070465,
+  "machine_id": "840e95a2153308",
+  "app": "typeahead-tantivy-dev",
+  "machine_mutated": false,
+  "production_changed": false,
+  "operator_received_corpus_bytes": 0,
+  "database_replayed": false,
+  "end_to_end_source_coverage_verified": false
+}

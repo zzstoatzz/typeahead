@@ -1,0 +1,51 @@
+{
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "name": "typeahead-index",
+  "work_pool_name": "typeahead-ephemeral",
+  "paused": false,
+  "parameters": {
+    "ref": "pds-compact-31ec142-20261020",
+    "snapshot_format": "compact",
+    "automatic_refresh": true
+  },
+  "paths_and_mode": {
+    "INDEXER_HOME": "/var/lib/typeahead-indexer/work",
+    "INDEX_BUILD_ROOT": "/var/lib/typeahead-indexer/active",
+    "INDEX_ARCHIVE_ROOT": "/var/lib/typeahead-indexer/builds/archive",
+    "INDEX_CHANNEL": "managed",
+    "INDEX_ALLOW_PROD": "0",
+    "INDEX_BUILDER": null
+  },
+  "source_step_types": [
+    "mps.deployment_steps.cached_checkout"
+  ],
+  "pool": {
+    "name": "typeahead-ephemeral",
+    "type": "hcloud-builder",
+    "status": "WorkPoolStatus.READY",
+    "concurrency_limit": null
+  },
+  "recent_runs": [
+    {
+      "id": "af85f86a-746b-4587-9edf-dcee15ef6271",
+      "state_type": "StateType.FAILED",
+      "state_name": "Failed",
+      "start_time": "2026-10-29 06:02:26.089173+00:00",
+      "end_time": "2026-10-29 06:04:22.882200+00:00"
+    },
+    {
+      "id": "bbcfa61e-2d95-4cf6-9d83-37c1dd088b67",
+      "state_type": "StateType.COMPLETED",
+      "state_name": "Completed",
+      "start_time": "2026-10-27 17:31:17.761146+00:00",
+      "end_time": "2026-10-27 17:34:34.151633+00:00"
+    },
+    {
+      "id": "9770e846-b789-4d8c-9cd2-53069daa84d2",
+      "state_type": "StateType.FAILED",
+      "state_name": "Failed",
+      "start_time": "2026-10-27 13:50:35.524396+00:00",
+      "end_time": "2026-10-27 15:21:31.845412+00:00"
+    }
+  ]
+}

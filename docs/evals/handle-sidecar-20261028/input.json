@@ -1,0 +1,2564 @@
+{
+  "actors": 12136964,
+  "excluded": 690177,
+  "overlay": {
+    "actor_overlay": 181876,
+    "prefix_overlay": 7495360
+  },
+  "row_sha256": "248cf0a5c6bafce761ffda6c28efc52c57c7af1acbdc2bf2dd0070ffcf8a92e0",
+  "samples": [
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "rachreth.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bennyblue1726728.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bob723.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kenmcchesney.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "a-hbm.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "switchydude.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kkddhh06.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "belloartz.bsky.social",
+      "pds": "woodear.us-west.host.bsky.network"
+    },
+    {
+      "handle": "greenblossom.bsky.social",
+      "pds": "rhizopogon.us-west.host.bsky.network"
+    },
+    {
+      "handle": "gpb156.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "finixstudio.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "verawired.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "revienta.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "simsvip.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "lookylooky86.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lhgck.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mmarcosavini.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "silkiebell.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "chawnkee.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "vongoblin.bsky.social",
+      "pds": "rooter.us-west.host.bsky.network"
+    },
+    {
+      "handle": "northlondonisred.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "halexuwu.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "meeting12345.bsky.social",
+      "pds": "jellybaby.us-east.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "medb1954.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "dani0835.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "ericathefae.bsky.social",
+      "pds": "stropharia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "pissedofferson.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "qikeming.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "goldengoo06.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "monkeyeye666.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "climatechange3000.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lilmissvioletsin.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bidybab.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "serpentinelove.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "m-w-t-2d2c1a72bea7.wallets.tz2at.store",
+      "pds": ""
+    },
+    {
+      "handle": "luizinhotrevo.bsky.social",
+      "pds": "rhizopogon.us-west.host.bsky.network"
+    },
+    {
+      "handle": "paulyboyyy.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "axo56.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bbdollsarchive.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "monzetu3.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "pupakamai.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "smboyec.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "joshuaheyward43.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "starhiro.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "nightinuk01.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "dryfit.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "davydavidave.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bll63.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "starraker66.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "jkyin.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "stellaaltair.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "samanthajcoupe.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "u1bsky.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "somed900.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sito0o0.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "selitar.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lisaae.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "slimetopia.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "ranash24.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "yrchn.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "zagorodnikov.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "confusedfrog.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "yzugqkcimbbmekvlji.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "barely3d.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "blackcat604.bsky.social",
+      "pds": "ganoderma.us-west.host.bsky.network"
+    },
+    {
+      "handle": "txnqz.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "danikyobunbun.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "reginahaug.bsky.social",
+      "pds": "woodtuft.us-west.host.bsky.network"
+    },
+    {
+      "handle": "biscuit100.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sakagamichi.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ilyart.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "morsusi.bsky.social",
+      "pds": "rhizopogon.us-west.host.bsky.network"
+    },
+    {
+      "handle": "svpop.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "gunpowderpaws.bsky.social",
+      "pds": "jellybaby.us-east.host.bsky.network"
+    },
+    {
+      "handle": "jrocco.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "franckyboy77.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kakarama1244.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "hashbot.bsky.social",
+      "pds": "matsutake.us-west.host.bsky.network"
+    },
+    {
+      "handle": "sobellyache.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "silasteres.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "m-w-t-9cd901689da8.wallets.tz2at.store",
+      "pds": ""
+    },
+    {
+      "handle": "sezzack.bsky.social",
+      "pds": "lobster.us-east.host.bsky.network"
+    },
+    {
+      "handle": "khush-curated.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "mistnirozvoj.zpravobot.news.ap.brid.gy",
+      "pds": ""
+    },
+    {
+      "handle": "infernocanto.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "neemer.bsky.social",
+      "pds": "amanita.us-east.host.bsky.network"
+    },
+    {
+      "handle": "erin-wertz.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "3uvd.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "drift6850.bbi.to",
+      "pds": "bbi.to"
+    },
+    {
+      "handle": "linomm.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "eocosta95.bsky.social",
+      "pds": "poisonpie.us-west.host.bsky.network"
+    },
+    {
+      "handle": "peeurn.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "joemama2004.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "thatguy4z0.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "tidemoiselle.bsky.social",
+      "pds": "parasol.us-east.host.bsky.network"
+    },
+    {
+      "handle": "faxius.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "themangolover724.bsky.social",
+      "pds": "scalycap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "thematchprep.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "momotan22.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "markuskolic.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "zophalai.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kaidylan.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "kniele.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bagzinajsha.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "taroprose.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "diligent-emu.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "richy92.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "ugm06hkn.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "flat9.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "m-w-t-e9df4c5083fa.wallets.tz2at.store",
+      "pds": ""
+    },
+    {
+      "handle": "sqwuidee.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "iagocm.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "waefestpdx.bsky.social",
+      "pds": "bankera.us-west.host.bsky.network"
+    },
+    {
+      "handle": "aska2.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "dizzy101er.bsky.social",
+      "pds": "entoloma.us-west.host.bsky.network"
+    },
+    {
+      "handle": "emi-jimuin-ai.bsky.social",
+      "pds": "rhizopogon.us-west.host.bsky.network"
+    },
+    {
+      "handle": "s-eahorse.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "gabrielcharette.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "saurav-sharma-dev.bsky.social",
+      "pds": "blusher.us-east.host.bsky.network"
+    },
+    {
+      "handle": "sadang-big.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "mightyowl074.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "shaneappleseth.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bulgasariman.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "2bdetermined.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kingmattyo.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "kathode.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "skyskyd.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "jbh2000.bsky.social",
+      "pds": "jellybaby.us-east.host.bsky.network"
+    },
+    {
+      "handle": "soyadriana.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "nob21-64.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "andy8287.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kentanishumura.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "uniuni-handmade.bsky.social",
+      "pds": "conocybe.us-west.host.bsky.network"
+    },
+    {
+      "handle": "t-gumi-mjm.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "flpupjax.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "mkhotpot.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "beilstein-institut.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "novyxel16.bsky.social",
+      "pds": "rhizopogon.us-west.host.bsky.network"
+    },
+    {
+      "handle": "poltergooose.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "greeneatz.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "seisguidance.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "skyclover.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "jddjdndndnjjdj.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "1lrzkb.certified.one",
+      "pds": "certified.one"
+    },
+    {
+      "handle": "jackyone1.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "alexanderhudson93.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "someguynamebob.bsky.social",
+      "pds": "panthercap.us-east.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "fuitededonnees.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "bd-6974.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "hannah-wht-eco.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "jxw.bsky.social",
+      "pds": "oyster.us-east.host.bsky.network"
+    },
+    {
+      "handle": "burnallcorposhit.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "mumu606mu.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "maribaby96.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "trytiramisu.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "roxxyfox.bsky.social",
+      "pds": "rhizopogon.us-west.host.bsky.network"
+    },
+    {
+      "handle": "xadambomber.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "e22890.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "danny1973.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fhekgor.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mebvel.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donkey98.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "tzikeh.bsky.social",
+      "pds": "lionsmane.us-east.host.bsky.network"
+    },
+    {
+      "handle": "katzenlieber.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "martin2972.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "liberaloctopus.bsky.social",
+      "pds": "maitake.us-west.host.bsky.network"
+    },
+    {
+      "handle": "bubbiesboxcy.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lblvrs.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "tonytaboo.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "azulpavao.bsky.social",
+      "pds": "enoki.us-east.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "gothghost.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fgjbv.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "nsp-blog.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "tah08.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "evanvision.bsky.social",
+      "pds": "truffle.us-east.host.bsky.network"
+    },
+    {
+      "handle": "ishwacha.bsky.social",
+      "pds": "stropharia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "alimibar.bsky.social",
+      "pds": "chanterelle.us-west.host.bsky.network"
+    },
+    {
+      "handle": "vaultsort.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "mattiaor.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "tobenzkey1.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "reonesan.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "haku-whale.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "runnersover50.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "quietkid.bsky.social",
+      "pds": "cordyceps.us-west.host.bsky.network"
+    },
+    {
+      "handle": "peterhenryart.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lumbela.bsky.social",
+      "pds": "suillus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "moonashesart.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "edmar8383.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "kkkjfjffjfjjfjt.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "kassettea.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "olabs.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "svensart18.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fayees.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "dobrazupa.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "marmiedevsmom.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "artistic-vision.de",
+      "pds": ""
+    },
+    {
+      "handle": "yamfhilquinesio.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "michaelhomem.bsky.social",
+      "pds": "russula.us-west.host.bsky.network"
+    },
+    {
+      "handle": "crudawg.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ice966.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "xjtdthsjt.bsky.social",
+      "pds": "poisonpie.us-west.host.bsky.network"
+    },
+    {
+      "handle": "joletaxi31.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "coppertucker.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "goodman222.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "barbeachboy.bsky.social",
+      "pds": "gomphus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "kerunfunf.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "eranor.bsky.social",
+      "pds": "reishi.us-east.host.bsky.network"
+    },
+    {
+      "handle": "paulaj97.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "slyham.bsky.social",
+      "pds": "woodtuft.us-west.host.bsky.network"
+    },
+    {
+      "handle": "xcarriex05.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "audreyrhollis.bsky.social",
+      "pds": "enoki.us-east.host.bsky.network"
+    },
+    {
+      "handle": "dimachico.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "justpleasuree.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "weebo06.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "miren99.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "imotkin.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "minerkc.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "nandar999.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "kimjjd.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "konkiponk.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "yangjackk04.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "oliviamedici2602.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "stuartowen.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "jwbowker.bsky.social",
+      "pds": "hygrophorus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "dany-mihi.bsky.social",
+      "pds": "ganoderma.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "unsalarik.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bmj80.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fallenandfaded.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "xanaxbars.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "bontelle.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "outscuba.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "m-w-t-b74f06ddbf33.wallets.tz2at.store",
+      "pds": ""
+    },
+    {
+      "handle": "scribuscloud.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bumbling-lu.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "dvdbl.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "moviemeister76.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "vickiedell.bsky.social",
+      "pds": "cordyceps.us-west.host.bsky.network"
+    },
+    {
+      "handle": "vspeedwell.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "goonbrocum.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "kissedbythesky.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "minami-hana-ota.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "amdlt75.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "weana.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "jfksjdnsks.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "fml12.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "teddymaurer.wsocial.eu",
+      "pds": ""
+    },
+    {
+      "handle": "bigflooferstudios.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "tiredcoffeex.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "joseph6655597.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "nederlandscultuurlandschap.nl",
+      "pds": ""
+    },
+    {
+      "handle": "hmmidk0.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "cheshiegrin.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "jadeindulgence.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "5pu19bb.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "dapfeife.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "btwall77.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "muasuborg.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "chansilong.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "baybeef.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "hanie91.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "stobi.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "cemberfall.bsky.social",
+      "pds": "shaggymane.us-west.host.bsky.network"
+    },
+    {
+      "handle": "mike0138.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "funny-cloud084.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "fischboat.bsky.social",
+      "pds": "ganoderma.us-west.host.bsky.network"
+    },
+    {
+      "handle": "madjerklarry.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "eclp-2000.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "edgarsdvc.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "mrhotdogman567.bsky.social",
+      "pds": "entoloma.us-west.host.bsky.network"
+    },
+    {
+      "handle": "kbedits.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "jin-kiri.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "neftaliano29.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "i2cya.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bringmethepickles.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "rafaoliveiraf.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fluffyunicornrampg.bsky.social",
+      "pds": "jellybaby.us-east.host.bsky.network"
+    },
+    {
+      "handle": "mgnparadise.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "zanelazakelo.bsky.social",
+      "pds": "agaric.us-west.host.bsky.network"
+    },
+    {
+      "handle": "powersymbol1.bsky.social",
+      "pds": "poisonpie.us-west.host.bsky.network"
+    },
+    {
+      "handle": "jmench.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "moorevala.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "itsfarahhobballah.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "aetonline.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "nickrh14.eurosky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mieke1954.bsky.social",
+      "pds": "waxcap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "sumilemi.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "abnehmen-im-liegen.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "zenlessr.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "yoru-amaya.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "vacantisauce.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "djiebdbdksk.bsky.social",
+      "pds": "poisonpie.us-west.host.bsky.network"
+    },
+    {
+      "handle": "valeryiscool.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ace-of-turnips.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "alphamaximus96.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "rauwa.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "theshrek43.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "mirandabee76.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "shewhodrawsfur.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "beverlybee.tgirl.gay",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "xdwaxym.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "flextapeyeehaw.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "nenojt.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "libpmc.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "jshsbkwo.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "theobaahzito.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "powerlinefine.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "williambic.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lord3shakes.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "nixkawoods.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "purple-eliska.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lndis.bsky.social",
+      "pds": "shimeji.us-east.host.bsky.network"
+    },
+    {
+      "handle": "willxhqz.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "latvjunkie.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "a-morozova.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "stangguy0878.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "hibaridraws.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "dkumaki.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "altrei.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sinfulsin-1.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "shaniahoward.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "wonky67.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "kyledoeskc.bsky.social",
+      "pds": "velvetfoot.us-east.host.bsky.network"
+    },
+    {
+      "handle": "nskallxd.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "stephboyd.bsky.social",
+      "pds": "amanita.us-east.host.bsky.network"
+    },
+    {
+      "handle": "afropower6969.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "after4.bsky.social",
+      "pds": "maitake.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "bobby18.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "socalfreak.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mshiva.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "sk738.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lovelinbebe.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "oscargcer.bsky.social",
+      "pds": "cremini.us-west.host.bsky.network"
+    },
+    {
+      "handle": "davidmango.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "judahspinner.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kudanohito.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "princesspapier.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "tears-of-anubis.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "pagesunbound.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bfhwhhdhdh.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "m-w-t-736afc0049cb.wallets.tz2at.store",
+      "pds": ""
+    },
+    {
+      "handle": "spectacledwolf.bsky.social",
+      "pds": "porcini.us-east.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "namatyocotrk.bsky.social",
+      "pds": "blewit.us-west.host.bsky.network"
+    },
+    {
+      "handle": "sosorai19.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "dannyisgrowing.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "noiretoile.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "khrisruben21.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sirleo730.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "juche.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "soheikuro.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "trixiebellebadmum.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sdodding.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "81smity.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "cakedupduke.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kdloveurself.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "pikachu79.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "msmiggleton.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "akora.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "eduardozurdo.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "qqnnhhdmpcha.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "patbyrd.pds.louisvillebsky.app",
+      "pds": ""
+    },
+    {
+      "handle": "shuweishuwei.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ninowolfie.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "dantoavs17.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "zackbray.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "charlottebanks.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bluebat.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "scoriathemenace.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "cybrrrangel.bsky.social",
+      "pds": "lionsmane.us-east.host.bsky.network"
+    },
+    {
+      "handle": "raindrops0.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "suinda.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "antodouv.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "veidsoul.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "txex.bsky.social",
+      "pds": "earthstar.us-east.host.bsky.network"
+    },
+    {
+      "handle": "m-w-t-17d0346a0cf4.wallets.tz2at.store",
+      "pds": ""
+    },
+    {
+      "handle": "gingeralesoda.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lnathunderstorm.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "virgiliosilva72.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "yuuyuusq.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "zeruty.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "burniinsh.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "motebwomps.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sheiwjwjwjwj.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fa-doratin.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "the-lavender-gaze.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "incineroaring.bsky.social",
+      "pds": "dapperling.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "emporio11.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fanofpetefirman.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "cris77.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "wirdo06.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "spencer305.bsky.social",
+      "pds": "velvetfoot.us-east.host.bsky.network"
+    },
+    {
+      "handle": "paddycakeonone.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "melhauer.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "egg-woman.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sheng22.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "devgel.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "dt-at.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "artistedevivre.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "2022zionad.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "e23records.net",
+      "pds": ""
+    },
+    {
+      "handle": "toamoto.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "xylophoneleaf.bsky.social",
+      "pds": "fibercap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "floveler.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sebastianly-post.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ardainceoglu.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "palomorey.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fersitoooooo.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "peteranjos.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "marinadamico.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "j-yy.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ganfote.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "enaeg.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "silksatinobsess.bsky.social",
+      "pds": "yellowfoot.us-west.host.bsky.network"
+    },
+    {
+      "handle": "paulain.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "robertwslater11.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "graysky1101.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "chicagoguy91.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "r-m-n-p.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "amandarae56.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "monarchthesynth.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "revidssa1.bsky.social",
+      "pds": "panus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "jamsorgsyd.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "dkkdkdkkdbsj.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "breezycheezyart.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "qks.org.uk",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "strawhatg0heezy.bsky.social",
+      "pds": "hydnum.us-west.host.bsky.network"
+    },
+    {
+      "handle": "spronklesss.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "gisela710.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ultiimatelaxbro.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "drdetly.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mux.com",
+      "pds": ""
+    },
+    {
+      "handle": "tlbrock.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "adc123321.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "maylanhowat.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "midorimushi.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "phyanont.bsky.social",
+      "pds": "bracket.us-west.host.bsky.network"
+    },
+    {
+      "handle": "jessicarose80.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "yvie75.bsky.social",
+      "pds": "panus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "iam-john.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "aricz.bsky.social",
+      "pds": "maitake.us-west.host.bsky.network"
+    },
+    {
+      "handle": "pirosia.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "echzo.bsky.social",
+      "pds": "yellowfoot.us-west.host.bsky.network"
+    },
+    {
+      "handle": "63936243.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "pwpnk.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "blueperidot-musix.net",
+      "pds": ""
+    },
+    {
+      "handle": "waffles159.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "handrjd.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "yyyyyiop1.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bambilubrainworms.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mronetwo.bsky.social",
+      "pds": "shiitake.us-east.host.bsky.network"
+    },
+    {
+      "handle": "msafar91.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "louisfanpage.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "syntheticpacifist.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fjdkxk.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "uladzya.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "anaritaferreira.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "joehartwell.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "adgmatthews.bsky.social",
+      "pds": "helvella.us-east.host.bsky.network"
+    },
+    {
+      "handle": "johnjames2010.bsky.social",
+      "pds": "discina.us-west.host.bsky.network"
+    },
+    {
+      "handle": "aslood.bsky.social",
+      "pds": "poisonpie.us-west.host.bsky.network"
+    },
+    {
+      "handle": "schnimsi.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "thatjacobphillips.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "louisgphoto.bsky.social",
+      "pds": "fuzzyfoot.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "mohammedf06.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "gnamra.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "tgot1224.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "habibibabe.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "wilon96.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mellalee.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "sickseptm.bsky.social",
+      "pds": "woodear.us-west.host.bsky.network"
+    },
+    {
+      "handle": "ralf-schulze.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "androgeboi.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "febriaroo.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "thomasenger.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "johnniewhat.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "lqgga.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "charon-0w0.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fugit.therese.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "fog-katastrophe.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "randycan999.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ieatbeeees.bsky.social",
+      "pds": "rhizopogon.us-west.host.bsky.network"
+    },
+    {
+      "handle": "voulalas.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "laspiel.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "truman12.bsky.social",
+      "pds": "hebeloma.us-west.host.bsky.network"
+    },
+    {
+      "handle": "m-w-t-0dbab8569ef0.wallets.tz2at.store",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "mapofuu.bsky.social",
+      "pds": "woodear.us-west.host.bsky.network"
+    },
+    {
+      "handle": "bull321.bsky.social",
+      "pds": "blusher.us-east.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "quotypup.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "izaguirreh518.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "name000123000.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "technilogica.gay",
+      "pds": ""
+    },
+    {
+      "handle": "rombab.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "odderling.eurosky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ziadaunallah.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "bfgva-bls.bsky.social",
+      "pds": "scarletina.us-east.host.bsky.network"
+    },
+    {
+      "handle": "nervekranken5.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "thomasmicheal2699.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "rmdsr.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ginamcarter1951.bsky.social",
+      "pds": "jellybaby.us-east.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "teddyyiff.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "yeetskeet05.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "guzman42.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "liradosanjos.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "susanruch.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "amiro456.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mmlfinner.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "rec-2u.bsky.social",
+      "pds": "helvella.us-east.host.bsky.network"
+    },
+    {
+      "handle": "metalinjection.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "umeshiso25.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "nojun.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "squaremary.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "mihayosima.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "didyegethealed.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "minimaleu.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "brnshlm.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "ceecrown.bsky.social",
+      "pds": "waxcap.us-west.host.bsky.network"
+    },
+    {
+      "handle": "dogukanmetin.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "porscheblu.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "ore-078.bsky.social",
+      "pds": "phellinus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "munchaliath.bsky.social",
+      "pds": "suillus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "124hh.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "alansmitheeeeee.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "thegreenplace.wsocial.eu",
+      "pds": ""
+    },
+    {
+      "handle": "nyahatmaziki.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "alexsierra2019.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "rdw7.bsky.social",
+      "pds": "matsutake.us-west.host.bsky.network"
+    },
+    {
+      "handle": "esvarun.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "clams.takusuki.com.ap.brid.gy",
+      "pds": ""
+    },
+    {
+      "handle": "lady-of-frost.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "rose23.bsky.social",
+      "pds": "maitake.us-west.host.bsky.network"
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "seanpayette.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "foozmeat.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "yrashka.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "eirrot.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "capnkidd88.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "armover.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "kxtpp05.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "miguelnfj.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "gr-moha24.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "dezxmo.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "donald.trump.com",
+      "pds": ""
+    },
+    {
+      "handle": "sumatraguards.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "imagiccosmetics.bsky.social",
+      "pds": "brittlegill.us-west.host.bsky.network"
+    },
+    {
+      "handle": "ginahaynes.bsky.social",
+      "pds": "chalciporus.us-west.host.bsky.network"
+    },
+    {
+      "handle": "bonza-75.bsky.social",
+      "pds": "auriporia.us-west.host.bsky.network"
+    },
+    {
+      "handle": "mrmikeeee.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "blo0dqueen.bsky.social",
+      "pds": ""
+    },
+    {
+      "handle": "0mnipresent.bsky.social",
+      "pds": "rhizopogon.us-west.host.bsky.network"
+    }
+  ],
+  "snapshot_bytes": 7326593024
+}

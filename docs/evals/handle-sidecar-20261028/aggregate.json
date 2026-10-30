@@ -1,0 +1,502 @@
+[
+  {
+    "phase": "cold-exact",
+    "variant": "fst",
+    "attempts": 320,
+    "p50_ms": 0.7793500000000001,
+    "p95_ms": 67.97077999999999,
+    "p99_ms": 156.28830299999998,
+    "max_ms": 677.800005,
+    "service_p99_ms": 156.189308,
+    "truncated": 48,
+    "over_1s": 0,
+    "over_10s": 0,
+    "peak_rss_mib": 48.1953125,
+    "runs": [
+      {
+        "attempts": 160,
+        "hydrate": true,
+        "max_ms": 669.831875,
+        "memory": [
+          "VmHWM:\t   49352 kB",
+          "VmRSS:\t   48076 kB",
+          "RssAnon:\t     956 kB",
+          "RssFile:\t   47120 kB"
+        ],
+        "p50_ms": 0.796217,
+        "p95_ms": 62.53269,
+        "p99_ms": 156.28830299999998,
+        "truncated": 24,
+        "variant": "fst",
+        "wall_s": 7.950788524
+      },
+      {
+        "attempts": 160,
+        "hydrate": true,
+        "max_ms": 677.800005,
+        "memory": [
+          "VmHWM:\t   49300 kB",
+          "VmRSS:\t   48028 kB",
+          "RssAnon:\t     952 kB",
+          "RssFile:\t   47076 kB"
+        ],
+        "p50_ms": 0.733472,
+        "p95_ms": 70.256286,
+        "p99_ms": 159.83369,
+        "truncated": 24,
+        "variant": "fst",
+        "wall_s": 7.950757784
+      }
+    ]
+  },
+  {
+    "phase": "cold-exact",
+    "variant": "sorted",
+    "attempts": 320,
+    "p50_ms": 758.256767,
+    "p95_ms": 1006.8967220000001,
+    "p99_ms": 1413.870673,
+    "max_ms": 1588.6253639999998,
+    "service_p99_ms": 724.339703,
+    "truncated": 48,
+    "over_1s": 19,
+    "over_10s": 0,
+    "peak_rss_mib": 87.3515625,
+    "runs": [
+      {
+        "attempts": 160,
+        "hydrate": true,
+        "max_ms": 1584.6712750000002,
+        "memory": [
+          "VmHWM:\t   87124 kB",
+          "VmRSS:\t   87124 kB",
+          "RssAnon:\t     904 kB",
+          "RssFile:\t   86220 kB"
+        ],
+        "p50_ms": 760.661915,
+        "p95_ms": 1006.8967220000001,
+        "p99_ms": 1459.740061,
+        "truncated": 24,
+        "variant": "sorted",
+        "wall_s": 8.447479386
+      },
+      {
+        "attempts": 160,
+        "hydrate": true,
+        "max_ms": 1588.6253639999998,
+        "memory": [
+          "VmHWM:\t   89448 kB",
+          "VmRSS:\t   89448 kB",
+          "RssAnon:\t    3104 kB",
+          "RssFile:\t   86344 kB"
+        ],
+        "p50_ms": 745.3024750000001,
+        "p95_ms": 991.641983,
+        "p99_ms": 1413.870673,
+        "truncated": 24,
+        "variant": "sorted",
+        "wall_s": 8.427200856
+      }
+    ]
+  },
+  {
+    "phase": "mixed-exact",
+    "variant": "fst",
+    "attempts": 1280,
+    "p50_ms": 0.129907,
+    "p95_ms": 5.161759999999999,
+    "p99_ms": 118.809566,
+    "max_ms": 434.960485,
+    "service_p99_ms": 20.020578,
+    "truncated": 190,
+    "over_1s": 0,
+    "over_10s": 0,
+    "peak_rss_mib": 64.38671875,
+    "runs": [
+      {
+        "attempts": 640,
+        "hydrate": true,
+        "max_ms": 403.757799,
+        "memory": [
+          "VmHWM:\t   65916 kB",
+          "VmRSS:\t   64564 kB",
+          "RssAnon:\t    5932 kB",
+          "RssFile:\t   58632 kB"
+        ],
+        "p50_ms": 0.131941,
+        "p95_ms": 5.231161,
+        "p99_ms": 103.720909,
+        "truncated": 95,
+        "variant": "fst",
+        "wall_s": 31.95032733
+      },
+      {
+        "attempts": 640,
+        "hydrate": true,
+        "max_ms": 434.960485,
+        "memory": [
+          "VmHWM:\t   65932 kB",
+          "VmRSS:\t   64460 kB",
+          "RssAnon:\t    5944 kB",
+          "RssFile:\t   58516 kB"
+        ],
+        "p50_ms": 0.12798299999999999,
+        "p95_ms": 5.152978,
+        "p99_ms": 118.809566,
+        "truncated": 95,
+        "variant": "fst",
+        "wall_s": 31.950265848
+      }
+    ]
+  },
+  {
+    "phase": "mixed-exact",
+    "variant": "sorted",
+    "attempts": 1280,
+    "p50_ms": 0.13611299999999998,
+    "p95_ms": 5.773147,
+    "p99_ms": 10.109786000000001,
+    "max_ms": 117.240133,
+    "service_p99_ms": 10.034269,
+    "truncated": 190,
+    "over_1s": 0,
+    "over_10s": 0,
+    "peak_rss_mib": 98.7109375,
+    "runs": [
+      {
+        "attempts": 640,
+        "hydrate": true,
+        "max_ms": 117.240133,
+        "memory": [
+          "VmHWM:\t  100688 kB",
+          "VmRSS:\t   98864 kB",
+          "RssAnon:\t    1416 kB",
+          "RssFile:\t   97448 kB"
+        ],
+        "p50_ms": 0.133153,
+        "p95_ms": 5.64615,
+        "p99_ms": 10.109786000000001,
+        "truncated": 95,
+        "variant": "sorted",
+        "wall_s": 31.9503044
+      },
+      {
+        "attempts": 640,
+        "hydrate": true,
+        "max_ms": 68.65376099999999,
+        "memory": [
+          "VmHWM:\t  101080 kB",
+          "VmRSS:\t   99288 kB",
+          "RssAnon:\t    1416 kB",
+          "RssFile:\t   97872 kB"
+        ],
+        "p50_ms": 0.13827699999999998,
+        "p95_ms": 5.8864,
+        "p99_ms": 9.962968,
+        "truncated": 95,
+        "variant": "sorted",
+        "wall_s": 31.950286649
+      }
+    ]
+  },
+  {
+    "phase": "mixed-fuzzy",
+    "variant": "fst",
+    "attempts": 1280,
+    "p50_ms": 1.716901,
+    "p95_ms": 2818.469309,
+    "p99_ms": 3379.8222650000002,
+    "max_ms": 3942.57448,
+    "service_p99_ms": 609.3141330000001,
+    "truncated": 200,
+    "over_1s": 149,
+    "over_10s": 0,
+    "peak_rss_mib": 123.0703125,
+    "runs": [
+      {
+        "attempts": 640,
+        "hydrate": true,
+        "max_ms": 3942.57448,
+        "memory": [
+          "VmHWM:\t  126024 kB",
+          "VmRSS:\t  124472 kB",
+          "RssAnon:\t    1476 kB",
+          "RssFile:\t  122996 kB"
+        ],
+        "p50_ms": 1.7326920000000001,
+        "p95_ms": 2818.469309,
+        "p99_ms": 3420.128682,
+        "truncated": 100,
+        "variant": "fst",
+        "wall_s": 31.951380892
+      },
+      {
+        "attempts": 640,
+        "hydrate": true,
+        "max_ms": 3901.239354,
+        "memory": [
+          "VmHWM:\t  125948 kB",
+          "VmRSS:\t  124504 kB",
+          "RssAnon:\t    1504 kB",
+          "RssFile:\t  123000 kB"
+        ],
+        "p50_ms": 1.695563,
+        "p95_ms": 2784.5746980000004,
+        "p99_ms": 3370.636043,
+        "truncated": 100,
+        "variant": "fst",
+        "wall_s": 31.951456
+      }
+    ]
+  },
+  {
+    "phase": "mixed-fuzzy",
+    "variant": "sorted",
+    "attempts": 1280,
+    "p50_ms": 31133.861985,
+    "p95_ms": 39595.348186999996,
+    "p99_ms": 40344.647205,
+    "max_ms": 40812.343845,
+    "service_p99_ms": 6314.432680999999,
+    "truncated": 200,
+    "over_1s": 1279,
+    "over_10s": 1271,
+    "peak_rss_mib": 606.1640625,
+    "runs": [
+      {
+        "attempts": 640,
+        "hydrate": true,
+        "max_ms": 40812.343845,
+        "memory": [
+          "VmHWM:\t  607520 kB",
+          "VmRSS:\t  586564 kB",
+          "RssAnon:\t    1820 kB",
+          "RssFile:\t  584744 kB"
+        ],
+        "p50_ms": 31533.116682,
+        "p95_ms": 40009.33562,
+        "p99_ms": 40446.572478999995,
+        "truncated": 100,
+        "variant": "sorted",
+        "wall_s": 50.406635378
+      },
+      {
+        "attempts": 640,
+        "hydrate": true,
+        "max_ms": 40447.006382,
+        "memory": [
+          "VmHWM:\t  620712 kB",
+          "VmRSS:\t  601772 kB",
+          "RssAnon:\t    1804 kB",
+          "RssFile:\t  599968 kB"
+        ],
+        "p50_ms": 30729.125666,
+        "p95_ms": 39351.548761,
+        "p99_ms": 39773.990642000004,
+        "truncated": 100,
+        "variant": "sorted",
+        "wall_s": 49.378992267
+      }
+    ]
+  },
+  {
+    "phase": "warm-exact",
+    "variant": "fst",
+    "attempts": 480,
+    "p50_ms": 0.183405,
+    "p95_ms": 5.118396,
+    "p99_ms": 10.133946,
+    "max_ms": 36.089348,
+    "service_p99_ms": 10.051229,
+    "truncated": 74,
+    "over_1s": 0,
+    "over_10s": 0,
+    "peak_rss_mib": 64.1171875,
+    "runs": [
+      {
+        "attempts": 240,
+        "hydrate": true,
+        "max_ms": 23.302619,
+        "memory": [
+          "VmHWM:\t   65656 kB",
+          "VmRSS:\t   64224 kB",
+          "RssAnon:\t    5704 kB",
+          "RssFile:\t   58520 kB"
+        ],
+        "p50_ms": 0.170304,
+        "p95_ms": 5.101498,
+        "p99_ms": 10.133946,
+        "truncated": 37,
+        "variant": "fst",
+        "wall_s": 5.9752998470000005
+      },
+      {
+        "attempts": 240,
+        "hydrate": true,
+        "max_ms": 36.089348,
+        "memory": [
+          "VmHWM:\t   65536 kB",
+          "VmRSS:\t   64232 kB",
+          "RssAnon:\t    5708 kB",
+          "RssFile:\t   58524 kB"
+        ],
+        "p50_ms": 0.19546,
+        "p95_ms": 5.118396,
+        "p99_ms": 8.454115999999999,
+        "truncated": 37,
+        "variant": "fst",
+        "wall_s": 5.975240047
+      }
+    ]
+  },
+  {
+    "phase": "warm-exact",
+    "variant": "sorted",
+    "attempts": 480,
+    "p50_ms": 0.215793,
+    "p95_ms": 5.1940729999999995,
+    "p99_ms": 7.097517,
+    "max_ms": 16.952227,
+    "service_p99_ms": 6.99273,
+    "truncated": 74,
+    "over_1s": 0,
+    "over_10s": 0,
+    "peak_rss_mib": 97.8828125,
+    "runs": [
+      {
+        "attempts": 240,
+        "hydrate": true,
+        "max_ms": 15.331819,
+        "memory": [
+          "VmHWM:\t  100172 kB",
+          "VmRSS:\t   98636 kB",
+          "RssAnon:\t    1084 kB",
+          "RssFile:\t   97552 kB"
+        ],
+        "p50_ms": 0.206476,
+        "p95_ms": 4.968503,
+        "p99_ms": 7.067047,
+        "truncated": 37,
+        "variant": "sorted",
+        "wall_s": 5.975277676
+      },
+      {
+        "attempts": 240,
+        "hydrate": true,
+        "max_ms": 16.952227,
+        "memory": [
+          "VmHWM:\t  100232 kB",
+          "VmRSS:\t   98608 kB",
+          "RssAnon:\t    1088 kB",
+          "RssFile:\t   97520 kB"
+        ],
+        "p50_ms": 0.22489299999999998,
+        "p95_ms": 5.2651900000000005,
+        "p99_ms": 7.097517,
+        "truncated": 37,
+        "variant": "sorted",
+        "wall_s": 5.975272616
+      }
+    ]
+  },
+  {
+    "phase": "warm-fuzzy",
+    "variant": "fst",
+    "attempts": 320,
+    "p50_ms": 2.045987,
+    "p95_ms": 796.4780900000001,
+    "p99_ms": 1236.45739,
+    "max_ms": 1261.232652,
+    "service_p99_ms": 759.4051000000001,
+    "truncated": 50,
+    "over_1s": 4,
+    "over_10s": 0,
+    "peak_rss_mib": 122.84765625,
+    "runs": [
+      {
+        "attempts": 160,
+        "hydrate": true,
+        "max_ms": 1255.771843,
+        "memory": [
+          "VmHWM:\t  125796 kB",
+          "VmRSS:\t  124180 kB",
+          "RssAnon:\t    1236 kB",
+          "RssFile:\t  122944 kB"
+        ],
+        "p50_ms": 2.035703,
+        "p95_ms": 795.04989,
+        "p99_ms": 1236.45739,
+        "truncated": 25,
+        "variant": "fst",
+        "wall_s": 7.9514479829999996
+      },
+      {
+        "attempts": 160,
+        "hydrate": true,
+        "max_ms": 1261.232652,
+        "memory": [
+          "VmHWM:\t  125676 kB",
+          "VmRSS:\t  124112 kB",
+          "RssAnon:\t    1232 kB",
+          "RssFile:\t  122880 kB"
+        ],
+        "p50_ms": 2.054252,
+        "p95_ms": 796.4780900000001,
+        "p99_ms": 1241.98399,
+        "truncated": 25,
+        "variant": "fst",
+        "wall_s": 7.951633861
+      }
+    ]
+  },
+  {
+    "phase": "warm-fuzzy",
+    "variant": "sorted",
+    "attempts": 320,
+    "p50_ms": 27817.620297,
+    "p95_ms": 29627.246235000002,
+    "p99_ms": 29817.447528,
+    "max_ms": 30144.01325,
+    "service_p99_ms": 8066.812895,
+    "truncated": 50,
+    "over_1s": 318,
+    "over_10s": 307,
+    "peak_rss_mib": 639.83984375,
+    "runs": [
+      {
+        "attempts": 160,
+        "hydrate": true,
+        "max_ms": 29935.893115,
+        "memory": [
+          "VmHWM:\t  655196 kB",
+          "VmRSS:\t  655196 kB",
+          "RssAnon:\t    1596 kB",
+          "RssFile:\t  653600 kB"
+        ],
+        "p50_ms": 27730.704924,
+        "p95_ms": 29476.988406,
+        "p99_ms": 29671.078149,
+        "truncated": 25,
+        "variant": "sorted",
+        "wall_s": 36.974382348
+      },
+      {
+        "attempts": 160,
+        "hydrate": true,
+        "max_ms": 30144.01325,
+        "memory": [
+          "VmHWM:\t  654820 kB",
+          "VmRSS:\t  654796 kB",
+          "RssAnon:\t    1592 kB",
+          "RssFile:\t  653204 kB"
+        ],
+        "p50_ms": 27908.425201,
+        "p95_ms": 29672.633688,
+        "p99_ms": 29900.016512000002,
+        "truncated": 25,
+        "variant": "sorted",
+        "wall_s": 37.372351419
+      }
+    ]
+  }
+]

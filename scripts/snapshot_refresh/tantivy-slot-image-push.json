@@ -1,0 +1,21 @@
+{
+  "observed_at": 1793323333.611351,
+  "local_image_id": "sha256:317f144c4bb6c346faa484557013b5cf8bc2629738f63ad134389f98afe9938e",
+  "registry_image": "registry.fly.io/typeahead-qual-20261029@sha256:317f144c4bb6c346faa484557013b5cf8bc2629738f63ad134389f98afe9938e",
+  "tag": "registry.fly.io/typeahead-qual-20261029:tantivy-slot-317f144c4bb6",
+  "scope": "published image only; no machine creation, deployment or release qualification",
+  "production_changed": false,
+  "installed_source_sha256": {
+    "/app/typeahead-tantivy": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+    "/app/tantivy-slot.py": "e02c9903f125cb67ba212ff71ce631df9ec9365672b6062dadc03b3ab6eb685a",
+    "/app/tantivy_install.py": "ce99c13446f70cd889c89b8c5469eea351e1bb522d5057ccd40359a6c9fdad5c",
+    "/app/install.py": "98f4931f5987093f57972ad57349ce6f862add73f3d59942976bd68d07653efc",
+    "/app/input/sync.py": "8a7ae1876dfb5b4a109d340770bff35ab03f8ffe4bc7a41d170fba52b9d8504a",
+    "/app/input/current_state.py": "e049781acd5ac993031100cc180f14137f2bcf98369e7926576e21450fdf0d86",
+    "/app/input/budget.py": "2e36f2db59038382650cdeb08ab03fa13e29239afd1f4daec395a5f82e68d75c"
+  },
+  "installed_sources_match_current_tree": true,
+  "local_test_receipt": "scripts/snapshot_refresh/tantivy-slot-local.json",
+  "provider_resources_qualified": false,
+  "slot_deployed": false
+}

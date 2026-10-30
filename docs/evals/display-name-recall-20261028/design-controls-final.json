@@ -1,0 +1,299 @@
+{
+  "kind": "offline-algorithm-controls",
+  "scope": "ASCII multiword fixture only; no native implementation or production scale claim",
+  "queries": [
+    {
+      "query": "Justin Fa",
+      "oracle": [
+        "did:plc:justintarget",
+        "did:plc:displayonlytarget"
+      ],
+      "methods": {
+        "current": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "doubled-caps": {
+          "dids": [
+            "did:plc:justintarget",
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        },
+        "union-verify": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "rarest-seed-verify": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "phrase-fast-path": {
+          "dids": [
+            "did:plc:justintarget",
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        },
+        "stripped-handle-fallback": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": false
+        },
+        "complete-postings": {
+          "dids": [
+            "did:plc:justintarget",
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        }
+      }
+    },
+    {
+      "query": "Fa Justin",
+      "oracle": [
+        "did:plc:justintarget",
+        "did:plc:displayonlytarget"
+      ],
+      "methods": {
+        "current": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "doubled-caps": {
+          "dids": [
+            "did:plc:justintarget",
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        },
+        "union-verify": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "rarest-seed-verify": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "phrase-fast-path": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "stripped-handle-fallback": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "complete-postings": {
+          "dids": [
+            "did:plc:justintarget",
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        }
+      }
+    },
+    {
+      "query": "Justin Fagnani",
+      "oracle": [
+        "did:plc:justintarget"
+      ],
+      "methods": {
+        "current": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "doubled-caps": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "union-verify": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "rarest-seed-verify": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "phrase-fast-path": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "stripped-handle-fallback": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "complete-postings": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        }
+      }
+    },
+    {
+      "query": "Justin Falconer",
+      "oracle": [
+        "did:plc:displayonlytarget"
+      ],
+      "methods": {
+        "current": {
+          "dids": [
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        },
+        "doubled-caps": {
+          "dids": [
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        },
+        "union-verify": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "rarest-seed-verify": {
+          "dids": [
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        },
+        "phrase-fast-path": {
+          "dids": [
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        },
+        "stripped-handle-fallback": {
+          "dids": [
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        },
+        "complete-postings": {
+          "dids": [
+            "did:plc:displayonlytarget"
+          ],
+          "matches_oracle": true
+        }
+      }
+    },
+    {
+      "query": "Fagnani Justin",
+      "oracle": [
+        "did:plc:justintarget"
+      ],
+      "methods": {
+        "current": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "doubled-caps": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "union-verify": {
+          "dids": [],
+          "matches_oracle": false
+        },
+        "rarest-seed-verify": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "phrase-fast-path": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "stripped-handle-fallback": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        },
+        "complete-postings": {
+          "dids": [
+            "did:plc:justintarget"
+          ],
+          "matches_oracle": true
+        }
+      }
+    }
+  ],
+  "finite_cap_counterexamples": [
+    {
+      "cap": 300,
+      "actors": 302,
+      "expected": [
+        "did:target"
+      ],
+      "actual": [],
+      "miss": true
+    },
+    {
+      "cap": 600,
+      "actors": 602,
+      "expected": [
+        "did:target"
+      ],
+      "actual": [],
+      "miss": true
+    },
+    {
+      "cap": 1200,
+      "actors": 1202,
+      "expected": [
+        "did:target"
+      ],
+      "actual": [],
+      "miss": true
+    }
+  ],
+  "hard_budget_counterexample": {
+    "description": "Two broad terms have interleaved disjoint high-score actors; their only joint match has the lowest score. A ranked seed budget before joint verification misses it.",
+    "sizes": [
+      {
+        "actors": 101,
+        "joint_matches": 1,
+        "seed50": [],
+        "complete_postings": [
+          "did:joint"
+        ]
+      },
+      {
+        "actors": 1001,
+        "joint_matches": 1,
+        "seed50": [],
+        "complete_postings": [
+          "did:joint"
+        ]
+      },
+      {
+        "actors": 10001,
+        "joint_matches": 1,
+        "seed50": [],
+        "complete_postings": [
+          "did:joint"
+        ]
+      }
+    ]
+  }
+}

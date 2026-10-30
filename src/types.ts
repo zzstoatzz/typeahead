@@ -7,6 +7,7 @@ export interface Env {
   TURSO_AUTH_TOKEN: string;
   SEARCH_BACKEND_URL?: string;
   SEARCH_TRANSPORT?: Fetcher;
+  SEARCH_CACHE_GENERATION?: string;
   PDS_SEARCH_DISABLED?: string;
   PDS_UI_ENABLED?: string;
   /// "1" re-asks Turso when the engine answers empty (limit ≤ 25 only).
@@ -81,6 +82,7 @@ export interface ProfileRow extends ActorRow {
 export interface IngestEvent {
   did: string;
   handle?: string;
+  handle_verified?: boolean;
   display_name?: string;
   avatar_cid?: string;
   description?: string;

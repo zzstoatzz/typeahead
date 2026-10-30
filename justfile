@@ -37,6 +37,45 @@ test-services:
 test-search-recall:
     python3 scripts/test_search_recall.py
 
+test-tantivy:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    test "$(zig version)" = "0.17.0"
+    ta_verify_root=$(mktemp -d "${TMPDIR:-/tmp}/typeahead-tantivy-check.XXXXXX")
+    trap 'rm -rf "$ta_verify_root"' EXIT
+    mkdir -p "$ta_verify_root/normalizer" "$ta_verify_root/tmp"
+    export TMPDIR="$ta_verify_root/tmp"
+    export PYTHONDONTWRITEBYTECODE=1
+    export CARGO_BUILD_JOBS=2
+    export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$PWD/services/tantivy/target}"
+    export TA_NORMALIZER_LIB_DIR="$ta_verify_root/normalizer"
+    export TA_IDENTITY_POLICY_PATH="$PWD/src/identity-quarantine.json"
+    export TA_MODERATION_RULES_PATH="$PWD/src/moderation-regexes.json"
+    unset CARGO_BUILD_TARGET TYPEAHEAD_TEST_CRASH TA_RETRIEVAL_STRATEGY
+    python3 -c 'import hashlib,json,pathlib; p=pathlib.Path("src"); assert json.loads((p/"moderation-regexes.json").read_text())["canonical_source_sha256"] == hashlib.sha256((p/"moderation.ts").read_bytes()).hexdigest(), "canonical moderation artifact is stale"'
+    python3 services/tantivy-normalizer/build.py --test
+    python3 services/tantivy-normalizer/build.py --output "$TA_NORMALIZER_LIB_DIR/libtypeahead_normalizer.a"
+    cargo test --release --locked --jobs 2 --manifest-path services/tantivy/Cargo.toml -- --test-threads=2
+    cargo build --release --locked --jobs 2 --manifest-path services/tantivy/Cargo.toml
+    cp "$CARGO_TARGET_DIR/release/typeahead-tantivy" "$ta_verify_root/typeahead-tantivy"
+    export TA_BINARY="$ta_verify_root/typeahead-tantivy"
+    export TANTIVY_TEST_BIN="$TA_BINARY"
+    for strategy in per-segment global-merge; do
+      export TA_RETRIEVAL_STRATEGY="$strategy"
+      TA_SMOKE_RECEIPT="$ta_verify_root/smoke-$strategy.json" python3 services/tantivy/tests/smoke.py
+      TA_BOOST_RECEIPT="$ta_verify_root/boost-$strategy.json" python3 services/tantivy/tests/boost_exact.py
+    done
+    export TA_RETRIEVAL_STRATEGY=global-merge
+    TA_SOURCE_AUTHORITY_RECEIPT="$ta_verify_root/source-authority.json" python3 services/tantivy/tests/source_authority.py
+    python3 services/tantivy-input/test_rust.py --binary "$TA_BINARY" --scratch-root "$TMPDIR" --receipt "$ta_verify_root/source-policy.json" --policy-checks
+    python3 services/tantivy/tests/source_version_only.py --binary "$TA_BINARY" --actors 128 --receipt "$ta_verify_root/source-version-only.json"
+    TA_EXPIRY_COVERAGE_RECEIPT="$ta_verify_root/expiry.json" python3 services/tantivy/tests/expiry_coverage.py
+    TA_SOURCE_PDS_RECEIPT="$ta_verify_root/source-pds.json" python3 services/tantivy/tests/source_pds.py
+    TA_CONFLICT_DIAGNOSTICS_RECEIPT="$ta_verify_root/conflicts.json" python3 services/tantivy/tests/conflict_diagnostics.py
+    python3 services/tantivy-normalizer/test_backend_adversarial.py
+    python3 scripts/snapshot_refresh/test_tantivy_install.py
+    python3 scripts/snapshot_refresh/test_install.py
+
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech":
     bunx tsc --noEmit

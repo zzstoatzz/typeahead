@@ -8,12 +8,13 @@ import { join, resolve } from 'node:path';
 
 let healthy = false;
 let originCalls = 0;
+let polluted = false;
 const server = createServer((request, response) => {
   originCalls++;
   setTimeout(() => {
     response.statusCode = healthy ? 200 : 500;
     response.setHeader('Content-Type', 'application/json');
-    response.end(JSON.stringify(healthy ? { actors: [{ did: 'did:plc:fixture', handle: 'fixture.test' }] } : { error: 'fixture_failure' }));
+    response.end(JSON.stringify(healthy ? { actors: (polluted ? [{ did: 'did:plc:spam', handle: 'donald.trump.com' }, { did: 'did:plc:invalid', handle: 'handle.invalid' }, { did: 'did:plc:fixture', handle: 'fixture.test' }] : [{ did: 'did:plc:fixture', handle: 'fixture.test' }]) } : { error: 'fixture_failure' }));
   }, 25);
 });
 await new Promise(done => server.listen(0, '127.0.0.1', done));
@@ -70,6 +71,13 @@ try {
   healthy = false;
   assert.deepEqual(await (await request('q=fallback', { 'X-Fixture-Fallback': '1' })).json(), { actors: [] });
   assert.equal((await metrics()).misses, 5, 'backend plus failing SQL fallback counts once');
+  polluted = true;
+  healthy = true;
+  const contained = await request('q=quarantine');
+  assert.deepEqual(await contained.json(), { actors: [{ did: 'did:plc:fixture', handle: 'fixture.test' }] });
+  const callsBeforeCache = originCalls;
+  assert.deepEqual(await (await request('q=quarantine')).json(), { actors: [{ did: 'did:plc:fixture', handle: 'fixture.test' }] });
+  assert.equal(originCalls, callsBeforeCache, 'contained cached answers require no extra backend work');
   console.log('PASS: real workerd + Cache API + SQLite/D1 + HTTP origin; sanitized empty, backend error wait, scope failure, SQL fallback failure, recovery and cache hit accounting');
 } finally {
   if (mf) await mf.dispose();

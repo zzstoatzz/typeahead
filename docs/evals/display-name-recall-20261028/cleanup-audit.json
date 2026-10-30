@@ -1,0 +1,56 @@
+{
+  "synthetic_only": true,
+  "runs": [
+    {
+      "evidence": "docs/evals/display-name-recall-20261028/native-fixture/results.json",
+      "complete": false,
+      "scratch_removed": true,
+      "children_terminal_receipt": true,
+      "error": "RuntimeError: build.log failed"
+    },
+    {
+      "evidence": "docs/evals/display-name-recall-20261028/native-fixture-6/results.json",
+      "complete": true,
+      "scratch_removed": true,
+      "children_terminal_receipt": true,
+      "error": null
+    },
+    {
+      "evidence": "docs/evals/display-name-recall-20261028/native-fixture-2/results.json",
+      "complete": true,
+      "scratch_removed": true,
+      "children_terminal_receipt": true,
+      "error": null
+    },
+    {
+      "evidence": "docs/evals/display-name-recall-20261028/native-fixture-5/results.json",
+      "complete": true,
+      "scratch_removed": true,
+      "children_terminal_receipt": true,
+      "error": null
+    },
+    {
+      "evidence": "docs/evals/display-name-recall-20261028/native-fixture-4/results.json",
+      "complete": true,
+      "scratch_removed": true,
+      "children_terminal_receipt": true,
+      "error": null
+    },
+    {
+      "evidence": "docs/evals/display-name-recall-20261028/native-fixture-3/results.json",
+      "complete": false,
+      "scratch_removed": true,
+      "children_terminal_receipt": true,
+      "error": "RuntimeError: reprojection not ready"
+    },
+    {
+      "evidence": "docs/evals/display-name-recall-20261028/native-complete-membership-control/results.json",
+      "complete": true,
+      "scratch_removed": true,
+      "children_terminal_receipt": true,
+      "error": null
+    }
+  ],
+  "all_scratch_absent": true,
+  "all_children_terminal": true
+}

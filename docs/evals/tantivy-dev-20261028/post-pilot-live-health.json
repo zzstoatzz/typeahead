@@ -1,0 +1,23 @@
+{
+  "observed_at": "2026-10-29T18:42:02.946Z",
+  "dev": {
+    "status": 200,
+    "body": {
+      "actors": 12855882,
+      "build_id": "b1793109259-2b36-px05",
+      "engine": "tantivy",
+      "normalize_version": "v2-cjk-bigram",
+      "plan_version": "complete-prefix-groups-v1",
+      "ready": true,
+      "status": "ok",
+      "sync_lag_s": 52
+    }
+  },
+  "production_route": {
+    "status": 200,
+    "body": {
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "build_id": "b1793109259-2b36-px05"
+    }
+  }
+}

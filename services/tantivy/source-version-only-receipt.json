@@ -1,0 +1,157 @@
+{
+  "passed": true,
+  "pilot_actors": 32,
+  "checks": [
+    "legacy_strict_timestamps_unchanged_before_migration",
+    "version_only_preserves_digest_but_request_identity_remains_strict",
+    "generic_writes_fenced_after_source_migration",
+    "every_nonversion_field_and_same_second_hide_delete_restore_preserved",
+    "timestamp_only_retry_receipt_survives_restart",
+    "metadata_only_observation_crash_atomicity_and_durable_retry"
+  ],
+  "trials": [
+    {
+      "actors": 5000,
+      "synthetic": true,
+      "actual_tantivy_http": true,
+      "optimized_expected": false,
+      "binary_sha256": "990c3d73c807e5f54634cd6cd4197e78aa3eb5c6e550226d7abf0d98e324a864",
+      "initial": {
+        "total_index_file_bytes": 566483,
+        "immutable_segment_bytes": 563818,
+        "immutable_segment_file_sha256": "46f998bf5f3aa60d3b8e3218e1f891aad644378a5821a834a5a2ec605bb45380",
+        "immutable_segment_file_count": 6,
+        "durable_observation_revision": 0,
+        "last_request_sha256": null
+      },
+      "metadata_commits": 30,
+      "logical_document_writes": 15000,
+      "phases": [
+        {
+          "phase": "higher",
+          "incoming_version": 200,
+          "applied_documents": 5000,
+          "replayed_documents": 0,
+          "indexed_memberships": 585560,
+          "segments": 4,
+          "document_digest_unchanged": false,
+          "total_index_file_bytes": 755480,
+          "immutable_segment_bytes": 751278,
+          "immutable_segment_file_sha256": "db0c2f0262a7f6102821a51fea196e83d697709fce2698045afa2cab2028c887",
+          "immutable_segment_file_count": 25,
+          "durable_observation_revision": 10,
+          "last_request_sha256": "c2f25bf188a777cc2287d278e1ee8ecdc796e5372e878e9a7d5165474ddaf078"
+        },
+        {
+          "phase": "lower",
+          "incoming_version": 50,
+          "applied_documents": 5000,
+          "replayed_documents": 0,
+          "indexed_memberships": 878340,
+          "segments": 7,
+          "document_digest_unchanged": false,
+          "total_index_file_bytes": 943066,
+          "immutable_segment_bytes": 937781,
+          "immutable_segment_file_sha256": "e429e074707c073c10ec7cf8320b2a81b8f9e25f8c365f545d7942d8873172b2",
+          "immutable_segment_file_count": 43,
+          "durable_observation_revision": 20,
+          "last_request_sha256": "c808e066cdd0458f30da251f8b62c074a8d46dfca0a12d7b7cd6e3833bad7b19"
+        },
+        {
+          "phase": "equal_to_seed",
+          "incoming_version": 100,
+          "applied_documents": 5000,
+          "replayed_documents": 0,
+          "indexed_memberships": 1171120,
+          "segments": 3,
+          "document_digest_unchanged": true,
+          "total_index_file_bytes": 693817,
+          "immutable_segment_bytes": 689975,
+          "immutable_segment_file_sha256": "042937f25eea5baa9abcfe29e8313c5195842a178d591f4267ef9ea11989c1e5",
+          "immutable_segment_file_count": 19,
+          "durable_observation_revision": 30,
+          "last_request_sha256": "e125fcddfaf0b5b9f2e5391fc902168bcece9de9b93c4cc68c325aebf81377bf"
+        }
+      ],
+      "timing_claim": false,
+      "temporary_payloads_removed": true
+    },
+    {
+      "actors": 5000,
+      "synthetic": true,
+      "actual_tantivy_http": true,
+      "optimized_expected": true,
+      "binary_sha256": "4fd41762e626b47ad50962e12816799fc5b55db16e50b615986c58e273ee8f63",
+      "initial": {
+        "total_index_file_bytes": 566483,
+        "immutable_segment_bytes": 563818,
+        "immutable_segment_file_sha256": "359f128e623cd3c10b3330ac6ad20051fe6d3bc3aaed8c56e6ca54a32335c6ee",
+        "immutable_segment_file_count": 6,
+        "durable_observation_revision": 0,
+        "last_request_sha256": null
+      },
+      "metadata_commits": 30,
+      "logical_document_writes": 0,
+      "phases": [
+        {
+          "phase": "higher",
+          "incoming_version": 200,
+          "applied_documents": 0,
+          "replayed_documents": 5000,
+          "indexed_memberships": 292780,
+          "segments": 1,
+          "document_digest_unchanged": true,
+          "total_index_file_bytes": 566826,
+          "immutable_segment_bytes": 563818,
+          "immutable_segment_file_sha256": "359f128e623cd3c10b3330ac6ad20051fe6d3bc3aaed8c56e6ca54a32335c6ee",
+          "immutable_segment_file_count": 6,
+          "durable_observation_revision": 10,
+          "last_request_sha256": "c2f25bf188a777cc2287d278e1ee8ecdc796e5372e878e9a7d5165474ddaf078"
+        },
+        {
+          "phase": "lower",
+          "incoming_version": 50,
+          "applied_documents": 0,
+          "replayed_documents": 5000,
+          "indexed_memberships": 292780,
+          "segments": 1,
+          "document_digest_unchanged": true,
+          "total_index_file_bytes": 566826,
+          "immutable_segment_bytes": 563818,
+          "immutable_segment_file_sha256": "359f128e623cd3c10b3330ac6ad20051fe6d3bc3aaed8c56e6ca54a32335c6ee",
+          "immutable_segment_file_count": 6,
+          "durable_observation_revision": 20,
+          "last_request_sha256": "3c99631dec9abd3a2f0c8bde4f6d848571590e080b9759db8472d9bd0d629ea8"
+        },
+        {
+          "phase": "equal_to_seed",
+          "incoming_version": 100,
+          "applied_documents": 0,
+          "replayed_documents": 5000,
+          "indexed_memberships": 292780,
+          "segments": 1,
+          "document_digest_unchanged": true,
+          "total_index_file_bytes": 566826,
+          "immutable_segment_bytes": 563818,
+          "immutable_segment_file_sha256": "359f128e623cd3c10b3330ac6ad20051fe6d3bc3aaed8c56e6ca54a32335c6ee",
+          "immutable_segment_file_count": 6,
+          "durable_observation_revision": 30,
+          "last_request_sha256": "6c02b9e1e35bf9d126fd18accee602fc7d39d8537721455766b4e08f41014c49"
+        }
+      ],
+      "timing_claim": false,
+      "temporary_payloads_removed": true
+    }
+  ],
+  "structural_lookup_accounting": {
+    "source_state_queries_per_actor": 1,
+    "source_cas_queries_per_actor": 1,
+    "unchanged_projection_queries_per_actor": 1,
+    "additional_old_record_accounting_queries_for_written_actor": 1,
+    "observed_runtime_count": false
+  },
+  "real_source_unchanged_fraction": "unmeasured; snapshot aggregate fields default zero so nonzero source values are real changes",
+  "full_sweep_throughput_claim": false,
+  "production_contact": false,
+  "temporary_payloads_removed": true
+}

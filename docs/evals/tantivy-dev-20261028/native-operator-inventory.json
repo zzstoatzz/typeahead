@@ -1,0 +1,38 @@
+{
+  "checked_at": "2026-10-29T16:25:00.583624+00:00",
+  "app": "typeahead-startup-20261024",
+  "machine": "8e3d79b70dd748",
+  "read_only": true,
+  "per_query_opcode_budget": 1000000,
+  "per_query_cloud_wall_seconds": 2,
+  "checks": [
+    {
+      "table": "actor_overlay",
+      "conclusive": true,
+      "operator_rows_present": false,
+      "budget_exhausted": false,
+      "transport_exit": 0
+    },
+    {
+      "table": "prefix_overlay",
+      "conclusive": false,
+      "operator_rows_present": null,
+      "budget_exhausted": true,
+      "transport_exit": 0
+    }
+  ],
+  "source_history_audit": {
+    "recorded_at": "2026-10-29T21:12:14.317494+00:00",
+    "introduced_in": "e6a5669",
+    "renamed_in": "d7e7af7",
+    "overlay_revisions_examined": 13,
+    "runtime_prefix_source_values_found": [
+      0
+    ],
+    "source1_writes_found": "Zig test fixtures only",
+    "source_contract": "operator overrides (future)",
+    "actual_moderation_path": "Turso mod_overrides and actors.hidden, projected by sync as source0",
+    "production_row_absence_proven": false,
+    "interpretation": "No shipped operator-prefix writer was found. Unknown manually inserted rows are an out-of-band caveat, not an evidenced shipped-feature readiness blocker."
+  }
+}

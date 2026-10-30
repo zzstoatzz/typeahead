@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "actors": 128,
+  "cases": 128,
+  "feed_batches": 9,
+  "affected_actors": 64,
+  "actual_native_builder": true,
+  "actual_rust_engine": true,
+  "actual_independent_oracle": true,
+  "actual_private_proxy": true,
+  "actual_generator": true,
+  "runtime_process_provider_proof": false,
+  "full_corpus_qualified": false,
+  "performance_qualified": false,
+  "network": "none",
+  "cloud_calls": 0,
+  "native_truth_mismatches": 12,
+  "tantivy_truth_mismatches": 0
+}

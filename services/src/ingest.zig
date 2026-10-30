@@ -154,6 +154,7 @@ pub fn blobCidOf(allocator: Allocator, record: zat.cbor.Value, key: []const u8) 
 pub const ActorEvent = struct {
     did: []const u8,
     handle: ?[]const u8 = null,
+    handle_verified: bool = false,
     display_name: ?[]const u8 = null,
     avatar_cid: ?[]const u8 = null,
     description: ?[]const u8 = null,
@@ -342,11 +343,7 @@ pub const IngestHandler = struct {
         // resolver is full or its HTTP write fails. A bare row lets the durable
         // handle-enrichment queue find the account later.
         const did = self.dupe(id.did) orelse return;
-        const handle = if (id.handle) |h|
-            (if (!mem.eql(u8, h, "handle.invalid")) self.dupe(h) else null)
-        else
-            null;
-        self.enqueue(.{ .did = did, .handle = handle });
+        self.enqueue(.{ .did = did });
 
         if (self.identity_pool) |pool| {
             if (identity.Did.fromSlice(id.did)) |resolver_did| {
@@ -972,13 +969,13 @@ test "identity with invalid handle still queues discovery" {
     try testing.expect(handler.buffer.items[0].handle == null);
 }
 
-test "identity with a handle queues exactly one hinted event" {
+test "identity with a claimed handle queues bare discovery only" {
     var transport: HttpTransport = undefined;
     var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
     defer handler.deinit();
     handler.handleIdentity(.{ .seq = 1, .did = "did:plc:identity", .time = "", .handle = "example.bsky.social" });
     try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
-    try testing.expectEqualStrings("example.bsky.social", handler.buffer.items[0].handle.?);
+    try testing.expect(handler.buffer.items[0].handle == null);
 }
 
 test {

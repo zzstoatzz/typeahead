@@ -1,0 +1,52 @@
+{
+  "run_id": "4d62ead649f7",
+  "observed_at": 1793305381.5930839,
+  "deadline": 1793310506.2230048,
+  "phase": "preparing",
+  "image": "registry.fly.io/typeahead-qual-20261029@sha256:c3d29aba045c9b2a57fe0080f61a480497eb68a85387b25853ad39e89ad9166a",
+  "corpus_actor_count": 12816605,
+  "full_qualification": false,
+  "performance_qualified": false,
+  "production_changed": false,
+  "machines": [
+    {
+      "id": "801249a6d20e38",
+      "name": "tq-4d62ead649f7-reaper",
+      "role": "reaper",
+      "run_id": "4d62ead649f7"
+    },
+    {
+      "id": "8e236dc727e538",
+      "name": "tq-4d62ead649f7-native-control",
+      "role": "native-control",
+      "run_id": "4d62ead649f7"
+    },
+    {
+      "id": "6835750a604018",
+      "name": "tq-4d62ead649f7-tantivy-control",
+      "role": "tantivy-control",
+      "run_id": "4d62ead649f7"
+    },
+    {
+      "id": "6835102ae1d028",
+      "name": "tq-4d62ead649f7-generator",
+      "role": "generator",
+      "run_id": "4d62ead649f7"
+    }
+  ],
+  "volumes": [
+    {
+      "id": "vol_v3gx6588djw8p2x4",
+      "name": "tq_4d62ead649f7_native",
+      "role": "native",
+      "run_id": "4d62ead649f7"
+    },
+    {
+      "id": "vol_v8ey9xwg3yol185v",
+      "name": "tq_4d62ead649f7_tantivy",
+      "role": "tantivy",
+      "run_id": "4d62ead649f7"
+    }
+  ],
+  "note": "Source downloads observed advancing on both engine guests; no latency comparison yet."
+}

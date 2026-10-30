@@ -1,0 +1,45 @@
+{
+  "fixtures": [
+    {
+      "actors": 512,
+      "baseline": {
+        "hydrated": 86,
+        "rank_head_reads": 86,
+        "scorers_opened": 16,
+        "visited": 86
+      },
+      "global_merge": {
+        "hydrated": 12,
+        "rank_head_reads": 19,
+        "scorers_opened": 16,
+        "segments_hydrated": 6,
+        "segments_visited": 6,
+        "visited": 12
+      },
+      "independent_oracle_comparisons": 200,
+      "segments": 8
+    },
+    {
+      "actors": 2048,
+      "baseline": {
+        "hydrated": 346,
+        "rank_head_reads": 346,
+        "scorers_opened": 64,
+        "visited": 346
+      },
+      "global_merge": {
+        "hydrated": 12,
+        "rank_head_reads": 43,
+        "scorers_opened": 64,
+        "segments_hydrated": 6,
+        "segments_visited": 6,
+        "visited": 12
+      },
+      "independent_oracle_comparisons": 200,
+      "segments": 32
+    }
+  ],
+  "passed": true,
+  "synthetic": true,
+  "timing_claim": false
+}

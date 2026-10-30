@@ -1,0 +1,14 @@
+{
+  "owner": "display-name-recall-20261028",
+  "production_access": false,
+  "scratch": "/var/folders/yk/nlq7vtsd11zf_vbyfv8k510w0000gn/T/typeahead-recall-plan-controls-pgf1odhl",
+  "scratch_budget_bytes": 536870912,
+  "wall_budget_seconds": 300,
+  "disk_cold": false,
+  "sqlite_version": "3.53.0",
+  "runs": [],
+  "error": "table actors has 8 columns but 9 values were supplied",
+  "scratch_bytes_before_cleanup": 24576,
+  "scratch_removed": true,
+  "wall_seconds": 0.005433542013633996
+}

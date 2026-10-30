@@ -1,0 +1,330 @@
+
+[1m=== ranking quality ===[0m
+  target:   https://typeahead-tantivy-dev.fly.dev  (direct search service)
+  oracle:   https://public.api.bsky.app
+  corpus:   11 queries
+  debug:    yes (/debug/search)
+  ranking: 1/11  ranking: 2/11  ranking: 3/11  ranking: 4/11  ranking: 5/11  ranking: 6/11  ranking: 7/11  ranking: 8/11  ranking: 9/11  ranking: 10/11  ranking: 11/11                                                                      
+[1m--- ranking quality ---[0m
+
+==================================================================================
+  q='fig'    ours=154ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. frankfigliuzzi.bsky.social            Frank Figliuzzi
+   2. malena.bsky.social                    Malena-PRO-CHOICE 🌊 Fighting Tyranny!
+   3. fightforthefuture.org                 Fight for the Future
+   4. fairfightaction.bsky.social           Fair Fight Action
+   5. fightpunch.bsky.social                Darren Bartley
+   6. seanrosssapp.bsky.social              Sean Ross Sapp of Fightful
+   7. lefigaro.fr                           Le Figaro
+   8. jksteinberger.bsky.social             Prof Julia Steinberger 🌹🌱🌍 #ClimateAction 
+  [1mours[0m
+   1. frankfigliuzzi.bsky.social            Frank Figliuzzi
+   2. seanrosssapp.bsky.social              Sean Ross Sapp of Fightful
+   3. fairfightaction.bsky.social           Fair Fight Action
+   4. artfight.net                          Art Fight
+   5. malena.bsky.social                    Malena-PRO-CHOICE 🌊 Fighting Tyranny!
+   6. streetfighter.capcomusa.com           Street Fighter
+   7. fightforthefuture.org                 Fight for the Future
+   8. wtafc.bsky.social                     Fight The Right… 👊🏼👊🏽👊🏿
+  [[32mok[0m]   bsky's top (frankfigliuzzi.bsky.social) is in ours top 8
+  [1mTantivy stored-score ranking[0m  norm='fig'  mode=or  visited=68  segments=8
+     1. frankfigliuzzi.bsky.social            authority=779.81  Frank Figliuzzi
+     2. seanrosssapp.bsky.social              authority=730.23  Sean Ross Sapp of Fightful
+     3. fairfightaction.bsky.social           authority=724.03  Fair Fight Action
+     4. artfight.net                          authority=684.03  Art Fight
+     5. malena.bsky.social                    authority=672.56  Malena-PRO-CHOICE 🌊 Fighting T
+     6. streetfighter.capcomusa.com           authority=649.15  Street Fighter
+     7. fightforthefuture.org                 authority=646.3  Fight for the Future
+     8. wtafc.bsky.social                     authority=640.75  Fight The Right… 👊🏼👊🏽👊🏿
+
+==================================================================================
+  q='fig ('    ours=63ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. fightforthefuture.org                 Fight for the Future
+   2. fightpunch.bsky.social                Darren Bartley
+   3. fightforaunion.bsky.social            Fight For A Union
+   4. fightful.com                          Fightful Wrestling 
+   5. fightingliberal.bsky.social           The Fighting Liberal Texan🌈🌊💙🦋Congress Swi
+   6. bad-example.com                       fig (aka:[phil])
+   7. figgityfigs.bsky.social               The Fig Economy
+   8. fightingpride93.bsky.social           Jane [33m[spam?][0m
+  [1mours[0m
+   1. frankfigliuzzi.bsky.social            Frank Figliuzzi
+   2. seanrosssapp.bsky.social              Sean Ross Sapp of Fightful
+   3. fairfightaction.bsky.social           Fair Fight Action
+   4. artfight.net                          Art Fight
+   5. malena.bsky.social                    Malena-PRO-CHOICE 🌊 Fighting Tyranny!
+   6. streetfighter.capcomusa.com           Street Fighter
+   7. fightforthefuture.org                 Fight for the Future
+   8. wtafc.bsky.social                     Fight The Right… 👊🏼👊🏽👊🏿
+  [[32mok[0m]   bsky's top (fightforthefuture.org) is in ours top 8
+  [1mTantivy stored-score ranking[0m  norm='fig'  mode=or  visited=68  segments=8
+     1. frankfigliuzzi.bsky.social            authority=779.81  Frank Figliuzzi
+     2. seanrosssapp.bsky.social              authority=730.23  Sean Ross Sapp of Fightful
+     3. fairfightaction.bsky.social           authority=724.03  Fair Fight Action
+     4. artfight.net                          authority=684.03  Art Fight
+     5. malena.bsky.social                    authority=672.56  Malena-PRO-CHOICE 🌊 Fighting T
+     6. streetfighter.capcomusa.com           authority=649.15  Street Fighter
+     7. fightforthefuture.org                 authority=646.3  Fight for the Future
+     8. wtafc.bsky.social                     authority=640.75  Fight The Right… 👊🏼👊🏽👊🏿
+
+==================================================================================
+  q='fig aka'    ours=61ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. bad-example.com                       fig (aka:[phil])
+   2. figmentfarm.bsky.social               🏳️‍⚧️ Fig (he/him) • Twitch Affiliate! 🏳️‍
+   3. pixelatedboat.bsky.social             pixelatedboat aka “mr bluesky”
+   4. edsbs.bsky.social                     BUM CHILLUPS AKA SPENCER HALL AKA PRESIDEN
+   5. audrelawdamercy.blacksky.app          Barred and Boujee aka Madiba Dennie
+   6. akairiot.com                          Akai Riot
+   7. akakura1341.bsky.social               赤倉🧸 [33m[spam?][0m
+   8. akalhan.bsky.social                   Anil Kalhan
+  [1mours[0m
+   1. bad-example.com                       fig (aka:[phil])
+   2. ponyhengst.bsky.social                Ponyhengst aka figgpferd
+   3. nottoysaf.bsky.social                 Not Toys, Action Figures (aka Adam)
+   4. figueiredoerl.bsky.social             Eric Figueiredo aka renatim
+  [[32mok[0m]   bsky's top (bad-example.com) is in ours top 4
+  [1mTantivy stored-score ranking[0m  norm='fig aka'  mode=and  visited=5  segments=8
+     1. bad-example.com                       authority=461.65  fig (aka:[phil])
+     2. ponyhengst.bsky.social                authority=0  Ponyhengst aka figgpferd
+     3. nottoysaf.bsky.social                 authority=0  Not Toys, Action Figures (aka 
+     4. figueiredoerl.bsky.social             authority=0  Eric Figueiredo aka renatim
+
+==================================================================================
+  q='phil'    ours=41ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. phillewis.bsky.social                 Phil Lewis
+   2. jaketapper.bsky.social                Jake Tapper, long-suffering Philly sports 
+   3. pbump.com                             Philip Bump
+   4. pgourevitch.bsky.social               Philip Gourevitch
+   5. philplait.bsky.social                 Phil PlAIt
+   6. philinvestigates.com                  Phil Williams
+   7. philadelphiaeagles.bsky.social        Philadelphia Eagles
+   8. phillipspobrien.bsky.social           Phillips OBrien
+  [1mours[0m
+   1. phillewis.bsky.social                 Phil Lewis
+   2. jaketapper.bsky.social                Jake Tapper, long-suffering Philly sports 
+   3. pbump.com                             Philip Bump
+   4. philplait.bsky.social                 Phil PlAIt
+   5. pgourevitch.bsky.social               Philip Gourevitch
+   6. philadelphiaeagles.bsky.social        Philadelphia Eagles
+   7. philinvestigates.com                  Phil Williams
+   8. emophilips.bsky.social                Emo Philips
+  [[32mok[0m]   bsky's top (phillewis.bsky.social) is in ours top 8
+  [1mTantivy stored-score ranking[0m  norm='phil'  mode=or  visited=79  segments=8
+     1. phillewis.bsky.social                 authority=846.03  Phil Lewis
+     2. jaketapper.bsky.social                authority=829.99  Jake Tapper, long-suffering Ph
+     3. pbump.com                             authority=818.66  Philip Bump
+     4. philplait.bsky.social                 authority=788.86  Phil PlAIt
+     5. pgourevitch.bsky.social               authority=774.91  Philip Gourevitch
+     6. philadelphiaeagles.bsky.social        authority=740.9  Philadelphia Eagles
+     7. philinvestigates.com                  authority=678.26  Phil Williams
+     8. emophilips.bsky.social                authority=674.5  Emo Philips
+
+==================================================================================
+  q='zzstoatzz'    ours=49ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. zzstoatzz.io                          nate
+   2. zzstoatzzdevlog.bsky.social           nate’s devlog
+  [1mours[0m
+   1. zzstoatzz.io                          nate
+   2. phi.zzstoatzz.io                      ϕ
+   3. zzstoatzzdevlog.bsky.social           nate’s devlog
+   4. jev.zzstoatzz.io                      talky jev
+   5. alt.zzstoatzz.io                      alt n8
+   6. yeadog.bsky.social                    zzstoatzztestbird
+  [[32mok[0m]   bsky's top (zzstoatzz.io) is in ours top 6
+  [1mTantivy stored-score ranking[0m  norm='zzstoatzz'  mode=or  visited=8  segments=8
+     1. zzstoatzz.io                          authority=445.31  nate
+     2. phi.zzstoatzz.io                      authority=292.28  ϕ
+     3. zzstoatzzdevlog.bsky.social           authority=251.69  nate’s devlog
+     4. jev.zzstoatzz.io                      authority=92.46  talky jev
+     5. alt.zzstoatzz.io                      authority=6.02  alt n8
+     6. yeadog.bsky.social                    authority=0  zzstoatzztestbird
+
+==================================================================================
+  q='zzstoatzz.io'    ours=44ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. zzstoatzz.io                          nate
+  [1mours[0m
+   1. zzstoatzz.io                          nate
+   2. phi.zzstoatzz.io                      ϕ
+   3. jev.zzstoatzz.io                      talky jev
+   4. alt.zzstoatzz.io                      alt n8
+  [[32mok[0m]   bsky's top (zzstoatzz.io) is in ours top 4
+  [1mTantivy stored-score ranking[0m  norm='zzstoatzz.io'  mode=or  visited=6  segments=8
+     1. zzstoatzz.io                          authority=445.31  nate
+     2. phi.zzstoatzz.io                      authority=292.28  ϕ
+     3. jev.zzstoatzz.io                      authority=92.46  talky jev
+     4. alt.zzstoatzz.io                      authority=6.02  alt n8
+
+==================================================================================
+  q='nate'    ours=60ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. mnateshyamalan.bsky.social            soul nate
+   2. natetice.bsky.social                  Nate Tice
+   3. natedhernandez.bsky.social            Nathan Daniel Hernandez
+   4. himmapaan.bsky.social                 Natee (they/them)
+   5. bynatetaylor.bsky.social              Nate Taylor
+   6. nategrimes.bsky.social                nate grimes
+   7. natechinen.bsky.social                Nate Chinen
+   8. nateatkins.bsky.social                Nate Atkins
+  [1mours[0m
+   1. mnateshyamalan.bsky.social            soul nate
+   2. natetice.bsky.social                  Nate Tice
+   3. nateatkins.bsky.social                Nate Atkins
+   4. natedhernandez.bsky.social            Nathan Daniel Hernandez
+   5. nategrimes.bsky.social                nate grimes
+   6. himmapaan.bsky.social                 Natee (they/them)
+   7. nateinnovates.bsky.social             Nate Innovates
+   8. nateo.bsky.social                     Nate O
+  [[32mok[0m]   bsky's top (mnateshyamalan.bsky.social) is in ours top 8
+  [1mTantivy stored-score ranking[0m  norm='nate'  mode=or  visited=70  segments=8
+     1. mnateshyamalan.bsky.social            authority=792.16  soul nate
+     2. natetice.bsky.social                  authority=756.52  Nate Tice
+     3. nateatkins.bsky.social                authority=724.76  Nate Atkins
+     4. natedhernandez.bsky.social            authority=628.57  Nathan Daniel Hernandez
+     5. nategrimes.bsky.social                authority=625  nate grimes
+     6. himmapaan.bsky.social                 authority=623.88  Natee (they/them)
+     7. nateinnovates.bsky.social             authority=619.04  Nate Innovates
+     8. nateo.bsky.social                     authority=603.8  Nate O
+
+==================================================================================
+  q='alex'    ours=54ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. aoc.bsky.social                       Alexandria Ocasio-Cortez
+   2. alexbenzer.com                        alex benzer
+   3. ocasio-cortez.house.gov               Rep. Alexandria Ocasio-Cortez
+   4. alexwinter.com                        Alex Winter
+   5. avindman.bsky.social                  Alexander S. Vindman
+   6. petridishes.bsky.social               Alexandra Petri
+   7. attackerman.bsky.social               Emperor Alexipros I Komnenos
+   8. alexanderchee.bsky.social             Alexander Chee
+  [1mours[0m
+   1. aoc.bsky.social                       Alexandria Ocasio-Cortez
+   2. ocasio-cortez.house.gov               Rep. Alexandria Ocasio-Cortez
+   3. avindman.bsky.social                  Alexander S. Vindman
+   4. petridishes.bsky.social               Alexandra Petri
+   5. alkapdc.bsky.social                   Alex Kaplan
+   6. padilla.senate.gov                    Senator Alex Padilla
+   7. matchquarters.com                     Cody Alexander
+   8. alextomlinson.com                     Alex Tomlinson
+  [[32mok[0m]   bsky's top (aoc.bsky.social) is in ours top 8
+  [1mTantivy stored-score ranking[0m  norm='alex'  mode=or  visited=95  segments=8
+     1. aoc.bsky.social                       authority=900.17  Alexandria Ocasio-Cortez
+     2. ocasio-cortez.house.gov               authority=804.85  Rep. Alexandria Ocasio-Cortez
+     3. avindman.bsky.social                  authority=790.01  Alexander S. Vindman
+     4. petridishes.bsky.social               authority=777.21  Alexandra Petri
+     5. alkapdc.bsky.social                   authority=720.15  Alex Kaplan
+     6. padilla.senate.gov                    authority=715.63  Senator Alex Padilla
+     7. matchquarters.com                     authority=710.22  Cody Alexander
+     8. alextomlinson.com                     authority=692.29  Alex Tomlinson
+
+==================================================================================
+  q='bob'    ours=41ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. bobmort.bsky.social                   Bob Mortimer
+   2. bobbylewis.blacksky.app               bobby
+   3. bobbyallyn.bsky.social                Bobby Allyn
+   4. bbkogan.bsky.social                   Bobby Kogan
+   5. robertsilverman.bsky.social           Bobby Silverman
+   6. bobcesca.bsky.social                  Bob Cesca
+   7. bobpop.bsky.social                    BOBPOP
+   8. bobbyscott.house.gov                  Congressman Bobby Scott
+  [1mours[0m
+   1. bobcesca.bsky.social                  Bob Cesca
+   2. governorferguson.bsky.social          Gov. Bob Ferguson
+   3. bobmort.bsky.social                   Bob Mortimer
+   4. bnightengale.bsky.social              Bob Nightengale
+   5. bobbylewis.blacksky.app               bobby
+   6. robertsilverman.bsky.social           Bobby Silverman
+   7. bbkogan.bsky.social                   Bobby Kogan
+   8. bobpony.com                           Bob Pony
+  [[32mok[0m]   bsky's top (bobmort.bsky.social) is in ours top 8
+  [1mTantivy stored-score ranking[0m  norm='bob'  mode=or  visited=85  segments=8
+     1. bobcesca.bsky.social                  authority=774.24  Bob Cesca
+     2. governorferguson.bsky.social          authority=692.36  Gov. Bob Ferguson
+     3. bobmort.bsky.social                   authority=683.57  Bob Mortimer
+     4. bnightengale.bsky.social              authority=679.66  Bob Nightengale
+     5. bobbylewis.blacksky.app               authority=661.78  bobby
+     6. robertsilverman.bsky.social           authority=649.62  Bobby Silverman
+     7. bbkogan.bsky.social                   authority=641.69  Bobby Kogan
+     8. bobpony.com                           authority=635.46  Bob Pony
+
+==================================================================================
+  q='aoc'    ours=49ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. aoc.bsky.social                       Alexandria Ocasio-Cortez
+   2. gabriellehecht.bsky.social            Gabrielle Hecht 🇵🇷 • she/elle/ella/cis⚔️ •
+   3. aochoku.bsky.social                   Ao Choku
+   4. aoc-media.bsky.social                 AOC, un quotidien d'idées
+   5. aoclover.bsky.social                  Ao Clover
+   6. aocw.bsky.social                      Alan Oskar Colonna-Walewski 🎞️
+   7. darcyburbage.bsky.social              Darcy Burbage, DNP, RN, AOCN
+  [1mours[0m
+   1. aoc.bsky.social                       Alexandria Ocasio-Cortez
+   2. gabriellehecht.bsky.social            Gabrielle Hecht 🇵🇷 • she/elle/ella/cis⚔️ •
+   3. thankyouaoc.bsky.social               AOC Fan Page
+   4. aoc-media.bsky.social                 AOC, un quotidien d'idées
+   5. aocw.bsky.social                      Alan Oskar Colonna-Walewski 🎞️
+   6. africanprincess7.bsky.social          Bernie is a failure, and AOC is a poser!!! [33m[spam?][0m
+   7. aochoku.bsky.social                   Ao Choku
+   8. aoclover.bsky.social                  Ao Clover
+  [[32mok[0m]   bsky's top (aoc.bsky.social) is in ours top 8
+  [1mTantivy stored-score ranking[0m  norm='aoc'  mode=or  visited=27  segments=8
+     1. aoc.bsky.social                       authority=900.17  Alexandria Ocasio-Cortez
+     2. gabriellehecht.bsky.social            authority=544.82  Gabrielle Hecht 🇵🇷 • she/elle/
+     3. thankyouaoc.bsky.social               authority=536.64  AOC Fan Page
+     4. aoc-media.bsky.social                 authority=528.94  AOC, un quotidien d'idées
+     5. aocw.bsky.social                      authority=503.66  Alan Oskar Colonna-Walewski 🎞️
+     6. africanprincess7.bsky.social          authority=459.34  Bernie is a failure, and AOC i
+     7. aochoku.bsky.social                   authority=449.15  Ao Choku
+     8. aoclover.bsky.social                  authority=445.02  Ao Clover
+
+==================================================================================
+  q='car'    ours=49ms    bsky status=200 ours status=200
+==================================================================================
+  [1mbsky[0m
+   1. carlquintanilla.bsky.social           Carl Quintanilla
+   2. esqueer.net                           Alejandra Caraballo
+   3. carolecadwalla.bsky.social            Carole Cadwalladr
+   4. carlbergstrom.com                     Carl T. Bergstrom
+   5. mark-carney.bsky.social               Mark Carney
+   6. carolvorders.bsky.social              Carol Vorderman 
+   7. joolia.bsky.social                    Julia Carrie Wong
+   8. lyndacarter.bsky.social               Lynda Carter
+  [1mours[0m
+   1. carlquintanilla.bsky.social           Carl Quintanilla
+   2. esqueer.net                           Alejandra Caraballo
+   3. carolecadwalla.bsky.social            Carole Cadwalladr
+   4. mark-carney.bsky.social               Mark Carney
+   5. carnage4life.bsky.social              Dare Obasanjo
+   6. crobertcargill.bsky.social            C. Robert Cargill
+   7. carolvorders.bsky.social              Carol Vorderman 
+   8. bencarlson007.bsky.social             Ben Carlson [33m[spam?][0m
+  [[32mok[0m]   bsky's top (carlquintanilla.bsky.social) is in ours top 8
+  [1mTantivy stored-score ranking[0m  norm='car'  mode=or  visited=101  segments=8
+     1. carlquintanilla.bsky.social           authority=842.33  Carl Quintanilla
+     2. esqueer.net                           authority=828.85  Alejandra Caraballo
+     3. carolecadwalla.bsky.social            authority=806.61  Carole Cadwalladr
+     4. mark-carney.bsky.social               authority=778.91  Mark Carney
+     5. carnage4life.bsky.social              authority=777.86  Dare Obasanjo
+     6. crobertcargill.bsky.social            authority=771.36  C. Robert Cargill
+     7. carolvorders.bsky.social              authority=755.53  Carol Vorderman 
+     8. bencarlson007.bsky.social             authority=710.85  Ben Carlson
+
+==================================================================================
+[32m[1mPASS[0m — all acceptance criteria met. proxy backstop can be flipped off cautiously.
+==================================================================================

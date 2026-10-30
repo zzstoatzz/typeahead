@@ -1,0 +1,30 @@
+{
+  "passed": true,
+  "scope": "synthetic-real-binary",
+  "full_live_source_audit_ran": false,
+  "fixture": {
+    "input_actors": 7,
+    "initial_live_actors": 6,
+    "initial_unsupported_expiry_actors": 1,
+    "initial_malformed_label_actors": 1,
+    "source_watermark": 1793298170,
+    "actor_stream_sha256": "c0f1d7f141b76bcc60becfe67c99a8f7e4d3f6a47c4344cbc5fbbdd2cec9d7a6",
+    "classifier_sha256": "bb1a5427f4c91bd4667cd2c6caa1c38d4d216334fb1cf3e513bcabe955b48152"
+  },
+  "checks": [
+    "full_stream_count_footer_hash_and_hidden_actor_coverage",
+    "unsupported_and_malformed_corpus_block_all_search_even_fixture_flags",
+    "source_mutations_repair_delete_and_version_only_counter_invariants",
+    "coverage_and_repaired_readiness_survive_restart",
+    "failed_footer_source_count_and_label_shape_preserve_incomplete_checkpoints",
+    "legacy_coverage_unknown_never_inferred_zero"
+  ],
+  "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+  "expiry_coverage_telemetry_contains_raw_labels_or_dids": false,
+  "production_contact": false,
+  "legacy_upgrade": "bounded committed-index audit may establish evidence; no automatic full-reimport claim",
+  "runtime": "Linux x86_64 container",
+  "memory_limit_bytes": 1073741824,
+  "cpu_limit": 2,
+  "network": "none"
+}

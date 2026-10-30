@@ -1,0 +1,11 @@
+{
+  "observed_at": 1793323899.237946,
+  "object_key": "releases/code/tantivy/d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2/typeahead-tantivy",
+  "byte_size": 10028384,
+  "sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+  "source_image_id": "sha256:317f144c4bb6c346faa484557013b5cf8bc2629738f63ad134389f98afe9938e",
+  "publication": "existing snapshot_compaction.Publisher.immutable with remote full-byte SHA verification",
+  "artifact_kind": "Linux executable code; no corpus or index data",
+  "production_changed": false,
+  "slot_deployed": false
+}

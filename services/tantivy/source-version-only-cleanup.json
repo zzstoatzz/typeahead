@@ -1,0 +1,7 @@
+{
+  "retired_private_baseline_binary_sha256": "990c3d73c807e5f54634cd6cd4197e78aa3eb5c6e550226d7abf0d98e324a864",
+  "retired_private_optimized_binary_sha256": "4fd41762e626b47ad50962e12816799fc5b55db16e50b615986c58e273ee8f63",
+  "comparison_and_source_receipts_preserved": true,
+  "owned_temporary_payloads_removed": true,
+  "production_contact": false
+}

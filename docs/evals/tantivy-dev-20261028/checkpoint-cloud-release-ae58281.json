@@ -1,0 +1,57 @@
+{
+  "observed_at": 1793346380.5749052,
+  "state": "submitted",
+  "mps_revision": "ae58281d21ca838c19855a544bfc2ae8620b7ad0",
+  "typeahead_revision": "305f5da9c90f16697a1128ca39200214c71eac40",
+  "deployment_id": "9480a625-4503-4b6d-915b-82f076efae08",
+  "idempotency_key": "552b3981fa823df6b3e6879998313cde83590917249f566b595fe888622e6e9e",
+  "work_pool": "typeahead-ephemeral",
+  "server_type": "cpx32",
+  "location": "fsn1",
+  "worker_timeout_seconds": 3900,
+  "preparation_task_timeout_seconds": 3600,
+  "checkpoint_soft_deadline_seconds": 900,
+  "source_byte_limit": 8589934592,
+  "sample_document_limit": 100000,
+  "publishes_immutable_candidate": true,
+  "cuts_over_production": false,
+  "production_changed": false,
+  "original_deployment_sha256": "f0b7eea4676a3d5a9074161cc92f38a0029e11f2c324abf0fd2d1d4edcac58d9",
+  "temporary_deployment": true,
+  "flow_run_id": "7c8322df-793b-4f53-903d-67a96efa7e2d",
+  "flow_run_state": "Scheduled",
+  "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/7c8322df-793b-4f53-903d-67a96efa7e2d",
+  "latest": {
+    "observed_at": 1793349175.286897,
+    "id": "7c8322df-793b-4f53-903d-67a96efa7e2d",
+    "state": "Completed",
+    "start": "2026-10-30 07:48:51.606437+00:00",
+    "end": "2026-10-30 08:32:41.985490+00:00",
+    "infrastructure_pid": "prefect-build-7c8322df793b4f53903d67a96efa7e2d-r0",
+    "message": null,
+    "tasks": [
+      {
+        "name": "retire_tantivy_generation-376",
+        "state": "Completed"
+      },
+      {
+        "name": "publish_tantivy_generation-685",
+        "state": "Completed"
+      },
+      {
+        "name": "prepare_checkpoint_generation-20e",
+        "state": "Completed"
+      },
+      {
+        "name": "clone_repo-090",
+        "state": "Completed"
+      }
+    ]
+  },
+  "provider_cleanup": {
+    "observed_at": 1793349197.6933708,
+    "remaining_servers": 0,
+    "server_name": "prefect-build-7c8322df793b4f53903d67a96efa7e2d-r0"
+  },
+  "temporary_deployment_retired_at": 1793349198.747218
+}

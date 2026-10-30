@@ -1,0 +1,12 @@
+[
+  {"id":"exact","params":{"q":"zzstoatzz.io","limit":10},"status":200,"first_handle":"zzstoatzz.io"},
+  {"id":"prefix","params":{"q":"zzst","limit":10},"status":200,"contains_handle":"zzstoatzz.io"},
+  {"id":"multiword","params":{"q":"Justin Fa","limit":100},"status":200,"contains_did":"did:plc:ec64xv7n5dszeizw56yr6b5h"},
+  {"id":"han","params":{"q":"東京","limit":10},"status":200,"require_nonempty":true,"predicate":"deploy/tantivy-dev/qualify-real.py:han_sound"},
+  {"id":"hard-pds","params":{"q":"a","limit":10,"pds":"selfhosted.social"},"status":200,"headers":{"x-typeahead-pds":"selfhosted.social"}},
+  {"id":"pds-first","params":{"q":"a","limit":10,"prefer_pds":"selfhosted.social","preference":"pds_first"},"status":200,"headers":{"x-typeahead-prefer-pds":"selfhosted.social","x-typeahead-preference":"pds_first"}},
+  {"id":"pds-boost","params":{"q":"a","limit":10,"prefer_pds":"selfhosted.social","preference":"boost","boost":100},"status":200,"headers":{"x-typeahead-prefer-pds":"selfhosted.social","x-typeahead-preference":"boost","x-typeahead-boost":"42c80000"}},
+  {"id":"invalid-pds","params":{"q":"a","pds":"bad@host.test"},"status":400,"preview_error":"InvalidRequest"},
+  {"id":"orphan-boost","params":{"q":"a","boost":100},"status":400,"preview_error":"InvalidRequest"},
+  {"id":"negative-boost","params":{"q":"a","prefer_pds":"selfhosted.social","preference":"boost","boost":-1},"status":400,"preview_error":"InvalidRequest"}
+]

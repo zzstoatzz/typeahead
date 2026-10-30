@@ -1,0 +1,9 @@
+{
+  "owned_dev_machine_only": true,
+  "load_generator_retired": true,
+  "volume_intentionally_retained": true,
+  "source_payload_retired": true,
+  "admitted": true,
+  "sampler_running": false,
+  "disk_free_bytes": 35171954688
+}

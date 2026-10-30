@@ -1,0 +1,128 @@
+{
+  "url": "https://typeahead-tantivy-dev.fly.dev",
+  "machine_id": "840e95a2153308",
+  "instance_id": "01M632DNE0ZTBN2T877WDWH60W",
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 2,
+    "memory_mb": 1024
+  },
+  "restart": {
+    "policy": "on-failure",
+    "max_retries": 3
+  },
+  "cordoned": false,
+  "services": [
+    {
+      "protocol": "tcp",
+      "internal_port": 8080,
+      "autostop": false,
+      "autostart": false,
+      "ports": [
+        {
+          "port": 80,
+          "handlers": [
+            "http"
+          ],
+          "force_https": true
+        },
+        {
+          "port": 443,
+          "handlers": [
+            "tls",
+            "http"
+          ]
+        }
+      ],
+      "force_instance_key": null
+    }
+  ],
+  "responses": {
+    "/health": {
+      "status": 200,
+      "body": {
+        "actors": 12836977,
+        "build_id": "b1793109259-2b36-px05",
+        "engine": "tantivy",
+        "normalize_version": "v2-cjk-bigram",
+        "plan_version": "complete-prefix-groups-v1",
+        "ready": true,
+        "status": "ok",
+        "sync_lag_s": 14
+      }
+    },
+    "/ready": {
+      "status": 200,
+      "body": {
+        "ready": true
+      }
+    },
+    "/index/status": {
+      "status": 200,
+      "body": {
+        "actor_count": 12836977,
+        "build_id": "b1793109259-2b36-px05",
+        "engine": "tantivy",
+        "format": "tantivy-0.27-f32-did-v1",
+        "full_source": true,
+        "import_complete": true,
+        "indexed_memberships": 606619294,
+        "input_actors": 12816605,
+        "last_commit_epoch": 1793252498,
+        "normalize_version": "v2-cjk-bigram",
+        "pds_invalid_actor_count": 1,
+        "pds_invalid_reason_counts": {
+          "invalid_hostname": 1
+        },
+        "pds_missing_actor_count": 9935848,
+        "pds_scope_policy": "all-recorded-canonical-hosts",
+        "pds_scope_version": 1,
+        "pds_unknown_actor_count": 9935849,
+        "plan_version": "complete-prefix-groups-v1",
+        "prefix_count": null,
+        "ready": true,
+        "searchable_actor_count": 12814779,
+        "segments": 8,
+        "snapshot_watermark": 1793109254,
+        "source_build_id": "b1793109259-2b36-px05",
+        "source_cursor": {
+          "actors": {
+            "did": "",
+            "updated_at": 1793252494
+          },
+          "build_id": "b1793109259-2b36-px05",
+          "cycle": null,
+          "lookback_seconds": 300,
+          "schema_version": 1,
+          "snapshot_watermark": 1793109254,
+          "source_policy": "turso-current-state-cutoff-v1",
+          "through": 1793252494,
+          "tombstones": {
+            "deleted_at": 1793252494,
+            "did": ""
+          }
+        },
+        "source_manifest": {
+          "actor_count": 12816605,
+          "build_id": "b1793109259-2b36-px05",
+          "normalize_version": "v2-cjk-bigram",
+          "partial": false,
+          "schema_version": 1,
+          "scoring_version": "v1-quality-score",
+          "source_actor_count": 12816605,
+          "source_database_sha256": "bdf118c9fce9bfad65d6b04d5f3b041b85c024ef0f4f5d193a036a488c0ebfc2",
+          "source_format": "FLATPX05/actor-v1",
+          "source_prefix_sha256": "1428137ae31e1195a4301f4eb41e170a09b9f2905d34b3956322116bd30684c1",
+          "source_watermark": 1793109254,
+          "type": "manifest",
+          "version_kind": "snapshot_watermark",
+          "watermark": "1793109254"
+        },
+        "source_snapshot_watermark": 1793109254,
+        "sync_lag_s": 15,
+        "tombstone_count": 44273,
+        "watermark": 1793252494
+      }
+    }
+  }
+}

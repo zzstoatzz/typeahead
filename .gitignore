@@ -13,3 +13,4 @@ scripts/bench-results.json
 __pycache__/
 .logfire/
 scripts/.backfill-plc-state.json
+deploy/tantivy-qualification/resources.advance.lock

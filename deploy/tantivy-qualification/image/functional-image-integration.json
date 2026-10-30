@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "scope": "post-measurement-functional-witnesses",
+  "passed": true,
+  "performance_qualified": false,
+  "full_corpus_qualified": false,
+  "production_contact": false,
+  "native_mutated": false,
+  "actor_count": 128,
+  "local_fixture": true,
+  "runtime_provider_proof": false,
+  "query_count": 25,
+  "applied_stages": 9,
+  "hydration_witnesses": 3,
+  "changed_witness_stages": [
+    4,
+    6,
+    8
+  ],
+  "required_changed_witness_stages": [
+    4,
+    6,
+    8
+  ],
+  "probe_sha256": "caa7cd176ce912d8561f9ddc7c1e351a710169b42e814db663d32ce0be6ca615",
+  "frozen_helper_sha256": "1ddd79502331fd62cd4e62bea29411bd26855d4baf23d6c993c0d7dcf400e7f2",
+  "final_cursor": 9,
+  "errors": [],
+  "wall_seconds": 2.792959360001987,
+  "timed_result_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "input_hashes": {
+    "cases_sha256": "8d65c12454d4156a1a22974d7934344be69ecc2a8bea904bfebe89ed8365571b",
+    "oracle_sha256": "efdd298c1b8f01a9296f632a970e3e22e2b0b54081aa23b51dce087e924ab074",
+    "updates_sha256": "c57fb86441db23de3ec6df937a4de6176434ac7d737d58723c505a40fac84fc4"
+  },
+  "oracle": {
+    "raw_source_sha256": "db1cbcb5b9a5d11248f5041f67e4f192da5a8eb7601870d14d04539cd9c3daad",
+    "actor_stream_sha256": "813ff5f1d12d320bd9abd394c4b836518e3bf07fb581017c7ea10991a9c300f0",
+    "identity_policy_sha256": "1ed23ca57f8c03e841a703c55ca1b4335897de01c9dc58f642dbf6aca5529a09",
+    "oracle_binary_sha256": "df91a1647580edf77d31fac4ce825c3205ca77781396bce0b620e96e2661ef61"
+  }
+}

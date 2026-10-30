@@ -84,10 +84,10 @@ test("OPTIONS preflights are answered without being counted", async () => {
 });
 
 // The engine is one machine and restarts in ~15 s. While it is down the
-// worker must answer empty, not re-ask Turso for every query: on 2026-09-04
+// worker must report unavailable without re-asking Turso for every query: on 2026-09-04
 // one such restart under a viral burst put Turso over its connection limit
 // and the ingester dropped events. Turso-on-unreachable is opt-in.
-test("an unreachable engine answers empty without touching Turso", async () => {
+test("an unreachable engine returns unavailable without touching Turso", async () => {
   recorded.length = 0;
   executed.length = 0;
   const realFetch = globalThis.fetch;
@@ -106,8 +106,8 @@ test("an unreachable engine answers empty without touching Turso", async () => {
       new Request("https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&limit=8", { headers: { "X-Client": "plyr.fm" } }),
       env, c,
     );
-    expect(res.status).toBe(200);
-    expect(await res.json<unknown>()).toEqual({ actors: [] });
+    expect(res.status).toBe(503);
+    expect(await res.json<unknown>()).toEqual({ error: "SearchBackendUnavailable", message: "Search engine is unavailable" });
     await Promise.all(tasks);
     expect(executed.filter((sql) => /FROM actors/i.test(sql))).toEqual([]);
   } finally {

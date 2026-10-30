@@ -1,0 +1,83 @@
+{
+  "kind": "source_policy_wire_comparison",
+  "actors": 4000,
+  "original_policy_wire_bytes": 2233300,
+  "packed_policy_wire_bytes": 1285283,
+  "total_probe_wire_bytes_including_ids": 3763385,
+  "source_requests": 24,
+  "wall_s": 8.79,
+  "strata": [
+    {
+      "actors": 500,
+      "policy_profile_wire_bytes": 281872,
+      "packed_wire_bytes": 163370,
+      "policy_profile_wall_s": 0.86,
+      "packed_wall_s": 0.264,
+      "policy_bytes": 133
+    },
+    {
+      "actors": 500,
+      "policy_profile_wire_bytes": 278021,
+      "packed_wire_bytes": 159519,
+      "policy_profile_wall_s": 0.958,
+      "packed_wall_s": 0.079,
+      "policy_bytes": 133
+    },
+    {
+      "actors": 500,
+      "policy_profile_wire_bytes": 279997,
+      "packed_wire_bytes": 161495,
+      "policy_profile_wall_s": 0.664,
+      "packed_wall_s": 0.265,
+      "policy_bytes": 133
+    },
+    {
+      "actors": 500,
+      "policy_profile_wire_bytes": 277939,
+      "packed_wire_bytes": 159437,
+      "policy_profile_wall_s": 0.631,
+      "packed_wall_s": 0.08,
+      "policy_bytes": 133
+    },
+    {
+      "actors": 500,
+      "policy_profile_wire_bytes": 286014,
+      "packed_wire_bytes": 167512,
+      "policy_profile_wall_s": 0.567,
+      "packed_wall_s": 0.145,
+      "policy_bytes": 133
+    },
+    {
+      "actors": 500,
+      "policy_profile_wire_bytes": 280365,
+      "packed_wire_bytes": 161863,
+      "policy_profile_wall_s": 0.854,
+      "packed_wall_s": 0.078,
+      "policy_bytes": 133
+    },
+    {
+      "actors": 500,
+      "policy_profile_wire_bytes": 281842,
+      "packed_wire_bytes": 163340,
+      "policy_profile_wall_s": 0.903,
+      "packed_wall_s": 0.157,
+      "policy_bytes": 133
+    },
+    {
+      "actors": 500,
+      "policy_profile_wire_bytes": 267250,
+      "packed_wire_bytes": 148747,
+      "policy_profile_wall_s": 0.672,
+      "packed_wall_s": 0.267,
+      "policy_bytes": 133
+    }
+  ],
+  "read_only": true,
+  "max_bytes": 33554432,
+  "max_seconds": 90,
+  "observed_at": 1793313308,
+  "machine_id": "840e95a2153308",
+  "app": "typeahead-tantivy-dev",
+  "source_client": "memory-only pinned SQL projection; no installed files changed",
+  "sample_scope": "combined profile+policy path; eight bounded lexical source slices; no backend writes or round coverage claim"
+}

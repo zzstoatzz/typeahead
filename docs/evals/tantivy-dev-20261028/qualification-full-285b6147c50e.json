@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "run_id": "285b6147c50e",
+  "observed_at": 1793317296.1414552,
+  "status": "measurement_not_started_orchestration_handoff_missed",
+  "native_preparation_complete": true,
+  "tantivy_preparation_complete": true,
+  "performance_qualified": false,
+  "engine_failure": false,
+  "production_changed": false,
+  "preparation_receipts": [
+    {
+      "marker": "QUALIFICATION_PREPARATION_COMPLETE",
+      "receipt": {
+        "app": "typeahead-qual-20261029",
+        "machine_id": "824021f7441e38",
+        "volume_id": "vol_r7y5knjzn13508nr",
+        "arm": "tantivy",
+        "nonce": "9acb47798ef84877ee3df05790ed3e30",
+        "build_id": "b1793109259-2b36-px05",
+        "runtime_instance_id": "01M64TXRAZBJ41R2YMAYJ76C0R",
+        "prepared_at": 1793314035.5772128,
+        "checkpoint_sha256": "b524c1b58290446e27f2bb6a0ba95d1396aff45e1b5c0c10d764d0da3129c1fb",
+        "prepared": true,
+        "guest": {
+          "cpu_kind": "performance",
+          "cpus": 2,
+          "memory_mb": 4096
+        }
+      }
+    }
+  ],
+  "reaper_receipts": [
+    {
+      "marker": "QUALIFICATION_REAPER_RESOLVED",
+      "receipt": {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "e82676db367dd8",
+        "name": "tq-285b6147c50e-reaper",
+        "role": "reaper",
+        "run_id": "285b6147c50e"
+      }
+    },
+    {
+      "marker": "QUALIFICATION_REAPER_ARMED",
+      "receipt": {
+        "app": "typeahead-qual-20261029",
+        "owner": "tantivy-qualification-20261029",
+        "run_id": "285b6147c50e",
+        "deadline": 1793316252.692568,
+        "self": {
+          "id": "e82676db367dd8",
+          "name": "tq-285b6147c50e-reaper",
+          "auto_destroy": true
+        },
+        "manifest_sha256": "54aa0a32e847b7290bb29a90320ce3decdea92f0999f2dc53a67f5d830af8780"
+      }
+    },
+    {
+      "marker": "QUALIFICATION_REAPER_RESOLVED",
+      "receipt": {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "781ee7df10eee8",
+        "name": "tq-285b6147c50e-native-control",
+        "role": "native-control",
+        "run_id": "285b6147c50e"
+      }
+    },
+    {
+      "marker": "QUALIFICATION_REAPER_RESOLVED",
+      "receipt": {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "824021f7441e38",
+        "name": "tq-285b6147c50e-tantivy-control",
+        "role": "tantivy-control",
+        "run_id": "285b6147c50e"
+      }
+    },
+    {
+      "marker": "QUALIFICATION_REAPER_RESOLVED",
+      "receipt": {
+        "event": "resolved",
+        "kind": "machine",
+        "id": "7841712c140468",
+        "name": "tq-285b6147c50e-generator",
+        "role": "generator",
+        "run_id": "285b6147c50e"
+      }
+    },
+    {
+      "marker": "QUALIFICATION_REAPER_RESOLVED",
+      "receipt": {
+        "event": "resolved",
+        "kind": "volume",
+        "id": "vol_42kd1xez7g6zo214",
+        "name": "tq_285b6147c50e_native",
+        "role": "native",
+        "run_id": "285b6147c50e"
+      }
+    },
+    {
+      "marker": "QUALIFICATION_REAPER_RESOLVED",
+      "receipt": {
+        "event": "resolved",
+        "kind": "volume",
+        "id": "vol_r7y5knjzn13508nr",
+        "name": "tq_285b6147c50e_tantivy",
+        "role": "tantivy",
+        "run_id": "285b6147c50e"
+      }
+    },
+    {
+      "marker": "QUALIFICATION_REAPER_RECEIPT",
+      "receipt": {
+        "schema": 1,
+        "app": "typeahead-qual-20261029",
+        "owner": "tantivy-qualification-20261029",
+        "run_id": "285b6147c50e",
+        "status": "cleaned",
+        "deadline": 1793316252.692568,
+        "started_at": 1793316252.7069693,
+        "finished_at": 1793316264.9613645,
+        "attempts": 3,
+        "creation_settled_by_controller": false,
+        "resolved": [
+          {
+            "event": "resolved",
+            "kind": "machine",
+            "id": "e82676db367dd8",
+            "name": "tq-285b6147c50e-reaper",
+            "role": "reaper",
+            "run_id": "285b6147c50e"
+          },
+          {
+            "event": "resolved",
+            "kind": "machine",
+            "id": "781ee7df10eee8",
+            "name": "tq-285b6147c50e-native-control",
+            "role": "native-control",
+            "run_id": "285b6147c50e"
+          },
+          {
+            "event": "resolved",
+            "kind": "machine",
+            "id": "824021f7441e38",
+            "name": "tq-285b6147c50e-tantivy-control",
+            "role": "tantivy-control",
+            "run_id": "285b6147c50e"
+          },
+          {
+            "event": "resolved",
+            "kind": "machine",
+            "id": "7841712c140468",
+            "name": "tq-285b6147c50e-generator",
+            "role": "generator",
+            "run_id": "285b6147c50e"
+          },
+          {
+            "event": "resolved",
+            "kind": "volume",
+            "id": "vol_42kd1xez7g6zo214",
+            "name": "tq_285b6147c50e_native",
+            "role": "native",
+            "run_id": "285b6147c50e"
+          },
+          {
+            "event": "resolved",
+            "kind": "volume",
+            "id": "vol_r7y5knjzn13508nr",
+            "name": "tq_285b6147c50e_tantivy",
+            "role": "tantivy",
+            "run_id": "285b6147c50e"
+          }
+        ],
+        "failures": [],
+        "remaining": [],
+        "remaining_whitelist_ids": [],
+        "unresolved_whitelist_names": [],
+        "self": {
+          "id": "e82676db367dd8",
+          "name": "tq-285b6147c50e-reaper",
+          "auto_destroy": true
+        },
+        "api_timeout_seconds": 15,
+        "cleanup_grace_seconds": 300,
+        "volume_dispositions": [
+          {
+            "id": "vol_42kd1xez7g6zo214",
+            "state": "pending_destroy",
+            "non_billable": true,
+            "physical_purge_confirmed": false
+          },
+          {
+            "id": "vol_r7y5knjzn13508nr",
+            "state": "pending_destroy",
+            "non_billable": true,
+            "physical_purge_confirmed": false
+          }
+        ],
+        "limitations": [
+          "Provider outages may leave volumes; failed cleanup must be reconciled before another run.",
+          "Fly retains non-billable pending_destroy volume records for provider-managed purge; absence of those records is not required or claimed."
+        ]
+      }
+    }
+  ],
+  "volume_snapshots_available": false,
+  "explanation": "Both preparations passed. The operator did not advance the completed Tantivy checkpoint before the original lease deadline; the independent reaper then cleaned all trial resources."
+}

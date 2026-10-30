@@ -1,0 +1,25 @@
+{
+  "hash_algorithm": "SHA256 of sorted compact JSON file-to-SHA256 map",
+  "runtime_source_sha256": "1d99ee34ddf6766e2adb44d503f461144b07cab73b9f04bb53cdfb78a743472d",
+  "files": {
+    "services/tantivy/Cargo.toml": "7df7e28212c41cd039cca0b34665807247da3a39cf1ab97bafbab415184f7162",
+    "services/tantivy/Cargo.lock": "730a2506d4ee1e2e3ea88c807d4af20187af616c4195feb616c8ccdbf430f67f",
+    "services/tantivy/build.rs": "7fd77abe9524def66af62480d4be778190fc11ae4c4e7169dacdf64d7d76fe0d",
+    "services/tantivy/src/actor.rs": "a653b8e77355c850520e818e19e95f5fa74624f886b42819f99007071e24c6ff",
+    "services/tantivy/src/engine/source.rs": "deebb7af6aa8f416c35a4edde4bfb8a9b890777824ab01b9c2f6ab62744a9452",
+    "services/tantivy/src/engine/source_page.rs": "edacb945499acfab5e1f06f16e906b1584be41e73c021cd77e0dcfebf9f686c6",
+    "services/tantivy/src/engine.rs": "f786f7206770c5eb5444d8e827bc83755b4b4e688d7b16dd96daf21b87328463",
+    "services/tantivy/src/lib.rs": "1dfbced93fd6e886c137ef65fbec6b6aeb2554c227a95fd932e80e9cd3262452",
+    "services/tantivy/src/main.rs": "32f16148eb1aabea177b2613dcce439af1aa552b961edc396ccf2936aaf0277e",
+    "services/tantivy/src/moderation.rs": "2a452a6a60ade216ca4bced56963cf38bf5f1a95ee617384e269b87a7b042aa8",
+    "services/tantivy/src/normalizer.rs": "ce87f35532b7bb76d542ec1b79f7ef19b33bbecfac67c930d6d29114b3bd361e",
+    "services/tantivy/src/server.rs": "49712fde4d90f745423ec30fa1138562bc879c7c95e19daaf5e3630723d6cefb",
+    "src/identity-quarantine.json": "1ed23ca57f8c03e841a703c55ca1b4335897de01c9dc58f642dbf6aca5529a09",
+    "src/moderation-regexes.json": "ae860b571234e867c757fbbcec5c25fb80aab0e046496edb6e945cffd0fdf46f"
+  },
+  "binary_sha256": "8f0780fd3dcd24de162eaf9c3e8a0bc73739d2672d7528f53eabefc36cf0ab3d",
+  "source_sync_sha256": "1e6b31e8aa701c083a008f41b923a6f16e8ab6d04dc31b12d985369f0ced50d9",
+  "source_observation_adapter_sha256": "4773ca6bf81d8d436d8e9a3b1abbaf29c9eb4246262f35c0ce5cfb25356736df",
+  "policy_index_format": "tantivy-0.27-f32-did-policy-v3",
+  "cloud_actions": false
+}
