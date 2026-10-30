@@ -16,26 +16,28 @@ first two stages; the final stage stopped after 286 passing identity checks and
 must not be described as fully verified. Receipts and cleanup details are in the
 [retirement record](ops/pds-repair-retirement-20261030/README.md).
 
-## Hubble export approach
+## Existing Hubble interfaces
 
-Hubble stores per-DID PDS and identity-resolution time in its repo identity
-metadata (`DbRepoIdentity` at source revision `52960bf`). Its
-[public API](https://web.hubble.microcosm.blue/api/) exposes PDS through
-`getRepoInfo`, but `listRepos` omits it. The live API was checked; no published
-bulk identity export was found in the API docs or current server routes. Export
-availability therefore requires an operator response, not another crawler.
+Hubble's public `blue.microcosm.hubble.getRepoInfo?did=...` returns its stored PDS
+metadata for one DID. The handler reads existing repo state; it does not download
+repository contents or perform a fresh DID resolution for each API request.
+`com.atproto.sync.listRepos` enumerates DIDs but does not include PDS. See the
+[API documentation](https://web.hubble.microcosm.blue/api/) and
+[handler source](https://tangled.org/microcosm.blue/hubble/blob/52960bf/hubble/src/serve/get_repo_info.rs).
+
+A bulk identity export was proposed without verifying that one is available;
+that proposal is withdrawn as a required dependency. No operator request was sent.
+The repository's `hubble-mini export-pairs` command exports captured DID/host
+pairs from a local mini database; it is not a public full-Hubble identity export.
+Its older non-Bluesky snapshot scope and lack of identity verification matter.
 
 Our existing Stream instance reports 16.3 million repos. Its metadata contains
 `host` and `pds`, but normal bootstrap can leave `pds` empty and store the final
-download host separately. Archive identity events contain no PDS. This is not
-proof of complete, fresh hosting coverage and does not justify replaying records.
-
-Next dependency: request a metadata-only `did, pds, resolved_at` export from
-Hubble, preferably with account status and an export timestamp. No message has
-been sent. Once available, inspect provenance/freshness, validate a small sample,
-then conditionally fill missing source values in cloud and verify scoped search.
-Use individual resolution only for a measured residual. No new mirror or generic
-freshness framework is planned; preserve the existing live identity-event path.
+download host separately. Archive identity events contain no PDS. Assess the
+existing metadata and Hubble's existing stored-metadata API before choosing an
+implementation. Cached lookups still require one request per DID; bulk viability
+and acceptable request rates have not been measured. No new data-collection
+system or replacement freshness framework is authorized by these findings.
 
 Completion also includes reconciling relevant operations/API documentation and
 then simplifying the public `/docs` page (`src/pages/docs.ts`): concise quickstart,
