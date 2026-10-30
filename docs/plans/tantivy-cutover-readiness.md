@@ -15,14 +15,21 @@ ordinary source polling advances. The
 passed 51 requests and five bounded source reads: eight recent actors matched
 canonical identity, hydration and PDS inclusion/exclusion. This sample did not
 supply moderation or known-old-handle deletion witnesses and does not claim
-causal mutation verification.
+causal mutation verification. A separate bounded
+[deleted-document hash check](../evals/tantivy-dev-20261028/checkpoint-live-deleted-document-hash.json)
+proved all eight source-confirmed tombstones are stored as canonical deleted
+documents. Existing moderation overrides supplied no live witness.
 
 The preparation controller stopped on a startup HTTP 503 after installation.
 MPS `ffe86a0958b4b5a7f3125452e3fe0ded748b4322` fixes transient urllib startup
-retries within the existing deadline. The same operation is resuming against
-the installed volume to complete cached restart and emit its prepared plan;
-no new corpus build or download is required. Public preview rebinding, final
-HTTP smoke and isolated live-origin rollback remain pending that qualification.
+retries within the existing deadline. The same operation completed against
+the installed volume, including cached restart and requalification. Its
+[prepared plan](../evals/tantivy-dev-20261028/slot-a-prepared-plan.json) records the
+exact admission and provider binding. The temporary controller VM and deployment
+were retired. The production-identical dev preview now points at A. Its
+[public smoke](../evals/tantivy-dev-20261028/checkpoint-public-smoke.json) passed
+53 requests with no failures or inconclusive checks. Isolated live-origin rollback
+verification remains in progress.
 Production remains native. Historical attempts below are evidence, not current
 instructions to repeat their builds or trials.
 

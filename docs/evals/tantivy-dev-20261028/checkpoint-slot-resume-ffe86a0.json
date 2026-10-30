@@ -21,13 +21,24 @@
   "flow_run_state": "Scheduled",
   "flow_run_url": "https://prefect-server.waow.tech/runs/flow-run/da93cc3b-15fb-423d-bcce-a5f672fe0d44",
   "latest": {
-    "observed_at": 1793351739.9026308,
+    "observed_at": 1793351871.740845,
     "id": "da93cc3b-15fb-423d-bcce-a5f672fe0d44",
-    "state": "Submitting",
-    "start": "None",
-    "end": "None",
-    "infrastructure_pid": null,
+    "state": "Completed",
+    "start": "2026-10-30 09:16:58.660321+00:00",
+    "end": "2026-10-30 09:17:25.186482+00:00",
+    "infrastructure_pid": "prefect-build-da93cc3b15fb423dbccea5f672fe0d44-r0",
     "message": null,
-    "tasks": []
-  }
+    "tasks": [
+      {
+        "name": "clone_repo-18d",
+        "state": "Completed"
+      }
+    ]
+  },
+  "provider_cleanup": {
+    "observed_at": 1793351936.1221278,
+    "server_name": "prefect-build-da93cc3b15fb423dbccea5f672fe0d44-r0",
+    "remaining_servers": 0
+  },
+  "temporary_deployment_retired_at": 1793351937.2020202
 }

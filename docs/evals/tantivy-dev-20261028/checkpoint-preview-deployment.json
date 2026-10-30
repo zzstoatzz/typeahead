@@ -1,0 +1,13 @@
+{
+  "observed_at": 1793351972.619553,
+  "worker": "typeahead-tantivy-dev-ui",
+  "version_id": "eb09465f-43e9-4bb4-8e77-649d4d7c4140",
+  "url": "https://typeahead-tantivy-dev-ui.n8-3e9.workers.dev",
+  "backend": "https://typeahead-tantivy-a.fly.dev",
+  "production_ui_service_binding": "typeahead",
+  "frontend_code_changed": false,
+  "production_routing_changed": false,
+  "typecheck_passed": true,
+  "dry_run_passed": true,
+  "prepared_plan_sha256": "7f547a14b234180083cff854cdb5a00163faf214301f9a96467bb6b40624173b"
+}

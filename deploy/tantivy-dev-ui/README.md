@@ -5,13 +5,14 @@ Live at https://typeahead-tantivy-dev-ui.n8-3e9.workers.dev/.
 This Worker serves the deployed production frontend through the `PRODUCTION_UI`
 service binding. It changes no HTML, CSS or client JavaScript. Relative search
 requests, both XRPC aliases, health and index metadata go to the isolated
-`https://typeahead-tantivy-dev.fly.dev` backend. Production routing is unchanged.
+`https://typeahead-tantivy-a.fly.dev` backend. Production routing is unchanged.
 
-The deployed `DEV_SEARCH_BACKEND` configuration can select that retained dev
-backend or `https://typeahead-tantivy-a.fly.dev` / `https://typeahead-tantivy-b.fly.dev`.
+The deployed `DEV_SEARCH_BACKEND` configuration selects managed slot A. It also
+allows the retained `https://typeahead-tantivy-dev.fly.dev` backend or managed slot B
+at `https://typeahead-tantivy-b.fly.dev`.
 Other origins fail closed. This changes the backend binding and response identity
-header; frontend bytes still come unchanged from production. The default remains
-the retained dev backend until a managed slot is actually qualified. Regenerate
+header; frontend bytes still come unchanged from production. Slot A passed cloud
+installation and cached restart qualification before the binding changed. Regenerate
 binding types after changing the configuration:
 
 ```sh
@@ -46,3 +47,7 @@ HTTP verification rather than visual browser QA. No indexing form was submitted.
 match, unsupported preferences return 503, malformed scope returns 400, and
 production/preview HTML remains byte-identical. This does not qualify the older
 backend's preference semantics or the undeployed expiry-v4 candidate.
+
+The [managed-slot smoke](../../docs/evals/tantivy-dev-20261028/checkpoint-public-smoke.json)
+records the October 30 switch to qualified slot A: 53 read-only requests passed,
+including production-identical homepage bytes, both aliases and PDS scopes.
