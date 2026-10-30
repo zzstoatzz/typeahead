@@ -11,6 +11,31 @@ Use only `https://typeahead-tantivy-a.fly.dev` or
 production, the older dev backend, or a load-test target. The controller owns
 invocation, evidence and resource cleanup.
 
+## Run the bounded smoke
+
+After the controller qualifies the candidate and binds the preview to it:
+
+```sh
+python3 deploy/tantivy-dev-ui/candidate-smoke.py \
+  --candidate "$CANDIDATE" --build-id "$EXPECTED_BUILD_ID" \
+  --binary-sha256 "$EXPECTED_BINARY_SHA256" --output "$NEW_RECEIPT_PATH"
+```
+
+The runner performs53 GETs on its normal path, stops before search if candidate or
+preview identity/readiness is wrong, and enforces the bounds below. It accepts
+only the two managed slot origins and the fixed preview origin. Redirects fail.
+Its exclusive mode0600 JSON receipt contains counts, checks, hashes, selected
+headers and individual timings, with no profile bodies or source credentials.
+Stdout is one compact summary. It exits nonzero for failed or inconclusive checks.
+Existing output files are never overwritten. No deployed requests have been sent
+while preparing the runner.
+
+The runner uses this casefile and the existing independent ASCII/Han predicates;
+it replaces the manual selected-smoke invocation below for the normal pass. Its
+`source_membership_verified:false` and `resource_verified:false` explicitly leave
+those proofs to the source-witness/provider receipts below. The optional witness
+checks are separate; this runner never queries the source database.
+
 ## Bound the pass
 
 Run the existing request helpers under one supervised 120-second process deadline:
