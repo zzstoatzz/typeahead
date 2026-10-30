@@ -104,3 +104,18 @@ navigation, expandable details and theme switching worked. The final phone check
 had no page-level horizontal overflow or console errors (code blocks scroll).
 The temporary local preview server and browser tab were closed after inspection.
 Publication remains pending the repair outcome and final documentation review.
+
+
+## Resumed backfill check
+
+The initial wait-only invocation exhausted its health-wait limit without new
+writes. After relay replay caught up, the next bounded invocation resumed the
+same checkpoint. A random sample of 30 settled repairs from its first 1,000
+confirmed writes passed source-value, current authoritative DID-document,
+correct-scope and wrong-scope checks. See `run-2-checks.json` and
+`verify-run-2.py`. This is an additional sample, not full-backlog verification.
+
+The real-SQLite ingest regression now also checks that a PDS migration replaces
+the old host while a later bare-DID or empty-PDS profile event preserves it.
+All five ingest tests, type checking and lint passed. Production resolution
+failures are not injected into real users' identities for this test.
