@@ -260,7 +260,7 @@ export function reputationPage(): string {
         </dl>
         <ul class="limits">
           <li>Scores use stored counts. Minimum score: 0.</li>
-          <li>Multi-word queries require every word. Limited candidate lists can omit low-scoring matches.</li>
+          <li>Multi-word queries require every word. Tantivy retains complete matches before final ranking and result limits.</li>
           <li>Hidden accounts are excluded regardless of score.</li>
         </ul>
       </details>

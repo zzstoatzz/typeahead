@@ -1,3 +1,4 @@
+import * as z from "zod/mini";
 import { normalizePds } from "../pds";
 
 export type Preference =
@@ -34,7 +35,7 @@ export function parseSearchScope(params: URLSearchParams): SearchScope {
     return { pds, preference: { mode, host } };
   }
   if (mode !== "boost") throw new Error("preference must be pds_first or boost");
-  if (boostRaw === null || !/^[+\-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+\-]?\d+)?$/.test(boostRaw)) throw new Error("boost requires a finite nonnegative f32 value");
+  if (boostRaw === null || !/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(boostRaw)) throw new Error("boost requires a finite nonnegative f32 value");
   const value = Number(boostRaw);
   const rounded = Math.fround(value);
   if (!Number.isFinite(value) || !Number.isFinite(rounded) || value < 0) throw new Error("boost requires a finite nonnegative f32 value");
@@ -72,12 +73,19 @@ export function searchCacheUrl(host: string, term: string, limit: number, scope:
   return `https://${host}/__cache/search-v3/${searchCacheGeneration(generation)}/${encodeURIComponent(term)}:${limit}${params.size ? `?${params}` : ""}`;
 }
 
+const backendBodySchema = z.object({
+  actors: z.array(z.object({
+    did: z.string().check(z.startsWith("did:")),
+    handle: z.string(),
+  })),
+});
+
 export function validateBackendBody(text: string, limit: number): void {
-  const value: unknown = JSON.parse(text);
-  if (!value || typeof value !== "object" || !("actors" in value) || !Array.isArray(value.actors) || value.actors.length > limit) throw new Error("Invalid search backend envelope");
+  const value = backendBodySchema.parse(JSON.parse(text));
+  if (value.actors.length > limit) throw new Error("Invalid search backend envelope");
   const dids = new Set<string>();
   for (const actor of value.actors) {
-    if (!actor || typeof actor !== "object" || typeof actor.did !== "string" || !actor.did.startsWith("did:") || typeof actor.handle !== "string" || dids.has(actor.did)) throw new Error("Invalid search backend actor");
+    if (dids.has(actor.did)) throw new Error("Invalid search backend actor");
     dids.add(actor.did);
   }
 }

@@ -61,7 +61,7 @@ export function responseMatchesRoute(route: ReturnType<typeof parseRoute>, respo
   );
 }
 
-export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: string | null, candidate: unknown): Promise<boolean> {
+export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: string | null, candidate: z.input<typeof routeSchema>["current"] | z.infer<typeof retainedNativeSchema>): Promise<boolean> {
   const parsedCurrent = parseRoute({ version: 1, current: candidate });
   const current = parsedCurrent.engine === "tantivy" ? parsedCurrent : retainedNativeSchema.parse(candidate);
   const before = await bucket.get(ROUTE_KEY);
@@ -89,7 +89,12 @@ export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: str
   const options = expectedEtag === null
     ? { onlyIf: { etagDoesNotMatch: "*" } }
     : { onlyIf: { etagMatches: expectedEtag } };
-  const result = await bucket.put(ROUTE_KEY, JSON.stringify({ version: 1, current, previous, ...(anchor ? { native_rollback: anchor } : {}), ...(mutation ? { mutation } : {}) }), options);
+  const next = {
+    version: 1, current, previous,
+    native_rollback: anchor ?? undefined,
+    mutation: mutation ?? undefined,
+  };
+  const result = await bucket.put(ROUTE_KEY, JSON.stringify(next), options);
   return result !== null;
 }
 

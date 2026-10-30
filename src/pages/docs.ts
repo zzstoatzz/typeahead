@@ -89,11 +89,11 @@ export function docsPage(): string {
       (see <a href="#request-indexing">request indexing</a> below).
     </p>
     <p>
-      every search is served entirely from our own data: a precomputed prefix-index snapshot
-      merged with a live overlay for recent renames, deletes, moderation changes, and brand-new
-      accounts, then edge-cached for 60s. no request does work proportional to the full corpus
-      (millions of actors), and bluesky is never in the request path — it's a rollback-only kill
-      switch, not a fallback.
+      search is served from our own Tantivy index, initialized from verified snapshots and
+      updated continuously from Turso for renames, deletes, moderation changes and new
+      accounts. Responses are edge-cached for 60s. Full rebuilds happen on an independent
+      backend before qualification and a routing switch; live updates do not wait for them.
+      The search path does not fall back to Bluesky or a full source-database query.
     </p>
 
     <h2>the endpoint</h2>
@@ -115,8 +115,9 @@ export function docsPage(): string {
       candidate selection and ranking, including custom-domain handles. The hostname match is
       exact and case-insensitive; subdomains are separate. HTTP(S) origins and a trailing
       slash/dot are accepted; ports, paths, and empty values return 400. An unknown PDS returns
-      an empty list. Filtering covers PDSs with at most 10,000 known actors at build time
-      (a configurable cutoff). Larger PDSs, scope-policy replay, or unavailable backend/snapshot support return <code>503 PdsScopeUnavailable</code>;
+      an empty list. Tantivy supports every recorded canonical hostname without a per-PDS
+      actor-count cutoff. Accounts with unknown hosting metadata cannot match a PDS filter.
+      Unavailable scope support returns <code>503 PdsScopeUnavailable</code>;
       scoped requests never fall back to unfiltered results. This extension works on both
       endpoint names here; it is not a Bluesky API parameter.
     </p>
@@ -193,7 +194,7 @@ export function docsPage(): string {
 
     <h2 id="pds-preference">PDS ranking preference</h2>
     <p>
-      capability-gated candidate backends accept <code>prefer_pds=acme.com</code> to prefer
+      production accepts <code>prefer_pds=acme.com</code> to prefer
       that hosting PDS while retaining global matches. This defaults to
       <code>preference=pds_first</code>. For a finite nonnegative score boost instead,
       use <code>preference=boost&amp;boost=10</code>; exact eligible handles retain priority.
@@ -202,9 +203,9 @@ export function docsPage(): string {
       <code>503 PdsScopeUnavailable</code>, never silent global fallback.
     </p>
     <p>
-      these candidate changes do not indicate a production cutover. Native snapshot scopes
-      retain their documented size limit; the Tantivy candidate supports all recorded
-      canonical hosts. Neither engine can infer missing hosting metadata. Query or parameter
+      hosting metadata comes from indexed identity, not handle suffixes. Retained native
+      rollback backends may have narrower scope support and reject unsupported requests.
+      Neither engine can infer missing hosting metadata. Query or parameter
       rejection returns <code>400</code>; unavailable, stale or invalid backend answers return
       <code>503</code> rather than successful empty results.
     </p>

@@ -183,10 +183,11 @@ filtering global top-N results. Global keys and unscoped responses must remain
 unchanged. Scope keys, old-PDS suppression during identity migration, cache keys,
 and fail-closed fallback behavior must be tested together. Snapshot metadata
 `pds_scope_version=1` advertises support; the Worker also requires the search
-response's `X-Typeahead-Pds` acknowledgment. The build-time
-`INDEX_PDS_MAX_ACTORS` cutoff defaults to 10,000; excluded scopes must fail
-explicitly. A changed eligible-host policy must replay from the snapshot
-watermark before publishing its readiness hash. See `docs/evals/pds-scope.md` for
+response's `X-Typeahead-Pds` acknowledgment. Production Tantivy supports every
+recorded canonical host. The retained native backend has a build-time
+`INDEX_PDS_MAX_ACTORS` cutoff (default 10,000); its excluded scopes must fail
+explicitly. For native, a changed eligible-host policy must replay from the
+snapshot watermark before publishing its readiness hash. See `docs/evals/pds-scope.md` for
 isolated evaluation commands and rollout order. No full-corpus capacity claim
 may be inferred from synthetic fixture timings.
 

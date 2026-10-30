@@ -1,0 +1,188 @@
+# Historical native architecture
+
+This describes the retained native engine before the Tantivy cutover.
+For current behavior, see [architecture.md](architecture.md).
+
+# architecture
+
+Serving path updated against live services October 25, 2026. Historical
+illustrations below predate the compact and private transport releases; the
+[README diagram](../README.md#how-it-works) shows the current runtime roles.
+
+`typeahead.waow.tech` provides independent actor search for atproto. The canonical
+`tech.waow.typeahead.searchActors` endpoint and the
+`app.bsky.actor.searchActorsTypeahead` compatibility alias share a handler and
+60-second edge cache. Normal searches use our index. Bluesky remains an explicit
+emergency rollback option.
+
+![Current typeahead architecture](blog-assets/typeahead-sequel/architecture.png)
+
+[Explore the animated architecture](blog-assets/typeahead-sequel/interactive/architecture-embed.html): search, profile changes, and snapshot builds, with recorded query traces.
+
+## serving
+
+Clients reach the Cloudflare Worker, which applies rate limits, checks its edge
+cache, and sends misses through the private `typeahead-search-transport` Worker,
+placed near US East, to the active Fly backend in `ewr`. The transport reads
+`control/search-routing.json` through its R2 binding and accepts only the two
+managed slot origins. Validated route metadata may be cached for one second;
+admin writes and diagnostic route reads bypass it. Search, freshness, diagnostics,
+and the existing authenticated inline refresh follow that route. Cache hits stay
+at the public edge. The transport does not query Turso or change results. [Live latency and rollback evidence](evals/edge-latency-20261020.md).
+The Zig search
+service holds a read-only SQLite snapshot and a live overlay. Since September 2
+it has **no full actor replica, local FTS index, or replica hydration fallback**.
+Compact artifacts are installed and admitted before the search process starts.
+Cached recovery binds the opened file to its admission sidecar and checks accessed
+blocks rather than scanning the entire prefix payload.
+
+Each request normalizes the query, derives bounded prefix keys, reads
+precomputed top-N DID lists, merges overlay additions and suppressions, promotes
+exact-handle matches, and hydrates a capped candidate set from overlay first,
+then snapshot actor blobs. Keys include exact handles (`e:`), handle prefixes
+(`h:`), display-name tokens/CJK keys (`n:`), domain suffixes (`d:`), and DID lookup
+support. Prefix keys are stored up to 16 bytes; a longer query looks up its cut
+and the hydrated rows are filtered against the whole query (see
+[the index design](typeahead-index-design.md#queries-longer-than-prefix_max)).
+The active manifest specifies the index versions and caps. Union-prefix additions
+use the partial overlay ranking index on `(key, score DESC, did ASC) WHERE op=1`
+in this branch, avoiding a matching-prefix sort. Base corrections remain point
+lookups; exact-key and intersection reads remain uncapped for correctness.
+
+The serving invariant is about work per engine query: no actor-corpus scan or
+request-time FTS ranking. It does not imply constant disk usage or a fixed RAM
+requirement at arbitrary corpus sizes.
+
+The Worker still writes request/traffic metrics to Turso. Thus engine search
+reads are isolated from Turso, but the overall edge service is not database-free.
+Profile lookup, admin operations, and request-indexing have their own paths.
+
+## continuous ingest and freshness
+
+`typeahead-ingester`, another role of the same Zig binary, consumes the relay's
+`com.atproto.sync.subscribeRepos` firehose. It resolves identities and batches
+updates through the Worker's admin ingest endpoint into Turso. It runs on Fly
+with one shared CPU, 256 MB, and no persistent volume.
+
+Turso/libSQL is the durable source of actor state, enrichment, moderation
+overrides, and tombstones. The search service polls recent changes every five
+minutes, starting from the greater of its persisted progress and the snapshot's
+source watermark, with a 300-second overlap. It projects each page into the
+overlay and persists progress per page.
+
+To remove stale prefixes on a rename or moderation change, projection reads the
+old served representation from overlay first, then snapshot. Reading a newer
+replica row was not equivalent: it could miss the keys that serving still held.
+Deletes and hides suppress base results; restores and new actors add candidates.
+Compaction prunes covered rows in bounded chunks.
+
+Request-indexing also sends the row just written to `/admin/refresh` on the
+search service. This accelerates visibility without a second Turso read there;
+periodic sync remains the recovery path if that push fails.
+
+## offline builds and enrichment
+
+Prefect's dedicated `typeahead-cloud-pool` runs full snapshot builds on cloud
+infrastructure with bounded CPU, memory and disk reserves. `flows/typeahead_index.py`
+and `prefect.yaml` in `my-prefect-server` own the source pin, format, schedule,
+installer image and controller credentials. The old bulk home publisher remains
+disabled. Automatic refresh is verified and scheduled at 06:00 UTC on odd-numbered
+days of the month, at most 48 hours apart. The
+[execution record](ops/automatic-refresh-20261025.md) includes live registration and
+queued-run evidence.
+
+Managed publication uploads and fully reads back compact artifacts and the legacy
+twin under `releases/search/<id>/`, then updates `control/builds/latest.json`.
+That ready pointer does not change traffic. The controller prepares the inactive
+slot on independent compute/storage and its own slot pointer, catches up its
+overlay, checks search/freshness and final-size cached restart, then conditionally
+updates the routing record. Successful refreshes retain the previous backend for rollback. The operator retired
+the two superseded backends October 25; only the current search backend runs until
+the next refresh, and the routing record has no immediate rollback target.
+No bulk installation or validation runs on the serving backend. An interrupted
+installation leaves that backend selected; failed post-cutover checks restore
+its route. Current and previous managed generations and twins are retained.
+
+The historical shared `latest.json` remains a legacy recovery pointer and is not
+part of managed rollout. See [automatic refresh](plans/automatic-snapshot-refresh.md)
+and the [publisher/controller runbook](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/automatic-typeahead-refresh.md).
+
+Other heavypad jobs resolve identities hourly (:20 UTC), enrich profiles daily
+(20:00 UTC), and declare a weekly PLC identity deployment (Monday 05:00 UTC), which remains
+paused. Profile
+sources include Bluesky, Blacksky, and PDS fallback; PLC covers identity discovery
+outside appview coverage. The Worker cron now handles freshness, stats, and
+moderation refresh inside a 12-minute budget, without profile enrichment. Its
+stats step materializes `stats_data` in KV (hourly snapshots, 5-minute search
+metrics, per-app traffic at three grains, and the all-time app count); `/stats`
+and the `/og-image` link-preview card read that blob, never Turso, for
+corpus-scale figures.
+
+Tailscale provides operator access to heavypad. Neither interactive searches nor
+snapshot downloads traverse the home connection: clients use Cloudflare/Fly,
+and Fly downloads the published artifact from R2.
+
+## failure boundaries and recovery
+
+Both Worker Turso search fallbacks are **off by default**:
+
+- `TURSO_FALLBACK_ON_EMPTY=1` explicitly enables the empty-result fallback,
+  subject to its small-limit guard.
+- `TURSO_FALLBACK_ON_UNREACHABLE=1` explicitly enables engine-failure fallback.
+  Normally, an unreachable engine returns `{actors: []}` **uncached**. This is
+  degraded search, not full availability; it avoids flooding the shared writer.
+
+These defaults followed September 4's burst, when fallback reads saturated
+Turso and caused ingest backlog overflow. Request counters remain a shared-writer
+coupling worth addressing.
+
+A normal search restart re-adopts its validated on-disk snapshot and resumes
+projection. A fresh volume must download a snapshot first. The September 2
+cutover measured 20 minutes to attach plus 47 minutes to replay 19 hours of
+changes; September 4's existing-volume restart took about 15 seconds. Neither
+measurement is a general recovery-time guarantee.
+
+Logfire receives Fly traces and logs; Cloudflare Workers Logs covers edge
+failures. Check `/health/freshness`, ingest cursor advancement/backlog, Worker
+errors, and Prefect completion together. Search readiness alone does not prove
+new actors are being discovered. `/health/freshness` retains the legacy field
+name `replica_lag_s`; it now measures overlay lag.
+
+## observed deployment, September 5
+
+- Search: one Fly machine, four shared CPUs, 2 GB RAM, 60 GB volume.
+- Ingest: one Fly machine, one shared CPU, 256 MB, no volume.
+- Snapshot: `b1788512492-0ed0`, 11,631,204 actors, 127,296,942 prefixes,
+  14,027,964,416 bytes; R2 manifest and serving build agree.
+- Latest build: September 4, 09:00–10:07 UTC, Prefect state `COMPLETED`.
+
+For the incident and design history, see [operations](operations.md),
+[replica removal](replica-removal-plan.md), and the
+[September incident report](retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md).
+
+
+## PDS-scoped search (live October 20, 2026)
+
+The builder counts actors by normalized hosting PDS offline, including
+hidden and handle-less rows. It emits PDS-scoped prefix keys only for hosts at or
+below `INDEX_PDS_MAX_ACTORS` (default 10,000); zero disables scoped lists.
+`pds_scopes` records counts and eligibility. This is a build-time population
+threshold, not a live membership quota.
+Scoped searches use these lists before merge and hydration; filtering global top-N
+results would lose community actors below the network-wide cutoff. No second
+actor blob is stored. Overlay projection diffs the previous and current hosting
+PDS alongside handle/name, suppressing old memberships on migration. Hydration
+checks the current PDS again to avoid leaking stale membership. Live projection
+also consults eligibility and emits no scoped keys for excluded PDSs.
+
+The snapshot hashes its eligible-host set. When that policy changes, scoped
+search returns 503 until sync has replayed from the snapshot watermark and stored
+the matching policy hash. Otherwise a newly eligible host could miss actors
+updated after the snapshot but before promotion. Unscoped search remains available.
+A failed replay leaves the gate closed; normal sync resumes after a successful pass.
+
+The existing lookup bounds and multi-token intersection limitations remain.
+The full-corpus compact release passed paired correctness/performance, replay,
+rollback and restoration gates before deployment; see
+[the release evidence](evals/pds-homepage-20261020.md) and
+[current configuration and rollback](plans/pds-homepage-rollout.md).

@@ -15,6 +15,8 @@ returns basic actor profiles without authenticated viewer state. the
 [lexicon](lexicons/tech.waow.typeahead.searchActors.json) defines the response;
 `app.bsky.actor.searchActorsTypeahead` is a compatible alias. an optional `pds`
 parameter restricts results by indexed hosting PDS, including custom-domain handles.
+`prefer_pds` favors a host while keeping global matches; see the API docs for
+PDS-first ordering and score boosts.
 
 profile cards are available through `app.bsky.actor.getProfile` and
 `app.bsky.actor.getProfiles`. see the [API docs](https://typeahead.waow.tech/docs)
@@ -25,9 +27,9 @@ for parameters, moderation policy, caching and rate limits.
 - **continuous discovery** — a Zig ingester follows the relay's `subscribeRepos`
   firehose and writes actor updates to Turso. identity changes are resolved from
   DID authority and verified against the claimed handle.
-- **local search** — Tantivy serves an immutable base snapshot from R2 plus
-  durable live updates from Turso. HTTP serving stays separate from corpus-scale
-  preparation.
+- **local search** — Tantivy starts from a verified index artifact in R2 and commits
+  live updates from Turso into the serving index. HTTP serving stays separate
+  from corpus-scale preparation.
 - **edge serving** — a Cloudflare Worker handles public endpoints, caching,
   profile APIs and request accounting. a private transport routes search to Fly.
 - **explicit policy** — moderation labels, domain blocks and per-DID overrides

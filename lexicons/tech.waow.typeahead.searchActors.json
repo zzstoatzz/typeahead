@@ -17,7 +17,7 @@
           },
           "pds": {
             "type": "string",
-            "description": "Optional exact hosting PDS hostname, e.g. acme.com. Case-insensitive; HTTP(S) origin and trailing slash/dot accepted, ports and paths rejected. Filters before candidate selection, including custom-domain handles. Scopes cover PDSs with at most 10,000 known actors at build time (configurable). Unknown PDS returns no actors; larger PDSs or unavailable scope support return HTTP 503 PdsScopeUnavailable."
+            "description": "Optional exact hosting PDS hostname, including custom-domain handles. Case-insensitive; HTTP(S) origin and trailing slash/dot accepted; ports, paths and empty values rejected. Filters before candidate selection. Tantivy supports all recorded canonical hosts; unknown hosting metadata cannot match. Unavailable scope support returns 503 PdsScopeUnavailable without unscoped fallback."
           },
           "limit": {
             "type": "integer",
@@ -28,19 +28,19 @@
           },
           "prefer_pds": {
             "type": "string",
-            "description": "Capability-gated candidate extension: prefer this canonical hosting PDS without filtering global results. Defaults to PDS-first ranking; exact eligible handles retain priority. Unsupported preference returns503 PdsScopeUnavailable. Independent of the hard pds filter."
+            "description": "Optional hosting PDS preference with the same hostname syntax as pds. Keeps global matches. Defaults to pds_first unless boost is supplied. Exact eligible handles retain priority."
           },
           "preference": {
             "type": "string",
-            "enum": [
+            "knownValues": [
               "pds_first",
               "boost"
             ],
-            "description": "PDS preference mode; requires prefer_pds. pds_first is the default unless boost is supplied. boost mode requires boost. Combining pds_first with boost is invalid."
+            "description": "Requires prefer_pds. pds_first orders preferred-host actors first within exact and ordinary categories; boost adds the supplied score boost. Other values return 400."
           },
           "boost": {
             "type": "string",
-            "description": "Finite nonnegative decimal score boost, rounded to f32. Requires prefer_pds and implies boost mode unless preference is explicit. Unknown source hosting metadata receives no preference."
+            "description": "Finite nonnegative decimal score boost, rounded to f32. Requires prefer_pds; selects boost mode if preference is omitted. Invalid with pds_first. Non-finite, negative or overflowing values return 400."
           }
         }
       },
@@ -101,7 +101,7 @@
         "avatar": {
           "type": "string",
           "format": "uri",
-          "description": "Avatar image URL — usually a bluesky CDN URL, but may point directly at the actor's PDS blob endpoint for accounts bluesky's CDN no longer serves."
+          "description": "Avatar image URL \u2014 usually a bluesky CDN URL, but may point directly at the actor's PDS blob endpoint for accounts bluesky's CDN no longer serves."
         },
         "associated": {
           "type": "unknown",

@@ -1,8 +1,9 @@
 # Tantivy source adapter
 
-This directory contains the cloud-only compact-snapshot exporter and read-only
-Turso source adapter for the parallel Tantivy backend. No production route or
-source database is modified by these tools.
+This directory contains the cloud-only snapshot exporter and read-only Turso
+source adapter for the production Tantivy backend. The adapter reconciles source
+observations into the serving index. These tools do not change routing or write
+to the source database.
 
 `sync.py` defaults to `--source-mode observed`. It discovers changed identities
 through indexed timestamp keysets, obtains backend document hashes and a durable

@@ -36,7 +36,7 @@ describe("PDS public search contract", () => {
     const preferred = scope("pds=filter.test&prefer_pds=acme.test&boost=100");
     const headers = new Headers({ "X-Typeahead-Pds": "filter.test", "X-Typeahead-Prefer-Pds": "acme.test", "X-Typeahead-Preference": "boost", "X-Typeahead-Boost": "42c80000" });
     expect(scopeAcknowledged(preferred, headers)).toBe(true);
-    for (const key of [...headers.keys()]) {
+    for (const key of headers.keys()) {
       const missing = new Headers(headers); missing.delete(key);
       expect(scopeAcknowledged(preferred, missing)).toBe(false);
       const wrong = new Headers(headers); wrong.set(key, "different");

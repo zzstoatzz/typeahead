@@ -13,28 +13,27 @@ GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=<prefix>
 - pds: optional exact hosting hostname, e.g. acme.com. Filters before ranking and caps;
   custom-domain handles are included, subdomains are separate. Case-insensitive;
   HTTP(S) origin and trailing slash/dot accepted; ports, paths and empty values rejected (400).
-  Scopes cover PDSs with at most 10,000 known actors at build time
-  (configurable). Unknown PDS returns { "actors": [] }. Larger PDSs, pending replay,
-  or missing backend/snapshot support return
-  503 PdsScopeUnavailable, never unscoped fallback results. Results reflect indexed PDS identity.
+  Tantivy supports every recorded canonical PDS hostname, without a per-host actor-count cutoff.
+  Unknown PDS returns { "actors": [] }; accounts with unknown hosting metadata cannot match.
+  Unavailable scope support returns 503 PdsScopeUnavailable, never unscoped fallback results.
+  Results reflect indexed PDS identity.
   This is a typeahead extension supported on both endpoint names, not a Bluesky API parameter.
 - response: { "actors": [ { did, handle, displayName?, avatar?, associated?, labels?, createdAt? } ] }
   (the shape of app.bsky.actor.defs#profileViewBasic minus the authenticated "viewer" field)
 - lexicon: https://tangled.org/zzstoatzz.io/typeahead/blob/main/lexicons/tech.waow.typeahead.searchActors.json
 
-## capability-gated PDS preference
+## PDS preference
 
-Candidate backends can support prefer_pds=<hostname>, independently of the hard pds filter.
+Production supports prefer_pds=<hostname>, independently of the hard pds filter.
 With no other preference parameters, same-PDS actors rank first within each exact/ordinary
 category. preference=pds_first makes this explicit. For a finite nonnegative score boost,
 use preference=boost&boost=<decimal>; boost alone also selects boost mode. Exact eligible
 handles retain priority. A boost is rounded to f32; supplying pds_first with boost is invalid.
-Missing prefer_pds, unknown modes, malformed limits and invalid boosts return 400.
+Preference/boost parameters without prefer_pds, unknown modes, malformed limits and invalid boosts return 400.
 Support is acknowledged by the backend and included in edge cache identity. Unsupported
 preference returns 503 PdsScopeUnavailable, never silently unpreferred results.
-Native scope limits above remain specific to the selected native snapshot; the Tantivy
-candidate can filter any recorded canonical host. Unknown source PDS cannot match either
-a hard filter or a preference. These candidate changes are not a production cutover.
+Unknown source PDS cannot match either a hard filter or a preference. Retained native
+rollback backends may have narrower scope support; unsupported requests fail explicitly.
 Backend query rejection is 400; unavailable, stale or invalid backend responses are 503,
 not successful empty results. Canonical and compatibility endpoint bodies remain equal.
 
@@ -44,6 +43,13 @@ GET https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=<pre
 
 identical behavior and response. exists so switching from bluesky's appview is a base-URL swap;
 kept indefinitely. new integrations should prefer the canonical endpoint.
+
+## architecture
+
+Tantivy serves our own index, seeded from verified R2 artifacts and updated continuously
+from Turso. The public Worker handles caching and API responses. Offline refresh builds
+and qualifies an inactive backend before routing changes; live updates do not wait for a build.
+The current 12-hour rebuild cadence renews source-coverage evidence, not a Tantivy requirement.
 
 ## etiquette
 

@@ -1,7 +1,7 @@
-# Isolated Tantivy search backend
+# Tantivy search backend
 
-A separate development backend. This crate does not modify a production route,
-Worker, ingester or managed search slot. It uses Tantivy 0.27.0 with the repository's
+The production search backend. Deployment and routing belong to the managed
+refresh controller; running local tests does not deploy it. It uses Tantivy 0.27.0 with the repository's
 canonical Zig normalization/PDS code through `../tantivy-normalizer`.
 
 ## Build and local verification
