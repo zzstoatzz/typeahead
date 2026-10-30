@@ -19,4 +19,11 @@ After refreshing Pi authentication, run from a scratch directory:
 pi --no-extensions --no-skills --no-context-files @/absolute/path/to/agent-prompt.md
 ```
 
+For scripts, set a descriptive `User-Agent`, for example
+`typeahead-community-smoke/1.0`, as well as `X-Client: community-smoke-test`.
+Live checks found that Cloudflare rejects Python urllib's default user agent
+with 403 / error 1010; the descriptive agent and ordinary curl both passed.
+Report edge rejections separately from engine results. Do not disable edge
+protections or impersonate another application to run a smoke test.
+
 The shareable prompt is a draft. The invitation has not been posted or sent.
