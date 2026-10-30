@@ -1,7 +1,8 @@
-use std::{collections::HashMap, env, fs::File, io, path::Path, sync::Arc};
+use std::{collections::HashMap, env, fs::File, io::{self, Read}, path::Path, sync::Arc};
+use sha2::{Digest, Sha256};
 use typeahead_tantivy::{
     Error, Result,
-    engine::{Engine, import},
+    engine::{Engine, import, resume_import},
     server,
 };
 fn arguments() -> Result<(String, HashMap<String, String>)> {
@@ -44,6 +45,18 @@ async fn run() -> Result<()> {
         * 1024
         * 1024;
     match command.as_str() {
+        "resume-import" => {
+            let mut bytes = Vec::new();
+            File::open(required(&args, "receipt")?)?.take(1024 * 1024 + 1).read_to_end(&mut bytes)?;
+            if bytes.len() > 1024 * 1024
+                || format!("{:x}", Sha256::digest(&bytes)) != required(&args, "receipt-sha256")?
+            {
+                return Err(Error::Invalid("stream receipt size or checksum differs".into()));
+            }
+            let receipt = serde_json::from_slice(&bytes)?;
+            let metadata = resume_import(data, &receipt, memory)?;
+            println!("{}", serde_json::to_string(&metadata)?);
+        }
         "import" => {
             let input = required(&args, "input")?;
             let batch = args

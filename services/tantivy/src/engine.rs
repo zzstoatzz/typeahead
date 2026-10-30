@@ -1168,6 +1168,46 @@ pub fn import<R: Read>(
         return Err(Error::Invalid("input data follows footer".into()));
     }
     commit(&mut writer, &mut metadata)?;
+    failpoint("import_after_footer");
+    finish_import(index, writer, metadata)
+}
+
+pub fn resume_import(data: &Path, receipt: &Value, writer_memory: usize) -> Result<Metadata> {
+    let index = Index::open_in_dir(data.join("index"))?;
+    check_format(&index)?;
+    let mut writer = index.writer_with_num_threads(1, writer_memory)?;
+    writer.set_merge_policy(Box::new(NoMergePolicy));
+    let metadata = load_metadata(&index)?;
+    let evidence = metadata.expiry_coverage.as_ref()
+        .ok_or_else(|| Error::Invalid("verified import footer required".into()))?;
+    let expected_hash = receipt["actors_sha256"].as_str()
+        .ok_or_else(|| Error::Invalid("stream receipt hash required".into()))?;
+    let reader: IndexReader = index.reader()?;
+    if !metadata.full_source
+        || metadata.source_manifest != receipt["source_manifest"]
+        || receipt["input_documents"].as_u64() != Some(metadata.input_actors)
+        || metadata.source_manifest["actor_count"].as_u64() != Some(metadata.input_actors)
+        || metadata.build_id != metadata.source_build_id
+        || metadata.watermark != metadata.snapshot_watermark
+        || !metadata.source_cursor.is_null()
+        || metadata.source_observation_revision != 0
+        || metadata.last_source_batch.is_some()
+        || evidence.verified_input_actors_sha256.as_deref() != Some(expected_hash)
+        || evidence.input_actors_checked != metadata.input_actors
+        || expected_hash.len() != 64
+        || !expected_hash.bytes().all(|b| b.is_ascii_hexdigit())
+        || metadata.actor_count.checked_add(metadata.tombstone_count) != Some(metadata.input_actors)
+        || reader.searcher().num_docs() != metadata.input_actors
+    {
+        return Err(Error::Invalid("saved import differs from verified stream receipt".into()));
+    }
+    if metadata.import_complete {
+        return Ok(metadata);
+    }
+    finish_import(index, writer, metadata)
+}
+
+fn finish_import(index: Index, mut writer: IndexWriter, mut metadata: Metadata) -> Result<Metadata> {
     let segments = index.searchable_segment_ids()?;
     if segments.len() > 1 {
         eprintln!(
