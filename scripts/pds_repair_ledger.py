@@ -6,13 +6,13 @@ import uuid
 from contextlib import closing
 
 SERVER_APPLY_SQL = """UPDATE actors SET pds=:pds, updated_at=CAST(strftime('%s','now') AS INTEGER)
-WHERE did=:did AND pds='' AND updated_at=:observed_updated_at
+WHERE did=:did AND pds=:observed_pds AND updated_at=:observed_updated_at
 RETURNING did,pds,updated_at"""
 
 BATCH_APPLY_SQL = """UPDATE actors SET
 pds=json_extract(j.value,'$.pds'),updated_at=CAST(strftime('%s','now') AS INTEGER)
 FROM json_each(:updates) AS j
-WHERE actors.did=json_extract(j.value,'$.did') AND actors.pds=''
+WHERE actors.did=json_extract(j.value,'$.did') AND actors.pds=json_extract(j.value,'$.observed_pds')
 AND actors.updated_at=json_extract(j.value,'$.observed_updated_at')
 RETURNING did,pds,updated_at"""
 
@@ -28,14 +28,17 @@ class Ledger:
             )''')
             db.execute('''CREATE TABLE IF NOT EXISTS attempt_history AS
                 SELECT * FROM attempts WHERE 0''')
+            for table in ('attempts', 'attempt_history'):
+                if 'observed_pds' not in {r[1] for r in db.execute('PRAGMA table_info(' + table + ')')}:
+                    db.execute('ALTER TABLE ' + table + " ADD COLUMN observed_pds TEXT NOT NULL DEFAULT ''")
             db.execute('CREATE UNIQUE INDEX IF NOT EXISTS attempt_history_id ON attempt_history(id)')
             db.commit()
 
-    def prepare(self, did, observed_updated_at, pds):
+    def prepare(self, did, observed_updated_at, pds, observed_pds=''):
         attempt=str(uuid.uuid4())
         with closing(sqlite3.connect(self.path)) as db, db:
-            db.execute('INSERT INTO attempts VALUES(?,?,?,?,?,?,NULL)',
-                       (attempt,did,observed_updated_at,pds,time.time(),'prepared'))
+            db.execute('INSERT INTO attempts(id,did,observed_updated_at,pds,prepared_at,state,receipt,observed_pds) VALUES(?,?,?,?,?,?,NULL,?)',
+                       (attempt,did,observed_updated_at,pds,time.time(),'prepared',observed_pds))
         return attempt
 
     def get(self, attempt):
@@ -45,7 +48,13 @@ class Ledger:
             if row is None:raise ValueError('Unknown repair attempt')
             return dict(row)
 
-    def retry(self, previous, observed_updated_at, pds):
+    def current(self, did):
+        with closing(sqlite3.connect(self.path)) as db:
+            db.row_factory=sqlite3.Row
+            row=db.execute('SELECT * FROM attempts WHERE did=?',(did,)).fetchone()
+            return dict(row) if row else None
+
+    def retry(self, previous, observed_updated_at, pds, observed_pds=''):
         if type(observed_updated_at) is not int or observed_updated_at < 0 or not isinstance(pds,str) or not pds:
             raise ValueError('Fresh source timestamp and resolved PDS required')
         attempt=str(uuid.uuid4())
@@ -56,8 +65,8 @@ class Ledger:
                 raise ValueError('Retry requires a definite completed current attempt')
             db.execute('INSERT INTO attempt_history SELECT * FROM attempts WHERE id=?',(previous,))
             db.execute('DELETE FROM attempts WHERE id=?',(previous,))
-            db.execute('INSERT INTO attempts VALUES(?,?,?,?,?,?,NULL)',
-                       (attempt,item[0],observed_updated_at,pds,time.time(),'prepared'))
+            db.execute('INSERT INTO attempts(id,did,observed_updated_at,pds,prepared_at,state,receipt,observed_pds) VALUES(?,?,?,?,?,?,NULL,?)',
+                       (attempt,item[0],observed_updated_at,pds,time.time(),'prepared',observed_pds))
         return attempt
 
     def transition(self, attempt, before, after, receipt=None):
@@ -70,7 +79,7 @@ class Ledger:
         item=self.get(attempt)
         self.transition(attempt,'prepared','sent')
         try:
-            rows=execute(SERVER_APPLY_SQL,{k:item[k] for k in ('did','pds','observed_updated_at')})
+            rows=execute(SERVER_APPLY_SQL,{k:item[k] for k in ('did','pds','observed_updated_at','observed_pds')})
             if rows == []:
                 self.transition(attempt,'sent','conflict',[])
                 return 'conflict'
@@ -94,7 +103,7 @@ class Ledger:
                 if result.rowcount!=1:raise ValueError('Batch has a non-prepared attempt')
         by_did={r['did']:r for r in items}
         try:
-            payload=[{k:item[k] for k in ('did','pds','observed_updated_at')} for item in items]
+            payload=[{k:item[k] for k in ('did','pds','observed_updated_at','observed_pds')} for item in items]
             rows=execute(BATCH_APPLY_SQL,{'updates':json.dumps(payload)})
             receipts={}
             for row in rows:
@@ -122,7 +131,7 @@ class Ledger:
             outcome='deleted'
         elif current['pds']==item['pds']:
             outcome='present_unattributed'
-        elif current['pds']=='' and current['updated_at']==item['observed_updated_at']:
+        elif current['pds']==item['observed_pds'] and current['updated_at']==item['observed_updated_at']:
             outcome='unchanged'
         else:
             outcome='changed'

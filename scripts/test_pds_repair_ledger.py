@@ -20,6 +20,24 @@ class LedgerTests(unittest.TestCase):
         row=self.db.execute("SELECT pds,updated_at FROM actors WHERE did='did:plc:a'").fetchone()
         return None if row is None else dict(zip(('pds','updated_at'),row))
 
+    def test_migration_requires_both_observed_pds_and_version(self):
+        self.db.execute("INSERT INTO actors VALUES('did:plc:migration','https://old.test',20)")
+        self.db.commit()
+        attempt=self.ledger.prepare('did:plc:migration',20,'https://new.test',observed_pds='https://old.test')
+        self.assertEqual(self.ledger.send(attempt,self.execute),'confirmed')
+        self.assertEqual(self.db.execute("SELECT pds FROM actors WHERE did='did:plc:migration'").fetchone()[0],'https://new.test')
+        stale=self.ledger.retry(attempt,20,'https://stale.test',observed_pds='https://old.test')
+        self.assertEqual(self.ledger.send(stale,self.execute),'conflict')
+
+    def test_legacy_ledger_upgrade_preserves_receipts(self):
+        path=Path(self.ledger.path).parent/'legacy.db'
+        with sqlite3.connect(path) as db:
+            db.execute('CREATE TABLE attempts(id TEXT PRIMARY KEY,did TEXT UNIQUE,observed_updated_at INTEGER,pds TEXT,prepared_at REAL,state TEXT,receipt TEXT)')
+            db.execute("INSERT INTO attempts VALUES('old','did:plc:old',10,'https://pds.test',0,'unknown',NULL)")
+        upgraded=Ledger(path)
+        self.assertEqual(upgraded.get('old')['observed_pds'],'')
+        self.assertEqual(upgraded.get('old')['state'],'unknown')
+
     def test_confirmed_write_cannot_be_resent(self):
         self.assertEqual(self.ledger.send(self.attempt,self.execute),'confirmed')
         self.assertEqual(self.current()['pds'],'https://pds.test')

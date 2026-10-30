@@ -50,7 +50,8 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
     ledger = Ledger(output / 'ledger.db')
     started = time.monotonic()
     next_public = 0
-    counts = {'source_statements': 0, 'source_writes': 0, 'public_requests': 0, 'authority_requests': 0}
+    next_backend = 0
+    counts = {'source_statements': 0, 'source_writes': 0, 'public_requests': 0, 'backend_requests': 0, 'authority_requests': 0}
     with (output / 'events.jsonl').open('x') as log:
         def event(kind, **values):
             log.write(json.dumps({'event': kind, 'at': time.time(), **values}) + '\n')
@@ -75,16 +76,20 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
                 raise ValueError('Serving health gate failed')
             return value
 
-        def present(item, pds=None):
-            nonlocal next_public
+        def present(item, pds=None, public=True):
+            nonlocal next_public, next_backend
             budget()
-            time.sleep(max(0, next_public - time.monotonic()))
-            next_public = time.monotonic() + 1.1
+            if public:
+                time.sleep(max(0, next_public - time.monotonic()))
+                next_public = time.monotonic() + 1.1
+            else:
+                time.sleep(max(0, next_backend - time.monotonic()))
+                next_backend = time.monotonic() + 0.2
             params = {'q': item['handle'], 'limit': 10}
             if pds:
                 params['pds'] = pds
-            counts['public_requests'] += 1
-            value = read_json(API + '?' + urllib.parse.urlencode(params))
+            counts['public_requests' if public else 'backend_requests'] += 1
+            value = read_json((API if public else backend + '/search') + '?' + urllib.parse.urlencode(params))
             return any(actor['did'] == item['did'] for actor in value['actors'])
 
         event('start', apply=apply, limit=limit, health=health())
@@ -98,7 +103,7 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
         for claim in claims:
             item = by_did[claim['did']]
             did, token = item['did'], claim['token']
-            if not present(item):
+            if not present(item, public=limit == 100):
                 queue.failed(did, token, 'global baseline absent')
                 event('unresolved', did=did, reason='global baseline absent')
                 continue
@@ -130,16 +135,20 @@ def run(output, backend, limit=100, apply=False, wall_seconds=1200):
         if apply and confirmed:
             budget()
             time.sleep(min(75, max(0, wall_seconds - (time.monotonic()-started))))
+            sampled_hosts = set()
+            public_samples = 0
             for item in confirmed:
                 health()
                 host = urllib.parse.urlsplit(item['proposed_pds']).hostname
-                direct = read_json(backend + '/search?' + urllib.parse.urlencode({'q': item['handle'], 'pds': host, 'limit': 10}))
-                if not any(a['did'] == item['did'] for a in direct['actors']):
-                    raise ValueError('Direct backend scope verification failed')
-                good = present(item, host) and present(item) and not present(item, 'unrelated-pilot.invalid')
-                event('verification', did=item['did'], passed=good)
+                good = present(item, host, public=False) and present(item, public=False) and not present(item, 'unrelated-pilot.invalid', public=False)
+                sample = limit == 100 or (public_samples < 100 and (host not in sampled_hosts or public_samples < 20))
+                if sample:
+                    good = good and present(item, host) and present(item) and not present(item, 'unrelated-pilot.invalid')
+                    sampled_hosts.add(host)
+                    public_samples += 1
+                event('verification', did=item['did'], passed=good, public_checked=sample)
                 if not good:
-                    raise ValueError('Public verification failed; stop expansion')
+                    raise ValueError('Search verification failed; stop expansion')
         event('complete', confirmed=len(confirmed), seconds=time.monotonic()-started, counts=counts, queue=queue.metrics(), health=health())
 
 

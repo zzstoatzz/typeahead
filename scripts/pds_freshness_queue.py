@@ -74,6 +74,13 @@ class Queue:
             delay = min(86400, 60 * 2 ** min(row[0], 10))
             db.execute('UPDATE identities SET state=?,due_at=?,lease_until=NULL,last_error=? WHERE did=?', (state, now + delay, error[:256], did))
 
+    def conflict(self, did, token, now=None):
+        now = int(time.time()) if now is None else now
+        with closing(sqlite3.connect(self.path)) as db, db:
+            result = db.execute("UPDATE identities SET state='pending',due_at=?,lease_until=NULL,lease_token=NULL,last_error='source conflict' WHERE did=? AND lease_token=? AND state='writing'", (now + 60, did, token))
+            if result.rowcount != 1:
+                raise ValueError('Identity write is not owned')
+
     def metrics(self, now=None):
         now = int(time.time()) if now is None else now
         with closing(sqlite3.connect(self.path)) as db:

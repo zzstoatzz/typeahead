@@ -103,8 +103,8 @@ propagation and error/retry rates. Preserve explicit failures and unresolved
 records in the denominator. Neither a snapshot rebuild nor source reconciliation
 can discover identity data absent from the source.
 
-The five-account pilot is the next implementation step after this cleanup and
-plan review. Full-backlog execution is gated on pilot results, not scheduled here.
+The five-account pilot passed. Full-backlog execution remains gated on the
+100/1,000-account stages and their measured economics; it is not scheduled here.
 
 ### Five-account runner
 
@@ -139,3 +139,25 @@ source/direct-backend/public verification. It defaults to dry-run and records
 unresolved candidates separately. Its queue and ledger are stage-local; a durable
 recurring deployment remains outstanding. Do not infer a backlog repair from a
 successful bounded stage.
+
+### Migration refresh and verification recovery
+
+`pds_freshness_worker.refresh_one` refreshes one leased identity from fresh
+source and authoritative DID reads. It compares both the observed PDS and source
+version before changing hosting, preserves unrelated columns, backs off failed
+resolution, and reschedules successful checks independently of profile updates.
+A definite concurrent-write conflict returns to the queue; ambiguous writes stay
+held for reconciliation. The primitive is locally tested, not a recurring deployment.
+
+`pds_cloud_verify.py` resumes read-only checks after an interrupted bounded stage.
+It reads confirmed receipts and skips identities already verified, checks source
+readback and both direct/public global/correct/wrong scopes, and records transient
+HTTP failures with bounded retries. It never repeats a source write. Original
+failure receipts remain evidence; a passing retry does not erase them.
+
+For the 1,000 stage, direct-backend scope checks cover every confirmed repair;
+public checks sample the first 20 and additional hosts, up to 100 identities.
+The 100 stage checks every confirmed identity publicly. Each receipt records
+whether public checks were performed. These are bounded qualification stages,
+not the bulk writer: bulk application must use the ledger's batched conditional
+statement and pace against live ingestion health.
