@@ -14,7 +14,7 @@ missing someone? weird ordering? something broken on your phone? send me what
 you typed, who you expected, and what happened. a screenshot or search URL helps.
 
 if you'd rather hand it to an agent, here's a prompt that asks which accounts
-you care about and walks through a small test: https://next.tangled.org/strings/zzstoatzz.io/3mz4bswbmj322
+you care about and walks through a small test: https://next.tangled.org/strings/zzstoatzz.io/3mz4cjm4mnn22
 
 API docs: https://typeahead.waow.tech/docs · agents: https://typeahead.waow.tech/llms.txt
 

@@ -53,3 +53,34 @@ test("recordRequest: one UPSERT keyed by the full (bucket, domain, endpoint, sta
   expect(calls[0].binds.slice(1)).toEqual(["northsky.app", "search", 429]);
   expect(calls[0].binds[0]).toBe(Math.floor(Date.now() / 300_000));
 });
+
+test("smoke testing remains recorded but does not count as an app", async () => {
+  const { createClient } = await import("@libsql/client");
+  const { tursoDb } = await import("./db");
+  const { recordTrafficSource, TRAFFIC_SOURCE_WHERE } = await import("./metrics");
+  const client = createClient({ url: "file::memory:" });
+  try {
+    await client.executeMultiple(`
+      CREATE TABLE traffic_sources(domain TEXT PRIMARY KEY,hits INTEGER);
+      CREATE TABLE traffic_buckets(bucket INTEGER,domain TEXT,hits INTEGER,PRIMARY KEY(bucket,domain));
+      CREATE TABLE request_buckets(bucket INTEGER,domain TEXT,endpoint TEXT,status INTEGER,hits INTEGER,PRIMARY KEY(bucket,domain,endpoint,status));
+    `);
+    const db = tursoDb(client);
+    for (const domain of ["smoke-testing", "community-smoke-test", "real-app.example"]) {
+      const request = new Request("https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate", { headers: { "X-Client": domain } });
+      expect(trafficDomain(request)).toBe(domain);
+      await recordTrafficSource(db, request);
+      await recordRequest(db, domain, "search", 200);
+      await recordRequest(db, domain, "search", 503);
+    }
+    const visible = await client.execute(`SELECT domain FROM traffic_sources ${TRAFFIC_SOURCE_WHERE}`);
+    expect(visible.rows.map(row => row.domain)).toEqual(["real-app.example"]);
+    const all = await client.execute("SELECT sum(hits) AS hits FROM request_buckets");
+    expect(all.rows[0].hits).toBe(6);
+    const errors = await client.execute("SELECT domain,hits FROM request_buckets WHERE status=503 ORDER BY domain");
+    expect(errors.rows.map(row => row.domain)).toEqual(["community-smoke-test", "real-app.example", "smoke-testing"]);
+    expect(errors.rows.every(row => row.hits === 1)).toBe(true);
+  } finally {
+    client.close();
+  }
+});

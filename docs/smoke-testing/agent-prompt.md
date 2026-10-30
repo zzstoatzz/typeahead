@@ -34,7 +34,9 @@ Do not silently replace a failed scoped request with an unscoped request.
 Keep this a smoke test, not a load test:
 - At most 20 requests to this service total, sequential, at least 2 seconds apart,
   with a 10-second request timeout. Count documentation reads and retries too.
-- Set X-Client: community-smoke-test when your tool permits. Never spoof a real app.
+- Set X-Client: smoke-testing when your tool permits. Never spoof a real app.
+  Scripts should also set User-Agent: typeahead-community-smoke/1.0; default
+  library user agents can receive Cloudflare 403/error 1010 before reaching the API.
 - Stop on 429 and respect Retry-After; stop and report repeated 5xx responses.
 - No parallel traffic, crawling, bulk account discovery, admin endpoints, login,
   POST /request-indexing or other writes. Do not visit private backend origins.

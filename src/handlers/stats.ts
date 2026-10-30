@@ -19,7 +19,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const range = ["24h", "7d", "30d", "all"].includes(reqUrl.searchParams.get("range") ?? "")
     ? reqUrl.searchParams.get("range")! : "7d";
   const norm = new URL("/stats", request.url);
-  norm.searchParams.set("metric", "search-exclusions-v1");
+  norm.searchParams.set("metric", "search-exclusions-smoke-v2");
   if (apps.length) norm.searchParams.set("apps", apps.join(","));
   if (range !== "7d") norm.searchParams.set("range", range);
   const cacheKey = new Request(norm.href);

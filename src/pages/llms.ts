@@ -53,6 +53,8 @@ The current 12-hour rebuild cadence renews source-coverage evidence, not a Tanti
 
 ## etiquette
 
+- smoke tests should set X-Client: smoke-testing. They remain in operational totals
+  but are excluded from public app/adoption counts. Keep tests sequential and low-volume.
 - scripts should send a descriptive User-Agent (e.g. typeahead-community-smoke/1.0).
   Cloudflare can reject default library user agents with 403/error 1010 before the API.
 - rate limit: 60 req/min per IP. responses are edge-cached for 60s.

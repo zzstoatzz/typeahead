@@ -167,6 +167,8 @@ export function docsPage(): string {
       (a bare app name works too, it just won't link anywhere).
       browser-based apps will also be identified automatically via the <code>Origin</code> header,
       but <code>X-Client</code> is preferred since it works everywhere (server-side, CLI, native apps).
+      For smoke tests, use <code>X-Client: smoke-testing</code>. These requests remain in
+      operational totals, including errors, but are excluded from public app counts.
     </p>
 
     <h2 id="response-comparison">response comparison</h2>

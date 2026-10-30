@@ -137,7 +137,8 @@ export function endpointLabel(pathname: string): string {
  *  IPs. Shared by the /stats list and the hourly materialized count so the
  *  page and the link-preview card can never disagree about what an app is. */
 export const TRAFFIC_SOURCE_WHERE = `WHERE domain != 'bench'
-       AND domain NOT IN ('cf-migration-verify', 'cf-migration-baseline',
+       AND domain NOT IN ('smoke-testing', 'community-smoke-test',
+                          'cf-migration-verify', 'cf-migration-baseline',
                           'migration-check', 'migration-debug')
        AND domain NOT LIKE '%.trycloudflare.com'
        AND domain NOT LIKE '%.ngrok.app'
