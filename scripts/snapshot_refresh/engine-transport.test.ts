@@ -42,8 +42,14 @@ test("engine route conditional promotion and rollback use isolated filesystem-ba
     expect(refreshed.value).toEqual({ version: 1, current: refreshedCandidate, previous: candidate, native_rollback: native });
     expect((await update(native, promoted.etag)).status).toBe(409);
     expect((await control()).value).toEqual(refreshed.value);
-    expect((await update(native, refreshed.etag)).status).toBe(200);
-    expect((await control()).value).toEqual({ version: 1, current: native, previous: refreshedCandidate, native_rollback: native });
+    const mutation = { owner: "typeahead-snapshot-refresh", request_id: "fixture-lease-1234", app: "typeahead-tantivy-a", acquired_at: 1793319000 };
+    const bucket = await mf.getR2Bucket("SEARCH_CONTROL", "transport");
+    await bucket.put("control/search-routing.json", JSON.stringify({ ...refreshed.value, mutation }));
+    const leased = await control();
+    expect((await update({ ...candidate, origin: "https://typeahead-tantivy-a.fly.dev" }, leased.etag)).status).toBe(409);
+    expect((await control()).value).toEqual(leased.value);
+    expect((await update(native, leased.etag)).status).toBe(200);
+    expect((await control()).value).toEqual({ version: 1, current: native, previous: refreshedCandidate, native_rollback: native, mutation });
     await mf.dispatchFetch(`${base}/route`);
     expect((await mf.dispatchFetch(`${base}/admin/refresh`, { method: "POST", body: "{}" })).status).toBe(401);
     const rolledBack = await mf.dispatchFetch(`${base}/search?q=a`); expect(rolledBack.status).toBe(200); expect(rolledBack.headers.get("X-Typeahead-Engine")).toBe("native"); expect(await rolledBack.json()).toMatchObject({ origin: native.origin });

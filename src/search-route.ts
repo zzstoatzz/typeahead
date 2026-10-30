@@ -38,6 +38,13 @@ const retainedNativeSchema = z.looseObject({
   legacy_build_id: z.optional(z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/))),
 });
 
+const mutationSchema = z.object({
+  owner: z.literal("typeahead-snapshot-refresh"),
+  request_id: z.string().check(z.regex(/^[A-Za-z0-9_-]{8,80}$/)),
+  app: z.enum(["typeahead-tantivy-a", "typeahead-tantivy-b"]),
+  acquired_at: z.int().check(z.gte(0)),
+});
+
 export function routeIdentity(route: ReturnType<typeof parseRoute>): string {
   return JSON.stringify(route.engine === "tantivy"
     ? [route.engine, route.origin, route.build_id, route.format, route.admission_sha256, route.binary_sha256, route.retrieval_strategy]
@@ -64,7 +71,10 @@ export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: str
     current: z.unknown(),
     previous: z.optional(z.unknown()),
     native_rollback: z.optional(z.unknown()),
+    mutation: z.optional(z.unknown()),
   }).parse(envelope);
+  const mutation = retained?.mutation == null ? null : mutationSchema.parse(retained.mutation);
+  if (mutation && current.origin === `https://${mutation.app}.fly.dev`) return false;
   const parsedPrevious = before ? parseRoute(envelope) : null;
   const previous = parsedPrevious?.engine === "tantivy" ? parsedPrevious : retained ? retainedNativeSchema.parse(retained.current) : null;
   let anchor = retained?.native_rollback == null ? null : retainedNativeSchema.parse(retained.native_rollback);
@@ -79,7 +89,7 @@ export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: str
   const options = expectedEtag === null
     ? { onlyIf: { etagDoesNotMatch: "*" } }
     : { onlyIf: { etagMatches: expectedEtag } };
-  const result = await bucket.put(ROUTE_KEY, JSON.stringify({ version: 1, current, previous, ...(anchor ? { native_rollback: anchor } : {}) }), options);
+  const result = await bucket.put(ROUTE_KEY, JSON.stringify({ version: 1, current, previous, ...(anchor ? { native_rollback: anchor } : {}), ...(mutation ? { mutation } : {}) }), options);
   return result !== null;
 }
 
