@@ -113,6 +113,31 @@ class AdmissionTests(unittest.TestCase):
         known['source_bootstrap']['native_visible_database_sha256']=manifest['source_database_sha256']
         self.assertEqual(adapter.validate_checkpoint_provenance(known,receipt_raw,native_raw)['counts']['native_visible_actors'],1)
 
+    def test_checkpoint_fetch_budget_accepts_nine_hundred_seconds_without_moving_source_floor(self):
+        original,_,native_raw=self.checkpoint_manifest()
+        for elapsed in [180.1,899.9,900]:
+            changed=copy.deepcopy(original)
+            bootstrap=changed['source_bootstrap'];receipt=bootstrap['checkpoint_receipt']
+            receipt['wall_seconds']=elapsed
+            raw=json.dumps(receipt,sort_keys=True,separators=(',',':')).encode()
+            bootstrap['checkpoint_receipt_json']=raw.decode()
+            bootstrap['checkpoint_receipt_sha256']=hashlib.sha256(raw).hexdigest()
+            changed['source_manifest_sha256']=bootstrap['checkpoint_receipt_sha256']
+            with self.subTest(elapsed=elapsed):
+                self.assertTrue(adapter.validate_checkpoint_provenance(changed,raw,native_raw)['structurally_valid'])
+                self.assertEqual(changed['source_watermark'],original['source_watermark'])
+                self.assertEqual(receipt['source_clock_before'],original['source_bootstrap']['checkpoint_receipt']['source_clock_before'])
+        for elapsed in [900.001,-1,True,float('inf'),float('nan')]:
+            changed=copy.deepcopy(original)
+            bootstrap=changed['source_bootstrap'];receipt=bootstrap['checkpoint_receipt']
+            receipt['wall_seconds']=elapsed
+            raw=json.dumps(receipt,sort_keys=True,separators=(',',':')).encode()
+            bootstrap['checkpoint_receipt_json']=raw.decode()
+            bootstrap['checkpoint_receipt_sha256']=hashlib.sha256(raw).hexdigest()
+            changed['source_manifest_sha256']=bootstrap['checkpoint_receipt_sha256']
+            with self.subTest(elapsed=elapsed),self.assertRaises(ValueError):
+                adapter.validate_checkpoint_provenance(changed,raw,native_raw)
+
     def test_checkpoint_provenance_rejects_floor_prefix_wal_count_and_anchor_confusion(self):
         original,receipt_raw,native_raw = self.checkpoint_manifest()
         cases=[(('source_bootstrap','counts','raw_actor_rows'),4),

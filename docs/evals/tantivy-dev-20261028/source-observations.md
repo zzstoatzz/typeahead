@@ -134,7 +134,7 @@ cache cleanup. This is not a cloud deployment or a full-corpus sweep-time result
 ## Checkpoint admission and serving expiry
 
 The optional checkpoint adapter is locally verified, not deployed. It binds the
-exact bounded provider receipt, materialized SQLite/WAL proof, full stream count
+exact provider receipt (at most 900 seconds of fetch work), materialized SQLite/WAL proof, full stream count
 and engine-verified footer hash. The raw checkpoint and independently retained
 native rollback anchor have separate counts and identities; a native prefix hash
 is never substituted for the raw source. Public import metadata retains policy
@@ -156,7 +156,7 @@ seconds before coverage expiry and refuses an expired cached restart. This adds
 no search proxy or reader change. It requires an independently qualified refresh
 and fallback procedure before production use.
 
-The installer suite passes twelve tests, including actual SQLite/WAL fetch,
+The installer suite passes thirteen tests, including the bounded fetch receipt and actual SQLite/WAL fetch,
 canonical stream, strict Rust import, live SQL polling/policy, freeze/install and
 HTTP admission. The slot suite passes eight tests with one optional Linux image
 test skipped; actual reader/reconciler processes terminate at the coverage

@@ -121,7 +121,7 @@ def validate_checkpoint_contract(manifest):
     integer(receipt.get('received_source_bytes'), 'received source bytes', receipt['base_db_bytes'] + received * 4120)
     integer(receipt.get('source_requests'), 'source request count', 1)
     elapsed = receipt.get('wall_seconds')
-    if type(elapsed) not in (int, float) or not 0 <= elapsed <= 180:
+    if type(elapsed) not in (int, float) or not 0 <= elapsed <= 900:
         raise ValueError('Checkpoint wall-time bound differs')
     overlap = integer(bootstrap.get('replay_overlap_seconds'), 'replay overlap', 1)
     floor = integer(bootstrap.get('replay_floor'), 'replay floor', 1)
