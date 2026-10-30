@@ -31,13 +31,22 @@ The repository's `hubble-mini export-pairs` command exports captured DID/host
 pairs from a local mini database; it is not a public full-Hubble identity export.
 Its older non-Bluesky snapshot scope and lack of identity verification matter.
 
-Our existing Stream instance reports 16.3 million repos. Its metadata contains
-`host` and `pds`, but normal bootstrap can leave `pds` empty and store the final
-download host separately. Archive identity events contain no PDS. Assess the
-existing metadata and Hubble's existing stored-metadata API before choosing an
-implementation. Cached lookups still require one request per DID; bulk viability
-and acceptable request rates have not been measured. No new data-collection
-system or replacement freshness framework is authorized by these findings.
+The existing cloud Stream archive was measured read-only on October 30:
+16,300,003 repo rows, with only 123 explicit `pds` values. The separate download
+`host` field supplies 16,249,268 candidate mappings after excluding observed
+unknown, mirror and relay buckets; those candidates are not automatically
+current authoritative identities.
+
+A uniform source-rowid sample found usable archive hosts for 1,773 of 3,522
+Typeahead actors missing PDS (50.3%); 1,739 were absent from the archive and 10
+had excluded hosts. All 100 randomly selected candidates checked against current
+DID documents matched. This is sampled overlap, not a full-backlog count.
+
+Five authoritative-checked candidates were conditionally repaired through the
+existing ledger, preserving nonempty PDS values and concurrent source changes.
+All five became visible in their correct scope and remained absent from a wrong
+scope within 38 seconds. The full backfill and freshness verification are still
+pending. See [pilot evidence](ops/archive-pds-pilot-20261030/README.md).
 
 Completion also includes reconciling relevant operations/API documentation and
 then simplifying the public `/docs` page (`src/pages/docs.ts`): concise quickstart,

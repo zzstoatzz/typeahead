@@ -1,0 +1,93 @@
+{
+  "archive": {
+    "counts": {
+      "rows": 16300003,
+      "host_present": 16300003,
+      "pds_present": 123,
+      "neither": 0,
+      "active": 16300003,
+      "pds_matches_host": 123
+    },
+    "versions": {
+      "5": 16300003
+    },
+    "distinct_hosts": 2842,
+    "top_hosts": [
+      [
+        "agrocybe.us-west.host.bsky.network",
+        450866
+      ],
+      [
+        "cortinarius.us-west.host.bsky.network",
+        450211
+      ],
+      [
+        "calocybe.us-west.host.bsky.network",
+        450078
+      ],
+      [
+        "leccinum.us-west.host.bsky.network",
+        450049
+      ],
+      [
+        "pholiota.us-west.host.bsky.network",
+        449955
+      ],
+      [
+        "hebeloma.us-west.host.bsky.network",
+        449788
+      ],
+      [
+        "gomphidius.us-west.host.bsky.network",
+        449709
+      ],
+      [
+        "bankera.us-west.host.bsky.network",
+        449202
+      ],
+      [
+        "entoloma.us-west.host.bsky.network",
+        449146
+      ],
+      [
+        "hygrophorus.us-west.host.bsky.network",
+        448514
+      ],
+      [
+        "phellinus.us-west.host.bsky.network",
+        354784
+      ],
+      [
+        "chalciporus.us-west.host.bsky.network",
+        353952
+      ],
+      [
+        "rhizopogon.us-west.host.bsky.network",
+        353658
+      ],
+      [
+        "auriporia.us-west.host.bsky.network",
+        353587
+      ],
+      [
+        "discina.us-west.host.bsky.network",
+        352369
+      ]
+    ],
+    "elapsed_s": 219.9954481124878,
+    "measurement_unix": 1793389812.8991396
+  },
+  "overlap": {
+    "counts": {
+      "sampled_rowids": 5000,
+      "existing_actors": 4511,
+      "missing_pds": 3522,
+      "candidate_host": 1773,
+      "archive_absent": 1739,
+      "already_has_pds": 989,
+      "excluded_host": 10
+    },
+    "max_rowid": 14326580
+  },
+  "sample_method": "5000 uniform distinct rowids in [1,max_rowid], seed 20261030; 4511 existing actors; no source writes during measurement"
+}
