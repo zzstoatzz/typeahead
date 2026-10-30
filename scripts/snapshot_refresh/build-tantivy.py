@@ -23,7 +23,7 @@ def main():
         context=Path(directory);shutil.copy2(args.binary,context/'typeahead-tantivy')
         for name in ['tantivy-slot.py','tantivy_install.py','install.py']:shutil.copy2(HERE/name,context/name)
         (context/'input').mkdir()
-        for name in ['sync.py','current_state.py']:shutil.copy2(ROOT/'services/tantivy-input'/name,context/'input'/name)
+        for name in ['sync.py','current_state.py','budget.py']:shutil.copy2(ROOT/'services/tantivy-input'/name,context/'input'/name)
         subprocess.run(['docker','build','--platform','linux/amd64','-f',str(HERE/'Dockerfile.tantivy'),'-t',args.image,str(context)],check=True)
 
 

@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -16,6 +17,8 @@ import urllib.request
 
 HERE=Path(__file__).resolve().parent
 sys.path.insert(0,str(HERE))
+MODULE=Path(os.environ.get('TA_SLOT_MODULE',HERE/'tantivy-slot.py'))
+sys.path.insert(0,str(MODULE.parent))
 spec=importlib.util.spec_from_file_location('tantivy_slot',Path(os.environ.get('TA_SLOT_MODULE',HERE/'tantivy-slot.py')));slot=importlib.util.module_from_spec(spec);spec.loader.exec_module(slot)
 import test_tantivy_install as fixtures
 adapter=slot.installer
@@ -53,7 +56,7 @@ class SlotTests(unittest.TestCase):
             child,public,admin=fixtures.start_strict(BINARY,data,log,secret)
             try:
                 state=smoke.request(admin,'/admin/source-state',{'dids':[]},secret)[2];cursor=fixture.status()['source_cursor'];cursor.update(through=now,actors={'updated_at':now,'did':''},tombstones={'deleted_at':now,'did':''},lookback_seconds=300)
-                cursor['reconciliation'].update(last_completed_at=now-1,last_completed_started_at=now-10)
+                cursor['reconciliation'].update(last_completed_at=now-1,last_completed_started_at=now-10,source_after_did='',backend_after_did='',source_done=True,backend_done=True,round=1,round_started_at=now-10)
                 body={'actors':[],'expected_documents':[],'expected_source_cursor':state['source_cursor'],'source_cursor':cursor,'expected_observation_revision':state['source_observation_revision'],'batch_id':hashlib.sha256(b'slot-qualified').hexdigest(),'watermark':now,'policy_snapshot':{'schema_version':1,'source_observed_at':now,'overrides':[],'blocked_domains':[],'complete':True}}
                 code,_,reply=smoke.request(admin,'/admin/source-reconcile',body,secret)
                 if code!=200:raise RuntimeError('fixture source reconcile failed '+str(reply))
@@ -78,7 +81,7 @@ class SlotTests(unittest.TestCase):
         self.assertFalse((self.root.parent/'.tantivy-slot/index.tar').exists())
         self.assertEqual(self.instance().install(),value);self.assertEqual(len(self.store.keys),4)
         code='import importlib.util,json,sys;sys.path.insert(0,sys.argv[1]);s=importlib.util.spec_from_file_location("slot",sys.argv[1]+"/tantivy-slot.py");m=importlib.util.module_from_spec(s);s.loader.exec_module(m);m.Slot(json.loads(sys.argv[2]),m.Path(sys.argv[3]),m.Path(sys.argv[4])).install()'
-        restarted=subprocess.run([sys.executable,'-c',code,str(HERE),json.dumps(self.env),str(self.root),str(BINARY)],capture_output=True,timeout=30)
+        restarted=subprocess.run([sys.executable,'-c',code,str(MODULE.parent),json.dumps(self.env),str(self.root),str(BINARY)],capture_output=True,timeout=30)
         self.assertEqual(restarted.returncode,0,restarted.stderr);self.assertEqual(len(self.store.keys),4)
         with (Path(self.work.name)/'running.log').open('wb') as log:
             child,public,admin=fixtures.start_strict(BINARY,self.root,log,secrets.token_urlsafe(24))
@@ -89,6 +92,81 @@ class SlotTests(unittest.TestCase):
         (self.root/'index/meta.json').write_text('corrupt')
         with self.assertRaisesRegex(ValueError,'reader rejected'):self.instance().install()
         self.assertEqual(len(self.store.keys),4)
+    def test_actual_slot_reader_acknowledges_global_merge(self):
+        portable=json.loads(self.store.objects[self.bound['artifact_manifest_key']]);portable['retrieval_strategy']='global-merge'
+        portable_raw=json.dumps(portable).encode();self.store.objects[self.bound['artifact_manifest_key']]=portable_raw
+        bound=dict(self.bound,retrieval_strategy='global-merge',artifact_manifest_sha256=hashlib.sha256(portable_raw).hexdigest())
+        raw=json.dumps(bound).encode();self.store.objects[self.key]=raw;self.env['EXPECTED_DEPLOYMENT_SHA256']=hashlib.sha256(raw).hexdigest();self.env['ADMIN_SECRET']=secrets.token_urlsafe(24)
+        instance=self.instance();value=instance.install();public,admin=smoke.port(),smoke.port()
+        child=instance.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
+        try:
+            for _ in range(100):
+                try:code,headers,status=smoke.request(f'http://127.0.0.1:{public}','/index/status');break
+                except OSError:time.sleep(.02)
+            self.assertEqual({key.lower():value for key,value in headers.items()}['x-typeahead-retrieval-strategy'],'global-merge')
+            self.assertEqual(status['retrieval_strategy'],'global-merge')
+            self.assertEqual(smoke.request(f'http://127.0.0.1:{public}','/search?q=real')[0],200)
+        finally:instance.stop()
+    def test_separate_process_cached_restart_continues_actual_policy_polling(self):
+        self.instance().install()
+        sys.path.insert(0,str(ROOT/'services/tantivy-input'));import test_sync
+        with tempfile.TemporaryDirectory() as directory:
+            fixture=test_sync.Fixture(Path(directory));fixture.actor('did:example:local',fixture.floor+1)
+            try:
+                program="import importlib.util,json,sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1]);spec=importlib.util.spec_from_file_location('slot',sys.argv[1]+'/tantivy-slot.py');slot=importlib.util.module_from_spec(spec);spec.loader.exec_module(slot)\nslot.Slot(json.loads(sys.argv[2]),Path(sys.argv[3]),Path(sys.argv[4])).install()\nsys.path.insert(0,sys.argv[5]);import sync,current_state,budget\nsource=budget.accounted_source(sync,sys.argv[6],sys.argv[7],Path(sys.argv[3])/'source-budget.json','fixture',536870912,allow_test_loopback=True,window_seconds=3600,min_request_interval=0)\ntry:\n result=current_state.CurrentPolicySource(source,sync).observe_with_policy(['did:example:local']);assert result['observations'][0]['actor']['did']=='did:example:local'\n print(json.dumps(source.accounting()))\nfinally:source.close()\n"
+                args=[sys.executable,'-c',program,str(MODULE.parent),json.dumps(self.env),str(self.root),str(BINARY),os.environ.get('TA_INPUT_ROOT',str(ROOT/'services/tantivy-input')),fixture.url,fixture.source_secret]
+                def poll():
+                    child=subprocess.run(args,capture_output=True,timeout=30);self.assertEqual(child.returncode,0,child.stderr);return json.loads(child.stdout)
+                first=poll();second=poll()
+                self.assertEqual(len(fixture.requests),2);self.assertEqual(len(self.store.keys),4)
+                self.assertGreater(second['source_bytes'],first['source_bytes']);self.assertEqual(second['window_started_at'],first['window_started_at']);self.assertEqual(second['max_source_bytes'],536870912)
+                self.assertEqual(second['recovered_reservation_bytes'],0);self.assertEqual(second['poll_reserve_bytes'],134217728)
+            finally:fixture.close()
+    @unittest.skipUnless(os.environ.get('TA_SLOT_SERVE_TEST')=='1','exact guest paths/ports are exercised in isolated Linux container')
+    def test_actual_serve_source_polling_survives_separate_process_restart(self):
+        self.instance().install();sys.path.insert(0,str(ROOT/'services/tantivy-input'));import test_sync
+        with tempfile.TemporaryDirectory() as directory:
+            work=Path(directory);fixture=test_sync.Fixture(work,now=int(time.time()));fixture.actor('did:plc:fixture000001',fixture.floor+1)
+            key=work/'key.pem';cert=work/'cert.pem'
+            subprocess.run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-keyout',str(key),'-out',str(cert),'-days','1','-subj','/CN=127.0.0.1','-addext','subjectAltName=IP:127.0.0.1'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,check=True,timeout=10)
+            context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER);context.load_cert_chain(cert,key);fixture.server.socket=context.wrap_socket(fixture.server.socket,server_side=True)
+            env={**os.environ,**self.env,'ADMIN_SECRET':fixture.admin_secret,'TURSO_URL':fixture.url.replace('http:','https:'),'TURSO_AUTH_TOKEN':fixture.source_secret,'SSL_CERT_FILE':str(cert)}
+            program="import importlib.util,os,signal,sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1]);spec=importlib.util.spec_from_file_location('slot','/app/tantivy-slot.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)\ninstance=module.Slot(os.environ,Path(sys.argv[2]),Path(sys.argv[3]))\ndef stop(*_):raise KeyboardInterrupt()\nsignal.signal(signal.SIGTERM,stop)\ntry:instance.serve(instance.install())\nexcept KeyboardInterrupt:pass\nfinally:instance.stop()\n"
+            def run_until_polled(previous_requests):
+                child=subprocess.Popen([sys.executable,'-c',program,str(MODULE.parent),str(self.root),str(BINARY)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                try:
+                    until=time.monotonic()+15
+                    while time.monotonic()<until:
+                        self.assertIsNone(child.poll())
+                        ledger=self.root/'source-budget.json';status=self.root/'source-status.json'
+                        if any(request['sql']==test_sync.sync.CURRENT_POLICY_SQL for request in fixture.requests[previous_requests:]) and ledger.exists() and status.exists():
+                            state=json.loads(ledger.read_bytes())
+                            if not state['pending_reservation']:return state
+                        time.sleep(.05)
+                    self.fail('actual source polling did not resume: '+(self.root/'source.log').read_text()[-3000:])
+                finally:
+                    child.terminate()
+                    try:child.wait(12)
+                    except subprocess.TimeoutExpired:child.kill();child.wait(5)
+            try:
+                time.sleep(max(0,fixture.now+3-time.time()));fixture.now=int(time.time())
+                first=run_until_polled(0);requests=len(fixture.requests)
+                time.sleep(max(0,fixture.now+3-time.time()));fixture.now=int(time.time())
+                second=run_until_polled(requests)
+                self.assertGreater(len(fixture.requests),requests);self.assertEqual(len(self.store.keys),4)
+                self.assertGreater(second['source_bytes'],first['source_bytes']);self.assertEqual(second['window_started_at'],first['window_started_at']);self.assertEqual(second['max_source_bytes'],536870912);self.assertEqual(second['poll_reserve_bytes'],134217728)
+            finally:fixture.close()
+    def test_cached_structural_mode_accepts_inflight_cycle_but_rejects_identity_drift(self):
+        instance=self.instance();value=instance.install();state=instance.actual_metadata(value)
+        state['source_cursor']['cycle']={'upper_bound':state['watermark']+1,'stream':'actors'}
+        adapter.validate_metadata(state,value,require_source_ready=False);instance.validate_cursor(state)
+        corrupt=copy.deepcopy(state);corrupt['source_cursor']['cycle']={}
+        with self.assertRaisesRegex(ValueError,'Cached source cursor rejected'):instance.validate_cursor(corrupt)
+        with self.assertRaisesRegex(ValueError,'cycle is incomplete'):adapter.validate_metadata(state,value)
+        corrupt=copy.deepcopy(state);corrupt['source_cursor']['build_id']='b1793236000-other'
+        with self.assertRaisesRegex(ValueError,'identity/policy'):adapter.validate_metadata(corrupt,value,require_source_ready=False)
+        corrupt=copy.deepcopy(state);corrupt['snapshot_watermark']+=1;corrupt['source_cursor']['snapshot_watermark']+=1
+        with self.assertRaisesRegex(ValueError,'immutable artifact provenance'):adapter.validate_metadata(corrupt,value,require_source_ready=False)
     def test_corrupt_bundle_fails_before_admission_and_preserves_no_installed_receipt(self):
         self.store.objects[self.bound['object_key']]=b'broken'
         with self.assertRaisesRegex(ValueError,'byte identity'):self.instance().install()
@@ -105,9 +183,5 @@ class SlotTests(unittest.TestCase):
         stale=dict(self.env,EXPECTED_DEPLOYMENT_SHA256='1'*64)
         with self.assertRaisesRegex(ValueError,'Deployment byte identity'):self.instance(stale).install()
         self.assertEqual(len(self.store.keys),4)
-    def test_durable_hourly_quota_survives_restart_and_early_exit(self):
-        self.instance().install();first=self.instance();self.assertIsNone(first.source_window(1000))
-        restarted=self.instance();self.assertEqual(restarted.source_window(1001),4600);self.assertEqual(restarted.source_window(4599),4600)
-        self.assertIsNone(restarted.source_window(4600));self.assertEqual(first.source_window(4601),8200)
 
 if __name__=='__main__':unittest.main()

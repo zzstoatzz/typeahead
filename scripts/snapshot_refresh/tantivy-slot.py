@@ -1,5 +1,6 @@
 """Managed immutable Tantivy slot; source freshness is qualified separately from install."""
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -86,12 +87,22 @@ class Slot:
         installer.digest(value.get('artifact_manifest_sha256'))
         if checksum(self.binary)!=value['binary_sha256']:raise ValueError('Runtime reader differs')
         return value
+    def validate_cursor(self,state):
+        source=Path(__file__).resolve().parent/'input'
+        if not source.is_dir():source=Path(__file__).resolve().parents[2]/'services/tantivy-input'
+        modules=[]
+        for name in ['sync','current_state']:
+            spec=importlib.util.spec_from_file_location('slot_'+name,source/(name+'.py'))
+            module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module);modules.append(module)
+        replay,current=modules
+        try:current.ObservedSynchronizer(None,None,replay).cursor(state)
+        except replay.SafeError:raise ValueError('Cached source cursor rejected') from None
     def actual_metadata(self,value):
         result=subprocess.run([str(self.binary),'status','--data',str(self.root),'--writer-memory-mb','32'],capture_output=True,timeout=60)
         if result.returncode or len(result.stdout)>8*1024**2:raise ValueError('Cached reader rejected index')
         state=json.loads(result.stdout)
-        installer.validate_metadata(state,value,require_coverage_ready=False,require_fresh=False)
-        return state
+        installer.validate_metadata(state,value,require_coverage_ready=False,require_source_ready=False)
+        self.validate_cursor(state);return state
     def install(self):
         self.cache.mkdir(mode=0o700,parents=True,exist_ok=True)
         if self.cache.is_symlink():raise ValueError('Symlink metadata cache')
@@ -140,34 +151,25 @@ class Slot:
         except (OSError,ValueError,KeyError):
             receipt=metadata(self.root/'installation.json');receipt.update(runtime_qualified=False)
         atomic_json(self.root/'installation.json',receipt)
-    def source_window(self,now):
-        path=self.root/'source-window.json'
-        prior=metadata(path) if path.exists() else None
-        if prior is not None:
-            if prior.get('schema_version')!=1 or type(prior.get('started_at')) is not int or prior.get('ends_at')!=prior['started_at']+3600:raise ValueError('Invalid durable source quota window')
-            if now<prior['ends_at']:return prior['ends_at']
-        atomic_json(path,{'schema_version':1,'started_at':now,'ends_at':now+3600})
-        return None
+    def start_reader(self,value,listen='0.0.0.0:8080',admin_listen='127.0.0.1:8081'):
+        server=subprocess.Popen([str(self.binary),'serve','--data',str(self.root),'--listen',listen,'--admin-listen',admin_listen,'--max-sync-lag-s','120','--retrieval',value['retrieval_strategy']],env=self.env)
+        self.children.append(server);return server
     def serve(self,value):
         if not all(self.env.get(name) for name in ['ADMIN_SECRET','TURSO_URL','TURSO_AUTH_TOKEN']):raise ValueError('Missing source runtime capability')
-        server=subprocess.Popen([str(self.binary),'serve','--data',str(self.root),'--listen','0.0.0.0:8080','--admin-listen','127.0.0.1:8081','--max-sync-lag-s','120','--retrieval-strategy',value['retrieval_strategy']],env=self.env)
-        self.children.append(server)
+        server=self.start_reader(value)
         while server.poll() is None:
-            wait_until=self.source_window(int(time.time())+1)
-            if wait_until is None:
-                logpath=self.root/'source.log'
-                if logpath.exists() and logpath.stat().st_size>16*1024**2:logpath.replace(self.root/'source.previous.log')
-                with logpath.open('ab') as log:
-                    source=subprocess.Popen(['python3','/app/input/sync.py','--source-mode','observed','--policy-mode','snapshot','--status-file',str(self.root/'source-status.json'),'--max-run-seconds','3600','--max-source-bytes','536870912','--anti-entropy-pages','64','--max-sweep-seconds','20','--max-cycle-seconds','30','--interval','40'],env=self.env,stdout=log,stderr=subprocess.STDOUT)
-                self.children.append(source)
-                while source.poll() is None and server.poll() is None:self.runtime_gates(value);time.sleep(5)
-                if source.poll() is None:
-                    source.terminate()
-                    try:source.wait(timeout=10)
-                    except subprocess.TimeoutExpired:source.kill();source.wait()
-                self.children.remove(source)
-                wait_until=metadata(self.root/'source-window.json')['ends_at']
-            while time.time()<wait_until and server.poll() is None:self.runtime_gates(value);time.sleep(min(5,max(0,wait_until-time.time())))
+            logpath=self.root/'source.log'
+            if logpath.exists() and logpath.stat().st_size>16*1024**2:logpath.replace(self.root/'source.previous.log')
+            with logpath.open('ab') as log:
+                source=subprocess.Popen(['python3','/app/input/sync.py','--source-mode','observed','--policy-mode','snapshot','--status-file',str(self.root/'source-status.json'),'--budget-file',str(self.root/'source-budget.json'),'--budget-build-id',value['active_build'],'--max-run-seconds','3600','--max-source-bytes','536870912','--poll-reserve-bytes','134217728','--anti-entropy-pages','64','--max-sweep-seconds','20','--max-cycle-seconds','30','--interval','40'],env=self.env,stdout=log,stderr=subprocess.STDOUT)
+            self.children.append(source)
+            while source.poll() is None and server.poll() is None:self.runtime_gates(value);time.sleep(5)
+            if source.poll() is None:
+                source.terminate()
+                try:source.wait(timeout=10)
+                except subprocess.TimeoutExpired:source.kill();source.wait()
+            self.children.remove(source)
+            if server.poll() is None:time.sleep(2)
         raise RuntimeError('Slot reader stopped')
 
 

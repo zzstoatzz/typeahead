@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "observed_at": "2026-10-30T00:12:05.805486+00:00",
+  "observed_at": "2026-10-30T00:31:57.799307+00:00",
   "scope": "local-slot-image-and-loopback-fixtures",
   "production_contact": false,
   "provider_resources_qualified": false,
   "slot_deployed": false,
   "image": "typeahead-tantivy-slot:local",
-  "image_id": "sha256:c13e205f2acb1b3338753767b8d392a6f055cb8e070878f22bfde38054319252",
+  "image_id": "sha256:317f144c4bb6c346faa484557013b5cf8bc2629738f63ad134389f98afe9938e",
   "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
   "container_limits": {
     "cpus": 2,
@@ -15,32 +15,57 @@
   },
   "tests": {
     "host_slot": {
-      "passed": 5,
-      "wall_seconds": 2.776
+      "passed": 7,
+      "skipped_exact_linux_serve_fixture": 1,
+      "wall_seconds": 4.309
     },
     "existing_installer": {
       "passed": 6,
-      "wall_seconds": 1.094
+      "wall_seconds": 0.969
     },
     "linux_installed_slot_module": {
-      "passed": 5,
-      "wall_seconds": 5.3
+      "passed": 8,
+      "wall_seconds": 17.764
+    },
+    "linux_shared_budget": {
+      "passed": 4,
+      "wall_seconds": 4.948
+    },
+    "host_source_sync": {
+      "passed": 15,
+      "wall_seconds": 7.561
+    },
+    "host_source_current_state": {
+      "passed": 11,
+      "wall_seconds": 5.788
+    },
+    "host_shared_budget": {
+      "passed": 4,
+      "wall_seconds": 3.916
     }
   },
   "checks": [
+    "actual global-merge HTTP/body acknowledgement through slot reader startup",
     "real Rust import and authoritative policy checkpoint",
     "verified portable/source manifests and tar install",
     "actual Rust search and source-policy-expiry validation",
-    "separate-process cached restart without R2 credentials or network",
-    "corrupt tar and index rejected",
-    "stale deployment and installation receipt rejected",
-    "durable source quota window survives restart and early exit"
+    "exact Slot.serve restart with real TLS/SQLite source and unchanged artifact GET count",
+    "source and complete policy polling resume in separate processes with same cumulative byte window",
+    "SIGKILL charges only one capped outstanding HTTP response",
+    "durable hourly rollover, polling reserve, and single-writer accounting",
+    "corrupt tar/index/deployment/receipt rejected",
+    "in-flight source cursor resumes; malformed cursor identity/structure rejected"
   ],
   "source_sha256": {
-    "tantivy-slot.py": "b6d368631f2611f59bd002f95362b10e43dffaa43867540b18c94f6f84e29095",
+    "tantivy-slot.py": "e02c9903f125cb67ba212ff71ce631df9ec9365672b6062dadc03b3ab6eb685a",
     "Dockerfile.tantivy": "aa16ba105aa5b08d2adb89706bdbe8bb90d603e22013ebfeb0bd2e0a2f44dec3",
-    "build-tantivy.py": "3978ad0f20eefed1b4ad6c3338ddfda071ecae6902c921fbad76a1e695a1694a",
-    "test_tantivy_slot.py": "145e86c872d8408200612a726adccf6e7b4a6e30544d94aaf2052192c45e7a7c",
-    "tantivy_install.py": "92adc0dcabc0afd8cc7e6f6b33714cdbdd199cecf7906b140a0be575d2de5a9b"
+    "build-tantivy.py": "b25dc36151022524009fe5ba9f7798fd8e3723c393559b77726f0a10ea3ce575",
+    "test_tantivy_slot.py": "463932298f786391d229444da1cd89d941d95011180c959a60a5e43231b78067",
+    "tantivy_install.py": "ce99c13446f70cd889c89b8c5469eea351e1bb522d5057ccd40359a6c9fdad5c"
+  },
+  "input_source_sha256": {
+    "sync.py": "8a7ae1876dfb5b4a109d340770bff35ab03f8ffe4bc7a41d170fba52b9d8504a",
+    "current_state.py": "e049781acd5ac993031100cc180f14137f2bcf98369e7926576e21450fdf0d86",
+    "budget.py": "2e36f2db59038382650cdeb08ab03fa13e29239afd1f4daec395a5f82e68d75c"
   }
 }

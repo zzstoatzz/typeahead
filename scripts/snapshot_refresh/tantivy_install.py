@@ -192,20 +192,29 @@ def freeze_bundle(data, destination, manifest, source_bytes, binary, now=None):
     return portable
 
 
+def source_identity(metadata, now):
+    watermark = integer(metadata.get('watermark'), 'watermark')
+    floor = integer(metadata.get('snapshot_watermark'), 'snapshot watermark')
+    if not floor <= watermark <= now:
+        raise ValueError('Source watermark identity is invalid')
+    if integer(metadata.get('source_observation_revision'), 'source revision', 1) <= 0:
+        raise ValueError('No authoritative source observations')
+    cursor = metadata.get('source_cursor')
+    if not isinstance(cursor, dict) or cursor.get('schema_version') != 1 or cursor.get('source_policy') != SOURCE_POLICY or cursor.get('build_id') != metadata.get('build_id') or cursor.get('snapshot_watermark') != floor or cursor.get('through') != watermark:
+        raise ValueError('Source cursor identity/policy mismatch')
+    if cursor.get('cycle') is not None and not isinstance(cursor['cycle'], dict):
+        raise ValueError('Source cycle structure is invalid')
+    return cursor, watermark
+
+
 def source_gates(metadata, now, max_poll_age=120, max_policy_age=300, max_sweep_age=86400, max_sweep_duration=86400, require_fresh=True):
     for value, maximum in [(max_poll_age, 120), (max_policy_age, 300), (max_sweep_age, 86400), (max_sweep_duration, 86400)]:
         if type(value) is not int or not 1 <= value <= maximum:
             raise ValueError('Admission bounds may only be tightened')
-    watermark = integer(metadata.get('watermark'), 'watermark')
-    floor = integer(metadata.get('snapshot_watermark'), 'snapshot watermark')
-    if not floor <= watermark <= now or (require_fresh and now - watermark > max_poll_age):
+    cursor, watermark = source_identity(metadata, now)
+    if require_fresh and now - watermark > max_poll_age:
         raise ValueError('Source polling is not fresh')
-    if integer(metadata.get('source_observation_revision'), 'source revision', 1) <= 0:
-        raise ValueError('No authoritative source observations')
-    cursor = metadata.get('source_cursor')
-    if not isinstance(cursor, dict) or cursor.get('schema_version') != 1 or cursor.get('source_policy') != SOURCE_POLICY or cursor.get('build_id') != metadata.get('build_id') or cursor.get('snapshot_watermark') != floor:
-        raise ValueError('Source cursor identity/policy mismatch')
-    if cursor.get('cycle') is not None or cursor.get('through') != watermark:
+    if cursor.get('cycle') is not None:
         raise ValueError('Source discovery cycle is incomplete')
     reconciliation = cursor.get('reconciliation', {})
     if reconciliation.get('schema_version') != 1:
@@ -217,7 +226,7 @@ def source_gates(metadata, now, max_poll_age=120, max_policy_age=300, max_sweep_
     return {'poll_age_s': now - watermark, 'sweep_age_s': now - end, 'sweep_duration_s': end - start}
 
 
-def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True, **bounds):
+def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True, require_source_ready=True, **bounds):
     now = int(time.time()) if now is None else now
     for field, expected in [('format', FORMAT), ('build_id', manifest['active_build']), ('normalize_version', manifest['normalize_version']), ('plan_version', manifest['plan_version'])]:
         if metadata.get(field) != expected:
@@ -235,7 +244,7 @@ def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True,
     if coverage.get('canonical_rules_source_sha256') != manifest['canonical_rules_source_sha256'] or any(coverage.get(field) != count for field in ['expected_input_actors', 'source_actor_count', 'input_actors_checked']):
         raise ValueError('Expiry coverage source count or canonical rules mismatch')
     input_hash = digest(coverage.get('verified_input_actors_sha256'))
-    if input_hash != manifest['source_actors_sha256'] or source.get('build_id') != manifest['source_build_id'] or source.get('source_watermark') != manifest['source_watermark'] or source.get('source_database_sha256') != manifest['source_database_sha256'] or source.get('source_prefix_sha256') != manifest['source_prefix_sha256']:
+    if metadata.get('snapshot_watermark') != manifest['source_watermark'] or input_hash != manifest['source_actors_sha256'] or source.get('build_id') != manifest['source_build_id'] or source.get('source_watermark') != manifest['source_watermark'] or source.get('source_database_sha256') != manifest['source_database_sha256'] or source.get('source_prefix_sha256') != manifest['source_prefix_sha256']:
         raise ValueError('Imported source differs from immutable artifact provenance')
     classifier_hash = digest(coverage.get('classifier_sha256'))
     current = coverage.get('current', {})
@@ -245,7 +254,8 @@ def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True,
     malformed = integer(current.get('actors_with_malformed_labels'), 'malformed label actors')
     if require_coverage_ready and (unsupported or malformed):
         raise ValueError('Unsupported or malformed source labels prevent expiry readiness')
-    gates = source_gates(metadata, now, **bounds)
+    if not require_source_ready:source_identity(metadata, now)
+    gates = source_gates(metadata, now, **bounds) if require_source_ready else {}
     gates.update(expiry_actors_checked=count, expiry_input_actors_sha256=input_hash, expiry_classifier_sha256=classifier_hash, expiry_current_live_actors=current['live_actors'], expiry_coverage_ready=not (unsupported or malformed))
     return gates
 

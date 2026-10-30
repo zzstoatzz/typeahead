@@ -118,15 +118,21 @@ GET-only `rclone cat` transfers. Credentials remain in a temporary mode-0600
 configuration and never enter receipts or logs. The durable metadata-only
 receipt is `/data/tantivy/installation.json`, readable by an owner-checked
 controller exec. Cached restart binds the same deployment bytes, receipt and
-actual reader/index without R2 fetch, import or corpus copy. A changed request
+actual reader/index without R2 fetch, import or corpus copy. Cache validation
+preserves immutable source/expiry proofs and cursor policy/build/floor/revision
+identity while allowing a legitimate committed discovery cycle to resume;
+readiness and promotion validators retain their strict completed/fresh gates. A changed request
 or an incomplete/corrupt installation fails closed; replacement requires an
 owned inactive recovery or a fresh volume, not an in-place overwrite.
 
 The strict reader serves public port 8080 and binds admin only to
 `127.0.0.1:8081`. Existing observed source/policy polling uses the candidate
 512-MiB/hour budget, 64 sweep pages, 20-second sweep, 30-second cycle and
-40-second interval. A durable source-window file prevents a process restart or
-early exit from renewing that hourly allowance. These settings do not prove
+40-second interval. Shared `budget.py` keeps a durable, single-writer byte ledger
+and reserves only the outstanding capped HTTP request before sending it.
+A cached restart resumes polling with the remaining hourly allowance; actual
+received bytes and crash reservations survive process replacement. The window
+cannot renew before its durable hourly deadline. These settings do not prove
 daily full coverage. Installation alone records `runtime_qualified: false`;
 the receipt changes to true only after the existing actual runtime source,
 policy and expiry validators pass, and is reevaluated while serving.
