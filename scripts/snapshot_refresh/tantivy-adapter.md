@@ -226,3 +226,10 @@ bun test scripts/snapshot_refresh/engine-transport.test.ts \
 The new tests use the actual compiled Tantivy binary and local HTTP, and actual
 workerd with filesystem-backed R2 for conditional promotion, stale-writer
 rejection and rollback. They do not contact production or any cloud API.
+
+The [executable artifact receipt](tantivy-code-artifact.json) identifies the
+10,028,384-byte Linux executable extracted from that exact tested image and
+published with the existing `Publisher.immutable` code. The object is addressed
+by executable SHA256 and its remote bytes were verified. A fresh cloud builder
+can fetch and hash-check this code artifact; no corpus or index was transferred
+through the operator machine. This artifact alone does not qualify a release.

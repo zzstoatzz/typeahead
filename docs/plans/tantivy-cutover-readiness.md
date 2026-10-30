@@ -33,7 +33,11 @@ acknowledged, but the earlier backend did not acknowledge the preference.
 This smoke therefore failed its preference gate. An empty filtered result
 does not establish filter recall, and these four sequential requests are not
 a performance benchmark. The candidate must pass these semantics on its actual
-deployed public path before the dev site can supply release evidence.
+deployed public path before the dev site can supply release evidence. The
+[deployed preview guard](../../deploy/tantivy-dev-ui/scope-verification.json) now
+rejects those unsupported preferences with 503 using the shared public scope
+contract; malformed scope returns 400. Both aliases and byte-identical production
+HTML remain verified. This removes silent fallback, not the backend capability gap.
 
 Full-corpus matched performance, live-source completed-round coverage and actual
 cloud slot/refresh qualification remain open gates. Branch-only code now includes
@@ -203,7 +207,13 @@ waived by this document. No production cutover is authorized.
    and uncached requests, both public search aliases, hard PDS filtering and
    contextual preference. Record failures, backend identity, source lag and
    latency through the change. Establish the cache barrier and measured
-   propagation interval from that rehearsal before giving a downtime estimate.
+   propagation interval from that rehearsal before giving a downtime estimate. The
+   [local workerd/R2 rehearsal](../evals/tantivy-dev-20261028/route-rehearsal-local.json)
+   passed promotion, compensation, scope acknowledgements, cache isolation and
+   stale ETag/operator-change protection. Its approximately one-second local
+   route-memory convergence is not production propagation evidence. The order
+   is CAS, uncached identity convergence, then cache-generation rotation and
+   both-alias miss/hit checks; old cache generations can retain old answers.
 3. Present Nate the exact candidate plan, current production route/ETag,
    immutable image and artifact identities, empirical release proof, native
    rollback anchor and rollback command. Obtain explicit cutover approval.

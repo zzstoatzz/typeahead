@@ -7,7 +7,7 @@ service binding. It changes no HTML, CSS or client JavaScript. Relative search
 requests, both XRPC aliases, health and index metadata go to the isolated
 `https://typeahead-tantivy-dev.fly.dev` backend. Production routing is unchanged.
 
-The branch's `DEV_SEARCH_BACKEND` configuration can select that retained dev
+The deployed `DEV_SEARCH_BACKEND` configuration can select that retained dev
 backend or `https://typeahead-tantivy-a.fly.dev` / `https://typeahead-tantivy-b.fly.dev`.
 Other origins fail closed. This changes the backend binding and response identity
 header; frontend bytes still come unchanged from production. The default remains
@@ -41,3 +41,8 @@ bunx wrangler deploy --config deploy/tantivy-dev-ui/wrangler.jsonc
 successful Tantivy health/search and byte-identical canonical/compatibility XRPC
 responses on October 29, 2026. Local browser automation was disabled, so this is
 HTTP verification rather than visual browser QA. No indexing form was submitted.
+
+`scope-verification.json` records the deployed scope guard: both aliases still
+match, unsupported preferences return 503, malformed scope returns 400, and
+production/preview HTML remains byte-identical. This does not qualify the older
+backend's preference semantics or the undeployed expiry-v4 candidate.
