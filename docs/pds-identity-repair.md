@@ -105,3 +105,18 @@ can discover identity data absent from the source.
 
 The five-account pilot is the next implementation step after this cleanup and
 plan review. Full-backlog execution is gated on pilot results, not scheduled here.
+
+### Five-account runner
+
+`scripts/pds_cloud_pilot.py` is the dedicated Fly pilot entrypoint. It refuses
+execution outside the `typeahead-pds-repair` app, requires an explicit managed
+Tantivy backend, and defaults to dry-run. Each invocation needs a fresh output
+directory containing its durable ledger and event receipts. `--apply` enables only
+the five fixed missing-PDS witnesses; an ambiguous write stops the run after
+readback and cannot be blindly retried. The cloud machine must retain receipts
+until they are collected, then be destroyed. No scheduler is installed by this
+script. The previous native canary remains historical tooling, not this runner.
+
+Local verification: `uv run python -m unittest discover -s scripts -p 'test_pds_*.py'`.
+The added tests exercise real SQLite writes, concurrent profile/hosting changes,
+stale authority, subject mismatch, and a committed write with a lost response.
