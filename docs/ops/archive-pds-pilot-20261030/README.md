@@ -92,3 +92,15 @@ complete freshness qualification and the full backfill are not yet claimed.
 README review: the architecture, API and deployment entry points are unchanged;
 the retry behavior belongs in `docs/discovery-and-identity.md`. No README edit
 was needed for this stage. Public `/docs` cleanup remains pending.
+
+
+## Documentation preparation
+
+Commit `f75bba8` simplifies the public API page and removes the stale low-volume
+smoke-test instruction from `/llms.txt`. This is prepared locally, not deployed.
+Type checking and lint passed; the Worker suite passed 127 tests with one skipped.
+The page was inspected at desktop and phone widths in light and dark themes;
+navigation, expandable details and theme switching worked. The final phone check
+had no page-level horizontal overflow or console errors (code blocks scroll).
+The temporary local preview server and browser tab were closed after inspection.
+Publication remains pending the repair outcome and final documentation review.
