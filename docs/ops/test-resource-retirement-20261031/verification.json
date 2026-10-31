@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-31T18:32:30.044416+00:00",
+  "checks": [
+    {
+      "path": "/xrpc/tech.waow.typeahead.searchActors?q=zzstoatzz.io&limit=1",
+      "status": 200,
+      "build": "b1793463173-cp-5da0d18f0e",
+      "handles": [
+        "zzstoatzz.io"
+      ]
+    },
+    {
+      "path": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=1",
+      "status": 200,
+      "build": "b1793463173-cp-5da0d18f0e",
+      "handles": [
+        "zzstoatzz.io"
+      ]
+    },
+    {
+      "path": "/xrpc/tech.waow.typeahead.searchActors?q=froylantech.bsky.social&pds=helvella.us-east.host.bsky.network&limit=1",
+      "status": 200,
+      "build": "b1793463173-cp-5da0d18f0e",
+      "handles": [
+        "froylantech.bsky.social"
+      ]
+    }
+  ],
+  "route": {
+    "engine": "tantivy",
+    "origin": "https://typeahead-tantivy-a.fly.dev",
+    "build_id": "b1793463173-cp-5da0d18f0e",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "admission_sha256": "933cb7bc926d3103113b2d89ba09bef097ff3e787d2ee190e563086055ae9068",
+    "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "retrieval_strategy": "global-merge"
+  },
+  "cloud_builder_servers": []
+}

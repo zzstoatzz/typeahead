@@ -1,0 +1,70 @@
+{
+  "id": "840e95a2153308",
+  "name": "tantivy-dev",
+  "region": "ewr",
+  "image_ref": {
+    "registry": "registry.fly.io",
+    "repository": "typeahead-tantivy-dev",
+    "digest": "sha256:5ff02d975eafa1e138d094790ed086470dca8c6fa8c5d47727c895b5f9890f64"
+  },
+  "config": {
+    "init": {
+      "exec": [
+        "python3",
+        "/app/bootstrap.py"
+      ]
+    },
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "metadata": {
+      "owner": "tantivy-dev-20261028",
+      "role": "tantivy-dev"
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 40,
+        "volume": "vol_4oj6mqjpnlgeyqxr",
+        "name": "tantivy_dev_data"
+      }
+    ],
+    "services": [
+      {
+        "protocol": "tcp",
+        "internal_port": 8080,
+        "autostop": false,
+        "autostart": false,
+        "ports": [
+          {
+            "port": 80,
+            "handlers": [
+              "http"
+            ],
+            "force_https": true
+          },
+          {
+            "port": 443,
+            "handlers": [
+              "tls",
+              "http"
+            ]
+          }
+        ],
+        "force_instance_key": null
+      }
+    ],
+    "image": "registry.fly.io/typeahead-tantivy-dev@sha256:6b7b1e8ed22dfa5b1de5b71fd67cf6e0505f4650c5fd2392c3d45ecbe9ce2de5",
+    "restart": {
+      "policy": "on-failure",
+      "max_retries": 3
+    },
+    "stop_config": {
+      "timeout": "20s",
+      "signal": "SIGTERM"
+    }
+  }
+}

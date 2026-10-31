@@ -902,3 +902,11 @@ tests passed. A fixed ordinary-traffic observation covers 21:15–21:30 UTC,
 read after 21:33, alongside the independent native-cache trial; it is not a
 performance qualification or added production workload. Evidence is in
 [accounting-release](evals/perf-goal-20261027/storage-followup/accounting-release/).
+
+## Test resource retirement — October 31, 2026
+
+The original Tantivy dev machine and older native refresh machine, with their
+60 GB of disks, are retired. A serves production; B has a separately scheduled
+stop, while the newer native rollback anchor and ingester remain. See the
+[retirement evidence](ops/test-resource-retirement-20261031/) for IDs, verification
+and cost-accounting limits. Historical inventories above are not current state.

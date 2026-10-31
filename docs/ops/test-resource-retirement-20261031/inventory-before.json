@@ -1,0 +1,246 @@
+[
+  {
+    "app": "typeahead-backfill",
+    "machines": [],
+    "volumes": []
+  },
+  {
+    "app": "typeahead-canary",
+    "machines": [],
+    "volumes": []
+  },
+  {
+    "app": "typeahead-indexer",
+    "machines": [],
+    "volumes": []
+  },
+  {
+    "app": "typeahead-ingester",
+    "machines": [
+      {
+        "id": "7845636a3d0ee8",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 1,
+          "memory_mb": 256
+        },
+        "metadata": {
+          "fly_builder_id": "48ee394b2e3918",
+          "fly_flyctl_version": "0.4.122",
+          "fly_platform_version": "v2",
+          "fly_process_group": "app",
+          "fly_release_id": "rel_ljg928jdp4j4z43o",
+          "fly_release_version": "112"
+        }
+      }
+    ],
+    "volumes": []
+  },
+  {
+    "app": "typeahead-qual-20261029",
+    "machines": [],
+    "volumes": []
+  },
+  {
+    "app": "typeahead-refresh-handles",
+    "machines": [],
+    "volumes": []
+  },
+  {
+    "app": "typeahead-search",
+    "machines": [],
+    "volumes": []
+  },
+  {
+    "app": "typeahead-search-compact",
+    "machines": [],
+    "volumes": []
+  },
+  {
+    "app": "typeahead-search-refresh",
+    "machines": [
+      {
+        "id": "801539a6551778",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "metadata": {
+          "build_id": "b1793081565-0228-px05",
+          "owner": "typeahead-snapshot-refresh"
+        }
+      }
+    ],
+    "volumes": [
+      {
+        "id": "vol_40o3xy5812d6kkk4",
+        "name": "refresh_1793087127",
+        "state": "created",
+        "size_gb": 20,
+        "region": "ewr",
+        "zone": "73e0",
+        "encrypted": true,
+        "attached_machine_id": "801539a6551778",
+        "attached_alloc_id": null,
+        "created_at": "2026-10-27T07:45:27.262Z",
+        "host_dedication_id": "",
+        "snapshot_retention": 5,
+        "auto_backup_enabled": false,
+        "host_status": "ok"
+      }
+    ]
+  },
+  {
+    "app": "typeahead-startup-20261024",
+    "machines": [
+      {
+        "id": "8e3d79b70dd748",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "metadata": {
+          "build_id": "b1793109259-2b36-px05",
+          "owner": "typeahead-snapshot-refresh"
+        }
+      }
+    ],
+    "volumes": [
+      {
+        "id": "vol_v8eyqk61q9dy9gkv",
+        "name": "refresh_1793113768",
+        "state": "created",
+        "size_gb": 20,
+        "region": "ewr",
+        "zone": "0107",
+        "encrypted": true,
+        "attached_machine_id": "8e3d79b70dd748",
+        "attached_alloc_id": null,
+        "created_at": "2026-10-27T15:09:28.388Z",
+        "host_dedication_id": "",
+        "snapshot_retention": 5,
+        "auto_backup_enabled": false,
+        "host_status": "ok"
+      }
+    ]
+  },
+  {
+    "app": "typeahead-tantivy-a",
+    "machines": [
+      {
+        "id": "2869d52c353428",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "metadata": {
+          "build_id": "b1793463173-cp-5da0d18f0e",
+          "deployment_sha256": "7ad8409c881b6c6036d63704a175f7300722ed05402064650b9f542db746720b",
+          "owner": "typeahead-snapshot-refresh",
+          "request_id": "0b1cc1cfd88d4ed1a46d1b875580dcd9",
+          "role": "tantivy-slot"
+        }
+      }
+    ],
+    "volumes": [
+      {
+        "id": "vol_vp2ezd177q7m52y4",
+        "name": "tv_0b1cc1cfd88d4ed1a46d",
+        "state": "created",
+        "size_gb": 20,
+        "region": "ewr",
+        "zone": "7a70",
+        "encrypted": true,
+        "attached_machine_id": "2869d52c353428",
+        "attached_alloc_id": null,
+        "created_at": "2026-10-31T17:07:29.439Z",
+        "host_dedication_id": "",
+        "snapshot_retention": 5,
+        "auto_backup_enabled": false,
+        "host_status": "ok"
+      }
+    ]
+  },
+  {
+    "app": "typeahead-tantivy-b",
+    "machines": [
+      {
+        "id": "8d4930ae3502d8",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "metadata": {
+          "build_id": "b1793395409-cp-pdsjoin",
+          "deployment_sha256": "7769750d997aaf30beaa0ecc5f80624b2781aad36946ddf5a434f2af8c514e82",
+          "owner": "typeahead-snapshot-refresh",
+          "request_id": "a7d276e5a7a84939a05e0915b5004179",
+          "role": "tantivy-slot"
+        }
+      }
+    ],
+    "volumes": [
+      {
+        "id": "vol_vxmpk8k2exk5x1n4",
+        "name": "tv_a7d276e5a7a84939a05e",
+        "state": "created",
+        "size_gb": 20,
+        "region": "ewr",
+        "zone": "0106",
+        "encrypted": true,
+        "attached_machine_id": "8d4930ae3502d8",
+        "attached_alloc_id": null,
+        "created_at": "2026-10-31T00:49:16.272Z",
+        "host_dedication_id": "",
+        "snapshot_retention": 5,
+        "auto_backup_enabled": false,
+        "host_status": "ok"
+      }
+    ]
+  },
+  {
+    "app": "typeahead-tantivy-dev",
+    "machines": [
+      {
+        "id": "840e95a2153308",
+        "state": "started",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 2,
+          "memory_mb": 1024
+        },
+        "metadata": {
+          "owner": "tantivy-dev-20261028",
+          "role": "tantivy-dev"
+        }
+      }
+    ],
+    "volumes": [
+      {
+        "id": "vol_4oj6mqjpnlgeyqxr",
+        "name": "tantivy_dev_data",
+        "state": "created",
+        "size_gb": 40,
+        "region": "ewr",
+        "zone": "0106",
+        "encrypted": true,
+        "attached_machine_id": "840e95a2153308",
+        "attached_alloc_id": null,
+        "created_at": "2026-10-29T03:23:28.643Z",
+        "host_dedication_id": "",
+        "snapshot_retention": 5,
+        "auto_backup_enabled": false,
+        "host_status": "ok"
+      }
+    ]
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "current": {
+    "admission_sha256": "933cb7bc926d3103113b2d89ba09bef097ff3e787d2ee190e563086055ae9068",
+    "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "build_id": "b1793463173-cp-5da0d18f0e",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "origin": "https://typeahead-tantivy-a.fly.dev",
+    "retrieval_strategy": "global-merge"
+  },
+  "previous": {
+    "admission_sha256": "aaea9e4ec2df3cf4e62d95fed65db75210312f17a1e7d01d33981f6b827c9c93",
+    "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "build_id": "b1793395409-cp-pdsjoin",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "origin": "https://typeahead-tantivy-b.fly.dev",
+    "retrieval_strategy": "global-merge"
+  },
+  "native_rollback": {
+    "origin": "https://typeahead-startup-20261024.fly.dev",
+    "build_id": "b1793109259-2b36-px05",
+    "source_watermark": 1793109254,
+    "machine_id": "8e3d79b70dd748",
+    "volume_id": "vol_v8eyqk61q9dy9gkv",
+    "legacy_build_id": "b1793109259-2b36"
+  }
+}
