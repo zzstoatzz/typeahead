@@ -1,7 +1,7 @@
 # Full archive PDS join candidate
 
-Status: full artifact built; publication and deployed qualification in progress
-on October 30, 2026. **Not admitted or cut over**.
+Status: full artifact published and checksum readback verified; deployed
+qualification in progress on October 31, 2026 UTC. **Not admitted or cut over**.
 Production routing, source ingestion and authoritative identity handling remain
 unchanged. Data processing runs only in the cloud, with no source-database writes.
 The user clarified that HeavyPad may be contacted for Prefect control-plane operations.
@@ -44,7 +44,7 @@ Candidate image:
 Reader SHA-256:
 `ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d`.
 Typeahead source is `a19405e1fa1fd2a1aaecd8a77ac0a23c9cb102af`; controller source
-is `104defbcaa13f2510058a7feef14a7d6c95c886c`. The reader adds checked import
+is `9f4e8ac6395f778178ab38e5f83d13a1af15da9a`. The reader adds checked import
 recovery and exact JSON float parsing; retrieval behavior is unchanged.
 The Dockerfile uses portable COPY plus chmod because
 the cloud host's Docker lacks BuildKit.
@@ -58,6 +58,14 @@ omitted by the Zig Prefect server's polling response; the server fix is committe
 as `0eb434d9d41abb2a4e5581384cd1b561a9a46518`. The fixed API and services image is
 deployed and the production API contract probe passed. Actual worker execution
 will be checked through the normal candidate prepare deployment.
+The normal deployment executed the candidate code. Its first available-cloud
+run stopped at the inactive-volume fence: Fly still lists the previously deleted
+volume as detached `pending_destroy`. The controller now ignores such unrelated
+deleted entries while continuing to reject active, attached or same-request
+volumes. All 25 controller tests passed. Preparation resumes request
+`6fc28231cca440ef8369f6abad8b6975` in flow run
+`1d9eedd0-dbaf-4c06-83f9-98a4700a2c5c`. This uses the normal deployment in Helsinki
+after the default Falkenstein allocation returned unavailable capacity.
 
 The original 60-minute deadline interrupted the final merge after the producer
 had completed and its receipt matched every imported record. Recovery resumes
@@ -79,6 +87,9 @@ full actor stream 3,485.68 s; resumed merge 889 s. Additional live catch-up,
 packaging, debugging and qualification are separate; these figures are not an
 end-to-end production refresh guarantee. The portable bundle is 6,324,633,600 bytes
 (5.89 GiB), including its 1.38-GiB mapping. See [build measurements](candidate-build.json).
+The [publication receipt](publication-proof.json) binds the verified bundle and
+manifest. No routing pointer was written. README architecture and public API
+guidance remain accurate; these candidate recovery changes do not change them.
 
 Zig Zen was run. Relevant follow-ups: bind the fallback through every boundary,
 fail closed on missing artifacts, include it in disk measurements, and ensure

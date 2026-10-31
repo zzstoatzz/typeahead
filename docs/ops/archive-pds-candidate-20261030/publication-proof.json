@@ -1,0 +1,9 @@
+{
+  "build_id": "b1793395409-cp-pdsjoin",
+  "manifest_sha256": "7c43b882ad750b2f1c3cf2b1a7a749930efca899afc2e9a10da3031eef7b8cc1",
+  "bundle_sha256": "913d37137856081939f87539f195967cbcd7f70fd0211e8660e2108cce14ea1f",
+  "bundle_bytes": 6324633600,
+  "immutable_objects_verified": true,
+  "routing_pointer_written": false,
+  "verified_at": 1793405979.831976
+}
