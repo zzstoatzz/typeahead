@@ -1,9 +1,20 @@
 # Architecture
 
-Production search uses Tantivy. The relay ingester, Turso source database and
-public Worker retain their existing roles. The native engine remains available
-for rollback; its [historical architecture](archive/architecture-native.md) is not the
-current request path.
+Typeahead keeps a searchable address book of accounts. It watches the network
+for changes, saves them in a source database, and updates a fast search index.
+When you type, it searches that index instead of asking every account's server.
+Hosting information from the existing network archive fills gaps so you can also
+search within a particular hosting server, or PDS.
+
+Twice a day, it builds a fresh copy of the index on a separate backend, checks
+that it works, and switches searches over. The serving copy keeps receiving live
+updates between builds—you do not have to wait for the next rebuild to see changes.
+A and B are the two backend slots that take turns doing those jobs.
+
+If our search backend fails, ordinary searches automatically use Bluesky instead.
+Searches restricted to a PDS return an explicit error because Bluesky cannot
+honor that filter. A separate native backend is also retained for operator rollback;
+the refresh controller currently requires it before promoting a new index.
 
 ## System diagram
 
@@ -18,7 +29,7 @@ flowchart TD
     Ingester --> Turso[Turso actor source]
     Identity[Identity and profile workflows] --> Turso
     Turso -->|live reconciliation| Active
-    Turso -->|source checkpoint| Builder[Cloud Prefect snapshot build]
+    Turso -->|source checkpoint| Builder["Cloud Prefect snapshot build<br/>06:00 and 18:00 UTC"]
     Archive[Existing archive DID-to-PDS metadata] --> Mapping[Pinned mapping in R2]
     Mapping --> Builder
     Mapping -->|empty source PDS fallback| Active
@@ -26,11 +37,14 @@ flowchart TD
     Bundle --> Inactive[Inactive Tantivy slot on Fly]
     Turso -->|catch-up and live updates| Inactive
     Inactive --> Gates[Qualification and restart checks]
+    Native[Native rollback backend] -. required health check .-> Gates
+    Native -. operator rollback target .-> Routing
     Gates -->|conditional promotion| Routing
 ```
 
 A and B alternate serving and preparation roles. The previous backend is retained
-for rollback; the native anchor is separate. The diagram shows data flow, not
+for rollback; the native backend is a separate recovery dependency. The diagram
+shows data flow and control dependencies, not
 additional machines for each box. PDS-scoped requests never use Bluesky fallback.
 
 ## Search and profiles
@@ -87,15 +101,14 @@ coverage while full remote reconciliation remains unqualified; it is not an
 inherent Tantivy requirement. Checkpoint coverage is bounded to 24 hours and can
 be renewed by a qualifying completed remote round. Reducing rebuild frequency
 requires evidence that reconciliation and long-running index maintenance meet
-the serving requirements. See the [cutover record](plans/tantivy-cutover-readiness.md)
-and [refresh runbook](plans/automatic-snapshot-refresh.md).
+the serving requirements. See the [refresh runbook](plans/automatic-snapshot-refresh.md).
 
 ## Recovery and ownership
 
 The active Tantivy machine uses two shared CPUs, 1 GiB RAM and a 20-GiB volume.
 The dev frontend uses the same production frontend with its own backend binding.
-The previous slot and native rollback have separate allocations. Superseded trial
-machines are retired; a serving allocation is not the total infrastructure cost.
+The previous slot and native rollback have separate allocations; a serving
+allocation is not the total infrastructure cost.
 
 A cached restart reopens the admitted installation and resumes durable source
 progress. Missing or invalid admission evidence requires qualification. Rollback
