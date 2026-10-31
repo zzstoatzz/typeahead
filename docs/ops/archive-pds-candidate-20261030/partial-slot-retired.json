@@ -1,0 +1,17 @@
+{
+  "cancellation_run": "c9182ad4-2ea3-430d-b5e8-63f8a8bc43af",
+  "retired_machine": "8d4930ae350ed8",
+  "retired_partial_volume": "vol_42kxgzm0kdw88284",
+  "retained_artifact_build": "b1793395409-cp-pdsjoin",
+  "production_route": {
+    "engine": "tantivy",
+    "origin": "https://typeahead-tantivy-a.fly.dev",
+    "build_id": "b1793346536-cp-7c8322df79",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "admission_sha256": "4196e7b356375ba005f502c933fae00153fa13e440237a10aeaf95f458b1d69d",
+    "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+    "retrieval_strategy": "global-merge"
+  },
+  "pending_marker_removed": true,
+  "artifact_manifest_readback_verified": true
+}

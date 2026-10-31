@@ -1,0 +1,9 @@
+{
+  "request_id": "a7d276e5a7a84939a05e0915b5004179",
+  "image": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+  "run_id": "0ba7f255-da1a-4702-b75b-99d5eee68d03",
+  "operation": "prepare",
+  "promotion_permitted": false,
+  "mps_pin": "41ff65ce4b1cec34f68b23e09b7f3997034efa1b",
+  "typeahead_pin": "c476fc591e191a755d0d4837eb4f230932f8ceff"
+}

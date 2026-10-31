@@ -132,6 +132,14 @@ CPUs/1 GiB passed (9 tests, 2 optional serving integrations skipped), including
 real rclone HTTP interruption/range recovery and cached-manifest installation.
 See [test output](slot-transfer-tests.log). Zig Zen was rerun for this change.
 
-The partial preparation reservation is being canceled through normal deployment
-run `c9182ad4-2ea3-430d-b5e8-63f8a8bc43af`; its resources must be retired before
-preparing the revised immutable image. Production routing still points to A.
+Normal deployment run `c9182ad4-2ea3-430d-b5e8-63f8a8bc43af` completed the
+preparation cancellation. The stopped partial machine and volume were retired,
+and the old retention marker was conditionally removed after checking ownership,
+resource deletion and the retained artifact manifest. See [retirement receipt](partial-slot-retired.json).
+
+Revised preparation run `0ba7f255-da1a-4702-b75b-99d5eee68d03` uses request
+`a7d276e5a7a84939a05e0915b5004179`, Typeahead `c476fc5` and controller `41ff65c`.
+See [preparation receipt](resumable-slot-preparation.json). Production routing
+still points to A; this is preparation only. The immutable image binding requires
+a fresh owned slot, so this attempt downloads the published artifact again. It
+does not rebuild or republish the snapshot.
