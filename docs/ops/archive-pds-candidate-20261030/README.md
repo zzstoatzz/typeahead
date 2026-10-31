@@ -1,6 +1,7 @@
 # Full archive PDS join candidate
 
-Status: building and verifying on October 30, 2026; **not admitted or cut over**.
+Status: full artifact built; publication and deployed qualification in progress
+on October 30, 2026. **Not admitted or cut over**.
 Production routing, source ingestion and authoritative identity handling remain
 unchanged. Data processing runs only in the cloud, with no source-database writes.
 The user clarified that HeavyPad may be contacted for Prefect control-plane operations.
@@ -9,8 +10,11 @@ The existing cloud archive exported 16,249,268 usable mappings from 16,300,003
 repo records in 462.48 seconds. The mapping is 1,478,053,888 bytes, SHA-256
 `1b1fa39e7b5d8f5224fafb08b23cb3a8e277da680f39ff6899280283ffd65e47`.
 These are archive mappings, not the count of Typeahead accounts recovered.
-Full checkpoint streaming measures source-known, source-missing, joined and
-remaining-missing accounts separately.
+The verified full stream contains 12,981,514 records, including 12,890,252 live
+actors. The join supplies 5,026,154 previously missing PDS values; 4,917,558 live
+actors still have no mapping in the available archive. Valid scoped coverage is
+7,972,692 actors (61.85%), up from 2,946,538 (22.86%). These are build-input
+measurements, not yet a deployed-candidate result.
 
 The runner calls the existing `fetch_checkpoint`, `build_checkpoint` and
 `freeze_bundle` functions directly on the cloud host. This keeps the data build on the cloud host. Prefect control-plane access is
@@ -21,7 +25,9 @@ included in the portable release. A separate content-addressed mapping object
 allows later cloud publishers to use the same verified input.
 
 Bounds: metadata export 20 minutes/3 GiB; checkpoint fetch 15 minutes/8 GiB;
-import and catch-up 60 minutes; operator process 80 minutes. These are failure
+future checkpoint preparation 90 minutes, within the worker's two-hour limit.
+The initial full attempt used 60 minutes; its verified import was recovered
+with separate bounded merge and catch-up runs. These are failure
 cutoffs, not expected runtimes. Scratch is owned by this candidate under
 `/tmp/typeahead-pds-join-full` on the existing archive host. Keep the candidate
 until qualification/cutover review; remove redundant checkpoint and test files
@@ -34,15 +40,45 @@ joined fixture. Missing/corrupted mappings and removed provenance were rejected.
 The earlier pilot verifies explicit source migrations and deletions take priority.
 
 Candidate image:
-`registry.fly.io/typeahead-tantivy-b@sha256:5720088a146b61f7e559a69036975f958039d1f165cc4790235ac6827bd59056`.
-Rust binary is unchanged from production. Only Python import/reconciliation and
-artifact handling change. The Dockerfile uses portable COPY plus chmod because
+`registry.fly.io/typeahead-tantivy-b@sha256:39fc1880a5bbe3c118256478b5773974c84590e6141b7ee076431e6ed1ff917f`.
+Reader SHA-256:
+`ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d`.
+Typeahead source is `a19405e1fa1fd2a1aaecd8a77ac0a23c9cb102af`; controller source
+is `104defbcaa13f2510058a7feef14a7d6c95c886c`. The reader adds checked import
+recovery and exact JSON float parsing; retrieval behavior is unchanged.
+The Dockerfile uses portable COPY plus chmod because
 the cloud host's Docker lacks BuildKit.
 
-Prefect confirmed that the older slot preparation run failed. Recovery run
-`8b9352bd-2cf8-4b71-b705-42493d489960` uses the existing cancel operation to
-release its reservation while retaining the stopped candidate. Serving routing
-is not promoted by this operation.
+Prefect recovery completed in run `bd5e7194-aba2-474f-9b79-5b0af0241656`.
+The old stopped machine and volume were retired after verifying their immutable
+release artifact remains in R2. Its pending reservation is removed; slot B is
+available and production routing is unchanged. See [the recovery receipt](slot-recovery.json).
+The temporary unscheduled deployment was deleted. Run-level overrides were being
+omitted by the Zig Prefect server's polling response; the server fix is committed
+as `0eb434d9d41abb2a4e5581384cd1b561a9a46518`. The fixed API and services image is
+deployed and the production API contract probe passed. Actual worker execution
+will be checked through the normal candidate prepare deployment.
+
+The original 60-minute deadline interrupted the final merge after the producer
+had completed and its receipt matched every imported record. Recovery resumes
+the saved index only after checking its committed footer, source identity,
+counts and receipt hash; it does not download or import the corpus again.
+The recovery fixture exercises crash, resume, catch-up and portable publication.
+A separate regression exposed loss of floating-point precision in JSON receipt
+round trips. Exact float parsing passes the reproduced case. All 11 checkpoint
+tests and 15 real engine smoke checks pass. Installer tests pass (13 tests,
+one unavailable optional integration skipped).
+
+The first live replay completed but exceeded the polling freshness window.
+The builder now requires another fresh cycle before admission. Packaging validates
+the stopped snapshot at a single captured time, rather than invalidating it merely
+because archive creation takes longer than two minutes. Runtime gates remain strict.
+
+Measured data work: archive export 462.48 s; checkpoint acquisition 534.39 s;
+full actor stream 3,485.68 s; resumed merge 889 s. Additional live catch-up,
+packaging, debugging and qualification are separate; these figures are not an
+end-to-end production refresh guarantee. The portable bundle is 6,324,633,600 bytes
+(5.89 GiB), including its 1.38-GiB mapping. See [build measurements](candidate-build.json).
 
 Zig Zen was run. Relevant follow-ups: bind the fallback through every boundary,
 fail closed on missing artifacts, include it in disk measurements, and ensure

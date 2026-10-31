@@ -1,0 +1,10 @@
+{
+  "observed_at": 1793405054.7013168,
+  "scratch_allocated_bytes": 21589905408,
+  "scratch_apparent_bytes": 21446615853,
+  "sampled_peak_total_bytes": 18811727872,
+  "sampled_peak_sort_temporary_bytes": 3528265728,
+  "sample_count": 214,
+  "includes_build_tools": true,
+  "peak_is_observed_not_upper_bound": true
+}

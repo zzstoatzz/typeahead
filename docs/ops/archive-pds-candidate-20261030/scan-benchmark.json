@@ -1,0 +1,36 @@
+[
+  {
+    "plan": "indexed",
+    "seconds": 4.373123997822404,
+    "rows": 10000,
+    "sha256": "fa9855a5bc8485fe5370d1518136f82e1c68893930764d6703c04096cdfd618b",
+    "query_plan": [
+      [
+        5,
+        0,
+        0,
+        "SEARCH actors USING INDEX sqlite_autoindex_actors_1 (did>?)"
+      ]
+    ]
+  },
+  {
+    "plan": "sequential-sort",
+    "seconds": 148.4614190850407,
+    "rows": 10000,
+    "sha256": "fa9855a5bc8485fe5370d1518136f82e1c68893930764d6703c04096cdfd618b",
+    "query_plan": [
+      [
+        4,
+        0,
+        0,
+        "SCAN actors"
+      ],
+      [
+        38,
+        0,
+        0,
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    ]
+  }
+]

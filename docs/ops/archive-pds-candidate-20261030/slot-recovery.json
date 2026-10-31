@@ -1,0 +1,13 @@
+{
+  "retired_at": 1793398859.0598972,
+  "request_id": "8ca8e9f0f0eb499f9608bf5d8a527040",
+  "machine_id": "894591c6de6128",
+  "volume_id": "vol_vdep5p25718g9yk4",
+  "retained_build": "b1793383407-cp-97e65e2f93",
+  "artifact_manifest_verified": true,
+  "artifact_bundle_bytes": 4717168640,
+  "pending_marker_removed": true,
+  "production_routing_unchanged": true,
+  "recovery_flow_run": "bd5e7194-aba2-474f-9b79-5b0af0241656",
+  "temporary_deployment_deleted": true
+}
