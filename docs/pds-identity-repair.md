@@ -51,3 +51,6 @@ Run their behavioral checks with:
 ```sh
 uv run python -m unittest discover -s scripts -p 'test_pds_*.py'
 ```
+
+For the progression from capped native scopes to Tantivy and archive joins, see
+the [PDS filtering history](archive/pds-filtering-history.md).
