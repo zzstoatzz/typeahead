@@ -86,7 +86,9 @@ test("OPTIONS preflights are answered without being counted", async () => {
 // The engine is one machine and restarts in ~15 s. While it is down the
 // worker must report unavailable without re-asking Turso for every query: on 2026-09-04
 // one such restart under a viral burst put Turso over its connection limit
-// and the ingester dropped events. Turso-on-unreachable is opt-in.
+// and the ingester dropped events. Turso-on-unreachable is opt-in. Since
+// 2026-10-31 unscoped search falls back to Bluesky; with every fetch refused
+// here, both providers fail and the answer is 503.
 test("an unreachable engine returns unavailable without touching Turso", async () => {
   recorded.length = 0;
   executed.length = 0;
@@ -107,7 +109,7 @@ test("an unreachable engine returns unavailable without touching Turso", async (
       env, c,
     );
     expect(res.status).toBe(503);
-    expect(await res.json<unknown>()).toEqual({ error: "SearchBackendUnavailable", message: "Search engine is unavailable" });
+    expect(await res.json<unknown>()).toEqual({ error: "SearchUnavailable", message: "Search and emergency fallback are unavailable" });
     await Promise.all(tasks);
     expect(executed.filter((sql) => /FROM actors/i.test(sql))).toEqual([]);
   } finally {
