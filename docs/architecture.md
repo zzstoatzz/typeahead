@@ -1,123 +1,119 @@
 # Architecture
 
-Typeahead keeps a searchable address book of accounts. It watches the network
-for changes, saves them in a source database, and updates a fast search index.
-When you type, it searches that index instead of asking every account's server.
-Hosting information from the existing network archive fills gaps so you can also
-search within a particular hosting server, or PDS.
+Typeahead is a searchable address book of AT Protocol accounts. It watches the
+network for account changes and organizes that information into a search index.
+When someone types a name, the index finds matching accounts without contacting
+each account's hosting server.
 
-Twice a day, it builds a fresh copy of the index on a separate backend, checks
-that it works, and switches searches over. The serving copy keeps receiving live
-updates between builds—you do not have to wait for the next rebuild to see changes.
-A and B are the two backend slots that take turns doing those jobs.
+Changes flow into the index throughout the day. A separate build process also
+makes fresh copies of the whole index. Each copy is checked before it can serve
+searches, so building a new index does not interrupt the one people are using.
 
-If our search backend fails, ordinary searches automatically use Bluesky instead.
-Searches restricted to a PDS return an explicit error because Bluesky cannot
-honor that filter. A separate native backend is also retained for operator rollback;
-the refresh controller currently requires it before promoting a new index.
-
-## System diagram
+## Data flow
 
 ```mermaid
 flowchart TD
-    Client[Client] --> Edge[Cloudflare Worker]
-    Edge -->|search cache miss| Transport[Search transport]
-    Routing[R2 routing record] -. selects active slot .-> Transport
-    Transport --> Active[Active Tantivy slot on Fly]
-    Edge -->|unscoped backend failure| Bluesky[Bluesky public API]
-    Relay[AT Protocol relay] --> Ingester[Zig ingester]
-    Ingester --> Turso[Turso actor source]
-    Identity[Identity and profile workflows] --> Turso
-    Turso -->|live reconciliation| Active
-    Turso -->|source checkpoint| Builder["Cloud Prefect snapshot build<br/>06:00 and 18:00 UTC"]
-    Archive[Existing archive DID-to-PDS metadata] --> Mapping[Pinned mapping in R2]
-    Mapping --> Builder
-    Mapping -->|empty source PDS fallback| Active
-    Builder --> Bundle[Verified index bundle in R2]
-    Bundle --> Inactive[Inactive Tantivy slot on Fly]
-    Turso -->|catch-up and live updates| Inactive
-    Inactive --> Gates[Qualification and restart checks]
-    Native[Native rollback backend] -. required health check .-> Gates
-    Native -. operator rollback target .-> Routing
-    Gates -->|conditional promotion| Routing
+    Network[AT Protocol relay] --> Ingest[Account discovery]
+    Identity[Identity resolution and profile enrichment] --> Source[Turso source database]
+    Ingest --> Source
+    Archive[Network archive hosting metadata] --> Mapping[Versioned DID-to-PDS mapping]
+    Source -->|consistent checkpoint| Build[Offline index build]
+    Mapping --> Build
+    Build --> Artifacts[Verified index artifacts in R2]
+    Artifacts -->|install and qualify| Search[Tantivy search backend on Fly]
+    Source -->|incremental changes| Search
+    Mapping -->|fill missing hosting identity| Search
+    Client[Client] --> API[Cloudflare public API]
+    API -->|search cache miss| Transport[Search transport]
+    Route[R2 routing record] -. selects backend .-> Transport
+    Transport --> Search
+    API -->|unscoped search failure| Bluesky[Bluesky public API]
 ```
 
-A and B alternate serving and preparation roles. The previous backend is retained
-for rollback; the native backend is a separate recovery dependency. The diagram
-shows data flow and control dependencies, not
-additional machines for each box. PDS-scoped requests never use Bluesky fallback.
+Boxes describe responsibilities and data, not a machine inventory. The same
+backend runs both search and incremental index updates. Offline builds run
+separately from the serving backend.
 
-## Search and profiles
+## Collecting account information
 
-Clients call the Cloudflare Worker through either search endpoint. The Worker
-validates query scope, rate-limits, caches responses for 60 seconds and calls the
-private transport, which resolves the qualified backend from the R2 routing record.
-Tantivy retrieves complete matches, ranks them and returns stored actor profiles.
-Failed, timed-out or invalid backend answers trigger automatic Bluesky fallback
-for unscoped search. Fallback answers are not cached. PDS-scoped requests fail
-with 503 instead of silently losing their scope; invalid parameters return 400.
-There is no full-corpus Turso query fallback.
+A Zig ingester follows the relay's `com.atproto.sync.subscribeRepos` firehose.
+It records account activity and profile changes in Turso. Separate identity and
+enrichment workflows resolve handles, hosting servers and profile information.
+Turso holds the actor records, ranking inputs and moderation state used to build
+and update the index.
 
-Exact eligible handles retain priority. PDS filtering uses canonical indexed
-hosting identity before final selection; it does not filter a global top-N list.
-`prefer_pds` retains global matches and applies PDS-first ordering or a score
-boost. Unknown hosting metadata cannot match a host filter or preference.
-Moderation eligibility is independent of ranking. The public API is unauthenticated
-and does not provide viewer-specific state.
+A PDS is an account's hosting server. Its identity cannot be inferred from the
+account's handle: a custom-domain handle can be hosted anywhere. A versioned
+DID-to-PDS mapping from the network archive supplements accounts whose source
+PDS is empty. Nonempty source PDS values take precedence. The mapping is an input
+to the index, not a bulk rewrite of the source database; a missing value in both
+sources means the account cannot match a PDS filter.
 
-Profile-card endpoints serve the indexed profile data. Enrichment obtains data
-from appviews separately; this is not an authenticated appview replacement.
-See [/docs](https://typeahead.waow.tech/docs) for the public contract.
+## Answering a search
 
-## Discovery and live updates
+The public Cloudflare Worker validates parameters, applies rate limits and checks
+its response cache. On a cache miss, a search transport reads the routing record
+and sends the query to the selected Tantivy backend on Fly.
 
-The Zig ingester follows `com.atproto.sync.subscribeRepos` and writes actor
-changes to Turso. Identity resolution and profile enrichment remain separate
-source-maintenance workflows. The [source adapter](../services/tantivy-input/README.md)
-polls indexed change keys, reads current source observations and reconciles them
-into Tantivy. Documents and source progress are committed durably together.
-Deletes, renames and policy changes do not wait for a scheduled full build.
+Tantivy searches indexed handles and display names, ranks eligible matches and
+returns stored actor profiles. Exact eligible handles have priority. Moderation
+controls visibility independently of ranking. A PDS filter restricts candidates
+before the result limit is applied, so it does not depend on finding that host's
+accounts in an already truncated global result list.
 
-Timestamp polling and full reconciliation establish different facts. Source and
-backend identity sweeps repair backdated changes and deletions that ordinary
-polling can miss. A recent polling watermark does not prove full-source coverage.
-PDS coverage uses source identity plus the pinned archive mapping described below,
-not a per-host actor cap.
+The Worker exposes the public search aliases and profile-card endpoints, and
+records request outcomes. Answers are unauthenticated and contain no
+viewer-specific state. Parameter details, caching and response formats belong
+in the [API documentation](https://typeahead.waow.tech/docs).
 
-## Snapshot publication and refresh
+## Keeping the index fresh
 
-The cloud Prefect `typeahead-index` deployment in my-prefect-server owns bulk
-preparation on the `typeahead-ephemeral` pool. It exports a verified source
-checkpoint, joins the pinned archive DID-to-PDS mapping only where source PDS is
-empty, builds a Tantivy index and publishes a checksummed bundle and manifest
-to R2. The same mapping is bound to live reconciliation and survives profile
-updates; explicit source PDS changes take precedence. It does not backfill Turso.
-The managed controller installs and qualifies the inactive Fly slot before
-a conditional routing update. Bulk data does not travel through HeavyPad or the
-operator laptop. A serving slot is never rebuilt in place.
+The backend polls source change keys and reconciles changed actors into Tantivy.
+It commits index changes and source progress together so a restart can resume
+from durable state. Profile changes, renames, deletions and policy updates do not
+have to wait for a complete rebuild. The reconciler uses the same pinned hosting
+mapping as the index builder, so an unrelated profile update does not erase a
+joined PDS value.
 
-The current schedule is 06:00 and 18:00 UTC. This 12-hour cadence renews source
-coverage while full remote reconciliation remains unqualified; it is not an
-inherent Tantivy requirement. Checkpoint coverage is bounded to 24 hours and can
-be renewed by a qualifying completed remote round. Reducing rebuild frequency
-requires evidence that reconciliation and long-running index maintenance meet
-the serving requirements. See the [refresh runbook](plans/automatic-snapshot-refresh.md).
+Incremental progress and complete source coverage are different guarantees.
+Polling can miss backdated changes or deletions outside its change window.
+Consistent source checkpoints establish a known baseline; full reconciliation
+can establish coverage only when a complete qualifying round finishes. Coverage
+has an expiry bound, and a backend must not claim freshness merely because its
+polling timestamp is recent.
 
-## Recovery and ownership
+## Building and publishing an index
 
-The active Tantivy machine uses two shared CPUs, 1 GiB RAM and a 20-GiB volume.
-The dev frontend uses the same production frontend with its own backend binding.
-The previous slot and native rollback have separate allocations; a serving
-allocation is not the total infrastructure cost.
+Prefect orchestrates bulk work on disposable cloud compute. A build reads a
+consistent Turso checkpoint, joins the pinned hosting mapping, constructs the
+Tantivy index and publishes checksummed artifacts and metadata to R2. Neither
+the serving machine nor the public Worker performs this corpus-scale work.
 
-A cached restart reopens the admitted installation and resumes durable source
-progress. Missing or invalid admission evidence requires qualification. Rollback
-uses the independent native anchor and conditional route updates; cache generation
-changes follow route convergence. An operator's newer route must never be overwritten
-by compensation from an older operation.
+The deployment controller installs the artifacts on an isolated backend with
+independent storage. It checks artifact integrity, source coverage, search
+behavior, update catch-up and restart behavior before conditionally changing
+the routing record. A concurrent routing change prevents an older operation
+from overwriting the newer decision.
 
-The Worker retains API caching, request accounting and bounded health/statistics
-work. It does not run corpus-scale indexing. Prefect owns build schedules; Fly
-owns serving machines; R2 holds artifacts and routing metadata; Turso remains
-the source of truth. The [deployment inventory](ops/test-resource-retirement-20261031/README.md)
-is a dated receipt, not a substitute for checking live provider state.
+The A/B deployment slots let preparation happen separately from serving. They
+are roles that alternate, not a requirement to run two backends continuously.
+Build cadence, resource allocations, rollback prerequisites and retention are
+operating policies documented in the [refresh runbook](plans/automatic-snapshot-refresh.md),
+not properties of the search engine.
+
+## Handling failures
+
+When the search backend fails, times out or returns an invalid answer, the public
+Worker tries Bluesky for an unscoped search. These fallback answers are not cached;
+a subsequent uncached request tries Typeahead again. A successful empty result
+is a valid answer and does not trigger fallback.
+
+PDS-scoped searches fail explicitly when their backend is unavailable because
+Bluesky cannot honor the scope contract. If both services fail, the API returns
+an error rather than a fabricated empty result. This fallback protects against
+backend failures; it cannot protect against an outage of the public Worker itself.
+
+Index artifacts and routing metadata are separate from the running process.
+This allows installation, restart and deliberate rollback without rebuilding the
+source database. Actual rollback targets, coverage deadlines and recovery steps
+are recorded in [operations](operations.md).
