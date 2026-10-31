@@ -231,4 +231,17 @@ pub const migrations = [_]zug.Migration{
             "ALTER TABLE actors ADD COLUMN profile_source TEXT NOT NULL DEFAULT ''",
         },
     },
+    // Durable identity work: one row per DID that still needs resolution from
+    // its authority. `gen` guards completions against newer signals;
+    // `identity_resolved_at` guards actor writes against older observations.
+    // Turso-only, like 006.
+    .{
+        .id = "008_identity_queue",
+        .name = "durable identity resolution queue",
+        .statements = &.{
+            "CREATE TABLE IF NOT EXISTS identity_queue (did TEXT PRIMARY KEY, gen INTEGER NOT NULL DEFAULT 1, due_at INTEGER NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, reason TEXT NOT NULL DEFAULT '', enqueued_at INTEGER NOT NULL, last_error TEXT NOT NULL DEFAULT '')",
+            "CREATE INDEX IF NOT EXISTS idx_identity_queue_due ON identity_queue(due_at)",
+            "ALTER TABLE actors ADD COLUMN identity_resolved_at INTEGER NOT NULL DEFAULT 0",
+        },
+    },
 };

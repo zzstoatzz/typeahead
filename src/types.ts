@@ -90,6 +90,9 @@ export interface IngestEvent {
   /** resolved alongside handle by the ingester's slingshot pool — carrying it
    *  here is what retired the enrichment cron's per-DID pds backfill. */
   pds?: string;
+  /** set when this event must durably request identity resolution; the worker
+   *  enqueues it in the same request that may advance the relay cursor. */
+  identity?: "identity" | "account";
 }
 
 export interface SlingshotResponse {

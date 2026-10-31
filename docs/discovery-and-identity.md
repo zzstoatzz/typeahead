@@ -55,8 +55,9 @@ Resolving one DID per HTTP request does not work at corpus scale.
 1. **`getProfiles`, 25 per call** — enrichment phase 1. ~154 DIDs/s, ~96% hit
    rate, and it returns display name and avatar so it feeds phase 2 too. Sized
    against arrivals (~2,900 new accounts/hour), not against the backlog.
-2. **The ingester's identity pool** — every `#identity` event, new DID or
-   existing (see below). Posts `pds` along with the handle.
+2. **The durable identity queue** — every `#identity` event, reactivating
+   `#account`, newly discovered actor and PLC directory operation for a known
+   actor (see below). Resolves handle and `pds` from the DID authority.
 3. **Archive metadata join (candidate)** — snapshot construction can fill empty
    PDS values from existing Stream archive metadata. The same checksum-bound
    mapping accompanies the index and is used by live reconciliation, so profile
@@ -70,30 +71,55 @@ Resolving one DID per HTTP request does not work at corpus scale.
 `#identity` is a prod to invalidate cached identity, not data: per the sync
 spec it "does not … reliably indicate what the current state of the identity
 is", and the bsky relay omits the optional `handle` (21/21 events sampled
-2026-09-25). So for every `#identity` DID the ingester (`services/src/identity.zig`):
+2026-09-25). Resolution is durable work in Turso's `identity_queue`, one row per
+DID (`src/identity-queue.ts`, `services/src/identity.zig`):
 
-1. fetches the DID document from its authority — `plc.directory/{did}` or the
-   `did:web` host — via `zat.DidResolver`, never from an identity cache;
-2. verifies the claimed handle resolves back to the DID (`.well-known/atproto-did`,
-   then DNS TXT) via `zat.HandleResolver`;
-3. posts `{did, handle, pds}` to `/admin/ingest`, which overwrites the row's
-   handle. An unverified handle is retried after 60 s and again after 15 min
-   (a fresh domain can lag its DNS or well-known), writing only DID and pds
-   meanwhile; if it still fails it is recorded as `handle.invalid`, the atproto
-   convention the appview also serves, rather than keeping a previous handle
-   that no longer resolves to the DID either. A failed POST is retried on the
-   same schedule. An unreachable DID document is also retried on that schedule
-   while recording the bare DID (deployed October 30). Failed resolution never
-   clears a previously known handle or PDS. After the retry budget is exhausted,
-   another identity event is still required; this is not periodic reconciliation.
+- **signals.** `#identity` and a reactivating `#account` ride the ingester's
+  cursor-protected batch with an `identity` marker; the worker enqueues them in
+  the same `/admin/ingest` request that may advance the relay cursor, before
+  the cursor write. A newly created actor is enqueued inside the transaction of
+  the probe that created it (`changes() = 1`), so a retried batch cannot lose
+  it. `services/src/plc_tail.zig` tails `plc.directory/export` and enqueues
+  DIDs we already index, recovering did:plc changes the relay never signalled
+  or that fell outside its replay window; did:web relies on `#identity` alone.
+  Signals coalesce: a newer one bumps the row's `gen` and makes it due now.
+- **resolution.** The ingester leases due rows (`/admin/identity/lease`, 50 at
+  a time, 300 s lease), fetches the DID document from its authority —
+  `plc.directory/{did}` or the `did:web` host, never an identity cache —
+  verifies the claimed handle resolves back to the DID, and reports to
+  `/admin/identity/complete` with the lease's `gen` and the time the
+  observation began. A resolver that dies mid-batch loses nothing: the lease
+  lapses and the work is leased again.
+- **guards.** An actor's identity is written only by an observation at least as
+  new as `identity_resolved_at`; the queue row is settled only for the
+  generation that was leased, so a signal that arrived during resolution
+  survives. An empty handle or PDS never clears a stored one.
+- **retries.** An unverified handle is retried after 60 s and again after 15 min
+  (a fresh domain can lag its DNS or well-known), recording only the PDS
+  meanwhile; then it is recorded as `handle.invalid`, the atproto convention
+  the appview also serves. An unreachable DID document backs off from 60 s,
+  doubling to a 6 h cap; after 12 leases the row is abandoned and logged
+  (`identity_abandoned`).
+
+Before October 31 pending lookups and retries lived only in the ingester's
+memory, so a restart, a full pool or a spent retry budget lost them silently.
 
 `handle.invalid` rows recover when the handle verifies again: the next
-`#identity` event re-resolves them, and appview enrichment writes whatever
-handle the appview has verified.
+signal re-resolves them, and appview enrichment writes whatever handle the
+appview has verified.
 
-Outcome counters (`verified`, `unverified`, `no_handle`, `did_failed`,
-`retried`, `post_failed`, plus the pool's `dropped`) are on the ingester's
-`/health`.
+The ingester's `/health` carries `identity` counters (`leased`, `lease_failed`,
+`verified`, `unverified`, `no_handle`, `did_failed`, `retried`, `post_failed`)
+and `plc` counters (`pages`, `operations`, `failed`). Queue depth is
+`GET /admin/identity/status` (admin auth): `pending`, `due`, `oldest_due_at`.
+A `due` count that grows across many minutes means resolution is not keeping
+pace; arrivals are about 1 signal per second (~1,000 `#identity` and ~2,900
+new actors per hour, sampled 2026-10-31).
+
+Microcosm's Slingshot and Hubble were evaluated on 2026-10-31 as sources and
+are not used: Slingshot serves stale entries while it refreshes from jetstream,
+and neither offers a feed or bulk dump of identity changes. Hubble's
+`getRepoInfo` remains a possible per-DID cross-check, not a source of truth.
 
 Until 2026-09-25 step 1 went through slingshot, an identity cache that nothing
 had prodded. It answered seconds after the PLC op with the old handle for
@@ -172,6 +198,8 @@ and `did:web` accounts that are not in PLC at all. Expect low thousands.
 | attempted count growing | unresolved accounts, including those the appview cannot see | inspect resolution failures and cloud enrichment; do not restore the retired home PLC job |
 | hour missing from `snapshots` | cron did not fire, or a step failed | compare `cron_last_attempt` in KV — it is written before any step |
 | ingester `pending` climbing | worker writes are slow or failing | check Turso write latency; see the single-writer note below |
+| `identity_queue` `due` climbing | resolution not keeping pace, or lease/complete failing | check the ingester's `identity.lease_failed` / `post_failed` and `did_failed`; the queue keeps the work until it drains |
+| `plc.failed` climbing | plc.directory unreachable or rate-limiting | the stored cursor holds its place; the tail resumes from it |
 
 ## the constraint behind most incidents here
 

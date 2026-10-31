@@ -7,6 +7,7 @@ import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
+import { handleIdentityComplete, handleIdentityLease, handleIdentityStatus, handlePlcCursor, handlePlcOperations } from "./identity-queue";
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
 import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
@@ -233,6 +234,22 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
 
   if (pathname === "/admin/ingest" && request.method === "POST") {
     return handleIngest(request, db, env, ctx);
+  }
+
+  if (pathname === "/admin/identity/lease" && request.method === "POST") {
+    return handleIdentityLease(request, db, env);
+  }
+  if (pathname === "/admin/identity/complete" && request.method === "POST") {
+    return handleIdentityComplete(request, db, env);
+  }
+  if (pathname === "/admin/identity/plc" && request.method === "GET") {
+    return handlePlcCursor(request, env);
+  }
+  if (pathname === "/admin/identity/plc" && request.method === "POST") {
+    return handlePlcOperations(request, db, env);
+  }
+  if (pathname === "/admin/identity/status" && request.method === "GET") {
+    return handleIdentityStatus(request, db, env);
   }
 
   if (pathname === "/admin/delete" && request.method === "POST") {

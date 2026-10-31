@@ -1,8 +1,9 @@
 import { admittedHandle } from "../identity-policy";
-import type { TursoDB } from "../db";
+import type { Stmt, TursoDB } from "../db";
 import type { Env, IngestEvent } from "../types";
 import { clientIP, json } from "../utils";
 import { recordActorDelta } from "../metrics";
+import { enqueueDiscovered, enqueueIdentity } from "../identity-queue";
 
 export async function handleIngest(
   request: Request,
@@ -18,7 +19,7 @@ export async function handleIngest(
     return json({ error: "unauthorized" }, 401);
   }
 
-  let body: { events: IngestEvent[]; cursor?: number };
+  let body: { events: IngestEvent[]; cursor?: number; identity_queue?: boolean };
   try {
     body = await request.json();
   } catch {
@@ -44,15 +45,19 @@ export async function handleIngest(
   // The UPDATE also resets profile_checked_at to 0 so the cron's cold-floor pool
   // picks the actor up next tick to refresh appview aggregates (followers/qs)
   // the firehose can't carry — the "firehose-triggered enqueue".
-  const stmts: ReturnType<typeof db.prepare>[] = [];
-  const probeIdx: number[] = []; // result index of each event's INSERT OR IGNORE probe
+  // Each event's statements stay in one transaction: the discovery enqueue reads
+  // changes() from the probe right before it, and must commit with it — a
+  // retried batch finds the actor no longer new and would never enqueue it.
+  const groups: Stmt[][] = [];
   for (const e of events) {
-    probeIdx.push(stmts.length);
-    stmts.push(db.prepare("INSERT OR IGNORE INTO actors (did) VALUES (?1)").bind(e.did));
+    const group = [db.prepare("INSERT OR IGNORE INTO actors (did) VALUES (?1)").bind(e.did)];
+    if (body.identity_queue === true) group.push(enqueueDiscovered(db, e.did));
+    if (e.identity === "identity" || e.identity === "account") group.push(enqueueIdentity(db, e.did, e.identity));
+    groups.push(group);
     const handle = admittedHandle(e);
     const isBareDID = !handle && !e.display_name && !e.avatar_cid && !e.pds && !e.description && !e.banner_cid;
     if (!isBareDID) {
-      stmts.push(db.prepare(
+      group.push(db.prepare(
         `UPDATE actors SET
            handle = COALESCE(NULLIF(?2, ''), handle),
            display_name = COALESCE(NULLIF(?3, ''), display_name),
@@ -77,15 +82,29 @@ export async function handleIngest(
   // down with it.
   //
   // Same total work, several small transactions instead of one huge one, so
-  // other writers can interleave. Results are concatenated in order because
-  // probeIdx indexes into the flattened list.
+  // other writers can interleave. Chunks hold whole event groups, and results
+  // are concatenated in order because probeIdx indexes into the flattened list.
   const BATCH_STATEMENTS = 250;
+  const chunks: Stmt[][] = [[]];
+  const probeIdx: number[] = []; // result index of each event's INSERT OR IGNORE probe
+  let flattened = 0;
+  for (const group of groups) {
+    let chunk = chunks[chunks.length - 1]!;
+    if (chunk.length > 0 && chunk.length + group.length > BATCH_STATEMENTS) {
+      chunk = [];
+      chunks.push(chunk);
+    }
+    probeIdx.push(flattened);
+    chunk.push(...group);
+    flattened += group.length;
+  }
+  const statementCount = flattened;
+
   const databaseStart = performance.now();
   const batchResults: { results: unknown[]; meta: { changes: number } }[] = [];
   try {
-    for (let i = 0; i < stmts.length; i += BATCH_STATEMENTS) {
-      const chunk = await db.batch(stmts.slice(i, i + BATCH_STATEMENTS));
-      batchResults.push(...chunk);
+    for (const chunk of chunks) {
+      batchResults.push(...await db.batch(chunk));
     }
   } catch (e: any) {
     console.log(JSON.stringify({ event: "ingest_error", error: e?.message, count: events.length }));
@@ -116,7 +135,7 @@ export async function handleIngest(
 
   const cursorMs = performance.now() - cursorStart;
   console.log(JSON.stringify({
-    event: "ingest_done", count: events.length, statements: stmts.length,
+    event: "ingest_done", count: events.length, statements: statementCount,
     database_ms: Math.round(databaseMs), cursor_ms: Math.round(cursorMs),
     cursor_supplied: cursor !== undefined, cursor_written: cursorWritten,
   }));

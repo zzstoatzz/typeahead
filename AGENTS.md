@@ -166,6 +166,9 @@ regression is pinned). Extend it, don't prune it.
   the cron NEVER claims to drain a corpus-scale backlog — backlogs belong to the bulk paths
   (the `typeahead-enrich-backfill` Prefect deployment for profiles, `typeahead-identity-hourly`
   for new actors' handles, defined in `my-prefect-server`), run off-worker.
+  Live identity freshness is the durable `identity_queue` (signals enqueued before the
+  relay cursor can pass them; the ingester leases and resolves). Never move a pending
+  identity lookup back into process memory. See [discovery and identity](docs/discovery-and-identity.md).
   Missing PDS metadata requires a separately qualified cloud repair, never HeavyPad. Since 2026-09-03
   the worker cron does NO enrichment at all: freshness, stats, and the moderation refresh
   only, inside a 12-minute budget (`CRON_BUDGET_MS`) so the 15-minute wall kill — which took

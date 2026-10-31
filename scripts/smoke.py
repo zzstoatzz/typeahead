@@ -596,6 +596,12 @@ def test_cron_selector_plans():
             "ORDER BY updated_at DESC LIMIT 200",
             "idx_actors_refresh_queue",
         ),
+        # the identity lease's inner selector, as src/identity-queue.ts LEASE_SQL builds it
+        "identity lease uses idx_identity_queue_due": (
+            "EXPLAIN QUERY PLAN SELECT did FROM identity_queue "
+            "WHERE due_at <= unixepoch() ORDER BY due_at LIMIT 50",
+            "idx_identity_queue_due",
+        ),
     }
     for label, (sql, index_name) in selectors.items():
         body = json.dumps({

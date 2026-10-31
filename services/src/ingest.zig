@@ -160,15 +160,14 @@ pub const ActorEvent = struct {
     description: ?[]const u8 = null,
     banner_cid: ?[]const u8 = null,
     pds: ?[]const u8 = null,
+    /// "identity" or "account": the worker durably enqueues identity resolution
+    identity: ?[]const u8 = null,
 };
 
 pub const IngestHandler = struct {
     allocator: Allocator,
     config: Config,
     transport: *HttpTransport,
-    /// nullable so unit tests / minimal modes can run without it.
-    /// in production main wires this to a pool with N concurrent slingshot workers.
-    identity_pool: ?*identity.Pool,
     buffer: std.ArrayList(ActorEvent),
     /// seq of the firehose event each buffered entry came from, 1:1 with
     /// `buffer`. Without it the flush can only advance the durable cursor when
@@ -193,13 +192,11 @@ pub const IngestHandler = struct {
         allocator: Allocator,
         config: Config,
         transport: *HttpTransport,
-        identity_pool: ?*identity.Pool,
     ) !IngestHandler {
         return .{
             .allocator = allocator,
             .config = config,
             .transport = transport,
-            .identity_pool = identity_pool,
             .buffer = .empty,
             .cursors = .empty,
             .delete_buffer = .empty,
@@ -338,24 +335,32 @@ pub const IngestHandler = struct {
         }
     }
 
+    /// The resolution request rides the cursor-protected batch; the worker
+    /// enqueues it durably before the cursor can pass this event.
     fn handleIdentity(self: *IngestHandler, id: zat.firehose.IdentityEvent) void {
-        // Keep discovery on the cursor-protected queue even when the async
-        // resolver is full or its HTTP write fails. A bare row lets the durable
-        // handle-enrichment queue find the account later.
         const did = self.dupe(id.did) orelse return;
-        self.enqueue(.{ .did = did });
-
-        if (self.identity_pool) |pool| {
-            if (identity.Did.fromSlice(id.did)) |resolver_did| {
-                _ = pool.offer(io, .{ .did = resolver_did }); // discovery is queued above; drops show on /health
-            }
-        }
+        self.enqueue(.{ .did = did, .identity = "identity" });
     }
 
     fn handleAccount(self: *IngestHandler, acct: zat.firehose.AccountEvent) void {
         if (!acct.active) {
             const did = self.dupe(acct.did) orelse return;
             self.delete_buffer.append(self.allocator, did) catch return;
+            return;
+        }
+        // Deletes flush after inserts, so a deactivation still queued would
+        // remove the row this reactivation restores.
+        self.cancelPendingDelete(acct.did);
+        const did = self.dupe(acct.did) orelse return;
+        self.enqueue(.{ .did = did, .identity = "account" });
+    }
+
+    fn cancelPendingDelete(self: *IngestHandler, did: []const u8) void {
+        var i: usize = 0;
+        while (i < self.delete_buffer.items.len) {
+            if (mem.eql(u8, self.delete_buffer.items[i], did)) {
+                _ = self.delete_buffer.orderedRemove(i);
+            } else i += 1;
         }
     }
 
@@ -550,6 +555,12 @@ pub fn workerPost(url: []const u8, payload: []const u8, auth: []const u8) HttpTr
     };
 }
 
+/// `identity_queue` asks the worker to enqueue identity work for every actor this
+/// batch creates, inside the transaction that creates it.
+fn batchBody(events: []const ActorEvent, cursor: i64) struct { events: []const ActorEvent, cursor: i64, identity_queue: bool } {
+    return .{ .events = events, .cursor = cursor, .identity_queue = true };
+}
+
 fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEvent, cursor: i64) bool {
     var output: std.Io.Writer.Allocating = .init(transport.allocator);
     defer output.deinit();
@@ -558,7 +569,7 @@ fn postBatch(transport: *HttpTransport, config: Config, events: []const ActorEve
         .writer = &output.writer,
         .options = .{ .emit_null_optional_fields = false },
     };
-    jw.write(.{ .events = events, .cursor = cursor }) catch return false;
+    jw.write(batchBody(events, cursor)) catch return false;
 
     var url_buf: [512]u8 = undefined;
     const url = std.fmt.bufPrint(&url_buf, "{s}/admin/ingest", .{config.worker_url}) catch return false;
@@ -672,10 +683,11 @@ pub fn getRssKB() u64 {
 
 const testing = std.testing;
 
-// identity.zig is only reachable through this file, and `zig build test` roots the
-// ingest suite here — without this reference its tests are silently never run.
+// identity.zig and plc_tail.zig are only reachable through this file, and `zig build test` roots the
+// ingest suite here — without this reference their tests are silently never run.
 test {
     _ = @import("identity.zig");
+    _ = @import("plc_tail.zig");
 }
 
 test "wantedCollection: allowlist survives the loss of jetstream's server-side filter" {
@@ -865,7 +877,7 @@ const TestWriter = struct {
 
 test "full backlog retries without losing events or advancing past failed writes" {
     var transport: HttpTransport = undefined; // fake writer owns all I/O below
-    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
     defer handler.deinit();
     for (0..MAX_BACKLOG) |i| {
         handler.pending_cursor = @intCast(i + 1);
@@ -890,7 +902,7 @@ test "full backlog retries without losing events or advancing past failed writes
 
 test "failed delete holds replay cursor until the delete succeeds" {
     var transport: HttpTransport = undefined;
-    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
     defer handler.deinit();
     handler.flushed_cursor = 10;
     handler.pending_cursor = 12;
@@ -908,7 +920,7 @@ test "failed delete holds replay cursor until the delete succeeds" {
 
 test "a split relay commit remains replayable until all its entries succeed" {
     var transport: HttpTransport = undefined;
-    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
     defer handler.deinit();
     handler.flushed_cursor = 99;
     handler.pending_cursor = 100;
@@ -928,7 +940,7 @@ test "a split relay commit remains replayable until all its entries succeed" {
 
 test "slow flush gives the next partial batch its full collection interval" {
     var transport: HttpTransport = undefined;
-    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
     defer handler.deinit();
     handler.last_flush = 0;
     handler.enqueue(.{ .did = "did:plc:test" });
@@ -944,7 +956,7 @@ test "slow flush gives the next partial batch its full collection interval" {
 
 test "identity discovery without a handle survives a failed write" {
     var transport: HttpTransport = undefined;
-    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
     defer handler.deinit();
     handler.pending_cursor = 42;
     handler.handleIdentity(.{ .seq = 42, .did = "did:plc:identity", .time = "2026-09-05T00:00:00Z" });
@@ -962,7 +974,7 @@ test "identity discovery without a handle survives a failed write" {
 
 test "identity with invalid handle still queues discovery" {
     var transport: HttpTransport = undefined;
-    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
     defer handler.deinit();
     handler.handleIdentity(.{ .seq = 1, .did = "did:plc:identity", .time = "", .handle = "handle.invalid" });
     try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
@@ -971,7 +983,7 @@ test "identity with invalid handle still queues discovery" {
 
 test "identity with a claimed handle queues bare discovery only" {
     var transport: HttpTransport = undefined;
-    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport, null);
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
     defer handler.deinit();
     handler.handleIdentity(.{ .seq = 1, .did = "did:plc:identity", .time = "", .handle = "example.bsky.social" });
     try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
@@ -990,4 +1002,47 @@ test "workerPost: the transport accepts the request it builds" {
         std.testing.allocator.free(result.body);
         return error.TestUnexpectedResult;
     } else |err| try std.testing.expect(err != error.MissingContentType);
+}
+
+test "#identity rides the cursor-protected batch as durable identity work" {
+    // Regression (2026-10-31): the lookup used to go straight into an in-memory
+    // pool, so a restart after the cursor passed the event lost it.
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
+    defer handler.deinit();
+    handler.pending_cursor = 7;
+    handler.handleIdentity(.{ .seq = 7, .did = "did:plc:moved", .time = "2026-10-31T00:00:00Z" });
+    try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
+    try testing.expectEqualStrings("did:plc:moved", handler.buffer.items[0].did);
+    try testing.expectEqualStrings("identity", handler.buffer.items[0].identity.?);
+    try testing.expectEqual(@as(i64, 7), handler.cursors.items[0]);
+}
+
+test "a reactivated account is restored and cancels its pending deletion" {
+    // Deletes flush after inserts, so a deactivation still queued would remove
+    // the row the reactivation restores; a silent account never came back.
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
+    defer handler.deinit();
+    handler.handleAccount(.{ .seq = 1, .did = "did:plc:back", .time = "2026-10-31T00:00:00Z", .active = false });
+    handler.handleAccount(.{ .seq = 2, .did = "did:plc:gone", .time = "2026-10-31T00:00:00Z", .active = false });
+    try testing.expectEqual(@as(usize, 2), handler.delete_buffer.items.len);
+
+    handler.handleAccount(.{ .seq = 3, .did = "did:plc:back", .time = "2026-10-31T00:00:01Z", .active = true });
+    try testing.expectEqual(@as(usize, 1), handler.delete_buffer.items.len);
+    try testing.expectEqualStrings("did:plc:gone", handler.delete_buffer.items[0]);
+    try testing.expectEqual(@as(usize, 1), handler.buffer.items.len);
+    try testing.expectEqualStrings("did:plc:back", handler.buffer.items[0].did);
+    try testing.expectEqualStrings("account", handler.buffer.items[0].identity.?);
+}
+
+test "the ingest batch asks the worker to enqueue discovery" {
+    var output: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer output.deinit();
+    var jw: json.Stringify = .{ .writer = &output.writer, .options = .{ .emit_null_optional_fields = false } };
+    const events = [_]ActorEvent{ .{ .did = "did:plc:a" }, .{ .did = "did:plc:b", .identity = "identity" } };
+    try jw.write(batchBody(&events, 9));
+    try testing.expectEqualStrings(
+        \\{"events":[{"did":"did:plc:a","handle_verified":false},{"did":"did:plc:b","handle_verified":false,"identity":"identity"}],"cursor":9,"identity_queue":true}
+    , output.written());
 }

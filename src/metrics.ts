@@ -121,6 +121,7 @@ export function endpointLabel(pathname: string): string {
   if (pathname === "/request-indexing") return "request-indexing";
   if (pathname === "/admin/ingest") return "admin/ingest";
   if (pathname === "/admin/delete") return "admin/delete";
+  if (pathname.startsWith("/admin/identity/")) return "admin/identity";
   if (pathname.startsWith("/admin/")) return "admin";
   if (pathname.startsWith("/health/")) return "health";
   if (pathname.startsWith("/debug/")) return "debug";

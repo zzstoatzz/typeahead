@@ -13,6 +13,7 @@ const server = @import("server.zig");
 const http_guard = @import("http_guard.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
+const plc_tail = @import("plc_tail.zig");
 const index_builder = @import("index/builder.zig");
 const promote_runner = @import("index/promote_runner.zig");
 
@@ -54,7 +55,6 @@ const FirehoseArgs = struct {
     allocator: Allocator,
     config: ingest.Config,
     transport: *HttpTransport,
-    identity_pool: ?*identity.Pool,
 };
 
 fn firehoseThread(args: FirehoseArgs) void {
@@ -62,7 +62,6 @@ fn firehoseThread(args: FirehoseArgs) void {
         args.allocator,
         args.config,
         args.transport,
-        args.identity_pool,
     ) catch |err| {
         log.err("handler init failed: {}, exiting for restart", .{err});
         fatal.exitForRestart();
@@ -268,11 +267,7 @@ pub fn main() !void {
     var have_identity_pool = false;
     defer if (have_identity_pool) identity_pool.deinit();
 
-    const retry_stages = identity.RETRY_DELAYS_SECS.len;
-    var retrier: identity.Retrier = undefined;
-    var retry_pools: [retry_stages]identity.RetryPool = undefined;
-    var retry_pools_started: usize = 0;
-    defer for (retry_pools[0..retry_pools_started]) |*rp| rp.deinit();
+    var tail: plc_tail.Tail = undefined;
 
     if (role == .ingester) {
         // Reading TYPEAHEAD_URL/TYPEAHEAD_SECRET here (not unconditionally at
@@ -288,13 +283,13 @@ pub fn main() !void {
         transport.keep_alive = true;
         have_transport = true;
 
-        // identity resolution pool: every #identity event is re-resolved from
-        // its DID authority and the handle verified; see identity.zig.
+        // identity resolution pool, fed only by the durable identity_queue drain:
+        // each leased DID is re-resolved from its authority; see identity.zig.
         resolver = identity.Resolver.init(allocator, io, config.worker_url, config.secret);
         have_resolver = true;
 
         identity_pool = identity.Pool.init(allocator, .{
-            .queue_capacity = 4096,
+            .queue_capacity = 64,
             .workers = 8,
             .ctx = &resolver,
             .process = identity.Resolver.process,
@@ -309,30 +304,22 @@ pub fn main() !void {
             return err;
         };
 
-        retrier = .{ .pool = &identity_pool };
-        for (&retry_pools, 0..) |*rp, stage| {
-            rp.* = identity.RetryPool.init(allocator, .{
-                .queue_capacity = 1024,
-                .workers = 1,
-                .ctx = &retrier,
-                .process = identity.Retrier.process,
-            }) catch |err| {
-                log.err("identity retry pool init failed: {}", .{err});
-                return err;
-            };
-            retry_pools_started += 1;
-            rp.start(io) catch |err| {
-                log.err("identity retry pool start failed: {}", .{err});
-                return err;
-            };
-            resolver.retry_pools[stage] = rp;
-        }
+        tasks.concurrent(io, identity.Resolver.drain, .{ &resolver, &identity_pool }) catch |err| {
+            log.err("identity drain task failed: {}", .{err});
+            return err;
+        };
+
+        // recovery feed for did:plc identity changes the relay never signalled; see plc_tail.zig
+        tail = .{ .allocator = allocator, .io = io, .worker_url = config.worker_url, .worker_secret = config.secret };
+        tasks.concurrent(io, plc_tail.Tail.run, .{&tail}) catch |err| {
+            log.err("plc tail task failed: {}", .{err});
+            return err;
+        };
 
         tasks.concurrent(io, firehoseThread, .{FirehoseArgs{
             .allocator = allocator,
             .config = config,
             .transport = &transport,
-            .identity_pool = &identity_pool,
         }}) catch |err| {
             log.err("firehose task failed: {}", .{err});
         };
@@ -389,12 +376,12 @@ pub fn main() !void {
             const path = if (std.mem.indexOfScalar(u8, target, '?')) |qi| target[0..qi] else target;
 
             if (std.mem.eql(u8, path, "/health")) {
-                var buf: [1024]u8 = undefined;
+                var buf: [1536]u8 = undefined;
                 const body = if (id_pool_arg) |pool| blk: {
                     const ic = pool.counters(io);
                     break :blk std.fmt.bufPrint(&buf,
-                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"accepted":{d},"dropped":{d},"processed":{d},"queued":{d},"verified":{d},"unverified":{d},"no_handle":{d},"did_failed":{d},"retried":{d},"post_failed":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
-                    , .{ ingest.getRssKB(), ic.accepted, ic.dropped, ic.processed, ic.queued, identity.stats.verified.load(.monotonic), identity.stats.unverified.load(.monotonic), identity.stats.no_handle.load(.monotonic), identity.stats.did_failed.load(.monotonic), identity.stats.retried.load(.monotonic), identity.stats.post_failed.load(.monotonic), ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
+                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"leased":{d},"lease_failed":{d},"accepted":{d},"dropped":{d},"processed":{d},"queued":{d},"verified":{d},"unverified":{d},"no_handle":{d},"did_failed":{d},"retried":{d},"post_failed":{d}}},"plc":{{"pages":{d},"operations":{d},"failed":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
+                    , .{ ingest.getRssKB(), identity.stats.leased.load(.monotonic), identity.stats.lease_failed.load(.monotonic), ic.accepted, ic.dropped, ic.processed, ic.queued, identity.stats.verified.load(.monotonic), identity.stats.unverified.load(.monotonic), identity.stats.no_handle.load(.monotonic), identity.stats.did_failed.load(.monotonic), identity.stats.retried.load(.monotonic), identity.stats.post_failed.load(.monotonic), plc_tail.stats.pages.load(.monotonic), plc_tail.stats.operations.load(.monotonic), plc_tail.stats.failed.load(.monotonic), ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
                 } else std.fmt.bufPrint(&buf,
                     \\{{"status":"ok","role":"ingester","rss_kb":{d}}}
                 , .{ingest.getRssKB()}) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
@@ -419,7 +406,6 @@ pub fn main() !void {
 
     log.info("SIGTERM received, draining tasks…", .{});
     tasks.cancel(io);
-    for (retry_pools[0..retry_pools_started]) |*rp| rp.cancel(io);
     if (have_identity_pool) {
         log.info("draining identity resolver…", .{});
         identity_pool.shutdown(io);

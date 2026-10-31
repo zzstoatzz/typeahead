@@ -41,8 +41,11 @@ separately from the serving backend.
 ## Collecting account information
 
 A Zig ingester follows the relay's `com.atproto.sync.subscribeRepos` firehose.
-It records account activity and profile changes in Turso. Separate identity and
-enrichment workflows resolve handles, hosting servers and profile information.
+It records account activity and profile changes in Turso. Identity signals —
+`#identity`, reactivated accounts, new accounts and PLC directory operations —
+become durable rows in an identity queue in Turso; the ingester drains it,
+resolving each handle and hosting server from the DID's authority. Separate
+enrichment workflows fill in profile information.
 Turso holds the actor records, ranking inputs and moderation state used to build
 and update the index.
 
