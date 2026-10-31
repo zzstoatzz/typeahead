@@ -1,5 +1,7 @@
 # Cloud archive PDS pilot — October 30, 2026
 
+Historical live-write experiment, superseded by the [snapshot join](../archive-pds-candidate-20261030/README.md). Do not resume `backfill.py` or its remaining-work list: the selected approach joins archive metadata during cloud snapshot construction and live reconciliation without a bulk source-database backfill. The measurements below describe the earlier experiment.
+
 The existing archive metadata can fill a substantial portion of Typeahead's
 missing PDS fields, but does not cover the entire backlog. No new crawler,
 service, archive copy, or HeavyPad work was used.
