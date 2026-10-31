@@ -1,0 +1,7 @@
+ss{"address":"127.0.0.1:34611","event":"listening","ready":true}
+........{"event": "tantivy_slot_transfer_retry", "attempt": 1, "bytes": 98304, "exit_code": 5}
+.
+----------------------------------------------------------------------
+Ran 11 tests in 8.738s
+
+OK (skipped=2)

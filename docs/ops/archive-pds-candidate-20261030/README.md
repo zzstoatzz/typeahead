@@ -115,3 +115,23 @@ completion, with missing source PDS and an archive mapping. Selection examined
 1,000 recent rows in two SELECT requests (736,413 response bytes); it wrote
 no source rows. Its scripts are retained here. The deployed probe must still
 pass; selecting samples alone does not establish preservation.
+
+### Interrupted installation transfer
+
+The first slot download stopped at 3,987,730,432 of 6,324,633,600 bytes. Fly
+reported exit code 1 and `oom_killed=false`; subsequent starts rejected the
+incomplete cache. The old downloader discarded rclone stderr, so the underlying
+transport error is not known. Preparation run `7aea315f` was canceled.
+
+`c476fc5` adds bounded range-resumption with a final whole-bundle checksum,
+validates cached deployment/source manifests before reuse, and records retry
+byte counts and exit codes. The revised image is
+`registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca`.
+It reuses the same Rust binary and portable artifact. Its Linux tests at two
+CPUs/1 GiB passed (9 tests, 2 optional serving integrations skipped), including
+real rclone HTTP interruption/range recovery and cached-manifest installation.
+See [test output](slot-transfer-tests.log). Zig Zen was rerun for this change.
+
+The partial preparation reservation is being canceled through normal deployment
+run `c9182ad4-2ea3-430d-b5e8-63f8a8bc43af`; its resources must be retired before
+preparing the revised immutable image. Production routing still points to A.
