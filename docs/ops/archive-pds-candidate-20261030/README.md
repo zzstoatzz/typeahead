@@ -2,6 +2,8 @@
 
 Status (October 31, 2026 UTC): full candidate installed and admitted after restart
 through the normal deployment. **Not cut over**. The scoped release proof is published and build scratch is removed.
+The [completion audit](completion-audit.json) verified the healthy candidate,
+unchanged production route/ETag and all published evidence hashes.
 Cutover still requires explicit approval and the configuration steps below.
 Production routing, source ingestion and authoritative identity handling remain
 unchanged. Data processing runs only in the cloud, with no source-database writes.

@@ -1,0 +1,131 @@
+{
+  "observed_at": 1793411093,
+  "scope": "Prepared candidate only; no production cutover",
+  "requirements": {
+    "cloud_full_build_no_source_writes": [
+      {
+        "path": "candidate-build.json",
+        "sha256": "4a99190706982f476be963a4a64c9058e7a06c8704fb782da08fce04f2641bdf"
+      },
+      {
+        "path": "import-result.json",
+        "sha256": "400ba99ea8acb2a89b0c52ff10dfc9809ceca7ec71d71974d3187b93aa10c174"
+      }
+    ],
+    "checksum_mapping_build_catchup_install_restart": [
+      {
+        "path": "artifact-manifest.json",
+        "sha256": "7c43b882ad750b2f1c3cf2b1a7a749930efca899afc2e9a10da3031eef7b8cc1"
+      },
+      {
+        "path": "final-checkpoint-tests.log",
+        "sha256": "1d67a6be46567401321aeb04c125e93c2996658af8744fcfbf4a2be3a75f2308"
+      },
+      {
+        "path": "installed-receipt.json",
+        "sha256": "03d8c6dcc90e251ba7606b9ed4ab92c9852707c63e3d1af4ffc28f5cfe792214"
+      },
+      {
+        "path": "runtime-admission.json",
+        "sha256": "efff83eae9d06c3198ac5058cd640e483ee744f5a4f4d18744abdb722a998716"
+      }
+    ],
+    "authoritative_source_deletion_moderation": [
+      {
+        "path": "../archive-pds-join-pilot-20261030/result.json",
+        "sha256": "4f2bea49e8d03e2bfa4f03cf8f5ff54b6b0e77e64ec775e17c20e7e3550fb7b8"
+      },
+      {
+        "path": "final-image-smoke.json",
+        "sha256": "b2bb74cba093fa946975e08096b97727046810765044ab40e4265de9ab4a792a"
+      }
+    ],
+    "actual_coverage_and_scoped_search": [
+      {
+        "path": "verification-post-restart.json",
+        "sha256": "2027afbb885d40b5ef691a14409d167575bd00c5225bec29d0c17096e2be22be"
+      }
+    ],
+    "real_profile_updates_preserve_join": [
+      {
+        "path": "verification-live-updates.json",
+        "sha256": "a96142578d5df7e4b98aac118cf31fe19a92561864a904262158ae1e466f4086"
+      }
+    ],
+    "failure_and_restart": [
+      {
+        "path": "slot-transfer-tests.log",
+        "sha256": "ee371b1ab1b6f0a866ecee8ca5077693dd9853391ee9d56815f1a61d2665f814"
+      },
+      {
+        "path": "final-image-smoke.json",
+        "sha256": "b2bb74cba093fa946975e08096b97727046810765044ab40e4265de9ab4a792a"
+      },
+      {
+        "path": "runtime-admission.json",
+        "sha256": "efff83eae9d06c3198ac5058cd640e483ee744f5a4f4d18744abdb722a998716"
+      }
+    ],
+    "measured_time_storage": [
+      {
+        "path": "candidate-build.json",
+        "sha256": "4a99190706982f476be963a4a64c9058e7a06c8704fb782da08fce04f2641bdf"
+      },
+      {
+        "path": "storage-samples.jsonl",
+        "sha256": "eb6093fe1c5215405110a472da22337d5a1eee65f6fb8957b44f3b773ae3bf53"
+      },
+      {
+        "path": "install-observation.json",
+        "sha256": "8a551754430460b7cb3b244caf0a667afa7e5fbc1e0b0bbe18d8785d461c3d4f"
+      }
+    ],
+    "cleanup_retained_candidate": [
+      {
+        "path": "scratch-cleanup.json",
+        "sha256": "429a838177b3136e68b1dc14754d3ce9184ceb4f23079e1ffeec3484ba49e648"
+      },
+      {
+        "path": "controller-cleanup.json",
+        "sha256": "64a650ba367a7aad8cd8b9c2f087a4e154f18b763d3e0160e0adae94e5d960d1"
+      }
+    ],
+    "public_smoke_and_performance": [
+      {
+        "path": "preview-smoke.json",
+        "sha256": "257f2ff37a478d2dc5867f70a094c337a05e36a97c932bb7a1f95e7c3c576df6"
+      },
+      {
+        "path": "preview-ui-equivalence.json",
+        "sha256": "bf9a885d96e2c9520cddbb7fda889a543d9519205be003438f9d17f7131a1d7a"
+      },
+      {
+        "path": "matched-query-check.json",
+        "sha256": "e77318324c7476d2163e51a5e96e41ee9cfd93b8e1bd38da09c7c7f0ce18b914"
+      }
+    ]
+  },
+  "candidate_health": {
+    "actors": 12893846,
+    "build_id": "b1793395409-cp-pdsjoin",
+    "engine": "tantivy",
+    "normalize_version": "v2-cjk-bigram",
+    "plan_version": "complete-prefix-groups-v1",
+    "ready": true,
+    "status": "ok",
+    "sync_lag_s": 28
+  },
+  "production_route_unchanged": true,
+  "production_route_etag": "\"b2090b2912ff5c17850554251658a365\"",
+  "release_evidence_readback_and_local_hashes_match": true,
+  "release_key": "control/tantivy-releases/cf08e3fc7a529e21c3e62c035de8aa26f3aa9acfccf4cb7c3565151c8e23d02d.json",
+  "zig_zen_review": "Executed again after cleanup; checked checksum boundaries, source authority, explicit failures, owned resource teardown; relevant fixes committed.",
+  "docs_review": "Candidate operational record and runbook identify current state, exact pins, limits and approval boundary; production README remains accurate.",
+  "limitations": [
+    "Performance evidence is a small warm-query regression, not sustained-load certification.",
+    "First full reconciliation renewal and uninterrupted scheduled refresh duration remain unproven. Retain the existing 12-hour refresh cadence and persist new mapping/source/image pins before approved cutover.",
+    "Archive identity data is a fallback and may be stale. Authoritative source PDS takes precedence; 4.9 million live actors still lack mapping.",
+    "Production route and schedule are unchanged. Promotion requires explicit human approval and current freshness/route checks."
+  ],
+  "passed": true
+}
