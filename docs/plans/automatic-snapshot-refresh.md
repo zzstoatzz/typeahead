@@ -149,3 +149,9 @@ backend. It exercises missing/corrupt route rejection, a one-second metadata cac
 scoped acknowledgment, admin authentication and exact origin restrictions. It does
 not change the production routing object. Actual R2 installer/cleanup receipts are
 under `docs/evals/startup-refresh-*-20261025.json`.
+
+Incomplete artifact downloads on an inactive slot can resume from their saved
+byte offset after the cached deployment and source manifests match the requested
+checksums. Transfers have bounded attempts and byte/disk limits. The full bundle
+checksum must still match before extraction or admission; cached metadata drift,
+unexpected files and unadmitted extracted directories fail closed.

@@ -48,16 +48,24 @@ class R2:
     def download(self,key,path,max_bytes):
         remote='r2:'+self.bucket+'/'+object_key(key)
         deadline=time.monotonic()+3600
-        with path.open('xb') as output:
-            child=subprocess.Popen(['rclone','--config',self.config.name,'--contimeout','10s','--timeout','30s','--retries','3','cat',remote],stdin=subprocess.DEVNULL,stdout=output,stderr=subprocess.DEVNULL)
-            try:
-                while child.poll() is None:
-                    if path.stat().st_size>max_bytes or shutil.disk_usage(path.parent).free<RESERVE or time.monotonic()>deadline:raise ValueError('Bounded artifact transfer failed')
-                    time.sleep(.1)
-                if child.returncode or path.stat().st_size>max_bytes:raise ValueError('Artifact transfer failed')
-                output.flush();os.fsync(output.fileno())
-            except BaseException:
-                child.kill();child.wait();raise
+        for attempt in range(3):
+            offset=path.stat().st_size if path.exists() else 0
+            if offset>max_bytes:raise ValueError('Artifact exceeds byte bound')
+            with path.open('ab') as output:
+                child=subprocess.Popen(['rclone','--config',self.config.name,'--contimeout','10s','--timeout','30s','--retries','1','--low-level-retries','1','cat',remote,'--offset',str(offset),'--count',str(max_bytes+1-offset)],stdin=subprocess.DEVNULL,stdout=output,stderr=subprocess.DEVNULL)
+                try:
+                    while child.poll() is None:
+                        if path.stat().st_size>max_bytes or shutil.disk_usage(path.parent).free<RESERVE or time.monotonic()>deadline:raise ValueError('Bounded artifact transfer failed')
+                        time.sleep(.1)
+                    output.flush();os.fsync(output.fileno())
+                    if path.stat().st_size>max_bytes:raise ValueError('Artifact exceeds byte bound')
+                    if child.returncode==0:return
+                    print(json.dumps({'event':'tantivy_slot_transfer_retry','attempt':attempt+1,'bytes':path.stat().st_size,'exit_code':child.returncode}),flush=True)
+                except BaseException:
+                    child.kill();child.wait();raise
+            if time.monotonic()>deadline:break
+        raise ValueError('Artifact transfer failed after bounded retries')
+
 
 
 class Slot:
@@ -76,7 +84,11 @@ class Slot:
         self.children=[]
     def fetch(self,key,name,limit,sha=None):
         target=self.cache/name
-        if target.exists():raise ValueError('Unexpected incomplete slot transfer')
+        if target.is_symlink() or target.exists() and not target.is_file():raise ValueError('Invalid cached transfer path')
+        if target.exists():
+            if target.stat().st_size>limit:raise ValueError('Cached artifact exceeds byte bound')
+            if sha is not None and checksum(target)==sha:return target
+            if name!='index.tar':raise ValueError('Cached metadata byte identity mismatch')
         self.transport.download(key,target,limit)
         if target.stat().st_size>limit or sha is not None and checksum(target)!=sha:raise ValueError('Artifact byte identity mismatch')
         return target
@@ -118,7 +130,8 @@ class Slot:
             receipt['runtime_qualified']=False;atomic_json(self.root/'installation.json',receipt)
             state=self.actual_metadata(value);self.check_coverage(value,state);return value
         if self.root.exists():raise ValueError('Unadmitted slot destination exists')
-        if any(self.cache.iterdir()):raise ValueError('Incomplete installation requires inactive recovery')
+        if any(item.name not in {'deployment.json','artifact-manifest.json','source-manifest.json','index.tar'} for item in self.cache.iterdir()):raise ValueError('Unexpected incomplete installation files')
+        if any(self.cache.iterdir()) and not cached.is_file():raise ValueError('Incomplete installation lacks deployment binding')
         owned_transport=False
         if self.transport is None:self.transport=R2(self.env);owned_transport=True
         try:

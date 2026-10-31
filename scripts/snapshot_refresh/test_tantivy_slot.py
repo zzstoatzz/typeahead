@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shutil
 import ssl
 import subprocess
 import sys
@@ -39,6 +40,41 @@ class Store:
     def download(self,key,path,max_bytes):
         with urllib.request.urlopen(f'http://127.0.0.1:{self.server.server_port}/'+key,timeout=3) as response:path.write_bytes(response.read(max_bytes+1))
     def close(self):self.server.shutdown();self.server.server_close();self.thread.join(2)
+
+@unittest.skipUnless(shutil.which('rclone'),'actual rclone unavailable')
+class TransferTests(unittest.TestCase):
+    def test_real_rclone_resumes_interrupted_http_range(self):
+        raw=bytes(range(256))*8192
+        offsets=[]
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_HEAD(self):
+                self.send_response(200);self.send_header('Content-Type','application/octet-stream' if self.path.endswith('/index.tar') else 'text/html');self.send_header('Content-Length',str(len(raw)));self.end_headers()
+            def do_GET(self):
+                if not self.path.endswith('/index.tar'):
+                    listing=b'<a href="index.tar">index.tar</a>';self.send_response(200);self.send_header('Content-Type','text/html');self.send_header('Content-Length',str(len(listing)));self.end_headers();self.wfile.write(listing);return
+                value=self.headers.get('Range','bytes=0-');start=int(value.split('=')[1].split('-')[0]);offsets.append(start)
+                self.send_response(206 if start else 200)
+                self.send_header('Content-Length',str(len(raw)-start))
+                if start:self.send_header('Content-Range',f'bytes {start}-{len(raw)-1}/{len(raw)}')
+                self.end_headers()
+                self.wfile.write(raw[start:start+65536] if len(offsets)==1 else raw[start:])
+                self.wfile.flush();self.close_connection=True
+            def log_message(self,*args):pass
+        server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                folder=Path(folder);config=folder/'rclone.conf'
+                config.write_text(f'[r2]\ntype = http\nurl = http://127.0.0.1:{server.server_port}/\n')
+                transport=slot.R2.__new__(slot.R2);transport.bucket='fixture';transport.config=config.open()
+                try:
+                    target=folder/'index.tar';target.write_bytes(raw[:32768])
+                    transport.download('index.tar',target,len(raw))
+                    self.assertEqual(target.read_bytes(),raw)
+                    self.assertEqual(offsets[0],32768)
+                    self.assertTrue(any(offset>32768 for offset in offsets),offsets)
+                finally:transport.close()
+        finally:server.shutdown();server.server_close();thread.join()
 
 @unittest.skipUnless(BINARY.is_file(),'actual Rust binary unavailable')
 class SlotTests(unittest.TestCase):
@@ -92,6 +128,15 @@ class SlotTests(unittest.TestCase):
         (self.root/'index/meta.json').write_text('corrupt')
         with self.assertRaisesRegex(ValueError,'reader rejected'):self.instance().install()
         self.assertEqual(len(self.store.keys),4)
+    def test_verified_partial_transfer_resumes_before_install(self):
+        instance=self.instance();instance.cache.mkdir()
+        for key,name in [(self.key,'deployment.json'),(self.bound['artifact_manifest_key'],'artifact-manifest.json'),(self.bound['source_manifest_key'],'source-manifest.json')]:
+            (instance.cache/name).write_bytes(self.store.objects[key])
+        (instance.cache/'index.tar').write_bytes(self.store.objects[self.bound['object_key']][:100])
+        instance.install()
+        self.assertEqual(self.store.keys,[self.bound['object_key']])
+        self.assertTrue((self.root/'installation.json').is_file())
+
     def test_actual_slot_reader_acknowledges_global_merge(self):
         portable=json.loads(self.store.objects[self.bound['artifact_manifest_key']]);portable['retrieval_strategy']='global-merge'
         portable_raw=json.dumps(portable).encode();self.store.objects[self.bound['artifact_manifest_key']]=portable_raw
