@@ -94,4 +94,24 @@ guidance remain accurate; these candidate recovery changes do not change them.
 Zig Zen was run. Relevant follow-ups: bind the fallback through every boundary,
 fail closed on missing artifacts, include it in disk measurements, and ensure
 all child processes and source connections close even if another cleanup fails.
-Full-candidate coverage, timing, resource and live-update evidence remain pending.
+Deployed runtime coverage, scoped search, resource and live-update verification remain pending.
+
+### Candidate installation recovery (2026-10-31 UTC)
+
+Normal deployment run `1d9eedd0-dbaf-4c06-83f9-98a4700a2c5c` created
+owned machine `8d4930ae350ed8` and volume `vol_42kxgzm0kdw88284`, then timed
+out awaiting start. The machine remained stopped; the old controller discarded
+the provider error, so its cause is unproven. An explicit start of that same
+machine succeeded. Preparation resumed as normal deployment run
+`7aea315f-5ed3-453d-98f3-c57cd29293ac`, preserving request
+`6fc28231cca440ef8369f6abad8b6975`, artifact and resource ownership.
+
+The controller branch now preserves sanitized HTTP status/transport error
+information in its journal and transition errors (`41ff65c`; 25 lifecycle
+tests passed). This diagnostic commit is not yet the running controller pin.
+
+The read-only live-update probe selected 30 source accounts updated after bundle
+completion, with missing source PDS and an archive mapping. Selection examined
+1,000 recent rows in two SELECT requests (736,413 response bytes); it wrote
+no source rows. Its scripts are retained here. The deployed probe must still
+pass; selecting samples alone does not establish preservation.
