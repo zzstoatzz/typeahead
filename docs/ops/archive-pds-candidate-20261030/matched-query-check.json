@@ -1,0 +1,608 @@
+{
+  "observed_at": 1793410604,
+  "warmup_rounds": 1,
+  "measurement_rounds": 3,
+  "queries": [
+    "zzstoatzz.io",
+    "zzst",
+    "a",
+    "john",
+    "alice",
+    "Justin Fa",
+    "\u6771\u4eac",
+    "alex"
+  ],
+  "production": {
+    "requests": 24,
+    "p50_ms": 2.7104999999999997,
+    "p95_ms": 4.56,
+    "max_ms": 6.912
+  },
+  "candidate": {
+    "requests": 24,
+    "p50_ms": 2.33,
+    "p95_ms": 2.759,
+    "max_ms": 3.512
+  },
+  "total_requests": 64,
+  "failures": 0,
+  "rows": [
+    {
+      "round": 0,
+      "query": "zzstoatzz.io",
+      "target": "production",
+      "server_ms": 2.164,
+      "elapsed_ms": 330.87704330682755,
+      "count": 4,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 0,
+      "query": "zzstoatzz.io",
+      "target": "candidate",
+      "server_ms": 2.343,
+      "elapsed_ms": 290.8492311835289,
+      "count": 4,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 0,
+      "query": "zzst",
+      "target": "production",
+      "server_ms": 4.312,
+      "elapsed_ms": 272.59217109531164,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 0,
+      "query": "zzst",
+      "target": "candidate",
+      "server_ms": 2.158,
+      "elapsed_ms": 197.94639572501183,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 0,
+      "query": "a",
+      "target": "production",
+      "server_ms": 4.661,
+      "elapsed_ms": 212.61711046099663,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 0,
+      "query": "a",
+      "target": "candidate",
+      "server_ms": 2.301,
+      "elapsed_ms": 197.48429767787457,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 0,
+      "query": "john",
+      "target": "production",
+      "server_ms": 5.588,
+      "elapsed_ms": 200.51933266222477,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 0,
+      "query": "john",
+      "target": "candidate",
+      "server_ms": 11.426,
+      "elapsed_ms": 206.8506246432662,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 0,
+      "query": "alice",
+      "target": "production",
+      "server_ms": 15.4,
+      "elapsed_ms": 214.89070262759924,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 0,
+      "query": "alice",
+      "target": "candidate",
+      "server_ms": 9.399,
+      "elapsed_ms": 202.362853102386,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 0,
+      "query": "Justin Fa",
+      "target": "production",
+      "server_ms": 7.546,
+      "elapsed_ms": 212.39207778126,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 0,
+      "query": "Justin Fa",
+      "target": "candidate",
+      "server_ms": 2.347,
+      "elapsed_ms": 199.9037628993392,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 0,
+      "query": "\u6771\u4eac",
+      "target": "production",
+      "server_ms": 5.608,
+      "elapsed_ms": 188.8069175183773,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 0,
+      "query": "\u6771\u4eac",
+      "target": "candidate",
+      "server_ms": 2.278,
+      "elapsed_ms": 189.01986349374056,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 0,
+      "query": "alex",
+      "target": "production",
+      "server_ms": 4.024,
+      "elapsed_ms": 198.0184791609645,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 0,
+      "query": "alex",
+      "target": "candidate",
+      "server_ms": 6.275,
+      "elapsed_ms": 202.01052073389292,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "zzstoatzz.io",
+      "target": "candidate",
+      "server_ms": 1.966,
+      "elapsed_ms": 278.18596363067627,
+      "count": 4,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "zzstoatzz.io",
+      "target": "production",
+      "server_ms": 2.37,
+      "elapsed_ms": 202.3715302348137,
+      "count": 4,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 1,
+      "query": "zzst",
+      "target": "candidate",
+      "server_ms": 2.278,
+      "elapsed_ms": 187.00224068015814,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "zzst",
+      "target": "production",
+      "server_ms": 2.616,
+      "elapsed_ms": 202.45340559631586,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 1,
+      "query": "a",
+      "target": "candidate",
+      "server_ms": 2.197,
+      "elapsed_ms": 190.2508484199643,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "a",
+      "target": "production",
+      "server_ms": 2.578,
+      "elapsed_ms": 190.6467704102397,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 1,
+      "query": "john",
+      "target": "candidate",
+      "server_ms": 2.494,
+      "elapsed_ms": 188.19743674248457,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "john",
+      "target": "production",
+      "server_ms": 3.612,
+      "elapsed_ms": 275.47839749604464,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 1,
+      "query": "alice",
+      "target": "candidate",
+      "server_ms": 2.523,
+      "elapsed_ms": 195.46061661094427,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "alice",
+      "target": "production",
+      "server_ms": 2.899,
+      "elapsed_ms": 197.78829254209995,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 1,
+      "query": "Justin Fa",
+      "target": "candidate",
+      "server_ms": 2.342,
+      "elapsed_ms": 190.61540625989437,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "Justin Fa",
+      "target": "production",
+      "server_ms": 6.912,
+      "elapsed_ms": 208.99114105850458,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 1,
+      "query": "\u6771\u4eac",
+      "target": "candidate",
+      "server_ms": 2.325,
+      "elapsed_ms": 215.4268166050315,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "\u6771\u4eac",
+      "target": "production",
+      "server_ms": 3.139,
+      "elapsed_ms": 194.60790883749723,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 1,
+      "query": "alex",
+      "target": "candidate",
+      "server_ms": 2.282,
+      "elapsed_ms": 187.65243608504534,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 1,
+      "query": "alex",
+      "target": "production",
+      "server_ms": 2.997,
+      "elapsed_ms": 200.87579265236855,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "zzstoatzz.io",
+      "target": "production",
+      "server_ms": 2.044,
+      "elapsed_ms": 195.91786246746778,
+      "count": 4,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "zzstoatzz.io",
+      "target": "candidate",
+      "server_ms": 2.636,
+      "elapsed_ms": 194.36095282435417,
+      "count": 4,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 2,
+      "query": "zzst",
+      "target": "production",
+      "server_ms": 3.02,
+      "elapsed_ms": 200.1182483509183,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "zzst",
+      "target": "candidate",
+      "server_ms": 2.257,
+      "elapsed_ms": 186.3065967336297,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 2,
+      "query": "a",
+      "target": "production",
+      "server_ms": 2.876,
+      "elapsed_ms": 192.0478055253625,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "a",
+      "target": "candidate",
+      "server_ms": 2.478,
+      "elapsed_ms": 197.88188487291336,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 2,
+      "query": "john",
+      "target": "production",
+      "server_ms": 2.632,
+      "elapsed_ms": 205.78583236783743,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "john",
+      "target": "candidate",
+      "server_ms": 2.364,
+      "elapsed_ms": 201.18420291692019,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 2,
+      "query": "alice",
+      "target": "production",
+      "server_ms": 2.669,
+      "elapsed_ms": 195.86685206741095,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "alice",
+      "target": "candidate",
+      "server_ms": 2.717,
+      "elapsed_ms": 186.14028301090002,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 2,
+      "query": "Justin Fa",
+      "target": "production",
+      "server_ms": 2.691,
+      "elapsed_ms": 195.1318709179759,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "Justin Fa",
+      "target": "candidate",
+      "server_ms": 2.368,
+      "elapsed_ms": 197.31768872588873,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 2,
+      "query": "\u6771\u4eac",
+      "target": "production",
+      "server_ms": 2.874,
+      "elapsed_ms": 199.6882688254118,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "\u6771\u4eac",
+      "target": "candidate",
+      "server_ms": 3.512,
+      "elapsed_ms": 207.0043934509158,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 2,
+      "query": "alex",
+      "target": "production",
+      "server_ms": 2.595,
+      "elapsed_ms": 196.9120679423213,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 2,
+      "query": "alex",
+      "target": "candidate",
+      "server_ms": 2.759,
+      "elapsed_ms": 192.9646385833621,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "zzstoatzz.io",
+      "target": "candidate",
+      "server_ms": 2.154,
+      "elapsed_ms": 188.34568839520216,
+      "count": 4,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "zzstoatzz.io",
+      "target": "production",
+      "server_ms": 2.24,
+      "elapsed_ms": 190.05108438432217,
+      "count": 4,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 3,
+      "query": "zzst",
+      "target": "candidate",
+      "server_ms": 2.257,
+      "elapsed_ms": 195.75713109225035,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "zzst",
+      "target": "production",
+      "server_ms": 2.271,
+      "elapsed_ms": 202.87463814020157,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 3,
+      "query": "a",
+      "target": "candidate",
+      "server_ms": 2.233,
+      "elapsed_ms": 193.1523010134697,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "a",
+      "target": "production",
+      "server_ms": 2.557,
+      "elapsed_ms": 201.03427581489086,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 3,
+      "query": "john",
+      "target": "candidate",
+      "server_ms": 2.301,
+      "elapsed_ms": 201.0519066825509,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "john",
+      "target": "production",
+      "server_ms": 4.56,
+      "elapsed_ms": 202.21979450434446,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 3,
+      "query": "alice",
+      "target": "candidate",
+      "server_ms": 2.942,
+      "elapsed_ms": 206.10804483294487,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "alice",
+      "target": "production",
+      "server_ms": 2.81,
+      "elapsed_ms": 193.28387826681137,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 3,
+      "query": "Justin Fa",
+      "target": "candidate",
+      "server_ms": 2.221,
+      "elapsed_ms": 191.37709494680166,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "Justin Fa",
+      "target": "production",
+      "server_ms": 2.73,
+      "elapsed_ms": 201.35741587728262,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 3,
+      "query": "\u6771\u4eac",
+      "target": "candidate",
+      "server_ms": 2.181,
+      "elapsed_ms": 192.10792426019907,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "\u6771\u4eac",
+      "target": "production",
+      "server_ms": 2.47,
+      "elapsed_ms": 190.98554085940123,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    },
+    {
+      "round": 3,
+      "query": "alex",
+      "target": "candidate",
+      "server_ms": 2.335,
+      "elapsed_ms": 193.41530092060566,
+      "count": 10,
+      "build_id": "b1793395409-cp-pdsjoin"
+    },
+    {
+      "round": 3,
+      "query": "alex",
+      "target": "production",
+      "server_ms": 5.021,
+      "elapsed_ms": 208.1305803731084,
+      "count": 10,
+      "build_id": "b1793346536-cp-7c8322df79"
+    }
+  ],
+  "scope": "small interleaved warm-query regression check; not a load test"
+}

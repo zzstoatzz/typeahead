@@ -1,0 +1,23 @@
+{
+  "phase": "post-restart",
+  "sample_rows_scanned": 270,
+  "scope": {
+    "accounts": 100,
+    "misses": 0,
+    "hosts": 53,
+    "bsky_hosts": 53,
+    "p50_ms": 193.01370438188314,
+    "p95_ms": 204.77235596626997,
+    "max_ms": 325.99846459925175
+  },
+  "index": {
+    "build_id": "b1793395409-cp-pdsjoin",
+    "actor_count": 12893931,
+    "pds_missing_actor_count": 4917822,
+    "pds_invalid_actor_count": 2,
+    "ready": true,
+    "source_observation_revision": 262,
+    "watermark": 1793410294
+  },
+  "passed": true
+}

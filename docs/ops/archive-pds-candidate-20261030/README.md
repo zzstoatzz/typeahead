@@ -1,7 +1,8 @@
 # Full archive PDS join candidate
 
-Status: full artifact published and checksum readback verified; deployed
-qualification in progress on October 31, 2026 UTC. **Not admitted or cut over**.
+Status (October 31, 2026 UTC): full candidate installed and admitted after restart
+through the normal deployment. **Not cut over**. Release-proof packaging and scratch
+cleanup remain outstanding.
 Production routing, source ingestion and authoritative identity handling remain
 unchanged. Data processing runs only in the cloud, with no source-database writes.
 The user clarified that HeavyPad may be contacted for Prefect control-plane operations.
@@ -14,7 +15,9 @@ The verified full stream contains 12,981,514 records, including 12,890,252 live
 actors. The join supplies 5,026,154 previously missing PDS values; 4,917,558 live
 actors still have no mapping in the available archive. Valid scoped coverage is
 7,972,692 actors (61.85%), up from 2,946,538 (22.86%). These are build-input
-measurements, not yet a deployed-candidate result.
+measurements. After restart, the deployed reader reported 12,893,931 actors,
+4,917,822 missing PDS values and two invalid values: also 61.86% valid coverage.
+Live ingestion explains the small count difference.
 
 The runner calls the existing `fetch_checkpoint`, `build_checkpoint` and
 `freeze_bundle` functions directly on the cloud host. This keeps the data build on the cloud host. Prefect control-plane access is
@@ -39,15 +42,43 @@ The real Rust reader imported, caught up, froze, installed and reopened the
 joined fixture. Missing/corrupted mappings and removed provenance were rejected.
 The earlier pilot verifies explicit source migrations and deletions take priority.
 
-Candidate image:
-`registry.fly.io/typeahead-tantivy-b@sha256:39fc1880a5bbe3c118256478b5773974c84590e6141b7ee076431e6ed1ff917f`.
-Reader SHA-256:
-`ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d`.
-Typeahead source is `a19405e1fa1fd2a1aaecd8a77ac0a23c9cb102af`; controller source
-is `9f4e8ac6395f778178ab38e5f83d13a1af15da9a`. The reader adds checked import
-recovery and exact JSON float parsing; retrieval behavior is unchanged.
-The Dockerfile uses portable COPY plus chmod because
-the cloud host's Docker lacks BuildKit.
+## Verified candidate
+
+- Image: `registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca`.
+- Reader SHA: `ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d`.
+- Typeahead source `c476fc5`; controller source `41ff65c`.
+- Machine `8d4930ae3502d8`, volume `vol_vxmpk8k2exk5x1n4`: two shared CPUs, 1 GiB RAM, 20 GiB disk.
+- [Prepared operation](prepared-operation.json), [plan](prepared-plan.json), and [runtime admission](runtime-admission.json).
+- [Existing production UI pointed to the candidate](https://typeahead-tantivy-dev-ui.n8-3e9.workers.dev/): byte-identical homepage, with a different backend binding.
+
+The [post-restart scope probe](verification-post-restart.json) found all 100 joined
+accounts across 53 Bluesky PDS hosts, with no incorrect-scope matches. All 30
+[accounts updated after bundle completion](verification-live-updates.json) retained
+the joined PDS and matched their current display names. The [53-request HTTP
+smoke test](preview-smoke.json) passed, as did [homepage equivalence](preview-ui-equivalence.json).
+
+The [final image functional test](final-image-smoke.json) passed all 15 checks in
+a network-isolated cloud container with two CPUs and 1 GiB, using global-merge
+retrieval. It covers moderation, migration, deletion, cursor atomicity, crash
+recovery and restart. [Evidence hashes and execution binding](verification-evidence.json)
+keep this result separate from the still-incomplete release proof.
+
+The [small warm-query comparison](matched-query-check.json) made 64 interleaved
+requests, including warmups, with no failures. For 24 measured requests per
+backend, server p50/p95 was 2.71/4.56 ms on A and 2.33/2.76 ms on B. This is a
+regression check, not a load test or a general speedup claim.
+
+Normal preparation run `0ba7f255-da1a-4702-b75b-99d5eee68d03` completed in
+41m46s, including installation, catch-up and restart. Export start to prepared
+candidate took about 4h19m including debugging and retries; steady refresh time
+has not been established. Candidate disk usage peaked at 12.65 GB during
+installation and settled at 6.32 GB after removing the downloaded archive.
+Restart qualification took about three minutes. [Controller cleanup](controller-cleanup.json)
+confirmed no remaining VM for that run. The candidate stays available for review.
+
+## Recovery history
+
+The following records describe earlier attempts, not the current state.
 
 Prefect recovery completed in run `bd5e7194-aba2-474f-9b79-5b0af0241656`.
 The old stopped machine and volume were retired after verifying their immutable
@@ -56,8 +87,8 @@ available and production routing is unchanged. See [the recovery receipt](slot-r
 The temporary unscheduled deployment was deleted. Run-level overrides were being
 omitted by the Zig Prefect server's polling response; the server fix is committed
 as `0eb434d9d41abb2a4e5581384cd1b561a9a46518`. The fixed API and services image is
-deployed and the production API contract probe passed. Actual worker execution
-will be checked through the normal candidate prepare deployment.
+deployed and the production API contract probe passed. Actual worker execution was subsequently verified through the normal deployment
+in completed run `0ba7f255-da1a-4702-b75b-99d5eee68d03`.
 The normal deployment executed the candidate code. Its first available-cloud
 run stopped at the inactive-volume fence: Fly still lists the previously deleted
 volume as detached `pending_destroy`. The controller now ignores such unrelated
@@ -94,7 +125,7 @@ guidance remain accurate; these candidate recovery changes do not change them.
 Zig Zen was run. Relevant follow-ups: bind the fallback through every boundary,
 fail closed on missing artifacts, include it in disk measurements, and ensure
 all child processes and source connections close even if another cleanup fails.
-Deployed runtime coverage, scoped search, resource and live-update verification remain pending.
+Deployed runtime verification subsequently passed; see the verified candidate above.
 
 ### Candidate installation recovery (2026-10-31 UTC)
 
@@ -108,13 +139,12 @@ machine succeeded. Preparation resumed as normal deployment run
 
 The controller branch now preserves sanitized HTTP status/transport error
 information in its journal and transition errors (`41ff65c`; 25 lifecycle
-tests passed). This diagnostic commit is not yet the running controller pin.
+tests passed). This diagnostic commit was used by the successful preparation run.
 
 The read-only live-update probe selected 30 source accounts updated after bundle
 completion, with missing source PDS and an archive mapping. Selection examined
 1,000 recent rows in two SELECT requests (736,413 response bytes); it wrote
-no source rows. Its scripts are retained here. The deployed probe must still
-pass; selecting samples alone does not establish preservation.
+no source rows. Its scripts are retained here. The deployed probe subsequently passed; see the live-update verification above.
 
 ### Interrupted installation transfer
 
@@ -147,7 +177,7 @@ does not rebuild or republish the snapshot.
 The revised candidate machine is `8d4930ae3502d8`, volume
 `vol_vxmpk8k2exk5x1n4`, at two shared CPUs / 1 GiB / 20 GiB. During its
 real download, rclone exited 5 after 4,844,421,120 bytes; range recovery
-continued to the full 6,324,633,600-byte bundle. The installer is still running,
-so this is transfer evidence, not admission or runtime verification. Its
+continued to the full 6,324,633,600-byte bundle. Installation subsequently completed and the candidate passed restart admission.
+This observation records the transfer phase only. Its
 separate download and installation checksum passes reread the bundle; measured
 startup time must include both. See [installation observation](install-observation.json).

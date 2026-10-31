@@ -1,0 +1,195 @@
+{
+  "observed_at": 1793410282,
+  "build_id": "b1793395409-cp-pdsjoin",
+  "watermark": 1793410224,
+  "source_observation_revision": 194,
+  "updates_after": 1793404808,
+  "samples": 30,
+  "matched": 30,
+  "wrong_scope": 0,
+  "display_matches": 30,
+  "live_source_writes": 0,
+  "results": [
+    {
+      "did": "did:plc:awcxpcm5zkhcsohougu6lezw",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:csrf3wgrtwixox7ptqgkfixa",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:iiyjoh2q75opllounq7prozf",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:zuhvnnytinu2wsmcofsspfmu",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:6a3k5go2so4a6pvegpkwvosv",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:6mn3jr2zsph2oyibrp5gs7bl",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:aizvlkqtxpxgosviro5pjzzx",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:dlirhcbjcxm6ojrtzbqh6i25",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:hee3rqp5lumxnnpn5cwjwgf5",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:igihqbfzjj73w5ljwf2llljl",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:irhdl35gsqfnh7fpbnmy6bei",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:kd6ptxlvl3t7p5vdd24xqsl6",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:pp7kbwfb3ndwzrq4cj4zgudi",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:j5dcfutc6ffokxwgcilvkwot",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:pq2vfmqdgqhsmzeh7q6sm6bd",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:4626t4npbuuvcjp3lar3hupy",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:7t2urmt3i33jl6tjgiolio6g",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:jzzo472hcyemjtw5blzqieqq",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:ronk6f2mftb2rfolntws74bs",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:y5x5niblxsotssrlopeaij3z",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:22qtpspmsnzdvhqo3a4oupl7",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:7qjm65yfoeromljibwgrthmi",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:a5gr72mv2hhsnj7n2llmhixb",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:cb5a7wffv7ejwzbgsel2eo23",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:dv6jmqyx6cbgh65fwy47rmmk",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:ftygk2wtvxtltcr3twgfn6hm",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:jik47vfaar6z7d6nm3q2hi6o",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:joohe5tnbluhccdkvwsqgzop",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:k6p3rdskkzkyblu6mmw2qcsm",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    },
+    {
+      "did": "did:plc:mvk5fnxmsoeawfj7txemn64a",
+      "found": true,
+      "wrong_scope": false,
+      "display_matches": true
+    }
+  ],
+  "passed": true
+}

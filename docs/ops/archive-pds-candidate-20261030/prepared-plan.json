@@ -1,0 +1,63 @@
+{
+  "app": "typeahead-tantivy-b",
+  "artifact_manifest_sha256": "7c43b882ad750b2f1c3cf2b1a7a749930efca899afc2e9a10da3031eef7b8cc1",
+  "candidate": {
+    "admission_sha256": "aaea9e4ec2df3cf4e62d95fed65db75210312f17a1e7d01d33981f6b827c9c93",
+    "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "build_id": "b1793395409-cp-pdsjoin",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "origin": "https://typeahead-tantivy-b.fly.dev",
+    "retrieval_strategy": "global-merge"
+  },
+  "deployment_key": "control/tantivy-slots/typeahead-tantivy-b/a7d276e5a7a84939a05e0915b5004179.json",
+  "deployment_sha256": "7769750d997aaf30beaa0ecc5f80624b2781aad36946ddf5a434f2af8c514e82",
+  "empirical_release_verified": false,
+  "expected_current_etag": "\"b2090b2912ff5c17850554251658a365\"",
+  "expected_route": {
+    "current": {
+      "admission_sha256": "4196e7b356375ba005f502c933fae00153fa13e440237a10aeaf95f458b1d69d",
+      "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+      "build_id": "b1793346536-cp-7c8322df79",
+      "engine": "tantivy",
+      "format": "tantivy-0.27-f32-did-expiry-v4",
+      "origin": "https://typeahead-tantivy-a.fly.dev",
+      "retrieval_strategy": "global-merge"
+    },
+    "native_rollback": {
+      "build_id": "b1793109259-2b36-px05",
+      "legacy_build_id": "b1793109259-2b36",
+      "machine_id": "8e3d79b70dd748",
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "source_watermark": 1793109254,
+      "volume_id": "vol_v8eyqk61q9dy9gkv"
+    },
+    "previous": {
+      "build_id": "b1793109259-2b36-px05",
+      "legacy_build_id": "b1793109259-2b36",
+      "machine_id": "8e3d79b70dd748",
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "source_watermark": 1793109254,
+      "volume_id": "vol_v8eyqk61q9dy9gkv"
+    },
+    "version": 1
+  },
+  "image_digest": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+  "machine_id": "8d4930ae3502d8",
+  "native_rollback": {
+    "build_id": "b1793109259-2b36-px05",
+    "legacy_build_id": "b1793109259-2b36",
+    "machine_id": "8e3d79b70dd748",
+    "origin": "https://typeahead-startup-20261024.fly.dev",
+    "source_watermark": 1793109254,
+    "volume_id": "vol_v8eyqk61q9dy9gkv"
+  },
+  "owner": "typeahead-snapshot-refresh",
+  "prepared_at": 1793410249,
+  "promotion_permitted": false,
+  "request_id": "a7d276e5a7a84939a05e0915b5004179",
+  "schema_version": 1,
+  "source_manifest_sha256": "7735f9a0bec1980262246642ab826c3417cf039f60ecd93c1aa52bf2ac1b57ec",
+  "test_only": false,
+  "volume_id": "vol_vxmpk8k2exk5x1n4"
+}

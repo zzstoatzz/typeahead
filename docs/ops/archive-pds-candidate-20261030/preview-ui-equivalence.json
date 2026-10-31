@@ -1,0 +1,14 @@
+{
+  "observed_at": 1793410614,
+  "homepage": {
+    "production": {
+      "sha256": "87e07da69aeb85a0a015f555fda30e9b6201bf130a21ee520c087d85f10a7d07",
+      "bytes": 25529
+    },
+    "preview": {
+      "sha256": "87e07da69aeb85a0a015f555fda30e9b6201bf130a21ee520c087d85f10a7d07",
+      "bytes": 25529
+    }
+  },
+  "byte_identical": true
+}

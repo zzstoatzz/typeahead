@@ -122,6 +122,7 @@ class Probe:
                 target + path,
                 headers={
                     "User-Agent": "typeahead-candidate-smoke/1",
+                    "X-Client": "smoke-testing",
                     "Accept": "application/json,text/html",
                 },
             )

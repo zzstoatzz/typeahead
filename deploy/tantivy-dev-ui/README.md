@@ -5,13 +5,13 @@ Live at https://typeahead-tantivy-dev-ui.n8-3e9.workers.dev/.
 This Worker serves the deployed production frontend through the `PRODUCTION_UI`
 service binding. It changes no HTML, CSS or client JavaScript. Relative search
 requests, both XRPC aliases, health and index metadata go to the isolated
-`https://typeahead-tantivy-a.fly.dev` backend. Production routing is unchanged.
+`https://typeahead-tantivy-b.fly.dev` backend. Production routing is unchanged.
 
-The deployed `DEV_SEARCH_BACKEND` configuration selects managed slot A. It also
-allows the retained `https://typeahead-tantivy-dev.fly.dev` backend or managed slot B
-at `https://typeahead-tantivy-b.fly.dev`.
+The deployed `DEV_SEARCH_BACKEND` configuration selects managed slot B. It also
+allows the retained `https://typeahead-tantivy-dev.fly.dev` backend or managed slot A
+at `https://typeahead-tantivy-a.fly.dev`.
 Other origins fail closed. This changes the backend binding and response identity
-header; frontend bytes still come unchanged from production. Slot A passed cloud
+header; frontend bytes still come unchanged from production. Slot B passed cloud
 installation and cached restart qualification before the binding changed. Regenerate
 binding types after changing the configuration:
 

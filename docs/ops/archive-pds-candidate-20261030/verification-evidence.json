@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "image_digest": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+  "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+  "functional_execution": {
+    "location": "existing cloud archive host",
+    "network": "none",
+    "cpus": 2,
+    "memory_bytes": 1073741824,
+    "retrieval_strategy": "global-merge",
+    "command": "TA_BINARY=/app/typeahead-tantivy TA_RETRIEVAL_STRATEGY=global-merge python3 /tests/smoke.py",
+    "note": "smoke output cloud_resources=false describes the fixture creating no provider resources; execution itself was in a cloud Docker container"
+  },
+  "evidence_sha256": {
+    "final-image-smoke.json": "b2bb74cba093fa946975e08096b97727046810765044ab40e4265de9ab4a792a",
+    "matched-query-check.json": "e77318324c7476d2163e51a5e96e41ee9cfd93b8e1bd38da09c7c7f0ce18b914",
+    "verification-post-restart.json": "2027afbb885d40b5ef691a14409d167575bd00c5225bec29d0c17096e2be22be",
+    "verification-live-updates.json": "a96142578d5df7e4b98aac118cf31fe19a92561864a904262158ae1e466f4086",
+    "preview-smoke.json": "257f2ff37a478d2dc5867f70a094c337a05e36a97c932bb7a1f95e7c3c576df6",
+    "preview-ui-equivalence.json": "bf9a885d96e2c9520cddbb7fda889a543d9519205be003438f9d17f7131a1d7a",
+    "runtime-admission.json": "efff83eae9d06c3198ac5058cd640e483ee744f5a4f4d18744abdb722a998716",
+    "prepared-plan.json": "ec66e9b85823a341781a797616a887135e0ade2e6948adc51b87375b0fd16480",
+    "slot-transfer-tests.log": "ee371b1ab1b6f0a866ecee8ca5077693dd9853391ee9d56815f1a61d2665f814"
+  },
+  "release_proof_complete": false,
+  "remaining": [
+    "Validate release-gate scope and package immutable release proof",
+    "Preserve small cloud evidence and remove owned bulk scratch",
+    "Record final cutover instructions, including next scheduled refresh pins"
+  ]
+}
