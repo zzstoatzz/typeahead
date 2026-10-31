@@ -52,4 +52,3 @@ ledger (14,752 including its earlier stages). Its receipts remain retained;
 it must not be restarted as the snapshot-join implementation. Failed DID-document lookups use the existing
 bounded retry path (deployed October 30); retries do not guarantee recovery from
 a permanent resolution failure. See [pilot evidence](../ops/archive-pds-pilot-20261030/README.md).
-
