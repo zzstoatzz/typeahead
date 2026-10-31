@@ -1,0 +1,15 @@
+.                                                                        [100%]
+1 passed, 9 deselected, 24 warnings in 2.48s
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ Tests.test_join_is_bound_through_checkpoint_catchup_and_portable_bundle ____
+code/mps/tests/test_typeahead_checkpoint_build.py:309: in test_join_is_bound_through_checkpoint_catchup_and_portable_bundle
+    result = build_checkpoint(
+code/mps/packages/mps/src/mps/typeahead_checkpoint_build.py:459: in build_checkpoint
+    raise ValueError(
+E   ValueError: D1 initial checkpoint identity/counts differ: {"actor_count": 31, "expected_counts": {"deleted_actor_documents": 2, "input_documents": 33, "live_actor_documents": 31, "native_visible_actors": null, "orphan_tombstones": 1, "raw_actor_rows": 32}, "full_source": true, "has_source_cursor": false, "import_complete": true, "input_actors": 33, "manifest_differences": ["source_bootstrap"], "source_observation_revision": 0, "tombstone_count": 2}
+----------------------------- Captured stdout call -----------------------------
+{"budget_s": 30, "elapsed_s": 0.01, "import_log_bytes": 0, "phase": "tantivy-checkpoint-import"}
+=========================== short test summary info ============================
+FAILED code/mps/tests/test_typeahead_checkpoint_build.py::Tests::test_join_is_bound_through_checkpoint_catchup_and_portable_bundle
+1 failed, 9 deselected in 1.70s

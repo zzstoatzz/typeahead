@@ -1,0 +1,17 @@
+Downloading beartype (1.5MiB)
+Downloading sqlalchemy (4.5MiB)
+Downloading cryptography (4.5MiB)
+Downloading apprise (1.7MiB)
+Downloading asyncpg (3.6MiB)
+Downloading burner-redis (1.3MiB)
+Downloading prefect (14.4MiB)
+ Downloaded apprise
+ Downloaded burner-redis
+ Downloaded beartype
+ Downloaded asyncpg
+ Downloaded sqlalchemy
+ Downloaded cryptography
+ Downloaded prefect
+Installed 111 packages in 545ms
+...............                                                          [100%]
+15 passed in 37.80s

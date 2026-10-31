@@ -1,8 +1,8 @@
 # Full archive PDS join candidate
 
 Status (October 31, 2026 UTC): full candidate installed and admitted after restart
-through the normal deployment. **Not cut over**. Release-proof packaging and scratch
-cleanup remain outstanding.
+through the normal deployment. **Not cut over**. The scoped release proof is published and build scratch is removed.
+Cutover still requires explicit approval and the configuration steps below.
 Production routing, source ingestion and authoritative identity handling remain
 unchanged. Data processing runs only in the cloud, with no source-database writes.
 The user clarified that HeavyPad may be contacted for Prefect control-plane operations.
@@ -181,3 +181,27 @@ continued to the full 6,324,633,600-byte bundle. Installation subsequently compl
 This observation records the transfer phase only. Its
 separate download and installation checksum passes reread the bundle; measured
 startup time must include both. See [installation observation](install-observation.json).
+
+## Cutover review
+
+[Release proof](release-proof.json) and [immutable readback receipt](release-publication.json)
+bind the exact image, binary and serving allocation. Gate descriptions state the
+measured scope; they do not establish sustained-load or refresh-time guarantees.
+
+Before an approved cutover, persist controller `41ff65c`, Typeahead `c476fc5`, the
+image above and the content-addressed fallback mapping in the normal publisher
+configuration, including `INDEX_PDS_FALLBACK_SHA256=1b1fa39e7b5d8f5224fafb08b23cb3a8e277da680f39ff6899280283ffd65e47`.
+Follow the repository main-branch rollout rule. Keep the existing
+06:00/18:00 UTC cadence. Otherwise a later refresh can discard the joined coverage.
+Recheck candidate freshness and the current route ETag, then promote prepared plan
+`23335a2301d801d80aa32e67fb7bfce429318be3c3c20291da932467208c2e18`
+with the release receipt. Retain A for rollback; verify public requests after the
+route/cache barrier. No promotion or schedule/configuration mutation was performed.
+
+[Scratch cleanup](scratch-cleanup.json) removed only the owned cloud build root
+and measured 21,589,962,752 bytes of additional free space. Small scripts, results
+and storage samples are retained here. The isolated Fly candidate and immutable
+R2 bundle/mapping remain. Zig Zen was rerun after cleanup; the relevant resource
+lifecycle fix is explicit ownership, evidence preservation and verified reclamation.
+README.md architecture and public API guidance need no change: production routing
+and public behavior are unchanged, and candidate details belong in this record.

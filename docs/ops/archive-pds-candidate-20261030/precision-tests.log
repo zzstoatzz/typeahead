@@ -1,0 +1,266 @@
+Installed 107 packages in 126ms
+..........F                                                              [100%]
+=================================== FAILURES ===================================
+_______ test_cloud_release_resolves_real_task_context_before_cloud_guard _______
+code/mps/tests/test_typeahead_checkpoint_build.py:585: in test_cloud_release_resolves_real_task_context_before_cloud_guard
+    assert trial()
+           ^^^^^^^
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flows.py:1887: in __call__
+    return run_flow(
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py:2187: in run_flow
+    ret_val = run_flow_sync(**kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py:2032: in run_flow_sync
+    return engine.state if return_type == "state" else engine.result()
+                                                       ^^^^^^^^^^^^^^^
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py:759: in result
+    raise self._raised
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py:1277: in run_context
+    yield self
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py:2030: in run_flow_sync
+    engine.call_flow_fn()
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py:1297: in call_flow_fn
+    result = call_with_parameters(self.flow.fn, self.parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/utilities/callables/__init__.py:348: in call_with_parameters
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+code/mps/tests/test_typeahead_checkpoint_build.py:582: in trial
+    return attempt()
+           ^^^^^^^^^
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/tasks.py:1227: in __call__
+    return run_task(
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py:1916: in run_task
+    return run_task_sync(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py:1686: in run_task_sync
+    return engine.state if return_type == "state" else engine.result()
+                                                       ^^^^^^^^^^^^^^^
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py:617: in result
+    raise self._raised
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py:1021: in run_context
+    yield self
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py:1683: in run_task_sync
+    engine.call_task_fn(txn)
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py:1038: in call_task_fn
+    result = call_with_parameters(self.task.fn, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/utilities/callables/__init__.py:348: in call_with_parameters
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+code/mps/tests/test_typeahead_checkpoint_build.py:577: in attempt
+    run_cloud_release(tmp_path)
+code/mps/packages/mps/src/mps/typeahead_checkpoint_release.py:105: in run_cloud_release
+    from mps.typeahead_refresh import Refresh
+code/mps/packages/mps/src/mps/typeahead_refresh.py:9: in <module>
+    import boto3
+/usr/lib/python3/dist-packages/boto3/__init__.py:17: in <module>
+    from boto3.session import Session
+/usr/lib/python3/dist-packages/boto3/session.py:17: in <module>
+    import botocore.session
+/usr/lib/python3/dist-packages/botocore/session.py:26: in <module>
+    import botocore.client
+/usr/lib/python3/dist-packages/botocore/client.py:15: in <module>
+    from botocore import waiter, xform_name
+/usr/lib/python3/dist-packages/botocore/waiter.py:18: in <module>
+    from botocore.docs.docstring import WaiterDocstring
+/usr/lib/python3/dist-packages/botocore/docs/__init__.py:15: in <module>
+    from botocore.docs.service import ServiceDocumenter
+/usr/lib/python3/dist-packages/botocore/docs/service.py:14: in <module>
+    from botocore.docs.client import (
+/usr/lib/python3/dist-packages/botocore/docs/client.py:18: in <module>
+    from botocore.docs.example import ResponseExampleDocumenter
+/usr/lib/python3/dist-packages/botocore/docs/example.py:13: in <module>
+    from botocore.docs.shape import ShapeDocumenter
+/usr/lib/python3/dist-packages/botocore/docs/shape.py:19: in <module>
+    from botocore.utils import is_json_value_header
+/usr/lib/python3/dist-packages/botocore/utils.py:39: in <module>
+    import botocore.httpsession
+/usr/lib/python3/dist-packages/botocore/httpsession.py:45: in <module>
+    from urllib3.contrib.pyopenssl import (
+uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/urllib3/contrib/pyopenssl.py:43: in <module>
+    import OpenSSL.SSL
+/usr/lib/python3/dist-packages/OpenSSL/__init__.py:8: in <module>
+    from OpenSSL import SSL, crypto
+/usr/lib/python3/dist-packages/OpenSSL/SSL.py:20: in <module>
+    from OpenSSL.crypto import (
+/usr/lib/python3/dist-packages/OpenSSL/crypto.py:765: in <module>
+    class X509Extension:
+/usr/lib/python3/dist-packages/OpenSSL/crypto.py:846: in X509Extension
+    _lib.GEN_EMAIL: "email",
+    ^^^^^^^^^^^^^^
+E   AttributeError: module 'lib' has no attribute 'GEN_EMAIL'
+----------------------------- Captured stderr call -----------------------------
+23:23:28.732 | INFO    | prefect - Starting temporary server on http://127.0.0.1:39729
+See https://docs.prefect.io/v3/concepts/server#how-to-guides for more information on running a dedicated Prefect server.
+23:23:58.302 | INFO    | Flow run 'hopping-ermine' - Beginning flow run 'hopping-ermine' for flow 'trial'
+23:23:58.308 | INFO    | Flow run 'hopping-ermine' - View at http://127.0.0.1:39729/runs/flow-run/ff6e66c9-052f-4469-9316-91633d70946a
+23:23:58.997 | ERROR   | Task run 'attempt-d12' - Task run failed with exception: AttributeError("module 'lib' has no attribute 'GEN_EMAIL'")
+Traceback (most recent call last):
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 1021, in run_context
+    yield self
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 1683, in run_task_sync
+    engine.call_task_fn(txn)
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 1038, in call_task_fn
+    result = call_with_parameters(self.task.fn, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/utilities/callables/__init__.py", line 348, in call_with_parameters
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/code/mps/tests/test_typeahead_checkpoint_build.py", line 577, in attempt
+    run_cloud_release(tmp_path)
+  File "/tmp/typeahead-pds-join-full/code/mps/packages/mps/src/mps/typeahead_checkpoint_release.py", line 105, in run_cloud_release
+    from mps.typeahead_refresh import Refresh
+  File "/tmp/typeahead-pds-join-full/code/mps/packages/mps/src/mps/typeahead_refresh.py", line 9, in <module>
+    import boto3
+  File "/usr/lib/python3/dist-packages/boto3/__init__.py", line 17, in <module>
+    from boto3.session import Session
+  File "/usr/lib/python3/dist-packages/boto3/session.py", line 17, in <module>
+    import botocore.session
+  File "/usr/lib/python3/dist-packages/botocore/session.py", line 26, in <module>
+    import botocore.client
+  File "/usr/lib/python3/dist-packages/botocore/client.py", line 15, in <module>
+    from botocore import waiter, xform_name
+  File "/usr/lib/python3/dist-packages/botocore/waiter.py", line 18, in <module>
+    from botocore.docs.docstring import WaiterDocstring
+  File "/usr/lib/python3/dist-packages/botocore/docs/__init__.py", line 15, in <module>
+    from botocore.docs.service import ServiceDocumenter
+  File "/usr/lib/python3/dist-packages/botocore/docs/service.py", line 14, in <module>
+    from botocore.docs.client import (
+  File "/usr/lib/python3/dist-packages/botocore/docs/client.py", line 18, in <module>
+    from botocore.docs.example import ResponseExampleDocumenter
+  File "/usr/lib/python3/dist-packages/botocore/docs/example.py", line 13, in <module>
+    from botocore.docs.shape import ShapeDocumenter
+  File "/usr/lib/python3/dist-packages/botocore/docs/shape.py", line 19, in <module>
+    from botocore.utils import is_json_value_header
+  File "/usr/lib/python3/dist-packages/botocore/utils.py", line 39, in <module>
+    import botocore.httpsession
+  File "/usr/lib/python3/dist-packages/botocore/httpsession.py", line 45, in <module>
+    from urllib3.contrib.pyopenssl import (
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/urllib3/contrib/pyopenssl.py", line 43, in <module>
+    import OpenSSL.SSL
+  File "/usr/lib/python3/dist-packages/OpenSSL/__init__.py", line 8, in <module>
+    from OpenSSL import SSL, crypto
+  File "/usr/lib/python3/dist-packages/OpenSSL/SSL.py", line 20, in <module>
+    from OpenSSL.crypto import (
+  File "/usr/lib/python3/dist-packages/OpenSSL/crypto.py", line 765, in <module>
+    class X509Extension:
+  File "/usr/lib/python3/dist-packages/OpenSSL/crypto.py", line 846, in X509Extension
+    _lib.GEN_EMAIL: "email",
+    ^^^^^^^^^^^^^^
+AttributeError: module 'lib' has no attribute 'GEN_EMAIL'
+23:23:59.032 | ERROR   | Task run 'attempt-d12' - Finished in state Failed("Task run encountered an exception AttributeError: module 'lib' has no attribute 'GEN_EMAIL'")
+23:23:59.371 | ERROR   | Flow run 'hopping-ermine' - Encountered exception during execution: AttributeError("module 'lib' has no attribute 'GEN_EMAIL'")
+Traceback (most recent call last):
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py", line 1277, in run_context
+    yield self
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py", line 2030, in run_flow_sync
+    engine.call_flow_fn()
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/flow_engine.py", line 1297, in call_flow_fn
+    result = call_with_parameters(self.flow.fn, self.parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/utilities/callables/__init__.py", line 348, in call_with_parameters
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/code/mps/tests/test_typeahead_checkpoint_build.py", line 582, in trial
+    return attempt()
+           ^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/tasks.py", line 1227, in __call__
+    return run_task(
+           ^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 1916, in run_task
+    return run_task_sync(**kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 1686, in run_task_sync
+    return engine.state if return_type == "state" else engine.result()
+                                                       ^^^^^^^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 617, in result
+    raise self._raised
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 1021, in run_context
+    yield self
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 1683, in run_task_sync
+    engine.call_task_fn(txn)
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/task_engine.py", line 1038, in call_task_fn
+    result = call_with_parameters(self.task.fn, parameters)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/utilities/callables/__init__.py", line 348, in call_with_parameters
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/tmp/typeahead-pds-join-full/code/mps/tests/test_typeahead_checkpoint_build.py", line 577, in attempt
+    run_cloud_release(tmp_path)
+  File "/tmp/typeahead-pds-join-full/code/mps/packages/mps/src/mps/typeahead_checkpoint_release.py", line 105, in run_cloud_release
+    from mps.typeahead_refresh import Refresh
+  File "/tmp/typeahead-pds-join-full/code/mps/packages/mps/src/mps/typeahead_refresh.py", line 9, in <module>
+    import boto3
+  File "/usr/lib/python3/dist-packages/boto3/__init__.py", line 17, in <module>
+    from boto3.session import Session
+  File "/usr/lib/python3/dist-packages/boto3/session.py", line 17, in <module>
+    import botocore.session
+  File "/usr/lib/python3/dist-packages/botocore/session.py", line 26, in <module>
+    import botocore.client
+  File "/usr/lib/python3/dist-packages/botocore/client.py", line 15, in <module>
+    from botocore import waiter, xform_name
+  File "/usr/lib/python3/dist-packages/botocore/waiter.py", line 18, in <module>
+    from botocore.docs.docstring import WaiterDocstring
+  File "/usr/lib/python3/dist-packages/botocore/docs/__init__.py", line 15, in <module>
+    from botocore.docs.service import ServiceDocumenter
+  File "/usr/lib/python3/dist-packages/botocore/docs/service.py", line 14, in <module>
+    from botocore.docs.client import (
+  File "/usr/lib/python3/dist-packages/botocore/docs/client.py", line 18, in <module>
+    from botocore.docs.example import ResponseExampleDocumenter
+  File "/usr/lib/python3/dist-packages/botocore/docs/example.py", line 13, in <module>
+    from botocore.docs.shape import ShapeDocumenter
+  File "/usr/lib/python3/dist-packages/botocore/docs/shape.py", line 19, in <module>
+    from botocore.utils import is_json_value_header
+  File "/usr/lib/python3/dist-packages/botocore/utils.py", line 39, in <module>
+    import botocore.httpsession
+  File "/usr/lib/python3/dist-packages/botocore/httpsession.py", line 45, in <module>
+    from urllib3.contrib.pyopenssl import (
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/urllib3/contrib/pyopenssl.py", line 43, in <module>
+    import OpenSSL.SSL
+  File "/usr/lib/python3/dist-packages/OpenSSL/__init__.py", line 8, in <module>
+    from OpenSSL import SSL, crypto
+  File "/usr/lib/python3/dist-packages/OpenSSL/SSL.py", line 20, in <module>
+    from OpenSSL.crypto import (
+  File "/usr/lib/python3/dist-packages/OpenSSL/crypto.py", line 765, in <module>
+    class X509Extension:
+  File "/usr/lib/python3/dist-packages/OpenSSL/crypto.py", line 846, in X509Extension
+    _lib.GEN_EMAIL: "email",
+    ^^^^^^^^^^^^^^
+AttributeError: module 'lib' has no attribute 'GEN_EMAIL'
+23:23:59.454 | INFO    | Flow run 'hopping-ermine' - Finished in state Failed("Flow run encountered an exception: AttributeError: module 'lib' has no attribute 'GEN_EMAIL'")
+=========================== short test summary info ============================
+FAILED code/mps/tests/test_typeahead_checkpoint_build.py::test_cloud_release_resolves_real_task_context_before_cloud_guard
+1 failed, 10 passed, 317 warnings in 63.34s (0:01:03)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/logging/handlers.py", line 389, in emit
+    self.console.print(message, soft_wrap=True)
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/rich/console.py", line 1704, in print
+    with self:
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/rich/console.py", line 864, in __exit__
+    self._exit_buffer()
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/rich/console.py", line 820, in _exit_buffer
+    self._check_buffer()
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/rich/console.py", line 2055, in _check_buffer
+    self._write_buffer()
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/rich/console.py", line 2124, in _write_buffer
+    self.file.write(text)
+ValueError: I/O operation on closed file.
+Call stack:
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/server/api/server.py", line 1212, in stop
+    subprocess_server_logger.info(
+  File "/usr/lib/python3.12/logging/__init__.py", line 1539, in info
+    self._log(INFO, msg, args, **kwargs)
+  File "/usr/lib/python3.12/logging/__init__.py", line 1684, in _log
+    self.handle(record)
+  File "/usr/lib/python3.12/logging/__init__.py", line 1700, in handle
+    self.callHandlers(record)
+  File "/usr/lib/python3.12/logging/__init__.py", line 1762, in callHandlers
+    hdlr.handle(record)
+  File "/usr/lib/python3.12/logging/__init__.py", line 1028, in handle
+    self.emit(record)
+  File "/tmp/typeahead-pds-join-full/uv-cache/archive-v0/xKaEmkykXk_nXjp2/lib/python3.12/site-packages/prefect/logging/handlers.py", line 395, in emit
+    self.handleError(record)
+Message: 'Stopping temporary server on http://127.0.0.1:39729'
+Arguments: ()

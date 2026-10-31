@@ -1,0 +1,280 @@
+{
+  "observed_at": 1793407065,
+  "updates_after": 1793404808,
+  "source_rows_checked": 1000,
+  "source_requests": 2,
+  "source_bytes": 736413,
+  "live_source_writes": 0,
+  "samples": [
+    {
+      "did": "did:plc:awcxpcm5zkhcsohougu6lezw",
+      "handle": "froylantech.bsky.social",
+      "display_name": "Froylan CS",
+      "pds": "https://helvella.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404874,
+      "checkpoint_updated_at": 1788858066
+    },
+    {
+      "did": "did:plc:csrf3wgrtwixox7ptqgkfixa",
+      "handle": "nylonsissyemma.bsky.social",
+      "display_name": "nylonsissyemma",
+      "pds": "https://agrocybe.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404880,
+      "checkpoint_updated_at": 1778911788
+    },
+    {
+      "did": "did:plc:iiyjoh2q75opllounq7prozf",
+      "handle": "flickerdoodle.bsky.social",
+      "display_name": "Boris/Bo",
+      "pds": "https://cremini.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404880,
+      "checkpoint_updated_at": 1778911242
+    },
+    {
+      "did": "did:plc:zuhvnnytinu2wsmcofsspfmu",
+      "handle": "foleyjerry.bsky.social",
+      "display_name": "Jerry Foley \ud83c\uddec\ud83c\udde7 \ud83c\uddea\ud83c\uddfa \ud83c\uddee\ud83c\uddea",
+      "pds": "https://reishi.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404881,
+      "checkpoint_updated_at": 1793232091
+    },
+    {
+      "did": "did:plc:6a3k5go2so4a6pvegpkwvosv",
+      "handle": "paiken65.bsky.social",
+      "display_name": "Paul Aiken",
+      "pds": "https://bankera.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404885,
+      "checkpoint_updated_at": 1778910072
+    },
+    {
+      "did": "did:plc:6mn3jr2zsph2oyibrp5gs7bl",
+      "handle": "camysofine.bsky.social",
+      "display_name": "Hurricane Camy",
+      "pds": "https://suillus.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404885,
+      "checkpoint_updated_at": 1793306304
+    },
+    {
+      "did": "did:plc:aizvlkqtxpxgosviro5pjzzx",
+      "handle": "bagpuss.org",
+      "display_name": "Dave Bagpuss Forsey \ud83c\udf7b",
+      "pds": "https://inkcap.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404885,
+      "checkpoint_updated_at": 1793383296
+    },
+    {
+      "did": "did:plc:dlirhcbjcxm6ojrtzbqh6i25",
+      "handle": "mochimunchkinz.bsky.social",
+      "display_name": "Mochi \u2b50",
+      "pds": "https://oyster.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404885,
+      "checkpoint_updated_at": 1793318492
+    },
+    {
+      "did": "did:plc:hee3rqp5lumxnnpn5cwjwgf5",
+      "handle": "denyp.bsky.social",
+      "display_name": "Denise",
+      "pds": "https://goldenear.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404887,
+      "checkpoint_updated_at": 1791426023
+    },
+    {
+      "did": "did:plc:igihqbfzjj73w5ljwf2llljl",
+      "handle": "suffocatedsplendor.bsky.social",
+      "display_name": "Pumpkin Chatelaine",
+      "pds": "https://porcini.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404887,
+      "checkpoint_updated_at": 1790910123
+    },
+    {
+      "did": "did:plc:irhdl35gsqfnh7fpbnmy6bei",
+      "handle": "pengustony.bsky.social",
+      "display_name": "Pengu Stony",
+      "pds": "https://rooter.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404887,
+      "checkpoint_updated_at": 1774976084
+    },
+    {
+      "did": "did:plc:kd6ptxlvl3t7p5vdd24xqsl6",
+      "handle": "peachpitpostal.bsky.social",
+      "display_name": "Lu",
+      "pds": "https://truffle.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404887,
+      "checkpoint_updated_at": 1778910237
+    },
+    {
+      "did": "did:plc:pp7kbwfb3ndwzrq4cj4zgudi",
+      "handle": "mituha0124.bsky.social",
+      "display_name": "\u6a58\u82b1\u307f\u3064\u306f\ud83d\udcd5\u2764\ufe0f\ud83c\udf6b",
+      "pds": "https://verpa.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404887,
+      "checkpoint_updated_at": 1793309914
+    },
+    {
+      "did": "did:plc:j5dcfutc6ffokxwgcilvkwot",
+      "handle": "hornymarcoarts.bsky.social",
+      "display_name": "\ud83c\udde7\ud83c\uddf7DemonMarcoArts\ud83d\udd1e(COMMS CLOSED 3/5)",
+      "pds": "https://porcini.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404888,
+      "checkpoint_updated_at": 1792272563
+    },
+    {
+      "did": "did:plc:pq2vfmqdgqhsmzeh7q6sm6bd",
+      "handle": "kutaydeniz.bsky.social",
+      "display_name": "Kutay Deniz Atabay",
+      "pds": "https://pholiota.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404888,
+      "checkpoint_updated_at": 1778911770
+    },
+    {
+      "did": "did:plc:4626t4npbuuvcjp3lar3hupy",
+      "handle": "hapitaiga.bsky.social",
+      "display_name": "\u306f\u3074\u305f\u3044\u304c",
+      "pds": "https://amanita.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404890,
+      "checkpoint_updated_at": 1792709751
+    },
+    {
+      "did": "did:plc:7t2urmt3i33jl6tjgiolio6g",
+      "handle": "billkuchman.bsky.social",
+      "display_name": "Bill Kuchman",
+      "pds": "https://inkcap.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404890,
+      "checkpoint_updated_at": 1793132174
+    },
+    {
+      "did": "did:plc:jzzo472hcyemjtw5blzqieqq",
+      "handle": "tinguspingus88.bsky.social",
+      "display_name": "",
+      "pds": "https://hollowfoot.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404890,
+      "checkpoint_updated_at": 1792700179
+    },
+    {
+      "did": "did:plc:ronk6f2mftb2rfolntws74bs",
+      "handle": "harryedgarpalacio.bsky.social",
+      "display_name": "Harry Edgar Palacio",
+      "pds": "https://stinkhorn.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404890,
+      "checkpoint_updated_at": 1792445023
+    },
+    {
+      "did": "did:plc:y5x5niblxsotssrlopeaij3z",
+      "handle": "taoneo.bsky.social",
+      "display_name": "\u57b0\u5c91(tao-shin)",
+      "pds": "https://stinkhorn.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404890,
+      "checkpoint_updated_at": 1792019292
+    },
+    {
+      "did": "did:plc:22qtpspmsnzdvhqo3a4oupl7",
+      "handle": "gia639.bsky.social",
+      "display_name": "Gia\ud83e\udd8b",
+      "pds": "https://shaggymane.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1792276170
+    },
+    {
+      "did": "did:plc:7qjm65yfoeromljibwgrthmi",
+      "handle": "yashtrash.bsky.social",
+      "display_name": "Yash",
+      "pds": "https://fuzzyfoot.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1792960553
+    },
+    {
+      "did": "did:plc:a5gr72mv2hhsnj7n2llmhixb",
+      "handle": "fatalblooms24.bsky.social",
+      "display_name": "FatalBlo0ms\ud83d\udd1e",
+      "pds": "https://phellinus.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1793133019
+    },
+    {
+      "did": "did:plc:cb5a7wffv7ejwzbgsel2eo23",
+      "handle": "aenikl.bsky.social",
+      "display_name": "AeniK \ud83d\udeb5\ud83c\udfcd\ufe0f",
+      "pds": "https://goldenear.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1792911678
+    },
+    {
+      "did": "did:plc:dv6jmqyx6cbgh65fwy47rmmk",
+      "handle": "midnightwriteson.bsky.social",
+      "display_name": "Midnight",
+      "pds": "https://bankera.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1778910231
+    },
+    {
+      "did": "did:plc:ftygk2wtvxtltcr3twgfn6hm",
+      "handle": "flareshard.bsky.social",
+      "display_name": "ScareShard\ud83e\udd89\ud83c\udf83",
+      "pds": "https://milkcap.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1778910271
+    },
+    {
+      "did": "did:plc:jik47vfaar6z7d6nm3q2hi6o",
+      "handle": "charessel.bsky.social",
+      "display_name": "Charm",
+      "pds": "https://oysterling.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1775085093
+    },
+    {
+      "did": "did:plc:joohe5tnbluhccdkvwsqgzop",
+      "handle": "qord.bsky.social",
+      "display_name": "der cord",
+      "pds": "https://porcini.us-east.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1778909822
+    },
+    {
+      "did": "did:plc:k6p3rdskkzkyblu6mmw2qcsm",
+      "handle": "troop4.bsky.social",
+      "display_name": "Troop4",
+      "pds": "https://button.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1778911676
+    },
+    {
+      "did": "did:plc:mvk5fnxmsoeawfj7txemn64a",
+      "handle": "daawgo.bsky.social",
+      "display_name": "Daawgo \ud83d\udd1c \u30c7\u30b6\u30d5\u30a7\u30b964\uff3bB-343\uff3d\u65e5\u66dc",
+      "pds": "https://polypore.us-west.host.bsky.network",
+      "source_pds": "",
+      "source_updated_at": 1793404893,
+      "checkpoint_updated_at": 1791759041
+    }
+  ]
+}

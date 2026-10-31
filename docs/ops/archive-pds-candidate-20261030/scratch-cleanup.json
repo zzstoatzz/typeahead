@@ -1,0 +1,12 @@
+{
+  "observed_at": 1793410949,
+  "host": "89.167.122.160",
+  "removed_scratch_root": "/tmp/typeahead-pds-join-full",
+  "root_absent": true,
+  "free_before_bytes": 89553244160,
+  "free_after_bytes": 111143206912,
+  "net_free_increase_bytes": 21589962752,
+  "candidate_fly_slot_retained": true,
+  "immutable_r2_artifacts_retained": true,
+  "note": "Net filesystem free-space change includes concurrent archive-host activity."
+}
