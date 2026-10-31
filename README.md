@@ -1,8 +1,9 @@
 # [typeahead](https://typeahead.waow.tech)
 
-a community-run searchable address book of [AT Protocol](https://atproto.com)
-accounts. find people by handle or display name on the website, or use the public
-API to add account search to your app. no sign-in required.
+account search and profile lookup for [AT Protocol](https://atproto.com).
+Typeahead helps people and apps find accounts across the network and retrieve
+their public profiles. search by handle or display name through the website or
+API—no sign-in required.
 
 [search](https://typeahead.waow.tech/) · [API docs](https://typeahead.waow.tech/docs) · [stats](https://typeahead.waow.tech/stats) · [llms.txt](https://typeahead.waow.tech/llms.txt)
 
