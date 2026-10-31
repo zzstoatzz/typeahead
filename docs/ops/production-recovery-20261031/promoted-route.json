@@ -1,0 +1,325 @@
+{
+  "observed_at": 1793463298,
+  "route": {
+    "version": 1,
+    "current": {
+      "admission_sha256": "aaea9e4ec2df3cf4e62d95fed65db75210312f17a1e7d01d33981f6b827c9c93",
+      "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+      "build_id": "b1793395409-cp-pdsjoin",
+      "engine": "tantivy",
+      "format": "tantivy-0.27-f32-did-expiry-v4",
+      "origin": "https://typeahead-tantivy-b.fly.dev",
+      "retrieval_strategy": "global-merge"
+    },
+    "previous": {
+      "admission_sha256": "4196e7b356375ba005f502c933fae00153fa13e440237a10aeaf95f458b1d69d",
+      "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+      "build_id": "b1793346536-cp-7c8322df79",
+      "engine": "tantivy",
+      "format": "tantivy-0.27-f32-did-expiry-v4",
+      "origin": "https://typeahead-tantivy-a.fly.dev",
+      "retrieval_strategy": "global-merge"
+    },
+    "native_rollback": {
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "build_id": "b1793109259-2b36-px05",
+      "source_watermark": 1793109254,
+      "machine_id": "8e3d79b70dd748",
+      "volume_id": "vol_v8eyqk61q9dy9gkv",
+      "legacy_build_id": "b1793109259-2b36"
+    }
+  },
+  "route_etag": "\"6f7a58dc0e5141dfcd4e15f694ddbeea\"",
+  "admission": {
+    "admission": {
+      "build_id": "b1793395409-cp-pdsjoin",
+      "checkpoint_cut_age_s": 14837,
+      "checkpoint_handoff_sha256": "f2604164c953a765b329a03fd5f945dc9723cd154a48b9d2f1af12887545ba46",
+      "checkpoint_pipeline_duration_s": 6669,
+      "checkpoint_receipt_sha256": "7735f9a0bec1980262246642ab826c3417cf039f60ecd93c1aa52bf2ac1b57ec",
+      "checkpoint_reconciliation_sha256": "c02fa9df3ee510a267add7a407a43df9ea78b332a07f755bb7e31c4d137cf768",
+      "checkpoint_renewed_by_remote_round": false,
+      "checkpoint_round_duration_s": 889,
+      "checkpoint_test_only": false,
+      "coverage_age_s": 14837,
+      "coverage_deadline": 1793481809,
+      "engine": "tantivy",
+      "expiry_actors_checked": 12981514,
+      "expiry_classifier_sha256": "bb1a5427f4c91bd4667cd2c6caa1c38d4d216334fb1cf3e513bcabe955b48152",
+      "expiry_coverage_ready": true,
+      "expiry_current_live_actors": 12893935,
+      "expiry_input_actors_sha256": "e7c189f8e19058ae8ddfbd9caf5acd15379dd7c709d9560e0a820e6783d9f5ff",
+      "format": "tantivy-0.27-f32-did-expiry-v4",
+      "installed_binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+      "manifest_sha256": "544ba83606b37d389064adf98977668fdc34a08b66613db386dd4a9897353c5a",
+      "origin": "https://typeahead-tantivy-b.fly.dev",
+      "policy_age_s": 4,
+      "policy_sha256": "1247e2ceddd6e3bdae5471a69fb01e32c806e1a0f2f11c5a5124129193d46cd5",
+      "poll_age_s": 22,
+      "post_cut_policy_sha256": "1247e2ceddd6e3bdae5471a69fb01e32c806e1a0f2f11c5a5124129193d46cd5",
+      "provider_attestation_sha256": "ea7258f85170604289f48fb75e51a6c0c3d22cca4ef3f70abc11294d974d729e",
+      "provider_attestation_test_only": false,
+      "provider_config_verified": true,
+      "provider_image_digest": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+      "provider_instance_id": "01M67PXFV07K0T0HFHBYSBE1W3",
+      "provider_machine_id": "8d4930ae3502d8",
+      "provider_observed_at": "2026-10-31T01:30:45Z",
+      "provider_resources_qualified": true,
+      "provider_runtime_instance_bound": true,
+      "qualified_at": 1793410246,
+      "remote_full_round_present": false,
+      "runtime_http_verified": true,
+      "runtime_observed_origin": "https://typeahead-tantivy-b.fly.dev",
+      "schema_version": 1,
+      "slo_empirically_qualified": false,
+      "source_coverage_kind": "sqlite-committed-prefix",
+      "source_cursor_sha256": "1b6feaab1f4e5d39b463d05b16aea9ad48ec0789a0b3dc2bc87d32a421b68989",
+      "test_only": false
+    },
+    "deployment_key": "control/tantivy-slots/typeahead-tantivy-b/a7d276e5a7a84939a05e0915b5004179.json",
+    "deployment_sha256": "7769750d997aaf30beaa0ecc5f80624b2781aad36946ddf5a434f2af8c514e82",
+    "machine_id": "8d4930ae3502d8",
+    "provider_attestation": {
+      "app": "typeahead-tantivy-b",
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "image_digest": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+      "instance_id": "01M67PXFV07K0T0HFHBYSBE1W3",
+      "machine_id": "8d4930ae3502d8",
+      "mounts": [
+        {
+          "encrypted": true,
+          "path": "/data",
+          "size_gib": 20,
+          "volume_id": "vol_vxmpk8k2exk5x1n4"
+        }
+      ],
+      "observed_at": "2026-10-31T01:30:45Z",
+      "owner": "typeahead-snapshot-refresh",
+      "provider": "fly",
+      "provider_config_reserved_env_overrides": false,
+      "public_service_ports": [
+        80,
+        443
+      ],
+      "role": "tantivy-slot",
+      "schema": 1,
+      "state": "started",
+      "test_only": false
+    },
+    "request_id": "a7d276e5a7a84939a05e0915b5004179",
+    "schema_version": 1,
+    "volume_id": "vol_vxmpk8k2exk5x1n4"
+  },
+  "operation": {
+    "app": "typeahead-tantivy-b",
+    "artifact_manifest_sha256": "7c43b882ad750b2f1c3cf2b1a7a749930efca899afc2e9a10da3031eef7b8cc1",
+    "automatic_refresh": false,
+    "build_id": "b1793395409-cp-pdsjoin",
+    "config": {
+      "auto_destroy": false,
+      "checks": {
+        "ready": {
+          "grace_period": "60s",
+          "interval": "15s",
+          "method": "GET",
+          "path": "/ready",
+          "port": 8080,
+          "timeout": "2s",
+          "type": "http"
+        }
+      },
+      "env": {
+        "EXPECTED_BUILD_ID": "b1793395409-cp-pdsjoin",
+        "EXPECTED_DEPLOYMENT_SHA256": "7769750d997aaf30beaa0ecc5f80624b2781aad36946ddf5a434f2af8c514e82",
+        "TANTIVY_DEPLOYMENT_KEY": "control/tantivy-slots/typeahead-tantivy-b/a7d276e5a7a84939a05e0915b5004179.json"
+      },
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "image": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+      "init": {
+        "cmd": [
+          "python3",
+          "/app/tantivy-slot.py"
+        ]
+      },
+      "metadata": {
+        "build_id": "b1793395409-cp-pdsjoin",
+        "deployment_sha256": "7769750d997aaf30beaa0ecc5f80624b2781aad36946ddf5a434f2af8c514e82",
+        "owner": "typeahead-snapshot-refresh",
+        "request_id": "a7d276e5a7a84939a05e0915b5004179",
+        "role": "tantivy-slot"
+      },
+      "mounts": [
+        {
+          "path": "/data",
+          "volume": "vol_vxmpk8k2exk5x1n4"
+        }
+      ],
+      "restart": {
+        "max_retries": 3,
+        "policy": "on-failure"
+      },
+      "services": [
+        {
+          "autostart": false,
+          "autostop": false,
+          "internal_port": 8080,
+          "ports": [
+            {
+              "handlers": [
+                "http"
+              ],
+              "port": 80
+            },
+            {
+              "handlers": [
+                "tls",
+                "http"
+              ],
+              "port": 443
+            }
+          ],
+          "protocol": "tcp"
+        }
+      ],
+      "stop_config": {
+        "signal": "SIGTERM",
+        "timeout": 60000000000
+      }
+    },
+    "deployment_key": "control/tantivy-slots/typeahead-tantivy-b/a7d276e5a7a84939a05e0915b5004179.json",
+    "deployment_sha256": "7769750d997aaf30beaa0ecc5f80624b2781aad36946ddf5a434f2af8c514e82",
+    "execution_id": "b28261c3-a617-48b6-8e18-693cf96b49c3",
+    "image_digest": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+    "journal_revision": 23,
+    "legacy_build_id": "b1793109259-2b36",
+    "machine_id": "8d4930ae3502d8",
+    "machine_name": "tv-a7d276e5a7a84939a05e",
+    "mutation": {
+      "acquired_at": 1793462263,
+      "app": "typeahead-tantivy-b",
+      "owner": "typeahead-snapshot-refresh",
+      "request_id": "a7d276e5a7a84939a05e0915b5004179"
+    },
+    "native_rollback": {
+      "build_id": "b1793109259-2b36-px05",
+      "legacy_build_id": "b1793109259-2b36",
+      "machine_id": "8e3d79b70dd748",
+      "origin": "https://typeahead-startup-20261024.fly.dev",
+      "source_watermark": 1793109254,
+      "volume_id": "vol_v8eyqk61q9dy9gkv"
+    },
+    "owner": "typeahead-snapshot-refresh",
+    "pending_action": null,
+    "phase": "promoted",
+    "plan_sha256": "23335a2301d801d80aa32e67fb7bfce429318be3c3c20291da932467208c2e18",
+    "promotion_before": {
+      "current": {
+        "admission_sha256": "4196e7b356375ba005f502c933fae00153fa13e440237a10aeaf95f458b1d69d",
+        "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+        "build_id": "b1793346536-cp-7c8322df79",
+        "engine": "tantivy",
+        "format": "tantivy-0.27-f32-did-expiry-v4",
+        "origin": "https://typeahead-tantivy-a.fly.dev",
+        "retrieval_strategy": "global-merge"
+      },
+      "native_rollback": {
+        "build_id": "b1793109259-2b36-px05",
+        "legacy_build_id": "b1793109259-2b36",
+        "machine_id": "8e3d79b70dd748",
+        "origin": "https://typeahead-startup-20261024.fly.dev",
+        "source_watermark": 1793109254,
+        "volume_id": "vol_v8eyqk61q9dy9gkv"
+      },
+      "previous": {
+        "build_id": "b1793109259-2b36-px05",
+        "legacy_build_id": "b1793109259-2b36",
+        "machine_id": "8e3d79b70dd748",
+        "origin": "https://typeahead-startup-20261024.fly.dev",
+        "source_watermark": 1793109254,
+        "volume_id": "vol_v8eyqk61q9dy9gkv"
+      },
+      "version": 1
+    },
+    "promotion_etag": "\"b2090b2912ff5c17850554251658a365\"",
+    "promotion_target": {
+      "current": {
+        "admission_sha256": "aaea9e4ec2df3cf4e62d95fed65db75210312f17a1e7d01d33981f6b827c9c93",
+        "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+        "build_id": "b1793395409-cp-pdsjoin",
+        "engine": "tantivy",
+        "format": "tantivy-0.27-f32-did-expiry-v4",
+        "origin": "https://typeahead-tantivy-b.fly.dev",
+        "retrieval_strategy": "global-merge"
+      },
+      "native_rollback": {
+        "build_id": "b1793109259-2b36-px05",
+        "legacy_build_id": "b1793109259-2b36",
+        "machine_id": "8e3d79b70dd748",
+        "origin": "https://typeahead-startup-20261024.fly.dev",
+        "source_watermark": 1793109254,
+        "volume_id": "vol_v8eyqk61q9dy9gkv"
+      },
+      "previous": {
+        "admission_sha256": "4196e7b356375ba005f502c933fae00153fa13e440237a10aeaf95f458b1d69d",
+        "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+        "build_id": "b1793346536-cp-7c8322df79",
+        "engine": "tantivy",
+        "format": "tantivy-0.27-f32-did-expiry-v4",
+        "origin": "https://typeahead-tantivy-a.fly.dev",
+        "retrieval_strategy": "global-merge"
+      },
+      "version": 1
+    },
+    "promotion_written_etag": "\"6f7a58dc0e5141dfcd4e15f694ddbeea\"",
+    "region": "ewr",
+    "release_proof": {
+      "key": "control/tantivy-releases/cf08e3fc7a529e21c3e62c035de8aa26f3aa9acfccf4cb7c3565151c8e23d02d.json",
+      "passed": true,
+      "sha256": "cf08e3fc7a529e21c3e62c035de8aa26f3aa9acfccf4cb7c3565151c8e23d02d"
+    },
+    "request_id": "a7d276e5a7a84939a05e0915b5004179",
+    "retire_previous_tantivy": false,
+    "route": {
+      "current": {
+        "admission_sha256": "4196e7b356375ba005f502c933fae00153fa13e440237a10aeaf95f458b1d69d",
+        "binary_sha256": "d1cc0366ed3b28b34daca15d23ee6f06aa1d08844e483c357b80cdb778d5cfa2",
+        "build_id": "b1793346536-cp-7c8322df79",
+        "engine": "tantivy",
+        "format": "tantivy-0.27-f32-did-expiry-v4",
+        "origin": "https://typeahead-tantivy-a.fly.dev",
+        "retrieval_strategy": "global-merge"
+      },
+      "native_rollback": {
+        "build_id": "b1793109259-2b36-px05",
+        "legacy_build_id": "b1793109259-2b36",
+        "machine_id": "8e3d79b70dd748",
+        "origin": "https://typeahead-startup-20261024.fly.dev",
+        "source_watermark": 1793109254,
+        "volume_id": "vol_v8eyqk61q9dy9gkv"
+      },
+      "previous": {
+        "build_id": "b1793109259-2b36-px05",
+        "legacy_build_id": "b1793109259-2b36",
+        "machine_id": "8e3d79b70dd748",
+        "origin": "https://typeahead-startup-20261024.fly.dev",
+        "source_watermark": 1793109254,
+        "volume_id": "vol_v8eyqk61q9dy9gkv"
+      },
+      "version": 1
+    },
+    "schema_version": 1,
+    "source_build_id": "b1793395409-cp-pdsjoin",
+    "source_manifest_sha256": "7735f9a0bec1980262246642ab826c3417cf039f60ecd93c1aa52bf2ac1b57ec",
+    "updated_at": 1793462927,
+    "volume_id": "vol_vxmpk8k2exk5x1n4",
+    "volume_name": "tv_a7d276e5a7a84939a05e"
+  }
+}

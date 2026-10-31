@@ -1,0 +1,12 @@
+{
+  "run_id": "5da0d18f-0e10-405a-b023-30b1b004626c",
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "operation": "automatic_refresh",
+  "location": "hel1",
+  "timeout_seconds": 10800,
+  "pins": {
+    "MPS_PIN": "@ef7f3ecd304bd30a1e566a6e7682d48a439684c8",
+    "INDEX_PDS_FALLBACK_SHA256": "1b1fa39e7b5d8f5224fafb08b23cb3a8e277da680f39ff6899280283ffd65e47",
+    "INDEX_TANTIVY_SOURCE_REVISION": "c476fc591e191a755d0d4837eb4f230932f8ceff"
+  }
+}

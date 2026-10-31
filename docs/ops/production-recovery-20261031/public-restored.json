@@ -1,0 +1,82 @@
+{
+  "observed_at": 1793462986,
+  "passed": true,
+  "checks": [
+    {
+      "path": "/xrpc/tech.waow.typeahead.searchActors",
+      "params": {
+        "q": "zzstoatzz.io",
+        "limit": 5
+      },
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1793395409-cp-pdsjoin",
+      "failover": null,
+      "dids": [
+        "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "did:plc:65sucjiel52gefhcdcypynsr",
+        "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+        "did:plc:3cr6uc547ot7j3nysnxmnrsl"
+      ],
+      "handles": [
+        "zzstoatzz.io",
+        "phi.zzstoatzz.io",
+        "jev.zzstoatzz.io",
+        "alt.zzstoatzz.io"
+      ]
+    },
+    {
+      "path": "/xrpc/app.bsky.actor.searchActorsTypeahead",
+      "params": {
+        "q": "zzstoatzz.io",
+        "limit": 5
+      },
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1793395409-cp-pdsjoin",
+      "failover": null,
+      "dids": [
+        "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "did:plc:65sucjiel52gefhcdcypynsr",
+        "did:plc:ehr2oix3bkhbxsqen4wav2bp",
+        "did:plc:3cr6uc547ot7j3nysnxmnrsl"
+      ],
+      "handles": [
+        "zzstoatzz.io",
+        "phi.zzstoatzz.io",
+        "jev.zzstoatzz.io",
+        "alt.zzstoatzz.io"
+      ]
+    },
+    {
+      "path": "/xrpc/tech.waow.typeahead.searchActors",
+      "params": {
+        "q": "froylantech.bsky.social",
+        "pds": "helvella.us-east.host.bsky.network"
+      },
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1793395409-cp-pdsjoin",
+      "failover": null,
+      "dids": [
+        "did:plc:awcxpcm5zkhcsohougu6lezw"
+      ],
+      "handles": [
+        "froylantech.bsky.social"
+      ]
+    },
+    {
+      "path": "/xrpc/tech.waow.typeahead.searchActors",
+      "params": {
+        "q": "froylantech.bsky.social",
+        "pds": "not-the-account.invalid"
+      },
+      "status": 200,
+      "engine": "tantivy",
+      "build": "b1793395409-cp-pdsjoin",
+      "failover": null,
+      "dids": [],
+      "handles": []
+    }
+  ]
+}

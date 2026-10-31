@@ -1,0 +1,18 @@
+{
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "global_concurrency_limit": {
+    "id": "32818c85-621a-40c6-8b5a-53252f965b85",
+    "created": "2026-10-27T03:20:34.479006Z",
+    "updated": "2026-10-31T16:14:06.610158Z",
+    "active": true,
+    "name": "deployment:a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+    "limit": 1,
+    "active_slots": 1,
+    "slot_decay_per_second": 0.0
+  },
+  "concurrency_options": {
+    "collision_strategy": "CANCEL_NEW",
+    "grace_period_seconds": null
+  },
+  "deployment_concurrency_limit_id": "32818c85-621a-40c6-8b5a-53252f965b85"
+}

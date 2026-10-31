@@ -1,13 +1,13 @@
 # Full archive PDS join candidate
 
-Status (October 31, 2026 UTC): full candidate installed and admitted after restart
-through the normal deployment. **Not cut over**. The scoped release proof is published and build scratch is removed.
-The [completion audit](completion-audit.json) verified the healthy candidate,
-unchanged production route/ETag and all published evidence hashes.
-Cutover still requires explicit approval and the configuration steps below.
-Production routing, source ingestion and authoritative identity handling remain
-unchanged. Data processing runs only in the cloud, with no source-database writes.
-The user clarified that HeavyPad may be contacted for Prefect control-plane operations.
+Qualification completed October 31, 2026 UTC. The original
+[completion audit](completion-audit.json) records the pre-cutover candidate and
+unchanged production route; those receipts remain historical evidence.
+The user subsequently approved promotion, and B began serving production during
+[the October 31 recovery](../production-recovery-20261031/).
+The scoped release proof is published and build scratch is removed.
+Data processing ran only in the cloud, with no source-database writes.
+HeavyPad was permitted for Prefect control-plane operations only.
 
 The existing cloud archive exported 16,249,268 usable mappings from 16,300,003
 repo records in 462.48 seconds. The mapping is 1,478,053,888 bytes, SHA-256

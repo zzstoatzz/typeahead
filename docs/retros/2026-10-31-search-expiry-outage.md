@@ -1,6 +1,8 @@
 # Search outage after snapshot coverage expired
 
-Status: recovery in progress on October 31, 2026. Times below are UTC.
+Status: production restored on B at 16:08:50 on October 31, 2026; automatic
+Bluesky fallback is deployed. Full refresh verification is still running.
+Times below are UTC.
 
 ## What happened
 
@@ -49,6 +51,8 @@ failure; the recorded failure was cloud capacity.
 - The scheduled publisher pins the joined mapping, reader, source and release
   proof, and uses `hel1`, where the candidate controller successfully allocated.
   A completed subsequent refresh is required before claiming refresh reliability.
+  The deployment allows one concurrent run and cancels overlapping submissions;
+  the live limit and active slot were read back after configuration.
 
 ## Before every serving experiment
 

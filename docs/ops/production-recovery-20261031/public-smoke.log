@@ -1,0 +1,96 @@
+typeahead: https://typeahead.waow.tech
+
+--- response shape ---
+  [pass] returns valid JSON
+  [pass] has actors array
+  [pass] actor has did
+  [pass] actor has handle
+  [pass] did starts with did:
+
+--- canonical endpoint ---
+  [pass] canonical returns valid JSON
+  [pass] canonical has actors array
+  [pass] canonical matches alias results  (native=['did:plc:xbtmt2zjwlrfegqvch7fboei', 'did:plc:65sucjiel52gefhcdcypynsr', 'did:plc:o53crari67ge7bvbv273lxln'] alias=['did:plc:xbtmt2zjwlrfegqvch7fboei', 'did:plc:65sucjiel52gefhcdcypynsr', 'did:plc:o53crari67ge7bvbv273lxln'])
+  [pass] llms.txt documents the canonical endpoint
+
+--- getProfiles / getProfile ---
+  [pass] getProfiles returns zzstoatzz.io
+  [pass] profile has description
+  [pass] profile has banner
+  [pass] profile has followersCount
+  [pass] profile has indexedAt
+  [pass] getProfile unwraps the same view
+  [pass] getProfile missing actor → 400
+
+--- known handle ---
+  [pass] zzstoatzz.io in results  (got ['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'alt.zzstoatzz.io'])
+
+--- prefix match ---
+  [pass] prefix 'zzst' finds zzstoatzz.io  (got ['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'zzstop44.bsky.social'])
+  [pass] prefix 'typeahead.waow.te' (17 chars) finds typeahead.waow.tech  (got ['typeahead.waow.tech'])
+  [pass] prefix 'typeahead.waow.tx' (17 chars, no such handle) finds nothing  (got [])
+
+--- popularity ranking ---
+  [pass] zzstoatzz.io present for 'zzst'  (got ['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'zzstop44.bsky.social'])
+  [pass] zzstoatzz.io ranks above phi.zzstoatzz.io  (main@0 vs phi.zzstoatzz.io@1 — handles=['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'zzstop44.bsky.social'])
+  [pass] zzstoatzz.io ranks above zzstoatzzdevlog.bsky.social  (main@0 vs zzstoatzzdevlog.bsky.social@2 — handles=['zzstoatzz.io', 'phi.zzstoatzz.io', 'zzstoatzzdevlog.bsky.social', 'jev.zzstoatzz.io', 'zzstop44.bsky.social'])
+
+--- CORS headers ---
+  [pass] Access-Control-Allow-Origin: *  (got '*')
+
+--- deprecated param ---
+  [pass] ?term= returns same as ?q=  (q=5, term=5)
+
+--- limit bounds ---
+  [pass] limit=3 returns ≤3  (got 3)
+
+--- empty query ---
+  [pass] empty query returns 400  (got {'_http_error': 400})
+
+--- limit > 100 ---
+  [pass] limit>100 returns 400  (got {'_http_error': 400})
+
+--- stats page ---
+  [pass] stats returns 200
+  [pass] stats content-type is html  (got 'text/html; charset=utf-8')
+  [pass] stats contains actors indexed
+  [pass] stats contains sparkline heading
+  [pass] stats has home link
+  [pass] stats shows search exclusions
+
+--- request indexing ---
+  [pass] GET redirects (302)  (got 302)
+  [pass] POST empty returns 400  (got {'_http_error': 400})
+  [pass] POST returns handle  (got zzstoatzz.io)
+  [pass] POST returns did  (got did:plc:xbtmt2zjwlrfegqvch7fboei)
+  [pass] POST returns hidden field  (keys: ['handle', 'did', 'hidden'])
+
+--- moderation filtering ---
+  [pass] actor objects have expected shape
+  [pass] labels is array  (got list)
+
+--- !no-unauthenticated inclusion ---
+  [pass] !no-unauthenticated actor @jcsalterego.bsky.social visible in search
+
+--- Link visibility ---
+  [pass] Link visible in search  (got ['spacelawshitpost.me'])
+
+--- mod_overrides admin API ---
+  [skip] skipped (use --secret or set TYPEAHEAD_SECRET)
+
+--- page script syntax ---
+  [pass] / inline scripts parse (2)
+  [pass] /reputation inline scripts parse (2)
+  [pass] /stats inline scripts parse (2)
+  [pass] /docs inline scripts parse (2)
+
+--- turso keyset query plan ---
+  [skip] skipped (set TURSO_URL + TURSO_AUTH_TOKEN)
+
+--- turso cron selector plans ---
+  [skip] skipped (set TURSO_URL + TURSO_AUTH_TOKEN)
+
+--- comparison ---
+  [skip] skipped (use --compare)
+
+all checks passed.
