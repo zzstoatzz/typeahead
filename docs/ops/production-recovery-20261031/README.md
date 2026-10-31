@@ -13,7 +13,9 @@ when the primary cannot serve them.
 - [Conditional promotion routing and operation receipt](promoted-route.json)
 - [Worker runtime failure and recovery tests](worker-runtime-tests.log)
 - [Publisher configuration](publisher-config.json) and [concurrency readback](publisher-concurrency.json)
-- [Full refresh request](refresh-request.json), still awaiting completion
+- [Full refresh request](refresh-request.json), built and published; Fly rejected initial startup
+- [Resume request](refresh-resume-request.json) reuses the retained artifact and machine
+- [Startup recovery tests](startup-controller-tests.log): all 45 controller/automatic-refresh tests passed
 - [Cloud controller resource check](controller-resources.json)
 
 Worker version: `6e57ccd1-782e-4674-8f3e-e6c884c89fac`.
@@ -22,6 +24,9 @@ and tested against the then-unavailable primary. Successful B responses have no
 failover header. Existing normal query caching remains; fallback responses are
 not cached.
 
-The running full refresh is verification of the normal deployment, not a separate
-experimental publisher. Its completion and resulting admission remain required
-before declaring the refresh repair finished. Source processing stays in the cloud.
+The normal deployment built a 6.32 GB bundle in 46 minutes and published it.
+Its first start request received HTTP 412 while Fly prepared the machine; the
+controller then timed out waiting for a start that had been rejected. The fixed
+controller resumed the same preparation, and that machine started successfully.
+Installation/admission and public promotion remain under verification. Source
+processing stays in the cloud.

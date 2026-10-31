@@ -1,0 +1,16 @@
+{
+  "run_id": "89dcf983-bc2f-4708-98d0-bc1d8e4cdd95",
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "previous_run_id": "5da0d18f-0e10-405a-b023-30b1b004626c",
+  "parameters": {
+    "ref": null,
+    "resume_rollout": true,
+    "snapshot_engine": "native",
+    "snapshot_format": "compact",
+    "automatic_refresh": true
+  },
+  "controller_pin": "@f4712392886b50fd2961e19e129ae2794680b27a",
+  "request_id": "0b1cc1cfd88d4ed1a46d1b875580dcd9",
+  "machine_id": "2869d52c353428",
+  "build_id": "b1793463173-cp-5da0d18f0e"
+}

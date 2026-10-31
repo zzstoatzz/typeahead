@@ -1,7 +1,8 @@
 # Search outage after snapshot coverage expired
 
 Status: production restored on B at 16:08:50 on October 31, 2026; automatic
-Bluesky fallback is deployed. Full refresh verification is still running.
+Bluesky fallback is deployed. Full refresh verification is continuing from a
+retained candidate after a Fly startup rejection.
 Times below are UTC.
 
 ## What happened
@@ -53,6 +54,21 @@ failure; the recorded failure was cloud capacity.
   A completed subsequent refresh is required before claiming refresh reliability.
   The deployment allows one concurrent run and cancels overlapping submissions;
   the live limit and active slot were read back after configuration.
+
+## Refresh verification uncovered a startup recovery bug
+
+The normal refresh built and verified its full 6.32 GB bundle in 46 minutes,
+then published it. Fly rejected the new inactive machine's start with HTTP 412
+while its initial image/volume preparation was completing. The controller kept
+waiting for `started` and failed after three minutes with the machine stopped.
+The finished artifact and the owned preparation journal remained intact.
+
+Startup now reconciles a rejected 412 against the same stopped, owned machine
+before retrying, with at most three attempts. Route and configuration changes
+still prevent retries; ambiguous failures retain their existing reconciliation
+rules. Real HTTP tests cover rejection, bounded failure, persisted resume and
+ownership drift. Recovery uses `resume_rollout:true` through the normal deployment,
+so it cannot silently begin another build. Live completion remains to be verified.
 
 ## Before every serving experiment
 
