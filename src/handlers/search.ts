@@ -63,7 +63,8 @@ export function tursoFallbackOnUnreachable(enabled: boolean): boolean {
 
 async function blueskyFallback(term: string, limit: number, mode: "manual" | "automatic"): Promise<Response> {
   const headers = { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store",
-    "X-Typeahead-Engine": "bluesky", "X-Typeahead-Failover": mode };
+    "X-Typeahead-Engine": "bluesky", "X-Typeahead-Failover": mode,
+    "Access-Control-Expose-Headers": "X-Typeahead-Engine, X-Typeahead-Failover" };
   let status = 503;
   try {
     const upstream = await fetch(`${BSKY_TYPEAHEAD_URL}?q=${encodeURIComponent(term)}&limit=${limit}`,

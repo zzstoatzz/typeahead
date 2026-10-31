@@ -1,5 +1,10 @@
 # Automatic isolated snapshot refresh
 
+Before reserving an inactive slot, follow the
+[production continuity preflight](../retros/2026-10-31-search-expiry-outage.md#before-every-serving-experiment).
+Check the serving coverage deadline and actual publisher completion; unchanged
+routing does not prevent expiry.
+
 Current production uses the managed Tantivy A/B controller with a 12-hour cloud
 publisher cadence. Native remains an independent rollback anchor. See the
 [October 30 cutover record](tantivy-cutover-readiness.md#production-cutover--october-30-2026)

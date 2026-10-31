@@ -1,0 +1,34 @@
+{
+  "observed_at": 1793462437,
+  "checks": [
+    {
+      "path": "/xrpc/tech.waow.typeahead.searchActors?q=zzstoatzz.io&limit=5",
+      "status": 200,
+      "handles": [
+        "zzstoatzz.io"
+      ],
+      "error": null,
+      "engine": null
+    },
+    {
+      "path": "/xrpc/app.bsky.actor.searchActorsTypeahead?q=alice&limit=5",
+      "status": 200,
+      "handles": [
+        "profaliceroberts.bsky.social",
+        "sfdirewolf.bsky.social",
+        "alice.averlong.com",
+        "alicemiranda.bsky.social",
+        "alicekeeler.com"
+      ],
+      "error": null,
+      "engine": null
+    },
+    {
+      "path": "/xrpc/tech.waow.typeahead.searchActors?q=alice&pds=pds.zzstoatzz.io",
+      "status": 503,
+      "handles": [],
+      "error": "PdsScopeUnavailable",
+      "engine": null
+    }
+  ]
+}

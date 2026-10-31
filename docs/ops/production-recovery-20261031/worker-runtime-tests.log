@@ -1,0 +1,37 @@
+bun test v1.4.0 (34cbb9a40)
+
+src/handlers/search-worker.test.ts:
+{"event":"search_failover","mode":"automatic","provider":"bluesky","status":200}
+{"event":"search_response_timing","outcome":"backend_error","status":503,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1}
+{"event":"search_backend_unreachable","term":"broken","error":"Unexpected token 'b', \"badjson\" is not valid JSON"}
+{"event":"search_failover","mode":"automatic","provider":"bluesky","status":200}
+{"event":"search_response_timing","outcome":"backend_error","status":503,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1}
+{"event":"search_backend_unreachable","term":"missing","error":"[\n  {\n    \"expected\": \"array\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"actors\"\n    ],\n    \"message\": \"Invalid input: expected array, received undefined\"\n  }\n]"}
+{"event":"search_failover","mode":"automatic","provider":"bluesky","status":200}
+{"event":"search_response_timing","outcome":"backend_error","status":503,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0}
+{"event":"search_backend_unreachable","term":"duplicate","error":"Invalid search backend actor"}
+{"event":"search_failover","mode":"automatic","provider":"bluesky","status":200}
+{"event":"search_response_timing","outcome":"backend_error","status":503,"backend_strategy":"unknown","backend_route_class":"other","ingress_colo":"DFW","search_ms":3003,"cache_ms":1}
+{"event":"search_backend_unreachable","term":"slow","error":"The operation was aborted due to timeout"}
+{"event":"search_failover","mode":"automatic","provider":"bluesky","status":200}
+{"event":"search_failover_error","error":"Error"}
+{"event":"search_failover","mode":"automatic","provider":"bluesky","status":503}
+{"event":"search_failover_error","error":"SyntaxError"}
+{"event":"search_failover","mode":"automatic","provider":"bluesky","status":503}
+{"event":"search_failover","mode":"automatic","provider":"bluesky","status":200}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":0,"backend_headers_ms":0,"backend_ms":1,"transport_route_ms":null,"transport_origin_ms":null,"empty":true}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":0,"backend_headers_ms":1,"backend_ms":1,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":0,"cache_ms":0,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+{"event":"search_response_timing","outcome":"ok","status":200,"backend_strategy":"retained","backend_route_class":"other","ingress_colo":"DFW","search_ms":1,"cache_ms":1,"backend_headers_ms":0,"backend_ms":0,"transport_route_ms":null,"transport_origin_ms":null,"empty":false}
+(pass) workerd search forwards acknowledged scopes, separates edge cache and preserves failures [3281.51ms]
+
+ 1 pass
+ 0 fail
+ 70 expect() calls
+Ran 1 test across 1 file. [3.40s]

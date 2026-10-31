@@ -1,0 +1,10 @@
+{
+  "observed_at": 1793462793,
+  "status": 200,
+  "engine": "bluesky",
+  "failover": "automatic",
+  "cache_control": "no-store",
+  "handles": [
+    "zzstoatzz.io"
+  ]
+}

@@ -67,6 +67,16 @@ the serving slot for a trial or refresh. Its slot pointer stays fixed while serv
 Promote only a qualified backend through the conditional R2 routing update; retain
 the previous backend for rollback. Follow [the refresh runbook](docs/plans/automatic-snapshot-refresh.md).
 
+## production continuity during experiments
+
+Before any serving, snapshot or capacity experiment, read the
+[October 31 outage retrospective and preflight](docs/retros/2026-10-31-search-expiry-outage.md).
+Check live coverage expiry and the last successful refresh, not just readiness or
+an enabled schedule. Account for inactive-slot occupancy. In an outage, restore
+unscoped search with the documented Bluesky switch before lengthy diagnosis.
+Recovery tests must include an unavailable old backend. Automatic fallback and
+PDS scope safety must remain intact during changes.
+
 ## performance & benchmarking
 
 Everything you need to assess performance is wired into the root `justfile`. Four layers,

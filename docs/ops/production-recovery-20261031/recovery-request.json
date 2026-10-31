@@ -1,0 +1,12 @@
+{
+  "run_id": "b28261c3-a617-48b6-8e18-693cf96b49c3",
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "operation": {
+    "operation": "promote",
+    "plan_sha256": "23335a2301d801d80aa32e67fb7bfce429318be3c3c20291da932467208c2e18",
+    "expected_current_etag": "\"b2090b2912ff5c17850554251658a365\"",
+    "release_receipt_key": "control/tantivy-releases/cf08e3fc7a529e21c3e62c035de8aa26f3aa9acfccf4cb7c3565151c8e23d02d.json",
+    "release_receipt_sha256": "cf08e3fc7a529e21c3e62c035de8aa26f3aa9acfccf4cb7c3565151c8e23d02d"
+  },
+  "user_authorized": true
+}

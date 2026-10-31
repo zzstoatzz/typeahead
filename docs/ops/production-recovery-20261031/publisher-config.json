@@ -1,0 +1,16 @@
+{
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "location": "hel1",
+  "timeout_seconds": 10800,
+  "pins": {
+    "MPS_PIN": "@ef7f3ecd304bd30a1e566a6e7682d48a439684c8",
+    "INDEX_TANTIVY_ADAPTER_SHA256": "edc215b276b9ffa18ce64b81024463da6eb7577643604c413ea2dd6258ec18b4",
+    "INDEX_TANTIVY_SOURCE_REVISION": "c476fc591e191a755d0d4837eb4f230932f8ceff",
+    "INDEX_TANTIVY_BINARY_SHA256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_KEY": "control/tantivy-releases/cf08e3fc7a529e21c3e62c035de8aa26f3aa9acfccf4cb7c3565151c8e23d02d.json",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_SHA256": "cf08e3fc7a529e21c3e62c035de8aa26f3aa9acfccf4cb7c3565151c8e23d02d",
+    "INDEX_PDS_FALLBACK_SHA256": "1b1fa39e7b5d8f5224fafb08b23cb3a8e277da680f39ff6899280283ffd65e47"
+  },
+  "parameters_unchanged": true,
+  "schedule_unchanged": true
+}

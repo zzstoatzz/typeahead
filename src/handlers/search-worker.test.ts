@@ -30,6 +30,7 @@ test("workerd search forwards acknowledged scopes, separates edge cache and pres
       expect(response.headers.get("X-Typeahead-Engine")).toBe("bluesky");
       expect(response.headers.get("X-Typeahead-Failover")).toBe("automatic");
       expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect(response.headers.get("Access-Control-Expose-Headers")).toContain("X-Typeahead-Failover");
       expect(await response.json()).toMatchObject({ actors: [{ handle: "fallback.test" }] });
     }
     for (const q of ["bothdown", "badfallback"]) {

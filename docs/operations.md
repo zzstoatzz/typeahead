@@ -1,5 +1,10 @@
 # operations / edge gotchas
 
+For serving experiments and outages, start with the
+[October 31 retrospective and recovery checklist](retros/2026-10-31-search-expiry-outage.md).
+Unscoped search now has automatic Bluesky fallback; the manual
+`EMERGENCY_PROXY_BSKY` switch remains the operator override. PDS scopes fail closed.
+
 ## Current search engine — October 30, 2026
 
 Production now serves Tantivy on managed slot A with the native backend retained
