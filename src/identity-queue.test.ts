@@ -3,7 +3,7 @@ import { Database, type SQLQueryBindings } from "bun:sqlite";
 import type { Row } from "@libsql/client/web";
 import { handleIngest } from "./handlers/ingest";
 import {
-  handleIdentityComplete, handleIdentityLease, handlePlcOperations, LEASE_SECONDS, MAX_ATTEMPTS, MAX_RETRY_SECONDS,
+  handleIdentityComplete, handleIdentityLease, handleIdentityStatus, handlePlcOperations, LEASE_SECONDS, MAX_ATTEMPTS, MAX_RETRY_SECONDS,
   type IdentityResult,
 } from "./identity-queue";
 import type { Stmt, TursoDB } from "./db";
@@ -325,4 +325,14 @@ test("a page whose enqueue fails does not advance the PLC cursor", async () => {
   expect(res.status).toBe(500);
   expect(kv.puts).toEqual([]);
   expect(t.queue()).toEqual([]);
+});
+
+test("queue status reads zero, not null, when nothing is pending", async () => {
+  const t = sqliteDb();
+  const get = () => new Request("https://x/admin/identity/status", { headers: { Authorization: `Bearer ${SECRET}` } });
+  const empty: { pending: number; due: number; oldest_due_at: number | null } = await (await handleIdentityStatus(get(), t.db, fakeEnv())).json();
+  expect(empty).toEqual({ pending: 0, due: 0, oldest_due_at: null });
+  await ingest(t.db, [{ did: "did:plc:a", identity: "identity" }]);
+  const one: { pending: number; due: number } = await (await handleIdentityStatus(get(), t.db, fakeEnv())).json();
+  expect([one.pending, one.due]).toEqual([1, 1]);
 });

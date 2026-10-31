@@ -261,7 +261,7 @@ export async function handleIdentityStatus(request: Request, db: TursoDB, env: E
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/identity/status");
   const status = await db.prepare(
     `SELECT COUNT(*) AS pending,
-            SUM(CASE WHEN due_at <= unixepoch() THEN 1 ELSE 0 END) AS due,
+            COALESCE(SUM(CASE WHEN due_at <= unixepoch() THEN 1 ELSE 0 END), 0) AS due,
             MIN(due_at) AS oldest_due_at
      FROM identity_queue`,
   ).first<QueueStatus>();
