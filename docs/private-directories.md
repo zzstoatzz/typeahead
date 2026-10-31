@@ -62,7 +62,7 @@ better for it, and every private row is a row we can leak.
 
 - **Long queries are a plain bug**, fixed 2026-09-18: the prefix index stores
   keys up to 16 bytes and the query path now cuts and post-filters. See
-  [the index design](typeahead-index-design.md#queries-longer-than-prefix_max).
+  [the index design](archive/typeahead-index-design.md#queries-longer-than-prefix_max).
 - **`/request-indexing` indexes anything that resolves**, including a
   private org's members. When that happens by mistake, the remedy is
   `/admin/delete` (Turso rows plus a tombstone the search overlay replays)

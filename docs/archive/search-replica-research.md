@@ -1,3 +1,6 @@
+> Archived historical record. This is not a current deployment runbook.
+> See [current architecture](../architecture.md) and [operations](../operations.md).
+
 # research: does the search box need the Turso replica?
 
 2026-08-29. Empirical, no design decisions yet. Question: on `typeahead-search`

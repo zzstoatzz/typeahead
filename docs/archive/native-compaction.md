@@ -1,3 +1,6 @@
+> Archived historical record. This is not a current deployment runbook.
+> See [current architecture](../architecture.md) and [operations](../operations.md).
+
 # Native snapshot conversion
 
 2026-10-08: implementation on `codex/native-compaction`, based on the compact
@@ -104,8 +107,8 @@ package temperature peaked at 83°C, so this is not a claim that the whole host
 stayed below 65°C. Sensor polling reacts to heat rather than preventing every
 instantaneous excursion.
 
-Raw results: [full corpus](evals/native-compaction/full.json) and
-[quiet subset](evals/native-compaction/quiet-subset.json). Reproduce with
+Raw results: [full corpus](../evals/native-compaction/full.json) and
+[quiet subset](../evals/native-compaction/quiet-subset.json). Reproduce with
 `bench_native.py SOURCE NEW_OUTPUT --expected-sha256 HASH` and
 `quiet.py -- python3 bench_subset.py SOURCE NEW_OUTPUT`, respectively.
 

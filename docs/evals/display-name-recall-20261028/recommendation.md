@@ -116,7 +116,7 @@ syntax was swallowed as an empty result. The local read replica already avoided
 remote reads. These are historical author-reported measurements, not newly
 reproduced current-production timings.
 
-The [May 24 design introduction](../../typeahead-index-design.md) additionally
+The [May 24 design introduction](../../archive/typeahead-index-design.md) additionally
 names `éric`, `natemoo.re` and `jay.bsky.team` as slow-query examples. A future
 FTS trial needs those normalization/domain/parser controls, broad and rare
 prefixes, authority ranking, pool saturation, consistent incremental writes,

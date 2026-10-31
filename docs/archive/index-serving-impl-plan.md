@@ -1,3 +1,6 @@
+> Archived historical record. This is not a current deployment runbook.
+> See [current architecture](../architecture.md) and [operations](../operations.md).
+
 # index-backed serving + overlay — implementation plan (for review)
 
 > **status: SHIPPED (historical).** Implemented — `/search` serves from the

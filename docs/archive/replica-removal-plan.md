@@ -1,3 +1,6 @@
+> Archived historical record. This is not a current deployment runbook.
+> See [current architecture](../architecture.md) and [operations](../operations.md).
+
 # plan: remove the Turso replica from the search box
 
 Follows `search-replica-research.md` (2026-08-29). Goal: the search box holds

@@ -22,25 +22,6 @@ profile cards are available through `app.bsky.actor.getProfile` and
 `app.bsky.actor.getProfiles`. see the [API docs](https://typeahead.waow.tech/docs)
 for parameters, moderation policy, caching and rate limits.
 
-## design
-
-- **continuous discovery** — a Zig ingester follows the relay's `subscribeRepos`
-  firehose and writes actor updates to Turso. identity changes are resolved from
-  DID authority and verified against the claimed handle.
-- **local search** — Tantivy starts from a verified index artifact in R2 and commits
-  live updates from Turso into the serving index. HTTP serving stays separate
-  from corpus-scale preparation.
-- **edge serving** — a Cloudflare Worker handles public endpoints, caching,
-  profile APIs and request accounting. a private transport routes search to Fly.
-  unscoped searches automatically fall back to Bluesky if the backend fails;
-  PDS-scoped requests fail explicitly instead of returning unscoped results.
-- **explicit policy** — moderation labels, domain blocks and per-DID overrides
-  determine visibility independently of ranking. PDS membership comes from
-  recorded hosting identity, rather than handle suffixes.
-- **isolated refresh** — snapshots are prepared and qualified on an independent
-  backend before conditional promotion. the previous backend remains available
-  for rollback.
-
 ## develop
 
 Worker development uses [Bun](https://bun.sh/) and [just](https://just.systems/).
@@ -74,5 +55,6 @@ check smoke and benchmark targets before running them; some default to productio
 
 ## docs
 
-[docs/](docs/) covers architecture, operations, engine evaluations and incident
-history. deployment inventories, measurements and experiment results belong there.
+See the [architecture and diagram](docs/architecture.md) for how search, live
+updates and snapshot refresh fit together. [docs/](docs/) contains operating
+guidance and evaluations; superseded designs live in [the archive](docs/archive/).

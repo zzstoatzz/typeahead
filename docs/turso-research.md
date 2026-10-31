@@ -5,7 +5,8 @@ path) and Track 2 (follow graph + pagerank) decisions, with the Turso
 features we've been ignoring laid out explicitly.
 
 This is *not* an architecture decision doc. It's the menu of options we
-just learned exist. Decisions live in `docs/typeahead-index-design.md`.
+just learned exist. Current decisions live in [architecture.md](architecture.md); the
+[original index design](archive/typeahead-index-design.md) is historical.
 
 ## starting context
 

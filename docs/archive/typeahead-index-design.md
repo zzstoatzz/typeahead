@@ -1,3 +1,6 @@
+> Archived historical record. This is not a current deployment runbook.
+> See [current architecture](../architecture.md) and [operations](../operations.md).
+
 # typeahead index design
 
 Status: **historical design record**. This captures the rearchitecture plan and

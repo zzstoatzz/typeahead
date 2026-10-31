@@ -1,11 +1,14 @@
+> Archived historical record. This is not a current deployment runbook.
+> See [current architecture](../architecture.md) and [operations](../operations.md).
+
 # typeahead — cost & scalability
 
 **Historical measurements:** the May cost model and September 4 initial burst
 assessment below are retained as dated research. The initial assessment missed
 Worker fallback saturation and ingest loss. Both Turso search fallbacks are now
 opt-in, request counters still write to Turso, builds run on heavypad, and the
-full actor replica is gone. Use [current architecture](architecture.md) and the
-[incident report](retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md)
+full actor replica is gone. Use [current architecture](../architecture.md) and the
+[incident report](../retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md)
 for current behavior. Do not treat the old maintenance-gap list as current.
 
 
@@ -16,9 +19,9 @@ actors). **Usage figures are measured; dollar figures are estimates from
 public pricing — verify before budgeting.**
 
 Companion docs:
-- [`turso-usage-analytics.md`](./turso-usage-analytics.md) — how to pull the Turso numbers below
-- [`typeahead-index-design.md`](./typeahead-index-design.md) — the serving architecture
-- [`retros/2026-05-25-typeahead-rearchitecture-notes.md`](./retros/2026-05-25-typeahead-rearchitecture-notes.md) — the weekend's arc
+- [`turso-usage-analytics.md`](../turso-usage-analytics.md) — how to pull the Turso numbers below
+- [`typeahead-index-design.md`](typeahead-index-design.md) — the serving architecture
+- [`retros/2026-05-25-typeahead-rearchitecture-notes.md`](../retros/2026-05-25-typeahead-rearchitecture-notes.md) — the weekend's arc
 
 ## The invariant that makes this scale
 
@@ -174,7 +177,7 @@ fly volumes list -a typeahead-indexer    # idle build scratch
 
 Run `--queries` after any change touching `actors`, or at billing-window
 edges: any new query with rows-read in the tens-of-millions is a
-corpus-scan that slipped in. See [`turso-usage-analytics.md`](./turso-usage-analytics.md).
+corpus-scan that slipped in. See [`turso-usage-analytics.md`](../turso-usage-analytics.md).
 
 ## References
 

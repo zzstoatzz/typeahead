@@ -1,13 +1,16 @@
+> Archived historical record. This is not a current deployment runbook.
+> See [current architecture](../architecture.md) and [operations](../operations.md).
+
 # Historical native architecture
 
 This describes the retained native engine before the Tantivy cutover.
-For current behavior, see [architecture.md](architecture.md).
+For current behavior, see [architecture.md](../architecture.md).
 
 # architecture
 
 Serving path updated against live services October 25, 2026. Historical
 illustrations below predate the compact and private transport releases; the
-[README diagram](../README.md#how-it-works) shows the current runtime roles.
+[README diagram](../../README.md#how-it-works) shows the current runtime roles.
 
 `typeahead.waow.tech` provides independent actor search for atproto. The canonical
 `tech.waow.typeahead.searchActors` endpoint and the
@@ -15,9 +18,9 @@ illustrations below predate the compact and private transport releases; the
 60-second edge cache. Normal searches use our index. Bluesky remains an explicit
 emergency rollback option.
 
-![Current typeahead architecture](blog-assets/typeahead-sequel/architecture.png)
+![Historical native typeahead architecture](../blog-assets/typeahead-sequel/architecture.png)
 
-[Explore the animated architecture](blog-assets/typeahead-sequel/interactive/architecture-embed.html): search, profile changes, and snapshot builds, with recorded query traces.
+[Explore the animated architecture](../blog-assets/typeahead-sequel/interactive/architecture-embed.html): search, profile changes, and snapshot builds, with recorded query traces.
 
 ## serving
 
@@ -28,7 +31,7 @@ placed near US East, to the active Fly backend in `ewr`. The transport reads
 managed slot origins. Validated route metadata may be cached for one second;
 admin writes and diagnostic route reads bypass it. Search, freshness, diagnostics,
 and the existing authenticated inline refresh follow that route. Cache hits stay
-at the public edge. The transport does not query Turso or change results. [Live latency and rollback evidence](evals/edge-latency-20261020.md).
+at the public edge. The transport does not query Turso or change results. [Live latency and rollback evidence](../evals/edge-latency-20261020.md).
 The Zig search
 service holds a read-only SQLite snapshot and a live overlay. Since September 2
 it has **no full actor replica, local FTS index, or replica hydration fallback**.
@@ -88,7 +91,7 @@ and `prefect.yaml` in `my-prefect-server` own the source pin, format, schedule,
 installer image and controller credentials. The old bulk home publisher remains
 disabled. Automatic refresh is verified and scheduled at 06:00 UTC on odd-numbered
 days of the month, at most 48 hours apart. The
-[execution record](ops/automatic-refresh-20261025.md) includes live registration and
+[execution record](../ops/automatic-refresh-20261025.md) includes live registration and
 queued-run evidence.
 
 Managed publication uploads and fully reads back compact artifacts and the legacy
@@ -104,7 +107,7 @@ installation leaves that backend selected; failed post-cutover checks restore
 its route. Current and previous managed generations and twins are retained.
 
 The historical shared `latest.json` remains a legacy recovery pointer and is not
-part of managed rollout. See [automatic refresh](plans/automatic-snapshot-refresh.md)
+part of managed rollout. See [automatic refresh](native-snapshot-refresh.md)
 and the [publisher/controller runbook](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/automatic-typeahead-refresh.md).
 
 Other heavypad jobs resolve identities hourly (:20 UTC), enrich profiles daily
@@ -156,9 +159,9 @@ name `replica_lag_s`; it now measures overlay lag.
   14,027,964,416 bytes; R2 manifest and serving build agree.
 - Latest build: September 4, 09:00–10:07 UTC, Prefect state `COMPLETED`.
 
-For the incident and design history, see [operations](operations.md),
+For the incident and design history, see [operations](native-operations-through-20261031.md),
 [replica removal](replica-removal-plan.md), and the
-[September incident report](retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md).
+[September incident report](../retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md).
 
 
 ## PDS-scoped search (live October 20, 2026)
@@ -184,5 +187,5 @@ A failed replay leaves the gate closed; normal sync resumes after a successful p
 The existing lookup bounds and multi-token intersection limitations remain.
 The full-corpus compact release passed paired correctness/performance, replay,
 rollback and restoration gates before deployment; see
-[the release evidence](evals/pds-homepage-20261020.md) and
-[current configuration and rollback](plans/pds-homepage-rollout.md).
+[the release evidence](../evals/pds-homepage-20261020.md) and
+[current configuration and rollback](../plans/pds-homepage-rollout.md).

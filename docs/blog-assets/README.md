@@ -7,11 +7,11 @@ Source + rendered images embedded in the pckt blog post
 - `render.mjs` — MathJax (TeX → SVG, glyphs as vector paths) → @resvg/resvg-js
   → PNG @3x on a white card. Produces `eq-*.png`.
 - `raster.mjs` — rasterizes any SVG → PNG @2x with system fonts (used for the
-  hand-authored diagrams + `../architecture-diagram.svg`).
+  hand-authored diagrams + `../archive/architecture-diagram.svg`).
 - deps: `bun add mathjax-full @resvg/resvg-js` (run from a scratch dir).
 
 ## sources
-- `../architecture-diagram.svg` — the system diagram (lives in docs/).
+- `../archive/architecture-diagram.svg` — historical system diagram used in this post; current design is in [architecture](../architecture.md).
 - `cost-bars.svg` — d: index cost decoupling (+69% build vs +0.9% serve).
 - `dns-tree.svg` — DNS subtree-harvest intuition for the d: index.
 - equation TeX is inline in `render.mjs`.
