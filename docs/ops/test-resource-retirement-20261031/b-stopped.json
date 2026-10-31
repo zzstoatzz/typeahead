@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-31T19:01:02.880593+00:00",
+  "app": "typeahead-tantivy-b",
+  "machine_id": "8d4930ae3502d8",
+  "state": "stopped",
+  "retained_volume": "vol_vxmpk8k2exk5x1n4",
+  "current": {
+    "admission_sha256": "933cb7bc926d3103113b2d89ba09bef097ff3e787d2ee190e563086055ae9068",
+    "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "build_id": "b1793463173-cp-5da0d18f0e",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "origin": "https://typeahead-tantivy-a.fly.dev",
+    "retrieval_strategy": "global-merge"
+  },
+  "mutation_before": null,
+  "public_search_before_and_after": "passed; expected A build, no fallback"
+}

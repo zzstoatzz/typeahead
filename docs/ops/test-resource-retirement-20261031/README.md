@@ -18,8 +18,9 @@ remain: the native app also owns a retained image registry. Their shared IPv4 an
 IPv6 addresses carry no dedicated-IP charge. No serving image or R2 artifact was
 removed. Deleted-volume backup retention may outlive the volume.
 
-A remains production; B remains the previous backend pending its separately
-authorized scheduled stop. The native `typeahead-startup-20261024` backend remains
+A remains production. B was stopped at 19:01 UTC after its rollback window;
+its volume, app and routing metadata remain. Production search passed before
+and after the stop with A serving and no fallback. See `b-stopped.json`. The native `typeahead-startup-20261024` backend remains
 the rollback anchor required by the current refresh controller. The ingester is
 unchanged. The preview UI will lose its backend when B stops; production remains
 at typeahead.waow.tech. No replacement preview deployment was created.
