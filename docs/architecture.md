@@ -1,7 +1,11 @@
 # Architecture
 
-Typeahead is a searchable address book of AT Protocol accounts. It watches the
-network for account changes and organizes that information into a search index.
+Typeahead is a community-run searchable address book of AT Protocol accounts.
+People search by handle or display name through the website or public API,
+without signing in.
+
+It watches the network for account changes and organizes that information into a
+search index.
 When someone types a name, the index finds matching accounts without contacting
 each account's hosting server.
 

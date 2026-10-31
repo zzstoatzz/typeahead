@@ -1,7 +1,8 @@
 # [typeahead](https://typeahead.waow.tech)
 
-community-run actor search for [AT Protocol](https://atproto.com). search handles
-and display names through an unauthenticated API backed by its own index.
+a community-run searchable address book of [AT Protocol](https://atproto.com)
+accounts. find people by handle or display name on the website, or use the public
+API to add account search to your app. no sign-in required.
 
 [search](https://typeahead.waow.tech/) · [API docs](https://typeahead.waow.tech/docs) · [stats](https://typeahead.waow.tech/stats) · [llms.txt](https://typeahead.waow.tech/llms.txt)
 
@@ -14,9 +15,8 @@ curl 'https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&l
 returns basic actor profiles without authenticated viewer state. the
 [lexicon](lexicons/tech.waow.typeahead.searchActors.json) defines the response;
 `app.bsky.actor.searchActorsTypeahead` is a compatible alias. an optional `pds`
-parameter restricts results by indexed hosting PDS, including custom-domain handles.
-`prefer_pds` favors a host while keeping global matches; see the API docs for
-PDS-first ordering and score boosts.
+parameter restricts results to accounts indexed as belonging to a hosting server
+(PDS), including accounts with custom-domain handles.
 
 profile cards are available through `app.bsky.actor.getProfile` and
 `app.bsky.actor.getProfiles`. see the [API docs](https://typeahead.waow.tech/docs)
