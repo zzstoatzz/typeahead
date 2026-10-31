@@ -61,6 +61,43 @@ export function tursoFallbackOnUnreachable(enabled: boolean): boolean {
 }
 
 
+async function blueskyFallback(term: string, limit: number, mode: "manual" | "automatic"): Promise<Response> {
+  const headers = { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store",
+    "X-Typeahead-Engine": "bluesky", "X-Typeahead-Failover": mode };
+  let status = 503;
+  try {
+    const upstream = await fetch(`${BSKY_TYPEAHEAD_URL}?q=${encodeURIComponent(term)}&limit=${limit}`,
+      { signal: AbortSignal.timeout(5000), redirect: "manual" });
+    if (!upstream.ok) {
+      await upstream.body?.cancel();
+      throw new Error("Bluesky unavailable");
+    }
+    const reader = upstream.body?.getReader();
+    if (!reader) throw new Error("Missing Bluesky response");
+    const decoder = new TextDecoder();
+    let body = "";
+    let bytes = 0;
+    try {
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        bytes += chunk.value.byteLength;
+        if (bytes > 1024 * 1024) throw new Error("Bluesky response exceeds limit");
+        body += decoder.decode(chunk.value, { stream: true });
+      }
+      body += decoder.decode();
+    } finally { await reader.cancel().catch(() => {}); }
+    validateBackendBody(body, limit);
+    status = 200;
+    return new Response(filterIdentityBody(body, "actors"), { headers });
+  } catch (error) {
+    console.log(JSON.stringify({event: "search_failover_error", error: error instanceof Error ? error.name : "unknown"}));
+    return new Response(JSON.stringify({ error: "SearchUnavailable", message: "Search and emergency fallback are unavailable" }), { status, headers });
+  } finally {
+    console.log(JSON.stringify({ event: "search_failover", mode, provider: "bluesky", status }));
+  }
+}
+
 export async function handleSearch(
   request: Request,
   db: TursoDB,
@@ -95,23 +132,14 @@ export async function handleSearch(
     return json({ actors: [] });
   }
 
-  // Emergency kill switch: bypass the whole pipeline and proxy to Bluesky.
-  // Set/unset via `bunx wrangler secret put|delete EMERGENCY_PROXY_BSKY`.
-  // No cache writes here — old cache entries expire (60s) and the moment the
-  // switch is flipped off we resume normal behavior.
-  if (env.EMERGENCY_PROXY_BSKY) {
-    const bskyUrl = `${BSKY_TYPEAHEAD_URL}?q=${encodeURIComponent(term)}&limit=${limit}`;
-    try {
-      const r = await fetch(bskyUrl, { signal: AbortSignal.timeout(5000) });
-      const body = filterIdentityBody(await r.text(), "actors");
-      return new Response(body, {
-        status: r.status,
-        headers: { "Content-Type": "application/json", ...CORS_HEADERS },
-      });
-    } catch {
-      return json({ actors: [] });
-    }
-  }
+  const fallback = async (mode: "manual" | "automatic") => {
+    const response = await blueskyFallback(term, limit, mode);
+    ctx.waitUntil(recordMetric(db, Date.now() - t0));
+    ctx.waitUntil(recordTrafficSource(db, request));
+    return response;
+  };
+  if (env.EMERGENCY_PROXY_BSKY) return fallback("manual");
+  if (!env.SEARCH_BACKEND_URL) return fallback("automatic");
 
   const ingressColo = request.cf?.colo ?? "unknown";
 
@@ -164,8 +192,7 @@ export async function handleSearch(
         if (!backendRes.ok) {
           await backendRes.body?.cancel().catch(() => {});
           if (scoped) return unavailable();
-          if (!tursoFallbackOnUnreachable(env.TURSO_FALLBACK_ON_UNREACHABLE === "1")) return json({ error: "SearchBackendUnavailable", message: "Search engine is unavailable" }, 503);
-          throw new Error(`backend_${backendRes.status}`);
+          return fallback("automatic");
         }
         {
           const headersMs = Date.now() - backendStart;
@@ -223,12 +250,12 @@ export async function handleSearch(
       } catch (e: unknown) {
         if (scoped) return unavailable();
         const reason = e instanceof Error ? e.message : String(e);
-        if (reason !== "backend_empty" && !tursoFallbackOnUnreachable(env.TURSO_FALLBACK_ON_UNREACHABLE === "1")) {
+        if (reason !== "backend_empty") {
           console.log(JSON.stringify({ event: "search_response_timing", outcome: "backend_error", status: 503,
             backend_strategy: backendStrategy, backend_route_class: backendRouteClass, ingress_colo: ingressColo,
             search_ms: Date.now() - t0, cache_ms: cacheMs }));
           console.log(JSON.stringify({ event: "search_backend_unreachable", term, error: reason }));
-          return json({ error: "SearchBackendUnavailable", message: "Search engine is unavailable" }, 503);
+          return fallback("automatic");
         }
         // opted in: Turso answers below
       }

@@ -20,6 +20,7 @@ GET https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=<prefix>
   This is a typeahead extension supported on both endpoint names, not a Bluesky API parameter.
 - response: { "actors": [ { did, handle, displayName?, avatar?, associated?, labels?, createdAt? } ] }
   (the shape of app.bsky.actor.defs#profileViewBasic minus the authenticated "viewer" field)
+- Unscoped search automatically falls back to Bluesky on backend failure. Headers: X-Typeahead-Engine: bluesky, X-Typeahead-Failover: automatic (manual during forced failover). Fallback responses are not cached. Both services unavailable returns 503 SearchUnavailable. PDS-scoped requests never fall back.
 - lexicon: https://tangled.org/zzstoatzz.io/typeahead/blob/main/lexicons/tech.waow.typeahead.searchActors.json
 
 ## PDS preference

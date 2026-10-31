@@ -32,6 +32,8 @@ for parameters, moderation policy, caching and rate limits.
   from corpus-scale preparation.
 - **edge serving** — a Cloudflare Worker handles public endpoints, caching,
   profile APIs and request accounting. a private transport routes search to Fly.
+  unscoped searches automatically fall back to Bluesky if the backend fails;
+  PDS-scoped requests fail explicitly instead of returning unscoped results.
 - **explicit policy** — moderation labels, domain blocks and per-DID overrides
   determine visibility independently of ranking. PDS membership comes from
   recorded hosting identity, rather than handle suffixes.

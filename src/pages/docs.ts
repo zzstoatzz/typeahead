@@ -106,7 +106,7 @@ GET /xrpc/app.bsky.actor.getProfiles?actors=zzstoatzz.io&amp;actors=...</code></
       <ul>
         <li>60 requests per minute per IP. Browser CORS is enabled.</li>
         <li>Search responses are edge-cached for 60 seconds; changes may take longer to arrive through ingestion.</li>
-        <li>Invalid query parameters return <code>400</code>; rate limits return <code>429</code>; an unavailable search backend returns <code>503</code>.</li>
+        <li>Invalid query parameters return <code>400</code>; rate limits return <code>429</code>; unscoped searches fall back to Bluesky when our backend fails. Responses identify this with <code>X-Typeahead-Engine: bluesky</code> and <code>X-Typeahead-Failover: automatic</code>. If both services fail, search returns <code>503</code>. PDS filters never silently fall back.</li>
         <li>Tantivy receives continuous source updates. Live updates do not wait for full snapshot rebuilds.</li>
       </ul>
       <p>For surprising ordering, see the <a href="/reputation">ranking report</a>. Ranking and visibility are separate decisions.</p>

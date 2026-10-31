@@ -13,8 +13,9 @@ test("workerd search forwards acknowledged scopes, separates edge cache and pres
   const built = await Bun.build({ entrypoints: [entry], target: "browser" });
   if (!built.success) throw new Error(built.logs.join("\n"));
   const mf = new Miniflare({ workers: [
-    { name: "public", modules: true, script: await built.outputs[0].text(), compatibilityDate: "2026-10-29", d1Databases: ["DB"], bindings: { SEARCH_BACKEND_URL: "https://backend.test" }, serviceBindings: { SEARCH_TRANSPORT: "engine" } },
-    { name: "engine", modules: true, script: `let calls=0;export default {fetch(r){calls++;const p=new URL(r.url).searchParams;const q=p.get('q');if(q==='bad')return Response.json({error:'internal details not public'},{status:400});if(q==='down')return Response.json({error:'SearchBudgetExceeded'},{status:503});if(q==='empty')return Response.json({actors:[]});if(q==='identity')return Response.json({actors:[{did:'did:plc:invalid',handle:'handle.invalid'},{did:'did:plc:visible',handle:'visible.test'}]});if(q==='broken')return new Response('badjson');if(q==='missing')return Response.json({error:'not-an-actors-envelope'});if(q==='duplicate')return Response.json({actors:[{did:'did:plc:duplicate',handle:'a.test'},{did:'did:plc:duplicate',handle:'b.test'}]});const h=new Headers({'Content-Type':'application/json'});if(q!=='legacy'){if(p.has('pds'))h.set('X-Typeahead-Pds',p.get('pds'));if(p.has('prefer_pds')){h.set('X-Typeahead-Prefer-Pds',p.get('prefer_pds'));h.set('X-Typeahead-Preference',p.get('preference'));if(p.has('boost')){const b=new DataView(new ArrayBuffer(4));b.setFloat32(0,Number(p.get('boost')));h.set('X-Typeahead-Boost',q==='badack'?'00000000':b.getUint32(0).toString(16).padStart(8,'0'));}}}return new Response(JSON.stringify({actors:[{did:'did:plc:fixture',handle:'fixture.test',displayName:JSON.stringify({q,limit:p.get('limit'),pds:p.get('pds'),preferred:p.get('prefer_pds'),mode:p.get('preference'),boost:p.get('boost'),calls})}]}),{headers:h});}}` },
+    { name: "public", modules: true, script: await built.outputs[0].text(), compatibilityDate: "2026-10-29", d1Databases: ["DB"], bindings: { SEARCH_BACKEND_URL: "https://backend.test" }, serviceBindings: { SEARCH_TRANSPORT: "engine" }, outboundService: "bluesky" },
+    { name: "engine", modules: true, script: `let calls=0,flaky=0;export default {async fetch(r){calls++;const p=new URL(r.url).searchParams;const q=p.get('q');if(q==='slow')await new Promise(resolve=>setTimeout(resolve,10000));if(q==='flaky'&&flaky++===0)return Response.json({error:'down'},{status:503});if(q==='bad')return Response.json({error:'internal details not public'},{status:400});if(['down','bothdown','badfallback'].includes(q))return Response.json({error:'SearchBudgetExceeded'},{status:503});if(q==='empty')return Response.json({actors:[]});if(q==='identity')return Response.json({actors:[{did:'did:plc:invalid',handle:'handle.invalid'},{did:'did:plc:visible',handle:'visible.test'}]});if(q==='broken')return new Response('badjson');if(q==='missing')return Response.json({error:'not-an-actors-envelope'});if(q==='duplicate')return Response.json({actors:[{did:'did:plc:duplicate',handle:'a.test'},{did:'did:plc:duplicate',handle:'b.test'}]});const h=new Headers({'Content-Type':'application/json'});if(q!=='legacy'){if(p.has('pds'))h.set('X-Typeahead-Pds',p.get('pds'));if(p.has('prefer_pds')){h.set('X-Typeahead-Prefer-Pds',p.get('prefer_pds'));h.set('X-Typeahead-Preference',p.get('preference'));if(p.has('boost')){const b=new DataView(new ArrayBuffer(4));b.setFloat32(0,Number(p.get('boost')));h.set('X-Typeahead-Boost',q==='badack'?'00000000':b.getUint32(0).toString(16).padStart(8,'0'));}}}return new Response(JSON.stringify({actors:[{did:'did:plc:fixture',handle:'fixture.test',displayName:JSON.stringify({q,limit:p.get('limit'),pds:p.get('pds'),preferred:p.get('prefer_pds'),mode:p.get('preference'),boost:p.get('boost'),calls})}]}),{headers:h});}}` },
+    { name: "bluesky", modules: true, script: `export default {fetch(r){const p=new URL(r.url).searchParams;const q=p.get('q');if(q==='bothdown')return Response.json({error:'unavailable'},{status:503});if(q==='badfallback')return new Response('not-json');return Response.json({actors:[{did:'did:plc:fallback',handle:'fallback.test',displayName:q}]});}}` },
   ] });
   try {
     const db = await mf.getD1Database("DB");
@@ -24,9 +25,29 @@ test("workerd search forwards acknowledged scopes, separates edge cache and pres
     for (const query of ["q=legacy&pds=acme.test", "q=legacy&prefer_pds=acme.test", "q=badack&prefer_pds=acme.test&boost=100"]) {
       const response = await request(query); expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ error: "PdsScopeUnavailable" });
     }
-    for (const q of ["down", "broken", "missing", "duplicate"]) {
-      const response = await request(`q=${q}`); expect(response.status).toBe(503); expect(await response.json()).toMatchObject({ error: "SearchBackendUnavailable" });
+    for (const q of ["down", "broken", "missing", "duplicate", "slow"]) {
+      const response = await request(`q=${q}`); expect(response.status).toBe(200);
+      expect(response.headers.get("X-Typeahead-Engine")).toBe("bluesky");
+      expect(response.headers.get("X-Typeahead-Failover")).toBe("automatic");
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect(await response.json()).toMatchObject({ actors: [{ handle: "fallback.test" }] });
     }
+    for (const q of ["bothdown", "badfallback"]) {
+      const response = await request(`q=${q}`); expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({ error: "SearchUnavailable" });
+    }
+    const scopedFailure = await request("q=down&pds=acme.test");
+    expect(scopedFailure.status).toBe(503);
+    expect(scopedFailure.headers.get("X-Typeahead-Failover")).toBeNull();
+    const first = await request("q=flaky");
+    expect(first.headers.get("X-Typeahead-Failover")).toBe("automatic");
+    const second = await request("q=flaky");
+    expect(second.headers.get("X-Typeahead-Failover")).toBeNull();
+    expect(await second.json()).toMatchObject({ actors: [{ handle: "fixture.test" }] });
+    const recovered = await request("q=recovered");
+    expect(recovered.status).toBe(200);
+    expect(recovered.headers.get("X-Typeahead-Failover")).toBeNull();
+    expect(await recovered.json()).toMatchObject({ actors: [{ handle: "fixture.test" }] });
     const empty = await request("q=empty"); expect(empty.status).toBe(200); expect(await empty.json()).toEqual({ actors: [] });
     const identity = await request("q=identity"); expect(identity.status).toBe(200); expect(await identity.json()).toEqual({ actors: [{ did: "did:plc:visible", handle: "visible.test" }] });
     const bad = await request("q=bad"); expect(bad.status).toBe(400); expect(await bad.text()).not.toContain("internal details");
