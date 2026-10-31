@@ -143,3 +143,11 @@ See [preparation receipt](resumable-slot-preparation.json). Production routing
 still points to A; this is preparation only. The immutable image binding requires
 a fresh owned slot, so this attempt downloads the published artifact again. It
 does not rebuild or republish the snapshot.
+
+The revised candidate machine is `8d4930ae3502d8`, volume
+`vol_vxmpk8k2exk5x1n4`, at two shared CPUs / 1 GiB / 20 GiB. During its
+real download, rclone exited 5 after 4,844,421,120 bytes; range recovery
+continued to the full 6,324,633,600-byte bundle. The installer is still running,
+so this is transfer evidence, not admission or runtime verification. Its
+separate download and installation checksum passes reread the bundle; measured
+startup time must include both. See [installation observation](install-observation.json).

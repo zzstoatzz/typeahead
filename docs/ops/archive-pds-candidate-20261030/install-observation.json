@@ -1,0 +1,22 @@
+{
+  "observed_at": 1793408592,
+  "machine_id": "8d4930ae3502d8",
+  "state": "started",
+  "request_id": "a7d276e5a7a84939a05e0915b5004179",
+  "volume_id": "vol_vxmpk8k2exk5x1n4",
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 2,
+    "memory_mb": 1024
+  },
+  "image": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+  "build_id": "b1793395409-cp-pdsjoin",
+  "deployed_checks_passed": false,
+  "transfer_retry": {
+    "at": "2026-10-31T00:54:49Z",
+    "bytes": 4844421120,
+    "exit_code": 5
+  },
+  "download_complete_bytes": 6324633600,
+  "routing_changed": false
+}
