@@ -9,6 +9,7 @@ when the primary cannot serve them.
 - [Real automatic fallback before promotion](automatic-failover-live.json)
 - [Public aliases and PDS checks after promotion](public-restored.json)
 - [Public smoke suite](public-smoke.log); admin-authenticated and database-plan checks were not run in this public-only pass
+- [Post-promotion ranking acceptance](public-ranking.log), run through the production transport
 - [Conditional promotion routing and operation receipt](promoted-route.json)
 - [Worker runtime failure and recovery tests](worker-runtime-tests.log)
 - [Publisher configuration](publisher-config.json) and [concurrency readback](publisher-concurrency.json)
