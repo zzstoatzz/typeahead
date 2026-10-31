@@ -1,0 +1,6 @@
+{
+  "observed_at": 1793470063,
+  "version": "6e57ccd1-782e-4674-8f3e-e6c884c89fac",
+  "traffic_percent": 100,
+  "source": "wrangler deployments status"
+}

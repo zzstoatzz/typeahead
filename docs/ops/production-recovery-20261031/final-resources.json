@@ -1,0 +1,139 @@
+{
+  "observed_at": 1793469751,
+  "controllers": [
+    {
+      "run_id": "81ae0675-13fb-4a6a-b18f-d242e87ba2a3",
+      "servers": []
+    },
+    {
+      "run_id": "b28261c3-a617-48b6-8e18-693cf96b49c3",
+      "servers": []
+    },
+    {
+      "run_id": "5da0d18f-0e10-405a-b023-30b1b004626c",
+      "servers": []
+    },
+    {
+      "run_id": "89dcf983-bc2f-4708-98d0-bc1d8e4cdd95",
+      "servers": []
+    },
+    {
+      "run_id": "fcad66c4-c24c-4776-9682-2eddbae74d8c",
+      "servers": []
+    }
+  ],
+  "fly_apps": [
+    {
+      "app": "typeahead-tantivy-a",
+      "machines": [
+        {
+          "id": "2869d52c353428",
+          "state": "started",
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 2,
+            "memory_mb": 1024
+          },
+          "mounts": [
+            {
+              "encrypted": true,
+              "path": "/data",
+              "size_gb": 20,
+              "volume": "vol_vp2ezd177q7m52y4",
+              "name": "tv_0b1cc1cfd88d4ed1a46d"
+            }
+          ]
+        }
+      ],
+      "volumes": [
+        {
+          "id": "vol_vp2ezd177q7m52y4",
+          "name": "tv_0b1cc1cfd88d4ed1a46d",
+          "size_gb": 20,
+          "state": "created",
+          "attached_machine_id": "2869d52c353428"
+        }
+      ]
+    },
+    {
+      "app": "typeahead-tantivy-b",
+      "machines": [
+        {
+          "id": "8d4930ae3502d8",
+          "state": "started",
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 2,
+            "memory_mb": 1024
+          },
+          "mounts": [
+            {
+              "encrypted": true,
+              "path": "/data",
+              "size_gb": 20,
+              "volume": "vol_vxmpk8k2exk5x1n4",
+              "name": "tv_a7d276e5a7a84939a05e"
+            }
+          ]
+        }
+      ],
+      "volumes": [
+        {
+          "id": "vol_vxmpk8k2exk5x1n4",
+          "name": "tv_a7d276e5a7a84939a05e",
+          "size_gb": 20,
+          "state": "created",
+          "attached_machine_id": "8d4930ae3502d8"
+        }
+      ]
+    },
+    {
+      "app": "typeahead-startup-20261024",
+      "machines": [
+        {
+          "id": "8e3d79b70dd748",
+          "state": "started",
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 2,
+            "memory_mb": 1024
+          },
+          "mounts": [
+            {
+              "encrypted": true,
+              "path": "/data",
+              "size_gb": 20,
+              "volume": "vol_v8eyqk61q9dy9gkv",
+              "name": "refresh_1793113768"
+            }
+          ]
+        }
+      ],
+      "volumes": [
+        {
+          "id": "vol_v8eyqk61q9dy9gkv",
+          "name": "refresh_1793113768",
+          "size_gb": 20,
+          "state": "created",
+          "attached_machine_id": "8e3d79b70dd748"
+        }
+      ]
+    },
+    {
+      "app": "typeahead-ingester",
+      "machines": [
+        {
+          "id": "7845636a3d0ee8",
+          "state": "started",
+          "guest": {
+            "cpu_kind": "shared",
+            "cpus": 1,
+            "memory_mb": 256
+          },
+          "mounts": []
+        }
+      ]
+    }
+  ],
+  "controllers_observed_at": 1793469847
+}

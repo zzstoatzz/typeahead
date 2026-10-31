@@ -1,0 +1,57 @@
+{
+  "observed_at": 1793469798,
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "paused": false,
+  "schedules": [
+    {
+      "id": "232daaab-31c5-4073-b48e-d8633d5bbe9c",
+      "created": "2026-10-27T21:16:51.849133Z",
+      "updated": "2026-10-30T14:28:30.011953Z",
+      "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+      "schedule": {
+        "cron": "0 6,18 * * *",
+        "timezone": "UTC",
+        "day_or": true
+      },
+      "active": true,
+      "max_scheduled_runs": null,
+      "parameters": {},
+      "slug": null
+    }
+  ],
+  "concurrency": {
+    "id": "32818c85-621a-40c6-8b5a-53252f965b85",
+    "created": "2026-10-27T03:20:34.479006Z",
+    "updated": "2026-10-31T18:02:18.567085Z",
+    "active": true,
+    "name": "deployment:a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+    "limit": 1,
+    "active_slots": 0,
+    "slot_decay_per_second": 0.0
+  },
+  "collision_strategy": "CANCEL_NEW",
+  "controller_pin": "@35c26b456db095f38118ca6ad94384ec55b8f1ee",
+  "command_matches_pin": true,
+  "next_runs": [
+    {
+      "id": "a28ad2cc-8383-4478-a3f5-fd1a26937d2c",
+      "state_type": "SCHEDULED",
+      "expected_start_time": "2026-11-02T06:00:00.000000Z",
+      "start_time": null
+    },
+    {
+      "id": "6837f09f-1daa-4c2c-95af-c091f92cfa3c",
+      "state_type": "SCHEDULED",
+      "expected_start_time": "2026-11-01T18:00:00.000000Z",
+      "start_time": null
+    },
+    {
+      "id": "35ef387d-4670-4931-9047-8a7ec3058f74",
+      "state_type": "SCHEDULED",
+      "expected_start_time": "2026-11-01T06:00:00.000000Z",
+      "start_time": null
+    }
+  ],
+  "location": "hel1",
+  "timeout_seconds": 10800
+}

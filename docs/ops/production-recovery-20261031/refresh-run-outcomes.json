@@ -1,0 +1,42 @@
+[
+  {
+    "id": "fcad66c4-c24c-4776-9682-2eddbae74d8c",
+    "state": "CANCELLED",
+    "start": "2026-10-31T18:02:18.567085+00:00",
+    "end": "2026-10-31T18:02:18.567085+00:00",
+    "message": "Flow run was cancelled before execution started.",
+    "parameters": {
+      "ref": null,
+      "snapshot_engine": "native",
+      "snapshot_format": "compact",
+      "automatic_refresh": true
+    }
+  },
+  {
+    "id": "89dcf983-bc2f-4708-98d0-bc1d8e4cdd95",
+    "state": "COMPLETED",
+    "start": "2026-10-31T17:17:49.664777+00:00",
+    "end": "2026-10-31T17:59:36.295928+00:00",
+    "message": null,
+    "parameters": {
+      "ref": null,
+      "resume_rollout": true,
+      "snapshot_engine": "native",
+      "snapshot_format": "compact",
+      "automatic_refresh": true
+    }
+  },
+  {
+    "id": "5da0d18f-0e10-405a-b023-30b1b004626c",
+    "state": "FAILED",
+    "start": "2026-10-31T16:12:30.559462+00:00",
+    "end": "2026-10-31T17:10:38.927910+00:00",
+    "message": "Flow run encountered an exception: RuntimeError: Candidate 2869d52c353428 remains stopped; expected started; action start; provider outcome HTTP 412",
+    "parameters": {
+      "ref": null,
+      "snapshot_engine": "native",
+      "snapshot_format": "compact",
+      "automatic_refresh": true
+    }
+  }
+]

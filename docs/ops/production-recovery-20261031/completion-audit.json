@@ -1,0 +1,134 @@
+{
+  "observed_at": 1793470063,
+  "passed": true,
+  "requirements": {
+    "production_restored_on_verified_B_then_refreshed_A": [
+      {
+        "path": "public-restored.json",
+        "sha256": "2c33c77a3c1ee52c7fd6550e146ff1570b182aa9d0c97d31d93c0a3c04254b31"
+      },
+      {
+        "path": "promoted-route.json",
+        "sha256": "9d178d5dfdd144e3e042d2daed5258f5571a1ac05b74095e704d572c3f53fe5c"
+      },
+      {
+        "path": "refresh-promoted-route.json",
+        "sha256": "935bbe32d1c4778292f2a0e3136af4522cb6a4879fecf8a6bd831bd4fe8d10f7"
+      },
+      {
+        "path": "refresh-public-verified.json",
+        "sha256": "2cde7ca84f9768a142d6d6aca0a4461c49fb2947b1b301e16dfa9f49dd48166f"
+      }
+    ],
+    "unavailable_incumbent_recovery_with_conditional_routing": [
+      {
+        "path": "recovery-request.json",
+        "sha256": "5eb523b881401dc59c90e8de992542b9a0e0cfb27e4026ff2ec21dc5a9d56506"
+      },
+      {
+        "path": "promoted-route.json",
+        "sha256": "9d178d5dfdd144e3e042d2daed5258f5571a1ac05b74095e704d572c3f53fe5c"
+      },
+      {
+        "path": "startup-controller-tests.log",
+        "sha256": "c407da2a8e10fda0c45b7380f3c6018ebc212cedc3913f75cafde944742b61e0"
+      }
+    ],
+    "automatic_failover_scope_safety_observability_and_recovery": [
+      {
+        "path": "automatic-failover-live.json",
+        "sha256": "264ed315025593568d92f4decfb1e182fc112ae9b84ccaf0a9e70c30ea21c662"
+      },
+      {
+        "path": "worker-runtime-tests.log",
+        "sha256": "68e9fb295c75ca25b1804bf22a19bc19a49376d03d1d9d1a8f3449bc4a158305"
+      },
+      {
+        "path": "final-worker-deployment.json",
+        "sha256": "47bea5a7412a1e41915900e19189112b5e46b770667512903372e8a034d8d7d7"
+      },
+      {
+        "path": "refresh-public-verified.json",
+        "sha256": "2cde7ca84f9768a142d6d6aca0a4461c49fb2947b1b301e16dfa9f49dd48166f"
+      }
+    ],
+    "normal_refresh_build_publish_restart_admission_promotion": [
+      {
+        "path": "refresh-milestones.json",
+        "sha256": "33afab228e4897c6721113c49305799b34f18a6704513fab92951f78d8a55c78"
+      },
+      {
+        "path": "refresh-run-outcomes.json",
+        "sha256": "6a2ce879847c57b46761e036abb8aac743cd1c0119551e63a46f19d2905c9f61"
+      },
+      {
+        "path": "refresh-promoted-route.json",
+        "sha256": "935bbe32d1c4778292f2a0e3136af4522cb6a4879fecf8a6bd831bd4fe8d10f7"
+      }
+    ],
+    "publisher_source_pins_schedule_and_limits": [
+      {
+        "path": "publisher-config.json",
+        "sha256": "252234f58578bb113880ab9b8c15a0fa27deac85b21168baf02dcf974c95d31d"
+      },
+      {
+        "path": "final-deployment.json",
+        "sha256": "9388066b2330183143fa81a93bd8d2e237f7b71e7ec040ceabaf7963e4af3d2f"
+      },
+      {
+        "path": "refresh-resume-request.json",
+        "sha256": "c70d2b9dc48e6fc699d20b7a3e5fcf6842c01d9b12046723058218be95688d59"
+      }
+    ],
+    "public_behavior_and_ranking": [
+      {
+        "path": "final-public-smoke.log",
+        "sha256": "845aacf1a2837740756d916aedc414b0a087f118fd5acfac5ce03c0ca63dbe27"
+      },
+      {
+        "path": "final-ranking.log",
+        "sha256": "07006dd89acf5a7a7911d9ebfb38667545e34c0e54a2169184a7bceaec2092ec"
+      },
+      {
+        "path": "refresh-public-verified.json",
+        "sha256": "2cde7ca84f9768a142d6d6aca0a4461c49fb2947b1b301e16dfa9f49dd48166f"
+      }
+    ],
+    "cleanup_and_preserved_runtime_roles": [
+      {
+        "path": "final-resources.json",
+        "sha256": "25b3b149abe3c63ad61c4ab223a69ea3788917782ffdfa70e00ae68b0ce5be5c"
+      },
+      {
+        "path": "refresh-milestones.json",
+        "sha256": "33afab228e4897c6721113c49305799b34f18a6704513fab92951f78d8a55c78"
+      }
+    ],
+    "retrospective_and_future_experiment_entry_points": [
+      {
+        "path": "../../retros/2026-10-31-search-expiry-outage.md",
+        "sha256": "4fdc0887050428398c6b01c8e652ef0bebe4594a5447466cbe4b5858eb3fd1d6"
+      },
+      {
+        "path": "../../../AGENTS.md",
+        "sha256": "3bbc0b53a259144cd6d6eb07ce00f06ebb377ff43c31e63ffc72774cde4aeb12"
+      },
+      {
+        "path": "../../operations.md",
+        "sha256": "a08928df669914ef3063f5abd22dcaa2313b2920a2817f710324db3bf09920fc"
+      },
+      {
+        "path": "../../plans/automatic-snapshot-refresh.md",
+        "sha256": "7cf4cb376a0bbbb75388fad45533fb20c899a8dbfd48dfeb356fdd1358cb67fb"
+      }
+    ]
+  },
+  "review_notes": [
+    "The original full refresh failed only at Fly startup after publication; the repaired controller resumed its exact retained artifact and machine, then completed.",
+    "The verified controller runtime is f471239; current 35c26b4 changes only its readiness default from 40 to 60 minutes. This was a measured timeout-margin adjustment, not another build.",
+    "The public smoke excludes authenticated admin and database-plan tests; ranking and public/scoped behaviors passed.",
+    "Automatic fallback remains degraded unscoped Bluesky service; scopes fail explicitly, and both-provider/platform failure cannot be hidden.",
+    "The redundant 18:00 occurrence was canceled before flow execution; the recurring schedule stays enabled and its next run precedes the new coverage deadline.",
+    "README architecture and public API docs match deployed behavior. Unrelated tracked source edits and untracked experiment directories were preserved."
+  ]
+}

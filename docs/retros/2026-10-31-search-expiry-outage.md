@@ -1,9 +1,8 @@
 # Search outage after snapshot coverage expired
 
-Status: production restored on B at 16:08:50 on October 31, 2026; automatic
-Bluesky fallback is deployed. Full refresh verification is continuing from a
-retained candidate after a Fly startup rejection.
-Times below are UTC.
+Status: recovery completed October 31, 2026. B restored production at 16:08:50;
+the verified full refresh promoted fresh A and completed at 17:59:36. Automatic
+Bluesky fallback remains deployed. Times below are UTC.
 
 ## What happened
 
@@ -51,7 +50,8 @@ failure; the recorded failure was cloud capacity.
   A retry may resume only its own unchanged mutation lease.
 - The scheduled publisher pins the joined mapping, reader, source and release
   proof, and uses `hel1`, where the candidate controller successfully allocated.
-  A completed subsequent refresh is required before claiming refresh reliability.
+  The full refresh completed after resuming the retained startup rejection
+  described below; publication, restart admission and public checks passed.
   The deployment allows one concurrent run and cancels overlapping submissions;
   the live limit and active slot were read back after configuration.
 
@@ -68,7 +68,10 @@ before retrying, with at most three attempts. Route and configuration changes
 still prevent retries; ambiguous failures retain their existing reconciliation
 rules. Real HTTP tests cover rejection, bounded failure, persisted resume and
 ownership drift. Recovery uses `resume_rollout:true` through the normal deployment,
-so it cannot silently begin another build. Live completion remains to be verified.
+so it cannot silently begin another build. The live resume completed admission,
+restart, promotion and cleanup. Cold installation/first readiness took about
+38 minutes, so future readiness phases have a one-hour bound within the existing
+three-hour worker limit. This margin does not change serving resources.
 
 ## Before every serving experiment
 

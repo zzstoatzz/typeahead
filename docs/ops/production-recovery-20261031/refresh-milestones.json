@@ -1,0 +1,96 @@
+[
+  {
+    "run_id": "5da0d18f-0e10-405a-b023-30b1b004626c",
+    "milestones": [
+      {
+        "timestamp": "2026-10-31T16:12:33.396776+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "Finished in state Completed()",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T16:58:35.317306+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "checkpoint_release_frozen build=b1793463173-cp-5da0d18f0e bytes=6315356160 seconds=2757.309",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T16:58:35.334667+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "Finished in state Completed()",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T16:58:43.495498+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "upload releases/search-tantivy/b1793463173-cp-5da0d18f0e/index.tar",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T17:03:24.491702+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "verify releases/search-tantivy/b1793463173-cp-5da0d18f0e/index.tar",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T17:06:38.062932+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "upload releases/search-tantivy/b1793463173-cp-5da0d18f0e/manifest.json",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T17:06:38.947202+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "verify releases/search-tantivy/b1793463173-cp-5da0d18f0e/manifest.json",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T17:06:40.323386+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "Finished in state Completed()",
+        "name": "prefect.task_runs"
+      }
+    ]
+  },
+  {
+    "run_id": "89dcf983-bc2f-4708-98d0-bc1d8e4cdd95",
+    "milestones": [
+      {
+        "timestamp": "2026-10-31T17:17:52.657120+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "Finished in state Completed()",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T17:59:35.966679+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "Snapshot artifact cleanup: {'retained_builds': ['b1793109259-2b36', 'b1793109259-2b36-px05', 'b1793395409-cp-pdsjoin', 'b1793463173-cp-5da0d18f0e'], 'deleted_objects': 9, 'deleted_bytes': 33140849322}",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T17:59:35.972845+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "Finished in state Completed()",
+        "name": "prefect.task_runs"
+      },
+      {
+        "timestamp": "2026-10-31T17:59:36.856896+00:00",
+        "level": 20,
+        "level_name": "INFO",
+        "message": "Finished in state Completed()",
+        "name": "prefect.flow_runs"
+      }
+    ]
+  }
+]
