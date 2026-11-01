@@ -7,7 +7,10 @@ dependencies:
   - bash
   - just
   - python3
-  - zig
+  - coreutils
+  - curl
+  - gnutar
+  - xz
   - rustc
   - cargo
   - gcc
@@ -15,5 +18,7 @@ steps:
   - name: tantivy-local-verification
     command: |
       set -eu
+      scripts/ci-zig.sh "$PWD/.zig"
+      export PATH="$PWD/.zig:$PATH"
       test "$(zig version)" = "0.17.0"
       just --no-dotenv test-tantivy

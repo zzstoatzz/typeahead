@@ -8,6 +8,8 @@ image: nixos
 dependencies:
   - bun
   - nodejs
+  - gcc
+  - patchelf
 
 # Deploy is intentionally NOT done from tangled CI — the secrets path has been
 # unreliable (rolled values don't propagate, see commits 0ff3acb/eacaf7f). The
@@ -20,6 +22,7 @@ steps:
     command: |
       set -euo pipefail
       bun install
+      scripts/ci-workerd.sh
       bunx tsc --noEmit
       bunx oxlint --deny-warnings src
       bun test
