@@ -1,0 +1,264 @@
+//! Follows Bluesky's moderation labeler into the worker's label store.
+//!
+//! Labels reach accounts we index only through this stream once it is live:
+//! the old path was whatever `getProfiles` returned when a sample happened to
+//! revisit an account. See docs/plans/label-stream.md.
+//!
+//! The stream is `com.atproto.label.subscribeLabels` on the labeler's own
+//! service. We keep labels from the adopted source whose subject is an
+//! account (a DID) or that account's profile record, and post them in batches
+//! to `/admin/labels` with the seq they reach. The worker commits the cursor
+//! with the batch, so the cursor only moves after the labels land; any failure
+//! reconnects from the committed cursor and replays.
+//!
+//! Frames are decoded here rather than by the client, so a malformed frame is
+//! counted and logged instead of vanishing at debug level.
+
+const std = @import("std");
+const Io = std.Io;
+const Allocator = std.mem.Allocator;
+const mem = std.mem;
+const json = std.json;
+const zat = @import("zat");
+const HttpTransport = zat.HttpTransport;
+const ingest = @import("ingest.zig");
+
+const log = std.log.scoped(.label_tail);
+
+/// Bluesky's moderation service, the one labeler whose labels we adopt
+pub const ADOPTED_SOURCE = "did:plc:ar7c4by46qjdydhdevvrndac";
+const STREAM = "wss://mod.bsky.app";
+const MAX_BATCH = 200;
+const FLUSH_AFTER_MS = 5_000;
+/// with nothing adopted, still record progress this often so a restart
+/// replays minutes, not hours
+const CURSOR_EVERY_MS = 60_000;
+const IDLE_TIMEOUT_MS = 120_000;
+const FAILURE_BACKOFF_SECS = 30;
+
+pub const Stats = struct {
+    frames: std.atomic.Value(u64) = .init(0),
+    adopted: std.atomic.Value(u64) = .init(0),
+    malformed: std.atomic.Value(u64) = .init(0),
+    posts: std.atomic.Value(u64) = .init(0),
+    post_failed: std.atomic.Value(u64) = .init(0),
+    /// the cursor the worker last committed; 0 until the first commit
+    committed: std.atomic.Value(i64) = .init(0),
+    /// unix seconds of the newest label seen, for lag
+    newest_cts: std.atomic.Value(i64) = .init(0),
+};
+pub var stats: Stats = .{};
+
+/// The account a label is about when we act on it: adopted source, and a
+/// subject that is a DID or that DID's profile record. Mirrors
+/// `labelSubject` in src/account-labels.ts.
+pub fn adoptedSubject(label: zat.Label) ?[]const u8 {
+    if (!mem.eql(u8, label.src, ADOPTED_SOURCE)) return null;
+    if (mem.startsWith(u8, label.uri, "did:")) return label.uri;
+    const prefix = "at://";
+    const suffix = "/app.bsky.actor.profile/self";
+    if (!mem.startsWith(u8, label.uri, prefix) or !mem.endsWith(u8, label.uri, suffix)) return null;
+    const did = label.uri[prefix.len .. label.uri.len - suffix.len];
+    if (!mem.startsWith(u8, did, "did:") or mem.indexOfScalar(u8, did, '/') != null) return null;
+    return did;
+}
+
+/// one label as /admin/labels takes it
+const Wire = struct {
+    src: []const u8,
+    uri: []const u8,
+    val: []const u8,
+    cts: []const u8,
+    seq: i64,
+    cid: ?[]const u8 = null,
+    neg: ?bool = null,
+    exp: ?[]const u8 = null,
+};
+
+pub const Tail = struct {
+    allocator: Allocator,
+    io: Io,
+    worker_url: []const u8,
+    worker_secret: []const u8,
+
+    fn auth(self: *Tail, buf: []u8) ![]const u8 {
+        return std.fmt.bufPrint(buf, "Bearer {s}", .{self.worker_secret});
+    }
+
+    /// the worker's committed cursor; null before the first commit
+    fn fetchCursor(self: *Tail, transport: *HttpTransport) !?i64 {
+        var url_buf: [512]u8 = undefined;
+        const url = try std.fmt.bufPrint(&url_buf, "{s}/admin/labels/cursor", .{self.worker_url});
+        var auth_buf: [256]u8 = undefined;
+        const result = try transport.fetch(.{ .url = url, .authorization = try self.auth(&auth_buf) });
+        defer self.allocator.free(result.body);
+        if (result.status != .ok) return error.HttpError;
+        const parsed = try json.parseFromSlice(struct { cursor: ?i64 }, self.allocator, result.body, .{ .ignore_unknown_fields = true });
+        defer parsed.deinit();
+        return parsed.value.cursor;
+    }
+
+    pub fn run(self: *Tail) void {
+        var worker = HttpTransport.init(self.io, self.allocator);
+        worker.keep_alive = true;
+        defer worker.deinit();
+
+        while (true) {
+            const cursor = self.fetchCursor(&worker) catch |err| {
+                _ = stats.post_failed.fetchAdd(1, .monotonic);
+                log.warn("label cursor unavailable: {s}", .{@errorName(err)});
+                self.io.sleep(Io.Duration.fromSeconds(FAILURE_BACKOFF_SECS), .awake) catch return;
+                continue;
+            };
+            if (cursor) |c| stats.committed.store(c, .monotonic);
+            log.info("following {s} labels after {?d}", .{ STREAM, cursor });
+
+            var client = zat.LabelClient.init(self.io, self.allocator, .{
+                .hosts = &.{STREAM},
+                .cursor = cursor,
+                .idle_timeout_ms = IDLE_TIMEOUT_MS,
+            });
+            defer client.deinit();
+            var handler: Handler = .{ .tail = self, .worker = &worker, .client = &client, .committed = cursor };
+            defer handler.pending.deinit(self.allocator);
+            defer handler.arena.deinit();
+            client.subscribe(&handler) catch return;
+        }
+    }
+};
+
+const Handler = struct {
+    tail: *Tail,
+    worker: *HttpTransport,
+    client: *zat.LabelClient,
+    committed: ?i64,
+    arena: std.heap.ArenaAllocator = .init(std.heap.page_allocator),
+    pending: std.ArrayList(Wire) = .empty,
+    /// the seq the buffered labels bring the stream to
+    reached: ?i64 = null,
+    first_pending_ms: i64 = 0,
+    last_commit_ms: i64 = 0,
+
+    fn nowMs(self: *Handler) i64 {
+        return @intCast(@divFloor(Io.Timestamp.now(self.tail.io, .awake).nanoseconds, std.time.ns_per_ms));
+    }
+
+    /// a new connection replays from the committed cursor, so labels still
+    /// buffered from the old one would arrive twice
+    pub fn onConnect(self: *Handler, _: []const u8) void {
+        self.pending.clearRetainingCapacity();
+        _ = self.arena.reset(.retain_capacity);
+        self.reached = null;
+    }
+
+    pub fn onRawFrame(self: *Handler, data: []const u8) !void {
+        _ = stats.frames.fetchAdd(1, .monotonic);
+        var frame_arena = std.heap.ArenaAllocator.init(self.tail.allocator);
+        defer frame_arena.deinit();
+        const event = zat.labels.decodeFrame(frame_arena.allocator(), data) catch |err| {
+            _ = stats.malformed.fetchAdd(1, .monotonic);
+            log.warn("skipping undecodable label frame ({d} bytes): {s}", .{ data.len, @errorName(err) });
+            return;
+        };
+        switch (event) {
+            .labels => |batch| {
+                for (batch.labels) |label| try self.keep(label, batch.seq);
+                self.reached = batch.seq;
+            },
+            .info => |info| log.info("labeler info: {s}", .{info.name orelse "?"}),
+            .err => |e| {
+                // FutureCursor means our cursor is ahead of the labeler's log
+                log.err("labeler error frame: {s}: {s}", .{ e.name orelse "?", e.message orelse "" });
+                return error.LabelerError;
+            },
+        }
+        try self.maybeFlush();
+    }
+
+    fn keep(self: *Handler, label: zat.Label, seq: i64) !void {
+        if (zat.Datetime.parse(label.cts)) |t| stats.newest_cts.store(@divFloor(t.micros, 1_000_000), .monotonic);
+        if (adoptedSubject(label) == null) return;
+        const a = self.arena.allocator();
+        if (self.pending.items.len == 0) self.first_pending_ms = self.nowMs();
+        try self.pending.append(self.tail.allocator, .{
+            .src = try a.dupe(u8, label.src),
+            .uri = try a.dupe(u8, label.uri),
+            .val = try a.dupe(u8, label.val),
+            .cts = try a.dupe(u8, label.cts),
+            .seq = seq,
+            .cid = if (label.cid) |c| try a.dupe(u8, c) else null,
+            .neg = if (label.neg) true else null,
+            .exp = if (label.exp) |e| try a.dupe(u8, e) else null,
+        });
+        _ = stats.adopted.fetchAdd(1, .monotonic);
+    }
+
+    fn maybeFlush(self: *Handler) !void {
+        const reached = self.reached orelse return;
+        const now = self.nowMs();
+        const due = self.pending.items.len >= MAX_BATCH or
+            (self.pending.items.len > 0 and now - self.first_pending_ms >= FLUSH_AFTER_MS) or
+            (self.committed != reached and now - self.last_commit_ms >= CURSOR_EVERY_MS);
+        if (!due) return;
+        self.flush(reached) catch |err| {
+            _ = stats.post_failed.fetchAdd(1, .monotonic);
+            log.warn("label batch not committed: {s}; replaying from {?d}", .{ @errorName(err), self.committed });
+            // the client advanced past frames that never landed; reconnect
+            // from what the worker actually holds
+            self.client.last_seq = self.committed;
+            return err;
+        };
+    }
+
+    fn flush(self: *Handler, reached: i64) !void {
+        var body: std.Io.Writer.Allocating = .init(self.tail.allocator);
+        defer body.deinit();
+        var jw: json.Stringify = .{ .writer = &body.writer, .options = .{ .emit_null_optional_fields = false } };
+        try jw.write(.{ .labels = self.pending.items, .cursor = reached });
+
+        var url_buf: [512]u8 = undefined;
+        const url = try std.fmt.bufPrint(&url_buf, "{s}/admin/labels", .{self.tail.worker_url});
+        var auth_buf: [256]u8 = undefined;
+        const result = try self.worker.fetch(ingest.workerPost(url, body.written(), try self.tail.auth(&auth_buf)));
+        defer self.tail.allocator.free(result.body);
+        if (result.status != .ok) {
+            log.warn("label post HTTP {d}: {s}", .{ @backingInt(result.status), result.body });
+            return error.HttpError;
+        }
+        _ = stats.posts.fetchAdd(1, .monotonic);
+        stats.committed.store(reached, .monotonic);
+        self.committed = reached;
+        self.last_commit_ms = self.nowMs();
+        self.pending.clearRetainingCapacity();
+        _ = self.arena.reset(.retain_capacity);
+    }
+};
+
+const testing = std.testing;
+
+fn testLabel(src: []const u8, uri: []const u8) zat.Label {
+    return .{ .src = src, .uri = uri, .val = "spam", .cts = "2026-11-01T00:00:00.000Z" };
+}
+
+test "adopts account and profile-record labels from Bluesky's moderation service only" {
+    const did = "did:plc:k7kqivhnh5b52fyptrcp4e4a";
+    try testing.expectEqualStrings(did, adoptedSubject(testLabel(ADOPTED_SOURCE, did)).?);
+    try testing.expectEqualStrings(did, adoptedSubject(testLabel(ADOPTED_SOURCE, "at://" ++ did ++ "/app.bsky.actor.profile/self")).?);
+    try testing.expectEqual(@as(?[]const u8, null), adoptedSubject(testLabel(ADOPTED_SOURCE, "at://" ++ did ++ "/app.bsky.feed.post/3mzaa3w7dwa24")));
+    try testing.expectEqual(@as(?[]const u8, null), adoptedSubject(testLabel("did:plc:someotherlabeler", did)));
+    try testing.expectEqual(@as(?[]const u8, null), adoptedSubject(testLabel(ADOPTED_SOURCE, "at://did:plc:a/b/app.bsky.actor.profile/self")));
+}
+
+test "a batch serializes as /admin/labels expects, omitting unset fields" {
+    const items = [_]Wire{
+        .{ .src = ADOPTED_SOURCE, .uri = "did:plc:a", .val = "spam", .cts = "2026-11-01T00:00:00.000Z", .seq = 7 },
+        .{ .src = ADOPTED_SOURCE, .uri = "did:plc:b", .val = "!hide", .cts = "2026-11-01T00:00:01.000Z", .seq = 8, .neg = true, .exp = "2026-12-01T00:00:00.000Z" },
+    };
+    var body: std.Io.Writer.Allocating = .init(testing.allocator);
+    defer body.deinit();
+    var jw: json.Stringify = .{ .writer = &body.writer, .options = .{ .emit_null_optional_fields = false } };
+    try jw.write(.{ .labels = &items, .cursor = @as(i64, 8) });
+    try testing.expectEqualStrings(
+        \\{"labels":[{"src":"did:plc:ar7c4by46qjdydhdevvrndac","uri":"did:plc:a","val":"spam","cts":"2026-11-01T00:00:00.000Z","seq":7},{"src":"did:plc:ar7c4by46qjdydhdevvrndac","uri":"did:plc:b","val":"!hide","cts":"2026-11-01T00:00:01.000Z","seq":8,"neg":true,"exp":"2026-12-01T00:00:00.000Z"}],"cursor":8}
+    , body.written());
+}

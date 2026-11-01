@@ -14,6 +14,7 @@ const http_guard = @import("http_guard.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 const plc_tail = @import("plc_tail.zig");
+const label_tail = @import("label_tail.zig");
 const index_builder = @import("index/builder.zig");
 const promote_runner = @import("index/promote_runner.zig");
 
@@ -268,6 +269,7 @@ pub fn main() !void {
     defer if (have_identity_pool) identity_pool.deinit();
 
     var tail: plc_tail.Tail = undefined;
+    var labels: label_tail.Tail = undefined;
 
     if (role == .ingester) {
         // Reading TYPEAHEAD_URL/TYPEAHEAD_SECRET here (not unconditionally at
@@ -313,6 +315,13 @@ pub fn main() !void {
         tail = .{ .allocator = allocator, .io = io, .worker_url = config.worker_url, .worker_secret = config.secret };
         tasks.concurrent(io, plc_tail.Tail.run, .{&tail}) catch |err| {
             log.err("plc tail task failed: {}", .{err});
+            return err;
+        };
+
+        // moderation labels from Bluesky's labeler stream; see label_tail.zig
+        labels = .{ .allocator = allocator, .io = io, .worker_url = config.worker_url, .worker_secret = config.secret };
+        tasks.concurrent(io, label_tail.Tail.run, .{&labels}) catch |err| {
+            log.err("label tail task failed: {}", .{err});
             return err;
         };
 
@@ -376,12 +385,12 @@ pub fn main() !void {
             const path = if (std.mem.indexOfScalar(u8, target, '?')) |qi| target[0..qi] else target;
 
             if (std.mem.eql(u8, path, "/health")) {
-                var buf: [1536]u8 = undefined;
+                var buf: [2048]u8 = undefined;
                 const body = if (id_pool_arg) |pool| blk: {
                     const ic = pool.counters(io);
                     break :blk std.fmt.bufPrint(&buf,
-                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"leased":{d},"lease_failed":{d},"accepted":{d},"dropped":{d},"processed":{d},"queued":{d},"verified":{d},"unverified":{d},"no_handle":{d},"did_failed":{d},"retried":{d},"post_failed":{d}}},"plc":{{"pages":{d},"operations":{d},"failed":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
-                    , .{ ingest.getRssKB(), identity.stats.leased.load(.monotonic), identity.stats.lease_failed.load(.monotonic), ic.accepted, ic.dropped, ic.processed, ic.queued, identity.stats.verified.load(.monotonic), identity.stats.unverified.load(.monotonic), identity.stats.no_handle.load(.monotonic), identity.stats.did_failed.load(.monotonic), identity.stats.retried.load(.monotonic), identity.stats.post_failed.load(.monotonic), plc_tail.stats.pages.load(.monotonic), plc_tail.stats.operations.load(.monotonic), plc_tail.stats.failed.load(.monotonic), ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
+                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"leased":{d},"lease_failed":{d},"accepted":{d},"dropped":{d},"processed":{d},"queued":{d},"verified":{d},"unverified":{d},"no_handle":{d},"did_failed":{d},"retried":{d},"post_failed":{d}}},"plc":{{"pages":{d},"operations":{d},"failed":{d}}},"labels":{{"frames":{d},"adopted":{d},"malformed":{d},"posts":{d},"post_failed":{d},"cursor":{d},"newest_cts":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
+                    , .{ ingest.getRssKB(), identity.stats.leased.load(.monotonic), identity.stats.lease_failed.load(.monotonic), ic.accepted, ic.dropped, ic.processed, ic.queued, identity.stats.verified.load(.monotonic), identity.stats.unverified.load(.monotonic), identity.stats.no_handle.load(.monotonic), identity.stats.did_failed.load(.monotonic), identity.stats.retried.load(.monotonic), identity.stats.post_failed.load(.monotonic), plc_tail.stats.pages.load(.monotonic), plc_tail.stats.operations.load(.monotonic), plc_tail.stats.failed.load(.monotonic), label_tail.stats.frames.load(.monotonic), label_tail.stats.adopted.load(.monotonic), label_tail.stats.malformed.load(.monotonic), label_tail.stats.posts.load(.monotonic), label_tail.stats.post_failed.load(.monotonic), label_tail.stats.committed.load(.monotonic), label_tail.stats.newest_cts.load(.monotonic), ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
                 } else std.fmt.bufPrint(&buf,
                     \\{{"status":"ok","role":"ingester","rss_kb":{d}}}
                 , .{ingest.getRssKB()}) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";

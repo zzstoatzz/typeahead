@@ -683,11 +683,12 @@ pub fn getRssKB() u64 {
 
 const testing = std.testing;
 
-// identity.zig and plc_tail.zig are only reachable through this file, and `zig build test` roots the
+// identity.zig, plc_tail.zig and label_tail.zig are only reachable through this file, and `zig build test` roots the
 // ingest suite here — without this reference their tests are silently never run.
 test {
     _ = @import("identity.zig");
     _ = @import("plc_tail.zig");
+    _ = @import("label_tail.zig");
 }
 
 test "wantedCollection: allowlist survives the loss of jetstream's server-side filter" {
