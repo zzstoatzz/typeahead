@@ -332,6 +332,7 @@ export function statsPage(d: StatsData): string {
     .pie-stage { position: relative; }
     .source-detail { position: absolute; inset: 26%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center; pointer-events: none; }
     .source-detail .detail-name { width: 100%; color: var(--text); font-size: clamp(12px, 3.3vw, 18px); line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .source-detail .detail-logo { width: clamp(24px, 7vw, 36px); height: clamp(24px, 7vw, 36px); object-fit: contain; border-radius: 6px; margin-bottom: 2px; }
     .source-detail .detail-total { font-size: clamp(24px, 6vw, 36px); }
     .source-detail .detail-count { font-size: clamp(10px, 2.5vw, 12px); line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums; }
     .source-detail a { pointer-events: auto; display: inline-flex; align-items: center; min-height: 32px; color: var(--accent); font-size: 11px; }
@@ -1446,6 +1447,13 @@ export function statsPage(d: StatsData): string {
     }
     function showSourceDetail(row, total, count, scoped) {
       const detail = document.getElementById('source-detail'); detail.replaceChildren();
+      const iconUrl = row && !failedLogos.has(row.domain) ? sourceIconUrl(row.domain) : null;
+      if (iconUrl) {
+        const logo = document.createElement('img');
+        logo.className = 'detail-logo'; logo.alt = ''; logo.width = 32; logo.height = 32; logo.src = iconUrl;
+        logo.addEventListener('error', () => logo.remove(), { once: true });
+        detail.append(logo);
+      }
       const name = document.createElement('span');
       name.className = row ? 'detail-name' : 'detail-total';
       name.textContent = row ? row.domain : fmtNum(total);
@@ -1566,7 +1574,7 @@ export function statsPage(d: StatsData): string {
         return 'M ' + first.join(' ') + ' A ' + r + ' ' + r + ' 0 ' + (b - a > Math.PI ? 1 : 0) + ' ' + (reverse ? 0 : 1) + ' ' + last.join(' ');
       }
       let renderedWidth = 0;
-      const MAX_ICON_PX = 32, MIN_ICON_PX = 8;
+      const MAX_ICON_PX = 32;
       function addIcon(group, row, start, end, outer, inner, scale) {
         const url = sourceIconUrl(row.domain);
         if (!url || failedLogos.has(row.domain)) return;
@@ -1576,7 +1584,7 @@ export function statsPage(d: StatsData): string {
         // both band edges and the slice's own sides, whatever the slice's angle
         const clearance = Math.min((outer - inner) / 2, radius * Math.sin(Math.min((end - start) / 2, Math.PI / 2)));
         const size = Math.min(MAX_ICON_PX / scale, (clearance - 0.5 / scale) * Math.SQRT2);
-        if (size * scale < MIN_ICON_PX) return;
+        if (size <= 0) return;
         const [x, y] = point(radius, (start + end) / 2);
         const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
         const img = svgNode('image', {href: url, x: x - size / 2, y: y - size / 2, width: size, height: size, preserveAspectRatio: 'xMidYMid meet'});
