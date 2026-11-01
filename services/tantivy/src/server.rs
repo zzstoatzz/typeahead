@@ -6,12 +6,12 @@ use crate::{
 };
 use axum::{
     Json, Router,
-    extract::{DefaultBodyLimit, Query, State},
+    extract::{DefaultBodyLimit, FromRequest, Query, Request, State},
     http::{HeaderMap, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
 };
-use serde::Deserialize;
+use serde::{Deserialize, de::DeserializeOwned};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
@@ -41,6 +41,21 @@ fn response(status: StatusCode, value: Value) -> Response {
         .headers_mut()
         .insert("cache-control", HeaderValue::from_static("no-store"));
     response
+}
+/// A JSON request body whose rejection is a JSON error like every other
+/// response, rather than axum's plain-text message.
+struct Body<T>(T);
+impl<S: Send + Sync, T: DeserializeOwned> FromRequest<S> for Body<T> {
+    type Rejection = Response;
+    async fn from_request(request: Request, state: &S) -> Result<Self, Response> {
+        match Json::<T>::from_request(request, state).await {
+            Ok(Json(value)) => Ok(Body(value)),
+            Err(rejection) => Err(response(
+                rejection.status(),
+                json!({"error":rejection.body_text()}),
+            )),
+        }
+    }
 }
 fn with_identity(
     mut response: Response,
@@ -410,7 +425,7 @@ fn authorized(app: &App, headers: &HeaderMap) -> bool {
 async fn source_state(
     State(app): State<App>,
     headers: HeaderMap,
-    Json(body): Json<SourceState>,
+    Body(body): Body<SourceState>,
 ) -> Response {
     if !authorized(&app, &headers) {
         return response(StatusCode::UNAUTHORIZED, json!({"error":"unauthorized"}));
@@ -425,7 +440,7 @@ async fn source_state(
 async fn source_page(
     State(app): State<App>,
     headers: HeaderMap,
-    Json(body): Json<SourcePage>,
+    Body(body): Body<SourcePage>,
 ) -> Response {
     if !authorized(&app, &headers) {
         return response(StatusCode::UNAUTHORIZED, json!({"error":"unauthorized"}));
@@ -441,7 +456,7 @@ async fn source_page(
 async fn source_reconcile(
     State(app): State<App>,
     headers: HeaderMap,
-    Json(body): Json<SourceReconcile>,
+    Body(body): Body<SourceReconcile>,
 ) -> Response {
     if !authorized(&app, &headers) {
         return response(StatusCode::UNAUTHORIZED, json!({"error":"unauthorized"}));
@@ -453,7 +468,7 @@ async fn source_reconcile(
         Err(_) => failure(Error::Storage("source reconcile task failed".into())),
     }
 }
-async fn apply(State(app): State<App>, headers: HeaderMap, Json(body): Json<Apply>) -> Response {
+async fn apply(State(app): State<App>, headers: HeaderMap, Body(body): Body<Apply>) -> Response {
     let Some(secret) = app.admin_secret.as_ref() else {
         return response(StatusCode::NOT_FOUND, json!({"error":"not found"}));
     };
