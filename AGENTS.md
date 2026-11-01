@@ -44,11 +44,12 @@ archives every repo record from the relay plus `#identity` and `#account` events
 (`docs/jss-format-v1.md`, kinds 1–7) back to seq 1. Profile records, account
 status history and DID→PDS hosting are there. Labeler labels (not repo records)
 and appview aggregates (follower counts) are not: use the labeler
-(`subscribeLabels`/`queryLabels`) and `getProfiles` for those. Read
-`stream.waow.tech/llms.txt` first: archive reads (`listSegments`, `getSegment`,
-`getBlock`, `planSnapshot`) need a bearer key, `/subscribe` replays only about
-1.5 days, and blocks hold about 4,096 events, so whole-network drains are cheap
-and scattered per-DID lookups are not.
+(`subscribeLabels`/`queryLabels`) and `getProfiles` for those. Read the local sources, not the live API:
+`~/tangled.org/zzstoatzz.io/notes/atproto/record-retrieval.md` (which access path
+fits; blocks are ~4,096 events, so drains are cheap and scattered per-DID reads
+are not) and `network-backfill.md`, then Stream's `docs/configuration.md`
+(archive endpoints need a bearer key; `/subscribe` replays 36 h) and
+`docs/deploying.md` (archive keys).
 
 **Before starting new work, read the git history** — `git log --oneline -30`,
 then `git log -p` on anything that looks related. Commits are the record of
