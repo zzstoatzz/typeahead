@@ -5,6 +5,7 @@ import { TRAFFIC_SOURCE_WHERE } from "../metrics";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
 import { EXCLUSIONS_KEY, parseExclusions } from "../exclusions";
 import { tailQueries, tailStartBucket, withTail } from "../stats-tail";
+import { PROFILE_KEY, parseProfile } from "../stats-profile";
 
 const EDGE_CACHE_TTL = 60; // seconds
 
@@ -21,7 +22,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const range = ["1h", "24h", "7d", "30d", "all"].includes(reqUrl.searchParams.get("range") ?? "")
     ? reqUrl.searchParams.get("range")! : "7d";
   const norm = new URL("/stats", request.url);
-  norm.searchParams.set("metric", "search-exclusions-v3");
+  norm.searchParams.set("metric", "expected-range-v4");
   if (apps.length) norm.searchParams.set("apps", apps.join(","));
   if (range !== "7d") norm.searchParams.set("range", range);
   const cacheKey = new Request(norm.href);
@@ -35,10 +36,11 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const t0 = performance.now();
 
   // materialized data from KV (written by cron) — never hits turso
-  const [kvData, reqData, exclusions] = await Promise.all([
+  const [kvData, reqData, exclusions, profile] = await Promise.all([
     env.KV.get<StatsKvData>("stats_data", "json"),
     env.KV.get<RequestKvData>("request_data", "json"),
     env.KV.get(EXCLUSIONS_KEY).then(parseExclusions),
+    env.KV.get(PROFILE_KEY).then(parseProfile),
   ]);
 
   const trafficWhere = TRAFFIC_SOURCE_WHERE;
@@ -116,7 +118,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   const tProcess = performance.now();
 
-  const body = statsPage({ total, exclusions, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficAll, trafficSeries: withTail(kvData?.traffic_series ?? [], rowsAs<TrafficHour>(trafficHourTail?.results ?? []), "hour", trafficStart / 12),
+  const body = statsPage({ total, exclusions, profile, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficAll, trafficSeries: withTail(kvData?.traffic_series ?? [], rowsAs<TrafficHour>(trafficHourTail?.results ?? []), "hour", trafficStart / 12),
     trafficSeries5m: withTail(kvData?.traffic_series_5m ?? [], rowsAs<Traffic5m>(traffic5mTail?.results ?? []), "bucket", trafficStart),
     trafficDaily: kvData?.traffic_daily ?? [],
     requestSeries: withTail(reqData?.series ?? [], rowsAs<RequestHour>(requestHourTail?.results ?? []), "hour", requestStart / 12),

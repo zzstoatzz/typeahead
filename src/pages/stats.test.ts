@@ -5,7 +5,7 @@ import { SOURCE_BRANDS } from "./source-brands";
 function page(domains: string[], trafficAll?: StatsData["trafficAll"]): string {
   const trafficSources = domains.map((domain, i) => ({ domain, hits: 100 - i }));
   const d: StatsData = {
-    total: 100, exclusions: null, rows: [], totalSearches: 0,
+    total: 100, exclusions: null, profile: null, rows: [], totalSearches: 0,
     avgLatency: 0, avgCacheLatency: 0, handlePct: "0", avatarPct: "0",
     snapshots: [],
     trafficSources,
@@ -70,7 +70,7 @@ describe("link previews", () => {
   ];
   const withView = (apps: string[]) => {
     const d: StatsData = {
-      total: 10, exclusions: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+      total: 10, exclusions: null, profile: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
       handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
       trafficSeries: series, trafficSeries5m: [], trafficDaily: [],
       requestSeries: [], requestSeries5m: [], requestDaily: [],
@@ -112,7 +112,7 @@ describe("link previews", () => {
 describe("request slices", () => {
   const h = Math.floor(Date.now() / 3_600_000);
   const html = statsPage({
-    total: 10, exclusions: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+    total: 10, exclusions: null, profile: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
     handlePct: "0", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
     trafficSeries: [], trafficSeries5m: [], trafficDaily: [],
     requestSeries: [
@@ -214,7 +214,7 @@ describe("the long tail", () => {
 
 describe("search exclusion tiles", () => {
   const base: StatsData = {
-    total: 10, exclusions: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+    total: 10, exclusions: null, profile: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
     handlePct: "0", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
     trafficSeries: [], trafficSeries5m: [], trafficDaily: [], requestSeries: [], requestSeries5m: [], requestDaily: [],
   };
@@ -238,5 +238,29 @@ describe("search exclusion tiles", () => {
     expect(html).toContain("hidden by policy</div>\n        <div class=\"value\">pending</div>");
     expect(html).toContain("invalid identity</div>\n        <div class=\"value\">pending</div>");
     expect(html).toContain("The daily count has not run yet.");
+  });
+});
+
+describe("expected range", () => {
+  const band = { p10: 1, p25: 2, p50: 3, p75: 4, p90: 5 };
+  const grains = { m5: Array(24).fill(band), h: Array(24).fill(band) };
+  const base = (profile: StatsData["profile"], rows: StatsData["rows"] = []): StatsData => ({
+    total: 10, exclusions: null, profile, rows, totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+    handlePct: "0", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
+    trafficSeries: [], trafficSeries5m: [], trafficDaily: [], requestSeries: [], requestSeries5m: [], requestDaily: [],
+  });
+
+  test("the page carries the profile, or marks it missing", () => {
+    expect(statsPage(base({ version: 1, as_of: "2026-11-01T00:00:00.000Z", days: 28, source: grains, requests: grains }))).toContain('"days":28');
+    expect(statsPage(base(null))).toContain('const PROFILE = {"none":true}');
+  });
+
+  test("each range's activity carries the window before it for the change badges", () => {
+    const hour = Math.floor(Date.now() / 300_000) - 1;
+    const html = statsPage(base(null, [{ hour, searches: 4, total_ms: 400, cache_hits: 1, cache_ms: 5 }]));
+    const activity = JSON.parse(html.match(/const ACTIVITY = (\{.*?\}); \/\/ per-range/)![1]!);
+    expect(activity["1h"].recent.searches).toBe(4);
+    expect(activity["1h"].prev.searches).toBe(0);
+    expect(activity.all.prev).toBeNull();
   });
 });

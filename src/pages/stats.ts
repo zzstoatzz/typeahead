@@ -2,6 +2,7 @@ import { FAVICON } from "../types";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, CARD_VERSION } from "./theme";
 import { escHtml as esc } from "../utils";
 import type { SearchExclusions } from "../exclusions";
+import type { StatsProfile } from "../stats-profile";
 import { SOURCE_BRANDS } from "./source-brands";
 import { SOURCE_COLOR_SCRIPT } from "./source-colors";
 
@@ -15,6 +16,8 @@ export interface SnapshotPoint {
 export interface StatsData {
   total: number;
   exclusions: SearchExclusions | null;
+  /** typical range per UTC hour, from the cron; null until its first run */
+  profile: StatsProfile | null;
   rows: { hour: number; searches: number; total_ms: number; cache_hits: number; cache_ms: number }[];
   totalSearches: number;
   avgLatency: number;
@@ -124,19 +127,32 @@ export function statsPage(d: StatsData): string {
   // that grows with the site's age: the query is LIMIT 100000, so left alone it
   // heads for several MB. Sixteen numbers instead.
   const ACTIVITY_SECS = { '1h': 3600, '24h': 86400, '7d': 604800, '30d': 2592000, 'all': null } as const;
-  const activity: Record<string, { searches: number; cacheHits: number; totalMs: number; cacheMs: number }> = {};
-  for (const [range, secs] of Object.entries(ACTIVITY_SECS)) {
+  type Totals = { searches: number; cacheHits: number; totalMs: number; cacheMs: number };
+  const sumWindow = (from: number, to: number): Totals => {
     const a = { searches: 0, cacheHits: 0, totalMs: 0, cacheMs: 0 };
     for (const r of sorted) {
       // buckets are 5-min (hour * 300 = unix seconds) and SPARSE — only buckets
       // with a search exist — so windows are by TIME, never by bucket count
-      if (secs !== null && r.hour * 300 < nowSec - secs) continue;
+      const t = r.hour * 300;
+      if (t < from || t >= to) continue;
       a.searches += r.searches;
       a.cacheHits += r.cache_hits ?? 0;
       a.totalMs += r.total_ms ?? 0;
       a.cacheMs += r.cache_ms ?? 0;
     }
-    activity[range] = a;
+    return a;
+  };
+  // change badges compare whole buckets: the window ending at the last
+  // complete one against the same length just before it, so the bucket still
+  // filling never makes "now" look quieter than it is
+  const lastFull = Math.floor(nowSec / 300) * 300;
+  const activity: Record<string, Totals & { prev: Totals | null; recent: Totals | null }> = {};
+  for (const [range, secs] of Object.entries(ACTIVITY_SECS)) {
+    activity[range] = {
+      ...sumWindow(secs === null ? -Infinity : nowSec - secs, Infinity),
+      recent: secs === null ? null : sumWindow(lastFull - secs, lastFull),
+      prev: secs === null ? null : sumWindow(lastFull - 2 * secs, lastFull - secs),
+    };
   }
   // Inlining JSON into a <script> is not the same as serialising it. JSON.stringify
   // does NOT escape "</script>", so a single "<" in attacker-controlled data closes
@@ -406,6 +422,35 @@ export function statsPage(d: StatsData): string {
     .empty-card { color: var(--dim); font-size: 0.8rem; padding: 2rem 0; text-align: center; }
     .pie-cta { margin-top: 0.6rem; font-size: 0.7rem; color: var(--dim); text-align: center; }
     .pie-cta a { display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; color: var(--blue); text-decoration: none; }
+    /* change badges: a direction icon and a percentage. Colour says whether the
+       change is good (accent) or bad (red); under 5% reads as flat and stays grey */
+    .delta-slot { min-height: 2.1rem; margin-top: 0.3rem; }
+    .delta { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.08rem 0.4rem 0.08rem 0.3rem;
+             border-radius: 999px; font-size: 0.62rem; line-height: 1.5; font-variant-numeric: tabular-nums;
+             color: var(--muted); background: var(--panel-2); cursor: default; }
+    .delta svg { width: 9px; height: 9px; flex-shrink: 0; }
+    .delta.good { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+    .delta.bad { color: var(--red); background: color-mix(in srgb, var(--red) 11%, transparent); }
+    .delta-vs { display: block; font-size: 0.58rem; color: var(--dim); margin-top: 0.15rem; }
+    /* the usual range behind the total line; a dark panel needs more ink */
+    :root { --band-outer: 16%; --band-inner: 30%; }
+    @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --band-outer: 10%; --band-inner: 19%; } }
+    :root[data-theme="light"] { --band-outer: 10%; --band-inner: 19%; }
+    #tseries .band-outer { fill: color-mix(in srgb, var(--accent) var(--band-outer), transparent); stroke: none; }
+    #tseries .band-inner { fill: color-mix(in srgb, var(--accent) var(--band-inner), transparent); stroke: none; }
+    #tseries polyline.band-median { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.8; }
+    .band-note { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.8rem; margin-top: 0.45rem;
+                 font-size: 0.62rem; color: var(--muted); line-height: 1.5; }
+    .band-note[hidden] { display: none; }
+    .band-note .reading { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--text); font-variant-numeric: tabular-nums; }
+    .band-note .reading svg { width: 10px; height: 10px; flex-shrink: 0; }
+    .band-note .reading.above, .band-note .reading.below { color: var(--amber); }
+    .band-note .key { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--dim); }
+    .band-note .sw { display: inline-block; width: 12px; height: 8px; border-radius: 2px; }
+    .band-note .sw.outer { background: color-mix(in srgb, var(--accent) var(--band-outer), transparent); }
+    .band-note .sw.inner { background: color-mix(in srgb, var(--accent) var(--band-inner), transparent); }
+    .band-note .sw.median { height: 0; border-top: 1.5px dashed var(--dim); border-radius: 0; }
+    .ct-row.usual { color: var(--dim); }
     .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
                     color: var(--dim); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
     .tseries-foot { display: flex; align-items: center; justify-content: space-between;
@@ -537,9 +582,9 @@ export function statsPage(d: StatsData): string {
         </span>
       </div>
       <div class="activity-metrics">
-        <div class="metric"><div class="label" id="searches-label">searches</div><div class="value" id="searches-value">${initialTotal.toLocaleString()}</div></div>
-        <div class="metric"><div class="label" title="Mean response time for cached searches at the edge">avg cached</div><div class="value" id="cached-latency">${d.avgCacheLatency.toFixed(1)} <small>ms</small></div></div>
-        <div class="metric"><div class="label" title="Mean response time for searches that miss the edge cache">avg cold</div><div class="value" id="cold-latency">${d.avgLatency.toFixed(0)} <small>ms</small></div></div>
+        <div class="metric"><div class="label" id="searches-label">searches</div><div class="value" id="searches-value">${initialTotal.toLocaleString()}</div><div class="delta-slot" id="searches-delta"></div></div>
+        <div class="metric"><div class="label" title="Mean response time for cached searches at the edge">avg cached</div><div class="value" id="cached-latency">${d.avgCacheLatency.toFixed(1)} <small>ms</small></div><div class="delta-slot" id="cached-delta"></div></div>
+        <div class="metric"><div class="label" title="Mean response time for searches that miss the edge cache">avg cold</div><div class="value" id="cold-latency">${d.avgLatency.toFixed(0)} <small>ms</small></div><div class="delta-slot" id="cold-delta"></div></div>
       </div>
       <!-- the series lives INSIDE this card, directly under the control that
            drives it. It used to sit below the donut, several hundred pixels from
@@ -563,6 +608,7 @@ export function statsPage(d: StatsData): string {
           <div id="tseries-empty" style="display:none">no traffic in this window</div>
         </div>
         <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
+        <div class="band-note" id="band-note" hidden></div>
         <div id="tseries-chips" role="group" aria-label="Chart series"></div>
         <div class="tseries-totals" id="tseries-totals" aria-live="polite"></div>
         <div class="tseries-foot">
@@ -924,6 +970,8 @@ export function statsPage(d: StatsData): string {
       const idx = sourceDomains.indexOf(domain);
       return idx >= 0 ? PIE_COLORS[idx % PIE_COLORS.length] : tok('--accent');
     }
+    // typical range per UTC hour (see stats-profile.ts); before the first showSeries()
+    const PROFILE = ${jsonScript(d.profile ?? { none: true })};
     let tsRange = '7d';
     // range picks both the window and the finest data that stays readable
     const TS_RANGES = { '1h':  { secs: 3600, stepSec: 300, grain: '5 min' },
@@ -976,6 +1024,73 @@ export function statsPage(d: StatsData): string {
       if (showBaseline) specs.unshift({ domain: null, name: all, color: 'var(--dim)', baseline: true });
       return specs;
     }
+    /* --- the usual range: what this hour of day typically looks like, from the
+       cron's 28-day profile. Drawn only behind the total line on its own: a
+       pinned app has no profile of its own, and the band would mislead. */
+    const ICONS = {
+      up: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 8.5V1.8M2 4.6 5 1.6l3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      down: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.5v6.7M2 5.4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      flat: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5h6.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+      ok: '<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" fill="currentColor" opacity="0.55"/></svg>',
+    };
+    function bandsFor(specs, cfg, t0, nPts) {
+      if (PROFILE.none || specs.length !== 1 || specs[0].domain != null || specs[0].baseline) return null;
+      if (cfg.stepSec !== 300 && cfg.stepSec !== 3600) return null;
+      const table = (tsDim === 'source' ? PROFILE.source : PROFILE.requests)[cfg.stepSec === 300 ? 'm5' : 'h'];
+      const out = [];
+      for (let k = 0; k < nPts; k++) out.push(table[Math.floor((t0 + k) * cfg.stepSec / 3600) % 24]);
+      return out;
+    }
+    function drawBands(bands, step, toY) {
+      const xs = bands.map((_, i) => (i * step).toFixed(1));
+      const area = (lo, hi) => 'M' + bands.map((b, i) => xs[i] + ',' + toY(b[hi]).toFixed(1)).join(' L')
+        + ' L' + bands.map((b, i) => xs[i] + ',' + toY(b[lo]).toFixed(1)).reverse().join(' L') + ' Z';
+      for (const [cls, lo, hi] of [['band-outer', 'p10', 'p90'], ['band-inner', 'p25', 'p75']]) {
+        const path = document.createElementNS(SVGNS, 'path');
+        path.setAttribute('d', area(lo, hi)); path.setAttribute('class', cls);
+        tseriesLines.appendChild(path);
+      }
+      const median = document.createElementNS(SVGNS, 'polyline');
+      median.setAttribute('points', bands.map((b, i) => xs[i] + ',' + toY(b.p50).toFixed(1)).join(' '));
+      median.setAttribute('class', 'band-median');
+      tseriesLines.appendChild(median);
+    }
+    const fmtUsual = (b) => Math.round(b.p10).toLocaleString() + '–' + Math.round(b.p90).toLocaleString();
+    function renderBandNote(bands, line, t0, cfg) {
+      const note = document.getElementById('band-note');
+      if (!note) return;
+      if (!bands) { note.hidden = true; note.replaceChildren(); return; }
+      // Judge the last COMPLETE clock hour against the hourly profile, whatever
+      // the chart's grain: one 5-minute bucket is too noisy to call unusual, and
+      // the hour still filling always looks low.
+      note.replaceChildren();
+      const hour = Math.floor(Date.now() / 3_600_000) - 1;
+      const hourly = (tsDim === 'source' ? PROFILE.source : PROFILE.requests).h;
+      const value = seriesFor(null, 300).reduce((sum, [t, hits]) => Math.floor(t / 12) === hour ? sum + hits : sum, 0);
+      const band = hourly[hour % 24];
+      {
+        const hh = h => String(h % 24).padStart(2, '0') + ':00';
+        const state = value > band.p90 ? 'above' : value < band.p10 ? 'below' : 'usual';
+        const reading = document.createElement('span');
+        reading.className = 'reading ' + state;
+        const ratio = state === 'above' && band.p50 > 0 ? ' · ' + (value / band.p50).toFixed(1) + '× typical'
+          : state === 'below' && band.p50 > 0 ? ' · ' + Math.round((1 - value / band.p50) * 100) + '% under typical' : '';
+        reading.innerHTML = ICONS[state === 'above' ? 'up' : state === 'below' ? 'down' : 'ok'];
+        const text = document.createElement('span');
+        text.textContent = hh(hour) + '–' + hh(hour + 1) + ' · ' + value.toLocaleString() + ' · usual ' + fmtUsual(band) + ratio;
+        reading.append(text);
+        reading.title = state === 'usual' ? 'within the usual range for this hour of day'
+          : (state === 'above' ? 'above' : 'below') + ' the usual range for this hour of day';
+        note.append(reading);
+      }
+      for (const [cls, label] of [['outer', 'usual'], ['inner', 'middle half'], ['median', 'typical']]) {
+        const key = document.createElement('span'); key.className = 'key';
+        const sw = document.createElement('i'); sw.className = 'sw ' + cls;
+        key.append(sw, label); note.append(key);
+      }
+      note.title = 'usual = the middle 80% of the last ' + PROFILE.days + ' days at this hour (UTC); typical = their median';
+      note.hidden = false;
+    }
     function showSeries() {
       refreshPie();
       if (!tseriesLines) return;
@@ -995,7 +1110,7 @@ export function statsPage(d: StatsData): string {
       if (tseriesEl) tseriesEl.style.display = empty ? 'none' : 'block';
       if (tseriesEmpty) tseriesEmpty.style.display = empty ? 'flex' : 'none';
       tseriesLines.replaceChildren();
-      if (empty) { tsView = null; renderTotals(); if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
+      if (empty) { tsView = null; renderBandNote(null); renderTotals(); if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
       // ONE grid for every line — a shared t0/tN and a shared max. Per-series
       // extents would put two lines on silently different axes, which is worse
       // than not drawing the comparison at all.
@@ -1009,9 +1124,11 @@ export function statsPage(d: StatsData): string {
         for (let k = 0; k < nPts; k++) counts.push(byUnit.get(t0 + k) || 0);
         return { ...s, counts };
       });
-      const max = Math.max(1, ...series.map(s => Math.max(...s.counts)));
+      const bands = bandsFor(specs, cfg, t0, nPts);
+      const max = Math.max(1, ...series.map(s => Math.max(...s.counts)), ...(bands ? bands.map(b => b.p90) : []));
       const step = nPts > 1 ? TS_W / (nPts - 1) : 0;
       const toY = c => TS_PAD + (1 - c / max) * (TS_H - 2 * TS_PAD);
+      if (bands) drawBands(bands, step, toY);
       for (const s of series) {
         const pts = s.counts.map((c, i) => (i * step).toFixed(1) + ',' + toY(c).toFixed(1)).join(' ');
         if (s.baseline) {
@@ -1032,7 +1149,8 @@ export function statsPage(d: StatsData): string {
       const showClock = cfg.secs <= 604800;
       if (tseriesT0) tseriesT0.textContent = fmtSec(t0 * cfg.stepSec, showClock);
       if (tseriesT1) tseriesT1.textContent = fmtSec((tN + 1) * cfg.stepSec, showClock);
-      tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, step, toY, series };
+      tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, step, toY, series, bands };
+      renderBandNote(bands, series[0], t0, cfg);
       renderTotals();
     }
     const SOURCE_BRANDS = ${jsonScript(SOURCE_BRANDS)};
@@ -1529,6 +1647,13 @@ export function statsPage(d: StatsData): string {
         row.append(dot, txt);
         seriesTip.appendChild(row);
       }
+      const b = tsView.bands?.[idx];
+      if (b) {
+        const usual = document.createElement('div');
+        usual.className = 'ct-row usual';
+        usual.textContent = 'usual ' + fmtUsual(b) + ' · typical ' + Math.round(b.p50).toLocaleString();
+        seriesTip.appendChild(usual);
+      }
       seriesTip.style.display = 'block';
       // keep the tip above the finger/cursor and inside the viewport
       const tx = Math.min(clientX + 12, window.innerWidth - seriesTip.offsetWidth - 8);
@@ -1751,6 +1876,26 @@ export function statsPage(d: StatsData): string {
        avg latency, and the traffic chart each had their own selector, so the
        page could show 24h latency next to a 7d search count next to a 30d
        chart — three windows, no indication they differed. */
+    const RANGE_SPAN = { '1h': 'hour', '24h': '24h', '7d': '7d', '30d': '30d' };
+    // percent change against the same-length window just before; under 5% is flat
+    function renderDelta(id, cur, prev, span, { higherIsBetter, fmt }) {
+      const slot = document.getElementById(id);
+      if (!slot) return;
+      slot.replaceChildren();
+      if (!span || cur == null || prev == null || prev <= 0) return;
+      const pct = (cur / prev - 1) * 100;
+      const flat = Math.abs(pct) < 5;
+      const up = pct > 0;
+      const badge = document.createElement('span');
+      badge.className = 'delta ' + (flat ? 'flat' : up === higherIsBetter ? 'good' : 'bad');
+      const shown = Math.abs(pct) >= 1000 ? '>999%' : Math.abs(pct).toFixed(Math.abs(pct) < 10 ? 1 : 0) + '%';
+      badge.innerHTML = ICONS[flat ? 'flat' : up ? 'up' : 'down'];
+      badge.append(shown);
+      const words = (flat ? 'about level' : (up ? 'up ' : 'down ') + shown) + ' from ' + fmt(prev) + ' the previous ' + (span === 'hour' ? 'hour' : span);
+      badge.title = words; badge.setAttribute('aria-label', words);
+      const vs = document.createElement('span'); vs.className = 'delta-vs'; vs.textContent = 'vs prev ' + span;
+      slot.append(badge, vs);
+    }
     function applyActivityRange(range) {
       document.querySelectorAll('#activity-range button')
         .forEach(b => b.classList.toggle('active', b.dataset.range === range));
@@ -1762,6 +1907,13 @@ export function statsPage(d: StatsData): string {
       const cached = cacheHits > 0 ? cacheMs / cacheHits : 0;
       cachedLatency.innerHTML = (cacheHits > 0 ? cached.toFixed(1) : '—') + ' <small>ms</small>';
       coldLatency.innerHTML = (searches > 0 ? cold.toFixed(0) : '—') + ' <small>ms</small>';
+      const { recent, prev } = ACTIVITY[range] || {};
+      const span = RANGE_SPAN[range];
+      const count = t => t.searches + t.cacheHits;
+      const avg = (ms, n) => n > 0 ? ms / n : null;
+      renderDelta('searches-delta', recent && count(recent), prev && count(prev), span, { higherIsBetter: true, fmt: n => n.toLocaleString() + ' searches' });
+      renderDelta('cached-delta', recent && avg(recent.cacheMs, recent.cacheHits), prev && avg(prev.cacheMs, prev.cacheHits), span, { higherIsBetter: false, fmt: n => n.toFixed(1) + ' ms' });
+      renderDelta('cold-delta', recent && avg(recent.totalMs, recent.searches), prev && avg(prev.totalMs, prev.searches), span, { higherIsBetter: false, fmt: n => Math.round(n) + ' ms' });
 
       window.__setTsRange?.(range);
     }

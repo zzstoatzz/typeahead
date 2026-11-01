@@ -4,6 +4,7 @@ import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
 import { recordSnapshot, materializeStats } from "./enrichment";
 import { recordExclusions } from "./exclusions";
+import { recordProfile } from "./stats-profile";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
@@ -68,6 +69,7 @@ export default {
         if (counted) console.log(JSON.stringify({ event: "exclusions_recorded", ...counted }));
       }],
       ["materializeStats", () => materializeStats(db, env)],
+      ["recordProfile", async () => { await recordProfile(db, env.KV); }],
       ["refreshModeration", () => refreshModeration(db, env)],
       // no enrichment here. The identity + profile passes that used to run
       // last were killed by the 15-minute wall in 120 of 140 runs
