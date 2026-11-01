@@ -2,6 +2,14 @@ import { allowedRoute, readRoute, routeHintRecord, sharedHintsAllowed, speculati
 import { HINT_CACHE, readSharedHint, rememberSharedHint, forgetSharedHint } from "./shared-route-hint";
 import { validatedSearch } from "./validated-search";
 
+export { RouteAuthority } from "./route-authority";
+
+// without the binding (isolated harnesses) each isolate reads R2 itself, as before
+function routeSource(env: SearchTransportEnv) {
+  const authority: SearchTransportEnv["ROUTE_AUTHORITY"] | undefined = env.ROUTE_AUTHORITY;
+  return authority?.get(authority.idFromName("route"), { locationHint: "enam" });
+}
+
 const origins = new Set([
   "https://typeahead-search-compact.fly.dev",
   "https://typeahead-search.fly.dev",
@@ -19,7 +27,7 @@ export default {
       return new Response("Not found", { status: 404 });
     }
     if (request.method === "GET" && url.pathname === "/search") {
-      const current = readRoute(env.SEARCH_CONTROL, true);
+      const current = readRoute(env.SEARCH_CONTROL, true, routeSource(env));
       const memoryHint = speculativeRoute();
       const cache = Promise.resolve().then(() => caches.open(HINT_CACHE)).catch(() => undefined);
       const hint = memoryHint ?? (sharedHintsAllowed() ? cache.then(value => value ? readSharedHint(value) : undefined) : undefined);

@@ -110,7 +110,7 @@ try {
       const route = ${JSON.stringify(a)} as const;
       export default { fetch() { return validatedSearch(Promise.resolve(route), route,
         (_route, signal) => fetch('http://127.0.0.1:${address.port}/search', { signal })); } };`);
-    execFileSync('bun', ['build', entry, '--target', 'browser', '--outfile', bundle], { stdio: 'pipe' });
+    execFileSync('bun', ['build', entry, '--target', 'browser', '--external', 'cloudflare:workers', '--outfile', bundle], { stdio: 'pipe' });
     const direct = new Miniflare({ modules: true, script: readFileSync(bundle, 'utf8'), compatibilityDate: '2024-12-01' });
     try {
       response = await direct.dispatchFetch('https://fixture.invalid/search');

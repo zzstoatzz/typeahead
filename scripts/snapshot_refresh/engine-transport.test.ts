@@ -8,7 +8,7 @@ test("engine route conditional promotion and rollback use isolated filesystem-ba
   const directory = await mkdtemp(join(tmpdir(), "typeahead-engine-route-"));
   const entry = join(directory, "worker.ts");
   await writeFile(entry, `import transport from ${JSON.stringify(resolve("src/search-transport.ts"))}; import {conditionalRouteUpdate,ROUTE_KEY} from ${JSON.stringify(resolve("src/search-route.ts"))};export default {async fetch(r,e,c){if(new URL(r.url).pathname==='/__control'){if(r.method==='POST'){const ok=await conditionalRouteUpdate(e.SEARCH_CONTROL,r.headers.get('If-Match'),await r.json());return Response.json({ok},{status:ok?200:409})}const x=await e.SEARCH_CONTROL.get(ROUTE_KEY);return x?new Response(x.body,{headers:{ETag:x.etag}}):new Response(null,{status:404})}const u=new URL(r.url);u.protocol="https:";u.host="typeahead-search-transport.n8-3e9.workers.dev";u.port="";return transport.fetch(new Request(u,r),e,c)}}`);
-  const built = await Bun.build({ entrypoints: [entry], target: "browser" });
+  const built = await Bun.build({ entrypoints: [entry], target: "browser", external: ["cloudflare:workers"] });
   if (!built.success) throw new Error(built.logs.join("\n"));
   const mf = new Miniflare({ r2Persist: join(directory, "r2"), workers: [
     { name: "transport", script: await built.outputs[0].text(), modules: true, compatibilityDate: "2026-10-29", r2Buckets: ["SEARCH_CONTROL"], outboundService: "origin" },

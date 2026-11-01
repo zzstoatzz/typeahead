@@ -33,7 +33,7 @@ try {
       await Promise.all(tasks);
       return response;
     } };`);
-  execFileSync('bun', ['build', entry, '--target', 'browser', '--outfile', bundle], { stdio: 'pipe' });
+  execFileSync('bun', ['build', entry, '--target', 'browser', '--external', 'cloudflare:workers', '--outfile', bundle], { stdio: 'pipe' });
   mf = new Miniflare({ modules: true, script: readFileSync(bundle, 'utf8'), compatibilityDate: '2024-12-01', compatibilityFlags: ['nodejs_compat'], d1Databases: ['DB'],
     outboundService: request => { assert(new URL(request.url).origin === origin); return fetch(request.url, { method: request.method, headers: request.headers, signal: request.signal }); },
   });

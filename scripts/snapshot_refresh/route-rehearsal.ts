@@ -34,7 +34,7 @@ const value=await e.SEARCH_CONTROL.get(ROUTE_KEY);return value?new Response(valu
 return transport.fetch(r,e,c)}}`);
   async function bundle(entry: string) {
     const output = entry + ".mjs";
-    execFileSync("bun", ["build", entry, "--target", "browser", "--outfile", output], { stdio: "pipe", timeout: 10000 });
+    execFileSync("bun", ["build", entry, "--target", "browser", "--external", "cloudflare:workers", "--outfile", output], { stdio: "pipe", timeout: 10000 });
     return readFile(output, "utf8");
   }
   return { publicScript: await bundle(publicEntry), transportScript: await bundle(transportEntry) };

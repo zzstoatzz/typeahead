@@ -125,8 +125,35 @@ export function speculativeRoute() {
   return undefined;
 }
 
-export async function readRoute(bucket: R2Bucket, cache: boolean) {
+/** a source of routes already validated against R2, such as RouteAuthority */
+export type RouteSource = { current(): Promise<{ route: ReturnType<typeof parseRoute>; validatedAt: number }> };
+
+/** past this, a search stops waiting for the shared copy and reads R2 itself */
+export const SHARED_ROUTE_WAIT_MS = 50;
+
+function within<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("Shared route timed out")), ms)));
+  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
+}
+
+export async function readRoute(bucket: Pick<R2Bucket, "get">, cache: boolean, source?: RouteSource) {
   if (cache && cachedRoute && Date.now() < cachedRoute.expiresAt) return cachedRoute.route;
+  if (cache && source) {
+    try {
+      // the shared copy keeps the same lifetime from its own R2 read; it only
+      // saves this isolate the wait. Any failure falls back to R2 below.
+      const { route: shared, validatedAt: claimed } = await within(source.current(), SHARED_ROUTE_WAIT_MS);
+      const validatedAt = Math.min(claimed, Date.now());
+      if (Date.now() - validatedAt >= 1000) throw new Error("Shared route expired");
+      const route = parseRoute({ version: 1, current: shared });
+      cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
+      sharedHintsEnabled = true;
+      return route;
+    } catch {
+      // fall through to this isolate's own read
+    }
+  }
   const before = cachedRoute;
   try {
     const object = await bucket.get(ROUTE_KEY);

@@ -57,7 +57,7 @@ try {
       }
       return worker.fetch(request, env, ctx);
     } };`);
-  execFileSync('bun', ['build', entry, '--target', 'browser', '--outfile', bundle], { stdio: 'pipe' });
+  execFileSync('bun', ['build', entry, '--target', 'browser', '--external', 'cloudflare:workers', '--outfile', bundle], { stdio: 'pipe' });
   const start = () => new Miniflare({
     name: 'transport-shared-hint-fixture', modules: true, script: readFileSync(bundle, 'utf8'), compatibilityDate: '2024-12-01',
     r2Buckets: ['SEARCH_CONTROL'], r2Persist: join(temporary, 'r2'), cachePersist: join(temporary, 'cache'),
