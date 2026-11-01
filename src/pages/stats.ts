@@ -2,6 +2,7 @@ import { FAVICON } from "../types";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, CARD_VERSION } from "./theme";
 import { escHtml as esc } from "../utils";
 import type { SearchExclusions } from "../exclusions";
+import { SOURCE_BRANDS } from "./source-brands";
 
 export interface SnapshotPoint {
   ts: number;  // millisecond timestamp
@@ -325,9 +326,7 @@ export function statsPage(d: StatsData): string {
        and the donut did not. */
     #pie { display: block; margin: 0 auto; width: 280px; height: 280px;
            touch-action: pan-y; cursor: pointer; }
-    #pie-breadcrumb { display: flex; align-items: center; gap: 0.3rem; height: 36px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
-    #pie-breadcrumb button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 0.65rem; padding: 0.4rem 0.3rem; cursor: pointer; flex-shrink: 0; }
-    #pie-breadcrumb button[aria-current] { color: var(--text); }
+    .pie-position { display: flex; align-items: center; justify-content: center; height: 36px; color: var(--muted); font-size: 0.65rem; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pie-help { display: flex; justify-content: space-between; gap: 0.5rem; color: var(--muted); font-size: 0.6rem; margin-top: 0.6rem; }
     .pie-stage { position: relative; }
     .source-detail { position: absolute; inset: 26%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center; pointer-events: none; }
@@ -338,15 +337,14 @@ export function statsPage(d: StatsData): string {
     .source-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
     .source-heading a { font-size: 0.65rem; color: var(--muted); white-space: nowrap; }
     .source-context { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.6rem; }
-    #pie-breadcrumb[hidden] { display: none; }
     #pie .pie-segment { cursor: pointer; outline: none; }
     #pie .pie-face { stroke: var(--panel); stroke-width: 0.6; transition: opacity 100ms ease; }
     #pie .pie-segment:hover .pie-face, #pie .pie-segment:focus-visible .pie-face { filter: brightness(1.12); }
     #pie .pie-segment:focus-visible .pie-face { stroke: var(--text); stroke-width: 1.5; }
-    #pie-explore, #pie-back { min-height: 44px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0.4rem 0.6rem; background: var(--panel-2); color: var(--text); font: inherit; cursor: pointer; }
-    #pie-explore[hidden], #pie-back[hidden], #pie-hint[hidden] { display: none; }
+    #pie-smaller, #pie-larger { min-height: 44px; border: 1px solid var(--line-2); border-radius: 8px; padding: 0.4rem 0.6rem; background: var(--panel-2); color: var(--text); font: inherit; cursor: pointer; }
+    #pie-smaller[hidden], #pie-larger[hidden], #pie-hint[hidden] { display: none; }
     .pie-help { align-items: center; justify-content: center; }
-    .pie-help:has(#pie-back:not([hidden])) { justify-content: space-between; }
+    .pie-help:has(#pie-larger:not([hidden])) { justify-content: space-between; }
     #pie .pie-segment[aria-pressed="true"] .pie-face { stroke: var(--text); stroke-width: 1.5; }
     #source-list button[aria-pressed="true"]::after { content: "✓"; color: var(--text); }
     #pie text, #pie image, #pie .pie-logo { pointer-events: none; }
@@ -583,9 +581,9 @@ export function statsPage(d: StatsData): string {
       <div class="source-heading"><h2>traffic sources</h2><a href="#traffic-chart">View activity ↑</a></div>
       <div class="source-context">${trafficGrandTotal.toLocaleString()} requests · ${d.trafficSources.length} apps</div>
       ${d.trafficSources.length > 0
-        ? `<nav id="pie-breadcrumb" aria-label="Traffic source depth"></nav>
-           <div class="pie-stage"><svg id="pie" viewBox="0 0 400 400" role="group" aria-label="Traffic sources. Select a source to compare, or zoom into smaller sources."></svg><div class="source-detail" id="source-detail" aria-live="polite"></div></div>
-           <div class="pie-help"><button type="button" id="pie-back" hidden>← Back to top apps</button><button type="button" id="pie-explore" hidden></button></div>
+        ? `<div id="pie-position" class="pie-position" aria-live="polite"></div>
+           <div class="pie-stage"><svg id="pie" viewBox="0 0 400 400" role="group" aria-label="Traffic sources. Select a source to compare, or step through smaller sources with the arrow keys."></svg><div class="source-detail" id="source-detail" aria-live="polite"></div></div>
+           <div class="pie-help"><button type="button" id="pie-larger" hidden>← larger</button><button type="button" id="pie-smaller" hidden></button></div>
            <div class="source-tools"><input type="search" id="source-search" placeholder="Find an app" aria-label="Find an app" autocomplete="off"><button type="button" id="source-toggle" aria-controls="source-list" aria-expanded="false"${d.trafficSources.length <= 12 ? ' hidden' : ''}>Show all</button></div>
            <div id="source-list" aria-label="All apps">${sourcePills}</div>
            <p id="source-empty" hidden>No matching apps</p>
@@ -1026,14 +1024,26 @@ export function statsPage(d: StatsData): string {
       tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, step, toY, series };
       renderTotals();
     }
-    const brandNamespaces = { 'plyr.fm': 'fm.plyr', 'bsky38.com': 'com.bsky38', 'marque.at': 'at.marque', 'standard-reader.app': 'app.standard-reader', 'userinput.app': 'app.userinput', 'youandme.at': 'at.youandme' };
+    const SOURCE_BRANDS = ${jsonScript(SOURCE_BRANDS)};
     const failedLogos = new Set();
-    function sourceIconUrls(domain) {
+    function sourceHost(domain) {
       if (!domain || !/^[a-z0-9-]+(?:\\.[a-z0-9-]+)+$/i.test(domain)) return null;
       if (/\\.(?:localhost|local|internal|test|invalid|ts\\.net)$/i.test(domain) || /^[0-9.]+$/.test(domain)) return null;
-      const favicon = domain === 'northsky.app' ? 'https://northsky.app/static/apple-touch-icon.png' : 'https://' + domain + '/favicon.ico';
-      const namespace = brandNamespaces[domain];
-      return [namespace ? 'https://brand.waow.tech/xrpc/tech.waow.brand.getIcon?namespace=' + encodeURIComponent(namespace) : favicon, favicon];
+      return domain;
+    }
+    // [preferred, fallback]: the brand list's icon, then the host's favicon.ico
+    function sourceIconUrls(domain) {
+      const brand = Object.hasOwn(SOURCE_BRANDS, domain) ? SOURCE_BRANDS[domain] : null;
+      const host = sourceHost(domain);
+      const favicon = host ? 'https://' + host + '/favicon.ico' : null;
+      if (brand) return [brand.icon, favicon ?? brand.icon];
+      return favicon ? [favicon, favicon] : null;
+    }
+    function sourceSite(domain) {
+      const brand = Object.hasOwn(SOURCE_BRANDS, domain) ? SOURCE_BRANDS[domain] : null;
+      if (brand?.site) return brand.site;
+      const host = sourceHost(domain);
+      return host ? 'https://' + host : null;
     }
     function sourceLogo(domain) {
       const urls = sourceIconUrls(domain);
@@ -1421,8 +1431,9 @@ export function statsPage(d: StatsData): string {
       const share = document.createElement('span'); share.className = 'detail-count';
       const percent = row ? row.hits / trafficGrandTotal * 100 : 0;
       share.textContent = row ? (percent > 0 && percent < 0.1 ? '<0.1' : percent.toFixed(1)) + '% of all traffic' : scoped ? (total / trafficGrandTotal * 100).toFixed(2) + '% of all traffic' : 'all-time requests'; detail.append(share);
-      if (row && /^[a-z0-9-]+(?:\\.[a-z0-9-]+)+$/i.test(row.domain)) {
-        const link = document.createElement('a'); link.href = 'https://' + row.domain;
+      const site = row ? sourceSite(row.domain) : null;
+      if (site) {
+        const link = document.createElement('a'); link.href = site;
         link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Visit website ↗'; detail.append(link);
       }
     }
@@ -1496,7 +1507,14 @@ export function statsPage(d: StatsData): string {
       const rootRows = allTraffic.filter(row => row.hits > 0);
       const rootSum = rootRows.reduce((sum, row) => sum + row.hits, 0);
       if (trafficGrandTotal > rootSum) rootRows.push({domain: 'unattributed remainder', hits: trafficGrandTotal - rootSum});
-      const stack = [{ rows: rootRows, title: 'All sources' }];
+      // The ring shows one window of the ranked sources at a time, drawn
+      // across the full ring. A window takes sources while each stays at least
+      // MIN_SHARE of it, so every slice has room for its icon. Only the first
+      // window adds a slice for everything smaller; later windows never put a
+      // tail slice beside the sources being inspected.
+      const PAGE = 12, MIN_SHARE = 0.025;
+      const offsets = [0];
+      let offset = 0, nextOffset = 0;
       let view = [];
       function svgNode(name, attrs = {}, text) {
         const el = document.createElementNS(SVGNS, name);
@@ -1521,75 +1539,106 @@ export function statsPage(d: StatsData): string {
         return 'M ' + first.join(' ') + ' A ' + r + ' ' + r + ' 0 ' + (b - a > Math.PI ? 1 : 0) + ' ' + (reverse ? 0 : 1) + ' ' + last.join(' ');
       }
       let renderedWidth = 0;
+      const MAX_ICON_PX = 32, MIN_ICON_PX = 12;
+      function addIcon(group, row, start, end, outer, inner, scale) {
+        const urls = sourceIconUrls(row.domain);
+        if (!urls) return;
+        const radius = (outer + inner) / 2;
+        // the icon is a square centred on the band: its half-diagonal must clear
+        // both band edges and the slice's own sides
+        const clearance = Math.min((outer - inner) / 2, radius * Math.sin(Math.min((end - start) / 2, Math.PI / 2)));
+        const size = Math.min(MAX_ICON_PX / scale, (clearance - 2 / scale) * Math.SQRT2);
+        if (size * scale < MIN_ICON_PX) return;
+        const [x, y] = point(radius, (start + end) / 2);
+        const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
+        const pad = Math.max(1, size * 0.08);
+        icon.append(svgNode('rect', {x: x - size / 2, y: y - size / 2, width: size, height: size, rx: size * 0.22, fill: 'var(--panel)'}));
+        const img = svgNode('image', {href: urls[0], x: x - size / 2 + pad, y: y - size / 2 + pad, width: size - pad * 2, height: size - pad * 2, preserveAspectRatio: 'xMidYMid meet'});
+        img.addEventListener('load', () => icon.setAttribute('opacity', '1'));
+        img.addEventListener('error', () => { if (img.getAttribute('href') !== urls[1]) img.setAttribute('href', urls[1]); else icon.remove(); });
+        icon.append(img); group.append(icon);
+      }
+      function windowEnd(at) {
+        let end = at + 1, sum = rootRows[at]?.hits ?? 0;
+        while (end < rootRows.length && end - at < PAGE) {
+          const hits = rootRows[end].hits;
+          if (hits / (sum + hits) < MIN_SHARE) break;
+          sum += hits; end++;
+        }
+        return end;
+      }
+      function windowAt(at) {
+        const end = windowEnd(at);
+        const rows = rootRows.slice(at, end).map(row => ({...row, rest: false}));
+        const tail = rootRows.slice(end);
+        if (at === 0 && tail.length) rows.push({domain: 'Smaller sources', hits: tail.reduce((sum, row) => sum + row.hits, 0), rest: true, count: tail.length});
+        return {rows, end};
+      }
+      function step(direction) {
+        if (direction > 0 && nextOffset < rootRows.length) { offsets.push(nextOffset); }
+        else if (direction < 0 && offsets.length > 1) { offsets.pop(); }
+        else return;
+        offset = offsets[offsets.length - 1]; renderPie();
+      }
       function renderPie() {
-        renderedWidth = pieCanvas.clientWidth;
-        const rows = stack[stack.length - 1].rows;
-        const total = rows.reduce((sum, row) => sum + row.hits, 0);
-        const tail = rows.slice(12);
-        view = rows.slice(0, 12).map(row => ({...row, rest: false}));
-        if (tail.length) view.push({domain: 'Smaller sources', hits: tail.reduce((sum, row) => sum + row.hits, 0), rest: true, rows: tail});
+        renderedWidth = pieCanvas.getBoundingClientRect().width;
+        const win = windowAt(offset);
+        view = win.rows; nextOffset = win.end;
+        const total = view.reduce((sum, row) => sum + row.hits, 0);
         pieCanvas.dataset.total = total;
-        pieCanvas.dataset.depth = stack.length - 1;
+        pieCanvas.dataset.offset = offset;
         pieCanvas.replaceChildren();
+        const scale = renderedWidth / 400;
+        const outer = 190, inner = 133;
         let angle = -Math.PI / 2;
         view.forEach(row => {
           const start = angle;
           const end = angle + row.hits / total * Math.PI * 2 - 0.00001;
           angle = end + 0.00001;
-          const mid = (start + end) / 2;
-          const outer = 190, inner = 133;
-          const group = svgNode('g', {class: 'pie-segment' + (row.rest ? ' tail' : ''), tabindex: 0, role: 'button', 'data-domain': row.domain, 'data-hits': row.hits, 'data-rest': row.rest, 'data-angle': mid,
-            'aria-label': row.rest ? 'Zoom into ' + row.rows.length + ' smaller sources, ' + row.hits.toLocaleString() + ' hits' : row.domain + ', ' + row.hits.toLocaleString() + ' hits, ' + (row.hits / total * 100).toFixed(1) + '% of this view',
+          const group = svgNode('g', {class: 'pie-segment' + (row.rest ? ' tail' : ''), tabindex: 0, role: 'button', 'data-domain': row.domain, 'data-hits': row.hits, 'data-rest': row.rest, 'data-angle': (start + end) / 2,
+            'aria-label': row.rest ? 'Show the ' + row.count + ' smaller sources, ' + row.hits.toLocaleString() + ' hits' : row.domain + ', ' + row.hits.toLocaleString() + ' hits, ' + (row.hits / total * 100).toFixed(1) + '% of this view',
             ...(row.rest ? {} : {'aria-pressed': String(tsDim === 'source' && pinned.includes(row.domain))})});
           const path = arcPath(outer, start, end) + ' L ' + point(inner, end).join(' ') + ' A ' + inner + ' ' + inner + ' 0 ' + (end - start > Math.PI ? 1 : 0) + ' 0 ' + point(inner, start).join(' ') + ' Z';
           group.append(svgNode('path', {d: path, class: 'pie-face', fill: row.rest ? 'var(--line-2)' : domainColor(row.domain), opacity: tsDim === 'source' && pinned.length && !pinned.includes(row.domain) && !row.rest ? 0.72 : 1}));
           group.append(svgNode('title', {}, group.getAttribute('aria-label')));
-          const scale = renderedWidth / 400;
-          const iconPixels = Math.min(24, (outer - inner) * scale * 0.6);
-          const size = iconPixels / scale;
-          const radius = (outer + inner) / 2;
-          const clearance = Math.min((outer - inner) / 2, radius * Math.sin(Math.min((end - start) / 2, Math.PI / 2)));
-          if (!row.rest && iconPixels >= 18 && size / Math.SQRT2 + 2 / scale <= clearance) {
-            const urls = sourceIconUrls(row.domain);
-            if (urls) {
-              const [x, y] = point(radius, mid);
-              const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
-              icon.append(svgNode('rect', {x: x - size / 2, y: y - size / 2, width: size, height: size, rx: 4 / scale, fill: 'var(--panel)'}));
-              const img = svgNode('image', {href: urls[0], x: x - size / 2 + 1 / scale, y: y - size / 2 + 1 / scale, width: size - 2 / scale, height: size - 2 / scale, preserveAspectRatio: 'xMidYMid meet'});
-              img.addEventListener('load', () => icon.setAttribute('opacity', '1'));
-              img.addEventListener('error', () => { if (img.getAttribute('href') !== urls[1]) img.setAttribute('href', urls[1]); else icon.remove(); });
-              icon.append(img); group.append(icon);
-            }
-          }
-
-          const activate = () => {
-            if (row.rest) { stack.push({rows: row.rows, title: row.rows.length + ' sources'}); renderPie(); }
+          if (!row.rest) addIcon(group, row, start, end, outer, inner, scale);
+          activateOnTap(group, () => {
+            if (row.rest) step(1);
             else { if (tsDim !== 'source') setDim('source'); applySelection(row.domain); }
-          };
-          activateOnTap(group, activate);
+          });
           pieCanvas.append(group);
         });
-        const back = document.getElementById('pie-back');
-        back.hidden = stack.length === 1;
-        back.onclick = () => { stack.splice(1); renderPie(); document.getElementById('pie-explore').focus({preventScroll: true}); };
-        const explore = document.getElementById('pie-explore');
-        explore.hidden = !tail.length;
-        explore.textContent = 'Explore ' + tail.length + ' more →';
-        explore.setAttribute('aria-label', 'Zoom into the remaining ' + tail.length + ' apps');
-        explore.onclick = () => { stack.push({rows: tail, title: tail.length + ' sources'}); renderPie(); };
-        const breadcrumb = document.getElementById('pie-breadcrumb'); breadcrumb.replaceChildren();
-        breadcrumb.hidden = stack.length === 1;
-        stack.forEach((level, i) => {
-          const button = document.createElement('button'); button.textContent = (i ? '› ' : '') + level.title;
-          if (i === stack.length - 1) button.setAttribute('aria-current', 'location');
-          button.addEventListener('click', () => { stack.splice(i + 1); renderPie(); }); breadcrumb.append(button);
-        });
+        const larger = document.getElementById('pie-larger');
+        larger.hidden = offset === 0;
+        larger.onclick = () => step(-1);
+        const smaller = document.getElementById('pie-smaller');
+        smaller.hidden = nextOffset >= rootRows.length;
+        smaller.textContent = 'smaller →';
+        smaller.setAttribute('aria-label', 'Show smaller sources, from rank ' + (nextOffset + 1));
+        smaller.onclick = () => step(1);
+        const position = document.getElementById('pie-position');
+        const share = view.filter(r => !r.rest).reduce((sum, r) => sum + r.hits, 0) / trafficGrandTotal * 100;
+        position.textContent = offset === 0 ? 'top ' + nextOffset + ' of ' + rootRows.length + ' sources'
+          : 'ranks ' + (offset + 1) + '–' + nextOffset + ' of ' + rootRows.length + ' · ' + (share < 0.01 ? '<0.01' : share.toFixed(2)) + '% of traffic';
         refreshPie();
       }
+      // a horizontal swipe on the ring steps between windows; vertical scroll stays native
+      let swipe = null;
+      pieCanvas.addEventListener('pointerdown', e => { if (e.isPrimary) swipe = {x: e.clientX, y: e.clientY}; });
+      pieCanvas.addEventListener('pointerup', e => {
+        const start = swipe; swipe = null;
+        if (!start) return;
+        const dx = e.clientX - start.x, dy = e.clientY - start.y;
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) step(dx < 0 ? 1 : -1);
+      });
+      pieCanvas.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight') { e.preventDefault(); step(1); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
+      });
       refreshPie = () => {
-        const rows = stack[stack.length - 1].rows;
-        const row = tsDim === 'source' ? rows.find(r => r.domain === inspectedSource) : null;
-        showSourceDetail(row, rows.reduce((sum, r) => sum + r.hits, 0), rows.length, stack.length > 1);
+        const row = tsDim === 'source' ? rootRows.find(r => r.domain === inspectedSource) ?? null : null;
+        const shown = offset === 0 ? rootRows : view;
+        showSourceDetail(row, shown.reduce((sum, r) => sum + r.hits, 0), shown.length, offset > 0);
         pieCanvas.querySelectorAll('.pie-segment[data-rest="false"]').forEach(group => {
           const selected = tsDim === 'source' && pinned.includes(group.dataset.domain);
           group.setAttribute('aria-pressed', String(selected));
@@ -1597,7 +1646,7 @@ export function statsPage(d: StatsData): string {
         });
       };
       renderPie();
-      new ResizeObserver(() => { if (Math.abs(pieCanvas.clientWidth - renderedWidth) > 1) renderPie(); }).observe(pieCanvas);
+      new ResizeObserver(() => { if (Math.abs(pieCanvas.getBoundingClientRect().width - renderedWidth) > 1) renderPie(); }).observe(pieCanvas);
     }
 
     /* --- activity: one range selector drives searches, latency, and the series --- */

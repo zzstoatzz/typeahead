@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { statsPage, type StatsData } from "./stats";
+import { SOURCE_BRANDS } from "./source-brands";
 
 function page(domains: string[], trafficAll?: StatsData["trafficAll"]): string {
   const trafficSources = domains.map((domain, i) => ({ domain, hits: 100 - i }));
@@ -19,10 +20,23 @@ describe("traffic source chart", () => {
   test("the source section has one chart and one app list, without a table", () => {
     const html = page(["plyr.fm", "unknown"]);
     expect(html).toContain('<svg id="pie"');
-    expect(html).toContain('id="pie-breadcrumb"');
+    expect(html).toContain('id="pie-position"');
+    expect(html).toContain('id="pie-smaller"');
     expect(html).toContain('id="source-list"');
     expect(html).not.toContain('<div class="pie-legend">');
     expect(html).not.toContain('<table class="ts-table"');
+  });
+});
+
+describe("source brands", () => {
+  test("every brand icon and site is https", () => {
+    for (const [name, brand] of Object.entries(SOURCE_BRANDS)) {
+      expect(brand.icon, name).toStartWith("https://");
+      if ("site" in brand) expect(brand.site, name).toStartWith("https://");
+    }
+  });
+  test("the page carries the brand list for client names", () => {
+    expect(page(["skytrace"])).toContain("https://skytrace.aly.town/icons/apple-touch-icon.png");
   });
 });
 
