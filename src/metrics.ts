@@ -119,6 +119,7 @@ export function endpointLabel(pathname: string): string {
   if (pathname === "/xrpc/app.bsky.actor.getProfiles" ||
       pathname === "/xrpc/app.bsky.actor.getProfile") return "getProfiles";
   if (pathname === "/request-indexing") return "request-indexing";
+  if (pathname === "/source-icon") return "source-icon";
   if (pathname === "/admin/ingest") return "admin/ingest";
   if (pathname === "/admin/delete") return "admin/delete";
   if (pathname.startsWith("/admin/identity/")) return "admin/identity";

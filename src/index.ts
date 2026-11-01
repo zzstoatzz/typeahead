@@ -14,6 +14,7 @@ import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet
 import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { handleOgImage, handleAppleTouchIcon, handleWebManifest } from "./handlers/og";
+import { handleSourceIcon } from "./handlers/source-icon";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
 import { indexPage } from "./pages/home";
@@ -236,6 +237,10 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
       return json({ error: "rate limited" }, 429);
     }
     return handleGetProfile(request, db, env, ctx);
+  }
+
+  if (pathname === "/source-icon" && request.method === "GET") {
+    return handleSourceIcon(request, db, ctx);
   }
 
   if (pathname === "/admin/ingest" && request.method === "POST") {

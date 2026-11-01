@@ -3,6 +3,7 @@ import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, CARD_VERSION } from "./theme";
 import { escHtml as esc } from "../utils";
 import type { SearchExclusions } from "../exclusions";
 import { SOURCE_BRANDS } from "./source-brands";
+import { SOURCE_COLOR_SCRIPT } from "./source-colors";
 
 export interface SnapshotPoint {
   ts: number;  // millisecond timestamp
@@ -908,10 +909,15 @@ export function statsPage(d: StatsData): string {
     const NAMED = new Set(traffic.filter(r => !r.rest).map(r => r.domain));
     const allTraffic = ${jsonScript(d.trafficSources)};
     const sourceDomains = allTraffic.map(r => r.domain);
+    // accents read from each app's icon (see source-colors.ts), remembered per browser
+    const COLOR_KEY = 'ta.sourceColors.v1';
+    const derivedColors = new Map();
+    try { for (const [k, v] of Object.entries(JSON.parse(localStorage.getItem(COLOR_KEY) || '{}'))) if (/^#[0-9a-f]{6}$/.test(v)) derivedColors.set(k, v); } catch (_) {}
     function domainColor(domain) {
       if (domain == null) return tok('--accent');
       if (domain === REST_KEY) return tok('--dim', '#8a938c');
       if (SPECIAL_SERIES[domain]) return SPECIAL_SERIES[domain];
+      if (derivedColors.has(domain)) return derivedColors.get(domain);
       const idx = sourceDomains.indexOf(domain);
       return idx >= 0 ? PIE_COLORS[idx % PIE_COLORS.length] : tok('--accent');
     }
@@ -1032,13 +1038,30 @@ export function statsPage(d: StatsData): string {
       if (/\\.(?:localhost|local|internal|test|invalid|ts\\.net)$/i.test(domain) || /^[0-9.]+$/.test(domain)) return null;
       return domain;
     }
-    // [preferred, fallback]: the brand list's icon, then the host's favicon.ico
-    function sourceIconUrls(domain) {
-      const brand = Object.hasOwn(SOURCE_BRANDS, domain) ? SOURCE_BRANDS[domain] : null;
-      const host = sourceHost(domain);
-      const favicon = host ? 'https://' + host + '/favicon.ico' : null;
-      if (brand) return [brand.icon, favicon ?? brand.icon];
-      return favicon ? [favicon, favicon] : null;
+    // same-origin, so its pixels can be read; the route tries the brand icon, then favicon.ico
+    function sourceIconUrl(domain) {
+      return Object.hasOwn(SOURCE_BRANDS, domain) || sourceHost(domain) ? '/source-icon?d=' + encodeURIComponent(domain) : null;
+    }
+    ${SOURCE_COLOR_SCRIPT}
+    const colorRequests = new Set();
+    let repaintSources = () => {};
+    let repaintQueued = false;
+    function learnColor(domain) {
+      if (derivedColors.has(domain) || colorRequests.has(domain) || SPECIAL_SERIES[domain]) return;
+      const url = sourceIconUrl(domain);
+      if (!url) return;
+      colorRequests.add(domain);
+      const img = new Image();
+      img.addEventListener('load', () => {
+        const color = deriveSourceColor(img);
+        if (!color) return;
+        derivedColors.set(domain, color);
+        try { localStorage.setItem(COLOR_KEY, JSON.stringify(Object.fromEntries(derivedColors))); } catch (_) {}
+        if (repaintQueued) return;
+        repaintQueued = true;
+        requestAnimationFrame(() => { repaintQueued = false; repaintSources(); });
+      }, { once: true });
+      img.src = url;
     }
     function sourceSite(domain) {
       const brand = Object.hasOwn(SOURCE_BRANDS, domain) ? SOURCE_BRANDS[domain] : null;
@@ -1047,8 +1070,8 @@ export function statsPage(d: StatsData): string {
       return host ? 'https://' + host : null;
     }
     function sourceLogo(domain) {
-      const urls = sourceIconUrls(domain);
-      if (!urls) return null;
+      const url = sourceIconUrl(domain);
+      if (!url) return null;
       const slot = document.createElement('span');
       slot.className = 'source-logo';
       slot.style.setProperty('--logo-color', domainColor(domain));
@@ -1057,10 +1080,9 @@ export function statsPage(d: StatsData): string {
       slot.append(img);
       if (failedLogos.has(domain)) return slot;
       img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
-      const [primary, favicon] = urls;
-      img.src = primary;
-      img.addEventListener('load', () => { img.style.visibility = 'visible'; slot.classList.add('loaded'); }, { once: true });
-      img.addEventListener('error', () => { if (img.src !== favicon) img.src = favicon; else failedLogos.add(domain); });
+      img.src = url;
+      img.addEventListener('load', () => { img.style.visibility = 'visible'; slot.classList.add('loaded'); learnColor(domain); }, { once: true });
+      img.addEventListener('error', () => failedLogos.add(domain), { once: true });
       return slot;
     }
     const sourceButtons = [...document.querySelectorAll('#source-list button[data-domain]')];
@@ -1540,21 +1562,22 @@ export function statsPage(d: StatsData): string {
         return 'M ' + first.join(' ') + ' A ' + r + ' ' + r + ' 0 ' + (b - a > Math.PI ? 1 : 0) + ' ' + (reverse ? 0 : 1) + ' ' + last.join(' ');
       }
       let renderedWidth = 0;
-      const MAX_ICON_PX = 32, MIN_ICON_PX = 12;
+      const MAX_ICON_PX = 32, MIN_ICON_PX = 8;
       function addIcon(group, row, start, end, outer, inner, scale) {
-        const urls = sourceIconUrls(row.domain);
-        if (!urls) return;
+        const url = sourceIconUrl(row.domain);
+        if (!url || failedLogos.has(row.domain)) return;
+        learnColor(row.domain);
         const radius = (outer + inner) / 2;
-        // the icon is a square centred on the band: its half-diagonal must clear
-        // both band edges and the slice's own sides
+        // the icon is a square centred on the band, as wide as the band and the
+        // slice's chord at that radius allow; a bare logo may touch the edges
         const clearance = Math.min((outer - inner) / 2, radius * Math.sin(Math.min((end - start) / 2, Math.PI / 2)));
-        const size = Math.min(MAX_ICON_PX / scale, (clearance - 2 / scale) * Math.SQRT2);
+        const size = Math.min(MAX_ICON_PX / scale, clearance * 1.7);
         if (size * scale < MIN_ICON_PX) return;
         const [x, y] = point(radius, (start + end) / 2);
         const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
-        const img = svgNode('image', {href: urls[0], x: x - size / 2, y: y - size / 2, width: size, height: size, preserveAspectRatio: 'xMidYMid meet'});
+        const img = svgNode('image', {href: url, x: x - size / 2, y: y - size / 2, width: size, height: size, preserveAspectRatio: 'xMidYMid meet'});
         img.addEventListener('load', () => icon.setAttribute('opacity', '1'));
-        img.addEventListener('error', () => { if (img.getAttribute('href') !== urls[1]) img.setAttribute('href', urls[1]); else icon.remove(); });
+        img.addEventListener('error', () => { failedLogos.add(row.domain); icon.remove(); });
         icon.append(img); group.append(icon);
       }
       function windowEnd(at) {
@@ -1643,6 +1666,15 @@ export function statsPage(d: StatsData): string {
           group.setAttribute('aria-pressed', String(selected));
           group.querySelector('.pie-face').setAttribute('opacity', tsDim === 'source' && pinned.length && !selected ? '0.72' : '1');
         });
+      };
+      repaintSources = () => {
+        renderPie();
+        for (const button of sourceButtons) {
+          const color = domainColor(button.dataset.domain);
+          button.querySelector('.source-logo')?.style.setProperty('--logo-color', color);
+          const dot = button.querySelector('.ldot'); if (dot) dot.style.background = color;
+        }
+        showSeries();
       };
       renderPie();
       new ResizeObserver(() => { if (Math.abs(pieCanvas.getBoundingClientRect().width - renderedWidth) > 1) renderPie(); }).observe(pieCanvas);

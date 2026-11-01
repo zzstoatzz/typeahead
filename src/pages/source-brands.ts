@@ -35,3 +35,9 @@ export const SOURCE_BRANDS = {
   "userinput.app": { icon: brandIcon("app.userinput") },
   "youandme.at": { icon: brandIcon("at.youandme") },
 } satisfies Record<string, SourceBrand>;
+
+const BRANDS = new Map<string, SourceBrand>(Object.entries(SOURCE_BRANDS));
+
+export function brandFor(source: string): SourceBrand | undefined {
+  return BRANDS.get(source);
+}
