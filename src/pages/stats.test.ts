@@ -229,15 +229,34 @@ describe("search exclusion tiles", () => {
     });
     expect(html).toContain("hidden by policy</div>\n        <div class=\"value\">2,650</div>");
     expect(html).toContain("invalid identity</div>\n        <div class=\"value\">1,778,331</div>");
-    expect(html).toContain("Counted 2026-11-01.");
+    expect(html).toContain("Counted daily, last on 2026-11-01.");
     expect(html).not.toContain("excluded from search");
+  });
+
+  test("every metric label explains itself the same way", () => {
+    const html = statsPage({
+      ...base,
+      exclusions: {
+        version: 2, as_of: "2026-11-01T09:00:00.000Z", policy_hidden: 2650,
+        stale_hidden_flags: 461, handle_invalid: 22549, quarantined: 1755782,
+      },
+    });
+    const labels = [...html.matchAll(/<div class="label"([^>]*)>([^<]+)<\/div>/g)];
+    expect(labels.length).toBe(7);
+    for (const [, attrs, name] of labels) {
+      expect(attrs, name).toContain('tabindex="0"');
+      expect(attrs, name).not.toContain("title=");
+      const tip = /data-tip="([^"]+)"/.exec(attrs)?.[1] ?? "";
+      expect(tip, name).toMatch(/^[A-Z].*\.$/);
+      expect(tip, name).not.toMatch(/\d,\d{3}/);
+    }
   });
 
   test("before the first daily count both tiles say pending", () => {
     const html = statsPage(base);
     expect(html).toContain("hidden by policy</div>\n        <div class=\"value\">pending</div>");
     expect(html).toContain("invalid identity</div>\n        <div class=\"value\">pending</div>");
-    expect(html).toContain("The daily count has not run yet.");
+    expect(html).toContain("Counted daily; the first count has not run yet.");
   });
 });
 

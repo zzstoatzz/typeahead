@@ -111,7 +111,7 @@ function ogTags(d: StatsData): string {
 
 export function statsPage(d: StatsData): string {
   const ex = d.exclusions;
-  const asOf = ex ? `Counted ${esc(ex.as_of.slice(0, 10))}.` : "The daily count has not run yet.";
+  const asOf = ex ? `Counted daily, last on ${esc(ex.as_of.slice(0, 10))}.` : "Counted daily; the first count has not run yet.";
   const sorted = [...d.rows].reverse(); // oldest first
   // Window by TIME, not bucket count: metric buckets are 5-min (hour*300 = unix
   // seconds) and SPARSE (only buckets with a search exist, ~64/day not 288), so
@@ -331,10 +331,12 @@ export function statsPage(d: StatsData): string {
     .lat-sep { opacity: 0.3; }
     .metric .label[data-tip] { cursor: default; position: relative; border-bottom: 1px dotted var(--faint); display: inline-block; }
     .metric .label[data-tip]:hover::after, .metric .label[data-tip]:focus::after {
-      content: attr(data-tip); position: absolute; left: 0; top: 1.6em; width: 200px;
+      content: attr(data-tip); position: absolute; left: 0; top: 1.6em; width: 180px;
       padding: 0.4rem 0.5rem; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 6px;
       font-size: 0.95em; color: var(--muted); line-height: 1.4; z-index: 20; white-space: normal;
     }
+    .summary-4 .metric:nth-child(even) .label[data-tip]::after,
+    .activity-metrics .metric:last-child .label[data-tip]::after { left: auto; right: 0; }
     .metric .value { font-size: 1.15rem; color: var(--text); }
 
     /* cursor:pointer is not decoration here — iOS Safari only synthesises a
@@ -549,19 +551,19 @@ export function statsPage(d: StatsData): string {
 
     <div class="summary summary-4">
       <div class="metric">
-        <div class="label" tabindex="0" data-tip="% of indexed actors with a resolved handle (vs bare DID only)">handle coverage</div>
+        <div class="label" tabindex="0" data-tip="Share of indexed actors with a handle, not only a DID.">handle coverage</div>
         <div class="value">${d.handlePct}%</div>
       </div>
       <div class="metric">
-        <div class="label" tabindex="0" data-tip="% of indexed actors with a profile image">avatar coverage</div>
+        <div class="label" tabindex="0" data-tip="Share of indexed actors with a profile picture.">avatar coverage</div>
         <div class="value">${d.avatarPct}%</div>
       </div>
       <div class="metric">
-        <div class="label" tabindex="0" data-tip="Actors search leaves out under our moderation policy: Bluesky moderation labels (!hide, !takedown, !suspend, spam), explicit slurs in handles, blocked domains and manual overrides. Labels reach us only when the refresh cron revisits an account, so this is what we act on, not how much moderation happens on the network. Accounts their host suspends or takes down are removed from the index and are not counted. ${asOf}">hidden by policy</div>
+        <div class="label" tabindex="0" data-tip="Actors left out of search by moderation labels, slurs in handles, blocked domains or manual overrides. ${asOf}">hidden by policy</div>
         <div class="value">${ex ? ex.policy_hidden.toLocaleString() : "pending"}</div>
       </div>
       <div class="metric">
-        <div class="label" tabindex="0" data-tip="Actors whose handle failed verification (${ex ? ex.handle_invalid.toLocaleString() : "pending"} handle.invalid) or claims a quarantined handle (${ex ? ex.quarantined.toLocaleString() : "pending"}, nearly all from one PLC spam wave). ${asOf}">invalid identity</div>
+        <div class="label" tabindex="0" data-tip="Actors left out of search because their handle failed verification or is quarantined. ${asOf}">invalid identity</div>
         <div class="value">${ex ? (ex.handle_invalid + ex.quarantined).toLocaleString() : "pending"}</div>
       </div>
     </div>
@@ -583,9 +585,9 @@ export function statsPage(d: StatsData): string {
         </span>
       </div>
       <div class="activity-metrics">
-        <div class="metric"><div class="label" id="searches-label">searches</div><div class="value" id="searches-value">${initialTotal.toLocaleString()}</div><div class="delta-slot" id="searches-delta"></div></div>
-        <div class="metric"><div class="label" title="Mean response time for cached searches at the edge">avg cached</div><div class="value" id="cached-latency">${d.avgCacheLatency.toFixed(1)} <small>ms</small></div><div class="delta-slot" id="cached-delta"></div></div>
-        <div class="metric"><div class="label" title="Mean response time for searches that miss the edge cache">avg cold</div><div class="value" id="cold-latency">${d.avgLatency.toFixed(0)} <small>ms</small></div><div class="delta-slot" id="cold-delta"></div></div>
+        <div class="metric"><div class="label" id="searches-label" tabindex="0" data-tip="Searches answered in the selected range, including cache hits.">searches</div><div class="value" id="searches-value">${initialTotal.toLocaleString()}</div><div class="delta-slot" id="searches-delta"></div></div>
+        <div class="metric"><div class="label" tabindex="0" data-tip="Mean response time of searches answered from the edge cache in the selected range.">avg cached</div><div class="value" id="cached-latency">${d.avgCacheLatency.toFixed(1)} <small>ms</small></div><div class="delta-slot" id="cached-delta"></div></div>
+        <div class="metric"><div class="label" tabindex="0" data-tip="Mean response time of searches that missed the edge cache in the selected range.">avg cold</div><div class="value" id="cold-latency">${d.avgLatency.toFixed(0)} <small>ms</small></div><div class="delta-slot" id="cold-delta"></div></div>
       </div>
       <div class="now-fact" id="now-fact" hidden></div>
       <!-- the series lives INSIDE this card, directly under the control that
@@ -1096,7 +1098,7 @@ export function statsPage(d: StatsData): string {
       judged.append(verdict);
       const usual = document.createElement('span'); usual.className = 'now-usual'; usual.textContent = 'usual ' + fmtUsual(band);
       fact.append(label, when, reading, judged, usual);
-      fact.title = 'Search traffic in the last complete hour, compared with the middle 80% of the same UTC hour over the last '
+      fact.title = 'Search cache misses in the last complete hour, compared with the middle 80% of the same UTC hour over the last '
         + PROFILE.days + ' days. It does not follow the range selector.';
       fact.hidden = false;
     }
@@ -1330,7 +1332,7 @@ export function statsPage(d: StatsData): string {
         comparison.textContent = ranked[0].name + ' ' + (ratio < 10 ? ratio.toFixed(2) : Math.round(ratio)) + '× ' + ranked[1].name;
         tseriesTotals.append(comparison);
       }
-      tseriesTotals.title = (tsDim === 'source' ? 'Search cache misses' : 'All answered requests') + ' in the plotted window. Requests, not people. Apps call at different rates.';
+      tseriesTotals.title = (tsDim === 'source' ? 'Search cache misses' : 'All answered requests') + ' in the plotted window, counted as requests.';
       const clear = document.getElementById('clear-series');
       clear.disabled = tsDim === 'source' && pinned.length === 0;
       clear.textContent = tsDim !== 'source' && pinned.length === 0 ? 'select all' : 'clear';
