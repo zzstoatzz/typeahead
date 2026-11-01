@@ -64,9 +64,12 @@ in operational counts; `X-Client: smoke-testing` is excluded from app/adoption c
   all of the quarantined count is one PLC spam wave: DIDs whose only operation
   claims the `trump.com` handles in `src/identity-quarantine.json`.
 
-Neither figure measures moderation across the network. Labels arrive only when
-the refresh cron revisits an account, and host suspensions and takedowns are
-deleted from the index rather than hidden. The quarantined count walks one
+Neither figure measures moderation across the network. Since 2026-11-01 the
+ingester records new Bluesky moderation labels from the labeler's stream (see
+`labels` in the ingester's `/health`); labels set before then still arrive only
+when the refresh cron revisits an account, until the one-time reconciliation
+runs. Host suspensions and takedowns are deleted from the index rather than
+hidden. The quarantined count walks one
 covering-index range of about 1.76M entries (about 4 s), which is why it runs
 daily, not hourly. Blocked-domain subdomains are counted only once a domain-block
 backfill has flagged them.

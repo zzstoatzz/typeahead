@@ -1,10 +1,12 @@
 # Label stream
 
-**Status, 2026-11-01:** step 1 (worker storage and write path) is deployed:
-worker smoke passed, the ingester applied migration 009, and a reconciliation of
-one spam-labelled account against `queryLabels` kept its self-label, rebuilt its
-Bluesky label and left it excluded from search. No consumer calls it yet and the
-stream cursor is unset. Steps 2–5 are proposals. Build order is at the end.
+**Status, 2026-11-01:** steps 1 and 2 are deployed. The worker stores labels
+(migration 009, `/admin/labels`), and the ingester's `label_tail.zig` follows
+`wss://mod.bsky.app` from the live head through zat's `LabelClient` (zat
+v0.6.3), committing the cursor with each batch. In its first minutes it advanced
+the cursor from 45272526 with no failures; the adopted labels it saw were on
+accounts we do not index, which the worker drops by design. Steps 3–5 are
+proposals. Build order is at the end.
 
 Moderation labels reach Typeahead only when a `getProfiles` call happens to
 revisit an account. Hidden accounts are never revisited, so a withdrawn label
@@ -174,7 +176,7 @@ Each step ships and is verified before the next.
    unit tests over hand-built labels in the decoded frame shape. Tests over
    recorded CBOR frames come with the consumer. **Deployed 2026-11-01.**
 2. Live consumer in the ingester, starting at head, with lag in `/health`.
-   Deploy order: worker, then ingester (which applies migration 009), then smoke.
+   **Deployed 2026-11-01.**
 3. One-time reconciliation as a cloud job: hidden accounts, then scored, then
    the rest.
 4. Label lookups for newly discovered accounts through a durable queue.

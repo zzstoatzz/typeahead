@@ -44,8 +44,10 @@ A Zig ingester follows the relay's `com.atproto.sync.subscribeRepos` firehose.
 It records account activity and profile changes in Turso. Identity signals —
 `#identity`, reactivated accounts, new accounts and PLC directory operations —
 become durable rows in an identity queue in Turso; the ingester drains it,
-resolving each handle and hosting server from the DID's authority. Separate
-enrichment workflows fill in profile information.
+resolving each handle and hosting server from the DID's authority. The ingester
+also follows Bluesky's moderation labeler (`com.atproto.label.subscribeLabels`)
+and records its labels on indexed accounts, committing the stream cursor with
+each batch. Separate enrichment workflows fill in profile information.
 Turso holds the actor records, ranking inputs and moderation state used to build
 and update the index.
 
