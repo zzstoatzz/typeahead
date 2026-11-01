@@ -16,6 +16,13 @@ lint:
     bunx oxlint --deny-warnings src
 
 
+# rehearse a route switch and rollback between an approved native origin and a
+# Tantivy slot: the Worker and R2 are local Miniflare, the backends receive at
+# most 16 GETs, and production routing is never written. The loopback test in
+# `just test` covers the same sequence without network access.
+rehearse-route-live config evidence:
+    bun scripts/snapshot_refresh/route-rehearsal-live.ts {{config}} {{evidence}}
+
 # what CI runs, locally
 check: typecheck lint test
     bunx wrangler deploy --dry-run
