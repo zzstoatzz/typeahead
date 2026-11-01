@@ -24,8 +24,8 @@ const PIE_COLORS = ['#14b8a6', '#3b82f6', '#a855f7', '#f59e0b', '#f43f5e', '#06b
 const SPECIAL = { unknown: '#94a3b8', homepage: '#64748b' } satisfies Record<string, string>;
 const isSpecial = (d: string): d is keyof typeof SPECIAL => Object.hasOwn(SPECIAL, d);
 
-const RANGE_SECS = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 } as const;
-const RANGE_LABEL = { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' } as const;
+const RANGE_SECS = { '1h': 3600, '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 } as const;
+const RANGE_LABEL = { '1h': 'last hour', '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' } as const;
 type Range = keyof typeof RANGE_SECS;
 const isRange = (r: string): r is Range => Object.hasOwn(RANGE_SECS, r);
 

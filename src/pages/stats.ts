@@ -43,8 +43,8 @@ export interface StatsData {
  */
 function ogTags(d: StatsData): string {
   const view = d.view ?? { apps: [], range: '7d', origin: 'https://typeahead.waow.tech' };
-  const RANGE_SECS = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 } as const;
-  const RANGE_WORDS = { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' } as const;
+  const RANGE_SECS = { '1h': 3600, '24h': 86400, '7d': 604800, '30d': 2592000, 'all': 2592000 } as const;
+  const RANGE_WORDS = { '1h': 'last hour', '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'all': 'last 30 days' } as const;
   type Range = keyof typeof RANGE_SECS;
   const isRange = (r: string): r is Range => Object.hasOwn(RANGE_SECS, r);
   const range: Range = isRange(view.range) ? view.range : '7d';
@@ -123,7 +123,7 @@ export function statsPage(d: StatsData): string {
   // 72% of a 1 MB page (762 KB, ~19k rows) and put the page's weight on a curve
   // that grows with the site's age: the query is LIMIT 100000, so left alone it
   // heads for several MB. Sixteen numbers instead.
-  const ACTIVITY_SECS = { '24h': 86400, '7d': 604800, '30d': 2592000, 'all': null } as const;
+  const ACTIVITY_SECS = { '1h': 3600, '24h': 86400, '7d': 604800, '30d': 2592000, 'all': null } as const;
   const activity: Record<string, { searches: number; cacheHits: number; totalMs: number; cacheMs: number }> = {};
   for (const [range, secs] of Object.entries(ACTIVITY_SECS)) {
     const a = { searches: 0, cacheHits: 0, totalMs: 0, cacheMs: 0 };
@@ -379,7 +379,7 @@ export function statsPage(d: StatsData): string {
     .activity-metrics small { font-size: 0.65rem; color: var(--muted); }
     #activity-period { color: var(--dim); font-size: 0.65rem; margin-left: 0.35rem; }
     .activity-wrap > .ranged-header { display: flex; flex-wrap: nowrap; gap: 0.5rem; }
-    #activity-range { display: grid; grid-template-columns: repeat(4, 1fr); }
+    #activity-range { display: grid; grid-template-columns: repeat(5, 1fr); }
     #activity-range button, #tseries-dim button { min-height: 34px; padding: 0.25rem 0.45rem; font-size: 0.65rem; border-color: transparent; }
     #activity-range, #tseries-dim { gap: 0; border: 1px solid var(--line); border-radius: 7px; padding: 2px; }
     #activity-range button.active, #tseries-dim button.active { border-color: var(--line-2); }
@@ -529,6 +529,7 @@ export function statsPage(d: StatsData): string {
       <div class="ranged-header">
         <h2>activity <span id="activity-period">7 days</span></h2>
         <span class="range-btns" id="activity-range">
+          <button data-range="1h">1h</button>
           <button data-range="24h">24h</button>
           <button data-range="7d" class="active">7d</button>
           <button data-range="30d">30d</button>
@@ -925,7 +926,8 @@ export function statsPage(d: StatsData): string {
     }
     let tsRange = '7d';
     // range picks both the window and the finest data that stays readable
-    const TS_RANGES = { '24h': { secs: 86400, stepSec: 300, grain: '5 min' },
+    const TS_RANGES = { '1h':  { secs: 3600, stepSec: 300, grain: '5 min' },
+                        '24h': { secs: 86400, stepSec: 300, grain: '5 min' },
                         '7d':  { secs: 604800, stepSec: 3600, grain: 'hourly' },
                         '30d': { secs: 2592000, stepSec: 3600, grain: 'hourly' },
                         // no window and no cap: daily rollups are kept forever
@@ -1736,7 +1738,7 @@ export function statsPage(d: StatsData): string {
     const ACTIVITY = ${activityJson}; // per-range totals, aggregated server-side
     // window by TIME (bucket is 5-min; hour*300 = unix seconds), not bucket
     // count — buckets are sparse so count-based slicing made 30d == all.
-    const RANGE_LABEL = { '24h': '24 hours', '7d': '7 days', '30d': '30 days', 'all': 'all time' };
+    const RANGE_LABEL = { '1h': '1 hour', '24h': '24 hours', '7d': '7 days', '30d': '30 days', 'all': 'all time' };
     // long windows aggregate 5-min buckets so the line stays readable
     const AGG_SECS = { '30d': 3600, 'all': 21600 };
     const AGG_LABEL = { 300: '5 min', 3600: 'hour', 21600: '6 h' };

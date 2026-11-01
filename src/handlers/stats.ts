@@ -4,6 +4,7 @@ import { html } from "../utils";
 import { TRAFFIC_SOURCE_WHERE } from "../metrics";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
 import { EXCLUSIONS_KEY, parseExclusions } from "../exclusions";
+import { tailQueries, tailStartBucket, withTail } from "../stats-tail";
 
 const EDGE_CACHE_TTL = 60; // seconds
 
@@ -17,7 +18,7 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   const reqUrl = new URL(request.url);
   const apps = (reqUrl.searchParams.get("apps") ?? "")
     .split(",").map((s) => s.trim()).filter(Boolean).slice(0, 8);
-  const range = ["24h", "7d", "30d", "all"].includes(reqUrl.searchParams.get("range") ?? "")
+  const range = ["1h", "24h", "7d", "30d", "all"].includes(reqUrl.searchParams.get("range") ?? "")
     ? reqUrl.searchParams.get("range")! : "7d";
   const norm = new URL("/stats", request.url);
   norm.searchParams.set("metric", "search-exclusions-v3");
@@ -47,14 +48,23 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
   // was LIMIT 50 until 2026-09-19, which silently dropped every source past
   // rank 50 from the page; the page now folds the tail behind a button
   // instead, and the LIMIT is only a ceiling on page size.
-  const [trafficRes, trafficAllRes] = await db.batch([
+  const trafficStart = tailStartBucket(kvData?.materialized_at);
+  const requestStart = tailStartBucket(reqData?.materialized_at);
+  const [trafficRes, trafficAllRes, metricsTail, traffic5mTail, trafficHourTail, request5mTail, requestHourTail] = await db.batch([
     db.prepare(`SELECT domain, hits FROM traffic_sources ${trafficWhere} ORDER BY hits DESC LIMIT 1000`),
     db.prepare(`SELECT count(*) AS domains, coalesce(sum(hits), 0) AS hits FROM traffic_sources ${trafficWhere}`),
+    ...tailQueries(db, trafficStart, requestStart),
   ], "read");
+  type Metric = StatsKvData["metrics"][number];
+  type Traffic5m = NonNullable<StatsKvData["traffic_series_5m"]>[number];
+  type TrafficHour = NonNullable<StatsKvData["traffic_series"]>[number];
+  type Request5m = NonNullable<RequestKvData["series_5m"]>[number];
+  type RequestHour = NonNullable<RequestKvData["series"]>[number];
 
   const tQuery = performance.now();
 
-  const rows = kvData?.metrics ?? [];
+  // metrics are newest-first; the series are oldest-first
+  const rows = [...rowsAs<Metric>(metricsTail?.results ?? []), ...(kvData?.metrics ?? []).filter((r) => r.hour < trafficStart)];
   const dbSnapshots = kvData?.snapshots ?? [];
   const trafficSources = rowsAs<{ domain: string; hits: number }>(trafficRes.results);
   const trafficAll = rowsAs<{ domains: number; hits: number }>(trafficAllRes.results)[0] ?? { domains: 0, hits: 0 };
@@ -106,8 +116,12 @@ export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: 
 
   const tProcess = performance.now();
 
-  const body = statsPage({ total, exclusions, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficAll, trafficSeries: kvData?.traffic_series ?? [], trafficSeries5m: kvData?.traffic_series_5m ?? [], trafficDaily: kvData?.traffic_daily ?? [],
-    requestSeries: reqData?.series ?? [], requestSeries5m: reqData?.series_5m ?? [], requestDaily: reqData?.daily ?? [],
+  const body = statsPage({ total, exclusions, rows, totalSearches, avgLatency, avgCacheLatency, handlePct, avatarPct, snapshots, trafficSources, trafficAll, trafficSeries: withTail(kvData?.traffic_series ?? [], rowsAs<TrafficHour>(trafficHourTail?.results ?? []), "hour", trafficStart / 12),
+    trafficSeries5m: withTail(kvData?.traffic_series_5m ?? [], rowsAs<Traffic5m>(traffic5mTail?.results ?? []), "bucket", trafficStart),
+    trafficDaily: kvData?.traffic_daily ?? [],
+    requestSeries: withTail(reqData?.series ?? [], rowsAs<RequestHour>(requestHourTail?.results ?? []), "hour", requestStart / 12),
+    requestSeries5m: withTail(reqData?.series_5m ?? [], rowsAs<Request5m>(request5mTail?.results ?? []), "bucket", requestStart),
+    requestDaily: reqData?.daily ?? [],
     view: { apps, range, origin: reqUrl.origin } });
 
   const tRender = performance.now();
