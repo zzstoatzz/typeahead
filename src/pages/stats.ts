@@ -350,6 +350,9 @@ export function statsPage(d: StatsData): string {
     #source-list button[aria-pressed="true"]::after { content: "✓"; color: var(--text); }
     #pie text, #pie image, #pie .pie-logo { pointer-events: none; }
     #pie .pie-logo image { filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45)); }
+    #pie .pie-tail-count { fill: var(--text); font-family: inherit; font-weight: 600; }
+    #pie .pie-tail-more { fill: var(--muted); font-family: inherit; }
+    #pie .pie-segment.tail:hover .pie-tail-more, #pie .pie-segment.tail:focus-visible .pie-tail-more { fill: var(--text); }
     @media (prefers-reduced-motion: reduce) { #pie .pie-face { transition: none; } }
     .traffic-series { margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
     .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
@@ -1580,6 +1583,16 @@ export function statsPage(d: StatsData): string {
         img.addEventListener('error', () => { failedLogos.add(row.domain); icon.remove(); });
         icon.append(img); group.append(icon);
       }
+      // the tail slice says what it holds and that it opens, instead of a blank wedge
+      function addTailLabel(group, row, start, end, outer, inner, scale) {
+        const radius = (outer + inner) / 2;
+        const chord = 2 * radius * Math.sin(Math.min((end - start) / 2, Math.PI / 2));
+        if (chord * scale < 36) return;
+        const [x, y] = point(radius, (start + end) / 2);
+        const px = 12 / scale;
+        group.append(svgNode('text', {class: 'pie-tail-count', x, y: y - px * 0.15, 'font-size': px * 1.15, 'text-anchor': 'middle', 'aria-hidden': 'true'}, '+' + row.count));
+        group.append(svgNode('text', {class: 'pie-tail-more', x, y: y + px * 1.05, 'font-size': px * 0.85, 'text-anchor': 'middle', 'aria-hidden': 'true'}, 'more →'));
+      }
       function windowEnd(at) {
         let end = at + 1, sum = rootRows[at]?.hits ?? 0;
         while (end < rootRows.length && end - at < PAGE) {
@@ -1624,6 +1637,7 @@ export function statsPage(d: StatsData): string {
           group.append(svgNode('path', {d: path, class: 'pie-face', fill: row.rest ? 'var(--line-2)' : domainColor(row.domain), opacity: tsDim === 'source' && pinned.length && !pinned.includes(row.domain) && !row.rest ? 0.72 : 1}));
           group.append(svgNode('title', {}, group.getAttribute('aria-label')));
           if (!row.rest) addIcon(group, row, start, end, outer, inner, scale);
+          else addTailLabel(group, row, start, end, outer, inner, scale);
           activateOnTap(group, () => {
             if (row.rest) step(1);
             else { if (tsDim !== 'source') setDim('source'); applySelection(row.domain); }
@@ -1635,7 +1649,7 @@ export function statsPage(d: StatsData): string {
         larger.onclick = () => step(-1);
         const smaller = document.getElementById('pie-smaller');
         smaller.hidden = nextOffset >= rootRows.length;
-        smaller.textContent = 'smaller →';
+        smaller.textContent = offset === 0 ? (rootRows.length - nextOffset) + ' more →' : 'smaller →';
         smaller.setAttribute('aria-label', 'Show smaller sources, from rank ' + (nextOffset + 1));
         smaller.onclick = () => step(1);
         const position = document.getElementById('pie-position');
