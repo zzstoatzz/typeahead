@@ -348,6 +348,7 @@ export function statsPage(d: StatsData): string {
     #pie .pie-segment[aria-pressed="true"] .pie-face { stroke: var(--text); stroke-width: 1.5; }
     #source-list button[aria-pressed="true"]::after { content: "✓"; color: var(--text); }
     #pie text, #pie image, #pie .pie-logo { pointer-events: none; }
+    #pie .pie-logo image { filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45)); }
     @media (prefers-reduced-motion: reduce) { #pie .pie-face { transition: none; } }
     .traffic-series { margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
     .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
@@ -1551,9 +1552,7 @@ export function statsPage(d: StatsData): string {
         if (size * scale < MIN_ICON_PX) return;
         const [x, y] = point(radius, (start + end) / 2);
         const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
-        const pad = Math.max(1, size * 0.08);
-        icon.append(svgNode('rect', {x: x - size / 2, y: y - size / 2, width: size, height: size, rx: size * 0.22, fill: 'var(--panel)'}));
-        const img = svgNode('image', {href: urls[0], x: x - size / 2 + pad, y: y - size / 2 + pad, width: size - pad * 2, height: size - pad * 2, preserveAspectRatio: 'xMidYMid meet'});
+        const img = svgNode('image', {href: urls[0], x: x - size / 2, y: y - size / 2, width: size, height: size, preserveAspectRatio: 'xMidYMid meet'});
         img.addEventListener('load', () => icon.setAttribute('opacity', '1'));
         img.addEventListener('error', () => { if (img.getAttribute('href') !== urls[1]) img.setAttribute('href', urls[1]); else icon.remove(); });
         icon.append(img); group.append(icon);
