@@ -267,7 +267,8 @@ def test_stats_page(base_url: str):
             check("stats contains actors indexed", "actors indexed" in body)
             check("stats contains sparkline heading", "searches / 5 min" in body)
             check("stats has home link", 'href="/"' in body)
-            check("stats shows search exclusions", "excluded from search" in body)
+            check("stats shows policy exclusions", "hidden by policy" in body)
+            check("stats shows identity exclusions", "invalid identity" in body)
     except urllib.error.HTTPError as e:
         check("stats returns 200", False, f"got {e.code}")
     except Exception as e:
@@ -602,6 +603,15 @@ def test_cron_selector_plans():
             "WHERE due_at <= unixepoch() ORDER BY due_at LIMIT 50",
             "idx_identity_queue_due",
         ),
+        # the daily exclusion count, as src/exclusions.ts builds both queries
+        "exclusion candidates use idx_actors_hidden": (
+            "EXPLAIN QUERY PLAN SELECT did, handle, labels FROM actors WHERE hidden != 0",
+            "idx_actors_hidden",
+        ),
+        "identity exclusion count uses idx_actors_handle": (
+            "EXPLAIN QUERY PLAN " + identity_count_sql(),
+            "idx_actors_handle",
+        ),
     }
     for label, (sql, index_name) in selectors.items():
         body = json.dumps({
@@ -624,9 +634,20 @@ def test_cron_selector_plans():
             continue
         plan = "; ".join(details)
         check(label,
-              any(f"USING INDEX {index_name}" in d for d in details)
-              and not any("TEMP B-TREE" in d.upper() for d in details),
+              any(f"INDEX {index_name}" in d for d in details)
+              and not any("TEMP B-TREE" in d.upper() for d in details)
+              and not any(d.startswith("SCAN actors") and "INDEX" not in d for d in details),
               plan)
+
+
+def identity_count_sql() -> str:
+    path = os.path.join(os.path.dirname(__file__), "..", "src", "identity-quarantine.json")
+    with open(path) as f:
+        handles = ", ".join("'" + h.lower().replace("'", "''") + "'" for h in json.load(f))
+    return (
+        "SELECT (SELECT COUNT(*) FROM actors WHERE handle = 'handle.invalid' COLLATE NOCASE) AS handle_invalid, "
+        f"(SELECT COUNT(*) FROM actors WHERE handle COLLATE NOCASE IN ({handles})) AS quarantined"
+    )
 
 
 def main():

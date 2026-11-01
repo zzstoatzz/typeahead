@@ -42,3 +42,9 @@ and unrelated transport fixtures, which currently fail. Real workerd containment
 and identity-verification fixtures passed, native tests passed with six platform
 skips, and both deployment smoke runs passed after updating the obsolete stats
 label assertion. Desktop and phone stats layout were visually checked.
+
+2026-11-01: the stats count landed without the offline audit. A daily worker
+cron step counts both groups through indexed queries, and /stats shows them as
+separate "hidden by policy" and "invalid identity" figures; see
+[search exclusion counts](../../operations.md#search-exclusion-counts). The
+bulk identity repair is still pending.

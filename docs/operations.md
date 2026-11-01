@@ -49,6 +49,28 @@ Cloudflare Browser Integrity Check exception and let origins control cache TTLs
 with Respect Existing Headers. Background errors and all search responses remain
 in operational counts; `X-Client: smoke-testing` is excluded from app/adoption counts.
 
+## Search exclusion counts
+
+`/stats` shows two figures from the daily `recordExclusions` cron step
+(`src/exclusions.ts`, KV `search_exclusions`), logged as `exclusions_recorded`:
+
+- **hidden by policy**: accounts the moderation rule excludes. The stored
+  `actors.hidden` flag only nominates candidates. Each one is re-evaluated with
+  `resolveHidden` — the rule Tantivy applies at query time — so flags set under
+  older rules are counted as `stale_hidden_flags`, not exclusions. The quality
+  walk selects `hidden = 0`, so the mod refresh never revisits a hidden row and
+  those flags do not clear on their own.
+- **invalid identity**: `handle.invalid` plus quarantined handle claims. Nearly
+  all of the quarantined count is one PLC spam wave: DIDs whose only operation
+  claims the `trump.com` handles in `src/identity-quarantine.json`.
+
+Neither figure measures moderation across the network. Labels arrive only when
+the refresh cron revisits an account, and host suspensions and takedowns are
+deleted from the index rather than hidden. The quarantined count walks one
+covering-index range of about 1.76M entries (about 4 s), which is why it runs
+daily, not hourly. Blocked-domain subdomains are counted only once a domain-block
+backfill has flagged them.
+
 ## Evidence and history
 
 - [October 31 recovery](ops/production-recovery-20261031/): verified full refresh,

@@ -4,7 +4,7 @@ import { statsPage, type StatsData } from "./stats";
 function page(domains: string[], trafficAll?: StatsData["trafficAll"]): string {
   const trafficSources = domains.map((domain, i) => ({ domain, hits: 100 - i }));
   const d: StatsData = {
-    total: 100, hiddenCount: 0, rows: [], totalSearches: 0,
+    total: 100, exclusions: null, rows: [], totalSearches: 0,
     avgLatency: 0, avgCacheLatency: 0, handlePct: "0", avatarPct: "0",
     snapshots: [],
     trafficSources,
@@ -56,7 +56,7 @@ describe("link previews", () => {
   ];
   const withView = (apps: string[]) => {
     const d: StatsData = {
-      total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+      total: 10, exclusions: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
       handlePct: "99.9", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
       trafficSeries: series, trafficSeries5m: [], trafficDaily: [],
       requestSeries: [], requestSeries5m: [], requestDaily: [],
@@ -98,7 +98,7 @@ describe("link previews", () => {
 describe("request slices", () => {
   const h = Math.floor(Date.now() / 3_600_000);
   const html = statsPage({
-    total: 10, hiddenCount: 0, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+    total: 10, exclusions: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
     handlePct: "0", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
     trafficSeries: [], trafficSeries5m: [], trafficDaily: [],
     requestSeries: [
@@ -195,5 +195,34 @@ describe("the long tail", () => {
     expect(sources).toHaveLength(130);
     for (let i = 0; i < many.length; i++) expect(sources[i]).toEqual({domain: many[i], hits: 100 - i});
     for (const domain of many) expect(html).toContain('data-domain="' + domain + '"');
+  });
+});
+
+describe("search exclusion tiles", () => {
+  const base: StatsData = {
+    total: 10, exclusions: null, rows: [], totalSearches: 0, avgLatency: 0, avgCacheLatency: 0,
+    handlePct: "0", avatarPct: "0", snapshots: [], trafficSources: [], trafficAll: { domains: 0, hits: 0 },
+    trafficSeries: [], trafficSeries5m: [], trafficDaily: [], requestSeries: [], requestSeries5m: [], requestDaily: [],
+  };
+
+  test("policy and identity exclusions are separate figures", () => {
+    const html = statsPage({
+      ...base,
+      exclusions: {
+        version: 2, as_of: "2026-11-01T09:00:00.000Z", policy_hidden: 2650,
+        stale_hidden_flags: 461, handle_invalid: 22549, quarantined: 1755782,
+      },
+    });
+    expect(html).toContain("hidden by policy</div>\n        <div class=\"value\">2,650</div>");
+    expect(html).toContain("invalid identity</div>\n        <div class=\"value\">1,778,331</div>");
+    expect(html).toContain("Counted 2026-11-01.");
+    expect(html).not.toContain("excluded from search");
+  });
+
+  test("before the first daily count both tiles say pending", () => {
+    const html = statsPage(base);
+    expect(html).toContain("hidden by policy</div>\n        <div class=\"value\">pending</div>");
+    expect(html).toContain("invalid identity</div>\n        <div class=\"value\">pending</div>");
+    expect(html).toContain("The daily count has not run yet.");
   });
 });

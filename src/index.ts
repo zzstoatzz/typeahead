@@ -3,6 +3,7 @@ import { CORS_HEADERS, FAVICON_SVG } from "./types";
 import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
 import { recordSnapshot, materializeStats } from "./enrichment";
+import { recordExclusions } from "./exclusions";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
@@ -60,6 +61,10 @@ export default {
         await env.KV.put("freshness", JSON.stringify({ ...f, at: Date.now() })).catch(() => {});
       }],
       ["recordSnapshot", () => recordSnapshot(db)],
+      ["recordExclusions", async () => {
+        const counted = await recordExclusions(db, env.KV);
+        if (counted) console.log(JSON.stringify({ event: "exclusions_recorded", ...counted }));
+      }],
       ["materializeStats", () => materializeStats(db, env)],
       ["refreshModeration", () => refreshModeration(db, env)],
       // no enrichment here. The identity + profile passes that used to run

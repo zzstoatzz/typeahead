@@ -1,6 +1,7 @@
 import { FAVICON } from "../types";
 import { THEME_HEAD, THEME_CSS, THEME_SCRIPT, CARD_VERSION } from "./theme";
 import { escHtml as esc } from "../utils";
+import type { SearchExclusions } from "../exclusions";
 
 export interface SnapshotPoint {
   ts: number;  // millisecond timestamp
@@ -11,8 +12,7 @@ export interface SnapshotPoint {
 
 export interface StatsData {
   total: number;
-  hiddenCount: number | null;
-  exclusionsAsOf?: string;
+  exclusions: SearchExclusions | null;
   rows: { hour: number; searches: number; total_ms: number; cache_hits: number; cache_ms: number }[];
   totalSearches: number;
   avgLatency: number;
@@ -105,6 +105,8 @@ function ogTags(d: StatsData): string {
 }
 
 export function statsPage(d: StatsData): string {
+  const ex = d.exclusions;
+  const asOf = ex ? `Counted ${esc(ex.as_of.slice(0, 10))}.` : "The daily count has not run yet.";
   const sorted = [...d.rows].reverse(); // oldest first
   // Window by TIME, not bucket count: metric buckets are 5-min (hour*300 = unix
   // seconds) and SPARSE (only buckets with a search exist, ~64/day not 288), so
@@ -297,6 +299,7 @@ export function statsPage(d: StatsData): string {
     .activity-wrap .metric { border: none; padding: 0; background: none; }
     .summary-2 { grid-template-columns: repeat(2, 1fr); }
     .summary-3 { grid-template-columns: repeat(3, 1fr); }
+    .summary-4 { grid-template-columns: repeat(4, 1fr); }
     .metric { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.8rem 0.9rem; }
     .metric .metric-head { display: flex; justify-content: space-between; align-items: center;
                            flex-wrap: wrap; gap: 0.4rem 0.5rem; margin-bottom: 0.2rem; }
@@ -437,7 +440,7 @@ export function statsPage(d: StatsData): string {
       body { padding-left: 0.75rem; padding-right: 0.75rem; }
       #trend { height: 170px; }
       .legend { gap: 0.8rem; font-size: 0.65rem; flex-wrap: wrap; }
-      .summary-2, .summary-3 { grid-template-columns: 1fr 1fr; }
+      .summary-2, .summary-3, .summary-4 { grid-template-columns: 1fr 1fr; }
       .summary-3 > :last-child { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
       #pie { width: 200px; height: 200px; }
       .tseries-plot { aspect-ratio: auto; height: 72px; }
@@ -496,7 +499,7 @@ export function statsPage(d: StatsData): string {
     </div>
     <div class="chart-tip" id="chart-tip"></div>
 
-    <div class="summary summary-3">
+    <div class="summary summary-4">
       <div class="metric">
         <div class="label" tabindex="0" data-tip="% of indexed actors with a resolved handle (vs bare DID only)">handle coverage</div>
         <div class="value">${d.handlePct}%</div>
@@ -506,8 +509,12 @@ export function statsPage(d: StatsData): string {
         <div class="value">${d.avatarPct}%</div>
       </div>
       <div class="metric">
-        <div class="label" tabindex="0" data-tip="Actors excluded by moderation or invalid identity, including quarantined handle claims. ${d.exclusionsAsOf ? `Audited ${esc(d.exclusionsAsOf)}.` : 'The offline audit is pending.'}">excluded from search</div>
-        <div class="value">${d.hiddenCount === null ? "Audit pending" : d.hiddenCount.toLocaleString()}</div>
+        <div class="label" tabindex="0" data-tip="Actors search leaves out under our moderation policy: Bluesky moderation labels (!hide, !takedown, !suspend, spam), explicit slurs in handles, blocked domains and manual overrides. Labels reach us only when the refresh cron revisits an account, so this is what we act on, not how much moderation happens on the network. Accounts their host suspends or takes down are removed from the index and are not counted. ${asOf}">hidden by policy</div>
+        <div class="value">${ex ? ex.policy_hidden.toLocaleString() : "pending"}</div>
+      </div>
+      <div class="metric">
+        <div class="label" tabindex="0" data-tip="Actors whose handle failed verification (${ex ? ex.handle_invalid.toLocaleString() : "pending"} handle.invalid) or claims a quarantined handle (${ex ? ex.quarantined.toLocaleString() : "pending"}, nearly all from one PLC spam wave). ${asOf}">invalid identity</div>
+        <div class="value">${ex ? (ex.handle_invalid + ex.quarantined).toLocaleString() : "pending"}</div>
       </div>
     </div>
 
