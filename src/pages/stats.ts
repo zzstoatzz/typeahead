@@ -350,7 +350,6 @@ export function statsPage(d: StatsData): string {
     #pie .pie-segment[aria-pressed="true"] .pie-face { stroke: var(--text); stroke-width: 1.5; }
     #source-list button[aria-pressed="true"]::after { content: "✓"; color: var(--text); }
     #pie text, #pie image, #pie .pie-logo { pointer-events: none; }
-    #pie .pie-logo image { filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45)); }
     #pie .pie-tail-count { fill: var(--text); font-family: inherit; font-weight: 600; }
     #pie .pie-segment.tail:hover .pie-face, #pie .pie-segment.tail:focus-visible .pie-face { fill: var(--dim); }
     @media (prefers-reduced-motion: reduce) { #pie .pie-face { transition: none; } }
@@ -1049,20 +1048,32 @@ export function statsPage(d: StatsData): string {
     const colorRequests = new Set();
     let repaintSources = () => {};
     let repaintQueued = false;
-    function learnColor(domain) {
-      if (derivedColors.has(domain) || colorRequests.has(domain) || SPECIAL_SERIES[domain]) return;
+    // per icon: the mark without its flat plate (null keeps the icon whole) and its luminance
+    const iconInfo = new Map();
+    function queueRepaint() {
+      if (repaintQueued) return;
+      repaintQueued = true;
+      requestAnimationFrame(() => { repaintQueued = false; repaintSources(); });
+    }
+    function learnIcon(domain) {
+      if (colorRequests.has(domain)) return;
       const url = sourceIconUrl(domain);
       if (!url) return;
       colorRequests.add(domain);
       const img = new Image();
       img.addEventListener('load', () => {
-        const color = deriveSourceColor(img);
-        if (!color) return;
-        derivedColors.set(domain, color);
-        try { localStorage.setItem(COLOR_KEY, JSON.stringify(Object.fromEntries(derivedColors))); } catch (_) {}
-        if (repaintQueued) return;
-        repaintQueued = true;
-        requestAnimationFrame(() => { repaintQueued = false; repaintSources(); });
+        if (!derivedColors.has(domain) && !SPECIAL_SERIES[domain]) {
+          const color = deriveSourceColor(img);
+          if (color) {
+            derivedColors.set(domain, color);
+            try { localStorage.setItem(COLOR_KEY, JSON.stringify(Object.fromEntries(derivedColors))); } catch (_) {}
+          }
+        }
+        const cut = knockoutIcon(img);
+        if (!cut) { iconInfo.set(domain, { cut: null, lum: iconLuminance(img) }); queueRepaint(); return; }
+        const mark = new Image();
+        mark.addEventListener('load', () => { iconInfo.set(domain, { cut, lum: iconLuminance(mark) }); queueRepaint(); }, { once: true });
+        mark.src = cut;
       }, { once: true });
       img.src = url;
     }
@@ -1084,7 +1095,7 @@ export function statsPage(d: StatsData): string {
       if (failedLogos.has(domain)) return slot;
       img.loading = 'lazy'; img.referrerPolicy = 'no-referrer';
       img.src = url;
-      img.addEventListener('load', () => { img.style.visibility = 'visible'; slot.classList.add('loaded'); learnColor(domain); }, { once: true });
+      img.addEventListener('load', () => { img.style.visibility = 'visible'; slot.classList.add('loaded'); learnIcon(domain); }, { once: true });
       img.addEventListener('error', () => failedLogos.add(domain), { once: true });
       return slot;
     }
@@ -1450,7 +1461,7 @@ export function statsPage(d: StatsData): string {
       const iconUrl = row && !failedLogos.has(row.domain) ? sourceIconUrl(row.domain) : null;
       if (iconUrl) {
         const logo = document.createElement('img');
-        logo.className = 'detail-logo'; logo.alt = ''; logo.width = 32; logo.height = 32; logo.src = iconUrl;
+        logo.className = 'detail-logo'; logo.alt = ''; logo.width = 32; logo.height = 32; logo.src = iconInfo.get(row.domain)?.cut ?? iconUrl;
         logo.addEventListener('error', () => logo.remove(), { once: true });
         detail.append(logo);
       }
@@ -1576,7 +1587,7 @@ export function statsPage(d: StatsData): string {
       function addIcon(group, row, start, end, outer, inner, scale) {
         const url = sourceIconUrl(row.domain);
         if (!url || failedLogos.has(row.domain)) return;
-        learnColor(row.domain);
+        learnIcon(row.domain);
         const radius = (outer + inner) / 2;
         // the icon is a square centred on the band: its half-diagonal must clear
         // both band edges and the slice's own sides, whatever the slice's angle
@@ -1585,7 +1596,9 @@ export function statsPage(d: StatsData): string {
         if (size <= 0) return;
         const [x, y] = point(radius, (start + end) / 2);
         const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
-        const img = svgNode('image', {href: url, x: x - size / 2, y: y - size / 2, width: size, height: size, preserveAspectRatio: 'xMidYMid meet'});
+        const info = iconInfo.get(row.domain);
+        if (info) icon.setAttribute('filter', 'url(#pie-halo-' + (info.lum > 0.55 ? 'dark' : 'light') + ')');
+        const img = svgNode('image', {href: info?.cut ?? url, x: x - size / 2, y: y - size / 2, width: size, height: size, preserveAspectRatio: 'xMidYMid meet'});
         img.addEventListener('load', () => icon.setAttribute('opacity', '1'));
         img.addEventListener('error', () => { failedLogos.add(row.domain); icon.remove(); });
         icon.append(img); group.append(icon);
@@ -1630,6 +1643,24 @@ export function statsPage(d: StatsData): string {
         pieCanvas.dataset.offset = offset;
         pieCanvas.replaceChildren();
         const scale = renderedWidth / 400;
+        // a hairline outline that follows each mark's own shape, plus a faint glow,
+        // light for dark marks and dark for light ones; sized in screen pixels
+        const defs = svgNode('defs');
+        for (const [name, ink] of [['light', '#ffffff'], ['dark', '#101312']]) {
+          const filter = svgNode('filter', {id: 'pie-halo-' + name, x: '-30%', y: '-30%', width: '160%', height: '160%'});
+          filter.append(
+            svgNode('feMorphology', {in: 'SourceAlpha', operator: 'dilate', radius: 0.6 / scale, result: 'grow'}),
+            svgNode('feFlood', {'flood-color': ink, 'flood-opacity': 0.85, result: 'ink'}),
+            svgNode('feComposite', {in: 'ink', in2: 'grow', operator: 'in', result: 'outline'}),
+            svgNode('feGaussianBlur', {in: 'grow', stdDeviation: 1.4 / scale, result: 'soft'}),
+            svgNode('feFlood', {'flood-color': ink, 'flood-opacity': 0.3, result: 'glowInk'}),
+            svgNode('feComposite', {in: 'glowInk', in2: 'soft', operator: 'in', result: 'glow'}));
+          const merge = svgNode('feMerge');
+          for (const input of ['glow', 'outline', 'SourceGraphic']) merge.append(svgNode('feMergeNode', {in: input}));
+          filter.append(merge);
+          defs.append(filter);
+        }
+        pieCanvas.append(defs);
         const outer = 190, inner = 133;
         let angle = -Math.PI / 2;
         view.forEach(row => {
