@@ -1,8 +1,10 @@
 # Label stream
 
-**Status, 2026-11-01:** step 1 (worker storage and write path) is
-committed and unit-tested, not deployed; nothing calls it yet. Steps 2–5 are
-proposals. Build order is at the end.
+**Status, 2026-11-01:** step 1 (worker storage and write path) is deployed:
+worker smoke passed, the ingester applied migration 009, and a reconciliation of
+one spam-labelled account against `queryLabels` kept its self-label, rebuilt its
+Bluesky label and left it excluded from search. No consumer calls it yet and the
+stream cursor is unset. Steps 2–5 are proposals. Build order is at the end.
 
 Moderation labels reach Typeahead only when a `getProfiles` call happens to
 revisit an account. Hidden accounts are never revisited, so a withdrawn label
@@ -170,7 +172,7 @@ Each step ships and is verified before the next.
 
 1. Worker storage and write path: migration 009, `src/account-labels.ts`,
    unit tests over hand-built labels in the decoded frame shape. Tests over
-   recorded CBOR frames come with the consumer. **Committed, not deployed.**
+   recorded CBOR frames come with the consumer. **Deployed 2026-11-01.**
 2. Live consumer in the ingester, starting at head, with lag in `/health`.
    Deploy order: worker, then ingester (which applies migration 009), then smoke.
 3. One-time reconciliation as a cloud job: hidden accounts, then scored, then
