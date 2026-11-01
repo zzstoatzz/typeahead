@@ -1545,9 +1545,7 @@ export function statsPage(d: StatsData): string {
       // MIN_SHARE of it, so every slice has room for its icon. Only the first
       // window adds a slice for everything smaller; later windows never put a
       // tail slice beside the sources being inspected.
-      // the top window is measured against the whole ring, where its tail slice
-      // already holds the rest; a 1% source there still reads as a named slice
-      const PAGE = 12, MIN_SHARE = 0.025, MIN_TOP_SHARE = 0.01;
+      const PAGE = 12, MIN_SHARE = 0.025;
       const offsets = [0];
       let offset = 0, nextOffset = 0;
       let view = [];
@@ -1605,7 +1603,7 @@ export function statsPage(d: StatsData): string {
         let end = at + 1, sum = rootRows[at]?.hits ?? 0;
         while (end < rootRows.length && end - at < PAGE) {
           const hits = rootRows[end].hits;
-          if (at === 0 ? hits / trafficGrandTotal < MIN_TOP_SHARE : hits / (sum + hits) < MIN_SHARE) break;
+          if (hits / (sum + hits) < MIN_SHARE) break;
           sum += hits; end++;
         }
         return end;
