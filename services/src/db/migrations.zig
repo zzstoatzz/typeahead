@@ -244,4 +244,15 @@ pub const migrations = [_]zug.Migration{
             "ALTER TABLE actors ADD COLUMN identity_resolved_at INTEGER NOT NULL DEFAULT 0",
         },
     },
+    // Bluesky moderation labels on indexed accounts, one row per
+    // (account, subject uri, value). `seq` is the label stream's sequence, 0
+    // for a reconciliation answer; a negation is kept as a row. The stream
+    // cursor lives in counters as 'label_stream_seq'. Turso-only, like 006.
+    .{
+        .id = "009_account_labels",
+        .name = "moderation labels from the label stream",
+        .statements = &.{
+            "CREATE TABLE IF NOT EXISTS account_labels (did TEXT NOT NULL, uri TEXT NOT NULL, val TEXT NOT NULL, cid TEXT, neg INTEGER NOT NULL DEFAULT 0, cts TEXT NOT NULL, exp TEXT, seq INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (did, uri, val))",
+        },
+    },
 };

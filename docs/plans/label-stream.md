@@ -1,6 +1,8 @@
 # Label stream
 
-**Status: proposal, 2026-11-01. Not implemented.**
+**Status, 2026-11-01:** step 1 (worker storage and write path) is
+committed and unit-tested, not deployed; nothing calls it yet. Steps 2–5 are
+proposals. Build order is at the end.
 
 Moderation labels reach Typeahead only when a `getProfiles` call happens to
 revisit an account. Hidden accounts are never revisited, so a withdrawn label
@@ -72,27 +74,49 @@ server-side filter. Per-DID queries are the way to touch only our accounts.
 ## Design
 
 **Live consumer.** A Zig task in the ingester, beside the PLC tail, reads the
-stream from the head seq recorded at cutover. It keeps labels from the adopted
-source whose subject is a DID or that DID's `app.bsky.actor.profile/self`, and
-posts batches with the last seq to an authenticated worker endpoint. The worker
-writes only rows for DIDs in `actors`; others are dropped. Live traffic is about
-2M small frames a month, so it is cheap to download in full.
+stream from the stored cursor (`GET /admin/labels/cursor`), or from the head
+when there is none. It keeps labels from the adopted source whose subject is a
+DID or that DID's `app.bsky.actor.profile/self`, every value included, and
+posts batches with the last seq to `POST /admin/labels`. The worker writes only
+rows for DIDs in `actors`; others are dropped. A malformed label is counted as
+ignored rather than failing the batch, so one bad frame cannot stall the
+stream. Live traffic is about 2M small frames a month, so it is cheap to
+download in full.
 
-**Storage.** A new table `account_labels(did, subject, val, neg, cts, exp, seq)`,
-one row per `(did, subject, val)`, where `subject` is `account` or `profile`.
-A negation is stored as a row, not a delete, so a delayed older assertion cannot
-resurrect it. Stream rows carry their seq; reconciliation rows carry seq 0. The
-same transaction:
+**What the stream owns.** `actors.labels` is also the label list search and
+profile responses serve. In a 20,000-row sample on 2026-11-01 most of it was
+self-labels from the profile record (`!no-unauthenticated` 18,015, bridgy
+markers, `bot`), with Bluesky's informational labels (`porn`, `nudity`) next.
+The stream owns only the entries whose `src` is Bluesky's moderation service;
+every other source's labels pass through untouched.
 
-1. upserts the batch where `excluded.seq >= account_labels.seq`, so a stream
-   row always wins over a reconciliation row;
-2. rewrites `actors.labels` from `account_labels` for the affected DIDs, with
-   `updated_at = unixepoch()` so Tantivy reconciles them;
-3. writes the cursor.
+**Storage.** Migration 009 adds `account_labels(did, uri, val, cid, neg, cts,
+exp, seq)`, one row per `(did, uri, val)`, where `uri` is the DID or its
+profile record. A negation is stored as a row, not a delete, so a delayed older
+assertion cannot resurrect it. Stream rows carry their seq; reconciliation rows
+carry seq 0. The cursor is `counters.label_stream_seq` and only moves forward.
+For each account, one transaction:
+
+1. upserts its labels where `excluded.seq >= account_labels.seq`, so a stream
+   row always wins over a reconciliation row and an older frame never
+   overwrites a newer one;
+2. rewrites Bluesky moderation's share of `actors.labels` from its non-negated
+   rows, with `updated_at = unixepoch()` so Tantivy reconciles it, only when
+   the result differs.
+
+The cursor commits with the batch's last transaction, so a failure replays the
+batch and replaying rewrites the same rows. The stored `hidden` flag is then
+recomputed through `resolveHidden` for the affected accounts.
+
+Until the serving rule changes (step 5), a profile-record label still hides an
+account exactly as it does today; the stream changes where labels come from,
+not what they mean.
 
 **Reconciliation.** A one-time cloud job (Prefect, not HeavyPad) walks indexed
-DIDs by rowid, 100 per `queryLabels` call, paced, and writes current state at
-seq 0. It skips `handle.invalid` and quarantined rows (1.78M, most of the spam
+DIDs by rowid, 100 per `queryLabels` call, paced, and posts each answer with
+the DIDs it asked about to `POST /admin/labels/reconcile`. The worker folds the
+history to the latest record per value, replaces that account's seq-0 rows, and
+clears moderation labels a profile fetch left behind. It skips `handle.invalid` and quarantined rows (1.78M, most of the spam
 wave). Order: the 3,043 hidden accounts first (31 calls, which also clears
 stale exclusions), then the 41k scored-visible accounts, then the rest. The
 walk is complete when its rowid cursor passes the maximum; its progress is a
@@ -103,10 +127,11 @@ discovery path enqueues a label lookup that batches up to 100 DIDs per call at
 about 2,900 discoveries an hour (about 29 calls an hour), using a durable queue
 like `identity_queue`, so a restart cannot drop it.
 
-**Ownership.** `actors.labels` gets one writer. The three `getProfiles` writers
-(`refreshModeration`, admin enrich, backfill) stop writing labels and `hidden`
-once reconciliation finishes. Until then they keep writing, so nothing regresses
-mid-walk.
+**Ownership.** Bluesky moderation's share of `actors.labels` gets one writer.
+Once reconciliation finishes, the three `getProfiles` writers
+(`refreshModeration`, admin enrich, backfill) keep writing other sources'
+labels but preserve the Bluesky moderation entries. Until then they keep
+writing everything, so nothing regresses mid-walk.
 
 **Expiry.** No scheduler is needed for search: Tantivy evaluates `exp` at
 query time. The stored `hidden` flag is no longer treated as truth; the daily
@@ -138,3 +163,18 @@ progress and per-call failures.
   name or avatar, on search, profile endpoints and fallback.
 - Override precedence is identical in `resolveHidden` and Tantivy's `moderation.rs`.
 - The reconciliation write rate stays inside Turso's single-writer budget.
+
+## Build order
+
+Each step ships and is verified before the next.
+
+1. Worker storage and write path: migration 009, `src/account-labels.ts`,
+   unit tests over hand-built labels in the decoded frame shape. Tests over
+   recorded CBOR frames come with the consumer. **Committed, not deployed.**
+2. Live consumer in the ingester, starting at head, with lag in `/health`.
+   Deploy order: worker, then ingester (which applies migration 009), then smoke.
+3. One-time reconciliation as a cloud job: hidden accounts, then scored, then
+   the rest.
+4. Label lookups for newly discovered accounts through a durable queue.
+5. Hand over ownership; apply the profile-record policy (searchable by handle,
+   display name and avatar withheld) in `resolveHidden`, Tantivy and fallback.

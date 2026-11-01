@@ -40,7 +40,7 @@ export const IDENTITY_COUNT_SQL = `SELECT
   (SELECT COUNT(*) FROM actors WHERE handle = 'handle.invalid' COLLATE NOCASE) AS handle_invalid,
   (SELECT COUNT(*) FROM actors WHERE handle COLLATE NOCASE IN (${QUARANTINED})) AS quarantined`;
 
-function parseLabels(raw: string): unknown[] {
+export function parseLabels(raw: string): unknown[] {
   try {
     const labels: unknown = JSON.parse(raw || "[]");
     return Array.isArray(labels) ? labels : [];

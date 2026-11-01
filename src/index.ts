@@ -8,6 +8,7 @@ import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
+import { handleLabelCursor, handleLabelReconcile, handleLabelStream } from "./account-labels";
 import { handleIdentityComplete, handleIdentityLease, handleIdentityStatus, handlePlcCursor, handlePlcOperations } from "./identity-queue";
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
 import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
@@ -255,6 +256,15 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
   }
   if (pathname === "/admin/identity/status" && request.method === "GET") {
     return handleIdentityStatus(request, db, env);
+  }
+  if (pathname === "/admin/labels" && request.method === "POST") {
+    return handleLabelStream(request, db, env);
+  }
+  if (pathname === "/admin/labels/reconcile" && request.method === "POST") {
+    return handleLabelReconcile(request, db, env);
+  }
+  if (pathname === "/admin/labels/cursor" && request.method === "GET") {
+    return handleLabelCursor(request, db, env);
   }
 
   if (pathname === "/admin/delete" && request.method === "POST") {

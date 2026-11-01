@@ -3,7 +3,8 @@ import { admittedHandle } from "./identity-policy";
 import type { Stmt, TursoDB } from "./db";
 import { rowsAs } from "./db";
 import type { Env } from "./types";
-import { clientIP, json } from "./utils";
+import { authorized, parseBody, rejectUnauthorized } from "./admin-auth";
+import { json } from "./utils";
 
 export const IDENTITY_REASONS = ["identity", "account", "discovered", "plc"] as const;
 export type IdentityReason = (typeof IDENTITY_REASONS)[number];
@@ -139,26 +140,6 @@ export function settle(db: TursoDB, result: IdentityResult): Settled {
       ).bind(result.did, result.gen, retryDelay(result.delay_seconds), result.error));
       return { settlement: "retried", stmts };
     }
-  }
-}
-
-function authorized(request: Request, env: Env): boolean {
-  return request.headers.get("Authorization") === `Bearer ${env.ADMIN_SECRET}`;
-}
-
-async function rejectUnauthorized(request: Request, env: Env, endpoint: string): Promise<Response> {
-  const ip = clientIP(request);
-  await env.RATE_LIMITER_STRICT.limit({ key: `auth:${ip}` });
-  console.log(JSON.stringify({ event: "auth_failure", endpoint, ip }));
-  return json({ error: "unauthorized" }, 401);
-}
-
-async function parseBody<T>(request: Request, schema: z.ZodType<T>): Promise<T | null> {
-  try {
-    const result = schema.safeParse(await request.json());
-    return result.success ? result.data : null;
-  } catch {
-    return null;
   }
 }
 
