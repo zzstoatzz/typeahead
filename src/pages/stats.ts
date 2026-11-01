@@ -440,11 +440,17 @@ export function statsPage(d: StatsData): string {
     #tseries .band-outer { fill: color-mix(in srgb, var(--accent) var(--band-outer), transparent); stroke: none; }
     #tseries .band-inner { fill: color-mix(in srgb, var(--accent) var(--band-inner), transparent); stroke: none; }
     #tseries polyline.band-median { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.8; }
-    .band-note { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem; font-size: 0.62rem;
-                 color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
-    .band-note[hidden] { display: none; }
-    .band-note span { overflow: hidden; text-overflow: ellipsis; }
-    .band-note svg { width: 10px; height: 10px; flex-shrink: 0; }
+    /* a standalone fact, not part of the ranged view: its own boxed row with a
+       clock and "last full hour", so it does not read as following the selector */
+    .now-fact { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.6rem; margin: -0.35rem 0 0.9rem;
+                padding: 0.4rem 0.6rem; border: 1px dashed var(--line-2); border-radius: 8px;
+                font-size: 0.64rem; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.5; }
+    .now-fact[hidden] { display: none; }
+    .now-fact svg { width: 10px; height: 10px; flex-shrink: 0; }
+    .now-label { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--dim); }
+    .now-reading { color: var(--text); }
+    .now-verdict { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--text); }
+    .now-usual { color: var(--dim); }
     .ct-row.usual { color: var(--dim); }
     .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
                     color: var(--dim); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
@@ -581,6 +587,7 @@ export function statsPage(d: StatsData): string {
         <div class="metric"><div class="label" title="Mean response time for cached searches at the edge">avg cached</div><div class="value" id="cached-latency">${d.avgCacheLatency.toFixed(1)} <small>ms</small></div><div class="delta-slot" id="cached-delta"></div></div>
         <div class="metric"><div class="label" title="Mean response time for searches that miss the edge cache">avg cold</div><div class="value" id="cold-latency">${d.avgLatency.toFixed(0)} <small>ms</small></div><div class="delta-slot" id="cold-delta"></div></div>
       </div>
+      <div class="now-fact" id="now-fact" hidden></div>
       <!-- the series lives INSIDE this card, directly under the control that
            drives it. It used to sit below the donut, several hundred pixels from
            a selector that silently governed it. -->
@@ -603,7 +610,6 @@ export function statsPage(d: StatsData): string {
           <div id="tseries-empty" style="display:none">no traffic in this window</div>
         </div>
         <div class="tseries-axis"><span id="tseries-t0"></span><span id="tseries-t1"></span></div>
-        <div class="band-note" id="band-note" hidden></div>
         <div id="tseries-chips" role="group" aria-label="Chart series"></div>
         <div class="tseries-totals" id="tseries-totals" aria-live="polite"></div>
         <div class="tseries-foot">
@@ -1027,6 +1033,7 @@ export function statsPage(d: StatsData): string {
       down: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.5v6.7M2 5.4l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
       flat: '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5h6.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
       ok: '<svg viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="3" fill="currentColor" opacity="0.55"/></svg>',
+      clock: '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M6 3.4V6l1.8 1.1" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     };
     function bandsFor(specs, cfg, t0, nPts) {
       if (PROFILE.none || specs.length !== 1 || specs[0].domain != null || specs[0].baseline) return null;
@@ -1060,31 +1067,38 @@ export function statsPage(d: StatsData): string {
       tseriesLines.appendChild(median);
     }
     const fmtUsual = (b) => Math.round(b.p10).toLocaleString() + '–' + Math.round(b.p90).toLocaleString();
-    function renderBandNote(bands, line, t0, cfg) {
-      const note = document.getElementById('band-note');
-      if (!note) return;
-      if (!bands) { note.hidden = true; note.replaceChildren(); return; }
-      // Judge the last COMPLETE clock hour against the hourly profile, whatever
-      // the chart's grain: one 5-minute bucket is too noisy to call unusual, and
-      // the hour still filling always looks low.
-      note.replaceChildren();
+    /* The "last full hour" fact: one independent reading of search traffic,
+       the same whatever range or slice the chart shows. It judges the last
+       complete clock hour against that hour's usual range, because a single
+       5-minute bucket is too noisy to call unusual and the hour still filling
+       always looks low. */
+    function renderNowFact() {
+      const fact = document.getElementById('now-fact');
+      if (!fact || PROFILE.none) return;
       const hour = Math.floor(Date.now() / 3_600_000) - 1;
-      const hourly = (tsDim === 'source' ? PROFILE.source : PROFILE.requests).h;
-      const value = seriesFor(null, 300).reduce((sum, [t, hits]) => Math.floor(t / 12) === hour ? sum + hits : sum, 0);
-      const band = hourly[hour % 24];
-      {
-        const hh = h => String(h % 24).padStart(2, '0') + ':00';
-        const state = value > band.p90 ? 'above' : value < band.p10 ? 'below' : 'usual';
-        const ratio = state === 'above' && band.p50 > 0 ? ' · ' + (value / band.p50).toFixed(1) + '× typical'
-          : state === 'below' && band.p50 > 0 ? ' · ' + Math.round((1 - value / band.p50) * 100) + '% under typical' : '';
-        note.innerHTML = ICONS[state === 'above' ? 'up' : state === 'below' ? 'down' : 'ok'];
-        const text = document.createElement('span');
-        text.textContent = hh(hour) + '–' + hh(hour + 1) + ' · ' + value.toLocaleString() + ' · usual ' + fmtUsual(band) + ratio;
-        note.append(text);
-        note.title = (state === 'usual' ? 'within' : state) + ' the usual range for this hour of day. The shaded band is the middle 80% of the last '
-          + PROFILE.days + ' days at each UTC hour, the darker band the middle half, the dashed line the median.';
-      }
-      note.hidden = false;
+      let value = 0;
+      for (const dom in trafficSeries5m) for (const [t, hits] of trafficSeries5m[dom]) if (Math.floor(t / 12) === hour) value += hits;
+      const band = PROFILE.source.h[hour % 24];
+      const hh = h => String(h % 24).padStart(2, '0') + ':00';
+      const state = value > band.p90 ? 'above' : value < band.p10 ? 'below' : 'usual';
+      const verdict = state === 'usual' ? 'usual' : state === 'above'
+        ? (band.p50 > 0 ? (value / band.p50).toFixed(1) + '× typical' : 'above usual')
+        : (band.p50 > 0 ? Math.round((1 - value / band.p50) * 100) + '% under typical' : 'below usual');
+      fact.replaceChildren();
+      const label = document.createElement('span'); label.className = 'now-label';
+      label.innerHTML = ICONS.clock;
+      label.append('last full hour');
+      const when = document.createElement('span'); when.className = 'now-when'; when.textContent = hh(hour) + '–' + hh(hour + 1) + ' UTC';
+      const reading = document.createElement('span'); reading.className = 'now-reading';
+      reading.textContent = value.toLocaleString() + ' searches';
+      const judged = document.createElement('span'); judged.className = 'now-verdict ' + state;
+      judged.innerHTML = ICONS[state === 'above' ? 'up' : state === 'below' ? 'down' : 'ok'];
+      judged.append(verdict);
+      const usual = document.createElement('span'); usual.className = 'now-usual'; usual.textContent = 'usual ' + fmtUsual(band);
+      fact.append(label, when, reading, judged, usual);
+      fact.title = 'Search traffic in the last complete hour, compared with the middle 80% of the same UTC hour over the last '
+        + PROFILE.days + ' days. It does not follow the range selector.';
+      fact.hidden = false;
     }
     function showSeries() {
       refreshPie();
@@ -1105,7 +1119,7 @@ export function statsPage(d: StatsData): string {
       if (tseriesEl) tseriesEl.style.display = empty ? 'none' : 'block';
       if (tseriesEmpty) tseriesEmpty.style.display = empty ? 'flex' : 'none';
       tseriesLines.replaceChildren();
-      if (empty) { tsView = null; renderBandNote(null); renderTotals(); if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
+      if (empty) { tsView = null; renderTotals(); if (tseriesT0) tseriesT0.textContent = ''; if (tseriesT1) tseriesT1.textContent = ''; return; }
       // ONE grid for every line — a shared t0/tN and a shared max. Per-series
       // extents would put two lines on silently different axes, which is worse
       // than not drawing the comparison at all.
@@ -1145,7 +1159,6 @@ export function statsPage(d: StatsData): string {
       if (tseriesT0) tseriesT0.textContent = fmtSec(t0 * cfg.stepSec, showClock);
       if (tseriesT1) tseriesT1.textContent = fmtSec((tN + 1) * cfg.stepSec, showClock);
       tsView = { t0Sec: t0 * cfg.stepSec, stepSec: cfg.stepSec, step, toY, series, bands };
-      renderBandNote(bands, series[0], t0, cfg);
       renderTotals();
     }
     const SOURCE_BRANDS = ${jsonScript(SOURCE_BRANDS)};
@@ -1925,6 +1938,7 @@ export function statsPage(d: StatsData): string {
     const wantRange = window.__boot?.get('range');
     const hasRange = !!document.querySelector('#activity-range button[data-range="' + CSS.escape(wantRange || '') + '"]');
     applyActivityRange(hasRange ? wantRange : '7d');
+    renderNowFact();
     // after the range, so restoring apps plots against the right window
     window.__restoreView?.();
     ${THEME_SCRIPT}

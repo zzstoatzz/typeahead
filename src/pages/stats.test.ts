@@ -253,6 +253,7 @@ describe("expected range", () => {
   test("the page carries the profile, or marks it missing", () => {
     expect(statsPage(base({ version: 1, as_of: "2026-11-01T00:00:00.000Z", days: 28, source: grains, requests: grains }))).toContain('"days":28');
     expect(statsPage(base(null))).toContain('const PROFILE = {"none":true}');
+    expect(statsPage(base(null))).toContain('id="now-fact"');
   });
 
   test("each range's activity carries the window before it for the change badges", () => {
