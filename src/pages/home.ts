@@ -64,13 +64,23 @@ export function indexPage(pdsEnabled = false): string {
     .results.show { display: block; }
     .result { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.8rem;
               min-height: 48px; cursor: default; font-size: 0.85rem; }
-    .result:hover { background: var(--hover); }
+    .result { cursor: pointer; }
+    .result:hover, .result[aria-selected="true"] { background: var(--hover); }
     .result img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
     .result .placeholder { width: 32px; height: 32px; border-radius: 50%; background: var(--panel-2); flex-shrink: 0; }
     .result .info { min-width: 0; }
     .result .name { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .result .handle { color: var(--dim); font-size: 0.75rem; }
     .empty { padding: 0.7rem 0.8rem; color: var(--dim); font-size: 0.8rem; }
+    .picked { display: flex; align-items: center; gap: 0.6rem; margin-top: 0.6rem; font-size: 0.8rem; min-height: 44px; }
+    .picked[hidden] { display: none; }
+    .picked img, .picked .placeholder { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--panel-2); }
+    .picked .who { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+    .picked .who span { color: var(--dim); }
+    .picked a { color: var(--accent); text-decoration: none; white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; }
+    .picked a:hover { text-decoration: underline; }
+    .picked button { font: inherit; width: 44px; height: 44px; flex-shrink: 0; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+    .picked button:hover { background: var(--hover); color: var(--text); }
     .index-form { display: flex; gap: 0.5rem; }
     .index-form input { flex: 1; min-width: 0; }
     button[type="submit"] {
@@ -120,7 +130,7 @@ export function indexPage(pdsEnabled = false): string {
     <section>
       <label for="q">try it</label>
       <div class="search-wrap">
-        <input id="q" placeholder="search handles..." autocomplete="off" autofocus>
+        <input id="q" placeholder="search handles..." autocomplete="off" autofocus role="combobox" aria-autocomplete="list" aria-controls="results" aria-expanded="false">
         <button ${pdsEnabled ? "" : "hidden"} class="filter-toggle" id="filter-toggle" type="button" aria-label="Filter by hosting server: all servers" aria-expanded="false" aria-controls="filter-panel" title="Filter by hosting server">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--panel)"/><circle cx="15" cy="17" r="3" fill="var(--panel)"/></svg>
         </button>
@@ -131,8 +141,9 @@ export function indexPage(pdsEnabled = false): string {
           <p id="pds-error" role="alert" hidden></p>
           <div class="filter-actions"><button type="submit">Apply</button><button type="button" id="pds-clear">All servers</button></div>
         </form>
-        <div class="results" id="results" role="status" aria-live="polite"></div>
+        <div class="results" id="results" role="listbox" aria-label="Search results"></div>
       </div>
+      <div class="picked" id="picked" hidden></div>
     </section>
 
     <section>
@@ -158,6 +169,9 @@ export function indexPage(pdsEnabled = false): string {
   <script>
     const q = document.getElementById('q');
     const results = document.getElementById('results');
+    const picked = document.getElementById('picked');
+    let shown = [];
+    let active = -1;
     const normalizePds = ${normalizePds.toString()};
     const filterToggle = document.getElementById('filter-toggle');
     const filterPanel = document.getElementById('filter-panel');
@@ -207,17 +221,58 @@ export function indexPage(pdsEnabled = false): string {
       if (appliedPds) url.searchParams.set('pds', appliedPds); else url.searchParams.delete('pds');
       if (url.href !== location.href) history[push ? 'pushState' : 'replaceState'](null, '', url);
     }
+    function setOpen(open) {
+      results.classList.toggle('show', open);
+      q.setAttribute('aria-expanded', String(open));
+      if (!open) setActive(-1);
+    }
+    function setActive(index) {
+      active = index;
+      results.querySelectorAll('.result').forEach((row, i) => row.setAttribute('aria-selected', String(i === index)));
+      const row = index >= 0 ? results.querySelector('#result-' + index) : null;
+      if (row) { q.setAttribute('aria-activedescendant', row.id); row.scrollIntoView({block: 'nearest'}); }
+      else q.removeAttribute('aria-activedescendant');
+    }
+    // the homepage only illustrates the API: choosing a result fills the box and
+    // offers the profile through aturi.to, where the reader picks their own client
+    function choose(actor) {
+      clearTimeout(timer);
+      if (request) request.abort();
+      generation++;
+      q.value = actor.handle;
+      saveUrl(true);
+      shown = []; results.replaceChildren(); setOpen(false);
+      picked.replaceChildren();
+      if (actor.avatar) {
+        const img = document.createElement('img'); img.alt = ''; img.src = actor.avatar;
+        img.onerror = () => { img.onerror = null; if (actor.avatarFallback) img.src = actor.avatarFallback; };
+        picked.append(img);
+      } else { const blank = document.createElement('div'); blank.className = 'placeholder'; picked.append(blank); }
+      const who = document.createElement('div'); who.className = 'who';
+      who.textContent = (actor.displayName || actor.handle) + ' ';
+      const at = document.createElement('span'); at.textContent = '@' + actor.handle; who.append(at);
+      const open = document.createElement('a');
+      open.href = 'https://aturi.to/' + actor.did; open.target = '_blank'; open.rel = 'noopener';
+      open.textContent = 'open profile ↗';
+      const clear = document.createElement('button'); clear.type = 'button'; clear.textContent = '×';
+      clear.setAttribute('aria-label', 'Clear selection');
+      clear.addEventListener('click', () => { picked.hidden = true; q.value = ''; saveUrl(true); q.focus(); });
+      picked.append(who, open, clear);
+      picked.hidden = false;
+    }
     function message(text) {
+      shown = [];
       results.replaceChildren();
       const el = document.createElement('div'); el.className = 'empty'; el.textContent = text;
-      results.append(el); results.classList.add('show');
+      results.append(el); setOpen(true);
     }
     function search(delay = 0) {
       clearTimeout(timer);
       if (request) request.abort();
       const current = ++generation;
       const value = q.value.trim();
-      results.classList.remove('show');
+      shown = [];
+      setOpen(false);
       results.replaceChildren();
       results.setAttribute('aria-busy', 'false');
       if (appliedPds && !normalizePds(appliedPds)) { message('Invalid hosting server. Open the filter to correct it.'); return; }
@@ -238,8 +293,13 @@ export function indexPage(pdsEnabled = false): string {
           if (!Array.isArray(data.actors)) throw new Error('Invalid search response');
           if (!data.actors.length) { message(appliedPds ? 'No results on this hosting server.' : 'No results.'); return; }
           results.replaceChildren();
-          for (const actor of data.actors) {
+          shown = data.actors;
+          for (const [index, actor] of data.actors.entries()) {
             const row = document.createElement('div'); row.className = 'result';
+            row.id = 'result-' + index; row.setAttribute('role', 'option'); row.setAttribute('aria-selected', 'false');
+            // mousedown keeps focus in the box so the choice survives the blur
+            row.addEventListener('mousedown', event => event.preventDefault());
+            row.addEventListener('click', () => choose(actor));
             const avatar = document.createElement('div'); avatar.className = 'placeholder';
             if (actor.avatar) {
               const img = document.createElement('img'); img.alt = ''; img.src = actor.avatar;
@@ -251,7 +311,7 @@ export function indexPage(pdsEnabled = false): string {
             const handle = document.createElement('div'); handle.className = 'handle'; handle.textContent = '@' + actor.handle;
             info.append(name, handle); row.append(info); results.append(row);
           }
-          results.classList.add('show');
+          setOpen(true);
         } catch (error) {
           if (current === generation && error.name !== 'AbortError') message('Search is unavailable. Please try again.');
         } finally {
@@ -262,16 +322,24 @@ export function indexPage(pdsEnabled = false): string {
     function restoreUrl() {
       const params = new URLSearchParams(location.search);
       q.value = params.get('q') || '';
+      picked.hidden = true;
       const raw = params.get('pds');
       appliedPds = raw === null ? '' : (normalizePds(raw) || raw || ' ');
       updateFilter(); closeFilter(); search();
     }
-    q.addEventListener('input', () => { saveUrl(false); search(200); });
+    q.addEventListener('input', () => { picked.hidden = true; saveUrl(false); search(200); });
+    q.addEventListener('keydown', event => {
+      if (!results.classList.contains('show') || !shown.length) return;
+      if (event.key === 'ArrowDown') { event.preventDefault(); setActive((active + 1) % shown.length); }
+      else if (event.key === 'ArrowUp') { event.preventDefault(); setActive(active <= 0 ? shown.length - 1 : active - 1); }
+      else if (event.key === 'Enter' && active >= 0) { event.preventDefault(); choose(shown[active]); }
+      else if (event.key === 'Escape') { event.preventDefault(); setOpen(false); }
+    });
     filterToggle.addEventListener('click', () => {
       if (!filterPanel.hidden) { closeFilter(true); return; }
       pdsInput.value = appliedPds; pdsError.hidden = true;
       filterPanel.hidden = false; filterToggle.setAttribute('aria-expanded', 'true');
-      results.classList.remove('show'); pdsInput.focus();
+      setOpen(false); pdsInput.focus();
     });
     function applyPds(value) {
       appliedPds = value; updateFilter(); closeFilter(true); saveUrl(true); search();
@@ -288,9 +356,9 @@ export function indexPage(pdsEnabled = false): string {
     document.getElementById('pds-clear').addEventListener('click', () => applyPds(''));
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !filterPanel.hidden) { event.preventDefault(); closeFilter(true); } });
     document.addEventListener('click', event => {
-      if (!event.target.closest('.search-wrap')) { closeFilter(); results.classList.remove('show'); }
+      if (!event.target.closest('.search-wrap')) { closeFilter(); setOpen(false); }
     });
-    q.addEventListener('focus', () => { closeFilter(); if (results.innerHTML) results.classList.add('show'); });
+    q.addEventListener('focus', () => { closeFilter(); if (results.innerHTML) setOpen(true); });
     window.addEventListener('popstate', restoreUrl);
     restoreUrl();
 
