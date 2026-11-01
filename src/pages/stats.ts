@@ -351,8 +351,7 @@ export function statsPage(d: StatsData): string {
     #pie text, #pie image, #pie .pie-logo { pointer-events: none; }
     #pie .pie-logo image { filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.45)); }
     #pie .pie-tail-count { fill: var(--text); font-family: inherit; font-weight: 600; }
-    #pie .pie-tail-more { fill: var(--muted); font-family: inherit; }
-    #pie .pie-segment.tail:hover .pie-tail-more, #pie .pie-segment.tail:focus-visible .pie-tail-more { fill: var(--text); }
+    #pie .pie-segment.tail:hover .pie-face, #pie .pie-segment.tail:focus-visible .pie-face { fill: var(--dim); }
     @media (prefers-reduced-motion: reduce) { #pie .pie-face { transition: none; } }
     .traffic-series { margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
     .traffic-series h2 { font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-bottom: 0; }
@@ -1538,7 +1537,9 @@ export function statsPage(d: StatsData): string {
       // MIN_SHARE of it, so every slice has room for its icon. Only the first
       // window adds a slice for everything smaller; later windows never put a
       // tail slice beside the sources being inspected.
-      const PAGE = 12, MIN_SHARE = 0.025;
+      // the top window is measured against the whole ring, where its tail slice
+      // already holds the rest; a 1% source there still reads as a named slice
+      const PAGE = 12, MIN_SHARE = 0.025, MIN_TOP_SHARE = 0.01;
       const offsets = [0];
       let offset = 0, nextOffset = 0;
       let view = [];
@@ -1590,14 +1591,13 @@ export function statsPage(d: StatsData): string {
         if (chord * scale < 36) return;
         const [x, y] = point(radius, (start + end) / 2);
         const px = 12 / scale;
-        group.append(svgNode('text', {class: 'pie-tail-count', x, y: y - px * 0.15, 'font-size': px * 1.15, 'text-anchor': 'middle', 'aria-hidden': 'true'}, '+' + row.count));
-        group.append(svgNode('text', {class: 'pie-tail-more', x, y: y + px * 1.05, 'font-size': px * 0.85, 'text-anchor': 'middle', 'aria-hidden': 'true'}, 'more →'));
+        group.append(svgNode('text', {class: 'pie-tail-count', x, y, 'font-size': px * 1.1, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'aria-hidden': 'true'}, '+' + row.count + ' →'));
       }
       function windowEnd(at) {
         let end = at + 1, sum = rootRows[at]?.hits ?? 0;
         while (end < rootRows.length && end - at < PAGE) {
           const hits = rootRows[end].hits;
-          if (hits / (sum + hits) < MIN_SHARE) break;
+          if (at === 0 ? hits / trafficGrandTotal < MIN_TOP_SHARE : hits / (sum + hits) < MIN_SHARE) break;
           sum += hits; end++;
         }
         return end;
