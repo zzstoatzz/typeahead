@@ -38,6 +38,18 @@ README.md, homepage API chip. Service identity: @typeahead.waow.tech
 (`did:plc:y6kywgnb7xletjpa5hhxmd4k`); lexicon publishing via `scripts/publish-lexicon.py`.
 README.md has the architecture; this file is the operational contract for assessing the system.
 
+**Check the Stream archive before designing any backfill.** [Stream](https://tangled.org/zat.dev/stream)
+(our jetstream v2 port, live at `stream.waow.tech`, source in `~/tangled.org/zat.dev/stream`)
+archives every repo record from the relay plus `#identity` and `#account` events
+(`docs/jss-format-v1.md`, kinds 1–7) back to seq 1. Profile records, account
+status history and DID→PDS hosting are there. Labeler labels (not repo records)
+and appview aggregates (follower counts) are not: use the labeler
+(`subscribeLabels`/`queryLabels`) and `getProfiles` for those. Read
+`stream.waow.tech/llms.txt` first: archive reads (`listSegments`, `getSegment`,
+`getBlock`, `planSnapshot`) need a bearer key, `/subscribe` replays only about
+1.5 days, and blocks hold about 4,096 events, so whole-network drains are cheap
+and scattered per-DID lookups are not.
+
 **Before starting new work, read the git history** — `git log --oneline -30`,
 then `git log -p` on anything that looks related. Commits are the record of
 what is in flight: they carry the date, the reasoning, and the code together,
