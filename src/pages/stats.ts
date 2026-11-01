@@ -1571,10 +1571,10 @@ export function statsPage(d: StatsData): string {
         if (!url || failedLogos.has(row.domain)) return;
         learnColor(row.domain);
         const radius = (outer + inner) / 2;
-        // the icon is a square centred on the band, as wide as the band and the
-        // slice's chord at that radius allow; a bare logo may touch the edges
+        // the icon is a square centred on the band: its half-diagonal must clear
+        // both band edges and the slice's own sides, whatever the slice's angle
         const clearance = Math.min((outer - inner) / 2, radius * Math.sin(Math.min((end - start) / 2, Math.PI / 2)));
-        const size = Math.min(MAX_ICON_PX / scale, clearance * 1.7);
+        const size = Math.min(MAX_ICON_PX / scale, (clearance - 0.5 / scale) * Math.SQRT2);
         if (size * scale < MIN_ICON_PX) return;
         const [x, y] = point(radius, (start + end) / 2);
         const icon = svgNode('g', {class: 'pie-logo', 'aria-hidden': 'true', opacity: 0});
@@ -1648,8 +1648,9 @@ export function statsPage(d: StatsData): string {
         larger.hidden = offset === 0;
         larger.onclick = () => step(-1);
         const smaller = document.getElementById('pie-smaller');
-        smaller.hidden = nextOffset >= rootRows.length;
-        smaller.textContent = offset === 0 ? (rootRows.length - nextOffset) + ' more →' : 'smaller →';
+        // the top view's tail slice is its own way in; buttons appear once inside
+        smaller.hidden = offset === 0 || nextOffset >= rootRows.length;
+        smaller.textContent = 'smaller →';
         smaller.setAttribute('aria-label', 'Show smaller sources, from rank ' + (nextOffset + 1));
         smaller.onclick = () => step(1);
         const position = document.getElementById('pie-position');
