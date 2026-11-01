@@ -73,7 +73,8 @@ route past its one-second lifetime, the transport reads R2 itself as before.
 The object stays in the colo where it was first created, and each search waits
 for a round trip to it, so it must be created by the transport (no location
 hint). Check its colo with the `durableObjectsInvocationsAdaptiveGroups`
-GraphQL dataset (`coloCode`); it should match the transport's.
+GraphQL dataset (`coloCode`); it should match the transport's. Serving from
+more than one region is a [proposal](plans/worldwide-serving.md), not built.
 
 Tantivy searches indexed handles and display names, ranks eligible matches and
 returns stored actor profiles. Exact eligible handles have priority. Moderation
