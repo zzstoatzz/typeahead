@@ -422,34 +422,29 @@ export function statsPage(d: StatsData): string {
     .empty-card { color: var(--dim); font-size: 0.8rem; padding: 2rem 0; text-align: center; }
     .pie-cta { margin-top: 0.6rem; font-size: 0.7rem; color: var(--dim); text-align: center; }
     .pie-cta a { display: inline-flex; align-items: center; min-height: 44px; white-space: nowrap; color: var(--blue); text-decoration: none; }
-    /* change badges: a direction icon and a percentage. Colour says whether the
-       change is good (accent) or bad (red); under 5% reads as flat and stays grey */
-    .delta-slot { min-height: 2.1rem; margin-top: 0.3rem; }
-    .delta { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.08rem 0.4rem 0.08rem 0.3rem;
-             border-radius: 999px; font-size: 0.62rem; line-height: 1.5; font-variant-numeric: tabular-nums;
-             color: var(--muted); background: var(--panel-2); cursor: default; }
+    /* change badges. The arrow gives the direction. Only latency is judged:
+       good is a solid green pill, bad a solid vermillion one (Okabe-Ito hues,
+       white text, different lightness, so they part without relying on hue).
+       Volume and changes under 5% stay an outlined grey pill. */
+    .delta-slot { height: 1.15rem; margin-top: 0.25rem; }
+    .delta { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0 0.4rem 0 0.3rem; height: 1.15rem;
+             border-radius: 999px; font-size: 0.62rem; font-variant-numeric: tabular-nums; cursor: default;
+             color: var(--muted); border: 1px solid var(--line-2); }
     .delta svg { width: 9px; height: 9px; flex-shrink: 0; }
-    .delta.good { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-    .delta.bad { color: var(--red); background: color-mix(in srgb, var(--red) 11%, transparent); }
-    .delta-vs { display: block; font-size: 0.58rem; color: var(--dim); margin-top: 0.15rem; }
+    .delta.good { color: #fff; background: #007a5a; border-color: #007a5a; }
+    .delta.bad { color: #fff; background: #b54708; border-color: #b54708; }
     /* the usual range behind the total line; a dark panel needs more ink */
-    :root { --band-outer: 16%; --band-inner: 30%; }
+    :root { --band-outer: 13%; --band-inner: 24%; }
     @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --band-outer: 10%; --band-inner: 19%; } }
     :root[data-theme="light"] { --band-outer: 10%; --band-inner: 19%; }
     #tseries .band-outer { fill: color-mix(in srgb, var(--accent) var(--band-outer), transparent); stroke: none; }
     #tseries .band-inner { fill: color-mix(in srgb, var(--accent) var(--band-inner), transparent); stroke: none; }
     #tseries polyline.band-median { stroke: var(--dim); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0.8; }
-    .band-note { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.8rem; margin-top: 0.45rem;
-                 font-size: 0.62rem; color: var(--muted); line-height: 1.5; }
+    .band-note { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem; font-size: 0.62rem;
+                 color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
     .band-note[hidden] { display: none; }
-    .band-note .reading { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--text); font-variant-numeric: tabular-nums; }
-    .band-note .reading svg { width: 10px; height: 10px; flex-shrink: 0; }
-    .band-note .reading.above, .band-note .reading.below { color: var(--amber); }
-    .band-note .key { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--dim); }
-    .band-note .sw { display: inline-block; width: 12px; height: 8px; border-radius: 2px; }
-    .band-note .sw.outer { background: color-mix(in srgb, var(--accent) var(--band-outer), transparent); }
-    .band-note .sw.inner { background: color-mix(in srgb, var(--accent) var(--band-inner), transparent); }
-    .band-note .sw.median { height: 0; border-top: 1.5px dashed var(--dim); border-radius: 0; }
+    .band-note span { overflow: hidden; text-overflow: ellipsis; }
+    .band-note svg { width: 10px; height: 10px; flex-shrink: 0; }
     .ct-row.usual { color: var(--dim); }
     .tseries-axis { display: flex; justify-content: space-between; font-size: 0.65rem;
                     color: var(--dim); margin-top: 0.25rem; font-variant-numeric: tabular-nums; }
@@ -1038,7 +1033,16 @@ export function statsPage(d: StatsData): string {
       if (cfg.stepSec !== 300 && cfg.stepSec !== 3600) return null;
       const table = (tsDim === 'source' ? PROFILE.source : PROFILE.requests)[cfg.stepSec === 300 ? 'm5' : 'h'];
       const out = [];
-      for (let k = 0; k < nPts; k++) out.push(table[Math.floor((t0 + k) * cfg.stepSec / 3600) % 24]);
+      for (let k = 0; k < nPts; k++) {
+        const hours = (t0 + k) * cfg.stepSec / 3600;
+        if (cfg.stepSec === 3600) { out.push(table[Math.floor(hours) % 24]); continue; }
+        // 5-minute points ease between neighbouring hours' bands (anchored at
+        // each hour's middle) instead of stepping on the hour
+        const at = hours - 0.5, h0 = Math.floor(at), f = at - h0;
+        const a = table[((h0 % 24) + 24) % 24], b = table[(h0 + 1) % 24];
+        out.push({ p10: a.p10 + (b.p10 - a.p10) * f, p25: a.p25 + (b.p25 - a.p25) * f, p50: a.p50 + (b.p50 - a.p50) * f,
+                   p75: a.p75 + (b.p75 - a.p75) * f, p90: a.p90 + (b.p90 - a.p90) * f });
+      }
       return out;
     }
     function drawBands(bands, step, toY) {
@@ -1071,24 +1075,15 @@ export function statsPage(d: StatsData): string {
       {
         const hh = h => String(h % 24).padStart(2, '0') + ':00';
         const state = value > band.p90 ? 'above' : value < band.p10 ? 'below' : 'usual';
-        const reading = document.createElement('span');
-        reading.className = 'reading ' + state;
         const ratio = state === 'above' && band.p50 > 0 ? ' · ' + (value / band.p50).toFixed(1) + '× typical'
           : state === 'below' && band.p50 > 0 ? ' · ' + Math.round((1 - value / band.p50) * 100) + '% under typical' : '';
-        reading.innerHTML = ICONS[state === 'above' ? 'up' : state === 'below' ? 'down' : 'ok'];
+        note.innerHTML = ICONS[state === 'above' ? 'up' : state === 'below' ? 'down' : 'ok'];
         const text = document.createElement('span');
         text.textContent = hh(hour) + '–' + hh(hour + 1) + ' · ' + value.toLocaleString() + ' · usual ' + fmtUsual(band) + ratio;
-        reading.append(text);
-        reading.title = state === 'usual' ? 'within the usual range for this hour of day'
-          : (state === 'above' ? 'above' : 'below') + ' the usual range for this hour of day';
-        note.append(reading);
+        note.append(text);
+        note.title = (state === 'usual' ? 'within' : state) + ' the usual range for this hour of day. The shaded band is the middle 80% of the last '
+          + PROFILE.days + ' days at each UTC hour, the darker band the middle half, the dashed line the median.';
       }
-      for (const [cls, label] of [['outer', 'usual'], ['inner', 'middle half'], ['median', 'typical']]) {
-        const key = document.createElement('span'); key.className = 'key';
-        const sw = document.createElement('i'); sw.className = 'sw ' + cls;
-        key.append(sw, label); note.append(key);
-      }
-      note.title = 'usual = the middle 80% of the last ' + PROFILE.days + ' days at this hour (UTC); typical = their median';
       note.hidden = false;
     }
     function showSeries() {
@@ -1887,14 +1882,14 @@ export function statsPage(d: StatsData): string {
       const flat = Math.abs(pct) < 5;
       const up = pct > 0;
       const badge = document.createElement('span');
-      badge.className = 'delta ' + (flat ? 'flat' : up === higherIsBetter ? 'good' : 'bad');
+      // volume is neither good nor bad, so only latency gets a judgement colour
+      badge.className = 'delta ' + (flat || higherIsBetter == null ? 'flat' : up === higherIsBetter ? 'good' : 'bad');
       const shown = Math.abs(pct) >= 1000 ? '>999%' : Math.abs(pct).toFixed(Math.abs(pct) < 10 ? 1 : 0) + '%';
       badge.innerHTML = ICONS[flat ? 'flat' : up ? 'up' : 'down'];
       badge.append(shown);
       const words = (flat ? 'about level' : (up ? 'up ' : 'down ') + shown) + ' from ' + fmt(prev) + ' the previous ' + (span === 'hour' ? 'hour' : span);
       badge.title = words; badge.setAttribute('aria-label', words);
-      const vs = document.createElement('span'); vs.className = 'delta-vs'; vs.textContent = 'vs prev ' + span;
-      slot.append(badge, vs);
+      slot.append(badge);
     }
     function applyActivityRange(range) {
       document.querySelectorAll('#activity-range button')
@@ -1911,7 +1906,7 @@ export function statsPage(d: StatsData): string {
       const span = RANGE_SPAN[range];
       const count = t => t.searches + t.cacheHits;
       const avg = (ms, n) => n > 0 ? ms / n : null;
-      renderDelta('searches-delta', recent && count(recent), prev && count(prev), span, { higherIsBetter: true, fmt: n => n.toLocaleString() + ' searches' });
+      renderDelta('searches-delta', recent && count(recent), prev && count(prev), span, { higherIsBetter: null, fmt: n => n.toLocaleString() + ' searches' });
       renderDelta('cached-delta', recent && avg(recent.cacheMs, recent.cacheHits), prev && avg(prev.cacheMs, prev.cacheHits), span, { higherIsBetter: false, fmt: n => n.toFixed(1) + ' ms' });
       renderDelta('cold-delta', recent && avg(recent.totalMs, recent.searches), prev && avg(prev.totalMs, prev.searches), span, { higherIsBetter: false, fmt: n => Math.round(n) + ' ms' });
 
