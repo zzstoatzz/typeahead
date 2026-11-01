@@ -143,14 +143,12 @@ hold answers from different builds. Either include the build of the cell
 that answered in the key, or accept up to 60 s of mixed answers per colo
 during a rollout.
 
-### Stale paths
+### Writes through the transport
 
-`pushToReplica` (`src/handlers/admin.ts`) posts `/admin/refresh` to one
-backend, and the transport answers 503 `NativeRefreshUnsupported` for
-Tantivy routes, so with Tantivy this push already does nothing. Request
-indexing reaches the backend through polling. Remove the push, or keep it
-only for the native rollback path, and correct the comments that still
-describe a synchronous overlay push.
+Request indexing used to push the new row to one backend through the
+transport's `POST /admin/refresh`. Tantivy routes rejected it, so it was
+removed on 2026-11-01 along with the transport's write path. Every backend
+now gets every change by polling Turso, which is what several cells need.
 
 ### Operations and benchmarks
 
@@ -200,7 +198,7 @@ of that is download is not recorded.
 1. **Cell seams at N=1.** Routing record v2 with one cell, cell-addressed
    transport paths, cell-named route authority, per-cell freshness, the
    colo-to-cells function returning `[ewr]`, and cell arguments for smoke,
-   benchmarks and index status. Remove the dead Tantivy push. No added cost;
+   benchmarks and index status. No added cost;
    each change ships under the existing smoke and refresh gates.
 2. **Controller seams.** Slots keyed by cell, region from configuration,
    per-cell pending records, leases and qualification, still with one cell.

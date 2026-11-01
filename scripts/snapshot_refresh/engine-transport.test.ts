@@ -34,7 +34,7 @@ test("engine route conditional promotion and rollback use isolated filesystem-ba
     const search = await mf.dispatchFetch(`${base}/search?q=a`); expect(search.status).toBe(200); expect(await search.json()).toMatchObject({ origin: candidate.origin });
     const mismatch = await mf.dispatchFetch(`${base}/search?q=wrong`); expect(mismatch.status).toBe(503); expect(await mismatch.json()).toEqual({ error: "SearchBackendIdentityMismatch" });
     for(const q of ["wrongbinary","wrongstrategy"]) {const bad=await mf.dispatchFetch(`${base}/search?q=${q}`);expect(bad.status).toBe(503);expect(await bad.json()).toEqual({error:"SearchBackendIdentityMismatch"});}
-    const refresh = await mf.dispatchFetch(`${base}/admin/refresh`, { method: "POST", body: "{}" }); expect(refresh.status).toBe(503); expect(await refresh.json()).toMatchObject({ error: "NativeRefreshUnsupported" });
+    expect((await mf.dispatchFetch(`${base}/admin/refresh`, { method: "POST", body: "{}" })).status).toBe(404);
     expect((await mf.dispatchFetch(`${base}/debug/index`)).status).toBe(503);
     const refreshedCandidate = { ...candidate, admission_sha256: "b".repeat(64) };
     expect((await update(refreshedCandidate, promoted.etag)).status).toBe(200);
@@ -51,7 +51,7 @@ test("engine route conditional promotion and rollback use isolated filesystem-ba
     expect((await update(native, leased.etag)).status).toBe(200);
     expect((await control()).value).toEqual({ version: 1, current: native, previous: refreshedCandidate, native_rollback: native, mutation });
     await mf.dispatchFetch(`${base}/route`);
-    expect((await mf.dispatchFetch(`${base}/admin/refresh`, { method: "POST", body: "{}" })).status).toBe(401);
+    expect((await mf.dispatchFetch(`${base}/admin/refresh`, { method: "POST", body: "{}" })).status).toBe(404);
     const rolledBack = await mf.dispatchFetch(`${base}/search?q=a`); expect(rolledBack.status).toBe(200); expect(rolledBack.headers.get("X-Typeahead-Engine")).toBe("native"); expect(await rolledBack.json()).toMatchObject({ origin: native.origin });
   } finally { await mf.dispose(); await rm(directory, { recursive: true, force: true }); }
 }, 30000);

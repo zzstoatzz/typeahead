@@ -40,8 +40,8 @@ export const TURSO_FALLBACK_MAX_LIMIT = 25;
  *  the ingester's /admin/ingest writes failed behind it, and its backlog
  *  overflowed — search traffic dropped discovery events. The reason the
  *  fallback existed (a lagging replica) is gone since 2026-09-02: the search
- *  box has no replica, and request-indexing pushes the row into its overlay
- *  synchronously (`admin.ts` → `/admin/refresh`). Turso still answers when
+ *  box has no replica, and request-indexing writes the row to Turso, which
+ *  the engine polls every 40 s. Turso still answers when
  *  the engine is unreachable; it no longer answers when the engine says no.
  *  docs/operations.md "unattributed bulk clients". */
 export function tursoFallbackOnEmpty(limit: number, enabled: boolean): boolean {

@@ -227,30 +227,7 @@ export async function handleRequestIndexing(
   // fire-and-forget: fix the upstream invisibility too (see announceHostToRelay)
   if (identity.pds) ctx.waitUntil(announceHostToRelay(identity.pds, env));
 
-  // Push it into the search replica NOW rather than waiting for the next sync
-  // tick. Turso is the authority and the row is already committed above; this
-  // just tells the replica to pick that one row up immediately, so someone who
-  // explicitly asked us to index an account can find it seconds later instead
-  // of up to 5 minutes — or, when sync stalls, not at all (2026-07-28: 48h).
-  //
-  // Fire-and-forget: the sync loop is still the mechanism of record, so a
-  // failure here costs freshness, never correctness.
-  ctx.waitUntil(pushToReplica(env, {
-    did: identity.did,
-    handle: identity.handle,
-    display_name: f.displayName,
-    avatar_url: f.avatarCid,
-    hidden: f.hidden,
-    labels: f.labels,
-    created_at: f.createdAt,
-    associated: f.associated,
-    pds: identity.pds || "",
-    followers_count: f.followersCount,
-    follows_count: f.followsCount,
-    posts_count: f.postsCount,
-    quality_score: f.qualityScore,
-    updated_at: Math.floor(Date.now() / 1000),
-  }));
+  // search picks the row up from Turso on its next poll (every 40 s)
 
   const timing = Object.entries(t).map(([k, v]) => `${k};dur=${v}`).join(", ");
   return json({
@@ -258,57 +235,6 @@ export async function handleRequestIndexing(
     did: identity.did,
     ...(f.hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
   }, 200, { "Server-Timing": timing });
-}
-
-/** Hand the search replica the row we just wrote, so it is searchable now.
- *
- *  Sends the ROW, not just the DID. The first version sent a DID and made the
- *  search service read it back out of Turso — which routed the fast path
- *  through the most contended component in the system. Measured 2026-07-31
- *  with a bulk job running: an indexed point lookup took 28s and this hung.
- *  We already have every field; there is nothing to look up.
- *
- *  Fire-and-forget. The 5-minute sync remains the mechanism of record, so a
- *  failure here costs freshness for one actor, never correctness.
- */
-interface ReplicaRow {
-  did: string;
-  handle: string;
-  display_name: string;
-  avatar_url: string;
-  hidden: number;
-  labels: string;
-  created_at: string;
-  associated: string;
-  pds: string;
-  followers_count: number;
-  follows_count: number;
-  posts_count: number;
-  quality_score: number;
-  updated_at: number;
-}
-
-async function pushToReplica(env: Env, row: ReplicaRow): Promise<void> {
-  if (!env.SEARCH_BACKEND_URL || !env.ADMIN_SECRET) return;
-  const t0 = Date.now();
-  try {
-    const r = await fetch(`${env.SEARCH_BACKEND_URL}/admin/refresh`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.ADMIN_SECRET}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(row),
-      signal: AbortSignal.timeout(5000),
-    });
-    console.log(JSON.stringify({
-      event: "replica_push", did: row.did, status: r.status, ms: Date.now() - t0,
-    }));
-  } catch (e: any) {
-    console.log(JSON.stringify({
-      event: "replica_push_failed", did: row.did, error: e?.message, ms: Date.now() - t0,
-    }));
-  }
 }
 
 function authCheck(request: Request, env: Env): Response | null {

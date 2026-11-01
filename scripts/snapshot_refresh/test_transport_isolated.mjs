@@ -16,9 +16,7 @@ const server = createServer((request, response) => {
   const delay = url.searchParams.get('q') === 'slow-shift' && origin === a.origin ? 500 : 10;
   setTimeout(() => {
     response.setHeader('Content-Type', 'application/json');
-    if (url.pathname === '/admin/refresh') {
-      response.writeHead(401); response.end('{"error":"unauthorized"}');
-    } else if (url.pathname === '/health') {
+    if (url.pathname === '/health') {
       response.end(JSON.stringify({ ready: true, origin }));
     } else {
       if (url.searchParams.has('pds')) response.setHeader('X-Typeahead-Pds', url.searchParams.get('pds'));
@@ -76,8 +74,8 @@ try {
   response = await mf.dispatchFetch(base + '/admin/refresh', {
     method: 'POST', headers: { Authorization: 'Bearer isolated-invalid-token', 'Content-Type': 'application/json' }, body: '{}',
   });
-  assert.equal(response.status, 401);
-  assert.deepEqual(arrivals.filter(row => row.method === 'POST').map(row => row.origin), [a.origin]);
+  assert.equal(response.status, 404);
+  assert.deepEqual(arrivals.filter(row => row.method === 'POST'), [], 'writes never reach a backend');
   response = await mf.dispatchFetch(base + '/health');
   assert.equal(response.status, 200);
   assert.equal(arrivals.findLast(row => row.path === '/health').routedHealth, '1');
@@ -118,7 +116,7 @@ try {
       assert.deepEqual(await response.json(), { error: 'SearchBackendUnavailable' });
     } finally { await direct.dispose(); }
   } finally { rmSync(temporary, { recursive: true }); }
-  console.log('PASS: real workerd + local R2 + real HTTP origins; cache window, route changes, cancellation, errors, PDS acknowledgment, admin auth and health forwarding');
+  console.log('PASS: real workerd + local R2 + real HTTP origins; cache window, route changes, cancellation, errors, PDS acknowledgment, write rejection and health forwarding');
 } finally {
   await mf.dispose();
   server.closeAllConnections();

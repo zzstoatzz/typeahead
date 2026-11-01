@@ -12,7 +12,7 @@ try {
  let r=await mf.dispatchFetch(base+'/health');assert.equal(r.status,200);assert.equal((await r.json()).ready,true);
  r=await mf.dispatchFetch(base+'/search?q=zzstoatzz.io&limit=1');assert.equal(r.status,200);assert.equal((await r.json()).actors[0].handle,'zzstoatzz.io');
  r=await mf.dispatchFetch(base+'/search?q=a&pds=selfhosted.social&limit=5');assert.equal(r.status,200);assert.equal(r.headers.get('X-Typeahead-Pds'),'selfhosted.social');
- assert.equal((await mf.dispatchFetch(base+'/admin/refresh',{method:'POST',headers:{Authorization:'Bearer isolated-invalid-token','Content-Type':'application/json'},body:'{}'})).status,401);
+ assert.equal((await mf.dispatchFetch(base+'/admin/refresh',{method:'POST',headers:{Authorization:'Bearer isolated-invalid-token','Content-Type':'application/json'},body:'{}'})).status,404);
  assert.equal((await mf.dispatchFetch(base+'/unlisted')).status,404);
  assert.equal((await mf.dispatchFetch('https://example.invalid/search?q=a')).status,404);
  for(const bad of ['not json',JSON.stringify({version:1,current:{origin:'https://example.invalid',build_id:route.current.build_id}})]) {
@@ -26,5 +26,5 @@ try {
   const failed=await mf.dispatchFetch(base+'/health');
   assert.equal(failed.status,503);assert.equal((await failed.json()).error,'SearchBackendUnavailable');
  }
- console.log('Real workerd + R2: missing/corrupt route fails closed; route update, health, search, scoped acknowledgment, admin auth and origin restrictions pass');
+ console.log('Real workerd + R2: missing/corrupt route fails closed; route update, health, search, scoped acknowledgment, write rejection and origin restrictions pass');
 } finally {await mf.dispose()}

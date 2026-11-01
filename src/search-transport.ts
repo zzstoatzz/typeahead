@@ -53,9 +53,6 @@ export default {
       return Response.json({ error: "SearchRouteUnavailable" }, { status: 503 });
     }
     if (url.pathname === "/route") return Response.json(route, { headers: { "Cache-Control": "no-store" } });
-    if (route.engine === "tantivy" && request.method === "POST") {
-      return Response.json({ error: "NativeRefreshUnsupported", message: "Tantivy accepts authoritative source reconciliation only; indexing freshness is provided by source polling." }, { status: 503 });
-    }
     if (route.engine === "tantivy" && url.pathname === "/debug/index") {
       return Response.json({ error: "BackendCapabilityUnavailable" }, { status: 503 });
     }
@@ -65,7 +62,7 @@ export default {
     forwarded.headers.delete("X-Typeahead-Routed-Health");
     if (url.pathname === "/health") forwarded.headers.set("X-Typeahead-Routed-Health", "1");
     try {
-      const response = await fetch(forwarded, { signal: AbortSignal.timeout(url.pathname === "/admin/refresh" ? 5000 : 3000), redirect: "manual" });
+      const response = await fetch(forwarded, { signal: AbortSignal.timeout(3000), redirect: "manual" });
       if (!responseMatchesRoute(route, response)) {
         await response.body?.cancel().catch(() => {});
         return Response.json({ error: "SearchBackendIdentityMismatch" }, { status: 503 });

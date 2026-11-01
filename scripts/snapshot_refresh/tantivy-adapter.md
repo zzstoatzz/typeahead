@@ -185,9 +185,8 @@ build, expiry-v4 format, and an admission receipt digest. Legacy route payloads
 remain native. Native and Tantivy origins cannot be interchanged. Route and hint
 equality include engine, format and admission digest. Successful Tantivy
 responses must acknowledge engine/build/format, binary SHA and retrieval
-strategy. Native `/admin/refresh` pushes
-return 503 `NativeRefreshUnsupported` on a Tantivy route; authoritative source
-polling remains responsible for freshness. `/debug/index` is unavailable for
+strategy. The transport accepts no writes: `POST /admin/refresh` returns 404,
+and source polling is responsible for freshness on every engine. `/debug/index` is unavailable for
 Tantivy and fails explicitly.
 
 `conditionalRouteUpdate` in `src/search-route.ts` is the internal R2 CAS primitive
