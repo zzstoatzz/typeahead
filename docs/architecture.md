@@ -70,6 +70,10 @@ isolate and re-reads R2 every 700 ms while searches have arrived in the last
 five minutes, so a search usually takes the route from memory and R2 reads
 are bounded by time rather than traffic. If the object fails or returns a
 route past its one-second lifetime, the transport reads R2 itself as before.
+The object stays in the colo where it was first created, and each search waits
+for a round trip to it, so it must be created by the transport (no location
+hint). Check its colo with the `durableObjectsInvocationsAdaptiveGroups`
+GraphQL dataset (`coloCode`); it should match the transport's.
 
 Tantivy searches indexed handles and display names, ranks eligible matches and
 returns stored actor profiles. Exact eligible handles have priority. Moderation

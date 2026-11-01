@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { REFRESH_EVERY_MS, RouteCache, type ValidatedRoute } from "./route-cache";
 
-/** One instance, named "route", near the transport and R2 in eastern North
+/** One instance, created by the transport so it sits near it and R2 in eastern North
  *  America. It serves the routing record from memory and re-reads R2 every
  *  REFRESH_EVERY_MS while searches arrive, then goes idle. */
 export class RouteAuthority extends DurableObject<SearchTransportEnv> {

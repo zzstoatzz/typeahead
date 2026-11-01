@@ -7,7 +7,10 @@ export { RouteAuthority } from "./route-authority";
 // without the binding (isolated harnesses) each isolate reads R2 itself, as before
 function routeSource(env: SearchTransportEnv) {
   const authority: SearchTransportEnv["ROUTE_AUTHORITY"] | undefined = env.ROUTE_AUTHORITY;
-  return authority?.get(authority.idFromName("route"), { locationHint: "enam" });
+  // An object stays where it was first created. "route" was created with the
+  // enam hint and landed in MIA, ~35 ms from the transport's IAD placement;
+  // created without a hint, an object is placed near its first caller.
+  return authority?.get(authority.idFromName("route-2"));
 }
 
 const origins = new Set([
