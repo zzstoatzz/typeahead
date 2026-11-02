@@ -55,8 +55,10 @@ broke the promotion that restored Tantivy.
 
 - **Builder:** capacity rejections try `hel1`, `fsn1` and `nbg1`, then `cx43`
   and `cpx42`, and retry for up to 30 minutes.
-- **Dead or stale slot:** automatic continuation builds and promotes into the
-  inactive slot instead of waiting on the current one.
+- **Dead slot:** automatic continuation builds and promotes into the inactive
+  slot instead of waiting on the current one. The same handling for a slot that
+  is serving but past its coverage ships with the new image, on branch
+  `drop-native-provenance`.
 - **Alerts:** each fires once, on change. They are listed in
   [operations](../operations.md#missed-refresh-alerts).
   - After 13 hours with no completed refresh, Prefect retries the refresh and
