@@ -45,6 +45,22 @@ is deployed yet. The Worker's `/health/freshness` reads the serving backend's
 checkpoint-sourced generation; at 86,400 seconds or more it sets `stale: true`
 (HTTP 503, change-only webhook alert) while `ok` and `probe_ok` stay true.
 
+### Missed-refresh alerts
+
+Refreshes run at 06:00 and 18:00 UTC against a 24-hour coverage window, so one
+missed run uses up the margin. Each signal below fires once, on change:
+
+1. **Builder capacity:** a Hetzner capacity rejection retries every location and
+   fallback server type for up to 30 minutes before the run crashes.
+2. **13 hours with no completed `typeahead-index` run:** the Prefect automation
+   `typeahead refresh missing -> retry + discord` starts the automatic refresh
+   and posts to discord-alerts.
+3. **15 hours of coverage age:** the Worker posts "refresh missed — act before
+   the slot goes stale" with the hours left. Search is still serving; find out
+   why the retry did not land.
+4. **24 hours:** "serving is stale". The next automatic refresh replaces a stale
+   or dead slot; use `EMERGENCY_PROXY_BSKY` only if search itself fails.
+
 ## Deploy and verify
 
 `just deploy-worker` lints and type-checks before deploying the public Worker,
