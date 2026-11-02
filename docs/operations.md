@@ -32,7 +32,9 @@ Restore service before investigating the builder. Never bypass coverage expiry.
 
 ## Deploy and verify
 
-`just deploy-worker` deploys the public Worker and runs smoke checks.
+`just deploy-worker` lints and type-checks before deploying the public Worker,
+then runs smoke checks. `just deploy-search-transport` uses the same gates.
+`just deploy-worker-only` skips smoke checks but still requires lint to pass.
 `just deploy-ingest` deploys the ingester. Backend publication belongs to the
 cloud Prefect controller, not a direct Fly deploy. After promotion, check the
 build, both public search aliases, PDS scope, ranking and live-update progress.

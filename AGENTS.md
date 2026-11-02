@@ -142,8 +142,8 @@ regression is pinned). Extend it, don't prune it.
 
 ## deploys (smoke-gated)
 
-- `just deploy-worker` — `wrangler deploy` **then** the smoke suite. A deploy that breaks
-  shape, ranking, or the admin API fails loudly here. `deploy-worker-only` is the escape hatch.
+- `just deploy-worker` — lint and type-check, then `wrangler deploy` **then** the smoke suite. A deploy that breaks
+  shape, ranking, or the admin API fails loudly here. `deploy-worker-only` skips smoke but still requires lint.
 - `just deploy-ingest` deploys the Zig ingestion role. `just deploy-search`
   remains guarded: `services/fly.search.toml` is retained legacy configuration,
   not the managed production slot. Native image releases follow the

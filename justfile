@@ -84,7 +84,7 @@ test-tantivy:
     python3 scripts/snapshot_refresh/test_install.py
 
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
-deploy-worker url="https://typeahead.waow.tech":
+deploy-worker url="https://typeahead.waow.tech": lint
     bunx tsc --noEmit
     npx wrangler deploy
     @echo "--- waiting for edge propagation before smoke ---"
@@ -92,13 +92,13 @@ deploy-worker url="https://typeahead.waow.tech":
     just smoke {{url}}
 
 # Deploy the private origin transport before adding its binding to the public Worker.
-deploy-search-transport url="https://typeahead.waow.tech":
+deploy-search-transport url="https://typeahead.waow.tech": lint
     bunx tsc --noEmit
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc
     just smoke {{url}}
 
 # deploy the worker WITHOUT the post-deploy smoke gate (escape hatch)
-deploy-worker-only:
+deploy-worker-only: lint
     npx wrangler deploy
 
 # deploy the ingest service (relay subscribeRepos -> worker admin ingest)
