@@ -1,4 +1,4 @@
-"""Managed immutable Tantivy slot; source freshness is qualified separately from install."""
+"""Managed immutable Tantivy slot; it reports checkpoint coverage age and never stops on it."""
 import hashlib
 import importlib.util
 import json
@@ -73,7 +73,7 @@ class Slot:
     def __init__(self,env,root=Path('/data/tantivy'),binary=Path('/app/typeahead-tantivy'),transport=None,*,fixture_clock=None):
         self.env=dict(env);self.root=Path(root);self.binary=Path(binary);self.transport=transport
         if fixture_clock is not None and self.env.get('TANTIVY_TEST_FIXTURE')!='1':raise ValueError('Fixture clock is unavailable in production')
-        self.clock=fixture_clock or time.time;self.fixture_mode=fixture_clock is not None;self.coverage_deadline=None
+        self.clock=fixture_clock or time.time;self.fixture_mode=fixture_clock is not None
         self.app=self.env['FLY_APP_NAME'];self.build=self.env['EXPECTED_BUILD_ID'];self.key=self.env['TANTIVY_DEPLOYMENT_KEY'];self.expected=self.env['EXPECTED_DEPLOYMENT_SHA256']
         if self.app not in installer.SLOT_APPS or self.env.get('FLY_MACHINE_ID') in installer.PROTECTED_MACHINES:raise ValueError('Unapproved slot')
         match=re.fullmatch(r'control/tantivy-slots/'+re.escape(self.app)+r'/([a-f0-9]{32})\.json',self.key)
@@ -128,7 +128,7 @@ class Slot:
             value=self.validate_deployment(cached.read_bytes());receipt=metadata(self.root/'installation.json')
             if receipt.get('manifest_sha256')!=installer.digest_json(value) or receipt.get('deployment_sha256')!=self.expected or receipt.get('passed') is not True or receipt.get('binary_sha256')!=value['binary_sha256'] or receipt.get('bundle_sha256')!=value['sha256']:raise ValueError('Cached installation differs')
             receipt['runtime_qualified']=False;atomic_json(self.root/'installation.json',receipt)
-            state=self.actual_metadata(value);self.check_coverage(value,state);return value
+            state=self.actual_metadata(value);self.report_coverage(value,state);return value
         if self.root.exists():raise ValueError('Unadmitted slot destination exists')
         if any(item.name not in {'deployment.json','artifact-manifest.json','source-manifest.json','index.tar'} for item in self.cache.iterdir()):raise ValueError('Unexpected incomplete installation files')
         if any(self.cache.iterdir()) and not cached.is_file():raise ValueError('Incomplete installation lacks deployment binding')
@@ -148,7 +148,7 @@ class Slot:
             receipt=installer.install_bundle(bundle,self.root,value,self.binary,allow_checkpoint_fixture=self.fixture_mode)
             receipt.update(deployment_sha256=self.expected,deployment_key=self.key,artifact_manifest_sha256=value['artifact_manifest_sha256'])
             atomic_json(self.root/'installation.json',receipt)
-            bundle.unlink();state=self.actual_metadata(value);self.check_coverage(value,state);return value
+            bundle.unlink();state=self.actual_metadata(value);self.report_coverage(value,state);return value
         finally:
             if owned_transport:self.transport.close();self.transport=None
     def stop(self):
@@ -161,36 +161,42 @@ class Slot:
                     except subprocess.TimeoutExpired:child.kill();child.wait(timeout=5)
                 except (OSError,subprocess.TimeoutExpired):failed=True
         if failed:raise RuntimeError('Slot child termination remains unconfirmed')
-    def check_coverage(self,value,state=None):
-        if not installer.checkpoint_source(value):return
-        if state is not None:
-            self.coverage_deadline=installer.checkpoint_coverage_deadline(state,value,int(self.clock()),allow_checkpoint_fixture=self.fixture_mode)
-        elif self.coverage_deadline is None:
-            self.coverage_deadline=installer.checkpoint_coverage_deadline(self.actual_metadata(value),value,int(self.clock()),allow_checkpoint_fixture=self.fixture_mode)
-        if self.clock() >= self.coverage_deadline-60:
-            self.stop()
-            raise ValueError('Checkpoint coverage expired or entered shutdown margin')
+    def report_coverage(self,value,state=None,receipt=None):
+        if not installer.checkpoint_source(value):return None
+        now=int(self.clock());persist=receipt is None
+        if persist:receipt=metadata(self.root/'installation.json')
+        previous=receipt.get('coverage') or {}
+        try:
+            if state is None:raise ValueError('Runtime status unavailable')
+            observed=installer.checkpoint_coverage(state,value,now,allow_checkpoint_fixture=self.fixture_mode);basis='reader-status'
+        except (ValueError,KeyError,TypeError,AttributeError):
+            if not isinstance(previous.get('coverage_deadline'),int):observed=None
+            else:observed={key:previous[key] for key in ['coverage_anchor','coverage_deadline','checkpoint_renewed_by_remote_round']};basis='last-observed'
+        if observed is None:coverage={'checked_at':now,'coverage_stale':None,'basis':'unavailable'}
+        else:coverage=dict(observed,checked_at=now,coverage_age_s=now-observed['coverage_anchor'],coverage_stale=now>=observed['coverage_deadline'],basis=basis)
+        if coverage['coverage_stale'] is not previous.get('coverage_stale'):
+            print(json.dumps({'event':'tantivy_slot_coverage','stale':coverage['coverage_stale'],'coverage_age_s':coverage.get('coverage_age_s'),'coverage_deadline':coverage.get('coverage_deadline')}),flush=True)
+        receipt['coverage']=coverage
+        if persist:atomic_json(self.root/'installation.json',receipt)
+        return coverage
     def configured_source(self,value):
         if installer.checkpoint_source(value) and installer.source_origin_sha256(self.env.get('TURSO_URL',''),allow_test_loopback=self.fixture_mode)!=value['source_bootstrap']['checkpoint_receipt']['source_origin_sha256']:
             raise ValueError('Configured source differs from the verified checkpoint origin')
     def runtime_gates(self,value):
+        status=None
         try:
             with urllib.request.urlopen(self.status_url,timeout=3) as response:
                 raw=response.read(1024*1024+1)
                 if len(raw)>1024*1024:raise ValueError('Runtime metadata too large')
                 status=json.loads(raw)
             gates=installer.validate_runtime(status,value,int(self.clock()),allow_checkpoint_fixture=self.fixture_mode)
-            if installer.checkpoint_source(value):
-                deadline=gates['coverage_deadline']
-                if self.coverage_deadline is not None and deadline>self.coverage_deadline and not gates['checkpoint_renewed_by_remote_round']:raise ValueError('Ordinary polling cannot renew checkpoint coverage')
-                self.coverage_deadline=max(self.coverage_deadline or 0,deadline)
             receipt=metadata(self.root/'installation.json');receipt.update(runtime_qualified=True,runtime_qualified_at=int(time.time()),runtime_gates=gates,slo_empirically_qualified=False)
         except (OSError,ValueError,KeyError):
             receipt=metadata(self.root/'installation.json');receipt.update(runtime_qualified=False)
+        self.report_coverage(value,status,receipt)
         atomic_json(self.root/'installation.json',receipt)
-        self.check_coverage(value)
     def start_reader(self,value,listen='0.0.0.0:8080',admin_listen='127.0.0.1:8081'):
-        self.configured_source(value);self.check_coverage(value)
+        self.configured_source(value)
         installer.validate_fallback_file(self.root,value)
         self.status_url='http://127.0.0.1:'+listen.rsplit(':',1)[1]+'/index/status'
         server=subprocess.Popen([str(self.binary),'serve','--data',str(self.root),'--listen',listen,'--admin-listen',admin_listen,'--max-sync-lag-s','120','--retrieval',value['retrieval_strategy']],env=self.env)
@@ -203,13 +209,12 @@ class Slot:
         if not all(self.env.get(name) for name in ['ADMIN_SECRET','TURSO_URL','TURSO_AUTH_TOKEN']):raise ValueError('Missing source runtime capability')
         server=self.start_reader(value,listen,admin_listen)
         while server.poll() is None:
-            self.check_coverage(value)
             logpath=self.root/'source.log'
             if logpath.exists() and logpath.stat().st_size>16*1024**2:logpath.replace(self.root/'source.previous.log')
             with logpath.open('ab') as log:
                 source=subprocess.Popen(self.source_command(value),env=self.env,stdout=log,stderr=subprocess.STDOUT)
             self.children.append(source)
-            while source.poll() is None and server.poll() is None:self.check_coverage(value);self.runtime_gates(value);time.sleep(5)
+            while source.poll() is None and server.poll() is None:self.runtime_gates(value);time.sleep(5)
             if source.poll() is None:
                 source.terminate()
                 try:source.wait(timeout=10)

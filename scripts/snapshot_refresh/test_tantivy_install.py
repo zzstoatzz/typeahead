@@ -291,6 +291,17 @@ class AdmissionTests(unittest.TestCase):
         self.assertTrue(gates['checkpoint_renewed_by_remote_round'])
         self.assertEqual(gates['coverage_deadline'],later-5+86400)
 
+    def test_checkpoint_coverage_is_reported_past_its_deadline_without_admitting(self):
+        manifest,status,now=self.checkpoint_status()
+        self.assertIsNone(adapter.checkpoint_coverage(status,self.manifest(),now))
+        with self.assertRaisesRegex(ValueError,'Fixture checkpoint'):adapter.checkpoint_coverage(status,manifest,now)
+        fresh=adapter.checkpoint_coverage(status,manifest,now,allow_checkpoint_fixture=True)
+        self.assertEqual(fresh,{'coverage_anchor':1000000,'coverage_deadline':1000000+86400,'checkpoint_renewed_by_remote_round':False})
+        for later in [1000000+86400,1000000+86400*30]:
+            with self.subTest(later=later):
+                self.assertEqual(adapter.checkpoint_coverage(status,manifest,later,allow_checkpoint_fixture=True),fresh)
+                with self.assertRaisesRegex(ValueError,'stale'):adapter.validate_runtime(status,manifest,later,allow_checkpoint_fixture=True)
+
     def test_actual_checkpoint_wal_stream_import_catchup_and_test_only_admission(self):
         binary=Path(os.environ.get('TA_BINARY',ROOT/'services/tantivy/target/release/typeahead-tantivy')).resolve()
         if not binary.is_file():self.skipTest('actual Rust binary unavailable')

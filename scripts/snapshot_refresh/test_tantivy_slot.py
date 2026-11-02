@@ -246,18 +246,28 @@ class SlotTests(unittest.TestCase):
 
 
 
-class CheckpointExpiryTests(unittest.TestCase):
-    def test_real_reader_and_canonical_reconciler_stop_and_cached_restart_refuses_expired_coverage(self):
+def wait_status(public):
+    for _ in range(200):
+        try:
+            if smoke.request(public,'/index/status')[0]==200:return
+        except OSError:pass
+        time.sleep(.02)
+    raise AssertionError('reader did not start')
+
+
+class CheckpointCoverageTests(unittest.TestCase):
+    def test_slot_past_checkpoint_coverage_keeps_serving_restarts_and_reports_stale(self):
         if not BINARY.is_file():self.skipTest('actual Rust binary unavailable')
-        with tempfile.TemporaryDirectory(prefix='checkpoint-expiry-') as directory:
+        with tempfile.TemporaryDirectory(prefix='checkpoint-coverage-') as directory:
             work=Path(directory).resolve()
             with fixtures.checkpoint_runtime_fixture(work/'case',BINARY,slot_app='typeahead-tantivy-a') as case:
-                portable=case['portable'];bound={**case['manifest'],
+                portable=case['portable']
+                self.assertIn('rollback_native_anchor',portable);self.assertIn('legacy_build_id',portable)
+                bound={**case['manifest'],
                     'deployment_schema_version':1,'request_id':'e'*32,
                     'artifact_manifest_key':f"releases/search-tantivy/{portable['active_build']}/manifest.json",
                     'artifact_manifest_sha256':hashlib.sha256(json.dumps(portable).encode()).hexdigest(),
                     'source_manifest_key':f"releases/search/{portable['rollback_native_anchor']['build_id']}/manifest.json"}
-                self.assertIn('legacy_build_id',portable)
                 key='control/tantivy-slots/typeahead-tantivy-a/'+('e'*32)+'.json'
                 deployment=json.dumps(bound).encode()
                 store=Store({key:deployment,bound['artifact_manifest_key']:json.dumps(portable).encode(),
@@ -270,19 +280,19 @@ class CheckpointExpiryTests(unittest.TestCase):
                     TANTIVY_TEST_FIXTURE='1')
                 clock=[time.time()]
                 instance=slot.Slot(env,work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
-                reconciler=None
+                restarted=None;reconciler=None
+                coverage=lambda:slot.metadata(work/'installed/installation.json')['coverage']
                 try:
-                    value=instance.install();public,admin=smoke.port(),smoke.port()
+                    value=instance.install()
+                    self.assertNotIn(bound['source_manifest_key'],store.keys)
+                    self.assertFalse(coverage()['coverage_stale']);deadline=coverage()['coverage_deadline']
+                    public,admin=smoke.port(),smoke.port()
                     wrong_source=slot.Slot(dict(env,TURSO_URL='https://different-source.invalid'),work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
                     with self.assertRaisesRegex(ValueError,'source differs'):
                         wrong_source.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
                     self.assertEqual(wrong_source.children,[])
                     reader=instance.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
-                    for _ in range(100):
-                        try:
-                            if smoke.request(f'http://127.0.0.1:{public}','/index/status')[0]==200:break
-                        except OSError:pass
-                        time.sleep(.02)
+                    wait_status(f'http://127.0.0.1:{public}')
                     self.assertEqual(smoke.request(f'http://127.0.0.1:{public}','/search?q=real')[0],200)
                     marker=work/'source-polled.json'
                     program="import sys,time,json\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1]);import sync,current_state\nsource=sync.Turso(sys.argv[2],sys.argv[3],allow_test_loopback=True,retries=1,backoff=0,max_bytes=1048576)\nadmin=sync.Admin(sys.argv[4],sys.argv[5],sys.argv[6])\nresult=current_state.ObservedSynchronizer(source,admin,sync,policy_mode='snapshot',anti_entropy_pages=0,safety_lag=0,max_pages=10,max_seconds=5,retries=1,backoff=0).run()\nPath(sys.argv[7]).write_text(json.dumps(result));time.sleep(10)\n"
@@ -294,33 +304,54 @@ class CheckpointExpiryTests(unittest.TestCase):
                     while not marker.exists() and time.monotonic()<until:
                         self.assertIsNone(reconciler.poll());time.sleep(.02)
                     self.assertTrue(marker.exists())
-                    deadline=instance.coverage_deadline
                     instance.runtime_gates(value)
                     self.assertTrue(slot.metadata(instance.root/'installation.json')['runtime_qualified'])
-                    self.assertEqual(instance.coverage_deadline,deadline,'ordinary polling renewed full coverage')
-                    self.assertIsNone(reader.poll());self.assertIsNone(reconciler.poll())
+                    self.assertEqual(coverage()['coverage_deadline'],deadline,'ordinary polling renewed full coverage')
                     case['source'].now=int(time.time())
                     remote_source=case['source'].source()
                     remote_admin=case['replay'].Admin(f'http://127.0.0.1:{admin}',case['secret'],f'http://127.0.0.1:{public}/index/status')
                     case['current'].ObservedSynchronizer(remote_source,remote_admin,case['replay'],policy_mode='snapshot',anti_entropy_pages=4,safety_lag=0,max_pages=10,max_seconds=5,retries=1,backoff=0).run()
-                    self.assertTrue(smoke.request(f'http://127.0.0.1:{public}','/index/status')[2]['cutover_source_ready'])
                     clock[0]=time.time();instance.runtime_gates(value)
                     self.assertTrue(slot.metadata(instance.root/'installation.json')['runtime_qualified'])
-                    self.assertGreater(instance.coverage_deadline,deadline)
-                    deadline=instance.coverage_deadline
-                    clock[0]=deadline-59
-                    with self.assertRaisesRegex(ValueError,'coverage expired'):
-                        instance.check_coverage(value)
-                    self.assertIsNotNone(reader.poll());self.assertIsNotNone(reconciler.poll())
-                    with self.assertRaisesRegex(ValueError,'coverage expired'):
-                        instance.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
+                    self.assertGreater(coverage()['coverage_deadline'],deadline)
+                    deadline=coverage()['coverage_deadline']
+                    clock[0]=deadline+3600;instance.runtime_gates(value)
+                    self.assertIsNone(reader.poll(),'coverage age stopped the reader')
+                    self.assertEqual(smoke.request(f'http://127.0.0.1:{public}','/search?q=real')[0],200)
+                    stale=coverage();receipt=slot.metadata(instance.root/'installation.json')
+                    self.assertTrue(stale['coverage_stale']);self.assertEqual(stale['coverage_deadline'],deadline);self.assertEqual(stale['basis'],'reader-status')
+                    self.assertGreaterEqual(stale['coverage_age_s'],86400+3600);self.assertFalse(receipt['runtime_qualified'])
+                    with self.assertRaisesRegex(ValueError,'stale'):
+                        fixtures.adapter.validate_runtime(smoke.request(f'http://127.0.0.1:{public}','/index/status')[2],value,int(clock[0]),allow_checkpoint_fixture=True)
+                    instance.stop();instance.children.clear()
+
                     restarted=slot.Slot(env,work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
-                    with self.assertRaisesRegex(ValueError,'coverage expired'):
-                        restarted.install()
+                    self.assertEqual(restarted.install(),value)
                     self.assertEqual(len(store.keys),3,'cached restart fetched artifacts')
+                    self.assertTrue(coverage()['coverage_stale']);self.assertEqual(coverage()['coverage_deadline'],deadline)
+                    restarted.source_command=lambda _:[sys.executable,'-c','import time;time.sleep(60)']
+                    public,admin=smoke.port(),smoke.port();failure=[]
+                    def serve():
+                        try:restarted.serve(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
+                        except BaseException as error:failure.append(error)
+                    thread=threading.Thread(target=serve,daemon=True);thread.start()
+                    wait_status(f'http://127.0.0.1:{public}')
+                    first=coverage()['checked_at'];clock[0]+=86400
+                    until=time.monotonic()+15
+                    while coverage()['checked_at']==first and time.monotonic()<until:time.sleep(.1)
+                    self.assertTrue(thread.is_alive(),failure);self.assertEqual(failure,[])
+                    self.assertEqual(smoke.request(f'http://127.0.0.1:{public}','/search?q=real')[0],200)
+                    later=coverage()
+                    self.assertTrue(later['coverage_stale']);self.assertGreaterEqual(later['coverage_age_s'],2*86400+3600)
+                    self.assertTrue(all(child.poll() is None for child in restarted.children))
+                    restarted.stop();thread.join(20)
+                    self.assertFalse(thread.is_alive())
+                    self.assertEqual([type(error) for error in failure],[RuntimeError])
                     with self.assertRaisesRegex(ValueError,'unavailable in production'):
                         slot.Slot({k:v for k,v in env.items() if k!='TANTIVY_TEST_FIXTURE'},work/'other',BINARY,store,fixture_clock=lambda:0)
                 finally:
-                    instance.stop();store.close()
+                    instance.stop()
+                    if restarted:restarted.stop()
+                    store.close()
 
 if __name__=='__main__':unittest.main()

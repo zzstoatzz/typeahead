@@ -457,12 +457,14 @@ def checkpoint_source_gates(metadata, manifest, now, max_poll_age=120, max_polic
             'post_cut_policy_sha256':policy_sha,'checkpoint_renewed_by_remote_round':renewed,'remote_full_round_present':remote.get('last_completed_at') is not None}
 
 
-def checkpoint_coverage_deadline(metadata, manifest, now=None, allow_checkpoint_fixture=False):
+def checkpoint_coverage(metadata, manifest, now=None, allow_checkpoint_fixture=False):
+    """Report checkpoint coverage age; admission, not serving, enforces the deadline."""
     if not checkpoint_source(manifest):
         return None
     checkpoint_fixture_gate(manifest,allow_checkpoint_fixture)
     clock = int(time.time()) if now is None else now
-    return checkpoint_source_gates(metadata,manifest,clock,require_fresh=False,require_complete_poll=False)['coverage_deadline']
+    gates = checkpoint_source_gates(metadata,manifest,clock,require_fresh=False,require_complete_poll=False)
+    return {'coverage_anchor':clock-gates['coverage_age_s'],'coverage_deadline':gates['coverage_deadline'],'checkpoint_renewed_by_remote_round':gates['checkpoint_renewed_by_remote_round']}
 
 
 def validate_metadata(metadata, manifest, now=None, require_coverage_ready=True, require_source_ready=True, allow_checkpoint_fixture=False, **bounds):

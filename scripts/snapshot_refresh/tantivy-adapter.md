@@ -135,7 +135,10 @@ received bytes and crash reservations survive process replacement. The window
 cannot renew before its durable hourly deadline. These settings do not prove
 daily full coverage. Installation alone records `runtime_qualified: false`;
 the receipt changes to true only after the existing actual runtime source,
-policy and expiry validators pass, and is reevaluated while serving.
+policy and expiry validators pass, and is reevaluated while serving. The slot
+reports checkpoint coverage age in the receipt's `coverage` object and never
+stops on it; a slot past its deadline keeps serving with
+`runtime_qualified: false` and `coverage_stale: true`.
 Independent provider/public endpoint qualification and all release gates remain
 required before route promotion. No slot has been deployed by this change.
 

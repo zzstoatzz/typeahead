@@ -29,7 +29,18 @@ Unscoped searches automatically fall back to Bluesky on backend failure.
 PDS-scoped requests fail explicitly because Bluesky cannot honor that contract.
 The manual `EMERGENCY_PROXY_BSKY` override and recovery procedure are documented
 in the [outage runbook](retros/2026-10-31-search-expiry-outage.md#first-action-during-a-search-outage).
-Restore service before investigating the builder. Never bypass coverage expiry.
+Restore service before investigating the builder.
+
+The fixed slot image (`c476fc5`) stops itself 60 seconds before its checkpoint
+coverage deadline (last completed full round, or the checkpoint cut, plus
+86,400 seconds). The current slot runtime source never stops on coverage age:
+a running or restarted slot keeps serving and records `coverage`
+(`coverage_anchor`, `coverage_deadline`, `coverage_age_s`, `coverage_stale`,
+`checked_at`, `basis`) in `/data/tantivy/installation.json` every 5 seconds,
+and logs a `tantivy_slot_coverage` event when staleness changes. Admission
+(`validate_runtime`, used by qualification and retirement) still refuses stale
+coverage, so a stale slot is never promoted. No image built from this source
+is deployed yet.
 
 ## Deploy and verify
 
