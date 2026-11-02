@@ -21,10 +21,22 @@ const STALE_LAG_S = 30 * 60;
 // Managed refresh runs at most 48h apart; keep the existing 4-day stale threshold.
 const SNAPSHOT_STALE_S = 4 * 24 * 3600;
 const PROBE_HANDLE = "zzstoatzz.io";
+// Tantivy checkpoint coverage window: a completed full source round (or the
+// checkpoint cut) is current for 24h. Slots keep serving past it, so this
+// report is what alerts when a scheduled refresh is missed.
+const CHECKPOINT_SOURCE = "sqlite-committed-prefix";
+const COVERAGE_WINDOW_S = 24 * 3600;
 
 /** what the search service answers on /health, /index/status and /search */
 type HealthBody = { ready?: boolean; sync_lag_s?: number };
-type IndexStatusBody = { build_id?: string };
+export type IndexStatusBody = {
+  build_id?: string;
+  source_manifest?: {
+    source_kind?: string;
+    source_bootstrap?: { checkpoint_receipt?: { source_clock_before?: number } };
+  };
+  reconciliation?: { last_completed_at?: number | null };
+};
 type SearchBody = { actors?: { handle?: string }[]; results?: { handle?: string }[] };
 
 export type Freshness = {
@@ -33,9 +45,23 @@ export type Freshness = {
   replica_lag_s: number | null;
   snapshot_age_s: number | null;
   build_id: string | null;
+  coverage_age_s: number | null;
+  coverage_deadline: number | null;
   probe_ok: boolean | null;
   reasons: string[];
 };
+
+/** Mirrors the installer's checkpoint coverage anchor: the later of the
+ *  checkpoint cut and the last completed full source round. Null for a
+ *  backend that does not serve a checkpoint-sourced generation. */
+export function checkpointCoverageAnchor(index: IndexStatusBody | null): number | null {
+  const source = index?.source_manifest;
+  if (source?.source_kind !== CHECKPOINT_SOURCE) return null;
+  const cut = source.source_bootstrap?.checkpoint_receipt?.source_clock_before;
+  if (cut === undefined || !Number.isFinite(cut)) return null;
+  const round = index?.reconciliation?.last_completed_at;
+  return round === undefined || round === null || !Number.isFinite(round) ? cut : Math.max(cut, round);
+}
 
 /** Legacy and compact build IDs retain the source build epoch. */
 function snapshotAge(buildId: string | null): number | null {
@@ -48,7 +74,8 @@ export async function measureFreshness(env: Env): Promise<Freshness> {
   const base = env.SEARCH_BACKEND_URL;
   const out: Freshness = {
     ok: true, stale: false,
-    replica_lag_s: null, snapshot_age_s: null, build_id: null, probe_ok: null,
+    replica_lag_s: null, snapshot_age_s: null, build_id: null,
+    coverage_age_s: null, coverage_deadline: null, probe_ok: null,
     reasons: [],
   };
   if (!base) {
@@ -93,6 +120,16 @@ export async function measureFreshness(env: Env): Promise<Freshness> {
   if (out.snapshot_age_s !== null && out.snapshot_age_s > SNAPSHOT_STALE_S) {
     out.stale = true;
     out.reasons.push(`snapshot ${Math.round(out.snapshot_age_s / 3600)}h old`);
+  }
+
+  const anchor = checkpointCoverageAnchor(index);
+  if (anchor !== null) {
+    out.coverage_deadline = anchor + COVERAGE_WINDOW_S;
+    out.coverage_age_s = Math.floor(Date.now() / 1000) - anchor;
+    if (out.coverage_age_s >= COVERAGE_WINDOW_S) {
+      out.stale = true;
+      out.reasons.push(`checkpoint coverage ${Math.round(out.coverage_age_s / 3600)}h old (deadline ${out.coverage_deadline})`);
+    }
   }
 
   // End-to-end probe: exercise the real serving path — replica, snapshot,

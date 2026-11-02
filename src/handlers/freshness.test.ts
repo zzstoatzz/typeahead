@@ -1,5 +1,5 @@
 import { describe, expect, test, afterEach } from "bun:test";
-import { measureFreshness, notifyFreshnessChange, type Freshness } from "./freshness";
+import { measureFreshness, notifyFreshnessChange, type Freshness, type IndexStatusBody } from "./freshness";
 import type { Env } from "../types";
 
 const realFetch = globalThis.fetch;
@@ -98,6 +98,58 @@ describe("freshness", () => {
     }
   });
 
+  test("a checkpoint slot past its coverage deadline is stale but still ok", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    let index: IndexStatusBody = {};
+    const server = Bun.serve({
+      hostname: "127.0.0.1", port: 0,
+      fetch(request) {
+        const path = new URL(request.url).pathname;
+        if (path === "/health") return Response.json({ ready: true, sync_lag_s: 30 });
+        if (path === "/index/status") return Response.json(index);
+        return Response.json({ actors: [{ handle: "zzstoatzz.io" }] });
+      },
+    });
+    const checkpoint = (cut: number, round: number | null): IndexStatusBody => ({
+      build_id: `b${now - 3600}-cp-test`,
+      source_manifest: {
+        source_kind: "sqlite-committed-prefix",
+        source_bootstrap: { checkpoint_receipt: { source_clock_before: cut } },
+      },
+      reconciliation: { last_completed_at: round },
+    });
+    try {
+      const target = fakeEnv({ SEARCH_BACKEND_URL: server.url.origin });
+      index = checkpoint(now - 3600, null);
+      let f = await measureFreshness(target);
+      expect(f.stale).toBe(false);
+      expect(f.coverage_deadline).toBe(now - 3600 + 86400);
+      expect(f.coverage_age_s).toBeGreaterThanOrEqual(3600);
+
+      index = checkpoint(now - 3 * 86400, now - 7200);
+      f = await measureFreshness(target);
+      expect(f.stale).toBe(false);
+      expect(f.coverage_deadline).toBe(now - 7200 + 86400);
+
+      index = checkpoint(now - 3 * 86400, now - 86400 - 3600);
+      f = await measureFreshness(target);
+      expect(f.stale).toBe(true);
+      expect(f.ok).toBe(true);
+      expect(f.probe_ok).toBe(true);
+      expect(f.coverage_deadline).toBe(now - 3600);
+      expect(f.coverage_age_s).toBeGreaterThanOrEqual(86400 + 3600);
+      expect(f.reasons.join(" ")).toContain("checkpoint coverage 25h old");
+
+      index = { build_id: `b${now - 3600}-21fc`, source_manifest: { source_kind: "flatpx05" } };
+      f = await measureFreshness(target);
+      expect(f.stale).toBe(false);
+      expect(f.coverage_age_s).toBeNull();
+      expect(f.coverage_deadline).toBeNull();
+    } finally {
+      server.stop(true);
+    }
+  });
+
   test("a serving path that cannot find the probe handle is not ok", async () => {
     backend({ lag: 30, findsSelf: false });
     const f = await measureFreshness(env);
@@ -133,7 +185,7 @@ describe("freshness notification", () => {
 
   const F = (stale: boolean): Freshness => ({
     ok: !stale, stale, replica_lag_s: stale ? 3600 : 60, snapshot_age_s: 7200,
-    build_id: "b1-x", probe_ok: true, reasons: stale ? ["replica 3600s behind turso"] : [],
+    build_id: "b1-x", coverage_age_s: null, coverage_deadline: null, probe_ok: true, reasons: stale ? ["replica 3600s behind turso"] : [],
   });
 
   test("fires when it goes stale", async () => {

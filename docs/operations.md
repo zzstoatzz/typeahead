@@ -40,7 +40,10 @@ a running or restarted slot keeps serving and records `coverage`
 and logs a `tantivy_slot_coverage` event when staleness changes. Admission
 (`validate_runtime`, used by qualification and retirement) still refuses stale
 coverage, so a stale slot is never promoted. No image built from this source
-is deployed yet.
+is deployed yet. The Worker's `/health/freshness` reads the serving backend's
+`/index/status` and reports `coverage_age_s` and `coverage_deadline` for a
+checkpoint-sourced generation; at 86,400 seconds or more it sets `stale: true`
+(HTTP 503, change-only webhook alert) while `ok` and `probe_ok` stay true.
 
 ## Deploy and verify
 
