@@ -180,27 +180,23 @@ dev machine IDs are rejected. Synthetic provider test receipts explicitly use
 instance evidence likewise cannot qualify final resources. The existing 40 GiB
 dev service therefore cannot qualify the final 20 GiB serving shape.
 
-The resulting route has explicit `engine: "tantivy"`, the bounded dev origin,
-build, expiry-v4 format, and an admission receipt digest. Legacy route payloads
-remain native. Native and Tantivy origins cannot be interchanged. Route and hint
-equality include engine, format and admission digest. Successful Tantivy
-responses must acknowledge engine/build/format, binary SHA and retrieval
-strategy. The transport accepts no writes: `POST /admin/refresh` returns 404,
-and source polling is responsible for freshness on every engine. `/debug/index` is unavailable for
-Tantivy and fails explicitly.
+The resulting route has explicit `engine: "tantivy"`, a bounded Tantivy origin,
+build, expiry-v4 format, and an admission receipt digest. A route whose current
+target is anything else is invalid; the Worker then answers through its
+Bluesky failover. Route and hint equality include engine, format and admission
+digest. Successful responses must acknowledge engine/build/format, binary SHA
+and retrieval strategy. The transport accepts no writes: `POST /admin/refresh`
+returns 404, and source polling is responsible for freshness. The transport
+does not expose `/debug/index`.
 
 `conditionalRouteUpdate` in `src/search-route.ts` is the internal R2 CAS primitive
-for a separately authorized controller. It preserves the previous route and
-seeds a native-only `native_rollback` anchor on native-to-Tantivy promotion.
-Successive Tantivy promotions retain that anchor independently of `previous`.
-The anchor preserves the original native target metadata, including source
-watermark, machine/volume identity and legacy twin, for refresh and retention.
-An invalid or missing native anchor prevents a Tantivy promotion. It
-rejects a stale ETag. It exposes no public mutation endpoint and does not itself
+for a separately authorized controller. It keeps the replaced target as
+`previous` when that target is a valid Tantivy route, ignores and drops any
+other envelope field (including a retired `native_rollback`), and rejects a
+stale ETag. It exposes no public mutation endpoint and does not itself
 establish admission or authorize promotion. A controller must validate the
-qualification receipt and remaining release gates before calling it. Rollback
-must retain and qualify the independent native slot; an old Tantivy receipt
-cannot establish current readiness.
+qualification receipt and remaining release gates before calling it. An old
+Tantivy receipt cannot establish current readiness for a rollback.
 
 Before any later promotion or rollback, either rotate the nonsecret Worker
 `SEARCH_CACHE_GENERATION` token or prove the old 60-second TTL has fully drained.
@@ -209,8 +205,7 @@ default to `legacy`. Invalid configuration fails closed. All query/limit/PDS
 cache identities include this token. Backend engine/build/format/binary/strategy
 and machine acknowledgements survive caching; a retained old answer identifies
 its actual original backend rather than pretending to come from the new route.
-An older native backend is labeled native only by validated native transport
-routing; missing headers on an unknown direct backend remain unknown.
+Missing headers on an unknown direct backend remain unknown.
 
 Worker configuration and route CAS are separate provider updates. Rotating the
 token does not make them atomic: an operator/controller must verify uncached

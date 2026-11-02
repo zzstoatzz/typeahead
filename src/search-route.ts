@@ -2,41 +2,28 @@ import * as z from "zod/mini";
 
 export const ROUTE_KEY = "control/search-routing.json";
 
+const targetSchema = z.object({
+  engine: z.literal("tantivy"),
+  origin: z.enum([
+    "https://typeahead-tantivy-dev.fly.dev",
+    "https://typeahead-tantivy-a.fly.dev",
+    "https://typeahead-tantivy-b.fly.dev",
+  ]),
+  build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
+  format: z.literal("tantivy-0.27-f32-did-expiry-v4"),
+  admission_sha256: z.string().check(z.regex(/^[a-f0-9]{64}$/)),
+  binary_sha256: z.string().check(z.regex(/^[a-f0-9]{64}$/)),
+  retrieval_strategy: z.enum(["per-segment", "global-merge"]),
+});
+
 export const routeSchema = z.pipe(z.object({
   version: z.literal(1),
-  current: z.union([z.object({
-    engine: z.optional(z.literal("native")),
-    origin: z.enum([
-      "https://typeahead-startup-20261024.fly.dev",
-      "https://typeahead-search-refresh.fly.dev",
-    ]),
-    build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
-  }), z.object({
-    engine: z.literal("tantivy"),
-    origin: z.enum([
-      "https://typeahead-tantivy-dev.fly.dev",
-      "https://typeahead-tantivy-a.fly.dev",
-      "https://typeahead-tantivy-b.fly.dev",
-    ]),
-    build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
-    format: z.literal("tantivy-0.27-f32-did-expiry-v4"),
-    admission_sha256: z.string().check(z.regex(/^[a-f0-9]{64}$/)),
-    binary_sha256: z.string().check(z.regex(/^[a-f0-9]{64}$/)),
-    retrieval_strategy: z.enum(["per-segment", "global-merge"]),
-  })]),
+  current: targetSchema,
 }), z.transform(({ current }) => current));
 
 export const parseRoute = routeSchema.parse;
 
-const retainedNativeSchema = z.looseObject({
-  engine: z.optional(z.literal("native")),
-  origin: z.enum(["https://typeahead-startup-20261024.fly.dev", "https://typeahead-search-refresh.fly.dev"]),
-  build_id: z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/)),
-  source_watermark: z.optional(z.int().check(z.gte(0))),
-  machine_id: z.optional(z.string().check(z.regex(/^[a-f0-9]{14}$/))),
-  volume_id: z.optional(z.string().check(z.regex(/^vol_[A-Za-z0-9]+$/))),
-  legacy_build_id: z.optional(z.string().check(z.regex(/^b[0-9]{10}-[A-Za-z0-9_-]+$/))),
-});
+export type SearchRoute = ReturnType<typeof parseRoute>;
 
 const mutationSchema = z.object({
   owner: z.literal("typeahead-snapshot-refresh"),
@@ -45,14 +32,12 @@ const mutationSchema = z.object({
   acquired_at: z.int().check(z.gte(0)),
 });
 
-export function routeIdentity(route: ReturnType<typeof parseRoute>): string {
-  return JSON.stringify(route.engine === "tantivy"
-    ? [route.engine, route.origin, route.build_id, route.format, route.admission_sha256, route.binary_sha256, route.retrieval_strategy]
-    : ["native", route.origin, route.build_id]);
+export function routeIdentity(route: SearchRoute): string {
+  return JSON.stringify([route.engine, route.origin, route.build_id, route.format, route.admission_sha256, route.binary_sha256, route.retrieval_strategy]);
 }
 
-export function responseMatchesRoute(route: ReturnType<typeof parseRoute>, response: Response): boolean {
-  return route.engine !== "tantivy" || !response.ok || (
+export function responseMatchesRoute(route: SearchRoute, response: Response): boolean {
+  return !response.ok || (
     response.headers.get("X-Typeahead-Engine") === "tantivy"
     && response.headers.get("X-Typeahead-Build") === route.build_id
     && response.headers.get("X-Typeahead-Format") === route.format
@@ -61,37 +46,23 @@ export function responseMatchesRoute(route: ReturnType<typeof parseRoute>, respo
   );
 }
 
-export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: string | null, candidate: z.input<typeof routeSchema>["current"] | z.infer<typeof retainedNativeSchema>): Promise<boolean> {
-  const parsedCurrent = parseRoute({ version: 1, current: candidate });
-  const current = parsedCurrent.engine === "tantivy" ? parsedCurrent : retainedNativeSchema.parse(candidate);
+export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: string | null, candidate: z.input<typeof targetSchema>): Promise<boolean> {
+  const current = targetSchema.parse(candidate);
   const before = await bucket.get(ROUTE_KEY);
   if ((before?.etag ?? null) !== expectedEtag) return false;
-  const envelope = before ? await before.json() : null;
-  const retained = envelope === null ? undefined : z.object({
+  const retained = before === null ? undefined : z.object({
     current: z.unknown(),
-    previous: z.optional(z.unknown()),
-    native_rollback: z.optional(z.unknown()),
     mutation: z.optional(z.unknown()),
-  }).parse(envelope);
+  }).parse(await before.json());
   const mutation = retained?.mutation == null ? null : mutationSchema.parse(retained.mutation);
   if (mutation && current.origin === `https://${mutation.app}.fly.dev`) return false;
-  const parsedPrevious = before ? parseRoute(envelope) : null;
-  const previous = parsedPrevious?.engine === "tantivy" ? parsedPrevious : retained ? retainedNativeSchema.parse(retained.current) : null;
-  let anchor = retained?.native_rollback == null ? null : retainedNativeSchema.parse(retained.native_rollback);
-  if (current.engine === "tantivy") {
-    if (previous && previous.engine !== "tantivy") anchor = previous;
-    if (!anchor && retained?.previous != null) {
-      const earlier = parseRoute({ version: 1, current: retained.previous });
-      if (earlier.engine !== "tantivy") anchor = retainedNativeSchema.parse(retained.previous);
-    }
-    if (!anchor) throw new Error("Tantivy promotion requires a retained native rollback anchor");
-  }
+  const previous = targetSchema.safeParse(retained?.current);
   const options = expectedEtag === null
     ? { onlyIf: { etagDoesNotMatch: "*" } }
     : { onlyIf: { etagMatches: expectedEtag } };
   const next = {
-    version: 1, current, previous,
-    native_rollback: anchor ?? undefined,
+    version: 1, current,
+    previous: previous.success ? previous.data : undefined,
     mutation: mutation ?? undefined,
   };
   const result = await bucket.put(ROUTE_KEY, JSON.stringify(next), options);
@@ -101,10 +72,10 @@ export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: str
 export function allowedRoute(request: Request) {
   const path = new URL(request.url).pathname;
   return request.method === "GET"
-    && ["/search", "/health", "/ready", "/index/status", "/debug/search", "/debug/index", "/route"].includes(path);
+    && ["/search", "/health", "/ready", "/index/status", "/debug/search", "/route"].includes(path);
 }
 
-let cachedRoute: { route: ReturnType<typeof parseRoute>; expiresAt: number; hintExpiresAt: number } | undefined;
+let cachedRoute: { route: SearchRoute; expiresAt: number; hintExpiresAt: number } | undefined;
 let sharedHintsEnabled = true;
 
 export function sharedHintsAllowed() {
@@ -124,7 +95,7 @@ export function speculativeRoute() {
 }
 
 /** a source of routes already validated against R2, such as RouteAuthority */
-export type RouteSource = { current(): Promise<{ route: ReturnType<typeof parseRoute>; validatedAt: number }> };
+export type RouteSource = { current(): Promise<{ route: SearchRoute; validatedAt: number }> };
 
 /** past this, a search stops waiting for the shared copy and reads R2 itself */
 export const SHARED_ROUTE_WAIT_MS = 50;

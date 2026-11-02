@@ -1,6 +1,5 @@
-import { routeIdentity, responseMatchesRoute, type parseRoute } from "./search-route";
+import { routeIdentity, responseMatchesRoute, type SearchRoute as Route } from "./search-route";
 
-type Route = ReturnType<typeof parseRoute>;
 type OriginFetch = (route: Route, signal: AbortSignal) => Promise<Response>;
 
 export async function validatedSearch(
@@ -59,9 +58,6 @@ export async function validatedSearch(
   if (!responseMatchesRoute(route, response)) {
     await response.body?.cancel().catch(() => {});
     return Response.json({ error: "SearchBackendIdentityMismatch" }, { status: 503 });
-  }
-  if (route.engine !== "tantivy" && response.ok && !response.headers.has("X-Typeahead-Engine")) {
-    response.headers.set("X-Typeahead-Engine", "native");
   }
   response.headers.set("Server-Timing", `transport_route;dur=${routeMs}, transport_origin_headers;dur=${result.headersMs}, transport_mode;desc="${mode}"`);
   return response;

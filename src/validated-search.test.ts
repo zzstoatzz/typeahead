@@ -3,11 +3,16 @@ import { parseRoute } from "./search-route";
 import { validatedSearch } from "./validated-search";
 
 const first = parseRoute({ version: 1, current: {
-  origin: "https://typeahead-startup-20261024.fly.dev", build_id: "b1792908655-14d5-px05",
+  engine: "tantivy", origin: "https://typeahead-tantivy-a.fly.dev", build_id: "b1792908655-cp-first",
+  format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge",
 } });
 const second = parseRoute({ version: 1, current: {
-  origin: "https://typeahead-search-refresh.fly.dev", build_id: "b1793081565-0228-px05",
+  ...first, origin: "https://typeahead-tantivy-b.fly.dev", build_id: "b1793081565-cp-second", admission_sha256: "b".repeat(64),
 } });
+
+function identity(buildId: string) {
+  return { "X-Typeahead-Engine": "tantivy", "X-Typeahead-Build": buildId, "X-Typeahead-Format": first.format, "X-Typeahead-Binary-Sha256": first.binary_sha256, "X-Typeahead-Retrieval-Strategy": first.retrieval_strategy };
+}
 
 test("a changed admission identity discards a same-origin same-build hinted response", async () => {
   const candidate = { engine: "tantivy", origin: "https://typeahead-tantivy-dev.fly.dev", build_id: "b1792908655-test", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" } as const;
@@ -20,7 +25,6 @@ test("a changed admission identity discards a same-origin same-build hinted resp
   } });
   try {
     const result = await validatedSearch(Bun.sleep(25).then(() => next), previous, (route, signal) => {
-      if (route.engine !== "tantivy") throw new Error("Expected Tantivy fixture route");
       return fetch(new URL('/' + route.admission_sha256, server.url), { signal });
     });
     expect(await result.text()).toBe('/' + 'b'.repeat(64));
@@ -39,7 +43,7 @@ function fixture(options: { routeDelay: number; originDelay: number; selected?: 
     await Bun.sleep(path === "/control" ? options.routeDelay : options.originDelay);
     if (path === "/control") return Response.json({ version: 1, current: options.selected ?? first }, { status: options.controlStatus ?? 200 });
     return new Response(JSON.stringify(options.originStatus === 503 ? { error: "PdsScopeUnavailable" } : { actors: [{ did: path, handle: "fixture.test", labels: [{ val: "fixture" }] }] }), {
-      status: options.originStatus ?? 200, headers: { "X-Typeahead-Pds": "selfhosted.social", "Content-Type": "application/json" },
+      status: options.originStatus ?? 200, headers: { ...identity(path.slice(1)), "X-Typeahead-Pds": "selfhosted.social", "Content-Type": "application/json" },
     });
   } });
   const current = () => fetch(new URL("/control", server.url)).then(async response => {
@@ -158,7 +162,7 @@ test("a slow asynchronous hint cannot hold up an already validated route", async
       hintFinished = true;
       return Response.json({ version: 1, current: first });
     }
-    return Response.json({ actors: [{ did: 'fixture', handle: 'fixture.test' }] });
+    return Response.json({ actors: [{ did: 'fixture', handle: 'fixture.test' }] }, { headers: identity(first.build_id) });
   } });
   const hint = fetch(new URL('/hint', server.url)).then(async response => parseRoute(await response.json()));
   try {

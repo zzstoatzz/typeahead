@@ -1,16 +1,19 @@
 import { expect, test } from "bun:test";
 import { allowedRoute, parseRoute, routeIdentity, responseMatchesRoute } from "./search-route";
 
-test("routing records accept only managed backend origins and exact build identities", () => {
-  const current = { origin: "https://typeahead-startup-20261024.fly.dev", build_id: "b1792896197-ebe5-px05" } as const;
+test("routing records accept only managed Tantivy targets and ignore retired envelope fields", () => {
+  const current = { engine: "tantivy", origin: "https://typeahead-tantivy-b.fly.dev", build_id: "b1793463173-cp-fixture", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
+  const retired = { origin: "https://typeahead-startup-20261024.fly.dev", build_id: "b1793109259-2b36-px05", source_watermark: 1793109254, machine_id: "8e3d79b70dd748", volume_id: "vol_v8eyqk61q9dy9gkv", legacy_build_id: "b1793109259-2b36" };
   expect(parseRoute({ version: 1, current })).toEqual(current);
-  expect(parseRoute({ version: 1, current: { ...current, origin: "https://typeahead-search-refresh.fly.dev" } }))
-    .toEqual({ ...current, origin: "https://typeahead-search-refresh.fly.dev" });
   expect(parseRoute({ version: 1, current: { ...current, extra: true }, previous: current })).toEqual(current);
+  expect(parseRoute({ version: 1, current, previous: { ...current, origin: "https://typeahead-tantivy-a.fly.dev" }, native_rollback: retired })).toEqual(current);
   for (const value of [undefined, null, false, 1, "route", [], {}, { version: 1 }, { version: 2, current },
     { version: 1, current: null },
     { version: 1, current: [] },
     { version: 1, current: "target" },
+    { version: 1, current: retired },
+    { version: 1, current: { ...retired, engine: "native" } },
+    { version: 1, current: retired, previous: current, native_rollback: retired },
     { version: 1, current: { build_id: current.build_id } },
     { version: 1, current: { origin: current.origin } },
     { version: 1, current: { ...current, origin: 1 } },
@@ -38,10 +41,10 @@ test("Tantivy requires explicit engine, bounded origin, source format and admiss
 
 test("router exposes only backend read paths", () => {
   const base = "https://typeahead-search-transport.n8-3e9.workers.dev";
-  for (const path of ["/search", "/ready", "/health", "/index/status", "/debug/search", "/debug/index", "/route"]) {
+  for (const path of ["/search", "/ready", "/health", "/index/status", "/debug/search", "/route"]) {
     expect(allowedRoute(new Request(base + path))).toBe(true);
   }
-  for (const [path, method] of [["/admin/refresh", "POST"], ["/admin/refresh", "GET"], ["/search", "POST"], ["/admin/delete", "POST"], ["/other", "GET"]]) {
+  for (const [path, method] of [["/admin/refresh", "POST"], ["/admin/refresh", "GET"], ["/search", "POST"], ["/admin/delete", "POST"], ["/debug/index", "GET"], ["/other", "GET"]]) {
     expect(allowedRoute(new Request(base + path, { method }))).toBe(false);
   }
 });

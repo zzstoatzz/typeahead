@@ -33,8 +33,7 @@ handles retain priority. A boost is rounded to f32; supplying pds_first with boo
 Preference/boost parameters without prefer_pds, unknown modes, malformed limits and invalid boosts return 400.
 Support is acknowledged by the backend and included in edge cache identity. Unsupported
 preference returns 503 PdsScopeUnavailable, never silently unpreferred results.
-Unknown source PDS cannot match either a hard filter or a preference. Retained native
-rollback backends may have narrower scope support; unsupported requests fail explicitly.
+Unknown source PDS cannot match either a hard filter or a preference.
 Backend query rejection is 400; unavailable, stale or invalid backend responses are 503,
 not successful empty results. Canonical and compatibility endpoint bodies remain equal.
 
