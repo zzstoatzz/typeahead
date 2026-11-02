@@ -81,7 +81,6 @@ test-tantivy:
     TA_CONFLICT_DIAGNOSTICS_RECEIPT="$ta_verify_root/conflicts.json" python3 services/tantivy/tests/conflict_diagnostics.py
     python3 services/tantivy-normalizer/test_backend_adversarial.py
     python3 scripts/snapshot_refresh/test_tantivy_install.py
-    python3 scripts/snapshot_refresh/test_install.py
 
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech": lint

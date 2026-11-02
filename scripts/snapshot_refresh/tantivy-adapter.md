@@ -1,10 +1,6 @@
 # Tantivy artifact and route adapter
 
-This branch adds an isolated adapter; it does not change a production route or
-deploy an installer. The existing `install.py` remains the default native
-SQLite/prefix installer and rejects a manifest declaring another engine.
-
-Tantivy uses `tantivy_install.py`. Its manifest has `engine: "tantivy"`,
+Tantivy generations are admitted by `tantivy_install.py`. Its manifest has `engine: "tantivy"`,
 `manifest_version: 1`, `artifact_format: "tantivy-directory-tar-v1"`,
 `backend_format: "tantivy-0.27-f32-did-expiry-v4"`, `active_build`,
 `normalize_version: "v2-cjk-bigram"`,
@@ -217,7 +213,6 @@ qualified production cutover.
 Local verification:
 
 ```sh
-python3 scripts/snapshot_refresh/test_install.py
 python3 scripts/snapshot_refresh/test_tantivy_install.py
 bun test scripts/snapshot_refresh/engine-transport.test.ts \
   src/search-transport.test.ts src/validated-search.test.ts
