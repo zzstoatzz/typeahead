@@ -1,1 +1,6 @@
 __pycache__/
+
+# New run receipts are local; committed historical evidence lives in docs/evals.
+*.json
+!resources.json
+!native-build.json

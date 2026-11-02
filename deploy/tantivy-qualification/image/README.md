@@ -1,5 +1,9 @@
 # Private matched-engine qualification image
 
+Historical receipts are preserved in [the October 29 evidence collection](../../../docs/evals/tantivy-qualification-20261029). New runs write local, ignored receipts beside the tooling.
+The resource ledger and native build receipt retain their existing paths because
+the controllers and image builder read them as inputs.
+
 This lane prepares a local Linux image, never provisions or pushes it. One runtime
 starts **either** the native evaluator plus its frozen batch writer **or** Tantivy.
 Both use the same private Python HTTP hop to loopback port 18080. No production
@@ -8,7 +12,7 @@ server route changes, live Turso polling or corpus download occur in this build.
 The base is exactly the dev image's pinned Python 3.12 slim digest. Native SQLite
 is compiled into the binaries: ELF dynamic-table inspection and an offline
 container loader check verify that no extra system SQLite package is required.
-`loader-results.json` records the actual dependencies. The slim base lacks
+[loader-results.json](../../../docs/evals/tantivy-qualification-20261029/image/loader-results.json) records the actual dependencies. The slim base lacks
 `readelf`; Xcode `llvm-objdump -p` provides the equivalent ELF dynamic-table check.
 
 ## Local preparation
@@ -31,7 +35,7 @@ The copied binary must match the supplied hash before and after copying. The
 context includes native `eval-server`, `qualification-native`, `typeahead-ingester`
 and `admit-prefix`, optional frozen `typeahead-tantivy`, and bounded cloud-local
 export/fixture helpers. No credential files, native corpus, indexes or actor
-payloads enter the build context. Nothing is pushed. `image-build.json` declares
+payloads enter the build context. Nothing is pushed. [image-build.json](../../../docs/evals/tantivy-qualification-20261029/image/image-build.json) declares
 which engines are actually present; native-only does not qualify Tantivy.
 
 The tiny pilot runs `pilot_bootstrap.py` on each isolated engine and `generator.py`
@@ -57,7 +61,7 @@ python3 deploy/tantivy-qualification/image/test_linux_loader.py
 python3 deploy/tantivy-qualification/image/test_container_native.py
 ```
 
-`container-native-results.json` additionally exercises the Linux image with an
+[container-native-results.json](../../../docs/evals/tantivy-qualification-20261029/image/container-native-results.json) additionally exercises the Linux image with an
 actual 32-actor build, guarded native runtime, private proxy and a committed frozen
 rename. It uses Docker `--network none`, an independent 150-second container
 deadline and automatic container removal. It does not attest provider hardware.

@@ -1,5 +1,9 @@
 # Matched engine qualification
 
+Historical receipts are preserved in [the October 29 evidence collection](../../docs/evals/tantivy-qualification-20261029). New runs write local, ignored receipts beside the tooling.
+The resource ledger and native build receipt retain their existing paths because
+the controllers and image builder read them as inputs.
+
 The paired runner performs bounded HTTP screening through explicit loopback
 evaluators/tunnels. The private Linux image includes the native batch writer and
 Tantivy, and its tiny offline pilot checks preparation, committed updates,
