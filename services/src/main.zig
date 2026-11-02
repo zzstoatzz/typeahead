@@ -163,6 +163,7 @@ pub fn main() !void {
     // a regression in logfire can be tied to a deploy without a build step
     _ = logfire.configure(.{
         .service_name = service_name,
+        .pending_spans = false,
         .service_version = cGetenv("FLY_IMAGE_REF") orelse "dev",
         .environment = if (cGetenv("FLY_APP_NAME") != null) "production" else "development",
     }) catch |err| {
