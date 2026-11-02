@@ -3,7 +3,9 @@
 This root `AGENTS.md` is canonical. Shared repository skills live in
 `.agents/skills/`, discovered directly by Pi and Codex. Claude Code discovers
 the same skills through symlinks in `.claude/skills/`; keep those links when
-moving or adding skills. Claude Code 2.1.277 or later reads this `AGENTS.md`
+moving or adding skills. `tools/oxlint/anti-slop` links to the installer skill’s
+bundled plugin; edit that bundle so local lint and exported copies stay identical.
+Claude Code 2.1.277 or later reads this `AGENTS.md`
 directly when no ancestor `CLAUDE.md` overrides it. Paths are repository-relative.
 
 ## documentation is part of the change
