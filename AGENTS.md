@@ -85,7 +85,7 @@ the previous backend for rollback. Follow [the refresh runbook](docs/plans/autom
 ## production continuity during experiments
 
 Before any serving, snapshot or capacity experiment, read the
-[October 31 outage retrospective and preflight](docs/retros/2026-10-31-search-expiry-outage.md). and the
+[October 31 outage retrospective and preflight](docs/retros/2026-10-31-search-expiry-outage.md) and the
 [November 2 follow-up](docs/retros/2026-11-02-tantivy-slot-expired-again.md).
 Check live coverage expiry and the last successful refresh, not just readiness or
 an enabled schedule. Account for inactive-slot occupancy. In an outage, restore
