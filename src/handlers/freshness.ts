@@ -26,6 +26,10 @@ const PROBE_HANDLE = "zzstoatzz.io";
 // report is what alerts when a scheduled refresh is missed.
 const CHECKPOINT_SOURCE = "sqlite-committed-prefix";
 const COVERAGE_WINDOW_S = 24 * 3600;
+// Refreshes run every 12 h and a checkpoint is at most ~13.7 h old when its
+// replacement is promoted, so 15 h means a scheduled refresh was missed while
+// there is still time to run another before the slot goes stale.
+const COVERAGE_OVERDUE_S = 15 * 3600;
 
 /** what the search service answers on /health, /index/status and /search */
 type HealthBody = { ready?: boolean; sync_lag_s?: number };
@@ -47,9 +51,17 @@ export type Freshness = {
   build_id: string | null;
   coverage_age_s: number | null;
   coverage_deadline: number | null;
+  refresh_overdue: boolean;
   probe_ok: boolean | null;
   reasons: string[];
 };
+
+export type FreshnessLevel = "fresh" | "overdue" | "stale";
+
+export function freshnessLevel(f: Pick<Freshness, "stale" | "refresh_overdue">): FreshnessLevel {
+  if (f.stale) return "stale";
+  return f.refresh_overdue ? "overdue" : "fresh";
+}
 
 /** Mirrors the installer's checkpoint coverage anchor: the later of the
  *  checkpoint cut and the last completed full source round. Null for a
@@ -75,7 +87,7 @@ export async function measureFreshness(env: Env): Promise<Freshness> {
   const out: Freshness = {
     ok: true, stale: false,
     replica_lag_s: null, snapshot_age_s: null, build_id: null,
-    coverage_age_s: null, coverage_deadline: null, probe_ok: null,
+    coverage_age_s: null, coverage_deadline: null, refresh_overdue: false, probe_ok: null,
     reasons: [],
   };
   if (!base) {
@@ -129,6 +141,10 @@ export async function measureFreshness(env: Env): Promise<Freshness> {
     if (out.coverage_age_s >= COVERAGE_WINDOW_S) {
       out.stale = true;
       out.reasons.push(`checkpoint coverage ${Math.round(out.coverage_age_s / 3600)}h old (deadline ${out.coverage_deadline})`);
+    } else if (out.coverage_age_s >= COVERAGE_OVERDUE_S) {
+      out.refresh_overdue = true;
+      const left = Math.round((out.coverage_deadline - Math.floor(Date.now() / 1000)) / 3600);
+      out.reasons.push(`refresh overdue: checkpoint coverage ${Math.round(out.coverage_age_s / 3600)}h old, stale in ${left}h`);
     }
   }
 
@@ -183,27 +199,36 @@ export async function handleFreshness(env: Env): Promise<Response> {
 export async function notifyFreshnessChange(env: Env, f: Freshness): Promise<void> {
   if (!env.ALERT_WEBHOOK_URL) return;
 
-  let wasStale: boolean | null = null;
+  let previous: FreshnessLevel | null = null;
   try {
-    const prev = await env.KV.get<{ stale?: boolean }>("freshness", "json");
-    wasStale = prev?.stale === true || prev?.stale === false ? prev.stale : null;
-  } catch { /* no prior state — treat as a change only if stale */ }
+    const prev = await env.KV.get<{ stale?: boolean; refresh_overdue?: boolean }>("freshness", "json");
+    if (prev?.stale === true || prev?.stale === false) {
+      previous = freshnessLevel({ stale: prev.stale, refresh_overdue: prev.refresh_overdue === true });
+    }
+  } catch { /* no prior state — treat as a change only if not fresh */ }
 
-  if (wasStale === f.stale) return;                 // no change
-  if (wasStale === null && !f.stale) return;        // first run and healthy
+  const level = freshnessLevel(f);
+  if (previous === level) return;                         // no change
+  if (previous === null && level === "fresh") return;     // first run and healthy
 
   const lag = f.replica_lag_s === null ? "?" : `${Math.round(f.replica_lag_s / 60)}m`;
   const snap = f.snapshot_age_s === null ? "?" : `${Math.round(f.snapshot_age_s / 3600)}h`;
-  const content = f.stale
+  const reasons = ["```", f.reasons.join("\n") || "unknown", "```"];
+  const content = level === "stale"
     ? [
         "**typeahead: serving is stale**",
-        "```",
-        f.reasons.join("\n") || "unknown",
-        "```",
+        ...reasons,
         `replica lag ${lag} · snapshot ${snap} · probe ${f.probe_ok ? "ok" : "FAILING"}`,
         "https://typeahead.waow.tech/health/freshness",
       ].join("\n")
-    : `**typeahead: serving is fresh again** — replica lag ${lag}, snapshot ${snap}`;
+    : level === "overdue"
+      ? [
+          "**typeahead: refresh missed — act before the slot goes stale**",
+          ...reasons,
+          "Search is still serving. Check the latest typeahead-index run: https://prefect-server.waow.tech/deployments",
+          "https://typeahead.waow.tech/health/freshness",
+        ].join("\n")
+      : `**typeahead: serving is fresh again** — replica lag ${lag}, snapshot ${snap}`;
 
   await postWebhook(env, content);
 }

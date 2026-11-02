@@ -27,7 +27,7 @@ function backend(opts: {
   });
 }
 
-type PrevState = { stale: boolean } | null;
+type PrevState = { stale: boolean; refresh_overdue?: boolean } | null;
 /** the slice of KVNamespace notifyFreshnessChange consumes: one get("freshness", "json") */
 type FreshnessKv = { get(key: string, type: "json"): Promise<PrevState> };
 
@@ -125,6 +125,15 @@ describe("freshness", () => {
       expect(f.stale).toBe(false);
       expect(f.coverage_deadline).toBe(now - 3600 + 86400);
       expect(f.coverage_age_s).toBeGreaterThanOrEqual(3600);
+      expect(f.refresh_overdue).toBe(false);
+
+      // the 2026-11-02 shape: the morning refresh never ran, so by mid-afternoon
+      // the checkpoint is 16 h old — still serving, but one more miss is an outage
+      index = checkpoint(now - 16 * 3600, null);
+      f = await measureFreshness(target);
+      expect(f.stale).toBe(false);
+      expect(f.refresh_overdue).toBe(true);
+      expect(f.reasons.join(" ")).toContain("refresh overdue: checkpoint coverage 16h old, stale in 8h");
 
       index = checkpoint(now - 3 * 86400, now - 7200);
       f = await measureFreshness(target);
@@ -139,6 +148,7 @@ describe("freshness", () => {
       expect(f.coverage_deadline).toBe(now - 3600);
       expect(f.coverage_age_s).toBeGreaterThanOrEqual(86400 + 3600);
       expect(f.reasons.join(" ")).toContain("checkpoint coverage 25h old");
+      expect(f.refresh_overdue).toBe(false);
 
       index = { build_id: `b${now - 3600}-21fc`, source_manifest: { source_kind: "flatpx05" } };
       f = await measureFreshness(target);
@@ -183,9 +193,33 @@ describe("freshness notification", () => {
     });
   };
 
-  const F = (stale: boolean): Freshness => ({
+  const F = (stale: boolean, refresh_overdue = false): Freshness => ({
     ok: !stale, stale, replica_lag_s: stale ? 3600 : 60, snapshot_age_s: 7200,
-    build_id: "b1-x", coverage_age_s: null, coverage_deadline: null, probe_ok: true, reasons: stale ? ["replica 3600s behind turso"] : [],
+    build_id: "b1-x", coverage_age_s: null, coverage_deadline: null, refresh_overdue, probe_ok: true,
+    reasons: stale ? ["replica 3600s behind turso"] : refresh_overdue ? ["refresh overdue: checkpoint coverage 16h old, stale in 8h"] : [],
+  });
+
+  test("warns once when a refresh is missed, then escalates and recovers", async () => {
+    capture();
+    await notifyFreshnessChange(envWith({ stale: false }), F(false, true));
+    expect(calls.length).toBe(1);
+    expect(calls[0]).toContain("refresh missed");
+    expect(calls[0]).toContain("stale in 8h");
+    capture();
+    await notifyFreshnessChange(envWith({ stale: false, refresh_overdue: true }), F(false, true));
+    expect(calls.length).toBe(0);          // still overdue -> silent
+    capture();
+    await notifyFreshnessChange(envWith({ stale: false, refresh_overdue: true }), F(true));
+    expect(calls[0]).toContain("serving is stale");
+    capture();
+    await notifyFreshnessChange(envWith({ stale: false, refresh_overdue: true }), F(false));
+    expect(calls[0]).toContain("fresh again");
+  });
+
+  test("first run that is already overdue warns", async () => {
+    capture();
+    await notifyFreshnessChange(envWith(null), F(false, true));
+    expect(calls[0]).toContain("refresh missed");
   });
 
   test("fires when it goes stale", async () => {
