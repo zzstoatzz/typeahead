@@ -10,7 +10,7 @@ stopped since September 6; no public requests depended on it.
 The volume held a restored, frozen evaluation fixture and disposable write-test
 copies, not primary production data. Evaluation results, artifact hashes,
 comparator source and pilot reports remain committed in `docs/evals/` and
-`ops/canary/`. The exact on-volume fixture and runtime state were not archived.
+`experiments/bounded-lookup-canary/`. The exact on-volume fixture and runtime state were not archived.
 
 The bounded lookup shipped September 9. A September 28 read-only `bs` probe
 confirmed `overlay_bounded: true`, 59 returned `d:bs` overlay rows, and a
@@ -76,9 +76,9 @@ fly proxy 8898:8080 -a typeahead-canary
 Then use the dedicated credential loaded in memory from the encrypted store:
 
 ```sh
-python3 ops/canary/sample_live.py status
-python3 ops/canary/sample_live.py sample --seconds 600 --count 20
-python3 ops/canary/sample_live.py pause
+python3 experiments/bounded-lookup-canary/sample_live.py status
+python3 experiments/bounded-lookup-canary/sample_live.py sample --seconds 600 --count 20
+python3 experiments/bounded-lookup-canary/sample_live.py pause
 ```
 
 `pause` rejects new comparisons; an already running child can finish within its
