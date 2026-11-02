@@ -44,5 +44,5 @@ and deployment commands. local services need runtime configuration and credentia
 
 ## docs
 
-[docs/](docs/) covers the design, operations and evaluations.
+[docs/](docs/README.md) covers the design, operations and evaluations.
 repository workflows are in [AGENTS.md](AGENTS.md).
