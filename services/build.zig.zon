@@ -8,10 +8,6 @@
             .url = "https://tangled.org/zat.dev/zat/archive/v0.6.3.tar.gz",
             .hash = "zat-0.6.3-5PuC7gm5DQBVz_zqgsq4sD08tmHkkNF-bXshuUYoR-Nz",
         },
-        .zqlite = .{
-            .url = "https://tangled.org/zzstoatzz.io/zqlite.zig/archive/f095cf2589640e9722ca8aee0daead2928a7dcac.tar.gz",
-            .hash = "zqlite-0.0.1-RWLaY-k8nADr-cpp3VIySOX2zAUPxlU3qF1kQ2T3zG23",
-        },
         .logfire = .{
             .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/6501065cd8102203e20b0060eab4c64929f97870.tar.gz",
             .hash = "logfire_zig-0.3.2-x2yDLrfUAADZ4JHvkP92-0sV-ILBtiRx4_D37Wx-4ODE",

@@ -5,18 +5,13 @@ const zat = @import("zat");
 const logfire = @import("logfire");
 const fatal = @import("fatal.zig");
 const HttpTransport = zat.HttpTransport;
-const LocalDb = @import("db/LocalDb.zig");
 const TursoClient = @import("db/TursoClient.zig");
-const sync = @import("db/sync.zig");
 const turso_schema = @import("db/turso_schema.zig");
-const server = @import("server.zig");
 const http_guard = @import("http_guard.zig");
 const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 const plc_tail = @import("plc_tail.zig");
 const label_tail = @import("label_tail.zig");
-const index_builder = @import("index/builder.zig");
-const promote_runner = @import("index/promote_runner.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -126,38 +121,23 @@ pub fn main() !void {
         .async_limit = std.Io.Limit.limited(8),
     });
 
-    // Process role — explicit and required, no default. A role running on the
-    // wrong box is invisible until it competes for resources: the ingester ran
-    // the search app's full-corpus sync for months because roles used to
-    // default all-on (found 2026-06-12, mid-incident).
-    //   ingester — relay's firehose → worker, owns Turso schema migrations
-    //   search   — snapshot promote + Turso → overlay projection + HTTP search
-    //   indexer  — offline snapshot builder, runs once and exits
-    const Role = enum { ingester, search, indexer };
-    const role: Role = blk: {
-        const mode = cGetenv("MODE") orelse {
-            log.err("MODE not set — must be one of: ingester, search, indexer", .{});
-            return error.RoleRequired;
-        };
-        break :blk std.meta.stringToEnum(Role, mode) orelse {
-            log.err("MODE='{s}' unrecognized — must be one of: ingester, search, indexer", .{mode});
-            return error.RoleRequired;
-        };
+    // Explicit role, no default: a binary started without MODE=ingester (say,
+    // an old search or indexer machine on a new image) must not quietly start
+    // consuming the firehose and migrating Turso.
+    const mode = cGetenv("MODE") orelse {
+        log.err("MODE not set — must be ingester", .{});
+        return error.RoleRequired;
     };
-
-    if (role == .indexer) {
-        // Logfire stays unconfigured here — indexer is a short-lived
-        // offline job, std.log to stderr is enough for now. Wire spans
-        // later if cadence-wise insight matters.
-        log.info("MODE=indexer — running snapshot builder", .{});
-        return index_builder.run(allocator);
+    if (!mem.eql(u8, mode, "ingester")) {
+        log.err("MODE='{s}' unrecognized — must be ingester", .{mode});
+        return error.RoleRequired;
     }
 
     // service_name distinguishes app A vs app B in logfire traces.
     // Fly injects FLY_APP_NAME so the two apps tag distinctly without manual config.
     const service_name = cGetenv("FLY_APP_NAME") orelse "typeahead-dev";
 
-    log.info("role: {s} service_name={s}", .{ @tagName(role), service_name });
+    log.info("role: ingester service_name={s}", .{service_name});
 
     // service.version is the deployed image ref (fly sets FLY_IMAGE_REF), so
     // a regression in logfire can be tied to a deploy without a build step
@@ -171,24 +151,6 @@ pub fn main() !void {
     };
     // SIGTERM drain below ends with this; watchdog exits flush on their own
     defer logfire.shutdown();
-
-    // local SQLite holds the search role's overlay + sync state (the snapshot
-    // is attached to it). the ingester has no local consumer and doesn't open
-    // one — its HTTP listener serves the health-only fallback.
-    var local_db = LocalDb.init(allocator);
-    var local_db_ptr: ?*LocalDb = null;
-    defer local_db.deinit();
-    if (role == .search) {
-        local_db.open() catch |err| {
-            log.err("local db failed to open: {} — search role requires it, aborting boot", .{err});
-            return err;
-        };
-        if (local_db.conn == null) {
-            log.err("local db unavailable — search role requires it, aborting boot", .{});
-            return error.LocalDbRequired;
-        }
-        local_db_ptr = &local_db;
-    }
 
     // start HTTP server FIRST so Fly proxy doesn't timeout
     const port: u16 = blk: {
@@ -213,11 +175,10 @@ pub fn main() !void {
         .flags = 0,
     }, null);
 
-    // Run Turso schema migrations BEFORE spawning sync/firehose — sync queries
-    // turso assuming the schema exists. On baselined prod this is a few sub-
-    // second SELECTs + INSERT OR IGNORE; on a fresh DB it creates everything
-    // from migration 001. The search service must NOT run these.
-    if (role == .ingester) {
+    // Run Turso schema migrations BEFORE spawning the firehose — ingest assumes
+    // the schema exists. On baselined prod this is a few sub-second SELECTs +
+    // INSERT OR IGNORE; on a fresh DB it creates everything from migration 001.
+    {
         var schema_client = TursoClient.init(allocator) catch |err| {
             log.err("turso client init for schema failed: {}, aborting boot", .{err});
             return err;
@@ -229,31 +190,8 @@ pub fn main() !void {
         };
     }
 
-    // task group: .concurrent for long-lived background tasks,
-    // .async (bounded pool, inline fallback) for HTTP handlers
+    // task group for long-lived background tasks
     var tasks: std.Io.Group = .init;
-
-    // start sync (background — turso → overlay projection)
-    if (role == .search) {
-        const db = local_db_ptr.?; // guaranteed non-null by check above
-        tasks.concurrent(io, sync.syncLoop, .{ allocator, db }) catch |err| {
-            log.err("sync task failed: {}", .{err});
-        };
-        // a wedged sync loop looks identical to a healthy one from outside
-        tasks.concurrent(io, sync.watchdogLoop, .{}) catch |err| {
-            log.err("sync watchdog failed to start: {}", .{err});
-        };
-    }
-
-    // start prefix-index promote watcher (background — R2 latest.json → ATTACH).
-    // Not optional: an attached, validated snapshot is what makes the search
-    // role ready, and the sync loop waits on it before projecting anything.
-    if (role == .search) {
-        const db = local_db_ptr.?;
-        tasks.concurrent(io, promote_runner.watchLoop, .{ allocator, db }) catch |err| {
-            log.err("promote watcher task failed: {}", .{err});
-        };
-    }
 
     // firehose-only state (transport, resolver, identity pool) — declared at
     // outer scope so the spawned task's pointers stay valid for main()'s lifetime
@@ -272,9 +210,7 @@ pub fn main() !void {
     var tail: plc_tail.Tail = undefined;
     var labels: label_tail.Tail = undefined;
 
-    if (role == .ingester) {
-        // Reading TYPEAHEAD_URL/TYPEAHEAD_SECRET here (not unconditionally at
-        // top of main) so the search service can come up without them.
+    {
         const config = ingest.getConfig();
         log.info("typeahead ingester → {s}", .{config.worker_url});
 
@@ -339,11 +275,7 @@ pub fn main() !void {
         };
     }
 
-    // HTTP handlers receive identity pool as optional — search-only role has none
-    const id_pool_arg: ?*identity.Pool = if (have_identity_pool) &identity_pool else null;
-
-    const accept_thread = std.Thread.getCurrentId();
-    // main thread: HTTP accept loop
+    // main thread: HTTP accept loop serving /health; everything else 503s
     while (true) {
         const stream = srv.accept(io) catch |err| switch (err) {
             error.SocketNotListening => break,
@@ -357,61 +289,48 @@ pub fn main() !void {
             log.warn("failed to set socket timeout: {}", .{err});
         };
 
-        if (local_db_ptr) |db| {
-            // bounded pool — inline fallback under load (graceful degradation)
-            tasks.async(io, server.handleConnection, .{ stream, db, id_pool_arg, accept_thread });
-        } else {
-            // No local DB (the ingester role). This branch used to answer EVERY
-            // path with 503 "search unavailable" — /health included — so the
-            // identity pool's accepted/dropped/processed/queued counters were
-            // computed, attached to a span, and readable by nobody. A DID
-            // silently dropped by the resolver had no observable signal at all;
-            // that is how birdlover.selfhosted.social went missing unnoticed.
-            // /health is now served here; everything else still 503s.
-            var read_buffer: [1024]u8 = undefined;
-            var write_buffer: [1024]u8 = undefined;
-            var reader = stream.reader(io, &read_buffer);
-            var writer = stream.writer(io, &write_buffer);
-            var http_srv = std.http.Server.init(&reader.interface, &writer.interface);
-            var request = http_srv.receiveHead() catch {
-                stream.close(io);
-                continue;
-            };
-            if (http_guard.rejectUnframedBody(&request)) {
-                stream.close(io);
-                continue;
-            }
-
-            const target = request.head.target;
-            const path = if (std.mem.indexOfScalar(u8, target, '?')) |qi| target[0..qi] else target;
-
-            if (std.mem.eql(u8, path, "/health")) {
-                var buf: [2048]u8 = undefined;
-                const body = if (id_pool_arg) |pool| blk: {
-                    const ic = pool.counters(io);
-                    break :blk std.fmt.bufPrint(&buf,
-                        \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"leased":{d},"lease_failed":{d},"accepted":{d},"dropped":{d},"processed":{d},"queued":{d},"verified":{d},"unverified":{d},"no_handle":{d},"did_failed":{d},"retried":{d},"post_failed":{d}}},"plc":{{"pages":{d},"operations":{d},"failed":{d}}},"labels":{{"frames":{d},"adopted":{d},"malformed":{d},"posts":{d},"post_failed":{d},"cursor":{d},"newest_cts":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
-                    , .{ ingest.getRssKB(), identity.stats.leased.load(.monotonic), identity.stats.lease_failed.load(.monotonic), ic.accepted, ic.dropped, ic.processed, ic.queued, identity.stats.verified.load(.monotonic), identity.stats.unverified.load(.monotonic), identity.stats.no_handle.load(.monotonic), identity.stats.did_failed.load(.monotonic), identity.stats.retried.load(.monotonic), identity.stats.post_failed.load(.monotonic), plc_tail.stats.pages.load(.monotonic), plc_tail.stats.operations.load(.monotonic), plc_tail.stats.failed.load(.monotonic), label_tail.stats.frames.load(.monotonic), label_tail.stats.adopted.load(.monotonic), label_tail.stats.malformed.load(.monotonic), label_tail.stats.posts.load(.monotonic), label_tail.stats.post_failed.load(.monotonic), label_tail.stats.committed.load(.monotonic), label_tail.stats.newest_cts.load(.monotonic), ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
-                } else std.fmt.bufPrint(&buf,
-                    \\{{"status":"ok","role":"ingester","rss_kb":{d}}}
-                , .{ingest.getRssKB()}) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
-
-                request.respond(body, .{
-                    .status = .ok,
-                    .extra_headers = &.{
-                        .{ .name = "content-type", .value = "application/json" },
-                    },
-                }) catch {};
-            } else {
-                request.respond("{\"error\":\"search unavailable\"}", .{
-                    .status = .service_unavailable,
-                    .extra_headers = &.{
-                        .{ .name = "content-type", .value = "application/json" },
-                    },
-                }) catch {};
-            }
+        // /health is the only reader of the resolver and tail counters: a DID
+        // silently dropped by the resolver has no other observable signal
+        // (that is how birdlover.selfhosted.social went missing unnoticed).
+        var read_buffer: [1024]u8 = undefined;
+        var write_buffer: [1024]u8 = undefined;
+        var reader = stream.reader(io, &read_buffer);
+        var writer = stream.writer(io, &write_buffer);
+        var http_srv = std.http.Server.init(&reader.interface, &writer.interface);
+        var request = http_srv.receiveHead() catch {
             stream.close(io);
+            continue;
+        };
+        if (http_guard.rejectUnframedBody(&request)) {
+            stream.close(io);
+            continue;
         }
+
+        const target = request.head.target;
+        const path = if (std.mem.indexOfScalar(u8, target, '?')) |qi| target[0..qi] else target;
+
+        if (std.mem.eql(u8, path, "/health")) {
+            var buf: [2048]u8 = undefined;
+            const ic = identity_pool.counters(io);
+            const body = std.fmt.bufPrint(&buf,
+                \\{{"status":"ok","role":"ingester","rss_kb":{d},"identity":{{"leased":{d},"lease_failed":{d},"accepted":{d},"dropped":{d},"processed":{d},"queued":{d},"verified":{d},"unverified":{d},"no_handle":{d},"did_failed":{d},"retried":{d},"post_failed":{d}}},"plc":{{"pages":{d},"operations":{d},"failed":{d}}},"labels":{{"frames":{d},"adopted":{d},"malformed":{d},"posts":{d},"post_failed":{d},"cursor":{d},"newest_cts":{d}}},"ingest":{{"queued":{d},"deletes_queued":{d},"backpressure_active":{s},"backpressure_count":{d},"last_write_at":{d},"source_event_at":{d}}}}}
+            , .{ ingest.getRssKB(), identity.stats.leased.load(.monotonic), identity.stats.lease_failed.load(.monotonic), ic.accepted, ic.dropped, ic.processed, ic.queued, identity.stats.verified.load(.monotonic), identity.stats.unverified.load(.monotonic), identity.stats.no_handle.load(.monotonic), identity.stats.did_failed.load(.monotonic), identity.stats.retried.load(.monotonic), identity.stats.post_failed.load(.monotonic), plc_tail.stats.pages.load(.monotonic), plc_tail.stats.operations.load(.monotonic), plc_tail.stats.failed.load(.monotonic), label_tail.stats.frames.load(.monotonic), label_tail.stats.adopted.load(.monotonic), label_tail.stats.malformed.load(.monotonic), label_tail.stats.posts.load(.monotonic), label_tail.stats.post_failed.load(.monotonic), label_tail.stats.committed.load(.monotonic), label_tail.stats.newest_cts.load(.monotonic), ingest.queued_ingest.load(.monotonic), ingest.queued_deletes.load(.monotonic), if (ingest.backpressure_active.load(.monotonic)) "true" else "false", ingest.backpressure_count.load(.monotonic), ingest.last_flush_ok_at.load(.monotonic), ingest.source_event_at.load(.monotonic) }) catch "{\"status\":\"ok\",\"role\":\"ingester\"}";
+
+            request.respond(body, .{
+                .status = .ok,
+                .extra_headers = &.{
+                    .{ .name = "content-type", .value = "application/json" },
+                },
+            }) catch {};
+        } else {
+            request.respond("{\"error\":\"search unavailable\"}", .{
+                .status = .service_unavailable,
+                .extra_headers = &.{
+                    .{ .name = "content-type", .value = "application/json" },
+                },
+            }) catch {};
+        }
+        stream.close(io);
     }
 
     log.info("SIGTERM received, draining tasks…", .{});

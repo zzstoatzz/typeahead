@@ -9,15 +9,13 @@ bunx wrangler dev
 just check
 ```
 
-The native services require Zig 0.17.0; offline tooling and retrieval checks use
-Python. The Tantivy search backend also requires Rust/Cargo and a C compiler.
-Runtime credentials and role settings are required to run services. The native
-binary has explicit ingester, search and indexer roles; a bare `zig build run`
-does not configure one.
+The ingester and the shared normalizer sources require Zig 0.17.0; offline
+tooling uses Python. The Tantivy search backend also requires Rust/Cargo and a C
+compiler. The ingester needs runtime credentials and an explicit `MODE=ingester`;
+a bare `zig build run` does not configure one.
 
 ```sh
-just test-services           # native unit tests
-just test-search-recall      # real builder/server retrieval regressions
+just test-services           # ingester and normalizer unit tests
 just --no-dotenv test-tantivy # isolated engine, source and recovery checks
 ```
 

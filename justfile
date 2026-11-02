@@ -28,12 +28,9 @@ check: typecheck lint test
     bunx wrangler deploy --dry-run
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
 
-# run the zig unit tests for the services (ingester/search/indexer)
+# run the zig unit tests for the ingester and the shared normalizer sources
 test-services:
     cd services && zig build test --summary all
-
-test-search-recall:
-    python3 scripts/test_search_recall.py
 
 test-tantivy:
     #!/usr/bin/env bash
@@ -95,11 +92,6 @@ deploy-worker-only: lint
 deploy-ingest:
     cd services && fly deploy -c fly.toml
 
-# Keep legacy direct deploys guarded; managed refresh prepares an isolated slot.
-deploy-search:
-    @echo "Direct search deployment is guarded; see docs/plans/automatic-snapshot-refresh.md."
-    @exit 1
-
 refresh-search ops_repo=(env_var("HOME") / "tangled.org/zzstoatzz.io/my-prefect-server"):
     just --justfile "{{ops_repo}}/justfile" prefect --no-prompt deployment run typeahead-index/typeahead-index -p snapshot_format=compact -p automatic_refresh=true
 
@@ -147,14 +139,6 @@ perf:
     just bench-search --quick
     just bench-ranking
     just index-status
-
-# STAGING index build to an isolated R2 channel (never touches prod latest.json).
-# branch namespaces the channel: staging/<branch>/ + latest.<branch>.json
-indexer-build-staging branch="cjk-search":
-    cd services && \
-      INDEX_CHANNEL=staging \
-      INDEX_STAGING_NAME="{{branch}}" \
-      MODE=indexer zig build run
 
 # dry-run or apply the prioritized enrichment walk (A: follows, B: indie PDS hop, C: followers).
 # reads TURSO_URL/TURSO_AUTH_TOKEN from .env for the dedup query; --apply posts DID batches

@@ -8,14 +8,14 @@ run before publication. Search snapshot rollout belongs to the
 
 ## Qualification and preview tooling
 
-[tantivy-qualification](tantivy-qualification/README.md) contains the matched
-engine trial controller and image tooling. Its historical result receipts live
-in the [October 29 evidence collection](../docs/evals/tantivy-qualification-20261029/).
-Resource ledgers and build receipts that the tools read remain beside their code.
+The matched native/Tantivy qualification harness was removed with the native
+engine; its historical result receipts live in the
+[October 29 evidence collection](../docs/evals/tantivy-qualification-20261029/).
 
-`tantivy-dev` contains the original isolated backend’s build and measurement
-tooling. Its machine and volume were retired on October 31; the adjacent resource
-ledger records the historical run and is not a current inventory. See the
+`tantivy-dev` contains the original isolated backend’s measurement tooling. Its
+machine and volume were retired on October 31, and its native-snapshot bootstrap
+image was removed with the native engine; the adjacent resource ledger records
+the historical run and is not a current inventory. See the
 [retirement record](../docs/ops/test-resource-retirement-20261031/).
 
 [tantivy-dev-ui](tantivy-dev-ui/README.md) is the separate preview Worker. The

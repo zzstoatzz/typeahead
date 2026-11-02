@@ -9,30 +9,10 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const zqlite = b.dependency("zqlite", .{
-        .target = target,
-        .optimize = optimize,
-        .sqlite3 = &[_][]const u8{ "-std=c99", "-DSQLITE_ENABLE_FTS5" },
-    });
-
     const logfire = b.dependency("logfire", .{
         .target = target,
         .optimize = optimize,
     });
-
-    const compactor = b.addLibrary(.{
-        .name = "typeahead_compact",
-        .linkage = .dynamic,
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/compact.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .imports = &.{.{ .name = "zqlite", .module = zqlite.module("zqlite") }},
-        }),
-    });
-    b.step("compact", "Build the native offline snapshot compactor").dependOn(&b.addInstallArtifact(compactor, .{}).step);
-    b.installArtifact(compactor);
 
     const zug = b.dependency("zug", .{
         .target = target,
@@ -53,71 +33,12 @@ pub fn build(b: *std.Build) void {
             .link_libc = true,
             .imports = &.{
                 .{ .name = "zat", .module = zat.module("zat") },
-                .{ .name = "zqlite", .module = zqlite.module("zqlite") },
                 .{ .name = "logfire", .module = logfire.module("logfire") },
                 .{ .name = "zug", .module = zug.module("zug") },
                 .{ .name = "poolio", .module = poolio.module("poolio") },
             },
         }),
     });
-
-    const eval_server = b.addExecutable(.{
-        .name = "eval-server",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/eval_server.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .imports = &.{
-                .{ .name = "zat", .module = zat.module("zat") },
-                .{ .name = "zqlite", .module = zqlite.module("zqlite") },
-                .{ .name = "logfire", .module = logfire.module("logfire") },
-                .{ .name = "zug", .module = zug.module("zug") },
-                .{ .name = "poolio", .module = poolio.module("poolio") },
-            },
-        }),
-    });
-
-    const qualification_api = b.createModule(.{
-        .root_source_file = b.path("src/qualification_native_api.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-        .imports = &.{
-            .{ .name = "zat", .module = zat.module("zat") },
-            .{ .name = "zqlite", .module = zqlite.module("zqlite") },
-            .{ .name = "logfire", .module = logfire.module("logfire") },
-            .{ .name = "zug", .module = zug.module("zug") },
-            .{ .name = "poolio", .module = poolio.module("poolio") },
-        },
-    });
-    const qualification_native = b.addExecutable(.{
-        .name = "qualification-native",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("../experiments/tantivy-qualification-native/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .imports = &.{.{ .name = "native", .module = qualification_api }},
-        }),
-    });
-    b.step("qualification-native", "Build isolated frozen-feed batch writer; no HTTP or source credentials")
-        .dependOn(&b.addInstallArtifact(qualification_native, .{}).step);
-
-    const install_eval_server = b.addInstallArtifact(eval_server, .{});
-    b.step("eval-server", "Build an isolated loopback search server with no sync or promotion").dependOn(&install_eval_server.step);
-
-    const admit_prefix = b.addExecutable(.{
-        .name = "admit-prefix",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/admit_prefix.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        }),
-    });
-    b.step("admit-prefix", "Verify and admit an immutable prefix file before service startup").dependOn(&b.addInstallArtifact(admit_prefix, .{}).step);
-    b.installArtifact(admit_prefix);
 
     b.installArtifact(exe);
 
@@ -147,37 +68,17 @@ pub fn build(b: *std.Build) void {
     const test_lf_step = b.step("test-logfire", "Run logfire test");
     test_lf_step.dependOn(&run_test_lf.step);
 
-    // Unit tests for the index/ module (normalize, prefixes, scoring,
-    // pack, schema, builder). Rooted at src/test_index.zig so transitive
-    // imports inside builder.zig (e.g. ../db/TursoClient.zig) stay in
-    // the module tree.
-    const index_tests = b.addTest(.{
+    // Unit tests for the shared normalizer sources (also linked into the
+    // Tantivy reader via services/tantivy-normalizer) and the Turso client.
+    const unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/test_index.zig"),
+            .root_source_file = b.path("src/test_units.zig"),
             .target = target,
             .optimize = optimize,
             .link_libc = true,
-            .imports = &.{
-                .{ .name = "zqlite", .module = zqlite.module("zqlite") },
-            },
         }),
     });
-    const run_index_tests = b.addRunArtifact(index_tests);
-    b.step("test-index-binary", "Build the index test executable without running it").dependOn(&b.addInstallArtifact(index_tests, .{}).step);
-
-    // Explicit offline tool: no server, sync loop, or credentials required.
-    const evaluator = b.addExecutable(.{
-        .name = "eval-lookup",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/eval_lookup.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .imports = &.{.{ .name = "zqlite", .module = zqlite.module("zqlite") }},
-        }),
-    });
-    const install_evaluator = b.addInstallArtifact(evaluator, .{});
-    b.step("eval-lookup", "Build the isolated lookup comparator").dependOn(&install_evaluator.step);
+    const run_unit_tests = b.addRunArtifact(unit_tests);
 
     // Ingest tests. Rooted at src/ingest.zig so the firehose decode path
     // (collection allowlist, DAG-CBOR avatar CID rendering) is covered — both
@@ -199,6 +100,6 @@ pub fn build(b: *std.Build) void {
     const run_ingest_tests = b.addRunArtifact(ingest_tests);
 
     const test_step = b.step("test", "Run unit tests");
-    test_step.dependOn(&run_index_tests.step);
+    test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_ingest_tests.step);
 }
