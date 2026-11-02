@@ -1,7 +1,7 @@
 # Tantivy source adapter
 
-This directory contains the cloud-only snapshot exporter and read-only Turso
-source adapter for the production Tantivy backend. The adapter reconciles source
+This directory contains the read-only Turso source adapter for the production
+Tantivy backend. The adapter reconciles source
 observations into the serving index. These tools do not change routing or write
 to the source database.
 
@@ -80,18 +80,9 @@ source-observation rollout until that backend is qualified. See
 Timestamp mode remains available explicitly for legacy diagnostics and cannot
 write after observation-mode migration.
 
-The exporter normally verifies both snapshot files with SHA256. An owned cloud
-preparation process can pass `--verified-inputs` and `--verified-inputs-sha256`
-to reuse its download verification. The pinned, read-only receipt binds the
-manifest digest and each input's digest, inode, device, size and modification/change
-times. Any mismatch fails closed. Export still validates the flat format, metadata,
-actor count and stream footer, and checks that the files remain unchanged. This
-avoids rereading the whole prefix file solely to hash it again.
-
 Run small local checks with:
 
 ```sh
-python3 services/tantivy-input/test_export.py
 python3 services/tantivy-input/test_sync.py
 python3 services/tantivy-input/test_current_state.py
 python3 services/tantivy-input/test_source_pacing.py

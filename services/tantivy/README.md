@@ -19,7 +19,7 @@ retrieval strategies. Cargo jobs and test threads are bounded at two; no debug
 cache is built. Fixtures, receipts and a frozen test binary live in one owned
 temporary tree removed on exit. It does not deploy, load credentials or contact
 production. The separate [Tangled workflow](../../.tangled/workflows/tantivy.yml)
-runs this same command on main pushes; existing native and Worker checks remain
+runs this same command on main pushes; Worker and ingester checks remain
 separate.
 
 `TA_NORMALIZER_LIB_DIR` can select a target-specific directory containing
@@ -50,7 +50,8 @@ A new initial import refuses an existing index; it never silently resets one.
 typeahead-tantivy import --data /data/tantivy --input - --writer-memory-mb 128 --batch-size 50000
 ```
 
-Input is the cloud-only `services/tantivy-input/export.py` JSONL stream:
+Input is a JSONL stream; production seeds come from the controller's verified
+SQLite checkpoint stream:
 
 1. Manifest: `type=manifest`, `build_id`, `source_watermark`, `actor_count`,
    `source_actor_count`, `partial=false`, and source provenance.
@@ -109,7 +110,7 @@ Import retains one actor plus the bounded writer, not a corpus actor/version map
 It commits batches while `import_complete=false`, verifies the footer, merges
 segments offline, then atomically commits readiness metadata. Missing/corrupt
 footers, duplicate/out-of-order DIDs or normalization failures never admit the
-partial generation. Input lines are bounded to 4 MiB. The exporter/parent cloud
+partial generation. Input lines are bounded to 4 MiB. The parent cloud
 supervisor owns full-source hash verification, storage budgets and teardown.
 
 ## Serve

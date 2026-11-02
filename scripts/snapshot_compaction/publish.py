@@ -4,12 +4,27 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import tempfile
 from contextlib import contextmanager
 
-from build import digest_file
-from convert import key, identifier, FIELDS
+
+def digest_file(path):
+    h = hashlib.sha256()
+    with path.open('rb') as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def key(value):
+    if not value or len(value) > 1024 or any(
+        part in ('', '.', '..') or not re.fullmatch(r'[A-Za-z0-9_.-]+', part)
+        for part in value.split('/')
+    ):
+        raise ValueError('invalid object key')
+    return value
 
 
 class Publisher:
@@ -57,64 +72,6 @@ class Publisher:
         )
         self.verify(local, object_key)
 
-    def publish(self, generation, legacy_database, legacy_manifest, pointer=None, *, immutable_only=False):
-        if immutable_only:
-            if pointer is not None:
-                raise ValueError('immutable-only publication prohibits a pointer')
-        else:
-            key(pointer)
-        if pointer == 'latest.json' and os.environ.get('INDEX_ALLOW_PROD') != '1':
-            raise ValueError('production pointer requires INDEX_ALLOW_PROD=1')
-        generation = Path(generation)
-        legacy_database, legacy_manifest = Path(legacy_database), Path(legacy_manifest)
-        manifest_path = generation / 'manifest.json'
-        manifest = json.loads(manifest_path.read_bytes())
-        legacy = json.loads(legacy_manifest.read_bytes())
-        if manifest['manifest_version'] != 2 or manifest['format_version'] != 5 or legacy['manifest_version'] != 1:
-            raise ValueError('require compact generation and legacy twin')
-        identifier(manifest['active_build'])
-        identifier(legacy['active_build'])
-        for field in (*FIELDS, 'normalize_version', 'scoring_version'):
-            if manifest[field] != legacy[field]:
-                raise ValueError('legacy twin serving metadata mismatch: ' + field)
-        for candidate in (manifest, legacy):
-            if not candidate['snapshot_url'].endswith('/' + candidate['active_build'] + '/index.db'):
-                raise ValueError('snapshot key identity mismatch')
-        if manifest['prefix_map']['object_key'] != manifest['snapshot_url'] + '.prefix':
-            raise ValueError('map key identity mismatch')
-        twin = manifest['legacy_twin']
-        if twin['manifest']['object_key'] != legacy['snapshot_url'].rsplit('/', 1)[0] + '/manifest.json':
-            raise ValueError('twin manifest key identity mismatch')
-        if (twin['build_id'] != legacy['active_build']
-            or twin['source_watermark'] != legacy['source_watermark']
-            or manifest['source_watermark'] != legacy['source_watermark']
-            or manifest['active_build'] == legacy['active_build']):
-            raise ValueError('legacy twin identity/watermark mismatch')
-        artifacts = [
-            (legacy_database, dict(object_key=legacy['snapshot_url'], byte_size=legacy['byte_size'], sha256=legacy['sha256'])),
-            (legacy_manifest, twin['manifest']),
-            (generation / 'index.db', dict(object_key=manifest['snapshot_url'], byte_size=manifest['byte_size'], sha256=manifest['sha256'])),
-            (generation / 'index.db.prefix', manifest['prefix_map']),
-        ]
-        keys = [item['object_key'] for _, item in artifacts]
-        manifest_key = key(manifest['snapshot_url'].rsplit('/', 1)[0] + '/manifest.json')
-        publication_keys = [*keys, manifest_key] + ([] if immutable_only else [pointer])
-        if len(set(publication_keys)) != len(publication_keys):
-            raise ValueError('artifact/pointer key collision')
-        for local, artifact in artifacts:
-            key(artifact['object_key'])
-            if local.stat().st_size != artifact['byte_size'] or digest_file(local) != artifact['sha256']:
-                raise ValueError(f'local verification failed: {local.name}')
-        for local, artifact in artifacts:
-            self.immutable(local, artifact['object_key'])
-        self.immutable(manifest_path, manifest_key)
-        if immutable_only:
-            return manifest['active_build']
-        print(f'publish pointer {pointer}', flush=True)
-        subprocess.run([*self.command, 'copyto', str(manifest_path), self.remote(pointer)], check=True)
-        self.verify(manifest_path, pointer)
-        return manifest['active_build']
-
     def publish_tantivy(self, generation, source_manifest):
         generation, source_manifest, manifest_path, manifest, source = self.tantivy_artifacts(generation, source_manifest)
         bundle = generation / 'index.tar'
@@ -148,9 +105,6 @@ class Publisher:
             raise ValueError('Native rollback anchor identity mismatch')
         if any(field in manifest for field in ['image_digest', 'guest', 'volume_id', 'volume_size_gib', 'public_service_ports', 'provider_app']):
             raise ValueError('Publish a portable Tantivy artifact without deployment bindings')
-        source_key = f"releases/search/{source['active_build']}/manifest.json"
-        if source.get('snapshot_url') != source_key.removesuffix('manifest.json') + 'index.db':
-            raise ValueError('Native source object identity mismatch')
         return generation, source_manifest, manifest_path, manifest, source
 
 
@@ -178,33 +132,19 @@ def configuration(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--generation', type=Path, required=True)
-    parser.add_argument('--engine', choices=['native', 'tantivy'], default='native')
-    parser.add_argument('--legacy-database', type=Path)
-    parser.add_argument('--legacy-manifest', type=Path)
-    parser.add_argument('--source-manifest', type=Path)
+    parser.add_argument('--engine', choices=['tantivy'], default='tantivy')
+    parser.add_argument('--source-manifest', type=Path, required=True)
     parser.add_argument('--verify-only', action='store_true')
     parser.add_argument('--config', type=Path)
     parser.add_argument('--bucket', default=os.environ.get('INDEX_R2_BUCKET'))
-    routing = parser.add_mutually_exclusive_group()
-    routing.add_argument('--pointer')
-    routing.add_argument('--immutable-only', action='store_true')
     parser.add_argument('--rclone', default=os.environ.get('INDEX_RCLONE_BIN', 'rclone'))
     args = parser.parse_args()
     if not args.bucket:
         parser.error('--bucket or INDEX_R2_BUCKET is required')
-    if args.engine == 'native' and not all([args.legacy_database, args.legacy_manifest, args.pointer or args.immutable_only]):
-        parser.error('native requires --legacy-database, --legacy-manifest and either --pointer or --immutable-only')
-    if args.engine == 'native' and args.verify_only:
-        parser.error('--verify-only applies to immutable Tantivy publication only')
-    if args.engine == 'tantivy' and (not args.source_manifest or args.pointer or args.immutable_only or args.legacy_database or args.legacy_manifest):
-        parser.error('tantivy requires --source-manifest and prohibits native/pointer arguments')
     with configuration(args.config) as config:
         publisher = Publisher(config, args.bucket, args.rclone)
-        if args.engine == 'tantivy':
-            operation = publisher.verify_tantivy if args.verify_only else publisher.publish_tantivy
-            print(operation(args.generation, args.source_manifest))
-        else:
-            print(publisher.publish(args.generation, args.legacy_database, args.legacy_manifest, args.pointer, immutable_only=args.immutable_only))
+        operation = publisher.verify_tantivy if args.verify_only else publisher.publish_tantivy
+        print(operation(args.generation, args.source_manifest))
 
 
 if __name__ == '__main__':
