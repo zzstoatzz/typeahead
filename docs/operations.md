@@ -45,7 +45,10 @@ slot image (Typeahead `c476fc5`) still validates each Tantivy manifest's
 `rollback_native_anchor` and fetches that anchor's
 `releases/search/<build>/manifest.json` from R2 by SHA-256 during installation,
 so keep every native manifest object an admitted Tantivy manifest references
-until a slot image without that check is qualified. Retire unused trials by exact machine and
+while any slot runs that image. The current slot runtime source no longer fetches or
+validates native manifests and ignores `rollback_native_anchor`,
+`legacy_build_id` and `source_manifest_key`; no image built from it is deployed
+yet. Retire unused trials by exact machine and
 volume identity after checking routing, refresh ownership and preview bindings.
 Keep small evidence receipts, not unused corpus copies.
 

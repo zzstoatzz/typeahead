@@ -40,7 +40,7 @@ def start_strict(binary,data,log,secret,fixture_identity=False,max_sync_lag=1800
 
 class AdmissionTests(unittest.TestCase):
     def manifest(self):
-        return {'engine':'tantivy','manifest_version':1,'artifact_format':'tantivy-directory-tar-v1','backend_format':adapter.FORMAT,'active_build':'b1793236000-pilot','normalize_version':'v2-cjk-bigram','plan_version':'complete-prefix-groups-v1','source_policy':adapter.SOURCE_POLICY,'sha256':'a'*64,'binary_sha256':'b'*64,'canonical_rules_source_sha256':json.loads((ROOT/'src/moderation-regexes.json').read_text())['canonical_source_sha256'],'retrieval_strategy':'per-segment','image_digest':'registry.fly.io/tantivy-fixture@sha256:'+'e'*64,'guest':dict(adapter.GUEST),'volume_id':'vol_fixture','volume_size_gib':20,'public_service_ports':[],'provider_app':'tantivy-fixture','byte_size':10240,'source_actor_count':1,'source_build_id':'b1793236000-pilot','legacy_build_id':'b1793236000-native','source_manifest_sha256':'1'*64,'source_watermark':100,'source_database_sha256':'2'*64,'source_prefix_sha256':'3'*64,'source_actors_sha256':'f'*64,'object_key':'releases/search-tantivy/b1793236000-pilot/index.tar','files':[{'path':'index/meta.json','byte_size':1,'sha256':'a'*64}]}
+        return {'engine':'tantivy','manifest_version':1,'artifact_format':'tantivy-directory-tar-v1','backend_format':adapter.FORMAT,'active_build':'b1793236000-pilot','normalize_version':'v2-cjk-bigram','plan_version':'complete-prefix-groups-v1','source_policy':adapter.SOURCE_POLICY,'sha256':'a'*64,'binary_sha256':'b'*64,'canonical_rules_source_sha256':json.loads((ROOT/'src/moderation-regexes.json').read_text())['canonical_source_sha256'],'retrieval_strategy':'per-segment','image_digest':'registry.fly.io/tantivy-fixture@sha256:'+'e'*64,'guest':dict(adapter.GUEST),'volume_id':'vol_fixture','volume_size_gib':20,'public_service_ports':[],'provider_app':'tantivy-fixture','byte_size':10240,'source_actor_count':1,'source_build_id':'b1793236000-pilot','source_manifest_sha256':'1'*64,'source_watermark':100,'source_database_sha256':'2'*64,'source_prefix_sha256':'3'*64,'source_actors_sha256':'f'*64,'object_key':'releases/search-tantivy/b1793236000-pilot/index.tar','files':[{'path':'index/meta.json','byte_size':1,'sha256':'a'*64}]}
 
     def status(self):
         now=1000000;m=self.manifest()
@@ -72,15 +72,10 @@ class AdmissionTests(unittest.TestCase):
                    'policy_freshness_attested':False}
         receipt_raw = json.dumps(receipt,sort_keys=True,separators=(',',':')).encode()+b'\n'
         receipt_sha = hashlib.sha256(receipt_raw).hexdigest()
-        anchor = {'build_id':native['active_build'],'manifest_sha256':hashlib.sha256(native_raw).hexdigest(),
-                  'database_sha256':native['sha256'],'prefix_sha256':native['prefix_map']['sha256'],
-                  'actor_count':native['actor_count'],'source_watermark':native['source_watermark'],
-                  'legacy_build_id':native['legacy_twin']['build_id']}
         manifest.update(source_kind=adapter.CHECKPOINT_SOURCE,source_policy=adapter.CHECKPOINT_POLICY,
                         source_build_id='b1793236000-primary',source_manifest_sha256=receipt_sha,
                         source_database_sha256=receipt['database_sha256'],source_actor_count=4,
-                        source_watermark=999700,legacy_build_id=anchor['legacy_build_id'],
-                        rollback_native_anchor=anchor,
+                        source_watermark=999700,
                         source_bootstrap={'schema_version':1,'kind':adapter.CHECKPOINT_SOURCE,
                             'coverage':'checkpoint-only','live_coverage_verified':False,
                             'checkpoint_receipt_sha256':receipt_sha,'checkpoint_receipt':receipt,'checkpoint_receipt_json':receipt_raw.decode(),
@@ -91,31 +86,56 @@ class AdmissionTests(unittest.TestCase):
         del manifest['source_prefix_sha256']
         return manifest,receipt_raw,native_raw
 
-    def test_checkpoint_primary_counts_and_independent_rollback_are_structural_only(self):
-        manifest,receipt_raw,native_raw = self.checkpoint_manifest()
+    def legacy_native_fields(self,native_raw):
+        native=json.loads(native_raw)
+        anchor={'build_id':native['active_build'],'manifest_sha256':hashlib.sha256(native_raw).hexdigest(),
+                'database_sha256':native['sha256'],'prefix_sha256':native['prefix_map']['sha256'],
+                'actor_count':native['actor_count'],'source_watermark':native['source_watermark'],
+                'legacy_build_id':native['legacy_twin']['build_id']}
+        return {'rollback_native_anchor':anchor,'legacy_build_id':anchor['legacy_build_id']}
+
+    def test_checkpoint_primary_counts_are_structural_only(self):
+        manifest,receipt_raw,_ = self.checkpoint_manifest()
         adapter.validate_artifact_manifest(manifest,manifest['active_build'])
-        result = adapter.validate_checkpoint_provenance(manifest,receipt_raw,native_raw)
+        result = adapter.validate_checkpoint_provenance(manifest,receipt_raw)
         self.assertTrue(result['structurally_valid'])
         self.assertFalse(result['live_admission'])
         self.assertEqual(result['coverage'],'checkpoint-only')
         self.assertIsNone(result['counts']['native_visible_actors'])
-        self.assertNotEqual(result['counts']['input_documents'],manifest['rollback_native_anchor']['actor_count'])
-        self.assertNotEqual(manifest['source_watermark'],manifest['rollback_native_anchor']['source_watermark'])
-        self.assertEqual(adapter.validate_source_manifest(manifest,native_raw,checkpoint_receipt_bytes=receipt_raw),result)
+        self.assertEqual(adapter.validate_source_provenance(manifest,checkpoint_receipt_bytes=receipt_raw),result)
         single_pass=copy.deepcopy(manifest)
         del single_pass['source_bootstrap']['actors_sha256']
-        self.assertTrue(adapter.validate_checkpoint_provenance(single_pass,receipt_raw,native_raw)['structurally_valid'])
-        self.assertEqual(adapter.validate_source_manifest(manifest,native_raw),result)
-        with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(manifest,receipt_raw+b' ',native_raw)
-        with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(manifest,receipt_raw,native_raw+b' ')
+        self.assertTrue(adapter.validate_checkpoint_provenance(single_pass,receipt_raw)['structurally_valid'])
+        self.assertEqual(adapter.validate_source_provenance(manifest),result)
+        with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(manifest,receipt_raw+b' ')
+        with self.assertRaises(ValueError):adapter.validate_source_provenance(manifest,checkpoint_receipt_bytes=receipt_raw+b' ')
         known=copy.deepcopy(manifest)
         known['source_bootstrap']['counts']['native_visible_actors']=1
-        with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(known,receipt_raw,native_raw)
+        with self.assertRaises(ValueError):adapter.validate_checkpoint_provenance(known,receipt_raw)
         known['source_bootstrap']['native_visible_database_sha256']=manifest['source_database_sha256']
-        self.assertEqual(adapter.validate_checkpoint_provenance(known,receipt_raw,native_raw)['counts']['native_visible_actors'],1)
+        self.assertEqual(adapter.validate_checkpoint_provenance(known,receipt_raw)['counts']['native_visible_actors'],1)
+
+    def test_checkpoint_admission_ignores_legacy_native_fields(self):
+        manifest,receipt_raw,native_raw = self.checkpoint_manifest()
+        expected = adapter.validate_source_provenance(manifest,checkpoint_receipt_bytes=receipt_raw)
+        self.assertNotIn('rollback_native_anchor',manifest);self.assertNotIn('legacy_build_id',manifest)
+        published = dict(manifest,**self.legacy_native_fields(native_raw))
+        unverifiable = dict(manifest,rollback_native_anchor={'build_id':'not a build'},legacy_build_id=None)
+        for name,value in [('without',manifest),('published',published),('unverifiable',unverifiable)]:
+            with self.subTest(name):
+                adapter.validate_artifact_manifest(value,value['active_build'])
+                self.assertEqual(adapter.validate_source_provenance(value,checkpoint_receipt_bytes=receipt_raw),expected)
+        checkpoint,status,now = self.checkpoint_status()
+        headers = {'without':status['source_manifest'],'published':dict(status['source_manifest'],**self.legacy_native_fields(native_raw)),'unverifiable':dict(status['source_manifest'],rollback_native_anchor=None,legacy_build_id='other')}
+        for manifest_name,fields in [('without',{}),('published',self.legacy_native_fields(native_raw))]:
+            for header_name,header in headers.items():
+                with self.subTest(manifest=manifest_name,header=header_name):
+                    changed=copy.deepcopy(status);changed['source_manifest']=header
+                    gates=adapter.validate_runtime(changed,dict(checkpoint,**fields),now,allow_checkpoint_fixture=True)
+                    self.assertEqual(gates['source_coverage_kind'],adapter.CHECKPOINT_SOURCE)
 
     def test_checkpoint_fetch_budget_accepts_nine_hundred_seconds_without_moving_source_floor(self):
-        original,_,native_raw=self.checkpoint_manifest()
+        original,_,_=self.checkpoint_manifest()
         for elapsed in [180.1,899.9,900]:
             changed=copy.deepcopy(original)
             bootstrap=changed['source_bootstrap'];receipt=bootstrap['checkpoint_receipt']
@@ -125,7 +145,7 @@ class AdmissionTests(unittest.TestCase):
             bootstrap['checkpoint_receipt_sha256']=hashlib.sha256(raw).hexdigest()
             changed['source_manifest_sha256']=bootstrap['checkpoint_receipt_sha256']
             with self.subTest(elapsed=elapsed):
-                self.assertTrue(adapter.validate_checkpoint_provenance(changed,raw,native_raw)['structurally_valid'])
+                self.assertTrue(adapter.validate_checkpoint_provenance(changed,raw)['structurally_valid'])
                 self.assertEqual(changed['source_watermark'],original['source_watermark'])
                 self.assertEqual(receipt['source_clock_before'],original['source_bootstrap']['checkpoint_receipt']['source_clock_before'])
         for elapsed in [900.001,-1,True,float('inf'),float('nan')]:
@@ -137,10 +157,10 @@ class AdmissionTests(unittest.TestCase):
             bootstrap['checkpoint_receipt_sha256']=hashlib.sha256(raw).hexdigest()
             changed['source_manifest_sha256']=bootstrap['checkpoint_receipt_sha256']
             with self.subTest(elapsed=elapsed),self.assertRaises(ValueError):
-                adapter.validate_checkpoint_provenance(changed,raw,native_raw)
+                adapter.validate_checkpoint_provenance(changed,raw)
 
-    def test_checkpoint_provenance_rejects_floor_prefix_wal_count_and_anchor_confusion(self):
-        original,receipt_raw,native_raw = self.checkpoint_manifest()
+    def test_checkpoint_provenance_rejects_floor_prefix_wal_and_count_confusion(self):
+        original,receipt_raw,_ = self.checkpoint_manifest()
         cases=[(('source_bootstrap','counts','raw_actor_rows'),4),
                (('source_bootstrap','counts','live_actor_documents'),1),
                (('source_bootstrap','counts','deleted_actor_documents'),3),
@@ -161,10 +181,8 @@ class AdmissionTests(unittest.TestCase):
                (('source_bootstrap','checkpoint_receipt','boundary_kind'),'error-EOF'),
                (('source_bootstrap','checkpoint_receipt','policy_freshness_attested'),True),
                (('source_bootstrap','actors_sha256'),'9'*64),
-               (('rollback_native_anchor','actor_count'),4),
-               (('rollback_native_anchor','source_watermark'),999700),
                (('source_database_sha256',),'2'*64),
-               (('source_manifest_sha256',),original['rollback_native_anchor']['manifest_sha256']),
+               (('source_manifest_sha256',),'9'*64),
                (('source_policy',),adapter.SOURCE_POLICY),
                (('source_prefix_sha256',),'3'*64)]
         for path,value in cases:
@@ -172,12 +190,12 @@ class AdmissionTests(unittest.TestCase):
             for key in path[:-1]:target=target[key]
             target[path[-1]]=value
             with self.subTest(path=path),self.assertRaises(ValueError):
-                adapter.validate_checkpoint_provenance(changed,receipt_raw,native_raw)
+                adapter.validate_checkpoint_provenance(changed,receipt_raw)
 
     def test_fixture_checkpoint_cannot_freeze_install_or_claim_runtime_in_production(self):
         manifest,_,_=self.checkpoint_manifest()
         with self.assertRaisesRegex(ValueError,'Fixture checkpoint is not eligible'):
-            adapter.freeze_bundle('/missing/data','/missing/destination',manifest,b'','/missing/binary')
+            adapter.freeze_bundle('/missing/data','/missing/destination',manifest,'/missing/binary')
         with self.assertRaisesRegex(ValueError,'Fixture checkpoint is not eligible'):
             adapter.install_bundle('/missing/bundle','/missing/destination',manifest,'/missing/binary')
         with self.assertRaisesRegex(ValueError,'Fixture checkpoint is not eligible'):
@@ -193,7 +211,7 @@ class AdmissionTests(unittest.TestCase):
         status.update(snapshot_watermark=floor,watermark=now-5,input_actors=4,actor_count=2,tombstone_count=2,source_observation_revision=4,cutover_source_ready=False)
         status['source_manifest']={'type':'manifest','schema_version':1,'build_id':manifest['source_build_id'],
             'source_watermark':floor,'source_database_sha256':manifest['source_database_sha256'],
-            'source_format':'sqlite-committed-prefix-v1','source_kind':adapter.CHECKPOINT_SOURCE,'source_policy':adapter.CHECKPOINT_POLICY,'rollback_native_anchor':copy.deepcopy(manifest['rollback_native_anchor']),'legacy_build_id':manifest['legacy_build_id'],'partial':False,'actor_count':4,'source_actor_count':4,
+            'source_format':'sqlite-committed-prefix-v1','source_kind':adapter.CHECKPOINT_SOURCE,'source_policy':adapter.CHECKPOINT_POLICY,'partial':False,'actor_count':4,'source_actor_count':4,
             'source_bootstrap':copy.deepcopy(manifest['source_bootstrap'])}
         status['expiry_coverage'].update(expected_input_actors=4,source_actor_count=4,input_actors_checked=4)
         status['expiry_coverage']['current']['live_actors']=2
@@ -284,19 +302,16 @@ class AdmissionTests(unittest.TestCase):
                     sys.path.insert(0,str(ROOT/'scripts/snapshot_compaction'))
                     from publish import Publisher
                     root=Path(temporary);remote=root/'remote'
-                    source_path=root/'native-anchor.json';source_path.write_bytes(case['native'])
-                    native_build,_=adapter.native_anchor_binding(manifest)
-                    retained=remote/f'releases/search/{native_build}/manifest.json'
-                    retained.parent.mkdir(parents=True);retained.write_bytes(case['native'])
-                    pointer=remote/'control/builds/latest.json';pointer.parent.mkdir(parents=True);pointer.write_bytes(b'unchanged native publisher')
+                    pointer=remote/'control/builds/latest.json';pointer.parent.mkdir(parents=True);pointer.write_bytes(b'unchanged pointer')
                     config=root/'rclone.conf';config.write_text('[r2]\ntype = local\n')
                     publisher=Publisher(config,str(remote));generation=case['bundle'].parent
-                    for _ in range(2):self.assertEqual(publisher.publish_tantivy(generation,source_path),manifest['active_build'])
-                    self.assertFalse((remote/f"releases/search/{manifest['source_build_id']}").exists())
-                    self.assertEqual(publisher.verify_tantivy(generation,source_path),manifest['active_build'])
-                    retained.write_bytes(case['native']+b' ')
-                    with self.assertRaisesRegex(ValueError,'remote verification'):publisher.verify_tantivy(generation,source_path)
-                    self.assertEqual(pointer.read_bytes(),b'unchanged native publisher')
+                    for _ in range(2):self.assertEqual(publisher.publish_tantivy(generation),manifest['active_build'])
+                    self.assertFalse((remote/'releases/search').exists())
+                    self.assertEqual(publisher.verify_tantivy(generation),manifest['active_build'])
+                    published=remote/f"releases/search-tantivy/{manifest['active_build']}/manifest.json"
+                    published.write_bytes(published.read_bytes()+b' ')
+                    with self.assertRaisesRegex(ValueError,'remote verification'):publisher.verify_tantivy(generation)
+                    self.assertEqual(pointer.read_bytes(),b'unchanged pointer')
                 installation=adapter.install_bundle(case['bundle'],destination,manifest,binary,allow_checkpoint_fixture=True)
                 child,public,_=start_strict(binary,destination,case['log'],case['secret'],fixture_identity=True,max_sync_lag=120)
                 try:
@@ -420,41 +435,35 @@ class AdmissionTests(unittest.TestCase):
                     status=smoke.request(public,'/index/status')[2]
                     adapter.validate_runtime(status,manifest)
                 finally:smoke.stop(child)
-            source={'manifest_version':2,'format_version':5,'active_build':manifest['source_build_id'],'source_watermark':100,'actor_count':1,'sha256':manifest['source_database_sha256'],'normalize_version':manifest['normalize_version'],'snapshot_url':f"releases/search/{manifest['source_build_id']}/index.db",'prefix_map':{'sha256':manifest['source_prefix_sha256']},'legacy_twin':{'build_id':manifest['legacy_build_id'],'source_watermark':100}}
-            source_bytes=json.dumps(source).encode();manifest['source_manifest_sha256']=hashlib.sha256(source_bytes).hexdigest()
-            portable=adapter.freeze_bundle(data,root/'published',manifest,source_bytes,binary)
+            portable=adapter.freeze_bundle(data,root/'published',manifest,binary)
             adapter.validate_artifact_manifest(portable,manifest['active_build'])
             self.assertNotIn('volume_id',portable)
             self.assertEqual(json.loads((root/'published/manifest.json').read_bytes()),portable)
-            with self.assertRaisesRegex(ValueError,'byte identity'):adapter.validate_source_manifest(portable,source_bytes+b' ')
-            for field,value in [('source_build_id','b1793236000-other'),('legacy_build_id','b1793236000-other'),('source_database_sha256','4'*64),('source_actor_count',2)]:
-                with self.subTest(source=field),self.assertRaises(ValueError):adapter.validate_source_manifest(dict(portable,**{field:value}),source_bytes)
-            with self.assertRaises(ValueError):adapter.freeze_bundle(data,root/'published',manifest,source_bytes,binary)
-            with self.assertRaises(ValueError):adapter.freeze_bundle(data,root/'wrong-source',dict(manifest,source_actors_sha256='0'*64),source_bytes,binary)
+            with self.assertRaises(ValueError):adapter.freeze_bundle(data,root/'published',manifest,binary)
+            with self.assertRaises(ValueError):adapter.freeze_bundle(data,root/'wrong-source',dict(manifest,source_actors_sha256='0'*64),binary)
             self.assertFalse((root/'wrong-source').exists())
             if shutil.which('rclone'):
                 sys.path.insert(0,str(ROOT/'scripts/snapshot_compaction'))
                 from publish import Publisher
-                remote=root/'remote';source_path=root/'native-manifest.json';source_path.write_bytes(source_bytes)
-                source_remote=remote/f"releases/search/{manifest['source_build_id']}/manifest.json"
-                source_remote.parent.mkdir(parents=True);source_remote.write_bytes(source_bytes)
+                remote=root/'remote';remote.mkdir()
                 pointer=remote/'latest.json';pointer.write_bytes(b'production untouched')
                 config=root/'rclone.conf';config.write_text('[r2]\ntype = local\n')
                 publisher=Publisher(config,str(remote))
-                for _ in range(2):self.assertEqual(publisher.publish_tantivy(root/'published',source_path),manifest['active_build'])
+                for _ in range(2):self.assertEqual(publisher.publish_tantivy(root/'published'),manifest['active_build'])
                 published_manifest=remote/f"releases/search-tantivy/{manifest['active_build']}/manifest.json"
                 published_bytes=published_manifest.read_bytes();self.assertEqual(json.loads(published_bytes),portable)
                 local_bundle=root/'published/index.tar';saved_bundle=root/'saved-index.tar';local_bundle.rename(saved_bundle)
-                self.assertEqual(publisher.verify_tantivy(root/'published',source_path),manifest['active_build'])
+                self.assertEqual(publisher.verify_tantivy(root/'published'),manifest['active_build'])
                 self.assertFalse(local_bundle.exists());saved_bundle.rename(local_bundle)
-                source_remote.write_bytes(source_bytes+b' ')
-                with self.assertRaisesRegex(ValueError,'remote verification'):publisher.publish_tantivy(root/'published',source_path)
-                with self.assertRaisesRegex(ValueError,'remote verification'):publisher.verify_tantivy(root/'published',source_path)
-                source_remote.write_bytes(source_bytes)
+                self.assertFalse((remote/'releases/search').exists())
                 (remote/portable['object_key']).write_bytes(b'corrupt')
-                with self.assertRaisesRegex(ValueError,'remote verification'):publisher.publish_tantivy(root/'published',source_path)
+                with self.assertRaisesRegex(ValueError,'remote verification'):publisher.publish_tantivy(root/'published')
+                with self.assertRaisesRegex(ValueError,'remote verification'):publisher.verify_tantivy(root/'published')
                 self.assertEqual(published_manifest.read_bytes(),published_bytes);self.assertEqual(pointer.read_bytes(),b'production untouched')
             manifest.update(portable);bundle=root/'published/index.tar'
+            for field,value in [('source_build_id','b1793236000-other'),('source_database_sha256','4'*64),('source_actor_count',2),('source_watermark',101)]:
+                with self.subTest(bundle_provenance=field),self.assertRaises(ValueError):adapter.install_bundle(bundle,root/('mutated-'+field),dict(manifest,**{field:value}),binary)
+                self.assertFalse((root/('mutated-'+field)).exists())
             receipt=adapter.install_bundle(bundle,root/'installed',manifest,binary)
             self.assertFalse(receipt['runtime_qualified']);self.assertTrue((root/'installed/index/meta.json').is_file());self.assertFalse((root/'installed/index.db').exists())
             qualified=adapter.qualify_route(status,manifest,receipt,provider_attestation=self.provider(now));self.assertEqual(qualified['route']['engine'],'tantivy');self.assertFalse(qualified['admission']['slo_empirically_qualified'])
@@ -569,9 +578,9 @@ def checkpoint_runtime_fixture(root,binary,slot_app=None):
         adapter.validate_runtime(status,manifest,allow_checkpoint_fixture=True)
         smoke.stop(child);child=None
         publication=root/'publication'
-        portable=adapter.freeze_bundle(data,publication,manifest,native,binary,allow_checkpoint_fixture=True)
+        portable=adapter.freeze_bundle(data,publication,manifest,binary,allow_checkpoint_fixture=True)
         manifest.update(portable)
-        yield {'manifest':manifest,'portable':portable,'bundle':publication/'index.tar','native':native,'source':source,'secret':secret,
+        yield {'manifest':manifest,'portable':portable,'bundle':publication/'index.tar','source':source,'secret':secret,
                'checkpoint':checkpoint,'record':record,'binary':binary,'log':log,'data':data,'replay':replay,'current':current_state}
     finally:
         if child is not None:smoke.stop(child)

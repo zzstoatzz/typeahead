@@ -17,7 +17,8 @@ import tantivy_install as installer
 from install import atomic_json, object_key
 
 RESERVE = 1024**3
-DEPLOYMENT_FIELDS = {'deployment_schema_version','request_id','artifact_manifest_key','artifact_manifest_sha256','source_manifest_key','provider_app','image_digest','guest','volume_id','volume_size_gib','public_service_ports'}
+DEPLOYMENT_FIELDS = {'deployment_schema_version','request_id','artifact_manifest_key','artifact_manifest_sha256','provider_app','image_digest','guest','volume_id','volume_size_gib','public_service_ports'}
+IGNORED_DEPLOYMENT_FIELDS = {'source_manifest_key'}
 
 
 def checksum(path):
@@ -97,8 +98,7 @@ class Slot:
         value=json.loads(raw);installer.validate_manifest(value,self.build)
         if value.get('deployment_schema_version')!=1 or value.get('request_id')!=self.request_id or value['provider_app']!=self.app or value['public_service_ports']!=[80,443]:raise ValueError('Deployment target mismatch')
         if value['image_digest']!=self.env.get('FLY_IMAGE_REF'):raise ValueError('Runtime immutable image differs')
-        native_build,_=installer.native_anchor_binding(value)
-        if value.get('artifact_manifest_key')!=f'releases/search-tantivy/{self.build}/manifest.json' or value.get('source_manifest_key')!=f"releases/search/{native_build}/manifest.json":raise ValueError('Deployment artifact key differs')
+        if value.get('artifact_manifest_key')!=f'releases/search-tantivy/{self.build}/manifest.json':raise ValueError('Deployment artifact key differs')
         if self.fixture_mode and (not installer.checkpoint_source(value) or value['source_bootstrap']['checkpoint_receipt']['fixture'] is not True):raise ValueError('Fixture clock requires a fixture checkpoint')
         installer.digest(value.get('artifact_manifest_sha256'))
         if checksum(self.binary)!=value['binary_sha256']:raise ValueError('Runtime reader differs')
@@ -132,6 +132,7 @@ class Slot:
         if self.root.exists():raise ValueError('Unadmitted slot destination exists')
         if any(item.name not in {'deployment.json','artifact-manifest.json','source-manifest.json','index.tar'} for item in self.cache.iterdir()):raise ValueError('Unexpected incomplete installation files')
         if any(self.cache.iterdir()) and not cached.is_file():raise ValueError('Incomplete installation lacks deployment binding')
+        (self.cache/'source-manifest.json').unlink(missing_ok=True)
         owned_transport=False
         if self.transport is None:self.transport=R2(self.env);owned_transport=True
         try:
@@ -139,10 +140,8 @@ class Slot:
             value=self.validate_deployment(deployment.read_bytes())
             portable=self.fetch(value['artifact_manifest_key'],'artifact-manifest.json',1024*1024,value['artifact_manifest_sha256'])
             artifact=json.loads(portable.read_bytes());installer.validate_artifact_manifest(artifact,self.build)
-            if set(value)!=set(artifact)|DEPLOYMENT_FIELDS or any(value.get(k)!=v for k,v in artifact.items()) or set(artifact)&DEPLOYMENT_FIELDS:raise ValueError('Portable and target manifests differ')
-            _,native_sha=installer.native_anchor_binding(value)
-            source=self.fetch(value['source_manifest_key'],'source-manifest.json',1024*1024,native_sha)
-            installer.validate_source_manifest(value,source.read_bytes())
+            if set(value)-IGNORED_DEPLOYMENT_FIELDS!=set(artifact)|DEPLOYMENT_FIELDS or any(value.get(k)!=v for k,v in artifact.items()) or set(artifact)&(DEPLOYMENT_FIELDS|IGNORED_DEPLOYMENT_FIELDS):raise ValueError('Portable and target manifests differ')
+            installer.validate_source_provenance(value)
             needed=value['byte_size']+sum(row['byte_size'] for row in value['files'])+RESERVE
             if shutil.disk_usage(self.cache).free<needed:raise ValueError('Insufficient final slot reserve')
             bundle=self.fetch(value['object_key'],'index.tar',value['byte_size'],value['sha256'])

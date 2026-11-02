@@ -13,12 +13,16 @@ regular file as `{path, byte_size, sha256}`. Paths are single files under
 `index/`, including `index/meta.json`; no writer locks, links, directories,
 traversal paths, duplicate entries, or unlisted files are admitted. Create the
 bundle from an inactive, stopped generation, never from serving files.
-The portable manifest binds `source_build_id`, `source_manifest_sha256` (the
-SHA256 of the exact native manifest bytes), `legacy_build_id`, `source_watermark`,
-`source_database_sha256`, `source_prefix_sha256` and `source_actors_sha256`.
-The latter must equal the importer's verified raw actor-stream footer. Native
-source count, normalization, database/prefix hashes and legacy twin must agree
-with that immutable native manifest. Persist the portable manifest at
+The portable manifest binds `source_build_id`, `source_manifest_sha256`,
+`source_watermark`, `source_database_sha256` and `source_actors_sha256`. The
+latter must equal the importer's verified raw actor-stream footer. A
+`sqlite-committed-prefix` artifact embeds its exact checkpoint receipt;
+`source_manifest_sha256` is that receipt's SHA256 and `source_database_sha256`
+its replayed database hash, and the receipt, counts, replay floor and footer
+must agree. The installed reader's imported header must repeat the same source
+identity and checkpoint bootstrap. No native manifest is fetched or validated:
+`rollback_native_anchor` and `legacy_build_id`, which published artifacts still
+carry, are ignored wherever they appear. Persist the portable manifest at
 `releases/search-tantivy/<active_build>/manifest.json` alongside `index.tar`.
 Retention resolves these immutable manifests, including previous generations;
 an old build cannot be identified by querying a URL now serving its replacement.
@@ -31,13 +35,12 @@ directory. Missing coverage fails before packaging; concurrent file changes
 reject the artifact. It does not upload, alter routing or claim runtime readiness.
 The publisher still owns R2 upload and exact checksum readback. A raw snapshot
 import without an authoritative sweep is not a publishable caught-up checkpoint.
-`scripts/snapshot_compaction/publish.py` accepts `--engine tantivy --generation DIR
---source-manifest FILE`, using the `INDEX_R2_*` configuration. It verifies that
-the exact native anchor manifest is already published (the fixed slot image
-fetches it), then verifies immutable upload of the bundle and finally its
+`scripts/snapshot_compaction/publish.py` accepts `--engine tantivy --generation DIR`,
+using the `INDEX_R2_*` configuration. It validates the artifact's checkpoint
+provenance, then verifies immutable upload of the bundle and finally its
 portable manifest. It never writes a mutable pointer.
 After a successful publication, the same command with `--verify-only` verifies
-the remote source manifest, bundle size/checksum and exact portable manifest
+the remote bundle size/checksum and exact portable manifest
 against retained local metadata. It requires no local tar and never uploads or
 changes pointers. Publication retries retain their payloads; a separate owned
 cleanup step may retire the local tar/index only after verified success.
@@ -99,9 +102,10 @@ Only the two managed slot apps and a 32-hex-character request ID are accepted.
 
 The deployment object is the flat portable manifest plus the target fields
 above and `deployment_schema_version: 1`, `request_id`,
-`artifact_manifest_key`, `artifact_manifest_sha256`, and `source_manifest_key`.
-The latter keys must name the exact immutable portable/native source manifests.
-All portable fields must agree with the separately fetched portable bytes.
+`artifact_manifest_key` and `artifact_manifest_sha256`, which must name the
+exact immutable portable manifest. A legacy `source_manifest_key` is accepted
+and ignored; the slot never fetches it. All portable fields must agree with the
+separately fetched portable bytes.
 The guest checks its actual reader SHA and requires its platform-provided
 `FLY_IMAGE_REF` to equal the bound digest reference. An owned Fly qualification guest verified this digest representation when its
 provider config pinned an immutable image. There is no caller override or

@@ -97,13 +97,11 @@ class SlotTests(unittest.TestCase):
                 code,_,reply=smoke.request(admin,'/admin/source-reconcile',body,secret)
                 if code!=200:raise RuntimeError('fixture source reconcile failed '+str(reply))
             finally:smoke.stop(child)
-        source={'manifest_version':2,'format_version':5,'active_build':manifest['source_build_id'],'source_watermark':100,'actor_count':1,'sha256':manifest['source_database_sha256'],'normalize_version':manifest['normalize_version'],'prefix_map':{'sha256':manifest['source_prefix_sha256']},'legacy_twin':{'build_id':manifest['legacy_build_id'],'source_watermark':100}}
-        source_bytes=json.dumps(source).encode();manifest['source_manifest_sha256']=hashlib.sha256(source_bytes).hexdigest()
-        portable=adapter.freeze_bundle(data,root/'published',manifest,source_bytes,BINARY);portable_bytes=(root/'published/manifest.json').read_bytes()
+        portable=adapter.freeze_bundle(data,root/'published',manifest,BINARY);portable_bytes=(root/'published/manifest.json').read_bytes()
         cls.request='a'*32;cls.app='typeahead-tantivy-a';cls.key=f'control/tantivy-slots/{cls.app}/{cls.request}.json'
-        cls.bound={**portable,'provider_app':cls.app,'image_digest':'registry.fly.io/typeahead-tantivy-a@sha256:'+'b'*64,'guest':adapter.GUEST,'volume_id':'vol_fixture','volume_size_gib':20,'public_service_ports':[80,443],'deployment_schema_version':1,'request_id':cls.request,'artifact_manifest_key':f"releases/search-tantivy/{portable['active_build']}/manifest.json",'artifact_manifest_sha256':hashlib.sha256(portable_bytes).hexdigest(),'source_manifest_key':f"releases/search/{portable['source_build_id']}/manifest.json"}
+        cls.bound={**portable,'provider_app':cls.app,'image_digest':'registry.fly.io/typeahead-tantivy-a@sha256:'+'b'*64,'guest':adapter.GUEST,'volume_id':'vol_fixture','volume_size_gib':20,'public_service_ports':[80,443],'deployment_schema_version':1,'request_id':cls.request,'artifact_manifest_key':f"releases/search-tantivy/{portable['active_build']}/manifest.json",'artifact_manifest_sha256':hashlib.sha256(portable_bytes).hexdigest()}
         cls.deployment=json.dumps(cls.bound,separators=(',',':')).encode()
-        cls.objects={cls.key:cls.deployment,cls.bound['artifact_manifest_key']:portable_bytes,cls.bound['source_manifest_key']:source_bytes,portable['object_key']:(root/'published/index.tar').read_bytes()}
+        cls.objects={cls.key:cls.deployment,cls.bound['artifact_manifest_key']:portable_bytes,portable['object_key']:(root/'published/index.tar').read_bytes()}
     @classmethod
     def tearDownClass(cls):cls.temp.cleanup()
     def setUp(self):
@@ -113,12 +111,12 @@ class SlotTests(unittest.TestCase):
     def instance(self,env=None):return slot.Slot(env or self.env,self.root,BINARY,self.store)
     def test_real_install_cached_restart_and_reader_corruption(self):
         value=self.instance().install();receipt=json.loads((self.root/'installation.json').read_bytes())
-        self.assertTrue(receipt['passed']);self.assertFalse(receipt['runtime_qualified']);self.assertEqual(receipt['deployment_sha256'],self.env['EXPECTED_DEPLOYMENT_SHA256']);self.assertEqual(len(self.store.keys),4)
+        self.assertTrue(receipt['passed']);self.assertFalse(receipt['runtime_qualified']);self.assertEqual(receipt['deployment_sha256'],self.env['EXPECTED_DEPLOYMENT_SHA256']);self.assertEqual(len(self.store.keys),3)
         self.assertFalse((self.root.parent/'.tantivy-slot/index.tar').exists())
-        self.assertEqual(self.instance().install(),value);self.assertEqual(len(self.store.keys),4)
+        self.assertEqual(self.instance().install(),value);self.assertEqual(len(self.store.keys),3)
         code='import importlib.util,json,sys;sys.path.insert(0,sys.argv[1]);s=importlib.util.spec_from_file_location("slot",sys.argv[1]+"/tantivy-slot.py");m=importlib.util.module_from_spec(s);s.loader.exec_module(m);m.Slot(json.loads(sys.argv[2]),m.Path(sys.argv[3]),m.Path(sys.argv[4])).install()'
         restarted=subprocess.run([sys.executable,'-c',code,str(MODULE.parent),json.dumps(self.env),str(self.root),str(BINARY)],capture_output=True,timeout=30)
-        self.assertEqual(restarted.returncode,0,restarted.stderr);self.assertEqual(len(self.store.keys),4)
+        self.assertEqual(restarted.returncode,0,restarted.stderr);self.assertEqual(len(self.store.keys),3)
         with (Path(self.work.name)/'running.log').open('wb') as log:
             child,public,admin=fixtures.start_strict(BINARY,self.root,log,secrets.token_urlsafe(24))
             try:
@@ -127,15 +125,31 @@ class SlotTests(unittest.TestCase):
             finally:smoke.stop(child)
         (self.root/'index/meta.json').write_text('corrupt')
         with self.assertRaisesRegex(ValueError,'reader rejected'):self.instance().install()
-        self.assertEqual(len(self.store.keys),4)
+        self.assertEqual(len(self.store.keys),3)
     def test_verified_partial_transfer_resumes_before_install(self):
         instance=self.instance();instance.cache.mkdir()
-        for key,name in [(self.key,'deployment.json'),(self.bound['artifact_manifest_key'],'artifact-manifest.json'),(self.bound['source_manifest_key'],'source-manifest.json')]:
+        for key,name in [(self.key,'deployment.json'),(self.bound['artifact_manifest_key'],'artifact-manifest.json')]:
             (instance.cache/name).write_bytes(self.store.objects[key])
+        (instance.cache/'source-manifest.json').write_bytes(b'native manifest left by an older slot image')
         (instance.cache/'index.tar').write_bytes(self.store.objects[self.bound['object_key']][:100])
         instance.install()
         self.assertEqual(self.store.keys,[self.bound['object_key']])
+        self.assertFalse((instance.cache/'source-manifest.json').exists())
         self.assertTrue((self.root/'installation.json').is_file())
+
+    def test_legacy_native_source_key_is_accepted_and_never_fetched(self):
+        legacy=dict(self.bound,source_manifest_key=f"releases/search/{self.bound['source_build_id']}/manifest.json")
+        raw=json.dumps(legacy,separators=(',',':')).encode();self.store.objects[self.key]=raw
+        env=dict(self.env,EXPECTED_DEPLOYMENT_SHA256=hashlib.sha256(raw).hexdigest())
+        self.assertNotIn(legacy['source_manifest_key'],self.store.objects)
+        self.assertEqual(self.instance(env).install(),legacy)
+        self.assertNotIn(legacy['source_manifest_key'],self.store.keys);self.assertEqual(len(self.store.keys),3)
+        self.assertEqual(self.instance(env).install(),legacy);self.assertEqual(len(self.store.keys),3)
+        portable=json.loads(self.store.objects[self.bound['artifact_manifest_key']]);portable['source_manifest_key']=legacy['source_manifest_key']
+        portable_raw=json.dumps(portable).encode();self.store.objects[self.bound['artifact_manifest_key']]=portable_raw
+        mixed=dict(legacy,artifact_manifest_sha256=hashlib.sha256(portable_raw).hexdigest());raw=json.dumps(mixed).encode();self.store.objects[self.key]=raw
+        shutil.rmtree(self.root);shutil.rmtree(self.root.parent/'.tantivy-slot')
+        with self.assertRaisesRegex(ValueError,'Portable and target manifests differ'):self.instance(dict(self.env,EXPECTED_DEPLOYMENT_SHA256=hashlib.sha256(raw).hexdigest())).install()
 
     def test_actual_slot_reader_acknowledges_global_merge(self):
         portable=json.loads(self.store.objects[self.bound['artifact_manifest_key']]);portable['retrieval_strategy']='global-merge'
@@ -163,7 +177,7 @@ class SlotTests(unittest.TestCase):
                 def poll():
                     child=subprocess.run(args,capture_output=True,timeout=30);self.assertEqual(child.returncode,0,child.stderr);return json.loads(child.stdout)
                 first=poll();second=poll()
-                self.assertEqual(len(fixture.requests),2);self.assertEqual(len(self.store.keys),4)
+                self.assertEqual(len(fixture.requests),2);self.assertEqual(len(self.store.keys),3)
                 self.assertGreater(second['source_bytes'],first['source_bytes']);self.assertEqual(second['window_started_at'],first['window_started_at']);self.assertEqual(second['max_source_bytes'],536870912)
                 self.assertEqual(second['recovered_reservation_bytes'],0);self.assertEqual(second['poll_reserve_bytes'],134217728)
             finally:fixture.close()
@@ -198,7 +212,7 @@ class SlotTests(unittest.TestCase):
                 first=run_until_polled(0);requests=len(fixture.requests)
                 time.sleep(max(0,fixture.now+3-time.time()));fixture.now=int(time.time())
                 second=run_until_polled(requests)
-                self.assertGreater(len(fixture.requests),requests);self.assertEqual(len(self.store.keys),4)
+                self.assertGreater(len(fixture.requests),requests);self.assertEqual(len(self.store.keys),3)
                 self.assertGreater(second['source_bytes'],first['source_bytes']);self.assertEqual(second['window_started_at'],first['window_started_at']);self.assertEqual(second['max_source_bytes'],536870912);self.assertEqual(second['poll_reserve_bytes'],134217728)
             finally:fixture.close()
     def test_cached_structural_mode_accepts_inflight_cycle_but_rejects_identity_drift(self):
@@ -224,10 +238,10 @@ class SlotTests(unittest.TestCase):
         self.instance().install();receipt=slot.metadata(self.root/'installation.json');receipt['deployment_sha256']='0'*64
         slot.atomic_json(self.root/'installation.json',receipt)
         with self.assertRaisesRegex(ValueError,'Cached installation differs'):self.instance().install()
-        self.assertEqual(len(self.store.keys),4)
+        self.assertEqual(len(self.store.keys),3)
         stale=dict(self.env,EXPECTED_DEPLOYMENT_SHA256='1'*64)
         with self.assertRaisesRegex(ValueError,'Deployment byte identity'):self.instance(stale).install()
-        self.assertEqual(len(self.store.keys),4)
+        self.assertEqual(len(self.store.keys),3)
 
 
 
@@ -243,10 +257,11 @@ class CheckpointExpiryTests(unittest.TestCase):
                     'artifact_manifest_key':f"releases/search-tantivy/{portable['active_build']}/manifest.json",
                     'artifact_manifest_sha256':hashlib.sha256(json.dumps(portable).encode()).hexdigest(),
                     'source_manifest_key':f"releases/search/{portable['rollback_native_anchor']['build_id']}/manifest.json"}
+                self.assertIn('legacy_build_id',portable)
                 key='control/tantivy-slots/typeahead-tantivy-a/'+('e'*32)+'.json'
                 deployment=json.dumps(bound).encode()
                 store=Store({key:deployment,bound['artifact_manifest_key']:json.dumps(portable).encode(),
-                    bound['source_manifest_key']:case['native'],bound['object_key']:case['bundle'].read_bytes()})
+                    bound['object_key']:case['bundle'].read_bytes()})
                 env=dict(os.environ,FLY_APP_NAME='typeahead-tantivy-a',FLY_MACHINE_ID='abcdef12345678',
                     FLY_MACHINE_VERSION='fixture-instance',FLY_IMAGE_REF=bound['image_digest'],
                     EXPECTED_BUILD_ID=bound['active_build'],TANTIVY_DEPLOYMENT_KEY=key,
@@ -302,7 +317,7 @@ class CheckpointExpiryTests(unittest.TestCase):
                     restarted=slot.Slot(env,work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
                     with self.assertRaisesRegex(ValueError,'coverage expired'):
                         restarted.install()
-                    self.assertEqual(len(store.keys),4,'cached restart fetched artifacts')
+                    self.assertEqual(len(store.keys),3,'cached restart fetched artifacts')
                     with self.assertRaisesRegex(ValueError,'unavailable in production'):
                         slot.Slot({k:v for k,v in env.items() if k!='TANTIVY_TEST_FIXTURE'},work/'other',BINARY,store,fixture_clock=lambda:0)
                 finally:

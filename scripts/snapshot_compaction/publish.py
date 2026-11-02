@@ -72,40 +72,33 @@ class Publisher:
         )
         self.verify(local, object_key)
 
-    def publish_tantivy(self, generation, source_manifest):
-        generation, source_manifest, manifest_path, manifest, source = self.tantivy_artifacts(generation, source_manifest)
+    def publish_tantivy(self, generation):
+        generation, manifest_path, manifest = self.tantivy_artifacts(generation)
         bundle = generation / 'index.tar'
         if bundle.stat().st_size != manifest['byte_size'] or digest_file(bundle) != manifest['sha256']:
             raise ValueError('local verification failed: index.tar')
-        self.verify(source_manifest, f"releases/search/{source['active_build']}/manifest.json")
         self.immutable(bundle, manifest['object_key'])
         self.immutable(manifest_path, f"releases/search-tantivy/{manifest['active_build']}/manifest.json")
         return manifest['active_build']
 
-    def verify_tantivy(self, generation, source_manifest):
-        _, source_manifest, manifest_path, manifest, source = self.tantivy_artifacts(generation, source_manifest)
-        self.verify(source_manifest, f"releases/search/{source['active_build']}/manifest.json")
+    def verify_tantivy(self, generation):
+        _, manifest_path, manifest = self.tantivy_artifacts(generation)
         self.verify_expected(manifest['object_key'], manifest['byte_size'], manifest['sha256'])
         self.verify(manifest_path, f"releases/search-tantivy/{manifest['active_build']}/manifest.json")
         return manifest['active_build']
 
-    def tantivy_artifacts(self, generation, source_manifest):
+    def tantivy_artifacts(self, generation):
         location = Path(__file__).resolve().parents[1] / 'snapshot_refresh/tantivy_install.py'
         spec = importlib.util.spec_from_file_location('tantivy_install', location)
         adapter = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(adapter)
-        generation, source_manifest = Path(generation), Path(source_manifest)
+        generation = Path(generation)
         manifest_path = generation / 'manifest.json'
         manifest = json.loads(manifest_path.read_bytes())
-        source_raw = source_manifest.read_bytes()
-        adapter.validate_source_manifest(manifest, source_raw)
-        source = json.loads(source_raw)
-        native_build, _ = adapter.native_anchor_binding(manifest)
-        if source.get('active_build') != native_build:
-            raise ValueError('Native rollback anchor identity mismatch')
+        adapter.validate_source_provenance(manifest)
         if any(field in manifest for field in ['image_digest', 'guest', 'volume_id', 'volume_size_gib', 'public_service_ports', 'provider_app']):
             raise ValueError('Publish a portable Tantivy artifact without deployment bindings')
-        return generation, source_manifest, manifest_path, manifest, source
+        return generation, manifest_path, manifest
 
 
 @contextmanager
@@ -133,7 +126,6 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--generation', type=Path, required=True)
     parser.add_argument('--engine', choices=['tantivy'], default='tantivy')
-    parser.add_argument('--source-manifest', type=Path, required=True)
     parser.add_argument('--verify-only', action='store_true')
     parser.add_argument('--config', type=Path)
     parser.add_argument('--bucket', default=os.environ.get('INDEX_R2_BUCKET'))
@@ -144,7 +136,7 @@ def main():
     with configuration(args.config) as config:
         publisher = Publisher(config, args.bucket, args.rclone)
         operation = publisher.verify_tantivy if args.verify_only else publisher.publish_tantivy
-        print(operation(args.generation, args.source_manifest))
+        print(operation(args.generation))
 
 
 if __name__ == '__main__':
