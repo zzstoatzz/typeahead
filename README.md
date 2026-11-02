@@ -1,11 +1,12 @@
+<a href="https://typeahead.waow.tech"><img src="docs/typeahead.svg" width="72" height="72" alt="typeahead" /></a>
+
 # [typeahead](https://typeahead.waow.tech)
 
-account search and profile lookup for [AT Protocol](https://atproto.com).
-Typeahead helps people and apps find accounts across the network and retrieve
-their public profiles. search by handle or display name through the website or
-API—no sign-in required.
+find people across [AT Protocol](https://atproto.com). search by handle or display
+name, or look up a public profile—no sign-in required. use it on the web or add
+account search to your app.
 
-[search](https://typeahead.waow.tech/) · [API docs](https://typeahead.waow.tech/docs) · [stats](https://typeahead.waow.tech/stats) · [llms.txt](https://typeahead.waow.tech/llms.txt)
+[try a search ↗](https://typeahead.waow.tech/) · [API docs](https://typeahead.waow.tech/docs) · [who’s using it?](https://typeahead.waow.tech/stats)
 
 ## use
 
@@ -13,49 +14,35 @@ API—no sign-in required.
 curl 'https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate&limit=10'
 ```
 
-returns basic actor profiles without authenticated viewer state. the
-[lexicon](lexicons/tech.waow.typeahead.searchActors.json) defines the response;
-`app.bsky.actor.searchActorsTypeahead` is a compatible alias. an optional `pds`
-parameter restricts results to accounts indexed as belonging to a hosting server
-(PDS), including accounts with custom-domain handles.
+get matching accounts and their public profile details. you can also narrow a
+search to an account hosting server ([PDS](https://atproto.com/specs/account))
+with the `pds` parameter, including accounts with custom-domain handles.
 
-profile cards are available through `app.bsky.actor.getProfile` and
-`app.bsky.actor.getProfiles`. see the [API docs](https://typeahead.waow.tech/docs)
-for parameters, moderation policy, caching and rate limits.
+building an app? the [API docs](https://typeahead.waow.tech/docs) cover search,
+profile lookups and the Bluesky-compatible search endpoint.
+[llms.txt](https://typeahead.waow.tech/llms.txt) has a text version.
+
+## how it works
+
+typeahead follows account changes across the network and keeps a searchable
+index, so each search doesn’t have to visit individual hosting servers. fresh
+copies of the index are built and checked separately from the one answering
+searches. see the [architecture and diagram](docs/architecture.md).
 
 ## develop
 
-Worker development uses [Bun](https://bun.sh/) and [just](https://just.systems/).
-the native services require Zig 0.17.0; offline tooling and retrieval checks use Python.
-the Tantivy backend also requires Rust/Cargo and a C compiler.
+install [Bun](https://bun.sh/) and [just](https://just.systems/), then:
 
 ```sh
-bun install
-bunx wrangler dev       # local Worker
-just check             # types, lint, tests and deployment dry-runs
-just test-services     # native unit tests
-just test-search-recall # real builder/server retrieval regressions
-just --no-dotenv test-tantivy # isolated engine, source and recovery checks
+bun install          # install dependencies
+bunx wrangler dev    # start the local API and website
+just check           # check types, lint, tests and deployment builds
 ```
 
-runtime credentials and role settings are required to run services. the native
-binary has explicit ingester, search and indexer roles; a bare `zig build run`
-does not configure one. repository workflows are in [AGENTS.md](AGENTS.md).
-
-## deploy
-
-```sh
-just deploy-worker     # production Worker, followed by smoke checks
-just deploy-ingest     # production ingester
-```
-
-backend refresh uses the [isolated refresh controller](docs/plans/automatic-snapshot-refresh.md),
-not a direct deploy to the serving slot. Prefect deployment and schedule ownership
-live in [my-prefect-server](https://tangled.org/zzstoatzz.io/my-prefect-server).
-check smoke and benchmark targets before running them; some default to production.
+see [development](docs/development.md) for service prerequisites, engine tests
+and deployment commands. local services need runtime configuration and credentials.
 
 ## docs
 
-See the [architecture and diagram](docs/architecture.md) for how search, live
-updates and snapshot refresh fit together. [docs/](docs/) contains operating
-guidance and evaluations; superseded designs live in [the archive](docs/archive/).
+[docs/](docs/) covers the design, operations and evaluations.
+repository workflows are in [AGENTS.md](AGENTS.md).
