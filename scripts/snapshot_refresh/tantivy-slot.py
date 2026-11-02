@@ -81,7 +81,7 @@ class Slot:
         for parent in [self.root,*self.root.parents]:
             if parent.is_symlink():raise ValueError('Symlink slot root')
         self.cache=self.root.parent/'.tantivy-slot'
-        self.children=[]
+        self.children=[];self.status_url='http://127.0.0.1:8080/index/status'
     def fetch(self,key,name,limit,sha=None):
         target=self.cache/name
         if target.is_symlink() or target.exists() and not target.is_file():raise ValueError('Invalid cached transfer path')
@@ -176,7 +176,7 @@ class Slot:
             raise ValueError('Configured source differs from the verified checkpoint origin')
     def runtime_gates(self,value):
         try:
-            with urllib.request.urlopen('http://127.0.0.1:8080/index/status',timeout=3) as response:
+            with urllib.request.urlopen(self.status_url,timeout=3) as response:
                 raw=response.read(1024*1024+1)
                 if len(raw)>1024*1024:raise ValueError('Runtime metadata too large')
                 status=json.loads(raw)
@@ -193,11 +193,12 @@ class Slot:
     def start_reader(self,value,listen='0.0.0.0:8080',admin_listen='127.0.0.1:8081'):
         self.configured_source(value);self.check_coverage(value)
         installer.validate_fallback_file(self.root,value)
+        self.status_url='http://127.0.0.1:'+listen.rsplit(':',1)[1]+'/index/status'
         server=subprocess.Popen([str(self.binary),'serve','--data',str(self.root),'--listen',listen,'--admin-listen',admin_listen,'--max-sync-lag-s','120','--retrieval',value['retrieval_strategy']],env=self.env)
         self.children.append(server);return server
-    def serve(self,value):
+    def serve(self,value,listen='0.0.0.0:8080',admin_listen='127.0.0.1:8081'):
         if not all(self.env.get(name) for name in ['ADMIN_SECRET','TURSO_URL','TURSO_AUTH_TOKEN']):raise ValueError('Missing source runtime capability')
-        server=self.start_reader(value)
+        server=self.start_reader(value,listen,admin_listen)
         while server.poll() is None:
             self.check_coverage(value)
             logpath=self.root/'source.log'

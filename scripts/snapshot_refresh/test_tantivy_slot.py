@@ -257,7 +257,7 @@ class CheckpointExpiryTests(unittest.TestCase):
                 instance=slot.Slot(env,work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
                 reconciler=None
                 try:
-                    value=instance.install();public,admin=8080,smoke.port()
+                    value=instance.install();public,admin=smoke.port(),smoke.port()
                     wrong_source=slot.Slot(dict(env,TURSO_URL='https://different-source.invalid'),work/'installed',BINARY,store,fixture_clock=lambda:clock[0])
                     with self.assertRaisesRegex(ValueError,'source differs'):
                         wrong_source.start_reader(value,f'127.0.0.1:{public}',f'127.0.0.1:{admin}')
