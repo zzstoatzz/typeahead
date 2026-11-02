@@ -68,13 +68,12 @@ Each item is useful at N=1 and keeps today's behavior when there is one cell.
 
 ### Routing record
 
-`control/search-routing.json` has one `current`, one `previous`, one
-`native_rollback` and one `mutation` lease whose `app` is `a` or `b`
+`control/search-routing.json` has one `current`, one `previous` and one
+`mutation` lease whose `app` is `a` or `b`
 (`src/search-route.ts`, `typeahead_refresh.py`, `typeahead_tantivy_slots.py`
 in my-prefect-server). Version 2 would hold a map of cells, each with its own
 `current`, `previous` and lease, so two regions can be refreshed or rolled
-back without fencing each other. The native rollback anchor stays global
-while it exists. Readers accept v1 and v2 during the change; the controller
+back without fencing each other. Readers accept v1 and v2 during the change; the controller
 writes v2 only after every reader is deployed. The origin allowlist becomes
 the set of slot apps per cell.
 
@@ -216,8 +215,7 @@ of that is download is not recorded.
 
 - Are cells refreshed one at a time or concurrently? Concurrent refreshes
   multiply peak Turso and R2 load.
-- Does the native rollback anchor stay a single global backend, and does a
-  far cell fall back to it or to Bluesky?
+- Does a far cell fall back to another cell or to Bluesky?
 - Should the colo-to-cell table be static configuration or measured, for
   example from `search_response_timing` by ingress colo?
 - What is Turso's read headroom on the current plan?

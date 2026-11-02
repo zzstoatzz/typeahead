@@ -64,10 +64,10 @@ and correct the docs rather than assuming one automatically describes production
 ## the serving invariant
 
 The target is predictable, bounded request work. Production uses Tantivy with
-complete postings, global ranked retrieval and durable live updates. Retained
-native rollback uses precomputed prefix lists and a capped hydration merge;
-its limitations are not the serving contract for Tantivy. Verify matching,
-ranking and PDS scope against the deployed engine before changing retrieval.
+complete postings, global ranked retrieval and durable live updates; it is the
+only search engine (the native Zig engine was removed on 2026-11-02). Verify
+matching, ranking and PDS scope against the deployed engine before changing
+retrieval.
 
 Avoid corpus-proportional request work and full-scan Worker cron selectors. Full
 index builds are deliberately corpus-scale offline jobs; this is not permission
@@ -147,19 +147,18 @@ regression is pinned). Extend it, don't prune it.
 
 - `just deploy-worker` — lint and type-check, then `wrangler deploy` **then** the smoke suite. A deploy that breaks
   shape, ranking, or the admin API fails loudly here. `deploy-worker-only` skips smoke but still requires lint.
-- `just deploy-ingest` deploys the Zig ingestion role. `just deploy-search`
-  remains guarded: `services/fly.search.toml` is retained legacy configuration,
-  not the managed production slot. Native image releases follow the
-  [refresh runbook](docs/plans/automatic-snapshot-refresh.md), including inactive
-  installation, admission, final-size restart, qualification and guarded routing.
-- **The snapshot builder (`MODE=indexer`) is not a Fly deploy.** The cloud
+- `just deploy-ingest` deploys the Zig ingester (`MODE=ingester`, the binary's
+  only role). Search backends are not Fly-deployed from this repo: Tantivy slot
+  releases follow the [refresh runbook](docs/plans/automatic-snapshot-refresh.md),
+  including inactive installation, admission, qualification and guarded routing.
+- **Index builds are not a Fly deploy.** The cloud
   `typeahead-index` deployment in `my-prefect-server` reads Turso, publishes
   immutable artifacts to R2, and invokes the managed rollout controller. Its
   cloud worker stays separate from home monitoring and analytics. That repo owns
   `flows/typeahead_index.py`, deployment definitions, image pins and schedules;
   verify active API/worker ownership against its migration records before changing
-  them. Do not revive the obsolete home cadence or `services/fly.indexer.toml`
-  as an automatic path. See [operations](docs/operations.md).
+  them. Do not revive the obsolete home cadence as an automatic path. See
+  [operations](docs/operations.md).
   `just refresh-search` explicitly submits that managed deployment through the
   operations repository's configured Prefect wrapper; it does not deploy the
   current checkout. Main-branch CI never invokes it.
@@ -171,10 +170,7 @@ regression is pinned). Extend it, don't prune it.
 ## conventions
 
 - worker tests: `bun test`. zig tests: `just test-services` (or `cd services && zig build test`).
-  Retrieval changes also require `just test-search-recall`: isolated native
-  builder/server regressions, run by CI on main. Known defects are strict expected
-  failures; retain each oracle case and remove its expected-failure reason when
-  fixed. New failures and unexpected passes must not be silently rebaselined.
+  Retrieval changes also require `just --no-dotenv test-tantivy`, run by CI on main.
 - never run work proportional to the corpus on the request/cron path (see the invariant above).
 - **the cron contract**: every cron selector must be an index SEARCH (smoke's
   `test_cron_selector_plans` EXPLAIN-guards this live against Turso), every batch size must
@@ -211,10 +207,7 @@ unchanged. Scope keys, old-PDS suppression during identity migration, cache keys
 and fail-closed fallback behavior must be tested together. Snapshot metadata
 `pds_scope_version=1` advertises support; the Worker also requires the search
 response's `X-Typeahead-Pds` acknowledgment. Production Tantivy supports every
-recorded canonical host. The retained native backend has a build-time
-`INDEX_PDS_MAX_ACTORS` cutoff (default 10,000); its excluded scopes must fail
-explicitly. For native, a changed eligible-host policy must replay from the
-snapshot watermark before publishing its readiness hash. See `docs/evals/pds-scope.md` for
+recorded canonical host. See `docs/evals/pds-scope.md` for
 isolated evaluation commands and rollout order. No full-corpus capacity claim
 may be inferred from synthetic fixture timings.
 

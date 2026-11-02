@@ -29,19 +29,13 @@ complete source reconciliation and policy, inventories stable regular files,
 streams a tar and file checksums, and atomically publishes a new local artifact
 directory. Missing coverage fails before packaging; concurrent file changes
 reject the artifact. It does not upload, alter routing or claim runtime readiness.
-The publisher still owns R2 upload and exact checksum readback. Candidate source
-publication uses the same native publisher with `--immutable-only`, its compact
-generation and legacy twin. This publishes and verifies the immutable artifacts
-without changing any channel pointer. `--pointer` and `--immutable-only` are
-mutually exclusive; normal native publication still requires its explicit
-pointer. Actual CLI/rclone tests cover success, retries, immutable collisions and
-preservation of both managed and production pointer bytes. A raw snapshot
+The publisher still owns R2 upload and exact checksum readback. A raw snapshot
 import without an authoritative sweep is not a publishable caught-up checkpoint.
-The existing publisher accepts `--engine tantivy --generation DIR
---source-manifest FILE`, using its existing R2 configuration. It verifies that
-the exact native manifest is already published, then verifies immutable upload
-of the bundle and finally its portable manifest. Native and mutable-pointer
-arguments are prohibited in this mode; `latest.json` remains untouched.
+`scripts/snapshot_compaction/publish.py` accepts `--engine tantivy --generation DIR
+--source-manifest FILE`, using the `INDEX_R2_*` configuration. It verifies that
+the exact native anchor manifest is already published (the fixed slot image
+fetches it), then verifies immutable upload of the bundle and finally its
+portable manifest. It never writes a mutable pointer.
 After a successful publication, the same command with `--verify-only` verifies
 the remote source manifest, bundle size/checksum and exact portable manifest
 against retained local metadata. It requires no local tar and never uploads or
@@ -114,7 +108,7 @@ provider config pinned an immutable image. There is no caller override or
 guest-only proof of provider resources; admission still requires independent
 provider evidence for the actual slot.
 
-R2 uses the native installer's `INDEX_R2_ENDPOINT`, `INDEX_R2_BUCKET`,
+R2 uses the `INDEX_R2_ENDPOINT`, `INDEX_R2_BUCKET`,
 `INDEX_R2_ACCESS_KEY_ID`, and `INDEX_R2_SECRET_ACCESS_KEY` configuration and
 GET-only `rclone cat` transfers. Credentials remain in a temporary mode-0600
 configuration and never enter receipts or logs. The durable metadata-only

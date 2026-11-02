@@ -13,7 +13,7 @@ are authoritative for controller parameters and image pins.
 3. Install on the inactive A/B slot with its own disk; catch up source changes.
 4. Qualify source coverage, search behavior, final allocation and cached restart.
 5. Promote by conditional routing update and verify public results. Preserve the
-   previous backend and native rollback anchor.
+   previous Tantivy backend for rollback.
 
 The schedule is 06:00 and 18:00 UTC. Checkpoint coverage lasts 24 hours; the slot
 stops before expiry. The cadence is a coverage-renewal policy, not a Tantivy
@@ -33,10 +33,11 @@ Use `just refresh-search` to submit the configured deployment. It does not deplo
 the local checkout. A failed rollout with retained artifacts can use the existing
 `resume_rollout:true` path; inspect its journal and ownership before retrying.
 Never rebuild the serving slot, override a newer route, or fake admission freshness.
-Native anchor removal requires changing and verifying the controller's rollback
-contract first. Retired apps may still host pinned registry images; do not delete
+The fixed slot image still requires each manifest's native anchor manifest in R2;
+see [operations](../operations.md#deploy-and-verify) before pruning release
+objects. Retired apps may still host pinned registry images; do not delete
 app registrations as a substitute for retiring unused machines and volumes.
 
 See [recovery evidence](../ops/production-recovery-20261031/) for the last verified
 full lifecycle. The [old native refresh procedure](../archive/native-snapshot-refresh.md)
-is archived for historical recovery context and is not the production procedure.
+describes the retired native engine and is history only.

@@ -3,7 +3,8 @@
 Production uses the public Cloudflare Worker, search transport and managed
 Tantivy A/B slots. Start with the [architecture](architecture.md) for data flow
 and the [refresh runbook](plans/automatic-snapshot-refresh.md) for deployments.
-Historical native machine IDs and schedules are not operational instructions.
+The retired native engine's machine IDs and schedules are history, not
+operational instructions.
 
 ## Before changing infrastructure
 
@@ -39,8 +40,12 @@ then runs smoke checks. `just deploy-search-transport` uses the same gates.
 cloud Prefect controller, not a direct Fly deploy. After promotion, check the
 build, both public search aliases, PDS scope, ranking and live-update progress.
 
-The controller needs the retained native rollback anchor. Do not remove it merely
-because it is not serving traffic. Retire unused trials by exact machine and
+Rollback is to the previous Tantivy slot; there is no native backend. The fixed
+slot image (Typeahead `c476fc5`) still validates each Tantivy manifest's
+`rollback_native_anchor` and fetches that anchor's
+`releases/search/<build>/manifest.json` from R2 by SHA-256 during installation,
+so keep every native manifest object an admitted Tantivy manifest references
+until a slot image without that check is qualified. Retire unused trials by exact machine and
 volume identity after checking routing, refresh ownership and preview bindings.
 Keep small evidence receipts, not unused corpus copies.
 
