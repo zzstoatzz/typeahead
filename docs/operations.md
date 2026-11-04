@@ -70,6 +70,24 @@ then runs smoke checks. `just deploy-search-transport` uses the same gates.
 cloud Prefect controller, not a direct Fly deploy. After promotion, check the
 build, both public search aliases, PDS scope, ranking and live-update progress.
 
+### Request latency
+
+Every public Worker response adds `worker;dur=...` to `Server-Timing`, measured
+from fetch entry until response headers are ready. Requests that check the rate
+limiter also add `rate_limit;dur=...`, including denied checks. These timings are
+added after cache handling, so cache hits report the current request's timing.
+The `worker_request_timing` log records the same stages with endpoint, method,
+status, ingress colo and Cloudflare ray ID; uncaught errors also produce a log.
+Workers traces are enabled alongside the existing full-sampling logs.
+
+Search's existing `search`, `cache` and `origin` timings remain nested within
+`worker`. The `/stats` latency counters measure the search handler, which starts
+after the rate-limit check; they are not full Worker or client latency. Compare
+client time after TLS against `worker`, then `worker` against `rate_limit` and
+`search`, to locate delays. Worker clocks advance on I/O, so these are not CPU
+profiles. They exclude time before fetch entry, response-body streaming,
+network delivery and background `waitUntil` bookkeeping.
+
 Rollback is to the previous Tantivy slot; there is no native backend. The fixed
 slot image (Typeahead `c476fc5`) still validates each Tantivy manifest's
 `rollback_native_anchor` and fetches that anchor's

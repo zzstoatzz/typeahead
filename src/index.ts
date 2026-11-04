@@ -22,6 +22,7 @@ import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
 import { llmsTxt } from "./pages/llms";
 import { reputationPage } from "./pages/reputation";
+import { RequestTiming } from "./request-timing";
 
 /** Cloudflare kills a scheduled invocation at 15 minutes of wall time, with
  *  no exception and no log. A step is only started while this much of the
@@ -99,29 +100,34 @@ export default {
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
+    const timing = new RequestTiming();
     // Count every answer, including the ones that are not a Response at all:
     // an uncaught throw is what Cloudflare turns into a 1101/500 at the edge,
     // and it was invisible to anything we own for at least a day (2026-08-23).
     // Rethrown unchanged — this hook observes, it does not handle.
     let status = 500;
     try {
-      const response = await route(request, env, ctx);
+      const response = request.method === "OPTIONS"
+        ? new Response(null, { status: 204, headers: CORS_HEADERS })
+        : await route(request, env, ctx, timing);
       status = response.status;
-      return response;
+      return timing.response(response);
     } finally {
       const endpoint = endpointLabel(new URL(request.url).pathname);
-      const domain = trafficDomain(request);
-      ctx.waitUntil(
-        getDb(env).then((db) => recordRequest(db, domain, endpoint, status)).catch(() => {}),
-      );
+      console.log(JSON.stringify({ event: "worker_request_timing", endpoint, method: request.method,
+        status, ingress_colo: request.cf?.colo ?? "unknown", cf_ray: request.headers.get("CF-Ray"),
+        worker_ms: timing.elapsedMs(), rate_limit_ms: timing.rateLimitMs }));
+      if (request.method !== "OPTIONS") {
+        const domain = trafficDomain(request);
+        ctx.waitUntil(
+          getDb(env).then((db) => recordRequest(db, domain, endpoint, status)).catch(() => {}),
+        );
+      }
     }
   },
 };
 
-async function route(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function route(request: Request, env: Env, ctx: ExecutionContext, timing: RequestTiming): Promise<Response> {
   const { pathname } = new URL(request.url);
 
   if (pathname === "/" && request.method === "GET") {
@@ -194,7 +200,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     const isAdmin = request.headers.get("Authorization") === `Bearer ${env.ADMIN_SECRET}`;
     if (!isAdmin) {
       const ip = clientIP(request);
-      const { success } = await env.RATE_LIMITER.limit({ key: `index:${ip}` });
+      const { success } = await timing.limit(env.RATE_LIMITER, `index:${ip}`);
       if (!success) {
         console.log(JSON.stringify({ event: "rate_limited", endpoint: "/request-indexing", ip }));
         return json({ error: "slow down — try again in a minute." }, 429);
@@ -209,7 +215,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     request.method === "GET"
   ) {
     const ip = clientIP(request);
-    const { success } = await env.RATE_LIMITER.limit({ key: ip });
+    const { success } = await timing.limit(env.RATE_LIMITER, ip);
     if (!success) {
       console.log(JSON.stringify({ event: "rate_limited", endpoint: "/search", ip }));
       return json({ error: "rate limited" }, 429);
@@ -222,7 +228,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     request.method === "GET"
   ) {
     const ip = clientIP(request);
-    const { success } = await env.RATE_LIMITER.limit({ key: ip });
+    const { success } = await timing.limit(env.RATE_LIMITER, ip);
     if (!success) {
       return json({ error: "rate limited" }, 429);
     }
@@ -234,7 +240,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext): Promise
     request.method === "GET"
   ) {
     const ip = clientIP(request);
-    const { success } = await env.RATE_LIMITER.limit({ key: ip });
+    const { success } = await timing.limit(env.RATE_LIMITER, ip);
     if (!success) {
       return json({ error: "rate limited" }, 429);
     }
