@@ -36,6 +36,10 @@ Deploy the image renderer before a public Worker release that introduces its
 service binding. `just smoke-images` validates fresh PNGs and cache headers at
 the public URLs. `just check` and CI build all three Workers.
 
+Public Worker deployments minify the bundle and upload source maps so production
+stack traces can refer to the original source. Inspect the emitted bundle with
+`bunx wrangler deploy --dry-run --outdir /tmp/typeahead-worker-build`.
+
 Backend refresh uses the [isolated refresh controller](plans/automatic-snapshot-refresh.md).
 Prefect deployment and schedule ownership live in
 [my-prefect-server](https://tangled.org/zzstoatzz.io/my-prefect-server).

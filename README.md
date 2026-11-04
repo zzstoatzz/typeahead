@@ -28,8 +28,8 @@ typeahead follows account changes across the network and keeps a searchable
 index, so each search doesn’t have to visit individual hosting servers. fresh
 copies of the index are built and checked separately from the one answering
 searches. see the [architecture and diagram](docs/architecture.md).
-image rendering runs in a separate Worker so its dependencies stay off the
-search startup path.
+the public Worker's bundle is minified, and image rendering runs in a separate
+Worker so its dependencies stay off the search startup path.
 
 ## develop
 
