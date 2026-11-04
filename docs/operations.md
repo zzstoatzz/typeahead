@@ -84,6 +84,11 @@ timestamps for this event and `worker_request_timing` with the invocation's
 `eventTimestamp`: the interval before the first log exposes platform dispatch
 time that the in-code clock cannot measure. An invocation's total wall time
 also includes background work, so it is not response latency.
+Do not infer handler return by adding `worker_ms` to `eventTimestamp`: event
+receipt can precede fetch entry by hundreds of milliseconds. Use the native
+entry and completion log timestamps. The [November 4 activation evaluation](evals/worker-startup-cause-20261104/result.json)
+isolates pre-handler delay in the full bundle and the image renderer's
+contribution; its renderer-removed and lazy variants were temporary trials.
 
 Search's existing `search`, `cache` and `origin` timings remain nested within
 `worker`. The `/stats` latency counters measure the search handler, which starts

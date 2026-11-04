@@ -1,0 +1,2340 @@
+[
+  {
+    "target": "full",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.15,
+      "latitude": 51.44,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 478,
+      "dns": 36,
+      "tcp": 2,
+      "tls": 35,
+      "firstByte": 404,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca88591acd28-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818087780,
+      "cpu_ms": 4,
+      "wall_ms": 5,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818088122,
+      "entry_clock_ms": 1793818088122,
+      "handler_return_ms": 1793818088122,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 342,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network",
+        "u-will6789"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 456,
+      "dns": 38,
+      "tcp": 5,
+      "tls": 26,
+      "firstByte": 382,
+      "download": 5
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca884dd69578-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818087808,
+      "cpu_ms": 5,
+      "wall_ms": 8,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818088091,
+      "entry_clock_ms": 1793818088091,
+      "handler_return_ms": 1793818088091,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 283,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network",
+        "u-LouisForaux"
+      ],
+      "resolvers": [
+        "185.12.64.2",
+        "185.12.64.1"
+      ]
+    },
+    "timings": {
+      "total": 241,
+      "dns": 4,
+      "tcp": 23,
+      "tls": 42,
+      "firstByte": 170,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca887a4c9775-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818087786,
+      "cpu_ms": 4,
+      "wall_ms": 5,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818087892,
+      "entry_clock_ms": 1793818087892,
+      "handler_return_ms": 1793818087892,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 106,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-zGato"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "8.8.8.8"
+      ]
+    },
+    "timings": {
+      "total": 173,
+      "dns": 6,
+      "tcp": 8,
+      "tls": 43,
+      "firstByte": 114,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca885e0a8c4a-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818087757,
+      "cpu_ms": 1,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818087833,
+      "entry_clock_ms": 1793818087833,
+      "handler_return_ms": 1793818087833,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 76,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.15,
+      "latitude": 51.44,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "213.186.33.99"
+      ]
+    },
+    "timings": {
+      "total": 260,
+      "dns": 20,
+      "tcp": 2,
+      "tls": 18,
+      "firstByte": 219,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca939a7b4ae0-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818089617,
+      "cpu_ms": 2,
+      "wall_ms": 4,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818089737,
+      "entry_clock_ms": 1793818089737,
+      "handler_return_ms": 1793818089737,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 120,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network",
+        "u-adamus1red:lhr-4"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 219,
+      "dns": 11,
+      "tcp": 3,
+      "tls": 18,
+      "firstByte": 187,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca93bf189953-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818089600,
+      "cpu_ms": 3,
+      "wall_ms": 5,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818089723,
+      "entry_clock_ms": 1793818089723,
+      "handler_return_ms": 1793818089723,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 123,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 355,
+      "dns": 12,
+      "tcp": 19,
+      "tls": 41,
+      "firstByte": 280,
+      "download": 3
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca93ed3d3bca-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818089617,
+      "cpu_ms": 3,
+      "wall_ms": 4,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818089839,
+      "entry_clock_ms": 1793818089839,
+      "handler_return_ms": 1793818089839,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 222,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-zGato"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "8.8.8.8"
+      ]
+    },
+    "timings": {
+      "total": 184,
+      "dns": 5,
+      "tcp": 8,
+      "tls": 33,
+      "firstByte": 137,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca93b8e7f3c7-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818089581,
+      "cpu_ms": 1,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818089678,
+      "entry_clock_ms": 1793818089678,
+      "handler_return_ms": 1793818089678,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 97,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": -0.07,
+      "latitude": 51.51,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private",
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 201,
+      "dns": 7,
+      "tcp": 2,
+      "tls": 25,
+      "firstByte": 165,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca9f0c74e539-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818091431,
+      "cpu_ms": 2,
+      "wall_ms": 6,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818091510,
+      "entry_clock_ms": 1793818091510,
+      "handler_return_ms": 1793818091510,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 79,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network",
+        "u-adamus1red:lhr-4"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 178,
+      "dns": 23,
+      "tcp": 3,
+      "tls": 19,
+      "firstByte": 132,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca9f3d455f1b-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818091449,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818091508,
+      "entry_clock_ms": 1793818091508,
+      "handler_return_ms": 1793818091508,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 59,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network",
+        "u-jimaek"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 179,
+      "dns": 33,
+      "tcp": 19,
+      "tls": 29,
+      "firstByte": 98,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca9f8f55c58e-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818091474,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818091515,
+      "entry_clock_ms": 1793818091515,
+      "handler_return_ms": 1793818091515,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 41,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 0,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "9.9.9.9",
+        "9.9.9.10"
+      ]
+    },
+    "timings": {
+      "total": 124,
+      "dns": 9,
+      "tcp": 7,
+      "tls": 54,
+      "firstByte": 50,
+      "download": 4
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555ca9f7b2a5fbf-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818091457,
+      "cpu_ms": 1,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818091465,
+      "entry_clock_ms": 1793818091465,
+      "handler_return_ms": 1793818091465,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 8,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.15,
+      "latitude": 51.44,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network",
+        "u-apfutura-ip:uk",
+        "u-apfutura-ip:ext-uk",
+        "u-apfutura-ip:external",
+        "u-apfutura-ip:all-probes"
+      ],
+      "resolvers": [
+        "8.8.8.8",
+        "1.1.1.1"
+      ]
+    },
+    "timings": {
+      "total": 246,
+      "dns": 25,
+      "tcp": 1,
+      "tls": 30,
+      "firstByte": 188,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555caaab8b42ffd-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818093258,
+      "cpu_ms": 2,
+      "wall_ms": 3,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818093416,
+      "entry_clock_ms": 1793818093416,
+      "handler_return_ms": 1793818093416,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 158,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network",
+        "u-will6789"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 241,
+      "dns": 1,
+      "tcp": 3,
+      "tls": 24,
+      "firstByte": 213,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555caaa9b9ecbb1-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818093364,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818093410,
+      "entry_clock_ms": 1793818093410,
+      "handler_return_ms": 1793818093410,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 46,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network",
+        "u-RednotePL"
+      ],
+      "resolvers": [
+        "private",
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 232,
+      "dns": 7,
+      "tcp": 24,
+      "tls": 31,
+      "firstByte": 170,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555caaaebd6cd83-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818093295,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818093405,
+      "entry_clock_ms": 1793818093405,
+      "handler_return_ms": 1793818093405,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 110,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-zGato"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "8.8.8.8"
+      ]
+    },
+    "timings": {
+      "total": 161,
+      "dns": 6,
+      "tcp": 8,
+      "tls": 36,
+      "firstByte": 108,
+      "download": 3
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555caaadcd8c8c4-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818093275,
+      "cpu_ms": 1,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818093344,
+      "entry_clock_ms": 1793818093344,
+      "handler_return_ms": 1793818093344,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 69,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.06,
+      "latitude": 51.49,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 133,
+      "dns": 23,
+      "tcp": 2,
+      "tls": 22,
+      "firstByte": 85,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cab62fc4ef49-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818095073,
+      "cpu_ms": 1,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818095138,
+      "entry_clock_ms": 1793818095138,
+      "handler_return_ms": 1793818095138,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 65,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network",
+        "u-adamus1red:lhr-4"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 127,
+      "dns": 1,
+      "tcp": 3,
+      "tls": 13,
+      "firstByte": 110,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cab5fb81ef44-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818095070,
+      "cpu_ms": 0,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818095141,
+      "entry_clock_ms": 1793818095141,
+      "handler_return_ms": 1793818095141,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 71,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network",
+        "u-herr-nandez"
+      ],
+      "resolvers": [
+        "1.0.0.1",
+        "1.1.1.1"
+      ]
+    },
+    "timings": {
+      "total": 211,
+      "dns": 4,
+      "tcp": 18,
+      "tls": 26,
+      "firstByte": 162,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cab63d45980c-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818095110,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818095216,
+      "entry_clock_ms": 1793818095216,
+      "handler_return_ms": 1793818095216,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 106,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-JohnFilch123"
+      ],
+      "resolvers": [
+        "9.9.9.9",
+        "208.67.220.220"
+      ]
+    },
+    "timings": {
+      "total": 146,
+      "dns": 17,
+      "tcp": 6,
+      "tls": 22,
+      "firstByte": 101,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cab62e0fd0e5-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818095094,
+      "cpu_ms": 1,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818095158,
+      "entry_clock_ms": 1793818095158,
+      "handler_return_ms": 1793818095158,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 64,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.15,
+      "latitude": 51.44,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "213.186.33.99"
+      ]
+    },
+    "timings": {
+      "total": 142,
+      "dns": 18,
+      "tcp": 8,
+      "tls": 21,
+      "firstByte": 94,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cac18d3c9cfb-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818096924,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818096973,
+      "entry_clock_ms": 1793818096973,
+      "handler_return_ms": 1793818096973,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 49,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 190,
+      "dns": 13,
+      "tcp": 3,
+      "tls": 22,
+      "firstByte": 151,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cac1dbe929c1-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818096995,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818097069,
+      "entry_clock_ms": 1793818097069,
+      "handler_return_ms": 1793818097069,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 74,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network",
+        "u-dethi:hel"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 137,
+      "dns": 5,
+      "tcp": 18,
+      "tls": 28,
+      "firstByte": 85,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cac23b6744cd-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818097029,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818097054,
+      "entry_clock_ms": 1793818097054,
+      "handler_return_ms": 1793818097054,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 25,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 1,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-zGato"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "8.8.8.8"
+      ]
+    },
+    "timings": {
+      "total": 86,
+      "dns": 3,
+      "tcp": 8,
+      "tls": 34,
+      "firstByte": 39,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cac1abd93dd3-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818096929,
+      "cpu_ms": 0,
+      "wall_ms": 0,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818096929,
+      "entry_clock_ms": 1793818096929,
+      "handler_return_ms": 1793818096929,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.15,
+      "latitude": 51.44,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 250,
+      "dns": 1,
+      "tcp": 1,
+      "tls": 17,
+      "firstByte": 230,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cacc18273840-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818098634,
+      "cpu_ms": 2,
+      "wall_ms": 3,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818098790,
+      "entry_clock_ms": 1793818098790,
+      "handler_return_ms": 1793818098790,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 156,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network",
+        "u-will6789"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 139,
+      "dns": 1,
+      "tcp": 3,
+      "tls": 25,
+      "firstByte": 108,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cacc2ec49577-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818098672,
+      "cpu_ms": 1,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818098672,
+      "entry_clock_ms": 1793818098672,
+      "handler_return_ms": 1793818098672,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 125,
+      "dns": 7,
+      "tcp": 19,
+      "tls": 39,
+      "firstByte": 59,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cacc8b5ad924-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818098676,
+      "cpu_ms": 0,
+      "wall_ms": 0,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818098676,
+      "entry_clock_ms": 1793818098676,
+      "handler_return_ms": 1793818098676,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "9.9.9.9",
+        "9.9.9.10"
+      ]
+    },
+    "timings": {
+      "total": 196,
+      "dns": 5,
+      "tcp": 9,
+      "tls": 40,
+      "firstByte": 140,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cacc78510d34-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818098657,
+      "cpu_ms": 1,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818098754,
+      "entry_clock_ms": 1793818098754,
+      "handler_return_ms": 1793818098754,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 97,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.11,
+      "latitude": 51.49,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network",
+        "u-gbzret4d"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "8.8.8.8"
+      ]
+    },
+    "timings": {
+      "total": 169,
+      "dns": 21,
+      "tcp": 2,
+      "tls": 14,
+      "firstByte": 132,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cad7ba05ce7b-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818100468,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818100557,
+      "entry_clock_ms": 1793818100557,
+      "handler_return_ms": 1793818100557,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 89,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 155,
+      "dns": 17,
+      "tcp": 2,
+      "tls": 16,
+      "firstByte": 120,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cad7cd6e90f7-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818100463,
+      "cpu_ms": 0,
+      "wall_ms": 3,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818100560,
+      "entry_clock_ms": 1793818100560,
+      "handler_return_ms": 1793818100560,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 97,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network",
+        "u-rlkvch"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 212,
+      "dns": 14,
+      "tcp": 19,
+      "tls": 37,
+      "firstByte": 141,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cad80ab458b1-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818100522,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818100598,
+      "entry_clock_ms": 1793818100598,
+      "handler_return_ms": 1793818100598,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 76,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-JohnFilch123"
+      ],
+      "resolvers": [
+        "9.9.9.9",
+        "208.67.220.220"
+      ]
+    },
+    "timings": {
+      "total": 212,
+      "dns": 12,
+      "tcp": 7,
+      "tls": 25,
+      "firstByte": 167,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cad7cc5398f7-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818100489,
+      "cpu_ms": 3,
+      "wall_ms": 3,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818100601,
+      "entry_clock_ms": 1793818100601,
+      "handler_return_ms": 1793818100601,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 112,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.11,
+      "latitude": 51.49,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network",
+        "u-gbzret4d"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "8.8.8.8"
+      ]
+    },
+    "timings": {
+      "total": 94,
+      "dns": 21,
+      "tcp": 2,
+      "tls": 12,
+      "firstByte": 59,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cae36d217058-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818102349,
+      "cpu_ms": 0,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818102350,
+      "entry_clock_ms": 1793818102350,
+      "handler_return_ms": 1793818102350,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 1,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network",
+        "u-adamus1red:lhr-3"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 215,
+      "dns": 2,
+      "tcp": 2,
+      "tls": 23,
+      "firstByte": 187,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cae35c9a643c-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818102356,
+      "cpu_ms": 6,
+      "wall_ms": 9,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818102463,
+      "entry_clock_ms": 1793818102463,
+      "handler_return_ms": 1793818102463,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 107,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 130,
+      "dns": 8,
+      "tcp": 20,
+      "tls": 37,
+      "firstByte": 65,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cae3bad270f5-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818102394,
+      "cpu_ms": 0,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818102394,
+      "entry_clock_ms": 1793818102394,
+      "handler_return_ms": 1793818102394,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 2,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-JohnFilch123"
+      ],
+      "resolvers": [
+        "9.9.9.9",
+        "208.67.220.220"
+      ]
+    },
+    "timings": {
+      "total": 113,
+      "dns": 11,
+      "tcp": 7,
+      "tls": 19,
+      "firstByte": 73,
+      "download": 3
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cae379c0b6a1-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818102339,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818102374,
+      "entry_clock_ms": 1793818102374,
+      "handler_return_ms": 1793818102374,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 35,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.15,
+      "latitude": 51.44,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "213.186.33.99",
+        "1.1.1.1"
+      ]
+    },
+    "timings": {
+      "total": 117,
+      "dns": 19,
+      "tcp": 2,
+      "tls": 23,
+      "firstByte": 71,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555caef0a2c9541-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818104219,
+      "cpu_ms": 1,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818104219,
+      "entry_clock_ms": 1793818104219,
+      "handler_return_ms": 1793818104219,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 346,
+      "dns": 14,
+      "tcp": 2,
+      "tls": 24,
+      "firstByte": 305,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555caef5c167797-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818104295,
+      "cpu_ms": 5,
+      "wall_ms": 6,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818104510,
+      "entry_clock_ms": 1793818104510,
+      "handler_return_ms": 1793818104510,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 215,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 389,
+      "dns": 19,
+      "tcp": 19,
+      "tls": 41,
+      "firstByte": 309,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555caef5897eeae-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818104239,
+      "cpu_ms": 3,
+      "wall_ms": 3,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818104493,
+      "entry_clock_ms": 1793818104493,
+      "handler_return_ms": 1793818104493,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 254,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "full",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-JohnFilch123"
+      ],
+      "resolvers": [
+        "9.9.9.9",
+        "208.67.220.220"
+      ]
+    },
+    "timings": {
+      "total": 207,
+      "dns": 28,
+      "tcp": 7,
+      "tls": 20,
+      "firstByte": 152,
+      "download": 0
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555caef1fb4503b-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-full-1793818072",
+      "received_ms": 1793818104202,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818104314,
+      "entry_clock_ms": 1793818104314,
+      "handler_return_ms": 1793818104314,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 112,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.15,
+      "latitude": 51.44,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "213.186.33.99",
+        "1.1.1.1"
+      ]
+    },
+    "timings": {
+      "total": 140,
+      "dns": 18,
+      "tcp": 1,
+      "tls": 28,
+      "firstByte": 92,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cafa99e9001f-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818106098,
+      "cpu_ms": 0,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818106098,
+      "entry_clock_ms": 1793818106098,
+      "handler_return_ms": 1793818106098,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 98,
+      "dns": 26,
+      "tcp": 2,
+      "tls": 19,
+      "firstByte": 49,
+      "download": 2
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cafa9ba157a5-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818106049,
+      "cpu_ms": 0,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818106049,
+      "entry_clock_ms": 1793818106049,
+      "handler_return_ms": 1793818106049,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private",
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 419,
+      "dns": 10,
+      "tcp": 18,
+      "tls": 27,
+      "firstByte": 363,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cafabc4feebb-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818106068,
+      "cpu_ms": 4,
+      "wall_ms": 5,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818106373,
+      "entry_clock_ms": 1793818106373,
+      "handler_return_ms": 1793818106373,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 305,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "lazy",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network",
+        "u-JohnFilch123"
+      ],
+      "resolvers": [
+        "9.9.9.9",
+        "208.67.220.220"
+      ]
+    },
+    "timings": {
+      "total": 73,
+      "dns": 7,
+      "tcp": 6,
+      "tls": 19,
+      "firstByte": 40,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cafa8e5ca3f8-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-lazy-1793818072",
+      "received_ms": 1793818106034,
+      "cpu_ms": 0,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818106034,
+      "entry_clock_ms": 1793818106034,
+      "handler_return_ms": 1793818106034,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 16276,
+      "longitude": 0.15,
+      "latitude": 51.44,
+      "network": "OVH",
+      "tags": [
+        "datacenter-network",
+        "u-apfutura-ip:uk",
+        "u-apfutura-ip:ext-uk",
+        "u-apfutura-ip:external",
+        "u-apfutura-ip:all-probes"
+      ],
+      "resolvers": [
+        "8.8.8.8",
+        "1.1.1.1"
+      ]
+    },
+    "timings": {
+      "total": 158,
+      "dns": 17,
+      "tcp": 1,
+      "tls": 25,
+      "firstByte": 114,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cb060e8ad06b-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818107888,
+      "cpu_ms": 2,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818107954,
+      "entry_clock_ms": 1793818107954,
+      "handler_return_ms": 1793818107954,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 66,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "GB",
+      "state": null,
+      "city": "London",
+      "asn": 31898,
+      "longitude": -0.13,
+      "latitude": 51.51,
+      "network": "Oracle",
+      "tags": [
+        "oci-uk-london-1",
+        "oci",
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 145,
+      "dns": 27,
+      "tcp": 2,
+      "tls": 15,
+      "firstByte": 100,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cb05f9574ae0-LHR"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818107924,
+      "cpu_ms": 0,
+      "wall_ms": 1,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818107924,
+      "entry_clock_ms": 1793818107924,
+      "handler_return_ms": 1793818107924,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 24940,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "Hetzner Online",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "private"
+      ]
+    },
+    "timings": {
+      "total": 121,
+      "dns": 9,
+      "tcp": 19,
+      "tls": 30,
+      "firstByte": 62,
+      "download": 1
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cb0608bd7ac9-WAW"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818107878,
+      "cpu_ms": 0,
+      "wall_ms": 0,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818107878,
+      "entry_clock_ms": 1793818107878,
+      "handler_return_ms": 1793818107878,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 0,
+      "handler_native_ms": 0
+    }
+  },
+  {
+    "target": "no-renderer",
+    "iteration": 3,
+    "probe": {
+      "continent": "EU",
+      "region": "Northern Europe",
+      "country": "FI",
+      "state": null,
+      "city": "Helsinki",
+      "asn": 57043,
+      "longitude": 24.94,
+      "latitude": 60.17,
+      "network": "HOSTKEY",
+      "tags": [
+        "datacenter-network"
+      ],
+      "resolvers": [
+        "1.1.1.1",
+        "9.9.9.9",
+        "9.9.9.10"
+      ]
+    },
+    "timings": {
+      "total": 110,
+      "dns": 5,
+      "tcp": 8,
+      "tls": 35,
+      "firstByte": 56,
+      "download": 6
+    },
+    "status": 200,
+    "headers": {
+      "server-timing": "worker;dur=0",
+      "cf-ray": "a555cb05fee3f3c7-ARN"
+    },
+    "invocation": {
+      "script": "typeahead-latency-no-renderer-1793818072",
+      "received_ms": 1793818107856,
+      "cpu_ms": 1,
+      "wall_ms": 2,
+      "outcome": "ok",
+      "fetch_enter_ms": 1793818107872,
+      "entry_clock_ms": 1793818107872,
+      "handler_return_ms": 1793818107872,
+      "worker_clock_ms": 0,
+      "dispatch_ms": 16,
+      "handler_native_ms": 0
+    }
+  }
+]

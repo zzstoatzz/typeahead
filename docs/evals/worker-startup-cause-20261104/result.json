@@ -1,0 +1,338 @@
+{
+  "observed_at_utc": "2026-11-04T18:53:14.215563+00:00",
+  "status": "source isolated; diagnostic infrastructure retired",
+  "instrumentation_source_commit": "58ca095",
+  "deployed_worker_version": "6752d330-9c62-44c1-9416-4ecd5fb10791",
+  "finding": "Substantial latency occurs inside Cloudflare before fetch entry, on the Typeahead Worker activation/dispatch path. The full bundle reproduces it independently of Fly clients and the Tantivy backend. The image-rendering dependency is a significant measured contributor, but is not the sole pre-fetch cost.",
+  "correction": {
+    "supersedes_interpretation": "../worker-request-timing-20261104/result.json",
+    "explanation": "Earlier after_handler_ms estimates incorrectly treated Cloudflare eventTimestamp as JavaScript fetch entry. The first native entry log shows that part of the inferred post-handler delay was actually pre-fetch activation. Existing in-code handler timers start after this delay; frozen clocks are a separate limitation, not evidence that startup happened after the handler.",
+    "earlier_raw_measurements_preserved": true
+  },
+  "packet_control": {
+    "requests": 130,
+    "all_200": true,
+    "shared_and_dedicated": true,
+    "protocols": [
+      "HTTP/1.1",
+      "HTTP/2"
+    ],
+    "families": [
+      "IPv4",
+      "IPv6"
+    ],
+    "client_read_lag_ms_max": 2.678955078125,
+    "slow_over_250_ms": 6,
+    "slow_requests_with_tcp_retransmissions": 0,
+    "loopback_ms_max": 2.79,
+    "tls_keys_deleted_before_guest_retirement": true,
+    "pcap_payloads_deleted_after_metadata_extraction": true
+  },
+  "independent_probes": {
+    "n": 54,
+    "all_200": true,
+    "cities": [
+      "Helsinki",
+      "London"
+    ],
+    "asns": [
+      14061,
+      16276,
+      24940,
+      31898,
+      41745,
+      49683,
+      51765,
+      57043,
+      209378,
+      215730
+    ],
+    "examples": [
+      {
+        "city": "London",
+        "network": "Oracle",
+        "target": "worker-static",
+        "timings": {
+          "total": 294,
+          "dns": 12,
+          "tcp": 2,
+          "tls": 11,
+          "firstByte": 268,
+          "download": 1
+        },
+        "native_event_to_log_ms": 225,
+        "worker_clock_ms": 0
+      },
+      {
+        "city": "London",
+        "network": "OVH",
+        "target": "search",
+        "timings": {
+          "total": 435,
+          "dns": 14,
+          "tcp": 2,
+          "tls": 18,
+          "firstByte": 400,
+          "download": 1
+        },
+        "native_event_to_log_ms": 365,
+        "worker_clock_ms": 24
+      },
+      {
+        "city": "London",
+        "network": "Oracle",
+        "target": "search",
+        "timings": {
+          "total": 437,
+          "dns": 12,
+          "tcp": 3,
+          "tls": 71,
+          "firstByte": 351,
+          "download": 0
+        },
+        "native_event_to_log_ms": 298,
+        "worker_clock_ms": 34
+      },
+      {
+        "city": "London",
+        "network": "DigitalOcean",
+        "target": "search",
+        "timings": {
+          "total": 293,
+          "dns": 4,
+          "tcp": 3,
+          "tls": 17,
+          "firstByte": 268,
+          "download": 1
+        },
+        "native_event_to_log_ms": 190,
+        "worker_clock_ms": 190
+      },
+      {
+        "city": "Helsinki",
+        "network": "Hetzner Online",
+        "target": "search",
+        "timings": {
+          "total": 657,
+          "dns": 12,
+          "tcp": 19,
+          "tls": 25,
+          "firstByte": 601,
+          "download": 0
+        },
+        "native_event_to_log_ms": 520,
+        "worker_clock_ms": 259
+      },
+      {
+        "city": "Helsinki",
+        "network": "Baykov Ilya Sergeevich",
+        "target": "search",
+        "timings": {
+          "total": 335,
+          "dns": 13,
+          "tcp": 5,
+          "tls": 13,
+          "firstByte": 303,
+          "download": 1
+        },
+        "native_event_to_log_ms": 264,
+        "worker_clock_ms": 160
+      },
+      {
+        "city": "Helsinki",
+        "network": "HOSTKEY",
+        "target": "search",
+        "timings": {
+          "total": 418,
+          "dns": 23,
+          "tcp": 7,
+          "tls": 58,
+          "firstByte": 327,
+          "download": 3
+        },
+        "native_event_to_log_ms": 282,
+        "worker_clock_ms": 217
+      },
+      {
+        "city": "Helsinki",
+        "network": "Creanova Hosting Solutions",
+        "target": "worker-static",
+        "timings": {
+          "total": 321,
+          "dns": 30,
+          "tcp": 4,
+          "tls": 16,
+          "firstByte": 267,
+          "download": 4
+        },
+        "native_event_to_log_ms": 217,
+        "worker_clock_ms": 0
+      }
+    ]
+  },
+  "controlled_comparisons": {
+    "controls": {
+      "full": {
+        "n": 20,
+        "first_byte_ms_median": 170.0,
+        "first_byte_ms_max": 417,
+        "pre_fetch_ms_median": 111.0,
+        "pre_fetch_ms_max": 352,
+        "pre_fetch_over_100_ms": 11
+      },
+      "minimal": {
+        "n": 20,
+        "first_byte_ms_median": 45.0,
+        "first_byte_ms_max": 164,
+        "pre_fetch_ms_median": 0.0,
+        "pre_fetch_ms_max": 1,
+        "pre_fetch_over_100_ms": 0
+      },
+      "production-domain": {
+        "n": 20,
+        "first_byte_ms_median": 57.0,
+        "first_byte_ms_max": 362,
+        "pre_fetch_ms_median": 0.0,
+        "pre_fetch_ms_max": 275,
+        "pre_fetch_over_100_ms": 6
+      },
+      "production-workersdev": {
+        "n": 20,
+        "first_byte_ms_median": 69.5,
+        "first_byte_ms_max": 547,
+        "pre_fetch_ms_median": 0.5,
+        "pre_fetch_ms_max": 319,
+        "pre_fetch_over_100_ms": 7
+      }
+    },
+    "renderer": {
+      "full": {
+        "n": 16,
+        "first_byte_ms_median": 170.0,
+        "first_byte_ms_max": 404,
+        "pre_fetch_ms_median": 108.0,
+        "pre_fetch_ms_max": 342,
+        "pre_fetch_over_100_ms": 9
+      },
+      "lazy": {
+        "n": 16,
+        "first_byte_ms_median": 134.5,
+        "first_byte_ms_max": 363,
+        "pre_fetch_ms_median": 93.0,
+        "pre_fetch_ms_max": 305,
+        "pre_fetch_over_100_ms": 6
+      },
+      "no-renderer": {
+        "n": 16,
+        "first_byte_ms_median": 89.5,
+        "first_byte_ms_max": 187,
+        "pre_fetch_ms_median": 30.0,
+        "pre_fetch_ms_max": 107,
+        "pre_fetch_over_100_ms": 1
+      }
+    }
+  },
+  "renderer_variant_sizes": {
+    "full": {
+      "upload_kib": 3271.17,
+      "gzip_kib": 940.8,
+      "wrangler_startup_ms": 85.0
+    },
+    "lazy": {
+      "upload_kib": 3299.13,
+      "gzip_kib": 944.02,
+      "wrangler_startup_ms": 35.0
+    },
+    "no-renderer": {
+      "upload_kib": 1297.21,
+      "gzip_kib": 247.33,
+      "wrangler_startup_ms": 24.0
+    }
+  },
+  "lazy_variant_retained_top_level_wasm_modules": [
+    {
+      "filename": "ef4866ecae192fd87727067cf2c0c0cf9fb8b020-yoga-ZMNYPE6Z.wasm",
+      "bytes": 88658,
+      "sha256": "47fb4f81d274932184cd19c75ed34f902d13f0519301590789a37f7077977e27"
+    },
+    {
+      "filename": "8b09a8aa3d916dc11b1a9d60545210c131c1ae36-resvg-LFIOYO65.wasm",
+      "bytes": 1373887,
+      "sha256": "375e38603c5f5128a9a0e6e2ac90ac14f1b79a0f8b667eb434c2c1b18a031733"
+    }
+  ],
+  "runtime_limits": [
+    "The isolated renderer-removed variant stubs image routes and is not a shippable replacement.",
+    "Lazy import preserved eager Wasm imports in the emitted deployment. It reduced some startup cost but did not eliminate pre-fetch spikes.",
+    "The native pre-fetch interval does not separate code loading, compilation, initialization, and Cloudflare scheduling.",
+    "Other network and TLS variability exists; this establishes a substantial source, not an explanation of every outlier.",
+    "These tests do not prove a new regression in the last two days. The renderer import dates to 2026-07-30, commit ca92825.",
+    "No optimization or renderer removal was deployed to production; only diagnostic entry logging was added."
+  ],
+  "validation": {
+    "worker_tests": 193,
+    "failures": 0,
+    "typecheck": "passed",
+    "lint": "passed",
+    "per_commit_tests": "passed",
+    "authenticated_deploy_smoke": "passed"
+  },
+  "cleanup": {
+    "fly_app": "typeahead-causal-1793817345",
+    "fly_app_absent": true,
+    "machines_retired": [
+      {
+        "id": "784ee917c12e78",
+        "kind": "shared",
+        "region": "lhr",
+        "guest": {
+          "cpu_kind": "shared",
+          "cpus": 1,
+          "memory_mb": 256
+        }
+      },
+      {
+        "id": "891e579ae47148",
+        "kind": "dedicated",
+        "region": "lhr",
+        "guest": {
+          "cpu_kind": "performance",
+          "cpus": 1,
+          "memory_mb": 2048
+        }
+      }
+    ],
+    "temporary_workers": [
+      {
+        "name": "typeahead-latency-minimal-1793817939",
+        "deleted": true,
+        "api_status": 404
+      },
+      {
+        "name": "typeahead-latency-full-1793817939",
+        "deleted": true,
+        "api_status": 404
+      },
+      {
+        "name": "typeahead-latency-full-1793818072",
+        "deleted": true,
+        "api_status": 404
+      },
+      {
+        "name": "typeahead-latency-lazy-1793818072",
+        "deleted": true,
+        "api_status": 404
+      },
+      {
+        "name": "typeahead-latency-no-renderer-1793818072",
+        "deleted": true,
+        "api_status": 404
+      }
+    ],
+    "gcp_request_rejected_without_instance_or_disk": true,
+    "project_policy_unchanged": true
+  },
+  "readme_review": "README purpose and runtime architecture remain accurate; no functional deployment or search-engine change. Timing semantics and this evidence are linked from operations.md.",
+  "artifacts": "/Users/nate/.codex/visualizations/2026/11/04/01a1a7be-7225-78c0-b349-a02f3691ff53/worker-activation-cause",
+  "next_design_target": "Remove image rendering from the API Worker activation path, preserving public image URLs via a separately qualified rendering Worker/service binding. A dynamic import alone is insufficient in the measured build."
+}
