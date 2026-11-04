@@ -1,0 +1,558 @@
+{
+  "observed_at_utc": "2026-11-04T18:30:12.949039+00:00",
+  "status": "deployed and probes complete",
+  "source_commit": "c31b72b0cd38dc4df5e35bbac665bda9ab18383d",
+  "worker_version": "8fcf8f78-0272-4358-b53f-bb4a68f6b568",
+  "worker": "typeahead",
+  "search_build": "b1793772211-cp-843e584287",
+  "validation": {
+    "bun_test": {
+      "passed": 193,
+      "failed": 0
+    },
+    "per_commit_rebase_test": "passed",
+    "typecheck": "passed",
+    "lint": "passed",
+    "dry_run": "passed",
+    "deploy_smoke": "passed",
+    "authenticated_admin_smoke": "passed"
+  },
+  "paired_and_extended": {
+    "summary": {
+      "lhr": {
+        "hit": {
+          "n": 63,
+          "total_ms_median": 84.9,
+          "total_ms_max": 315.0,
+          "worker_ms_median": 13.0,
+          "worker_ms_max": 31.0,
+          "outside_worker_ms_median": 45.7,
+          "outside_worker_ms_max": 270.4,
+          "rate_limit_ms_max": 0.0
+        },
+        "miss": {
+          "n": 17,
+          "total_ms_median": 209.4,
+          "total_ms_max": 250.3,
+          "worker_ms_median": 135.0,
+          "worker_ms_max": 166.0,
+          "outside_worker_ms_median": 53.2,
+          "outside_worker_ms_max": 84.2,
+          "rate_limit_ms_max": 0.0
+        }
+      },
+      "arn": {
+        "hit": {
+          "n": 63,
+          "total_ms_median": 51.1,
+          "total_ms_max": 284.3,
+          "worker_ms_median": 4.0,
+          "worker_ms_max": 25.0,
+          "outside_worker_ms_median": 21.8,
+          "outside_worker_ms_max": 235.1,
+          "rate_limit_ms_max": 0.0
+        },
+        "miss": {
+          "n": 17,
+          "total_ms_median": 195.9,
+          "total_ms_max": 323.4,
+          "worker_ms_median": 146.0,
+          "worker_ms_max": 279.0,
+          "outside_worker_ms_median": 24.3,
+          "outside_worker_ms_max": 143.4,
+          "rate_limit_ms_max": 0.0
+        }
+      }
+    },
+    "public_requests": 160,
+    "all_public_200": true,
+    "correlated_invocations": 160,
+    "worst_outside_worker": [
+      {
+        "region": "lhr",
+        "query": "jola.dev",
+        "phase": "extended-fresh",
+        "cache": "hit",
+        "total_ms": 315.0,
+        "tls_ms": 24.4,
+        "post_tls_ms": 290.4,
+        "worker_ms": 20.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": null,
+        "outside_worker_ms": 270.4,
+        "ray": "a555aad8ce0fe539",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "LHR",
+          "cf_ray": "a555aad8ce0fe539",
+          "worker_ms": 20,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 485,
+          "cpu_time_ms": 6,
+          "event_timestamp": 1793816790138,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "arn",
+        "query": "jola.dev",
+        "phase": "extended-fresh",
+        "cache": "hit",
+        "total_ms": 284.3,
+        "tls_ms": 24.0,
+        "post_tls_ms": 260.1,
+        "worker_ms": 25.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": null,
+        "outside_worker_ms": 235.1,
+        "ray": "a555aa38ffc22d62",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "ARN",
+          "cf_ray": "a555aa38ffc22d62",
+          "worker_ms": 25,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 537,
+          "cpu_time_ms": 14,
+          "event_timestamp": 1793816764346,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "arn",
+        "query": "jo",
+        "phase": "fresh-repeat",
+        "cache": "hit",
+        "total_ms": 210.3,
+        "tls_ms": 14.4,
+        "post_tls_ms": 195.8,
+        "worker_ms": 16.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": null,
+        "outside_worker_ms": 179.8,
+        "ray": "a555a817fe16ea60",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "ARN",
+          "cf_ray": "a555a817fe16ea60",
+          "worker_ms": 16,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 3012,
+          "cpu_time_ms": 7,
+          "event_timestamp": 1793816677134,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "arn",
+        "query": "a",
+        "phase": "extended-fresh",
+        "cache": "miss",
+        "total_ms": 308.2,
+        "tls_ms": 24.6,
+        "post_tls_ms": 283.4,
+        "worker_ms": 140.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": 140.0,
+        "outside_worker_ms": 143.4,
+        "ray": "a555a9d5584dd046",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "ARN",
+          "cf_ray": "a555a9d5584dd046",
+          "worker_ms": 140,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 722,
+          "cpu_time_ms": 13,
+          "event_timestamp": 1793816748386,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "arn",
+        "query": "nate",
+        "phase": "fresh-repeat",
+        "cache": "hit",
+        "total_ms": 170.2,
+        "tls_ms": 14.4,
+        "post_tls_ms": 155.7,
+        "worker_ms": 16.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": null,
+        "outside_worker_ms": 139.7,
+        "ray": "a555a8432f0645d1",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "ARN",
+          "cf_ray": "a555a8432f0645d1",
+          "worker_ms": 16,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 988,
+          "cpu_time_ms": 9,
+          "event_timestamp": 1793816684041,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "arn",
+        "query": "a",
+        "phase": "fresh-first",
+        "cache": "miss",
+        "total_ms": 311.6,
+        "tls_ms": 15.6,
+        "post_tls_ms": 296.0,
+        "worker_ms": 159.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": 159.0,
+        "outside_worker_ms": 137.0,
+        "ray": "a555a7f2f8e267ed",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "ARN",
+          "cf_ray": "a555a7f2f8e267ed",
+          "worker_ms": 159,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 7714,
+          "cpu_time_ms": 12,
+          "event_timestamp": 1793816671207,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "lhr",
+        "query": "a",
+        "phase": "extended-fresh",
+        "cache": "hit",
+        "total_ms": 181.9,
+        "tls_ms": 30.4,
+        "post_tls_ms": 151.3,
+        "worker_ms": 15.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": null,
+        "outside_worker_ms": 136.3,
+        "ray": "a555aa24dff58e49",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "LHR",
+          "cf_ray": "a555aa24dff58e49",
+          "worker_ms": 15,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 181,
+          "cpu_time_ms": 3,
+          "event_timestamp": 1793816761135,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "lhr",
+        "query": "a",
+        "phase": "extended-fresh",
+        "cache": "hit",
+        "total_ms": 171.9,
+        "tls_ms": 25.0,
+        "post_tls_ms": 145.6,
+        "worker_ms": 17.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": null,
+        "outside_worker_ms": 128.6,
+        "ray": "a555aa4d9b61653b",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "LHR",
+          "cf_ray": "a555aa4d9b61653b",
+          "worker_ms": 17,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 209,
+          "cpu_time_ms": 7,
+          "event_timestamp": 1793816767728,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "lhr",
+        "query": "a",
+        "phase": "extended-fresh",
+        "cache": "hit",
+        "total_ms": 161.3,
+        "tls_ms": 22.5,
+        "post_tls_ms": 138.4,
+        "worker_ms": 10.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": null,
+        "outside_worker_ms": 128.4,
+        "ray": "a555aac7fdeae902",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "LHR",
+          "cf_ray": "a555aac7fdeae902",
+          "worker_ms": 10,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 213,
+          "cpu_time_ms": 5,
+          "event_timestamp": 1793816787308,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      },
+      {
+        "region": "arn",
+        "query": "b",
+        "phase": "fresh-repeat",
+        "cache": "hit",
+        "total_ms": 162.4,
+        "tls_ms": 15.3,
+        "post_tls_ms": 146.9,
+        "worker_ms": 21.0,
+        "rate_limit_ms": 0.0,
+        "search_ms": null,
+        "outside_worker_ms": 125.9,
+        "ray": "a555a8094d763ea1",
+        "invocation": {
+          "event": "worker_request_timing",
+          "endpoint": "search",
+          "method": "GET",
+          "status": 200,
+          "ingress_colo": "ARN",
+          "cf_ray": "a555a8094d763ea1",
+          "worker_ms": 21,
+          "rate_limit_ms": 0,
+          "wall_time_ms": 4937,
+          "cpu_time_ms": 9,
+          "event_timestamp": 1793816674778,
+          "outcome": "ok",
+          "script_version": {
+            "id": "8fcf8f78-0272-4358-b53f-bb4a68f6b568"
+          }
+        }
+      }
+    ]
+  },
+  "timestamped": {
+    "matched": 40,
+    "clock_caveat": "Client and Cloudflare clocks may differ; compare slow-versus-typical segments from this same VM rather than treating absolute one-way times as exact.",
+    "before_entry_ms_median": 33.050537109375,
+    "after_handler_ms_median": 9.5125732421875,
+    "slowest": [
+      {
+        "ray": "a555adfd8988641f",
+        "total_ms": 384.5,
+        "before_entry_ms": 57.0,
+        "worker_ms": 32,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 268.7,
+        "sent_to_headers_ms": 357.7,
+        "wall_ms": 262,
+        "cpu_ms": 16
+      },
+      {
+        "ray": "a555ae310b8fe539",
+        "total_ms": 274.9,
+        "before_entry_ms": 25.7,
+        "worker_ms": 13,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 13.3,
+        "sent_to_headers_ms": 52.0,
+        "wall_ms": 767,
+        "cpu_ms": 4
+      },
+      {
+        "ray": "a555adf48a8d93e2",
+        "total_ms": 228.5,
+        "before_entry_ms": 184.1,
+        "worker_ms": 12,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 7.4,
+        "sent_to_headers_ms": 203.5,
+        "wall_ms": 160,
+        "cpu_ms": 2
+      },
+      {
+        "ray": "a555ad62b8a8c542",
+        "total_ms": 175.2,
+        "before_entry_ms": 13.4,
+        "worker_ms": 124,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 11.7,
+        "sent_to_headers_ms": 149.1,
+        "wall_ms": 364,
+        "cpu_ms": 5
+      },
+      {
+        "ray": "a555ad9bac19fc58",
+        "total_ms": 164.9,
+        "before_entry_ms": 106.2,
+        "worker_ms": 21,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 11.9,
+        "sent_to_headers_ms": 139.1,
+        "wall_ms": 170,
+        "cpu_ms": 3
+      },
+      {
+        "ray": "a555adcc798fe8fc",
+        "total_ms": 137.6,
+        "before_entry_ms": 77.4,
+        "worker_ms": 16,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 12.4,
+        "sent_to_headers_ms": 105.8,
+        "wall_ms": 171,
+        "cpu_ms": 5
+      },
+      {
+        "ray": "a555ae71d8b2954b",
+        "total_ms": 128.3,
+        "before_entry_ms": 64.8,
+        "worker_ms": 13,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 9.5,
+        "sent_to_headers_ms": 87.3,
+        "wall_ms": 170,
+        "cpu_ms": 2
+      },
+      {
+        "ray": "a555ae413e6f60e7",
+        "total_ms": 106.9,
+        "before_entry_ms": 45.1,
+        "worker_ms": 15,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 15.9,
+        "sent_to_headers_ms": 76.0,
+        "wall_ms": 267,
+        "cpu_ms": 7
+      },
+      {
+        "ray": "a555ae7a0a8b51a5",
+        "total_ms": 102.0,
+        "before_entry_ms": 46.3,
+        "worker_ms": 13,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 16.1,
+        "sent_to_headers_ms": 75.4,
+        "wall_ms": 154,
+        "cpu_ms": 3
+      },
+      {
+        "ray": "a555ae926c6a1484",
+        "total_ms": 100.7,
+        "before_entry_ms": 45.2,
+        "worker_ms": 15,
+        "rate_limit_ms": 0,
+        "after_handler_ms": 10.1,
+        "sent_to_headers_ms": 70.2,
+        "wall_ms": 165,
+        "cpu_ms": 4
+      }
+    ]
+  },
+  "cleanup": [
+    {
+      "app": "typeahead-eu-probe-1793816656",
+      "machines": [
+        {
+          "id": "8901e5f60149e8",
+          "region": "lhr"
+        },
+        {
+          "id": "784ee603f22468",
+          "region": "arn"
+        }
+      ],
+      "destroyed": true,
+      "app_absent": true,
+      "elapsed_s": 46.28
+    },
+    {
+      "app": "typeahead-eu-probe-1793816734",
+      "machines": [
+        {
+          "id": "86555e4ce0e278",
+          "region": "lhr"
+        },
+        {
+          "id": "e827260a32e168",
+          "region": "arn"
+        }
+      ],
+      "destroyed": true,
+      "app_absent": true,
+      "elapsed_s": 97.74
+    },
+    {
+      "app": "typeahead-eu-probe-1793816884",
+      "machines": [
+        {
+          "id": "807229f6057d28",
+          "region": "lhr"
+        }
+      ],
+      "destroyed": true,
+      "app_absent": true,
+      "elapsed_s": 68.82
+    }
+  ],
+  "limitations": [
+    "Datacenter clients in London and Stockholm; not Johanna\u2019s ISP.",
+    "All 200 instrumented public search requests returned 200 and had correlated invocation logs.",
+    "Measured limiter duration was 0 ms throughout; clocks have millisecond granularity and advance on I/O.",
+    "The largest timestamped cache-hit spike was mostly after handler completion. The specific platform, network, or client cause is not established.",
+    "Client and Cloudflare clocks can differ; one-way timestamps are approximate.",
+    "Invocation wall time includes waitUntil work and is not response latency.",
+    "No consistent one-second backend regression reproduced."
+  ],
+  "readme_review": "README overview remains accurate; timing semantics are documented in docs/operations.md.",
+  "full_artifacts": "/Users/nate/.codex/visualizations/2026/11/04/01a1a7be-7225-78c0-b349-a02f3691ff53/worker-request-timing"
+}
