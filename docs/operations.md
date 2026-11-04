@@ -79,6 +79,11 @@ added after cache handling, so cache hits report the current request's timing.
 The `worker_request_timing` log records the same stages with endpoint, method,
 status, ingress colo and Cloudflare ray ID; uncaught errors also produce a log.
 Workers traces are enabled alongside the existing full-sampling logs.
+`worker_request_start` marks fetch entry. Compare Cloudflare's native log
+timestamps for this event and `worker_request_timing` with the invocation's
+`eventTimestamp`: the interval before the first log exposes platform dispatch
+time that the in-code clock cannot measure. An invocation's total wall time
+also includes background work, so it is not response latency.
 
 Search's existing `search`, `cache` and `origin` timings remain nested within
 `worker`. The `/stats` latency counters measure the search handler, which starts

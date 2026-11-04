@@ -100,6 +100,8 @@ export default {
   },
 
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    console.log(JSON.stringify({ event: "worker_request_start", cf_ray: request.headers.get("CF-Ray"),
+      ingress_colo: request.cf?.colo ?? "unknown", clock_ms: Date.now() }));
     const timing = new RequestTiming();
     // Count every answer, including the ones that are not a Response at all:
     // an uncaught throw is what Cloudflare turns into a 1101/500 at the edge,
