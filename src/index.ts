@@ -14,7 +14,8 @@ import { handleIdentityComplete, handleIdentityLease, handleIdentityStatus, hand
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
 import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
-import { handleOgImage, handleAppleTouchIcon, handleWebManifest } from "./handlers/og";
+import { handleOgImage, handleAppleTouchIcon } from "./handlers/og";
+import { handleWebManifest } from "./handlers/web-manifest";
 import { handleSourceIcon } from "./handlers/source-icon";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
