@@ -1,0 +1,2822 @@
+[
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "a",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 493.84499999999997,
+    "ttfb_ms": 493.726,
+    "connects": 1,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=40, origin_headers;dur=129;desc=\"01M6M3QB7WKPYH98R9GETE8FE5-iad\", origin;dur=130, search;dur=170,worker;dur=170,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=40, origin_headers;dur=129;desc=\"01M6M3QB7WKPYH98R9GETE8FE5-iad\", origin;dur=130, search;dur=170",
+        "worker;dur=170",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a5565719baeea49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "a",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 346.225,
+    "ttfb_ms": 344.659,
+    "connects": 1,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "b",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 155.326,
+    "ttfb_ms": 155.169,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=17, origin_headers;dur=111;desc=\"01M6M3QCWAJGMP6A4ZE03Y2FT9-iad\", origin;dur=112, search;dur=129,worker;dur=129,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=17, origin_headers;dur=111;desc=\"01M6M3QCWAJGMP6A4ZE03Y2FT9-iad\", origin;dur=112, search;dur=129",
+        "worker;dur=129",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a55657251d52a49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "b",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 273.08500000000004,
+    "ttfb_ms": 271.39799999999997,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "jola.dev",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 229.517,
+    "ttfb_ms": 229.34099999999998,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=16, origin_headers;dur=160;desc=\"01M6M3QEWXDHKHKP8K395ZJDSH-iad\", origin;dur=160, search;dur=176,worker;dur=176,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=16, origin_headers;dur=160;desc=\"01M6M3QEWXDHKHKP8K395ZJDSH-iad\", origin;dur=160, search;dur=176",
+        "worker;dur=176",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a55657319afea49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "jola.dev",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 176.873,
+    "ttfb_ms": 174.953,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "nate",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 166.873,
+    "ttfb_ms": 166.763,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=10, origin_headers;dur=125;desc=\"01M6M3QGRZFJJWP56FXPK6P9A8-iad\", origin;dur=127, search;dur=137,worker;dur=137,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=10, origin_headers;dur=125;desc=\"01M6M3QGRZFJJWP56FXPK6P9A8-iad\", origin;dur=127, search;dur=137",
+        "worker;dur=137",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a556573e18ada49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "nate",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 185.242,
+    "ttfb_ms": 184.41,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "jo",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 194.997,
+    "ttfb_ms": 194.854,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=20, origin_headers;dur=108;desc=\"01M6M3QJS4JFQTTAMHVT82JYPV-iad\", origin;dur=110, search;dur=130,worker;dur=130,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=20, origin_headers;dur=108;desc=\"01M6M3QJS4JFQTTAMHVT82JYPV-iad\", origin;dur=110, search;dur=130",
+        "worker;dur=130",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a556574aafd9a49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "jo",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 263.09900000000005,
+    "ttfb_ms": 261.565,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "sky",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 191.052,
+    "ttfb_ms": 190.833,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=16, origin_headers;dur=117;desc=\"01M6M3QMQEAJYMK3TJ1RWB2C49-iad\", origin;dur=119, search;dur=135,worker;dur=135,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=16, origin_headers;dur=117;desc=\"01M6M3QMQEAJYMK3TJ1RWB2C49-iad\", origin;dur=119, search;dur=135",
+        "worker;dur=135",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a55657572853a49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "sky",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 193.054,
+    "ttfb_ms": 192.265,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "sarah",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 231.86200000000002,
+    "ttfb_ms": 231.74,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=11, origin_headers;dur=156;desc=\"01M6M3QPQ1N44SF09QWBQNBNRA-iad\", origin;dur=157, search;dur=168,worker;dur=168,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=11, origin_headers;dur=156;desc=\"01M6M3QPQ1N44SF09QWBQNBNRA-iad\", origin;dur=157, search;dur=168",
+        "worker;dur=168",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a5565763a925a49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "sarah",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 198.672,
+    "ttfb_ms": 197.219,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "Andr\u00e9",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 273.14,
+    "ttfb_ms": 273.029,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=10, origin_headers;dur=249;desc=\"01M6M3QRQ9XSWGERJM93S0685S-iad\", origin;dur=249, search;dur=259,worker;dur=259,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=10, origin_headers;dur=249;desc=\"01M6M3QRQ9XSWGERJM93S0685S-iad\", origin;dur=249, search;dur=259",
+        "worker;dur=259",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a55657702e4fa49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "Andr\u00e9",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 197.572,
+    "ttfb_ms": 195.995,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "nate kohari",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 196.707,
+    "ttfb_ms": 196.564,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=25, origin_headers;dur=131;desc=\"01M6M3QTKC4Z6FF0AQ133Z5WM0-iad\", origin;dur=131, search;dur=156,worker;dur=156,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=25, origin_headers;dur=131;desc=\"01M6M3QTKC4Z6FF0AQ133Z5WM0-iad\", origin;dur=131, search;dur=156",
+        "worker;dur=156",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a556577cbef8a49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "nate kohari",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 185.292,
+    "ttfb_ms": 184.56900000000002,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "zzstoatzz.io",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 182.053,
+    "ttfb_ms": 181.944,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=11, origin_headers;dur=112;desc=\"01M6M3QWHTWZTBYEXKQ4Z8VNN2-iad\", origin;dur=112, search;dur=123,worker;dur=123,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=11, origin_headers;dur=112;desc=\"01M6M3QWHTWZTBYEXKQ4Z8VNN2-iad\", origin;dur=112, search;dur=123",
+        "worker;dur=123",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a556578938e1a49d-LHR"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 0,
+    "query": "zzstoatzz.io",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 169.799,
+    "ttfb_ms": 169.69899999999998,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "a",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 9.404,
+    "ttfb_ms": 9.298,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "a",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 52.202,
+    "ttfb_ms": 52.039,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=7,worker;dur=7,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556579c0949a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=7",
+        "worker;dur=7",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "b",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 8.796,
+    "ttfb_ms": 7.041,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "b",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 33.569,
+    "ttfb_ms": 33.376000000000005,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=16,worker;dur=16,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657a888f3a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=16",
+        "worker;dur=16",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "jola.dev",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 7.627,
+    "ttfb_ms": 7.471,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "jola.dev",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 60.394000000000005,
+    "ttfb_ms": 60.286,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=15,worker;dur=15,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657b50e7ba49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=15",
+        "worker;dur=15",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "nate",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 8.055,
+    "ttfb_ms": 7.783,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "nate",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 30.123,
+    "ttfb_ms": 29.911,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=8,worker;dur=8,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657c18bb2a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=8",
+        "worker;dur=8",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "jo",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 10.238999999999999,
+    "ttfb_ms": 9.473,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "jo",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 80.144,
+    "ttfb_ms": 79.999,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=11,worker;dur=11,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657ce1a6ea49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=11",
+        "worker;dur=11",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "sky",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 8.366,
+    "ttfb_ms": 7.457,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "sky",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 55.981,
+    "ttfb_ms": 55.821000000000005,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=27,worker;dur=27,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657da9e64a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=27",
+        "worker;dur=27",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "sarah",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 8.201,
+    "ttfb_ms": 7.572,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "sarah",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 75.24300000000001,
+    "ttfb_ms": 75.107,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=10,worker;dur=10,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657e72968a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=10",
+        "worker;dur=10",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "Andr\u00e9",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 8.671,
+    "ttfb_ms": 8.547,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "Andr\u00e9",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 41.980999999999995,
+    "ttfb_ms": 41.84,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=15,worker;dur=15,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657f3af37a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=15",
+        "worker;dur=15",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "nate kohari",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 8.267,
+    "ttfb_ms": 7.423,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "nate kohari",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 159.17600000000002,
+    "ttfb_ms": 159.053,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=12,worker;dur=12,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55658002a30a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=12",
+        "worker;dur=12",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "zzstoatzz.io",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 7.283,
+    "ttfb_ms": 7.111,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 1,
+    "query": "zzstoatzz.io",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 41.080999999999996,
+    "ttfb_ms": 40.477,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=18,worker;dur=18,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556580cae06a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=18",
+        "worker;dur=18",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "a",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 54.282,
+    "ttfb_ms": 54.119,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=8,worker;dur=8,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a5565812fdbca49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=8",
+        "worker;dur=8",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "a",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 267.476,
+    "ttfb_ms": 267.36,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "b",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 37.738,
+    "ttfb_ms": 37.517,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=18,worker;dur=18,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556581f7d67a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=18",
+        "worker;dur=18",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "b",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 292.767,
+    "ttfb_ms": 291.13899999999995,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "jola.dev",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 33.784,
+    "ttfb_ms": 33.674,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=15,worker;dur=15,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556582bfd22a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=15",
+        "worker;dur=15",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "jola.dev",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 166.001,
+    "ttfb_ms": 165.864,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "nate",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 28.819999999999997,
+    "ttfb_ms": 28.668,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=10,worker;dur=10,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55658387af5a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=10",
+        "worker;dur=10",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "nate",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 178.239,
+    "ttfb_ms": 177.53,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "jo",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 42.614,
+    "ttfb_ms": 42.491,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=8,worker;dur=8,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a5565844ff68a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=8",
+        "worker;dur=8",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "jo",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 246.744,
+    "ttfb_ms": 245.346,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "sky",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 23.166,
+    "ttfb_ms": 23.044999999999998,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=9,worker;dur=9,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55658518e53a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=9",
+        "worker;dur=9",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "sky",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 188.829,
+    "ttfb_ms": 188.51999999999998,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "sarah",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 58.285999999999994,
+    "ttfb_ms": 58.14,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=9,worker;dur=9,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556585e0f19a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=9",
+        "worker;dur=9",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "sarah",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 182.597,
+    "ttfb_ms": 181.302,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "Andr\u00e9",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 26.215,
+    "ttfb_ms": 26.093999999999998,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=8,worker;dur=8,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556586a8fb2a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=8",
+        "worker;dur=8",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "Andr\u00e9",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 185.13299999999998,
+    "ttfb_ms": 185.017,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "nate kohari",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 38.818,
+    "ttfb_ms": 38.653,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=17,worker;dur=17,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55658771ebfa49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=17",
+        "worker;dur=17",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "nate kohari",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 180.27499999999998,
+    "ttfb_ms": 179.434,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "zzstoatzz.io",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 36.943,
+    "ttfb_ms": 36.662,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=10,worker;dur=10,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55658839db0a49d-LHR"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=10",
+        "worker;dur=10",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "lhr",
+    "phase": 2,
+    "query": "zzstoatzz.io",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 174.732,
+    "ttfb_ms": 174.55200000000002,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "a",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 399.167,
+    "ttfb_ms": 399.049,
+    "connects": 1,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=13, origin_headers;dur=198;desc=\"01M6M3QB8WRZCJDH9XC35FDV1A-iad\", origin;dur=200, search;dur=213,worker;dur=213,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=13, origin_headers;dur=198;desc=\"01M6M3QB8WRZCJDH9XC35FDV1A-iad\", origin;dur=200, search;dur=213",
+        "worker;dur=213",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a5565719e818dd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "a",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 420.42400000000004,
+    "ttfb_ms": 420.286,
+    "connects": 1,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "b",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 155.255,
+    "ttfb_ms": 155.09300000000002,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=4, origin_headers;dur=126;desc=\"01M6M3QD03QQC6N076PYVQN2NY-iad\", origin;dur=127, search;dur=131,worker;dur=131,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=4, origin_headers;dur=126;desc=\"01M6M3QD03QQC6N076PYVQN2NY-iad\", origin;dur=127, search;dur=131",
+        "worker;dur=131",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a5565725ec63dd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "b",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 268.47700000000003,
+    "ttfb_ms": 267.266,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "jola.dev",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 154.136,
+    "ttfb_ms": 154.016,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=4, origin_headers;dur=125;desc=\"01M6M3QEYNF67WTAEBK5XHR9BR-iad\", origin;dur=126, search;dur=130,worker;dur=130,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=4, origin_headers;dur=125;desc=\"01M6M3QEYNF67WTAEBK5XHR9BR-iad\", origin;dur=126, search;dur=130",
+        "worker;dur=130",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a55657326feddd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "jola.dev",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 176.822,
+    "ttfb_ms": 176.683,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "nate",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 169.926,
+    "ttfb_ms": 169.741,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=3, origin_headers;dur=139;desc=\"01M6M3QGXH0K9YG3J4DVAD5HEF-iad\", origin;dur=140, search;dur=143,worker;dur=143,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=3, origin_headers;dur=139;desc=\"01M6M3QGXH0K9YG3J4DVAD5HEF-iad\", origin;dur=140, search;dur=143",
+        "worker;dur=143",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a556573efbf2dd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "nate",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 187.32999999999998,
+    "ttfb_ms": 187.16299999999998,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "jo",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 165.806,
+    "ttfb_ms": 165.606,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=5, origin_headers;dur=136;desc=\"01M6M3QJW44XDBDYCPPMGVME8P-iad\", origin;dur=138, search;dur=143,worker;dur=143,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=5, origin_headers;dur=136;desc=\"01M6M3QJW44XDBDYCPPMGVME8P-iad\", origin;dur=138, search;dur=143",
+        "worker;dur=143",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a556574b7897dd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "jo",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 256.868,
+    "ttfb_ms": 256.767,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "sky",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 160.17600000000002,
+    "ttfb_ms": 159.948,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=4, origin_headers;dur=133;desc=\"01M6M3QMTM78HX827X65K1SWX3-iad\", origin;dur=134, search;dur=138,worker;dur=138,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=4, origin_headers;dur=133;desc=\"01M6M3QMTM78HX827X65K1SWX3-iad\", origin;dur=134, search;dur=138",
+        "worker;dur=138",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a5565757fc8add2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "sky",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 205.07,
+    "ttfb_ms": 204.648,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "sarah",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 160.894,
+    "ttfb_ms": 160.718,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=3, origin_headers;dur=130;desc=\"01M6M3QPS59M4AT44WTJQHMWBF-iad\", origin;dur=132, search;dur=135,worker;dur=135,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=3, origin_headers;dur=130;desc=\"01M6M3QPS59M4AT44WTJQHMWBF-iad\", origin;dur=132, search;dur=135",
+        "worker;dur=135",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a55657647ad2dd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "sarah",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 196.806,
+    "ttfb_ms": 196.31199999999998,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "Andr\u00e9",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 174.121,
+    "ttfb_ms": 173.982,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=4, origin_headers;dur=143;desc=\"01M6M3QRR338GQKPPK8PSH3XDP-iad\", origin;dur=146, search;dur=150,worker;dur=150,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=4, origin_headers;dur=143;desc=\"01M6M3QRR338GQKPPK8PSH3XDP-iad\", origin;dur=146, search;dur=150",
+        "worker;dur=150",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a55657710f64dd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "Andr\u00e9",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 194.31699999999998,
+    "ttfb_ms": 194.183,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "nate kohari",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 157.143,
+    "ttfb_ms": 157.036,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=4, origin_headers;dur=144;desc=\"01M6M3QTP8VAVDBSQAYZ65ZDQ5-iad\", origin;dur=144, search;dur=148,worker;dur=148,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=4, origin_headers;dur=144;desc=\"01M6M3QTP8VAVDBSQAYZ65ZDQ5-iad\", origin;dur=144, search;dur=148",
+        "worker;dur=148",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a556577d8b01dd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "nate kohari",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 191.389,
+    "ttfb_ms": 191.024,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "zzstoatzz.io",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 152.42,
+    "ttfb_ms": 152.29000000000002,
+    "connects": 0,
+    "cache": "miss",
+    "server_timing": "cache;desc=\"miss\";dur=4, origin_headers;dur=138;desc=\"01M6M3QWMP0WY6MAH49HNX0K46-iad\", origin;dur=139, search;dur=143,worker;dur=143,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "server-timing": [
+        "cache;desc=\"miss\";dur=4, origin_headers;dur=138;desc=\"01M6M3QWMP0WY6MAH49HNX0K46-iad\", origin;dur=139, search;dur=143",
+        "worker;dur=143",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ],
+      "cf-ray": [
+        "a556578a0ee7dd2c-ARN"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 0,
+    "query": "zzstoatzz.io",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 184.797,
+    "ttfb_ms": 184.65599999999998,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "a",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 3.4250000000000003,
+    "ttfb_ms": 3.27,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "a",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 11.727,
+    "ttfb_ms": 11.57,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556579cd8e7dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "b",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 7.065,
+    "ttfb_ms": 6.919,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "b",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 11.613,
+    "ttfb_ms": 11.503,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657a95b89dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "jola.dev",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 1.787,
+    "ttfb_ms": 1.659,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "jola.dev",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 16.297,
+    "ttfb_ms": 16.147000000000002,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=7,worker;dur=7,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657b5de72dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=7",
+        "worker;dur=7",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "nate",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 2.666,
+    "ttfb_ms": 2.523,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "nate",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 27.008,
+    "ttfb_ms": 26.901,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657c25a27dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "jo",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 1.815,
+    "ttfb_ms": 1.659,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "jo",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 12.782,
+    "ttfb_ms": 12.659,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657ceedaadd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "sky",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 1.869,
+    "ttfb_ms": 1.6540000000000001,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "sky",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 14.32,
+    "ttfb_ms": 14.123999999999999,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657db697add2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "sarah",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 3.799,
+    "ttfb_ms": 3.67,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "sarah",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 24.769,
+    "ttfb_ms": 24.659,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657e7edebdd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "Andr\u00e9",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 2.378,
+    "ttfb_ms": 2.215,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "Andr\u00e9",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 15.261999999999999,
+    "ttfb_ms": 15.147,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=6,worker;dur=6,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55657f47bf6dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=6",
+        "worker;dur=6",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "nate kohari",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 6.919,
+    "ttfb_ms": 6.7299999999999995,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "nate kohari",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 13.12,
+    "ttfb_ms": 12.987,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=5,worker;dur=5,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a5565800f959dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=5",
+        "worker;dur=5",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "zzstoatzz.io",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 2.6510000000000002,
+    "ttfb_ms": 2.52,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 1,
+    "query": "zzstoatzz.io",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 12.274999999999999,
+    "ttfb_ms": 12.164,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556580d7e2add2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "a",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 12.245000000000001,
+    "ttfb_ms": 12.111,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a5565813bd4ddd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "a",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=a&limit=14",
+    "status": 200,
+    "total_ms": 278.523,
+    "ttfb_ms": 277.43800000000005,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "b",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 11.184,
+    "ttfb_ms": 11.011999999999999,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55658204ad0dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "b",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=b&limit=14",
+    "status": 200,
+    "total_ms": 296.008,
+    "ttfb_ms": 295.905,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "jola.dev",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 11.907,
+    "ttfb_ms": 11.783,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=5,worker;dur=5,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556582cca0fdd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=5",
+        "worker;dur=5",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "jola.dev",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jola.dev&limit=14",
+    "status": 200,
+    "total_ms": 228.33800000000002,
+    "ttfb_ms": 228.17100000000002,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "nate",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 12.622,
+    "ttfb_ms": 12.475,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=5,worker;dur=5,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55658394836dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=5",
+        "worker;dur=5",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "nate",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate&limit=14",
+    "status": 200,
+    "total_ms": 188.827,
+    "ttfb_ms": 188.662,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "jo",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 27.133999999999997,
+    "ttfb_ms": 27.004,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=5,worker;dur=5,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a5565845dc8bdd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=5",
+        "worker;dur=5",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "jo",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=jo&limit=14",
+    "status": 200,
+    "total_ms": 271.46,
+    "ttfb_ms": 271.24,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "sky",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 22.407,
+    "ttfb_ms": 22.193,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556585258dadd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "sky",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sky&limit=14",
+    "status": 200,
+    "total_ms": 502.51500000000004,
+    "ttfb_ms": 500.629,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "sarah",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 11.178,
+    "ttfb_ms": 11.023,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=3,worker;dur=3,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556585ede7bdd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=3",
+        "worker;dur=3",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "sarah",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=sarah&limit=14",
+    "status": 200,
+    "total_ms": 188.641,
+    "ttfb_ms": 188.476,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "Andr\u00e9",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 23.819,
+    "ttfb_ms": 23.709,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a556586b5b86dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "Andr\u00e9",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=Andr%C3%A9&limit=14",
+    "status": 200,
+    "total_ms": 193.091,
+    "ttfb_ms": 192.433,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "nate kohari",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 13.669,
+    "ttfb_ms": 13.495999999999999,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=4,worker;dur=4,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a5565877efc8dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=4",
+        "worker;dur=4",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "nate kohari",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=nate+kohari&limit=14",
+    "status": 200,
+    "total_ms": 185.975,
+    "ttfb_ms": 185.243,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "zzstoatzz.io",
+    "side": "ours",
+    "url": "https://typeahead.waow.tech/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 23.379,
+    "ttfb_ms": 23.221,
+    "connects": 0,
+    "cache": "hit",
+    "server_timing": "cache;desc=\"hit\";dur=3,worker;dur=3,rate_limit;dur=0",
+    "headers": {
+      "content-type": [
+        "application/json"
+      ],
+      "cf-ray": [
+        "a55658846be1dd2c-ARN"
+      ],
+      "server-timing": [
+        "cache;desc=\"hit\";dur=3",
+        "worker;dur=3",
+        "rate_limit;dur=0"
+      ],
+      "x-typeahead-engine": [
+        "tantivy"
+      ]
+    }
+  },
+  {
+    "region": "arn",
+    "phase": 2,
+    "query": "zzstoatzz.io",
+    "side": "bluesky",
+    "url": "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?q=zzstoatzz.io&limit=14",
+    "status": 200,
+    "total_ms": 177.294,
+    "ttfb_ms": 176.988,
+    "connects": 0,
+    "cache": "unknown",
+    "server_timing": "",
+    "headers": {
+      "content-type": [
+        "application/json; charset=utf-8"
+      ]
+    }
+  }
+]

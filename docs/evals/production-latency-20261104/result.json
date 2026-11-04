@@ -1,0 +1,139 @@
+{
+  "observed_at_utc": "2026-11-04T20:25:09.907867+00:00",
+  "public_version": "a4a18d8f-0b21-49f5-8f74-e52b3a41cd54",
+  "source_commit": "01005f1",
+  "method": "One curl 8.17 HTTP/2 process per European Fly client, alternating Typeahead and Bluesky at one transfer per second; 10 queries, limit 14, three passes. Connections reused after each host's first request. Typeahead cache cohort comes from Server-Timing, not assumed from pass number.",
+  "regions": {
+    "lhr": {
+      "typeahead_hits": {
+        "n": 20,
+        "median_ms": 41.531,
+        "max_ms": 159.176,
+        "statuses": {
+          "200": 20
+        }
+      },
+      "typeahead_misses": {
+        "n": 10,
+        "median_ms": 195.852,
+        "max_ms": 493.845,
+        "statuses": {
+          "200": 10
+        }
+      },
+      "bluesky_all": {
+        "n": 30,
+        "median_ms": 179.257,
+        "max_ms": 346.225,
+        "statuses": {
+          "200": 30
+        }
+      },
+      "bluesky_first_pass": {
+        "n": 10,
+        "median_ms": 195.313,
+        "max_ms": 346.225,
+        "statuses": {
+          "200": 10
+        }
+      },
+      "typeahead_reused_connection_misses": {
+        "n": 9,
+        "median_ms": 194.997,
+        "max_ms": 273.14,
+        "statuses": {
+          "200": 9
+        }
+      },
+      "connection_counts": {
+        "1": 2,
+        "0": 58
+      }
+    },
+    "arn": {
+      "typeahead_hits": {
+        "n": 20,
+        "median_ms": 13.395,
+        "max_ms": 27.134,
+        "statuses": {
+          "200": 20
+        }
+      },
+      "typeahead_misses": {
+        "n": 10,
+        "median_ms": 160.535,
+        "max_ms": 399.167,
+        "statuses": {
+          "200": 10
+        }
+      },
+      "bluesky_all": {
+        "n": 30,
+        "median_ms": 187.986,
+        "max_ms": 502.515,
+        "statuses": {
+          "200": 30
+        }
+      },
+      "bluesky_first_pass": {
+        "n": 10,
+        "median_ms": 195.561,
+        "max_ms": 420.424,
+        "statuses": {
+          "200": 10
+        }
+      },
+      "typeahead_reused_connection_misses": {
+        "n": 9,
+        "median_ms": 160.176,
+        "max_ms": 174.121,
+        "statuses": {
+          "200": 9
+        }
+      },
+      "connection_counts": {
+        "1": 2,
+        "0": 58
+      }
+    }
+  },
+  "cleanup": {
+    "app": "typeahead-eu-probe-1793823831",
+    "machines": [
+      {
+        "id": "2873535a765358",
+        "region": "lhr"
+      },
+      {
+        "id": "18503d2ad99e08",
+        "region": "arn"
+      }
+    ],
+    "destroyed": true,
+    "absent_from_fly_app_list": true
+  },
+  "limitations": [
+    "Two short regional samples, not a production traffic percentile guarantee.",
+    "This run uses persistent connections; earlier fresh-process probes are not a matched before/after comparison.",
+    "Both engines' response bodies were discarded; this is a timing check, not ranking evaluation.",
+    "No new Typeahead behavior or deployment in this follow-up; measured the already-live renderer split."
+  ],
+  "readme_review": "No README change required: this follow-up changes no Typeahead runtime behavior or architecture. The separate renderer is already documented.",
+  "validation": {
+    "sample_count": 120,
+    "all_http_200": true,
+    "all_three_source_ci_workflows": "success",
+    "freshness": {
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 39,
+      "snapshot_age_s": 8563,
+      "build_id": "b1793815407-cp-1f545dd4aa",
+      "coverage_age_s": 8563,
+      "coverage_deadline": 1793901807,
+      "refresh_overdue": false,
+      "probe_ok": true,
+      "reasons": []
+    }
+  }
+}
