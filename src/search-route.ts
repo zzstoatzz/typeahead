@@ -106,35 +106,38 @@ async function readBucketRoute(bucket: RouteBucket) {
   return { route, validatedAt: Date.now() };
 }
 
-/** past this, a search stops waiting for the shared copy and reads R2 itself */
+/** After this, race a direct R2 read against the still-pending shared copy. */
 export const SHARED_ROUTE_WAIT_MS = 50;
 
-function within<T>(promise: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("Shared route timed out")), ms)));
-  return Promise.race([promise, late]).finally(() => clearTimeout(timer));
-}
-
-export async function readRoute(bucket: RouteBucket, cache: boolean, source?: RouteSource) {
+export async function readRoute(bucket: RouteBucket, cache: boolean, source?: RouteSource, ctx?: Pick<ExecutionContext, "waitUntil">) {
   if (cache && cachedRoute && Date.now() < cachedRoute.expiresAt) return cachedRoute.route;
-  if (cache && source) {
-    try {
-      // the shared copy keeps the same lifetime from its own R2 read; it only
-      // saves this isolate the wait. Any failure falls back to R2 below.
-      const { route: shared, validatedAt: claimed } = await within(source.current(), SHARED_ROUTE_WAIT_MS);
-      const validatedAt = Math.min(claimed, Date.now());
-      if (Date.now() - validatedAt >= 1000) throw new Error("Shared route expired");
-      const route = parseRoute({ version: 1, current: shared });
-      cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
-      sharedHintsEnabled = true;
-      return route;
-    } catch {
-      // fall through to this isolate's own read
-    }
-  }
   const before = cachedRoute;
+  let sharedRead: ReturnType<typeof readBucketRoute> | undefined;
+  let bucketRead: ReturnType<typeof readBucketRoute> | undefined;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const { route, validatedAt } = await readBucketRoute(bucket);
+    let selected;
+    if (cache && source) {
+      sharedRead = Promise.resolve().then(() => source.current()).then(({ route, validatedAt: claimed }) => {
+        const validatedAt = Math.min(claimed, Date.now());
+        if (Date.now() - validatedAt >= 1000) throw new Error("Shared route expired");
+        return { route: parseRoute({ version: 1, current: route }), validatedAt };
+      });
+      const fallback = new Promise<Awaited<ReturnType<typeof readBucketRoute>>>((resolve) => {
+        const begin = () => {
+          if (bucketRead) return;
+          clearTimeout(timer);
+          bucketRead = readBucketRoute(bucket);
+          resolve(bucketRead);
+        };
+        timer = setTimeout(begin, SHARED_ROUTE_WAIT_MS);
+        sharedRead?.catch(begin);
+      });
+      selected = await Promise.race([sharedRead.catch(() => fallback), fallback]);
+    } else {
+      selected = await readBucketRoute(bucket);
+    }
+    const { route, validatedAt } = selected;
     cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
     sharedHintsEnabled = true;
     return route;
@@ -144,5 +147,9 @@ export async function readRoute(bucket: RouteBucket, cache: boolean, source?: Ro
       sharedHintsEnabled = false;
     }
     throw error;
+  } finally {
+    clearTimeout(timer);
+    if (sharedRead) ctx?.waitUntil(sharedRead.catch(() => undefined));
+    if (bucketRead) ctx?.waitUntil(bucketRead.catch(() => undefined));
   }
 }

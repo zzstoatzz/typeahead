@@ -70,8 +70,12 @@ The transport relies on a route validated against R2 within the last second.
 One Durable Object, `RouteAuthority`, holds that copy for every transport
 isolate and re-reads R2 every 700 ms while searches have arrived in the last
 five minutes, so a search usually takes the route from memory and R2 reads
-are bounded by time rather than traffic. If the object fails or returns a
-route past its one-second lifetime, the transport reads R2 itself as before.
+are bounded by time rather than traffic. After 50 ms, the transport starts a
+direct R2 read while still accepting a fresh authority response. The first
+usable response wins; a losing read cannot overwrite the cache. An invalid or
+failed authority starts the R2 read immediately, and a failed R2 fallback still
+fails closed without waiting on a hung authority. Neither path extends the
+route's one-second lifetime. Pending losing reads belong to `waitUntil`.
 The object stays in the colo where it was first created, and each search waits
 for a round trip to it, so it must be created by the transport (no location
 hint). Check its colo with the `durableObjectsInvocationsAdaptiveGroups`

@@ -20,7 +20,7 @@ export default {
       return new Response("Not found", { status: 404 });
     }
     if (request.method === "GET" && url.pathname === "/search") {
-      const current = readRoute(env.SEARCH_CONTROL, true, routeSource(env));
+      const current = readRoute(env.SEARCH_CONTROL, true, routeSource(env), ctx);
       const memoryHint = speculativeRoute();
       const cache = Promise.resolve().then(() => caches.open(HINT_CACHE)).catch(() => undefined);
       const hint = memoryHint ?? (sharedHintsAllowed() ? cache.then(value => value ? readSharedHint(value) : undefined) : undefined);
