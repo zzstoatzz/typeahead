@@ -32,6 +32,8 @@ flowchart TD
     Route[R2 routing record] -. selects backend .-> Transport
     Transport --> Search
     API -->|unscoped search failure| Bluesky[Bluesky public API]
+    API -->|preview cards and PNG icons| Images[Private image-rendering Worker]
+    Stats[Materialized stats in KV] --> Images
 ```
 
 Boxes describe responsibilities and data, not a machine inventory. The same
@@ -86,6 +88,13 @@ The Worker exposes the public search aliases and profile-card endpoints, and
 records request outcomes. Answers are unauthenticated and contain no
 viewer-specific state. Parameter details, caching and response formats belong
 in the [API documentation](https://typeahead.waow.tech/docs).
+
+Image rendering uses a separate private Worker, reached through the public
+Worker's `IMAGE_RENDERER` service binding. The existing `/og-image` and
+`/apple-touch-icon.png` URLs, query parameters and cache headers are preserved.
+Only the renderer imports `workers-og` and its Wasm modules; API and website
+requests do not load them. The renderer reads the same materialized stats KV
+namespace as the public Worker. The static web manifest stays in the public Worker.
 
 ## Keeping the index fresh
 

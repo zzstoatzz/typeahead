@@ -1,4 +1,4 @@
-export interface Env {
+export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER"> {
   KV: KVNamespace;
   ADMIN_SECRET: string;
   RATE_LIMITER: RateLimit;

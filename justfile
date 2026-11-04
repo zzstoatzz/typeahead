@@ -27,6 +27,7 @@ rehearse-route-live config evidence:
 check: typecheck lint test
     bunx wrangler deploy --dry-run
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
+    bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
 
 # run the zig unit tests for the ingester and the shared normalizer sources
 test-services:
@@ -77,6 +78,15 @@ deploy-worker url="https://typeahead.waow.tech": lint
     @echo "--- waiting for edge propagation before smoke ---"
     sleep 5
     just smoke {{url}}
+    just smoke-images {{url}}
+
+deploy-image-renderer url="https://typeahead.waow.tech": lint
+    bunx tsc --noEmit
+    bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc
+    just smoke-images {{url}}
+
+smoke-images url="https://typeahead.waow.tech":
+    python3 scripts/smoke-images.py --url {{url}}
 
 # Deploy the private origin transport before adding its binding to the public Worker.
 deploy-search-transport url="https://typeahead.waow.tech": lint

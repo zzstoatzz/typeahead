@@ -10,7 +10,10 @@
     "PDS_UI_ENABLED": "1",
     "SEARCH_CACHE_GENERATION": "tantivy-b1793346536-cp-7c8322df79-cutover"
   },
-  "services": [{ "binding": "SEARCH_TRANSPORT", "service": "typeahead-search-transport" }],
+  "services": [
+    { "binding": "SEARCH_TRANSPORT", "service": "typeahead-search-transport" },
+    { "binding": "IMAGE_RENDERER", "service": "typeahead-image-renderer" }
+  ],
   "kv_namespaces": [
     {
       "binding": "KV",

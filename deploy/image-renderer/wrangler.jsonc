@@ -1,0 +1,9 @@
+{
+  "name": "typeahead-image-renderer",
+  "main": "../../src/image-renderer.ts",
+  "compatibility_date": "2026-11-04",
+  "workers_dev": false,
+  "preview_urls": false,
+  "kv_namespaces": [{ "binding": "KV", "id": "af614e8f42a44543920f7aad0ae7b70a" }],
+  "observability": { "enabled": true, "head_sampling_rate": 1, "traces": { "enabled": true } }
+}

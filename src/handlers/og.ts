@@ -1,5 +1,5 @@
 import { ImageResponse } from "workers-og";
-import type { Env, StatsKvData } from "../types";
+import type { StatsKvData } from "../types";
 import { FAVICON_SVG } from "../types";
 import { escHtml as esc } from "../utils";
 
@@ -216,7 +216,7 @@ async function jetbrainsMono(): Promise<ArrayBuffer> {
   return await (await fetch(m[1]!)).arrayBuffer();
 }
 
-export async function handleOgImage(request: Request, env: Env): Promise<Response> {
+export async function handleOgImage(request: Request, env: Pick<ImageRendererEnv, "KV">): Promise<Response> {
   const url = new URL(request.url);
   const range = url.searchParams.get("range") ?? "7d";
   const apps = (url.searchParams.get("apps") ?? "")

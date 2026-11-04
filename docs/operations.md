@@ -64,11 +64,21 @@ missed run uses up the margin. Each signal below fires once, on change:
 ## Deploy and verify
 
 `just deploy-worker` lints and type-checks before deploying the public Worker,
-then runs smoke checks. `just deploy-search-transport` uses the same gates.
+then runs API and image smoke checks. `just deploy-search-transport` uses the same gates.
 `just deploy-worker-only` skips smoke checks but still requires lint to pass.
 `just deploy-ingest` deploys the ingester. Backend publication belongs to the
 cloud Prefect controller, not a direct Fly deploy. After promotion, check the
 build, both public search aliases, PDS scope, ranking and live-update progress.
+
+The private `typeahead-image-renderer` Worker owns PNG preview cards and icons.
+Deploy it with `just deploy-image-renderer`, which checks fresh images through
+the public service binding. It has the shared stats KV binding, no public
+route, and no Turso or admin secrets. Deploy it before introducing or changing its public
+`IMAGE_RENDERER` binding; on initial installation, qualify the private service
+through a temporary verifier Worker before switching the public Worker.
+Renderer and public Worker versions can be rolled back independently while
+their image URL contract stays compatible. Keep the renderer deployed while
+any public version refers to it.
 
 ### Request latency
 

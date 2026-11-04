@@ -14,7 +14,6 @@ import { handleIdentityComplete, handleIdentityLease, handleIdentityStatus, hand
 import { handleDelete, handleCursor, handleRequestIndexing, handleModOverrideSet, handleModOverrideDelete, handleModOverrideList, handleDomainBlockSet, handleDomainBlockDelete, handleDomainBlockList, handleEnrichProfiles } from "./handlers/admin";
 import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
-import { handleOgImage, handleAppleTouchIcon } from "./handlers/og";
 import { handleWebManifest } from "./handlers/web-manifest";
 import { handleSourceIcon } from "./handlers/source-icon";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
@@ -163,7 +162,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     return handleFreshness(env);
   }
   if (pathname === "/og-image" && request.method === "GET") {
-    return handleOgImage(request, env);
+    return env.IMAGE_RENDERER.fetch(request);
   }
   if (pathname === "/favicon.svg" && request.method === "GET") {
     return new Response(FAVICON_SVG, {
@@ -171,7 +170,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     });
   }
   if (pathname === "/apple-touch-icon.png" && request.method === "GET") {
-    return handleAppleTouchIcon();
+    return env.IMAGE_RENDERER.fetch(request);
   }
   if (pathname === "/site.webmanifest" && request.method === "GET") {
     return handleWebManifest();
