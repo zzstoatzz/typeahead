@@ -97,6 +97,15 @@ export function speculativeRoute() {
 /** a source of routes already validated against R2, such as RouteAuthority */
 export type RouteSource = { current(): Promise<{ route: SearchRoute; validatedAt: number }> };
 
+type RouteBucket = { get(key: string): Promise<Pick<R2ObjectBody, "size" | "json"> | null> };
+
+async function readBucketRoute(bucket: RouteBucket) {
+  const object = await bucket.get(ROUTE_KEY);
+  if (object === null || object.size > 16384) throw new Error("Missing search route");
+  const route = parseRoute(await object.json());
+  return { route, validatedAt: Date.now() };
+}
+
 /** past this, a search stops waiting for the shared copy and reads R2 itself */
 export const SHARED_ROUTE_WAIT_MS = 50;
 
@@ -106,7 +115,7 @@ function within<T>(promise: Promise<T>, ms: number): Promise<T> {
   return Promise.race([promise, late]).finally(() => clearTimeout(timer));
 }
 
-export async function readRoute(bucket: Pick<R2Bucket, "get">, cache: boolean, source?: RouteSource) {
+export async function readRoute(bucket: RouteBucket, cache: boolean, source?: RouteSource) {
   if (cache && cachedRoute && Date.now() < cachedRoute.expiresAt) return cachedRoute.route;
   if (cache && source) {
     try {
@@ -125,10 +134,7 @@ export async function readRoute(bucket: Pick<R2Bucket, "get">, cache: boolean, s
   }
   const before = cachedRoute;
   try {
-    const object = await bucket.get(ROUTE_KEY);
-    if (object === null || object.size > 16384) throw new Error("Missing search route");
-    const route = parseRoute(await object.json());
-    const validatedAt = Date.now();
+    const { route, validatedAt } = await readBucketRoute(bucket);
     cachedRoute = { route, expiresAt: validatedAt + 1000, hintExpiresAt: validatedAt + 60_000 };
     sharedHintsEnabled = true;
     return route;
