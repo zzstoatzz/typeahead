@@ -1,0 +1,192 @@
+{
+  "observed_at_utc": "2026-11-04T19:17:52.464745+00:00",
+  "status": "deployed and verified",
+  "source_commit": "01005f1",
+  "public_worker": {
+    "name": "typeahead",
+    "version": "a4a18d8f-0b21-49f5-8f74-e52b3a41cd54",
+    "before_upload_kib": 3310.06,
+    "after_upload_kib": 1335.91,
+    "before_gzip_kib": 948.31,
+    "after_gzip_kib": 252.62,
+    "before_reported_startup_ms": 54,
+    "after_reported_startup_ms": 28,
+    "wasm_modules": 0
+  },
+  "renderer": {
+    "name": "typeahead-image-renderer",
+    "version": "02f96c8e-f755-48ab-bd00-fbff6151f70f",
+    "public_subdomain_enabled": false,
+    "bindings": [
+      {
+        "name": "KV",
+        "type": "kv_namespace"
+      }
+    ],
+    "wasm_modules": 2,
+    "upload_kib": 1973.84
+  },
+  "preserved_urls": [
+    "/og-image",
+    "/apple-touch-icon.png",
+    "/site.webmanifest"
+  ],
+  "images": {
+    "icon": {
+      "bytes": 2324,
+      "sha256": "019d72e0564cad2880416674bc291db523396c58228599c7e898ae04c18ae635",
+      "byte_identical": true
+    },
+    "card": {
+      "bytes": 50100,
+      "sha256": "3d63777667da65065195d773f127b45023994ceda255640d81ec0634dbdc486a",
+      "byte_identical": true
+    }
+  },
+  "probe_comparison": {
+    "matched_static_before": {
+      "n": 20,
+      "first_byte_ms_median": 57.0,
+      "first_byte_ms_max": 362,
+      "total_ms_median": 101.5,
+      "total_ms_max": 431,
+      "pre_fetch_n": 20,
+      "pre_fetch_ms_median": 0.0,
+      "pre_fetch_ms_max": 275,
+      "pre_fetch_over_100_ms": 6
+    },
+    "matched_static_after": {
+      "n": 20,
+      "first_byte_ms_median": 62.0,
+      "first_byte_ms_max": 196,
+      "total_ms_median": 166.5,
+      "total_ms_max": 462,
+      "pre_fetch_n": 20,
+      "pre_fetch_ms_median": 0.0,
+      "pre_fetch_ms_max": 137,
+      "pre_fetch_over_100_ms": 3
+    },
+    "cache_hits_before": {
+      "n": 14,
+      "first_byte_ms_median": 57.0,
+      "first_byte_ms_max": 400,
+      "total_ms_median": 118.0,
+      "total_ms_max": 437,
+      "pre_fetch_n": 0,
+      "pre_fetch_ms_median": null,
+      "pre_fetch_ms_max": null,
+      "pre_fetch_over_100_ms": 0
+    },
+    "cache_hits_after": {
+      "n": 16,
+      "first_byte_ms_median": 63.5,
+      "first_byte_ms_max": 114,
+      "total_ms_median": 105.5,
+      "total_ms_max": 187,
+      "pre_fetch_n": 16,
+      "pre_fetch_ms_median": 0.0,
+      "pre_fetch_ms_max": 41,
+      "pre_fetch_over_100_ms": 0
+    },
+    "cf-builtin_after": {
+      "n": 20,
+      "first_byte_ms_median": 30.5,
+      "first_byte_ms_max": 66,
+      "total_ms_median": 81.5,
+      "total_ms_max": 165,
+      "pre_fetch_n": 0,
+      "pre_fetch_ms_median": null,
+      "pre_fetch_ms_max": null,
+      "pre_fetch_over_100_ms": 0
+    },
+    "search_after": {
+      "n": 20,
+      "first_byte_ms_median": 67.0,
+      "first_byte_ms_max": 343,
+      "total_ms_median": 116.5,
+      "total_ms_max": 376,
+      "pre_fetch_n": 20,
+      "pre_fetch_ms_median": 0.0,
+      "pre_fetch_ms_max": 113,
+      "pre_fetch_over_100_ms": 1
+    },
+    "lhr_hit_after": {
+      "n": 50,
+      "total_ms_median": 88.88300000000001,
+      "total_ms_max": 242.551
+    },
+    "lhr_miss_after": {
+      "n": 10,
+      "total_ms_median": 221.13150000000002,
+      "total_ms_max": 525.803
+    },
+    "lhr_pre_fetch_after": {
+      "n": 0,
+      "median": null,
+      "max": null,
+      "over100": null
+    },
+    "arn_hit_after": {
+      "n": 50,
+      "total_ms_median": 55.58,
+      "total_ms_max": 76.217
+    },
+    "arn_miss_after": {
+      "n": 10,
+      "total_ms_median": 196.5105,
+      "total_ms_max": 219.36
+    },
+    "arn_pre_fetch_after": {
+      "n": 0,
+      "median": null,
+      "max": null,
+      "over100": null
+    }
+  },
+  "interpretation": [
+    "The isolated image-renderer deployment removes workers-og and both Wasm imports from the public Worker.",
+    "Matched independent static-route probes showed maximum pre-fetch activation drop from 275 ms to 137 ms; counts above 100 ms fell from 6/20 to 3/20. This is a sampled tail improvement, not elimination of activation latency.",
+    "Independent cached-search first-byte wait after TLS dropped from a 400 ms sample maximum to 114 ms. Warm medians were broadly unchanged (57 ms before, 63.5 ms after).",
+    "Fly probes still contain a 526 ms cold miss, with 295 ms measured in the handler; not every source of latency is removed by the split.",
+    "Before and after data were collected in separate windows. Sample maxima are not percentile guarantees.",
+    "Concurrent filtered tail sessions produced identical captures containing only independent-probe events. Native activation comparisons use the independent cohort; Fly response headers and end-to-end timings are retained separately."
+  ],
+  "validation": {
+    "tests_passed": 194,
+    "tests_failed": 0,
+    "per_commit_checks": "193 tests on preparatory commit, 194 tests on feature commit",
+    "typecheck": "passed",
+    "lint": "passed",
+    "public_and_renderer_builds": "passed",
+    "private_renderer_verifier": "passed",
+    "public_authenticated_api_smoke": "passed",
+    "public_image_smoke": "passed"
+  },
+  "cleanup": {
+    "temporary_verifier_deleted": true,
+    "verifier_api_status": 404,
+    "fly_app_deleted": true,
+    "fly_app": "typeahead-eu-probe-1793819528",
+    "fly_machines": [
+      {
+        "id": "d895756a3d92e8",
+        "region": "lhr"
+      },
+      {
+        "id": "89495ef6661768",
+        "region": "arn"
+      }
+    ],
+    "permanent_workers_retained": [
+      "typeahead",
+      "typeahead-image-renderer"
+    ]
+  },
+  "readme_review": "README, current architecture diagram, operations, development, CI and agent deployment instructions updated for the separate renderer.",
+  "artifacts": "/Users/nate/.codex/visualizations/2026/11/04/01a1a7be-7225-78c0-b349-a02f3691ff53/image-renderer-split",
+  "comparison_scope": {
+    "static_route": "Same /llms.txt path, HTTP/2, four provider/location selectors, 20 samples before and after. Separate measurement windows.",
+    "cached_search": "Descriptive cohorts, not a matched protocol/provider comparison: before has 14 hits across HTTP/1.1 and HTTP/2 with changing provider selection; after has 16 HTTP/2 hits on the four fixed selectors.",
+    "fly": "120 successful transfers; no correlated native events in the concurrently filtered tail capture. Response headers and client timings are retained."
+  }
+}

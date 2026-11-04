@@ -64,7 +64,8 @@ missed run uses up the margin. Each signal below fires once, on change:
 ## Deploy and verify
 
 `just deploy-worker` lints and type-checks before deploying the public Worker,
-then runs API and image smoke checks. `just deploy-search-transport` uses the same gates.
+then runs API and image smoke checks. `just deploy-search-transport` also lints,
+type-checks and runs the API smoke suite.
 `just deploy-worker-only` skips smoke checks but still requires lint to pass.
 `just deploy-ingest` deploys the ingester. Backend publication belongs to the
 cloud Prefect controller, not a direct Fly deploy. After promotion, check the

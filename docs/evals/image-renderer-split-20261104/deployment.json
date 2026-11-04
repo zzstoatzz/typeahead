@@ -1,0 +1,38 @@
+{
+  "started_at": 1793819453.6709812,
+  "owner": "Codex image-renderer split qualification",
+  "permanent_renderer": "typeahead-image-renderer",
+  "temporary_verifier": "typeahead-render-verifier-1793819453",
+  "scratch_budget": "100 MiB local image and deployment evidence",
+  "stages": [
+    {
+      "name": "renderer-deploy",
+      "exit_code": 0
+    },
+    {
+      "name": "verifier-deploy",
+      "exit_code": 0
+    },
+    {
+      "name": "private-image-smoke",
+      "exit_code": 0
+    },
+    {
+      "name": "public-deploy",
+      "exit_code": 0
+    },
+    {
+      "name": "verifier-cleanup",
+      "exit_code": 0
+    }
+  ],
+  "verifier_url": "https://typeahead-render-verifier-1793819453.n8-3e9.workers.dev",
+  "private_icon_sha256": "019d72e0564cad2880416674bc291db523396c58228599c7e898ae04c18ae635",
+  "private_card_sha256": "3d63777667da65065195d773f127b45023994ceda255640d81ec0634dbdc486a",
+  "private_images_qualified": true,
+  "public_icon_sha256": "019d72e0564cad2880416674bc291db523396c58228599c7e898ae04c18ae635",
+  "public_card_sha256": "3d63777667da65065195d773f127b45023994ceda255640d81ec0634dbdc486a",
+  "public_images_qualified": true,
+  "verifier_deleted": true,
+  "finished_at": 1793819497.60156
+}
