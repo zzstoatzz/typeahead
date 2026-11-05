@@ -73,17 +73,16 @@ broke the promotion that restored Tantivy.
   fields are all gone.
 - **Slot runtime:** it never stops on coverage age. A stale slot keeps serving
   and reports `coverage_stale`. This is on main and built as a new image from
-  the unchanged binary. It is not serving yet.
+  the unchanged binary. It went live on slot B on November 5 at 10:52 UTC; see the
+  [qualification and cutover](../ops/lifecycle-cleanup-20261105/).
 
 ## Open
 
-- **New image qualification.** The new image runs only after a complete
-  six-gate release proof. Its first candidate on November 2 passed the in-image
-  functional and recovery tests. Server time was about 0.5 ms slower than
-  production on three warm-query runs, so the matched-performance gate does not
-  pass as written. The deployed scope and live-update checks still need a cloud
-  verification run. Until it ships, slot B runs the old image, which still stops
-  itself at its coverage deadline. The alerts and retries above stand in for it.
-- After the new image serves, the controller drops the native provenance fields
-  that the old image still validates (branch `drop-native-provenance`). Then the
-  `releases/search/` objects in R2 are deleted.
+- **Scheduled refresh and retirement.** The replacement image passed all six
+  gates and is serving on B as of November 5 at 10:52 UTC. The
+  [release record](../ops/lifecycle-cleanup-20261105/) includes matched full-data
+  comparison and public alias/PDS verification. The earlier November 2 timing
+  result remains historical; the new explicit cohort passed its declared bounds.
+  The compatible publisher is staged but not registered yet. Verify its normal
+  scheduled refresh before deleting `releases/search/`; the previous A rollback
+  still validates those native provenance objects.

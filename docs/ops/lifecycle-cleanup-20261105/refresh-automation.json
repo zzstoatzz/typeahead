@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "detail": true,
+  "count": 1,
+  "automations": [
+    {
+      "id": "beddf95c-8fef-4ed7-900b-dfc8ef8649eb",
+      "name": "typeahead refresh missing -> retry + discord",
+      "description": "A serving Tantivy slot's checkpoint coverage lasts 24 hours and refreshes run at 06:00 and 18:00 UTC, so one missed run leaves no margin. On 2026-11-02 the 06:00 run crashed and its generic failure line went unnoticed until search was stale twelve hours later. When no typeahead-index run completes for 13 hours this retries the automatic refresh at once and says what is at stake. The deployment's concurrency limit cancels the retry if a run is already active.",
+      "enabled": true,
+      "tags": [],
+      "owner_resource": null,
+      "trigger": {
+        "type": "event",
+        "match": {},
+        "match_related": {
+          "prefect.resource.id": "prefect.deployment.a0c0ce9c-5bab-4bdc-8512-39984c322a74"
+        },
+        "after": [],
+        "expect": [
+          "prefect.flow-run.Completed"
+        ],
+        "for_each": [],
+        "posture": "Proactive",
+        "threshold": 1,
+        "within": 46800
+      },
+      "actions": [
+        {
+          "type": "run-deployment",
+          "source": "selected",
+          "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+          "parameters": {
+            "automatic_refresh": true
+          },
+          "job_variables": null,
+          "schedule_after": 0
+        },
+        {
+          "type": "send-notification",
+          "block_document_id": "0e5361e8-95a6-493f-a8a1-d5849d8423c2",
+          "subject": "typeahead refresh missed: retry started",
+          "body": "No typeahead-index run has completed in 13 hours. The serving Tantivy slot reports stale 24 hours after its checkpoint. A retry of the automatic refresh has started; if it fails too, act now: https://prefect-server.waow.tech/deployments and https://typeahead.waow.tech/health/freshness"
+        }
+      ],
+      "actions_on_trigger": [],
+      "actions_on_resolve": []
+    }
+  ],
+  "error": null
+}

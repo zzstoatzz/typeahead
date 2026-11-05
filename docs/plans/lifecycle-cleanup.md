@@ -11,9 +11,11 @@ It removes hourly checksum stalls without changing source byte budgets or
 reader readiness. Its production observation covered quota renewal and the
 former process deadline without a readiness failure.
 
-The serving image still stops before its checkpoint coverage expires and
-requires legacy native-manifest provenance. Main contains replacements for
-both behaviors, but they have not passed the complete deployment qualification.
+The replacement runtime is live on B as of November 5 at 10:52 UTC, with
+matched full-data, source, scope and public-alias verification. It reports
+coverage staleness without stopping and ignores legacy native provenance.
+The previous A rollback still has the older behavior. Publisher registration,
+a normal scheduled refresh and obsolete-object cleanup remain pending.
 The [November 2 retrospective](../retros/2026-11-02-tantivy-slot-expired-again.md)
 records the earlier qualification and its failed performance gate. Reuse that
 work where valid; do not treat committed source as deployed behavior.
@@ -63,10 +65,10 @@ successful full refresh, recovery evidence and confirmed experiment cleanup.
 
 ## Changes under qualification
 
-The local slot runtime sends source stdout and stderr to the supervisor's log
+The deployed slot runtime sends source stdout and stderr to the supervisor's log
 stream, collected by Fly. It no longer writes or rotates `source.log` on the
 serving volume. Rotation depended on process exit and therefore did not bound a
-continuous poller's log. This change is not deployed yet. Use `fly logs -a APP`
+continuous poller's log. This change is live on B. Use `fly logs -a APP`
 for source diagnostics after that runtime is released.
 
 The [November 5 cloud fixture run](../ops/lifecycle-cleanup-20261105/) passed

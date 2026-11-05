@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "truncated": false,
+  "detail": true,
+  "count": 1,
+  "flow_runs": [
+    {
+      "id": "9cd00dc2-b1c7-4f2a-bd00-72b3399c1bed",
+      "name": "typeahead-index-9cd00dc2",
+      "flow_name": null,
+      "state_type": "COMPLETED",
+      "state_name": "SlotOperationCompleted",
+      "state_message": null,
+      "created": "2026-11-05T10:49:04.751648+00:00",
+      "updated": "2026-11-05T10:52:21.384696+00:00",
+      "start_time": "2026-11-05T10:52:05.540816+00:00",
+      "end_time": "2026-11-05T10:52:21.384696+00:00",
+      "duration": 15.84388,
+      "tags": [],
+      "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+      "work_pool_name": null,
+      "work_queue_name": "default",
+      "parent_task_run_id": null,
+      "parameters": {
+        "resume_rollout": false,
+        "automatic_refresh": false,
+        "tantivy_operation": {
+          "operation": "promote",
+          "plan_sha256": "ab4ae62609fa1e9b11819163de514fd3d4472ea665f098056725415b27c7c47c",
+          "release_receipt_key": "control/tantivy-releases/7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759.json",
+          "expected_current_etag": "\"d4b0ab31d882da17dc4236f8a5364345\"",
+          "release_receipt_sha256": "7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759"
+        }
+      },
+      "infrastructure_pid": "prefect-build-9cd00dc2b1c74f2abd0072b3399c1bed-r0",
+      "deployment": {
+        "id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+        "name": "typeahead-index",
+        "description": "Publish one isolated Tantivy generation, or roll one out.\n\nWith no arguments the flow publishes an immutable generation without\ntouching routing. `automatic_refresh` continues the serving Tantivy route\ninto the inactive slot; `resume_rollout` only finishes a pending automatic\npreparation. `tantivy_operation` runs one explicit slot operation.",
+        "flow_id": "42210f22-7017-4afe-aaa5-5c3b0ea1180d",
+        "tags": [
+          "publish",
+          "heavypad"
+        ],
+        "paused": false
+      },
+      "work_pool": null
+    }
+  ],
+  "error": null
+}

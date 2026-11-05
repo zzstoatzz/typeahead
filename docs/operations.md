@@ -31,21 +31,25 @@ The manual `EMERGENCY_PROXY_BSKY` override and recovery procedure are documented
 in the [outage runbook](retros/2026-10-31-search-expiry-outage.md#first-action-during-a-search-outage).
 Restore service before investigating the builder.
 
-The serving slot image retains `c476fc5`'s expiry behavior: it stops 60 seconds before its checkpoint
-coverage deadline (last completed full round, or the checkpoint cut, plus
-86,400 seconds). The current slot runtime source never stops on coverage age:
-a running or restarted slot keeps serving and records `coverage`
+The serving runtime no longer stops on checkpoint coverage age (live November 5,
+2026 at 10:52 UTC; [qualification and cutover](ops/lifecycle-cleanup-20261105/)).
+A running or restarted slot keeps serving and records `coverage`
 (`coverage_anchor`, `coverage_deadline`, `coverage_age_s`, `coverage_stale`,
 `checked_at`, `basis`) in `/data/tantivy/installation.json` every 5 seconds,
-and logs a `tantivy_slot_coverage` event when staleness changes. Admission
-(`validate_runtime`, used by qualification and retirement) still refuses stale
-coverage, so a stale slot is never promoted. That coverage change is not deployed;
-the [poller release](ops/poller-readiness-20261104/) changes only the source
-process lifetime on the older image. The Worker's `/health/freshness` reads the serving backend's
-`/index/status` and reports `coverage_age_s` and `coverage_deadline` for a
-checkpoint-sourced generation; if the backend remains available at 86,400 seconds
-or more, it sets `stale: true` (HTTP 503, change-only webhook alert) while `ok`
-and `probe_ok` stay true.
+and logs `tantivy_slot_coverage` when staleness changes. Admission still refuses
+stale coverage, so a stale candidate cannot be promoted. Source and moderation
+readiness retain their existing strict limits.
+
+The Worker's `/health/freshness` reports checkpoint `coverage_age_s` and
+`coverage_deadline`. Beyond 86,400 seconds it reports `stale: true` (HTTP 503,
+change-only alert), while `ok` and `probe_ok` remain true if search works. This
+alert still requires a refresh. Source diagnostics use `fly logs -a APP`; the
+continuous source process no longer accumulates `source.log` on its volume.
+
+The previous A rollback still uses the older expiry runtime until the next full
+refresh replaces it. Keep retained native provenance objects while that consumer
+exists. The new publisher is staged, not registered; verify its registration
+and normal scheduled refresh in the release record before pruning.
 
 ### Missed-refresh alerts
 

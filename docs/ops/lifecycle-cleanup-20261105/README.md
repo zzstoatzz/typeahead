@@ -2,8 +2,9 @@
 
 Status: fixtures passed and the Prefect API retry fix is live, November 5, 2026.
 Inactive B completed preparation at 10:16 UTC, and matched full-data comparison
-and publisher-owner fixtures passed. The candidate runtime is not serving
-production. The [cleanup plan](../../plans/lifecycle-cleanup.md)
+and publisher-owner fixtures passed. The new runtime is serving production on B after guarded promotion at
+10:52 UTC. Publisher registration and the next normal full refresh remain
+pending. The [cleanup plan](../../plans/lifecycle-cleanup.md)
 defines completion.
 
 ## Verified so far
@@ -276,3 +277,30 @@ promotion. The [actual installed hashes](candidate-image-files-actual.json),
 [public Worker](public-worker-current.json) support the binding. This proof
 authorizes guarded promotion; it does not claim cutover or the next full refresh
 has completed.
+
+### Production cutover
+
+The [promotion flow](promotion-flow.json), `9cd00dc2-b1c7-4f2a-bd00-72b3399c1bed`,
+finished as `SlotOperationCompleted` at 10:52:21 UTC. The
+[journal](promotion-journal.json) and [route](promotion-route.json) confirm guarded
+promotion to B with A retained as rollback. The previous A image still has its
+coverage timer and native-provenance dependency; do not prune its objects yet.
+
+The [public checks](public-candidate-check.json) verified the expected B machine,
+byte-identical aliases and the expected account under PDS scope. The
+[post-promotion index status](post-promotion-index-status.json) confirms the same
+full build and binary; [freshness](post-promotion-freshness.json) is healthy and
+not stale. This cutover reused the 06:00 full checkpoint and did not renew its
+coverage deadline.
+
+The [registered publisher readback](publisher-before.json) still shows the old
+immutable pins, concurrency one, `CANCEL_NEW`, and the active 06:00/18:00 UTC
+schedule. The unchanged [missed-refresh automation](refresh-automation.json)
+expects only `prefect.flow-run.Completed` for this deployment, with its existing
+13-hour threshold and notification block. Both manual prepare and promote emitted
+`SlotOperationCompleted`, so they do not count as full refreshes. Compatible
+registration and the 18:00 normal full refresh remain required.
+
+The root README was compared with this deployed change. Its concise description
+of isolated builds and checked cutover remains accurate; detailed lifecycle and
+source-log behavior were updated in operations and the refresh runbook instead.

@@ -1,0 +1,20 @@
+{
+  "parameters": {
+    "automatic_refresh": false,
+    "resume_rollout": false,
+    "tantivy_operation": {
+      "operation": "promote",
+      "plan_sha256": "ab4ae62609fa1e9b11819163de514fd3d4472ea665f098056725415b27c7c47c",
+      "expected_current_etag": "\"d4b0ab31d882da17dc4236f8a5364345\"",
+      "release_receipt_key": "control/tantivy-releases/7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759.json",
+      "release_receipt_sha256": "7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759"
+    }
+  },
+  "tag": "lifecycle-promote-92d56fc206df4304a27c02c987ca2d7c",
+  "at": 1793875744.67572,
+  "submission_intent": true,
+  "publisher": "2daeb97f825c1ad507dccc0020f28ead665f8350",
+  "source": "7d732639d4d63b1fe0abaeb4b6f07224640d1189",
+  "installer": "cf893cb984e97453a1807e1de2d52d096664525636829884d734f42ab191f26b",
+  "run_id": "9cd00dc2-b1c7-4f2a-bd00-72b3399c1bed"
+}
