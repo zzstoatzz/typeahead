@@ -31,6 +31,12 @@ work where valid; do not treat committed source as deployed behavior.
 3. Verify refresh and recovery with an unavailable old backend, interrupted
    startup and durable resume. Use existing controller paths and real isolated
    I/O tests; retain route ownership, conditional writes and independent storage.
+4. Keep missed-refresh detection tied to full refreshes. The live automation
+   currently watches every `prefect.flow-run.Completed` for `typeahead-index`,
+   including manual prepare/promote and publication-only runs. Those operations
+   do not renew checkpoint coverage and must not reset the 13-hour retry clock.
+   Verify the new publisher's success events and automation together before
+   completion; preserve the existing retry cadence and notification destination.
 
 Before reserving the inactive slot, check the actual last full refresh, coverage
 deadline and next scheduled run. The scheduled publisher keeps ownership until
