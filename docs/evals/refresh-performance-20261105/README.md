@@ -21,6 +21,23 @@ compared across the actual readers. A repeated baseline checks order effects.
 Synthetic results guide the next experiment; they do not qualify a corpus-scale
 rollout. Existing import/footer integrity and admission gates remain mandatory.
 
+[Initial import comparison](import-initial.json): baseline 160.9/165.7 s;
+four workers with one final segment 172.3 s; four workers with eight final
+segments 147.9 s. Public query bodies matched across every variant. More writer
+threads alone did not fix the serial normalization path. The initial RSS field
+is the cumulative child high-water mark (including compilation), not an isolated
+import measurement; subsequent diagnostics sample the import's own VmHWM and
+report user and system CPU separately. Initial binaries targeted the builder's
+CPU; they are diagnostic artifacts, not production releases. Subsequent builds
+explicitly target baseline x86_64 Linux for portable runtime qualification.
+
+The next candidate replaces the normalizer's page allocator with libc allocation
+while retaining one independent arena per FFI result. A local repeated
+[40,000-call comparison](normalizer-allocation-local.json) measured 0.417–0.419 s
+with page allocation versus 0.213–0.222 s with libc; all reply bytes matched.
+This component result does not establish import speed. The same cloud million-
+actor comparison must run against the new allocator before selecting defaults.
+
 Diagnostic setup corrections: the first submission had an invalid source pin and
 was cancelled. Run `717005e5-2e97-4c8f-b590-445ee1b5d93c` then reached compiler
 setup, where Ubuntu's `needrestart` restarted `prefect-flow.service` after libc

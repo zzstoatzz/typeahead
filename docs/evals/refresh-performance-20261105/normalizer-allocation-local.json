@@ -1,0 +1,29 @@
+{
+  "kind": "local-normalizer-component-microbenchmark",
+  "results": [
+    {
+      "allocator": "page",
+      "calls": 40000,
+      "elapsed_s": 0.41926062502898276,
+      "outputs_sha256": "104da978e1231d88db88812414031cdabeafd4ab2f3f78bbf313ee70645e702d"
+    },
+    {
+      "allocator": "libc",
+      "calls": 40000,
+      "elapsed_s": 0.22158912511076778,
+      "outputs_sha256": "104da978e1231d88db88812414031cdabeafd4ab2f3f78bbf313ee70645e702d"
+    },
+    {
+      "allocator": "page",
+      "calls": 40000,
+      "elapsed_s": 0.4173582911025733,
+      "outputs_sha256": "104da978e1231d88db88812414031cdabeafd4ab2f3f78bbf313ee70645e702d"
+    },
+    {
+      "allocator": "libc",
+      "calls": 40000,
+      "elapsed_s": 0.2128514590440318,
+      "outputs_sha256": "104da978e1231d88db88812414031cdabeafd4ab2f3f78bbf313ee70645e702d"
+    }
+  ]
+}

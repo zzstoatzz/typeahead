@@ -24,11 +24,23 @@ def stop(child):
             child.wait(timeout=5)
 
 
-def run(command, log, timeout, env=None):
+def run(command, log, timeout, env=None, scratch=None):
     child = subprocess.Popen(command, stdout=log, stderr=log, env=env, start_new_session=True)
+    deadline=time.monotonic()+timeout
+    peak=0
     try:
-        if child.wait(timeout=timeout):
+        while child.poll() is None:
+            if time.monotonic()>deadline:raise TimeoutError('Diagnostic import deadline')
+            try:
+                for line in Path(f'/proc/{child.pid}/status').read_text().splitlines():
+                    if line.startswith('VmHWM:'):peak=max(peak,int(line.split()[1]))
+            except FileNotFoundError:pass
+            if scratch is not None and shutil.disk_usage(scratch).free<4*1024**3:
+                raise ValueError('Diagnostic disk reserve exceeded')
+            time.sleep(.1)
+        if child.returncode:
             raise RuntimeError(f"Diagnostic command failed: {command[0]}")
+        return peak
     finally:
         stop(child)
 
@@ -115,9 +127,9 @@ def main(binary):
             usage = resource.getrusage(resource.RUSAGE_CHILDREN)
             started = time.monotonic()
             with log_path.open('w') as log:
-                run([str(binary), 'import', '--data', str(data), '--input', str(source),
+                peak = run([str(binary), 'import', '--data', str(data), '--input', str(source),
                     '--indexing-threads', str(threads), '--writer-memory-mb', str(memory),
-                    '--batch-size', str(batch), '--final-segments', str(segments)], log, 300)
+                    '--batch-size', str(batch), '--final-segments', str(segments)], log, 300, scratch=root)
             elapsed = time.monotonic() - started
             after = resource.getrusage(resource.RUSAGE_CHILDREN)
             events = [json.loads(line) for line in log_path.read_text().splitlines() if line.startswith('{')]
@@ -131,7 +143,8 @@ def main(binary):
                 reference = answers
             assert answers == reference, f'Retrieval differs: {name}'
             result = {'name':name, 'elapsed_s':elapsed, 'cpu_s':after.ru_utime + after.ru_stime - usage.ru_utime - usage.ru_stime,
-                'peak_rss_kib':after.ru_maxrss, 'disk_bytes':disk, 'phases':phases,
+                'user_cpu_s':after.ru_utime-usage.ru_utime, 'system_cpu_s':after.ru_stime-usage.ru_stime,
+                'peak_rss_kib':peak, 'disk_bytes':disk, 'phases':phases,
                 'query_p50_ms':timings[len(timings)//2], 'query_p95_ms':timings[int(len(timings)*.95)],
                 'answers_sha256':hashlib.sha256(json.dumps(answers, sort_keys=True).encode()).hexdigest()}
             results.append(result)

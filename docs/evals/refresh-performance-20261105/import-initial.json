@@ -1,0 +1,117 @@
+{
+  "event": "import_performance_complete",
+  "actors": 1000000,
+  "actors_sha256": "fbcc13003569c59b047ffe8905912850b5ab19254567812f6bb6570a232fafa8",
+  "free_before": 147762610176,
+  "free_after": 147762073600,
+  "results": [
+    {
+      "name": "baseline",
+      "elapsed_s": 160.91762317300004,
+      "cpu_s": 197.04610999999989,
+      "peak_rss_kib": 1057996,
+      "disk_bytes": 309966145,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 50000,
+          "elapsed_s": 148.712875942,
+          "event": "import_indexed",
+          "indexing_threads": 1,
+          "writer_memory_bytes": 134217728
+        },
+        {
+          "elapsed_s": 12.144218326,
+          "event": "import_merge_finished",
+          "segments_after": 1,
+          "segments_before": 20
+        }
+      ],
+      "query_p50_ms": 1.5802770000163946,
+      "query_p95_ms": 3.7916229999837014,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    },
+    {
+      "name": "parallel-one-segment",
+      "elapsed_s": 172.34359850400006,
+      "cpu_s": 231.37108900000004,
+      "peak_rss_kib": 1057996,
+      "disk_bytes": 309969087,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 250000,
+          "elapsed_s": 158.782023434,
+          "event": "import_indexed",
+          "indexing_threads": 4,
+          "writer_memory_bytes": 2147483648
+        },
+        {
+          "elapsed_s": 13.436502444,
+          "event": "import_merge_finished",
+          "segments_after": 1,
+          "segments_before": 16
+        }
+      ],
+      "query_p50_ms": 1.302423999959501,
+      "query_p95_ms": 3.2913349999716957,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    },
+    {
+      "name": "parallel-eight-segments",
+      "elapsed_s": 147.91203220900002,
+      "cpu_s": 216.1513629999999,
+      "peak_rss_kib": 1057996,
+      "disk_bytes": 316628321,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 250000,
+          "elapsed_s": 144.463527432,
+          "event": "import_indexed",
+          "indexing_threads": 4,
+          "writer_memory_bytes": 2147483648
+        },
+        {
+          "elapsed_s": 3.365473614,
+          "event": "import_merge_finished",
+          "segments_after": 8,
+          "segments_before": 16
+        }
+      ],
+      "query_p50_ms": 1.7142310000508587,
+      "query_p95_ms": 3.858420000028673,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    },
+    {
+      "name": "baseline-repeat",
+      "elapsed_s": 165.72932917000014,
+      "cpu_s": 202.07507200000003,
+      "peak_rss_kib": 1057996,
+      "disk_bytes": 309978569,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 50000,
+          "elapsed_s": 152.123873441,
+          "event": "import_indexed",
+          "indexing_threads": 1,
+          "writer_memory_bytes": 134217728
+        },
+        {
+          "elapsed_s": 13.55342774,
+          "event": "import_merge_finished",
+          "segments_after": 1,
+          "segments_before": 20
+        }
+      ],
+      "query_p50_ms": 1.4924019999398297,
+      "query_p95_ms": 3.84366899993438,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    }
+  ],
+  "completed_at": "2026-11-05T16:37:51.469893+00:00",
+  "run_id": "2eb7b162-9600-4121-aa7c-36715a64be3c",
+  "source_revision": "34e50b70f7c5d98535bb2a7dde65b2f2d96e3a43",
+  "binary_sha256": "e0c9435c7b4d7cf01ee68914d4b3ee91f103bc6813bc55fa4f9b022450a9fcf1"
+}

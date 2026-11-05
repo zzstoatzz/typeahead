@@ -19,7 +19,7 @@ def benchmark():
     env['PATH'] = str(Path.home() / '.cargo/bin') + ':' + env['PATH']
     zig = Path('/root/.local/opt/zig-x86_64-linux-0.17.0')
     env['PATH'] = str(zig) + ':' + env['PATH']
-    subprocess.run(['python3', 'services/tantivy-normalizer/build.py'], env=env, check=True, timeout=120)
+    subprocess.run(['python3', 'services/tantivy-normalizer/build.py', '--target', 'x86_64-linux-gnu'], env=env, check=True, timeout=120)
     subprocess.run(['cargo', 'build', '--release', '--locked', '--manifest-path',
         'services/tantivy/Cargo.toml'], env=env, check=True, timeout=600)
     # The supervisor owns the full benchmark process group, including reader children.
