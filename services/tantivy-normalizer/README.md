@@ -1,4 +1,4 @@
-# Native normalization adapter for the Tantivy dev backend
+# Native normalization adapter
 
 This isolated adapter imports the existing Zig modules directly:
 
@@ -31,6 +31,10 @@ separately. Nonzero ABI status means malformed/oversized JSON or allocation
 failure. The caller must free a successful result with `ta_result_free`, after
 copying/deserializing its bytes. Input buffers are not retained. Each call owns
 an independent arena; callers can use separate results concurrently.
+The arena and owner use libc's allocator, so small calls reuse heap storage
+instead of mapping and unmapping OS pages for every FFI call. Arena ownership,
+input/output limits and the free operation remain unchanged. Linux release builds
+must select an explicit baseline target rather than the build host's CPU.
 
 Operations:
 
