@@ -27,7 +27,7 @@ def request(item):
         assert response.headers["X-Typeahead-Build"] == "b1793815407-cp-1f545dd4aa"
         assert response.headers["X-Typeahead-Retrieval-Strategy"] == "global-merge"
         if "pds" in query:
-            assert response.headers["X-Typeahead-Pds"] == query["pds"]
+            assert response.headers["X-Typeahead-Pds"] == urllib.parse.urlsplit(query["pds"]).hostname
         return dict(target=name, query=query, status=200,
                     engine_ms=float(re.search(r"search;dur=([0-9.]+)", response.headers["Server-Timing"])[1]),
                     elapsed_ms=(time.monotonic() - started) * 1000,

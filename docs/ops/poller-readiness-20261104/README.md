@@ -1,7 +1,8 @@
 # Hourly source-poller readiness failures
 
-Status: November 5, 2026, 04:06 UTC. Fix published on main; inactive-slot
-admission passed and source catch-up is running. Production still serves from A.
+Status: November 5, 2026, 04:22 UTC. Inactive B passed managed qualification,
+including cached restart. Its empirical release proof is published. Production
+still serves from A; guarded promotion is next.
 Times below are UTC.
 
 ## Failure
@@ -89,6 +90,26 @@ The controller owns preparation and cleanup. A remains untouched and retains
 valid coverage until November 5 18:03:27. The next scheduled refresh is 06:00 UTC;
 finish promotion and persist the new release proof before that run, or reconcile
 the manual candidate so it does not fence refresh.
+
+Preparation completed at 04:15:04 with
+[plan `6ae0d762…`](plan.json). The [journal](preparation.json) records both
+first-start and cached-restart qualification. [Release proof](release-proof.json)
+`2cb383df761467c5d7afcb374e9baa01e040faf35170d78b518ac655d3e6b4ba`
+and its six evidence objects were uploaded immutably and read back; see the
+[publication receipt](release-publication.json). The proof explicitly leaves
+the first hourly boundary under observation. The qualified candidate will be
+promoted before that boundary to avoid another known serving failure; A remains
+available for rollback and comparison. The bounded observation finishes after
+05:16:05, more than an hour after cached-restart qualification.
+
+The [paired warm-engine check](matched-performance.json) matched all 39 response
+pairs byte-for-byte, including a PDS filter. In the 26 measured queries per
+backend, A's median was 2.771 ms and B's was 1.867 ms; sampled p95 was 3.203 ms
+and 2.193 ms respectively. These are small engine cohorts, not end-to-end user
+percentiles. The first comparison invocation mistakenly expected the scope
+acknowledgment to echo an origin URL; the actual contract acknowledges the
+canonical hostname. The corrected check passed without changing the service
+or the performance acceptance bounds.
 
 ## Verification
 
