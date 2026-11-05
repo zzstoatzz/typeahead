@@ -371,3 +371,11 @@ scheduled refresh before retirement.
 The [completion audit](completion-audit.json) maps each requirement to evidence
 and leaves full-refresh verification, its success event, final teardown and
 obsolete-object retirement explicitly incomplete.
+
+At 11:29 UTC, deployment version `ee547cba` re-applied the committed definition
+and regenerated future auto-scheduled IDs. The
+[reconciled readback](scheduled-refresh-reconciled.json) confirms unchanged pins,
+parameters, 06:00/18:00 UTC schedule and concurrency one. The single 18:00 run is
+now `3965c12f-c9e8-4b40-826c-d2edc7efaf99`. An absent old scheduled ID is not an
+execution failure: reconcile the deployment’s actual future runs before taking
+any action. No replacement build was submitted by this observer.

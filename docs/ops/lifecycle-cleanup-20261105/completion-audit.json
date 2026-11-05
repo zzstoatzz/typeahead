@@ -23,9 +23,10 @@
         "publisher-registration.json",
         "next-normal-refresh.json",
         "artifact-consumer-machines-before-refresh.json",
-        "legacy-artifact-audit-before-refresh.json"
+        "legacy-artifact-audit-before-refresh.json",
+        "scheduled-refresh-reconciled.json"
       ],
-      "remaining": "Verify normal scheduled run 56fd2364-2047-456b-bd5f-91c3ee994b75 through fresh public results and both managed images; audit consumers again before deleting the five obsolete native objects."
+      "remaining": "Verify the normal 18:00 UTC scheduled refresh through fresh public results and both managed images, then re-audit consumers before deleting the five obsolete native objects. Current scheduled ID is in scheduled-refresh-reconciled.json; reconcile replacement IDs after deployment updates without submitting another run."
     },
     {
       "id": "recovery",

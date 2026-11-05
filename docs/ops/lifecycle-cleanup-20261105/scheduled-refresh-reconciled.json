@@ -1,0 +1,44 @@
+{
+  "at": 1793878790.186455,
+  "deployment_updated": "2026-11-05T11:29:51.413790Z",
+  "deployment_version": "ee547cba",
+  "pins": {
+    "MPS_PIN": "@0a36b8bfe2299a29e87f54c51ed420d341f7a007",
+    "INDEX_TANTIVY_SOURCE_REVISION": "7d732639d4d63b1fe0abaeb4b6f07224640d1189",
+    "INDEX_TANTIVY_ADAPTER_SHA256": "cf893cb984e97453a1807e1de2d52d096664525636829884d734f42ab191f26b",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_SHA256": "7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759"
+  },
+  "schedules": [
+    {
+      "id": "2196b46c-cdba-4523-b1fd-53e87835b05a",
+      "created": "2026-11-05T11:29:51.413790Z",
+      "updated": "2026-11-05T11:29:51.413790Z",
+      "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+      "schedule": {
+        "cron": "0 6,18 * * *",
+        "timezone": "UTC"
+      },
+      "active": true,
+      "max_scheduled_runs": null,
+      "parameters": {},
+      "slug": null
+    }
+  ],
+  "concurrency_limit": 1,
+  "concurrency_options": {
+    "collision_strategy": "CANCEL_NEW"
+  },
+  "run": {
+    "id": "3965c12f-c9e8-4b40-826c-d2edc7efaf99",
+    "state_name": "Scheduled",
+    "state_type": "SCHEDULED",
+    "expected_start_time": "2026-11-05T18:00:00.000000Z",
+    "parameters": {
+      "automatic_refresh": true
+    },
+    "auto_scheduled": true,
+    "run_count": 0
+  },
+  "previous_scheduled_id": "56fd2364-2047-456b-bd5f-91c3ee994b75",
+  "explanation": "A deployment update cleared and regenerated future auto-scheduled runs; no new submission was made by this observer."
+}
