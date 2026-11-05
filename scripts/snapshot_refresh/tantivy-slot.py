@@ -204,7 +204,7 @@ class Slot:
     def source_command(self,value):
         fallback=installer.fallback_identity(value)
         fallback_args=[] if fallback is None else ['--pds-fallback',str(self.root/fallback['path']),'--pds-fallback-sha256',fallback['sha256']]
-        return ['python3','/app/input/sync.py','--source-mode','observed','--policy-mode','snapshot','--status-file',str(self.root/'source-status.json'),'--budget-file',str(self.root/'source-budget.json'),'--budget-build-id',value['active_build'],'--max-run-seconds','3600','--max-source-bytes','536870912','--poll-reserve-bytes','134217728','--anti-entropy-pages','64','--max-sweep-seconds','20','--max-cycle-seconds','30','--interval','40',*fallback_args]
+        return ['python3','/app/input/sync.py','--source-mode','observed','--policy-mode','snapshot','--status-file',str(self.root/'source-status.json'),'--budget-file',str(self.root/'source-budget.json'),'--budget-build-id',value['active_build'],'--max-run-seconds','0','--max-source-bytes','536870912','--poll-reserve-bytes','134217728','--anti-entropy-pages','64','--max-sweep-seconds','20','--max-cycle-seconds','30','--interval','40',*fallback_args]
     def serve(self,value,listen='0.0.0.0:8080',admin_listen='127.0.0.1:8081'):
         if not all(self.env.get(name) for name in ['ADMIN_SECRET','TURSO_URL','TURSO_AUTH_TOKEN']):raise ValueError('Missing source runtime capability')
         server=self.start_reader(value,listen,admin_listen)

@@ -47,6 +47,12 @@ checkpoint-sourced generation; at 86,400 seconds or more it sets `stale: true`
 
 ### Missed-refresh alerts
 
+The slot source poller now selects continuous mode with a durable hourly byte
+budget. This source change is not deployed yet. The older image restarts the
+poller hourly and rechecks the entire immutable PDS mapping each time; November
+4 logs show recurring readiness losses around those restarts. See the
+[source adapter](../services/tantivy-input/README.md) for the unchanged work bounds.
+
 Refreshes run at 06:00 and 18:00 UTC against a 24-hour coverage window, so one
 missed run uses up the margin. Each signal below fires once, on change:
 
