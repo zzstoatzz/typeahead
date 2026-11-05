@@ -61,6 +61,12 @@ budget file retain the original in-process accounting behavior; their owner must
 preserve its quota window across process rotation. Consumed body bytes are not a
 billing estimate.
 
+`--max-run-seconds 0` keeps the source process running across budget windows and
+requires both durable budget arguments. This avoids repeating the immutable PDS
+mapping checksum on a timer. Hourly accounting still renews at its persisted
+deadline; request, cycle and sweep bounds remain in force. Positive process
+lifetimes remain available for bounded offline clients.
+
 Known-ID source pages with no missing backend records use cursor-only revision/CAS
 commits, omitting policy and watermark. They do not refresh policy TTL or polling
 freshness. Missing actors and backend profile observations still read actor data

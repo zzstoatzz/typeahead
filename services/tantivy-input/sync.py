@@ -379,7 +379,7 @@ def parser():
     p.add_argument('--source-mode',choices=['observed','timestamp'],default='observed');p.add_argument('--anti-entropy-pages',type=int,default=2)
     p.add_argument('--sweep-cooldown-seconds',type=int,default=3600);p.add_argument('--max-sweep-seconds',type=float,default=5)
     p.add_argument('--lookback-seconds',type=int,default=300);p.add_argument('--max-source-bytes',type=int,default=512*1024*1024);p.add_argument('--poll-reserve-bytes',type=int);p.add_argument('--http-timeout',type=float,default=15);p.add_argument('--interval',type=float,default=60)
-    p.add_argument('--budget-file');p.add_argument('--budget-build-id');p.add_argument('--max-run-seconds',type=float,default=3600);p.add_argument('--status-file');p.add_argument('--once',action='store_true')
+    p.add_argument('--budget-file');p.add_argument('--budget-build-id');p.add_argument('--max-run-seconds',type=float,default=3600,help='Process lifetime; 0 requires a durable hourly budget');p.add_argument('--status-file');p.add_argument('--once',action='store_true')
     return p
 
 def main():
@@ -390,7 +390,8 @@ def main():
 
 def run(args):
     if args.source_mode=='timestamp' and args.policy_mode!='off':raise SafeError('policy snapshot requires observed source mode')
-    if not 0<args.http_timeout<=60 or not 1<=args.interval<=3600 or not 0<args.max_run_seconds<=24*3600:raise SafeError('invalid HTTP/poll/run bounds')
+    if not 0<args.http_timeout<=60 or not 1<=args.interval<=3600 or not 0<=args.max_run_seconds<=24*3600:raise SafeError('invalid HTTP/poll/run bounds')
+    if args.max_run_seconds==0 and not (args.budget_file and args.budget_build_id):raise SafeError('continuous polling requires a durable hourly budget')
     secrets=[]
     for name in [args.turso_url_env,args.turso_token_env,args.admin_secret_env]:
         value=os.environ.get(name)
@@ -406,7 +407,8 @@ def run(args):
     actual=None if _active_pds_fallback is None else _active_pds_fallback.identity()
     if required!=actual:raise SafeError('runtime fallback differs from imported source')
     def expired(*_):raise SafeError('bounded replay process deadline')
-    signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,args.max_run_seconds)
+    if args.max_run_seconds:
+        signal.signal(signal.SIGALRM,expired);signal.setitimer(signal.ITIMER_REAL,args.max_run_seconds)
     started=time.monotonic()
     while True:
         try:
@@ -423,7 +425,7 @@ def run(args):
             print(json.dumps(failure),file=sys.stderr,flush=True)
             if args.once:raise
         if args.once:return
-        if time.monotonic()-started>=args.max_run_seconds:return
+        if args.max_run_seconds and time.monotonic()-started>=args.max_run_seconds:return
         time.sleep(args.interval)
 if __name__=='__main__':
     try:main()

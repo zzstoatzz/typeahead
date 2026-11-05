@@ -5,8 +5,10 @@ import hashlib
 import importlib.util
 import os
 import socket
+import ssl
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -167,6 +169,55 @@ class Tests(unittest.TestCase):
         return current.ObservedSynchronizer(
             source or self.source, self.admin, sync, **defaults
         )
+
+    def test_continuous_process_observes_later_changes_with_durable_budget(self):
+        cert, key = self.root / "cert.pem", self.root / "key.pem"
+        subprocess.run([
+            "openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes",
+            "-keyout", str(key), "-out", str(cert), "-days", "1",
+            "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1",
+        ], check=True, capture_output=True, timeout=10)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(cert, key)
+        self.f.server.socket = context.wrap_socket(self.f.server.socket, server_side=True)
+        ledger = self.root / "continuous-budget.json"
+        env = dict(os.environ, TURSO_URL=self.f.url.replace("http:", "https:"),
+                   TURSO_AUTH_TOKEN=self.f.source_secret, ADMIN_SECRET=self.secret,
+                   SSL_CERT_FILE=str(cert))
+        command = [sys.executable, str(ROOT / "sync.py"),
+                   "--admin-url", self.admin.url, "--status-url", self.admin.status_url,
+                   "--policy-mode", "snapshot", "--anti-entropy-pages", "0",
+                   "--interval", "1", "--max-run-seconds", "0"]
+        rejected = subprocess.run(command, env=env, capture_output=True, timeout=5)
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn(b"continuous polling requires a durable hourly budget", rejected.stderr)
+        with (self.root / "continuous.log").open("wb") as log:
+            child = subprocess.Popen(command + ["--budget-file", str(ledger),
+                                     "--budget-build-id", "continuous-fixture"],
+                                     env=env, stdout=log, stderr=log)
+            try:
+                def wait_for_watermark(expected):
+                    until = time.monotonic() + 10
+                    while time.monotonic() < until:
+                        self.assertIsNone(child.poll(), (self.root / "continuous.log").read_text())
+                        if self.admin.status()["watermark"] >= expected:
+                            return
+                        time.sleep(.05)
+                    self.fail("continuous poller stopped advancing")
+                self.f.now += 1
+                wait_for_watermark(self.f.now - 2)
+                first = sync.json.loads(ledger.read_text())
+                self.f.now += 1
+                self.f.actor("did:example:continuous", self.f.now - 3, handle="continuous.fixture.test")
+                wait_for_watermark(self.f.now - 2)
+                actors = sync.Http(3).request(self.base + "/search?q=continuous", self.secret)[0]["actors"]
+                self.assertEqual([actor["did"] for actor in actors], ["did:example:continuous"])
+                after = sync.json.loads(ledger.read_text())
+                self.assertEqual(after["window_started_at"], first["window_started_at"])
+                self.assertGreater(after["source_bytes"], first["source_bytes"])
+            finally:
+                child.terminate()
+                child.wait(timeout=5)
 
     def test_cursor_only_known_source_page_does_not_refresh_policy_or_watermark(self):
         before = self.admin.status()
