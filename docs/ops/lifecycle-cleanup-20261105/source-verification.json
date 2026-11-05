@@ -1,0 +1,44 @@
+{
+  "typeahead_bisect": {
+    "base": "0139089",
+    "commits": [
+      "a05202a",
+      "7d73263",
+      "6ab4a59"
+    ],
+    "tests_per_commit": 12,
+    "skips": 0,
+    "passed": true
+  },
+  "publisher_bisect": {
+    "base": "3cd4bcf",
+    "commits": [
+      {
+        "commit": "67a2b00",
+        "passed": 97
+      },
+      {
+        "commit": "ccb3511",
+        "passed": 98
+      },
+      {
+        "commit": "4871d27",
+        "passed": 103
+      }
+    ],
+    "skips_per_commit": 1,
+    "scope": "Selected controller, checkpoint and persisted flow retry tests; the separate frozen-Linux-image pipe test requires TA_LINUX_IMAGE and was skipped in these runs"
+  },
+  "publisher_actual_reader": {
+    "passed": 93,
+    "skipped": 0,
+    "scope": "Checkpoint builder, compatibility, slots and automatic refresh with the actual native reader and pinned installer"
+  },
+  "publisher_static": {
+    "ruff": true,
+    "format": true,
+    "changed_source_types": true
+  },
+  "publisher_main": "a4ee1eff1c88e6afb4f2c7d7fec0b119b46161d4",
+  "production_pins_changed": false
+}

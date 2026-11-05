@@ -34,6 +34,15 @@ These are fixture results. Full-data matched performance, managed admission,
 public cutover and a completed production refresh remain unverified for the new
 runtime. No release proof is authorized by this record.
 
+The [source verification](source-verification.json) records commit-by-commit
+checks for both repositories, plus 93 actual-reader publisher/controller checks
+without skips. All three Typeahead CI workflows passed for `6ab4a59`. Publisher
+cleanup is published on both mains at `a4ee1ef`; the registered deployment still
+uses `52fe3e7` and the old compatible installer. Its CI is a separate gate before
+any release pin changes. The [installed image hashes](image-files.json) identify
+the exact candidate payload; the [bisect log](typeahead-bisect.log) records all
+12 slot tests passing at each Typeahead change.
+
 ## Resource boundaries
 
 Owner: this Typeahead lifecycle cleanup. Local scratch:
