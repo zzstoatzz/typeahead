@@ -1,8 +1,9 @@
 # Lifecycle qualification
 
 Status: fixtures passed and the Prefect API retry fix is live, November 5, 2026.
-Inactive-slot preparation was submitted at 09:24 UTC. The candidate runtime is
-not serving production. The [cleanup plan](../../plans/lifecycle-cleanup.md)
+Inactive B completed preparation at 10:16 UTC, and matched full-data comparison
+and publisher-owner fixtures passed. The candidate runtime is not serving
+production. The [cleanup plan](../../plans/lifecycle-cleanup.md)
 defines completion.
 
 ## Verified so far
@@ -31,9 +32,8 @@ and confirmed absent. The same packaged tests also passed locally with network
 disabled. Local scratch totaled 1.1 MiB; neither the laptop nor HeavyPad fetched
 corpus data for this work.
 
-These are fixture results. Full-data matched performance, managed admission,
-public cutover and a completed production refresh remain unverified for the new
-runtime. No release proof is authorized by this record.
+These are fixture results. The later full-data and managed-admission evidence
+appears below. Public cutover and a normal production refresh remain pending.
 
 The [source verification](source-verification.json) records commit-by-commit
 checks for both repositories, plus 93 actual-reader publisher/controller checks
@@ -82,8 +82,8 @@ The [candidate submission](candidate-preparation.json) is run
 `92d56fc206df4304a27c02c987ca2d7c`. The controller allocated inactive B machine
 `7841e35f99d338` on independent volume `vol_4ql13kg2ky19w66r` and started it.
 It reuses the full refresh's published bundle; no export or import is requested.
-Serving A remains unchanged. Preparation, matched performance, release proof
-and promotion are still pending.
+Serving A remains unchanged. Preparation and matched performance have since
+passed; release-proof publication and promotion remain pending.
 
 ### Controller recovery fixtures
 
@@ -242,3 +242,37 @@ operations reuse them without export or import. The pending runtime candidate
 will use this refresh's same published artifact. No cache policy or corpus
 transfer was changed by this inspection. Root README usage and architecture
 claims remain unchanged.
+
+### Managed admission and full-data results
+
+Inactive B completed first admission and cached restart on independent storage
+at 10:16:38 UTC. The [prepared plan](candidate-plan.json) and
+[journal](candidate-journal-current.json) bind machine `7841e35f99d338`, volume
+`vol_4ql13kg2ky19w66r` and the D13 runtime image to the existing full checkpoint.
+The manual flow emitted `SlotOperationCompleted`, not the full-refresh event.
+
+The [matched result](matched-performance-attempt-1.json) passed all 39 paired
+responses: 26 measured samples per backend after warmup. Baseline/candidate
+engine medians were 2.3905/2.3645 ms; sampled p95 values were 3.167/2.615 ms.
+This small warm cohort is not a production latency percentile. The
+[source](comparison-source.json), [log receipt](comparison-log-receipt.json) and
+[cleanup](comparison-cleanup.json) bind the result to the cloud client and confirm
+its app was removed.
+
+The [publication-owner result](controller-owner-result.json) passed all 93 checks
+with zero skips, including the actual Prefect engine on Linux. The
+[package](controller-owner-package.json) includes the required process supervisor
+and tested FastAPI/Starlette versions. Earlier qualification packages failed:
+one imported an excluded module, another omitted the supervisor, and a fresh
+FastAPI resolution rejected Prefect’s server import. No assertion or execution
+deadline was relaxed. The [cleanup](controller-owner-cleanup.json) independently
+confirms no Machine, volume or temporary app remains.
+
+The [release proof](release-proof.json) binds all six gates to the actual runtime
+image, binary, canonical rules, guest and 20 GiB volume. Its immutable R2
+[publication](release-publication.json) was read back byte-for-byte before
+promotion. The [actual installed hashes](candidate-image-files-actual.json),
+[fresh status](candidate-status-release.json) and unchanged
+[public Worker](public-worker-current.json) support the binding. This proof
+authorizes guarded promotion; it does not claim cutover or the next full refresh
+has completed.

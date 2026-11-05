@@ -1,0 +1,12 @@
+{
+  "event": "controller_owner_fixture_result",
+  "passed": true,
+  "counts": {
+    "tests": 93,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "elapsed_s": 131.895373742,
+  "returncode": 0
+}

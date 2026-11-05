@@ -1,0 +1,18 @@
+{
+  "revision": "f2ab1a3074f999f508a5fa222c9ba374ce58693e",
+  "files": {
+    "compare.py": "a4ecb2a5abb4d95eacaa543dd4ae81de4fad7ca665df1f32aa13c508d8c23e44",
+    "cloud-compare.py": "0a51e4e00b4e5c3df2fd3d46c59d86461bd57b67fd03e1a0ede8c93e2daa99aa"
+  },
+  "image": "docker.io/library/python@sha256:7712cfd23e0501f5cb58faa5e6e0d515c9939bdbce866921799b31e696a1d13c",
+  "app": "typeahead-lifecycle-compare-20261105",
+  "region": "ewr",
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 1,
+    "memory_mb": 256
+  },
+  "scratch_limit_bytes": 1048576,
+  "maximum_run_seconds": 315,
+  "status": "planned; app and Machine not allocated"
+}
