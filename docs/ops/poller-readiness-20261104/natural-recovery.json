@@ -1,0 +1,68 @@
+{
+  "passed": true,
+  "at": 1793851557.659936,
+  "expected_machine": "86217efe2d1138",
+  "aliases_byte_identical": true,
+  "samples": [
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "scoped": false,
+      "query": "ZzSToaTzz.iO",
+      "status": 200,
+      "elapsed_ms": 266.9034169521183,
+      "headers": {
+        "Server-Timing": "cfEdge;dur=29,cfOrigin;dur=0,cfWorker;dur=90",
+        "X-Typeahead-Binary-Sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+        "X-Typeahead-Build": "b1793815407-cp-1f545dd4aa",
+        "X-Typeahead-Cache-Generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+        "X-Typeahead-Engine": "tantivy",
+        "X-Typeahead-Format": "tantivy-0.27-f32-did-expiry-v4",
+        "X-Typeahead-Machine-Id": "86217efe2d1138",
+        "X-Typeahead-Machine-Version": "01M6KZD9JA5S8SDG1SNJ2GSY2V",
+        "X-Typeahead-Retrieval-Strategy": "global-merge"
+      },
+      "body_sha256": "dc3bbe69eeeddcbb031302606eacf74092411bd9018c03b6582897da33d6b58b",
+      "actor_count": 4
+    },
+    {
+      "endpoint": "app.bsky.actor.searchActorsTypeahead",
+      "scoped": false,
+      "query": "ZzSToaTzz.iO",
+      "status": 200,
+      "elapsed_ms": 280.78087500762194,
+      "headers": {
+        "Server-Timing": "cfEdge;dur=101,cfOrigin;dur=0,cfWorker;dur=35",
+        "X-Typeahead-Binary-Sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+        "X-Typeahead-Build": "b1793815407-cp-1f545dd4aa",
+        "X-Typeahead-Cache-Generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+        "X-Typeahead-Engine": "tantivy",
+        "X-Typeahead-Format": "tantivy-0.27-f32-did-expiry-v4",
+        "X-Typeahead-Machine-Id": "86217efe2d1138",
+        "X-Typeahead-Machine-Version": "01M6KZD9JA5S8SDG1SNJ2GSY2V",
+        "X-Typeahead-Retrieval-Strategy": "global-merge"
+      },
+      "body_sha256": "dc3bbe69eeeddcbb031302606eacf74092411bd9018c03b6582897da33d6b58b",
+      "actor_count": 4
+    },
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "scoped": true,
+      "query": "ZzSToaTzz.iO",
+      "status": 200,
+      "elapsed_ms": 176.72970809508115,
+      "headers": {
+        "Server-Timing": "cfEdge;dur=24,cfOrigin;dur=0,cfWorker;dur=76",
+        "X-Typeahead-Binary-Sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+        "X-Typeahead-Build": "b1793815407-cp-1f545dd4aa",
+        "X-Typeahead-Cache-Generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+        "X-Typeahead-Engine": "tantivy",
+        "X-Typeahead-Format": "tantivy-0.27-f32-did-expiry-v4",
+        "X-Typeahead-Machine-Id": "86217efe2d1138",
+        "X-Typeahead-Machine-Version": "01M6KZD9JA5S8SDG1SNJ2GSY2V",
+        "X-Typeahead-Retrieval-Strategy": "global-merge"
+      },
+      "body_sha256": "1f639572862b75f78bf34a6e3a3eb434a9c323e4fdd1b23a0c1c0e2c7c830a69",
+      "actor_count": 1
+    }
+  ]
+}

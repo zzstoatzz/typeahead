@@ -1,7 +1,8 @@
 # Hourly source-poller readiness failures
 
-Status: November 5, 2026, 03:28 UTC. Fix published on main; inactive-slot
-qualification is running. Production still serves from A. Times below are UTC.
+Status: November 5, 2026, 04:06 UTC. Fix published on main; inactive-slot
+admission passed and source catch-up is running. Production still serves from A.
+Times below are UTC.
 
 ## Failure
 
@@ -20,6 +21,7 @@ Fly recorded repeated readiness failures:
 | Nov 5 01:58:57 | 01:59:27 |
 | Nov 5 03:00:58 | 03:01:43 |
 | Nov 5 03:02:43 | 03:02:58 |
+| Nov 5 04:01:33 | 04:02:34 |
 
 The source process exits on a 3,600-second SIGALRM. Its supervisor restarts it,
 and every startup checks the entire 1.4 GB immutable PDS mapping again. Source
@@ -34,6 +36,30 @@ cycles, with a 40-second sleep after each, leaving the watermark older than the
 reader's 120-second readiness limit even after polling resumes. The restart
 cadence and resulting lag explain the recurring failures; a candidate observation
 past the former hourly deadline remains the production-scale verification gate.
+
+### Direct observation of the next natural restart
+
+The [baseline file-offset samples](baseline-file-reads.jsonl) watched the
+existing restart without causing one. PID 3471 exited; PID 6887 started at
+04:00:37.3. Its checksum descriptor was still advancing after 78.7 seconds;
+the read-only SQLite connection was open at 88.7 seconds. Source budget counters
+stayed unchanged during the scan. This directly locates the pause before source
+HTTP work, rather than attributing it to Cloudflare or the probe client.
+
+[Health and fallback samples](natural-failure.jsonl) observed lag increase from
+73 to 178 seconds. Fly marked readiness failed at 04:01:33 and passing at
+04:02:34. Both public aliases returned 200 with one actor and
+`X-Typeahead-Engine: bluesky`, `X-Typeahead-Failover: automatic`; the scoped
+request returned 503 `PdsScopeUnavailable`. The
+[recovery check](natural-recovery.json) verified Tantivy on A again, byte-identical
+aliases and a successful request scoped to the actor's actual PDS. The reader
+machine and version stayed unchanged throughout.
+
+The candidate's first poller also spent about 88 seconds before creating its
+source budget. At 28 seconds it had read 471 MB from disk while using 0.87 CPU
+seconds; [after startup](candidate-first-poll.json), disk reads totaled 1.49 GB.
+The [initial process sample](candidate-first-start.json) records the real
+`--max-run-seconds 0` command and 24.6 MB RSS during hashing.
 
 ## Change and release scope
 
