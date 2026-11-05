@@ -41,8 +41,7 @@ fn fixture(segments: usize) -> (tempfile::TempDir, Engine, Vec<Actor>) {
         directory.path(),
         Cursor::new(input),
         None,
-        32 * 1024 * 1024,
-        64,
+        ImportOptions { writer_memory: 32 * 1024 * 1024, batch_size: 64, ..ImportOptions::default() },
         true,
     )
     .unwrap();
@@ -262,4 +261,85 @@ fn global_merge_captured_generation_survives_concurrent_commits() {
         apply(&engine, vec![atomic.clone()], None);
     }
     task.join().unwrap();
+}
+
+
+#[test]
+fn bulk_worker_and_segment_settings_preserve_results_and_live_updates() {
+    let rows = (0..384).map(row).collect::<Vec<_>>();
+    let mut body = Vec::new();
+    for actor in &rows {
+        serde_json::to_writer(&mut body, actor).unwrap();
+        body.push(b'\n');
+    }
+    let hash = format!("{:x}", Sha256::digest(&body));
+    let input = format!("{}\n{}{}\n",
+        json!({"type":"manifest","build_id":"bulk-settings","source_watermark":100,
+            "actor_count":rows.len(),"source_actor_count":rows.len(),"partial":false}),
+        String::from_utf8(body).unwrap(),
+        json!({"type":"end","build_id":"bulk-settings","actor_count":rows.len(),"actors_sha256":hash}));
+    let policy = json!({"schema_version":1,"source_observed_at":epoch(),"complete":true,
+        "blocked_domains":[],"overrides":[]});
+    let mut outputs = Vec::new();
+    for (threads, segments) in [(1, 1), (2, 4), (4, 8)] {
+        let directory = tempfile::tempdir().unwrap();
+        let options = ImportOptions {writer_memory:128*1024*1024, batch_size:64,
+            indexing_threads:threads, final_segments:segments};
+        let metadata = import(directory.path(), Cursor::new(&input), None, options, false).unwrap();
+        assert!(metadata.import_complete && metadata.full_source);
+        let mut engine = Engine::open(directory.path(), 32*1024*1024).unwrap();
+        engine.allow_stale = true;
+        engine.retrieval = RetrievalStrategy::GlobalMerge;
+        assert!(engine.snapshot().searcher.segment_readers().len() <= segments);
+        apply(&engine, Vec::new(), Some(policy.clone()));
+        let queries = |engine: &Engine| {
+            let mut result = Vec::new();
+            for query in ["needle", "needle.fixture.test", "日本太", "rank needle", "absent"] {
+                for scope in [None, Some("local.test"), Some("remote.test")] {
+                    for limit in [1, 8, 32] {
+                        let answer = engine.search(query, limit, scope, Some("local.test"), true, Some(7.0)).unwrap();
+                        result.push(answer.actors.iter().map(|a|a.public()).collect::<Vec<_>>());
+                    }
+                }
+            }
+            result
+        };
+        let initial = queries(&engine);
+        let mut renamed = rows[2].clone();
+        renamed.display_name = "Renamed Actor".into();
+        renamed.pds = "https://remote.test".into();
+        renamed.version = 101;
+        apply(&engine, vec![renamed.clone()], None);
+        assert_eq!(engine.search("Renamed Actor", 8, Some("remote.test"), None, false, None).unwrap().actors[0].did, rows[2].did);
+        assert!(engine.search("Renamed Actor", 8, Some("local.test"), None, false, None).unwrap().actors.is_empty());
+        renamed.version = 102;
+        renamed.deleted = true;
+        apply(&engine, vec![renamed], None);
+        let changed = queries(&engine);
+        assert!(engine.search("Renamed Actor", 8, None, None, false, None).unwrap().actors.is_empty());
+        drop(engine);
+        let mut reopened = Engine::open(directory.path(), 32*1024*1024).unwrap();
+        reopened.allow_stale = true;
+        reopened.retrieval = RetrievalStrategy::GlobalMerge;
+        assert_eq!(queries(&reopened), changed);
+        outputs.push((initial, changed));
+    }
+    assert_eq!(outputs[0], outputs[1]);
+    assert_eq!(outputs[0], outputs[2]);
+}
+
+#[test]
+fn bulk_import_rejects_invalid_resource_and_segment_limits_before_writing() {
+    for options in [
+        ImportOptions { indexing_threads:0, ..ImportOptions::default() },
+        ImportOptions { indexing_threads:9, ..ImportOptions::default() },
+        ImportOptions { indexing_threads:8, writer_memory:32*1024*1024, ..ImportOptions::default() },
+        ImportOptions { final_segments:0, ..ImportOptions::default() },
+        ImportOptions { final_segments:33, ..ImportOptions::default() },
+        ImportOptions { batch_size:1_000_001, ..ImportOptions::default() },
+    ] {
+        let directory = tempfile::tempdir().unwrap();
+        assert!(import(directory.path(), Cursor::new(b""), None, options, false).is_err());
+        assert!(!directory.path().join("index").exists());
+    }
 }

@@ -1036,17 +1036,45 @@ fn line<R: BufRead>(reader: &mut R) -> Result<Option<Vec<u8>>> {
         }
     }
 }
+#[derive(Clone, Copy, Debug)]
+pub struct ImportOptions {
+    pub writer_memory: usize,
+    pub batch_size: usize,
+    pub indexing_threads: usize,
+    pub final_segments: usize,
+}
+impl Default for ImportOptions {
+    fn default() -> Self {
+        Self {
+            writer_memory: 128 * 1024 * 1024,
+            batch_size: 50000,
+            indexing_threads: 1,
+            final_segments: 1,
+        }
+    }
+}
+impl ImportOptions {
+    fn validate(self) -> Result<()> {
+        if !(1..=8).contains(&self.indexing_threads)
+            || !(1..=32).contains(&self.final_segments)
+            || !(1..=1_000_000).contains(&self.batch_size)
+            || self.writer_memory / self.indexing_threads < 15 * 1024 * 1024
+            || self.writer_memory > 4 * 1024 * 1024 * 1024
+        {
+            return Err(Error::Invalid("invalid bounded bulk import settings".into()));
+        }
+        Ok(())
+    }
+}
+
 pub fn import<R: Read>(
     data: &Path,
     input: R,
     override_build: Option<&str>,
-    writer_memory: usize,
-    batch_size: usize,
+    options: ImportOptions,
     allow_partial: bool,
 ) -> Result<Metadata> {
-    if batch_size == 0 || batch_size > 100000 {
-        return Err(Error::Invalid("import batch outside1..100000".into()));
-    }
+    options.validate()?;
     if data.join("index/meta.json").exists() {
         return Err(Error::Invalid("target already contains an index".into()));
     }
@@ -1061,7 +1089,7 @@ pub fn import<R: Read>(
         .schema(schema)
         .settings(settings)
         .create_in_dir(data.join("index"))?;
-    let mut writer = index.writer_with_num_threads(1, writer_memory)?;
+    let mut writer = index.writer_with_num_threads(options.indexing_threads, options.writer_memory)?;
     writer.set_merge_policy(Box::new(NoMergePolicy));
     let mut metadata = Metadata::empty();
     commit(&mut writer, &mut metadata)?;
@@ -1152,7 +1180,7 @@ pub fn import<R: Read>(
         if actor.visible() {
             metadata.searchable_actor_count += 1;
         }
-        if metadata.input_actors % batch_size as u64 == 0 {
+        if metadata.input_actors % options.batch_size as u64 == 0 {
             metadata.last_commit_epoch = epoch();
             commit(&mut writer, &mut metadata)?;
             eprintln!(
@@ -1169,13 +1197,17 @@ pub fn import<R: Read>(
     }
     commit(&mut writer, &mut metadata)?;
     failpoint("import_after_footer");
-    finish_import(index, writer, metadata)
+    eprintln!("{}", json!({"event":"import_indexed", "actors":metadata.input_actors,
+        "elapsed_s":started.elapsed().as_secs_f64(), "indexing_threads":options.indexing_threads,
+        "writer_memory_bytes":options.writer_memory, "batch_size":options.batch_size}));
+    finish_import(index, writer, metadata, options.final_segments)
 }
 
-pub fn resume_import(data: &Path, receipt: &Value, writer_memory: usize) -> Result<Metadata> {
+pub fn resume_import(data: &Path, receipt: &Value, options: ImportOptions) -> Result<Metadata> {
+    options.validate()?;
     let index = Index::open_in_dir(data.join("index"))?;
     check_format(&index)?;
-    let mut writer = index.writer_with_num_threads(1, writer_memory)?;
+    let mut writer = index.writer_with_num_threads(options.indexing_threads, options.writer_memory)?;
     writer.set_merge_policy(Box::new(NoMergePolicy));
     let metadata = load_metadata(&index)?;
     let evidence = metadata.expiry_coverage.as_ref()
@@ -1204,18 +1236,30 @@ pub fn resume_import(data: &Path, receipt: &Value, writer_memory: usize) -> Resu
     if metadata.import_complete {
         return Ok(metadata);
     }
-    finish_import(index, writer, metadata)
+    finish_import(index, writer, metadata, options.final_segments)
 }
 
-fn finish_import(index: Index, mut writer: IndexWriter, mut metadata: Metadata) -> Result<Metadata> {
+fn finish_import(index: Index, mut writer: IndexWriter, mut metadata: Metadata, final_segments: usize) -> Result<Metadata> {
+    let started = Instant::now();
     let segments = index.searchable_segment_ids()?;
-    if segments.len() > 1 {
-        eprintln!(
-            "{}",
-            json!({"event":"import_merge","segments":segments.len()})
-        );
-        writer.merge(&segments).wait()?;
+    let before = segments.len();
+    if before > final_segments {
+        eprintln!("{}", json!({"event":"import_merge", "segments":before, "target_segments":final_segments}));
+        let group_size = before.div_ceil(final_segments);
+        let merges = segments.chunks(group_size)
+            .filter(|group| group.len() > 1)
+            .map(|group| writer.merge(group))
+            .collect::<Vec<_>>();
+        for merge in merges {
+            merge.wait()?;
+        }
     }
+    let after = index.searchable_segment_ids()?.len();
+    if after > final_segments {
+        return Err(Error::Invalid("bulk import segment bound was not reached".into()));
+    }
+    eprintln!("{}", json!({"event":"import_merge_finished", "segments_before":before,
+        "segments_after":after, "elapsed_s":started.elapsed().as_secs_f64()}));
     metadata.expiry_coverage.as_mut().unwrap().import_complete = true;
     metadata.import_complete = true;
     metadata.last_commit_epoch = epoch();

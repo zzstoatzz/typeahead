@@ -50,6 +50,16 @@ A new initial import refuses an existing index; it never silently resets one.
 typeahead-tantivy import --data /data/tantivy --input - --writer-memory-mb 128 --batch-size 50000
 ```
 
+Bulk import and `resume-import` accept `--indexing-threads` (1–8) and
+`--final-segments` (1–32). Import memory is a total budget, shared across workers,
+with at least 15 MiB per worker and a 4 GiB maximum; batches are bounded at one
+million records. Defaults remain one worker, 128 MiB, 50,000 records and one final
+segment. These options do not change the serving writer. Finalization merges
+disjoint groups concurrently when needed to reach the segment bound. The
+`import_indexed` and `import_merge_finished` events separate indexing and final
+merge timings. Multiple segments require search qualification on the same input
+before changing production settings. See the [isolated performance evaluation](../../docs/evals/refresh-performance-20261105/README.md).
+
 Input is a JSONL stream; production seeds come from the controller's verified
 SQLite checkpoint stream:
 

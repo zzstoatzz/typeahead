@@ -2,7 +2,7 @@ use std::{collections::HashMap, env, fs::File, io::{self, Read}, path::Path, syn
 use sha2::{Digest, Sha256};
 use typeahead_tantivy::{
     Error, Result,
-    engine::{Engine, import, resume_import},
+    engine::{Engine, ImportOptions, import, resume_import},
     server,
 };
 fn arguments() -> Result<(String, HashMap<String, String>)> {
@@ -41,9 +41,21 @@ async fn run() -> Result<()> {
         .get("writer-memory-mb")
         .and_then(|s| s.parse::<usize>().ok())
         .unwrap_or(128)
-        .clamp(32, 1024)
+        .clamp(32, if matches!(command.as_str(), "import" | "resume-import") { 4096 } else { 1024 })
         * 1024
         * 1024;
+    let import_options = || -> Result<ImportOptions> {
+        let number = |name: &str, default: usize| -> Result<usize> {
+            args.get(name).map(|s| s.parse::<usize>().map_err(|_| Error::Invalid(format!("invalid --{name}"))))
+                .unwrap_or(Ok(default))
+        };
+        Ok(ImportOptions {
+            writer_memory: memory,
+            batch_size: number("batch-size", 50000)?,
+            indexing_threads: number("indexing-threads", 1)?,
+            final_segments: number("final-segments", 1)?,
+        })
+    };
     match command.as_str() {
         "resume-import" => {
             let mut bytes = Vec::new();
@@ -54,23 +66,18 @@ async fn run() -> Result<()> {
                 return Err(Error::Invalid("stream receipt size or checksum differs".into()));
             }
             let receipt = serde_json::from_slice(&bytes)?;
-            let metadata = resume_import(data, &receipt, memory)?;
+            let metadata = resume_import(data, &receipt, import_options()?)?;
             println!("{}", serde_json::to_string(&metadata)?);
         }
         "import" => {
             let input = required(&args, "input")?;
-            let batch = args
-                .get("batch-size")
-                .and_then(|s| s.parse().ok())
-                .unwrap_or(50000);
             let build = args.get("build-id").map(String::as_str);
             let metadata = if input == "-" {
                 import(
                     data,
                     io::stdin().lock(),
                     build,
-                    memory,
-                    batch,
+                    import_options()?,
                     args.get("allow-partial").is_some_and(|s| s == "true"),
                 )?
             } else {
@@ -78,8 +85,7 @@ async fn run() -> Result<()> {
                     data,
                     File::open(input)?,
                     build,
-                    memory,
-                    batch,
+                    import_options()?,
                     args.get("allow-partial").is_some_and(|s| s == "true"),
                 )?
             };
