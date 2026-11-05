@@ -24,7 +24,8 @@
         "next-normal-refresh.json",
         "artifact-consumer-machines-before-refresh.json",
         "legacy-artifact-audit-before-refresh.json",
-        "scheduled-refresh-reconciled.json"
+        "scheduled-refresh-reconciled.json",
+        "scheduled-refresh-after-cleanup-guard.json"
       ],
       "remaining": "Verify the normal 18:00 UTC scheduled refresh through fresh public results and both managed images, then re-audit consumers before deleting the five obsolete native objects. Current scheduled ID is in scheduled-refresh-reconciled.json; reconcile replacement IDs after deployment updates without submitting another run."
     },
@@ -67,7 +68,8 @@
         "ranking-cleanup.json",
         "managed-provider-cleanup.json",
         "cloud-result.json",
-        "controller-result.json"
+        "controller-result.json",
+        "retired-app-volume-inventory.json"
       ],
       "remaining": "Verify scheduled builder and replaced old slot cleanup after the normal refresh. Local scratch contains source and small metadata only; no corpus data passed through laptop or HeavyPad."
     },
@@ -75,7 +77,7 @@
       "id": "documentation",
       "status": "verified-so-far",
       "evidence": [
-        "README.md",
+        "../../../README.md",
         "../../operations.md",
         "../../plans/automatic-snapshot-refresh.md",
         "../../plans/lifecycle-cleanup.md"
