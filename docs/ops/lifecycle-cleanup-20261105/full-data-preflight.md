@@ -69,6 +69,20 @@ passing result. These bounds are for this runtime reliability change, whose read
 binary and retrieval are unchanged, and do not establish a latency improvement or
 sustained-load SLO.
 
+Run this cohort from the separate temporary Fly app
+`typeahead-lifecycle-compare-20261105`, owned by this lifecycle qualification.
+Use one shared CPU, 256 MiB RAM, region `ewr`, no public services, credentials or
+volumes, and image
+`docker.io/library/python@sha256:7712cfd23e0501f5cb58faa5e6e0d515c9939bdbce866921799b31e696a1d13c`.
+Upload only the committed comparison scripts. Scratch is a scoped
+`/tmp/typeahead-comparison-*` directory, at most 1 MiB; the wrapper supervises its
+process group for 315 seconds. The query tool retains its 300-second deadline and
+one-request-per-second bound per target. Require restart policy `no` and automatic
+Machine removal. Preserve and hash-check the bounded result chunks from logs,
+verify empty Machine/volume lists, then destroy the app. On interrupted
+observation, reconcile this same app and Machine instead of allocating another.
+No corpus data or query load generation passes through the laptop or HeavyPad.
+
 Use the existing 13-query cohort, including PDS scope, one warmup and two measured
 passes: at most 39 requests per backend, paced at no more than one request per
 second to either target. Check exact build, binary, retrieval, machine and scope

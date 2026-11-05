@@ -120,8 +120,9 @@ scratch, including both fixture packages and metadata, remained about 2 MiB.
 ## Matched comparison
 
 The [comparison tool](compare.py) implements the [preflight](full-data-preflight.md)
-cohort and bounds. Supply the actual machines and their shared build after managed
-qualification, and use a new output path for each attempt:
+cohort and bounds. Run it in cloud infrastructure with the actual machines and
+their shared build after managed qualification, using a new output path for each
+attempt:
 
 ```sh
 python3 docs/ops/lifecycle-cleanup-20261105/compare.py \
@@ -138,6 +139,15 @@ binary, build, retrieval, machine and scope. Global requests cannot acknowledge
 a PDS scope. Changed instances, errors, mismatched bodies and incomplete cohorts
 fail qualification. Results contain hashes and timings, not full profile bodies;
 existing output files cannot be overwritten. Sampled p95 uses nearest rank.
+
+The [cloud wrapper](cloud-compare.py) supervises the comparison process group for
+315 seconds, removes its temporary result directory, and emits compressed,
+numbered evidence chunks with a SHA256. Reassemble and verify those chunks before
+removing the temporary app. The [real HTTP wrapper test](test_cloud_compare.py)
+passed both a complete paced cohort and rejected identity in 40.2 seconds,
+including result framing and scratch cleanup. These are fixture results.
+The [preflight](full-data-preflight.md) declares the actual cloud client's owner,
+image, resource limits and cleanup before it is allocated.
 
 The [real HTTP tests](test_compare.py) passed all four cases in 81.6 seconds;
 see [the test log](comparison-tests.log). They exercise the full paced cohort,
