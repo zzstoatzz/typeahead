@@ -59,3 +59,12 @@ the current serving allocation. Each process has a five-minute alarm and owns on
 `/tmp/typeahead-install-cpu-*` scratch directory, bounded at 2 GiB and removed
 on exit. This isolates hashing/extraction from networking; it does not qualify
 a production installer or authorize a permanent serving allocation change.
+
+[CPU diagnostic results](installation-cpu.json): at equal 4 GiB memory, the
+512 MiB hash-then-extract fixture took 33.06 s on shared CPU and 7.36 s on
+performance CPU. These are single component observations, not a full-refresh
+speedup. Hashing during extraction did not improve wall time in this fixture
+(51.99 s shared, 7.95 s performance), despite slightly lower CPU usage. The fixed
+order and burst/IO effects limit that comparison; do not claim a measured gain
+from removing the independent read. All three machines auto-destroyed, no volumes
+were created, and the diagnostic app was deleted after checking both inventories.

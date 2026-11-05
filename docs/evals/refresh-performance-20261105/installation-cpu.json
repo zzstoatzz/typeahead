@@ -1,0 +1,94 @@
+{
+  "observed_at": "2026-11-05T16:19:26.984572025Z",
+  "kind": "synthetic-component-diagnostic",
+  "production_changed": false,
+  "repeated_trials": false,
+  "results": [
+    {
+      "event": "installation_cpu_comparison",
+      "machine": "d897350c3245d8",
+      "fixture_bytes": 536870912,
+      "archive_sha256": "2bb35f91454d1bc3add291bd6e835bc56a6cb267db5cc7943a18fa80073dc83c",
+      "burn": {
+        "wall_s": 12.042017538,
+        "cpu_s": 12.000250999999999
+      },
+      "results": [
+        {
+          "name": "hash-then-extract",
+          "wall_s": 7.356780208999998,
+          "cpu_s": 2.3288550000000026
+        },
+        {
+          "name": "hash-during-extract",
+          "wall_s": 7.948007402999998,
+          "cpu_s": 2.092098
+        }
+      ],
+      "guest": {
+        "cpu_kind": "performance",
+        "cpus": 2,
+        "memory_mb": 4096
+      },
+      "completed_at": "2026-11-05T16:18:24.882581726Z"
+    },
+    {
+      "event": "installation_cpu_comparison",
+      "machine": "d8d0edec619038",
+      "fixture_bytes": 536870912,
+      "archive_sha256": "2bb35f91454d1bc3add291bd6e835bc56a6cb267db5cc7943a18fa80073dc83c",
+      "burn": {
+        "wall_s": 12.057002546,
+        "cpu_s": 12.000299
+      },
+      "results": [
+        {
+          "name": "hash-then-extract",
+          "wall_s": 33.202917807000006,
+          "cpu_s": 2.1225829999999988
+        },
+        {
+          "name": "hash-during-extract",
+          "wall_s": 34.980077319,
+          "cpu_s": 1.9999950000000002
+        }
+      ],
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 1024
+      },
+      "completed_at": "2026-11-05T16:18:43.833371705Z"
+    },
+    {
+      "event": "installation_cpu_comparison",
+      "machine": "802e79b6323e28",
+      "fixture_bytes": 536870912,
+      "archive_sha256": "2bb35f91454d1bc3add291bd6e835bc56a6cb267db5cc7943a18fa80073dc83c",
+      "burn": {
+        "wall_s": 12.143967996,
+        "cpu_s": 12.000633
+      },
+      "results": [
+        {
+          "name": "hash-then-extract",
+          "wall_s": 33.063514517,
+          "cpu_s": 2.501278000000001
+        },
+        {
+          "name": "hash-during-extract",
+          "wall_s": 51.990515157000004,
+          "cpu_s": 2.4370469999999997
+        }
+      ],
+      "guest": {
+        "cpu_kind": "shared",
+        "cpus": 2,
+        "memory_mb": 4096
+      },
+      "completed_at": "2026-11-05T16:19:26.984572025Z"
+    }
+  ],
+  "machines_remaining": 0,
+  "volumes_created": 0
+}
