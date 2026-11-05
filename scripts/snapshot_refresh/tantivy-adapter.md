@@ -1,5 +1,10 @@
 # Tantivy artifact and route adapter
 
+This describes the current source and artifact contracts. The
+[operations guide](../../docs/operations.md) distinguishes the deployed image
+from changes still under qualification. Historical image receipts are not a
+production inventory.
+
 Tantivy generations are admitted by `tantivy_install.py`. Its manifest has `engine: "tantivy"`,
 `manifest_version: 1`, `artifact_format: "tantivy-directory-tar-v1"`,
 `backend_format: "tantivy-0.27-f32-did-expiry-v4"`, `active_build`,
@@ -10,9 +15,14 @@ Tantivy generations are admitted by `tantivy_install.py`. Its manifest has `engi
 bundle's `byte_size`/`sha256`/`object_key`. The object key is
 `releases/search-tantivy/<active_build>/index.tar`. `files` lists every archived
 regular file as `{path, byte_size, sha256}`. Paths are single files under
-`index/`, including `index/meta.json`; no writer locks, links, directories,
+`index/`, including `index/meta.json`, plus the optional pinned
+`pds-fallback.sqlite`; no writer locks, links, directories,
 traversal paths, duplicate entries, or unlisted files are admitted. Create the
 bundle from an inactive, stopped generation, never from serving files.
+When present, `pds_fallback` binds the mapping's schema, path, SHA256, size and
+`empty-source-pds-only-v1` policy. Its file must match the inventory exactly;
+an unbound mapping is rejected. The mapping fills empty source PDS values and
+does not replace a nonempty live hosting identity.
 The portable manifest binds `source_build_id`, `source_manifest_sha256`,
 `source_watermark`, `source_database_sha256` and `source_actors_sha256`. The
 latter must equal the importer's verified raw actor-stream footer. A
@@ -33,8 +43,10 @@ complete source reconciliation and policy, inventories stable regular files,
 streams a tar and file checksums, and atomically publishes a new local artifact
 directory. Missing coverage fails before packaging; concurrent file changes
 reject the artifact. It does not upload, alter routing or claim runtime readiness.
-The publisher still owns R2 upload and exact checksum readback. A raw snapshot
-import without an authoritative sweep is not a publishable caught-up checkpoint.
+The publisher still owns R2 upload and exact checksum readback. A raw import alone
+does not establish remote catch-up or fresh policy. A verified complete checkpoint
+import receipt can establish baseline coverage without another full identity walk;
+it still requires the explicit, completed post-cut remote handoff below.
 `scripts/snapshot_compaction/publish.py` accepts `--engine tantivy --generation DIR`,
 using the `INDEX_R2_*` configuration. It validates the artifact's checkpoint
 provenance, then verifies immutable upload of the bundle and finally its
@@ -126,9 +138,11 @@ or an incomplete/corrupt installation fails closed; replacement requires an
 owned inactive recovery or a fresh volume, not an in-place overwrite.
 
 The strict reader serves public port 8080 and binds admin only to
-`127.0.0.1:8081`. Existing observed source/policy polling uses the candidate
+`127.0.0.1:8081`. Observed source/policy polling uses the
 512-MiB/hour budget, 64 sweep pages, 20-second sweep, 30-second cycle and
-40-second interval. Shared `budget.py` keeps a durable, single-writer byte ledger
+40-second interval. The source process runs continuously across budget windows;
+stdout and stderr go to the supervisor's platform log stream. Shared `budget.py`
+keeps a durable, single-writer byte ledger
 and reserves only the outstanding capped HTTP request before sending it.
 A cached restart resumes polling with the remaining hourly allowance; actual
 received bytes and crash reservations survive process replacement. The window
@@ -140,12 +154,12 @@ reports checkpoint coverage age in the receipt's `coverage` object and never
 stops on it; a slot past its deadline keeps serving with
 `runtime_qualified: false` and `coverage_stale: true`.
 Independent provider/public endpoint qualification and all release gates remain
-required before route promotion. No slot has been deployed by this change.
+required before route promotion.
 
-The [published slot-image receipt](tantivy-slot-image-push.json) pins the tested
-Linux image to an immutable registry digest and records executable and installed
-source hashes. Publishing the image does not deploy a slot or qualify its
-provider resources, live coverage or serving performance.
+The historical [October 29 image receipt](tantivy-slot-image-push.json) records
+that build's immutable registry digest and installed file hashes. Publishing an
+image does not deploy a slot or qualify its provider resources, live coverage or
+serving performance.
 
 Qualification reads only `/index/status` and `/ready`, bounds response size and
 time, prohibits redirects, checks engine/build/format acknowledgements, and
@@ -154,8 +168,14 @@ the authoritative cursor policy, a completed discovery cycle, polling age at
 most 120 seconds, policy age at most 300 seconds with matching canonical rules,
 complete source-wide expiry evidence bound to raw actor-stream count/footer hash
 and classifier/rules identity with no unsupported or malformed current live actors,
-and a completed full source/backend DID sweep whose age and duration are each
-at most 86400 seconds. Library callers can tighten these bounds. These are
+and complete source coverage. For a remote-sweep baseline, the completed full
+source/backend DID sweep's age and duration must each be at most 86400 seconds.
+For a verified SQLite checkpoint, the embedded receipt and import reconciliation
+must agree on the complete input, counts and replay floor; a completed remote poll
+and canonical policy must cover the checkpoint cut. Coverage lasts 86400 seconds
+from that cut unless a genuine completed remote round renews it. Ordinary polling
+does not renew it, and local checkpoint markers cannot be relabeled as a remote
+round. Library callers can tighten these bounds. These are
 admission ceilings, not empirically established SLOs. The receipt explicitly
 sets `slo_empirically_qualified: false`; performance, real-corpus correctness,
 coverage and operational qualification remain separate release gates.
