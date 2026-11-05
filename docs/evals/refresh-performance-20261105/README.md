@@ -78,3 +78,8 @@ match. Total remote reads are bounded at 384 MiB. The ten-minute process alarm,
 one-file scratch budget below 1 GiB and temporary-directory teardown bound the
 experiment. This measures the network/HTTP path; the actual rclone downloader's
 failure and recovery behavior is covered separately above.
+
+[R2 prefix results](transfer.json): serial reads took 12.83 s and 11.04 s;
+four ranges took 7.91 s, with identical prefix SHA-256. This is a 28–38% reduction
+for that bounded prefix, not a full-bundle or rclone throughput guarantee. The
+machine and app are deleted; machine/volume inventories were empty first.

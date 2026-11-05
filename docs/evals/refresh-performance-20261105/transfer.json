@@ -1,0 +1,50 @@
+{
+  "kind": "bounded-real-r2-prefix-transfer",
+  "guest": {
+    "cpu_kind": "shared",
+    "cpus": 2,
+    "memory_mb": 1024
+  },
+  "region": "ewr",
+  "object_key": "releases/search-tantivy/b1793858591-cp-ef4ecac6b8/index.tar",
+  "transport": "Python HTTPS range requests, not the rclone process",
+  "maximum_remote_read_bytes": 402653184,
+  "production_changed": false,
+  "machines_remaining": 0,
+  "volumes_remaining": 0,
+  "result": {
+    "completed_at": "2026-11-05T16:27:14.88880773Z",
+    "event": "transfer_performance_complete",
+    "machine": "e826154a5d5d38",
+    "results": [
+      {
+        "name": "serial",
+        "streams": 1,
+        "bytes": 134217728,
+        "elapsed_s": 12.829742662000001,
+        "mib_per_s": 9.97681741342475,
+        "cpu_s": 0.500814,
+        "sha256": "afa6b44083c8e432f64892ab3e5ae1639e2775540c1bb4bafd835360d0fbe10b"
+      },
+      {
+        "name": "parallel",
+        "streams": 4,
+        "bytes": 134217728,
+        "elapsed_s": 7.910288877999998,
+        "mib_per_s": 16.181457083823084,
+        "cpu_s": 0.45098200000000005,
+        "sha256": "afa6b44083c8e432f64892ab3e5ae1639e2775540c1bb4bafd835360d0fbe10b"
+      },
+      {
+        "name": "serial-repeat",
+        "streams": 1,
+        "bytes": 134217728,
+        "elapsed_s": 11.039090816999998,
+        "mib_per_s": 11.595157800756773,
+        "cpu_s": 0.4080940000000002,
+        "sha256": "afa6b44083c8e432f64892ab3e5ae1639e2775540c1bb4bafd835360d0fbe10b"
+      }
+    ],
+    "scratch_removed": true
+  }
+}
