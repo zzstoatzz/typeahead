@@ -95,3 +95,20 @@ six empirical release gates and guarded routing CAS. After promotion, verify bot
 public aliases, scope, backend identity, ranking and freshness. Then register the
 compatible provenance-free publisher and verify a full refresh, including its
 public build and cleanup, before declaring the lifecycle cleanup complete.
+
+## Post-promotion canonical ranking
+
+Run the unchanged canonical ranking corpus from `scripts/bench.py` once on
+`typeahead-lifecycle-ranking-20261105`, owned by this cleanup. The client uses
+one shared CPU, 256 MiB RAM, no services, secrets or volumes, and a disposable
+root disk. Allow 128 MiB scratch and 180 seconds for cloud-only HTTP client
+installation and sequential queries. Use the cached D13 image as its Python
+runtime; upload only source. It queries the actual promoted B backend and
+Bluesky, including the existing debug queries, with the benchmark's pacing.
+No stress mode or additional repetitions are authorized by this step.
+
+Preserve structural and aspirational parity results separately. An expected
+parity failure must remain visible. Capture bounded logs, verify automatic
+Machine removal and empty volume lists, then destroy the temporary app and
+independently confirm absence. No corpus is downloaded through the client or
+locally; laptop traffic is source upload and small result metadata only.
