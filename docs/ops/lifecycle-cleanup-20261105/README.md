@@ -128,3 +128,35 @@ reject a fast network response that reports a slow engine, reject unexpected
 scope and identity, preserve failed output, and stop redirects after one request.
 Loopback execution requires `--test-loopback` and always records `test_only: true`;
 it cannot substitute for the forthcoming real-backend comparison.
+
+## Candidate submission
+
+From the operations repository, use [the preparation helper](prepare-candidate.py)
+with the completed full refresh's actual run ID:
+
+```sh
+just prefect --script ../typeahead/docs/ops/lifecycle-cleanup-20261105/prepare-candidate.py \
+  --refresh-run REFRESH_RUN_UUID \
+  --output /tmp/typeahead-lifecycle-20261105/candidate-request.json
+```
+
+First run without `--submit` to record the proposal, then rerun with `--submit`
+to launch the cloud preparation. It requires the exact refresh to be completed,
+its build to be serving from A with at least 18 hours of coverage, no routing
+mutation or pending slot operation, an in-budget immutable bundle, and green
+main CI for the pinned controller. It reuses that artifact on inactive B, through
+the existing controller and previous-slot retirement gates. It never promotes.
+
+Only this run's publisher/source/installer overrides change; the scheduled
+deployment remains pinned to its existing release. Credentials and complete job
+variables stay out of the local proposal. A persisted submission intent, stable
+request tag and API idempotency key reconcile lost acknowledgments. A missing
+execution or unknown outcome refuses another submission; inspect that request
+instead of allocating again. An existing failed run requires explicit controller
+recovery, not edits to the local record to force another allocation.
+
+The [guard checks](preparation-guard-tests.json) exercised real read-only API
+responses: the active full refresh was refused, and unknown/missing execution
+records required reconciliation. No candidate run or production mutation was
+created by those checks. Positive preparation remains unverified until the full
+refresh completes and the normal controller actually qualifies the candidate.

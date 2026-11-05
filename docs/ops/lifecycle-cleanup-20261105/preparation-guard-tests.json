@@ -1,0 +1,29 @@
+{
+  "test_only": true,
+  "production_mutations": false,
+  "results": {
+    "unknown-submission": {
+      "passed": true,
+      "response": {
+        "submitted": false,
+        "request_id": "ed2f01ca64f749e79e5a81535ebde65f",
+        "action": "reconcile unknown submission outcome"
+      }
+    },
+    "missing-execution": {
+      "passed": true,
+      "response": {
+        "submitted": false,
+        "run_id": "648cc49b-1213-40e9-81f4-7e3e449f905e",
+        "action": "reconcile missing execution"
+      }
+    },
+    "active-full-refresh": {
+      "passed": true,
+      "submitted": false,
+      "refresh_run_id": "ef4ecac6-b82f-4d2a-ae0e-fea7cda2ad19",
+      "observed_state": "Running",
+      "proposal_created": false
+    }
+  }
+}
