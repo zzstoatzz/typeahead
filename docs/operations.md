@@ -50,7 +50,8 @@ checkpoint-sourced generation; at 86,400 seconds or more it sets `stale: true`
 The slot source poller now selects continuous mode with a durable hourly byte
 budget. This source change is not deployed yet. The older image restarts the
 poller hourly and rechecks the entire immutable PDS mapping each time; November
-4 logs show recurring readiness losses around those restarts. See the
+4 logs show recurring readiness losses around those restarts. The
+[qualification record](ops/poller-readiness-20261104/) tracks the candidate. See the
 [source adapter](../services/tantivy-input/README.md) for the unchanged work bounds.
 
 Refreshes run at 06:00 and 18:00 UTC against a 24-hour coverage window, so one

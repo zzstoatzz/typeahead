@@ -1,0 +1,10 @@
+{
+  "base_source": "c476fc591e191a755d0d4837eb4f230932f8ceff",
+  "source_commit": "7d20aa1a099a2e462c6100f8efe72a4885b75475",
+  "scope": "Existing immutable image plus continuous poller and one slot command argument; no reader/installer changes.",
+  "files": {
+    "sync.py": "58c16eed2050126f5bd02045defd5acac3d711e48ffe1c5d33b21947d8f74f5f",
+    "Dockerfile": "904f5e57d77f8aebc8e291a58caef4667bf1ea106478a5ecb5d58baf3b0006ab",
+    "tantivy-slot.py": "ad4c59d73dad6109bb5674748f3278b5045ff6f52907256f593a3afbe23615d3"
+  }
+}
