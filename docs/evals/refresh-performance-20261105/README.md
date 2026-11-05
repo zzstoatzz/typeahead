@@ -21,6 +21,14 @@ compared across the actual readers. A repeated baseline checks order effects.
 Synthetic results guide the next experiment; they do not qualify a corpus-scale
 rollout. Existing import/footer integrity and admission gates remain mandatory.
 
+Diagnostic setup corrections: the first submission had an invalid source pin and
+was cancelled. Run `717005e5-2e97-4c8f-b590-445ee1b5d93c` then reached compiler
+setup, where Ubuntu's `needrestart` restarted `prefect-flow.service` after libc
+development package installation (exit 143). Its archived VM diagnostic confirms
+that service restart; it was not an import failure. The diagnostic now uses
+`NEEDRESTART_MODE=l` explicitly through sudo. Both temporary VMs were deleted by
+the worker; no production deployment or worker was restarted.
+
 The candidate slot downloader writes four 64 MiB ranges directly into one file.
 It records completed ranges only after fsync in an atomic sidecar bound to the
 immutable object key, size and range size. A retry preserves completed ranges;

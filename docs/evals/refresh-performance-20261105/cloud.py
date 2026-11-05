@@ -9,7 +9,8 @@ from prefect import flow
 def benchmark():
     root = Path.cwd()
     env = dict(os.environ, CARGO_BUILD_JOBS='4')
-    subprocess.run(['sudo', 'apt-get', 'install', '-y', '-qq', '--no-install-recommends',
+    subprocess.run(['sudo', 'env', 'NEEDRESTART_MODE=l', 'DEBIAN_FRONTEND=noninteractive',
+        'apt-get', 'install', '-y', '-qq', '--no-install-recommends',
         'build-essential', 'pkg-config'], check=True, timeout=180)
     subprocess.run(['curl', '--fail', '--silent', '--show-error', '--location',
         'https://sh.rustup.rs', '-o', '/var/tmp/typeahead-rustup.sh'], check=True, timeout=60)
