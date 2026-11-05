@@ -120,7 +120,9 @@ polling timestamp is recent.
 
 Prefect orchestrates bulk work on disposable cloud compute. A build reads a
 consistent Turso checkpoint, joins the pinned hosting mapping, constructs the
-Tantivy index and publishes checksummed artifacts and metadata to R2. Neither
+Tantivy index and publishes checksummed artifacts and metadata to R2. The offline
+importer can be optimized independently; the pinned serving reader still validates
+the built index and its live-source handoff before packaging and admission. Neither
 the serving machine nor the public Worker performs this corpus-scale work.
 
 The deployment controller installs the artifacts on an isolated backend with

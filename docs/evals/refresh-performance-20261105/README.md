@@ -1,8 +1,25 @@
 # Refresh performance evaluation
 
-Status: implementation and isolated evaluation in progress, 2026-11-05.
-Production settings remain unchanged. Earlier 100,000-actor batching results
-do not establish full-corpus performance.
+Status: offline importer qualified; publisher registration pending, 2026-11-05.
+The serving binary, allocation and routing remain unchanged. Earlier
+100,000-actor batching results do not establish full-corpus performance.
+
+[Controlled million-actor results](import-allocator.json): page-allocation
+baseline and repeat both took 129.25 s; libc allocation took 52.73 s with the
+same 169 MiB peak RSS and identical query bodies. System CPU fell from 79.6–79.7 s
+to 10.4 s. Four workers with eight segments reached 47.70 s, but used 556 MiB
+and more CPU. The selected change is allocator-only, keeping the existing
+one-worker/128 MiB/50,000-record/one-segment defaults.
+
+The [immutable importer artifact](importer-artifact.json) was uploaded directly
+from the cloud builder and read back there by SHA-256. The
+[actual production reader compatibility check](production-reader-compatibility.json)
+opened its new 500-actor index and matched all 15 query/scope combinations.
+The publisher implementation keeps that production reader for full-build source
+handoff, freezing and serving; only offline import uses the new executable.
+These measurements are synthetic import timings, not a measured production
+refresh duration. The root README was reviewed and retains its concise overview;
+the detailed binary-role distinction belongs in the architecture/operations docs.
 
 Owner: this Typeahead performance task. The first diagnostic uses one temporary,
 unscheduled cloud Prefect deployment in `typeahead-ephemeral`, concurrency one,

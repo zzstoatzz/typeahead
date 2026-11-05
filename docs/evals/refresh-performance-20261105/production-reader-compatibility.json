@@ -1,0 +1,1 @@
+{"passed": true, "import_binary_sha256": "f1e6e3a2af99a5c6fe141eb88ce680bfb870e40b7a6ed6ce4fc49ab9727dd00a", "reader_binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d", "actors": 500, "queries_and_scopes": 15, "answers_sha256": "2fa895f0e7de2eba5130d83201e847a2731dd3c5843f5e2879956812715387da", "production_changed": false, "scratch_removed": true}

@@ -1,0 +1,152 @@
+{
+  "event": "import_performance_complete",
+  "actors": 1000000,
+  "actors_sha256": "fbcc13003569c59b047ffe8905912850b5ab19254567812f6bb6570a232fafa8",
+  "free_before": 147740053504,
+  "free_after": 147739701248,
+  "results": [
+    {
+      "name": "baseline",
+      "elapsed_s": 129.25044616600002,
+      "cpu_s": 175.89510399999995,
+      "user_cpu_s": 96.18669499999999,
+      "system_cpu_s": 79.708409,
+      "peak_rss_kib": 169524,
+      "disk_bytes": 309966141,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 50000,
+          "elapsed_s": 119.992570438,
+          "event": "import_indexed",
+          "indexing_threads": 1,
+          "writer_memory_bytes": 134217728
+        },
+        {
+          "elapsed_s": 9.164530709,
+          "event": "import_merge_finished",
+          "segments_after": 1,
+          "segments_before": 20
+        }
+      ],
+      "query_p50_ms": 1.4686750000123538,
+      "query_p95_ms": 4.670789000044806,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    },
+    {
+      "name": "libc-serial",
+      "elapsed_s": 52.72537894199996,
+      "cpu_s": 77.37881600000006,
+      "user_cpu_s": 66.968886,
+      "system_cpu_s": 10.409930000000003,
+      "peak_rss_kib": 169400,
+      "disk_bytes": 309972671,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 50000,
+          "elapsed_s": 43.736558412,
+          "event": "import_indexed",
+          "indexing_threads": 1,
+          "writer_memory_bytes": 134217728
+        },
+        {
+          "elapsed_s": 8.877804453,
+          "event": "import_merge_finished",
+          "segments_after": 1,
+          "segments_before": 20
+        }
+      ],
+      "query_p50_ms": 1.8789840000295044,
+      "query_p95_ms": 3.053421000004164,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    },
+    {
+      "name": "parallel-one-segment",
+      "elapsed_s": 54.83695618499996,
+      "cpu_s": 105.53591499999993,
+      "user_cpu_s": 86.82399099999998,
+      "system_cpu_s": 18.711923999999982,
+      "peak_rss_kib": 530036,
+      "disk_bytes": 309975610,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 250000,
+          "elapsed_s": 44.333153516,
+          "event": "import_indexed",
+          "indexing_threads": 4,
+          "writer_memory_bytes": 2147483648
+        },
+        {
+          "elapsed_s": 10.401208476,
+          "event": "import_merge_finished",
+          "segments_after": 1,
+          "segments_before": 16
+        }
+      ],
+      "query_p50_ms": 0.9644900000012058,
+      "query_p95_ms": 1.4792319999514802,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    },
+    {
+      "name": "parallel-eight-segments",
+      "elapsed_s": 47.70295014999999,
+      "cpu_s": 104.81780199999994,
+      "user_cpu_s": 86.04403200000002,
+      "system_cpu_s": 18.773769999999985,
+      "peak_rss_kib": 569576,
+      "disk_bytes": 320464244,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 250000,
+          "elapsed_s": 45.155128657,
+          "event": "import_indexed",
+          "indexing_threads": 4,
+          "writer_memory_bytes": 2147483648
+        },
+        {
+          "elapsed_s": 2.412135522,
+          "event": "import_merge_finished",
+          "segments_after": 8,
+          "segments_before": 16
+        }
+      ],
+      "query_p50_ms": 1.9526540000924797,
+      "query_p95_ms": 2.8992569999672924,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    },
+    {
+      "name": "baseline-repeat",
+      "elapsed_s": 129.25256483300006,
+      "cpu_s": 175.8551269999999,
+      "user_cpu_s": 96.29761499999995,
+      "system_cpu_s": 79.557512,
+      "peak_rss_kib": 170900,
+      "disk_bytes": 309985086,
+      "phases": [
+        {
+          "actors": 1000000,
+          "batch_size": 50000,
+          "elapsed_s": 119.527350574,
+          "event": "import_indexed",
+          "indexing_threads": 1,
+          "writer_memory_bytes": 134217728
+        },
+        {
+          "elapsed_s": 9.618680776,
+          "event": "import_merge_finished",
+          "segments_after": 1,
+          "segments_before": 20
+        }
+      ],
+      "query_p50_ms": 1.7158409999638025,
+      "query_p95_ms": 4.585933999919689,
+      "answers_sha256": "ab681d7698ceac0f774a698d301a2909fe9d9b4d07028e1d0c3b0b7980ed3018"
+    }
+  ],
+  "completed_at": "2026-11-05T17:38:24.799877+00:00",
+  "run_id": "dc88fbbb-ea0e-4682-8abf-8079ebc024cf",
+  "source_revision": "6b178d7f44da7d9ed3b21c604fd2cc919ed5d176"
+}
