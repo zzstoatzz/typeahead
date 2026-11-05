@@ -34,14 +34,14 @@ disabled. Local scratch totaled 1.1 MiB; neither the laptop nor HeavyPad fetched
 corpus data for this work.
 
 These are fixture results. The later full-data and managed-admission evidence
-appears below. Public cutover and a normal production refresh remain pending.
+appears below, followed by verified public cutover and publisher registration.
+A normal production refresh remains pending.
 
 The [source verification](source-verification.json) records commit-by-commit
 checks for both repositories, plus 93 actual-reader publisher/controller checks
 without skips. All three Typeahead CI workflows passed for `6ab4a59`. Publisher
-cleanup is published on both mains at `a4ee1ef`; the registered deployment still
-uses `52fe3e7` and the old compatible installer. Its CI is a separate gate before
-any release pin changes. The [installed image hashes](image-files.json) identify
+cleanup was first published on both mains at `a4ee1ef`; the subsequent qualified
+`0a36b8b` publisher and compatible installer were registered at 11:10 UTC. The [installed image hashes](image-files.json) identify
 the exact candidate payload; the [bisect log](typeahead-bisect.log) records all
 12 slot tests passing at each Typeahead change.
 
@@ -83,8 +83,8 @@ The [candidate submission](candidate-preparation.json) is run
 `92d56fc206df4304a27c02c987ca2d7c`. The controller allocated inactive B machine
 `7841e35f99d338` on independent volume `vol_4ql13kg2ky19w66r` and started it.
 It reuses the full refresh's published bundle; no export or import is requested.
-Serving A remains unchanged. Preparation and matched performance have since
-passed; release-proof publication and promotion remain pending.
+Preparation and matched performance passed, followed by release-proof
+publication and guarded promotion. A remains retained as rollback.
 
 ### Controller recovery fixtures
 
@@ -120,14 +120,15 @@ scratch, including both fixture packages and metadata, remained about 2 MiB.
 
 ### Publication ownership qualification
 
-The pending publisher fix at
+The registered publisher fix at
 `0a36b8bfe2299a29e87f54c51ed420d341f7a007` preserves the generation's original
 `publication_execution_id` when another execution takes over its journal. A
 same-run full-refresh retry must still emit ordinary `Completed`; a separate
-recovery must not reset the missed-refresh clock. The current manual candidate
-continues on its original `2daeb97` pin; this fix is not registered yet.
+recovery must not reset the missed-refresh clock. Manual preparation and
+promotion used their original `2daeb97` pin; the scheduled publisher now uses
+the qualified owner fix.
 
-Before activation, run the [owner fixture runner](run-owner-fixtures.py) in
+Before activation, the [owner fixture runner](run-owner-fixtures.py) ran in
 temporary app `typeahead-controller-owner-20261105`, owned by this cleanup. It
 uses the existing runtime image and small committed test sources, two shared
 CPUs, 1 GiB RAM, no public service, credentials or volume, and `/tmp` scratch
@@ -180,7 +181,7 @@ see [the test log](comparison-tests.log). They exercise the full paced cohort,
 reject a fast network response that reports a slow engine, reject unexpected
 scope and identity, preserve failed output, and stop redirects after one request.
 Loopback execution requires `--test-loopback` and always records `test_only: true`;
-it cannot substitute for the forthcoming real-backend comparison.
+it cannot substitute for the real-backend result recorded below.
 
 ## Candidate submission
 
@@ -211,8 +212,7 @@ recovery, not edits to the local record to force another allocation.
 The [guard checks](preparation-guard-tests.json) exercised real read-only API
 responses: the active full refresh was refused, and unknown/missing execution
 records required reconciliation. No candidate run or production mutation was
-created by those checks. Positive preparation remains unverified until the full
-refresh completes and the normal controller actually qualifies the candidate.
+created by those checks. The later positive preparation is recorded below.
 
 ## Offline import diagnostic
 
@@ -233,14 +233,15 @@ exporting, importing or publishing again; it completed promotion at 07:56 UTC.
 That continuation bypassed the build stages. The existing flow-retry integration
 test separately checks reuse of completed stage results on a same-run retry.
 
-The deployed `52fe3e7` publisher uses `RUN_ID + TASK_SOURCE`, so a fresh flow run
+The `52fe3e7` publisher used for this refresh, and the registered successor, use
+`RUN_ID + TASK_SOURCE`, so a fresh flow run
 gets new cache keys. Its export/freeze/publication results contain paths on the
 builder VM; the import report also depends on that workspace's files. The result
 records do not copy the checkpoint or unfinished index into R2. Recovery after
 loss of that VM before publication therefore remains a distinct limitation.
 After publication, the immutable bundle and manifest are durable in R2 and slot
-operations reuse them without export or import. The pending runtime candidate
-will use this refresh's same published artifact. No cache policy or corpus
+operations reuse them without export or import. The runtime cutover reused
+this refresh's same published artifact. No cache policy or corpus
 transfer was changed by this inspection. Root README usage and architecture
 claims remain unchanged.
 

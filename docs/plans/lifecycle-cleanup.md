@@ -63,16 +63,16 @@ The README stays a concise entry point: change it only when its architecture or
 usage claims change. Completion requires verified production behavior, a
 successful full refresh, recovery evidence and confirmed experiment cleanup.
 
-## Changes under qualification
+## Runtime qualification
 
 The deployed slot runtime sends source stdout and stderr to the supervisor's log
 stream, collected by Fly. It no longer writes or rotates `source.log` on the
 serving volume. Rotation depended on process exit and therefore did not bound a
 continuous poller's log. This change is live on B. Use `fly logs -a APP`
-for source diagnostics after that runtime is released.
+for source diagnostics.
 
 The [November 5 cloud fixture run](../ops/lifecycle-cleanup-20261105/) passed
 all 36 tests and removed its disposable compute. It verifies the combined
 runtime and provenance-free checkpoint helpers on synthetic data, including
-restart beyond the coverage deadline. Full-data qualification and a verified
-production refresh remain required.
+restart beyond the coverage deadline. Full-data qualification and public
+cutover have since passed; a normal scheduled production refresh remains required.

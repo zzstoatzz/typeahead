@@ -22,8 +22,8 @@ The deployed controller has a four-hour outer limit and one-hour readiness
 phases. These are failure bounds, not expected build times.
 
 The [lifecycle cleanup](lifecycle-cleanup.md) tracks the remaining runtime and
-release work. Its release record distinguishes deployed runtime behavior from the pending
-publisher registration and scheduled-refresh verification.
+release work. Its release record distinguishes the deployed runtime and
+registered publisher from pending scheduled-refresh verification.
 
 ## Safety and recovery
 
