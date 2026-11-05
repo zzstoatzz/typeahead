@@ -1,0 +1,16 @@
+{
+  "event": "controller_fixture_result",
+  "passed": true,
+  "elapsed_s": 97.688363654,
+  "returncode": 0,
+  "tests_passed": 82,
+  "tests_skipped": 0,
+  "machine_id": "2869394f414998",
+  "image": "registry.fly.io/typeahead-tantivy-a@sha256:95dca80684f5adb454f5663d4ec4973ca782f35cc523823ef2e2fee50716dd26",
+  "mps_revision": "a4ee1eff1c88e6afb4f2c7d7fec0b119b46161d4",
+  "scope": "Real controller and reader against HTTP/filesystem provider fixtures; no real provider mutations or production release authorization",
+  "resource_sample": {
+    "uv_cache_logical_bytes": 471194715,
+    "root_free_bytes": 7513108480
+  }
+}

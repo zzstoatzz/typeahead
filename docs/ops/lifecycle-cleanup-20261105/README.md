@@ -1,6 +1,7 @@
 # Lifecycle qualification
 
-Status: cloud fixtures passed at 05:41 UTC, November 5, 2026. No runtime from
+Status: runtime fixtures passed at 05:41 UTC and controller fixtures at 06:08 UTC,
+November 5, 2026. No runtime from
 this record is deployed. The [cleanup plan](../../plans/lifecycle-cleanup.md)
 defines completion.
 
@@ -66,3 +67,35 @@ on the qualified continuous-poller image until then.
 
 The root README was reviewed: these qualification steps change neither public
 usage nor deployed architecture, so it needs no additional detail.
+
+### Controller recovery fixtures
+
+The [controller result](controller-result.json) records 82 passing tests without
+skips, using the actual reader and installer on the observed
+[cloud guest](controller-machine.json). Tests ran in 78 seconds; bootstrap plus
+execution took 97.7 seconds. The [log](controller-fixtures.log) covers dead-slot
+recovery, interrupted provider startup, durable resume, changed ownership and
+routing, coverage expiry and promotion verification. These provider failures are
+HTTP/filesystem fixtures; no real production provider mutation was attempted.
+
+The separate disposable app, `typeahead-controller-20261105`, ran the committed
+controller's tests while the real refresh built. It
+has two shared CPUs, 1 GiB RAM, no public service, persistent volume or production
+credentials. Its scratch is `/tmp` on the ephemeral root disk: allow 1 GiB for
+public Python dependencies and small synthetic fixtures. No corpus is fetched.
+The checksum-pinned uv bootstrap and dependencies download directly into that
+cloud guest; the laptop uploads only the small test source layer.
+
+The [runner](run-controller-fixtures.py) limits bootstrap and execution to ten
+minutes, disables Prefect's ambient API/ephemeral server, and terminates its child
+process group. Use restart policy `no` and automatic Machine removal. Preserve
+bounded logs and source hashes, verify Machine/volume removal, then destroy the
+temporary app. Provider failures use real HTTP fixture servers and owned local
+objects; they do not exercise real provider mutations or authorize release.
+
+The [source package](controller-package.json) was 730,164 bytes. During execution,
+the cloud uv cache held 471,194,715 logical bytes and the ephemeral root retained
+7,513,108,480 free bytes. Dependencies downloaded in the cloud, not through the
+laptop or HeavyPad. The Machine exited 0 and removed itself; Machine and volume
+lists were empty before app deletion, then the app was confirmed absent. Local
+scratch, including both fixture packages and metadata, remained about 2 MiB.

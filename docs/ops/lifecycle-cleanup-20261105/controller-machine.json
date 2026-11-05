@@ -1,0 +1,16 @@
+[
+  {
+    "id": "2869394f414998",
+    "state": "started",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "services": [],
+    "mounts": [],
+    "env_keys": [
+      "PYTHONUNBUFFERED"
+    ]
+  }
+]

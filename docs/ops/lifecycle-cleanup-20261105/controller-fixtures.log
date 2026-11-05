@@ -1,0 +1,40 @@
+2026-11-05T06:06:59Z runner[2869394f414998] ewr [info]Pulling container image registry.fly.io/typeahead-tantivy-a@sha256:95dca80684f5adb454f5663d4ec4973ca782f35cc523823ef2e2fee50716dd26
+2026-11-05T06:07:02Z runner[2869394f414998] ewr [info]Successfully prepared image registry.fly.io/typeahead-tantivy-a@sha256:95dca80684f5adb454f5663d4ec4973ca782f35cc523823ef2e2fee50716dd26 (3.037559578s)
+2026-11-05T06:07:03Z runner[2869394f414998] ewr [info]Configuring firecracker
+2026-11-05T06:07:03Z app[2869394f414998] ewr [info]2026-11-05T06:07:03.241852023 [01M6N52NENRQ1QG4R5Y5M87SAX:main] Running Firecracker v1.14.4
+2026-11-05T06:07:03Z app[2869394f414998] ewr [info]2026-11-05T06:07:03.241977662 [01M6N52NENRQ1QG4R5Y5M87SAX:main] Listening on API socket ("/fc.sock").
+2026-11-05T06:07:03Z app[2869394f414998] ewr [info] INFO Starting init (commit: b99d4b17)...
+2026-11-05T06:07:03Z app[2869394f414998] ewr [info] INFO Preparing to run: `python3 /qualification/run-controller-fixtures.py` as root
+2026-11-05T06:07:03Z app[2869394f414998] ewr [info] INFO [fly api proxy] listening at /.fly/api
+2026-11-05T06:07:03Z runner[2869394f414998] ewr [info]Machine created and started in 3.961s
+2026-11-05T06:07:03Z app[2869394f414998] ewr [info]2026/11/05 06:07:03 INFO SSH listening listen_address=[fdaa:12:4e15:a7b:7c5:120b:71df:2]:22
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading pygments (1.2MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading cryptography (4.5MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading pydantic-core (2.1MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading sqlalchemy (4.5MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading burner-redis (1.3MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading prefect (14.4MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading botocore (15.5MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading asyncpg (3.6MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading beartype (1.5MiB)
+2026-11-05T06:07:08Z app[2869394f414998] ewr [info]Downloading apprise (1.7MiB)
+2026-11-05T06:07:10Z app[2869394f414998] ewr [info] Downloading burner-redis
+2026-11-05T06:07:10Z app[2869394f414998] ewr [info] Downloading pydantic-core
+2026-11-05T06:07:10Z app[2869394f414998] ewr [info] Downloading apprise
+2026-11-05T06:07:11Z app[2869394f414998] ewr [info] Downloading asyncpg
+2026-11-05T06:07:11Z app[2869394f414998] ewr [info] Downloading pygments
+2026-11-05T06:07:12Z app[2869394f414998] ewr [info] Downloading sqlalchemy
+2026-11-05T06:07:12Z app[2869394f414998] ewr [info] Downloading beartype
+2026-11-05T06:07:13Z app[2869394f414998] ewr [info] Downloading cryptography
+2026-11-05T06:07:16Z app[2869394f414998] ewr [info] Downloading botocore
+2026-11-05T06:07:19Z app[2869394f414998] ewr [info] Downloading prefect
+2026-11-05T06:07:21Z app[2869394f414998] ewr [info]Installed 111 packages in 2.32s
+2026-11-05T06:07:44Z runner[2869394f414998] ewr [info][0480ee33-0f26-5534-a609-c9cc8f649b3e@tokens.fly.io] machine exec: running command
+2026-11-05T06:08:38Z app[2869394f414998] ewr [info]........................................................................ [ 87%]
+2026-11-05T06:08:40Z app[2869394f414998] ewr [info]..........                                                               [100%]
+2026-11-05T06:08:40Z app[2869394f414998] ewr [info]82 passed in 78.00s (0:01:18)
+2026-11-05T06:08:41Z app[2869394f414998] ewr [info]{"event": "controller_fixture_result", "passed": true, "elapsed_s": 97.688363654, "returncode": 0}
+2026-11-05T06:08:41Z app[2869394f414998] ewr [info] INFO Main child exited normally with code: 0
+2026-11-05T06:08:41Z app[2869394f414998] ewr [info] INFO Starting clean up.
+2026-11-05T06:08:41Z app[2869394f414998] ewr [info][   98.432504] reboot: Restarting system
+2026-11-05T06:08:41Z runner[2869394f414998] ewr [info]machine restart policy set to 'no', not restarting

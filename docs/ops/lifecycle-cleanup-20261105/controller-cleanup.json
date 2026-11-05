@@ -1,0 +1,11 @@
+{
+  "verified_at": 1793859190.365841,
+  "machine_id": "2869394f414998",
+  "machines_after": [],
+  "volumes_after": [],
+  "temporary_app_absent": true,
+  "local_corpus_transfers": 0,
+  "heavypad_corpus_transfers": 0,
+  "local_scratch": "2.0 MiB",
+  "retained_test_image": "registry.fly.io/typeahead-tantivy-a@sha256:95dca80684f5adb454f5663d4ec4973ca782f35cc523823ef2e2fee50716dd26"
+}
