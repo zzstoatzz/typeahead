@@ -192,7 +192,8 @@ class SlotTests(unittest.TestCase):
             env={**os.environ,**self.env,'ADMIN_SECRET':fixture.admin_secret,'TURSO_URL':fixture.url.replace('http:','https:'),'TURSO_AUTH_TOKEN':fixture.source_secret,'SSL_CERT_FILE':str(cert)}
             program="import importlib.util,os,signal,sys\nfrom pathlib import Path\nsys.path.insert(0,sys.argv[1]);spec=importlib.util.spec_from_file_location('slot','/app/tantivy-slot.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)\ninstance=module.Slot(os.environ,Path(sys.argv[2]),Path(sys.argv[3]))\ndef stop(*_):raise KeyboardInterrupt()\nsignal.signal(signal.SIGTERM,stop)\ntry:instance.serve(instance.install())\nexcept KeyboardInterrupt:pass\nfinally:instance.stop()\n"
             def run_until_polled(previous_requests):
-                child=subprocess.Popen([sys.executable,'-c',program,str(MODULE.parent),str(self.root),str(BINARY)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                with (work/'slot.log').open('ab') as log:
+                    child=subprocess.Popen([sys.executable,'-c',program,str(MODULE.parent),str(self.root),str(BINARY)],env=env,stdout=log,stderr=subprocess.STDOUT)
                 try:
                     until=time.monotonic()+15
                     while time.monotonic()<until:
@@ -202,7 +203,7 @@ class SlotTests(unittest.TestCase):
                             state=json.loads(ledger.read_bytes())
                             if not state['pending_reservation']:return state
                         time.sleep(.05)
-                    self.fail('actual source polling did not resume: '+(self.root/'source.log').read_text()[-3000:])
+                    self.fail('actual source polling did not resume: '+(work/'slot.log').read_text()[-3000:])
                 finally:
                     child.terminate()
                     try:child.wait(12)
@@ -212,6 +213,8 @@ class SlotTests(unittest.TestCase):
                 first=run_until_polled(0);requests=len(fixture.requests)
                 time.sleep(max(0,fixture.now+3-time.time()));fixture.now=int(time.time())
                 second=run_until_polled(requests)
+                self.assertFalse((self.root/'source.log').exists())
+                self.assertIn('source_bytes', (work/'slot.log').read_text())
                 self.assertGreater(len(fixture.requests),requests);self.assertEqual(len(self.store.keys),3)
                 self.assertGreater(second['source_bytes'],first['source_bytes']);self.assertEqual(second['window_started_at'],first['window_started_at']);self.assertEqual(second['max_source_bytes'],536870912);self.assertEqual(second['poll_reserve_bytes'],134217728)
             finally:fixture.close()

@@ -47,3 +47,11 @@ Update affected operational docs with each change and dated deployment readback.
 The README stays a concise entry point: change it only when its architecture or
 usage claims change. Completion requires verified production behavior, a
 successful full refresh, recovery evidence and confirmed experiment cleanup.
+
+## Changes under qualification
+
+The local slot runtime sends source stdout and stderr to the supervisor's log
+stream, collected by Fly. It no longer writes or rotates `source.log` on the
+serving volume. Rotation depended on process exit and therefore did not bound a
+continuous poller's log. This change is not deployed yet. Use `fly logs -a APP`
+for source diagnostics after that runtime is released.

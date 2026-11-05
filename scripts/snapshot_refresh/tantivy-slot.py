@@ -209,10 +209,7 @@ class Slot:
         if not all(self.env.get(name) for name in ['ADMIN_SECRET','TURSO_URL','TURSO_AUTH_TOKEN']):raise ValueError('Missing source runtime capability')
         server=self.start_reader(value,listen,admin_listen)
         while server.poll() is None:
-            logpath=self.root/'source.log'
-            if logpath.exists() and logpath.stat().st_size>16*1024**2:logpath.replace(self.root/'source.previous.log')
-            with logpath.open('ab') as log:
-                source=subprocess.Popen(self.source_command(value),env=self.env,stdout=log,stderr=subprocess.STDOUT)
+            source=subprocess.Popen(self.source_command(value),env=self.env,stderr=subprocess.STDOUT)
             self.children.append(source)
             while source.poll() is None and server.poll() is None:self.runtime_gates(value);time.sleep(5)
             if source.poll() is None:
