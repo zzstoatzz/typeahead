@@ -68,3 +68,13 @@ speedup. Hashing during extraction did not improve wall time in this fixture
 order and burst/IO effects limit that comparison; do not claim a measured gain
 from removing the independent read. All three machines auto-destroyed, no volumes
 were created, and the diagnostic app was deleted after checking both inventories.
+
+The transfer diagnostic uses a separate auto-destroy Fly machine in
+`typeahead-transfer-20261105`, shared 2 CPU / 1 GiB, EWR, no services or volumes.
+It receives a 15-minute presigned GET capability for the existing immutable
+6 AM artifact, rather than R2 credentials. It compares a 128 MiB prefix with one
+and four concurrent HTTP ranges and repeats the serial baseline; all hashes must
+match. Total remote reads are bounded at 384 MiB. The ten-minute process alarm,
+one-file scratch budget below 1 GiB and temporary-directory teardown bound the
+experiment. This measures the network/HTTP path; the actual rclone downloader's
+failure and recovery behavior is covered separately above.
