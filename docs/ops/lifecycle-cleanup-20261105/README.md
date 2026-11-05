@@ -99,3 +99,32 @@ the cloud uv cache held 471,194,715 logical bytes and the ephemeral root retaine
 laptop or HeavyPad. The Machine exited 0 and removed itself; Machine and volume
 lists were empty before app deletion, then the app was confirmed absent. Local
 scratch, including both fixture packages and metadata, remained about 2 MiB.
+
+## Matched comparison
+
+The [comparison tool](compare.py) implements the [preflight](full-data-preflight.md)
+cohort and bounds. Supply the actual machines and their shared build after managed
+qualification, and use a new output path for each attempt:
+
+```sh
+python3 docs/ops/lifecycle-cleanup-20261105/compare.py \
+  --baseline https://typeahead-tantivy-a.fly.dev \
+  --candidate https://typeahead-tantivy-b.fly.dev \
+  --baseline-machine BASELINE_ID --candidate-machine CANDIDATE_ID \
+  --build-id SHARED_BUILD --output NEW_RESULT.json
+```
+
+It requires explicit managed origins, permits no redirects, and issues at most
+39 requests per target at one request per second per target, with a five-minute
+execution bound. Every response must acknowledge the expected engine, format,
+binary, build, retrieval, machine and scope. Global requests cannot acknowledge
+a PDS scope. Changed instances, errors, mismatched bodies and incomplete cohorts
+fail qualification. Results contain hashes and timings, not full profile bodies;
+existing output files cannot be overwritten. Sampled p95 uses nearest rank.
+
+The [real HTTP tests](test_compare.py) passed all four cases in 81.6 seconds;
+see [the test log](comparison-tests.log). They exercise the full paced cohort,
+reject a fast network response that reports a slow engine, reject unexpected
+scope and identity, preserve failed output, and stop redirects after one request.
+Loopback execution requires `--test-loopback` and always records `test_only: true`;
+it cannot substitute for the forthcoming real-backend comparison.
