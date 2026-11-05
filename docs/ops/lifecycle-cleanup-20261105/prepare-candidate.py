@@ -65,7 +65,7 @@ def main():
                 existing = client.read_flow_runs(flow_run_filter=FlowRunFilter(
                     tags=FlowRunFilterTags(all_=[tag])),limit=2)
             if existing:
-                if len(existing)!=1 or existing[0].deployment_id!=DEPLOYMENT or existing[0].parameters.get('tantivy_operation')!=saved['parameters']['tantivy_operation']:
+                if len(existing)!=1 or existing[0].deployment_id!=DEPLOYMENT or existing[0].parameters.get('tantivy_operation')!=saved['parameters']['tantivy_operation'] or existing[0].parameters.get('automatic_refresh') is not False or existing[0].parameters.get('resume_rollout'):
                     raise ValueError('Existing submission identity is ambiguous')
                 run = existing[0]
                 execution = (run.job_variables or {}).get('env',{})
@@ -127,7 +127,8 @@ def main():
             release_receipt_key=environment['INDEX_TANTIVY_RELEASE_RECEIPT_KEY'],
             release_receipt_sha256=environment['INDEX_TANTIVY_RELEASE_RECEIPT_SHA256'])
         record = dict(request_id=request_id,refresh_run_id=str(refresh.id),publisher=PUBLISHER,
-            source=SOURCE,installer=INSTALLER,parameters=dict(tantivy_operation=operation),
+            source=SOURCE,installer=INSTALLER,parameters=dict(automatic_refresh=False,
+                resume_rollout=False,tantivy_operation=operation),
             observed_route=route,observed_etag=etag,coverage_deadline=health['coverage_deadline'],
             bundle_bytes=artifact['byte_size'],prepared_at=time.time())
         if saved and saved['parameters']!=record['parameters']:
