@@ -1,0 +1,48 @@
+[
+  {
+    "app": "typeahead-tantivy-a",
+    "id": "86217efe2d1138",
+    "state": "started",
+    "region": "ewr",
+    "image": "registry.fly.io/typeahead-tantivy-b@sha256:7431d390561b82224fc21085182a6545bfce2bb80decd70068e59ff476a396ca",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 20,
+        "volume": "vol_rkg38n09xpeqk3o4",
+        "name": "tv_8b3c5e15c3174ef2bea3"
+      }
+    ],
+    "owner": "typeahead-snapshot-refresh",
+    "request_id": "8b3c5e15c3174ef2bea3ca84ad447da1"
+  },
+  {
+    "app": "typeahead-tantivy-b",
+    "id": "812056a97999d8",
+    "state": "started",
+    "region": "ewr",
+    "image": "registry.fly.io/typeahead-tantivy-b@sha256:bc66ce9eec3aca5d568135e6d0637f2e2be6e0c305095fc29e4fd50c15d0d34d",
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "mounts": [
+      {
+        "encrypted": true,
+        "path": "/data",
+        "size_gb": 20,
+        "volume": "vol_4581g37oj08kxn94",
+        "name": "tv_ab34d45098d34c8493a7"
+      }
+    ],
+    "owner": "typeahead-snapshot-refresh",
+    "request_id": "ab34d45098d34c8493a70cb11ff82051"
+  }
+]

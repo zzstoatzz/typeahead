@@ -60,8 +60,8 @@ verify Machine removal, then destroy the temporary app. No recurring observer or
 home workload is introduced.
 
 This fixture run does not reserve either managed slot or authorize promotion.
-Full-data candidate qualification needs a separate preflight after the scheduled
-refresh, independent storage and the existing release gates. Production remains
+Full-data candidate qualification follows the [preflight](full-data-preflight.md)
+after the scheduled refresh, with independent storage and the existing release gates. Production remains
 on the qualified continuous-poller image until then.
 
 The root README was reviewed: these qualification steps change neither public
