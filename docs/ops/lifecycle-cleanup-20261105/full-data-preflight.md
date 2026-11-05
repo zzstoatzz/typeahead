@@ -130,3 +130,9 @@ Require zero failures and skips. Preserve the package hashes, bounded logs and
 result; verify Machine and volume removal, destroy the app and independently
 confirm absence. The existing local source bundle is reused to stay under the
 5 MiB metadata/source budget. No corpus or production failure is involved.
+
+The ranking wrapper now takes explicit managed origin, machine ID and build ID
+arguments, validated before dependency installation. For the scheduled refresh,
+use the actual promoted machine and build from the verified route/provider
+readback; do not reuse the earlier B constants. Source receipts identify which
+wrapper version each result used.
