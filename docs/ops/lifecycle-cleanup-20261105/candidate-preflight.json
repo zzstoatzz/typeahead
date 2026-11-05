@@ -1,0 +1,46 @@
+{
+  "request_id": "92d56fc206df4304a27c02c987ca2d7c",
+  "refresh_run_id": "ef4ecac6-b82f-4d2a-ae0e-fea7cda2ad19",
+  "publisher": "2daeb97f825c1ad507dccc0020f28ead665f8350",
+  "source": "7d732639d4d63b1fe0abaeb4b6f07224640d1189",
+  "installer": "cf893cb984e97453a1807e1de2d52d096664525636829884d734f42ab191f26b",
+  "parameters": {
+    "automatic_refresh": false,
+    "resume_rollout": false,
+    "tantivy_operation": {
+      "operation": "prepare",
+      "build_id": "b1793858591-cp-ef4ecac6b8",
+      "image": "registry.fly.io/typeahead-tantivy-a@sha256:d13dee4839c3e56ac1f6dd4f0d14cb4514186221b0f5a6d3037cfb92f090473d",
+      "request_id": "92d56fc206df4304a27c02c987ca2d7c",
+      "app": "typeahead-tantivy-b",
+      "retire_previous_tantivy": true,
+      "release_receipt_key": "control/tantivy-releases/2cb383df761467c5d7afcb374e9baa01e040faf35170d78b518ac655d3e6b4ba.json",
+      "release_receipt_sha256": "2cb383df761467c5d7afcb374e9baa01e040faf35170d78b518ac655d3e6b4ba"
+    }
+  },
+  "observed_route": {
+    "version": 1,
+    "current": {
+      "admission_sha256": "cef027b33a0693353d75c79338f6747217c94626ccc8564f331117a084a099df",
+      "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+      "build_id": "b1793858591-cp-ef4ecac6b8",
+      "engine": "tantivy",
+      "format": "tantivy-0.27-f32-did-expiry-v4",
+      "origin": "https://typeahead-tantivy-a.fly.dev",
+      "retrieval_strategy": "global-merge"
+    },
+    "previous": {
+      "admission_sha256": "8216daf108e7dbc4ae6bbe24ca14b056620f5bb88211dd245416a8ea7905dc03",
+      "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+      "build_id": "b1793815407-cp-1f545dd4aa",
+      "engine": "tantivy",
+      "format": "tantivy-0.27-f32-did-expiry-v4",
+      "origin": "https://typeahead-tantivy-b.fly.dev",
+      "retrieval_strategy": "global-merge"
+    }
+  },
+  "observed_etag": "\"d4b0ab31d882da17dc4236f8a5364345\"",
+  "coverage_deadline": 1793944991,
+  "bundle_bytes": 6369720320,
+  "prepared_at": 1793867941.925504
+}

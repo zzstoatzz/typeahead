@@ -37,6 +37,13 @@ work where valid; do not treat committed source as deployed behavior.
    do not renew checkpoint coverage and must not reset the 13-hour retry clock.
    Verify the new publisher's success events and automation together before
    completion; preserve the existing retry cadence and notification destination.
+5. Verify retry ownership through the Prefect API. The November 5 refresh
+   exposed a missing upstream worker-poll filter: `in_process` retries were
+   returned as new work, launching two executions of one flow-run ID despite
+   deployment concurrency one. The server fix and HTTP/backend checks are
+   [recorded in its incident](https://tangled.org/zzstoatzz.io/prefect-server/tree/main/docs/incidents/2026-11-05-in-process-retry-resubmission.md).
+   Verify the API rollout and a bounded cloud retry probe before another slot
+   operation. Concurrency limits and production timeouts stay unchanged.
 
 Before reserving the inactive slot, check the actual last full refresh, coverage
 deadline and next scheduled run. The scheduled publisher keeps ownership until

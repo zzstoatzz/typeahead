@@ -15,7 +15,7 @@ from prefect.client.schemas.filters import FlowRunFilter,FlowRunFilterTags
 from prefect.exceptions import ObjectNotFound
 
 DEPLOYMENT = UUID('a0c0ce9c-5bab-4bdc-8512-39984c322a74')
-PUBLISHER = 'a4ee1eff1c88e6afb4f2c7d7fec0b119b46161d4'
+PUBLISHER = '2daeb97f825c1ad507dccc0020f28ead665f8350'
 SOURCE = '7d732639d4d63b1fe0abaeb4b6f07224640d1189'
 INSTALLER = 'cf893cb984e97453a1807e1de2d52d096664525636829884d734f42ab191f26b'
 IMAGE = 'registry.fly.io/typeahead-tantivy-a@sha256:d13dee4839c3e56ac1f6dd4f0d14cb4514186221b0f5a6d3037cfb92f090473d'

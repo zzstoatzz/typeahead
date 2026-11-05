@@ -1,35 +1,37 @@
 # Full-data qualification preflight
 
-Recorded November 5, 2026 at 05:57 UTC. This records constraints before any
-candidate download; it does not reserve a slot or authorize promotion.
+Initially recorded November 5, 2026 at 05:57 UTC; updated after the 06:00 refresh
+and positive read-only preflight. This does not reserve a slot or authorize promotion.
 
 ## Production continuity
 
-The [routing readback](route-before-refresh.json) selects B, machine
-`812056a97999d8`, and retains A as previous. The
-[provider inventory](managed-slots-before-refresh.json) confirms separate
-encrypted 20 GiB disks and two shared CPUs / 1 GiB for each slot. B is healthy;
-its checkpoint coverage ends November 5 at 18:03:27 UTC. The last full refresh
-is `1f545dd4-aa1a-4039-98bd-c8fb1361ce06`; the later prepare/promote runs reused
-that artifact and did not renew coverage.
+The initial [routing](route-before-refresh.json) and
+[provider inventory](managed-slots-before-refresh.json) are retained as historical
+preflight evidence. The 06:00 refresh, run
+`ef4ecac6-b82f-4d2a-ae0e-fea7cda2ad19`, subsequently promoted fresh A, machine
+`871327a0347938`, with build `b1793858591-cp-ef4ecac6b8`. It retains B as previous.
+Public freshness passed; coverage ends November 6 at 06:03:11 UTC.
 
-The scheduled 06:00 UTC refresh owns inactive A. Observe its actual run and
-completed build before starting a manual candidate. Registration may replace a
-scheduled run ID; reconcile that change instead of treating cancellation as a
-failed build or starting another refresh. Do not reserve A for this experiment.
+The [positive preflight](candidate-preflight.json) verified the serving build,
+coverage, unreserved slots, artifact budget and green publisher CI. It created
+only a local proposal. Submission is additionally held for the Prefect API's
+in-process-retry fix and bounded cloud probe; the refresh exposed two executions
+of its retry under one flow-run ID.
 
-After that refresh completes, recheck its public build and route, coverage,
-current image/proof binding, both pending markers and the next schedule. Only
-then may the existing controller prepare the new runtime on inactive B using
-the **same immutable artifact as the refreshed serving A**. Require at least
-18 hours of coverage remaining. A and its disk remain untouched. The trial must
-finish or be reconciled before the 18:00 UTC refresh needs the inactive slot.
+Before submission, recheck the public build and route, coverage, current
+image/proof binding, both pending markers and next schedule. The controller must
+prepare the new runtime on inactive B using the **same immutable artifact as
+serving A**, with at least 18 hours of coverage remaining. A and its independent
+disk remain untouched. Finish or reconcile the trial before the 18:00 UTC refresh.
 
 ## Trial ownership and budgets
 
 Owner: this lifecycle cleanup, through the cloud `typeahead-index` deployment.
-The new controller source is `a4ee1eff1c88e6afb4f2c7d7fec0b119b46161d4`;
-its main CI passed. Use an explicit run override, preserving the scheduled
+The execution pin was updated after the November 5 refresh to
+`2daeb97f825c1ad507dccc0020f28ead665f8350`; its main CI passed. The controller
+files are unchanged from the cloud-qualified `a4ee1ef`; the flow now names
+manual-operation success separately from full-refresh success. Use an explicit
+run override, preserving the scheduled
 deployment's existing pins until the compatible runtime is qualified and live.
 Typeahead source is `7d732639d4d63b1fe0abaeb4b6f07224640d1189`, installer SHA256
 `cf893cb984e97453a1807e1de2d52d096664525636829884d734f42ab191f26b`.
