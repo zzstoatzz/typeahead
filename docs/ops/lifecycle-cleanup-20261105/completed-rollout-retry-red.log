@@ -1,0 +1,16 @@
+.F                                                                       [100%]
+=================================== FAILURES ===================================
+_ test_public_transport_identity_and_canary_primitive_uses_real_http[execution-one] _
+tests/test_typeahead_tantivy_slots.py:726: in test_public_transport_identity_and_canary_primitive_uses_real_http
+    resumed = automatic_refresh(controller, slots, forbidden_publication,
+packages/mps/src/mps/typeahead_tantivy_automatic.py:61: in refresh
+    return _continue_refresh(
+packages/mps/src/mps/typeahead_tantivy_automatic.py:140: in _continue_refresh
+    build_id = publish()
+               ^^^^^^^^^
+tests/test_typeahead_tantivy_slots.py:724: in forbidden_publication
+    raise AssertionError("Completed automatic promotion must not publish/install again")
+E   AssertionError: Completed automatic promotion must not publish/install again
+=========================== short test summary info ============================
+FAILED tests/test_typeahead_tantivy_slots.py::test_public_transport_identity_and_canary_primitive_uses_real_http[execution-one]
+1 failed, 1 passed, 41 deselected in 2.16s

@@ -379,3 +379,29 @@ parameters, 06:00/18:00 UTC schedule and concurrency one. The single 18:00 run i
 now `3965c12f-c9e8-4b40-826c-d2edc7efaf99`. An absent old scheduled ID is not an
 execution failure: reconcile the deployment’s actual future runs before taking
 any action. No replacement build was submitted by this observer.
+
+### Completed-promotion cleanup retry
+
+An isolated [regression](completed-rollout-retry-red.log) reproduced a retry
+entering publication after its successful promotion had removed the pending
+marker. Stage caches preserve export/import work, but the controller would
+prepare/install that artifact again. Publisher source `4f1b9b7` recognizes the
+current healthy slot’s completed automatic journal only when its immutable
+publication owner is this same execution, then reuses the existing promotion
+recovery checks. It does not skip release, route/ETag, candidate qualification
+or public-canary checks. A different execution still starts a new full refresh.
+
+The [regression result](completed-rollout-retry-green.log) verifies no publication
+for that owned completed transaction, a fresh-publication boundary for another
+execution, and refusal when routing changes. The scenario uses real HTTP public
+checks and filesystem journal/plan/enrollment objects below the separately
+tested authorization and candidate-qualification gates. It does not manufacture
+a production release proof. All [93 local checks](completed-rollout-controller-local.log)
+and [93 Linux cloud checks](controller-retry-result.json) passed without skips.
+The [package](controller-retry-package.json) binds exact source hashes; the
+[cleanup](controller-retry-cleanup.json) confirms temporary compute, volumes and
+app were removed.
+
+This publisher guard is published but not registered yet. Main CI and the staged
+configuration must pass before replacing the registered `0a36b8b` pin. Serving
+image, runtime limits and release proof stay unchanged.
