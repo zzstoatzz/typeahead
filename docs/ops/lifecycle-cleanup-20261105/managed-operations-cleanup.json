@@ -1,0 +1,25 @@
+{
+  "at": 1793876724.945243,
+  "attempts": [
+    {
+      "vm": "prefect-build-67fc6ac8b5464113bc301db8121b273f-r0",
+      "closed": true,
+      "phase": "deleted",
+      "exit_code": 0,
+      "flow_run_id": "67fc6ac8-b546-4113-bc30-1db8121b273f"
+    },
+    {
+      "vm": "prefect-build-9cd00dc2b1c74f2abd0072b3399c1bed-r0",
+      "closed": true,
+      "phase": "deleted",
+      "exit_code": 0,
+      "flow_run_id": "9cd00dc2-b1c7-4f2a-bd00-72b3399c1bed"
+    }
+  ],
+  "owned_resources": {
+    "servers": [],
+    "primary_ips": [],
+    "ssh_keys": []
+  },
+  "passed": true
+}

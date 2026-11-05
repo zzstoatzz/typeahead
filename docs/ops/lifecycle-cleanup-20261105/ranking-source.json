@@ -1,0 +1,10 @@
+{
+  "revision": "b903d8e",
+  "files": {
+    "Dockerfile": "388e433ed32b56ef7b3d018d440e00a220cf3b4605caf0a8a286d9d1fc6caba1",
+    "qualification/bench.py": "f507502293741b1b7d21f12fdcb969bd95b9e83668be29aa0c7b92b19aba79a0",
+    "qualification/run-ranking.py": "5d06caf54ee0f7b00f17059ef28598e7e672dc53676fb14d18f697aaab5a9a3b"
+  },
+  "image": "registry.fly.io/typeahead-tantivy-a@sha256:107c3b754cb878ead89ff366ba38519bb50c7d69445eb24008fc216c0f9b496f",
+  "machine_id": "85144dc4221908"
+}

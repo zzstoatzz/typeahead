@@ -1,0 +1,36 @@
+{
+  "success": true,
+  "count": 2,
+  "events": [
+    {
+      "id": "408ce3c1-0378-4381-8efd-67fbd279a305",
+      "event_type": "prefect.flow-run.SlotOperationCompleted",
+      "occurred": "2026-11-05T10:52:21.384696Z",
+      "resource_name": "typeahead-index-9cd00dc2",
+      "resource_id": "prefect.flow-run.9cd00dc2-b1c7-4f2a-bd00-72b3399c1bed",
+      "state_type": "COMPLETED",
+      "state_name": "SlotOperationCompleted",
+      "state_message": null,
+      "flow_name": null,
+      "flow_run_name": "typeahead-index-9cd00dc2",
+      "tags": null,
+      "follows": null
+    },
+    {
+      "id": "1a4de295-9da1-42d9-8d96-932ee207ae49",
+      "event_type": "prefect.flow-run.SlotOperationCompleted",
+      "occurred": "2026-11-05T10:16:38.986718Z",
+      "resource_name": "typeahead-index-67fc6ac8",
+      "resource_id": "prefect.flow-run.67fc6ac8-b546-4113-bc30-1db8121b273f",
+      "state_type": "COMPLETED",
+      "state_name": "SlotOperationCompleted",
+      "state_message": null,
+      "flow_name": null,
+      "flow_run_name": "typeahead-index-67fc6ac8",
+      "tags": null,
+      "follows": null
+    }
+  ],
+  "error": null,
+  "total": 2
+}

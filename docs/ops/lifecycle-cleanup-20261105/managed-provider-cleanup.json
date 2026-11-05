@@ -1,0 +1,21 @@
+{
+  "at": 1793876772.3934884,
+  "resources": {
+    "servers": {
+      "pages": 1,
+      "total_scanned": 0,
+      "owned": []
+    },
+    "primary_ips": {
+      "pages": 1,
+      "total_scanned": 0,
+      "owned": []
+    },
+    "ssh_keys": {
+      "pages": 1,
+      "total_scanned": 2,
+      "owned": []
+    }
+  },
+  "passed": true
+}

@@ -1,0 +1,190 @@
+{
+  "event": "canonical_ranking",
+  "at": 1793876633.611157,
+  "target": "https://typeahead-tantivy-b.fly.dev",
+  "build_id": "b1793858591-cp-ef4ecac6b8",
+  "machine_id": "7841e35f99d338",
+  "source_sha256": "f507502293741b1b7d21f12fdcb969bd95b9e83668be29aa0c7b92b19aba79a0",
+  "structural_passed": true,
+  "failures": [],
+  "queries": [
+    {
+      "query": "fig",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 10.126270999999853,
+      "ours_handles": [
+        "artfight.net",
+        "fairfightaction.bsky.social",
+        "fightforthefuture.org",
+        "frankfigliuzzi.bsky.social",
+        "malena.bsky.social",
+        "seanrosssapp.bsky.social",
+        "streetfighter.capcomusa.com",
+        "wtafc.bsky.social"
+      ],
+      "bsky_top": "frankfigliuzzi.bsky.social"
+    },
+    {
+      "query": "fig (",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 9.12978000000031,
+      "ours_handles": [
+        "artfight.net",
+        "fairfightaction.bsky.social",
+        "fightforthefuture.org",
+        "frankfigliuzzi.bsky.social",
+        "malena.bsky.social",
+        "seanrosssapp.bsky.social",
+        "streetfighter.capcomusa.com",
+        "wtafc.bsky.social"
+      ],
+      "bsky_top": "fightforthefuture.org"
+    },
+    {
+      "query": "fig aka",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 9.644340000000362,
+      "ours_handles": [
+        "bad-example.com",
+        "figueiredoerl.bsky.social",
+        "nottoysaf.bsky.social",
+        "ponyhengst.bsky.social"
+      ],
+      "bsky_top": "bad-example.com"
+    },
+    {
+      "query": "phil",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 17.6269109999998,
+      "ours_handles": [
+        "emophilips.bsky.social",
+        "jaketapper.bsky.social",
+        "pbump.com",
+        "pgourevitch.bsky.social",
+        "philadelphiaeagles.bsky.social",
+        "philinvestigates.com",
+        "phillewis.bsky.social",
+        "philplait.bsky.social"
+      ],
+      "bsky_top": "phillewis.bsky.social"
+    },
+    {
+      "query": "zzstoatzz",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 9.83405000000026,
+      "ours_handles": [
+        "alt.zzstoatzz.io",
+        "jev.zzstoatzz.io",
+        "phi.zzstoatzz.io",
+        "yeadog.bsky.social",
+        "zzstoatzz.io",
+        "zzstoatzzdevlog.bsky.social"
+      ],
+      "bsky_top": "zzstoatzz.io"
+    },
+    {
+      "query": "zzstoatzz.io",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 7.0597599999997485,
+      "ours_handles": [
+        "alt.zzstoatzz.io",
+        "jev.zzstoatzz.io",
+        "phi.zzstoatzz.io",
+        "zzstoatzz.io"
+      ],
+      "bsky_top": "zzstoatzz.io"
+    },
+    {
+      "query": "nate",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 10.051380000000165,
+      "ours_handles": [
+        "himmapaan.bsky.social",
+        "mnateshyamalan.bsky.social",
+        "nateatkins.bsky.social",
+        "natedhernandez.bsky.social",
+        "nategrimes.bsky.social",
+        "nateinnovates.bsky.social",
+        "nateo.bsky.social",
+        "natetice.bsky.social"
+      ],
+      "bsky_top": "mnateshyamalan.bsky.social"
+    },
+    {
+      "query": "alex",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 12.609681000000705,
+      "ours_handles": [
+        "alextomlinson.com",
+        "alkapdc.bsky.social",
+        "aoc.bsky.social",
+        "avindman.bsky.social",
+        "matchquarters.com",
+        "ocasio-cortez.house.gov",
+        "padilla.senate.gov",
+        "petridishes.bsky.social"
+      ],
+      "bsky_top": "aoc.bsky.social"
+    },
+    {
+      "query": "bob",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 10.028420000001148,
+      "ours_handles": [
+        "bbkogan.bsky.social",
+        "bnightengale.bsky.social",
+        "bobbylewis.blacksky.app",
+        "bobcesca.bsky.social",
+        "bobmort.bsky.social",
+        "bobpony.com",
+        "governorferguson.bsky.social",
+        "robertsilverman.bsky.social"
+      ],
+      "bsky_top": "bobmort.bsky.social"
+    },
+    {
+      "query": "aoc",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 32.527280999998354,
+      "ours_handles": [
+        "africanprincess7.bsky.social",
+        "aoc-media.bsky.social",
+        "aoc.bsky.social",
+        "aochoku.bsky.social",
+        "aoclover.bsky.social",
+        "aocw.bsky.social",
+        "gabriellehecht.bsky.social",
+        "thankyouaoc.bsky.social"
+      ],
+      "bsky_top": "aoc.bsky.social"
+    },
+    {
+      "query": "car",
+      "ours_status": 200,
+      "bsky_status": 200,
+      "ours_ms": 10.537700000000427,
+      "ours_handles": [
+        "bencarlson007.bsky.social",
+        "carlquintanilla.bsky.social",
+        "carnage4life.bsky.social",
+        "carolecadwalla.bsky.social",
+        "carolvorders.bsky.social",
+        "crobertcargill.bsky.social",
+        "esqueer.net",
+        "mark-carney.bsky.social"
+      ],
+      "bsky_top": "carlquintanilla.bsky.social"
+    }
+  ],
+  "elapsed_s": 11.668324898
+}

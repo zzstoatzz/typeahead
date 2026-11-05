@@ -304,3 +304,23 @@ registration and the 18:00 normal full refresh remain required.
 The root README was compared with this deployed change. Its concise description
 of isolated builds and checked cutover remains accurate; detailed lifecycle and
 source-log behavior were updated in operations and the refresh runbook instead.
+
+### Post-cutover ranking and cleanup
+
+The [canonical ranking result](ranking-result.json) passed all structural and
+Bluesky-parity criteria across the unchanged 11-query corpus. Both providers
+returned HTTP 200 for every query. The cloud client used the repository’s actual
+benchmark functions with their normal pacing, including debug requests; no
+stress test ran. Its [source](ranking-source.json) and
+[cleanup](ranking-cleanup.json) identify the exact package and verify removal.
+The first client completed the requests but failed to serialize its handle set;
+[its cleanup](ranking-attempt-1-cleanup.json) preceded the corrected, locally
+serialization-checked capture. Only the replacement result is qualified evidence.
+
+The [manual completion events](manual-completion-events.json) confirm that both
+prepare and promote emitted the named success event. The cloud worker’s
+[managed-operation cleanup](managed-operations-cleanup.json) records exactly one
+VM for each operation, exit 0 and deletion. Independent paginated
+[provider inventory](managed-provider-cleanup.json) confirms no owned server,
+primary IP or SSH key remains. The serving B and retained A are
+managed production resources, not disposable experiments.
