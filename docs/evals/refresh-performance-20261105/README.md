@@ -1,6 +1,6 @@
 # Refresh performance evaluation
 
-Status: offline importer qualified; publisher registration pending, 2026-11-05.
+Status: offline importer qualified; publisher registered at 17:54 UTC, 2026-11-05.
 The serving binary, allocation and routing remain unchanged. Earlier
 100,000-actor batching results do not establish full-corpus performance.
 
@@ -20,6 +20,10 @@ handoff, freezing and serving; only offline import uses the new executable.
 These measurements are synthetic import timings, not a measured production
 refresh duration. The root README was reviewed and retains its concise overview;
 the detailed binary-role distinction belongs in the architecture/operations docs.
+The [publisher readback](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/audits/2026-11-05-typeahead-fast-importer-registration.json)
+confirms source `26fae38`, the immutable importer artifact, the unchanged reader
+and release proof, concurrency one with `CANCEL_NEW`, and the next automatic
+18:00 UTC run without job overrides. No serving machine, image or routing changed.
 
 Owner: this Typeahead performance task. The first diagnostic uses one temporary,
 unscheduled cloud Prefect deployment in `typeahead-ephemeral`, concurrency one,
