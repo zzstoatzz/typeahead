@@ -1,8 +1,9 @@
 # Hourly source-poller readiness failures
 
-Status: November 5, 2026, 04:22 UTC. Inactive B passed managed qualification,
-including cached restart. Its empirical release proof is published. Production
-still serves from A; guarded promotion is next.
+Status: November 5, 2026, 04:33 UTC. The fix is live on B after managed
+qualification, cached restart and guarded promotion. Public checks, authenticated
+smoke and ranking acceptance passed. Observation of the first hourly boundary
+continues through 05:16:05.
 Times below are UTC.
 
 ## Failure
@@ -97,7 +98,7 @@ first-start and cached-restart qualification. [Release proof](release-proof.json
 `2cb383df761467c5d7afcb374e9baa01e040faf35170d78b518ac655d3e6b4ba`
 and its six evidence objects were uploaded immutably and read back; see the
 [publication receipt](release-publication.json). The proof explicitly leaves
-the first hourly boundary under observation. The qualified candidate will be
+the first hourly boundary under observation. The qualified candidate was
 promoted before that boundary to avoid another known serving failure; A remains
 available for rollback and comparison. The bounded observation finishes after
 05:16:05, more than an hour after cached-restart qualification.
@@ -110,6 +111,29 @@ percentiles. The first comparison invocation mistakenly expected the scope
 acknowledgment to echo an origin URL; the actual contract acknowledges the
 canonical hostname. The corrected check passed without changing the service
 or the performance acceptance bounds.
+
+## Production cutover
+
+The [guarded promotion](https://prefect-server.waow.tech/runs/flow-run/45b9f7c6-a45e-4571-8f85-41657f123221)
+completed at 04:26:08. The route selects B with admission
+`8216daf108e7dbc4ae6bbe24ca14b056620f5bb88211dd245416a8ea7905dc03`
+and retains A as previous. [Promotion parameters](promote-params.json) bind the
+reviewed plan, exact prior ETag and new release proof.
+
+The [public canary](public-after-promotion.json) verified both aliases and a
+PDS-scoped search on machine `812056a97999d8`, with byte-identical alias bodies.
+Freshness reported healthy source lag of 16 seconds. The
+[authenticated smoke](authenticated-production-smoke.log) passed 62 checks,
+including admin CRUD; only the optional Bluesky comparison was skipped. The
+[ranking run](production-ranking.log) passed all acceptance criteria. The
+[routed index status](production-index-status.json) confirms the expected build,
+binary, machine, full corpus and strict freshness configuration. No claim is
+made that this small cohort establishes an end-to-end latency percentile.
+
+MPS main `3cd4bcf` pins the matching release proof for the next automatic refresh.
+Its CI and live registration are still being checked. The publisher code,
+06:00/18:00 cadence and checkpoint coverage anchor are unchanged; this image-only
+cutover did not renew the snapshot's lifetime.
 
 ## Verification
 

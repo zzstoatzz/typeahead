@@ -31,7 +31,7 @@ The manual `EMERGENCY_PROXY_BSKY` override and recovery procedure are documented
 in the [outage runbook](retros/2026-10-31-search-expiry-outage.md#first-action-during-a-search-outage).
 Restore service before investigating the builder.
 
-The fixed slot image (`c476fc5`) stops itself 60 seconds before its checkpoint
+The serving slot image retains `c476fc5`'s expiry behavior: it stops 60 seconds before its checkpoint
 coverage deadline (last completed full round, or the checkpoint cut, plus
 86,400 seconds). The current slot runtime source never stops on coverage age:
 a running or restarted slot keeps serving and records `coverage`
@@ -39,19 +39,22 @@ a running or restarted slot keeps serving and records `coverage`
 `checked_at`, `basis`) in `/data/tantivy/installation.json` every 5 seconds,
 and logs a `tantivy_slot_coverage` event when staleness changes. Admission
 (`validate_runtime`, used by qualification and retirement) still refuses stale
-coverage, so a stale slot is never promoted. No image built from this source
-is deployed yet. The Worker's `/health/freshness` reads the serving backend's
+coverage, so a stale slot is never promoted. That coverage change is not deployed;
+the [poller release](ops/poller-readiness-20261104/) changes only the source
+process lifetime on the older image. The Worker's `/health/freshness` reads the serving backend's
 `/index/status` and reports `coverage_age_s` and `coverage_deadline` for a
-checkpoint-sourced generation; at 86,400 seconds or more it sets `stale: true`
-(HTTP 503, change-only webhook alert) while `ok` and `probe_ok` stay true.
+checkpoint-sourced generation; if the backend remains available at 86,400 seconds
+or more, it sets `stale: true` (HTTP 503, change-only webhook alert) while `ok`
+and `probe_ok` stay true.
 
 ### Missed-refresh alerts
 
-The slot source poller now selects continuous mode with a durable hourly byte
-budget. This source change is not deployed yet. The older image restarts the
-poller hourly and rechecks the entire immutable PDS mapping each time; November
-4 logs show recurring readiness losses around those restarts. The
-[qualification record](ops/poller-readiness-20261104/) tracks the candidate. See the
+The serving source poller uses continuous mode with a durable hourly byte
+budget, live November 5, 2026 at 04:26 UTC. The older image restarted the
+poller hourly and rechecked the entire immutable PDS mapping each time, pausing
+polling for about 88 seconds. The [release record](ops/poller-readiness-20261104/)
+contains the observed readiness failures, guarded cutover and hourly-boundary
+verification. See the
 [source adapter](../services/tantivy-input/README.md) for the unchanged work bounds.
 
 Refreshes run at 06:00 and 18:00 UTC against a 24-hour coverage window, so one
