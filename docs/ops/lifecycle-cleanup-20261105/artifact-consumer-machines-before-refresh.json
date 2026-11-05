@@ -1,0 +1,71 @@
+{
+  "at": 1793877212.4189508,
+  "apps": [
+    {
+      "app": "typeahead-backfill",
+      "machines": []
+    },
+    {
+      "app": "typeahead-canary",
+      "machines": []
+    },
+    {
+      "app": "typeahead-ingester",
+      "machines": [
+        {
+          "id": "7845636a3d0ee8",
+          "state": "started",
+          "image": "registry.fly.io/typeahead-ingester:deployment-01M6EEX6HE6SHVQ59F7W0ZDGZY",
+          "role": "ingester",
+          "mounts": []
+        }
+      ]
+    },
+    {
+      "app": "typeahead-qual-20261029",
+      "machines": []
+    },
+    {
+      "app": "typeahead-refresh-handles",
+      "machines": []
+    },
+    {
+      "app": "typeahead-tantivy-a",
+      "machines": [
+        {
+          "id": "871327a0347938",
+          "state": "started",
+          "image": "registry.fly.io/typeahead-tantivy-b@sha256:bc66ce9eec3aca5d568135e6d0637f2e2be6e0c305095fc29e4fd50c15d0d34d",
+          "role": null,
+          "mounts": [
+            {
+              "volume": "vol_r1jd38xgyek16wpr",
+              "path": "/data"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "app": "typeahead-tantivy-b",
+      "machines": [
+        {
+          "id": "7841e35f99d338",
+          "state": "started",
+          "image": "registry.fly.io/typeahead-tantivy-a@sha256:d13dee4839c3e56ac1f6dd4f0d14cb4514186221b0f5a6d3037cfb92f090473d",
+          "role": null,
+          "mounts": [
+            {
+              "volume": "vol_4ql13kg2ky19w66r",
+              "path": "/data"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "app": "typeahead-tantivy-dev",
+      "machines": []
+    }
+  ]
+}

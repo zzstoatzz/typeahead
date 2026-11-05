@@ -341,3 +341,33 @@ source, retained rollback and cloud teardown. Do not trigger another full import
 merely to finish this observation sooner. Keep `releases/search/` objects until
 that refresh removes the older A consumer and a complete consumer audit permits
 retirement. The cleanup goal remains active.
+
+### Natural runtime boundary and remaining audit
+
+At 11:15 UTC, the [runtime observation](runtime-hour-observation.json) found the
+actual source process alive for 3,660 seconds, past its former one-hour maximum.
+Its durable hourly budget window began after process startup, proving renewal
+without restarting that process. The byte and poll-reserve limits remain
+512/128 MiB, runtime qualification is true, coverage is fresh, and `source.log`
+is absent. A subsequent [public freshness check](runtime-hour-public-freshness.json)
+was healthy with 47 seconds of replica lag. This is a bounded observation, not a
+continuous availability SLO.
+
+The [scheduler readback](next-normal-refresh.json) identifies the next normal
+automatic run as `56fd2364-2047-456b-bd5f-91c3ee994b75` at 18:00 UTC, without
+release overrides. It is scheduled, not completed.
+
+The [consumer inventory](artifact-consumer-machines-before-refresh.json) found
+no Machines in retired search/qualification apps. The ingester and the two
+managed slots are the only Typeahead Machines. The
+[legacy-object inventory](legacy-artifact-audit-before-refresh.json) contains five
+objects totaling 23,726,835,301 bytes under `releases/search/`; only metadata was
+read. A remains the known consumer, so none was deleted. Current Typeahead and
+registered publisher source have no runtime reference to that prefix. The
+cloud-builder probe only HEADs the separate `control/builds/latest.json` pointer
+and does not follow it. Re-audit both provider state and consumers after the
+scheduled refresh before retirement.
+
+The [completion audit](completion-audit.json) maps each requirement to evidence
+and leaves full-refresh verification, its success event, final teardown and
+obsolete-object retirement explicitly incomplete.

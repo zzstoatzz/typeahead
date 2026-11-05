@@ -1,0 +1,41 @@
+{
+  "at": 1793877339.1214652,
+  "source_processes": [
+    {
+      "pid": 647,
+      "started_at": 1793873678.4,
+      "age_s": 3660.721395254135
+    }
+  ],
+  "budget": {
+    "accounting_mode": "conservative-fixed-window",
+    "build_id": "b1793858591-cp-ef4ecac6b8",
+    "max_source_bytes": 536870912,
+    "pending_reservation": false,
+    "poll_bytes": 12238317,
+    "poll_reserve_bytes": 134217728,
+    "recovered_reservation_bytes": 0,
+    "remaining_source_bytes": 498987397,
+    "remaining_sweep_bytes": 377007986,
+    "requests": 976,
+    "reservation_bytes": 0,
+    "schema_version": 2,
+    "source_bytes": 37883515,
+    "sweep_bytes": 25645198,
+    "sweep_ceiling_bytes": 402653184,
+    "window_ends_at": 1793880315,
+    "window_seconds": 3600,
+    "window_started_at": 1793876715
+  },
+  "coverage": {
+    "coverage_anchor": 1793858591,
+    "coverage_deadline": 1793944991,
+    "checkpoint_renewed_by_remote_round": false,
+    "checked_at": 1793877334,
+    "coverage_age_s": 18743,
+    "coverage_stale": false,
+    "basis": "reader-status"
+  },
+  "runtime_qualified": true,
+  "legacy_source_log_exists": false
+}

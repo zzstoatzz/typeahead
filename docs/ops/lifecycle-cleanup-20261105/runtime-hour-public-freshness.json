@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "stale": false,
+  "replica_lag_s": 47,
+  "snapshot_age_s": 18760,
+  "build_id": "b1793858591-cp-ef4ecac6b8",
+  "coverage_age_s": 18760,
+  "coverage_deadline": 1793944991,
+  "refresh_overdue": false,
+  "probe_ok": true,
+  "reasons": []
+}

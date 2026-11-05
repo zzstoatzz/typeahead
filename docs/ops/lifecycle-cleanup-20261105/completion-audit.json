@@ -1,0 +1,86 @@
+{
+  "at": 1793877484.0660338,
+  "complete": false,
+  "requirements": [
+    {
+      "id": "runtime",
+      "status": "verified",
+      "evidence": [
+        "cloud-result.json",
+        "image-files.json",
+        "release-proof.json",
+        "promotion-flow.json",
+        "public-candidate-check.json",
+        "runtime-hour-observation.json",
+        "runtime-hour-public-freshness.json"
+      ],
+      "scope": "Real reader/runtime fixtures include stale cached restart and stale admission refusal; actual installed image hashes and public cutover bind the combined runtime. Natural process age exceeds 3600 seconds and its durable budget window advanced while alive. No production expiry was induced."
+    },
+    {
+      "id": "publisher-and-retirement",
+      "status": "incomplete",
+      "evidence": [
+        "publisher-registration.json",
+        "next-normal-refresh.json",
+        "artifact-consumer-machines-before-refresh.json",
+        "legacy-artifact-audit-before-refresh.json"
+      ],
+      "remaining": "Verify normal scheduled run 56fd2364-2047-456b-bd5f-91c3ee994b75 through fresh public results and both managed images; audit consumers again before deleting the five obsolete native objects."
+    },
+    {
+      "id": "recovery",
+      "status": "verified-with-explicit-scope",
+      "evidence": [
+        "release-proof.json",
+        "controller-result.json",
+        "controller-owner-result.json",
+        "promotion-journal.json"
+      ],
+      "scope": "Real HTTP/filesystem failure and durable ownership fixtures use the actual reader; unchanged public Worker fallback/recovery evidence is linked by the release proof. Managed first admission, cached restart, guarded promotion and retained rollback are live. No production failure was induced."
+    },
+    {
+      "id": "full-refresh-success-events",
+      "status": "incomplete",
+      "evidence": [
+        "refresh-automation.json",
+        "manual-completion-events.json",
+        "controller-owner-result.json"
+      ],
+      "remaining": "Inspect ordinary Completed event and immutable publication_execution_id for the normal scheduled full refresh; preserve existing 13-hour threshold and notification block."
+    },
+    {
+      "id": "retry-ownership",
+      "status": "verified",
+      "evidence": [
+        "https://tangled.org/zzstoatzz.io/my-prefect-server/tree/main/docs/audits/2026-11-05-in-process-retry-rollout.md",
+        "managed-operations-cleanup.json"
+      ],
+      "scope": "Live API fix and bounded real 90-second in-process retry used one VM/PID. Both worker-poll query paths excluded the owned retry; separate prepare and promote each used exactly one VM. Deployment concurrency and production timeouts were unchanged."
+    },
+    {
+      "id": "resource-and-network-boundaries",
+      "status": "verified-so-far",
+      "evidence": [
+        "comparison-cleanup.json",
+        "controller-owner-cleanup.json",
+        "ranking-cleanup.json",
+        "managed-provider-cleanup.json",
+        "cloud-result.json",
+        "controller-result.json"
+      ],
+      "remaining": "Verify scheduled builder and replaced old slot cleanup after the normal refresh. Local scratch contains source and small metadata only; no corpus data passed through laptop or HeavyPad."
+    },
+    {
+      "id": "documentation",
+      "status": "verified-so-far",
+      "evidence": [
+        "README.md",
+        "../../operations.md",
+        "../../plans/automatic-snapshot-refresh.md",
+        "../../plans/lifecycle-cleanup.md"
+      ],
+      "remaining": "Reconcile these documents with actual scheduled-refresh outcome and retirement before marking complete.",
+      "readme_review": "Typeahead, my-prefect-server and prefect-server concise READMEs still describe actual roles, setup and use accurately; changed runtime, retry and release mechanisms are documented in their operational docs instead."
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "at": 1793877171.358463,
+  "scheduled": [
+    {
+      "id": "56fd2364-2047-456b-bd5f-91c3ee994b75",
+      "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+      "parameters": {
+        "automatic_refresh": true
+      },
+      "state_name": "Scheduled",
+      "state_type": "SCHEDULED",
+      "expected_start_time": "2026-11-05T18:00:00.000000Z",
+      "next_scheduled_start_time": null,
+      "auto_scheduled": true,
+      "run_count": 0,
+      "publisher_override": null
+    },
+    {
+      "id": "858c1694-fafa-4162-aaba-708f868c362c",
+      "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+      "parameters": {
+        "automatic_refresh": true
+      },
+      "state_name": "Scheduled",
+      "state_type": "SCHEDULED",
+      "expected_start_time": "2026-11-06T06:00:00.000000Z",
+      "next_scheduled_start_time": null,
+      "auto_scheduled": true,
+      "run_count": 0,
+      "publisher_override": null
+    },
+    {
+      "id": "4a540a0d-1743-4622-855b-e4c0cb519fd7",
+      "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+      "parameters": {
+        "automatic_refresh": true
+      },
+      "state_name": "Scheduled",
+      "state_type": "SCHEDULED",
+      "expected_start_time": "2026-11-06T18:00:00.000000Z",
+      "next_scheduled_start_time": null,
+      "auto_scheduled": true,
+      "run_count": 0,
+      "publisher_override": null
+    }
+  ],
+  "next": {
+    "id": "56fd2364-2047-456b-bd5f-91c3ee994b75",
+    "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+    "parameters": {
+      "automatic_refresh": true
+    },
+    "state_name": "Scheduled",
+    "state_type": "SCHEDULED",
+    "expected_start_time": "2026-11-05T18:00:00.000000Z",
+    "next_scheduled_start_time": null,
+    "auto_scheduled": true,
+    "run_count": 0,
+    "publisher_override": null
+  }
+}
