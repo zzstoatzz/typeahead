@@ -1,0 +1,21 @@
+{
+  "verified_date": "2026-11-05",
+  "cloud_diagnostic_runs": [
+    "b7036e8f-b289-460e-9f0c-2d19dd729ec7",
+    "717005e5-2e97-4c8f-b590-445ee1b5d93c",
+    "2eb7b162-9600-4121-aa7c-36715a64be3c",
+    "dc88fbbb-ea0e-4682-8abf-8079ebc024cf"
+  ],
+  "diagnostic_servers_remaining": 0,
+  "diagnostic_primary_ips_remaining": 0,
+  "diagnostic_ssh_keys_remaining": 0,
+  "temporary_prefect_deployment_deleted": "ffd80f4d-e232-49e9-86e2-aa31dcd14a5d",
+  "flow_run_records_retained": true,
+  "fly_apps_deleted_after_empty_machine_and_volume_inventories": [
+    "typeahead-perf-20261105",
+    "typeahead-transfer-20261105"
+  ],
+  "corpus_or_index_payloads_transferred_to_operator_hosts": false,
+  "selected_importer_uploaded_and_verified_directly_in_cloud": true,
+  "registered_recurring_diagnostic_schedules": 0
+}

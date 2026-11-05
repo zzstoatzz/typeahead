@@ -23,12 +23,15 @@ the detailed binary-role distinction belongs in the architecture/operations docs
 
 Owner: this Typeahead performance task. The first diagnostic uses one temporary,
 unscheduled cloud Prefect deployment in `typeahead-ephemeral`, concurrency one,
-no production credentials, no serving or rollback slot access. Its temporary
+no source-database or Fly credentials in its job environment, and no serving or
+rollback slot access. Its temporary
 VM owns `/var/tmp/typeahead-import-perf-*`, with an 8 GiB fixture/index budget,
 at least 4 GiB free, and a 35-minute total VM limit. A supervised process group
 is terminated on timeout or cancellation. Fixture/index copies are removed in
 `finally`; only small JSON results are logged. The worker deletes the VM on exit.
-No corpus or build dependencies are downloaded to HeavyPad or the laptop.
+No corpus or build dependencies are downloaded to HeavyPad or the laptop. One
+13.6 MB diagnostic executable crossed the operator relay; the selected importer
+was instead published and verified directly between its cloud VM and R2.
 
 The diagnostic generates one deterministic million-actor JSONL stream, then
 compares the existing settings with four indexing workers, a 2 GiB total writer
