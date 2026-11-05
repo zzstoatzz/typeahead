@@ -37,6 +37,11 @@ while retaining one independent arena per FFI result. A local repeated
 with page allocation versus 0.213–0.222 s with libc; all reply bytes matched.
 This component result does not establish import speed. The same cloud million-
 actor comparison must run against the new allocator before selecting defaults.
+That comparison builds two portable binaries from the same Rust source, changing
+only the adapter allocator. It logs both source and binary hashes, then compares
+page-allocation baseline/repeat, libc with unchanged import settings, and libc
+with four workers and one/eight final segments. Source is restored after both
+builds. Fixture and scratch limits remain unchanged.
 
 Diagnostic setup corrections: the first submission had an invalid source pin and
 was cancelled. Run `717005e5-2e97-4c8f-b590-445ee1b5d93c` then reached compiler

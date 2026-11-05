@@ -90,7 +90,7 @@ def query_matrix(binary, data, log):
         stop(child)
 
 
-def main(binary):
+def main(binary, reference_binary=None):
     binary = Path(binary).resolve()
     count = 1_000_000
     free_before = shutil.disk_usage('/var/tmp').free
@@ -117,17 +117,19 @@ def main(binary):
             output.write((json.dumps({'type':'end', 'build_id':'bulk-perf-fixture',
                 'actor_count':count, 'actors_sha256':digest.hexdigest()}) + '\n').encode())
         reference = None
-        for name, threads, memory, batch, segments in [
-            ('baseline', 1, 128, 50000, 1),
-            ('parallel-one-segment', 4, 2048, 250000, 1),
-            ('parallel-eight-segments', 4, 2048, 250000, 8),
-            ('baseline-repeat', 1, 128, 50000, 1),
-        ]:
+        variants = [
+            ('baseline', reference_binary or binary, 1, 128, 50000, 1),
+            *([('libc-serial', binary, 1, 128, 50000, 1)] if reference_binary else []),
+            ('parallel-one-segment', binary, 4, 2048, 250000, 1),
+            ('parallel-eight-segments', binary, 4, 2048, 250000, 8),
+            ('baseline-repeat', reference_binary or binary, 1, 128, 50000, 1),
+        ]
+        for name, selected_binary, threads, memory, batch, segments in variants:
             data, log_path = root / 'data', root / (name + '.log')
             usage = resource.getrusage(resource.RUSAGE_CHILDREN)
             started = time.monotonic()
             with log_path.open('w') as log:
-                peak = run([str(binary), 'import', '--data', str(data), '--input', str(source),
+                peak = run([str(selected_binary), 'import', '--data', str(data), '--input', str(source),
                     '--indexing-threads', str(threads), '--writer-memory-mb', str(memory),
                     '--batch-size', str(batch), '--final-segments', str(segments)], log, 300, scratch=root)
             elapsed = time.monotonic() - started
@@ -138,7 +140,7 @@ def main(binary):
             if disk > 8 * 1024**3 or shutil.disk_usage(root).free < 4 * 1024**3:
                 raise ValueError('Diagnostic disk budget exceeded')
             with log_path.open('a') as log:
-                answers, timings = query_matrix(binary, data, log)
+                answers, timings = query_matrix(selected_binary, data, log)
             if reference is None:
                 reference = answers
             assert answers == reference, f'Retrieval differs: {name}'
