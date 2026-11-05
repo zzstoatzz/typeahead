@@ -101,6 +101,11 @@ Rust service. See [the observation contract](../../docs/evals/tantivy-dev-202610
 for ordering, retry and qualification boundaries. Local source changes are not a
 deployment receipt.
 
+The continuous-process regression restores an aging durable quota ledger,
+crosses its real window deadline in the same CLI process, and verifies a later
+actor update against Rust after renewal. It uses local TLS and the production
+hourly-window duration with a previously started fixture window.
+
 Source-only timestamp observations can preserve the stored coarse/last-projection
 version while advancing the source revision/cursor and exact request receipt.
 Counts, activity and every other Actor field remain real payload changes. The

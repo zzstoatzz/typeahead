@@ -33,6 +33,7 @@ def module(name, path):
 fixture = module("pacing_fixture", "test_sync.py")
 sync = fixture.sync
 current = module("pacing_current", "current_state.py")
+budget = module("pacing_budget", "budget.py")
 
 
 def port():
@@ -191,6 +192,14 @@ class Tests(unittest.TestCase):
         rejected = subprocess.run(command, env=env, capture_output=True, timeout=5)
         self.assertNotEqual(rejected.returncode, 0)
         self.assertIn(b"continuous polling requires a durable hourly budget", rejected.stderr)
+        source = budget.accounted_source(sync, env["TURSO_URL"], self.f.source_secret,
+                                        ledger, "continuous-fixture", 512 * 1024**2,
+                                        window_seconds=3600, min_request_interval=0)
+        source.close()
+        saved = sync.json.loads(ledger.read_text())
+        saved["window_ends_at"] = int(time.time()) + 15
+        saved["window_started_at"] = saved["window_ends_at"] - 3600
+        ledger.write_bytes(sync.json_bytes(saved))
         with (self.root / "continuous.log").open("wb") as log:
             child = subprocess.Popen(command + ["--budget-file", str(ledger),
                                      "--budget-build-id", "continuous-fixture"],
@@ -207,14 +216,32 @@ class Tests(unittest.TestCase):
                 self.f.now += 1
                 wait_for_watermark(self.f.now - 2)
                 first = sync.json.loads(ledger.read_text())
-                self.f.now += 1
-                self.f.actor("did:example:continuous", self.f.now - 3, handle="continuous.fixture.test")
+                self.assertEqual(first["window_started_at"], saved["window_started_at"])
+                next_time = self.f.now + 1
+                self.f.actor("did:example:continuous", next_time - 3, handle="continuous.fixture.test")
+                self.f.now = next_time
                 wait_for_watermark(self.f.now - 2)
                 actors = sync.Http(3).request(self.base + "/search?q=continuous", self.secret)[0]["actors"]
                 self.assertEqual([actor["did"] for actor in actors], ["did:example:continuous"])
                 after = sync.json.loads(ledger.read_text())
                 self.assertEqual(after["window_started_at"], first["window_started_at"])
                 self.assertGreater(after["source_bytes"], first["source_bytes"])
+                until = time.monotonic() + 20
+                while time.monotonic() < until:
+                    self.assertIsNone(child.poll())
+                    renewed = sync.json.loads(ledger.read_text())
+                    if renewed["window_started_at"] > first["window_started_at"]:
+                        break
+                    time.sleep(.05)
+                else:
+                    self.fail("continuous poller did not renew its durable quota")
+                self.assertGreaterEqual(renewed["window_started_at"], first["window_ends_at"])
+                next_time = self.f.now + 1
+                self.f.actor("did:example:continuous", next_time - 3, handle="renewed.fixture.test")
+                self.f.now = next_time
+                wait_for_watermark(self.f.now - 2)
+                actors = sync.Http(3).request(self.base + "/search?q=renewed", self.secret)[0]["actors"]
+                self.assertEqual([actor["did"] for actor in actors], ["did:example:continuous"])
             finally:
                 child.terminate()
                 child.wait(timeout=5)
