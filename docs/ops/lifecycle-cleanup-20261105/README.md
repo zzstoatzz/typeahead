@@ -117,6 +117,26 @@ laptop or HeavyPad. The Machine exited 0 and removed itself; Machine and volume
 lists were empty before app deletion, then the app was confirmed absent. Local
 scratch, including both fixture packages and metadata, remained about 2 MiB.
 
+### Publication ownership qualification
+
+The pending publisher fix at
+`0a36b8bfe2299a29e87f54c51ed420d341f7a007` preserves the generation's original
+`publication_execution_id` when another execution takes over its journal. A
+same-run full-refresh retry must still emit ordinary `Completed`; a separate
+recovery must not reset the missed-refresh clock. The current manual candidate
+continues on its original `2daeb97` pin; this fix is not registered yet.
+
+Before activation, run the [owner fixture runner](run-owner-fixtures.py) in
+temporary app `typeahead-controller-owner-20261105`, owned by this cleanup. It
+uses the existing runtime image and small committed test sources, two shared
+CPUs, 1 GiB RAM, no public service, credentials or volume, and `/tmp` scratch
+bounded to 1 GiB for cloud-downloaded dependencies and synthetic data. Bootstrap
+and tests have a 600-second bound; the runner requires zero failures and skips.
+Use restart policy `no` and automatic Machine removal. Preserve source hashes
+and bounded logs, verify empty Machine/volume lists, then destroy the app on
+success or failure. The local source/metadata budget remains 5 MiB; no corpus
+data is fetched locally or on HeavyPad.
+
 ## Matched comparison
 
 The [comparison tool](compare.py) implements the [preflight](full-data-preflight.md)
