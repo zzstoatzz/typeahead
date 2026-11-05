@@ -115,3 +115,18 @@ parity failure must remain visible. Capture bounded logs, verify automatic
 Machine removal and empty volume lists, then destroy the temporary app and
 independently confirm absence. No corpus is downloaded through the client or
 locally; laptop traffic is source upload and small result metadata only.
+
+## Completed-promotion retry qualification
+
+The pending publisher guard at `4f1b9b7` changes no runtime image or serving
+resources. Qualify it with the same 93-check runner on disposable app
+`typeahead-controller-retry-20261105`, owned by this cleanup: EWR, two shared
+CPUs, 1 GiB RAM, no services, credentials or volumes, restart `no`, automatic
+Machine removal. Scratch is `/tmp` on its ephemeral disk, capped by the existing
+1 GiB dependency/fixture budget and 600-second execution limit. Reuse the pinned
+runtime, uv and tested dependency versions; upload only changed test/source files.
+
+Require zero failures and skips. Preserve the package hashes, bounded logs and
+result; verify Machine and volume removal, destroy the app and independently
+confirm absence. The existing local source bundle is reused to stay under the
+5 MiB metadata/source budget. No corpus or production failure is involved.
