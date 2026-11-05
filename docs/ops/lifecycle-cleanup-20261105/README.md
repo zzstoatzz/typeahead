@@ -168,3 +168,23 @@ on the disposable cloud builder. Its [receipt](import-pilot-results.json) record
 matching results, timings, resource bounds and scratch cleanup. Larger batches
 were promising; production settings remain unchanged. The [pilot script](pilot-import.py)
 is tied to that run's frozen sample and must not be used as a full-corpus gate.
+
+## Prefect cache readback
+
+At 07:36 UTC November 5, the [read-only cache verification](cache-verification.json)
+loaded and deserialized all four completed stage result records directly from
+R2 for refresh `ef4ecac6-b82f-4d2a-ae0e-fea7cda2ad19`. Each stage executed once.
+This proves remote result persistence, not an observed R2 cache hit in this run;
+it has not retried. The existing flow-retry integration test separately checks
+that completed stages are reused on a same-run retry.
+
+The deployed `52fe3e7` publisher uses `RUN_ID + TASK_SOURCE`, so a fresh flow run
+gets new cache keys. Its export/freeze/publication results contain paths on the
+builder VM; the import report also depends on that workspace's files. The result
+records do not copy the checkpoint or unfinished index into R2. Recovery after
+loss of that VM before publication therefore remains a distinct limitation.
+After publication, the immutable bundle and manifest are durable in R2 and slot
+operations reuse them without export or import. The pending runtime candidate
+will use this refresh's same published artifact. No cache policy or corpus
+transfer was changed by this inspection. Root README usage and architecture
+claims remain unchanged.

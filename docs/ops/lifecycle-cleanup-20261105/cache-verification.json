@@ -1,0 +1,52 @@
+{
+  "at": 1793864180.6688042,
+  "flow_run_id": "ef4ecac6-b82f-4d2a-ae0e-fea7cda2ad19",
+  "records": [
+    {
+      "task": "publish_tantivy_generation-1a0",
+      "state": "Completed",
+      "duration_seconds": 517.29942,
+      "run_count": 1,
+      "storage_key": "prefect-results/typeahead-index/7945bb2070246a9e24ef3723ead815d0",
+      "record_bytes": 473,
+      "record_sha256": "a8b7e14f02e5b9f4bd5f293008d24be8d381e7dd602a3fcc18e7f465b7033d14",
+      "result_type": "PosixPath",
+      "local_workspace_reference": true
+    },
+    {
+      "task": "freeze_checkpoint-1c7",
+      "state": "Completed",
+      "duration_seconds": 24.955811,
+      "run_count": 1,
+      "storage_key": "prefect-results/typeahead-index/6e3b537663003f6bf9cf48cd37c3ebe6",
+      "record_bytes": 507,
+      "record_sha256": "2626dab756bfc4d3c659987f9c5248f560176ef32ad2f6ed993a8cfcda219e1a",
+      "result_type": "tuple",
+      "local_workspace_reference": true
+    },
+    {
+      "task": "import_checkpoint-ef3",
+      "state": "Completed",
+      "duration_seconds": 2441.86024,
+      "run_count": 1,
+      "storage_key": "prefect-results/typeahead-index/769372290a22169b6ef81dfcd0759dab",
+      "record_bytes": 10539,
+      "record_sha256": "ec1e92705fd7f61dcef8420973130c8f3320ea36db251fd938b794bbf70044b5",
+      "result_type": "dict",
+      "local_workspace_reference": false
+    },
+    {
+      "task": "export_checkpoint-01d",
+      "state": "Completed",
+      "duration_seconds": 662.18917,
+      "run_count": 1,
+      "storage_key": "prefect-results/typeahead-index/055d69c70de98edb403d01c06e2ae51b",
+      "record_bytes": 723,
+      "record_sha256": "b14ecd9cf6c4f16e28e2ad356146f0df6f3607785c87d5df74fa83dceedc0c67",
+      "result_type": "dict",
+      "local_workspace_reference": true
+    }
+  ],
+  "remote_result_records_verified": true,
+  "scope": "Read-only Prefect task metadata and R2 result record deserialization; no task re-executed and no corpus fetched"
+}
