@@ -1,0 +1,28 @@
+[
+  {
+    "id": "85e356c4360178",
+    "state": "started",
+    "region": "ewr",
+    "image_ref": {
+      "registry": "registry.fly.io",
+      "repository": "typeahead-lifecycle-20261105",
+      "digest": "sha256:36fae88f17f57690b583cadf5212110e3b2bf8fabdc02c52cbd983e8b48a3a16",
+      "labels": {
+        "org.opencontainers.image.revision": "c476fc591e191a755d0d4837eb4f230932f8ceff"
+      }
+    },
+    "guest": {
+      "cpu_kind": "shared",
+      "cpus": 2,
+      "memory_mb": 1024
+    },
+    "services": [],
+    "mounts": [],
+    "restart": {
+      "policy": "no"
+    },
+    "env_keys": [
+      "PYTHONUNBUFFERED"
+    ]
+  }
+]

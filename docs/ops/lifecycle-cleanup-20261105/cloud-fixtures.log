@@ -1,0 +1,100 @@
+2026-11-05T05:41:07Z app[85e356c4360178] ewr [info]2026-11-05T05:41:07.821241130 [01M6N3K62CEFWAFXF9F7J3RT62:main] Running Firecracker v1.14.4
+2026-11-05T05:41:07Z app[85e356c4360178] ewr [info]2026-11-05T05:41:07.821409493 [01M6N3K62CEFWAFXF9F7J3RT62:main] Listening on API socket ("/fc.sock").
+2026-11-05T05:41:08Z app[85e356c4360178] ewr [info] INFO Starting init (commit: b99d4b17)...
+2026-11-05T05:41:08Z app[85e356c4360178] ewr [info] INFO Preparing to run: `python3 /qualification/run-fixtures.py` as root
+2026-11-05T05:41:08Z app[85e356c4360178] ewr [info] INFO [fly api proxy] listening at /.fly/api
+2026-11-05T05:41:08Z runner[85e356c4360178] ewr [info]Machine created and started in 4.376s
+2026-11-05T05:41:08Z app[85e356c4360178] ewr [info]2026/11/05 05:41:08 INFO SSH listening listen_address=[fdaa:12:4e15:a7b:323:4195:a51b:2]:22
+2026-11-05T05:41:11Z app[85e356c4360178] ewr [info]test_actual_checkpoint_wal_stream_import_catchup_and_test_only_admission (test_tantivy_install.AdmissionTests.test_actual_checkpoint_wal_stream_import_catchup_and_test_only_admission) ... upload releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:11Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:11Z app[85e356c4360178] ewr [info]upload releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:11Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_actual_tar_rejects_traversal_links_and_extra_files_before_reader_execution (test_tantivy_install.AdmissionTests.test_actual_tar_rejects_traversal_links_and_extra_files_before_reader_execution) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_archive_inventory_and_paths_cannot_escape_or_masquerade_as_sqlite (test_tantivy_install.AdmissionTests.test_archive_inventory_and_paths_cannot_escape_or_masquerade_as_sqlite) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_checkpoint_admission_ignores_legacy_native_fields (test_tantivy_install.AdmissionTests.test_checkpoint_admission_ignores_legacy_native_fields) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_checkpoint_coverage_is_reported_past_its_deadline_without_admitting (test_tantivy_install.AdmissionTests.test_checkpoint_coverage_is_reported_past_its_deadline_without_admitting) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_checkpoint_fetch_budget_accepts_nine_hundred_seconds_without_moving_source_floor (test_tantivy_install.AdmissionTests.test_checkpoint_fetch_budget_accepts_nine_hundred_seconds_without_moving_source_floor) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_checkpoint_ordinary_poll_does_not_renew_coverage_and_local_markers_cannot_be_relabelled (test_tantivy_install.AdmissionTests.test_checkpoint_ordinary_poll_does_not_renew_coverage_and_local_markers_cannot_be_relabelled) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_checkpoint_primary_counts_are_structural_only (test_tantivy_install.AdmissionTests.test_checkpoint_primary_counts_are_structural_only) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_checkpoint_provenance_rejects_floor_prefix_wal_and_count_confusion (test_tantivy_install.AdmissionTests.test_checkpoint_provenance_rejects_floor_prefix_wal_and_count_confusion) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_checkpoint_runtime_requires_explicit_post_cut_remote_handoff_and_no_fixture_production (test_tantivy_install.AdmissionTests.test_checkpoint_runtime_requires_explicit_post_cut_remote_handoff_and_no_fixture_production) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_fixture_checkpoint_cannot_freeze_install_or_claim_runtime_in_production (test_tantivy_install.AdmissionTests.test_fixture_checkpoint_cannot_freeze_install_or_claim_runtime_in_production) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_independent_runtime_gates_reject_claimed_readiness_with_missing_evidence (test_tantivy_install.AdmissionTests.test_independent_runtime_gates_reject_claimed_readiness_with_missing_evidence) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_managed_slots_bind_origin_provider_owner_and_installation (test_tantivy_install.AdmissionTests.test_managed_slots_bind_origin_provider_owner_and_installation) ... ok
+2026-11-05T05:41:12Z app[85e356c4360178] ewr [info]test_provider_records_require_fresh_independent_final_shape_and_runtime_instance (test_tantivy_install.AdmissionTests.test_provider_records_require_fresh_independent_final_shape_and_runtime_instance) ... ok
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]test_real_binary_directory_install_runtime_qualification_and_corruption (test_tantivy_install.AdmissionTests.test_real_binary_directory_install_runtime_qualification_and_corruption) ... upload releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]upload releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/manifest.json
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:13Z app[85e356c4360178] ewr [info]verify releases/search-tantivy/b1793236000-pilot/index.tar
+2026-11-05T05:41:14Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:14Z app[85e356c4360178] ewr [info]test_slot_past_checkpoint_coverage_keeps_serving_restarts_and_reports_stale (test_tantivy_slot.CheckpointCoverageTests.test_slot_past_checkpoint_coverage_keeps_serving_restarts_and_reports_stale) ... {"event": "tantivy_slot_coverage", "stale": false, "coverage_age_s": 4, "coverage_deadline": 1793943670}
+2026-11-05T05:41:14Z app[85e356c4360178] ewr [info]{"address":"127.0.0.1:42139","event":"listening","ready":true}
+2026-11-05T05:41:14Z app[85e356c4360178] ewr [info]{"event": "tantivy_slot_coverage", "stale": true, "coverage_age_s": 90000, "coverage_deadline": 1793943674}
+2026-11-05T05:41:14Z app[85e356c4360178] ewr [info]{"address":"127.0.0.1:48373","event":"listening","ready":true}
+2026-11-05T05:41:25Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:31Z app[85e356c4360178] ewr [info]test_actual_serve_source_polling_survives_separate_process_restart (test_tantivy_slot.SlotTests.test_actual_serve_source_polling_survives_separate_process_restart) ... ok
+2026-11-05T05:41:31Z app[85e356c4360178] ewr [info]test_actual_slot_reader_acknowledges_global_merge (test_tantivy_slot.SlotTests.test_actual_slot_reader_acknowledges_global_merge) ... {"address":"127.0.0.1:51335","event":"listening","ready":true}
+2026-11-05T05:41:32Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:32Z app[85e356c4360178] ewr [info]test_cached_receipt_and_expected_deployment_drift_fail_without_network (test_tantivy_slot.SlotTests.test_cached_receipt_and_expected_deployment_drift_fail_without_network) ... ok
+2026-11-05T05:41:33Z app[85e356c4360178] ewr [info]test_cached_structural_mode_accepts_inflight_cycle_but_rejects_identity_drift (test_tantivy_slot.SlotTests.test_cached_structural_mode_accepts_inflight_cycle_but_rejects_identity_drift) ... ok
+2026-11-05T05:41:33Z app[85e356c4360178] ewr [info]test_corrupt_bundle_fails_before_admission_and_preserves_no_installed_receipt (test_tantivy_slot.SlotTests.test_corrupt_bundle_fails_before_admission_and_preserves_no_installed_receipt) ... ok
+2026-11-05T05:41:34Z app[85e356c4360178] ewr [info]test_legacy_native_source_key_is_accepted_and_never_fetched (test_tantivy_slot.SlotTests.test_legacy_native_source_key_is_accepted_and_never_fetched) ... ok
+2026-11-05T05:41:34Z app[85e356c4360178] ewr [info]test_real_install_cached_restart_and_reader_corruption (test_tantivy_slot.SlotTests.test_real_install_cached_restart_and_reader_corruption) ... ok
+2026-11-05T05:41:35Z app[85e356c4360178] ewr [info]test_separate_process_cached_restart_continues_actual_policy_polling (test_tantivy_slot.SlotTests.test_separate_process_cached_restart_continues_actual_policy_polling) ... ok
+2026-11-05T05:41:36Z app[85e356c4360178] ewr [info]test_verified_partial_transfer_resumes_before_install (test_tantivy_slot.SlotTests.test_verified_partial_transfer_resumes_before_install) ... ok
+2026-11-05T05:41:37Z app[85e356c4360178] ewr [info]test_wrong_binding_and_cached_receipt_do_not_fetch_or_overwrite (test_tantivy_slot.SlotTests.test_wrong_binding_and_cached_receipt_do_not_fetch_or_overwrite) ... ok
+2026-11-05T05:41:37Z app[85e356c4360178] ewr [info]test_real_rclone_resumes_interrupted_http_range (test_tantivy_slot.TransferTests.test_real_rclone_resumes_interrupted_http_range) ... {"event": "tantivy_slot_transfer_retry", "attempt": 1, "bytes": 98304, "exit_code": 5}
+2026-11-05T05:41:37Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:37Z app[85e356c4360178] ewr [info]----------------------------------------------------------------------
+2026-11-05T05:41:37Z app[85e356c4360178] ewr [info]Ran 27 tests in 28.551s
+2026-11-05T05:41:37Z app[85e356c4360178] ewr [info]OK
+2026-11-05T05:41:37Z app[85e356c4360178] ewr [info]test_completed_stale_cycle_requires_another_fresh_cycle (__main__.Tests.test_completed_stale_cycle_requires_another_fresh_cycle) ... {"budget_s": 30, "elapsed_s": 0.01, "import_log_bytes": 0, "phase": "tantivy-checkpoint-import"}
+2026-11-05T05:41:38Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.4, "pages": 0, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:38Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.4, "pages": 4, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:38Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:39Z app[85e356c4360178] ewr [info]test_default_fixture_rejection_never_yields_handoff (__main__.Tests.test_default_fixture_rejection_never_yields_handoff) ... ok
+2026-11-05T05:41:39Z app[85e356c4360178] ewr [info]test_failed_producer_and_importer_preserve_safe_exit_diagnostics (__main__.Tests.test_failed_producer_and_importer_preserve_safe_exit_diagnostics) ... {"budget_s": 30, "elapsed_s": 0.0, "import_log_bytes": 0, "phase": "tantivy-checkpoint-import"}
+2026-11-05T05:41:39Z app[85e356c4360178] ewr [info]{"budget_s": 30, "cause": "producer_validation", "elapsed_s": 0.25, "import_log_bytes": 48, "import_tail_sha256": "717fa6681255cdcdb8cf607024ada04d89ae70b7dd8cb7505a58e80211958664", "importer_error_kind": "input_footer", "importer_exit": 1, "phase": "tantivy-checkpoint-import-failed", "producer_error_class": "ValueError", "producer_exit": 1, "schema_version": 1, "stream_log_bytes": 73, "stream_tail_sha256": "9291ade42ee45d6ba9be6f054f6783f136d05cc3d22afc0958f08ae27aa07c67"}
+2026-11-05T05:41:40Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:40Z app[85e356c4360178] ewr [info]test_join_is_bound_through_checkpoint_catchup_and_portable_bundle (__main__.Tests.test_join_is_bound_through_checkpoint_catchup_and_portable_bundle) ... {"budget_s": 30, "elapsed_s": 0.0, "import_log_bytes": 0, "phase": "tantivy-checkpoint-import"}
+2026-11-05T05:41:40Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.3, "pages": 0, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:40Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.4, "pages": 4, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:41Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:41Z app[85e356c4360178] ewr [info]test_real_pipe_import_cas_policy_handoff_without_second_identity_walk (__main__.Tests.test_real_pipe_import_cas_policy_handoff_without_second_identity_walk) ... {"budget_s": 30, "elapsed_s": 0.0, "import_log_bytes": 0, "phase": "tantivy-checkpoint-import"}
+2026-11-05T05:41:41Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.3, "pages": 0, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:41Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.4, "pages": 4, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:41Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:42Z app[85e356c4360178] ewr [info]test_remote_clock_before_cut_never_seals_and_deadline_stops_reader (__main__.Tests.test_remote_clock_before_cut_never_seals_and_deadline_stops_reader) ... {"budget_s": 3, "elapsed_s": 0.0, "import_log_bytes": 0, "phase": "tantivy-checkpoint-import"}
+2026-11-05T05:41:42Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.3, "pages": 0, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:42Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.4, "pages": 4, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:45Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:45Z app[85e356c4360178] ewr [info]test_remote_policy_failure_cannot_seal_first_through (__main__.Tests.test_remote_policy_failure_cannot_seal_first_through) ... {"budget_s": 30, "elapsed_s": 0.0, "import_log_bytes": 0, "phase": "tantivy-checkpoint-import"}
+2026-11-05T05:41:45Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.3, "pages": 0, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:46Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:47Z app[85e356c4360178] ewr [info]test_unbuffered_producer_deadline_exits_when_consumer_does_not_read (__main__.Tests.test_unbuffered_producer_deadline_exits_when_consumer_does_not_read) ... ok
+2026-11-05T05:41:48Z app[85e356c4360178] ewr [info]test_verified_footer_crash_resumes_without_reimport (__main__.Tests.test_verified_footer_crash_resumes_without_reimport) ... {"budget_s": 30, "elapsed_s": 0.01, "import_log_bytes": 0, "phase": "tantivy-checkpoint-import"}
+2026-11-05T05:41:48Z app[85e356c4360178] ewr [info]{"budget_s": 30, "cause": "child_exit", "elapsed_s": 0.26, "import_log_bytes": 0, "import_tail_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "importer_exit": -6, "phase": "tantivy-checkpoint-import-failed", "producer_exit": 0, "schema_version": 1, "stream_log_bytes": 0, "stream_tail_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+2026-11-05T05:41:48Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.3, "pages": 0, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:48Z app[85e356c4360178] ewr [info]{"completed_cycles": 0, "elapsed_s": 0.4, "pages": 4, "phase": "tantivy-checkpoint-live-catchup"}
+2026-11-05T05:41:49Z app[85e356c4360178] ewr [info]ok
+2026-11-05T05:41:49Z app[85e356c4360178] ewr [info]----------------------------------------------------------------------
+2026-11-05T05:41:49Z app[85e356c4360178] ewr [info]Ran 9 tests in 11.382s
+2026-11-05T05:41:49Z app[85e356c4360178] ewr [info]OK
+2026-11-05T05:41:49Z app[85e356c4360178] ewr [info]{"event": "lifecycle_fixture_result", "passed": true, "elapsed_s": 40.75916685, "results": [{"command": ["/usr/local/bin/python3", "-m", "unittest", "discover", "-s", "/qualification/typeahead/scripts/snapshot_refresh", "-p", "test_tantivy_*.py", "-v"], "returncode": 0}, {"command": ["/usr/local/bin/python3", "/qualification/mps/tests/test_typeahead_checkpoint_build.py", "-v"], "returncode": 0}]}
+2026-11-05T05:41:49Z app[85e356c4360178] ewr [info] INFO Main child exited normally with code: 0
+2026-11-05T05:41:49Z app[85e356c4360178] ewr [info] INFO Starting clean up.
+2026-11-05T05:41:49Z app[85e356c4360178] ewr [info][   41.388679] reboot: Restarting system
+2026-11-05T05:41:49Z runner[85e356c4360178] ewr [info]machine restart policy set to 'no', not restarting

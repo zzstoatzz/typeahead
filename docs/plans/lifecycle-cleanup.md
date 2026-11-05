@@ -55,3 +55,9 @@ stream, collected by Fly. It no longer writes or rotates `source.log` on the
 serving volume. Rotation depended on process exit and therefore did not bound a
 continuous poller's log. This change is not deployed yet. Use `fly logs -a APP`
 for source diagnostics after that runtime is released.
+
+The [November 5 cloud fixture run](../ops/lifecycle-cleanup-20261105/) passed
+all 36 tests and removed its disposable compute. It verifies the combined
+runtime and provenance-free checkpoint helpers on synthetic data, including
+restart beyond the coverage deadline. Full-data qualification and a verified
+production refresh remain required.

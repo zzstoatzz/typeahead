@@ -1,0 +1,12 @@
+{
+  "verified_at": 1793857428.593437,
+  "machine_id": "85e356c4360178",
+  "machine_list_after": [],
+  "volume_list_after": [],
+  "temporary_app_absent": true,
+  "applications_checked": 40,
+  "local_scratch_bytes_rounded": "1.1 MiB",
+  "local_corpus_transfers": 0,
+  "heavypad_corpus_transfers": 0,
+  "retained_runtime_image": "registry.fly.io/typeahead-tantivy-a@sha256:d13dee4839c3e56ac1f6dd4f0d14cb4514186221b0f5a6d3037cfb92f090473d"
+}

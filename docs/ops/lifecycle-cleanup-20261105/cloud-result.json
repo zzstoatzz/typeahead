@@ -1,0 +1,34 @@
+{
+  "event": "lifecycle_fixture_result",
+  "passed": true,
+  "elapsed_s": 40.75916685,
+  "results": [
+    {
+      "command": [
+        "/usr/local/bin/python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "/qualification/typeahead/scripts/snapshot_refresh",
+        "-p",
+        "test_tantivy_*.py",
+        "-v"
+      ],
+      "returncode": 0
+    },
+    {
+      "command": [
+        "/usr/local/bin/python3",
+        "/qualification/mps/tests/test_typeahead_checkpoint_build.py",
+        "-v"
+      ],
+      "returncode": 0
+    }
+  ],
+  "machine_id": "85e356c4360178",
+  "image": "registry.fly.io/typeahead-lifecycle-20261105@sha256:36fae88f17f57690b583cadf5212110e3b2bf8fabdc02c52cbd983e8b48a3a16",
+  "runtime_image": "registry.fly.io/typeahead-tantivy-a@sha256:d13dee4839c3e56ac1f6dd4f0d14cb4514186221b0f5a6d3037cfb92f090473d",
+  "test_count": 36,
+  "scope": "Synthetic fixtures on disposable cloud compute; not full-corpus or release authorization"
+}
