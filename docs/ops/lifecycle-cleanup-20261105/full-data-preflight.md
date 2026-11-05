@@ -14,9 +14,11 @@ Public freshness passed; coverage ends November 6 at 06:03:11 UTC.
 
 The [positive preflight](candidate-preflight.json) verified the serving build,
 coverage, unreserved slots, artifact budget and green publisher CI. It created
-only a local proposal. Submission is additionally held for the Prefect API's
-in-process-retry fix and bounded cloud probe; the refresh exposed two executions
-of its retry under one flow-run ID.
+only a local proposal. The Prefect API's in-process-retry fix and bounded cloud
+probe passed at 09:23 UTC; the refresh had exposed two executions under one
+flow-run ID. The same request was [submitted](candidate-preparation.json) at
+09:24 UTC as run `67fc6ac8-b546-4113-bc30-1db8121b273f`. It prepares inactive B
+without authorizing promotion or changing the scheduled publisher pins.
 
 Before submission, recheck the public build and route, coverage, current
 image/proof binding, both pending markers and next schedule. The controller must

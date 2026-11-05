@@ -1,8 +1,8 @@
 # Lifecycle qualification
 
-Status: runtime fixtures passed at 05:41 UTC and controller fixtures at 06:08 UTC,
-November 5, 2026. No runtime from
-this record is deployed. The [cleanup plan](../../plans/lifecycle-cleanup.md)
+Status: fixtures passed and the Prefect API retry fix is live, November 5, 2026.
+Inactive-slot preparation was submitted at 09:24 UTC. The candidate runtime is
+not serving production. The [cleanup plan](../../plans/lifecycle-cleanup.md)
 defines completion.
 
 ## Verified so far
@@ -67,6 +67,23 @@ on the qualified continuous-poller image until then.
 
 The root README was reviewed: these qualification steps change neither public
 usage nor deployed architecture, so it needs no additional detail.
+
+### Retry ownership and candidate submission
+
+The [Prefect rollout audit](https://tangled.org/zzstoatzz.io/my-prefect-server/tree/main/docs/audits/2026-11-05-in-process-retry-rollout.md)
+records the live server fix, uninterrupted API health sampling and an actual
+90-second cloud flow retry using one VM and PID. Both worker polling query paths
+excluded the owned retry. The temporary VM, IP, SSH key, deployment and concurrency
+limit were removed. Concurrency settings, production timeouts and worker source
+were unchanged.
+
+The [candidate submission](candidate-preparation.json) is run
+`67fc6ac8-b546-4113-bc30-1db8121b273f`, request
+`92d56fc206df4304a27c02c987ca2d7c`. The controller allocated inactive B machine
+`7841e35f99d338` on independent volume `vol_4ql13kg2ky19w66r` and started it.
+It reuses the full refresh's published bundle; no export or import is requested.
+Serving A remains unchanged. Preparation, matched performance, release proof
+and promotion are still pending.
 
 ### Controller recovery fixtures
 
@@ -174,9 +191,11 @@ is tied to that run's frozen sample and must not be used as a full-corpus gate.
 At 07:36 UTC November 5, the [read-only cache verification](cache-verification.json)
 loaded and deserialized all four completed stage result records directly from
 R2 for refresh `ef4ecac6-b82f-4d2a-ae0e-fea7cda2ad19`. Each stage executed once.
-This proves remote result persistence, not an observed R2 cache hit in this run;
-it has not retried. The existing flow-retry integration test separately checks
-that completed stages are reused on a same-run retry.
+This proves remote result persistence, not an observed R2 cache hit. The run
+later retried at 07:51 UTC and resumed the durable pending slot operation without
+exporting, importing or publishing again; it completed promotion at 07:56 UTC.
+That continuation bypassed the build stages. The existing flow-retry integration
+test separately checks reuse of completed stage results on a same-run retry.
 
 The deployed `52fe3e7` publisher uses `RUN_ID + TASK_SOURCE`, so a fresh flow run
 gets new cache keys. Its export/freeze/publication results contain paths on the
