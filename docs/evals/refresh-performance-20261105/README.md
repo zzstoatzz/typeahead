@@ -44,8 +44,10 @@ serving slot must never be resized, restarted or used for these experiments.
 The independent CPU diagnostic uses a new `typeahead-perf-20261105` Fly app,
 no services or credentials, no volumes, and the existing D13 runtime image.
 Two auto-destroy machines compare shared and performance CPU with the same
-512 MiB synthetic tar, 1 GiB memory, and a startup-credit drain before measuring
-sustained work. Each process has a five-minute alarm and owns one
+512 MiB synthetic tar, 4 GiB memory, and a startup-credit drain before measuring
+sustained work. Fly requires at least 4 GiB for two performance CPUs; its rejected
+1 GiB request created no machine. An additional shared/1 GiB measurement represents
+the current serving allocation. Each process has a five-minute alarm and owns one
 `/tmp/typeahead-install-cpu-*` scratch directory, bounded at 2 GiB and removed
 on exit. This isolates hashing/extraction from networking; it does not qualify
 a production installer or authorize a permanent serving allocation change.
