@@ -3,8 +3,8 @@
 Status: fixtures passed and the Prefect API retry fix is live, November 5, 2026.
 Inactive B completed preparation at 10:16 UTC, and matched full-data comparison
 and publisher-owner fixtures passed. The new runtime is serving production on B after guarded promotion at
-10:52 UTC. Publisher registration and the next normal full refresh remain
-pending. The [cleanup plan](../../plans/lifecycle-cleanup.md)
+10:52 UTC. Compatible publisher registration was verified at 11:10 UTC. The
+next normal full refresh and obsolete-object cleanup remain pending. The [cleanup plan](../../plans/lifecycle-cleanup.md)
 defines completion.
 
 ## Verified so far
@@ -324,3 +324,19 @@ VM for each operation, exit 0 and deletion. Independent paginated
 [provider inventory](managed-provider-cleanup.json) confirms no owned server,
 primary IP or SSH key remains. The serving B and retained A are
 managed production resources, not disposable experiments.
+
+### Publisher registration
+
+The [registration readback](publisher-registration.json) confirms the qualified
+immutable pins after exact-main CI passed for configuration `090f798`. Only the
+command and five release-pin environment fields changed. Schedule, parameters,
+pull steps, pool/queue and concurrency were read back unchanged: active
+06:00/18:00 UTC, automatic refresh, concurrency one, `CANCEL_NEW`. The source
+publisher pin is `0a36b8b`; configuration and runtime source are separately pinned.
+
+The remaining production gate is the normal 18:00 UTC full refresh. Verify its
+ordinary `Completed` event, new public build, both aliases and scope, healthy
+source, retained rollback and cloud teardown. Do not trigger another full import
+merely to finish this observation sooner. Keep `releases/search/` objects until
+that refresh removes the older A consumer and a complete consumer audit permits
+retirement. The cleanup goal remains active.

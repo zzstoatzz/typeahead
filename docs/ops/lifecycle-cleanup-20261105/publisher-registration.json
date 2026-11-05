@@ -1,0 +1,132 @@
+{
+  "at": 1793877004.6603022,
+  "configuration_revision": "090f798959cdcc6536a2215e10cd771d0cfcd924",
+  "ci": {
+    "cursor": "1885:1",
+    "pipelines": [
+      {
+        "commit": "090f798959cdcc6536a2215e10cd771d0cfcd924",
+        "createdAt": "2026-11-05T04:50:07-06:00",
+        "id": "3mzkp35ufpy22",
+        "repo": "did:plc:xrndz6e42qj6ygbclfmruugv",
+        "trigger": {
+          "$type": "org.tangled.event.push",
+          "actor": "did:plc:xbtmt2zjwlrfegqvch7fboei",
+          "newSha": "090f798959cdcc6536a2215e10cd771d0cfcd924",
+          "oldSha": "0a36b8bfe2299a29e87f54c51ed420d341f7a007",
+          "ref": "refs/heads/main",
+          "repo": "did:plc:xrndz6e42qj6ygbclfmruugv"
+        },
+        "workflows": [
+          {
+            "definition": {
+              "id": "deploy.yml",
+              "name": "deploy.yml",
+              "source": {
+                "$type": "org.tangled.ci.defs#fileSource",
+                "commit": "090f798959cdcc6536a2215e10cd771d0cfcd924",
+                "path": ".tangled/workflows/deploy.yml",
+                "repo": "did:plc:xrndz6e42qj6ygbclfmruugv"
+              },
+              "triggers": [
+                "org.tangled.event.push"
+              ]
+            },
+            "finishedAt": "2026-11-05T05:09:48.468601717-06:00",
+            "id": "deploy.yml",
+            "name": "deploy.yml",
+            "startedAt": "2026-11-05T05:01:48.399088933-06:00",
+            "status": "success"
+          }
+        ]
+      }
+    ],
+    "total": 1
+  },
+  "pins": {
+    "MPS_PIN": "@0a36b8bfe2299a29e87f54c51ed420d341f7a007",
+    "INDEX_TANTIVY_SOURCE_REVISION": "7d732639d4d63b1fe0abaeb4b6f07224640d1189",
+    "INDEX_TANTIVY_ADAPTER_SHA256": "cf893cb984e97453a1807e1de2d52d096664525636829884d734f42ab191f26b",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_KEY": "control/tantivy-releases/7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759.json",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_SHA256": "7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759"
+  },
+  "before": {
+    "parameters": {
+      "automatic_refresh": true
+    },
+    "paused": false,
+    "concurrency_limit": 1,
+    "concurrency_options": {
+      "collision_strategy": "CANCEL_NEW"
+    },
+    "schedules": [
+      {
+        "id": "b25a07a0-d885-417c-b752-cace13b9a30c",
+        "created": "2026-11-05T10:25:52.616002Z",
+        "updated": "2026-11-05T10:25:52.616002Z",
+        "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+        "schedule": {
+          "cron": "0 6,18 * * *",
+          "timezone": "UTC"
+        },
+        "active": true,
+        "max_scheduled_runs": null,
+        "parameters": {},
+        "slug": null
+      }
+    ],
+    "pull_steps": [
+      {
+        "mps.deployment_steps.cached_checkout": {
+          "repository": "https://tangled.org/zzstoatzz.io/my-prefect-server.git",
+          "fallback_repository": "https://github.com/zzstoatzz/my-prefect-server.git",
+          "cache_root": "/var/lib/typeahead-indexer/.cache/mps/source",
+          "directory": "my-prefect-server"
+        }
+      }
+    ],
+    "entrypoint": "flows/typeahead_index.py:typeahead_index",
+    "work_queue_name": "default",
+    "work_pool_name": "typeahead-ephemeral"
+  },
+  "verified": true,
+  "after": {
+    "parameters": {
+      "automatic_refresh": true
+    },
+    "paused": false,
+    "concurrency_limit": 1,
+    "concurrency_options": {
+      "collision_strategy": "CANCEL_NEW"
+    },
+    "schedules": [
+      {
+        "id": "b25a07a0-d885-417c-b752-cace13b9a30c",
+        "created": "2026-11-05T10:25:52.616002Z",
+        "updated": "2026-11-05T10:25:52.616002Z",
+        "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+        "schedule": {
+          "cron": "0 6,18 * * *",
+          "timezone": "UTC"
+        },
+        "active": true,
+        "max_scheduled_runs": null,
+        "parameters": {},
+        "slug": null
+      }
+    ],
+    "pull_steps": [
+      {
+        "mps.deployment_steps.cached_checkout": {
+          "repository": "https://tangled.org/zzstoatzz.io/my-prefect-server.git",
+          "fallback_repository": "https://github.com/zzstoatzz/my-prefect-server.git",
+          "cache_root": "/var/lib/typeahead-indexer/.cache/mps/source",
+          "directory": "my-prefect-server"
+        }
+      }
+    ],
+    "entrypoint": "flows/typeahead_index.py:typeahead_index",
+    "work_queue_name": "default",
+    "work_pool_name": "typeahead-ephemeral"
+  }
+}

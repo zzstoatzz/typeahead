@@ -48,8 +48,9 @@ continuous source process no longer accumulates `source.log` on its volume.
 
 The previous A rollback still uses the older expiry runtime until the next full
 refresh replaces it. Keep retained native provenance objects while that consumer
-exists. The new publisher is staged, not registered; verify its registration
-and normal scheduled refresh in the release record before pruning.
+exists. The compatible publisher was registered at 11:10 UTC with unchanged schedule
+and concurrency. Verify its normal scheduled refresh in the release record
+before pruning.
 
 ### Missed-refresh alerts
 

@@ -83,6 +83,6 @@ broke the promotion that restored Tantivy.
   [release record](../ops/lifecycle-cleanup-20261105/) includes matched full-data
   comparison and public alias/PDS verification. The earlier November 2 timing
   result remains historical; the new explicit cohort passed its declared bounds.
-  The compatible publisher is staged but not registered yet. Verify its normal
+  The compatible publisher was registered at 11:10 UTC. Verify its normal
   scheduled refresh before deleting `releases/search/`; the previous A rollback
   still validates those native provenance objects.
