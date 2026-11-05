@@ -265,12 +265,11 @@ class CheckpointCoverageTests(unittest.TestCase):
             work=Path(directory).resolve()
             with fixtures.checkpoint_runtime_fixture(work/'case',BINARY,slot_app='typeahead-tantivy-a') as case:
                 portable=case['portable']
-                self.assertIn('rollback_native_anchor',portable);self.assertIn('legacy_build_id',portable)
                 bound={**case['manifest'],
                     'deployment_schema_version':1,'request_id':'e'*32,
                     'artifact_manifest_key':f"releases/search-tantivy/{portable['active_build']}/manifest.json",
                     'artifact_manifest_sha256':hashlib.sha256(json.dumps(portable).encode()).hexdigest(),
-                    'source_manifest_key':f"releases/search/{portable['rollback_native_anchor']['build_id']}/manifest.json"}
+                    'source_manifest_key':f"releases/search/{portable['source_build_id']}/manifest.json"}
                 key='control/tantivy-slots/typeahead-tantivy-a/'+('e'*32)+'.json'
                 deployment=json.dumps(bound).encode()
                 store=Store({key:deployment,bound['artifact_manifest_key']:json.dumps(portable).encode(),

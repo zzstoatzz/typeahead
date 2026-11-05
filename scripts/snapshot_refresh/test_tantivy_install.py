@@ -502,6 +502,7 @@ from contextlib import contextmanager
 def checkpoint_runtime_fixture(root,binary,slot_app=None):
     import sqlite3
     import struct
+    import inspect
     mps_root=os.environ.get('TA_MPS_REPOSITORY')
     if not mps_root:raise unittest.SkipTest('requires existing MPS checkpoint producer helpers')
     sys.path.insert(0,str(Path(mps_root)/'packages/mps/src'))
@@ -544,16 +545,20 @@ def checkpoint_runtime_fixture(root,binary,slot_app=None):
         if slot_app is not None:manifest.update(provider_app=slot_app,public_service_ports=[80,443])
         manifest['binary_sha256']=hashlib.sha256(binary.read_bytes()).hexdigest()
         seed=root/'source.jsonl';started=int(time.time())
+        legacy={}
+        if 'native_manifest_bytes' in inspect.signature(stream_checkpoint).parameters:
+            legacy=dict(native_manifest_bytes=native,native_manifest_sha256=hashlib.sha256(native).hexdigest())
         with seed.open('wb') as output:
             stream=stream_checkpoint(database,output,ROOT,receipt_bytes=raw_receipt,receipt_sha256=hashlib.sha256(raw_receipt).hexdigest(),
                 expected_source_origin_sha256=checkpoint['source_origin_sha256'],expected_file_witness=file_witness(database),
-                native_manifest_bytes=native,native_manifest_sha256=hashlib.sha256(native).hexdigest(),
-                build_id=manifest['active_build'],max_seconds=30,allow_fixture=True)
+                build_id=manifest['active_build'],max_seconds=30,allow_fixture=True,**legacy)
         header=stream['source_manifest'];bootstrap=header['source_bootstrap'];counts=bootstrap['counts']
         manifest.update(source_build_id=header['build_id'],source_watermark=header['source_watermark'],source_actor_count=stream['input_documents'],
             source_database_sha256=checkpoint['database_sha256'],source_manifest_sha256=hashlib.sha256(raw_receipt).hexdigest(),
-            source_actors_sha256=stream['actors_sha256'],source_bootstrap=bootstrap,rollback_native_anchor=header['rollback_native_anchor'],
-            legacy_build_id=header['legacy_build_id'])
+            source_actors_sha256=stream['actors_sha256'],source_bootstrap=bootstrap)
+        for field in ['rollback_native_anchor','legacy_build_id']:
+            manifest.pop(field,None)
+            if field in header:manifest[field]=header[field]
         data=root/'data'
         result=subprocess.run([str(binary),'import','--data',str(data),'--input',str(seed)],capture_output=True,timeout=30)
         if result.returncode:raise AssertionError(result.stderr[-2000:])
