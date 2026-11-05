@@ -14,8 +14,9 @@ former process deadline without a readiness failure.
 The replacement runtime is live on B as of November 5 at 10:52 UTC, with
 matched full-data, source, scope and public-alias verification. It reports
 coverage staleness without stopping and ignores legacy native provenance.
-The previous A rollback still has the older behavior. Compatible publisher registration was verified at 11:10 UTC. A normal
-scheduled refresh and obsolete-object cleanup remain pending.
+The previous A rollback still has the older behavior. Compatible publisher
+registration was verified at 11:10 UTC. A normal scheduled refresh and
+obsolete-object cleanup remain pending.
 The [November 2 retrospective](../retros/2026-11-02-tantivy-slot-expired-again.md)
 records the earlier qualification and its failed performance gate. Reuse that
 work where valid; do not treat committed source as deployed behavior.
@@ -34,11 +35,12 @@ work where valid; do not treat committed source as deployed behavior.
    startup and durable resume. Use existing controller paths and real isolated
    I/O tests; retain route ownership, conditional writes and independent storage.
 4. Keep missed-refresh detection tied to full refreshes. The live automation
-   currently watches every `prefect.flow-run.Completed` for `typeahead-index`,
-   including manual prepare/promote and publication-only runs. Those operations
-   do not renew checkpoint coverage and must not reset the 13-hour retry clock.
-   Verify the new publisher's success events and automation together before
-   completion; preserve the existing retry cadence and notification destination.
+   expects `prefect.flow-run.Completed` for `typeahead-index`. The previous
+   publisher emitted that event for manual and publication-only operations too.
+   Those operations do not renew coverage and must not reset the 13-hour clock.
+   The registered publisher uses distinct events, verified for manual operations;
+   verify its normal full-refresh event before completion. Preserve the existing
+   retry cadence and notification destination.
 5. Verify retry ownership through the Prefect API. The November 5 refresh
    exposed a missing upstream worker-poll filter: `in_process` retries were
    returned as new work, launching two executions of one flow-run ID despite
