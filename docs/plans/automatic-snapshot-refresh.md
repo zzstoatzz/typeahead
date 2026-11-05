@@ -18,8 +18,11 @@ are authoritative for controller parameters and image pins.
 The schedule is 06:00 and 18:00 UTC. Checkpoint coverage lasts 24 hours; the slot
 stops before expiry. The cadence is a coverage-renewal policy, not a Tantivy
 requirement. Full remote reconciliation is not yet qualified to replace it.
-The deployed controller has a three-hour outer limit and one-hour readiness
+The deployed controller has a four-hour outer limit and one-hour readiness
 phases. These are failure bounds, not expected build times.
+
+The [lifecycle cleanup](lifecycle-cleanup.md) tracks the remaining runtime and
+release work. Its proposed behavior is not a description of production.
 
 ## Safety and recovery
 

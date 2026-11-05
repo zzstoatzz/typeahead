@@ -9,6 +9,7 @@ The public [API reference](https://typeahead.waow.tech/docs) covers app integrat
 
 - [Discovery and identity](discovery-and-identity.md): how accounts, handles and hosting servers reach the index.
 - [Snapshot refresh](plans/automatic-snapshot-refresh.md): the managed build and promotion procedure.
+- [Lifecycle cleanup](plans/lifecycle-cleanup.md): remaining release and recovery work, with verification limits.
 - [PDS identity repair](pds-identity-repair.md): repair contracts and cloud ownership.
 - [Repository instructions](../AGENTS.md): invariants and required verification.
 
