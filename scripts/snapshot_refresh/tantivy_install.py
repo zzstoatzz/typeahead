@@ -597,7 +597,7 @@ def install_bundle(bundle, destination, manifest, binary, now=None, allow_checkp
                 chunk=self.stream.read(size);self.digest.update(chunk);self.bytes+=len(chunk);return chunk
         with bundle.open('rb') as stream:
             reader=HashingReader(stream)
-            with tarfile.open(fileobj=reader, mode='r|') as archive:
+            with tarfile.open(fileobj=reader, mode='r|', bufsize=1024*1024) as archive:
                 for member in archive:
                     name = artifact_path(member.name)
                     if not member.isfile() or name not in expected or name in seen or member.size != expected[name]['byte_size']:

@@ -68,6 +68,9 @@ speedup. Hashing during extraction did not improve wall time in this fixture
 order and burst/IO effects limit that comparison; do not claim a measured gain
 from removing the independent read. All three machines auto-destroyed, no volumes
 were created, and the diagnostic app was deleted after checking both inventories.
+The candidate installer subsequently uses a 1 MiB tar streaming buffer instead
+of Python's 10 KiB default, matching its member-copy block size; this adjustment
+has correctness coverage but is not included in the timing observations above.
 
 The transfer diagnostic uses a separate auto-destroy Fly machine in
 `typeahead-transfer-20261105`, shared 2 CPU / 1 GiB, EWR, no services or volumes.
