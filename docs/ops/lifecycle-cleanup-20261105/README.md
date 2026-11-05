@@ -3,7 +3,8 @@
 Status: fixtures passed and the Prefect API retry fix is live, November 5, 2026.
 Inactive B completed preparation at 10:16 UTC, and matched full-data comparison
 and publisher-owner fixtures passed. The new runtime is serving production on B after guarded promotion at
-10:52 UTC. Compatible publisher registration was verified at 11:10 UTC. The
+10:52 UTC. Compatible publisher registration was verified at 11:10 UTC; the qualified
+cleanup-retry guard was registered at 15:05 UTC. The
 next normal full refresh and obsolete-object cleanup remain pending. The [cleanup plan](../../plans/lifecycle-cleanup.md)
 defines completion.
 
@@ -402,6 +403,10 @@ The [package](controller-retry-package.json) binds exact source hashes; the
 [cleanup](controller-retry-cleanup.json) confirms temporary compute, volumes and
 app were removed.
 
-This publisher guard is published but not registered yet. Main CI and the staged
-configuration must pass before replacing the registered `0a36b8b` pin. Serving
-image, runtime limits and release proof stay unchanged.
+This publisher guard was registered at 15:05 UTC after exact-source and
+configuration main CI passed. The [readback](cleanup-retry-publisher-registration.json)
+confirms `4f1b9b7`, unchanged schedule/parameters/concurrency and unchanged
+Typeahead source, installer and release proof. Production was healthy at that
+check, with 31 seconds of replica lag. Only the publisher pin and command changed.
+The [bisect checks](completed-rollout-bisect.log) passed all 93 checks at each
+commit. The normal scheduled 18:00 full refresh remains pending.

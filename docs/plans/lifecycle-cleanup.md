@@ -15,7 +15,8 @@ The replacement runtime is live on B as of November 5 at 10:52 UTC, with
 matched full-data, source, scope and public-alias verification. It reports
 coverage staleness without stopping and ignores legacy native provenance.
 The previous A rollback still has the older behavior. Compatible publisher
-registration was verified at 11:10 UTC. A normal scheduled refresh and
+registration was verified at 11:10 UTC, with the completed-promotion cleanup
+retry guard registered at 15:05 UTC. A normal scheduled refresh and
 obsolete-object cleanup remain pending.
 The [November 2 retrospective](../retros/2026-11-02-tantivy-slot-expired-again.md)
 records the earlier qualification and its failed performance gate. Reuse that

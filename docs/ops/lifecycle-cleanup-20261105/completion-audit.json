@@ -82,6 +82,20 @@
       ],
       "remaining": "Reconcile these documents with actual scheduled-refresh outcome and retirement before marking complete.",
       "readme_review": "Typeahead, my-prefect-server and prefect-server concise READMEs still describe actual roles, setup and use accurately; changed runtime, retry and release mechanisms are documented in their operational docs instead."
+    },
+    {
+      "id": "completed-promotion-cleanup-retry",
+      "status": "verified-in-isolation-and-registered",
+      "evidence": [
+        "completed-rollout-retry-red.log",
+        "completed-rollout-retry-green.log",
+        "controller-retry-result.json",
+        "completed-rollout-source-ci.json",
+        "completed-rollout-config-ci.json",
+        "cleanup-retry-publisher-registration.json",
+        "completed-rollout-bisect.log"
+      ],
+      "scope": "An already-current, healthy, completed automatic rollout is reused only by its immutable publication owner, through existing promotion recovery checks. The HTTP/filesystem regression covers another execution starting fresh and route drift refusal. No production cleanup failure was induced. Registered publisher is 4f1b9b7; the normal scheduled full-refresh verification remains pending."
     }
   ]
 }

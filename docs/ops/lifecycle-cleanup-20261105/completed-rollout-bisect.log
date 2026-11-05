@@ -1,0 +1,9 @@
+Rebasing (2/4)Executing: TA_REPOSITORY=/Users/nate/tangled.org/zzstoatzz.io/typeahead uv run pytest -q tests/test_typeahead_engine_compatibility.py tests/test_typeahead_tantivy_slots.py tests/test_typeahead_tantivy_automatic.py tests/test_typeahead_index_retries.py --tb=short
+........................................................................ [ 77%]
+.....................                                                    [100%]
+93 passed in 101.32s (0:01:41)
+Rebasing (3/4)Rebasing (4/4)Executing: TA_REPOSITORY=/Users/nate/tangled.org/zzstoatzz.io/typeahead uv run pytest -q tests/test_typeahead_engine_compatibility.py tests/test_typeahead_tantivy_slots.py tests/test_typeahead_tantivy_automatic.py tests/test_typeahead_index_retries.py --tb=short
+........................................................................ [ 77%]
+.....................                                                    [100%]
+93 passed in 100.52s (0:01:40)
+Successfully rebased and updated refs/heads/codex/typeahead-lifecycle.

@@ -1,0 +1,42 @@
+{
+  "cursor": "1896:1",
+  "pipelines": [
+    {
+      "commit": "4f1b9b73d23f452c060ad7e056d6b0b14d084ee7",
+      "createdAt": "2026-11-05T08:45:29-06:00",
+      "id": "3mzl47zqv6222",
+      "repo": "did:plc:xrndz6e42qj6ygbclfmruugv",
+      "trigger": {
+        "$type": "org.tangled.event.push",
+        "actor": "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "newSha": "4f1b9b73d23f452c060ad7e056d6b0b14d084ee7",
+        "oldSha": "ee547cba46cc30fbaa219e440ff93508f9bfab4b",
+        "ref": "refs/heads/main",
+        "repo": "did:plc:xrndz6e42qj6ygbclfmruugv"
+      },
+      "workflows": [
+        {
+          "definition": {
+            "id": "deploy.yml",
+            "name": "deploy.yml",
+            "source": {
+              "$type": "org.tangled.ci.defs#fileSource",
+              "commit": "4f1b9b73d23f452c060ad7e056d6b0b14d084ee7",
+              "path": ".tangled/workflows/deploy.yml",
+              "repo": "did:plc:xrndz6e42qj6ygbclfmruugv"
+            },
+            "triggers": [
+              "org.tangled.event.push"
+            ]
+          },
+          "finishedAt": "2026-11-05T08:53:23.677945866-06:00",
+          "id": "deploy.yml",
+          "name": "deploy.yml",
+          "startedAt": "2026-11-05T08:45:29.756537348-06:00",
+          "status": "success"
+        }
+      ]
+    }
+  ],
+  "total": 1
+}
