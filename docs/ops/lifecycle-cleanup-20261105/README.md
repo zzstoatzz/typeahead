@@ -133,7 +133,10 @@ CPUs, 1 GiB RAM, no public service, credentials or volume, and `/tmp` scratch
 bounded to 1 GiB for cloud-downloaded dependencies and synthetic data. Bootstrap
 and tests have a 600-second bound; the runner requires zero failures and skips.
 It emits bounded, structured JUnit failure summaries so cloud log truncation
-cannot hide the failing test names or final errors.
+cannot hide the failing test names or final errors. FastAPI and Starlette use
+the tested operations-repository lock versions (0.141.1 and 1.2.1); newer
+unconstrained FastAPI resolution rejected Prefect 3.8.2’s test-server import
+before the two actual-engine tests could run.
 Use restart policy `no` and automatic Machine removal. Preserve source hashes
 and bounded logs, verify empty Machine/volume lists, then destroy the app on
 success or failure. The local source/metadata budget remains 5 MiB; no corpus
