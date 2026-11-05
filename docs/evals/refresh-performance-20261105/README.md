@@ -1,6 +1,14 @@
 # Refresh performance evaluation
 
 Status: offline importer qualified; publisher registered at 17:54 UTC, 2026-11-05.
+The [normal production refresh](production-result.json) subsequently used importer
+`f1e6e3a2…` and completed at 19:34 UTC (13:34 CT). Its build
+`b1793901791-cp-e13a387b75` is serving and the public freshness probe passes.
+Production import/producer work through the start of live catch-up took 1,609 s
+(26m49s); the full refresh took 5,482 s (91m22s). The earlier comparable run's
+import was about 41 minutes and full refresh about 113 minutes. These are separate
+production runs, not the controlled allocator-only experiment below. No additional
+deployment is needed to activate the faster importer.
 The serving binary, allocation and routing remain unchanged. Earlier
 100,000-actor batching results do not establish full-corpus performance.
 
@@ -17,8 +25,8 @@ from the cloud builder and read back there by SHA-256. The
 opened its new 500-actor index and matched all 15 query/scope combinations.
 The publisher implementation keeps that production reader for full-build source
 handoff, freezing and serving; only offline import uses the new executable.
-These measurements are synthetic import timings, not a measured production
-refresh duration. The root README was reviewed and retains its concise overview;
+The controlled measurements below are synthetic import timings; production timing
+is recorded separately above. The root README was reviewed and retains its concise overview;
 the detailed binary-role distinction belongs in the architecture/operations docs.
 The [publisher readback](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/audits/2026-11-05-typeahead-fast-importer-registration.json)
 confirms source `26fae38`, the immutable importer artifact, the unchanged reader

@@ -1,0 +1,22 @@
+{
+  "verified_date": "2026-11-05",
+  "run_id": "e13a387b-75ed-473b-a48e-01b183919925",
+  "build_id": "b1793901791-cp-e13a387b75",
+  "importer_evidence": {
+    "timestamp": "2026-11-05T18:15:32.607598+00:00",
+    "byte_size": 13582616,
+    "code_object_key": "releases/code/tantivy/f1e6e3a2af99a5c6fe141eb88ce680bfb870e40b7a6ed6ce4fc49ab9727dd00a/typeahead-tantivy",
+    "phase": "tantivy-code-ready",
+    "sha256": "f1e6e3a2af99a5c6fe141eb88ce680bfb870e40b7a6ed6ce4fc49ab9727dd00a"
+  },
+  "import_and_producer_until_live_catchup_s": 1609.2,
+  "full_refresh_s": 5481.961874,
+  "completed_at": "2026-11-05T19:34:07.549098+00:00",
+  "public_freshness": {
+    "ok": true,
+    "stale": false,
+    "probe_ok": true,
+    "observed_build_id": "b1793901791-cp-e13a387b75"
+  },
+  "additional_deployment_required": false
+}
