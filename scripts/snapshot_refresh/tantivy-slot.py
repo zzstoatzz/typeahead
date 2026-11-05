@@ -1,5 +1,6 @@
 """Managed immutable Tantivy slot; it reports checkpoint coverage age and never stops on it."""
 import hashlib
+import concurrent.futures
 import importlib.util
 import json
 import os
@@ -9,6 +10,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -31,6 +33,8 @@ def metadata(path):
 
 
 class R2:
+    RANGE_BYTES=64*1024**2
+    RANGE_WORKERS=4
     def __init__(self, env):
         endpoint=urllib.parse.urlsplit(env['INDEX_R2_ENDPOINT'])
         if endpoint.scheme!='https' or not re.fullmatch(r'[a-z0-9]+\.r2\.cloudflarestorage\.com',endpoint.netloc) or endpoint.path not in ('','/') or endpoint.query or endpoint.fragment:raise ValueError('Invalid R2 endpoint')
@@ -48,6 +52,8 @@ class R2:
     def close(self):self.config.close()
     def download(self,key,path,max_bytes):
         remote='r2:'+self.bucket+'/'+object_key(key)
+        if max_bytes>=self.RANGE_BYTES*2:
+            return self.download_ranges(remote,path,max_bytes)
         deadline=time.monotonic()+3600
         for attempt in range(3):
             offset=path.stat().st_size if path.exists() else 0
@@ -66,6 +72,62 @@ class R2:
                     child.kill();child.wait();raise
             if time.monotonic()>deadline:break
         raise ValueError('Artifact transfer failed after bounded retries')
+
+    def download_ranges(self,remote,path,max_bytes):
+        command=['rclone','--config',self.config.name,'--contimeout','10s','--timeout','30s','--retries','1','--low-level-retries','1']
+        result=subprocess.run([*command,'lsjson',remote,'--stat'],stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=45,check=True)
+        if len(result.stdout)>1024*1024:raise ValueError('Artifact stat exceeds byte bound')
+        size=json.loads(result.stdout).get('Size')
+        if type(size) is not int or not 0<size<=max_bytes:raise ValueError('Artifact exceeds byte bound')
+        journal_path=path.with_name(path.name+'.transfer.json')
+        binding={'schema_version':1,'remote':remote,'byte_size':size,'range_bytes':self.RANGE_BYTES}
+        ranges=(size+self.RANGE_BYTES-1)//self.RANGE_BYTES
+        if path.is_symlink() or journal_path.is_symlink():raise ValueError('Invalid range cache path')
+        if journal_path.exists():
+            journal=metadata(journal_path)
+            completed=journal.get('completed')
+            if {k:v for k,v in journal.items() if k!='completed'}!=binding or not isinstance(completed,list) or any(type(i) is not int or not 0<=i<ranges for i in completed) or len(set(completed))!=len(completed) or not path.is_file() or path.stat().st_size!=size:raise ValueError('Range cache binding differs')
+            completed=set(completed)
+        else:
+            prefix=path.stat().st_size if path.exists() else 0
+            if prefix>size:raise ValueError('Cached artifact exceeds byte bound')
+            # A full-size file reaching download was rejected by the caller's hash.
+            completed=set(range(prefix//self.RANGE_BYTES)) if prefix<size else set()
+            if shutil.disk_usage(path.parent).free<size-prefix+RESERVE:raise ValueError('Insufficient range transfer reserve')
+            with path.open('ab') as output:output.truncate(size);output.flush();os.fsync(output.fileno())
+        lock=threading.Lock();cancel=threading.Event();deadline=time.monotonic()+3600
+        def save():atomic_json(journal_path,{**binding,'completed':sorted(completed)})
+        save()
+        def transfer(index):
+            start=index*self.RANGE_BYTES;end=min(size,start+self.RANGE_BYTES)
+            for attempt in range(3):
+                if cancel.is_set():raise ValueError('Range transfer cancelled')
+                with path.open('r+b',buffering=0) as output:
+                    output.seek(start)
+                    child=subprocess.Popen([*command,'cat',remote,'--offset',str(start),'--count',str(end-start)],stdin=subprocess.DEVNULL,stdout=output,stderr=subprocess.DEVNULL)
+                    try:
+                        while child.poll() is None:
+                            if cancel.is_set() or output.tell()>end or shutil.disk_usage(path.parent).free<RESERVE or time.monotonic()>deadline:raise ValueError('Bounded range transfer failed')
+                            time.sleep(.1)
+                        if child.returncode==0 and output.tell()==end:
+                            os.fsync(output.fileno())
+                            with lock:completed.add(index);save()
+                            return
+                    finally:
+                        if child.poll() is None:child.kill()
+                        child.wait()
+                print(json.dumps({'event':'tantivy_slot_range_retry','range':index,'attempt':attempt+1}),flush=True)
+            raise ValueError('Artifact range failed after bounded retries')
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.RANGE_WORKERS) as executor:
+            futures=[executor.submit(transfer,index) for index in range(ranges) if index not in completed]
+            try:
+                for future in concurrent.futures.as_completed(futures):future.result()
+            except BaseException:
+                cancel.set()
+                for future in futures:future.cancel()
+                raise
+        if len(completed)!=ranges or path.stat().st_size!=size:raise ValueError('Incomplete range transfer')
+        journal_path.unlink()
 
 
 
@@ -88,7 +150,9 @@ class Slot:
         if target.is_symlink() or target.exists() and not target.is_file():raise ValueError('Invalid cached transfer path')
         if target.exists():
             if target.stat().st_size>limit:raise ValueError('Cached artifact exceeds byte bound')
-            if sha is not None and checksum(target)==sha:return target
+            if sha is not None and checksum(target)==sha:
+                if name=='index.tar':target.with_name(target.name+'.transfer.json').unlink(missing_ok=True)
+                return target
             if name!='index.tar':raise ValueError('Cached metadata byte identity mismatch')
         self.transport.download(key,target,limit)
         if target.stat().st_size>limit or sha is not None and checksum(target)!=sha:raise ValueError('Artifact byte identity mismatch')
@@ -130,7 +194,7 @@ class Slot:
             receipt['runtime_qualified']=False;atomic_json(self.root/'installation.json',receipt)
             state=self.actual_metadata(value);self.report_coverage(value,state);return value
         if self.root.exists():raise ValueError('Unadmitted slot destination exists')
-        if any(item.name not in {'deployment.json','artifact-manifest.json','source-manifest.json','index.tar'} for item in self.cache.iterdir()):raise ValueError('Unexpected incomplete installation files')
+        if any(item.name not in {'deployment.json','artifact-manifest.json','source-manifest.json','index.tar','index.tar.transfer.json'} for item in self.cache.iterdir()):raise ValueError('Unexpected incomplete installation files')
         if any(self.cache.iterdir()) and not cached.is_file():raise ValueError('Incomplete installation lacks deployment binding')
         (self.cache/'source-manifest.json').unlink(missing_ok=True)
         owned_transport=False

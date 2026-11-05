@@ -21,7 +21,15 @@ compared across the actual readers. A repeated baseline checks order effects.
 Synthetic results guide the next experiment; they do not qualify a corpus-scale
 rollout. Existing import/footer integrity and admission gates remain mandatory.
 
-The next stages are parallel range downloads, fewer redundant integrity passes,
-and performance CPU during inactive-slot installation. Each needs isolated
-failure-path tests and measurements before production changes. The serving slot
-must never be resized, restarted or used for these experiments.
+The candidate slot downloader writes four 64 MiB ranges directly into one file.
+It records completed ranges only after fsync in an atomic sidecar bound to the
+immutable object key, size and range size. A retry preserves completed ranges;
+old serial partials preserve whole completed ranges too. An interrupted range
+can repeat at most 64 MiB. Stat checks reject oversize objects before allocation;
+the transfer retains the one-hour deadline, three attempts per range and 1 GiB
+free-space reserve. Small metadata transfers retain the serial path. These source
+changes are tested locally, not deployed. Real rclone/HTTP failure tests verify
+concurrent requests, interrupted-range recovery, binding rejection and byte limits.
+
+Performance CPU during inactive-slot installation remains to be evaluated. The
+serving slot must never be resized, restarted or used for these experiments.

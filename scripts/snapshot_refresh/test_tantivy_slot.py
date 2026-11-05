@@ -43,6 +43,59 @@ class Store:
 
 @unittest.skipUnless(shutil.which('rclone'),'actual rclone unavailable')
 class TransferTests(unittest.TestCase):
+    def test_parallel_ranges_resume_only_unfinished_ranges_and_reject_oversize(self):
+        raw=bytes(range(256))*8192
+        starts=[];state={'fail':True,'active':0,'peak':0};lock=threading.Lock()
+        chunk=512*1024
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_HEAD(self):
+                self.send_response(200);self.send_header('Content-Length',str(len(raw)));self.send_header('Content-Type','application/octet-stream');self.send_header('Accept-Ranges','bytes');self.end_headers()
+            def do_GET(self):
+                if not self.path.endswith('/index.tar'):
+                    listing=b'<a href="index.tar">index.tar</a>';self.send_response(200);self.send_header('Content-Type','text/html');self.send_header('Content-Length',str(len(listing)));self.end_headers();self.wfile.write(listing);return
+                value=self.headers.get('Range','bytes=0-').split('=')[1]
+                left,right=value.split('-');start=int(left);end=min(len(raw),int(right)+1 if right else len(raw))
+                if state['fail'] and start==chunk:
+                    time.sleep(.5)
+                    self.send_error(503);return
+                with lock:
+                    starts.append(start);state['active']+=1;state['peak']=max(state['peak'],state['active'])
+                try:
+                    self.send_response(206);self.send_header('Content-Length',str(end-start));self.send_header('Content-Range',f'bytes {start}-{end-1}/{len(raw)}');self.end_headers()
+                    time.sleep(.15);self.wfile.write(raw[start:end])
+                finally:
+                    with lock:state['active']-=1
+            def log_message(self,*args):pass
+        server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
+        thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                folder=Path(folder);config=folder/'rclone.conf'
+                config.write_text(f'[r2]\ntype = http\nurl = http://127.0.0.1:{server.server_port}/\n')
+                transport=slot.R2.__new__(slot.R2);transport.bucket='fixture';transport.config=config.open();transport.RANGE_BYTES=chunk
+                try:
+                    target=folder/'index.tar'
+                    with self.assertRaisesRegex(ValueError,'exceeds byte bound'):transport.download('index.tar',target,len(raw)-1)
+                    self.assertFalse(target.exists())
+                    target.write_bytes(raw[:chunk+123])
+                    with self.assertRaises(ValueError):transport.download('index.tar',target,len(raw))
+                    journal=target.with_name(target.name+'.transfer.json')
+                    original=journal.read_bytes();value=json.loads(original);saved=value['completed']
+                    self.assertTrue(saved)
+                    self.assertEqual(starts.count(0),0)
+                    value['remote']='r2:fixture/another.tar';journal.write_text(json.dumps(value))
+                    with self.assertRaisesRegex(ValueError,'binding differs'):transport.download('index.tar',target,len(raw))
+                    journal.write_bytes(original)
+                    counts={index:starts.count(index*chunk) for index in saved}
+                    state['fail']=False
+                    transport.download('index.tar',target,len(raw))
+                    self.assertEqual(target.read_bytes(),raw)
+                    self.assertFalse(journal.exists())
+                    self.assertGreater(state['peak'],1)
+                    for index,count in counts.items():self.assertEqual(starts.count(index*chunk),count)
+                finally:transport.close()
+        finally:server.shutdown();server.server_close();thread.join()
+
     def test_real_rclone_resumes_interrupted_http_range(self):
         raw=bytes(range(256))*8192
         offsets=[]
