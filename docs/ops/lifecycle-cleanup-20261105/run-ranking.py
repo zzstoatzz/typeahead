@@ -15,7 +15,7 @@ with tempfile.TemporaryDirectory(prefix='typeahead-ranking-') as scratch:
    assert status['ready'] and status['machine_id']=='7841e35f99d338'
    results=await bench.run_ranking(client,origin,bench.RANKING_CORPUS,True)
    failures=bench.acceptance_checks(results)
-   report=dict(event='canonical_ranking',at=time.time(),target=origin,build_id=status['build_id'],machine_id=status['machine_id'],source_sha256=hashlib.sha256(Path('/qualification/bench.py').read_bytes()).hexdigest(),structural_passed=not any(x.startswith('[structural]') for x in failures),failures=failures,queries=[dict(query=r.query,ours_status=r.ours_status,bsky_status=r.bsky_status,ours_ms=r.ours_ms,ours_handles=r.ours_handles,bsky_top=r.bsky_top_handle) for r in results],elapsed_s=time.monotonic()-started)
+   report=dict(event='canonical_ranking',at=time.time(),target=origin,build_id=status['build_id'],machine_id=status['machine_id'],source_sha256=hashlib.sha256(Path('/qualification/bench.py').read_bytes()).hexdigest(),structural_passed=not any(x.startswith('[structural]') for x in failures),failures=failures,queries=[dict(query=r.query,ours_status=r.ours_status,bsky_status=r.bsky_status,ours_ms=r.ours_ms,ours_handles=sorted(r.ours_handles),bsky_top=r.bsky_top_handle) for r in results],elapsed_s=time.monotonic()-started)
    print('\nTA_RANKING_RESULT '+json.dumps(report,separators=(',',':')),flush=True)
    return 0 if report['structural_passed'] else 1
  code=asyncio.run(run())

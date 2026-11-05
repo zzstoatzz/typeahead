@@ -105,7 +105,10 @@ root disk. Allow 128 MiB scratch and 180 seconds for cloud-only HTTP client
 installation and sequential queries. Use the cached D13 image as its Python
 runtime; upload only source. It queries the actual promoted B backend and
 Bluesky, including the existing debug queries, with the benchmark's pacing.
-No stress mode or additional repetitions are authorized by this step.
+No stress mode is authorized. Attempt 1 completed queries but failed to serialize
+the report because benchmark handles are a set. Preserve its failed log and
+resource cleanup, correct serialization and verify the actual benchmark result
+shape locally, then permit one replacement cohort to retain usable evidence.
 
 Preserve structural and aspirational parity results separately. An expected
 parity failure must remain visible. Capture bounded logs, verify automatic
