@@ -40,7 +40,7 @@ environment = dict(os.environ, PYTHONPATH=str(root/'mps/packages/mps/src'),
 command = [str(executable), 'run', '--no-project', '--python', sys.executable,
     '--with', 'pytest==9.0.3', '--with', 'prefect==3.8.2',
     '--with', 'boto3==1.43.88', '--with', 'httpx==0.28.1',
-    'python', '-m', 'pytest', '-q', '-ra',
+    'python', '-m', 'pytest', '-q', '-ra', '--tb=short',
     'tests/test_typeahead_engine_compatibility.py',
     'tests/test_typeahead_tantivy_slots.py',
     'tests/test_typeahead_tantivy_automatic.py',
@@ -55,6 +55,12 @@ finally:
         pass
     child.wait(timeout=5)
 suites = ET.parse('/tmp/controller-owner.xml').getroot().findall('testsuite')
+for suite in suites:
+    for case in suite.findall('testcase'):
+        for kind in ('failure', 'error', 'skipped'):
+            detail = case.find(kind)
+            if detail is not None:
+                print(json.dumps(dict(event='fixture_failure', test=case.get('name'), kind=kind, detail=(detail.text or '')[-3000:])), flush=True)
 counts = {name:sum(int(s.get(name,'0')) for s in suites) for name in ['tests','failures','errors','skipped']}
 passed = code==0 and counts['tests']>0 and all(counts[name]==0 for name in ['failures','errors','skipped'])
 print(json.dumps(dict(event='controller_owner_fixture_result', passed=passed, counts=counts,
