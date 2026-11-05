@@ -31,5 +31,12 @@ free-space reserve. Small metadata transfers retain the serial path. These sourc
 changes are tested locally, not deployed. Real rclone/HTTP failure tests verify
 concurrent requests, interrupted-range recovery, binding rejection and byte limits.
 
+The candidate installer hashes archive bytes during streaming extraction,
+including padding and trailing bytes. It retains per-member hashes, inventory
+validation, binary identity and actual-reader admission before moving the staged
+directory into place. This removes the installer's independent full-archive read;
+the downloader's cache/transfer hash remains. Corrupt padding/trailing bytes are
+rejected and staging is removed. This source change is not deployed either.
+
 Performance CPU during inactive-slot installation remains to be evaluated. The
 serving slot must never be resized, restarted or used for these experiments.

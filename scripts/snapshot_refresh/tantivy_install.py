@@ -579,9 +579,8 @@ def install_bundle(bundle, destination, manifest, binary, now=None, allow_checkp
     bundle, destination, binary = Path(bundle), Path(destination), Path(binary)
     if destination.exists():
         raise ValueError('Tantivy generation destination already exists')
-    with bundle.open('rb') as stream:
-        if bundle.stat().st_size != manifest['byte_size'] or hashlib.file_digest(stream, 'sha256').hexdigest() != manifest['sha256']:
-            raise ValueError('Tantivy bundle identity mismatch')
+    if bundle.stat().st_size != manifest['byte_size']:
+        raise ValueError('Tantivy bundle identity mismatch')
     with binary.open('rb') as stream:
         if hashlib.file_digest(stream, 'sha256').hexdigest() != manifest['binary_sha256']:
             raise ValueError('Tantivy reader binary identity mismatch')
@@ -592,26 +591,36 @@ def install_bundle(bundle, destination, manifest, binary, now=None, allow_checkp
     with tempfile.TemporaryDirectory(prefix='.tantivy-admit-', dir=destination.parent) as temporary:
         staging = Path(temporary)
         seen = set()
-        with tarfile.open(bundle, mode='r:') as archive:
-            for member in archive:
-                name = artifact_path(member.name)
-                if not member.isfile() or name not in expected or name in seen or member.size != expected[name]['byte_size']:
-                    raise ValueError('Tantivy archive inventory mismatch')
-                seen.add(name)
-                target = staging / name
-                target.parent.mkdir(exist_ok=True)
-                source = archive.extractfile(member)
-                checksum = hashlib.sha256()
-                with target.open('xb') as output:
-                    remaining = member.size
-                    while remaining:
-                        chunk = source.read(min(1024 * 1024, remaining))
-                        if not chunk:
-                            raise ValueError('Truncated Tantivy archive file')
-                        checksum.update(chunk); output.write(chunk); remaining -= len(chunk)
-                    output.flush(); os.fsync(output.fileno())
-                if checksum.hexdigest() != expected[name]['sha256']:
-                    raise ValueError('Tantivy file checksum mismatch')
+        class HashingReader:
+            def __init__(self,stream):self.stream=stream;self.digest=hashlib.sha256();self.bytes=0
+            def read(self,size=-1):
+                chunk=self.stream.read(size);self.digest.update(chunk);self.bytes+=len(chunk);return chunk
+        with bundle.open('rb') as stream:
+            reader=HashingReader(stream)
+            with tarfile.open(fileobj=reader, mode='r|') as archive:
+                for member in archive:
+                    name = artifact_path(member.name)
+                    if not member.isfile() or name not in expected or name in seen or member.size != expected[name]['byte_size']:
+                        raise ValueError('Tantivy archive inventory mismatch')
+                    seen.add(name)
+                    target = staging / name
+                    target.parent.mkdir(exist_ok=True)
+                    source = archive.extractfile(member)
+                    checksum = hashlib.sha256()
+                    with target.open('xb') as output:
+                        remaining = member.size
+                        while remaining:
+                            chunk = source.read(min(1024 * 1024, remaining))
+                            if not chunk:
+                                raise ValueError('Truncated Tantivy archive file')
+                            checksum.update(chunk); output.write(chunk); remaining -= len(chunk)
+                        output.flush(); os.fsync(output.fileno())
+                    if checksum.hexdigest() != expected[name]['sha256']:
+                        raise ValueError('Tantivy file checksum mismatch')
+            # Tar readers stop at end markers; bind padding and trailing bytes too.
+            while reader.read(1024*1024):pass
+            if reader.bytes!=manifest['byte_size'] or reader.digest.hexdigest()!=manifest['sha256']:
+                raise ValueError('Tantivy bundle identity mismatch')
         if seen != set(expected):
             raise ValueError('Tantivy bundle files missing')
         result = subprocess.run([str(binary.resolve()), 'status', '--data', str(staging), '--writer-memory-mb', '32'], capture_output=True, timeout=60)

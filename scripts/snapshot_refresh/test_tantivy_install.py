@@ -472,6 +472,13 @@ class AdmissionTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError,'remote verification'):publisher.verify_tantivy(root/'published')
                 self.assertEqual(published_manifest.read_bytes(),published_bytes);self.assertEqual(pointer.read_bytes(),b'production untouched')
             manifest.update(portable);bundle=root/'published/index.tar'
+            for kind,mutate in [('padding',lambda raw:raw[:-1]+bytes([raw[-1]^1])),('trailing',lambda raw:raw+b'trailing bytes')]:
+                altered=root/(kind+'.tar');altered.write_bytes(mutate(bundle.read_bytes()))
+                bound=dict(manifest,byte_size=altered.stat().st_size)
+                with self.subTest(kind=kind),self.assertRaisesRegex(ValueError,'bundle identity mismatch'):
+                    adapter.install_bundle(altered,root/('rejected-'+kind),bound,binary)
+                self.assertFalse((root/('rejected-'+kind)).exists())
+                self.assertEqual(list(root.glob('.tantivy-admit-*')),[])
             for field,value in [('source_build_id','b1793236000-other'),('source_database_sha256','4'*64),('source_actor_count',2),('source_watermark',101)]:
                 with self.subTest(bundle_provenance=field),self.assertRaises(ValueError):adapter.install_bundle(bundle,root/('mutated-'+field),dict(manifest,**{field:value}),binary)
                 self.assertFalse((root/('mutated-'+field)).exists())
