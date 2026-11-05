@@ -105,3 +105,30 @@ pub fn matches(handle: &str, display: &str, q: &str) -> Result<bool> {
         .as_bool()
         .ok_or_else(|| Error::Invalid("normalizer omitted match predicate".into()))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn results_remain_independently_owned_during_concurrent_allocation_and_free() {
+        std::thread::scope(|scope| {
+            for worker in 0..8 {
+                scope.spawn(move || {
+                    for iteration in 0..256 {
+                        let request = json!({"op":"actor", "handle":format!("actor{worker}.example"),
+                            "display":format!("名前日本太郎 {iteration}")});
+                        let bytes = serde_json::to_vec(&request).unwrap();
+                        let mut result = NativeResult {data:ptr::null_mut(),len:0,owner:ptr::null_mut()};
+                        assert_eq!(unsafe {ta_plan(bytes.as_ptr(),bytes.len(),&mut result)},0);
+                        let saved = unsafe {std::slice::from_raw_parts(result.data,result.len)}.to_vec();
+                        assert_eq!(serde_json::from_slice::<Value>(&saved).unwrap(),plan(request).unwrap());
+                        assert_eq!(unsafe {std::slice::from_raw_parts(result.data,result.len)},saved);
+                        unsafe {ta_result_free(&mut result)};
+                        assert!(result.data.is_null() && result.owner.is_null() && result.len==0);
+                    }
+                });
+            }
+        });
+    }
+}
