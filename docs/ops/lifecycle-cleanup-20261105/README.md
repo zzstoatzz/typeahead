@@ -160,3 +160,11 @@ responses: the active full refresh was refused, and unknown/missing execution
 records required reconciliation. No candidate run or production mutation was
 created by those checks. Positive preparation remains unverified until the full
 refresh completes and the normal controller actually qualifies the candidate.
+
+## Offline import diagnostic
+
+The [bounded sample comparison](import-tuning.md) reused 100,000 actors already
+on the disposable cloud builder. Its [receipt](import-pilot-results.json) records
+matching results, timings, resource bounds and scratch cleanup. Larger batches
+were promising; production settings remain unchanged. The [pilot script](pilot-import.py)
+is tied to that run's frozen sample and must not be used as a full-corpus gate.

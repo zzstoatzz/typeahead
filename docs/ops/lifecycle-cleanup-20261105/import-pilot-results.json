@@ -1,0 +1,85 @@
+{
+  "test_only": true,
+  "scope": "Rust import of the same real 100k sample; not full-corpus qualification",
+  "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+  "input_sha256": "ef90e8d802c8d821d9b5127ebc6e519056e854c9fa8e7feaa5eee1e5915e2761",
+  "input_documents": 100000,
+  "variants": [
+    {
+      "name": "baseline-first",
+      "writer_memory_mb": 128,
+      "batch_size": 50000,
+      "import_seconds": 14.651961021999341,
+      "cpu_seconds": 18.866552,
+      "peak_rss_kb": 177624,
+      "fingerprint": "c2ea6e6cbea9fba7b158fc667c8e37bfa2ed93c2b57c7fcde4765328b3cc61ad",
+      "queries": 8,
+      "merge": [
+        {
+          "event": "import_merge",
+          "segments": 2
+        }
+      ]
+    },
+    {
+      "name": "memory",
+      "writer_memory_mb": 512,
+      "batch_size": 50000,
+      "import_seconds": 14.956161801000235,
+      "cpu_seconds": 19.346742,
+      "peak_rss_kb": 178488,
+      "fingerprint": "c2ea6e6cbea9fba7b158fc667c8e37bfa2ed93c2b57c7fcde4765328b3cc61ad",
+      "queries": 8,
+      "merge": [
+        {
+          "event": "import_merge",
+          "segments": 2
+        }
+      ]
+    },
+    {
+      "name": "batch-memory",
+      "writer_memory_mb": 512,
+      "batch_size": 100000,
+      "import_seconds": 12.424793301000136,
+      "cpu_seconds": 16.804903,
+      "peak_rss_kb": 297428,
+      "fingerprint": "c2ea6e6cbea9fba7b158fc667c8e37bfa2ed93c2b57c7fcde4765328b3cc61ad",
+      "queries": 8,
+      "merge": []
+    },
+    {
+      "name": "large-memory",
+      "writer_memory_mb": 1024,
+      "batch_size": 100000,
+      "import_seconds": 13.533132294999632,
+      "cpu_seconds": 18.303736999999998,
+      "peak_rss_kb": 298084,
+      "fingerprint": "c2ea6e6cbea9fba7b158fc667c8e37bfa2ed93c2b57c7fcde4765328b3cc61ad",
+      "queries": 8,
+      "merge": []
+    },
+    {
+      "name": "baseline-last",
+      "writer_memory_mb": 128,
+      "batch_size": 50000,
+      "import_seconds": 14.35484329100018,
+      "cpu_seconds": 18.384484,
+      "peak_rss_kb": 178300,
+      "fingerprint": "c2ea6e6cbea9fba7b158fc667c8e37bfa2ed93c2b57c7fcde4765328b3cc61ad",
+      "queries": 8,
+      "merge": [
+        {
+          "event": "import_merge",
+          "segments": 2
+        }
+      ]
+    }
+  ],
+  "passed": true,
+  "elapsed_seconds": 70.46546283400039,
+  "max_scratch_bytes": 143217302,
+  "scratch_removed": true,
+  "free_bytes_before": 129353326592,
+  "free_bytes_after": 129353306112
+}
