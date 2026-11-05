@@ -1,0 +1,26 @@
+[
+  {
+    "id": "eddaaf2f-6922-450c-aa2e-605b221997b7",
+    "expected_start_time": "2026-11-05T06:00:00+00:00",
+    "state": "Scheduled",
+    "automatic_refresh": true,
+    "job_override_keys": [],
+    "release_override": null
+  },
+  {
+    "id": "232932e9-1301-4a4c-9c63-f405dd2c1696",
+    "expected_start_time": "2026-11-05T18:00:00+00:00",
+    "state": "Scheduled",
+    "automatic_refresh": true,
+    "job_override_keys": [],
+    "release_override": null
+  },
+  {
+    "id": "4804258a-c2f9-4a8c-b2aa-fbbbf07095c9",
+    "expected_start_time": "2026-11-06T06:00:00+00:00",
+    "state": "Scheduled",
+    "automatic_refresh": true,
+    "job_override_keys": [],
+    "release_override": null
+  }
+]

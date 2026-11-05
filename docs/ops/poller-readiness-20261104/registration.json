@@ -1,0 +1,16 @@
+{
+  "updated": "2026-11-05T04:48:02.087030+00:00",
+  "parameters": {
+    "automatic_refresh": true
+  },
+  "pool": "typeahead-ephemeral",
+  "schedules": [
+    {
+      "active": true,
+      "schedule": "cron='0 6,18 * * *' timezone='UTC' day_or=True"
+    }
+  ],
+  "release_key": "control/tantivy-releases/2cb383df761467c5d7afcb374e9baa01e040faf35170d78b518ac655d3e6b4ba.json",
+  "release_sha256": "2cb383df761467c5d7afcb374e9baa01e040faf35170d78b518ac655d3e6b4ba",
+  "source_revision": "c476fc591e191a755d0d4837eb4f230932f8ceff"
+}

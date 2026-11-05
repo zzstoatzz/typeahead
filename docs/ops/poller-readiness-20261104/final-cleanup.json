@@ -1,0 +1,17 @@
+{
+  "local_observers_stopped": true,
+  "test_containers_absent": [
+    "typeahead-readiness-tests",
+    "typeahead-readiness-functional",
+    "typeahead-readiness-slot-tests",
+    "typeahead-quota-boundary-test"
+  ],
+  "cloud_controller_vms_deleted": [
+    "4b0c50b9-dd80-4162-9d58-2d7049aed5f4",
+    "45b9f7c6-a45e-4571-8f85-41657f123221"
+  ],
+  "managed_fly_slots_retained": [
+    "typeahead-tantivy-b:serving",
+    "typeahead-tantivy-a:previous"
+  ]
+}

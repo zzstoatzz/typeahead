@@ -1,9 +1,9 @@
 # Hourly source-poller readiness failures
 
-Status: November 5, 2026, 04:33 UTC. The fix is live on B after managed
-qualification, cached restart and guarded promotion. Public checks, authenticated
-smoke and ranking acceptance passed. Observation of the first hourly boundary
-continues through 05:16:05.
+Status: November 5, 2026, 05:17 UTC. The fix is live on B. Managed qualification,
+cached restart, guarded promotion, authenticated smoke, ranking acceptance and
+the first hourly-boundary observation passed. The matching refresh proof is
+registered live for the next 06:00 UTC run.
 Times below are UTC.
 
 ## Failure
@@ -97,11 +97,12 @@ Preparation completed at 04:15:04 with
 first-start and cached-restart qualification. [Release proof](release-proof.json)
 `2cb383df761467c5d7afcb374e9baa01e040faf35170d78b518ac655d3e6b4ba`
 and its six evidence objects were uploaded immutably and read back; see the
-[publication receipt](release-publication.json). The proof explicitly leaves
-the first hourly boundary under observation. The qualified candidate was
+[publication receipt](release-publication.json). At publication, the proof left
+the first hourly boundary under observation; the supplemental verification below
+closes that limit. The qualified candidate was
 promoted before that boundary to avoid another known serving failure; A remains
-available for rollback and comparison. The bounded observation finishes after
-05:16:05, more than an hour after cached-restart qualification.
+available for rollback and comparison. The bounded observation covered more than
+an hour after cached-restart qualification.
 
 The [paired warm-engine check](matched-performance.json) matched all 39 response
 pairs byte-for-byte, including a PDS filter. In the 26 measured queries per
@@ -131,9 +132,53 @@ binary, machine, full corpus and strict freshness configuration. No claim is
 made that this small cohort establishes an end-to-end latency percentile.
 
 MPS main `3cd4bcf` pins the matching release proof for the next automatic refresh.
-Its CI and live registration are still being checked. The publisher code,
+CI passed, and the trusted HeavyPad registrar applied that exact main revision;
+[live readback](registration.json) confirms the matching proof at 04:48 UTC.
+The [queued runs](next-refresh.json) start at 06:00 and 18:00 UTC with
+`automatic_refresh:true` and no stale per-run job overrides. The publisher code,
 06:00/18:00 cadence and checkpoint coverage anchor are unchanged; this image-only
 cutover did not renew the snapshot's lifetime.
+
+## Hourly-boundary verification
+
+![Source watermark lag across the rollout](readiness.png)
+
+The [verification report](verification.json) covers 250 direct readiness samples
+over 3,736 seconds (62 minutes), with zero readiness failures and zero unknown
+results. Maximum source lag was 74 seconds under the unchanged 120-second limit.
+The [raw observations](observations.jsonl) retain the preparation and old-control
+failures separately; the qualified B cohort starts after 04:15:05.
+
+PID 653 remained the same process, with the same start time and arguments,
+through both quota renewal and the former hourly process deadline. Its ledger
+renewed from the 03:59:13 window to the 04:59:14 window while polling continued.
+[Before renewal](budget-before-renewal.json), 222,145,638 bytes were charged;
+[after renewal](budget-after-renewal.json), the new window had charged 9,510,776
+bytes. The 512 MiB ceiling was unchanged. The
+[ending process sample](candidate-soak-end.json) and
+[backend status](candidate-status-end.json) confirm the continuing process and
+strict freshness configuration.
+
+Retained A failed readiness again around 05:03 while B stayed healthy. The
+[control witness](control-failure-witness.json) and
+[simultaneous public checks](public-during-control-failure.json) verified both
+aliases and PDS scope returning 200 from B while A was unready. The
+[final public check](public-final.json) also passed with byte-identical aliases.
+
+The completed report was [published and read back](verification-publication.json)
+as `control/tantivy-release-evidence/be77b367294724e6cc06249faa30000dfbf87609b1cbb21df838188b9e3caddd.json`,
+bound to the same image and release proof. This resolves the original proof's
+publication-time hourly-observation limitation. Fifteen-second sampling and one
+observed renewal are evidence for this fix, not a universal availability or
+request-latency SLO.
+
+Test commit `19a55c6` extends the real CLI / TLS / SQLite / Rust regression across
+a real quota deadline, then verifies a later actor change after renewal. The
+ledger is an aging fixture window; the production 3,600-second duration is
+unchanged. The seven-test host suite passed, including per-commit execution via
+`git rebase -x`; the [exact release-image regression](quota-boundary-regression.log)
+passed in 25.2 seconds at two CPUs / 1 GiB. No production code changed in that
+test follow-up.
 
 ## Verification
 
@@ -154,3 +199,14 @@ the containers and anonymous fixture volume are gone.
 README review: the public interface, architecture and development entry points
 are unchanged. The source adapter README documents continuous mode; deployment
 state and incident evidence belong here and in operations.
+
+## Cleanup and ownership
+
+Codex owned `/tmp/typeahead-readiness-20261104` with a 5 MiB metadata-only budget.
+No full corpus or index was copied to the laptop. The managed controller owned
+the independent 20 GiB candidate disk; B is now serving and A is the retained
+rollback slot. Both temporary controller VMs were deleted after their runs.
+[Final cleanup](final-cleanup.json) confirms the bounded local observers stopped
+and all four test containers are absent; the earlier anonymous fixture volume
+was also removed. Temporary baseline test-source extraction was retired, while
+small scripts, manifests, hashes and results remain.

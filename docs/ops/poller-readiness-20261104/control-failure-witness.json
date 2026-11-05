@@ -1,0 +1,40 @@
+{
+  "old_a": {
+    "at": 1793854991.04736,
+    "target": "a",
+    "status": 200,
+    "headers": {
+      "x-typeahead-engine": "tantivy",
+      "x-typeahead-build": "b1793815407-cp-1f545dd4aa",
+      "x-typeahead-format": "tantivy-0.27-f32-did-expiry-v4",
+      "x-typeahead-binary-sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+      "x-typeahead-retrieval-strategy": "global-merge",
+      "x-typeahead-machine-id": "86217efe2d1138",
+      "x-typeahead-machine-version": "01M6KZD9JA5S8SDG1SNJ2GSY2V"
+    },
+    "data": {
+      "build_id": "b1793815407-cp-1f545dd4aa",
+      "ready": false,
+      "sync_lag_s": 129
+    }
+  },
+  "live_b": {
+    "at": 1793854991.0466719,
+    "target": "b",
+    "status": 200,
+    "headers": {
+      "x-typeahead-engine": "tantivy",
+      "x-typeahead-build": "b1793815407-cp-1f545dd4aa",
+      "x-typeahead-format": "tantivy-0.27-f32-did-expiry-v4",
+      "x-typeahead-binary-sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+      "x-typeahead-retrieval-strategy": "global-merge",
+      "x-typeahead-machine-id": "812056a97999d8",
+      "x-typeahead-machine-version": "01M6MVNWNTB4HB3K9XY1YFTDS1"
+    },
+    "data": {
+      "build_id": "b1793815407-cp-1f545dd4aa",
+      "ready": true,
+      "sync_lag_s": 14
+    }
+  }
+}
