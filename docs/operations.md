@@ -100,6 +100,11 @@ receipt can precede fetch entry by hundreds of milliseconds. Use the native
 entry and completion log timestamps. The [November 4 activation evaluation](evals/worker-startup-cause-20261104/result.json)
 isolates pre-handler delay in the full bundle and the image renderer's
 contribution; its renderer-removed and lazy variants were temporary trials.
+The [first-request follow-up](evals/first-request-latency-20261104/result.json)
+compares minification, transport placement and late authority reads, then
+records the deployed versions and European probes. Its induced-delay routing
+qualification is separate from the natural production measurements; neither
+sample maxima nor a local startup profile establish a latency guarantee.
 
 Search's existing `search`, `cache` and `origin` timings remain nested within
 `worker`. The `/stats` latency counters measure the search handler, which starts

@@ -1,0 +1,665 @@
+{
+  "observed_at_utc": "2026-11-04T21:36:36.310668+00:00",
+  "status": "Minification and hedged route validation deployed and verified; first-request spikes remain.",
+  "changes": [
+    {
+      "commit": "b48bb91",
+      "change": "Minify the public Worker and upload source maps.",
+      "worker_version": "cc19d59f-486c-4d1d-abcc-faf8e450b705",
+      "deployed_at": "2026-11-04T21:14:44.664529Z",
+      "upload_kib_before": 1335.91,
+      "upload_kib_after": 835.66,
+      "gzip_kib_before": 252.62,
+      "gzip_kib_after": 206.25
+    },
+    {
+      "commit": "405fae4",
+      "change": "Separate bucket reads from routing-cache updates."
+    },
+    {
+      "commit": "c9441a5",
+      "change": "Start R2 after 50 ms while retaining a late fresh authority response. Preserve the one-second freshness limit, terminal fallback failure, and single cache winner. Track losing reads with waitUntil.",
+      "worker_version": "f18fb8d2-3b89-4c99-bd77-3d4661c90ce9",
+      "deployed_at": "2026-11-04T21:24:37.237879Z"
+    }
+  ],
+  "activation_controls": {
+    "current": {
+      "n": 24,
+      "statuses": {
+        "200": 24
+      },
+      "dns_ms": {
+        "median": 0.021,
+        "max": 0.026
+      },
+      "tls_ms": {
+        "median": 25.428,
+        "max": 41.255
+      },
+      "post_tls_ms": {
+        "median": 59.853,
+        "max": 471.813
+      },
+      "total_ms": {
+        "median": 90.524,
+        "max": 499.13
+      },
+      "pre_fetch_ms": {
+        "n": 23,
+        "median": 0,
+        "max": 208,
+        "over100": 2
+      }
+    },
+    "minified": {
+      "n": 24,
+      "statuses": {
+        "200": 24
+      },
+      "dns_ms": {
+        "median": 0.019,
+        "max": 0.036
+      },
+      "tls_ms": {
+        "median": 24.492,
+        "max": 61.552
+      },
+      "post_tls_ms": {
+        "median": 42.98,
+        "max": 207.366
+      },
+      "total_ms": {
+        "median": 70.395,
+        "max": 236.988
+      },
+      "pre_fetch_ms": {
+        "n": 24,
+        "median": 0.0,
+        "max": 161,
+        "over100": 1
+      }
+    },
+    "minimal": {
+      "n": 24,
+      "statuses": {
+        "200": 24
+      },
+      "dns_ms": {
+        "median": 0.019,
+        "max": 0.029
+      },
+      "tls_ms": {
+        "median": 25.299,
+        "max": 225.041
+      },
+      "post_tls_ms": {
+        "median": 37.545,
+        "max": 110.383
+      },
+      "total_ms": {
+        "median": 62.386,
+        "max": 278.475
+      },
+      "pre_fetch_ms": {
+        "n": 24,
+        "median": 0.0,
+        "max": 25,
+        "over100": 0
+      }
+    },
+    "production": {
+      "n": 24,
+      "statuses": {
+        "200": 24
+      },
+      "dns_ms": {
+        "median": 2.97,
+        "max": 42.941
+      },
+      "tls_ms": {
+        "median": 22.897,
+        "max": 38.402
+      },
+      "post_tls_ms": {
+        "median": 167.142,
+        "max": 604.926
+      },
+      "total_ms": {
+        "median": 195.846,
+        "max": 632.987
+      },
+      "pre_fetch_ms": {
+        "n": 23,
+        "median": 0,
+        "max": 139,
+        "over100": 2
+      }
+    }
+  },
+  "local_startup_cpu": {
+    "unminified_active_sampled_ms": 26.418,
+    "minified_active_sampled_ms": 18.93,
+    "scope": "Local profiles on the same machine; not deployed cold-start durations."
+  },
+  "routing_controls": {
+    "transport": {
+      "n": 96,
+      "identical_response_sha256": {
+        "c9581d12184e96ea7b8358b2bf59e07542b0ecf5f814d8d0d2cce11fd445b7a4": 96
+      },
+      "regions": {
+        "lhr": {
+          "edge": {
+            "n": 12,
+            "median_ms": 409.275,
+            "max_ms": 1263.527
+          },
+          "placed": {
+            "n": 12,
+            "median_ms": 254.863,
+            "max_ms": 402.454
+          },
+          "direct": {
+            "n": 12,
+            "median_ms": 109.293,
+            "max_ms": 269.025
+          },
+          "stable": {
+            "n": 12,
+            "median_ms": 250.599,
+            "max_ms": 391.3
+          }
+        },
+        "arn": {
+          "edge": {
+            "n": 12,
+            "median_ms": 299.547,
+            "max_ms": 1134.371
+          },
+          "placed": {
+            "n": 12,
+            "median_ms": 242.461,
+            "max_ms": 392.021
+          },
+          "direct": {
+            "n": 12,
+            "median_ms": 140.729,
+            "max_ms": 278.761
+          },
+          "stable": {
+            "n": 12,
+            "median_ms": 202.692,
+            "max_ms": 441.38
+          }
+        }
+      }
+    },
+    "hedge": {
+      "n": 160,
+      "identical_response_sha256": {
+        "c9581d12184e96ea7b8358b2bf59e07542b0ecf5f814d8d0d2cce11fd445b7a4": 160
+      },
+      "regions": {
+        "lhr": {
+          "baseline": {
+            "n": 20,
+            "median_ms": 218.529,
+            "max_ms": 350.616
+          },
+          "hedged": {
+            "n": 20,
+            "median_ms": 193.291,
+            "max_ms": 277.392
+          },
+          "direct": {
+            "n": 20,
+            "median_ms": 105.608,
+            "max_ms": 200.682
+          },
+          "stable": {
+            "n": 20,
+            "median_ms": 190.211,
+            "max_ms": 249.755
+          }
+        },
+        "arn": {
+          "baseline": {
+            "n": 20,
+            "median_ms": 202.117,
+            "max_ms": 298.779
+          },
+          "hedged": {
+            "n": 20,
+            "median_ms": 208.851,
+            "max_ms": 274.547
+          },
+          "direct": {
+            "n": 20,
+            "median_ms": 136.329,
+            "max_ms": 355.555
+          },
+          "stable": {
+            "n": 20,
+            "median_ms": 187.974,
+            "max_ms": 350.985
+          }
+        }
+      }
+    },
+    "hedge-jitter": {
+      "n": 48,
+      "identical_response_sha256": {
+        "c9581d12184e96ea7b8358b2bf59e07542b0ecf5f814d8d0d2cce11fd445b7a4": 48
+      },
+      "regions": {
+        "lhr": {
+          "baseline": {
+            "n": 12,
+            "median_ms": 376.615,
+            "max_ms": 661.263
+          },
+          "hedged": {
+            "n": 12,
+            "median_ms": 302.479,
+            "max_ms": 411.475
+          }
+        },
+        "arn": {
+          "baseline": {
+            "n": 12,
+            "median_ms": 369.72,
+            "max_ms": 655.017
+          },
+          "hedged": {
+            "n": 12,
+            "median_ms": 297.697,
+            "max_ms": 331.259
+          }
+        }
+      },
+      "controlled_authority_delay_ms": 75,
+      "route_validation": {
+        "baseline": {
+          "n": 24,
+          "median_ms": 170.0,
+          "max_ms": 426
+        },
+        "hedged": {
+          "n": 24,
+          "median_ms": 94.0,
+          "max_ms": 109
+        }
+      }
+    }
+  },
+  "production": {
+    "lhr": {
+      "fresh_ours_hit": {
+        "n": 6,
+        "median_ms": 74.896,
+        "max_ms": 217.907,
+        "native_n": 6,
+        "pre_fetch_median_ms": 0.0,
+        "pre_fetch_max_ms": 116,
+        "pre_fetch_over_100_ms": 1,
+        "statuses": {
+          "200": 6
+        }
+      },
+      "fresh_ours_miss": {
+        "n": 6,
+        "median_ms": 258.239,
+        "max_ms": 415.782,
+        "native_n": 6,
+        "pre_fetch_median_ms": 20.0,
+        "pre_fetch_max_ms": 125,
+        "pre_fetch_over_100_ms": 1,
+        "statuses": {
+          "200": 6
+        }
+      },
+      "fresh_bluesky_None": {
+        "n": 12,
+        "median_ms": 107.576,
+        "max_ms": 427.371,
+        "native_n": 0,
+        "pre_fetch_median_ms": null,
+        "pre_fetch_max_ms": null,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 12
+        }
+      },
+      "persistent_ours_hit": {
+        "n": 20,
+        "median_ms": 25.961,
+        "max_ms": 56.345,
+        "native_n": 20,
+        "pre_fetch_median_ms": 0.0,
+        "pre_fetch_max_ms": 0,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 20
+        }
+      },
+      "persistent_ours_miss": {
+        "n": 10,
+        "median_ms": 171.734,
+        "max_ms": 240.351,
+        "native_n": 10,
+        "pre_fetch_median_ms": 0.0,
+        "pre_fetch_max_ms": 1,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 10
+        }
+      },
+      "persistent_bluesky_None": {
+        "n": 30,
+        "median_ms": 169.448,
+        "max_ms": 478.034,
+        "native_n": 0,
+        "pre_fetch_median_ms": null,
+        "pre_fetch_max_ms": null,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 30
+        }
+      }
+    },
+    "arn": {
+      "fresh_ours_hit": {
+        "n": 6,
+        "median_ms": 51.395,
+        "max_ms": 87.798,
+        "native_n": 6,
+        "pre_fetch_median_ms": 0.0,
+        "pre_fetch_max_ms": 30,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 6
+        }
+      },
+      "fresh_ours_miss": {
+        "n": 6,
+        "median_ms": 231.983,
+        "max_ms": 358.969,
+        "native_n": 6,
+        "pre_fetch_median_ms": 5.5,
+        "pre_fetch_max_ms": 36,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 6
+        }
+      },
+      "fresh_bluesky_None": {
+        "n": 12,
+        "median_ms": 256.995,
+        "max_ms": 607.87,
+        "native_n": 0,
+        "pre_fetch_median_ms": null,
+        "pre_fetch_max_ms": null,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 12
+        }
+      },
+      "persistent_ours_hit": {
+        "n": 20,
+        "median_ms": 12.468,
+        "max_ms": 27.52,
+        "native_n": 20,
+        "pre_fetch_median_ms": 0.0,
+        "pre_fetch_max_ms": 1,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 20
+        }
+      },
+      "persistent_ours_miss": {
+        "n": 10,
+        "median_ms": 161.141,
+        "max_ms": 257.447,
+        "native_n": 10,
+        "pre_fetch_median_ms": 0.0,
+        "pre_fetch_max_ms": 44,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 10
+        }
+      },
+      "persistent_bluesky_None": {
+        "n": 30,
+        "median_ms": 184.899,
+        "max_ms": 420.621,
+        "native_n": 0,
+        "pre_fetch_median_ms": null,
+        "pre_fetch_max_ms": null,
+        "pre_fetch_over_100_ms": 0,
+        "statuses": {
+          "200": 30
+        }
+      }
+    }
+  },
+  "remaining_latency": {
+    "worst_london_sample": {
+      "total_ms": 415.782,
+      "dns_ms": 17.479,
+      "tcp_ms": 2.642,
+      "tls_ms": 29.676,
+      "pre_fetch_ms": 125,
+      "native_handler_ms": 166,
+      "backend_round_trip_ms": 128,
+      "transport_origin_headers_ms": 30,
+      "post_tls_outside_native_invocation_ms": 74.819
+    },
+    "interpretation": "Residual latency includes Cloudflare activation/dispatch and a Europe-to-IAD/EWR round trip. An additional 41\u201375 ms around the slowest native invocation boundaries is not fully assigned to a Cloudflare internal component versus network delivery. No claim that all spikes are eliminated or that a floor is proven."
+  },
+  "validation": {
+    "tests_passed": 198,
+    "tests_failed": 0,
+    "typecheck": "passed",
+    "lint": "passed",
+    "all_three_worker_builds": "passed",
+    "per_commit_bisect_tests": "passed",
+    "public_authenticated_api_smoke": "passed",
+    "public_image_smoke": "passed",
+    "transport_authenticated_api_smoke": "passed",
+    "code_ci": {
+      "id": "3mzjbzpxlbn22",
+      "commit": "c9441a572edf446c039ab3b169ec3b6e47a1f43c",
+      "createdAt": "2026-11-04T15:24:01-06:00",
+      "repo": "did:plc:nabched6glrnfsrsudl6j2ym",
+      "trigger": {
+        "$type": "org.tangled.event.push",
+        "actor": "did:plc:xbtmt2zjwlrfegqvch7fboei",
+        "newSha": "c9441a572edf446c039ab3b169ec3b6e47a1f43c",
+        "oldSha": "b48bb9118017acf84b9fe1f467d74bda6b06742f",
+        "ref": "refs/heads/main",
+        "repo": "did:plc:nabched6glrnfsrsudl6j2ym"
+      },
+      "workflows": [
+        {
+          "id": "deploy.yml",
+          "name": "deploy.yml",
+          "status": "success",
+          "startedAt": "2026-11-04T15:24:33.4818871-06:00",
+          "finishedAt": "2026-11-04T15:25:40.72156749-06:00"
+        },
+        {
+          "id": "pds-repair.yml",
+          "name": "pds-repair.yml",
+          "status": "success",
+          "startedAt": "2026-11-04T15:24:01.08757815-06:00",
+          "finishedAt": "2026-11-04T15:24:31.664403653-06:00"
+        },
+        {
+          "id": "tantivy.yml",
+          "name": "tantivy.yml",
+          "status": "success",
+          "startedAt": "2026-11-04T15:24:01.086678781-06:00",
+          "finishedAt": "2026-11-04T15:28:48.18730373-06:00"
+        }
+      ]
+    },
+    "production_probe_http_200": 168,
+    "production_native_correlations": 84,
+    "freshness": {
+      "ok": true,
+      "stale": false,
+      "replica_lag_s": 54,
+      "snapshot_age_s": 12545,
+      "build_id": "b1793815407-cp-1f545dd4aa",
+      "coverage_age_s": 12545,
+      "coverage_deadline": 1793901807,
+      "refresh_overdue": false,
+      "probe_ok": true,
+      "reasons": []
+    }
+  },
+  "limitations": [
+    "Small sequential regional cohorts are not production percentile guarantees.",
+    "Natural routing cohorts did not exercise late authority replies. The 170\u219294 ms median and 426\u2192109 ms maximum route-read comparison is a controlled 75 ms authority-delay experiment, not a natural production claim.",
+    "Separate measurement windows, Worker identities and connection modes prevent attributing every before/after difference to one change.",
+    "Production body payloads were discarded. Isolated routing comparisons hashed real backend response bodies and verified byte identity.",
+    "Minified deployment startup reports vary; do not compare a single old production startup report against a new one as a percentile."
+  ],
+  "cleanup": {
+    "workers": [
+      {
+        "name": "typeahead-first-current-1793826333",
+        "absent": true
+      },
+      {
+        "name": "typeahead-first-minified-1793826333",
+        "absent": true
+      },
+      {
+        "name": "typeahead-first-minimal-1793826333",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hop-edge-1793826577",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hop-placed-1793826577",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hop-front-1793826577",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hedge-baseline-1793827211",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hedge-hedged-1793827211",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hedge-front-1793827211",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hedge-baseline-1793827363",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hedge-hedged-1793827363",
+        "absent": true
+      },
+      {
+        "name": "typeahead-hedge-front-1793827363",
+        "absent": true
+      }
+    ],
+    "fly_apps": [
+      "typeahead-eu-probe-1793826333",
+      "typeahead-eu-probe-1793826577",
+      "typeahead-eu-probe-1793827211",
+      "typeahead-eu-probe-1793827363",
+      "typeahead-eu-probe-1793827549"
+    ],
+    "all_fly_apps_absent": true,
+    "machines_retired": [
+      {
+        "id": "8e4402a7799638",
+        "region": "lhr"
+      },
+      {
+        "id": "825eddf7925798",
+        "region": "arn"
+      },
+      {
+        "id": "811d139f429528",
+        "region": "lhr"
+      },
+      {
+        "id": "824113c7270028",
+        "region": "arn"
+      },
+      {
+        "id": "784ee91ef1e798",
+        "region": "lhr"
+      },
+      {
+        "id": "8d4d0dfed9e948",
+        "region": "arn"
+      },
+      {
+        "id": "80e9d02a519198",
+        "region": "lhr"
+      },
+      {
+        "id": "827201f7771708",
+        "region": "arn"
+      },
+      {
+        "id": "84ed547fe46d58",
+        "region": "lhr"
+      },
+      {
+        "id": "85e172c4e3e978",
+        "region": "arn"
+      }
+    ],
+    "temporary_source_copies_retired": [
+      {
+        "path": "/tmp/typeahead-first-request-20261104/hedge/source-baseline",
+        "search_route_sha256": "a3ac079b297e6ab3067783af171c584125019ac80375c35ac5e11e62ba2589bd",
+        "search_transport_sha256": "62a38ce1cebefd39272f2fbb38ebe5eb92270830841ce996891f5ebea30ae87b"
+      },
+      {
+        "path": "/tmp/typeahead-first-request-20261104/hedge/source-hedged",
+        "search_route_sha256": "5196c5e495b50e1c62b8f854551111e25b90cea85ffed9996672bce15dbc38de",
+        "search_transport_sha256": "b9e369f30b9e67c6f19ad7c0252d415dac763ac91fb5a79db5766f458ea13836"
+      },
+      {
+        "path": "/tmp/typeahead-first-request-20261104/hedge-jitter/source-baseline",
+        "search_route_sha256": "a3ac079b297e6ab3067783af171c584125019ac80375c35ac5e11e62ba2589bd",
+        "search_transport_sha256": "1e6d752fb84e563708b0d02788afd81f9effa88ac41fa4d450bfb368b0ff8baf"
+      },
+      {
+        "path": "/tmp/typeahead-first-request-20261104/hedge-jitter/source-hedged",
+        "search_route_sha256": "5196c5e495b50e1c62b8f854551111e25b90cea85ffed9996672bce15dbc38de",
+        "search_transport_sha256": "228a075e0c847426c1ece963df61bad18aba1858c84951626e972a939235befa"
+      }
+    ],
+    "no_serving_slot_or_routing_pointer_mutation": true,
+    "permanent_workers_retained": [
+      "typeahead",
+      "typeahead-image-renderer",
+      "typeahead-search-transport"
+    ]
+  },
+  "readme_review": "README describes the minified public bundle and separate renderer. Development documents source-map upload; architecture documents the route-read race. No public endpoint, parameter, PDS safety or response-body contract changed, so API docs and diagrams need no further change. Operations links this dated evidence and distinguishes induced-delay qualification from production samples.",
+  "raw_artifacts": "/Users/nate/.codex/visualizations/2026/11/04/01a1a7be-7225-78c0-b349-a02f3691ff53/first-request-latency",
+  "activation_control_body_sha256": {
+    "hash": "b2f928b74e742b879a65a021f1ebcfcc822526e64b52eb0a3090fd4cc61cf6c9",
+    "identical_captures": 6
+  }
+}

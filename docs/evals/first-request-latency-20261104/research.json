@@ -1,0 +1,30 @@
+[
+  {
+    "url": "https://blog.cloudflare.com/eliminating-cold-starts-with-cloudflare-workers/",
+    "finding": "The original TLS ClientHello prewarming mechanism; this is not a modern end-to-end zero-latency guarantee."
+  },
+  {
+    "url": "https://blog.cloudflare.com/eliminating-cold-starts-2-shard-and-conquer/",
+    "finding": "The later design explicitly discusses cold starts, sparse traffic, isolate eviction and sharding."
+  },
+  {
+    "url": "https://developers.cloudflare.com/workers/wrangler/commands/workers/#startup",
+    "finding": "Use the actual deployment build for local startup profiling; local CPU durations are not deployed startup latency."
+  },
+  {
+    "url": "https://developers.cloudflare.com/workers/observability/profiling-in-production/",
+    "finding": "Production CPU capture samples a loaded isolate; the captured production profile here was idle and cannot exclude startup CPU."
+  },
+  {
+    "url": "https://developers.cloudflare.com/workers/configuration/placement/",
+    "finding": "Separate edge and backend Workers where backend round trips justify placement. Placement was tested rather than removed on assumption."
+  },
+  {
+    "url": "https://developers.cloudflare.com/workers/wrangler/bundling/",
+    "finding": "Lazy module loading requires preserving separate modules; a dynamic import bundled into the entrypoint is insufficient."
+  },
+  {
+    "url": "https://blog.cloudflare.com/a-question-of-timing/",
+    "finding": "Separate cumulative curl DNS/TCP/TLS timing from post-TLS first-byte waiting."
+  }
+]
