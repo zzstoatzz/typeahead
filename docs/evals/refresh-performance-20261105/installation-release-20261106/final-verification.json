@@ -1,0 +1,26 @@
+{
+  "at": 1793947505.6032588,
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 39,
+    "snapshot_age_s": 45714,
+    "build_id": "b1793901791-cp-e13a387b75",
+    "coverage_age_s": 45714,
+    "coverage_deadline": 1793988191,
+    "refresh_overdue": false,
+    "probe_ok": true,
+    "reasons": []
+  },
+  "current": {
+    "engine": "tantivy",
+    "origin": "https://typeahead-tantivy-b.fly.dev",
+    "build_id": "b1793901791-cp-e13a387b75",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "admission_sha256": "f1e400b3a6e24da1b9e92b3c524c4f9d6a675aa80ccf8485155a418095a4d776",
+    "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "retrieval_strategy": "global-merge"
+  },
+  "root_readme_review": "Unchanged: public usage and runtime roles remain the same; installation mechanisms and dated deployment evidence were updated in the linked docs.",
+  "local_corpus_data": false
+}

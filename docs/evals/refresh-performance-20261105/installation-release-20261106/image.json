@@ -1,0 +1,19 @@
+{
+  "image": "registry.fly.io/typeahead-tantivy-a@sha256:979785c393e162f1256c709eef0a2f969a85357d427f44a93d0f2f298b551841",
+  "base": "registry.fly.io/typeahead-tantivy-a@sha256:d13dee4839c3e56ac1f6dd4f0d14cb4514186221b0f5a6d3037cfb92f090473d",
+  "source": "bcd0e08ac23e023cd175dea055213f4403f4dc6a",
+  "changed_files": [
+    "/app/tantivy-slot.py",
+    "/app/tantivy_install.py"
+  ],
+  "expected_files": {
+    "/app/typeahead-tantivy": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "/app/tantivy-slot.py": "67db05d6d54464ec5e4a4fcc7a21e0cfac08cc8f023451f478bafbe87175630c",
+    "/app/tantivy_install.py": "5214936fbff194c2bc38e4cc66fb2dce495fd73cea98611d3f1e467f63e9c021",
+    "/app/install.py": "98f4931f5987093f57972ad57349ce6f862add73f3d59942976bd68d07653efc",
+    "/app/input/sync.py": "58c16eed2050126f5bd02045defd5acac3d711e48ffe1c5d33b21947d8f74f5f",
+    "/app/input/current_state.py": "e049781acd5ac993031100cc180f14137f2bcf98369e7926576e21450fdf0d86",
+    "/app/input/budget.py": "2e36f2db59038382650cdeb08ab03fa13e29239afd1f4daec395a5f82e68d75c"
+  },
+  "built_with": "Fly remote build-only; no application machine rollout from fly deploy"
+}

@@ -1,0 +1,6 @@
+To schedule a run for this deployment, use the following command:
+        $ prefect deployment run 'test-pull-boundary/test-pull-boundary'
+Green main revision eligible for registration: 6f3f43cb13011e479b779af0b0e43026408d604a
+Registered green main revision on HeavyPad: 6f3f43cb13011e479b779af0b0e43026408d604a
+Finished Register green MPS main revisions on the private HeavyPad API.
+prefect-home-registration.service: Consumed 12.691s CPU time.

@@ -3,13 +3,13 @@
 Status: offline importer qualified; publisher registered at 17:54 UTC, 2026-11-05.
 The [normal production refresh](production-result.json) subsequently used importer
 `f1e6e3a2…` and completed at 19:34 UTC (13:34 CT). Its build
-`b1793901791-cp-e13a387b75` is serving and the public freshness probe passes.
+`b1793901791-cp-e13a387b75` was verified serving with healthy public freshness.
 Production import/producer work through the start of live catch-up took 1,609 s
 (26m49s); the full refresh took 5,482 s (91m22s). The earlier comparable run's
 import was about 41 minutes and full refresh about 113 minutes. These are separate
 production runs, not the controlled allocator-only experiment below. No additional
 deployment is needed to activate the faster importer.
-The serving binary, allocation and routing remain unchanged. Earlier
+That importer rollout did not change the serving binary, allocation or routing. Earlier
 100,000-actor batching results do not establish full-corpus performance.
 
 [Controlled million-actor results](import-allocator.json): page-allocation
@@ -208,3 +208,55 @@ access, cloud allocation, or production mutation occurred. Scratch and the local
 reader copy were removed; the unit was inactive and no test processes remained.
 These are correctness results, not production throughput measurements. The README
 entry point needs no change because runtime roles and usage remain unchanged.
+
+### Production installation release, November 6
+
+The faster installation image was promoted at **06:37:20 UTC, November 6**.
+The [deployment record](installation-release-20261106/) contains the immutable
+image/source bindings, release proof, managed preparation and promotion requests,
+public checks, registration readback and cleanup. B serves the qualified image;
+A is retained for rollback. Only the downloader and installer changed. The
+reader, live-source modules, final shared-2-CPU/1-GiB allocation, source byte
+budget and admission checks retain their previous identities and settings.
+
+[Cold installation timings](installation-release-20261106/installation-timing.json)
+fell from **33m29s to 27m16s**, a 6m13s reduction (18.6%). Both installations used
+the same immutable 6.37 GB snapshot; they ran on different Fly Machines and
+volumes at different times. This is an observed cold-install comparison, not a
+repeated benchmark or a full-refresh SLO. The parallel transfer took 6m38s.
+Process I/O counters showed the archive verification reading gigabytes from the
+volume while consuming only seconds of CPU; the full-size case was dominated by
+I/O rather than the CPU cost suggested by the earlier RAM-resident fixture.
+
+The actual managed first start and cached stop/start passed. Provider events
+confirm the requested stop and subsequent start; the Fly machine version remains
+the same across that restart. All **39 paced query/PDS pairs** matched production
+byte for byte. Warm engine median/sample-p95 were 2.19/2.71 ms on the candidate
+and 3.04/3.95 ms on the baseline; this small regression cohort is not a production
+percentile. After promotion, both public aliases were byte-identical, correct-host
+scope included the expected actor, foreign-host scope excluded it, freshness
+passed, and the canonical ranking suite passed every acceptance criterion.
+
+This manual rollout reused an eleven-hour-old snapshot to avoid another full
+export/import. Live catch-up consequently dominated the 73-minute preparation.
+The original one-hour qualification window expired; the existing flow retry
+resumed the same installation and durable source progress. No deadline or serving
+readiness rule was relaxed, and no second snapshot download/build ran. These
+manual-rollout timings must not be presented as ordinary fresh-snapshot refresh
+timings.
+
+Configuration `6f3f43c` landed on both MPS main mirrors and passed CI. Trusted
+registration selected Typeahead source `bcd0e08`, adapter `5214936`, and release
+proof `8619968`; the controller package remains `26fae38` and the offline importer
+remains `f1e6e3a2`. Schedule and concurrency are unchanged. The 06:00 run was
+cancelled while this rollout held the single deployment slot; exactly one
+replacement normal refresh was submitted with the registered defaults and no
+job overrides. Its execution is recorded separately; a completed full refresh
+using this image is not claimed by this deployment record.
+
+Both manual-operation cloud VMs, their IPs and SSH keys were removed. The
+candidate archive, transfer journal and staging directories were also absent,
+with 13.4 GB free on its volume. The retained A/B backends and the replacement
+normal refresh are production resources. No corpus data passed through HeavyPad
+or the laptop. Architecture and adapter documentation were updated; the concise
+root README needs no change because public usage and runtime roles are unchanged.

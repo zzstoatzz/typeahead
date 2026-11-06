@@ -1,0 +1,12 @@
+uv run scripts/validate_deployments.py 
+UNVERIFIED: transform: file must be supplied by worker path or image
+UNVERIFIED: pi-agent: source/package binding is not a recognized Git route
+UNVERIFIED: autofix: source/package binding is not a recognized Git route
+UNVERIFIED: watch-tangled-pulls: wheel contents, availability and runtime imports
+UNVERIFIED: autofix-revise: image availability, installed module bytes and runtime imports
+UNVERIFIED: investigate: image availability, installed module bytes and runtime imports
+UNVERIFIED: pi-pr: image availability, installed module bytes and runtime imports
+UNVERIFIED: merge-approved: wheel contents, availability and runtime imports
+UNVERIFIED: test-pull-patch: image availability, installed module bytes and runtime imports
+UNVERIFIED: pull steps: arbitrary scripts and remote revisions are not executed
+Static deployment contracts: 0 error(s); runtime readiness not tested.

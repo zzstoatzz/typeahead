@@ -1,0 +1,16 @@
+{
+  "parameters": {
+    "automatic_refresh": false,
+    "resume_rollout": false,
+    "tantivy_operation": {
+      "operation": "promote",
+      "plan_sha256": "b532c449850a1f980f4e65fb5afa072dcac22ddf26568e1a57f4d785e743bd97",
+      "expected_current_etag": "\"ef4fcb7396b31308116c43f1ca33cb1b\"",
+      "release_receipt_key": "control/tantivy-releases/8619968fed901ea40a299d7a9a4fc0fda3bb0838b63a2074d66284632a132306.json",
+      "release_receipt_sha256": "8619968fed901ea40a299d7a9a4fc0fda3bb0838b63a2074d66284632a132306"
+    }
+  },
+  "at": 1793946866.439144,
+  "request_id": "156b76d7996a40038787629ac6c7ef0d",
+  "run_id": "1672f8e7-c8b2-4c01-84ba-23eb07481529"
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "current": {
+    "admission_sha256": "f1e400b3a6e24da1b9e92b3c524c4f9d6a675aa80ccf8485155a418095a4d776",
+    "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "build_id": "b1793901791-cp-e13a387b75",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "origin": "https://typeahead-tantivy-b.fly.dev",
+    "retrieval_strategy": "global-merge"
+  },
+  "previous": {
+    "admission_sha256": "2f37f197b83e9f3a10cebbd2109c008e3770ff13814a849b6fb92a8d697c4451",
+    "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+    "build_id": "b1793901791-cp-e13a387b75",
+    "engine": "tantivy",
+    "format": "tantivy-0.27-f32-did-expiry-v4",
+    "origin": "https://typeahead-tantivy-a.fly.dev",
+    "retrieval_strategy": "global-merge"
+  }
+}

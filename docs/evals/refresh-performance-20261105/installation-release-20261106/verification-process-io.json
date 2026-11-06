@@ -1,0 +1,7 @@
+{
+  "at": 1793942902.8758566,
+  "pid": "613",
+  "user_ticks": 554,
+  "system_ticks": 385,
+  "io": "rchar: 12537151969\nwchar: 6375008728\nsyscr: 442719\nsyscw: 9100\nread_bytes: 6163595264\nwrite_bytes: 6375333888\ncancelled_write_bytes: 4096\n"
+}

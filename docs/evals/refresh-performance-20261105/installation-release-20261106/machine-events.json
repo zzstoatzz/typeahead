@@ -1,0 +1,44 @@
+[
+  {
+    "type": "start",
+    "status": "started",
+    "request": {},
+    "source": "flyd",
+    "timestamp": 1793946265600
+  },
+  {
+    "type": "start",
+    "status": "starting",
+    "source": "user",
+    "timestamp": 1793946265006
+  },
+  {
+    "type": "exit",
+    "status": "stopped",
+    "request": {
+      "exit_event": {
+        "exit_code": 1,
+        "guest_signal": -1,
+        "requested_stop": true,
+        "signal": -1,
+        "exited_at": "2026-11-06T06:24:22.262Z"
+      }
+    },
+    "source": "flyd",
+    "timestamp": 1793946262343
+  },
+  {
+    "type": "stop",
+    "status": "stopping",
+    "request": {},
+    "source": "user",
+    "timestamp": 1793946259954
+  },
+  {
+    "type": "start",
+    "status": "started",
+    "request": {},
+    "source": "flyd",
+    "timestamp": 1793942132541
+  }
+]

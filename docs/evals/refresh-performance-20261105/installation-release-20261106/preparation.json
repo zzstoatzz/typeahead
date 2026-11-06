@@ -1,0 +1,21 @@
+{
+  "parameters": {
+    "automatic_refresh": false,
+    "resume_rollout": false,
+    "tantivy_operation": {
+      "operation": "prepare",
+      "build_id": "b1793901791-cp-e13a387b75",
+      "image": "registry.fly.io/typeahead-tantivy-a@sha256:979785c393e162f1256c709eef0a2f969a85357d427f44a93d0f2f298b551841",
+      "request_id": "156b76d7996a40038787629ac6c7ef0d",
+      "app": "typeahead-tantivy-b",
+      "retire_previous_tantivy": true,
+      "release_receipt_key": "control/tantivy-releases/7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759.json",
+      "release_receipt_sha256": "7a89f411cbc09bd791fe4241238154acf2df1ddce3c1eca3f7ddd6239871c759"
+    }
+  },
+  "source": "bcd0e08ac23e023cd175dea055213f4403f4dc6a",
+  "adapter": "5214936fbff194c2bc38e4cc66fb2dce495fd73cea98611d3f1e467f63e9c021",
+  "publisher": "@26fae38154907881e5b25133e86c168a1c0c38e1",
+  "at": 1793941897.0388522,
+  "run_id": "d91154ed-9605-4c77-b6a4-633f3aa41c45"
+}

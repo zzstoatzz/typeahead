@@ -1,0 +1,27 @@
+{
+  "verified": true,
+  "at": 1793947234.6944158,
+  "deployment_id": "a0c0ce9c-5bab-4bdc-8512-39984c322a74",
+  "pins": {
+    "MPS_PIN": "@26fae38154907881e5b25133e86c168a1c0c38e1",
+    "INDEX_TANTIVY_SOURCE_REVISION": "bcd0e08ac23e023cd175dea055213f4403f4dc6a",
+    "INDEX_TANTIVY_ADAPTER_SHA256": "5214936fbff194c2bc38e4cc66fb2dce495fd73cea98611d3f1e467f63e9c021",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_KEY": "control/tantivy-releases/8619968fed901ea40a299d7a9a4fc0fda3bb0838b63a2074d66284632a132306.json",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_SHA256": "8619968fed901ea40a299d7a9a4fc0fda3bb0838b63a2074d66284632a132306",
+    "INDEX_TANTIVY_BINARY_SHA256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d"
+  },
+  "schedules": [
+    {
+      "active": true,
+      "cron": "0 6,18 * * *",
+      "timezone": "UTC"
+    }
+  ],
+  "parameters": {
+    "automatic_refresh": true
+  },
+  "work_pool_name": "typeahead-ephemeral",
+  "concurrency_limit": 1,
+  "collision_strategy": "CANCEL_NEW",
+  "offline_importer_sha256": "f1e6e3a2af99a5c6fe141eb88ce680bfb870e40b7a6ed6ce4fc49ab9727dd00a"
+}

@@ -1,0 +1,106 @@
+{
+  "passed": true,
+  "at": 1793947153.5425222,
+  "expected_machine": "840e95a2324068",
+  "aliases_byte_identical": true,
+  "samples": [
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "scoped": false,
+      "machine_id": "840e95a2324068",
+      "body_sha256": "dc3bbe69eeeddcbb031302606eacf74092411bd9018c03b6582897da33d6b58b",
+      "headers": {
+        "CF-Cache-Status": "HIT",
+        "Server-Timing": "cache;desc=\"hit\";dur=7",
+        "X-Typeahead-Binary-Sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+        "X-Typeahead-Build": "b1793901791-cp-e13a387b75",
+        "X-Typeahead-Cache-Generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+        "X-Typeahead-Engine": "tantivy",
+        "X-Typeahead-Format": "tantivy-0.27-f32-did-expiry-v4",
+        "X-Typeahead-Machine-Id": "840e95a2324068",
+        "X-Typeahead-Machine-Version": "01M6QMGWAMG5EE6N084RHDSWXS",
+        "X-Typeahead-Retrieval-Strategy": "global-merge"
+      }
+    },
+    {
+      "endpoint": "app.bsky.actor.searchActorsTypeahead",
+      "scoped": false,
+      "machine_id": "840e95a2324068",
+      "body_sha256": "dc3bbe69eeeddcbb031302606eacf74092411bd9018c03b6582897da33d6b58b",
+      "headers": {
+        "CF-Cache-Status": "HIT",
+        "Server-Timing": "cache;desc=\"hit\";dur=6",
+        "X-Typeahead-Binary-Sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+        "X-Typeahead-Build": "b1793901791-cp-e13a387b75",
+        "X-Typeahead-Cache-Generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+        "X-Typeahead-Engine": "tantivy",
+        "X-Typeahead-Format": "tantivy-0.27-f32-did-expiry-v4",
+        "X-Typeahead-Machine-Id": "840e95a2324068",
+        "X-Typeahead-Machine-Version": "01M6QMGWAMG5EE6N084RHDSWXS",
+        "X-Typeahead-Retrieval-Strategy": "global-merge"
+      }
+    },
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "scoped": true,
+      "machine_id": "840e95a2324068",
+      "body_sha256": "1f639572862b75f78bf34a6e3a3eb434a9c323e4fdd1b23a0c1c0e2c7c830a69",
+      "headers": {
+        "CF-Cache-Status": "HIT",
+        "Server-Timing": "cache;desc=\"hit\";dur=16",
+        "X-Typeahead-Binary-Sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+        "X-Typeahead-Build": "b1793901791-cp-e13a387b75",
+        "X-Typeahead-Cache-Generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+        "X-Typeahead-Engine": "tantivy",
+        "X-Typeahead-Format": "tantivy-0.27-f32-did-expiry-v4",
+        "X-Typeahead-Machine-Id": "840e95a2324068",
+        "X-Typeahead-Machine-Version": "01M6QMGWAMG5EE6N084RHDSWXS",
+        "X-Typeahead-Retrieval-Strategy": "global-merge"
+      }
+    },
+    {
+      "endpoint": "app.bsky.actor.searchActorsTypeahead",
+      "scoped": true,
+      "machine_id": "840e95a2324068",
+      "body_sha256": "1f639572862b75f78bf34a6e3a3eb434a9c323e4fdd1b23a0c1c0e2c7c830a69",
+      "headers": {
+        "CF-Cache-Status": "HIT",
+        "Server-Timing": "cache;desc=\"hit\";dur=6",
+        "X-Typeahead-Binary-Sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+        "X-Typeahead-Build": "b1793901791-cp-e13a387b75",
+        "X-Typeahead-Cache-Generation": "tantivy-b1793346536-cp-7c8322df79-cutover",
+        "X-Typeahead-Engine": "tantivy",
+        "X-Typeahead-Format": "tantivy-0.27-f32-did-expiry-v4",
+        "X-Typeahead-Machine-Id": "840e95a2324068",
+        "X-Typeahead-Machine-Version": "01M6QMGWAMG5EE6N084RHDSWXS",
+        "X-Typeahead-Retrieval-Strategy": "global-merge"
+      }
+    },
+    {
+      "endpoint": "tech.waow.typeahead.searchActors",
+      "scoped": true,
+      "pds": "https://bsky.social",
+      "foreign_host_excludes_actor": true,
+      "body_sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840"
+    },
+    {
+      "endpoint": "app.bsky.actor.searchActorsTypeahead",
+      "scoped": true,
+      "pds": "https://bsky.social",
+      "foreign_host_excludes_actor": true,
+      "body_sha256": "1925590408012373ea3cc6b9d02703527531492efb52aa39689d541a0581f840"
+    }
+  ],
+  "freshness": {
+    "ok": true,
+    "stale": false,
+    "replica_lag_s": 25,
+    "snapshot_age_s": 45362,
+    "build_id": "b1793901791-cp-e13a387b75",
+    "coverage_age_s": 45362,
+    "coverage_deadline": 1793988191,
+    "refresh_overdue": false,
+    "probe_ok": true,
+    "reasons": []
+  }
+}

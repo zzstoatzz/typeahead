@@ -1,0 +1,9 @@
+{"at": 1793944981.121024, "ready": false, "revision": 127, "actor_cursor": 1793915515, "sync_lag_s": 40839}
+{"at": 1793945109.523127, "ready": false, "revision": 137, "actor_cursor": 1793915885, "sync_lag_s": 40967}
+{"at": 1793945244.2405498, "ready": false, "revision": 151, "actor_cursor": 1793916578, "sync_lag_s": 41102}
+{"at": 1793945388.987693, "ready": false, "revision": 168, "actor_cursor": 1793917597, "sync_lag_s": 41247}
+{"at": 1793945476.4038222, "ready": false, "revision": 179, "actor_cursor": 1793918319, "sync_lag_s": 41334}
+{"at": 1793945569.290466, "ready": false, "revision": 191, "actor_cursor": 1793918951, "sync_lag_s": 41427}
+{"at": 1793945860.770404, "ready": false, "revision": 230, "actor_cursor": 1793921095, "sync_lag_s": 41718}
+{"at": 1793946115.0563478, "ready": false, "revision": 274, "actor_cursor": 1793940667, "sync_lag_s": 41973, "cycle": {"stream": "actors", "upper_bound": 1793943943}}
+{"at": 1793946207.3336031, "ready": false, "revision": 323, "actor_cursor": 1793943943, "sync_lag_s": 2264, "cycle": null}

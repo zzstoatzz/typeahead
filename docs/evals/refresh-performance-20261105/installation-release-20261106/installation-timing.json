@@ -1,0 +1,26 @@
+{
+  "scope": "Two independent cold installations of the same immutable 6.372GB snapshot on shared2/1024MiB Fly EWR slots. Cache directory birth through archive unlink; excludes provider provisioning, source catch-up and restart qualification.",
+  "baseline": {
+    "machine_id": "822d71b763d008",
+    "image": "d13dee4839c3e56ac1f6dd4f0d14cb4514186221b0f5a6d3037cfb92f090473d",
+    "cache_created_at": "2026-11-05T18:52:27.216251416Z",
+    "archive_unlinked_at": "2026-11-05T19:25:55.790584144Z",
+    "wall_seconds": 2008.574333
+  },
+  "candidate": {
+    "machine_id": "840e95a2324068",
+    "image": "979785c393e162f1256c709eef0a2f969a85357d427f44a93d0f2f298b551841",
+    "cache_created_at": "2026-11-06T05:15:33.081076925Z",
+    "archive_unlinked_at": "2026-11-06T05:42:48.896558544Z",
+    "wall_seconds": 1635.815482
+  },
+  "reduction_seconds": 372.758851,
+  "reduction_percent": 18.5583796863,
+  "transfer_seconds": 398.474141494,
+  "archive_bytes": 6372341760,
+  "limitations": [
+    "Different provider machines and times; not repeated controlled performance samples or a production SLO.",
+    "Manual rollout additionally replayed about eleven hours of source changes, unlike an ordinary fresh snapshot refresh.",
+    "Installation receipt installed_at is assigned before final fallback verification and directory promotion."
+  ]
+}

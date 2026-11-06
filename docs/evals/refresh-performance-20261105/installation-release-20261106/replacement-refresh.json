@@ -1,0 +1,19 @@
+{
+  "at": 1793947268.286193,
+  "replaces_run_id": "220109bc-eb82-434d-873d-31ed818440fe",
+  "tag": "fast-install-refresh-20261106-0600",
+  "parameters": {
+    "automatic_refresh": true
+  },
+  "job_overrides": false,
+  "pins": {
+    "MPS_PIN": "@26fae38154907881e5b25133e86c168a1c0c38e1",
+    "INDEX_TANTIVY_SOURCE_REVISION": "bcd0e08ac23e023cd175dea055213f4403f4dc6a",
+    "INDEX_TANTIVY_ADAPTER_SHA256": "5214936fbff194c2bc38e4cc66fb2dce495fd73cea98611d3f1e467f63e9c021",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_KEY": "control/tantivy-releases/8619968fed901ea40a299d7a9a4fc0fda3bb0838b63a2074d66284632a132306.json",
+    "INDEX_TANTIVY_RELEASE_RECEIPT_SHA256": "8619968fed901ea40a299d7a9a4fc0fda3bb0838b63a2074d66284632a132306",
+    "INDEX_TANTIVY_BINARY_SHA256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d"
+  },
+  "run_id": "a097979a-3b8d-4323-b4f1-25f144d0c6bb",
+  "state": "Scheduled"
+}

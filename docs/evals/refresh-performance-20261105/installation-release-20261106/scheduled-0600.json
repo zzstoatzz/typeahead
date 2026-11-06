@@ -1,0 +1,12 @@
+[
+  {
+    "id": "220109bc-eb82-434d-873d-31ed818440fe",
+    "state": "Cancelled",
+    "state_type": "StateType.CANCELLED",
+    "message": null,
+    "expected_start": "2026-11-06 06:00:00+00:00",
+    "parameters": {
+      "automatic_refresh": true
+    }
+  }
+]

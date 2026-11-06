@@ -37,9 +37,9 @@ Use `just refresh-search` to submit the configured deployment. It does not deplo
 the local checkout. A failed rollout with retained artifacts can use the existing
 `resume_rollout:true` path; inspect its journal and ownership before retrying.
 Never rebuild the serving slot, override a newer route, or fake admission freshness.
-The older rollback slot still requires its manifest's native anchor in R2;
-see [operations](../operations.md#deploy-and-verify) before pruning release
-objects. Retired apps may still host pinned registry images; do not delete
+Artifact cleanup must protect the current, previous and pending generations;
+see [operations](../operations.md#deploy-and-verify) and audit actual consumers
+before pruning legacy release objects. Retired apps may still host pinned registry images; do not delete
 app registrations as a substitute for retiring unused machines and volumes.
 
 See [recovery evidence](../ops/production-recovery-20261031/) for the last verified

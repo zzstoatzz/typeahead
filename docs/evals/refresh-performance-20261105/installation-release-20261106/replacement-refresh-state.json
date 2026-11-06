@@ -1,0 +1,12 @@
+{
+  "at": 1793947507.1993222,
+  "run_id": "a097979a-3b8d-4323-b4f1-25f144d0c6bb",
+  "state": "Running",
+  "state_type": "StateType.RUNNING",
+  "start": "2026-11-06 06:44:03.330966+00:00",
+  "parameters": {
+    "automatic_refresh": true
+  },
+  "job_overrides": false,
+  "replaces_run_id": "220109bc-eb82-434d-873d-31ed818440fe"
+}
