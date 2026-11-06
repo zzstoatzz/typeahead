@@ -130,6 +130,9 @@ independent storage. It checks artifact integrity, source coverage, search
 behavior, update catch-up and restart behavior before conditionally changing
 the routing record. A concurrent routing change prevents an older operation
 from overwriting the newer decision.
+Archive transfers use bounded parallel ranges with durable progress; admission
+verifies the archive while extracting it and checks every file separately.
+These offline steps never run on the serving slot.
 
 The A/B deployment slots let preparation happen separately from serving. They
 are roles that alternate, not a requirement to run two backends continuously.

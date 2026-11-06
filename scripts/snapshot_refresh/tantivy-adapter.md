@@ -126,8 +126,15 @@ provider evidence for the actual slot.
 
 R2 uses the `INDEX_R2_ENDPOINT`, `INDEX_R2_BUCKET`,
 `INDEX_R2_ACCESS_KEY_ID`, and `INDEX_R2_SECRET_ACCESS_KEY` configuration and
-GET-only `rclone cat` transfers. Credentials remain in a temporary mode-0600
-configuration and never enter receipts or logs. The durable metadata-only
+read-only rclone transfers. Large archives use four concurrent 64 MiB ranges
+written directly into one preallocated file. The durable transfer journal binds
+the object, size and range geometry; a range is recorded only after its bytes
+are flushed. Retries preserve completed ranges, while final whole-archive
+verification still rejects corrupt or stale bytes. Small metadata stays serial.
+Admission hashes the full archive while extracting it, including tar padding
+and trailing bytes, and independently checks every member against the manifest.
+Credentials remain in a temporary mode-0600 configuration and never enter receipts
+or logs. The durable metadata-only
 receipt is `/data/tantivy/installation.json`, readable by an owner-checked
 controller exec. Cached restart binds the same deployment bytes, receipt and
 actual reader/index without R2 fetch, import or corpus copy. Cache validation
