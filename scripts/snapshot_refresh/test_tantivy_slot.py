@@ -49,8 +49,14 @@ class TransferTests(unittest.TestCase):
         chunk=512*1024
         class Handler(http.server.BaseHTTPRequestHandler):
             def do_HEAD(self):
-                self.send_response(200);self.send_header('Content-Length',str(len(raw)));self.send_header('Content-Type','application/octet-stream');self.send_header('Accept-Ranges','bytes');self.end_headers()
+                if self.path.endswith('/index.tar/'):self.send_error(404);return
+                self.send_response(200);self.send_header('Content-Length',str(len(raw)));self.send_header('Content-Type','application/octet-stream');self.send_header('Accept-Ranges','bytes');self.send_header('Last-Modified','Thu, 05 Nov 2026 00:00:00 GMT');self.end_headers()
             def do_GET(self):
+                if self.path.endswith('/index.tar/'):self.send_error(404);return
+                if self.path.startswith('/fixture?'):
+                    listing=(f'<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/"><Name>fixture</Name><Prefix></Prefix><IsTruncated>false</IsTruncated><Contents><Key>index.tar</Key><LastModified>2026-11-05T00:00:00.000Z</LastModified><Size>{len(raw)}</Size><StorageClass>STANDARD</StorageClass></Contents></ListBucketResult>').encode()
+                    self.send_response(200);self.send_header('Content-Type','application/xml');self.send_header('Content-Length',str(len(listing)));self.end_headers();self.wfile.write(listing);return
+                self.path=self.path.split('?',1)[0]
                 if not self.path.endswith('/index.tar'):
                     listing=b'<a href="index.tar">index.tar</a>';self.send_response(200);self.send_header('Content-Type','text/html');self.send_header('Content-Length',str(len(listing)));self.end_headers();self.wfile.write(listing);return
                 value=self.headers.get('Range','bytes=0-').split('=')[1]
@@ -71,14 +77,14 @@ class TransferTests(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as folder:
                 folder=Path(folder);config=folder/'rclone.conf'
-                config.write_text(f'[r2]\ntype = http\nurl = http://127.0.0.1:{server.server_port}/\n')
+                config.write_text(f'[r2]\ntype = s3\nprovider = Other\nendpoint = http://127.0.0.1:{server.server_port}\nregion = us-east-1\naccess_key_id = fixture\nsecret_access_key = fixture\nno_check_bucket = true\n')
                 transport=slot.R2.__new__(slot.R2);transport.bucket='fixture';transport.config=config.open();transport.RANGE_BYTES=chunk
                 try:
                     target=folder/'index.tar'
                     with self.assertRaisesRegex(ValueError,'exceeds byte bound'):transport.download('index.tar',target,len(raw)-1)
                     self.assertFalse(target.exists())
                     target.write_bytes(raw[:chunk+123])
-                    with self.assertRaises(ValueError):transport.download('index.tar',target,len(raw))
+                    with self.assertRaisesRegex(ValueError,'Artifact range failed after bounded retries'):transport.download('index.tar',target,len(raw))
                     journal=target.with_name(target.name+'.transfer.json')
                     original=journal.read_bytes();value=json.loads(original);saved=value['completed']
                     self.assertTrue(saved)
