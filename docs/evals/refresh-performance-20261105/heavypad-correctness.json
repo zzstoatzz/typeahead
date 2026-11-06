@@ -1,0 +1,24 @@
+{
+  "returncode": 0,
+  "wall_seconds": 8.17,
+  "peak_scratch_bytes_sampled": 15917575,
+  "scratch_limit_bytes": 268435456,
+  "source": "synthetic and loopback only",
+  "binary_sha256": "ef2be085f7ad7b2bf4ea1f0e4976ee07e37b4041a95b5f34c31c562399f17a4d",
+  "test_count": 8,
+  "python": "3.12",
+  "rclone": "1.69.1",
+  "cpu_seconds": 2.129,
+  "cpu_quota_percent": 50,
+  "nice": 19,
+  "io_scheduling_class": "idle",
+  "memory_limit_bytes": 536870912,
+  "cleanup": {
+    "scratch_removed": true,
+    "remaining_test_processes": 0,
+    "unit_active": false
+  },
+  "production_modified": false,
+  "cloud_resources_created": false,
+  "test_source_sha256": "b023de5c1bd4c2dea017fb67bdbae8aaf71815d0fb95b047fef3b4ef5f9794fb"
+}

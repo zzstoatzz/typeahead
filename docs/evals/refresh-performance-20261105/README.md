@@ -178,3 +178,31 @@ catch-up, qualification, cached restart and promotion; it is not a measured
 catch-up duration. Prefect emits no intervening rollout logs and the controller
 silently retries qualification errors. Per-phase timings and bounded retry
 diagnostics are needed before assigning those residual minutes to a cause.
+
+### Bounded HeavyPad correctness check
+
+The [HeavyPad result](heavypad-correctness.json) and [test log](heavypad-correctness.log)
+record eight passing checks using the unchanged production reader, Python 3.12,
+and HeavyPad's existing rclone 1.69.1. Synthetic archives and loopback HTTP/S3
+endpoints exercise parallel ranges, resuming only unfinished ranges, oversized
+objects, stale journal binding, truncated serial transfers, archive padding and
+trailing corruption, member checksums, installed reader validation, cached
+restart, and deployment identity drift.
+
+The range fixture now uses rclone's actual S3 backend against a local protocol
+fixture; the older HTTP backend reported a directory instead of the file during
+`lsjson --stat`. Its assertion also requires the intended interrupted-range
+failure, so an unrelated preflight rejection cannot masquerade as recovery coverage.
+No production implementation changed in this check.
+
+Owner: this Typeahead test session. Scratch root:
+`/dev/shm/typeahead-install-check-20261105`, RAM-backed, capped by the runner at
+256 MiB with a 180-second deadline. A transient systemd unit additionally bounds
+memory at 512 MiB, CPU at 50%, runtime at 200 seconds, nice at 19 and I/O priority
+at idle. The passing run took 8.17 seconds and 2.129 CPU-seconds; sampled peak
+scratch was 15,917,575 bytes. The only sizable external input was the existing
+13,245,896-byte reader, copied from Fly and SHA-verified. No corpus, Turso or R2
+access, cloud allocation, or production mutation occurred. Scratch and the local
+reader copy were removed; the unit was inactive and no test processes remained.
+These are correctness results, not production throughput measurements. The README
+entry point needs no change because runtime roles and usage remain unchanged.
