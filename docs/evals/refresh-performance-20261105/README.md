@@ -163,7 +163,9 @@ File birth and modification times came from `stat` on immutable base-segment
 files; the installer copies bytes without restoring archive timestamps. Thus
 the document-store extraction alone took approximately 249 seconds for
 2,130,676,963 bytes (8.6 MB/s including hashing and scheduling). Extraction was
-already underway by 19:11:47, at least 12m40s before installation completed.
+already underway by 19:11:47, 12m40s before the receipt's `installed_at` timestamp.
+That timestamp is assigned before final fallback verification and directory
+promotion, so it is not an installation-completion timestamp.
 The preceding approximately 19-minute block combines download, download checksum,
 the separate installer archive checksum, and any earlier extracted members;
 these cannot be separated retrospectively from retained evidence.
@@ -173,8 +175,8 @@ extracting and checking each member. The D13 downloader is serial `rclone cat`,
 followed by its own full archive checksum. Parallel transfer and streaming
 installer changes in this repository are not in that runtime image. This is
 consistent with substantial shared-CPU installation cost, but does not establish
-how much time was network-limited. The remaining 9m36s includes initial runtime
-catch-up, qualification, cached restart and promotion; it is not a measured
+how much time was network-limited. The remaining 9m36s includes final fallback
+verification, initial runtime catch-up, qualification, cached restart and promotion; it is not a measured
 catch-up duration. Prefect emits no intervening rollout logs and the controller
 silently retries qualification errors. Per-phase timings and bounded retry
 diagnostics are needed before assigning those residual minutes to a cause.
