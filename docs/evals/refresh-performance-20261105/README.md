@@ -140,3 +140,41 @@ failure and recovery behavior is covered separately above.
 four ranges took 7.91 s, with identical prefix SHA-256. This is a 28–38% reduction
 for that bounded prefix, not a full-bundle or rclone throughput guarantee. The
 machine and app are deleted; machine/volume inventories were empty first.
+
+### Noon rollout investigation
+
+Read-only inspection of the serving A machine `822d71b763d008` and its durable
+operation `6162bcd4deaa4571a6eaeffb6a19399d` recovered these UTC boundaries for
+the noon build. No restart, bulk download or production benchmark was performed.
+
+| Boundary | UTC |
+| --- | --- |
+| Artifact publication task ended | 18:51:35 |
+| Slot metadata cache created | 18:52:27 |
+| Deployment and artifact manifests written | 18:52:29–30 |
+| Base segment fast-field file created | 19:11:47 |
+| Base segment document-store file created / last written | 19:14:57 / 19:19:06 |
+| Base segment term file last written | 19:21:24 |
+| Installation receipt `installed_at` | 19:24:27 |
+| Durable operation promoted | 19:34:01 |
+| Retirement task started | 19:34:03 |
+
+File birth and modification times came from `stat` on immutable base-segment
+files; the installer copies bytes without restoring archive timestamps. Thus
+the document-store extraction alone took approximately 249 seconds for
+2,130,676,963 bytes (8.6 MB/s including hashing and scheduling). Extraction was
+already underway by 19:11:47, at least 12m40s before installation completed.
+The preceding approximately 19-minute block combines download, download checksum,
+the separate installer archive checksum, and any earlier extracted members;
+these cannot be separated retrospectively from retained evidence.
+
+The deployed `/app/tantivy_install.py` still hashes the entire archive before
+extracting and checking each member. The D13 downloader is serial `rclone cat`,
+followed by its own full archive checksum. Parallel transfer and streaming
+installer changes in this repository are not in that runtime image. This is
+consistent with substantial shared-CPU installation cost, but does not establish
+how much time was network-limited. The remaining 9m36s includes initial runtime
+catch-up, qualification, cached restart and promotion; it is not a measured
+catch-up duration. Prefect emits no intervening rollout logs and the controller
+silently retries qualification errors. Per-phase timings and bounded retry
+diagnostics are needed before assigning those residual minutes to a cause.
