@@ -5,8 +5,8 @@
     .minimum_zig_version = "0.17.0",
     .dependencies = .{
         .zat = .{
-            .url = "https://tangled.org/zat.dev/zat/archive/v0.6.3.tar.gz",
-            .hash = "zat-0.6.3-5PuC7gm5DQBVz_zqgsq4sD08tmHkkNF-bXshuUYoR-Nz",
+            .url = "https://tangled.org/zat.dev/zat/archive/d4d3cbf422b44ab23115db6c01a204f4af4b612f.tar.gz",
+            .hash = "zat-0.7.0-alpha.1-5PuC7lEkDgBP0cDD11t6744tHGpOJld_DoPu7OdRk1fL",
         },
         .logfire = .{
             .url = "https://tangled.org/zzstoatzz.io/logfire-zig/archive/6501065cd8102203e20b0060eab4c64929f97870.tar.gz",
