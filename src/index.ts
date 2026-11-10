@@ -6,6 +6,7 @@ import { recordSnapshot, materializeStats } from "./enrichment";
 import { recordExclusions } from "./exclusions";
 import { recordProfile } from "./stats-profile";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
+import { recordStats } from "./stats-store";
 import { refreshModeration } from "./cron";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
@@ -64,7 +65,7 @@ export default {
         await notifyFreshnessChange(env, f);
         await env.KV.put("freshness", JSON.stringify({ ...f, at: Date.now() })).catch(() => {});
       }],
-      ["recordSnapshot", () => recordSnapshot(db)],
+      ["recordSnapshot", () => recordSnapshot(db, env)],
       ["recordExclusions", async () => {
         const counted = await recordExclusions(db, env.KV);
         if (counted) console.log(JSON.stringify({ event: "exclusions_recorded", ...counted }));
@@ -121,9 +122,7 @@ export default {
         worker_ms: timing.elapsedMs(), rate_limit_ms: timing.rateLimitMs }));
       if (request.method !== "OPTIONS") {
         const domain = trafficDomain(request);
-        ctx.waitUntil(
-          getDb(env).then((db) => recordRequest(db, domain, endpoint, status)).catch(() => {}),
-        );
+        recordStats(ctx, env, getDb(env), (store, now) => recordRequest(store, domain, endpoint, status, now));
       }
     }
   },

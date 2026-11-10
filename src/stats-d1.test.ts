@@ -9,6 +9,7 @@ import { materializeStats, writeSnapshot } from "./enrichment";
 import { knownSource } from "./handlers/source-icon";
 import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
 import { PROFILE_KEY, parseProfile, recordProfile } from "./stats-profile";
+import { STATS_TABLES } from "./stats-d1-fixture";
 import { sourceQueries, tailQueries } from "./stats-tail";
 
 // The D1 database is created by the migrations alone, so a statement the
@@ -19,7 +20,6 @@ import { sourceQueries, tailQueries } from "./stats-tail";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const DATABASE_ID = "624dc8c4-2a82-42f5-920c-6489466f7b7e";
-const TABLES = ["actor_deltas", "counters", "metrics", "request_buckets", "request_daily", "snapshots", "traffic_buckets", "traffic_daily", "traffic_sources"];
 
 async function migratedStatsDb() {
   const state = mkdtempSync(join(tmpdir(), "typeahead-stats-d1-"));
@@ -56,7 +56,7 @@ test("the migrations define the nine statistics tables as production does", asyn
   const { results } = await db.prepare(
     "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name != 'd1_migrations' ORDER BY name",
   ).all<{ name: string; sql: string }>();
-  expect(results.map((r) => r.name)).toEqual(TABLES);
+  expect(results.map((r) => r.name)).toEqual(STATS_TABLES);
   for (const table of results) expect(dump).toContain(`${ddl(table.sql)};`);
   expect(await db.prepare("SELECT value FROM counters WHERE name = 'actors_total'").first<{ value: number }>()).toEqual({ value: 0 });
 });

@@ -6,6 +6,7 @@ import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
 import { json, sanitize, avatarUrl, avatarFallbackUrl, type ProfileAssociated } from "../utils";
 import { recordMetric, recordCacheHit, recordTrafficSource } from "../metrics";
+import { recordStats } from "../stats-store";
 import { throttledBackfill } from "../backfill";
 
 /** one actor in the response, keys in the order the wire contract serializes them */
@@ -129,14 +130,14 @@ export async function handleSearch(
   const t0 = Date.now();
   const term = sanitize(q);
   if (!term) {
-    ctx.waitUntil(recordMetric(db, Date.now() - t0));
+    recordStats(ctx, env, db, (store, now) => recordMetric(store, now - t0, now));
     return json({ actors: [] });
   }
 
   const fallback = async (mode: "manual" | "automatic") => {
     const response = await blueskyFallback(term, limit, mode);
-    ctx.waitUntil(recordMetric(db, Date.now() - t0));
-    ctx.waitUntil(recordTrafficSource(db, request));
+    recordStats(ctx, env, db, (store, now) => recordMetric(store, now - t0, now));
+    recordStats(ctx, env, db, (store, now) => recordTrafficSource(store, request, now));
     return response;
   };
   if (env.EMERGENCY_PROXY_BSKY) return fallback("manual");
@@ -157,7 +158,7 @@ export async function handleSearch(
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) {
-    ctx.waitUntil(recordCacheHit(db, Date.now() - t0));
+    recordStats(ctx, env, db, (store, now) => recordCacheHit(store, now - t0, now));
     const response = await filterIdentityResponse(cached, "actors");
     response.headers.set("Server-Timing", `cache;desc="hit";dur=${Date.now() - t0}`);
     return response;
@@ -222,7 +223,7 @@ export async function handleSearch(
           if (!scoped && empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1")) throw new Error("backend_empty");
 
           const elapsedMs = Date.now() - t0;
-          ctx.waitUntil(recordTrafficSource(db, request));
+          recordStats(ctx, env, db, (store, now) => recordTrafficSource(store, request, now));
           const timing = backendRes.headers.get("Server-Timing") ?? "";
           const routeMs = /transport_route;dur=([0-9.]+)/.exec(timing);
           const originMs = /transport_origin_headers;dur=([0-9.]+)/.exec(timing);
@@ -385,7 +386,7 @@ export async function handleSearch(
     }
     // --- end backfill ---
 
-    ctx.waitUntil(recordTrafficSource(db, request));
+    recordStats(ctx, env, db, (store, now) => recordTrafficSource(store, request, now));
 
     const response = json({ actors });
 
@@ -396,6 +397,6 @@ export async function handleSearch(
 
     return response;
   } finally {
-    ctx.waitUntil(recordMetric(db, Date.now() - t0));
+    recordStats(ctx, env, db, (store, now) => recordMetric(store, now - t0, now));
   }
 }

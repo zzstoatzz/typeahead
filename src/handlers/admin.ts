@@ -6,6 +6,7 @@ import { clientIP, json, extractProfileFields, fetchProfileFromBlacksky, fetchPr
 import type { ProfileSource } from "../utils";
 import { getOverride, getOverrides, resolveHidden, isDomainBlocked, getBlockedDomains } from "../moderation";
 import { recordActorDelta } from "../metrics";
+import { recordStats } from "../stats-store";
 
 export async function handleDelete(
   request: Request,
@@ -66,7 +67,7 @@ export async function handleDelete(
   }));
 
   if (actualDeletes > 0) {
-    ctx.waitUntil(recordActorDelta(db, { actors: -actualDeletes }));
+    recordStats(ctx, env, db, (store, now) => recordActorDelta(store, { actors: -actualDeletes }, now));
   }
 
   return json({ ok: true, deleted: actualDeletes });

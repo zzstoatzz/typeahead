@@ -181,6 +181,34 @@ Cloudflare Browser Integrity Check exception and let origins control cache TTLs
 with Respect Existing Headers. Background errors and all search responses remain
 in operational counts; `X-Client: smoke-testing` is excluded from app/adoption counts.
 
+## Statistics dual write to D1
+
+Request and traffic statistics are moving from Turso to the `typeahead-stats`
+D1 database ([plan](plans/stats-off-turso.md), issue 34). Steps 1 and 2 of that
+plan were implemented on 2026-11-10 and had not been deployed when this was
+written; record the deploy and `T0` (the first 5-minute bucket that begins
+after it) here.
+
+- The public Worker binds the database as `STATS_DB`. Its schema is the nine
+  statistics tables as production Turso defines them, in `migrations/stats-d1`.
+  Apply migrations before deploying a Worker version that needs them:
+  `bunx wrangler d1 migrations apply typeahead-stats --remote`.
+- While `STATS_DUAL_WRITE` is `"1"` (the default in `wrangler.jsonc`), every
+  statistics write goes to Turso and to D1: `request_buckets`, `metrics`,
+  `traffic_sources`, `traffic_buckets`, `actor_deltas`, `counters.actors_total`
+  and the hourly `snapshots` row. On the request path each store's write is its
+  own `waitUntil` with its own swallowed failure, logged as
+  `stats_write_failed` with `store` set to `turso` or `d1`.
+- Turso is still the only source for `/stats`, `/source-icon`, the KV
+  materialization and the 90-day rollup. Nothing reads D1, and D1 runs no
+  rollup or prune yet: its bucket tables only accumulate until the plan's
+  step 4.
+- To stop the D1 writes without a code change, deploy with
+  `--var STATS_DUAL_WRITE:0`, or set the variable to `"0"` in `wrangler.jsonc`.
+  A later plain deploy restores the value in `wrangler.jsonc`.
+- To check that rows are landing (read-only):
+  `bunx wrangler d1 execute typeahead-stats --remote --command "SELECT datetime(bucket * 300, 'unixepoch') AS bucket_utc, sum(hits) AS answers FROM request_buckets GROUP BY bucket ORDER BY bucket DESC LIMIT 6"`.
+
 ## Search exclusion counts
 
 `/stats` shows two figures from the daily `recordExclusions` cron step

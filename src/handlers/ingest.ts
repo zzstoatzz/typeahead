@@ -3,6 +3,7 @@ import type { Stmt, SqlDb } from "../db";
 import type { Env, IngestEvent } from "../types";
 import { clientIP, json } from "../utils";
 import { recordActorDelta } from "../metrics";
+import { recordStats } from "../stats-store";
 import { enqueueDiscovered, enqueueIdentity } from "../identity-queue";
 
 export async function handleIngest(
@@ -119,7 +120,7 @@ export async function handleIngest(
     if (batchResults[i]?.meta.changes === 1) newActors++;
   }
   if (newActors > 0) {
-    ctx.waitUntil(recordActorDelta(db, { actors: newActors }));
+    recordStats(ctx, env, db, (store, now) => recordActorDelta(store, { actors: newActors }, now));
   }
 
   const cursorStart = performance.now();

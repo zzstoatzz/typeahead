@@ -5,6 +5,7 @@ import { extractProfileFields, fetchProfileFromBlacksky, fetchProfileFromPds } f
 import type { ProfileSource } from "./utils";
 import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 import { recordActorDelta } from "./metrics";
+import { writeStats } from "./stats-store";
 
 type CurRow = {
   handle: string; hidden: number; labels: string;
@@ -273,7 +274,7 @@ export async function refreshModeration(db: SqlDb, env: Env): Promise<void> {
         ]);
         await db.batch(delStmts);
         deleted += deadDids.length;
-        await recordActorDelta(db, { actors: -deadDids.length }).catch(() => {});
+        await writeStats(env, db, (store, now) => recordActorDelta(store, { actors: -deadDids.length }, now)).catch(() => {});
       }
 
       // ADVANCE THE WALK CURSOR for everything we confirmed alive this run —

@@ -1,5 +1,6 @@
 import { test, expect, mock } from "bun:test";
 import type { InValue } from "@libsql/client/web";
+import { statsStores } from "./stats-d1-fixture";
 import type { Env } from "./types";
 
 // The request recorder wraps the router: every answer is counted under its
@@ -64,6 +65,24 @@ test("records the real status of a served response", async () => {
   expect(res.status).toBe(404);
   await Promise.all(tasks);
   expect(recorded).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404 }]);
+});
+
+test("with dual write on, the same answer is also counted in D1", async () => {
+  recorded.length = 0;
+  const stores = await statsStores();
+  try {
+    const { ctx: c, tasks } = ctx();
+    const env = fakeEnv({ ...ENV, STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" });
+    const res = await worker.fetch(new Request("https://typeahead.waow.tech/nope", { headers: { "X-Client": "plyr.fm" } }), env, c);
+    expect(res.status).toBe(404);
+    expect(tasks).toHaveLength(2);
+    await Promise.all(tasks);
+    expect(recorded).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404 }]);
+    const { results } = await stores.mirror.prepare("SELECT domain, endpoint, status, hits FROM request_buckets").all();
+    expect(results).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404, hits: 1 }]);
+  } finally {
+    await stores.dispose();
+  }
 });
 
 test("an uncaught throw is counted as 500 and still propagates", async () => {

@@ -1,6 +1,7 @@
 import { rowsAs, type SqlDb } from "./db";
 import type { StatsKvData } from "./types";
 import { TRAFFIC_SOURCE_WHERE } from "./metrics";
+import { writeStats, type StatsEnv } from "./stats-store";
 
 /** record an actor-count snapshot for the current hour (idempotent).
  *
@@ -13,9 +14,9 @@ import { TRAFFIC_SOURCE_WHERE } from "./metrics";
  *    - empty avatars  — selective count via `idx_actors_avatar_empty`
  *  with_handles / with_avatars are then `total - empty`. every count touches
  *  only a small slice (<400k matching rows), so the whole thing is sub-second. */
-export async function recordSnapshot(db: SqlDb): Promise<void> {
+export async function recordSnapshot(db: SqlDb, env: StatsEnv): Promise<void> {
   const snapshot = await countSnapshot(db);
-  if (snapshot) await writeSnapshot(db, snapshot);
+  if (snapshot) await writeStats(env, db, (store) => writeSnapshot(store, snapshot));
 }
 
 export type Snapshot = StatsKvData["snapshots"][number];

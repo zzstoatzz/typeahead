@@ -5,6 +5,10 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER">, Partial<Pi
   RATE_LIMITER_STRICT: RateLimit;
   TURSO_URL: string;
   TURSO_AUTH_TOKEN: string;
+  /// "1" writes every request and traffic statistic to the STATS_DB D1
+  /// database as well as to Turso (docs/plans/stats-off-turso.md, step 2).
+  /// Any other value, or no STATS_DB binding, leaves Turso the only store.
+  STATS_DUAL_WRITE?: string;
   SEARCH_BACKEND_URL?: string;
   SEARCH_TRANSPORT?: Fetcher;
   SEARCH_CACHE_GENERATION?: string;

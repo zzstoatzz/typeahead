@@ -3,11 +3,13 @@ import { Database, type SQLQueryBindings } from "bun:sqlite";
 import { handleIngest } from "./ingest";
 import type { Env, IngestEvent } from "../types";
 import type { SqlValue, Stmt, SqlDb } from "../db";
+import { statsRows, statsStores } from "../stats-d1-fixture";
+import type { StatsEnv } from "../stats-store";
 
 type Call = { sql: string; binds: SqlValue[] };
 type FakeStmt = Stmt & { sql: string; binds: SqlValue[] };
 
-function fakeEnv(fields: { ADMIN_SECRET: string }): Env {
+function fakeEnv(fields: { ADMIN_SECRET: string } & StatsEnv): Env {
   // SAFETY: handleIngest reads ADMIN_SECRET for the bearer check and nothing
   // else off Env when the secret matches, which every test here arranges.
   return fields as Env;
@@ -80,6 +82,26 @@ test("counts ALL new actors — bare-DID AND handle-bearing — not just bare", 
   const counterWrite = calls.find((c) => /UPDATE counters SET value = value \+ \?1/.test(c.sql));
   expect(counterWrite).toBeDefined();
   expect(counterWrite!.binds[0]).toBe(2);
+});
+
+test("with dual write on, the new-actor count also lands in D1", async () => {
+  const stores = await statsStores();
+  try {
+    const { db } = mockDb(new Set(["did:plc:bareNew", "did:plc:handleNew"]));
+    const { ctx, promises } = fakeCtx();
+    const env = fakeEnv({ ADMIN_SECRET: "s3cret", STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" });
+    const events = [{ did: "did:plc:bareNew" }, { did: "did:plc:handleNew", handle: "new.bsky.social" }, { did: "did:plc:old" }];
+
+    const res = await handleIngest(mockReq(events), db, env, ctx);
+    expect(res.status).toBe(200);
+    await Promise.all(promises);
+
+    const rows = await statsRows(stores.mirror);
+    expect(rows.find((entry) => entry.table === "counters")?.rows).toEqual([{ name: "actors_total", value: 2 }]);
+    expect(rows.find((entry) => entry.table === "actor_deltas")?.rows).toMatchObject([{ actors_delta: 2, handles_delta: 0, avatars_delta: 0 }]);
+  } finally {
+    await stores.dispose();
+  }
 });
 
 test("counts zero new when all actors already exist", async () => {

@@ -1,8 +1,12 @@
 # Request and traffic statistics off Turso
 
-**Status, 2026-11-10:** proposal. Nothing here is built or deployed. It answers
-[issue 34](https://tangled.org/zzstoatzz.io/typeahead/issues/34) and is written
-against `main` at `16801e3`.
+**Status, 2026-11-10:** steps 1 and 2 of the migration sequence (schema,
+binding, adapter, dual write) are implemented and not deployed; see
+[operations](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operations.md#statistics-dual-write-to-d1)
+and "Corrections from implementing steps 1 and 2" below. Steps 3 to 8 are
+still a proposal. The plan answers
+[issue 34](https://tangled.org/zzstoatzz.io/typeahead/issues/34) and was
+written against `main` at `16801e3`.
 
 **Recommendation:** move all nine bookkeeping tables to a dedicated Cloudflare
 D1 database bound to the public Worker, keep the hourly KV materialization
@@ -404,6 +408,33 @@ single, complete source.
    bookkeeping; search, ingest and admin handlers still do until issue 31.
 8. **Drop the Turso tables.** A production write on Turso: export a final
    dump first, and do it only on the owner's word.
+
+## Corrections from implementing steps 1 and 2
+
+- The DDL of `traffic_buckets` and `request_buckets` is now known from the
+  production schema dump (`docs/ops/turso-schema-20261110.sql`). `metrics` and
+  `snapshots` each carry a column added after their original migration
+  (`cache_hits`/`cache_ms`, `hidden`), which the dump includes.
+- `counters` needs its `actors_total` row before dual write starts:
+  `recordActorDelta` increments it with an `UPDATE`, which does nothing on an
+  empty table. The D1 migration seeds it at 0, so in D1 it equals the sum of
+  D1's own `actor_deltas.actors_delta` and the step 3 arithmetic holds.
+- The record functions each read the clock to choose a bucket. Two stores
+  written from two clock readings could disagree about a row neither dropped,
+  so each event now carries one reading to both stores.
+- `src/handlers/search.ts` did not swallow its statistics failures; only the
+  request wrapper did. Both stores' failures are now swallowed and logged as
+  `stats_write_failed`, which also answers part of the "dropped writes" risk:
+  the drop rate of each store is visible from step 2 on.
+- The cron's dead-actor cleanup has no request context, so its two writes are
+  awaited rather than handed to `waitUntil`; the same holds for the hourly
+  snapshot. A Turso failure there still fails the caller as before.
+- `TursoDB` could not be renamed in `src/moderation.ts`: that file's hash is
+  embedded in the Tantivy engine's policy artifact. It imports an alias.
+- D1's rollup and prune do not need to start with dual write. D1 starts
+  empty, the backfill brings at most 90 days of buckets, and the daily series
+  is computed from the daily table plus all remaining buckets, so unpruned
+  buckets change nothing that is read. Step 4 remains the first place it runs.
 
 ## Files that change
 
