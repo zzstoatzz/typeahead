@@ -252,9 +252,65 @@ test "the bridge's position reaches the store through the owner's next commit" {
     const cursors = try interface.cursors();
     try testing.expectEqual(@as(?u64, 2), cursors.bridge);
     try testing.expectEqual(@as(u64, 2), cursors.next_change);
-    try testing.expect(try interface.policy(f.arena.allocator()) == null);
     try testing.expectEqualStrings("a.test", (try interface.actor(f.arena.allocator(), "did:plc:a")).?.handle);
     try testing.expect(try interface.actor(f.arena.allocator(), "did:plc:b") == null);
     var buf: [8]owner_mod.Consumer = undefined;
     try testing.expectEqualStrings("bridge", f.owner.consumerList(&buf)[0].name);
+}
+
+test "the bridge keeps the index's policy snapshot fresh from the store's policy range" {
+    const f = try Fixture.create(.{});
+    defer f.destroy();
+    _ = try f.commit(&.{
+        .{ .profile = .{ .did = "did:plc:a", .handle = "a.spam.example" } },
+        .{ .domain_blocked = .{ .domain = "Spam.Example" } },
+        .{ .override_set = .{ .did = "did:plc:a", .action = .show } },
+        .{ .override_set = .{ .did = "did:plc:b", .action = .hide } },
+    }, null);
+    var source = try index_bridge.StoreSource.open(testing.allocator, f.owner);
+    defer source.close();
+    const interface = source.interface();
+    _ = try interface.cursors();
+    const policy = (try interface.policy(f.arena.allocator())).?;
+    try testing.expectEqual(@as(usize, 2), policy.overrides.len);
+    try testing.expectEqualStrings("did:plc:a", policy.overrides[0].did);
+    try testing.expect(policy.overrides[0].action == .show and policy.overrides[1].action == .hide);
+    try testing.expectEqual(@as(usize, 1), policy.blocked_domains.len);
+    try testing.expectEqualStrings("spam.example", policy.blocked_domains[0]);
+
+    // An index created with policy enabled: it has a snapshot already, and
+    // every push from the bridge must carry a newer one.
+    var server: doubles.ModelServer = .init(testing.allocator);
+    defer server.deinit();
+    server.policy_observed_at = f.now() - 200;
+    var bridge = Bridge.init(testing.allocator, testing.io, .{
+        .source_id = "store-under-test",
+        .adopt_foreign_cursor = true,
+        .clock = .{ .ptr = f, .now = Rig.clockNow },
+    }, interface, server.transport());
+    defer bridge.deinit();
+    for (0..50) |_| {
+        _ = f.owner.turn(0);
+        if ((try bridge.step()).idle) break;
+    }
+    try testing.expect(server.policy_snapshots > 0);
+    try testing.expectEqual(@as(?u64, f.now()), server.policy_observed_at);
+    try testing.expect(std.mem.indexOf(u8, server.last_reconcile, "\"blocked_domains\":[\"spam.example\"]") != null);
+
+    const before = server.policy_snapshots;
+    f.advance(31);
+    for (0..10) |_| {
+        _ = f.owner.turn(0);
+        if ((try bridge.step()).idle) break;
+    }
+    try testing.expect(server.policy_snapshots > before);
+    try testing.expectEqual(@as(?u64, f.now()), server.policy_observed_at);
+
+    _ = try f.commit(&.{.{ .domain_unblocked = "spam.example" }}, null);
+    f.advance(31);
+    for (0..10) |_| {
+        _ = f.owner.turn(0);
+        if ((try bridge.step()).idle) break;
+    }
+    try testing.expect(std.mem.indexOf(u8, server.last_reconcile, "\"blocked_domains\":[]") != null);
 }

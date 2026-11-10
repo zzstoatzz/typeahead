@@ -7,7 +7,9 @@
 //! refreshed at the start of `cursors` and `changes`, so its reads never
 //! wait on a commit and never go backward within a step. `setPosition` is
 //! handed to the owner, which folds it into its next commit; the bridge
-//! repeats it after a restart if it did not land.
+//! repeats it after a restart if it did not land. `policy` is always a
+//! snapshot of the store's overrides and blocked domains: an index built
+//! from a bundle has policy enabled and stops serving without a fresh one.
 
 const std = @import("std");
 const bridge = @import("../bridge/root.zig");
@@ -132,10 +134,38 @@ pub const StoreSource = struct {
         }
     }
 
-    /// Null: the stored `hidden` flag is the whole moderation decision, and
-    /// the index filters on it.
-    fn policy(_: *anyopaque, _: Allocator) anyerror!?source.Policy {
-        return null;
+    /// The store's overrides and blocked domains. With a snapshot in force
+    /// the index decides visibility itself, at query time, from labels,
+    /// its slur rules, these lists and the label expiries, and ignores the
+    /// stored `hidden` flag; it stops serving once the snapshot is 300 s
+    /// old, and the bridge sends one with every push and heartbeat.
+    fn policy(ptr: *anyopaque, arena: Allocator) anyerror!?source.Policy {
+        const self: *StoreSource = @ptrCast(@alignCast(ptr));
+        var attempts: usize = 0;
+        while (true) {
+            return self.snapshot(arena) catch |err| {
+                try self.again(err, &attempts);
+                continue;
+            };
+        }
+    }
+
+    fn snapshot(self: *StoreSource, arena: Allocator) !source.Policy {
+        const stored = try store_mod.read.overrides(self.reader.db(), arena);
+        const overrides = try arena.alloc(source.Override, stored.len);
+        var kept: usize = 0;
+        for (stored) |entry| {
+            overrides[kept] = .{ .did = entry.subject, .action = switch (entry.entry.action) {
+                .show => .show,
+                .hide => .hide,
+                .none => continue,
+            } };
+            kept += 1;
+        }
+        const blocked = try store_mod.read.blockedDomains(self.reader.db(), arena);
+        const domains = try arena.alloc([]const u8, blocked.len);
+        for (domains, blocked) |*slot, entry| slot.* = entry.subject;
+        return .{ .overrides = overrides[0..kept], .blocked_domains = domains };
     }
 
     fn setPosition(ptr: *anyopaque, position: u64) anyerror!void {

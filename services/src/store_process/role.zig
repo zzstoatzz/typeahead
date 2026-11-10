@@ -277,9 +277,9 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
         bridge_endpoint = .{
             .http = &bridge_http,
             .base_url = index.admin_url,
-            .authorization = std.fmt.bufPrint(&authorization_buf, "Bearer {s}", .{index.admin_secret}) catch return error.IncompleteIndexConfig,
+            .authorization = std.fmt.bufPrint(&authorization_buf, "Bearer {s}", .{index.admin_secret}) catch return error.IndexSecretTooLong,
         };
-        bridge = bridge_mod.Bridge.init(allocator, io, .{ .source_id = index.source_id }, bridge_source.interface(), bridge_endpoint.transport());
+        bridge = bridge_mod.Bridge.init(allocator, io, .{ .source_id = index.source_id, .adopt_foreign_cursor = index.adopt_cursor }, bridge_source.interface(), bridge_endpoint.transport());
         self.bridge = &bridge;
         try tasks.concurrent(io, bridge_mod.Bridge.run, .{ &bridge, &self.bridge_stop });
         log.info("index bridge to {s} as source {s}", .{ index.admin_url, index.source_id });

@@ -10,13 +10,13 @@
 //! | `PORT`                   | no       | HTTP port, default 8080                                        |
 //! | `LOGFIRE_TOKEN`          | no       | read by logfire; unset, nothing is exported                    |
 //! | `STORE_OFFLINE`          | no       | `1` opens the store and serves HTTP without any upstream       |
-//! | `INDEX_ADMIN_URL`        | no       | the co-located index's admin listener, a loopback URL          |
-//! | `INDEX_ADMIN_SECRET`     | no       | that listener's bearer secret                                  |
-//! | `INDEX_SOURCE_ID`        | no       | names this store to the index; change it when the store is rebuilt |
+//! | `ADMIN_SECRET`           | no       | bearer secret of the co-located index's admin listener; set, the index bridge runs |
+//! | `INDEX_ADMIN_URL`        | no       | that listener, a loopback URL; default `http://127.0.0.1:8081` |
+//! | `INDEX_SOURCE_ID`        | no       | names this store to the index; default `$FLY_APP_NAME-store`, change it when the store is rebuilt |
+//! | `INDEX_ADOPT_CURSOR`     | no       | `1` takes over an index whose cursor something else wrote (a bundle's), by a full resync |
 //!
-//! The index bridge runs when all three `INDEX_*` variables are set, and
-//! setting only some is an error. The role reads nothing for Turso or the
-//! Worker and opens no connection to either.
+//! The role reads nothing for Turso or the Worker and opens no connection
+//! to either. `MODE=store-bootstrap` loads a new store; see `bootstrap.zig`.
 
 const std = @import("std");
 const ingest = @import("../ingest.zig");
@@ -33,9 +33,13 @@ pub const Index = struct {
     admin_url: []const u8,
     admin_secret: []const u8,
     source_id: []const u8,
+    adopt_cursor: bool = false,
 };
 
-pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IncompleteIndexConfig, IndexNotLoopback };
+pub const default_admin_url = "http://127.0.0.1:8081";
+var source_id_buf: [128]u8 = undefined;
+
+pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IndexNotLoopback };
 
 /// The bridge sends the admin secret, so the index must be on this machine.
 pub fn loopback(url: []const u8) bool {
@@ -59,14 +63,16 @@ pub fn load(getenv: Getenv) Error!Config {
         config.bootstrap_cursor = ingest.plausibleRelayCursor(parsed) orelse return error.InvalidBootstrapCursor;
     }
     if (getenv("STORE_OFFLINE")) |text| config.offline = std.mem.eql(u8, text, "1");
-    const url = getenv("INDEX_ADMIN_URL");
-    const secret = getenv("INDEX_ADMIN_SECRET");
-    const id = getenv("INDEX_SOURCE_ID");
-    if (url != null or secret != null or id != null) {
-        if (url == null or secret == null or id == null or secret.?.len == 0 or id.?.len == 0) return error.IncompleteIndexConfig;
-        if (!loopback(url.?)) return error.IndexNotLoopback;
-        config.index = .{ .admin_url = std.mem.trimEnd(u8, url.?, "/"), .admin_secret = secret.?, .source_id = id.? };
-    }
+    if (getenv("ADMIN_SECRET")) |secret| if (secret.len > 0) {
+        const url = getenv("INDEX_ADMIN_URL") orelse default_admin_url;
+        if (!loopback(url)) return error.IndexNotLoopback;
+        config.index = .{
+            .admin_url = std.mem.trimEnd(u8, url, "/"),
+            .admin_secret = secret,
+            .source_id = getenv("INDEX_SOURCE_ID") orelse (std.fmt.bufPrint(&source_id_buf, "{s}-store", .{getenv("FLY_APP_NAME") orelse "local"}) catch "local-store"),
+            .adopt_cursor = if (getenv("INDEX_ADOPT_CURSOR")) |text| std.mem.eql(u8, text, "1") else false,
+        };
+    };
     return config;
 }
 
@@ -125,14 +131,19 @@ test "the stored cursor wins, and with neither the role does not start live" {
     try testing.expectEqual(@as(?i64, null), resumeCursor(1_785_217_869_995_374, 5));
 }
 
-test "the index bridge needs its whole configuration and a loopback index" {
+test "the index bridge runs when the admin secret is set, against a loopback index" {
     const base = [2][]const u8{ "STORE_DIR", "/d" };
     try testing.expect((try load(fakeEnv(&.{base}))).index == null);
-    try testing.expectError(error.IncompleteIndexConfig, load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:8081" } })));
-    try testing.expectError(error.IncompleteIndexConfig, load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:8081" }, .{ "INDEX_ADMIN_SECRET", "" }, .{ "INDEX_SOURCE_ID", "a" } })));
-    try testing.expectError(error.IndexNotLoopback, load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "https://index.example:8081" }, .{ "INDEX_ADMIN_SECRET", "s" }, .{ "INDEX_SOURCE_ID", "a" } })));
-    try testing.expectError(error.IndexNotLoopback, load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1.evil.example:80" }, .{ "INDEX_ADMIN_SECRET", "s" }, .{ "INDEX_SOURCE_ID", "a" } })));
-    const index = (try load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:8081/" }, .{ "INDEX_ADMIN_SECRET", "s" }, .{ "INDEX_SOURCE_ID", "slot-a-1" } }))).index.?;
-    try testing.expectEqualStrings("http://127.0.0.1:8081", index.admin_url);
-    try testing.expectEqualStrings("slot-a-1", index.source_id);
+    try testing.expect((try load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "" } }))).index == null);
+    try testing.expect((try load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:9" } }))).index == null);
+    const defaults = (try load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "s" }, .{ "FLY_APP_NAME", "typeahead-shadow-a" } }))).index.?;
+    try testing.expectEqualStrings("http://127.0.0.1:8081", defaults.admin_url);
+    try testing.expectEqualStrings("typeahead-shadow-a-store", defaults.source_id);
+    try testing.expect(!defaults.adopt_cursor);
+    try testing.expectError(error.IndexNotLoopback, load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "s" }, .{ "INDEX_ADMIN_URL", "https://index.example:8081" } })));
+    try testing.expectError(error.IndexNotLoopback, load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "s" }, .{ "INDEX_ADMIN_URL", "http://127.0.0.1.evil.example:80" } })));
+    const index = (try load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "s" }, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:8085/" }, .{ "INDEX_SOURCE_ID", "slot-a-2" }, .{ "INDEX_ADOPT_CURSOR", "1" } }))).index.?;
+    try testing.expectEqualStrings("http://127.0.0.1:8085", index.admin_url);
+    try testing.expectEqualStrings("slot-a-2", index.source_id);
+    try testing.expect(index.adopt_cursor);
 }
