@@ -3,6 +3,7 @@
 import time
 
 import corpus
+import sources
 
 MUST_MATCH = ("normalize_version", "plan_version", "format", "moderation_rules_sha256", "moderation_policy_sha256")
 
@@ -62,8 +63,8 @@ def watch(production, shadow, *, samples, interval, sleep=time.sleep, changed_di
         for side, client in clients.items():
             taken[side].append(sample(client))
         if changed_dids and admins:
-            a = corpus.fetch_states(admins["production"], changed_dids, want_fields)
-            b = corpus.fetch_states(admins["shadow"], changed_dids, want_fields)
+            a = sources.fetch_states(admins["production"], changed_dids, want_fields)
+            b = sources.fetch_states(admins["shadow"], changed_dids, want_fields)
             for did in changed_dids:
                 entry = corpus.difference(did, a[did], b[did])
                 last[did] = entry

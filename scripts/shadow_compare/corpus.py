@@ -4,14 +4,13 @@ import hashlib
 import json
 import os
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
+from sources import PAGE_LIMIT, TantivyAdmin
 from transport import BudgetExceeded, TransportError
+from views import ABSENT, Doc
 
-PAGE_LIMIT = 500
-STATE_LIMIT = 500
-CHECKPOINT_VERSION = 1
+CHECKPOINT_VERSION = 2
 
 ONLY_IN_PRODUCTION = "only_in_production"
 ONLY_IN_SHADOW = "only_in_shadow"
@@ -30,41 +29,6 @@ CLASSES = (
     DOCUMENT_HASH_DIFFERS,
 )
 OTHER_FIELDS = ("pds", "profile_sha256", "quality_score")
-STATUS_MARKERS = (
-    "build_id",
-    "watermark",
-    "source_observation_revision",
-    "sync_lag_s",
-    "actor_count",
-    "searchable_actor_count",
-    "tombstone_count",
-)
-
-
-@dataclass(frozen=True)
-class Doc:
-    sha: str | None
-    fields: dict | None = None
-
-    @property
-    def state(self):
-        if self.sha is None:
-            return "absent"
-        if self.fields is None:
-            return "present"
-        return "deleted" if self.fields.get("deleted") else "live"
-
-    @property
-    def live(self):
-        return self.state in ("present", "live")
-
-    def summary(self):
-        return {"state": self.state, "document_sha256": self.sha, "fields": self.fields}
-
-
-ABSENT = Doc(None)
-
-
 def classify(production, shadow):
     if not production.live and not shadow.live:
         return [], []
@@ -88,40 +52,6 @@ def classify(production, shadow):
     if other:
         classes.append(OTHER_FIELD_DIFFERS)
     return classes, other
-
-
-def fetch_page(client, after, limit):
-    reply = client.post_json("/admin/source-page", {"after_did": after, "limit": limit})
-    dids = reply.get("dids")
-    if not isinstance(dids, list) or len(dids) > limit or any(not isinstance(d, str) for d in dids):
-        raise TransportError(f"{client.name} source-page returned an invalid page")
-    if any(not left < right for left, right in zip([after, *dids], dids)):
-        raise TransportError(f"{client.name} source-page is not strictly increasing after the cursor")
-    return dids
-
-
-def fetch_states(client, dids, want_fields=True):
-    result = {}
-    for start in range(0, len(dids), STATE_LIMIT):
-        chunk = dids[start : start + STATE_LIMIT]
-        body = {"dids": chunk}
-        if want_fields:
-            body["fields"] = True
-        reply = client.post_json("/admin/source-state", body)
-        actors = reply.get("actors")
-        if not isinstance(actors, list) or [a.get("did") for a in actors] != chunk:
-            raise TransportError(f"{client.name} source-state did not answer the requested DIDs in order")
-        for actor in actors:
-            fields = actor.get("fields")
-            result[actor["did"]] = Doc(actor.get("document_sha256"), fields if isinstance(fields, dict) else None)
-    return result
-
-
-def status_marker(client):
-    status = client.get_json("/index/status")
-    marker = {name: status.get(name) for name in STATUS_MARKERS}
-    marker["observed_at"] = int(time.time())
-    return marker
 
 
 def sample_key(did):
@@ -197,38 +127,60 @@ class Checkpoint:
         os.replace(temporary, self.path)
 
 
-def window(production_page, shadow_page, limit):
-    bounds = [page[-1] for page in (production_page, shadow_page) if len(page) == limit]
-    merged = sorted(set(production_page) | set(shadow_page))
-    if not bounds:
-        return merged, (merged[-1] if merged else None), True
-    bound = min(bounds)
-    return [did for did in merged if did <= bound], bound, False
+class Side:
+    def __init__(self, source):
+        self.source = source
+        self.buffer = []
+        self.done = False
+
+    def fill(self, cursor, limit):
+        if self.buffer or self.done:
+            return
+        self.buffer = self.source.read(cursor, limit)
+        dids = [did for did, _ in self.buffer]
+        if len(dids) > limit or any(not left < right for left, right in zip([cursor, *dids], dids)):
+            raise TransportError(f"{self.source.name} did not return DIDs strictly increasing after the cursor")
+        self.done = len(dids) < limit
+
+    def take(self, bound):
+        count = len(self.buffer) if bound is None else sum(did <= bound for did, _ in self.buffer)
+        taken, self.buffer = dict(self.buffer[:count]), self.buffer[count:]
+        return taken
 
 
-def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked, want_fields=True):
+def window(production, shadow):
+    """The DIDs both sides have fully reported, each side's view of them, and whether both are exhausted."""
+    bounds = [side.buffer[-1][0] for side in (production, shadow) if not side.done]
+    bound = min(bounds) if bounds else None
+    a, b = production.take(bound), shadow.take(bound)
+    dids = sorted(set(a) | set(b))
+    if bound is None:
+        bound = dids[-1] if dids else None
+    return dids, a, b, bound, not bounds
+
+
+def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked):
     """Advance the merge walk; returns a stop reason and leaves progress in the checkpoint."""
     if not 1 <= page_size <= PAGE_LIMIT:
         raise TransportError(f"page size must be 1..{PAGE_LIMIT}")
     if checkpoint.start_markers is None:
-        checkpoint.start_markers = {"production": status_marker(production), "shadow": status_marker(shadow)}
+        checkpoint.start_markers = {"production": production.marker(), "shadow": shadow.marker()}
         checkpoint.started_at = int(time.time())
         checkpoint.save()
+    sides = Side(production), Side(shadow)
     pages_this_run = 0
     while not checkpoint.complete:
         if max_pages is not None and pages_this_run >= max_pages:
             return "page_limit"
         try:
-            production_page = fetch_page(production, checkpoint.cursor, page_size)
-            shadow_page = fetch_page(shadow, checkpoint.cursor, page_size)
-            dids, bound, exhausted = window(production_page, shadow_page, page_size)
-            production_docs = fetch_states(production, dids, want_fields)
-            shadow_docs = fetch_states(shadow, dids, want_fields)
+            for side in sides:
+                side.fill(checkpoint.cursor, page_size)
         except BudgetExceeded:
             checkpoint.save()
             return "budget"
+        dids, production_docs, shadow_docs, bound, exhausted = window(*sides)
         for did in dids:
-            a, b = production_docs[did], shadow_docs[did]
+            a, b = production_docs.get(did, ABSENT), shadow_docs.get(did, ABSENT)
             checkpoint.live["production"] += a.live
             checkpoint.live["shadow"] += b.live
             entry = difference(did, a, b)
@@ -249,17 +201,25 @@ def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked, w
     return "complete"
 
 
-def recheck(production, shadow, differences, *, settle_delay, sleep=time.sleep, want_fields=True):
+def recorded(entry, side):
+    return Doc(entry[side]["document_sha256"], entry[side]["fields"])
+
+
+def recheck(production, shadow, differences, *, settle_delay, sleep=time.sleep):
     """Re-read every differing DID once after the settle delay; keep what still differs."""
     if not differences:
         return {}, 0
     sleep(settle_delay)
     dids = sorted(differences)
-    production_docs = fetch_states(production, dids, want_fields)
-    shadow_docs = fetch_states(shadow, dids, want_fields)
+    docs = {}
+    for side, source in (("production", production), ("shadow", shadow)):
+        if source.fixed:
+            docs[side] = {did: recorded(differences[did], side) for did in dids}
+        else:
+            docs[side] = source.lookup(dids)
     settled = {}
     for did in dids:
-        entry = difference(did, production_docs[did], shadow_docs[did])
+        entry = difference(did, docs["production"][did], docs["shadow"][did])
         if entry is not None:
             settled[did] = entry
     return settled, len(dids) - len(settled)
@@ -281,7 +241,7 @@ def summarize(differences, sample_size):
     return {"differing_dids": len(differences), "classes": classes, "other_field_counts": other}
 
 
-def run(
+def run_sources(
     production,
     shadow,
     *,
@@ -291,21 +251,13 @@ def run(
     max_tracked,
     settle_delay,
     sample_size,
-    want_fields=True,
     sleep=time.sleep,
 ):
-    identity = {"production": production.base, "shadow": shadow.base, "page_size": page_size, "fields": want_fields}
+    want_fields = all(getattr(source, "want_fields", True) for source in (production, shadow))
+    identity = {"production": production.identity, "shadow": shadow.identity, "page_size": page_size}
     checkpoint = Checkpoint(checkpoint_path, identity)
     resumed = checkpoint.load()
-    stop = walk(
-        production,
-        shadow,
-        checkpoint,
-        page_size=page_size,
-        max_pages=max_pages,
-        max_tracked=max_tracked,
-        want_fields=want_fields,
-    )
+    stop = walk(production, shadow, checkpoint, page_size=page_size, max_pages=max_pages, max_tracked=max_tracked)
     result = {
         "complete": checkpoint.complete,
         "stop_reason": stop,
@@ -325,10 +277,8 @@ def run(
         result["flagged_dids"] = sorted(checkpoint.differences)
         return result
     try:
-        settled, transient = recheck(
-            production, shadow, checkpoint.differences, settle_delay=settle_delay, sleep=sleep, want_fields=want_fields
-        )
-        result["end_markers"] = {"production": status_marker(production), "shadow": status_marker(shadow)}
+        settled, transient = recheck(production, shadow, checkpoint.differences, settle_delay=settle_delay, sleep=sleep)
+        result["end_markers"] = {"production": production.marker(), "shadow": shadow.marker()}
     except BudgetExceeded:
         result.update(rechecked=False, stop_reason="budget", differences_before_recheck=len(checkpoint.differences))
         result.update(summarize(checkpoint.differences, sample_size))
@@ -354,3 +304,8 @@ def run(
     result.update(summarize(settled, sample_size))
     result["flagged_dids"] = sorted(settled)
     return result
+
+
+def run(production, shadow, *, want_fields=True, **options):
+    """Compare two Tantivy admin listeners, given their transport clients."""
+    return run_sources(TantivyAdmin(production, want_fields), TantivyAdmin(shadow, want_fields), **options)
