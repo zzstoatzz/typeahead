@@ -11,4 +11,5 @@ test {
     _ = @import("store_process/producers_test.zig");
     _ = @import("store_process/config.zig");
     _ = @import("store_process/http_test.zig");
+    _ = @import("store_process/differential_test.zig");
 }

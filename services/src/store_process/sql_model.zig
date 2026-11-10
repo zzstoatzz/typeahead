@@ -177,8 +177,8 @@ pub const Model = struct {
 
     // -- moderation.ts --
 
-    fn labelsHide(self: *Model, labels: []const Label) bool {
-        for (labels) |label| {
+    fn labelsHide(self: *Model, list: []const Label) bool {
+        for (list) |label| {
             if (label.neg) continue;
             if (label.exp.len > 0) {
                 if (self.parse_ms(label.exp)) |at| if (at <= @as(i64, @intCast(self.now)) * 1000) continue;
@@ -188,7 +188,8 @@ pub const Model = struct {
         return false;
     }
 
-    fn resolveHidden(self: *Model, row: *const Row) bool {
+    /// `resolveHidden` as of now: what the engine decides at query time.
+    pub fn resolveHidden(self: *Model, row: *const Row) bool {
         var hidden = self.labelsHide(row.labels);
         if (!self.flags.slur_rule_left_to_index) {
             if (self.flagged) |flagged| if (row.handle.len > 0 and flagged(row.handle)) {
