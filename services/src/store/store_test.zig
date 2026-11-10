@@ -468,7 +468,7 @@ test "the quality walk queues ranked actors best first and starts again at the e
     const step: change.Change = .{ .refresh_walk = .{ .pool = .quality, .limit = 2, .scan = 2 } };
     const first = try f.store.begin(t0 + 100);
     _ = try first.apply(step);
-    try testing.expectEqual(change.Walked{ .examined = 2, .queued = 2 }, first.walked());
+    try testing.expectEqual(change.Walked{ .examined = 2, .queued = 2 }, first.walked(.quality));
     try first.commit();
     try testing.expectEqual(@as(u64, t0 + 100), (try f.actor(bob)).refresh_due);
     try testing.expectEqual(@as(u64, t0 + 100), (try f.actor("did:plc:erin")).refresh_due);
@@ -477,7 +477,7 @@ test "the quality walk queues ranked actors best first and starts again at the e
 
     const second = try f.store.begin(t0 + 160);
     _ = try second.apply(step);
-    try testing.expectEqual(change.Walked{ .examined = 1, .queued = 1, .wrapped = 1 }, second.walked());
+    try testing.expectEqual(change.Walked{ .examined = 1, .queued = 1, .wrapped = 1 }, second.walked(.quality));
     try second.commit();
     try testing.expectEqual(@as(u64, t0 + 160), (try f.actor(alice)).refresh_due);
     const state = try read.walkState(f.store.db(), f.arena.allocator(), .walk_quality);
@@ -487,13 +487,13 @@ test "the quality walk queues ranked actors best first and starts again at the e
 
     const third = try f.store.begin(t0 + 200);
     _ = try third.apply(step);
-    try testing.expectEqual(change.Walked{ .examined = 2, .queued = 0 }, third.walked());
+    try testing.expectEqual(change.Walked{ .examined = 2, .queued = 0 }, third.walked(.quality));
     try third.commit();
 
     try f.reopen();
     const resumed = try f.store.begin(t0 + 300);
     _ = try resumed.apply(step);
-    try testing.expectEqual(change.Walked{ .examined = 1, .queued = 0, .wrapped = 1 }, resumed.walked());
+    try testing.expectEqual(change.Walked{ .examined = 1, .queued = 0, .wrapped = 1 }, resumed.walked(.quality));
     try resumed.commit();
 }
 
@@ -513,7 +513,7 @@ test "the rest walk covers live actors with a handle that the quality walk does 
 
     const batch = try f.store.begin(t0 + 5);
     _ = try batch.apply(.{ .refresh_walk = .{ .pool = .rest, .limit = 10, .scan = 100 } });
-    try testing.expectEqual(change.Walked{ .examined = 5, .queued = 2, .wrapped = 1 }, batch.walked());
+    try testing.expectEqual(change.Walked{ .examined = 5, .queued = 2, .wrapped = 1 }, batch.walked(.rest));
     try batch.commit();
     try testing.expectEqual(@as(u64, t0 + 5), (try f.actor(bob)).refresh_due);
     try testing.expectEqual(@as(u64, t0 + 5), (try f.actor(carol)).refresh_due);

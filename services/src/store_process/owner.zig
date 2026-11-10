@@ -133,6 +133,10 @@ pub const Submission = struct {
     cursor: ?change.CursorUpdate = null,
     /// Identity jobs an `identity_lease` change in this submission leased.
     jobs: []const change.Job = &.{},
+    /// Refreshes a `refresh_lease` change in this submission leased.
+    refresh_jobs: []const change.RefreshJob = &.{},
+    /// What this submission's `refresh_walk` changes did.
+    walked: change.WalkTally = .initFill(.{}),
     summary: Summary = .{},
     waited: bool = false,
     failed: bool = false,
@@ -197,6 +201,9 @@ pub const Health = struct {
     identity_pending: u64 = 0,
     identity_due: u64 = 0,
     refresh_pending: u64 = 0,
+    /// Refresh entries due now; the rest of `refresh_pending` is leased.
+    refresh_due: u64 = 0,
+    walks: std.EnumArray(change.WalkPool, Walk) = .initFill(.{}),
     tombstones: u64 = 0,
     /// True when a count above stopped at `count_cap`.
     counts_capped: bool = false,
@@ -208,6 +215,22 @@ pub const Health = struct {
     }
 };
 
+/// Where a refresh walk stands, without the allocation its key needs.
+pub const Walk = struct {
+    started_at: u64 = 0,
+    passes: u64 = 0,
+    last_pass_seconds: u64 = 0,
+    /// The score the quality walk has reached; 0 at the top of a pass.
+    score: f32 = 0,
+    did: [max_walk_did]u8 = undefined,
+    did_len: usize = 0,
+
+    pub fn position(self: *const Walk) []const u8 {
+        return self.did[0..self.did_len];
+    }
+};
+
+const max_walk_did = 96;
 const max_consumers = 8;
 const max_consumer_name = 32;
 
@@ -499,7 +522,11 @@ pub const Owner = struct {
         for (self.group.items) |submission| {
             submission.summary = .{};
             submission.jobs = &.{};
+            submission.refresh_jobs = &.{};
             const jobs_before = batch.leased().len;
+            const refresh_before = batch.refreshLeased().len;
+            var walked_before: change.WalkTally = undefined;
+            for (std.enums.values(change.WalkPool)) |pool| walked_before.set(pool, batch.walked(pool));
             for (submission.changes) |one| {
                 const was_live = switch (one) {
                     .gone => |c| if (store.actor(self.scratch.allocator(), c.did) catch null) |actor| actor.live() else false,
@@ -537,6 +564,19 @@ pub const Owner = struct {
                 }
                 submission.jobs = jobs;
             }
+            const refreshes = batch.refreshLeased()[refresh_before..];
+            if (refreshes.len > 0) {
+                const arena = submission.arena.allocator();
+                const jobs = try arena.alloc(change.RefreshJob, refreshes.len);
+                for (jobs, refreshes) |*job, source| {
+                    job.* = source;
+                    job.did = try arena.dupe(u8, source.did);
+                    job.handle = try arena.dupe(u8, source.handle);
+                    job.pds = try arena.dupe(u8, source.pds);
+                }
+                submission.refresh_jobs = jobs;
+            }
+            for (std.enums.values(change.WalkPool)) |pool| submission.walked.set(pool, batch.walked(pool).since(walked_before.get(pool)));
             total.applied += submission.summary.applied;
             total.changed += submission.summary.changed;
             total.created += submission.summary.created;
@@ -731,6 +771,24 @@ pub const Owner = struct {
         fresh.identity_due = try self.countRange(&identity_bounds[0], keys.timedBound(&buf, .identity, at + 1), &fresh.counts_capped);
         const refresh_bounds = keys.Prefix.refresh.bounds();
         fresh.refresh_pending = try self.countRange(&refresh_bounds[0], &refresh_bounds[1], &fresh.counts_capped);
+        fresh.refresh_due = try self.countRange(&refresh_bounds[0], keys.timedBound(&buf, .refresh, at + 1), &fresh.counts_capped);
+        for (std.enums.values(change.WalkPool)) |pool| {
+            const state = try store_mod.read.walkState(self.store.db(), self.scratch.allocator(), pool.cursor());
+            var walk: Walk = .{ .started_at = state.started_at, .passes = state.passes, .last_pass_seconds = state.last_pass_seconds };
+            if (state.position.len > 0) {
+                const did = switch (pool) {
+                    .quality => blk: {
+                        const parsed = try keys.parseQuality(state.position);
+                        walk.score = parsed.score;
+                        break :blk parsed.did;
+                    },
+                    .rest => try keys.parseActor(state.position),
+                };
+                walk.did_len = @min(did.len, max_walk_did);
+                @memcpy(walk.did[0..walk.did_len], did[0..walk.did_len]);
+            }
+            fresh.walks.set(pool, walk);
+        }
         const tombstone_bounds = keys.Prefix.tombstone.bounds();
         fresh.tombstones = try self.countRange(&tombstone_bounds[0], &tombstone_bounds[1], &fresh.counts_capped);
         fresh.maintenance = self.store.stats();

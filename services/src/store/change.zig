@@ -236,7 +236,13 @@ pub const Walked = struct {
     queued: u64 = 0,
     /// Passes completed by reaching the end of the range.
     wrapped: u64 = 0,
+
+    pub fn since(self: Walked, earlier: Walked) Walked {
+        return .{ .examined = self.examined - earlier.examined, .queued = self.queued - earlier.queued, .wrapped = self.wrapped - earlier.wrapped };
+    }
 };
+
+pub const WalkTally = std.EnumArray(WalkPool, Walked);
 
 pub const CursorUpdate = union(enum) {
     /// The relay sequence the batch's events run up to.

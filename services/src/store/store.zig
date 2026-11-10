@@ -306,7 +306,7 @@ pub const Batch = struct {
     changed_set: std.StringHashMapUnmanaged(void) = .empty,
     jobs: std.ArrayList(change.Job) = .empty,
     refresh_jobs: std.ArrayList(change.RefreshJob) = .empty,
-    walk_tally: change.Walked = .{},
+    walk_tally: change.WalkTally = .initFill(.{}),
     domains_dirty: bool = false,
     encoded: std.ArrayList(u8) = .empty,
 
@@ -339,9 +339,9 @@ pub const Batch = struct {
         return self.refresh_jobs.items;
     }
 
-    /// What this batch's walk steps did, summed.
-    pub fn walked(self: *const Batch) change.Walked {
-        return self.walk_tally;
+    /// What this batch's walk steps did, summed by pool.
+    pub fn walked(self: *const Batch, pool: change.WalkPool) change.Walked {
+        return self.walk_tally.get(pool);
     }
 
     /// Carry a cursor in this batch's commit.
@@ -894,13 +894,14 @@ pub const Batch = struct {
             _ = try self.save(did, old, new, null);
             queued += 1;
         }
-        self.walk_tally.examined += examined;
-        self.walk_tally.queued += queued;
+        const tally = self.walk_tally.getPtr(c.pool);
+        tally.examined += examined;
+        tally.queued += queued;
         if (examined == found.keys.items.len and found.keys.items.len < c.scan) {
             state.passes += 1;
             state.last_pass_seconds = self.now - state.started_at;
             state.position = "";
-            self.walk_tally.wrapped += 1;
+            tally.wrapped += 1;
         }
         _ = self.scratch.reset(.retain_capacity);
         var value: std.ArrayList(u8) = .empty;
