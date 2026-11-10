@@ -1,7 +1,10 @@
 //! Today's SQL semantics, in memory, for the differential test. Each method
 //! restates the statements one Worker endpoint runs: `handleIngest` and
 //! `handleDelete`, the identity queue's enqueue, lease and settle, the PLC
-//! report, and the label stream. It shares no code with the store.
+//! report, the label stream, and the cron's `refreshModeration` for one
+//! selected row. It shares no code with the store. What a profile maps to
+//! arrives already extracted (`Fetched`): that mapping has its own test
+//! against the Worker's TypeScript.
 //!
 //! Where the store module deliberately differs from the SQL, the difference
 //! is a named flag in `Divergence`. With every flag off this is production;
@@ -32,6 +35,16 @@ pub const Divergence = struct {
     /// The store role supplies no slur predicate, so a slur handle does not
     /// set the stored `hidden` flag; the index applies the rule at query time.
     slur_rule_left_to_index: bool,
+    /// A profile fetch's moderation labels are the labeler's answer: they
+    /// replace an earlier answer in the label range and never what the
+    /// stream delivered, and the actor's list is projected from the range.
+    /// In SQL the cron overwrites `actors.labels` with the response's list
+    /// and takes `hidden` from it, whatever the stream has said since.
+    enrichment_reconciles_labels: bool,
+    /// A profile record from a PDS carries no labels, so the stored ones
+    /// stay; in SQL the cron writes an empty list and recomputes `hidden`
+    /// from it, which unhides a taken-down account.
+    pds_record_keeps_labels: bool,
 
     pub const store: Divergence = .{
         .gone_keeps_record = true,
@@ -40,6 +53,8 @@ pub const Divergence = struct {
         .hidden_recomputed_on_every_write = true,
         .label_expiry_pass = true,
         .slur_rule_left_to_index = true,
+        .enrichment_reconciles_labels = true,
+        .pds_record_keeps_labels = true,
     };
 
     pub const production: Divergence = .{
@@ -49,6 +64,8 @@ pub const Divergence = struct {
         .hidden_recomputed_on_every_write = false,
         .label_expiry_pass = false,
         .slur_rule_left_to_index = false,
+        .enrichment_reconciles_labels = false,
+        .pds_record_keeps_labels = false,
     };
 };
 
@@ -57,13 +74,15 @@ pub const Divergence = struct {
 pub const unmodelled = [_][2][]const u8{
     .{ "change log records content changes only; updated_at moves only with content", "neither is part of an actor's visible state; the index bridge reads the current record" },
     .{ "label keys carry a subject byte", "same rows: the SQL key holds the subject URI, which differs between the two subjects" },
-    .{ "moderation labels have one writer; labels = null keeps labels", "enrichment is not part of this role" },
+    .{ "which actors are refreshed, and when", "the store leases its refresh queue and walks two ranges; the cron and the flows select by SQL. The model is told which rows were fetched" },
+    .{ "a failed takedown probe retries the DID; a refused batch is split", "neither changes what a completed fetch writes" },
+    .{ "an account the appview does not know is stamped as checked", "the cron leaves it unstamped and the backfill flow stamps it; the check time is not compared" },
     .{ "unknown label fields are dropped", "ver and sig are not served by the SQL projection either" },
     .{ "domain blocks apply at once to policy and by a sweep to stored actors", "no policy change reaches this role yet; the owner's sweep has its own test" },
     .{ "queue due times live in the actor record", "layout only" },
     .{ "reactivation re-requests refresh but not identity", "the role sends identity_enqueue with every active #account, as the Worker enqueues it" },
-    .{ "refresh is requested only for actors with a handle", "the refresh queue feeds enrichment, which is not part of this role" },
-    .{ "zero counts and score keep the old value", "enrichment is not part of this role" },
+    .{ "refresh is requested only for actors with a handle", "same in SQL: both of the cron's selectors and the backfill's require a handle" },
+    .{ "zero counts and score keep the old value", "same in SQL: COALESCE(NULLIF(?, 0), column)" },
     .{ "labeler and PLC cursors never move backwards", "same in SQL: MAX() for the labeler, a string comparison for PLC" },
     .{ "handles over 253 bytes are rejected", "same bound as the Worker's schema, and the resolver's handle syntax check stops them first" },
 };
@@ -85,6 +104,46 @@ pub const Label = struct {
 };
 
 pub const Status = enum { live, deactivated, deleted };
+pub const Source = enum { none, bsky, blacksky, pds };
+
+/// A label as a profile response carries it.
+pub const ProfileLabel = struct {
+    src: []const u8,
+    uri: []const u8,
+    val: []const u8,
+    cts: []const u8,
+    cid: []const u8 = "",
+    exp: []const u8 = "",
+    neg: bool = false,
+};
+
+/// `extractProfileFields`' output for one response.
+pub const Fetched = struct {
+    handle: []const u8 = "",
+    display_name: []const u8 = "",
+    avatar: []const u8 = "",
+    description: []const u8 = "",
+    banner: []const u8 = "",
+    created_at: []const u8 = "",
+    associated: []const u8 = "{}",
+    followers: u64 = 0,
+    follows: u64 = 0,
+    posts: u64 = 0,
+    score: f64 = 0,
+    labels: []const ProfileLabel = &.{},
+};
+
+/// What the cron's requests would be answered with.
+pub const Appview = struct {
+    context: *anyopaque,
+    /// `getProfiles`.
+    bsky: *const fn (context: *anyopaque, did: []const u8) ?Fetched,
+    /// `getProfile` refuses the DID with `AccountTakedown`.
+    taken_down: *const fn (context: *anyopaque, did: []const u8) bool,
+    blacksky: *const fn (context: *anyopaque, did: []const u8) ?Fetched,
+    /// The profile record on `pds`.
+    record: *const fn (context: *anyopaque, did: []const u8, pds: []const u8) ?Fetched,
+};
 
 pub const Row = struct {
     status: Status = .live,
@@ -100,6 +159,15 @@ pub const Row = struct {
     deleted_at: u64 = 0,
     /// The moderation service's share of `actors.labels`.
     labels: []const Label = &.{},
+    /// The rest of `actors.labels`.
+    other_labels: []const ProfileLabel = &.{},
+    created_at: []const u8 = "",
+    associated: []const u8 = "",
+    followers: u64 = 0,
+    follows: u64 = 0,
+    posts: u64 = 0,
+    score: f64 = 0,
+    source: Source = .none,
 };
 
 pub const Queued = struct {
@@ -400,6 +468,87 @@ pub const Model = struct {
         for (touched.keys()) |did| {
             const row = self.live(did).?;
             row.hidden = self.resolveHidden(row);
+        }
+    }
+
+    // -- cron.ts refreshModeration, for one selected row with no override --
+
+    pub fn refresh(self: *Model, did: []const u8, appview: Appview) void {
+        const row = self.live(did) orelse return;
+        if (appview.bsky(appview.context, did)) |f| return self.enriched(did, row, f, .bsky);
+        if (row.pds.len == 0 or !appview.taken_down(appview.context, did)) return;
+        if (appview.blacksky(appview.context, did)) |f| return self.enriched(did, row, f, .blacksky);
+        if (appview.record(appview.context, did, row.pds)) |f| self.enriched(did, row, f, .pds);
+    }
+
+    fn enriched(self: *Model, did: []const u8, row: *Row, f: Fetched, source: Source) void {
+        if (source == .bsky) row.handle = self.keep(row.handle, f.handle);
+        row.display_name = self.keep(row.display_name, f.display_name);
+        row.avatar = self.keep(row.avatar, f.avatar);
+        row.description = self.keep(row.description, f.description);
+        row.banner = self.keep(row.banner, f.banner);
+        row.created_at = self.keep(row.created_at, f.created_at);
+        if (f.associated.len > 0 and !std.mem.eql(u8, f.associated, "{}")) row.associated = self.own(f.associated);
+        if (f.followers != 0) row.followers = f.followers;
+        if (f.follows != 0) row.follows = f.follows;
+        if (f.posts != 0) row.posts = f.posts;
+        if (f.score != 0) row.score = f.score;
+        row.source = source;
+        if (source == .pds and self.flags.pds_record_keeps_labels) return self.wrote(row);
+
+        var others: std.ArrayList(ProfileLabel) = .empty;
+        var moderated: std.ArrayList(Label) = .empty;
+        for (f.labels) |label| {
+            if (std.mem.eql(u8, label.src, mod_source)) {
+                moderated.append(self.arena, .{ .uri = self.own(label.uri), .val = self.own(label.val), .cts = self.own(label.cts), .cid = self.own(label.cid), .exp = self.own(label.exp), .neg = label.neg }) catch @panic("out of memory");
+            } else others.append(self.arena, .{ .src = self.own(label.src), .uri = self.own(label.uri), .val = self.own(label.val), .cts = self.own(label.cts), .cid = self.own(label.cid), .exp = self.own(label.exp), .neg = label.neg }) catch @panic("out of memory");
+        }
+        row.other_labels = others.items;
+        if (self.flags.enrichment_reconciles_labels) {
+            self.reconcile(did, moderated.items);
+            self.project(did);
+            return self.wrote(row);
+        }
+        row.labels = moderated.items;
+        row.hidden = self.resolveHidden(row);
+    }
+
+    fn laterOrSame(self: *Model, a: []const u8, b: []const u8) bool {
+        const x = self.parse_ms(a) orelse return false;
+        const y = self.parse_ms(b) orelse return false;
+        return x >= y;
+    }
+
+    /// The store module's rule for a labeler's answer: drop what an earlier
+    /// answer stored, then store the current entry of each subject and
+    /// value unless the stream has delivered one.
+    fn reconcile(self: *Model, did: []const u8, answer: []const Label) void {
+        const slot = self.account_labels.getOrPut(self.arena, did) catch @panic("out of memory");
+        if (!slot.found_existing) {
+            slot.key_ptr.* = self.own(did);
+            slot.value_ptr.* = .empty;
+        }
+        const rows = slot.value_ptr;
+        var index: usize = 0;
+        while (index < rows.items.len) {
+            if (rows.items[index].seq == 0) _ = rows.orderedRemove(index) else index += 1;
+        }
+        const profile_uri = std.fmt.allocPrint(self.arena, "at://{s}/app.bsky.actor.profile/self", .{did}) catch @panic("out of memory");
+        for (answer, 0..) |label, at| {
+            if (!std.mem.eql(u8, label.uri, did) and !std.mem.eql(u8, label.uri, profile_uri)) continue;
+            if (label.val.len == 0 or label.val.len > 128) continue;
+            var winner: usize = at;
+            var first = true;
+            for (answer, 0..) |other, position| {
+                if (!std.mem.eql(u8, other.uri, label.uri) or !std.mem.eql(u8, other.val, label.val)) continue;
+                if (first or self.laterOrSame(other.cts, answer[winner].cts)) winner = position;
+                first = false;
+            }
+            if (winner != at) continue;
+            const streamed = for (rows.items) |existing| {
+                if (std.mem.eql(u8, existing.uri, label.uri) and std.mem.eql(u8, existing.val, label.val)) break true;
+            } else false;
+            if (!streamed) rows.append(self.arena, label) catch @panic("out of memory");
         }
     }
 

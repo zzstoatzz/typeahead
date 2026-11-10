@@ -1,8 +1,10 @@
 //! Differential test: one seeded sequence of synthetic input goes through
 //! the store role (relay intake, identity work, PLC tail, label sink, the
-//! owner on its own thread) and through `sql_model.zig`, and every account's
-//! visible state is compared: whether it is live, its handle, PDS, profile
-//! fields, labels, hidden flag, and whether identity work is pending.
+//! enrichment loop against fake appviews and PDSes, the owner on its own
+//! thread) and through `sql_model.zig`, and every account's visible state
+//! is compared: whether it is live, its handle, PDS, profile fields, counts,
+//! score, profile source, labels, hidden flag, and whether identity work is
+//! pending.
 //!
 //! With `Divergence.store` the two must agree exactly. The directed tests at
 //! the end run the model as production (`Divergence.production`) and show
@@ -16,7 +18,9 @@ const store_mod = @import("../store/root.zig");
 const store_harness = @import("../store/testing/harness.zig");
 const identity = @import("../identity.zig");
 const label_tail = @import("../label_tail.zig");
+const enrich = @import("enrich.zig");
 const identity_work = @import("identity_work.zig");
+const profile = @import("profile.zig");
 const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
 const sql = @import("sql_model.zig");
@@ -41,6 +45,20 @@ const Identity = struct {
 
 const Relayed = struct { seq: i64, event: sql.Event };
 
+/// What the appviews and the PDS hold for one account, as response bodies.
+const Remote = struct {
+    bsky: ?[]const u8 = null,
+    taken_down: bool = false,
+    blacksky: ?[]const u8 = null,
+    record: ?[]const u8 = null,
+};
+
+const appview_url = "https://appview.test";
+const blacksky_url = "https://blacksky.test";
+const stamps = [_][]const u8{ "", "2023-04-12T04:53:57.057Z", "2025-12-01T00:00:00.000Z", "not a date" };
+const associations = [_][]const u8{ "", "{\"lists\":2,\"labeler\":false}", "{\"chat\":{\"allowIncoming\":\"all\"},\"starterPacks\":1}", "{\"lists\":0}" };
+const other_labeler = "did:plc:otherlabeleraaaaaaaaaaaa";
+
 const Sim = struct {
     f: *Fixture,
     running: harness.Running,
@@ -52,6 +70,13 @@ const Sim = struct {
     sink: tails.LabelSink,
     plc: tails.PlcTail,
     world: [universe]Identity = @splat(.{}),
+    remote: [universe]Remote = @splat(.{}),
+    enricher: enrich.Enricher = undefined,
+    /// DIDs the enrichment loop asked `getProfiles` for in its last step.
+    asked: std.ArrayList([]const u8) = .empty,
+    fetched: u64 = 0,
+    /// Fetches the appview left out and Blacksky or a PDS answered.
+    fallbacks: u64 = 0,
     relayed: std.ArrayList(Relayed) = .empty,
     blobs: [cids.len][]const u8 = undefined,
     label_seq: u64 = 100,
@@ -84,6 +109,13 @@ const Sim = struct {
             .plc = .{ .gpa = testing.allocator, .io = testing.io, .owner = f.owner },
         };
         for (&self.blobs, cids) |*raw, text| raw.* = try zat.multibase.decode(arena, text);
+        self.enricher = .{
+            .gpa = testing.allocator,
+            .owner = f.owner,
+            .transport = .{ .context = self, .get = get },
+            .timer = .{ .context = self, .now_ms = nowMs, .sleep_ms = noSleep },
+            .options = .{ .appview_url = appview_url, .blacksky_url = blacksky_url, .requests_per_second = 1000, .walk_per_hour = 7200, .sweep_per_hour = 7200 },
+        };
         self.running = try harness.Running.start(f);
         return self;
     }
@@ -154,6 +186,176 @@ const Sim = struct {
             .identity => |subject| return .{ .identity = .{ .seq = seq, .did = subject, .time = stamp, .handle = if (self.chance(30)) "claimed.example" else null } },
             .active => |subject| return .{ .account = .{ .seq = seq, .did = subject, .time = stamp, .active = true } },
             .inactive => |i| return .{ .account = .{ .seq = seq, .did = i.did, .time = stamp, .active = false, .status = if (i.deleted) .deleted else if (self.chance(50)) .deactivated else .takendown } },
+        }
+    }
+
+    fn nowMs(context: *anyopaque) i64 {
+        const self: *Sim = @ptrCast(@alignCast(context));
+        return @as(i64, @intCast(self.f.now())) * 1000;
+    }
+
+    fn noSleep(_: *anyopaque, _: u64) bool {
+        return true;
+    }
+
+    fn parameter(self: *Sim, url: []const u8, name: []const u8) []const u8 {
+        var parts = std.mem.splitScalar(u8, url[std.mem.indexOfScalar(u8, url, '?').? + 1 ..], '&');
+        while (parts.next()) |part| {
+            if (!std.mem.startsWith(u8, part, name) or part.len <= name.len or part[name.len] != '=') continue;
+            return std.Uri.percentDecodeInPlace(self.arena.dupe(u8, part[name.len + 1 ..]) catch @panic("out of memory"));
+        }
+        return "";
+    }
+
+    /// The fake appview, Blacksky and PDS the enrichment loop talks to.
+    fn get(context: *anyopaque, _: std.mem.Allocator, url: []const u8) enrich.Response {
+        const self: *Sim = @ptrCast(@alignCast(context));
+        const refused: enrich.Response = .{ .status = 400, .body = "{\"error\":\"InvalidRequest\"}" };
+        if (std.mem.startsWith(u8, url, appview_url ++ "/xrpc/app.bsky.actor.getProfiles?")) {
+            var body: std.ArrayList(u8) = .empty;
+            body.appendSlice(self.arena, "{\"profiles\":[") catch @panic("out of memory");
+            var parts = std.mem.splitScalar(u8, url[std.mem.indexOfScalar(u8, url, '?').? + 1 ..], '&');
+            var held: usize = 0;
+            while (parts.next()) |part| {
+                const subject = std.Uri.percentDecodeInPlace(self.arena.dupe(u8, part["actors=".len..]) catch @panic("out of memory"));
+                self.asked.append(self.arena, subject) catch @panic("out of memory");
+                const found = self.remote[indexOf(subject)].bsky orelse continue;
+                if (held > 0) body.append(self.arena, ',') catch @panic("out of memory");
+                body.appendSlice(self.arena, found) catch @panic("out of memory");
+                held += 1;
+            }
+            body.appendSlice(self.arena, "]}") catch @panic("out of memory");
+            return .{ .status = 200, .body = body.items };
+        }
+        if (std.mem.startsWith(u8, url, appview_url)) {
+            return if (self.remote[indexOf(self.parameter(url, "actor"))].taken_down) .{ .status = 400, .body = "{\"error\":\"AccountTakedown\"}" } else refused;
+        }
+        if (std.mem.startsWith(u8, url, blacksky_url)) {
+            return if (self.remote[indexOf(self.parameter(url, "actor"))].blacksky) |found| .{ .status = 200, .body = found } else refused;
+        }
+        if (!std.mem.eql(u8, self.parameter(url, "collection"), "app.bsky.actor.profile")) return refused;
+        return if (self.remote[indexOf(self.parameter(url, "repo"))].record) |found| .{ .status = 200, .body = found } else refused;
+    }
+
+    fn fetchedFrom(self: *Sim, body: ?[]const u8) ?sql.Fetched {
+        const value = std.json.parseFromSliceLeaky(std.json.Value, self.arena, body orelse return null, .{}) catch @panic("fixture profile is not JSON");
+        const f = profile.extract(self.arena, value, nowMs(self)) catch @panic("out of memory");
+        const labels = self.arena.alloc(sql.ProfileLabel, f.labels.len) catch @panic("out of memory");
+        for (labels, f.labels) |*slot, label| slot.* = .{ .src = label.source, .uri = label.uri, .val = label.value, .cts = label.created, .cid = label.cid, .exp = label.expires, .neg = label.negated };
+        return .{
+            .handle = f.handle,
+            .display_name = f.display_name,
+            .avatar = f.avatar,
+            .description = f.description,
+            .banner = f.banner,
+            .created_at = f.created_at,
+            .associated = f.associated,
+            .followers = f.followers_count,
+            .follows = f.follows_count,
+            .posts = f.posts_count,
+            .score = f.quality_score,
+            .labels = labels,
+        };
+    }
+
+    fn modelBsky(context: *anyopaque, subject: []const u8) ?sql.Fetched {
+        const self: *Sim = @ptrCast(@alignCast(context));
+        return self.fetchedFrom(self.remote[indexOf(subject)].bsky);
+    }
+
+    fn modelTakenDown(context: *anyopaque, subject: []const u8) bool {
+        const self: *Sim = @ptrCast(@alignCast(context));
+        return self.remote[indexOf(subject)].taken_down;
+    }
+
+    fn modelBlacksky(context: *anyopaque, subject: []const u8) ?sql.Fetched {
+        const self: *Sim = @ptrCast(@alignCast(context));
+        return self.fetchedFrom(self.remote[indexOf(subject)].blacksky);
+    }
+
+    /// `fetchProfileFromPds`: display name, avatar CID and creation time.
+    fn modelRecord(context: *anyopaque, subject: []const u8, _: []const u8) ?sql.Fetched {
+        const self: *Sim = @ptrCast(@alignCast(context));
+        const body = self.remote[indexOf(subject)].record orelse return null;
+        const Record = struct { value: struct { displayName: []const u8 = "", createdAt: []const u8 = "", avatar: ?struct { ref: struct { @"$link": []const u8 } } = null } };
+        const parsed = std.json.parseFromSliceLeaky(Record, self.arena, body, .{ .ignore_unknown_fields = true }) catch @panic("fixture record is not JSON");
+        return .{ .display_name = parsed.value.displayName, .avatar = if (parsed.value.avatar) |image| image.ref.@"$link" else "", .created_at = parsed.value.createdAt };
+    }
+
+    fn appview(self: *Sim) sql.Appview {
+        return .{ .context = self, .bsky = modelBsky, .taken_down = modelTakenDown, .blacksky = modelBlacksky, .record = modelRecord };
+    }
+
+    /// One step of the enrichment loop, and the cron's update for every
+    /// row the loop fetched.
+    fn enrichStep(self: *Sim) !void {
+        try self.settle();
+        self.asked.clearRetainingCapacity();
+        _ = try self.enricher.step();
+        for (self.asked.items) |subject| {
+            self.model.refresh(subject, self.appview());
+            const row = self.model.actors.get(subject) orelse continue;
+            if (self.remote[indexOf(subject)].bsky == null and (row.source == .blacksky or row.source == .pds)) self.fallbacks += 1;
+        }
+        self.fetched += self.asked.items.len;
+    }
+
+    fn profileJson(self: *Sim, index: usize) ![]const u8 {
+        const subject = self.did(index);
+        var out: std.ArrayList(u8) = .empty;
+        try out.print(self.arena, "{{\"did\":\"{s}\"", .{subject});
+        if (self.chance(80)) try out.print(self.arena, ",\"handle\":\"{s}\"", .{if (self.chance(85)) self.world[index].handle orelse "handle.invalid" else "handle.invalid"});
+        try out.print(self.arena, ",\"displayName\":\"{s}\",\"description\":\"{s}\",\"createdAt\":\"{s}\"", .{ self.pick(&names), self.pick(&texts), self.pick(&stamps) });
+        if (self.chance(60)) try out.print(self.arena, ",\"avatar\":\"https://cdn.bsky.app/img/avatar/plain/{s}/{s}@jpeg\"", .{ subject, self.pick(&cids) });
+        if (self.chance(30)) try out.print(self.arena, ",\"banner\":\"https://cdn.bsky.app/img/banner/plain/{s}/{s}@jpeg\"", .{ subject, self.pick(&cids) });
+        const associated = self.pick(&associations);
+        if (associated.len > 0) try out.print(self.arena, ",\"associated\":{s}", .{associated});
+        switch (self.random.uintLessThan(u8, 5)) {
+            0 => {},
+            1 => try out.appendSlice(self.arena, ",\"followersCount\":0,\"followsCount\":0,\"postsCount\":0"),
+            else => try out.print(self.arena, ",\"followersCount\":{d},\"followsCount\":{d},\"postsCount\":{d}", .{ self.random.uintLessThan(u32, 400_000), self.random.uintLessThan(u32, 3000), self.random.uintLessThan(u32, 50_000) }),
+        }
+        try out.appendSlice(self.arena, ",\"labels\":[");
+        for (0..self.random.uintLessThan(usize, 4)) |position| {
+            const uri = switch (self.random.uintLessThan(u8, 5)) {
+                0, 1, 2 => subject,
+                3 => try std.fmt.allocPrint(self.arena, "at://{s}/app.bsky.actor.profile/self", .{subject}),
+                else => try std.fmt.allocPrint(self.arena, "at://{s}/app.bsky.feed.post/3kabc", .{subject}),
+            };
+            if (position > 0) try out.append(self.arena, ',');
+            try out.print(self.arena, "{{\"src\":\"{s}\",\"uri\":\"{s}\",\"val\":\"{s}\",\"cts\":\"{s}\"", .{
+                if (self.chance(65)) sql.mod_source else other_labeler, uri, self.pick(&values), self.stampOf(self.f.now() - self.random.uintLessThan(u64, 3)),
+            });
+            if (self.chance(25)) try out.appendSlice(self.arena, ",\"neg\":true");
+            if (self.chance(25)) try out.print(self.arena, ",\"exp\":\"{s}\"", .{self.stampOf(self.f.now() + 600 + self.random.uintLessThan(u64, 7200))});
+            try out.append(self.arena, '}');
+        }
+        try out.appendSlice(self.arena, "]}");
+        return out.items;
+    }
+
+    fn changeRemote(self: *Sim) !void {
+        var index = self.random.uintLessThan(usize, universe);
+        for (0..8) |_| {
+            if (self.model.actors.get(self.did(index))) |row| if (row.status == .live and row.handle.len > 0) break;
+            index = self.random.uintLessThan(usize, universe);
+        }
+        const known = &self.remote[index];
+        switch (self.random.uintLessThan(u8, 10)) {
+            0...4 => {
+                known.bsky = try self.profileJson(index);
+                known.taken_down = false;
+            },
+            5 => known.bsky = null,
+            6, 7 => {
+                known.taken_down = !known.taken_down;
+                if (!known.taken_down) return;
+                known.bsky = null;
+                if (self.chance(40)) known.blacksky = try self.profileJson(index);
+                if (self.chance(60)) known.record = "{\"value\":{\"displayName\":\"On a PDS\",\"createdAt\":\"2024-06-01T00:00:00.000Z\"}}";
+            },
+            8 => known.blacksky = if (self.chance(60)) try self.profileJson(index) else null,
+            else => known.record = if (self.chance(70)) try std.fmt.allocPrint(self.arena, "{{\"value\":{{\"displayName\":\"{s}\",\"createdAt\":\"{s}\",\"avatar\":{{\"ref\":{{\"$link\":\"{s}\"}}}}}}}}", .{ self.pick(&names), self.pick(&stamps), self.pick(&cids) }) else null,
         }
     }
 
@@ -278,7 +480,10 @@ const Sim = struct {
         const index = self.random.uintLessThan(usize, universe);
         const known = &self.world[index];
         switch (self.random.uintLessThan(u8, 6)) {
-            0, 1 => known.handle = try std.fmt.allocPrint(self.arena, "user{d}-{d}.example", .{ index, self.random.uintLessThan(u16, 4) }),
+            0, 1 => {
+                known.handle = try std.fmt.allocPrint(self.arena, "user{d}-{d}.example", .{ index, self.random.uintLessThan(u16, 4) });
+                if (known.pds == null) known.pds = self.pick(&hosts);
+            },
             2 => known.handle = if (self.chance(50)) "donald.trump.com" else null,
             3 => known.pds = self.pick(&hosts),
             4 => known.verified = !known.verified,
@@ -302,6 +507,7 @@ const Sim = struct {
         self.work.owner = self.f.owner;
         self.sink.owner = self.f.owner;
         self.plc.owner = self.f.owner;
+        self.enricher.owner = self.f.owner;
         self.running = try harness.Running.start(self.f);
         for (self.relayed.items) |past| {
             if (past.seq <= from) continue;
@@ -313,7 +519,9 @@ const Sim = struct {
     fn next(self: *Sim) !void {
         const subject = self.anyDid();
         switch (self.random.uintLessThan(u8, 100)) {
-            0...24 => try self.relay(.{ .sighting = subject }),
+            0...12 => try self.relay(.{ .sighting = subject }),
+            13...18 => try self.enrichStep(),
+            19...24 => try self.changeRemote(),
             25...39 => try self.relay(.{ .profile = .{
                 .did = subject,
                 .display_name = self.pick(&names),
@@ -375,7 +583,21 @@ const Sim = struct {
         if (actor.hidden != want.hidden) return self.fail(subject, "hidden is {} in the store, {} in the model", .{ actor.hidden, want.hidden });
         if (actor.identity_resolved_at != want.identity_resolved_at) return self.fail(subject, "resolved at {d} in the store, {d} in the model", .{ actor.identity_resolved_at, want.identity_resolved_at });
         if (actor.last_activity_at != want.last_activity_at) return self.fail(subject, "active at {d} in the store, {d} in the model", .{ actor.last_activity_at, want.last_activity_at });
-        if (actor.labels.len != want.labels.len) return self.fail(subject, "{d} labels in the store, {d} in the model", .{ actor.labels.len, want.labels.len });
+        try self.sameText(subject, "created at", actor.created_at, want.created_at);
+        try self.sameText(subject, "associated", actor.associated, want.associated);
+        try self.sameText(subject, "profile source", @tagName(actor.profile_source), @tagName(want.source));
+        if (actor.followers_count != want.followers or actor.follows_count != want.follows or actor.posts_count != want.posts) {
+            return self.fail(subject, "counts are {d}/{d}/{d} in the store, {d}/{d}/{d} in the model", .{ actor.followers_count, actor.follows_count, actor.posts_count, want.followers, want.follows, want.posts });
+        }
+        if (@as(u32, @bitCast(actor.quality_score)) != @as(u32, @bitCast(@as(f32, @floatCast(want.score))))) return self.fail(subject, "score is {d} in the store, {d} in the model", .{ actor.quality_score, want.score });
+        if (actor.labels.len != want.labels.len + want.other_labels.len) return self.fail(subject, "{d} labels in the store, {d} in the model", .{ actor.labels.len, want.labels.len + want.other_labels.len });
+        for (want.other_labels) |label| {
+            const found = for (actor.labels) |held| {
+                if (std.mem.eql(u8, held.uri, label.uri) and std.mem.eql(u8, held.value, label.val) and std.mem.eql(u8, held.created, label.cts) and
+                    std.mem.eql(u8, held.expires, label.exp) and std.mem.eql(u8, held.source, label.src) and held.negated == label.neg) break true;
+            } else false;
+            if (!found) return self.fail(subject, "label {s} from {s} is in the model only", .{ label.val, label.src });
+        }
         for (want.labels) |label| {
             const found = for (actor.labels) |held| {
                 if (std.mem.eql(u8, held.uri, label.uri) and std.mem.eql(u8, held.value, label.val) and std.mem.eql(u8, held.created, label.cts) and
@@ -400,7 +622,7 @@ const Sim = struct {
     }
 };
 
-const Tally = struct { relayed: usize = 0, restarts: u64 = 0, live: usize = 0, gone: usize = 0, labelled: usize = 0, hidden: usize = 0, handles: usize = 0, pruned: u64 = 0, flushes: u64 = 0 };
+const Tally = struct { fetched: u64 = 0, scored: usize = 0, fallbacks: u64 = 0, relayed: usize = 0, restarts: u64 = 0, live: usize = 0, gone: usize = 0, labelled: usize = 0, hidden: usize = 0, handles: usize = 0, pruned: u64 = 0, flushes: u64 = 0 };
 
 fn runSeed(seed: u64, steps: usize) !Tally {
     var prng: std.Random.DefaultPrng = undefined;
@@ -415,6 +637,8 @@ fn runSeed(seed: u64, steps: usize) !Tally {
     try sim.compare();
     sim.running.stop();
     tally.relayed = sim.relayed.items.len;
+    tally.fetched = sim.fetched;
+    tally.fallbacks = sim.fallbacks;
     tally.pruned = sim.pruned + sim.f.owner.counters.tombstones_pruned.load(.monotonic);
     tally.restarts = sim.restarts;
     tally.flushes = sim.f.owner.health().maintenance.?.flushes.count;
@@ -428,6 +652,7 @@ fn runSeed(seed: u64, steps: usize) !Tally {
         tally.labelled += @intFromBool(actor.labels.len > 0);
         tally.hidden += @intFromBool(actor.hidden);
         tally.handles += @intFromBool(actor.handle.len > 0);
+        tally.scored += @intFromBool(actor.quality_score > 0);
     }
     return tally;
 }
@@ -449,6 +674,7 @@ test "the store role and the SQL model agree on every account, across restarts a
     try testing.expect(total.labelled > 3 and total.hidden > 0);
     try testing.expect(total.pruned > 0 and total.restarts > 3);
     try testing.expect(total.flushes > 0);
+    try testing.expect(total.fetched > 200 and total.scored > 5 and total.fallbacks > 0);
 }
 
 // -- what each divergence changes, against production's semantics --
@@ -469,6 +695,21 @@ const Pair = struct {
     fn destroy(self: *Pair) void {
         self.sim.destroy();
         testing.allocator.destroy(self);
+    }
+
+    /// One enrichment step, and the cron's update on both models for every
+    /// row it fetched, which must include `subject`.
+    fn fetch(self: *Pair, subject: []const u8) !void {
+        try self.sim.settle();
+        self.sim.asked.clearRetainingCapacity();
+        _ = try self.sim.enricher.step();
+        var seen = false;
+        for (self.sim.asked.items) |asked| {
+            self.sim.model.refresh(asked, self.sim.appview());
+            self.production.refresh(asked, self.sim.appview());
+            seen = seen or std.mem.eql(u8, asked, subject);
+        }
+        try testing.expect(seen);
     }
 
     fn relay(self: *Pair, event: sql.Event) !void {
@@ -601,9 +842,53 @@ test "divergence slur_rule_left_to_index: a slur handle is not hidden in the sto
     try testing.expect(pair.production.actors.get(eve).?.hidden);
 }
 
+test "divergence enrichment_reconciles_labels: a profile fetch cannot withdraw a label the stream delivered" {
+    const pair = try Pair.create();
+    defer pair.destroy();
+    try pair.relay(.{ .sighting = eve });
+    try pair.resolve("eve.example");
+    try pair.label(eve, "spam", 5, "");
+    pair.sim.remote[Sim.indexOf(eve)].bsky = "{\"did\":\"" ++ eve ++ "\",\"handle\":\"eve.example\",\"followersCount\":900,\"followsCount\":10,\"postsCount\":40,\"labels\":[{\"src\":\"" ++ other_labeler ++ "\",\"uri\":\"" ++ eve ++ "\",\"val\":\"bot\",\"cts\":\"2026-11-01T00:00:00.000Z\"}]}";
+    try pair.fetch(eve);
+
+    const stored = try pair.agree(eve);
+    try testing.expect(stored.hidden);
+    try testing.expectEqual(@as(usize, 2), stored.labels.len);
+    try testing.expectEqual(@as(u64, 900), stored.followers_count);
+    try testing.expect(stored.quality_score > 300);
+    const row = pair.production.actors.get(eve).?;
+    try testing.expect(!row.hidden);
+    try testing.expectEqual(@as(usize, 0), row.labels.len);
+    try testing.expectEqual(@as(u64, 900), row.followers);
+    try testing.expectEqual(@as(u32, @bitCast(stored.quality_score)), @as(u32, @bitCast(@as(f32, @floatCast(row.score)))));
+}
+
+test "divergence pds_record_keeps_labels: a taken-down account stays hidden when only its PDS answers" {
+    const pair = try Pair.create();
+    defer pair.destroy();
+    try pair.relay(.{ .sighting = eve });
+    try pair.resolve("eve.example");
+    try pair.label(eve, "!takedown", 5, "");
+    const remote = &pair.sim.remote[Sim.indexOf(eve)];
+    remote.taken_down = true;
+    remote.record = "{\"value\":{\"displayName\":\"Eve\",\"createdAt\":\"2024-01-01T00:00:00.000Z\"}}";
+    try pair.fetch(eve);
+
+    const stored = try pair.agree(eve);
+    try testing.expectEqual(store_mod.record.ProfileSource.pds, stored.profile_source);
+    try testing.expectEqualStrings("Eve", stored.display_name);
+    try testing.expect(stored.hidden);
+    try testing.expectEqual(@as(usize, 1), stored.labels.len);
+    const row = pair.production.actors.get(eve).?;
+    try testing.expectEqual(sql.Source.pds, row.source);
+    try testing.expectEqualStrings("Eve", row.display_name);
+    try testing.expect(!row.hidden);
+    try testing.expectEqual(@as(usize, 0), row.labels.len);
+}
+
 test "every difference on the store's review list is a flag or an explained omission" {
-    try testing.expectEqual(@as(usize, 6), std.meta.fieldNames(sql.Divergence).len);
-    try testing.expectEqual(@as(usize, 11), sql.unmodelled.len);
+    try testing.expectEqual(@as(usize, 8), std.meta.fieldNames(sql.Divergence).len);
+    try testing.expectEqual(@as(usize, 13), sql.unmodelled.len);
     inline for (comptime std.meta.fieldNames(sql.Divergence)) |name| {
         try testing.expect(@field(sql.Divergence.store, name));
         try testing.expect(!@field(sql.Divergence.production, name));
