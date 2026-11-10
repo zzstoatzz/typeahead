@@ -72,7 +72,8 @@ test-tantivy:
     python3 scripts/snapshot_refresh/test_tantivy_install.py
 
 # shadow comparison tooling (scripts/shadow_compare): unit tests, then the tool against
-# two real local Tantivy servers whose indexes differ in known ways. Contacts nothing remote.
+# real local Tantivy servers whose indexes differ in known ways, one of them also read
+# back through dump-actors as a bundle. Contacts nothing remote.
 test-shadow-compare:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -92,6 +93,9 @@ test-shadow-compare:
     cargo build --release --locked --jobs 2 --manifest-path services/tantivy/Cargo.toml
     cp "$CARGO_TARGET_DIR/release/typeahead-tantivy" "$ta_verify_root/typeahead-tantivy"
     export TA_BINARY="$ta_verify_root/typeahead-tantivy"
+    cargo build --release --locked --jobs 2 --manifest-path experiments/zkv-scale/dump-actors/Cargo.toml
+    cp "$CARGO_TARGET_DIR/release/dump-actors" "$ta_verify_root/dump-actors"
+    export DUMP_ACTORS_BINARY="$ta_verify_root/dump-actors"
     uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts -p 'test_bench_*.py'
     uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts/shadow_compare -p 'test_*.py'
 

@@ -70,6 +70,17 @@ def snapshot_section(result):
     return lines
 
 
+def marker_line(side, start, end):
+    if start.get("snapshot"):
+        return (
+            f"{side.capitalize()} is bundle {start['build_id']} at watermark {start['watermark']}: {start['actor_count']} live actors, "
+            f"{start['tombstone_count']} tombstones, {start['duplicate_dids']} duplicate DIDs dropped."
+        )
+    if "next_change" in start:
+        return f"{side.capitalize()} store change-log position {start['next_change']} to {end['next_change']}."
+    return f"{side.capitalize()} watermark {start['watermark']} to {end['watermark']}, build {start['build_id']} to {end['build_id']}."
+
+
 def corpus_section(result):
     lines = ["## Corpus", ""]
     state = "complete" if result["complete"] else f"incomplete ({result['stop_reason']}), resume from the checkpoint"
@@ -83,11 +94,7 @@ def corpus_section(result):
             f"{result['transient_differences']} agreed when re-read after {result['settle_delay_s']} s."
         )
         for side in ("production", "shadow"):
-            start, end = result["start_markers"][side], result["end_markers"][side]
-            lines.append(
-                f"{side.capitalize()} watermark {start['watermark']} to {end['watermark']}, "
-                f"build {start['build_id']} to {end['build_id']}."
-            )
+            lines.append(marker_line(side, result["start_markers"][side], result["end_markers"][side]))
     if result.get("fields_available") is False:
         lines.append("A server returned no comparison fields, so differences could only be classified by presence and document hash.")
     lines.append("")
@@ -192,11 +199,18 @@ GATE_TITLES = {
 }
 
 
+def backend(report, side):
+    if report["backends"][side]:
+        return report["backends"][side]
+    source = (report.get("corpus_sources") or {}).get(side) or {}
+    return source.get("base") or source.get("build_id") or source.get("kind") or "not given"
+
+
 def markdown(report):
     verdict = report["verdict"]
     lines = [f"# Shadow comparison, {report['date']}", ""]
     lines.append(
-        f"Production `{report['backends']['production']}` against shadow `{report['backends']['shadow']}`. "
+        f"Production `{backend(report, 'production')}` against shadow `{backend(report, 'shadow')}`. "
         f"Overall: **{verdict['overall']}**. Every figure is in [report.json](report.json)."
     )
     lines.append("")

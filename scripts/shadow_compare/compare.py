@@ -16,11 +16,14 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import arbiter
+import bundle
 import corpus
 import freshness
 import gates
 import report as reporting
 import search
+import sources
+import store
 from transport import Budget, Client, TransportError, redact, secret_from_env
 
 PHASES = ("corpus", "search", "latency", "freshness")
@@ -30,8 +33,8 @@ MIB = 1024 * 1024
 def parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--phases", default="search,latency,freshness", help="comma-separated subset of " + ",".join(PHASES))
-    p.add_argument("--production", required=True, help="production backend origin serving /search and /index/status")
-    p.add_argument("--shadow", required=True, help="shadow backend origin")
+    p.add_argument("--production", help="production backend origin serving /search and /index/status")
+    p.add_argument("--shadow", help="shadow backend origin")
     p.add_argument("--production-admin", help="origin of production's admin listener")
     p.add_argument("--shadow-admin", help="origin of the shadow's admin listener")
     p.add_argument("--production-admin-secret-env", help="name of the variable holding production's admin bearer")
@@ -40,8 +43,13 @@ def parser():
     p.add_argument("--timeout", type=float, default=15.0)
 
     g = p.add_argument_group("corpus")
+    g.add_argument("--production-bundle", help="production's corpus as a view file written by `bundle.py sort`, instead of its admin listener")
+    g.add_argument("--bundle-watermark", type=int, help="the bundle's source watermark in unix seconds")
+    g.add_argument("--bundle-build-id", help="the bundle's build id, recorded in the report")
+    g.add_argument("--shadow-store", help="origin of the shadow's store process, read instead of its admin listener")
+    g.add_argument("--shadow-store-secret-env", help="name of the variable holding the store's read bearer")
     g.add_argument("--page-size", type=int, default=corpus.PAGE_LIMIT)
-    g.add_argument("--corpus-delay", type=float, default=0.25, help="seconds between requests to one backend's admin listener")
+    g.add_argument("--corpus-delay", type=float, default=0.25, help="seconds between requests to one admin listener or store")
     g.add_argument("--corpus-max-requests", type=int, default=2000, help="per backend")
     g.add_argument("--corpus-max-mib", type=int, default=256, help="per backend, request plus response bodies")
     g.add_argument("--max-pages", type=int, help="stop after this many windows in this run")
@@ -85,46 +93,58 @@ def execute(args, environ=None, sleep=time.sleep):
     secrets = {
         side: secret_from_env(getattr(args, side + "_admin_secret_env"), environ) for side in ("production", "shadow")
     }
-    known = tuple(value for value in secrets.values() if value)
+    store_secret = secret_from_env(args.shadow_store_secret_env, environ)
+    known = tuple(value for value in (*secrets.values(), store_secret) if value)
     budgets, clients = {}, []
 
-    def client(name, base, max_requests, max_bytes, delay, secret=None):
+    def client(name, base, max_requests, max_bytes, delay, secret=None, secret_prefix="/admin/"):
         budgets[name] = Budget(max_requests, max_bytes)
-        made = Client(name, base, budgets[name], secret=secret, delay=delay, timeout=args.timeout, sleep=sleep, extra_secrets=known)
+        made = Client(name, base, budgets[name], secret=secret, delay=delay, timeout=args.timeout, sleep=sleep, extra_secrets=known,
+                      secret_prefix=secret_prefix)
         clients.append(made)
         return made
 
-    public = {
-        side: client(side, getattr(args, side), args.search_max_requests, args.search_max_mib * MIB, args.search_delay)
-        for side in ("production", "shadow")
-    }
-    admins = None
-    needs_admin = "corpus" in phases or bool(args.changed_dids)
-    if needs_admin:
-        for side in ("production", "shadow"):
-            if not getattr(args, side + "_admin") or not secrets[side]:
-                raise TransportError(f"{side}: this run needs --{side}-admin and --{side}-admin-secret-env")
-        admins = {
-            side: client(
-                side + " admin",
-                getattr(args, side + "_admin"),
-                args.corpus_max_requests,
-                args.corpus_max_mib * MIB,
-                args.corpus_delay,
-                secrets[side],
-            )
+    def admin(side):
+        if not getattr(args, side + "_admin") or not secrets[side]:
+            raise TransportError(f"{side}: this run needs --{side}-admin and --{side}-admin-secret-env")
+        limits = (args.corpus_max_requests, args.corpus_max_mib * MIB, args.corpus_delay)
+        return client(side + " admin", getattr(args, side + "_admin"), *limits, secrets[side])
+
+    public = None
+    if set(phases) & {"search", "latency", "freshness"}:
+        if not args.production or not args.shadow:
+            raise TransportError("search, latency and freshness need --production and --shadow")
+        public = {
+            side: client(side, getattr(args, side), args.search_max_requests, args.search_max_mib * MIB, args.search_delay)
             for side in ("production", "shadow")
         }
+    admins = {side: admin(side) for side in ("production", "shadow")} if args.changed_dids else None
+    corpus_sources = None
+    if "corpus" in phases:
+        if args.production_bundle:
+            production = bundle.BundleJsonl(args.production_bundle, watermark=args.bundle_watermark, build_id=args.bundle_build_id)
+        else:
+            production = sources.TantivyAdmin(admins["production"] if admins else admin("production"), not args.no_fields)
+        if args.shadow_store:
+            if not store_secret:
+                raise TransportError("shadow: --shadow-store needs --shadow-store-secret-env")
+            limits = (args.corpus_max_requests, args.corpus_max_mib * MIB, args.corpus_delay)
+            shadow = store.StoreHttp(client("shadow store", args.shadow_store, *limits, store_secret, store.SECRET_PREFIX))
+        else:
+            shadow = sources.TantivyAdmin(admins["shadow"] if admins else admin("shadow"), not args.no_fields)
+        corpus_sources = {"production": production, "shadow": shadow}
     now = datetime.now(timezone.utc)
     report = {
         "schema_version": 1,
         "date": now.strftime("%Y-%m-%d"),
         "started_at": int(now.timestamp()),
         "phases": phases,
-        "backends": {side: public[side].base for side in public},
+        "backends": {side: (getattr(args, side) or "").rstrip("/") or None for side in ("production", "shadow")},
+        "corpus_sources": {side: source.identity for side, source in corpus_sources.items()} if corpus_sources else None,
         "admin_secret_variables": {
             side: getattr(args, side + "_admin_secret_env") for side in ("production", "shadow")
         },
+        "store_secret_variable": args.shadow_store_secret_env,
         "thresholds": {name: getattr(gates, name) for name in dir(gates) if name.isupper() and name not in ("PASS", "FAIL", "NOT_RUN", "GATES", "EVALUATORS")},
     }
     try:
@@ -132,20 +152,20 @@ def execute(args, environ=None, sleep=time.sleep):
         if args.flagged_from:
             flagged |= set(json.loads(Path(args.flagged_from).read_text())["corpus"]["flagged_dids"])
         if "corpus" in phases:
-            result = corpus.run(
-                admins["production"],
-                admins["shadow"],
+            result = corpus.run_sources(
+                corpus_sources["production"],
+                corpus_sources["shadow"],
                 checkpoint_path=args.checkpoint,
                 page_size=args.page_size,
                 max_pages=args.max_pages,
                 max_tracked=gates.MAX_TRACKED_DIFFERENCES,
                 settle_delay=args.settle_delay,
                 sample_size=gates.ARBITER_SAMPLE_SIZE,
-                want_fields=not args.no_fields,
+                watermark_skew=gates.WATERMARK_SKEW_S,
                 sleep=sleep,
             )
             if args.arbiter and result["differing_dids"]:
-                limits = (500, 16 * MIB, args.arbiter_delay)
+                limits = (1000, 32 * MIB, args.arbiter_delay)
                 authority = arbiter.Authority(
                     client("plc directory", args.plc_url, *limits),
                     client("appview", args.appview_url, *limits),
