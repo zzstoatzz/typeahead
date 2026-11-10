@@ -185,9 +185,11 @@ in operational counts; `X-Client: smoke-testing` is excluded from app/adoption c
 
 Request and traffic statistics are moving from Turso to the `typeahead-stats`
 D1 database ([plan](plans/stats-off-turso.md), issue 34). Steps 1 and 2 of that
-plan were implemented on 2026-11-10 and had not been deployed when this was
-written; record the deploy and `T0` (the first 5-minute bucket that begins
-after it) here.
+plan went live on 2026-11-10: the schema was applied and the Worker deployed at
+19:19:01 UTC. `T0`, the first 5-minute bucket that begins after the deploy, is
+2026-11-10 19:20:00 UTC (bucket 5981128). The four closed buckets from `T0`
+to 19:35 held identical totals in both stores when checked (407, 537, 394,
+489 answers).
 
 - The public Worker binds the database as `STATS_DB`. Its schema is the nine
   statistics tables as production Turso defines them, in `migrations/stats-d1`.
