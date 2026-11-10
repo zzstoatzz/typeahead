@@ -385,6 +385,9 @@ pub const IngestHandler = struct {
         while (self.buffer.items.len > 0 or self.delete_buffer.items.len > 0) {
             writer.waitUntil(self.retry_after);
             self.flushWith(writer);
+            // The relay is unread on purpose here, so the pause is not an
+            // upstream stall; failed writes still trip the flush checks.
+            last_event_at.store(writer.now(), .monotonic);
         }
         log.info("backpressure: queue drained, resuming relay consumption", .{});
     }
@@ -846,6 +849,7 @@ const TestWriter = struct {
     waits: usize = 0,
     last_cursor: i64 = 0,
     clock: i64 = 0,
+    seconds_per_post: i64 = 0,
 
     fn now(self: *TestWriter) i64 {
         return self.clock;
@@ -853,6 +857,7 @@ const TestWriter = struct {
 
     fn post(self: *TestWriter, events: []const ActorEvent, cursor: i64) bool {
         self.attempts += 1;
+        self.clock += self.seconds_per_post;
         self.last_cursor = cursor;
         if (self.failures > 0) {
             self.failures -= 1;
@@ -899,6 +904,25 @@ test "full backlog retries without losing events or advancing past failed writes
     // The sent cursor always describes the previous acknowledged batch.
     try testing.expectEqual(@as(i64, MAX_BACKLOG - MAX_BATCH), writer.last_cursor);
     try testing.expect(!backpressure_active.load(.monotonic));
+}
+
+test "a slow backlog drain does not look like a stalled relay" {
+    // Regression (2026-11-09): the relay is not read while a full backlog
+    // drains, so a drain slower than WATCHDOG_STALL_SECS aged last_event_at
+    // past the limit and the watchdog restarted a process whose writes were
+    // succeeding. Each restart emptied the bloom filter and refilled the backlog.
+    var transport: HttpTransport = undefined;
+    var handler = try IngestHandler.init(testing.allocator, .{ .worker_url = "", .secret = "" }, &transport);
+    defer handler.deinit();
+    for (0..MAX_BACKLOG) |i| {
+        handler.pending_cursor = @intCast(i + 1);
+        handler.enqueue(.{ .did = "did:plc:test" });
+    }
+    var writer = TestWriter{ .seconds_per_post = 2 * 60 };
+    last_event_at.store(writer.clock, .monotonic);
+    handler.drainBacklog(&writer);
+    try testing.expect(writer.clock > WATCHDOG_STALL_SECS);
+    try testing.expect(writer.clock - last_event_at.load(.monotonic) < WATCHDOG_STALL_SECS);
 }
 
 test "failed delete holds replay cursor until the delete succeeds" {
