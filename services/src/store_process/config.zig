@@ -14,12 +14,48 @@
 //! | `INDEX_ADMIN_URL`        | no       | that listener, a loopback URL; default `http://127.0.0.1:8081` |
 //! | `INDEX_SOURCE_ID`        | no       | names this store to the index; default `$FLY_APP_NAME-store`, change it when the store is rebuilt |
 //! | `INDEX_ADOPT_CURSOR`     | no       | `1` takes over an index whose cursor something else wrote (a bundle's), by a full resync |
+//! | `ENRICH`                 | no       | `0` turns profile enrichment off; it is on unless `STORE_OFFLINE` |
+//! | `ENRICH_REQUESTS_PER_SECOND` | no   | ceiling on enrichment requests from this process, default 0.5  |
+//! | `ENRICH_JITTER`          | no       | each gap between requests is stretched by up to this fraction, default 0.2 |
+//! | `ENRICH_WALK_PER_HOUR`   | no       | actors the quality walk queues an hour, default 20000          |
+//! | `ENRICH_SWEEP_PER_HOUR`  | no       | actors the rest walk queues an hour while the queue keeps up, default 10000 |
+//! | `ENRICH_LEASE_SECONDS`   | no       | how long a leased refresh stays out of the queue, default 300  |
+//! | `ENRICH_BACKOFF_SECONDS` | no       | first pause after a failed appview request, doubling, default 30 |
+//! | `ENRICH_BACKOFF_MAX_SECONDS` | no   | longest such pause, default 900                                |
+//! | `ENRICH_APPVIEW_URL`     | no       | the appview asked for profiles, default `https://public.api.bsky.app` |
+//! | `ENRICH_BLACKSKY_URL`    | no       | the appview asked about accounts Bluesky took down, default `https://api.blacksky.community` |
+//! | `CORPUS_SCAN_SECONDS`    | no       | seconds between corpus counts, default 3600; `0` turns them off |
+//!
+//! Enrichment pacing, with the defaults, for one replica. Two replicas run
+//! this loop against the same appview, so the appview sees twice each rate.
+//!
+//! - Requests are at least 2 s apart (0.5 a second) and each gap is stretched
+//!   by 0 to 20 %, 2.2 s on average: 1,636 requests an hour, 39,273 a day.
+//!   Two replicas: at most 1 request a second, 3,273 an hour on average. The
+//!   HeavyPad backfill this replaces paced itself at 2 a second.
+//! - A request carries 25 actors, so a replica refreshes at most 40,909
+//!   actors an hour, 981,818 a day. A DID the appview does not return costs
+//!   one more request (the takedown probe) and up to three after that, which
+//!   comes out of the same budget.
+//! - The quality walk queues 20,000 ranked actors an hour, 480,000 a day:
+//!   25 times the cron's 800. A pool of N ranked actors is swept every
+//!   N / 20,000 hours: 2.1 hours for the 41,355 counted on 2026-08-16, 50
+//!   hours for a million. `/health` reports the period for the pool the last
+//!   corpus scan counted.
+//! - The rest walk queues 10,000 an hour, 240,000 a day, and only while the
+//!   queue is keeping up, so it yields to everything else. A pool of N is
+//!   swept every N / 10,000 hours: 55 days if all 13.2 million actors were
+//!   in it.
+//! - That leaves 10,909 actors an hour, 261,818 a day, for refreshes that
+//!   profile and identity writes queue. New accounts arrive at about 2,900
+//!   an hour.
 //!
 //! The role reads nothing for Turso or the Worker and opens no connection
 //! to either. `MODE=store-bootstrap` loads a new store; see `bootstrap.zig`.
 
 const std = @import("std");
 const ingest = @import("../ingest.zig");
+const enrich = @import("enrich.zig");
 
 pub const Config = struct {
     store_dir: []const u8,
@@ -27,6 +63,9 @@ pub const Config = struct {
     bootstrap_cursor: ?i64 = null,
     offline: bool = false,
     index: ?Index = null,
+    /// Null when enrichment is off.
+    enrich: ?enrich.Options = null,
+    corpus_scan_seconds: u64 = 3600,
 };
 
 pub const Index = struct {
@@ -39,7 +78,7 @@ pub const Index = struct {
 pub const default_admin_url = "http://127.0.0.1:8081";
 var source_id_buf: [128]u8 = undefined;
 
-pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IndexNotLoopback };
+pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IndexNotLoopback, InvalidEnrichment, InvalidCorpusScan };
 
 /// The bridge sends the admin secret, so the index must be on this machine.
 pub fn loopback(url: []const u8) bool {
@@ -73,7 +112,42 @@ pub fn load(getenv: Getenv) Error!Config {
             .adopt_cursor = if (getenv("INDEX_ADOPT_CURSOR")) |text| std.mem.eql(u8, text, "1") else false,
         };
     };
+    const enrich_off = if (getenv("ENRICH")) |text| std.mem.eql(u8, text, "0") else false;
+    if (!config.offline and !enrich_off) config.enrich = try enrichment(getenv);
+    if (getenv("CORPUS_SCAN_SECONDS")) |text| config.corpus_scan_seconds = std.fmt.parseInt(u64, text, 10) catch return error.InvalidCorpusScan;
     return config;
+}
+
+fn whole(getenv: Getenv, name: [*:0]const u8, default: u64) Error!u64 {
+    return std.fmt.parseInt(u64, getenv(name) orelse return default, 10) catch error.InvalidEnrichment;
+}
+
+fn fraction(getenv: Getenv, name: [*:0]const u8, default: f64) Error!f64 {
+    const value = std.fmt.parseFloat(f64, getenv(name) orelse return default) catch return error.InvalidEnrichment;
+    return if (std.math.isFinite(value) and value >= 0) value else error.InvalidEnrichment;
+}
+
+fn origin(getenv: Getenv, name: [*:0]const u8, default: []const u8) Error![]const u8 {
+    const url = std.mem.trimEnd(u8, getenv(name) orelse return default, "/");
+    return if (std.mem.startsWith(u8, url, "https://") or loopback(url)) url else error.InvalidEnrichment;
+}
+
+fn enrichment(getenv: Getenv) Error!enrich.Options {
+    const defaults: enrich.Options = .{};
+    const options: enrich.Options = .{
+        .appview_url = try origin(getenv, "ENRICH_APPVIEW_URL", defaults.appview_url),
+        .blacksky_url = try origin(getenv, "ENRICH_BLACKSKY_URL", defaults.blacksky_url),
+        .requests_per_second = try fraction(getenv, "ENRICH_REQUESTS_PER_SECOND", defaults.requests_per_second),
+        .jitter = try fraction(getenv, "ENRICH_JITTER", defaults.jitter),
+        .walk_per_hour = try whole(getenv, "ENRICH_WALK_PER_HOUR", defaults.walk_per_hour),
+        .sweep_per_hour = try whole(getenv, "ENRICH_SWEEP_PER_HOUR", defaults.sweep_per_hour),
+        .lease_seconds = try whole(getenv, "ENRICH_LEASE_SECONDS", defaults.lease_seconds),
+        .backoff_seconds = try whole(getenv, "ENRICH_BACKOFF_SECONDS", defaults.backoff_seconds),
+        .backoff_max_seconds = try whole(getenv, "ENRICH_BACKOFF_MAX_SECONDS", defaults.backoff_max_seconds),
+    };
+    if (options.requests_per_second <= 0 or options.requests_per_second > 10 or options.jitter > 1) return error.InvalidEnrichment;
+    if (options.lease_seconds < 30 or options.backoff_seconds == 0 or options.backoff_max_seconds < options.backoff_seconds) return error.InvalidEnrichment;
+    return options;
 }
 
 /// Where the relay subscription starts: the stored cursor when there is
@@ -146,4 +220,63 @@ test "the index bridge runs when the admin secret is set, against a loopback ind
     try testing.expectEqualStrings("http://127.0.0.1:8085", index.admin_url);
     try testing.expectEqualStrings("slot-a-2", index.source_id);
     try testing.expect(index.adopt_cursor);
+}
+
+test "enrichment is on with its defaults unless the role is offline or told otherwise" {
+    const base = [2][]const u8{ "STORE_DIR", "/d" };
+    const defaults = (try load(fakeEnv(&.{base}))).enrich.?;
+    try testing.expectEqual(@as(f64, 0.5), defaults.requests_per_second);
+    try testing.expectEqual(@as(f64, 0.2), defaults.jitter);
+    try testing.expectEqual(@as(u64, 20_000), defaults.walk_per_hour);
+    try testing.expectEqual(@as(u64, 10_000), defaults.sweep_per_hour);
+    try testing.expectEqual(@as(u64, 300), defaults.lease_seconds);
+    try testing.expectEqual(@as(u64, 30), defaults.backoff_seconds);
+    try testing.expectEqual(@as(u64, 900), defaults.backoff_max_seconds);
+    try testing.expectEqualStrings("https://public.api.bsky.app", defaults.appview_url);
+    try testing.expectEqualStrings("https://api.blacksky.community", defaults.blacksky_url);
+    try testing.expectEqual(@as(u64, 3600), (try load(fakeEnv(&.{base}))).corpus_scan_seconds);
+
+    try testing.expect((try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).enrich == null);
+    try testing.expect((try load(fakeEnv(&.{ base, .{ "ENRICH", "0" } }))).enrich == null);
+    const set = try load(fakeEnv(&.{
+        base,                                                   .{ "ENRICH_REQUESTS_PER_SECOND", "0.25" }, .{ "ENRICH_JITTER", "0.5" },
+        .{ "ENRICH_WALK_PER_HOUR", "800" },                     .{ "ENRICH_SWEEP_PER_HOUR", "0" },         .{ "ENRICH_LEASE_SECONDS", "600" },
+        .{ "ENRICH_BACKOFF_SECONDS", "10" },                    .{ "ENRICH_BACKOFF_MAX_SECONDS", "60" },   .{ "ENRICH_APPVIEW_URL", "http://127.0.0.1:2584/" },
+        .{ "ENRICH_BLACKSKY_URL", "https://blacksky.example" }, .{ "CORPUS_SCAN_SECONDS", "0" },
+    }));
+    const options = set.enrich.?;
+    try testing.expectEqual(@as(f64, 0.25), options.requests_per_second);
+    try testing.expectEqual(@as(f64, 0.5), options.jitter);
+    try testing.expectEqual(@as(u64, 800), options.walk_per_hour);
+    try testing.expectEqual(@as(u64, 0), options.sweep_per_hour);
+    try testing.expectEqual(@as(u64, 600), options.lease_seconds);
+    try testing.expectEqual(@as(u64, 10), options.backoff_seconds);
+    try testing.expectEqual(@as(u64, 60), options.backoff_max_seconds);
+    try testing.expectEqualStrings("http://127.0.0.1:2584", options.appview_url);
+    try testing.expectEqualStrings("https://blacksky.example", options.blacksky_url);
+    try testing.expectEqual(@as(u64, 0), set.corpus_scan_seconds);
+}
+
+test "enrichment settings that could not pace a loop are refused" {
+    const base = [2][]const u8{ "STORE_DIR", "/d" };
+    for ([_][2][]const u8{
+        .{ "ENRICH_REQUESTS_PER_SECOND", "0" },              .{ "ENRICH_REQUESTS_PER_SECOND", "-1" }, .{ "ENRICH_REQUESTS_PER_SECOND", "fast" },
+        .{ "ENRICH_REQUESTS_PER_SECOND", "50" },             .{ "ENRICH_JITTER", "2" },               .{ "ENRICH_WALK_PER_HOUR", "-5" },
+        .{ "ENRICH_LEASE_SECONDS", "5" },                    .{ "ENRICH_BACKOFF_SECONDS", "0" },      .{ "ENRICH_BACKOFF_MAX_SECONDS", "10" },
+        .{ "ENRICH_APPVIEW_URL", "http://appview.example" },
+    }) |pair| {
+        const env = struct {
+            var name: []const u8 = "";
+            var value: []const u8 = "";
+            fn get(asked: [*:0]const u8) ?[]const u8 {
+                if (std.mem.eql(u8, std.mem.span(asked), "STORE_DIR")) return base[1];
+                if (std.mem.eql(u8, std.mem.span(asked), name)) return value;
+                return null;
+            }
+        };
+        env.name = pair[0];
+        env.value = pair[1];
+        try testing.expectError(error.InvalidEnrichment, load(env.get));
+    }
+    try testing.expectError(error.InvalidCorpusScan, load(fakeEnv(&.{ base, .{ "CORPUS_SCAN_SECONDS", "hourly" } })));
 }
