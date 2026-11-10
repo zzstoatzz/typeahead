@@ -44,11 +44,18 @@ export async function recordSnapshot(db: TursoDB): Promise<void> {
     .run();
 }
 
+export const SNAPSHOT_HISTORY_HOURS = 5000;
+
+export const SNAPSHOT_HISTORY_SQL = `SELECT hour, total, with_handles, with_avatars, hidden FROM (
+  SELECT hour, total, with_handles, with_avatars, hidden FROM snapshots
+  ORDER BY hour DESC LIMIT ${SNAPSHOT_HISTORY_HOURS}
+) ORDER BY hour ASC`;
+
 /** materialize stats data to KV so /stats never queries turso on the request path */
 export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
   // metrics: 5-min buckets. 100k buckets ≈ 1 year of headroom — effectively
   // "all" for our current age. lets the /stats range selector compute true totals.
-  // snapshots: hourly. 5000 covers ~7 months.
+  // snapshots: hourly, the newest 5000 (~7 months), oldest first.
   // deltas: 5-min, 288 = 24h (used to stitch trend chart tail).
   // traffic: last 30d of per-domain 5-min buckets, rolled up to hourly.
   // bounded by hours × active domains (≤720 × ~dozens), NOT the corpus.
@@ -66,7 +73,7 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
 
   const [metricsRes, snapshotRes, deltasRes, trafficRes, traffic5mRes, trafficDailyRes, sourcesRes] = await db.batch([
     db.prepare("SELECT hour, searches, total_ms, cache_hits, cache_ms FROM metrics ORDER BY hour DESC LIMIT 100000"),
-    db.prepare("SELECT hour, total, with_handles, with_avatars, hidden FROM snapshots ORDER BY hour ASC LIMIT 5000"),
+    db.prepare(SNAPSHOT_HISTORY_SQL),
     db.prepare("SELECT bucket, actors_delta, handles_delta, avatars_delta FROM actor_deltas ORDER BY bucket DESC LIMIT 288"),
     db.prepare(
       `SELECT bucket / 12 AS hour, domain, SUM(hits) AS hits
