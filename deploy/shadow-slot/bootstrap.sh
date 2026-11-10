@@ -3,10 +3,9 @@
 # the Fly machine while the supervisor idles (no bootstrap.json yet):
 #
 #   /app/bootstrap.sh [--index-only] [build_id]
+#   /app/bootstrap.sh --store-only      # add the store to an index-only volume
 #
-# The index steps work today. The store steps are placeholders until the
-# store process has a loader; without --index-only the script stops there
-# and leaves the volume unmarked.
+# The store steps need RELAY_BOOTSTRAP_CURSOR; see load_store.
 set -euo pipefail
 
 data=${SHADOW_DATA:-/data}
@@ -16,14 +15,18 @@ releases=releases/search-tantivy
 reserve_bytes=$((1024 * 1024 * 1024))
 replay_margin_s=${REPLAY_MARGIN_S:-3600}
 tantivy=${TANTIVY_BIN:-/app/typeahead-tantivy}
+ingester=${INGESTER_BIN:-/app/typeahead-ingester}
+dump_actors=${DUMP_ACTORS_BIN:-/app/dump-actors}
 
 index_only=false
+store_only=false
 build=""
 for arg in "$@"; do
   case $arg in
     --index-only) index_only=true ;;
+    --store-only) store_only=true ;;
     b[0-9]*) build=$arg ;;
-    *) echo "usage: bootstrap.sh [--index-only] [build_id]" >&2; exit 2 ;;
+    *) echo "usage: bootstrap.sh [--index-only | --store-only] [build_id]" >&2; exit 2 ;;
   esac
 done
 
@@ -91,18 +94,50 @@ fetch_index() {
   say index "{\"actor_count\":$index_actors}"
 }
 
-# Placeholder. The loader has to read every stored actor from
-# $scratch/tantivy/index (experiments/zkv-scale/dump-actors does this), commit
-# them to a new store at $data/store with backpressure against compaction,
-# settle it, and report the number of actors committed.
+# Loads the store from the index's own documents: dump-actors prints every
+# stored actor as a JSON line, and the ingester's store-bootstrap mode commits
+# them in bulk-load mode with progress lines. The relay, labeler and PLC
+# cursors land in the loader's last commit, so a half-loaded store has none
+# and the store process refuses to follow the relay on it. The load goes into
+# store.loading and is renamed when it completes; an interrupted load is run
+# again and continues over what is there.
+#
+# RELAY_BOOTSTRAP_CURSOR must be a relay seq older than the bundle; see
+# "Cursors" in bootstrap.md. The loader does not yet check it against the
+# relay's first frame. The PLC cursor is the watermark less the replay margin.
+# LABELER_BOOTSTRAP_CURSOR is optional: without it the label stream starts at
+# its head. BOOTSTRAP_POLICY names a JSON file of overrides and blocked
+# domains to seed.
 load_store() {
-  die "store loader is not built yet; rerun with --index-only to seed the index alone"
+  local index_dir=$1
+  [[ -x $dump_actors ]] || die "dump-actors is not at $dump_actors"
+  [[ ${RELAY_BOOTSTRAP_CURSOR:-} =~ ^[0-9]+$ ]] || die "RELAY_BOOTSTRAP_CURSOR is not set"
+  mkdir -p "$scratch"
+  "$dump_actors" "$index_dir" >"$scratch/actors.jsonl" || die "could not read the index's actors"
+  say dumped "{\"bytes\":$(stat -c %s "$scratch/actors.jsonl")}"
+  local plc_cursor
+  plc_cursor=$(date -u -d "@$((watermark - replay_margin_s))" +%Y-%m-%dT%H:%M:%S.000Z)
+  env MODE=store-bootstrap STORE_DIR="$data/store.loading" BOOTSTRAP_ACTORS="$scratch/actors.jsonl" \
+    BOOTSTRAP_RELAY_CURSOR="$RELAY_BOOTSTRAP_CURSOR" BOOTSTRAP_PLC_CURSOR="$plc_cursor" \
+    ${LABELER_BOOTSTRAP_CURSOR:+BOOTSTRAP_LABELER_CURSOR="$LABELER_BOOTSTRAP_CURSOR"} \
+    ${BOOTSTRAP_POLICY:+BOOTSTRAP_POLICY="$BOOTSTRAP_POLICY"} \
+    "$ingester" || die "store load failed; run again to continue"
+  mv "$data/store.loading" "$data/store"
+  rm "$scratch/actors.jsonl"
+  say store "{\"relay_cursor\":$RELAY_BOOTSTRAP_CURSOR,\"plc_cursor\":\"$plc_cursor\"}"
 }
 
-# Placeholder. Before the store process may follow the relay it needs cursors
-# that are provably older than the bundle: see "Cursors" in bootstrap.md.
-seed_cursors() {
-  die "cursor seeding is not built yet"
+# Adds the store to a volume that was seeded with --index-only.
+store_only() {
+  [[ -e $marker ]] || die "volume has no bootstrap receipt; run without --store-only"
+  [[ -e $data/store ]] && die "volume already holds a store"
+  watermark=$(jq -r .source_watermark "$marker")
+  load_store "$data/tantivy/index"
+  jq '.store_loaded = true' "$marker" >"$marker.tmp"
+  sync "$marker.tmp"
+  mv "$marker.tmp" "$marker"
+  rmdir "$scratch" 2>/dev/null || true
+  say done "$(cat "$marker")"
 }
 
 finish() {
@@ -119,14 +154,17 @@ finish() {
   say done "$(cat "$marker")"
 }
 
+if $store_only; then
+  store_only
+  exit 0
+fi
 preflight
 select_build
 read_manifest
 fetch_index
 store_loaded=false
 if ! $index_only; then
-  load_store
-  seed_cursors
+  load_store "$scratch/tantivy/index"
   store_loaded=true
 fi
 finish

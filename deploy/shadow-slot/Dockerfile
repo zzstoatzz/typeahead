@@ -28,6 +28,9 @@ COPY services/src ./src
 # the vendored tarballs seed the package cache, as in services/Dockerfile;
 # refresh them with scripts/vendor-zig-deps.py after a dep bump
 COPY services/.zig-pkg-vendor /root/.cache/zig/p/
+# the handle quarantine list the store role embeds; services/build.zig reads
+# it from ../src
+COPY src/identity-quarantine.json /src/src/identity-quarantine.json
 
 # -Dtarget pins the x86-64 baseline: native CPU detection breaks under
 # emulation (Rosetta reports an unknown CPU model)
@@ -54,6 +57,14 @@ COPY --from=normalizer /out/libtypeahead_normalizer.a /normalizer/
 ENV TA_NORMALIZER_LIB_DIR=/normalizer
 RUN --network=none cargo build --release --locked --offline --manifest-path services/tantivy/Cargo.toml
 
+# prints the index's stored actors as JSON lines for the store's bootstrap
+FROM rust:1.91.1-slim-bookworm@sha256:8514999d4786ef12efe89239e86b3d0a021b94b9d35108c8efe6c79ca7dc1a65 AS dump
+
+WORKDIR /src
+COPY experiments/zkv-scale/dump-actors/Cargo.toml experiments/zkv-scale/dump-actors/Cargo.lock ./
+COPY experiments/zkv-scale/dump-actors/src ./src
+RUN cargo build --release --locked
+
 FROM debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -68,6 +79,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 COPY --from=store /src/services/zig-out/bin/typeahead-ingester .
 COPY --from=index /src/services/tantivy/target/release/typeahead-tantivy .
+COPY --from=dump /src/target/release/dump-actors .
 COPY --chmod=0755 deploy/shadow-slot/supervise deploy/shadow-slot/bootstrap.sh ./
 
 EXPOSE 8080

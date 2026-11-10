@@ -1,6 +1,6 @@
 # Shadow slot bootstrap
 
-How an empty shadow-slot volume gets its first index and store. The script beside this document seeds the index today; the store steps are placeholders that stop with an error. Nothing here has run on a Fly machine.
+How an empty shadow-slot volume gets its first index and store. The script beside this document seeds the index and, since 2026-11-10, loads the store with the ingester's `MODE=store-bootstrap` (`--store-only` adds a store to a volume seeded with `--index-only`). The index steps have run on `typeahead-shadow-a`; the store steps have not run on a machine.
 
 Everything happens on the machine. The bundle goes from R2 to the volume and never through a laptop or a home network.
 
@@ -12,8 +12,8 @@ Everything happens on the machine. The bundle goes from R2 to the volume and nev
    2. reads the manifest and checks its identity, size and checksum fields;
    3. checks free disk, downloads the bundle, and verifies its size and SHA-256 against the manifest;
    4. extracts only the index files, verifies each against the manifest's inventory, deletes the bundle, and asks the reader binary to open the result;
-   5. loads the store from the actor documents stored in that index (placeholder);
-   6. seeds the relay, labeler and PLC cursors (placeholder);
+   5. loads the store from the actor documents stored in that index (`dump-actors`, then `MODE=store-bootstrap`);
+   6. seeds the relay, labeler and PLC cursors in the loader's last commit, from `RELAY_BOOTSTRAP_CURSOR`, the watermark and optionally `LABELER_BOOTSTRAP_CURSOR` (the relay cursor is not yet checked against the relay's first frame);
    7. moves the index into place, writes the receipt, and removes the scratch directory.
 3. Restart the machine. The supervisor finds the receipt and starts both processes.
 

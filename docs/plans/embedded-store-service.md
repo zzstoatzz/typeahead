@@ -94,6 +94,41 @@ The store process is a second role of the ingester binary, `MODE=store`, in `ser
 - **The relay read loop does not wait for commits.** It blocks only when the queue is full, which is the backpressure; a stalled maintainer stops the owner taking from the queue. A pause of that kind is not treated as a dead relay.
 - **No bloom filter.** A repeat sighting is a point read that changes nothing, at most one write an hour per active account. The ingester's filter is never reset, so its false positives grow for as long as a process lives and hide new accounts that only ever write ordinary records; this role does not carry it over.
 - **Reads go through read-only handles.** `/store/*` and the index bridge each have one, refreshed per request or step, so neither can hold a commit back. Each handle keeps table metadata of its own (60 MB a handle at 13.2 million actors in the 2026-11-10 measurement).
+- **The index bridge runs in the process** when `ADMIN_SECRET` is set, on its own thread, against the index's loopback admin listener. Its policy is a snapshot of the store's overrides and blocked domains, sent with every push and heartbeat: an index built from a bundle has policy enabled and stops answering searches once its snapshot is 300 seconds old. With a snapshot the index decides visibility at query time from labels, its slur rules and those lists, and ignores the stored `hidden` flag.
+- **A new store is loaded by `MODE=store-bootstrap`** from the actor lines `dump-actors` prints and an optional policy file. The cursors and the bridge position land in the last batch's commit. `deploy/shadow-slot/bootstrap.sh` calls it; that script path has not run on a machine.
+
+What differs from production, all covered by named flags in `sql_model.zig` and a test each in `differential_test.zig`:
+
+- **A gone account stays gone until `#account` says otherwise**, and returns with its record. Production deletes the row, so any later event from the account recreates it bare and re-resolves it. This is the one difference a search user could see through the index.
+- **The stored `hidden` flag is not what search uses** while the bridge sends a policy snapshot, so its differences stay inside the store and the `/store` reads: no slur rule is applied to it (the role supplies no predicate), a lapsed label stops hiding when the expiry pass reaches it (2,000 label keys every 10 seconds), and a domain block reaches stored actors by a sweep that a crash can leave unfinished. The comparison job reads this flag and must allow for the slur rule.
+- **A bundle does not carry everything.** A loaded actor has no description or banner until its profile is seen again, and its activity and update times are the load time.
+
+Tests (`cd services && zig build test`): encoding and ordering for every range, a model-based test of every kind of change against an in-memory model, a child process killed during commits, flushes and compaction steps, a change-log replay, and a reader scanning while another process writes, compacts and collects.
+
+## Index bridge
+
+Status: built and tested locally on 2026-11-10 (issue 42). Nothing runs it yet. Mechanism, crash behaviour and the places the server's contract does not fit are in [the index bridge document](../index-bridge.md).
+
+Decisions later steps depend on:
+
+- **The index's source cursor holds the bridge's position.** It commits with the documents, so it is the authority; the store's bridge cursor is a copy written afterwards, and is safe to trim the change log by.
+- **A trimmed log is answered with a full resync**, which also runs at bootstrap and when the index and the store disagree about the log. Until a round has completed the bridge sends no watermark, so the index reports stale rather than fresh.
+- **The stored `hidden` flag is the moderation decision.** The bridge sends no policy snapshot, so the index filters on the flag the store computed.
+- **The bridge runs on its own thread with a reader handle.** It blocks on the index's commits; position writes go to the writer.
+- **`last_activity_at` is not sent to the index**, because the store does not log a change for it.
+
+Open for the later steps: the server's `cutover_source_ready` and the slot supervisor's checks name the Turso poller's cursor and cannot pass for a bridge-fed index, and an index must still be created by `import` before the bridge can fill it.
+
+## Store process
+
+Status: built and tested locally on 2026-11-10 (issue 41). It is not deployed: no Fly app, volume or image runs it, and it has never followed the real relay, labeler or PLC export.
+
+The store process is a second role of the ingester binary, `MODE=store`, in `services/src/store_process/`. `MODE=ingester` is unchanged. Its configuration is the table at the top of `config.zig`; its concurrency model is the comment at the top of `owner.zig`; its HTTP surface is the table at the top of `http.zig`.
+
+- **One owner thread writes.** The relay intake, the identity resolvers, the PLC tail and the label stream build batches of store changes and hand them to a bounded queue. The owner commits what is queued as one store commit, each batch's cursor inside it, and does the housekeeping between commits: stepped maintenance, domain sweeps, tombstone pruning after seven days, a pass that makes lapsed labels stop hiding, change-log trimming below the slowest consumer, and reopening the store after a failed commit.
+- **The relay read loop does not wait for commits.** It blocks only when the queue is full, which is the backpressure; a stalled maintainer stops the owner taking from the queue. A pause of that kind is not treated as a dead relay.
+- **No bloom filter.** A repeat sighting is a point read that changes nothing, at most one write an hour per active account. The ingester's filter is never reset, so its false positives grow for as long as a process lives and hide new accounts that only ever write ordinary records; this role does not carry it over.
+- **Reads go through read-only handles.** `/store/*` and the index bridge each have one, refreshed per request or step, so neither can hold a commit back. Each handle keeps table metadata of its own (60 MB a handle at 13.2 million actors in the 2026-11-10 measurement).
 - **The index bridge runs in the process** when `INDEX_ADMIN_URL`, `INDEX_ADMIN_SECRET` and `INDEX_SOURCE_ID` are set, on its own thread. Its policy is null, so the stored `hidden` flag is the whole moderation decision in the index.
 
 What differs from production and is visible, all covered by named flags in `sql_model.zig` and a test each in `differential_test.zig`:
@@ -105,7 +140,7 @@ What differs from production and is visible, all covered by named flags in `sql_
 
 Tests (`cd services && zig build test`): the Worker's write-path cases asserted on store state, a differential run against a model of today's SQL, the role killed with SIGKILL at and between commits and compared with an uninterrupted run, intake pausing on a stalled store without tripping the watchdog, and the owner, the bridge and a model index converging through kills.
 
-Not built: bootstrap from a bundle, enrichment and the refresh queue's consumer, the write surface for overrides and blocked domains, a scheduled count of live actors for the statistics total, and the Fly app.
+Not built: checking the bootstrap relay cursor against the relay's first frame, enrichment and the refresh queue's consumer, the write surface for overrides and blocked domains, a scheduled count of live actors for the statistics total, and the Fly app.
 
 ## Things that write today and where they go
 
