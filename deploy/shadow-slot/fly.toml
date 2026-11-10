@@ -13,6 +13,7 @@ kill_timeout = 60
   STORE_PORT = '8082'
   INDEX_RETRIEVAL = 'global-merge'
   INDEX_MAX_SYNC_LAG_S = '120'
+  INDEX_ADOPT_CURSOR = '1'
 
 [[mounts]]
   source = 'shadow_data'
