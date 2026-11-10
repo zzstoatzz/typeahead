@@ -1,0 +1,53 @@
+# Not deployed. See README.md for what has to exist first.
+# Deploy from the repository root: fly deploy . --config deploy/shadow-slot/fly.toml
+
+app = 'typeahead-shadow-a'
+primary_region = 'ewr'
+kill_signal = 'SIGTERM'
+kill_timeout = 60
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[env]
+  STORE_PORT = '8082'
+  INDEX_RETRIEVAL = 'global-merge'
+  INDEX_MAX_SYNC_LAG_S = '120'
+
+[[mounts]]
+  source = 'shadow_data'
+  destination = '/data'
+  initial_size = '40gb'
+
+[[restart]]
+  policy = 'always'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'off'
+  auto_start_machines = false
+  min_machines_running = 1
+
+[checks.index_ready]
+  type = 'http'
+  port = 8080
+  method = 'GET'
+  path = '/ready'
+  interval = '15s'
+  timeout = '2s'
+  grace_period = '60s'
+
+[checks.store_health]
+  type = 'http'
+  port = 8082
+  method = 'GET'
+  path = '/health'
+  interval = '15s'
+  timeout = '2s'
+  grace_period = '60s'
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 4
+  memory = '4gb'
