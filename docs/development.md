@@ -20,8 +20,9 @@ compiler. The ingester needs runtime credentials and an explicit `MODE=ingester`
 a bare `zig build run` does not configure one.
 
 ```sh
-just test-services           # ingester and normalizer unit tests
+just test-services           # ingester, normalizer, store and index bridge unit tests
 just --no-dotenv test-tantivy # isolated engine, source and recovery checks
+just --no-dotenv test-bridge  # index bridge against a real local Tantivy server
 ```
 
 ## Deployment

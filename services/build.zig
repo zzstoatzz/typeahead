@@ -122,6 +122,24 @@ pub fn build(b: *std.Build) void {
     });
     const run_bridge_tests = b.addRunArtifact(bridge_tests);
 
+    // Starts the real Tantivy server named by TANTIVY_TEST_BIN, so it is
+    // its own step: `just --no-dotenv test-bridge` builds that binary first.
+    const bridge_integration = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/bridge/integration.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "zat", .module = zat.module("zat") },
+            },
+        }),
+    });
+    const run_bridge_integration = b.addRunArtifact(bridge_integration);
+    run_bridge_integration.has_side_effects = true;
+    const bridge_integration_step = b.step("test-bridge", "Run the index bridge against a real Tantivy server");
+    bridge_integration_step.dependOn(&run_bridge_integration.step);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_ingest_tests.step);

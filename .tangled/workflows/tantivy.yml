@@ -22,3 +22,4 @@ steps:
       export PATH="$PWD/.zig:$PATH"
       test "$(zig version)" = "0.17.0"
       just --no-dotenv test-tantivy
+      just --no-dotenv test-bridge

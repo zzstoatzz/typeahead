@@ -100,6 +100,27 @@ test-shadow-compare:
     uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts -p 'test_bench_*.py'
     uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts/shadow_compare -p 'test_*.py'
 
+# run the index bridge against a real Tantivy server built from this checkout:
+# loopback only, synthetic actors, everything in one temporary tree
+test-bridge:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    test "$(zig version)" = "0.17.0"
+    ta_bridge_root=$(mktemp -d "${TMPDIR:-/tmp}/typeahead-bridge-check.XXXXXX")
+    trap 'rm -rf "$ta_bridge_root"' EXIT
+    mkdir -p "$ta_bridge_root/normalizer"
+    export CARGO_BUILD_JOBS=2
+    export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$PWD/services/tantivy/target}"
+    export TA_NORMALIZER_LIB_DIR="$ta_bridge_root/normalizer"
+    export TA_IDENTITY_POLICY_PATH="$PWD/src/identity-quarantine.json"
+    export TA_MODERATION_RULES_PATH="$PWD/src/moderation-regexes.json"
+    unset CARGO_BUILD_TARGET TYPEAHEAD_TEST_CRASH
+    python3 services/tantivy-normalizer/build.py --output "$TA_NORMALIZER_LIB_DIR/libtypeahead_normalizer.a"
+    cargo build --release --locked --jobs 2 --manifest-path services/tantivy/Cargo.toml
+    cp "$CARGO_TARGET_DIR/release/typeahead-tantivy" "$ta_bridge_root/typeahead-tantivy"
+    cd services && TANTIVY_TEST_BIN="$ta_bridge_root/typeahead-tantivy" zig build test-bridge --summary all
+
+
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech": lint
     bunx tsc --noEmit
