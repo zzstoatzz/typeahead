@@ -236,6 +236,17 @@ Searcher supplies both candidates and stored profile payloads, preventing mixed
 generation hydration during concurrent writes. SIGTERM/SIGINT requests graceful
 shutdown; committed generations survive abrupt process loss.
 
+`serve` starts the merges the previous process left pending before it listens,
+with a commit that carries the committed payload unchanged. Without it, a
+process that restarted with eight or more mergeable segments started that merge
+during its first write, while the write's delete was still uncommitted, and the
+merged segment brought the replaced document back: `/search` served the old
+handle beside the new one and `/admin/source-state` answered 500 for that DID.
+`tests/restart_merge.py` reproduces it (8 of 11 runs before the change, measured
+locally on 2026-11-10) and is part of `just --no-dotenv test-tantivy`. The change
+is local and tested; it is in no deployed binary. Why Tantivy's own catch-up at
+the end of that merge does not remove the document is not established.
+
 ## Source-owned observations and generation policy
 
 The private `/admin/source-state`, `/admin/source-page` and

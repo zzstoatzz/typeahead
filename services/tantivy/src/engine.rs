@@ -300,6 +300,21 @@ impl Engine {
             healthy: AtomicBool::new(true),
         })
     }
+    /// Start the merges the previous process left pending, before any write
+    /// is accepted. The commit carries the committed payload unchanged.
+    pub fn start_pending_merges(&self) -> Result<()> {
+        let mut writer = self
+            .writer
+            .lock()
+            .map_err(|_| Error::Storage("writer lock poisoned".into()))?;
+        let payload = writer.writer.index().load_metas()?.payload;
+        let mut prepared = writer.writer.prepare_commit()?;
+        if let Some(payload) = &payload {
+            prepared.set_payload(payload);
+        }
+        prepared.commit()?;
+        Ok(())
+    }
     pub fn snapshot(&self) -> Arc<Generation> {
         self.generation.read().unwrap().clone()
     }

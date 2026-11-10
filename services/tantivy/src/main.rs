@@ -135,6 +135,7 @@ async fn run() -> Result<()> {
                 .get("concurrency")
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(4);
+            engine.start_pending_merges()?;
             server::serve(Arc::new(engine), listen, admin, concurrency).await?;
         }
         "query" => {

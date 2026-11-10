@@ -68,6 +68,7 @@ test-tantivy:
     TA_EXPIRY_COVERAGE_RECEIPT="$ta_verify_root/expiry.json" python3 services/tantivy/tests/expiry_coverage.py
     TA_SOURCE_PDS_RECEIPT="$ta_verify_root/source-pds.json" python3 services/tantivy/tests/source_pds.py
     TA_CONFLICT_DIAGNOSTICS_RECEIPT="$ta_verify_root/conflicts.json" python3 services/tantivy/tests/conflict_diagnostics.py
+    TA_RESTART_MERGE_RECEIPT="$ta_verify_root/restart-merge.json" python3 services/tantivy/tests/restart_merge.py
     python3 services/tantivy-normalizer/test_backend_adversarial.py
     python3 scripts/snapshot_refresh/test_tantivy_install.py
 
