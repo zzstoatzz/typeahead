@@ -1,0 +1,15 @@
+*
+!deploy/shadow-slot/supervise
+!deploy/shadow-slot/bootstrap.sh
+!services/build.zig
+!services/build.zig.zon
+!services/src
+!services/.zig-pkg-vendor
+!services/tantivy-normalizer/adapter.zig
+!services/tantivy-normalizer/build.py
+!services/tantivy/Cargo.toml
+!services/tantivy/Cargo.lock
+!services/tantivy/build.rs
+!services/tantivy/src
+!src/identity-quarantine.json
+!src/moderation-regexes.json

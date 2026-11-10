@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# Runs the store process and the index process side by side. If either one
+# exits, the other is stopped and this script exits non-zero so the machine
+# restarts as a whole. SIGTERM and SIGINT are passed on as SIGTERM, because
+# bash starts background commands with SIGINT ignored; the script then exits 0
+# when both stop cleanly.
+set -uo pipefail
+
+data=${SHADOW_DATA:-/data}
+marker=$data/bootstrap.json
+grace=${SHADOW_STOP_GRACE_S:-50}
+store_port=${STORE_PORT:-8082}
+
+declare -A names=()
+loggers=()
+stopping=""
+deadline=""
+
+say() { printf '[supervisor] %s\n' "$*"; }
+
+for forbidden in TURSO_URL TURSO_AUTH_TOKEN TYPEAHEAD_SECRET; do
+  if [[ -n ${!forbidden:-} ]]; then
+    say "$forbidden is set: a shadow slot must not hold production write credentials"
+    exit 1
+  fi
+done
+
+if [[ ! -f $marker ]]; then
+  say "$marker is missing: the volume is not bootstrapped, so nothing is started"
+  say "run /app/bootstrap.sh on this machine, then restart it"
+  sleep infinity &
+  idle=$!
+  trap 'kill "$idle" 2>/dev/null; exit 0' TERM INT
+  wait "$idle"
+  exit 1
+fi
+
+start() {
+  local name=$1 out
+  shift
+  exec {out}> >(trap '' TERM INT; exec sed -u "s/^/[$name] /")
+  loggers+=("$!")
+  "$@" >&"$out" 2>&1 &
+  names[$!]=$name
+  exec {out}>&-
+  say "started $name as pid $!"
+}
+
+arm_deadline() {
+  [[ -n $deadline ]] && return
+  (
+    trap 'exit 0' TERM
+    sleep "$grace" &
+    wait $!
+    kill -KILL "$@" 2>/dev/null
+  ) &
+  deadline=$!
+}
+
+forward() {
+  stopping=$1
+  say "received SIG$1, sending SIGTERM to ${names[*]}"
+  kill -TERM "${!names[@]}" 2>/dev/null
+  arm_deadline "${!names[@]}"
+}
+
+start store env MODE=store STORE_DIR="$data/store" PORT="$store_port" /app/typeahead-ingester
+start index /app/typeahead-tantivy serve \
+  --data "$data/tantivy" \
+  --listen 0.0.0.0:8080 \
+  --admin-listen 127.0.0.1:8081 \
+  --max-sync-lag-s "${INDEX_MAX_SYNC_LAG_S:-120}" \
+  --retrieval "${INDEX_RETRIEVAL:-global-merge}"
+
+trap 'forward TERM' TERM
+trap 'forward INT' INT
+
+result=0
+unexpected=""
+while ((${#names[@]})); do
+  exited=""
+  wait -n -p exited "${!names[@]}"
+  code=$?
+  if [[ -z ${exited:-} ]]; then
+    ((code == 127)) || continue
+    say "lost the exit status of ${names[*]}"
+    kill -KILL "${!names[@]}" 2>/dev/null
+    ((result == 0)) && result=1
+    break
+  fi
+  name=${names[$exited]}
+  unset "names[$exited]"
+  say "$name exited with status $code"
+  ((result == 0)) && result=$code
+  if [[ -z $stopping && -z $unexpected ]]; then
+    unexpected=$name
+    if ((${#names[@]})); then
+      say "$name stopped on its own, stopping ${names[*]}"
+      kill -TERM "${!names[@]}" 2>/dev/null
+      arm_deadline "${!names[@]}"
+    fi
+  fi
+done
+
+[[ -n $deadline ]] && kill "$deadline" 2>/dev/null
+wait "${loggers[@]}" 2>/dev/null
+
+if [[ -n $unexpected ]]; then
+  ((result == 0)) && result=1
+  say "exiting $result because $unexpected stopped"
+else
+  say "exiting $result after SIG$stopping"
+fi
+exit "$result"
