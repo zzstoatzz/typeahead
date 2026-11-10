@@ -1,58 +1,28 @@
 import { afterAll, expect, test } from "bun:test";
-import { Miniflare } from "miniflare";
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { d1Db, rowsAs } from "./db";
+import { rowsAs } from "./db";
 import { materializeStats, writeSnapshot } from "./enrichment";
 import { knownSource } from "./handlers/source-icon";
 import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
 import { PROFILE_KEY, parseProfile, recordProfile } from "./stats-profile";
-import { STATS_TABLES } from "./stats-d1-fixture";
+import { STATS_TABLES, statsStores } from "./stats-d1-fixture";
 import { sourceQueries, tailQueries } from "./stats-tail";
 
 // The D1 database is created by the migrations alone, so a statement the
 // statistics code issues against a table or column the migrations lack has to
-// fail here rather than in production. The migrations are applied the way the
-// deploy applies them (wrangler reading `migrations_dir` from wrangler.jsonc),
-// to a local database, and every statistics statement then runs against it.
+// fail here rather than in production.
 
-const ROOT = new URL("..", import.meta.url).pathname;
-const DATABASE_ID = "624dc8c4-2a82-42f5-920c-6489466f7b7e";
-
-async function migratedStatsDb() {
-  const state = mkdtempSync(join(tmpdir(), "typeahead-stats-d1-"));
-  execFileSync("bunx", ["wrangler", "d1", "migrations", "apply", "typeahead-stats", "--local", "--persist-to", state], {
-    cwd: ROOT, stdio: "pipe", timeout: 60_000, env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
-  });
-  const mf = new Miniflare({
-    modules: true,
-    script: "export default { fetch() { return new Response(null) } }",
-    d1Databases: { STATS_DB: DATABASE_ID },
-    d1Persist: join(state, "v3", "d1"),
-  });
-  return {
-    db: d1Db(await mf.getD1Database("STATS_DB")),
-    async dispose() {
-      await mf.dispose();
-      rmSync(state, { recursive: true, force: true });
-    },
-  };
-}
-
-const { db, dispose } = await migratedStatsDb();
+const { mirror: db, dispose } = await statsStores();
 afterAll(dispose);
 
 const stored = new Map<string, string>();
 const kv = { async put(key: string, value: string) { stored.set(key, value); } };
 const storedJson = (key: string) => JSON.parse(stored.get(key) ?? "null");
 
-/** wrangler drops SQL comments when it applies a migration */
+/** the fixture drops SQL comments before it applies a migration, as wrangler does */
 const ddl = (sql: string) => sql.replace(/--[^\n]*/g, "").replace(/\s+/g, " ");
 
 test("the migrations define the nine statistics tables as production does", async () => {
-  const dump = ddl(await Bun.file(join(ROOT, "docs/ops/turso-schema-20261110.sql")).text());
+  const dump = ddl(await Bun.file(new URL("../docs/ops/turso-schema-20261110.sql", import.meta.url).pathname).text());
   const { results } = await db.prepare(
     "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name != 'd1_migrations' ORDER BY name",
   ).all<{ name: string; sql: string }>();
