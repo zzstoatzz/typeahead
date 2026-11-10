@@ -252,6 +252,16 @@ See [the paired write experiment](../../docs/evals/tantivy-dev-20261028/source-v
  Source
 Unix seconds remain evidence rather than an invented total order.
 
+`/admin/source-state` answers `{did, document_sha256}` per requested DID. With
+`"fields": true` in the request it also returns a read-only `fields` object for
+each stored document (null when absent): `deleted`, `hidden`, `handle`, `pds`,
+`pds_host`, `quality_score`, `version` and `profile_sha256`, a SHA-256 over the
+compact JSON array of display name, avatar, labels, associated and creation time.
+The document hash covers the source version, so two backends fed by different
+sources cannot be compared by it; these fields let the
+[shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md) name what differs.
+The default response and the reconcile protocol are unchanged.
+
 An optional complete `policy_snapshot` carries operator DID actions, blocked
 domains and its source observation clock. It shares the same commit, cursor,
 revision and retry receipt as profiles. Source clocks cannot move backward or

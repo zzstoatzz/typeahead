@@ -406,6 +406,8 @@ struct Apply {
 #[derive(Deserialize)]
 struct SourceState {
     dids: Vec<String>,
+    #[serde(default)]
+    fields: bool,
 }
 #[derive(Deserialize)]
 struct SourcePage {
@@ -431,7 +433,7 @@ async fn source_state(
         return response(StatusCode::UNAUTHORIZED, json!({"error":"unauthorized"}));
     }
     let engine = app.engine.clone();
-    match tokio::task::spawn_blocking(move || engine.source_state(body.dids)).await {
+    match tokio::task::spawn_blocking(move || engine.source_state(body.dids, body.fields)).await {
         Ok(Ok(value)) => response(StatusCode::OK, value),
         Ok(Err(error)) => failure(error),
         Err(_) => failure(Error::Storage("source state task failed".into())),

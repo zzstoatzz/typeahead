@@ -15,7 +15,7 @@ fn row(n: usize) -> Actor {
 }
 fn apply(engine: &Engine, rows: Vec<Actor>, policy: Option<Value>) {
     let dids = rows.iter().map(|a| a.did.clone()).collect::<Vec<_>>();
-    let state = engine.source_state(dids).unwrap();
+    let state = engine.source_state(dids, false).unwrap();
     let revision = state["source_observation_revision"].as_u64().unwrap();
     let request = SourceReconcile {
         actors: rows,

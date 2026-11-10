@@ -37,6 +37,13 @@ def run():
                 assert request(admin, '/admin/source-state', {'dids':[]})[0] == 401
                 checks.append('private_route_exclusion_and_auth')
                 state = request(admin, '/admin/source-state', {'dids':[row['did']]}, secret)[2]
+                assert 'fields' not in state['actors'][0]
+                detail = request(admin, '/admin/source-state', {'dids':[row['did'], 'did:plc:absent'], 'fields':True}, secret)[2]['actors']
+                assert detail[0]['document_sha256'] == state['actors'][0]['document_sha256']
+                profile = json.dumps([row['display_name'], row['avatar_url'], row['labels'], row['associated'], row['created_at']], separators=(',', ':')).encode()
+                assert detail[0]['fields'] == {'deleted':False, 'hidden':False, 'handle':'source.test', 'pds':'https://local.test', 'pds_host':'local.test', 'quality_score':1.0, 'version':100, 'profile_sha256':hashlib.sha256(profile).hexdigest()}
+                assert detail[1] == {'did':'did:plc:absent', 'document_sha256':None, 'fields':None}
+                checks.append('source_state_comparison_fields_on_request')
                 changed = copy.deepcopy(row)
                 changed.update(display_name='Observed Source', version=99)
                 body = {'actors':[changed], 'expected_documents':state['actors'], 'source_cursor':{'observation':1}, 'expected_source_cursor':state['source_cursor'], 'expected_observation_revision':state['source_observation_revision'], 'batch_id':hashlib.sha256(b'first').hexdigest()}

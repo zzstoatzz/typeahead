@@ -43,8 +43,28 @@ fn digest(actor: &Actor) -> Result<String> {
     Ok(format!("{:x}", Sha256::digest(serde_json::to_vec(actor)?)))
 }
 
+fn comparison(actor: &Actor) -> Result<Value> {
+    let profile = json!([
+        actor.display_name,
+        actor.avatar_url,
+        actor.labels,
+        actor.associated,
+        actor.created_at
+    ]);
+    Ok(json!({
+        "deleted": actor.deleted,
+        "hidden": actor.hidden,
+        "handle": actor.handle,
+        "pds": actor.pds,
+        "pds_host": actor.pds_host,
+        "quality_score": actor.quality_score,
+        "version": actor.version,
+        "profile_sha256": format!("{:x}", Sha256::digest(serde_json::to_vec(&profile)?)),
+    }))
+}
+
 impl Engine {
-    pub fn source_state(&self, dids: Vec<String>) -> Result<Value> {
+    pub fn source_state(&self, dids: Vec<String>, fields: bool) -> Result<Value> {
         if dids.len() > 500
             || dids.iter().any(|d| !valid_did(d))
             || dids.iter().collect::<BTreeSet<_>>().len() != dids.len()
@@ -58,7 +78,11 @@ impl Engine {
         for did in dids {
             let old = self.fields.find(&generation.searcher, &did)?;
             let document_sha256 = old.as_ref().map(digest).transpose()?;
-            actors.push(json!({"did":did,"document_sha256":document_sha256}));
+            let mut entry = json!({"did":did,"document_sha256":document_sha256});
+            if fields {
+                entry["fields"] = old.as_ref().map(comparison).transpose()?.into();
+            }
+            actors.push(entry);
         }
         Ok(json!({"source_cursor":generation.metadata.source_cursor,
             "source_observation_revision":generation.metadata.source_observation_revision,
