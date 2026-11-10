@@ -106,6 +106,8 @@ uv run scripts/shadow_compare/compare.py --phases corpus --arbiter \
   --checkpoint walk.json --corpus-max-requests 60000 --corpus-max-mib 16384
 ```
 
+the [cloud runner](https://tangled.org/zzstoatzz.io/typeahead/blob/main/experiments/zkv-scale/README.md#shadow-comparison-runner) does the download, dump, sort and walk on a disposable machine.
+
 ## develop
 
 ```sh
