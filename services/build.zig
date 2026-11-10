@@ -94,8 +94,24 @@ pub fn build(b: *std.Build) void {
     const store_tests = b.addTest(.{ .root_module = store_module });
     const run_store_tests = b.addRunArtifact(store_tests);
 
+    // Kill tests and the cross-process reader test: the executable spawns
+    // itself as the writer it then kills or reads beside.
+    const store_process_tests = b.addExecutable(.{
+        .name = "store-process-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/store/process_tests.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{.{ .name = "zkv", .module = zkv.module("zkv") }},
+        }),
+    });
+    const run_store_process_tests = b.addRunArtifact(store_process_tests);
+    run_store_process_tests.has_side_effects = true;
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_ingest_tests.step);
     test_step.dependOn(&run_store_tests.step);
+    test_step.dependOn(&run_store_process_tests.step);
 }
