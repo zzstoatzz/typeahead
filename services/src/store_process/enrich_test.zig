@@ -679,3 +679,21 @@ test "the role's transport reads status, body and Retry-After over a real connec
     const refused = transport.get(transport.context, arena.allocator(), "http://127.0.0.1:1/xrpc/x");
     try testing.expectEqual(@as(u16, 0), refused.status);
 }
+
+test "a new account is fetched as soon as its handle resolves" {
+    const rig = try Rig.create(quiet);
+    defer rig.destroy();
+    const subject = rig.did(1);
+    _ = try rig.f.commit(&.{.{ .observe = .{ .did = subject, .enqueue_identity = true } }}, null);
+    try testing.expectEqual(@as(usize, 0), try rig.queued());
+    try testing.expectEqual(enrich.Step.idle, try rig.steps(1));
+
+    try rig.known(subject, counts);
+    _ = try rig.f.commit(&.{.{ .identity_resolved = .{ .did = subject, .observed_at = rig.f.now(), .handle = "new.test", .pds = "https://pds.test" } }}, null);
+    try testing.expectEqual(@as(usize, 1), try rig.queued());
+    try testing.expectEqual(enrich.Step.worked, try rig.steps(1));
+    const actor = try rig.f.live(subject);
+    try testing.expectEqual(@as(u64, 1234), actor.followers_count);
+    try testing.expect(actor.quality_score > 0);
+    try testing.expectEqual(@as(usize, 1), rig.world.requests.items.len);
+}
