@@ -19,8 +19,7 @@ def stored_actor(did, handle, *, version=100, deleted=False, hidden=False, pds_h
 
 def admin_document(actor):
     """What a Tantivy admin listener's source-state returns for a stored actor."""
-    fields = dict(views.from_actor(actor, sha="unused").fields)
-    del fields["labels"], fields["profile_rest_sha256"]
+    fields = {name: value for name, value in views.from_actor(actor, sha="unused").fields.items() if name not in views.ITEMISED}
     return {"did": actor["did"], "fields": fields}
 
 

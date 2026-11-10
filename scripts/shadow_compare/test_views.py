@@ -67,12 +67,12 @@ class LabelTests(unittest.TestCase):
 
     def test_profile_difference_beside_a_label_difference_is_reported_separately(self):
         classes, other = corpus.classify(view(), view(labels=[], display_name="Other"))
-        self.assertEqual((classes, other), ([corpus.LABELS_DIFFER, corpus.OTHER_FIELD_DIFFERS], ["profile_rest_sha256"]))
+        self.assertEqual((classes, other), ([corpus.LABELS_DIFFER, corpus.OTHER_FIELD_DIFFERS], ["display_name"]))
 
-    def test_a_side_without_itemised_labels_falls_back_to_the_profile_hash(self):
-        hashed = views.Doc("s", {k: v for k, v in view(labels=[]).fields.items() if k not in ("labels", "profile_rest_sha256")})
+    def test_a_side_without_itemised_fields_falls_back_to_the_profile_hash(self):
+        hashed = views.Doc("s", {k: v for k, v in view(labels=[]).fields.items() if k not in views.ITEMISED})
         self.assertEqual(corpus.classify(view(), hashed), ([corpus.OTHER_FIELD_DIFFERS], ["profile_sha256"]))
-        same = views.Doc("s", {k: v for k, v in view().fields.items() if k not in ("labels", "profile_rest_sha256")})
+        same = views.Doc("s", {k: v for k, v in view().fields.items() if k not in views.ITEMISED})
         self.assertEqual(corpus.classify(view(), same), ([], []))
 
     def test_summary_counts_label_values_per_side(self):
@@ -85,6 +85,36 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(summary["classes"][corpus.LABELS_DIFFER]["count"], 3)
         self.assertEqual(summary["label_value_counts"], {"only_in_production": {"spam": 3}, "only_in_shadow": {"!hide": 1, "spam": 1}})
         self.assertEqual(summary["label_detail_only"], 1)
+
+
+class ProfileFieldTests(unittest.TestCase):
+    def test_each_profile_field_is_named(self):
+        cases = {
+            "display_name": view(display_name="Other"),
+            "associated": view(associated={"labeler": True}),
+            "created_at": view(created_at="2026-01-01T00:00:00.000Z"),
+            "avatar": view(avatar_url="bafkother"),
+            "pds": view(pds="https://pds.test/"),
+        }
+        for name, changed in cases.items():
+            self.assertEqual(corpus.classify(view(), changed), ([corpus.OTHER_FIELD_DIFFERS], [name]))
+
+    def test_associated_key_order_is_not_a_difference(self):
+        reordered = view(associated={"chat": {"allowIncoming": "all"}, "labeler": False})
+        self.assertEqual(corpus.classify(view(), reordered), ([], []))
+
+    def test_one_avatar_stored_as_a_cid_and_as_a_url_differs_only_in_form(self):
+        did = "did:plc:a"
+        forms = [
+            f"https://cdn.bsky.app/img/avatar/plain/{did}/bafkavatar@jpeg",
+            f"https://pds.test/xrpc/com.atproto.sync.getBlob?did={did}&cid=bafkavatar",
+            "https://cdn.test/path/bafkavatar",
+        ]
+        for form in forms:
+            self.assertEqual(views.avatar_cid(form), "bafkavatar")
+            self.assertEqual(corpus.classify(view(), view(avatar_url=form)), ([corpus.OTHER_FIELD_DIFFERS], ["avatar_form"]))
+        self.assertEqual(views.avatar_cid("https://cdn.test/path/x?y"), "")
+        self.assertEqual(views.avatar_cid(""), "")
 
 
 class QualityTests(unittest.TestCase):

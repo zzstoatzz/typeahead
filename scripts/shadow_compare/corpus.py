@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sources import PAGE_LIMIT, TantivyAdmin
 from transport import BudgetExceeded, TransportError
-from views import ABSENT, Doc, f32, label_difference
+from views import ABSENT, Doc, f32, label_difference, profile_differences
 
 CHECKPOINT_VERSION = 2
 
@@ -54,11 +54,9 @@ def classify(production, shadow):
         classes.append(LABELS_DIFFER)
     if f32(a.get("quality_score") or 0) != f32(b.get("quality_score") or 0):
         classes.append(QUALITY_SCORE_DIFFERS)
-    itemised = all(side.get("labels") is not None and side.get("profile_rest_sha256") for side in (a, b))
-    profile = "profile_rest_sha256" if itemised else "profile_sha256"
-    other = [name for name in ("pds", profile) if a.get(name) != b.get(name)]
-    if PDS_DIFFERS in classes and "pds" in other:
-        other.remove("pds")
+    other = profile_differences(a, b)
+    if a.get("pds") != b.get("pds") and PDS_DIFFERS not in classes:
+        other.insert(0, "pds")
     if other:
         classes.append(OTHER_FIELD_DIFFERS)
     return classes, other

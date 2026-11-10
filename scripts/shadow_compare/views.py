@@ -1,11 +1,12 @@
 """The comparable view of one actor, as every corpus source reports it.
 
 `fields` always carries `deleted`, `hidden`, `handle`, `pds`, `pds_host`,
-`quality_score` and `profile_sha256`. A source that holds whole actors adds
-`labels` (one canonical JSON text per label, sorted) and
-`profile_rest_sha256` (the profile hash without labels), so label
-differences can be told apart from other profile differences. A source that
-knows when the actor's content last changed adds `changed_at` in unix seconds.
+`quality_score` and `profile_sha256`. A source that holds whole actors also
+itemises what that hash covers: `labels` (one canonical JSON text per label,
+sorted), `display_name`, `avatar_url`, `associated` (canonical JSON text) and
+`created_at`, so a difference can be named instead of reported as a hash. A
+source that knows when the actor's content last changed adds `changed_at` in
+unix seconds.
 """
 
 import hashlib
@@ -47,13 +48,42 @@ def canonical(value):
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8", "surrogatepass")
 
 
-def sha256(value):
-    return hashlib.sha256(canonical(value)).hexdigest()
+def text(value):
+    return canonical(value).decode("utf-8", "surrogatepass")
 
 
 def profile_sha256(display_name, avatar_url, labels, associated, created_at):
     """`profile_sha256` as services/tantivy/src/engine/source.rs computes it."""
-    return sha256([display_name, avatar_url, labels, associated, created_at])
+    return hashlib.sha256(canonical([display_name, avatar_url, labels, associated, created_at])).hexdigest()
+
+
+def avatar_cid(stored):
+    """The CID the public response is built from, as `avatar_cid` in services/tantivy/src/actor.rs."""
+    if "/" not in stored:
+        return stored
+    if "cid=" in stored:
+        return stored.split("cid=", 1)[1].split("&")[0]
+    part = stored.rsplit("/", 1)[-1].split("@")[0]
+    return "" if "?" in part else part
+
+
+ITEMISED = ("labels", "display_name", "avatar_url", "associated", "created_at")
+
+
+def itemised(fields):
+    return all(fields.get(name) is not None for name in ITEMISED)
+
+
+def profile_differences(production, shadow):
+    """Names of the profile fields that differ, labels aside; the hash alone when a side is not itemised."""
+    if not (itemised(production) and itemised(shadow)):
+        return ["profile_sha256"] if production.get("profile_sha256") != shadow.get("profile_sha256") else []
+    names = [name for name in ("display_name", "associated", "created_at") if production[name] != shadow[name]]
+    if avatar_cid(production["avatar_url"]) != avatar_cid(shadow["avatar_url"]):
+        names.append("avatar")
+    elif production["avatar_url"] != shadow["avatar_url"]:
+        names.append("avatar_form")
+    return names
 
 
 def parsed(value, default):
@@ -78,8 +108,11 @@ def from_actor(actor, *, sha, changed_at=None):
         "quality_score": f32(actor.get("quality_score", 0)),
         "version": actor.get("version"),
         "profile_sha256": profile_sha256(display_name, avatar_url, labels, associated, created_at),
-        "profile_rest_sha256": sha256([display_name, avatar_url, associated, created_at]),
-        "labels": sorted(canonical(label).decode("utf-8", "surrogatepass") for label in labels),
+        "labels": sorted(text(label) for label in labels),
+        "display_name": display_name,
+        "avatar_url": avatar_url,
+        "associated": text(associated),
+        "created_at": created_at,
     }
     if changed_at is not None:
         fields["changed_at"] = changed_at
