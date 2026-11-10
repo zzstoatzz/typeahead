@@ -94,6 +94,7 @@ const Role = struct {
     io: Io,
     config: config_mod.Config,
     owner: *Owner,
+    reader: *store_mod.Reader,
     intake: intake_mod.Intake,
     labels: tails.LabelSink,
     plc: tails.PlcTail,
@@ -159,21 +160,34 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
     var request = server.receiveHead() catch return;
     if (http_guard.rejectUnframedBody(&request)) return;
 
+    var arena: std.heap.ArenaAllocator = .init(self.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
     var authorization: ?[]const u8 = null;
     var headers = request.iterateHeaders();
     while (headers.next()) |header| {
-        if (std.ascii.eqlIgnoreCase(header.name, "authorization")) authorization = header.value;
+        if (std.ascii.eqlIgnoreCase(header.name, "authorization")) authorization = a.dupe(u8, header.value) catch return;
+    }
+    const method = request.head.method;
+    const target = a.dupe(u8, request.head.target) catch return;
+    var body: []const u8 = "";
+    if (method.requestHasBody()) {
+        var body_buffer: [4096]u8 = undefined;
+        const body_reader = request.readerExpectContinue(&body_buffer) catch return;
+        body = body_reader.allocRemaining(a, .limited(http.max_body_bytes)) catch {
+            request.respond("{\"error\":\"body too large\"}", .{ .status = .payload_too_large, .keep_alive = false }) catch {};
+            return;
+        };
     }
 
-    var arena: std.heap.ArenaAllocator = .init(self.allocator);
-    defer arena.deinit();
     const context: http.Context = .{
         .owner = self.owner,
+        .reader = self.reader,
         .intake = &self.intake.signals,
         .labels_ignored = &self.labels.ignored,
         .read_secret = self.config.read_secret,
     };
-    const response = http.respond(&context, arena.allocator(), request.head.method, request.head.target, authorization) catch |err| blk: {
+    const response = http.respond(&context, a, method, target, authorization, body) catch |err| blk: {
         log.warn("request failed: {s}", .{@errorName(err)});
         break :blk http.Response{ .status = .internal_server_error, .body = "{\"error\":\"internal error\"}" };
     };
@@ -204,11 +218,18 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
     };
     defer owner.close();
 
+    const reader = store_mod.Reader.open(allocator, io, Io.Dir.cwd(), config.store_dir, owner.options.store.layout) catch |err| {
+        log.err("store reader open failed: {s}", .{@errorName(err)});
+        return err;
+    };
+    defer reader.close();
+
     var self: Role = .{
         .allocator = allocator,
         .io = io,
         .config = config,
         .owner = owner,
+        .reader = reader,
         .intake = .{ .gpa = allocator, .owner = owner, .options = .{ .on_fatal = exitOnIntakeFailure } },
         .labels = .{ .gpa = allocator, .owner = owner },
         .plc = .{ .gpa = allocator, .io = io, .owner = owner },

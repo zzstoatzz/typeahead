@@ -1,19 +1,26 @@
 //! The store role's HTTP surface: `/health`, and authenticated reads under
 //! `/store/`. Every body is one of the types below, written as JSON.
 //!
-//! | request                                          | answer                          |
-//! |--------------------------------------------------|---------------------------------|
-//! | `GET /health`                                    | `HealthBody`, no auth           |
-//! | `GET /store/actor?did=`                          | `{"actor": ActorBody}` or 404   |
-//! | `GET /store/handle?handle=`                      | `{"actors": [ActorBody]}`       |
-//! | `GET /store/actors?did=&did=` (at most 100)      | `{"actors": [ActorBody or null]}` in request order |
-//! | `GET /store/changes?from=&limit=&consumer=`      | `ChangesBody`                   |
+//! | request                                              | answer                                  |
+//! |------------------------------------------------------|-----------------------------------------|
+//! | `GET /health`                                        | `HealthBody`, no auth                   |
+//! | `GET /store/actor?did=`                              | `{"actor": ActorBody}` or 404           |
+//! | `GET /store/handle?handle=`                          | `{"actors": [ActorBody]}`               |
+//! | `POST /store/actors/batch` `{"dids": [at most 500]}` | `ActorsBody`, null where none, in request order |
+//! | `POST /store/actors/page` `{"after_did", "limit"}`   | `ActorsBody`: the records after that DID in ascending byte order, any status, at most `limit` (1 to 500) |
+//! | `GET /store/changes?from=&limit=&consumer=`          | `ChangesBody`                           |
 //!
 //! `/store/*` needs `Authorization: Bearer $STORE_READ_SECRET` and answers
-//! 404 when no secret is configured. `from` is the first change sequence
+//! 404 when no secret is configured. The two POSTs are the contract of
+//! `scripts/shadow_compare/store.py`. `from` is the first change sequence
 //! wanted; the body's `next` is the `from` of the following request. Naming
 //! a `consumer` records `from` as that consumer's position, which holds the
 //! change log's trimming back to it.
+//!
+//! Every `/store/*` read goes through a read-only handle on the store,
+//! refreshed per request. It takes no lock the owner takes, so a walk of
+//! every actor cannot hold a commit back; it sees whole commits, as of the
+//! refresh. The handle keeps table metadata of its own.
 
 const std = @import("std");
 const store_mod = @import("../store/root.zig");
@@ -27,19 +34,23 @@ const Owner = owner_mod.Owner;
 const Actor = store_mod.Actor;
 const Allocator = std.mem.Allocator;
 
-pub const max_batch = 100;
+pub const max_batch = 500;
+pub const max_page = 500;
 pub const max_changes = 1000;
+pub const max_body_bytes = 256 * 1024;
 
+/// A label, with the field names of `store/record.zig`.
 pub const LabelBody = struct {
-    src: []const u8,
+    source: []const u8,
     uri: []const u8,
-    val: []const u8,
-    cts: []const u8,
-    cid: ?[]const u8 = null,
-    exp: ?[]const u8 = null,
-    neg: ?bool = null,
+    value: []const u8,
+    created: []const u8,
+    cid: []const u8,
+    expires: []const u8,
+    negated: bool,
 };
 
+/// An actor record, with the field names of `store/record.zig`.
 pub const ActorBody = struct {
     did: []const u8,
     /// `live`, `deactivated` or `deleted`. A gone actor keeps its record
@@ -48,9 +59,9 @@ pub const ActorBody = struct {
     hidden: bool,
     handle: []const u8,
     display_name: []const u8,
-    avatar_cid: []const u8,
+    avatar: []const u8,
     description: []const u8,
-    banner_cid: []const u8,
+    banner: []const u8,
     pds: []const u8,
     created_at: []const u8,
     /// The appview's `associated` object as JSON text, "" when empty.
@@ -64,6 +75,7 @@ pub const ActorBody = struct {
     override: []const u8,
     /// `none`, `bsky`, `blacksky` or `pds`.
     profile_source: []const u8,
+    /// Unix seconds of the last content change.
     updated_at: u64,
     last_activity_at: u64,
     profile_checked_at: u64,
@@ -72,6 +84,12 @@ pub const ActorBody = struct {
     /// The actor has an entry in the identity queue.
     identity_pending: bool,
     refresh_due: u64,
+};
+
+pub const ActorsBody = struct {
+    actors: []const ?ActorBody,
+    /// The sequence the next change-log entry will take.
+    next_change: u64,
 };
 
 pub const ChangeBody = struct { seq: u64, did: []const u8 };
@@ -161,6 +179,8 @@ pub const HealthBody = struct {
 
 pub const Context = struct {
     owner: *Owner,
+    /// The handle `/store/*` reads through. Used by one thread at a time.
+    reader: *store_mod.Reader,
     intake: *const intake_mod.Signals,
     labels_ignored: *const std.atomic.Value(u64),
     read_secret: ?[]const u8,
@@ -284,13 +304,13 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
 pub fn actorBody(arena: Allocator, did: []const u8, actor: Actor) !ActorBody {
     const labels = try arena.alloc(LabelBody, actor.labels.len);
     for (labels, actor.labels) |*body, label| body.* = .{
-        .src = label.source,
+        .source = label.source,
         .uri = label.uri,
-        .val = label.value,
-        .cts = label.created,
-        .cid = if (label.cid.len > 0) label.cid else null,
-        .exp = if (label.expires.len > 0) label.expires else null,
-        .neg = if (label.negated) true else null,
+        .value = label.value,
+        .created = label.created,
+        .cid = label.cid,
+        .expires = label.expires,
+        .negated = label.negated,
     };
     return .{
         .did = did,
@@ -298,9 +318,9 @@ pub fn actorBody(arena: Allocator, did: []const u8, actor: Actor) !ActorBody {
         .hidden = actor.hidden,
         .handle = actor.handle,
         .display_name = actor.display_name,
-        .avatar_cid = actor.avatar,
+        .avatar = actor.avatar,
         .description = actor.description,
-        .banner_cid = actor.banner,
+        .banner = actor.banner,
         .pds = actor.pds,
         .created_at = actor.created_at,
         .associated = actor.associated,
@@ -364,8 +384,50 @@ pub fn authorized(secret: []const u8, header: ?[]const u8) bool {
     return diff == 0;
 }
 
-/// Answer one request. `target` is the request target with its query.
-pub fn respond(ctx: *const Context, arena: Allocator, method: std.http.Method, target: []const u8, authorization: ?[]const u8) !Response {
+const Page = struct {
+    arena: Allocator,
+    bodies: std.ArrayList(?ActorBody) = .empty,
+
+    pub fn entry(self: *Page, key: []const u8, value: []const u8) !void {
+        const did = try self.arena.dupe(u8, try store_mod.keys.parseActor(key));
+        const actor = try Actor.decode(self.arena, try self.arena.dupe(u8, value));
+        try self.bodies.append(self.arena, try actorBody(self.arena, did, actor));
+    }
+};
+
+fn page(reader: *store_mod.Reader, arena: Allocator, after_did: []const u8, limit: usize) ![]const ?ActorBody {
+    const bounds = store_mod.keys.Prefix.actor.bounds();
+    var position: store_mod.scan.Position = .{};
+    defer position.deinit(arena);
+    if (after_did.len == 0) {
+        try position.reset(arena, &bounds[0]);
+    } else {
+        var buf: store_mod.keys.Buf = undefined;
+        const key = try store_mod.keys.actor(&buf, after_did);
+        try position.reset(arena, key);
+        try position.next.append(arena, 0);
+    }
+    var found: Page = .{ .arena = arena };
+    _ = try store_mod.scan.run(arena, reader.db(), &position, &bounds[1], .{ .limit = limit, .page = limit }, &found);
+    return found.bodies.items;
+}
+
+/// A point read through the reader. The owner can collect a table the
+/// reader's snapshot still names; a refresh finds the table that replaced it.
+fn readActor(reader: *store_mod.Reader, arena: Allocator, did: []const u8) !?Actor {
+    var attempts: usize = 0;
+    while (true) : (attempts += 1) {
+        return reader.actor(arena, did) catch |err| {
+            if (err != error.Missing or attempts == 8) return err;
+            try reader.refresh();
+            continue;
+        };
+    }
+}
+
+/// Answer one request. `target` is the request target with its query, and
+/// `body` what a POST carried.
+pub fn respond(ctx: *const Context, arena: Allocator, method: std.http.Method, target: []const u8, authorization: ?[]const u8, body: []const u8) !Response {
     const split = std.mem.indexOfScalar(u8, target, '?');
     const path = if (split) |at| target[0..at] else target;
     const query = if (split) |at| target[at + 1 ..] else "";
@@ -374,60 +436,59 @@ pub fn respond(ctx: *const Context, arena: Allocator, method: std.http.Method, t
     if (!std.mem.startsWith(u8, path, "/store/")) return failure(arena, .not_found, "not found");
     const secret = ctx.read_secret orelse return failure(arena, .not_found, "not found");
     if (!authorized(secret, authorization)) return failure(arena, .unauthorized, "unauthorized");
-    if (method != .GET) return failure(arena, .method_not_allowed, "method not allowed");
 
+    const reader = ctx.reader;
+    try reader.refresh();
+    const posted = std.mem.eql(u8, path, "/store/actors/batch") or std.mem.eql(u8, path, "/store/actors/page");
+    if (method != (if (posted) std.http.Method.POST else std.http.Method.GET)) return failure(arena, .method_not_allowed, "method not allowed");
+
+    if (std.mem.eql(u8, path, "/store/actors/batch")) {
+        const request = std.json.parseFromSliceLeaky(struct { dids: []const []const u8 }, arena, body, .{ .ignore_unknown_fields = true }) catch return failure(arena, .bad_request, "body must be {\"dids\": [...]}");
+        if (request.dids.len > max_batch) return failure(arena, .bad_request, "at most 500 dids");
+        const bodies = try arena.alloc(?ActorBody, request.dids.len);
+        for (bodies, request.dids) |*slot, did| {
+            store_mod.keys.validDid(did) catch return failure(arena, .bad_request, "invalid did");
+            slot.* = if (try readActor(reader, arena, did)) |actor| try actorBody(arena, did, actor) else null;
+        }
+        return json(arena, .ok, ActorsBody{ .actors = bodies, .next_change = (try reader.cursors(arena)).next_change });
+    }
+    if (std.mem.eql(u8, path, "/store/actors/page")) {
+        const request = std.json.parseFromSliceLeaky(struct { after_did: []const u8 = "", limit: usize }, arena, body, .{ .ignore_unknown_fields = true }) catch return failure(arena, .bad_request, "body must be {\"after_did\": \"...\", \"limit\": n}");
+        if (request.limit == 0 or request.limit > max_page) return failure(arena, .bad_request, "limit must be between 1 and 500");
+        if (request.after_did.len > 0) store_mod.keys.validDid(request.after_did) catch return failure(arena, .bad_request, "invalid after_did");
+        return json(arena, .ok, ActorsBody{ .actors = try page(reader, arena, request.after_did, request.limit), .next_change = (try reader.cursors(arena)).next_change });
+    }
     if (std.mem.eql(u8, path, "/store/actor")) {
         const did = try single(arena, query, "did") orelse return failure(arena, .bad_request, "did is required");
-        const store = try ctx.owner.acquire();
-        defer ctx.owner.release();
-        const actor = try store.actor(arena, did) orelse return failure(arena, .not_found, "not found");
+        store_mod.keys.validDid(did) catch return failure(arena, .bad_request, "invalid did");
+        const actor = try readActor(reader, arena, did) orelse return failure(arena, .not_found, "not found");
         return json(arena, .ok, .{ .actor = try actorBody(arena, did, actor) });
     }
     if (std.mem.eql(u8, path, "/store/handle")) {
         const handle = try single(arena, query, "handle") orelse return failure(arena, .bad_request, "handle is required");
         if (handle.len > store_mod.keys.max_handle) return failure(arena, .bad_request, "handle is too long");
-        const store = try ctx.owner.acquire();
-        defer ctx.owner.release();
-        const dids = try store.byHandle(arena, handle);
+        const dids = try reader.byHandle(arena, handle);
         var bodies: std.ArrayList(ActorBody) = .empty;
         for (dids) |did| {
-            if (try store.actor(arena, did)) |actor| try bodies.append(arena, try actorBody(arena, did, actor));
+            if (try readActor(reader, arena, did)) |actor| try bodies.append(arena, try actorBody(arena, did, actor));
         }
         return json(arena, .ok, .{ .actors = bodies.items });
-    }
-    if (std.mem.eql(u8, path, "/store/actors")) {
-        const dids = try queryValues(arena, query, "did");
-        if (dids.len == 0 or dids.len > max_batch) return failure(arena, .bad_request, "between 1 and 100 did values are required");
-        for (dids) |did| store_mod.keys.validDid(did) catch return failure(arena, .bad_request, "invalid did");
-        const store = try ctx.owner.acquire();
-        defer ctx.owner.release();
-        const found = try store.actors(arena, dids);
-        const bodies = try arena.alloc(?ActorBody, dids.len);
-        for (bodies, dids, found) |*body, did, actor| body.* = if (actor) |a| try actorBody(arena, did, a) else null;
-        var out: std.Io.Writer.Allocating = .init(arena);
-        var writer: std.json.Stringify = .{ .writer = &out.writer };
-        try writer.write(.{ .actors = bodies });
-        return .{ .body = out.written() };
     }
     if (std.mem.eql(u8, path, "/store/changes")) {
         const from = std.fmt.parseInt(u64, try single(arena, query, "from") orelse "0", 10) catch return failure(arena, .bad_request, "from must be a sequence");
         const limit = std.fmt.parseInt(usize, try single(arena, query, "limit") orelse "1000", 10) catch return failure(arena, .bad_request, "limit must be a number");
         if (limit == 0 or limit > max_changes) return failure(arena, .bad_request, "limit must be between 1 and 1000");
-        const body: ChangesBody = blk: {
-            const store = try ctx.owner.acquire();
-            defer ctx.owner.release();
-            const head = store.next_change;
-            switch (try store.changes(arena, from, limit)) {
-                .trimmed => |floor| break :blk .{ .next = floor, .head = head, .trimmed = floor },
-                .entries => |entries| {
-                    const bodies = try arena.alloc(ChangeBody, entries.len);
-                    for (bodies, entries) |*slot, entry| slot.* = .{ .seq = entry.sequence, .did = entry.did };
-                    break :blk .{ .entries = bodies, .next = if (entries.len > 0) entries[entries.len - 1].sequence + 1 else @max(from, 1), .head = head };
-                },
-            }
+        const head = (try reader.cursors(arena)).next_change;
+        const changes: ChangesBody = switch (try reader.changes(arena, from, limit)) {
+            .trimmed => |floor| .{ .next = floor, .head = head, .trimmed = floor },
+            .entries => |entries| blk: {
+                const bodies = try arena.alloc(ChangeBody, entries.len);
+                for (bodies, entries) |*slot, entry| slot.* = .{ .seq = entry.sequence, .did = entry.did };
+                break :blk .{ .entries = bodies, .next = if (entries.len > 0) entries[entries.len - 1].sequence + 1 else @max(from, 1), .head = head };
+            },
         };
         if (try single(arena, query, "consumer")) |name| ctx.owner.noteConsumer(name, from);
-        return json(arena, .ok, body);
+        return json(arena, .ok, changes);
     }
     return failure(arena, .not_found, "not found");
 }
