@@ -19,6 +19,8 @@ const logfire = @import("logfire");
 const fatal = @import("fatal.zig");
 
 const log = std.log.scoped(.ingester);
+const log_route = @import("log_route.zig");
+const progress = std.log.scoped(log_route.flush_scope);
 
 fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     if (std.c.getenv(name)) |p| return mem.span(p);
@@ -186,6 +188,7 @@ pub const IngestHandler = struct {
     last_flush: i64 = 0,
     retry_after: i64 = 0, // timestamp before which we skip flush attempts
     consecutive_failures: u32 = 0,
+    failed_flushes: u64 = 0,
     last_heartbeat: i64 = 0,
 
     pub fn init(
@@ -411,7 +414,7 @@ pub const IngestHandler = struct {
             if (ok) {
                 self.total_ingested += batch_end;
                 const rss = getRssKB();
-                log.info("+{d} actors (total: {d}, pending: {d}) cursor={d} rss={d}KB", .{
+                progress.info("+{d} actors (total: {d}, pending: {d}) cursor={d} rss={d}KB", .{
                     batch_end,                         self.total_ingested,
                     self.buffer.items.len - batch_end, self.pending_cursor,
                     rss,
@@ -440,7 +443,7 @@ pub const IngestHandler = struct {
                     self.cursors.shrinkRetainingCapacity(self.cursors.items.len - batch_end);
                 }
             } else {
-                log.warn("ingest batch failed ({d} events, {d} pending), will retry in 5s", .{
+                progress.warn("ingest batch failed ({d} events, {d} pending), will retry in 5s", .{
                     batch_end, self.buffer.items.len,
                 });
                 any_failure = true;
@@ -453,7 +456,7 @@ pub const IngestHandler = struct {
             const ok = writer.delete(batch);
             if (ok) {
                 self.total_deleted += batch_end;
-                log.info("-{d} moderated (total: {d})", .{
+                progress.info("-{d} moderated (total: {d})", .{
                     batch_end, self.total_deleted,
                 });
                 if (batch_end < self.delete_buffer.items.len) {
@@ -467,12 +470,13 @@ pub const IngestHandler = struct {
                     self.delete_buffer.clearRetainingCapacity();
                 }
             } else {
-                log.warn("delete batch failed ({d} dids), will retry in 5s", .{batch_end});
+                progress.warn("delete batch failed ({d} dids), will retry in 5s", .{batch_end});
                 any_failure = true;
             }
         }
 
         if (any_failure) {
+            self.failed_flushes += 1;
             self.consecutive_failures += 1;
             if (self.consecutive_failures >= WATCHDOG_MAX_CONSECUTIVE_FAILURES) {
                 log.err("watchdog: {d} consecutive flush failures, exiting for restart", .{
@@ -494,6 +498,10 @@ pub const IngestHandler = struct {
                 span.setAttribute("queued_ingest", self.buffer.items.len);
                 span.setAttribute("queued_deletes", self.delete_buffer.items.len);
                 span.setAttribute("backpressure_count", backpressure_count.load(.monotonic));
+                span.setAttribute("backpressure_active", backpressure_active.load(.monotonic));
+                span.setAttribute("failed_flushes", self.failed_flushes);
+                span.setAttribute("relay_cursor", self.flushed_cursor);
+                span.setAttribute("rss_kb", getRssKB());
             }
             // Advance only past what was sent, and only while no deletes are
             // queued — a pending delete carries a lower seq, and skipping it
@@ -619,6 +627,10 @@ fn deleteActors(transport: *HttpTransport, config: Config, dids: []const []const
     };
     defer transport.allocator.free(result.body);
 
+    if (result.status != .ok) {
+        log.err("delete HTTP {d}: {s}", .{ @backingInt(result.status), result.body });
+    }
+
     return result.status == .ok;
 }
 
@@ -699,6 +711,7 @@ test {
     _ = @import("identity.zig");
     _ = @import("plc_tail.zig");
     _ = @import("label_tail.zig");
+    _ = @import("log_route.zig");
 }
 
 test "wantedCollection: allowlist survives the loss of jetstream's server-side filter" {

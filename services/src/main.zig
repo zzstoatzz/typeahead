@@ -3,6 +3,7 @@ const mem = std.mem;
 const Allocator = mem.Allocator;
 const zat = @import("zat");
 const logfire = @import("logfire");
+const log_route = @import("log_route.zig");
 const fatal = @import("fatal.zig");
 const HttpTransport = zat.HttpTransport;
 const TursoClient = @import("db/TursoClient.zig");
@@ -23,12 +24,12 @@ var app_threaded_io: std.Io.Threaded = undefined;
 pub const std_options_debug_threaded_io: ?*std.Io.Threaded = &app_threaded_io;
 const io = std.Options.debug_io;
 
-// every std.log.* call ships to logfire as a log record under the current
-// span (and still reaches stderr for `fly logs`); a panic's message is
-// flushed before the process dies. docs/operations.md "observability".
+// every std.log.* call reaches stderr for `fly logs`; log_route.zig decides
+// which also ship to logfire as log records. a panic's message is flushed
+// before the process dies. docs/operations.md "Telemetry".
 pub const std_options: std.Options = .{
     .log_level = .info,
-    .logFn = logfire.logFn,
+    .logFn = log_route.logFn,
 };
 pub const panic = std.debug.FullPanic(fatal.panicHook);
 

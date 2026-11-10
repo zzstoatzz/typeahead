@@ -141,6 +141,39 @@ yet. Retire unused trials by exact machine and
 volume identity after checking routing, refresh ownership and preview bindings.
 Keep small evidence receipts, not unused corpus copies.
 
+## Telemetry
+
+Each signal has one home:
+
+| question | where to look |
+| --- | --- |
+| is search serving fresh results? | `/health/freshness` on the public Worker, and `just index-status` |
+| is the ingester writing? | `https://typeahead-ingester.fly.dev/health`, and `ingest.heartbeat` in Logfire |
+| what did the Worker do with a request? | Workers Logs for `typeahead` (`worker_request_timing`, `ingest_done`, `cron_done`) |
+| machine CPU, memory, disk | the [Fly dashboard](../ops/health/README.md) |
+
+Logfire's `typeahead` project receives records from the ingester only. The
+Worker and the Tantivy slots do not export there.
+
+The ingester emits one `ingest.heartbeat` span a minute, after a flush that
+succeeded, so a gap means writes are failing or the process is down. Its
+attributes are `total_ingested`, `total_deleted`, `queued_ingest`,
+`queued_deletes`, `failed_flushes`, `backpressure_count`, `backpressure_active`,
+`relay_cursor` and `rss_kb`; the counters restart at zero with the process. The
+`ingester heartbeat missing` alert fires after 15 minutes without one.
+
+Warnings and errors from every ingester module ship as log records. Two kinds
+of line stay on stderr (`fly logs -a typeahead-ingester`) and are not sent:
+the per-flush progress and retry lines, and zat's connection progress. Both
+are decided in `services/src/log_route.zig`. Before 2026-11-10 they were about
+70% of the project's records and repeated what the heartbeat carries.
+
+Worker writes from the ingester wait up to 30 seconds for a response. A
+`worker write transport failed: ResponseHeadTimeout` record means a write
+outlasted that; check `database_ms` on `ingest_done` in Workers Logs and what
+else is writing to Turso (the 06:00 and 18:00 UTC index export, the nightly
+enrichment) before changing the ingester.
+
 ## Edge configuration
 
 Public `/xrpc/` requests must work for non-browser API clients. Preserve the
