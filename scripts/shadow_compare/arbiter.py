@@ -154,8 +154,12 @@ def judge(entry, fact):
             labels[name] = by_value(entry, "pds_host", fact["pds_host"])
         elif name == corpus.VISIBILITY_DIFFERS:
             labels[name] = (UNDETERMINED, "hiding is decided by the service's own moderation policy; no public authority states it")
+        elif name == corpus.LABELS_DIFFER:
+            labels[name] = (UNDETERMINED, "labels come from each labeler's stream; no single public authority states the set")
+        elif name == corpus.QUALITY_SCORE_DIFFERS:
+            labels[name] = (UNDETERMINED, "the quality score is the service's own computation; no public authority states it")
         elif name == corpus.OTHER_FIELD_DIFFERS:
-            labels[name] = (UNDETERMINED, "profile hash and quality score have no public authority")
+            labels[name] = (UNDETERMINED, "profile content and the raw PDS value are not checked against an authority")
         else:
             labels[name] = (UNDETERMINED, "the server returned no fields to compare with the authority")
     return {name: {"label": label, "reason": reason} for name, (label, reason) in labels.items()}

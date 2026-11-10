@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sources import PAGE_LIMIT, TantivyAdmin
 from transport import BudgetExceeded, TransportError
-from views import ABSENT, Doc
+from views import ABSENT, Doc, f32, label_difference
 
 CHECKPOINT_VERSION = 2
 
@@ -17,6 +17,8 @@ ONLY_IN_SHADOW = "only_in_shadow"
 HANDLE_DIFFERS = "handle_differs"
 VISIBILITY_DIFFERS = "visibility_differs"
 PDS_DIFFERS = "pds_differs"
+LABELS_DIFFER = "labels_differ"
+QUALITY_SCORE_DIFFERS = "quality_score_differs"
 OTHER_FIELD_DIFFERS = "other_field_differs"
 DOCUMENT_HASH_DIFFERS = "document_hash_differs"
 CLASSES = (
@@ -25,10 +27,11 @@ CLASSES = (
     HANDLE_DIFFERS,
     VISIBILITY_DIFFERS,
     PDS_DIFFERS,
+    LABELS_DIFFER,
+    QUALITY_SCORE_DIFFERS,
     OTHER_FIELD_DIFFERS,
     DOCUMENT_HASH_DIFFERS,
 )
-OTHER_FIELDS = ("pds", "profile_sha256", "quality_score")
 def classify(production, shadow):
     if not production.live and not shadow.live:
         return [], []
@@ -46,7 +49,14 @@ def classify(production, shadow):
         classes.append(VISIBILITY_DIFFERS)
     if a.get("pds_host") != b.get("pds_host"):
         classes.append(PDS_DIFFERS)
-    other = [name for name in OTHER_FIELDS if a.get(name) != b.get(name)]
+    labels = label_difference(a, b)
+    if labels is not None:
+        classes.append(LABELS_DIFFER)
+    if f32(a.get("quality_score") or 0) != f32(b.get("quality_score") or 0):
+        classes.append(QUALITY_SCORE_DIFFERS)
+    itemised = all(side.get("labels") is not None and side.get("profile_rest_sha256") for side in (a, b))
+    profile = "profile_rest_sha256" if itemised else "profile_sha256"
+    other = [name for name in ("pds", profile) if a.get(name) != b.get(name)]
     if PDS_DIFFERS in classes and "pds" in other:
         other.remove("pds")
     if other:
@@ -66,13 +76,16 @@ def difference(did, production, shadow):
     classes, other = classify(production, shadow)
     if not classes:
         return None
-    return {
+    entry = {
         "did": did,
         "classes": classes,
         "other_fields": other,
         "production": production.summary(),
         "shadow": shadow.summary(),
     }
+    if LABELS_DIFFER in classes:
+        entry["labels"] = label_difference(production.fields, shadow.fields)
+    return entry
 
 
 class Checkpoint:
@@ -235,10 +248,26 @@ def summarize(differences, sample_size):
             "sample": [differences[did] for did in chosen],
         }
     other = {}
+    values = {"only_in_production": {}, "only_in_shadow": {}}
+    detail_only = 0
     for entry in differences.values():
         for name in entry["other_fields"]:
             other[name] = other.get(name, 0) + 1
-    return {"differing_dids": len(differences), "classes": classes, "other_field_counts": other}
+        labels = entry.get("labels")
+        if labels is None:
+            continue
+        detail_only += labels["values_agree"]
+        for side, tally in values.items():
+            for label in labels[side]:
+                value = str(label.get("val", ""))
+                tally[value] = tally.get(value, 0) + 1
+    return {
+        "differing_dids": len(differences),
+        "classes": classes,
+        "other_field_counts": other,
+        "label_value_counts": {side: dict(sorted(tally.items())) for side, tally in values.items()},
+        "label_detail_only": detail_only,
+    }
 
 
 def run_sources(

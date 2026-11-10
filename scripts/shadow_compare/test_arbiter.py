@@ -88,7 +88,7 @@ class JudgeTests(unittest.TestCase):
     def test_visibility_and_other_fields_have_no_authority(self):
         source = authority({DID: ("a.test", "pds.test")}, {DID: {"handle": "a.test"}})
         self.assertEqual(self.label(entry(fields(), fields(hidden=True)), source, corpus.VISIBILITY_DIFFERS), arbiter.UNDETERMINED)
-        self.assertEqual(self.label(entry(fields(), fields(score=2.0)), source, corpus.OTHER_FIELD_DIFFERS), arbiter.UNDETERMINED)
+        self.assertEqual(self.label(entry(fields(), fields(score=2.0)), source, corpus.QUALITY_SCORE_DIFFERS), arbiter.UNDETERMINED)
 
     def test_did_web_resolves_from_its_own_host(self):
         did = "did:web:web.test"

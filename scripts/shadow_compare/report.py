@@ -44,6 +44,14 @@ def corpus_section(result):
         labels = ", ".join(f"{count} {label}" for label, count in sorted(entry.get("arbiter_labels", {}).items()))
         rows.append([name, entry["count"], len(entry["sample"]), labels or ("not run" if entry["count"] else "")])
     lines += table(["class", "count", "sampled", "arbiter labels for the sample"], rows)
+    values = result.get("label_value_counts") or {}
+    rows = [
+        [value, values["only_in_production"].get(value, 0), values["only_in_shadow"].get(value, 0)]
+        for value in sorted(set(values.get("only_in_production", {})) | set(values.get("only_in_shadow", {})))
+    ]
+    if rows:
+        lines += ["", f"Labels held by one side only, by value ({result['label_detail_only']} DIDs agree on values and differ in other label detail):", ""]
+        lines += table(["label value", "only in production", "only in shadow"], rows)
     return lines
 
 

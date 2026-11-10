@@ -47,13 +47,14 @@ class ClassifyTests(unittest.TestCase):
         cases = {
             corpus.VISIBILITY_DIFFERS: self.doc(hidden=True),
             corpus.PDS_DIFFERS: self.doc(pds_host="other.test"),
-            corpus.OTHER_FIELD_DIFFERS: self.doc(score=2.0),
+            corpus.QUALITY_SCORE_DIFFERS: self.doc(score=2.0),
+            corpus.OTHER_FIELD_DIFFERS: self.doc(profile="q"),
         }
         for expected, changed in cases.items():
             self.assertEqual(corpus.classify(base, changed)[0], [expected])
         moved = Doc("y", document("did:plc:a", "b.test")["fields"])
         self.assertEqual(corpus.classify(base, moved)[0], [corpus.HANDLE_DIFFERS])
-        self.assertEqual(corpus.classify(base, self.doc(score=2.0))[1], ["quality_score"])
+        self.assertEqual(corpus.classify(base, self.doc(score=2.0))[1], [])
         self.assertEqual(corpus.classify(base, self.doc(profile="q"))[1], ["profile_sha256"])
 
     def test_one_did_can_carry_several_classes(self):
