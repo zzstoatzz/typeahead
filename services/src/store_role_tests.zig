@@ -3,4 +3,5 @@
 
 test {
     _ = @import("store_process/handle_policy.zig");
+    _ = @import("store_process/events.zig");
 }
