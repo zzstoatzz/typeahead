@@ -2,7 +2,10 @@
 
 import hashlib
 import json
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import store
 import views
 from transport import BudgetExceeded, TransportError
 
@@ -78,3 +81,69 @@ class FakeBackend:
         if path == "/index/status":
             return dict(self.status)
         raise TransportError("unknown path " + path)
+
+
+def store_record(actor, updated_at):
+    """The store record the index bridge would turn into this stored actor."""
+    status = "deleted" if actor.get("deleted") else "live"
+    return {
+        "did": actor["did"], "status": status, "hidden": actor.get("hidden", False), "handle": actor.get("handle", ""),
+        "display_name": actor.get("display_name", ""), "avatar": actor.get("avatar_url", ""), "pds": actor.get("pds", ""),
+        "created_at": actor.get("created_at", ""),
+        "associated": json.dumps(actor["associated"], separators=(",", ":")) if actor.get("associated") else "",
+        "quality_score": actor.get("quality_score", 0), "updated_at": updated_at,
+        "labels": [
+            {"source": label["src"], "uri": label["uri"], "value": label["val"], "created": label["cts"],
+             "cid": label.get("cid", ""), "expires": label.get("exp", ""), "negated": False}
+            for label in actor.get("labels", [])
+        ],
+    }
+
+
+class FakeStore:
+    """A loopback HTTP server answering the two store read endpoints from a dict of records."""
+
+    def __init__(self, records, secret, next_change=1):
+        self.records = {record["did"]: record for record in records}
+        self.secret = secret
+        self.next_change = next_change
+        self.calls = []
+        owner = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def answer(self, status, body):
+                raw = json.dumps(body).encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(raw)))
+                self.end_headers()
+                self.wfile.write(raw)
+
+            def do_POST(self):
+                body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))))
+                owner.calls.append((self.path, body))
+                if self.headers.get("Authorization") != "Bearer " + owner.secret:
+                    return self.answer(401, {"error": "unauthorized " + str(self.headers.get("Authorization"))})
+                if self.path == store.PAGE_PATH:
+                    if not 1 <= body["limit"] <= store.PAGE_LIMIT:
+                        return self.answer(400, {"error": "limit"})
+                    dids = [did for did in sorted(owner.records) if did > body["after_did"]][: body["limit"]]
+                    return self.answer(200, {"actors": [owner.records[did] for did in dids], "next_change": owner.next_change})
+                if self.path == store.BATCH_PATH:
+                    if len(body["dids"]) > store.BATCH_LIMIT:
+                        return self.answer(400, {"error": "too many DIDs"})
+                    return self.answer(200, {"actors": [owner.records.get(did) for did in body["dids"]], "next_change": owner.next_change})
+                self.answer(404, {"error": "not found"})
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.base = f"http://127.0.0.1:{self.server.server_address[1]}"
+        self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
+        self.thread.start()
+
+    def close(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join()

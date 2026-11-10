@@ -98,6 +98,7 @@ class Client:
     sleep: object = time.sleep
     clock: object = time.monotonic
     extra_secrets: tuple = ()
+    secret_prefix: str = "/admin/"
     last_finished: float | None = field(default=None, init=False)
 
     def __post_init__(self):
@@ -133,7 +134,7 @@ class Client:
         if body is not None:
             content = json.dumps(body, separators=(",", ":")).encode()
             headers["Content-Type"] = "application/json"
-        if self.secret and path.startswith("/admin/"):
+        if self.secret and path.startswith(self.secret_prefix):
             headers["Authorization"] = "Bearer " + self.secret
         url = self.base + path
         failure = None
