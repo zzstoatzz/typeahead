@@ -40,7 +40,7 @@ it does not prove agreement on queries outside the set, and an explanation is an
 
 ## load on production
 
-a bundle places no load on production. every network target has its own request and byte budget and a fixed delay between requests; the tool stops when either budget is spent. nothing runs concurrently. the defaults allow 2,000 admin requests and 256 MiB per backend, which is a partial walk: a full walk has to be asked for with larger budgets, and resumes from `--checkpoint` when it stops. search, latency and freshness share 2,000 requests per backend at one request a second.
+a bundle places no load on production. every network target has its own request and byte budget and a fixed delay between requests; the tool stops when either budget is spent. nothing runs concurrently. the defaults allow 2,000 admin requests and 256 MiB per backend, which is a partial walk: a full walk has to be asked for with larger budgets, and resumes from `--checkpoint` when it stops. the checkpoint holds every tracked difference and is rewritten after each window; `--checkpoint-interval` spaces those writes out, and a walk that stops on a budget, a page limit or completion still writes it. search, latency and freshness share 2,000 requests per backend at one request a second.
 
 source-page and source-state each take at most 500 DIDs. a window of 500 DIDs costs one page and one state request per backend. measured on a local server with production-shaped records, that is 17.6 kB for the page and 230 kB for the state request and response with fields (82 kB without). each state request hydrates up to 500 stored documents on the serving machine, which is the real cost to production and the reason for the delay.
 

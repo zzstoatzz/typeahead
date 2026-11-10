@@ -54,6 +54,7 @@ def parser():
     g.add_argument("--corpus-max-mib", type=int, default=256, help="per backend, request plus response bodies")
     g.add_argument("--max-pages", type=int, help="stop after this many windows in this run")
     g.add_argument("--checkpoint", help="file that makes the walk resumable")
+    g.add_argument("--checkpoint-interval", type=float, default=0.0, help="seconds between checkpoint writes during the walk; 0 writes after every window")
     g.add_argument("--settle-delay", type=float, default=gates.SETTLE_DELAY_S)
     g.add_argument("--no-fields", action="store_true", help="do not ask source-state for comparison fields")
     g.add_argument("--arbiter", action="store_true", help="check sampled differences against plc.directory, did:web hosts and the Bluesky appview")
@@ -162,6 +163,7 @@ def execute(args, environ=None, sleep=time.sleep):
                 settle_delay=args.settle_delay,
                 sample_size=gates.ARBITER_SAMPLE_SIZE,
                 watermark_skew=gates.WATERMARK_SKEW_S,
+                checkpoint_interval=args.checkpoint_interval,
                 sleep=sleep,
             )
             if args.arbiter and result["differing_dids"]:

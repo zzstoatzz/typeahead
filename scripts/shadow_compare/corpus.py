@@ -103,9 +103,12 @@ def difference(did, production, shadow):
 
 
 class Checkpoint:
-    def __init__(self, path, identity):
+    def __init__(self, path, identity, interval=0.0, clock=time.monotonic):
         self.path = Path(path) if path else None
         self.identity = identity
+        self.interval = interval
+        self.clock = clock
+        self.saved_at = None
         self.cursor = ""
         self.complete = False
         self.walked = 0
@@ -135,9 +138,14 @@ class Checkpoint:
         self.started_at = saved["started_at"]
         return True
 
-    def save(self):
+    def save(self, due=False):
+        """Write the file; with `due`, only when `interval` seconds have passed since the last write."""
         if not self.path:
             return
+        now = self.clock()
+        if due and self.saved_at is not None and now - self.saved_at < self.interval:
+            return
+        self.saved_at = now
         body = {
             "version": CHECKPOINT_VERSION,
             "identity": self.identity,
@@ -201,6 +209,7 @@ def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked, c
     pages_this_run = 0
     while not checkpoint.complete:
         if max_pages is not None and pages_this_run >= max_pages:
+            checkpoint.save()
             return "page_limit"
         try:
             for side in sides:
@@ -230,7 +239,7 @@ def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked, c
             checkpoint.complete = True
         else:
             checkpoint.cursor = bound
-        checkpoint.save()
+        checkpoint.save(due=not exhausted)
     return "complete"
 
 
@@ -357,6 +366,7 @@ def run_sources(
     settle_delay,
     sample_size,
     watermark_skew=0,
+    checkpoint_interval=0.0,
     sleep=time.sleep,
 ):
     """Walk two sources and summarize what differs.
@@ -369,7 +379,7 @@ def run_sources(
     watermark = getattr(production, "watermark", None) if production.fixed else None
     cutoff = None if watermark is None else watermark - watermark_skew
     identity = {"production": production.identity, "shadow": shadow.identity, "page_size": page_size, "cutoff": cutoff}
-    checkpoint = Checkpoint(checkpoint_path, identity)
+    checkpoint = Checkpoint(checkpoint_path, identity, checkpoint_interval)
     resumed = checkpoint.load()
     stop = walk(production, shadow, checkpoint, page_size=page_size, max_pages=max_pages, max_tracked=max_tracked, cutoff=cutoff)
     result = {

@@ -124,6 +124,34 @@ class WalkTests(unittest.TestCase):
         self.assertEqual(result["differing_dids"], 0)
         self.assertEqual(result["live"]["production"], 50)
 
+    def test_a_checkpoint_interval_skips_writes_but_stops_still_resume_exactly(self):
+        a, b = pair()
+        del b[250]
+        whole = run(FakeBackend("p", a), FakeBackend("s", b))
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "checkpoint.json"
+            first = run(FakeBackend("p", a), FakeBackend("s", b), checkpoint_path=path, max_pages=4, checkpoint_interval=3600)
+            self.assertEqual(json.loads(path.read_text())["cursor"], first["cursor"])
+            self.assertEqual(json.loads(path.read_text())["pages"], 4)
+            second = run(FakeBackend("p", a), FakeBackend("s", b), checkpoint_path=path, checkpoint_interval=3600)
+            self.assertTrue(second["resumed"] and second["complete"])
+            self.assertTrue(json.loads(path.read_text())["complete"])
+            for key in ("dids_walked", "live", "flagged_dids", "classes"):
+                self.assertEqual(second[key], whole[key])
+
+    def test_a_checkpoint_writes_at_most_once_per_interval_unless_told(self):
+        now = [0.0]
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "checkpoint.json"
+            checkpoint = corpus.Checkpoint(path, {"pair": 1}, interval=60, clock=lambda: now[0])
+            written = []
+            for step, (seconds, due) in enumerate([(0, True), (30, True), (59, True), (60, True), (61, True), (62, False)]):
+                now[0] = seconds
+                checkpoint.pages = step
+                checkpoint.save(due=due)
+                written.append(json.loads(path.read_text())["pages"])
+            self.assertEqual(written, [0, 0, 0, 3, 3, 5])
+
     def test_resume_from_checkpoint_matches_an_uninterrupted_walk(self):
         a, b = pair()
         del b[250]
