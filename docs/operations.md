@@ -185,6 +185,16 @@ last compaction, actor deltas since start, and the index bridge's position and
 lag when it is configured. The numbers under `store` and `queues` are a
 snapshot the owner refreshes once a minute (`store.taken_at`).
 
+`enrichment` is the profile refresh loop: the pacing in force, entries leased,
+completed, retried and not found, requests failed and rate-limited, the last
+success, the pause in force (`backoff_until`), and for each of the two walks
+its hourly rate, passes, position and the period that rate gives for the pool
+the last corpus scan counted. `queues.refresh_due` is what waits now and
+`queues.refresh_leased` what a fetch holds. `corpus` is the last count of the
+actor range (live, with handles, with avatars, hidden, and `total` as the
+statistics page defines it) with the scan's `duration_ms`. Mechanism and
+rates: [the embedded-store plan](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/plans/embedded-store-service.md#enrichment).
+
 It emits one `store.heartbeat` span a minute, from the owner after that
 refresh, so a gap means the owner is not turning or the process is down. The
 per-commit progress line stays on stderr through `services/src/log_route.zig`,

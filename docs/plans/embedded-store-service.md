@@ -140,7 +140,39 @@ What differs from production and is visible, all covered by named flags in `sql_
 
 Tests (`cd services && zig build test`): the Worker's write-path cases asserted on store state, a differential run against a model of today's SQL, the role killed with SIGKILL at and between commits and compared with an uninterrupted run, intake pausing on a stalled store without tripping the watchdog, and the owner, the bridge and a model index converging through kills.
 
-Not built: checking the bootstrap relay cursor against the relay's first frame, enrichment and the refresh queue's consumer, the write surface for overrides and blocked domains, a scheduled count of live actors for the statistics total, and the Fly app.
+Not built: checking the bootstrap relay cursor against the relay's first frame, the write surface for overrides and blocked domains, publishing the corpus count to the statistics page, and the Fly app.
+
+## Enrichment
+
+Status: built and tested locally on 2026-11-10 (issue 44). It is not deployed and has never called the real appview, Blacksky or a PDS; the only real request behind it is the one `getProfiles` response captured as a test fixture.
+
+The store role refreshes profiles itself, in `services/src/store_process/enrich.zig`. It replaces three writers that all write Turso: the Worker's hourly `refreshModeration`, and the HeavyPad flows `typeahead-enrich-backfill` and `typeahead-identity-hourly`. Rates and their arithmetic are the table at the top of `config.zig`.
+
+- **The mapping and the score are ports with shared vectors.** `profile.zig` is `extractProfileFields`; `authority_score.zig` is `computeAuthorityScore`. `bun scripts/profile-vectors.ts` runs the TypeScript over a captured `getProfiles` response and synthetic edge cases and writes the expected fields, scores and f32 bits; the Zig test asserts every one, and `bun test` fails when the file is stale.
+- **The score carries V8's `log10`.** `Math.log10` is not correctly rounded. Over the integers 1 to 200,000, arm64 V8 differs from x86-64 V8 in the last bit for 116 of them and JavaScriptCore for 3,407. The port equals x86-64 V8 (Node 22.23.4) for every integer from 1 to 2^27. Which engine build the deployed Worker runs was not checked, so rounding to two decimals is what makes today's scores agree across engines, and a score that lands on a rounding boundary could differ by 0.01.
+- **One queue, three feeders.** A profile or identity write queues its actor (new accounts arrive this way, once they have a handle). A walk of the quality range queues ranked actors at 20,000 an hour. A walk of the rest of the actor range (live, with a handle, hidden or unscored) queues 10,000 an hour, and only while the queue is keeping up. Both positions are stored in the commit that queues their entries.
+- **A lease is the entry's due time.** A fetch settles its entry only if it still carries the lease, so a refresh requested during the fetch stays queued, and a process that dies loses nothing.
+- **Pacing assumes two replicas.** Each holds itself to one request every 2 to 2.4 seconds across every host, so the appview sees at most one request a second from both. A failed request pauses the loop, doubling from 30 seconds to 15 minutes.
+- **A bundle load queues nothing.** Every loaded actor keeps the bundle's score and is reached by a walk.
+- **The corpus count is a reader scan** (`corpus.zig`), hourly by default, reported in `/health` with its duration. Nothing publishes it to the statistics page yet.
+
+Against today, per replica and with the defaults: the cron checks at most 1,000 actors an hour (800 by the quality walk, 200 from the event queue), 24,000 a day. The backfill flow runs once a day for at most 3.5 hours at 50 actors a second, so at most 630,000 a day, and what it finds queued is about 70,000 arrivals a day plus re-touched actors; its real daily counts were not read for this work. This loop can check up to 981,818 a day, of which 480,000 are the quality walk (19,200 today). The size of the ranked pool in a loaded store has not been measured: the role counts it on every corpus scan and `/health` reports the period that results.
+
+What differs from the cron, all three on purpose:
+
+- **A profile fetch's moderation labels are the labeler's answer.** They replace an earlier answer and never what the label stream delivered. The cron overwrites `actors.labels` with the response.
+- **A PDS record keeps the stored labels.** The cron writes an empty list, which unhides a taken-down account that only its PDS still answers for.
+- **A failed takedown probe retries**, and a batch the appview refuses with a 400 is split until the refused DID is alone.
+
+What this does not do that today's writers do:
+
+- **It does not delete.** The cron's dead-actor cleanup cannot fire today either (both selectors require a handle and the cleanup requires none); account removal arrives on the relay.
+- **It does not resolve handles for accounts without one.** `typeahead-identity-hourly` fills empty handles from the appview; here that is the identity queue's job, and an actor without a handle is never fetched.
+- **It does not serve request-time enrichment.** `/request-indexing` fetches and writes a profile itself, and the reputation page's on-view refresh and `/admin/enrich-profiles` (which `scripts/prioritized-enrich.py` drives) go through `enrichProfileDids`. All three write Turso and need the write surface (step 6). `enrichProfileDids` also overwrites handle, display name, avatar, createdAt and `associated` with empty values where the cron keeps the stored ones; that variant is not ported.
+- **It does not hide slur handles**, as the rest of the role does not: the stored flag has no slur rule and the index applies its own.
+- **`Date.parse` is narrower.** A `createdAt` that is not an RFC 3339 timestamp earns no age bonus or freshness penalty; JavaScript reads some other forms.
+
+Tests (`cd services && zig build test`): the shared vectors; the loop against a fake appview (batching, the fallback order, backoff, the request rate under a burst, a refused batch, a restart, zero counts); an enrichment reaching the model index through the bridge; and the differential run, where the cron's row update is restated in `sql_model.zig`.
 
 ## Things that write today and where they go
 
