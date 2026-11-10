@@ -48,6 +48,28 @@ Rules that follow from having one writer:
 - **Each actor field has one code path that writes it.** The races listed in issue 35 cannot be expressed.
 - **Maintenance is stepped between commits with backpressure**, following zlay's collection index and the harness's stall rule.
 
+## Store module
+
+Status: built and tested locally on 2026-11-10 (issue 40). Nothing uses it yet: the ingester still writes through the Worker, and no store exists on any machine.
+
+The module is `services/src/store/`. Its key layout is documented at the top of `keys.zig` and its value encodings at the top of `record.zig`. It differs from the table above in four places:
+
+- **Labels** are keyed by DID, label source, value and a one-byte subject (the account or its profile record). Turso keys a label by subject URI, and the same value can sit on both subjects; without the subject one would overwrite the other.
+- **Cursors** also hold the PLC export position, the index bridge's position in the change log, the next change sequence, the change log's floor and the store format.
+- **The queues' due times live in the actor record** as well as in the queue keys, so a queue entry is found from its DID without a second index. Tombstones work the same way: a deleted or deactivated actor keeps its record, marked with its status and deletion time, until it is pruned.
+- **Policy** is two sub-ranges: blocked domains and per-DID overrides. An actor's record carries a copy of its override.
+
+Decisions the module makes that the rest of the build depends on:
+
+- **What the change log records.** One entry per actor per commit in which the actor's content changed: status, visibility, handle, profile fields, labels, counts, score. Queue scheduling, the hourly activity stamp and check times do not produce an entry, and a write that changes nothing produces none.
+- **A consumer below the log's floor is told so.** It must rebuild from a scan of the actors and continue from the floor.
+- **Blocking a domain is two steps.** The policy lands at once and governs every later write; actors already stored are brought in line by a sweep of the handle range, a bounded number of keys per commit.
+- **Moderation labels have one writer.** The label range holds what the label stream and the labeler's answers say. A profile fetch's labels from the moderation service are treated as such an answer; its other labels are stored on the actor.
+- **The stored hidden flag is as of the actor's last write.** A label's expiry takes effect when something next writes or re-evaluates the actor.
+- **The handle rule that hides slurs is supplied by the owner.** It is a set of Unicode regular expressions that Zig cannot run; the module takes a predicate.
+
+Tests (`cd services && zig build test`): encoding and ordering for every range, a model-based test of every kind of change against an in-memory model, a child process killed during commits, flushes and compaction steps, a change-log replay, and a reader scanning while another process writes, compacts and collects.
+
 ## Things that write today and where they go
 
 | today | here |
