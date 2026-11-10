@@ -14,6 +14,7 @@ const identity = @import("identity.zig");
 const plc_tail = @import("plc_tail.zig");
 const label_tail = @import("label_tail.zig");
 const store_role = @import("store_process/role.zig");
+const store_bootstrap = @import("store_process/bootstrap.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -127,12 +128,19 @@ pub fn main() !void {
     // an old search or indexer machine on a new image) must not quietly start
     // consuming the firehose and migrating Turso.
     const mode = cGetenv("MODE") orelse {
-        log.err("MODE not set — must be ingester or store", .{});
+        log.err("MODE not set — must be ingester, store or store-bootstrap", .{});
         return error.RoleRequired;
     };
+    if (mem.eql(u8, mode, "store-bootstrap")) {
+        store_bootstrap.run(allocator, io) catch |err| {
+            log.err("store bootstrap failed: {s}", .{@errorName(err)});
+            return err;
+        };
+        return;
+    }
     const store_mode = mem.eql(u8, mode, "store");
     if (!store_mode and !mem.eql(u8, mode, "ingester")) {
-        log.err("MODE='{s}' unrecognized — must be ingester or store", .{mode});
+        log.err("MODE='{s}' unrecognized — must be ingester, store or store-bootstrap", .{mode});
         return error.RoleRequired;
     }
 

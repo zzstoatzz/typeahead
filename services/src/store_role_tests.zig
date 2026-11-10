@@ -13,4 +13,5 @@ test {
     _ = @import("store_process/http_test.zig");
     _ = @import("store_process/differential_test.zig");
     _ = @import("store_process/index_bridge_test.zig");
+    _ = @import("store_process/bootstrap_test.zig");
 }
