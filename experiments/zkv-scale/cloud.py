@@ -290,9 +290,9 @@ def locate_zig(supervisor, tools):
     return tools / "zig-x86_64-linux-0.17.0" / "zig", "downloaded"
 
 
-def build_tools(supervisor, root, tools, optimize):
+def rust_toolchain(supervisor, tools, facts):
+    """An environment with a C toolchain and cargo, installing either into the scratch tools when absent."""
     env = dict(os.environ)
-    facts = {"optimize": optimize}
     if sys.platform == "linux" and shutil.which("cc") is None:
         supervisor.run(
             "tools",
@@ -344,13 +344,12 @@ def build_tools(supervisor, root, tools, optimize):
         )
         env["PATH"] = str(tools / "cargo" / "bin") + os.pathsep + env["PATH"]
         facts["installed_rust"] = RUST_TOOLCHAIN
-    zig, origin = locate_zig(supervisor, tools)
-    facts["zig"] = origin
     env["CARGO_TARGET_DIR"] = str(tools / "cargo-target")
     env["CARGO_BUILD_JOBS"] = str(os.cpu_count() or 1)
-    env["ZIG_GLOBAL_CACHE_DIR"] = str(tools / "zig-global-cache")
-    env["ZIG_LOCAL_PKG_DIR"] = str(tools / "zig-pkg")
+    return env
 
+
+def build_dump_actors(supervisor, root, tools, env, facts):
     started = time.monotonic()
     supervisor.run(
         "tools",
@@ -365,6 +364,20 @@ def build_tools(supervisor, root, tools, optimize):
         env=env,
     )
     facts["dump_actors_build_seconds"] = round(time.monotonic() - started, 1)
+    dump = tools / "cargo-target" / "release" / "dump-actors"
+    with dump.open("rb") as stream:
+        facts["dump-actors_sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
+    return dump
+
+
+def build_tools(supervisor, root, tools, optimize):
+    facts = {"optimize": optimize}
+    env = rust_toolchain(supervisor, tools, facts)
+    zig, origin = locate_zig(supervisor, tools)
+    facts["zig"] = origin
+    env["ZIG_GLOBAL_CACHE_DIR"] = str(tools / "zig-global-cache")
+    env["ZIG_LOCAL_PKG_DIR"] = str(tools / "zig-pkg")
+    dump = build_dump_actors(supervisor, root, tools, env, facts)
     started = time.monotonic()
     supervisor.run(
         "tools",
@@ -381,13 +394,9 @@ def build_tools(supervisor, root, tools, optimize):
         cwd=root / "zkvscale",
     )
     facts["zkvscale_build_seconds"] = round(time.monotonic() - started, 1)
-    dump = tools / "cargo-target" / "release" / "dump-actors"
     zkvscale = tools / "zkvscale" / "bin" / "zkvscale"
-    for binary in (dump, zkvscale):
-        with binary.open("rb") as stream:
-            facts[binary.name + "_sha256"] = hashlib.file_digest(
-                stream, "sha256"
-            ).hexdigest()
+    with zkvscale.open("rb") as stream:
+        facts["zkvscale_sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
     return dump, zkvscale, facts
 
 
