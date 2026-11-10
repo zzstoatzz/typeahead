@@ -37,6 +37,8 @@
 //! and honour `Retry-After`. The arithmetic is in `config.zig`.
 
 const std = @import("std");
+const zat = @import("zat");
+const plc_tail = @import("../plc_tail.zig");
 const store_mod = @import("../store/root.zig");
 const authority = @import("authority_score.zig");
 const owner_mod = @import("owner.zig");
@@ -445,5 +447,60 @@ pub const Enricher = struct {
             };
             if (outcome == .idle and !self.timer.sleep_ms(self.timer.context, self.options.idle_seconds * 1000)) return;
         }
+    }
+};
+
+/// The transport the role runs with: one keep-alive client, every request
+/// bounded in time and size.
+pub const Http = struct {
+    client: zat.HttpTransport,
+
+    const deadline_ns = 15 * std.time.ns_per_s;
+    const max_body = 4 << 20;
+
+    pub fn init(io: std.Io, gpa: Allocator) Http {
+        var client = zat.HttpTransport.init(io, gpa);
+        client.keep_alive = true;
+        client.user_agent = plc_tail.USER_AGENT;
+        return .{ .client = client };
+    }
+
+    pub fn deinit(self: *Http) void {
+        self.client.deinit();
+    }
+
+    pub fn transport(self: *Http) Transport {
+        return .{ .context = self, .get = get };
+    }
+
+    fn get(context: *anyopaque, arena: Allocator, url: []const u8) Response {
+        const self: *Http = @ptrCast(@alignCast(context));
+        var result = self.client.fetch(.{ .url = url, .deadline_ns = deadline_ns, .max_response_size = max_body, .capture_headers = &.{"retry-after"} }) catch |err| {
+            log.debug("request failed: {s}", .{@errorName(err)});
+            return .{};
+        };
+        defer result.deinit(self.client.allocator);
+        var response: Response = .{ .status = @backingInt(result.status), .body = arena.dupe(u8, result.body) catch return .{} };
+        for (result.headers.entries) |header| response.retry_after_seconds = std.fmt.parseInt(u64, std.mem.trim(u8, header.value, " "), 10) catch null;
+        return response;
+    }
+};
+
+pub const WallTimer = struct {
+    io: std.Io,
+
+    pub fn timer(self: *WallTimer) Timer {
+        return .{ .context = self, .now_ms = nowMs, .sleep_ms = sleepMs };
+    }
+
+    fn nowMs(context: *anyopaque) i64 {
+        const self: *WallTimer = @ptrCast(@alignCast(context));
+        return @intCast(@divFloor(std.Io.Timestamp.now(self.io, .real).nanoseconds, std.time.ns_per_ms));
+    }
+
+    fn sleepMs(context: *anyopaque, ms: u64) bool {
+        const self: *WallTimer = @ptrCast(@alignCast(context));
+        self.io.sleep(std.Io.Duration.fromMilliseconds(@intCast(ms)), .awake) catch return false;
+        return true;
     }
 };

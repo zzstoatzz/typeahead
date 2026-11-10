@@ -9,7 +9,8 @@
 //!   maintenance, domain sweeps, tombstone pruning, the label-expiry pass,
 //!   change-log trimming and the health snapshot.
 //! - Producers (the relay intake, the identity resolvers, the PLC tail, the
-//!   label tail) run on their own threads and never touch the store. They
+//!   label tail, the enrichment loop) run on their own threads and never
+//!   touch the store. They
 //!   build a `Submission` and hand it over with `post` (the owner frees it
 //!   after the commit) or `call` (the producer waits for the commit and reads
 //!   the result). Submissions from one producer commit in the order it handed

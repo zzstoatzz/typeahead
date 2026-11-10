@@ -1,8 +1,9 @@
 //! `MODE=store`: the ingester's second role. It follows the relay, the
-//! labeler and the PLC export, resolves identities, and commits everything
-//! to a zkv store on local disk. It opens no connection to Turso or the
-//! Worker. Configuration is in `config.zig`, the concurrency model in
-//! `owner.zig`, the HTTP surface in `http.zig`.
+//! labeler and the PLC export, resolves identities, refreshes profiles from
+//! the appview, and commits everything to a zkv store on local disk. It
+//! opens no connection to Turso or the Worker. Configuration is in
+//! `config.zig`, the concurrency model in `owner.zig`, the HTTP surface in
+//! `http.zig`, enrichment in `enrich.zig`, the corpus count in `corpus.zig`.
 
 const std = @import("std");
 const zat = @import("zat");
@@ -19,6 +20,8 @@ const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
 const tails = @import("tails.zig");
 const index_bridge = @import("index_bridge.zig");
+const corpus_mod = @import("corpus.zig");
+const enrich = @import("enrich.zig");
 const bridge_mod = @import("../bridge/root.zig");
 const Io = std.Io;
 const Owner = owner_mod.Owner;
@@ -66,6 +69,58 @@ fn heartbeat(owner: *Owner) void {
     span.setAttribute("identity_pending", health.identity_pending);
     span.setAttribute("identity_due", health.identity_due);
     span.setAttribute("refresh_pending", health.refresh_pending);
+    span.setAttribute("refresh_due", health.refresh_due);
+    span.setAttribute("refresh_leased", health.refresh_pending -| health.refresh_due);
+    if (self.enricher) |enricher| {
+        const s = &enricher.stats;
+        span.setAttribute("enrich_leased", s.leased.load(.monotonic));
+        span.setAttribute("enrich_completed", s.enriched.load(.monotonic) + s.from_blacksky.load(.monotonic) + s.from_pds.load(.monotonic));
+        span.setAttribute("enrich_from_blacksky", s.from_blacksky.load(.monotonic));
+        span.setAttribute("enrich_from_pds", s.from_pds.load(.monotonic));
+        span.setAttribute("enrich_not_found", s.not_found.load(.monotonic));
+        span.setAttribute("enrich_changed", s.changed.load(.monotonic));
+        span.setAttribute("enrich_retried", s.retried.load(.monotonic));
+        span.setAttribute("enrich_requests", s.requests.load(.monotonic));
+        span.setAttribute("enrich_failed", s.failed.load(.monotonic));
+        span.setAttribute("enrich_rate_limited", s.rate_limited.load(.monotonic));
+        span.setAttribute("enrich_commit_failed", s.commit_failed.load(.monotonic));
+        span.setAttribute("enrich_last_success_at", s.last_success_at.load(.monotonic));
+        span.setAttribute("enrich_backoff_until", s.backoff_until.load(.monotonic));
+        span.setAttribute("enrich_backed_up", s.backed_up.load(.monotonic));
+        span.setAttribute("enrich_walk_queued", s.walk_queued.load(.monotonic));
+        span.setAttribute("enrich_sweep_queued", s.sweep_queued.load(.monotonic));
+        span.setAttribute("enrich_walk_per_hour", enricher.options.walk_per_hour);
+        span.setAttribute("enrich_sweep_per_hour", enricher.options.sweep_per_hour);
+        span.setAttribute("enrich_requests_per_second", enricher.options.requests_per_second);
+    }
+    const quality_walk = health.walks.get(.quality);
+    const rest_walk = health.walks.get(.rest);
+    span.setAttribute("walk_quality_passes", quality_walk.passes);
+    span.setAttribute("walk_quality_score", @as(f64, quality_walk.score));
+    span.setAttribute("walk_quality_last_pass_seconds", quality_walk.last_pass_seconds);
+    span.setAttribute("walk_rest_passes", rest_walk.passes);
+    span.setAttribute("walk_rest_position", rest_walk.position());
+    span.setAttribute("walk_rest_last_pass_seconds", rest_walk.last_pass_seconds);
+    if (self.corpus) |scanner| {
+        const report = scanner.report();
+        span.setAttribute("corpus_scans", report.scans);
+        span.setAttribute("corpus_scan_failed", report.failed);
+        span.setAttribute("corpus_scanned_at", report.finished_at);
+        span.setAttribute("corpus_scan_ms", report.duration_ms);
+        if (report.counts) |counts| {
+            span.setAttribute("corpus_live", counts.live);
+            span.setAttribute("corpus_total", counts.total());
+            span.setAttribute("corpus_with_handles", counts.with_handles);
+            span.setAttribute("corpus_with_avatars", counts.with_avatars);
+            span.setAttribute("corpus_hidden", counts.hidden);
+            span.setAttribute("corpus_ranked", counts.ranked);
+            span.setAttribute("corpus_rest", counts.rest);
+            if (self.enricher) |enricher| {
+                if (enricher.options.walk_per_hour > 0) span.setAttribute("walk_quality_period_seconds", counts.ranked * 3600 / enricher.options.walk_per_hour);
+                if (enricher.options.sweep_per_hour > 0) span.setAttribute("walk_rest_period_seconds", counts.rest * 3600 / enricher.options.sweep_per_hour);
+            }
+        }
+    }
     span.setAttribute("tombstones", health.tombstones);
     span.setAttribute("commits", c.commits.load(.monotonic));
     span.setAttribute("changes_applied", c.changes_applied.load(.monotonic));
@@ -115,6 +170,8 @@ const Role = struct {
     resolver: identity.Resolver,
     work: identity_work.Work,
     bridge: ?*bridge_mod.Bridge = null,
+    enricher: ?*enrich.Enricher = null,
+    corpus: ?*corpus_mod.Scanner = null,
     bridge_stop: std.atomic.Value(bool) = .init(false),
 
     fn relay(self: *Role) void {
@@ -203,6 +260,8 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
         .labels_ignored = &self.labels.ignored,
         .read_secret = self.config.read_secret,
         .bridge = self.bridge,
+        .enricher = self.enricher,
+        .corpus = self.corpus,
     };
     const response = http.respond(&context, a, method, target, authorization, body) catch |err| blk: {
         log.warn("request failed: {s}", .{@errorName(err)});
@@ -290,6 +349,32 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
         bridge_source.close();
     };
 
+    var scanner: corpus_mod.Scanner = .{
+        .gpa = allocator,
+        .io = io,
+        .root = Io.Dir.cwd(),
+        .path = config.store_dir,
+        .layout = owner.options.store.layout,
+        .interval_seconds = config.corpus_scan_seconds,
+    };
+    if (config.corpus_scan_seconds > 0) {
+        self.corpus = &scanner;
+        try tasks.concurrent(io, corpus_mod.Scanner.run, .{&scanner});
+    }
+
+    // Enrichment: its own thread and its own HTTP client; see enrich.zig.
+    var enrich_http: enrich.Http = undefined;
+    var enrich_timer: enrich.WallTimer = .{ .io = io };
+    var enricher: enrich.Enricher = undefined;
+    if (config.enrich) |options| {
+        enrich_http = enrich.Http.init(io, allocator);
+        enricher = .{ .gpa = allocator, .owner = owner, .transport = enrich_http.transport(), .timer = enrich_timer.timer(), .options = options };
+        enricher.prng = .init(@truncate(@as(u96, @bitCast(Io.Timestamp.now(io, .real).nanoseconds))));
+        self.enricher = &enricher;
+        try tasks.concurrent(io, enrich.Enricher.run, .{&enricher});
+    }
+    defer if (config.enrich != null) enrich_http.deinit();
+
     var pool: identity_work.Pool = undefined;
     var have_pool = false;
     if (!config.offline) {
@@ -317,6 +402,7 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
 
     log.info("SIGTERM received, stopping the store role", .{});
     self.bridge_stop.store(true, .release);
+    if (self.enricher) |running| running.stop();
     owner.stop();
     tasks.cancel(io);
     if (have_pool) pool.shutdown(io);

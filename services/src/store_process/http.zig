@@ -30,6 +30,8 @@ const plc_tail = @import("../plc_tail.zig");
 const label_tail = @import("../label_tail.zig");
 const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
+const corpus_mod = @import("corpus.zig");
+const enrich = @import("enrich.zig");
 const Bridge = @import("../bridge/root.zig").Bridge;
 const Owner = owner_mod.Owner;
 const Actor = store_mod.Actor;
@@ -133,6 +135,9 @@ pub const HealthBody = struct {
         identity_pending: u64,
         identity_due: u64,
         refresh_pending: u64,
+        /// Refresh entries due now, and those a fetch holds a lease on.
+        refresh_due: u64,
+        refresh_leased: u64,
         tombstones: u64,
         /// A count above stopped at the cap, so it is a lower bound.
         capped: bool,
@@ -178,7 +183,136 @@ pub const HealthBody = struct {
     labels: struct { frames: u64, adopted: u64, malformed: u64, ignored: u64, commits: u64, commit_failed: u64, cursor: i64, newest_cts: i64 },
     /// Absent when the index bridge is not configured.
     bridge: ?BridgeBody = null,
+    /// Absent when enrichment is off.
+    enrichment: ?EnrichmentBody = null,
+    /// Absent when the corpus scan is off.
+    corpus: ?CorpusBody = null,
 };
+
+/// One standing refresh walk. `period_seconds` is the pool the last corpus
+/// scan counted divided by the configured rate; null until a scan has run
+/// or when the walk is off.
+pub const WalkBody = struct {
+    per_hour: u64,
+    /// Actors this walk queued since the process started.
+    queued: u64,
+    passes: u64,
+    pass_started_at: u64,
+    last_pass_seconds: u64,
+    /// Where the pass stands: the last DID examined, and for the quality
+    /// walk its score. Empty and 0 at the top of a pass.
+    position_did: []const u8,
+    position_score: f32,
+    pool: ?u64 = null,
+    period_seconds: ?u64 = null,
+};
+
+/// The enrichment loop, from `enrich.Stats`, since this process started.
+pub const EnrichmentBody = struct {
+    requests_per_second: f64,
+    jitter: f64,
+    lease_seconds: u64,
+    backoff_seconds: u64,
+    backoff_max_seconds: u64,
+    leased: u64,
+    /// Entries settled with a profile from Bluesky, Blacksky or a PDS record.
+    completed: u64,
+    from_blacksky: u64,
+    from_pds: u64,
+    not_found: u64,
+    changed: u64,
+    /// Entries rescheduled after a request that taught nothing.
+    retried: u64,
+    requests: u64,
+    failed: u64,
+    rate_limited: u64,
+    split: u64,
+    commit_failed: u64,
+    last_success_at: u64,
+    last_request_at: u64,
+    backoff_until: u64,
+    consecutive_failures: u64,
+    backed_up: bool,
+    quality_walk: WalkBody,
+    rest_walk: WalkBody,
+};
+
+/// The last corpus count. `total` is what the statistics page calls total:
+/// live actors less the hidden ones.
+pub const CorpusBody = struct {
+    scanned_at: u64,
+    duration_ms: u64,
+    scans: u64,
+    failed: u64,
+    records: ?u64 = null,
+    live: ?u64 = null,
+    total: ?u64 = null,
+    with_handles: ?u64 = null,
+    with_avatars: ?u64 = null,
+    hidden: ?u64 = null,
+    ranked: ?u64 = null,
+    rest: ?u64 = null,
+};
+
+fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, pool: ?u64) !WalkBody {
+    return .{
+        .per_hour = per_hour,
+        .queued = queued,
+        .passes = walk.passes,
+        .pass_started_at = walk.started_at,
+        .last_pass_seconds = walk.last_pass_seconds,
+        .position_did = try arena.dupe(u8, walk.position()),
+        .position_score = walk.score,
+        .pool = pool,
+        .period_seconds = if (pool != null and per_hour > 0) pool.? * 3600 / per_hour else null,
+    };
+}
+
+pub fn enrichmentBody(arena: Allocator, enricher: *enrich.Enricher, health: owner_mod.Health, counts: ?corpus_mod.Counts) !EnrichmentBody {
+    const s = &enricher.stats;
+    const o = enricher.options;
+    return .{
+        .requests_per_second = o.requests_per_second,
+        .jitter = o.jitter,
+        .lease_seconds = o.lease_seconds,
+        .backoff_seconds = o.backoff_seconds,
+        .backoff_max_seconds = o.backoff_max_seconds,
+        .leased = load(&s.leased),
+        .completed = load(&s.enriched) + load(&s.from_blacksky) + load(&s.from_pds),
+        .from_blacksky = load(&s.from_blacksky),
+        .from_pds = load(&s.from_pds),
+        .not_found = load(&s.not_found),
+        .changed = load(&s.changed),
+        .retried = load(&s.retried),
+        .requests = load(&s.requests),
+        .failed = load(&s.failed),
+        .rate_limited = load(&s.rate_limited),
+        .split = load(&s.split),
+        .commit_failed = load(&s.commit_failed),
+        .last_success_at = load(&s.last_success_at),
+        .last_request_at = load(&s.last_request_at),
+        .backoff_until = load(&s.backoff_until),
+        .consecutive_failures = load(&s.consecutive_failures),
+        .backed_up = load(&s.backed_up),
+        .quality_walk = try walkBody(arena, health.walks.get(.quality), o.walk_per_hour, load(&s.walk_queued), if (counts) |c| c.ranked else null),
+        .rest_walk = try walkBody(arena, health.walks.get(.rest), o.sweep_per_hour, load(&s.sweep_queued), if (counts) |c| c.rest else null),
+    };
+}
+
+pub fn corpusBody(report: corpus_mod.Report) CorpusBody {
+    var body: CorpusBody = .{ .scanned_at = report.finished_at, .duration_ms = report.duration_ms, .scans = report.scans, .failed = report.failed };
+    if (report.counts) |c| {
+        body.records = c.records;
+        body.live = c.live;
+        body.total = c.total();
+        body.with_handles = c.with_handles;
+        body.with_avatars = c.with_avatars;
+        body.hidden = c.hidden;
+        body.ranked = c.ranked;
+        body.rest = c.rest;
+    }
+    return body;
+}
 
 /// The index bridge, from `Bridge.health`. `lag` is how many change-log
 /// positions the index is behind the store.
@@ -237,6 +371,8 @@ pub const Context = struct {
     labels_ignored: *const std.atomic.Value(u64),
     read_secret: ?[]const u8,
     bridge: ?*Bridge = null,
+    enricher: ?*enrich.Enricher = null,
+    corpus: ?*corpus_mod.Scanner = null,
 };
 
 pub const Response = struct {
@@ -265,6 +401,7 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
     const created = load(&c.actors_created);
     const gone = load(&c.actors_gone);
     const reactivated = load(&c.actors_reactivated);
+    const corpus_report = if (ctx.corpus) |scanner| scanner.report() else null;
     return .{
         .rss_kb = ingest.getRssKB(),
         .relay = .{
@@ -283,6 +420,8 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .identity_pending = health.identity_pending,
             .identity_due = health.identity_due,
             .refresh_pending = health.refresh_pending,
+            .refresh_due = health.refresh_due,
+            .refresh_leased = health.refresh_pending -| health.refresh_due,
             .tombstones = health.tombstones,
             .capped = health.counts_capped,
         },
@@ -352,6 +491,8 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .newest_cts = load(&label_tail.stats.newest_cts),
         },
         .bridge = if (ctx.bridge) |bridge| try bridgeBody(arena, bridge) else null,
+        .enrichment = if (ctx.enricher) |enricher| try enrichmentBody(arena, enricher, health, if (corpus_report) |report| report.counts else null) else null,
+        .corpus = if (corpus_report) |report| corpusBody(report) else null,
     };
 }
 

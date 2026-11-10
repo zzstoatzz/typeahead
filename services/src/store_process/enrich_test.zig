@@ -4,7 +4,9 @@
 const std = @import("std");
 const bridge_mod = @import("../bridge/root.zig");
 const store_mod = @import("../store/root.zig");
+const corpus_mod = @import("corpus.zig");
 const enrich = @import("enrich.zig");
+const http = @import("http.zig");
 const index_bridge = @import("index_bridge.zig");
 const harness = @import("testing.zig");
 const Change = store_mod.Change;
@@ -564,4 +566,116 @@ test "the walks queue ranked actors at their hourly rate and the rest only while
     };
     try testing.expect(health.walks.get(.quality).score > 0);
     try testing.expectEqual(@as(u64, 1), health.walks.get(.rest).passes);
+}
+
+test "health reports the loop, both walks with their periods, and the corpus count" {
+    const rig = try Rig.create(.{ .requests_per_second = 2, .jitter = 0, .walk_per_hour = 7200, .sweep_per_hour = 7200 });
+    defer rig.destroy();
+    const a = rig.f.arena.allocator();
+    var seeds: std.ArrayList(Change) = .empty;
+    for (0..50) |n| {
+        const subject = rig.did(n);
+        if (n != 49) try rig.known(subject, counts);
+        try seeds.append(a, .{ .profile = .{ .did = subject, .handle = try std.fmt.allocPrint(a, "h{d}.test", .{n}), .avatar = if (n < 10) "bafkreiavatar" else "" } });
+        try seeds.append(a, if (n < 30) .{ .enrichment = .{ .did = subject, .source = .bsky, .quality_score = @floatFromInt(1000 - n) } } else .{ .refresh_complete = .{ .did = subject } });
+    }
+    _ = try rig.f.commit(seeds.items, null);
+    _ = try rig.steps(1);
+    _ = World.sleepMs(rig.world, 20_000);
+    try testing.expectEqual(enrich.Step.worked, try rig.steps(1));
+    rig.f.advance(61);
+    _ = rig.f.owner.turn(0);
+
+    var scanner: corpus_mod.Scanner = .{ .gpa = testing.allocator, .io = testing.io, .root = rig.f.tmp.dir, .path = "store", .layout = rig.f.owner.options.store.layout, .interval_seconds = 3600 };
+    scanner.scan();
+    const reader = try store_mod.Reader.open(testing.allocator, testing.io, rig.f.tmp.dir, "store", rig.f.owner.options.store.layout);
+    defer reader.close();
+    var signals: @import("intake.zig").Signals = .{};
+    var ignored: std.atomic.Value(u64) = .init(0);
+    const context: http.Context = .{ .owner = rig.f.owner, .reader = reader, .intake = &signals, .labels_ignored = &ignored, .read_secret = null, .enricher = &rig.enricher, .corpus = &scanner };
+    const response = try http.respond(&context, a, .GET, "/health", null, "");
+    const body = try std.json.parseFromSliceLeaky(http.HealthBody, a, response.body, .{ .ignore_unknown_fields = true });
+
+    const loop = body.enrichment.?;
+    try testing.expectEqual(@as(f64, 2), loop.requests_per_second);
+    try testing.expectEqual(@as(u64, 25), loop.leased);
+    try testing.expectEqual(@as(u64, 25), loop.completed);
+    try testing.expectEqual(@as(u64, 1), loop.requests);
+    try testing.expectEqual(@as(u64, 0), loop.failed + loop.rate_limited + loop.retried);
+    try testing.expect(loop.last_success_at >= harness.t0 + 20 and loop.backed_up);
+    try testing.expectEqual(@as(u64, 7200), loop.quality_walk.per_hour);
+    try testing.expectEqual(@as(u64, 30), loop.quality_walk.queued);
+    try testing.expectEqual(@as(u64, 1), loop.quality_walk.passes);
+    try testing.expectEqual(@as(?u64, 30), loop.quality_walk.pool);
+    try testing.expectEqual(@as(?u64, 15), loop.quality_walk.period_seconds);
+    try testing.expectEqual(@as(u64, 20), loop.rest_walk.queued);
+    try testing.expectEqual(@as(u64, 1), loop.rest_walk.passes);
+    try testing.expectEqual(@as(?u64, 20), loop.rest_walk.pool);
+    try testing.expectEqual(@as(?u64, 10), loop.rest_walk.period_seconds);
+    try testing.expectEqual(@as(u64, 25), body.queues.refresh_due);
+    try testing.expectEqual(@as(u64, 0), body.queues.refresh_leased);
+    try testing.expectEqual(@as(u64, 25), body.queues.refresh_pending);
+
+    const corpus = body.corpus.?;
+    try testing.expectEqual(@as(?u64, 50), corpus.live);
+    try testing.expectEqual(@as(?u64, 50), corpus.total);
+    try testing.expectEqual(@as(?u64, 50), corpus.with_handles);
+    try testing.expectEqual(@as(?u64, 10), corpus.with_avatars);
+    try testing.expectEqual(@as(?u64, 0), corpus.hidden);
+    try testing.expectEqual(@as(u64, 1), corpus.scans);
+}
+
+test "the role's transport reads status, body and Retry-After over a real connection" {
+    const allocator = testing.allocator;
+    var threaded: std.Io.Threaded = .init(allocator, .{});
+    defer threaded.deinit();
+    const io = threaded.io();
+    var listener = try (std.Io.net.IpAddress{ .ip4 = .loopback(0) }).listen(io, .{ .reuse_address = true });
+    defer listener.deinit(io);
+    var seen: [2][512]u8 = undefined;
+    var seen_len: [2]usize = .{ 0, 0 };
+
+    var server = try std.Thread.spawn(.{}, struct {
+        fn run(l: *std.Io.net.Server, server_io: std.Io, heads: *[2][512]u8, lens: *[2]usize) void {
+            const answers = [_][]const u8{
+                "HTTP/1.1 429 Too Many Requests\r\nRetry-After: 7\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}",
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 15\r\nConnection: close\r\n\r\n{\"profiles\":[]}",
+            };
+            for (answers, 0..) |answer, index| {
+                var conn = l.accept(server_io) catch return;
+                defer conn.close(server_io);
+                var rbuf: [4096]u8 = undefined;
+                var reader = conn.reader(server_io, &rbuf);
+                var slices = [_][]u8{&heads[index]};
+                lens[index] = reader.interface.readVec(&slices) catch 0;
+                var wbuf: [256]u8 = undefined;
+                var writer = conn.writer(server_io, &wbuf);
+                writer.interface.writeAll(answer) catch {};
+                writer.interface.flush() catch {};
+            }
+        }
+    }.run, .{ &listener, io, &seen, &seen_len });
+    defer server.join();
+
+    var arena: std.heap.ArenaAllocator = .init(allocator);
+    defer arena.deinit();
+    var client = enrich.Http.init(io, allocator);
+    defer client.deinit();
+    client.client.keep_alive = false;
+    const transport = client.transport();
+    const url = try std.fmt.allocPrint(arena.allocator(), "http://127.0.0.1:{d}/xrpc/app.bsky.actor.getProfiles?actors=did%3Aplc%3Aabc", .{listener.socket.address.getPort()});
+
+    const limited = transport.get(transport.context, arena.allocator(), url);
+    try testing.expectEqual(@as(u16, 429), limited.status);
+    try testing.expectEqual(@as(?u64, 7), limited.retry_after_seconds);
+    const ok = transport.get(transport.context, arena.allocator(), url);
+    try testing.expectEqual(@as(u16, 200), ok.status);
+    try testing.expectEqualStrings("{\"profiles\":[]}", ok.body);
+    try testing.expectEqual(@as(?u64, null), ok.retry_after_seconds);
+    try testing.expect(std.mem.startsWith(u8, seen[0][0..seen_len[0]], "GET /xrpc/app.bsky.actor.getProfiles?actors=did%3Aplc%3Aabc HTTP/1.1\r\n"));
+    var lowered: [512]u8 = undefined;
+    try testing.expect(std.mem.indexOf(u8, std.ascii.lowerString(&lowered, seen[0][0..seen_len[0]]), "user-agent: typeahead.waow.tech/") != null);
+
+    const refused = transport.get(transport.context, arena.allocator(), "http://127.0.0.1:1/xrpc/x");
+    try testing.expectEqual(@as(u16, 0), refused.status);
 }
