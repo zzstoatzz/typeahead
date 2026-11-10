@@ -16,7 +16,7 @@ fn queue(f: *Fixture, list: []const store_mod.Change, cursor: ?store_mod.change.
     submission.changes = list;
     submission.cursor = cursor;
     submission.waited = true;
-    try f.owner.post(submission);
+    try f.owner.post(submission, null);
     return submission;
 }
 

@@ -294,13 +294,15 @@ pub const Owner = struct {
     // -- producers --
 
     /// Hand a submission to the owner, which frees it after its commit.
-    /// Blocks while the queue is full. On error the caller still owns it.
-    pub fn post(self: *Owner, submission: *Submission) Error!void {
+    /// Blocks while the queue is full, setting `blocked` before it waits;
+    /// the caller clears it. On error the caller still owns the submission.
+    pub fn post(self: *Owner, submission: *Submission, blocked: ?*std.atomic.Value(bool)) Error!void {
         self.queue_lock.lockUncancelable(self.io);
         defer self.queue_lock.unlock(self.io);
         if (self.queued_changes >= self.options.max_queued_changes and !self.stopped) {
             const started = Io.Timestamp.now(self.io, .awake);
             _ = self.counters.posts_blocked.fetchAdd(1, .monotonic);
+            if (blocked) |flag| flag.store(true, .monotonic);
             while (self.queued_changes >= self.options.max_queued_changes and !self.stopped) {
                 self.queue_changed.waitUncancelable(self.io, &self.queue_lock);
             }
@@ -319,14 +321,9 @@ pub const Owner = struct {
     pub fn call(self: *Owner, submission: *Submission) Error!void {
         submission.waited = true;
         submission.done.reset();
-        try self.post(submission);
+        try self.post(submission, null);
         submission.done.waitUncancelable(self.io);
         if (submission.failed) return error.OwnerStopped;
-    }
-
-    /// True while a producer would block in `post`.
-    pub fn full(self: *Owner) bool {
-        return self.counters.queued_changes.load(.monotonic) >= self.options.max_queued_changes;
     }
 
     // -- readers --

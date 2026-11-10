@@ -70,7 +70,7 @@ pub const Fixture = struct {
         submission.changes = list;
         submission.cursor = cursor;
         submission.waited = true;
-        try self.owner.post(submission);
+        try self.owner.post(submission, null);
         while (!submission.done.isSet()) _ = self.owner.turn(0);
         if (submission.failed) return error.OwnerStopped;
         return submission;
@@ -105,5 +105,24 @@ pub const Fixture = struct {
         const store = try self.owner.acquire();
         defer self.owner.release();
         return store_mod.read.queueState(store.db(), self.arena.allocator(), .{ .at = found.identity_due, .did = did });
+    }
+};
+
+/// The owner on its own thread, for tests whose producers wait on commits.
+/// Stop it before reading the store from the test, and before the fixture
+/// goes away on any path.
+pub const Running = struct {
+    f: *Fixture,
+    thread: ?std.Thread,
+
+    pub fn start(f: *Fixture) !Running {
+        return .{ .f = f, .thread = try std.Thread.spawn(.{}, Owner.run, .{f.owner}) };
+    }
+
+    pub fn stop(self: *Running) void {
+        const thread = self.thread orelse return;
+        self.f.owner.stop();
+        thread.join();
+        self.thread = null;
     }
 };
