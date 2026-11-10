@@ -174,6 +174,23 @@ outlasted that; check `database_ms` on `ingest_done` in Workers Logs and what
 else is writing to Turso (the 06:00 and 18:00 UTC index export, the nightly
 enrichment) before changing the ingester.
 
+### Store role
+
+`MODE=store` (not deployed anywhere as of 2026-11-10) reports in the same
+places under its own names. `/health` answers `"role":"store"` with the
+store's numbers: the stored relay, labeler, PLC and bridge cursors, the change
+log's head, floor and each consumer's position, queue depths, table count and
+level sizes, bytes on disk, resident metadata, stall totals, last commit and
+last compaction, actor deltas since start, and the index bridge's position and
+lag when it is configured. The numbers under `store` and `queues` are a
+snapshot the owner refreshes once a minute (`store.taken_at`).
+
+It emits one `store.heartbeat` span a minute, from the owner after that
+refresh, so a gap means the owner is not turning or the process is down. The
+per-commit progress line stays on stderr through `services/src/log_route.zig`,
+like the ingester's per-flush line; warnings and errors ship as log records.
+Configuration is listed in `services/src/store_process/config.zig`.
+
 ## Edge configuration
 
 Public `/xrpc/` requests must work for non-browser API clients. Preserve the

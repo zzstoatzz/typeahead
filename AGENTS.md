@@ -150,8 +150,9 @@ regression is pinned). Extend it, don't prune it.
 - `just deploy-image-renderer` deploys the private PNG renderer, then validates
   fresh public images. Keep `workers-og` and its Wasm imports exclusive to that
   Worker. Deploy the renderer before introducing its public service binding.
-- `just deploy-ingest` deploys the Zig ingester (`MODE=ingester`, the binary's
-  only role). Search backends are not Fly-deployed from this repo: Tantivy slot
+- `just deploy-ingest` deploys the Zig ingester (`MODE=ingester`, the only
+  role deployed; `MODE=store` is the embedded-store role, built and tested
+  locally only, see `docs/plans/embedded-store-service.md`). Search backends are not Fly-deployed from this repo: Tantivy slot
   releases follow the [refresh runbook](docs/plans/automatic-snapshot-refresh.md),
   including inactive installation, admission, qualification and guarded routing.
 - **Index builds are not a Fly deploy.** The cloud

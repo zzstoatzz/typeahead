@@ -84,6 +84,29 @@ Decisions later steps depend on:
 
 Open for the later steps: the server's `cutover_source_ready` and the slot supervisor's checks name the Turso poller's cursor and cannot pass for a bridge-fed index, and an index must still be created by `import` before the bridge can fill it.
 
+## Store process
+
+Status: built and tested locally on 2026-11-10 (issue 41). It is not deployed: no Fly app, volume or image runs it, and it has never followed the real relay, labeler or PLC export.
+
+The store process is a second role of the ingester binary, `MODE=store`, in `services/src/store_process/`. `MODE=ingester` is unchanged. Its configuration is the table at the top of `config.zig`; its concurrency model is the comment at the top of `owner.zig`; its HTTP surface is the table at the top of `http.zig`.
+
+- **One owner thread writes.** The relay intake, the identity resolvers, the PLC tail and the label stream build batches of store changes and hand them to a bounded queue. The owner commits what is queued as one store commit, each batch's cursor inside it, and does the housekeeping between commits: stepped maintenance, domain sweeps, tombstone pruning after seven days, a pass that makes lapsed labels stop hiding, change-log trimming below the slowest consumer, and reopening the store after a failed commit.
+- **The relay read loop does not wait for commits.** It blocks only when the queue is full, which is the backpressure; a stalled maintainer stops the owner taking from the queue. A pause of that kind is not treated as a dead relay.
+- **No bloom filter.** A repeat sighting is a point read that changes nothing, at most one write an hour per active account. The ingester's filter is never reset, so its false positives grow for as long as a process lives and hide new accounts that only ever write ordinary records; this role does not carry it over.
+- **Reads go through read-only handles.** `/store/*` and the index bridge each have one, refreshed per request or step, so neither can hold a commit back. Each handle keeps table metadata of its own (60 MB a handle at 13.2 million actors in the 2026-11-10 measurement).
+- **The index bridge runs in the process** when `INDEX_ADMIN_URL`, `INDEX_ADMIN_SECRET` and `INDEX_SOURCE_ID` are set, on its own thread. Its policy is null, so the stored `hidden` flag is the whole moderation decision in the index.
+
+What differs from production and is visible, all covered by named flags in `sql_model.zig` and a test each in `differential_test.zig`:
+
+- **Slur handles are not hidden.** The store takes the rule as a predicate and this role supplies none, because the rule is a set of Unicode regular expressions. With the bridge's null policy the index filters on the stored flag alone, so such a handle would be searchable. This must be closed before the role serves: either a matcher in Zig over `src/moderation-regexes.json`, or a policy snapshot from the bridge so the index applies its own rules.
+- **A lapsed label stops hiding when the expiry pass reaches it**, not at the instant it lapses: the pass walks 2,000 label keys every 10 seconds. Production's index evaluates expiry at query time.
+- **A domain block reaches stored actors by a sweep the owner drives.** A crash between the policy commit and the end of the sweep leaves it unfinished; nothing records that a sweep is owed. No policy change reaches this role yet.
+- **A gone account stays gone until `#account` says otherwise**, and returns with its record. Production deletes the row, so any later event from the account recreates it bare and re-resolves it.
+
+Tests (`cd services && zig build test`): the Worker's write-path cases asserted on store state, a differential run against a model of today's SQL, the role killed with SIGKILL at and between commits and compared with an uninterrupted run, intake pausing on a stalled store without tripping the watchdog, and the owner, the bridge and a model index converging through kills.
+
+Not built: bootstrap from a bundle, enrichment and the refresh queue's consumer, the write surface for overrides and blocked domains, a scheduled count of live actors for the statistics total, and the Fly app.
+
 ## Things that write today and where they go
 
 | today | here |
