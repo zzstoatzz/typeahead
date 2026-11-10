@@ -16,6 +16,10 @@
             .url = "https://tangled.org/zzstoatzz.io/zug/archive/3ecbffd27a0ebebc26e56a124b4d36a8d003c7dd.tar.gz",
             .hash = "zug-0.1.2-alpha.0-h4vXbSewAADWsV2FBFfKVjl6o3pCh20umu-wDLaDPVsj",
         },
+        .zkv = .{
+            .url = "https://tangled.org/zzstoatzz.io/zkv/archive/bcb66c8fba133ffc86287bfd98d21601df8f8f6f.tar.gz",
+            .hash = "zkv-0.1.2-2lSvYIBZBADjWqr81MvZTS3irVj817PexNielqQQ_0Cq",
+        },
         .poolio = .{
             .url = "https://tangled.org/zzstoatzz.io/poolio/archive/ed65c24a3b8a6eb7b2070314c8cf04cb96ec300b.tar.gz",
             .hash = "poolio-0.0.1-alpha.2-qYctK9tlAACCRGbHlKbpHlix6vJTn5n_-UAIlZZeUTqB",
