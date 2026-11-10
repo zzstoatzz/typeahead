@@ -64,8 +64,11 @@ forward() {
   arm_deadline "${!names[@]}"
 }
 
+index_only=()
 if [[ $(jq -r '.store_loaded' "$marker") == false ]]; then
   say "the receipt records an index-only bootstrap: the store process is not started"
+  say "nothing feeds this index, so it serves stale and never reports ready"
+  index_only=(--allow-stale true)
 else
   start store env MODE=store STORE_DIR="$data/store" PORT="$store_port" /app/typeahead-ingester
 fi
@@ -74,7 +77,8 @@ start index /app/typeahead-tantivy serve \
   --listen 0.0.0.0:8080 \
   --admin-listen 127.0.0.1:8081 \
   --max-sync-lag-s "${INDEX_MAX_SYNC_LAG_S:-120}" \
-  --retrieval "${INDEX_RETRIEVAL:-global-merge}"
+  --retrieval "${INDEX_RETRIEVAL:-global-merge}" \
+  "${index_only[@]}"
 
 trap 'forward TERM' TERM
 trap 'forward INT' INT
