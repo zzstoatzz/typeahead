@@ -30,6 +30,7 @@ const plc_tail = @import("../plc_tail.zig");
 const label_tail = @import("../label_tail.zig");
 const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
+const Bridge = @import("../bridge/root.zig").Bridge;
 const Owner = owner_mod.Owner;
 const Actor = store_mod.Actor;
 const Allocator = std.mem.Allocator;
@@ -175,7 +176,58 @@ pub const HealthBody = struct {
     identity: struct { leased: u64, lease_failed: u64, verified: u64, unverified: u64, no_handle: u64, did_failed: u64, retried: u64, commit_failed: u64 },
     plc: struct { pages: u64, operations: u64, failed: u64 },
     labels: struct { frames: u64, adopted: u64, malformed: u64, ignored: u64, commits: u64, commit_failed: u64, cursor: i64, newest_cts: i64 },
+    /// Absent when the index bridge is not configured.
+    bridge: ?BridgeBody = null,
 };
+
+/// The index bridge, from `Bridge.health`. `lag` is how many change-log
+/// positions the index is behind the store.
+pub const BridgeBody = struct {
+    position: ?u64 = null,
+    index_position: u64,
+    next_change: u64,
+    lag: u64,
+    last_push_at: u64,
+    watermark: u64,
+    pushes: u64,
+    applied: u64,
+    unchanged: u64,
+    rejected: u64,
+    conflicts: u64,
+    errors: u64,
+    recovered: u64,
+    resyncs_started: u64,
+    resync_round: u64,
+    resync_phase: []const u8,
+    resync_completed_at: ?u64 = null,
+    last_error_at: u64,
+    last_error: []const u8,
+};
+
+pub fn bridgeBody(arena: Allocator, bridge: *Bridge) !BridgeBody {
+    const h = bridge.health();
+    return .{
+        .position = h.position,
+        .index_position = h.index_position,
+        .next_change = h.next_change,
+        .lag = h.lag,
+        .last_push_at = h.last_push_at,
+        .watermark = h.watermark,
+        .pushes = h.pushes,
+        .applied = h.applied,
+        .unchanged = h.unchanged,
+        .rejected = h.rejected,
+        .conflicts = h.conflicts,
+        .errors = h.errors,
+        .recovered = h.recovered,
+        .resyncs_started = h.resyncs_started,
+        .resync_round = h.resync_round,
+        .resync_phase = @tagName(h.resync_phase),
+        .resync_completed_at = h.resync_completed_at,
+        .last_error_at = h.last_error_at,
+        .last_error = try arena.dupe(u8, h.lastError()),
+    };
+}
 
 pub const Context = struct {
     owner: *Owner,
@@ -184,6 +236,7 @@ pub const Context = struct {
     intake: *const intake_mod.Signals,
     labels_ignored: *const std.atomic.Value(u64),
     read_secret: ?[]const u8,
+    bridge: ?*Bridge = null,
 };
 
 pub const Response = struct {
@@ -298,6 +351,7 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .cursor = load(&label_tail.stats.committed),
             .newest_cts = load(&label_tail.stats.newest_cts),
         },
+        .bridge = if (ctx.bridge) |bridge| try bridgeBody(arena, bridge) else null,
     };
 }
 

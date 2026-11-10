@@ -10,9 +10,13 @@
 //! | `PORT`                   | no       | HTTP port, default 8080                                        |
 //! | `LOGFIRE_TOKEN`          | no       | read by logfire; unset, nothing is exported                    |
 //! | `STORE_OFFLINE`          | no       | `1` opens the store and serves HTTP without any upstream       |
+//! | `INDEX_ADMIN_URL`        | no       | the co-located index's admin listener, a loopback URL          |
+//! | `INDEX_ADMIN_SECRET`     | no       | that listener's bearer secret                                  |
+//! | `INDEX_SOURCE_ID`        | no       | names this store to the index; change it when the store is rebuilt |
 //!
-//! The role reads nothing for Turso or the Worker and opens no connection
-//! to either.
+//! The index bridge runs when all three `INDEX_*` variables are set, and
+//! setting only some is an error. The role reads nothing for Turso or the
+//! Worker and opens no connection to either.
 
 const std = @import("std");
 const ingest = @import("../ingest.zig");
@@ -22,9 +26,24 @@ pub const Config = struct {
     read_secret: ?[]const u8 = null,
     bootstrap_cursor: ?i64 = null,
     offline: bool = false,
+    index: ?Index = null,
 };
 
-pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret };
+pub const Index = struct {
+    admin_url: []const u8,
+    admin_secret: []const u8,
+    source_id: []const u8,
+};
+
+pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IncompleteIndexConfig, IndexNotLoopback };
+
+/// The bridge sends the admin secret, so the index must be on this machine.
+pub fn loopback(url: []const u8) bool {
+    for ([_][]const u8{ "http://127.0.0.1:", "http://localhost:", "http://[::1]:" }) |prefix| {
+        if (std.mem.startsWith(u8, url, prefix) and url.len > prefix.len) return true;
+    }
+    return false;
+}
 
 pub const Getenv = *const fn (name: [*:0]const u8) ?[]const u8;
 
@@ -40,6 +59,14 @@ pub fn load(getenv: Getenv) Error!Config {
         config.bootstrap_cursor = ingest.plausibleRelayCursor(parsed) orelse return error.InvalidBootstrapCursor;
     }
     if (getenv("STORE_OFFLINE")) |text| config.offline = std.mem.eql(u8, text, "1");
+    const url = getenv("INDEX_ADMIN_URL");
+    const secret = getenv("INDEX_ADMIN_SECRET");
+    const id = getenv("INDEX_SOURCE_ID");
+    if (url != null or secret != null or id != null) {
+        if (url == null or secret == null or id == null or secret.?.len == 0 or id.?.len == 0) return error.IncompleteIndexConfig;
+        if (!loopback(url.?)) return error.IndexNotLoopback;
+        config.index = .{ .admin_url = std.mem.trimEnd(u8, url.?, "/"), .admin_secret = secret.?, .source_id = id.? };
+    }
     return config;
 }
 
@@ -96,4 +123,16 @@ test "the stored cursor wins, and with neither the role does not start live" {
     try testing.expectEqual(@as(?i64, 5), resumeCursor(null, 5));
     try testing.expectEqual(@as(?i64, null), resumeCursor(null, null));
     try testing.expectEqual(@as(?i64, null), resumeCursor(1_785_217_869_995_374, 5));
+}
+
+test "the index bridge needs its whole configuration and a loopback index" {
+    const base = [2][]const u8{ "STORE_DIR", "/d" };
+    try testing.expect((try load(fakeEnv(&.{base}))).index == null);
+    try testing.expectError(error.IncompleteIndexConfig, load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:8081" } })));
+    try testing.expectError(error.IncompleteIndexConfig, load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:8081" }, .{ "INDEX_ADMIN_SECRET", "" }, .{ "INDEX_SOURCE_ID", "a" } })));
+    try testing.expectError(error.IndexNotLoopback, load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "https://index.example:8081" }, .{ "INDEX_ADMIN_SECRET", "s" }, .{ "INDEX_SOURCE_ID", "a" } })));
+    try testing.expectError(error.IndexNotLoopback, load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1.evil.example:80" }, .{ "INDEX_ADMIN_SECRET", "s" }, .{ "INDEX_SOURCE_ID", "a" } })));
+    const index = (try load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:8081/" }, .{ "INDEX_ADMIN_SECRET", "s" }, .{ "INDEX_SOURCE_ID", "slot-a-1" } }))).index.?;
+    try testing.expectEqualStrings("http://127.0.0.1:8081", index.admin_url);
+    try testing.expectEqualStrings("slot-a-1", index.source_id);
 }

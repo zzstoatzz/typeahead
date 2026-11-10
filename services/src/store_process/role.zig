@@ -18,6 +18,8 @@ const identity_work = @import("identity_work.zig");
 const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
 const tails = @import("tails.zig");
+const index_bridge = @import("index_bridge.zig");
+const bridge_mod = @import("../bridge/root.zig");
 const Io = std.Io;
 const Owner = owner_mod.Owner;
 
@@ -85,6 +87,18 @@ fn heartbeat(owner: *Owner) void {
         span.setAttribute("compactions", stats.compactions);
         span.setAttribute("last_compaction_at", stats.last_compaction_at);
     }
+    if (self.bridge) |bridge| {
+        const b = bridge.health();
+        span.setAttribute("bridge_position", @as(i64, @intCast(b.position orelse 0)));
+        span.setAttribute("bridge_index_position", b.index_position);
+        span.setAttribute("bridge_lag", b.lag);
+        span.setAttribute("bridge_pushes", b.pushes);
+        span.setAttribute("bridge_applied", b.applied);
+        span.setAttribute("bridge_errors", b.errors);
+        span.setAttribute("bridge_conflicts", b.conflicts);
+        span.setAttribute("bridge_resyncs_started", b.resyncs_started);
+        span.setAttribute("bridge_last_push_at", b.last_push_at);
+    }
     span.setAttribute("last_commit_at", c.last_commit_at.load(.monotonic));
     span.setAttribute("rss_kb", ingest.getRssKB());
 }
@@ -100,6 +114,8 @@ const Role = struct {
     plc: tails.PlcTail,
     resolver: identity.Resolver,
     work: identity_work.Work,
+    bridge: ?*bridge_mod.Bridge = null,
+    bridge_stop: std.atomic.Value(bool) = .init(false),
 
     fn relay(self: *Role) void {
         const stored = blk: {
@@ -186,6 +202,7 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
         .intake = &self.intake.signals,
         .labels_ignored = &self.labels.ignored,
         .read_secret = self.config.read_secret,
+        .bridge = self.bridge,
     };
     const response = http.respond(&context, a, method, target, authorization, body) catch |err| blk: {
         log.warn("request failed: {s}", .{@errorName(err)});
@@ -244,6 +261,35 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
     var tasks: Io.Group = .init;
     try tasks.concurrent(io, Owner.run, .{owner});
 
+    // The index bridge: its own thread, its own reader, its own HTTP client.
+    var bridge_source: index_bridge.StoreSource = undefined;
+    var bridge_http: zat.HttpTransport = undefined;
+    var bridge_endpoint: bridge_mod.wire.Http = undefined;
+    var bridge: bridge_mod.Bridge = undefined;
+    var authorization_buf: [512]u8 = undefined;
+    if (config.index) |index| {
+        bridge_source = index_bridge.StoreSource.open(allocator, owner) catch |err| {
+            log.err("bridge reader open failed: {s}", .{@errorName(err)});
+            return err;
+        };
+        bridge_http = zat.HttpTransport.init(io, allocator);
+        bridge_http.keep_alive = true;
+        bridge_endpoint = .{
+            .http = &bridge_http,
+            .base_url = index.admin_url,
+            .authorization = std.fmt.bufPrint(&authorization_buf, "Bearer {s}", .{index.admin_secret}) catch return error.IncompleteIndexConfig,
+        };
+        bridge = bridge_mod.Bridge.init(allocator, io, .{ .source_id = index.source_id }, bridge_source.interface(), bridge_endpoint.transport());
+        self.bridge = &bridge;
+        try tasks.concurrent(io, bridge_mod.Bridge.run, .{ &bridge, &self.bridge_stop });
+        log.info("index bridge to {s} as source {s}", .{ index.admin_url, index.source_id });
+    }
+    defer if (config.index != null) {
+        bridge.deinit();
+        bridge_http.deinit();
+        bridge_source.close();
+    };
+
     var pool: identity_work.Pool = undefined;
     var have_pool = false;
     if (!config.offline) {
@@ -270,6 +316,7 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
     }
 
     log.info("SIGTERM received, stopping the store role", .{});
+    self.bridge_stop.store(true, .release);
     owner.stop();
     tasks.cancel(io);
     if (have_pool) pool.shutdown(io);
