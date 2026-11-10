@@ -14,6 +14,9 @@ CHECKPOINT_VERSION = 3
 UNCHANGED_IN_SHADOW = "unchanged_in_shadow"
 NEWER_IN_SHADOW = "newer_in_shadow"
 TIMINGS = (UNCHANGED_IN_SHADOW, NEWER_IN_SHADOW)
+HOSTED_HANDLE_SUFFIXES = (".bsky.social",)
+BLUESKY_PDS_SUFFIXES = (".bsky.network",)
+TOP_PDS_HOSTS = 10
 
 ONLY_IN_PRODUCTION = "only_in_production"
 ONLY_IN_SHADOW = "only_in_shadow"
@@ -255,6 +258,52 @@ def recheck(production, shadow, differences, *, settle_delay, sleep=time.sleep):
     return settled, len(dids) - len(settled)
 
 
+def subject(entry):
+    """The fields that describe the actor: production's when it holds a live one, else the shadow's."""
+    for side in ("production", "shadow"):
+        fields = entry[side]["fields"]
+        if fields and not fields.get("deleted"):
+            return fields
+    return None
+
+
+def handle_kind(fields):
+    if fields is None:
+        return "unknown"
+    handle = (fields.get("handle") or "").lower()
+    if not handle or handle.endswith(".invalid"):
+        return "no handle"
+    return "hosted handle" if handle.endswith(HOSTED_HANDLE_SUFFIXES) else "custom domain"
+
+
+def pds_kind(fields):
+    if fields is None:
+        return "unknown"
+    host = fields.get("pds_host") or ""
+    if not host:
+        return "no pds"
+    return "bluesky pds" if host == "bsky.social" or host.endswith(BLUESKY_PDS_SUFFIXES) else "independent pds"
+
+
+def tally(values):
+    counts = {}
+    for value in values:
+        counts[value] = counts.get(value, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def breakdown(entries):
+    subjects = [subject(entry) for entry in entries]
+    hosts = tally((fields or {}).get("pds_host") or "" for fields in subjects)
+    ranked = sorted(hosts.items(), key=lambda item: (-item[1], item[0]))
+    return {
+        "handle_kind": tally(map(handle_kind, subjects)),
+        "pds_kind": tally(map(pds_kind, subjects)),
+        "top_pds_hosts": [{"host": host, "count": count} for host, count in ranked[:TOP_PDS_HOSTS]],
+        "other_pds_hosts": {"hosts": max(0, len(ranked) - TOP_PDS_HOSTS), "count": sum(count for _, count in ranked[TOP_PDS_HOSTS:])},
+    }
+
+
 def summarize(differences, sample_size):
     classes = {}
     for name in CLASSES:
@@ -263,6 +312,7 @@ def summarize(differences, sample_size):
         classes[name] = {
             "count": len(members),
             "sample": [differences[did] for did in chosen],
+            "breakdown": breakdown([differences[did] for did in members]),
         }
     other = {}
     values = {"only_in_production": {}, "only_in_shadow": {}}

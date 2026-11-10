@@ -26,6 +26,26 @@ def class_table(classes):
     return table(["class", "count", "sampled", "arbiter labels for the sample"], rows)
 
 
+HANDLE_KINDS = ("hosted handle", "custom domain", "no handle", "unknown")
+PDS_KINDS = ("bluesky pds", "independent pds", "no pds", "unknown")
+
+
+def breakdown_lines(classes):
+    present = [name for name in corpus.CLASSES if classes[name]["count"] and "breakdown" in classes[name]]
+    if not present:
+        return []
+    rows, hosts = [], []
+    for name in present:
+        detail = classes[name]["breakdown"]
+        rows.append([name, *(detail["handle_kind"].get(kind, 0) for kind in HANDLE_KINDS), *(detail["pds_kind"].get(kind, 0) for kind in PDS_KINDS)])
+        top = ", ".join(f"{item['host'] or '(none)'} {item['count']}" for item in detail["top_pds_hosts"])
+        rest = detail["other_pds_hosts"]
+        hosts.append(f"- {name}: {top}" + (f", and {rest['count']} on {rest['hosts']} other hosts" if rest["hosts"] else ""))
+    header = ["class", *HANDLE_KINDS[:3], "handle unknown", *PDS_KINDS[:3], "pds unknown"]
+    return ["", "By handle and PDS of the actor (production's record when it has a live one, else the shadow's):", "",
+            *table(header, rows), "", "Most frequent PDS hosts:", "", *hosts]
+
+
 TIMING_TITLES = {
     corpus.UNCHANGED_IN_SHADOW: "Unchanged in the shadow since the watermark: divergence",
     corpus.NEWER_IN_SHADOW: "Newer in the shadow than the snapshot: judged by the arbiter sample only",
@@ -46,6 +66,7 @@ def snapshot_section(result):
             break
         part = result["timing"][name]
         lines += ["", f"### {TIMING_TITLES[name]}", "", f"{part['differing_dids']} DIDs.", "", *class_table(part["classes"])]
+        lines += breakdown_lines(part["classes"])
     return lines
 
 
@@ -71,6 +92,7 @@ def corpus_section(result):
         lines.append("A server returned no comparison fields, so differences could only be classified by presence and document hash.")
     lines.append("")
     lines += class_table(result["classes"])
+    lines += breakdown_lines(result["classes"])
     if "snapshot" in result:
         lines += ["", *snapshot_section(result)]
     values = result.get("label_value_counts") or {}

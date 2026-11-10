@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 import corpus
+import report
 from corpus import Doc
 from fakes import FakeBackend, document
 from transport import TransportError
@@ -230,6 +231,59 @@ class HashOnlyTests(unittest.TestCase):
         self.assertEqual(result["classes"][corpus.DOCUMENT_HASH_DIFFERS]["count"], 1)
         self.assertEqual(result["classes"][corpus.ONLY_IN_PRODUCTION]["count"], 1)
         self.assertEqual(result["classes"][corpus.HANDLE_DIFFERS]["count"], 0)
+
+
+class BreakdownTests(unittest.TestCase):
+    def entry(self, n, handle, pds_host, **shadow):
+        production = Doc("p", document(did(n), handle, pds_host=pds_host)["fields"])
+        changed = Doc("s", document(did(n), handle, pds_host=pds_host, **shadow)["fields"]) if shadow else corpus.ABSENT
+        return did(n), corpus.difference(did(n), production, changed)
+
+    def test_each_class_is_counted_by_handle_kind_pds_kind_and_host(self):
+        differences = dict([
+            self.entry(1, "a.bsky.social", "morel.us-east.host.bsky.network", hidden=True),
+            self.entry(2, "B.BSKY.SOCIAL", "morel.us-east.host.bsky.network", hidden=True),
+            self.entry(3, "c.example.com", "pds.example.com", hidden=True),
+            self.entry(4, "d.example.com", "bsky.social", hidden=True),
+            self.entry(5, "handle.invalid", "", hidden=True),
+            self.entry(6, "e.example.com", "pds.example.com"),
+        ])
+        gone = corpus.difference(did(7), Doc("p", document(did(7), "", deleted=True)["fields"]), Doc("s", document(did(7), "f.custom.test", pds_host="solo.test")["fields"]))
+        differences[did(7)] = gone
+        summary = corpus.summarize(differences, 3)
+        hidden = summary["classes"][corpus.VISIBILITY_DIFFERS]["breakdown"]
+        self.assertEqual(hidden["handle_kind"], {"custom domain": 2, "hosted handle": 2, "no handle": 1})
+        self.assertEqual(hidden["pds_kind"], {"bluesky pds": 3, "independent pds": 1, "no pds": 1})
+        self.assertEqual(hidden["top_pds_hosts"], [
+            {"host": "morel.us-east.host.bsky.network", "count": 2}, {"host": "", "count": 1},
+            {"host": "bsky.social", "count": 1}, {"host": "pds.example.com", "count": 1},
+        ])
+        self.assertEqual(hidden["other_pds_hosts"], {"hosts": 0, "count": 0})
+        missing = summary["classes"][corpus.ONLY_IN_PRODUCTION]["breakdown"]
+        self.assertEqual((missing["handle_kind"], missing["pds_kind"]), ({"custom domain": 1}, {"independent pds": 1}))
+        extra = summary["classes"][corpus.ONLY_IN_SHADOW]["breakdown"]
+        self.assertEqual(extra["top_pds_hosts"], [{"host": "solo.test", "count": 1}])
+        self.assertEqual(summary["classes"][corpus.HANDLE_DIFFERS]["breakdown"]["handle_kind"], {})
+
+    def test_hosts_beyond_the_top_ten_are_summed(self):
+        differences = dict(self.entry(n, f"h{n}.test", f"pds{n % 13:02}.test", hidden=True) for n in range(40))
+        detail = corpus.summarize(differences, 3)["classes"][corpus.VISIBILITY_DIFFERS]["breakdown"]
+        self.assertEqual(len(detail["top_pds_hosts"]), 10)
+        self.assertEqual(detail["top_pds_hosts"][0], {"host": "pds00.test", "count": 4})
+        self.assertEqual(detail["other_pds_hosts"], {"hosts": 3, "count": 40 - sum(item["count"] for item in detail["top_pds_hosts"])})
+
+    def test_hash_only_differences_have_unknown_kinds(self):
+        summary = corpus.summarize({did(1): corpus.difference(did(1), Doc("a"), Doc("b"))}, 3)
+        detail = summary["classes"][corpus.DOCUMENT_HASH_DIFFERS]["breakdown"]
+        self.assertEqual((detail["handle_kind"], detail["pds_kind"]), ({"unknown": 1}, {"unknown": 1}))
+
+    def test_report_lists_the_breakdown_for_classes_with_differences(self):
+        differences = dict([self.entry(1, "a.bsky.social", "morel.us-east.host.bsky.network", hidden=True), self.entry(3, "c.example.com", "pds.example.com", hidden=True)])
+        result = {"complete": True, "dids_walked": 2, "pages": 1, "live": {"production": 2, "shadow": 2}, **corpus.summarize(differences, 3)}
+        text = "\n".join(report.corpus_section(result))
+        self.assertIn("| visibility_differs | 1 | 1 | 0 | 0 | 1 | 1 | 0 | 0 |", text)
+        self.assertIn("- visibility_differs: morel.us-east.host.bsky.network 1, pds.example.com 1", text)
+        self.assertNotIn("- handle_differs", text)
 
 
 class SampleTests(unittest.TestCase):
