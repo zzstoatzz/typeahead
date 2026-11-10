@@ -108,6 +108,39 @@ uv run scripts/shadow_compare/compare.py --phases corpus --arbiter \
 
 the [cloud runner](https://tangled.org/zzstoatzz.io/typeahead/blob/main/experiments/zkv-scale/README.md#shadow-comparison-runner) does the download, dump, sort and walk on a disposable machine.
 
+## corpus phase on the shadow machine
+
+the shadow's store process has no public service and is not getting one, so the walk runs on the shadow machine against `http://127.0.0.1:8082` and production's views are brought to it. `bundle.py pack` turns a sorted view file into three objects: `views.jsonl.gz`, its sidecar `views.jsonl.meta.json`, and `manifest.json` with the bundle id, watermark, counts and each object's size and SHA-256. they live in the bundle bucket under `scratch/shadow-compare/<run id>/`.
+
+the machine has bash, curl, tar, jq and rclone, and no Python. `shadow-stage.sh` installs what the walk needs under `/data/compare` and nowhere else: uv 0.13.4 from its GitHub release, checked against a pinned SHA-256; the Python and httpx that uv downloads; and this directory, `scripts/bench.py` and the recorded cases, extracted from GitHub's tarball of one full commit SHA. it then runs `shadow_stage.py`, which:
+
+1. takes the store's bearer from `STORE_READ_SECRET` in its own environment, or else from the environment of a running process that has it (`/proc/<pid>/environ`), and stops if neither does;
+2. fetches the manifest with `rclone cat` and refuses it unless its bytes hash to `--manifest-sha256`, which the builder printed;
+3. checks free space: the unpacked views plus 1 GiB must fit while 12 GiB stays free on the volume, because the store's database needs room to compact;
+4. fetches the sidecar and streams the views through gunzip to `inputs/views.jsonl`, checking size and SHA-256 of both the object and the unpacked file; a stream that is anything else leaves no file;
+5. runs `compare.py --phases corpus --arbiter` against the loopback store with `--bundle-watermark` and `--bundle-build-id` from the manifest, 100 ms between requests, a budget of 80,000 requests and 32,768 MiB, and a checkpoint written at most once a minute.
+
+it prints the gate summary and nothing else; errors go to standard error with credential values replaced by their variable names. the exit status is compare.py's. a second `run` with the same run id finds the checked views in place, fetches nothing, and resumes the walk from `walk.json`, so a dropped session costs at most a minute of walking. arguments it does not know are passed to compare.py.
+
+`/data/compare/<run id>/` holds `inputs/` (manifest, views, sidecar), `walk.json` and `report/`. `clean` removes `inputs/` and keeps the rest; removing `/data/compare` removes everything the script made.
+
+rclone reads `COMPARE_R2_ENDPOINT`, `COMPARE_R2_BUCKET`, `COMPARE_R2_ACCESS_KEY_ID`, `COMPARE_R2_SECRET_ACCESS_KEY` and, for temporary credentials, `COMPARE_R2_SESSION_TOKEN`. they need only read the run's prefix. `COMPARE_REMOTE` replaces them with any rclone path that holds the run directories.
+
+```sh
+fly ssh console -a typeahead-shadow-a -C "env \
+  COMPARE_R2_ENDPOINT=$R2_ENDPOINT COMPARE_R2_BUCKET=$R2_BUCKET COMPARE_R2_ACCESS_KEY_ID=$KEY_ID \
+  COMPARE_R2_SECRET_ACCESS_KEY=$KEY_SECRET COMPARE_R2_SESSION_TOKEN=$SESSION_TOKEN \
+  bash -c 'curl -fsSL https://raw.githubusercontent.com/zzstoatzz/typeahead/$COMMIT/scripts/shadow_compare/shadow-stage.sh \
+    | bash -s -- $COMMIT run --run-id $RUN_ID --manifest-sha256 $MANIFEST_SHA256'"
+
+fly ssh console -a typeahead-shadow-a -C "bash -c 'curl -fsSL https://raw.githubusercontent.com/zzstoatzz/typeahead/$COMMIT/scripts/shadow_compare/shadow-stage.sh \
+    | bash -s -- $COMMIT clean --run-id $RUN_ID'"
+```
+
+the first command puts the R2 values in the argument list of processes on the laptop and on the machine, which is why they should be temporary, read-only and scoped to the run's prefix.
+
+status, 2026-11-10: the script and the stage ran end to end in a `debian:bookworm-slim` amd64 container, the shadow image's base, against 20,000 synthetic actors, a local directory as the rclone remote and a fake store on port 8082. nothing has run on the shadow machine, against R2, or through `fly ssh`.
+
 ## develop
 
 ```sh

@@ -46,6 +46,7 @@ INDEX_STRIDE = 4096
 META_VERSION = 1
 BUFFER = 1 << 20
 MANIFEST_VERSION = 1
+SCRATCH_PREFIX = "scratch/shadow-compare"
 MANIFEST_NAME = "manifest.json"
 VIEWS_NAME = "views.jsonl.gz"
 SIDECAR_NAME = "views.jsonl.meta.json"
