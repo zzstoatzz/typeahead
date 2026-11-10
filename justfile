@@ -71,6 +71,30 @@ test-tantivy:
     python3 services/tantivy-normalizer/test_backend_adversarial.py
     python3 scripts/snapshot_refresh/test_tantivy_install.py
 
+# shadow comparison tooling (scripts/shadow_compare): unit tests, then the tool against
+# two real local Tantivy servers whose indexes differ in known ways. Contacts nothing remote.
+test-shadow-compare:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    test "$(zig version)" = "0.17.0"
+    ta_verify_root=$(mktemp -d "${TMPDIR:-/tmp}/typeahead-shadow-compare.XXXXXX")
+    trap 'rm -rf "$ta_verify_root"' EXIT
+    mkdir -p "$ta_verify_root/normalizer" "$ta_verify_root/tmp"
+    export TMPDIR="$ta_verify_root/tmp"
+    export PYTHONDONTWRITEBYTECODE=1
+    export CARGO_BUILD_JOBS=2
+    export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$PWD/services/tantivy/target}"
+    export TA_NORMALIZER_LIB_DIR="$ta_verify_root/normalizer"
+    export TA_IDENTITY_POLICY_PATH="$PWD/src/identity-quarantine.json"
+    export TA_MODERATION_RULES_PATH="$PWD/src/moderation-regexes.json"
+    unset CARGO_BUILD_TARGET TYPEAHEAD_TEST_CRASH TA_RETRIEVAL_STRATEGY
+    python3 services/tantivy-normalizer/build.py --output "$TA_NORMALIZER_LIB_DIR/libtypeahead_normalizer.a"
+    cargo build --release --locked --jobs 2 --manifest-path services/tantivy/Cargo.toml
+    cp "$CARGO_TARGET_DIR/release/typeahead-tantivy" "$ta_verify_root/typeahead-tantivy"
+    export TA_BINARY="$ta_verify_root/typeahead-tantivy"
+    uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts -p 'test_bench_*.py'
+    uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts/shadow_compare -p 'test_*.py'
+
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech": lint
     bunx tsc --noEmit

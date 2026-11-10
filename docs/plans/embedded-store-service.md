@@ -99,7 +99,7 @@ A new slot starts from the newest published bundle, exactly as the measurement d
 ## Proving it before it serves
 
 1. A shadow slot runs beside production with no route pointing at it.
-2. A comparison job checks every actor's handle, hidden state and PDS against Turso, and the canonical ranking and PDS-scope queries against the production index. It runs across at least one production refresh and one restart of the shadow.
+2. A comparison job checks every actor's handle, hidden state and PDS against Turso, and the canonical ranking and PDS-scope queries against the production index. It runs across at least one production refresh and one restart of the shadow. The [shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md) is that job's tooling for the index side (issue 43): it compares the two Tantivy backends with each other, not the shadow's store with Turso, and has only run against local fixtures.
 3. Kill tests: the store process is killed during commits, compaction and bootstrap, and must reopen with cursors and data consistent. zkv's own docs cover SIGKILL only, so this is our test to write.
 4. Cutover is a route change to the shadow slot. Turso stays written until the new path has served for a full day. Rollback is the route change back.
 5. Only then does the second slot convert, followed by the removal of the export, the build flow and Turso.

@@ -1,0 +1,163 @@
+"""Write the dated JSON report and its Markdown summary."""
+
+import json
+from pathlib import Path
+
+import corpus
+import gates
+
+
+def table(header, rows):
+    lines = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
+    lines += ["| " + " | ".join(str(cell) for cell in row) + " |" for row in rows]
+    return lines
+
+
+def ms(value):
+    return "n/a" if value is None else f"{value:.2f}"
+
+
+def corpus_section(result):
+    lines = ["## Corpus", ""]
+    state = "complete" if result["complete"] else f"incomplete ({result['stop_reason']}), resume from the checkpoint"
+    lines.append(
+        f"Walk {state}: {result['dids_walked']} DIDs in {result['pages']} windows; "
+        f"{result['live']['production']} live in production, {result['live']['shadow']} live in the shadow."
+    )
+    if result.get("rechecked"):
+        lines.append(
+            f"{result['differences_before_recheck']} DIDs differed during the walk; "
+            f"{result['transient_differences']} agreed when re-read after {result['settle_delay_s']} s."
+        )
+        for side in ("production", "shadow"):
+            start, end = result["start_markers"][side], result["end_markers"][side]
+            lines.append(
+                f"{side.capitalize()} watermark {start['watermark']} to {end['watermark']}, "
+                f"build {start['build_id']} to {end['build_id']}."
+            )
+    if result.get("fields_available") is False:
+        lines.append("A server returned no comparison fields, so differences could only be classified by presence and document hash.")
+    lines.append("")
+    rows = []
+    for name in corpus.CLASSES:
+        entry = result["classes"][name]
+        labels = ", ".join(f"{count} {label}" for label, count in sorted(entry.get("arbiter_labels", {}).items()))
+        rows.append([name, entry["count"], len(entry["sample"]), labels or ("not run" if entry["count"] else "")])
+    lines += table(["class", "count", "sampled", "arbiter labels for the sample"], rows)
+    return lines
+
+
+def search_section(result):
+    lines = ["## Search", ""]
+    lines.append(
+        f"{result['queries']} queries: {result['identical']} identical, {result['differing_explained']} differing with a flagged DID "
+        f"in the results, {result['differing_unexplained']} differing and unexplained. "
+        f"Check failures: {result['shadow_check_failures']} on the shadow, {result['production_check_failures']} on production."
+    )
+    if not result["spam_guard_evaluated"]:
+        lines.append("The spam guard from bench.py needs Bluesky's answer and was not evaluated.")
+    rows = [
+        [
+            "`" + row["id"] + "`",
+            row["first_difference_rank"] or "",
+            f"{row['overlap']:.2f}",
+            len(row["explained_by"]),
+            "; ".join(row["shadow"]["check_failures"]),
+        ]
+        for row in result["cases"]
+        if not row["identical"] or row["shadow"]["check_failures"]
+    ]
+    if rows:
+        lines.append("")
+        lines += table(["query", "first differing rank", "overlap", "flagged DIDs in results", "shadow check failures"], rows)
+    return lines
+
+
+def latency_section(result):
+    lines = ["## Latency", ""]
+    lines.append(
+        f"{result['queries']} queries, one cold and {result['warm_runs']} warm requests each per backend, sequential. "
+        f"The gate uses `{result['gate_basis']}`."
+    )
+    lines.append("")
+    rows = []
+    for phase in ("cold", "warm"):
+        for basis in ("server_ms", "client_ms"):
+            a = result["summary"]["production"][phase][basis]
+            b = result["summary"]["shadow"][phase][basis]
+            rows.append([f"{phase} {basis}", a["n"], *(f"{ms(a[p])} / {ms(b[p])}" for p in gates.LATENCY_PERCENTILES)])
+    lines += table(["samples (production / shadow, ms)", "n", "p50", "p95", "p99"], rows)
+    lines.append("")
+    for name, entry in result["paired"].items():
+        lines.append(
+            f"Paired per query, {name}: median shadow minus production {ms(entry['median_shadow_minus_production'])} ms, "
+            f"shadow slower on {entry['queries_shadow_slower']} of {entry['n']}."
+        )
+    lines += ["", "Controlled:", ""] + ["- " + item for item in result["controlled"]]
+    lines += ["", "Not controlled:", ""] + ["- " + item for item in result["not_controlled"]]
+    return lines
+
+
+def freshness_section(result):
+    lines = ["## Freshness", ""]
+    rows = []
+    for side in ("production", "shadow"):
+        summary, samples = result["summary"][side], result["samples"][side]
+        rows.append(
+            [
+                side,
+                len(samples),
+                sum(s["ready"] for s in samples),
+                summary["min_sync_lag_s"],
+                summary["max_sync_lag_s"],
+                summary["watermark_advance_s"],
+                sum(s["moderation_fresh"] for s in samples),
+            ]
+        )
+    lines += table(["backend", "samples", "ready", "min sync lag s", "max sync lag s", "watermark advance s", "moderation fresh"], rows)
+    lines.append("")
+    rows = [[name, "yes" if entry["matched"] else "no"] for name, entry in result["agreement"].items()]
+    lines += table(["must match between backends", "matched"], rows)
+    if "changed_dids" in result:
+        changed = result["changed_dids"]
+        lines += ["", f"{changed['agreed_within_window']} of {changed['count']} listed DIDs agreed on both backends within the {result['window_s']} s window."]
+    return lines
+
+
+SECTIONS = {"corpus": corpus_section, "search": search_section, "latency": latency_section, "freshness": freshness_section}
+GATE_TITLES = {
+    "corpus": "(a) corpus differences zero or explained",
+    "search": "(b) search identical or explained",
+    "latency": "(c) shadow latency not worse",
+    "freshness": "(d) both ready and fresh",
+}
+
+
+def markdown(report):
+    verdict = report["verdict"]
+    lines = [f"# Shadow comparison, {report['date']}", ""]
+    lines.append(
+        f"Production `{report['backends']['production']}` against shadow `{report['backends']['shadow']}`. "
+        f"Overall: **{verdict['overall']}**. Every figure is in [report.json](report.json)."
+    )
+    lines.append("")
+    rows = []
+    for name in gates.GATES:
+        entry = verdict["gates"][name]
+        rows.append([GATE_TITLES[name], f"**{entry['status']}**", "; ".join(entry["reasons"][:3]) + (" …" if len(entry["reasons"]) > 3 else "")])
+    lines += table(["gate", "result", "first reasons"], rows)
+    for name in gates.GATES:
+        if report.get(name) is not None:
+            lines += ["", *SECTIONS[name](report[name])]
+    lines += ["", "## Load placed on each target", ""]
+    rows = [[name, usage["requests"], usage["bytes"], usage["max_requests"], usage["max_bytes"]] for name, usage in report["budgets"].items()]
+    lines += table(["target", "requests", "bytes", "request budget", "byte budget"], rows)
+    return "\n".join(lines) + "\n"
+
+
+def write(report, directory):
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "report.json").write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n")
+    (directory / "README.md").write_text(markdown(report))
+    return directory
