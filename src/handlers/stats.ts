@@ -1,10 +1,9 @@
 import { rowsAs, type SqlDb } from "../db";
 import type { Env, RequestKvData, StatsKvData } from "../types";
 import { html } from "../utils";
-import { TRAFFIC_SOURCE_WHERE } from "../metrics";
 import { statsPage, type SnapshotPoint } from "../pages/stats";
 import { EXCLUSIONS_KEY, parseExclusions } from "../exclusions";
-import { tailQueries, tailStartBucket, withTail } from "../stats-tail";
+import { sourceQueries, tailQueries, tailStartBucket, withTail } from "../stats-tail";
 import { PROFILE_KEY, parseProfile } from "../stats-profile";
 
 const EDGE_CACHE_TTL = 60; // seconds
@@ -43,18 +42,10 @@ export async function handleStats(request: Request, db: SqlDb, env: Env, ctx: Ex
     env.KV.get(PROFILE_KEY).then(parseProfile),
   ]);
 
-  const trafficWhere = TRAFFIC_SOURCE_WHERE;
-  // the ranked rows the page lists, and the whole table's total so the pie
-  // can draw what the rows leave out. traffic_sources is one row per source
-  // (219 on 2026-09-19), so neither query is corpus-proportional. The list
-  // was LIMIT 50 until 2026-09-19, which silently dropped every source past
-  // rank 50 from the page; the page now folds the tail behind a button
-  // instead, and the LIMIT is only a ceiling on page size.
   const trafficStart = tailStartBucket(kvData?.materialized_at);
   const requestStart = tailStartBucket(reqData?.materialized_at);
   const [trafficRes, trafficAllRes, metricsTail, traffic5mTail, trafficHourTail, request5mTail, requestHourTail] = await db.batch([
-    db.prepare(`SELECT domain, hits FROM traffic_sources ${trafficWhere} ORDER BY hits DESC LIMIT 1000`),
-    db.prepare(`SELECT count(*) AS domains, coalesce(sum(hits), 0) AS hits FROM traffic_sources ${trafficWhere}`),
+    ...sourceQueries(db),
     ...tailQueries(db, trafficStart, requestStart),
   ], "read");
   type Metric = StatsKvData["metrics"][number];

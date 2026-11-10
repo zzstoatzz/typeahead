@@ -1,4 +1,5 @@
 import type { Stmt, SqlDb } from "./db";
+import { TRAFFIC_SOURCE_WHERE } from "./metrics";
 
 /** The cron writes /stats data to KV once an hour, so its newest buckets are up
  *  to an hour old. The page reads every bucket from the top of the hour the KV
@@ -30,5 +31,18 @@ export function tailQueries(db: SqlDb, trafficStart: number, requestStart: numbe
       `SELECT bucket / 12 AS hour, domain, endpoint, status, SUM(hits) AS hits FROM request_buckets
        WHERE bucket >= ?1 GROUP BY bucket / 12, domain, endpoint, status ORDER BY hour ASC`,
     ).bind(requestStart),
+  ];
+}
+
+/** The ranked rows /stats lists, and the whole table's total so the pie can
+ *  draw what the rows leave out. traffic_sources is one row per source (219 on
+ *  2026-09-19), so neither query is corpus-proportional. The list was LIMIT 50
+ *  until 2026-09-19, which silently dropped every source past rank 50 from the
+ *  page; the page now folds the tail behind a button instead, and the LIMIT is
+ *  only a ceiling on page size. */
+export function sourceQueries(db: SqlDb): Stmt[] {
+  return [
+    db.prepare(`SELECT domain, hits FROM traffic_sources ${TRAFFIC_SOURCE_WHERE} ORDER BY hits DESC LIMIT 1000`),
+    db.prepare(`SELECT count(*) AS domains, coalesce(sum(hits), 0) AS hits FROM traffic_sources ${TRAFFIC_SOURCE_WHERE}`),
   ];
 }

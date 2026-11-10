@@ -40,7 +40,7 @@ async function fetchIcon(url: string): Promise<{ body: ArrayBuffer; type: string
   }
 }
 
-async function knownSource(db: SqlDb, source: string): Promise<boolean> {
+export async function knownSource(db: SqlDb, source: string): Promise<boolean> {
   if (brandFor(source)) return true;
   return (await db.prepare("SELECT 1 AS ok FROM traffic_sources WHERE domain = ?1").bind(source).first<{ ok: number }>()) !== null;
 }

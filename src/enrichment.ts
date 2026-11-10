@@ -1,5 +1,5 @@
 import { rowsAs, type SqlDb } from "./db";
-import type { Env } from "./types";
+import type { StatsKvData } from "./types";
 import { TRAFFIC_SOURCE_WHERE } from "./metrics";
 
 /** record an actor-count snapshot for the current hour (idempotent).
@@ -14,7 +14,14 @@ import { TRAFFIC_SOURCE_WHERE } from "./metrics";
  *  with_handles / with_avatars are then `total - empty`. every count touches
  *  only a small slice (<400k matching rows), so the whole thing is sub-second. */
 export async function recordSnapshot(db: SqlDb): Promise<void> {
-  const hour = Math.floor(Date.now() / 3_600_000);
+  const snapshot = await countSnapshot(db);
+  if (snapshot) await writeSnapshot(db, snapshot);
+}
+
+export type Snapshot = StatsKvData["snapshots"][number];
+
+export async function countSnapshot(db: SqlDb, now = Date.now()): Promise<Snapshot | null> {
+  const hour = Math.floor(now / 3_600_000);
   const [totalRes, hiddenRes, emptyHandlesRes, emptyAvatarsRes] = await db.batch([
     db.prepare("SELECT value AS n FROM counters WHERE name = 'actors_total'"),
     db.prepare("SELECT COUNT(*) AS n FROM actors WHERE hidden != 0"),
@@ -30,17 +37,24 @@ export async function recordSnapshot(db: SqlDb): Promise<void> {
 
   const num = (r: any): number => Number(r?.results?.[0]?.n ?? 0);
   const total = num(totalRes);
-  if (total <= 0) return; // counter not seeded yet — don't write a bogus zero row
+  if (total <= 0) return null; // counter not seeded yet — don't write a bogus zero row
 
   const hidden = num(hiddenRes);
-  const withHandles = total - num(emptyHandlesRes);
-  const withAvatars = total - num(emptyAvatarsRes);
+  return {
+    hour,
+    total: total - hidden,
+    with_handles: total - num(emptyHandlesRes),
+    with_avatars: total - num(emptyAvatarsRes),
+    hidden,
+  };
+}
 
+export async function writeSnapshot(db: SqlDb, snapshot: Snapshot): Promise<void> {
   await db.prepare(
     `INSERT OR REPLACE INTO snapshots (hour, total, with_handles, with_avatars, hidden)
      VALUES (?1, ?2, ?3, ?4, ?5)`
   )
-    .bind(hour, total - hidden, withHandles, withAvatars, hidden)
+    .bind(snapshot.hour, snapshot.total, snapshot.with_handles, snapshot.with_avatars, snapshot.hidden)
     .run();
 }
 
@@ -51,8 +65,10 @@ export const SNAPSHOT_HISTORY_SQL = `SELECT hour, total, with_handles, with_avat
   ORDER BY hour DESC LIMIT ${SNAPSHOT_HISTORY_HOURS}
 ) ORDER BY hour ASC`;
 
+type StatsKv = { KV: { put(key: string, value: string): Promise<void> } };
+
 /** materialize stats data to KV so /stats never queries turso on the request path */
-export async function materializeStats(db: SqlDb, env: Env): Promise<void> {
+export async function materializeStats(db: SqlDb, env: StatsKv): Promise<void> {
   // metrics: 5-min buckets. 100k buckets ≈ 1 year of headroom — effectively
   // "all" for our current age. lets the /stats range selector compute true totals.
   // snapshots: hourly, the newest 5000 (~7 months), oldest first.
@@ -137,7 +153,7 @@ export async function materializeStats(db: SqlDb, env: Env): Promise<void> {
  *  time × (active apps × endpoints × statuses), NOT the corpus — endpoint is a
  *  fixed label set (see endpointLabel) and status is an HTTP code. Its own KV
  *  key so stats_data's size is unchanged by this. */
-export async function materializeRequests(db: SqlDb, env: Env): Promise<void> {
+export async function materializeRequests(db: SqlDb, env: StatsKv): Promise<void> {
   const nowBucket = Math.floor(Date.now() / 300_000);
   const hourlySince = nowBucket - 30 * 288;
   const fiveMinSince = nowBucket - 2 * 288;
