@@ -33,6 +33,7 @@
 
 const std = @import("std");
 const store_mod = @import("../store/root.zig");
+const log_route = @import("../log_route.zig");
 const Io = std.Io;
 const Store = store_mod.Store;
 const Change = store_mod.Change;
@@ -42,6 +43,7 @@ const maintain = store_mod.maintain;
 const scan = store_mod.scan;
 
 const log = std.log.scoped(.store_owner);
+const progress = std.log.scoped(log_route.flush_scope);
 
 pub const Clock = struct {
     context: ?*anyopaque = null,
@@ -556,6 +558,9 @@ pub const Owner = struct {
         _ = c.tombstones_pruned.fetchAdd(pruned, .monotonic);
         _ = c.hidden_refreshed.fetchAdd(refreshed, .monotonic);
         c.last_commit_at.store(at, .monotonic);
+        if (total.applied > 0) progress.info("+{d} changes in {d} batches: {d} actors changed, {d} new, {d} refused; {d} queued", .{
+            total.applied, self.group.items.len, total.changed, total.created, total.rejected, self.counters.queued_changes.load(.monotonic),
+        });
 
         for (self.noted_domains.items) |domain| {
             self.sweeps.append(self.gpa, .{ .domain = domain }) catch {
