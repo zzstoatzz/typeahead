@@ -31,5 +31,7 @@ test {
     _ = time;
     _ = @import("store.zig");
     _ = @import("reader.zig");
+    _ = @import("testing/workload.zig");
     _ = @import("store_test.zig");
+    _ = @import("model_test.zig");
 }
