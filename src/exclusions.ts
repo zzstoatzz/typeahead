@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { rowsAs, type TursoDB } from "./db";
+import { rowsAs, type SqlDb } from "./db";
 import { isSearchExcludedHandle } from "./identity-policy";
 import quarantine from "./identity-quarantine.json";
 import { getBlockedDomains, isDomainBlocked, resolveHidden } from "./moderation";
@@ -54,7 +54,7 @@ export function parseLabels(raw: string): unknown[] {
  *  refresh never revisits a hidden row, so flags set under older rules
  *  outlive them. Daily, because the quarantined-handle count walks every
  *  index entry of one PLC spam wave (1.76M on 2026-11-01). */
-export async function recordExclusions(db: TursoDB, kv: ExclusionsKv, now = new Date()): Promise<SearchExclusions | null> {
+export async function recordExclusions(db: SqlDb, kv: ExclusionsKv, now = new Date()): Promise<SearchExclusions | null> {
   const previous = parseExclusions(await kv.get(EXCLUSIONS_KEY));
   if (previous && now.getTime() - Date.parse(previous.as_of) < EXCLUSIONS_REFRESH_MS) return null;
 

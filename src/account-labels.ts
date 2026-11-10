@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authorized, parseBody, rejectUnauthorized } from "./admin-auth";
-import type { Stmt, TursoDB } from "./db";
+import type { Stmt, SqlDb } from "./db";
 import { parseLabels } from "./exclusions";
 import { BSKY_MOD_DID, getBlockedDomains, getOverrides, isDomainBlocked, resolveHidden } from "./moderation";
 import type { Env } from "./types";
@@ -52,7 +52,7 @@ export function labelSubject(l: Pick<Label, "src" | "uri">): string | null {
  *  overwrites a label the stream delivered, and an older stream frame never
  *  overwrites a newer one. A negation is a row, not a delete, so a delayed
  *  assertion cannot resurrect a withdrawn label. */
-function upsertLabel(db: TursoDB, subject: string, l: Label, seq: number): Stmt {
+function upsertLabel(db: SqlDb, subject: string, l: Label, seq: number): Stmt {
   return db.prepare(
     `INSERT INTO account_labels (did, uri, val, cid, neg, cts, exp, seq)
      SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8 WHERE EXISTS (SELECT 1 FROM actors WHERE did = ?1)
@@ -75,14 +75,14 @@ const PROJECTED_LABELS = `(SELECT json_group_array(json(v)) FROM (
       FROM account_labels WHERE did = ?1 AND neg = 0
   ))`;
 
-function projectLabels(db: TursoDB, subject: string): Stmt {
+function projectLabels(db: SqlDb, subject: string): Stmt {
   return db.prepare(
     `UPDATE actors SET labels = ${PROJECTED_LABELS}, updated_at = unixepoch()
      WHERE did = ?1 AND labels IS NOT ${PROJECTED_LABELS}`,
   ).bind(subject, BSKY_MOD_DID);
 }
 
-function advanceCursor(db: TursoDB, cursor: number): Stmt {
+function advanceCursor(db: SqlDb, cursor: number): Stmt {
   return db.prepare(
     `INSERT INTO counters (name, value) VALUES (?1, ?2)
      ON CONFLICT(name) DO UPDATE SET value = MAX(value, excluded.value)`,
@@ -106,7 +106,7 @@ function transactions(groups: Stmt[][]): Stmt[][] {
 /** The stored `hidden` flag nominates candidates for the exclusion count; the
  *  engine decides from labels at query time. Recomputed after the labels
  *  commit, through the same rule as every other write site. */
-async function refreshHidden(db: TursoDB, dids: string[]): Promise<number> {
+async function refreshHidden(db: SqlDb, dids: string[]): Promise<number> {
   if (dids.length === 0) return 0;
   type Row = { did: string; handle: string; labels: string; hidden: number };
   const { results } = await db.prepare(
@@ -134,7 +134,7 @@ export type LabelOutcome = { accepted: number; ignored: number; accounts: number
 /** Applies one batch of label stream frames. The cursor commits with the last
  *  transaction, so a failure replays the batch, and replaying applied frames
  *  rewrites the same rows. */
-export async function applyStream(db: TursoDB, body: z.infer<typeof streamSchema>): Promise<LabelOutcome> {
+export async function applyStream(db: SqlDb, body: z.infer<typeof streamSchema>): Promise<LabelOutcome> {
   const bySubject = new Map<string, Stmt[]>();
   let ignored = 0;
   for (const raw of body.labels) {
@@ -172,7 +172,7 @@ export function currentLabels(labels: Label[]): Label[] {
 /** Replaces the reconciled state of each listed account with the labeler's
  *  current answer. Rows the stream delivered are kept: they are newer than
  *  any answer obtained after the stream started. */
-export async function applyReconcile(db: TursoDB, body: z.infer<typeof reconcileSchema>): Promise<LabelOutcome> {
+export async function applyReconcile(db: SqlDb, body: z.infer<typeof reconcileSchema>): Promise<LabelOutcome> {
   const listed = new Set(body.dids);
   const bySubject = new Map<string, Label[]>(body.dids.map((d) => [d, []]));
   let ignored = 0;
@@ -211,14 +211,14 @@ async function respond(event: string, apply: () => Promise<LabelOutcome & { curs
   }
 }
 
-export async function handleLabelStream(request: Request, db: TursoDB, env: Env): Promise<Response> {
+export async function handleLabelStream(request: Request, db: SqlDb, env: Env): Promise<Response> {
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/labels");
   const body = await parseBody(request, streamSchema);
   if (!body) return json({ error: "invalid label batch" }, 400);
   return respond("labels_applied", async () => ({ ...(await applyStream(db, body)), cursor: body.cursor }));
 }
 
-export async function handleLabelReconcile(request: Request, db: TursoDB, env: Env): Promise<Response> {
+export async function handleLabelReconcile(request: Request, db: SqlDb, env: Env): Promise<Response> {
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/labels/reconcile");
   const body = await parseBody(request, reconcileSchema);
   if (!body) return json({ error: "invalid reconciliation batch" }, 400);
@@ -226,7 +226,7 @@ export async function handleLabelReconcile(request: Request, db: TursoDB, env: E
 }
 
 /** null until the consumer's first batch: it then starts at the stream head. */
-export async function handleLabelCursor(request: Request, db: TursoDB, env: Env): Promise<Response> {
+export async function handleLabelCursor(request: Request, db: SqlDb, env: Env): Promise<Response> {
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/labels/cursor");
   const row = await db.prepare("SELECT value FROM counters WHERE name = ?1").bind(LABEL_CURSOR).first<{ value: number }>();
   return json({ cursor: row ? Number(row.value) : null });

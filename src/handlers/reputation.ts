@@ -1,4 +1,4 @@
-import type { TursoDB } from "../db";
+import type { SqlDb } from "../db";
 import { percentileFromQuantiles, queryLabelers } from "../labelers";
 import { json, computeAuthorityScoreBreakdown, avatarUrl, avatarFallbackUrl } from "../utils";
 import { BSKY_MOD_DID, MOD_HIDE_VALS, resolveHidden } from "../moderation";
@@ -117,7 +117,7 @@ async function liveSearchPosition(
   }
 }
 
-export async function handleReputation(request: Request, db: TursoDB, env: Env): Promise<Response> {
+export async function handleReputation(request: Request, db: SqlDb, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const actor = (url.searchParams.get("actor") || url.searchParams.get("handle") || url.searchParams.get("did") || "").trim();
   if (!actor) return json({ error: "actor query param required" }, 400);

@@ -2,7 +2,7 @@ import { describe, test, expect, afterEach } from "bun:test";
 import { isProfileIdentical, refreshModeration } from "./cron";
 import { extractProfileFields } from "./utils";
 import type { Env } from "./types";
-import type { SqlValue, Stmt, TursoDB } from "./db";
+import type { SqlValue, Stmt, SqlDb } from "./db";
 
 type Call = { sql: string; binds: SqlValue[]; method: string };
 type FakeStmt = Stmt & { sql: string; binds: SqlValue[] };
@@ -129,7 +129,7 @@ describe("refreshModeration takes counts from the Blacksky appview on a Bluesky 
       };
       return s;
     };
-    const db: TursoDB = {
+    const db: SqlDb = {
       prepare: stmt,
       async batch(stmts: FakeStmt[]) {
         for (const st of stmts) calls.push({ sql: st.sql, binds: st.binds, method: "batch" });
@@ -201,7 +201,7 @@ describe("refreshModeration advances the freshness cursor", () => {
       };
       return s;
     }
-    const db: TursoDB = {
+    const db: SqlDb = {
       prepare: (sql: string) => stmt(sql),
       async batch(stmts: FakeStmt[]) {
         for (const st of stmts) calls.push({ sql: st.sql, binds: st.binds, method: "batch" });
@@ -295,7 +295,7 @@ describe("refreshModeration quality-walk cursor", () => {
       };
       return s;
     };
-    const db: TursoDB = { prepare: stmt, async batch() { return []; } };
+    const db: SqlDb = { prepare: stmt, async batch() { return []; } };
     return { db, sqls };
   }
 

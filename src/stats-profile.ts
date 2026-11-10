@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { rowsAs, type TursoDB } from "./db";
+import { rowsAs, type SqlDb } from "./db";
 
 /** What each UTC hour of the day usually looks like, so /stats can draw a
  *  typical range behind the live line. Built hourly by the cron from the last
@@ -63,7 +63,7 @@ export function hourOfDayBands(totals: Map<number, number>, start: number, end: 
 
 type ProfileKv = { put(key: string, value: string): Promise<void> };
 
-export async function recordProfile(db: TursoDB, kv: ProfileKv, now = Date.now()): Promise<StatsProfile> {
+export async function recordProfile(db: SqlDb, kv: ProfileKv, now = Date.now()): Promise<StatsProfile> {
   const end = Math.floor(now / 3_600_000) * 12 - 288;
   const start = end - PROFILE_DAYS * 288;
   const [trafficRes, requestRes] = await db.batch([

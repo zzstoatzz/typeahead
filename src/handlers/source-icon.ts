@@ -1,4 +1,4 @@
-import type { TursoDB } from "../db";
+import type { SqlDb } from "../db";
 import { brandFor } from "../pages/source-brands";
 
 const MAX_BYTES = 256 * 1024;
@@ -40,12 +40,12 @@ async function fetchIcon(url: string): Promise<{ body: ArrayBuffer; type: string
   }
 }
 
-async function knownSource(db: TursoDB, source: string): Promise<boolean> {
+async function knownSource(db: SqlDb, source: string): Promise<boolean> {
   if (brandFor(source)) return true;
   return (await db.prepare("SELECT 1 AS ok FROM traffic_sources WHERE domain = ?1").bind(source).first<{ ok: number }>()) !== null;
 }
 
-export async function handleSourceIcon(request: Request, db: TursoDB, ctx: ExecutionContext): Promise<Response> {
+export async function handleSourceIcon(request: Request, db: SqlDb, ctx: ExecutionContext): Promise<Response> {
   const source = new URL(request.url).searchParams.get("d") ?? "";
   const cache = caches.default;
   const cached = await cache.match(request);

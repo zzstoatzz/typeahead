@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { Database, type SQLQueryBindings } from "bun:sqlite";
 import type { Row } from "@libsql/client/web";
-import type { Stmt, TursoDB } from "./db";
+import type { Stmt, SqlDb } from "./db";
 import { BSKY_MOD_DID } from "./moderation";
 import { EXCLUSIONS_KEY, EXCLUSIONS_REFRESH_MS, parseExclusions, recordExclusions } from "./exclusions";
 
@@ -34,7 +34,7 @@ function sqliteDb() {
     };
     return s;
   };
-  const db: TursoDB = {
+  const db: SqlDb = {
     prepare,
     async batch(stmts) {
       return stmts.map((st) => {

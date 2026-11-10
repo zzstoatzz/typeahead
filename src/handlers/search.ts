@@ -1,7 +1,7 @@
 import { filterIdentityBody, filterIdentityResponse, isSearchExcludedHandle } from "../identity-policy";
 import { parseSearchScope, scopeAcknowledged, scopeParams, searchCacheGeneration, searchCacheUrl, validateBackendBody, type SearchScope } from "./search-contract";
 export { normalizePds } from "../pds";
-import { rowsAs, type TursoDB } from "../db";
+import { rowsAs, type SqlDb } from "../db";
 import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
 import { json, sanitize, avatarUrl, avatarFallbackUrl, type ProfileAssociated } from "../utils";
@@ -101,7 +101,7 @@ async function blueskyFallback(term: string, limit: number, mode: "manual" | "au
 
 export async function handleSearch(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {

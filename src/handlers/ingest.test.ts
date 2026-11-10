@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { Database, type SQLQueryBindings } from "bun:sqlite";
 import { handleIngest } from "./ingest";
 import type { Env, IngestEvent } from "../types";
-import type { SqlValue, Stmt, TursoDB } from "../db";
+import type { SqlValue, Stmt, SqlDb } from "../db";
 
 type Call = { sql: string; binds: SqlValue[] };
 type FakeStmt = Stmt & { sql: string; binds: SqlValue[] };
@@ -47,7 +47,7 @@ function mockDb(newDids: Set<string>) {
     };
     return s;
   };
-  const db: TursoDB = {
+  const db: SqlDb = {
     prepare: (sql: string) => stmt(sql),
     async batch(stmts: FakeStmt[]) {
       return stmts.map((st) => {
@@ -127,7 +127,7 @@ function sqliteDb() {
     };
     return s;
   };
-  const db: TursoDB = {
+  const db: SqlDb = {
     prepare: stmt,
     async batch(stmts) {
       const out = [];

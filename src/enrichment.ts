@@ -1,4 +1,4 @@
-import { rowsAs, type TursoDB } from "./db";
+import { rowsAs, type SqlDb } from "./db";
 import type { Env } from "./types";
 import { TRAFFIC_SOURCE_WHERE } from "./metrics";
 
@@ -13,7 +13,7 @@ import { TRAFFIC_SOURCE_WHERE } from "./metrics";
  *    - empty avatars  — selective count via `idx_actors_avatar_empty`
  *  with_handles / with_avatars are then `total - empty`. every count touches
  *  only a small slice (<400k matching rows), so the whole thing is sub-second. */
-export async function recordSnapshot(db: TursoDB): Promise<void> {
+export async function recordSnapshot(db: SqlDb): Promise<void> {
   const hour = Math.floor(Date.now() / 3_600_000);
   const [totalRes, hiddenRes, emptyHandlesRes, emptyAvatarsRes] = await db.batch([
     db.prepare("SELECT value AS n FROM counters WHERE name = 'actors_total'"),
@@ -52,7 +52,7 @@ export const SNAPSHOT_HISTORY_SQL = `SELECT hour, total, with_handles, with_avat
 ) ORDER BY hour ASC`;
 
 /** materialize stats data to KV so /stats never queries turso on the request path */
-export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
+export async function materializeStats(db: SqlDb, env: Env): Promise<void> {
   // metrics: 5-min buckets. 100k buckets ≈ 1 year of headroom — effectively
   // "all" for our current age. lets the /stats range selector compute true totals.
   // snapshots: hourly, the newest 5000 (~7 months), oldest first.
@@ -137,7 +137,7 @@ export async function materializeStats(db: TursoDB, env: Env): Promise<void> {
  *  time × (active apps × endpoints × statuses), NOT the corpus — endpoint is a
  *  fixed label set (see endpointLabel) and status is an HTTP code. Its own KV
  *  key so stats_data's size is unchanged by this. */
-export async function materializeRequests(db: TursoDB, env: Env): Promise<void> {
+export async function materializeRequests(db: SqlDb, env: Env): Promise<void> {
   const nowBucket = Math.floor(Date.now() / 300_000);
   const hourlySince = nowBucket - 30 * 288;
   const fiveMinSince = nowBucket - 2 * 288;

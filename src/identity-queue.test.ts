@@ -6,7 +6,7 @@ import {
   handleIdentityComplete, handleIdentityLease, handleIdentityStatus, handlePlcOperations, LEASE_SECONDS, MAX_ATTEMPTS, MAX_RETRY_SECONDS,
   type IdentityResult,
 } from "./identity-queue";
-import type { Stmt, TursoDB } from "./db";
+import type { Stmt, SqlDb } from "./db";
 import type { Env, IngestEvent } from "./types";
 
 const SECRET = "s3cret";
@@ -64,7 +64,7 @@ function sqliteDb() {
 
   let batches = 0;
   let failBatch: number | null = null;
-  const db: TursoDB = {
+  const db: SqlDb = {
     prepare,
     async batch(stmts) {
       batches++;
@@ -128,17 +128,17 @@ function post(path: string, body: RequestBody): Request {
   });
 }
 
-const ingest = (db: TursoDB, events: IngestEvent[], extra: { cursor?: number; identity_queue?: boolean } = {}, env = fakeEnv()) =>
+const ingest = (db: SqlDb, events: IngestEvent[], extra: { cursor?: number; identity_queue?: boolean } = {}, env = fakeEnv()) =>
   handleIngest(post("/admin/ingest", { events, ...extra }), db, env, fakeCtx());
 
-async function lease(db: TursoDB, limit = 50) {
+async function lease(db: SqlDb, limit = 50) {
   const res = await handleIdentityLease(post("/admin/identity/lease", { limit }), db, fakeEnv());
   expect(res.status).toBe(200);
   const body: { jobs: { did: string; gen: number; attempts: number; reason: string }[] } = await res.json();
   return body.jobs;
 }
 
-async function complete(db: TursoDB, results: IdentityResult[]) {
+async function complete(db: SqlDb, results: IdentityResult[]) {
   const res = await handleIdentityComplete(post("/admin/identity/complete", { results }), db, fakeEnv());
   expect(res.status).toBe(200);
   const body: { ok: true; resolved: number; retried: number; abandoned: number } = await res.json();

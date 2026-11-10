@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import type { Stmt, TursoDB } from "../db";
+import type { Stmt, SqlDb } from "../db";
 import { handleSourceIcon, iconCandidates } from "./source-icon";
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
@@ -31,7 +31,7 @@ function serve(responses: Record<string, () => Response>) {
   globalThis.fetch = fake as typeof fetch;
 }
 
-function db(known: string[]): TursoDB {
+function db(known: string[]): SqlDb {
   return {
     prepare(_sql: string): Stmt {
       let source = "";

@@ -12,10 +12,15 @@ export interface Stmt {
   run(): Promise<{ meta: { changes: number } }>;
 }
 
-export interface TursoDB {
+export interface SqlDb {
   prepare(sql: string): Stmt;
   batch(stmts: Stmt[], mode?: "write" | "read"): Promise<{ results: Row[]; meta: { changes: number } }[]>;
 }
+
+/** src/moderation.ts imports the interface under this name. Its bytes are
+ *  hashed into src/moderation-regexes.json and from there into every Tantivy
+ *  snapshot manifest, so it is not edited for a rename. */
+export type TursoDB = SqlDb;
 
 /** batch() hands back raw rows; callers name the shape of the SELECT they wrote. */
 export function rowsAs<T>(rows: Row[]): T[] {
@@ -29,7 +34,7 @@ interface BoundStmt extends Stmt {
   args(): SqlValue[];
 }
 
-export function tursoDb(client: Client): TursoDB {
+export function tursoDb(client: Client): SqlDb {
   return {
     prepare(sql) {
       let args: SqlValue[] = [];
@@ -92,7 +97,7 @@ export function tursoDb(client: Client): TursoDB {
  *
  *  createClient is a plain object over the platform fetch; there is no
  *  connection to reuse at this layer, so per-request costs nothing. */
-export async function getDb(env: Env): Promise<TursoDB> {
+export async function getDb(env: Env): Promise<SqlDb> {
   return tursoDb(createClient({
     url: env.TURSO_URL,
     authToken: env.TURSO_AUTH_TOKEN,

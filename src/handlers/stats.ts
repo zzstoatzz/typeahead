@@ -1,4 +1,4 @@
-import { rowsAs, type TursoDB } from "../db";
+import { rowsAs, type SqlDb } from "../db";
 import type { Env, RequestKvData, StatsKvData } from "../types";
 import { html } from "../utils";
 import { TRAFFIC_SOURCE_WHERE } from "../metrics";
@@ -9,7 +9,7 @@ import { PROFILE_KEY, parseProfile } from "../stats-profile";
 
 const EDGE_CACHE_TTL = 60; // seconds
 
-export async function handleStats(request: Request, db: TursoDB, env: Env, ctx: ExecutionContext): Promise<Response> {
+export async function handleStats(request: Request, db: SqlDb, env: Env, ctx: ExecutionContext): Promise<Response> {
   const cache = caches.default;
   // The key used to be a bare "/stats", discarding the query — so every shared
   // comparison URL collapsed onto one cache entry and a crawler unfurling

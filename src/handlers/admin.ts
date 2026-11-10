@@ -1,5 +1,5 @@
 import { identitySchema, verifyIdentityHandle } from "../verify-identity";
-import type { Stmt, TursoDB } from "../db";
+import type { Stmt, SqlDb } from "../db";
 import type { Env } from "../types";
 import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL, MICROCOSM_UA } from "../types";
 import { clientIP, json, extractProfileFields, fetchProfileFromBlacksky, fetchProfileFromPds } from "../utils";
@@ -9,7 +9,7 @@ import { recordActorDelta } from "../metrics";
 
 export async function handleDelete(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
@@ -132,7 +132,7 @@ async function announceHostToRelay(pdsUrl: string, env: Env): Promise<void> {
 
 export async function handleRequestIndexing(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
@@ -247,7 +247,7 @@ function authCheck(request: Request, env: Env): Response | null {
 
 export async function handleModOverrideSet(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
 ): Promise<Response> {
   const denied = authCheck(request, env);
@@ -282,7 +282,7 @@ export async function handleModOverrideSet(
 
 export async function handleModOverrideDelete(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
 ): Promise<Response> {
   const denied = authCheck(request, env);
@@ -320,7 +320,7 @@ export async function handleModOverrideDelete(
 
 export async function handleModOverrideList(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
 ): Promise<Response> {
   const denied = authCheck(request, env);
@@ -346,7 +346,7 @@ function normalizeDomain(raw: string): string {
 // the background so the client returns immediately.
 const BACKFILL_WINDOW = 500_000;
 
-async function maxRowid(db: TursoDB): Promise<number> {
+async function maxRowid(db: SqlDb): Promise<number> {
   const row = await db.prepare("SELECT max(rowid) AS m FROM actors").first<{ m: number | null }>();
   return row?.m ?? 0;
 }
@@ -354,7 +354,7 @@ async function maxRowid(db: TursoDB): Promise<number> {
 /** Hide apex + every subdomain of `domain`, sparing 'show'-override DIDs, in
  *  bounded rowid windows (short write locks). Only flips 0→1 so already-hidden
  *  rows don't churn updated_at / the search service sync. */
-async function backfillDomainBlock(db: TursoDB, domain: string): Promise<void> {
+async function backfillDomainBlock(db: SqlDb, domain: string): Promise<void> {
   const suffix = "%." + domain;
   const max = await maxRowid(db);
   let cursor = 0;
@@ -375,7 +375,7 @@ async function backfillDomainBlock(db: TursoDB, domain: string): Promise<void> {
 
 export async function handleDomainBlockSet(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
@@ -413,7 +413,7 @@ export async function handleDomainBlockSet(
  *  matched it, from all REMAINING sources (labels + slur + other domain blocks
  *  + override) — so a label-hidden or still-domain-blocked account stays hidden.
  *  Bounded rowid windows (short locks); runs in the background. */
-async function recomputeDomainUnblock(db: TursoDB, domain: string): Promise<void> {
+async function recomputeDomainUnblock(db: SqlDb, domain: string): Promise<void> {
   const remaining = await getBlockedDomains(db);
   const suffix = "%." + domain;
   const max = await maxRowid(db);
@@ -450,7 +450,7 @@ async function recomputeDomainUnblock(db: TursoDB, domain: string): Promise<void
 
 export async function handleDomainBlockDelete(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
@@ -469,7 +469,7 @@ export async function handleDomainBlockDelete(
 
 export async function handleDomainBlockList(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
 ): Promise<Response> {
   const denied = authCheck(request, env);
@@ -497,7 +497,7 @@ type EnrichError = { did: string; reason: "bsky_404" | "bsky_error" | "rate_limi
 
 export async function handleEnrichProfiles(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
 ): Promise<Response> {
   const denied = authCheck(request, env);
@@ -541,7 +541,7 @@ function parseEnrichBody(raw: { dids?: unknown }): { body: EnrichBody } | { erro
  *  enrichment) as well as via the authed HTTP surface above. One DID list in,
  *  getProfiles + extractProfileFields + resolveHidden + guarded upsert out. */
 export async function enrichProfileDids(
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
   didList: string[],
 ): Promise<{ ok: true; requested: number; profiles_found: number; written: number; hidden: number; errors: EnrichError[] }> {

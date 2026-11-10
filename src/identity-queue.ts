@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { admittedHandle } from "./identity-policy";
-import type { Stmt, TursoDB } from "./db";
+import type { Stmt, SqlDb } from "./db";
 import { rowsAs } from "./db";
 import type { Env } from "./types";
 import { authorized, parseBody, rejectUnauthorized } from "./admin-auth";
@@ -19,7 +19,7 @@ const STATEMENTS_PER_TRANSACTION = 240;
 /** A signal coalesces into the DID's one row. A newer signal bumps `gen`, so an
  *  in-flight completion for the older generation cannot delete the row, and
  *  pulls `due_at` forward even past an active lease. */
-export function enqueueIdentity(db: TursoDB, did: string, reason: IdentityReason): Stmt {
+export function enqueueIdentity(db: SqlDb, did: string, reason: IdentityReason): Stmt {
   return db.prepare(
     `INSERT INTO identity_queue (did, gen, due_at, attempts, reason, enqueued_at, last_error)
      VALUES (?1, 1, unixepoch(), 0, ?2, unixepoch(), '')
@@ -34,7 +34,7 @@ export function enqueueIdentity(db: TursoDB, did: string, reason: IdentityReason
 /** A PLC directory operation re-requests resolution only for accounts we
  *  already index; an account we have not discovered yet gets its identity
  *  when discovery enqueues it. */
-export function enqueueKnown(db: TursoDB, did: string): Stmt {
+export function enqueueKnown(db: SqlDb, did: string): Stmt {
   return db.prepare(
     `INSERT INTO identity_queue (did, gen, due_at, attempts, reason, enqueued_at, last_error)
      SELECT ?1, 1, unixepoch(), 0, 'plc', unixepoch(), '' WHERE EXISTS (SELECT 1 FROM actors WHERE did = ?1)
@@ -49,7 +49,7 @@ export function enqueueKnown(db: TursoDB, did: string): Stmt {
 /** Must run immediately after the actor's `INSERT OR IGNORE` probe in the same
  *  transaction: `changes()` is 1 only when that probe created the row. An
  *  existing pending row is left alone, so discovery never resets a backoff. */
-export function enqueueDiscovered(db: TursoDB, did: string): Stmt {
+export function enqueueDiscovered(db: SqlDb, did: string): Stmt {
   return db.prepare(
     `INSERT INTO identity_queue (did, gen, due_at, attempts, reason, enqueued_at, last_error)
      SELECT ?1, 1, unixepoch(), 0, 'discovered', unixepoch(), '' WHERE changes() = 1
@@ -100,7 +100,7 @@ export function retryDelay(requested: number): number {
 /** Identity fields are written only by an observation at least as new as the
  *  one already applied. An empty value never clears a stored one: a document
  *  without a PDS or handle is not proof the stored value is wrong. */
-function applyIdentity(db: TursoDB, did: string, observedAt: number, handle: string, pds: string): Stmt {
+function applyIdentity(db: SqlDb, did: string, observedAt: number, handle: string, pds: string): Stmt {
   return db.prepare(
     `UPDATE actors SET
        handle = CASE WHEN ?3 != '' THEN ?3 ELSE handle END,
@@ -112,7 +112,7 @@ function applyIdentity(db: TursoDB, did: string, observedAt: number, handle: str
   ).bind(did, observedAt, handle, pds);
 }
 
-function completeQueued(db: TursoDB, did: string, gen: number): Stmt {
+function completeQueued(db: SqlDb, did: string, gen: number): Stmt {
   return db.prepare("DELETE FROM identity_queue WHERE did = ?1 AND gen = ?2").bind(did, gen);
 }
 
@@ -121,7 +121,7 @@ export type Settled = { settlement: Settlement; stmts: Stmt[] };
 
 /** The statements that settle one result, kept together so each DID's actor
  *  write and queue transition commit in the same transaction. */
-export function settle(db: TursoDB, result: IdentityResult): Settled {
+export function settle(db: SqlDb, result: IdentityResult): Settled {
   switch (result.outcome) {
     case "resolved": {
       const handle = admittedHandle(result);
@@ -145,7 +145,7 @@ export function settle(db: TursoDB, result: IdentityResult): Settled {
 
 type LeasedRow = { did: string; gen: number; attempts: number; reason: string };
 
-export async function handleIdentityLease(request: Request, db: TursoDB, env: Env): Promise<Response> {
+export async function handleIdentityLease(request: Request, db: SqlDb, env: Env): Promise<Response> {
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/identity/lease");
   const body = await parseBody(request, leaseRequestSchema);
   if (!body) return json({ error: "limit must be an integer from 1 to " + MAX_LEASE }, 400);
@@ -158,7 +158,7 @@ export async function handleIdentityLease(request: Request, db: TursoDB, env: En
   return json({ jobs, lease_seconds: LEASE_SECONDS });
 }
 
-export async function handleIdentityComplete(request: Request, db: TursoDB, env: Env): Promise<Response> {
+export async function handleIdentityComplete(request: Request, db: SqlDb, env: Env): Promise<Response> {
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/identity/complete");
   const body = await parseBody(request, completeRequestSchema);
   if (!body) return json({ error: "invalid identity results" }, 400);
@@ -211,7 +211,7 @@ export async function handlePlcCursor(request: Request, env: Env): Promise<Respo
 
 /** Enqueues before it records the cursor, so a failure replays the page
  *  instead of skipping it. The cursor only moves forward. */
-export async function handlePlcOperations(request: Request, db: TursoDB, env: Env): Promise<Response> {
+export async function handlePlcOperations(request: Request, db: SqlDb, env: Env): Promise<Response> {
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/identity/plc");
   const body = await parseBody(request, plcRequestSchema);
   if (!body) return json({ error: "invalid plc operations" }, 400);
@@ -238,7 +238,7 @@ export async function handlePlcOperations(request: Request, db: TursoDB, env: En
 
 type QueueStatus ={ pending: number; due: number; oldest_due_at: number | null };
 
-export async function handleIdentityStatus(request: Request, db: TursoDB, env: Env): Promise<Response> {
+export async function handleIdentityStatus(request: Request, db: SqlDb, env: Env): Promise<Response> {
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/identity/status");
   const status = await db.prepare(
     `SELECT COUNT(*) AS pending,

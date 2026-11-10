@@ -1,5 +1,5 @@
 import { admittedHandle } from "../identity-policy";
-import type { Stmt, TursoDB } from "../db";
+import type { Stmt, SqlDb } from "../db";
 import type { Env, IngestEvent } from "../types";
 import { clientIP, json } from "../utils";
 import { recordActorDelta } from "../metrics";
@@ -7,7 +7,7 @@ import { enqueueDiscovered, enqueueIdentity } from "../identity-queue";
 
 export async function handleIngest(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {

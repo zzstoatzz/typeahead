@@ -1,4 +1,4 @@
-import type { Stmt, TursoDB } from "./db";
+import type { Stmt, SqlDb } from "./db";
 
 /** The cron writes /stats data to KV once an hour, so its newest buckets are up
  *  to an hour old. The page reads every bucket from the top of the hour the KV
@@ -17,7 +17,7 @@ export function withTail<T extends Record<K, number>, K extends string>(kv: T[],
   return [...kv.filter((r) => r[key] < start), ...live];
 }
 
-export function tailQueries(db: TursoDB, trafficStart: number, requestStart: number): Stmt[] {
+export function tailQueries(db: SqlDb, trafficStart: number, requestStart: number): Stmt[] {
   return [
     db.prepare("SELECT hour, searches, total_ms, cache_hits, cache_ms FROM metrics WHERE hour >= ?1 ORDER BY hour DESC").bind(trafficStart),
     db.prepare("SELECT bucket, domain, hits FROM traffic_buckets WHERE bucket >= ?1 ORDER BY bucket ASC").bind(trafficStart),

@@ -1,4 +1,4 @@
-import type { Stmt, TursoDB } from "./db";
+import type { Stmt, SqlDb } from "./db";
 import type { Env } from "./types";
 import { BSKY_GET_PROFILES_URL } from "./types";
 import { extractProfileFields, fetchProfileFromBlacksky, fetchProfileFromPds } from "./utils";
@@ -74,7 +74,7 @@ export function isProfileIdentical(
  *  Score-0 / hidden actors outside both queues are reached on firehose
  *  activity (event queue) or by bulk runs — the cron makes no pretense of
  *  touching all 11M rows on any schedule. */
-export async function refreshModeration(db: TursoDB, env: Env): Promise<void> {
+export async function refreshModeration(db: SqlDb, env: Env): Promise<void> {
   const WALK_N = 800;
   const EVENT_N = 200;
   const ACTOR_COLS = `rowid, did, handle, hidden, labels, pds,

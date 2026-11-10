@@ -1,5 +1,5 @@
 import { filterIdentityResponse, isSearchExcludedHandle } from "../identity-policy";
-import type { TursoDB } from "../db";
+import type { SqlDb } from "../db";
 import type { ProfileRow, Env } from "../types";
 import { CORS_HEADERS } from "../types";
 import { json, avatarUrl, avatarFallbackUrl, bannerUrl, type ProfileAssociated } from "../utils";
@@ -69,7 +69,7 @@ export function profilesCacheKey(actors: string[]): string {
 /** Batch profile lookup by DID or handle — compatible with app.bsky.actor.getProfiles response shape. */
 export async function handleGetProfiles(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   _env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
@@ -138,7 +138,7 @@ export async function handleGetProfiles(
  *  Same lookup and cache as getProfiles; unwraps the one result. */
 export async function handleGetProfile(
   request: Request,
-  db: TursoDB,
+  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {

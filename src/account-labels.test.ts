@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { Database, type SQLQueryBindings } from "bun:sqlite";
 import type { Row } from "@libsql/client/web";
 import { handleLabelCursor, handleLabelReconcile, handleLabelStream, labelSubject } from "./account-labels";
-import type { Stmt, TursoDB } from "./db";
+import type { Stmt, SqlDb } from "./db";
 import { BSKY_MOD_DID } from "./moderation";
 import type { Env } from "./types";
 
@@ -61,7 +61,7 @@ function sqliteDb() {
 
   let batches = 0;
   let failBatch: number | null = null;
-  const db: TursoDB = {
+  const db: SqlDb = {
     prepare,
     async batch(stmts) {
       batches++;
@@ -116,9 +116,9 @@ function request(path: string, body: StreamBody | ReconcileBody): Request {
     body: JSON.stringify(body),
   });
 }
-const stream = (db: TursoDB, labels: object[], cursor: number) => handleLabelStream(request("/admin/labels", { labels, cursor }), db, fakeEnv());
-const reconcile = (db: TursoDB, dids: string[], labels: object[]) => handleLabelReconcile(request("/admin/labels/reconcile", { dids, labels }), db, fakeEnv());
-async function cursor(db: TursoDB): Promise<number | null> {
+const stream = (db: SqlDb, labels: object[], cursor: number) => handleLabelStream(request("/admin/labels", { labels, cursor }), db, fakeEnv());
+const reconcile = (db: SqlDb, dids: string[], labels: object[]) => handleLabelReconcile(request("/admin/labels/reconcile", { dids, labels }), db, fakeEnv());
+async function cursor(db: SqlDb): Promise<number | null> {
   const res = await handleLabelCursor(new Request("https://x/admin/labels/cursor", { headers: { Authorization: `Bearer ${SECRET}` } }), db, fakeEnv());
   const body: { cursor: number | null } = await res.json();
   return body.cursor;

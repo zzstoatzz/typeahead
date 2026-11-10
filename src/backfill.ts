@@ -1,4 +1,4 @@
-import type { TursoDB } from "./db";
+import type { SqlDb } from "./db";
 import type { Env } from "./types";
 import { BSKY_TYPEAHEAD_URL } from "./types";
 import { extractProfileFields } from "./utils";
@@ -9,7 +9,7 @@ import { getOverrides, getBlockedDomains, isDomainBlocked } from "./moderation";
 export async function backfillFromBsky(
   term: string,
   limit: number,
-  db: TursoDB,
+  db: SqlDb,
 ): Promise<void> {
   try {
     const res = await fetch(
@@ -66,7 +66,7 @@ export async function backfillFromBsky(
   }
 }
 
-export async function throttledBackfill(term: string, limit: number, db: TursoDB, env: Env): Promise<void> {
+export async function throttledBackfill(term: string, limit: number, db: SqlDb, env: Env): Promise<void> {
   // kill switch — set KV key "backfill" to "off" to disable without redeploying
   const flag = await env.KV.get("backfill");
   if (flag === "off") return;

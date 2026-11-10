@@ -1,7 +1,7 @@
-import type { TursoDB } from "./db";
+import type { SqlDb } from "./db";
 
 /** fire-and-forget: increment 5-min search count + accumulate response time */
-export async function recordMetric(db: TursoDB, ms: number): Promise<void> {
+export async function recordMetric(db: SqlDb, ms: number): Promise<void> {
   const bucket = Math.floor(Date.now() / 300_000);
   await db.prepare(
     `INSERT INTO metrics (hour, searches, total_ms)
@@ -14,7 +14,7 @@ export async function recordMetric(db: TursoDB, ms: number): Promise<void> {
     .run();
 }
 
-export async function recordCacheHit(db: TursoDB, ms: number): Promise<void> {
+export async function recordCacheHit(db: SqlDb, ms: number): Promise<void> {
   const bucket = Math.floor(Date.now() / 300_000);
   await db.prepare(
     `INSERT INTO metrics (hour, cache_hits, cache_ms)
@@ -31,7 +31,7 @@ export async function recordCacheHit(db: TursoDB, ms: number): Promise<void> {
  *  also maintains the running `actors_total` counter so the hourly snapshot
  *  never has to COUNT(*) the full ~6M-row table (a ~300s scan over libSQL HTTP). */
 export async function recordActorDelta(
-  db: TursoDB,
+  db: SqlDb,
   deltas: { actors?: number; handles?: number; avatars?: number },
 ): Promise<void> {
   const bucket = Math.floor(Date.now() / 300_000);
@@ -92,7 +92,7 @@ export function trafficDomain(request: Request): string {
 }
 
 /** fire-and-forget: increment cumulative hit counter per client identity */
-export async function recordTrafficSource(db: TursoDB, request: Request): Promise<void> {
+export async function recordTrafficSource(db: SqlDb, request: Request): Promise<void> {
   const domain = trafficDomain(request);
   const bucket = Math.floor(Date.now() / 300_000);
   await db.batch([
@@ -156,7 +156,7 @@ export const TRAFFIC_SOURCE_WHERE = `WHERE domain != 'bench'
  *  all traffic_buckets sees). This is the only place non-2xx responses are
  *  counted anywhere we own. */
 export async function recordRequest(
-  db: TursoDB,
+  db: SqlDb,
   domain: string,
   endpoint: string,
   status: number,
