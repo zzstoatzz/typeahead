@@ -343,22 +343,37 @@ pub const Resolver = struct {
         var transport = HttpTransport.init(self.io, self.allocator);
         transport.keep_alive = true;
         defer transport.deinit();
-
-        var jobs: [LEASE_BATCH]Job = undefined;
-        while (true) {
-            const n = self.lease(&transport, &jobs) catch |err| {
-                _ = stats.lease_failed.fetchAdd(1, .monotonic);
-                log.warn("identity lease failed: {s}", .{@errorName(err)});
-                self.io.sleep(Io.Duration.fromSeconds(LEASE_FAILURE_BACKOFF_SECS), .awake) catch return;
-                continue;
-            };
-            _ = stats.leased.fetchAdd(n, .monotonic);
-            for (jobs[0..n]) |job| pool.put(self.io, job) catch return;
-            const wait: i64 = if (n == 0) IDLE_POLL_SECS else if (n < LEASE_BATCH) PARTIAL_POLL_SECS else 0;
-            if (wait > 0) self.io.sleep(Io.Duration.fromSeconds(wait), .awake) catch return;
-        }
+        var queue: WorkerQueue = .{ .resolver = self, .transport = &transport };
+        drainFrom(self.io, &queue, pool);
     }
+
+    const WorkerQueue = struct {
+        resolver: *Resolver,
+        transport: *HttpTransport,
+
+        pub fn lease(self: *WorkerQueue, out: []Job) !usize {
+            return self.resolver.lease(self.transport, out);
+        }
+    };
 };
+
+/// Lease from `queue` (`lease(out: []Job) !usize`) into `pool` until
+/// cancelled, pacing by how much each lease returned.
+pub fn drainFrom(io: Io, queue: anytype, pool: anytype) void {
+    var jobs: [LEASE_BATCH]Job = undefined;
+    while (true) {
+        const n = queue.lease(&jobs) catch |err| {
+            _ = stats.lease_failed.fetchAdd(1, .monotonic);
+            log.warn("identity lease failed: {s}", .{@errorName(err)});
+            io.sleep(Io.Duration.fromSeconds(LEASE_FAILURE_BACKOFF_SECS), .awake) catch return;
+            continue;
+        };
+        _ = stats.leased.fetchAdd(n, .monotonic);
+        for (jobs[0..n]) |job| pool.put(io, job) catch return;
+        const wait: i64 = if (n == 0) IDLE_POLL_SECS else if (n < LEASE_BATCH) PARTIAL_POLL_SECS else 0;
+        if (wait > 0) io.sleep(Io.Duration.fromSeconds(wait), .awake) catch return;
+    }
+}
 
 /// The handle a DID document claims: its first alsoKnownAs entry that is
 /// valid handle syntax. zat strips `at://` but keeps other URI schemes, so
