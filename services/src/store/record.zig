@@ -23,6 +23,7 @@ pub const actor_format = 1;
 pub const label_format = 1;
 pub const queue_format = 1;
 pub const policy_format = 1;
+pub const walk_format = 1;
 
 pub const Error = error{ CorruptRecord, UnsupportedRecordFormat };
 
@@ -251,6 +252,38 @@ pub const PolicyEntry = struct {
         };
         try in.end();
         return entry;
+    }
+};
+
+/// Where a standing refresh walk stands. `position` is the last key the
+/// walk examined, empty at the start of a pass.
+pub const WalkState = struct {
+    /// When the pass in progress started; 0 before the first step.
+    started_at: u64 = 0,
+    passes: u64 = 0,
+    last_pass_seconds: u64 = 0,
+    position: []const u8 = "",
+
+    pub fn encode(self: WalkState, gpa: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
+        out.clearRetainingCapacity();
+        try out.append(gpa, walk_format);
+        try putInt(gpa, out, self.started_at);
+        try putInt(gpa, out, self.passes);
+        try putInt(gpa, out, self.last_pass_seconds);
+        try putBytes(gpa, out, self.position);
+    }
+
+    pub fn decode(bytes: []const u8) Error!WalkState {
+        var in: Input = .{ .bytes = bytes };
+        if (try in.byte() != walk_format) return error.UnsupportedRecordFormat;
+        const state: WalkState = .{
+            .started_at = try in.int(),
+            .passes = try in.int(),
+            .last_pass_seconds = try in.int(),
+            .position = try in.slice(),
+        };
+        try in.end();
+        return state;
     }
 };
 

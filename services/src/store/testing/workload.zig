@@ -58,6 +58,8 @@ const Gen = struct {
     random: std.Random,
     config: Config,
     now: u64,
+    /// Settlements still to draw for the lease this batch just took.
+    settling: u8 = 0,
 
     fn pick(self: *Gen, comptime T: type, pool: []const T) T {
         return pool[self.random.uintLessThan(usize, pool.len)];
@@ -123,6 +125,14 @@ const Gen = struct {
 
     fn next(self: *Gen) !Change {
         const subject = try self.did();
+        if (self.settling > 0) {
+            self.settling -= 1;
+            const lease = self.now + 300;
+            return if (self.settling % 2 == 0)
+                .{ .refresh_retry = .{ .did = subject, .lease = lease, .due = self.now + self.random.uintLessThan(u64, 900) } }
+            else
+                .{ .refresh_complete = .{ .did = subject, .lease = lease } };
+        }
         return switch (self.random.uintLessThan(u8, 100)) {
             0...11 => .{ .observe = .{ .did = subject, .enqueue_identity = self.chance(50) } },
             12...25 => .{ .profile = .{
@@ -175,6 +185,7 @@ const Gen = struct {
                 .quality_score = self.pick(f32, &scores),
                 .labels = if (self.chance(40)) null else try self.labels(subject),
                 .next_refresh = if (self.chance(30)) null else self.now + self.random.uintLessThan(u64, 5000),
+                .lease = if (self.chance(70)) null else self.now - 300 + self.random.uintLessThan(u64, 3000),
             } },
             69...74 => .{ .identity_enqueue = .{ .did = subject, .reason = self.pick(record.IdentityReason, std.enums.values(record.IdentityReason)) } },
             75...77 => .{ .identity_lease = .{ .limit = 1 + self.random.uintLessThan(usize, 6), .lease_seconds = 300 } },
@@ -189,8 +200,22 @@ const Gen = struct {
                     .{ .retry = .{ .attempts = 1 + self.random.uintLessThan(u64, 13), .delay_seconds = self.random.uintLessThan(u64, 2000), .reason = self.pick([]const u8, &errors) } },
             } },
             85...88 => .{ .refresh_enqueue = .{ .did = subject, .due = self.now - 300 + self.random.uintLessThan(u64, 3000) } },
-            89...92 => .{ .refresh_complete = .{ .did = subject, .next_due = if (self.chance(40)) null else self.now + self.random.uintLessThan(u64, 5000) } },
-            93...96 => .{ .hidden_refreshed = subject },
+            89...92 => .{ .refresh_complete = .{
+                .did = subject,
+                .next_due = if (self.chance(40)) null else self.now + self.random.uintLessThan(u64, 5000),
+                .lease = if (self.chance(70)) null else self.now - 300 + self.random.uintLessThan(u64, 3000),
+            } },
+            93 => blk: {
+                self.settling = 6;
+                break :blk .{ .refresh_lease = .{ .limit = 2 + self.random.uintLessThan(usize, 12), .lease_seconds = 300 } };
+            },
+            94 => .{ .refresh_walk = .{
+                .pool = if (self.chance(50)) .quality else .rest,
+                .limit = 1 + self.random.uintLessThan(usize, 4),
+                .scan = 1 + self.random.uintLessThan(usize, 9),
+            } },
+            95 => .{ .refresh_retry = .{ .did = subject, .lease = self.now - 300 + self.random.uintLessThan(u64, 3000), .due = self.now + self.random.uintLessThan(u64, 900) } },
+            96 => .{ .hidden_refreshed = subject },
             else => if (self.config.keep_actors)
                 .{ .hidden_refreshed = subject }
             else

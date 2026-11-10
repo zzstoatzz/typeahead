@@ -186,6 +186,13 @@ pub fn check(gpa: std.mem.Allocator, db: *engine.Db, model: *const Model) !Summa
     try ensure(std.meta.eql(cursors.bridge, model.bridge), "bridge cursor is {?d}, model {?d}", .{ cursors.bridge, model.bridge });
     try ensure((cursors.plc == null) == (model.plc == null) and (cursors.plc == null or std.mem.eql(u8, cursors.plc.?, model.plc.?)), "plc cursor is {?s}, model {?s}", .{ cursors.plc, model.plc });
 
+    for (std.enums.values(change.WalkPool)) |pool| {
+        const walk = try read.walkState(db, arena, pool.cursor());
+        const expected = model.walks.get(pool);
+        try ensure(walk.passes == expected.passes and walk.started_at == expected.started_at and walk.last_pass_seconds == expected.last_pass_seconds and
+            std.mem.eql(u8, walk.position, expected.position), "the {t} walk stands at pass {d}, model {d}", .{ pool, walk.passes, expected.passes });
+    }
+
     const counts = try read.counts(gpa, db, .{ .page = 311 });
     var total: u64 = 0;
     for (keys.prefixes) |prefix| total += counts.get(prefix);

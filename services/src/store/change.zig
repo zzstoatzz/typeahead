@@ -93,6 +93,9 @@ pub const Enrichment = struct {
     labels: ?[]const record.Label = null,
     /// When to fetch again; null leaves the actor out of the refresh queue.
     next_refresh: ?u64 = null,
+    /// The lease this fetch ran under. The queue entry is settled only while
+    /// it still carries that lease: a refresh requested since stays queued.
+    lease: ?u64 = null,
 };
 
 pub const IdentityEnqueue = struct {
@@ -124,6 +127,50 @@ pub const RefreshEnqueue = struct {
 pub const RefreshComplete = struct {
     did: []const u8,
     next_due: ?u64 = null,
+    /// As `Enrichment.lease`.
+    lease: ?u64 = null,
+};
+
+/// Take due refresh entries: each moves `lease_seconds` ahead, so a holder
+/// that never reports back loses nothing. The batch lists what was leased.
+pub const RefreshLease = struct {
+    limit: usize,
+    lease_seconds: u64 = 300,
+};
+
+/// A fetch that learned nothing. The entry moves to `due` while it still
+/// carries `lease`; the actor's check time is left alone.
+pub const RefreshRetry = struct {
+    did: []const u8,
+    lease: u64,
+    due: u64,
+};
+
+pub const WalkPool = enum {
+    /// The quality range: every actor a search can rank, best first.
+    quality,
+    /// The actor range, less what the quality walk covers: live actors with
+    /// a handle that are hidden or unscored.
+    rest,
+
+    pub fn cursor(self: WalkPool) keys.Cursor {
+        return switch (self) {
+            .quality => .walk_quality,
+            .rest => .walk_rest,
+        };
+    }
+};
+
+/// One step of a standing walk: request a refresh, due now, for the next
+/// actors of `pool` after the walk's stored position, and store the new
+/// position. An actor already queued is passed over. At the end of the
+/// range the walk starts again from the top.
+pub const RefreshWalk = struct {
+    pool: WalkPool,
+    /// Actors to queue at most.
+    limit: usize,
+    /// Keys to examine at most.
+    scan: usize,
 };
 
 pub const TombstonesPruned = struct {
@@ -150,6 +197,9 @@ pub const Change = union(enum) {
     identity_complete: IdentityResult,
     refresh_enqueue: RefreshEnqueue,
     refresh_complete: RefreshComplete,
+    refresh_lease: RefreshLease,
+    refresh_retry: RefreshRetry,
+    refresh_walk: RefreshWalk,
     hidden_refreshed: []const u8,
     tombstones_pruned: TombstonesPruned,
 };
@@ -169,6 +219,23 @@ pub const Job = struct {
     generation: u64,
     attempts: u64,
     reason: record.IdentityReason,
+};
+
+/// A leased refresh, with what the fetcher needs from the record.
+pub const RefreshJob = struct {
+    did: []const u8,
+    /// The entry's due time while leased; hand it back with the result.
+    lease: u64,
+    handle: []const u8,
+    pds: []const u8,
+    override: record.Override,
+};
+
+pub const Walked = struct {
+    examined: u64 = 0,
+    queued: u64 = 0,
+    /// Passes completed by reaching the end of the range.
+    wrapped: u64 = 0,
 };
 
 pub const CursorUpdate = union(enum) {
@@ -240,7 +307,8 @@ pub fn validate(one: Change) Invalid!void {
         },
         .refresh_enqueue => |c| try checkDid(c.did),
         .refresh_complete => |c| try checkDid(c.did),
-        .identity_lease, .tombstones_pruned => {},
+        .refresh_retry => |c| try checkDid(c.did),
+        .identity_lease, .refresh_lease, .refresh_walk, .tombstones_pruned => {},
     }
 }
 

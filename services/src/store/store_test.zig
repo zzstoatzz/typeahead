@@ -409,6 +409,118 @@ test "the refresh queue takes the earliest request and empties on completion" {
     try testing.expectEqual(@as(usize, 1), (try f.logged()).len);
 }
 
+test "a lease moves due refreshes ahead and settles only what still carries it" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    for ([_][]const u8{ alice, bob, carol }) |did| _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = "a.test", .pds = "https://pds.test" } });
+    _ = try f.apply(t0, .{ .override_set = .{ .did = bob, .action = .show } });
+    try testing.expectEqual(@as(u64, 3), try f.count(.refresh));
+
+    const batch = try f.store.begin(t0 + 10);
+    _ = try batch.apply(.{ .refresh_lease = .{ .limit = 2, .lease_seconds = 300 } });
+    const jobs = batch.refreshLeased();
+    try testing.expectEqual(@as(usize, 2), jobs.len);
+    try testing.expectEqualStrings(alice, jobs[0].did);
+    try testing.expectEqualStrings(bob, jobs[1].did);
+    try testing.expectEqualStrings("a.test", jobs[0].handle);
+    try testing.expectEqualStrings("https://pds.test", jobs[0].pds);
+    try testing.expectEqual(record.Override.show, jobs[1].override);
+    try testing.expectEqual(@as(u64, t0 + 310), jobs[0].lease);
+    try batch.commit();
+    try testing.expectEqual(@as(usize, 1), (try f.store.timed(f.arena.allocator(), .refresh, null, t0 + 10, 10)).len);
+    try testing.expectEqual(@as(usize, 3), (try f.store.timed(f.arena.allocator(), .refresh, null, t0 + 310, 10)).len);
+
+    _ = try f.apply(t0 + 20, .{ .enrichment = .{ .did = alice, .source = .bsky, .followers_count = 5, .quality_score = 70, .lease = t0 + 310 } });
+    try testing.expectEqual(@as(u64, 0), (try f.actor(alice)).refresh_due);
+
+    _ = try f.apply(t0 + 20, .{ .profile = .{ .did = bob, .display_name = "Bob" } });
+    try testing.expectEqual(@as(u64, t0 + 20), (try f.actor(bob)).refresh_due);
+    _ = try f.apply(t0 + 30, .{ .enrichment = .{ .did = bob, .source = .bsky, .followers_count = 9, .lease = t0 + 310 } });
+    try testing.expectEqual(@as(u64, t0 + 20), (try f.actor(bob)).refresh_due);
+    try testing.expectEqual(@as(u64, 9), (try f.actor(bob)).followers_count);
+    _ = try f.apply(t0 + 30, .{ .refresh_complete = .{ .did = bob, .lease = t0 + 310 } });
+    try testing.expectEqual(@as(u64, t0 + 20), (try f.actor(bob)).refresh_due);
+    _ = try f.apply(t0 + 30, .{ .refresh_retry = .{ .did = bob, .lease = t0 + 310, .due = t0 + 900 } });
+    try testing.expectEqual(@as(u64, t0 + 20), (try f.actor(bob)).refresh_due);
+
+    _ = try f.apply(t0 + 40, .{ .refresh_lease = .{ .limit = 5, .lease_seconds = 300 } });
+    try testing.expectEqual(@as(u64, t0 + 340), (try f.actor(carol)).refresh_due);
+    _ = try f.apply(t0 + 50, .{ .refresh_retry = .{ .did = carol, .lease = t0 + 340, .due = t0 + 100 } });
+    try testing.expectEqual(@as(u64, t0 + 100), (try f.actor(carol)).refresh_due);
+    try testing.expectEqual(@as(u64, 0), (try f.actor(carol)).profile_checked_at);
+
+    try f.reopen();
+    try testing.expectEqual(@as(usize, 2), (try f.store.timed(f.arena.allocator(), .refresh, null, t0 + 340, 10)).len);
+}
+
+test "the quality walk queues ranked actors best first and starts again at the end" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const dids = [_][]const u8{ alice, bob, carol, "did:plc:dave", "did:plc:erin" };
+    const scores = [_]f32{ 300, 500, 0, 100, 400 };
+    for (dids, scores, 0..) |did, value, index| {
+        _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = if (index == 3) "" else "h.test" } });
+        _ = try f.apply(t0, .{ .enrichment = .{ .did = did, .source = .bsky, .quality_score = value } });
+    }
+    try testing.expectEqual(@as(u64, 0), try f.count(.refresh));
+    const logged = (try f.logged()).len;
+
+    const step: change.Change = .{ .refresh_walk = .{ .pool = .quality, .limit = 2, .scan = 2 } };
+    const first = try f.store.begin(t0 + 100);
+    _ = try first.apply(step);
+    try testing.expectEqual(change.Walked{ .examined = 2, .queued = 2 }, first.walked());
+    try first.commit();
+    try testing.expectEqual(@as(u64, t0 + 100), (try f.actor(bob)).refresh_due);
+    try testing.expectEqual(@as(u64, t0 + 100), (try f.actor("did:plc:erin")).refresh_due);
+    try testing.expectEqual(@as(u64, 0), (try f.actor(alice)).refresh_due);
+    try testing.expectEqual(logged, (try f.logged()).len);
+
+    const second = try f.store.begin(t0 + 160);
+    _ = try second.apply(step);
+    try testing.expectEqual(change.Walked{ .examined = 1, .queued = 1, .wrapped = 1 }, second.walked());
+    try second.commit();
+    try testing.expectEqual(@as(u64, t0 + 160), (try f.actor(alice)).refresh_due);
+    const state = try read.walkState(f.store.db(), f.arena.allocator(), .walk_quality);
+    try testing.expectEqual(@as(u64, 1), state.passes);
+    try testing.expectEqual(@as(u64, 60), state.last_pass_seconds);
+    try testing.expectEqualStrings("", state.position);
+
+    const third = try f.store.begin(t0 + 200);
+    _ = try third.apply(step);
+    try testing.expectEqual(change.Walked{ .examined = 2, .queued = 0 }, third.walked());
+    try third.commit();
+
+    try f.reopen();
+    const resumed = try f.store.begin(t0 + 300);
+    _ = try resumed.apply(step);
+    try testing.expectEqual(change.Walked{ .examined = 1, .queued = 0, .wrapped = 1 }, resumed.walked());
+    try resumed.commit();
+}
+
+test "the rest walk covers live actors with a handle that the quality walk does not" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    _ = try f.apply(t0, .{ .profile = .{ .did = alice, .handle = "ranked.test" } });
+    _ = try f.apply(t0, .{ .enrichment = .{ .did = alice, .source = .bsky, .quality_score = 300 } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = bob, .handle = "unscored.test" } });
+    _ = try f.apply(t0, .{ .refresh_complete = .{ .did = bob } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = carol, .handle = "hidden.test" } });
+    _ = try f.apply(t0, .{ .enrichment = .{ .did = carol, .source = .bsky, .quality_score = 200 } });
+    _ = try f.apply(t0, .{ .override_set = .{ .did = carol, .action = .hide } });
+    _ = try f.apply(t0, .{ .observe = .{ .did = "did:plc:nohandle" } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = "did:plc:gone", .handle = "gone.test" } });
+    _ = try f.apply(t0, .{ .gone = .{ .did = "did:plc:gone", .status = .deleted } });
+
+    const batch = try f.store.begin(t0 + 5);
+    _ = try batch.apply(.{ .refresh_walk = .{ .pool = .rest, .limit = 10, .scan = 100 } });
+    try testing.expectEqual(change.Walked{ .examined = 5, .queued = 2, .wrapped = 1 }, batch.walked());
+    try batch.commit();
+    try testing.expectEqual(@as(u64, t0 + 5), (try f.actor(bob)).refresh_due);
+    try testing.expectEqual(@as(u64, t0 + 5), (try f.actor(carol)).refresh_due);
+    try testing.expectEqual(@as(u64, 0), (try f.actor(alice)).refresh_due);
+    try testing.expectEqual(@as(u64, 2), try f.count(.refresh));
+}
+
 test "a batch lands whole with its cursor, or not at all" {
     var f = try Fixture.init(.{});
     defer f.deinit();

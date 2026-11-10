@@ -162,6 +162,13 @@ pub fn cursors(db: *Db, arena: std.mem.Allocator) !Cursors {
     return out;
 }
 
+/// Where a refresh walk stands; the default before its first step.
+pub fn walkState(db: *Db, arena: std.mem.Allocator, which: keys.Cursor) !record.WalkState {
+    var buf: keys.Buf = undefined;
+    const borrowed = try db.get(keys.cursor(&buf, which)) orelse return .{};
+    return record.WalkState.decode(try arena.dupe(u8, borrowed));
+}
+
 pub const LabelRow = struct {
     source: []const u8,
     value: []const u8,

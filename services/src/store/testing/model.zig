@@ -46,6 +46,7 @@ pub const Model = struct {
     labeler: ?u64 = null,
     plc: ?[]const u8 = null,
     bridge: ?u64 = null,
+    walks: std.EnumArray(change.WalkPool, record.WalkState) = .initFill(.{}),
     pending: std.ArrayList([]const u8) = .empty,
     now: u64 = 0,
 
@@ -368,7 +369,7 @@ pub const Model = struct {
                 if (c.quality_score != 0) actor.quality_score = c.quality_score;
                 actor.profile_source = c.source;
                 actor.profile_checked_at = self.now;
-                actor.refresh_due = c.next_refresh orelse 0;
+                if (c.lease == null or c.lease.? == actor.refresh_due) actor.refresh_due = c.next_refresh orelse 0;
                 if (c.labels) |list| {
                     self.reconcile(c.did, list);
                     actor.labels = self.projected(c.did, list);
@@ -441,8 +442,31 @@ pub const Model = struct {
             .refresh_complete => |c| {
                 var actor = self.liveActor(c.did) orelse return 0;
                 actor.profile_checked_at = self.now;
-                actor.refresh_due = c.next_due orelse 0;
+                if (c.lease == null or c.lease.? == actor.refresh_due) actor.refresh_due = c.next_due orelse 0;
                 return @intFromBool(self.put(c.did, actor));
+            },
+            .refresh_lease => |c| {
+                var due: std.ArrayList([]const u8) = .empty;
+                for (self.actors.keys(), self.actors.values()) |did, actor| {
+                    if (actor.refresh_due != 0 and actor.refresh_due <= self.now) due.append(self.mem(), did) catch @panic("out of memory");
+                }
+                std.mem.sort([]const u8, due.items, self, refreshBefore);
+                for (due.items[0..@min(due.items.len, c.limit)]) |did| {
+                    var actor = self.actors.get(did).?;
+                    actor.refresh_due = self.now + c.lease_seconds;
+                    _ = self.put(did, actor);
+                }
+                return 0;
+            },
+            .refresh_retry => |c| {
+                var actor = self.liveActor(c.did) orelse return 0;
+                if (c.due == 0 or actor.refresh_due != c.lease) return 0;
+                actor.refresh_due = c.due;
+                return @intFromBool(self.put(c.did, actor));
+            },
+            .refresh_walk => |c| {
+                self.walk(c);
+                return 0;
             },
             .hidden_refreshed => |did| {
                 const actor = self.actors.get(did) orelse return 0;
@@ -462,6 +486,64 @@ pub const Model = struct {
                 }
                 return taken.len;
             },
+        }
+    }
+
+    fn refreshBefore(self: *Model, a: []const u8, b: []const u8) bool {
+        const x = self.actors.get(a).?.refresh_due;
+        const y = self.actors.get(b).?.refresh_due;
+        return if (x != y) x < y else std.mem.order(u8, a, b) == .lt;
+    }
+
+    /// The keys of a walk's range as the store holds them, in order.
+    fn walkKeys(self: *Model, pool: change.WalkPool) []const []const u8 {
+        var out: std.ArrayList([]const u8) = .empty;
+        var buf: keys.Buf = undefined;
+        for (self.actors.keys(), self.actors.values()) |did, actor| {
+            const key = switch (pool) {
+                .quality => if (actor.ranked()) keys.quality(&buf, actor.quality_score, did) catch unreachable else continue,
+                .rest => keys.actor(&buf, did) catch unreachable,
+            };
+            out.append(self.mem(), self.own(key)) catch @panic("out of memory");
+        }
+        std.mem.sort([]const u8, out.items, {}, struct {
+            fn before(_: void, a: []const u8, b: []const u8) bool {
+                return std.mem.order(u8, a, b) == .lt;
+            }
+        }.before);
+        return out.items;
+    }
+
+    fn walk(self: *Model, c: change.RefreshWalk) void {
+        const state = self.walks.getPtr(c.pool);
+        if (state.position.len == 0) state.started_at = self.now;
+        const all = self.walkKeys(c.pool);
+        var from: usize = 0;
+        if (state.position.len != 0) {
+            while (from < all.len and std.mem.order(u8, all[from], state.position) != .gt) from += 1;
+        }
+        const page = all[from..@min(all.len, from + c.scan)];
+        var examined: usize = 0;
+        var queued: usize = 0;
+        for (page) |key| {
+            if (queued == c.limit) break;
+            examined += 1;
+            state.position = key;
+            const did = switch (c.pool) {
+                .quality => (keys.parseQuality(key) catch unreachable).did,
+                .rest => keys.parseActor(key) catch unreachable,
+            };
+            var actor = self.actors.get(did).?;
+            if (actor.status != .live or actor.handle.len == 0 or actor.refresh_due != 0) continue;
+            if (c.pool == .rest and actor.ranked()) continue;
+            actor.refresh_due = self.now;
+            _ = self.put(did, actor);
+            queued += 1;
+        }
+        if (examined == page.len and page.len < c.scan) {
+            state.passes += 1;
+            state.last_pass_seconds = self.now - state.started_at;
+            state.position = "";
         }
     }
 

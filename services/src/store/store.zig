@@ -305,6 +305,8 @@ pub const Batch = struct {
     changed: std.ArrayList([]const u8) = .empty,
     changed_set: std.StringHashMapUnmanaged(void) = .empty,
     jobs: std.ArrayList(change.Job) = .empty,
+    refresh_jobs: std.ArrayList(change.RefreshJob) = .empty,
+    walk_tally: change.Walked = .{},
     domains_dirty: bool = false,
     encoded: std.ArrayList(u8) = .empty,
 
@@ -330,6 +332,16 @@ pub const Batch = struct {
     /// Identity jobs leased by this batch, valid until it ends.
     pub fn leased(self: *const Batch) []const change.Job {
         return self.jobs.items;
+    }
+
+    /// Refreshes leased by this batch, valid until it ends.
+    pub fn refreshLeased(self: *const Batch) []const change.RefreshJob {
+        return self.refresh_jobs.items;
+    }
+
+    /// What this batch's walk steps did, summed.
+    pub fn walked(self: *const Batch) change.Walked {
+        return self.walk_tally;
     }
 
     /// Carry a cursor in this batch's commit.
@@ -402,6 +414,9 @@ pub const Batch = struct {
             .identity_complete => |c| self.identityComplete(c),
             .refresh_enqueue => |c| self.refreshEnqueue(c),
             .refresh_complete => |c| self.refreshComplete(c),
+            .refresh_lease => |c| self.refreshLease(c),
+            .refresh_retry => |c| self.refreshRetry(c),
+            .refresh_walk => |c| self.refreshWalk(c),
             .hidden_refreshed => |did| self.hiddenRefreshed(did),
             .tombstones_pruned => |c| self.tombstonesPruned(c),
         };
@@ -720,7 +735,7 @@ pub const Batch = struct {
         if (c.quality_score != 0) new.quality_score = c.quality_score;
         new.profile_source = c.source;
         new.profile_checked_at = self.now;
-        new.refresh_due = c.next_refresh orelse 0;
+        if (settles(old, c.lease)) new.refresh_due = c.next_refresh orelse 0;
         if (c.labels) |list| {
             try self.reconcile(c.did, list);
             try self.project(c.did, &new, list);
@@ -804,8 +819,94 @@ pub const Batch = struct {
         if (!old.live()) return .{};
         var new = old;
         new.profile_checked_at = self.now;
-        new.refresh_due = c.next_due orelse 0;
+        if (settles(old, c.lease)) new.refresh_due = c.next_due orelse 0;
         return self.save(c.did, old, new, null);
+    }
+
+    fn settles(old: Actor, lease: ?u64) bool {
+        return if (lease) |held| old.refresh_due == held else true;
+    }
+
+    fn refreshLease(self: *Batch, c: change.RefreshLease) !Outcome {
+        const a = self.arena.allocator();
+        const due = try read.timed(self.store.db(), a, .refresh, null, self.now, c.limit);
+        for (due) |entry| {
+            _ = self.scratch.reset(.retain_capacity);
+            self.encoded = .empty;
+            const old = try self.load(entry.did) orelse return error.InconsistentStore;
+            if (!old.live() or old.refresh_due != entry.at) return error.InconsistentStore;
+            var new = old;
+            new.refresh_due = self.now + c.lease_seconds;
+            _ = try self.save(entry.did, old, new, null);
+            try self.refresh_jobs.append(a, .{
+                .did = entry.did,
+                .lease = new.refresh_due,
+                .handle = try a.dupe(u8, old.handle),
+                .pds = try a.dupe(u8, old.pds),
+                .override = old.override,
+            });
+        }
+        return .{ .applied = due.len > 0 };
+    }
+
+    fn refreshRetry(self: *Batch, c: change.RefreshRetry) !Outcome {
+        const old = try self.load(c.did) orelse return .{};
+        if (!old.live() or c.due == 0 or old.refresh_due != c.lease) return .{};
+        var new = old;
+        new.refresh_due = c.due;
+        return self.save(c.did, old, new, null);
+    }
+
+    fn refreshWalk(self: *Batch, c: change.RefreshWalk) !Outcome {
+        const engine_db = self.store.db();
+        const a = self.arena.allocator();
+        var buf: keys.Buf = undefined;
+        var state = try read.walkState(engine_db, a, c.pool.cursor());
+        if (state.position.len == 0) state.started_at = self.now;
+        const prefix: keys.Prefix = switch (c.pool) {
+            .quality => .quality,
+            .rest => .actor,
+        };
+        const bounds = prefix.bounds();
+        var start: std.ArrayList(u8) = .empty;
+        try start.appendSlice(a, if (state.position.len == 0) &bounds[0] else state.position);
+        if (state.position.len != 0) try start.append(a, 0);
+        var found: Keys = .{ .arena = a };
+        _ = try scan.all(a, engine_db, start.items, &bounds[1], .{ .limit = c.scan }, &found);
+
+        var examined: usize = 0;
+        var queued: usize = 0;
+        for (found.keys.items) |key| {
+            if (queued == c.limit) break;
+            examined += 1;
+            state.position = key;
+            const did = switch (c.pool) {
+                .quality => (try keys.parseQuality(key)).did,
+                .rest => try keys.parseActor(key),
+            };
+            _ = self.scratch.reset(.retain_capacity);
+            self.encoded = .empty;
+            const old = try self.load(did) orelse return error.InconsistentStore;
+            if (!old.live() or old.handle.len == 0 or old.refresh_due != 0) continue;
+            if (c.pool == .rest and old.ranked()) continue;
+            var new = old;
+            new.refresh_due = self.now;
+            _ = try self.save(did, old, new, null);
+            queued += 1;
+        }
+        self.walk_tally.examined += examined;
+        self.walk_tally.queued += queued;
+        if (examined == found.keys.items.len and found.keys.items.len < c.scan) {
+            state.passes += 1;
+            state.last_pass_seconds = self.now - state.started_at;
+            state.position = "";
+            self.walk_tally.wrapped += 1;
+        }
+        _ = self.scratch.reset(.retain_capacity);
+        var value: std.ArrayList(u8) = .empty;
+        try state.encode(self.tmp(), &value);
+        try engine_db.put(keys.cursor(&buf, c.pool.cursor()), value.items);
+        return .{ .applied = queued > 0 };
     }
 
     fn hiddenRefreshed(self: *Batch, did: []const u8) !Outcome {
