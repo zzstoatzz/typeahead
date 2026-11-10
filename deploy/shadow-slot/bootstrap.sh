@@ -59,7 +59,8 @@ select_build() {
 
 read_manifest() {
   manifest=$scratch/manifest.json
-  rclone copyto "$remote/$build/manifest.json" "$manifest" --max-size 32M
+  rclone cat "$remote/$build/manifest.json" --count 33554433 > "$manifest"
+  (($(stat -c %s "$manifest") <= 33554432)) || die "manifest is larger than 32 MiB"
   jq -e --arg build "$build" --arg key "$releases/$build/index.tar" '
     .active_build == $build and .engine == "tantivy" and .object_key == $key
     and (.byte_size | type == "number") and (.sha256 | test("^[0-9a-f]{64}$"))
