@@ -26,11 +26,11 @@ const log = std.log.scoped(.plc_tail);
 
 pub const PAGE_SIZE = 1000;
 const EXPORT_URL = "https://plc.directory/export";
-const USER_AGENT = "typeahead.waow.tech/ingester (+https://tangled.org/zzstoatzz.io/typeahead)";
+pub const USER_AGENT = "typeahead.waow.tech/ingester (+https://tangled.org/zzstoatzz.io/typeahead)";
 /// plc.directory allows 500 requests per 5 minutes; catch-up stays well under.
-const CATCHUP_POLL_SECS = 2;
-const IDLE_POLL_SECS = 30;
-const FAILURE_BACKOFF_SECS = 30;
+pub const CATCHUP_POLL_SECS = 2;
+pub const IDLE_POLL_SECS = 30;
+pub const FAILURE_BACKOFF_SECS = 30;
 
 pub const Stats = struct {
     pages: std.atomic.Value(u64) = .init(0),
@@ -54,6 +54,53 @@ pub fn nextCursor(timestamps: []const []const u8, current: []const u8) []const u
         if (!mem.eql(u8, timestamps[i], last)) return timestamps[i];
     }
     return last;
+}
+
+pub const Page = struct {
+    /// did:plc subjects of the page's operations, repeats included
+    dids: []const []const u8,
+    operations: usize,
+    /// the cursor after this page; see `nextCursor`
+    next: []const u8,
+};
+
+/// Read one export page after `cursor`. Everything in the result is owned by
+/// `arena`, except `next`, which may be `cursor` itself.
+pub fn fetchPage(arena: Allocator, plc: *HttpTransport, cursor: []const u8) !Page {
+    const url = try std.fmt.allocPrint(arena, "{s}?count={d}&after={s}", .{ EXPORT_URL, PAGE_SIZE, cursor });
+    const response = try plc.fetch(.{ .url = url });
+    defer plc.allocator.free(response.body);
+    if (response.status != .ok) {
+        log.warn("plc export HTTP {d}", .{@backingInt(response.status)});
+        return error.HttpError;
+    }
+    return parsePage(arena, response.body, cursor);
+}
+
+pub fn parsePage(arena: Allocator, body: []const u8, cursor: []const u8) !Page {
+    var dids: std.ArrayList([]const u8) = .empty;
+    var timestamps: std.ArrayList([]const u8) = .empty;
+    var lines = mem.splitScalar(u8, body, '\n');
+    while (lines.next()) |line| {
+        if (line.len == 0) continue;
+        const op = json.parseFromSliceLeaky(Operation, arena, line, .{ .ignore_unknown_fields = true, .allocate = .alloc_always }) catch {
+            log.warn("unparseable plc export line ({d} bytes)", .{line.len});
+            return error.InvalidExport;
+        };
+        try timestamps.append(arena, op.createdAt);
+        if (mem.startsWith(u8, op.did, "did:plc:")) try dids.append(arena, op.did);
+    }
+    return .{ .dids = dids.items, .operations = timestamps.items.len, .next = nextCursor(timestamps.items, cursor) };
+}
+
+/// Move `cursor` past a page that has been reported, and count it.
+pub fn advance(allocator: Allocator, cursor: *std.ArrayList(u8), page: Page) !void {
+    const owned = try allocator.dupe(u8, page.next);
+    defer allocator.free(owned);
+    cursor.clearRetainingCapacity();
+    try cursor.appendSlice(allocator, owned);
+    _ = stats.pages.fetchAdd(1, .monotonic);
+    _ = stats.operations.fetchAdd(page.operations, .monotonic);
 }
 
 pub const Tail = struct {
@@ -87,32 +134,11 @@ pub const Tail = struct {
         defer arena_state.deinit();
         const arena = arena_state.allocator();
 
-        const url = try std.fmt.allocPrint(arena, "{s}?count={d}&after={s}", .{ EXPORT_URL, PAGE_SIZE, cursor.items });
-        const page = try plc.fetch(.{ .url = url });
-        defer self.allocator.free(page.body);
-        if (page.status != .ok) {
-            log.warn("plc export HTTP {d}", .{@backingInt(page.status)});
-            return error.HttpError;
-        }
-
-        var dids: std.ArrayList([]const u8) = .empty;
-        var timestamps: std.ArrayList([]const u8) = .empty;
-        var lines = mem.splitScalar(u8, page.body, '\n');
-        while (lines.next()) |line| {
-            if (line.len == 0) continue;
-            const op = json.parseFromSliceLeaky(Operation, arena, line, .{ .ignore_unknown_fields = true, .allocate = .alloc_always }) catch {
-                log.warn("unparseable plc export line ({d} bytes)", .{line.len});
-                return error.InvalidExport;
-            };
-            try timestamps.append(arena, op.createdAt);
-            if (mem.startsWith(u8, op.did, "did:plc:")) try dids.append(arena, op.did);
-        }
-
-        const next = nextCursor(timestamps.items, cursor.items);
-        if (timestamps.items.len > 0) {
+        const page = try fetchPage(arena, plc, cursor.items);
+        if (page.operations > 0) {
             var output: std.Io.Writer.Allocating = .init(arena);
             var jw: json.Stringify = .{ .writer = &output.writer };
-            try jw.write(.{ .dids = dids.items, .cursor = next });
+            try jw.write(.{ .dids = page.dids, .cursor = page.next });
 
             var url_buf: [512]u8 = undefined;
             const report = try std.fmt.bufPrint(&url_buf, "{s}/admin/identity/plc", .{self.worker_url});
@@ -125,13 +151,8 @@ pub const Tail = struct {
             }
         }
 
-        const owned = try self.allocator.dupe(u8, next);
-        defer self.allocator.free(owned);
-        cursor.clearRetainingCapacity();
-        try cursor.appendSlice(self.allocator, owned);
-        _ = stats.pages.fetchAdd(1, .monotonic);
-        _ = stats.operations.fetchAdd(timestamps.items.len, .monotonic);
-        return timestamps.items.len;
+        try advance(self.allocator, cursor, page);
+        return page.operations;
     }
 
     pub fn run(self: *Tail) void {
