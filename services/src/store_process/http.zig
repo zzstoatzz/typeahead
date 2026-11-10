@@ -384,34 +384,6 @@ pub fn authorized(secret: []const u8, header: ?[]const u8) bool {
     return diff == 0;
 }
 
-const Page = struct {
-    arena: Allocator,
-    bodies: std.ArrayList(?ActorBody) = .empty,
-
-    pub fn entry(self: *Page, key: []const u8, value: []const u8) !void {
-        const did = try self.arena.dupe(u8, try store_mod.keys.parseActor(key));
-        const actor = try Actor.decode(self.arena, try self.arena.dupe(u8, value));
-        try self.bodies.append(self.arena, try actorBody(self.arena, did, actor));
-    }
-};
-
-fn page(reader: *store_mod.Reader, arena: Allocator, after_did: []const u8, limit: usize) ![]const ?ActorBody {
-    const bounds = store_mod.keys.Prefix.actor.bounds();
-    var position: store_mod.scan.Position = .{};
-    defer position.deinit(arena);
-    if (after_did.len == 0) {
-        try position.reset(arena, &bounds[0]);
-    } else {
-        var buf: store_mod.keys.Buf = undefined;
-        const key = try store_mod.keys.actor(&buf, after_did);
-        try position.reset(arena, key);
-        try position.next.append(arena, 0);
-    }
-    var found: Page = .{ .arena = arena };
-    _ = try store_mod.scan.run(arena, reader.db(), &position, &bounds[1], .{ .limit = limit, .page = limit }, &found);
-    return found.bodies.items;
-}
-
 /// A point read through the reader. The owner can collect a table the
 /// reader's snapshot still names; a refresh finds the table that replaced it.
 fn readActor(reader: *store_mod.Reader, arena: Allocator, did: []const u8) !?Actor {
@@ -423,6 +395,24 @@ fn readActor(reader: *store_mod.Reader, arena: Allocator, did: []const u8) !?Act
             continue;
         };
     }
+}
+
+/// A page of the walk over every actor. A record pruned between the walk
+/// and its read is passed over, and the page is filled from further on: a
+/// short page must mean the walk is over.
+fn page(reader: *store_mod.Reader, arena: Allocator, after_did: []const u8, limit: usize) ![]const ?ActorBody {
+    var bodies: std.ArrayList(?ActorBody) = .empty;
+    var after = after_did;
+    while (bodies.items.len < limit) {
+        const want = limit - bodies.items.len;
+        const dids = try reader.walk(arena, after, want);
+        for (dids) |did| {
+            if (try readActor(reader, arena, did)) |actor| try bodies.append(arena, try actorBody(arena, did, actor));
+        }
+        if (dids.len < want) break;
+        after = dids[dids.len - 1];
+    }
+    return bodies.items;
 }
 
 /// Answer one request. `target` is the request target with its query, and
