@@ -49,25 +49,6 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the ingester");
     run_step.dependOn(&run_cmd.step);
 
-    // minimal logfire test binary
-    const test_lf = b.addExecutable(.{
-        .name = "test-logfire",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/test_logfire.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .imports = &.{
-                .{ .name = "logfire", .module = logfire.module("logfire") },
-            },
-        }),
-    });
-
-    const run_test_lf = b.addRunArtifact(test_lf);
-    run_test_lf.step.dependOn(b.getInstallStep());
-    const test_lf_step = b.step("test-logfire", "Run logfire test");
-    test_lf_step.dependOn(&run_test_lf.step);
-
     // Unit tests for the shared normalizer sources (also linked into the
     // Tantivy reader via services/tantivy-normalizer) and the Turso client.
     const unit_tests = b.addTest(.{
