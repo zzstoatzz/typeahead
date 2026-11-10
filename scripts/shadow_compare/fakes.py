@@ -3,7 +3,25 @@
 import hashlib
 import json
 
+import views
 from transport import BudgetExceeded, TransportError
+
+
+def stored_actor(did, handle, *, version=100, deleted=False, hidden=False, pds_host="pds.test", score=1.0, labels=(), display="Name"):
+    """One actor as the Tantivy index stores it and `dump-actors` prints it."""
+    return {
+        "did": did, "handle": "" if deleted else handle, "display_name": display, "avatar_url": "bafkavatar",
+        "labels": list(labels), "associated": {}, "created_at": "2026-01-01T00:00:00Z",
+        "pds": "https://" + pds_host if pds_host else "", "pds_host": pds_host, "quality_score": score, "version": version,
+        "deleted": deleted, "hidden": hidden, "followers_count": 0, "follows_count": 0, "posts_count": 0, "last_activity_at": 0,
+    }
+
+
+def admin_document(actor):
+    """What a Tantivy admin listener's source-state returns for a stored actor."""
+    fields = dict(views.from_actor(actor, sha="unused").fields)
+    del fields["labels"], fields["profile_rest_sha256"]
+    return {"did": actor["did"], "fields": fields}
 
 
 def document(did, handle, *, hidden=False, deleted=False, pds_host="pds.test", score=1.0, profile="p", version=1):
