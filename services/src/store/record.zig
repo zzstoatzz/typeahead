@@ -107,6 +107,37 @@ pub const Actor = struct {
         return true;
     }
 
+    /// What a count of the corpus needs from a record, read without
+    /// allocating: the flags, two string lengths and the score.
+    pub const Brief = struct {
+        status: Status,
+        hidden: bool,
+        has_handle: bool,
+        has_avatar: bool,
+        scored: bool,
+
+        pub fn ranked(self: Brief) bool {
+            return self.status == .live and !self.hidden and self.has_handle and self.scored;
+        }
+    };
+
+    pub fn brief(bytes: []const u8) Error!Brief {
+        var in: Input = .{ .bytes = bytes };
+        if (try in.byte() != actor_format) return error.UnsupportedRecordFormat;
+        const flags = try in.byte();
+        var lengths: [strings.len]usize = undefined;
+        for (&lengths) |*len| len.* = (try in.slice()).len;
+        for (counts) |_| _ = try in.int();
+        const score: f32 = @bitCast(std.mem.readInt(u32, (try in.take(4))[0..4], .little));
+        return .{
+            .status = std.enums.fromInt(Status, flags & 3) orelse return error.CorruptRecord,
+            .hidden = flags & 4 != 0,
+            .has_handle = lengths[0] > 0,
+            .has_avatar = lengths[2] > 0,
+            .scored = score > 0,
+        };
+    }
+
     pub fn encode(self: Actor, gpa: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
         out.clearRetainingCapacity();
         try out.append(gpa, actor_format);
@@ -399,6 +430,29 @@ test "an actor record round trips every field" {
     try (Actor{}).encode(gpa, &out);
     try testing.expectEqual(@as(usize, 25), out.items.len);
     try testing.expectEqualDeep(Actor{}, try Actor.decode(arena.allocator(), out.items));
+}
+
+test "the brief of a record agrees with its full decoding" {
+    var arena: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena.deinit();
+    var out: std.ArrayList(u8) = .empty;
+    var one = full;
+    for ([_]Status{ .live, .deactivated, .deleted }) |status| for ([_]bool{ false, true }) |hidden| for ([_][]const u8{ "", "a.test" }) |handle| for ([_]f32{ 0, 12.5 }) |score| {
+        one.status = status;
+        one.hidden = hidden;
+        one.handle = handle;
+        one.avatar = if (hidden) "" else "bafkreiavatar";
+        one.quality_score = score;
+        try one.encode(arena.allocator(), &out);
+        const brief = try Actor.brief(out.items);
+        try testing.expectEqual(status, brief.status);
+        try testing.expectEqual(hidden, brief.hidden);
+        try testing.expectEqual(handle.len > 0, brief.has_handle);
+        try testing.expectEqual(!hidden, brief.has_avatar);
+        try testing.expectEqual(one.ranked(), brief.ranked());
+    };
+    try testing.expectError(error.CorruptRecord, Actor.brief(out.items[0..5]));
+    try testing.expectError(error.UnsupportedRecordFormat, Actor.brief(&.{ 9, 0 }));
 }
 
 test "every enum value and every single-field difference survives the encoding" {
