@@ -7,4 +7,5 @@ test {
     _ = @import("store_process/owner.zig");
     _ = @import("store_process/testing.zig");
     _ = @import("store_process/owner_test.zig");
+    _ = @import("store_process/events_test.zig");
 }
