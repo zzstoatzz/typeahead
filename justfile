@@ -150,6 +150,7 @@ deploy-worker-only: lint
 
 # deploy the ingest service (relay subscribeRepos -> worker admin ingest)
 deploy-ingest:
+    mkdir -p services/.shared && cp src/identity-quarantine.json services/.shared/
     cd services && fly deploy -c fly.toml
 
 refresh-search ops_repo=(env_var("HOME") / "tangled.org/zzstoatzz.io/my-prefect-server"):

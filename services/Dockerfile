@@ -26,7 +26,12 @@ COPY .zig-pkg-vendor /root/.cache/zig/p/
 
 # -Dtarget pins the x86-64 baseline explicitly: native CPU detection breaks
 # under emulated local builds (Rosetta reports an unknown CPU model)
-RUN --network=none zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-gnu
+# the handle quarantine list is the Worker's src/identity-quarantine.json,
+# which is outside this build's context; `just deploy-ingest` stages it
+COPY .shared/identity-quarantine.json /shared/identity-quarantine.json
+
+RUN --network=none zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-gnu \
+    -Didentity-quarantine=/shared/identity-quarantine.json
 
 # runtime stage
 FROM debian:bookworm-slim

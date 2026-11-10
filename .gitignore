@@ -4,6 +4,7 @@ node_modules/
 zig-out/
 zig-cache/
 zig-pkg/
+services/.shared/
 .dev.vars
 .env
 .claude/*
