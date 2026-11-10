@@ -2,7 +2,7 @@
 
 Packaging for one slot of the [embedded-store service](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/plans/embedded-store-service.md): a single Fly machine with a single volume that runs the store process and the Tantivy index process side by side. It is meant to run beside production with no route pointing at it, so its answers can be compared before it serves anyone.
 
-Status, 2026-11-10: nothing here is deployed. No Fly app, volume or secret exists. The image builds and its supervisor was exercised locally; see [validation](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/shadow-slot/validation.md).
+Status, 2026-11-10: the Fly app `typeahead-shadow-a` exists with a 40 GB volume, and its index was bootstrapped on the machine from bundle `b1794333857-cp-e3e8808936` (13,164,304 actors). The store process is not running there yet, so the index is unfed and answers searches with 503: its moderation policy has to be refreshed every 300 seconds, which the store process will do. No route points at the app. The supervisor was also exercised locally; see [validation](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/shadow-slot/validation.md).
 
 ## How it differs from a production slot
 
