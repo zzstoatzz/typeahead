@@ -1,8 +1,8 @@
 import type { SqlDb } from "./db";
 
 /** fire-and-forget: increment 5-min search count + accumulate response time */
-export async function recordMetric(db: SqlDb, ms: number): Promise<void> {
-  const bucket = Math.floor(Date.now() / 300_000);
+export async function recordMetric(db: SqlDb, ms: number, now = Date.now()): Promise<void> {
+  const bucket = Math.floor(now / 300_000);
   await db.prepare(
     `INSERT INTO metrics (hour, searches, total_ms)
      VALUES (?1, 1, ?2)
@@ -14,8 +14,8 @@ export async function recordMetric(db: SqlDb, ms: number): Promise<void> {
     .run();
 }
 
-export async function recordCacheHit(db: SqlDb, ms: number): Promise<void> {
-  const bucket = Math.floor(Date.now() / 300_000);
+export async function recordCacheHit(db: SqlDb, ms: number, now = Date.now()): Promise<void> {
+  const bucket = Math.floor(now / 300_000);
   await db.prepare(
     `INSERT INTO metrics (hour, cache_hits, cache_ms)
      VALUES (?1, 1, ?2)
@@ -33,8 +33,9 @@ export async function recordCacheHit(db: SqlDb, ms: number): Promise<void> {
 export async function recordActorDelta(
   db: SqlDb,
   deltas: { actors?: number; handles?: number; avatars?: number },
+  now = Date.now(),
 ): Promise<void> {
-  const bucket = Math.floor(Date.now() / 300_000);
+  const bucket = Math.floor(now / 300_000);
   const actorsDelta = deltas.actors ?? 0;
   const stmts = [
     db.prepare(
@@ -92,9 +93,9 @@ export function trafficDomain(request: Request): string {
 }
 
 /** fire-and-forget: increment cumulative hit counter per client identity */
-export async function recordTrafficSource(db: SqlDb, request: Request): Promise<void> {
+export async function recordTrafficSource(db: SqlDb, request: Request, now = Date.now()): Promise<void> {
   const domain = trafficDomain(request);
-  const bucket = Math.floor(Date.now() / 300_000);
+  const bucket = Math.floor(now / 300_000);
   await db.batch([
     db.prepare(
       `INSERT INTO traffic_sources (domain, hits)
@@ -160,8 +161,9 @@ export async function recordRequest(
   domain: string,
   endpoint: string,
   status: number,
+  now = Date.now(),
 ): Promise<void> {
-  const bucket = Math.floor(Date.now() / 300_000);
+  const bucket = Math.floor(now / 300_000);
   await db.prepare(
     `INSERT INTO request_buckets (bucket, domain, endpoint, status, hits)
      VALUES (?1, ?2, ?3, ?4, 1)

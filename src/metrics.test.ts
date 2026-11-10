@@ -46,12 +46,13 @@ test("recordRequest: one UPSERT keyed by the full (bucket, domain, endpoint, sta
       return s;
     },
   };
-  await recordRequest(db, "northsky.app", "search", 429);
+  const now = Date.UTC(2026, 10, 10, 18, 4, 59);
+  await recordRequest(db, "northsky.app", "search", 429, now);
   expect(calls).toHaveLength(1);
   expect(calls[0].sql).toMatch(/INSERT INTO request_buckets/);
   expect(calls[0].sql).toMatch(/ON CONFLICT\(bucket, domain, endpoint, status\)/);
   expect(calls[0].binds.slice(1)).toEqual(["northsky.app", "search", 429]);
-  expect(calls[0].binds[0]).toBe(Math.floor(Date.now() / 300_000));
+  expect(calls[0].binds[0] * 300_000).toBe(Date.UTC(2026, 10, 10, 18, 0, 0));
 });
 
 test("smoke testing remains recorded but does not count as an app", async () => {
