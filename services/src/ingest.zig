@@ -548,6 +548,12 @@ const WorkerWriter = struct {
 /// Every write to the worker is a JSON POST. The transport refuses a payload
 /// that names no content type (error.MissingContentType) instead of guessing
 /// one, so all three writers build their request here.
+/// How long a worker write may take to answer. Above the transport's 10 s
+/// default: a 400-event batch measured 4-7 s (median) in the worker's
+/// database while Turso's single writer was busy, and a write abandoned at
+/// 10 s is sent again in full, adding to the contention that slowed it.
+pub const WORKER_RESPONSE_DEADLINE_NS: u64 = 30 * std.time.ns_per_s;
+
 pub fn workerPost(url: []const u8, payload: []const u8, auth: []const u8) HttpTransport.FetchOptions {
     return .{
         .url = url,
@@ -555,6 +561,7 @@ pub fn workerPost(url: []const u8, payload: []const u8, auth: []const u8) HttpTr
         .payload = payload,
         .content_type = "application/json",
         .authorization = auth,
+        .head_deadline_ns = WORKER_RESPONSE_DEADLINE_NS,
     };
 }
 
@@ -1027,6 +1034,49 @@ test "workerPost: the transport accepts the request it builds" {
         std.testing.allocator.free(result.body);
         return error.TestUnexpectedResult;
     } else |err| try std.testing.expect(err != error.MissingContentType);
+}
+
+test "workerPost: a response slower than the transport default still completes" {
+    // Regression (2026-11-09): worker writes ran 4-7 s while Turso was busy and
+    // were abandoned at the transport's 10 s default, then sent again in full.
+    const allocator = std.testing.allocator;
+    var threaded: std.Io.Threaded = .init(allocator, .{});
+    defer threaded.deinit();
+    const test_io = threaded.io();
+
+    var listener = try (std.Io.net.IpAddress{ .ip4 = .loopback(0) }).listen(test_io, .{ .reuse_address = true });
+    defer listener.deinit(test_io);
+    var url_buf: [64]u8 = undefined;
+    const url = try std.fmt.bufPrint(&url_buf, "http://127.0.0.1:{d}/admin/ingest", .{listener.socket.address.getPort()});
+
+    const transport_default_ns = 100 * std.time.ns_per_ms;
+    var server = try std.Thread.spawn(.{}, struct {
+        fn run(l: *std.Io.net.Server, server_io: std.Io) void {
+            var conn = l.accept(server_io) catch return;
+            defer conn.close(server_io);
+            var rbuf: [4096]u8 = undefined;
+            var reader = conn.reader(server_io, &rbuf);
+            var scratch: [2048]u8 = undefined;
+            var slices = [_][]u8{&scratch};
+            _ = reader.interface.readVec(&slices) catch {};
+            server_io.sleep(.fromMilliseconds(4 * transport_default_ns / std.time.ns_per_ms), .awake) catch {};
+            var wbuf: [256]u8 = undefined;
+            var writer = conn.writer(server_io, &wbuf);
+            writer.interface.writeAll("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok") catch {};
+            writer.interface.flush() catch {};
+        }
+    }.run, .{ &listener, test_io });
+    defer server.join();
+
+    var transport = HttpTransport.init(test_io, allocator);
+    defer transport.deinit();
+    transport.head_deadline_ns = transport_default_ns;
+    transport.dead_connection_attempts = 1;
+
+    const result = try transport.fetch(workerPost(url, "{}", "Bearer x"));
+    defer allocator.free(result.body);
+    try std.testing.expectEqual(std.http.Status.ok, result.status);
+    try std.testing.expect(WORKER_RESPONSE_DEADLINE_NS > 10 * std.time.ns_per_s);
 }
 
 test "#identity rides the cursor-protected batch as durable identity work" {
