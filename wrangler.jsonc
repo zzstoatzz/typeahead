@@ -22,6 +22,14 @@
       "id": "af614e8f42a44543920f7aad0ae7b70a"
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "STATS_DB",
+      "database_name": "typeahead-stats",
+      "database_id": "624dc8c4-2a82-42f5-920c-6489466f7b7e",
+      "migrations_dir": "migrations/stats-d1"
+    }
+  ],
   "unsafe": {
     "bindings": [
       {

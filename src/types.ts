@@ -1,4 +1,4 @@
-export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER"> {
+export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER">, Partial<Pick<PublicWorkerEnv, "STATS_DB">> {
   KV: KVNamespace;
   ADMIN_SECRET: string;
   RATE_LIMITER: RateLimit;
