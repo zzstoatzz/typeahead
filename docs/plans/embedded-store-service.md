@@ -70,6 +70,20 @@ Decisions the module makes that the rest of the build depends on:
 
 Tests (`cd services && zig build test`): encoding and ordering for every range, a model-based test of every kind of change against an in-memory model, a child process killed during commits, flushes and compaction steps, a change-log replay, and a reader scanning while another process writes, compacts and collects.
 
+## Index bridge
+
+Status: built and tested locally on 2026-11-10 (issue 42). Nothing runs it yet. Mechanism, crash behaviour and the places the server's contract does not fit are in [the index bridge document](../index-bridge.md).
+
+Decisions later steps depend on:
+
+- **The index's source cursor holds the bridge's position.** It commits with the documents, so it is the authority; the store's bridge cursor is a copy written afterwards, and is safe to trim the change log by.
+- **A trimmed log is answered with a full resync**, which also runs at bootstrap and when the index and the store disagree about the log. Until a round has completed the bridge sends no watermark, so the index reports stale rather than fresh.
+- **The stored `hidden` flag is the moderation decision.** The bridge sends no policy snapshot, so the index filters on the flag the store computed.
+- **The bridge runs on its own thread with a reader handle.** It blocks on the index's commits; position writes go to the writer.
+- **`last_activity_at` is not sent to the index**, because the store does not log a change for it.
+
+Open for the later steps: the server's `cutover_source_ready` and the slot supervisor's checks name the Turso poller's cursor and cannot pass for a bridge-fed index, and an index must still be created by `import` before the bridge can fill it.
+
 ## Things that write today and where they go
 
 | today | here |
