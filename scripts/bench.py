@@ -487,7 +487,7 @@ def acceptance_checks(results: list[RankingResult]) -> list[str]:
             if plain and r.ours_handles != plain.ours_handles:
                 failures.append(
                     f"[structural] q='fig (' diverged from q='fig' — punctuation must "
-                    f"normalize away (got {r.ours_handles[:3]} vs {plain.ours_handles[:3]})"
+                    f"normalize away (got {sorted(r.ours_handles)[:3]} vs {sorted(plain.ours_handles)[:3]})"
                 )
 
         # ── parity ──
