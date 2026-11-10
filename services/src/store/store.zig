@@ -244,6 +244,10 @@ pub const Store = struct {
         return read.actors(self.db(), arena, dids);
     }
 
+    pub fn walk(self: *Store, arena: std.mem.Allocator, after_did: []const u8, limit: usize) ![]const []const u8 {
+        return read.walk(self.db(), arena, after_did, limit);
+    }
+
     pub fn byHandle(self: *Store, arena: std.mem.Allocator, handle: []const u8) ![]const []const u8 {
         return read.byHandle(self.db(), arena, handle);
     }

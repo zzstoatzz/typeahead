@@ -671,3 +671,29 @@ test "steady relief is bounded and reports the pressure it leaves" {
     try testing.expectEqual(calls - 1, stats.unrelieved);
     try testing.expect(calls > 3);
 }
+
+test "the actor walk pages every record of any status in DID order" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const dids = [_][]const u8{ "did:plc:b", "did:web:example.com", "did:plc:a", "did:plc:ab", "did:plc:c" };
+    for (dids) |did| _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = "h.test" } });
+    _ = try f.apply(t0, .{ .gone = .{ .did = "did:plc:ab", .status = .deleted } });
+    _ = try f.apply(t0, .{ .gone = .{ .did = "did:plc:c", .status = .deactivated } });
+    const arena = f.arena.allocator();
+
+    try expectDids(&.{ "did:plc:a", "did:plc:ab", "did:plc:b", "did:plc:c", "did:web:example.com" }, try f.store.walk(arena, "", 10));
+    try expectDids(&.{ "did:plc:a", "did:plc:ab" }, try f.store.walk(arena, "", 2));
+    try expectDids(&.{ "did:plc:b", "did:plc:c" }, try f.store.walk(arena, "did:plc:ab", 2));
+    try expectDids(&.{"did:web:example.com"}, try f.store.walk(arena, "did:plc:c", 2));
+    try expectDids(&.{}, try f.store.walk(arena, "did:web:example.com", 2));
+    try expectDids(&.{ "did:plc:ab", "did:plc:b" }, try f.store.walk(arena, "did:plc:aa", 2));
+    try expectDids(&.{}, try f.store.walk(arena, "", 0));
+    try testing.expectError(error.InvalidKeyPart, f.store.walk(arena, "did:plc:a\x00", 2));
+
+    _ = try f.apply(t0 + 10, .{ .tombstones_pruned = .{ .before = t0 + 5, .limit = 10 } });
+    try expectDids(&.{ "did:plc:a", "did:plc:b", "did:web:example.com" }, try f.store.walk(arena, "", 10));
+
+    const reader = try Reader.open(testing.allocator, testing.io, f.tmp.dir, "store", .{});
+    defer reader.close();
+    try expectDids(&.{ "did:plc:b", "did:web:example.com" }, try reader.walk(arena, "did:plc:a", 10));
+}

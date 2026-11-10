@@ -20,6 +20,20 @@ pub fn actors(db: *Db, arena: std.mem.Allocator, dids: []const []const u8) ![]?r
     return out;
 }
 
+/// A page of the actor range: the DIDs that have a record, of any status,
+/// strictly after `after_did` in ascending byte order. Pass "" to start,
+/// and the last DID of a page to continue; fewer than `limit` ends the walk.
+pub fn walk(db: *Db, arena: std.mem.Allocator, after_did: []const u8, limit: usize) ![]const []const u8 {
+    var start_buf: keys.Buf = undefined;
+    var key_buf: keys.Buf = undefined;
+    const bounds = keys.Prefix.actor.bounds();
+    const start: []const u8 = if (after_did.len == 0) &bounds[0] else successor(&start_buf, try keys.actor(&key_buf, after_did));
+    const found = try collect(db, arena, start, &bounds[1], limit);
+    const dids = try arena.alloc([]const u8, found.keys.items.len);
+    for (dids, found.keys.items) |*did, key| did.* = try keys.parseActor(key);
+    return dids;
+}
+
 const Collect = struct {
     arena: std.mem.Allocator,
     keys: std.ArrayList([]const u8) = .empty,
