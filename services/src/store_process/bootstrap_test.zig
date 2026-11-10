@@ -171,3 +171,45 @@ test "lines read through a small file buffer keep their own strings until the co
     }
     try testing.expectEqual(@as(u64, 300), (try store.counts()).get(.actor));
 }
+
+test "a load queues no refresh, and the two walks then reach every actor with a handle" {
+    var tmp = testing.tmpDir(.{ .iterate = true });
+    defer tmp.cleanup();
+    const store = try open(&tmp);
+    defer store.close();
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+
+    var lines: std.ArrayList(u8) = .empty;
+    defer lines.deinit(testing.allocator);
+    const total = 3 * bootstrap.batch_actors + 17;
+    var with_handle: u64 = 0;
+    for (0..total) |n| {
+        var handle_buf: [32]u8 = undefined;
+        const handle = if (n % 10 == 0) "" else try std.fmt.bufPrint(&handle_buf, "user{d}.example", .{n});
+        with_handle += @intFromBool(handle.len > 0);
+        try lines.print(testing.allocator, "{{\"did\":\"did:plc:{d:0>24}\",\"handle\":\"{s}\",\"quality_score\":{d},\"followers_count\":{d}}}\n", .{ n, handle, if (n % 3 == 0) 0 else n, n });
+    }
+    _ = try loadAll(store, lines.items, .{ .relay = 32_234_719_514 });
+    const counts = try store.counts();
+    try testing.expectEqual(@as(u64, total), counts.get(.actor));
+    try testing.expectEqual(@as(u64, 0), counts.get(.refresh));
+    try testing.expectEqual(@as(u64, 0), counts.get(.identity));
+    const loaded = (try store.actor(arena_state.allocator(), "did:plc:000000000000000000000007")).?;
+    try testing.expectEqual(@as(u64, now), loaded.profile_checked_at);
+    try testing.expectEqual(@as(f32, 7), loaded.quality_score);
+
+    var queued: u64 = 0;
+    for ([_]store_mod.change.WalkPool{ .quality, .rest }) |pool| {
+        var wrapped = false;
+        while (!wrapped) {
+            const batch = try store.begin(now + 60);
+            _ = try batch.apply(.{ .refresh_walk = .{ .pool = pool, .limit = 100, .scan = 400 } });
+            queued += batch.walked(pool).queued;
+            wrapped = batch.walked(pool).wrapped > 0;
+            try batch.commit();
+        }
+    }
+    try testing.expectEqual(with_handle, queued);
+    try testing.expectEqual(with_handle, (try store.counts()).get(.refresh));
+}
