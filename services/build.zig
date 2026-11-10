@@ -165,8 +165,25 @@ pub fn build(b: *std.Build) void {
     store_role_tests.root_module.addAnonymousImport("identity-quarantine", .{ .root_source_file = quarantine });
     const run_store_role_tests = b.addRunArtifact(store_role_tests);
 
+    // The store role killed between and during commits: the executable
+    // spawns itself as the role it then kills.
+    const store_role_process_tests = b.addExecutable(.{
+        .name = "store-role-process-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/store_role_process_tests.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = role_imports,
+        }),
+    });
+    store_role_process_tests.root_module.addAnonymousImport("identity-quarantine", .{ .root_source_file = quarantine });
+    const run_store_role_process_tests = b.addRunArtifact(store_role_process_tests);
+    run_store_role_process_tests.has_side_effects = true;
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_store_role_tests.step);
+    test_step.dependOn(&run_store_role_process_tests.step);
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_ingest_tests.step);
     test_step.dependOn(&run_store_tests.step);
