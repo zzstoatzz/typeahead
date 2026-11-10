@@ -13,6 +13,7 @@ const ingest = @import("ingest.zig");
 const identity = @import("identity.zig");
 const plc_tail = @import("plc_tail.zig");
 const label_tail = @import("label_tail.zig");
+const store_role = @import("store_process/role.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -126,11 +127,12 @@ pub fn main() !void {
     // an old search or indexer machine on a new image) must not quietly start
     // consuming the firehose and migrating Turso.
     const mode = cGetenv("MODE") orelse {
-        log.err("MODE not set — must be ingester", .{});
+        log.err("MODE not set — must be ingester or store", .{});
         return error.RoleRequired;
     };
-    if (!mem.eql(u8, mode, "ingester")) {
-        log.err("MODE='{s}' unrecognized — must be ingester", .{mode});
+    const store_mode = mem.eql(u8, mode, "store");
+    if (!store_mode and !mem.eql(u8, mode, "ingester")) {
+        log.err("MODE='{s}' unrecognized — must be ingester or store", .{mode});
         return error.RoleRequired;
     }
 
@@ -138,7 +140,7 @@ pub fn main() !void {
     // Fly injects FLY_APP_NAME so the two apps tag distinctly without manual config.
     const service_name = cGetenv("FLY_APP_NAME") orelse "typeahead-dev";
 
-    log.info("role: ingester service_name={s}", .{service_name});
+    log.info("role: {s} service_name={s}", .{ mode, service_name });
 
     // service.version is the deployed image ref (fly sets FLY_IMAGE_REF), so
     // a regression in logfire can be tied to a deploy without a build step
@@ -175,6 +177,9 @@ pub fn main() !void {
         .mask = mem.zeroes(std.posix.sigset_t),
         .flags = 0,
     }, null);
+
+    // The store role keeps its data on local disk: no Turso, no Worker.
+    if (store_mode) return store_role.serve(allocator, io, &srv);
 
     // Run Turso schema migrations BEFORE spawning the firehose — ingest assumes
     // the schema exists. On baselined prod this is a few sub-second SELECTs +

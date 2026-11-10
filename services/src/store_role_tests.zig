@@ -9,5 +9,6 @@ test {
     _ = @import("store_process/owner_test.zig");
     _ = @import("store_process/events_test.zig");
     _ = @import("store_process/producers_test.zig");
+    _ = @import("store_process/config.zig");
     _ = @import("store_process/http_test.zig");
 }
