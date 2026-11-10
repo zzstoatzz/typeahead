@@ -189,9 +189,9 @@ pub const HealthBody = struct {
     corpus: ?CorpusBody = null,
 };
 
-/// One standing refresh walk. `period_seconds` is the pool the last corpus
-/// scan counted divided by the configured rate; null until a scan has run
-/// or when the walk is off.
+/// One standing refresh walk. `period_seconds` is `enrich.walkPeriod` for
+/// the pool the last corpus scan counted; null until a scan has run or when
+/// the walk is off.
 pub const WalkBody = struct {
     per_hour: u64,
     /// Actors this walk queued since the process started.
@@ -254,7 +254,7 @@ pub const CorpusBody = struct {
     rest: ?u64 = null,
 };
 
-fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, pool: ?u64) !WalkBody {
+fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, pool: ?u64, period: ?u64) !WalkBody {
     return .{
         .per_hour = per_hour,
         .queued = queued,
@@ -264,7 +264,7 @@ fn walkBody(arena: Allocator, walk: owner_mod.Walk, per_hour: u64, queued: u64, 
         .position_did = try arena.dupe(u8, walk.position()),
         .position_score = walk.score,
         .pool = pool,
-        .period_seconds = if (pool != null and per_hour > 0) pool.? * 3600 / per_hour else null,
+        .period_seconds = period,
     };
 }
 
@@ -294,8 +294,8 @@ pub fn enrichmentBody(arena: Allocator, enricher: *enrich.Enricher, health: owne
         .backoff_until = load(&s.backoff_until),
         .consecutive_failures = load(&s.consecutive_failures),
         .backed_up = load(&s.backed_up),
-        .quality_walk = try walkBody(arena, health.walks.get(.quality), o.walk_per_hour, load(&s.walk_queued), if (counts) |c| c.ranked else null),
-        .rest_walk = try walkBody(arena, health.walks.get(.rest), o.sweep_per_hour, load(&s.sweep_queued), if (counts) |c| c.rest else null),
+        .quality_walk = try walkBody(arena, health.walks.get(.quality), o.walk_per_hour, load(&s.walk_queued), if (counts) |c| c.ranked else null, if (counts) |c| enrich.walkPeriod(c.ranked, c.ranked, o.walk_per_hour, enrich.quality_scan_factor) else null),
+        .rest_walk = try walkBody(arena, health.walks.get(.rest), o.sweep_per_hour, load(&s.sweep_queued), if (counts) |c| c.rest else null, if (counts) |c| enrich.walkPeriod(c.rest, c.records, o.sweep_per_hour, enrich.rest_scan_factor) else null),
     };
 }
 

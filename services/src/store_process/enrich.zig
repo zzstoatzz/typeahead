@@ -53,6 +53,16 @@ const Value = std.json.Value;
 const log = std.log.scoped(.enrich);
 
 pub const get_profiles_max = 25;
+/// Keys a walk step examines for each actor it may queue.
+pub const quality_scan_factor = 4;
+pub const rest_scan_factor = 8;
+
+/// Seconds one pass of a walk takes: its pool at the hourly rate, or every
+/// key of its range at the rate a step examines them, whichever is longer.
+pub fn walkPeriod(pool: u64, range: u64, per_hour: u64, scan_factor: u64) ?u64 {
+    if (per_hour == 0) return null;
+    return @max(pool * 3600 / per_hour, range * 3600 / (per_hour * scan_factor));
+}
 
 pub const Options = struct {
     appview_url: []const u8 = "https://public.api.bsky.app",
@@ -355,12 +365,12 @@ pub const Enricher = struct {
         if (self.walk_tokens >= get_profiles_max) {
             const limit: usize = @intFromFloat(self.walk_tokens);
             self.walk_tokens -= @floatFromInt(limit);
-            try list.append(arena, .{ .refresh_walk = .{ .pool = .quality, .limit = limit, .scan = limit * 4 } });
+            try list.append(arena, .{ .refresh_walk = .{ .pool = .quality, .limit = limit, .scan = limit * quality_scan_factor } });
         }
         if (self.sweep_tokens >= get_profiles_max and !self.stats.backed_up.load(.monotonic)) {
             const limit: usize = @intFromFloat(self.sweep_tokens);
             self.sweep_tokens -= @floatFromInt(limit);
-            try list.append(arena, .{ .refresh_walk = .{ .pool = .rest, .limit = limit, .scan = limit * 8 } });
+            try list.append(arena, .{ .refresh_walk = .{ .pool = .rest, .limit = limit, .scan = limit * rest_scan_factor } });
         }
     }
 
@@ -504,3 +514,10 @@ pub const WallTimer = struct {
         return true;
     }
 };
+
+test "a walk's period is its pool at the rate, or its range at the scan rate" {
+    try std.testing.expectEqual(@as(?u64, 7443), walkPeriod(41_355, 41_355, 20_000, quality_scan_factor));
+    try std.testing.expectEqual(@as(?u64, 4_752_000), walkPeriod(13_200_000, 13_200_000, 10_000, rest_scan_factor));
+    try std.testing.expectEqual(@as(?u64, 594_000), walkPeriod(500_000, 13_200_000, 10_000, rest_scan_factor));
+    try std.testing.expectEqual(@as(?u64, null), walkPeriod(5, 5, 0, rest_scan_factor));
+}

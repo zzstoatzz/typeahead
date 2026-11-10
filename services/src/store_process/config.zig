@@ -45,7 +45,9 @@
 //! - The rest walk queues 10,000 an hour, 240,000 a day, and only while the
 //!   queue is keeping up, so it yields to everything else. A pool of N is
 //!   swept every N / 10,000 hours: 55 days if all 13.2 million actors were
-//!   in it.
+//!   in it. A step examines at most 8 records for each actor it may queue,
+//!   so a pass also takes at least a full read of the actor range at 80,000
+//!   records an hour: 165 hours for 13.2 million.
 //! - That leaves 10,909 actors an hour, 261,818 a day, for refreshes that
 //!   profile and identity writes queue. New accounts arrive at about 2,900
 //!   an hour.

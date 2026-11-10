@@ -116,8 +116,8 @@ fn heartbeat(owner: *Owner) void {
             span.setAttribute("corpus_ranked", counts.ranked);
             span.setAttribute("corpus_rest", counts.rest);
             if (self.enricher) |enricher| {
-                if (enricher.options.walk_per_hour > 0) span.setAttribute("walk_quality_period_seconds", counts.ranked * 3600 / enricher.options.walk_per_hour);
-                if (enricher.options.sweep_per_hour > 0) span.setAttribute("walk_rest_period_seconds", counts.rest * 3600 / enricher.options.sweep_per_hour);
+                if (enrich.walkPeriod(counts.ranked, counts.ranked, enricher.options.walk_per_hour, enrich.quality_scan_factor)) |period| span.setAttribute("walk_quality_period_seconds", period);
+                if (enrich.walkPeriod(counts.rest, counts.records, enricher.options.sweep_per_hour, enrich.rest_scan_factor)) |period| span.setAttribute("walk_rest_period_seconds", period);
             }
         }
     }
