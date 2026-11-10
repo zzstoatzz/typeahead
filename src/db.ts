@@ -1,4 +1,4 @@
-import { createClient, type Client, type InValue, type Row, type TransactionMode } from "@libsql/client/web";
+import { createClient, type Client, type InValue, type TransactionMode, type Value } from "@libsql/client/web";
 import type { Env } from "./types";
 
 /** a value that can be bound into a statement — libsql's own contract */
@@ -12,9 +12,12 @@ export interface Stmt {
   run(): Promise<{ meta: { changes: number } }>;
 }
 
+/** one result row keyed by column name, as either store returns it */
+export type SqlRow = Record<string, Value>;
+
 export interface SqlDb {
   prepare(sql: string): Stmt;
-  batch(stmts: Stmt[], mode?: "write" | "read"): Promise<{ results: Row[]; meta: { changes: number } }[]>;
+  batch(stmts: Stmt[], mode?: "write" | "read"): Promise<{ results: SqlRow[]; meta: { changes: number } }[]>;
 }
 
 /** src/moderation.ts imports the interface under this name. Its bytes are
@@ -23,7 +26,7 @@ export interface SqlDb {
 export type TursoDB = SqlDb;
 
 /** batch() hands back raw rows; callers name the shape of the SELECT they wrote. */
-export function rowsAs<T>(rows: Row[]): T[] {
+export function rowsAs<T>(rows: SqlRow[]): T[] {
   // SAFETY: same boundary contract as Stmt.all() — T is the caller's declaration
   // of the columns its own query projects.
   return rows as T[];
@@ -79,6 +82,40 @@ export function tursoDb(client: Client): SqlDb {
         results: r.rows,
         meta: { changes: r.rowsAffected },
       }));
+    },
+  };
+}
+
+/** The same statement interface over a D1 binding. D1 takes numbered
+ *  parameters (`?1`) and runs a batch as one transaction, as libSQL does;
+ *  it has no read mode, so `batch`'s second argument is ignored. */
+export function d1Db(binding: D1Database): SqlDb {
+  const prepared = new WeakMap<Stmt, () => D1PreparedStatement>();
+  return {
+    prepare(sql) {
+      let statement = binding.prepare(sql);
+      const s: Stmt = {
+        bind(...args) { statement = binding.prepare(sql).bind(...args); return s; },
+        async all<T>() {
+          const r = await statement.all<T>();
+          return { results: r.results };
+        },
+        first<T>() { return statement.first<T>(); },
+        async run() {
+          const r = await statement.run();
+          return { meta: { changes: r.meta.changes } };
+        },
+      };
+      prepared.set(s, () => statement);
+      return s;
+    },
+    async batch(stmts) {
+      const results = await binding.batch<SqlRow>(stmts.map((s) => {
+        const statement = prepared.get(s);
+        if (statement === undefined) throw new Error("statement was prepared by another database");
+        return statement();
+      }));
+      return results.map((r) => ({ results: r.results, meta: { changes: r.meta.changes } }));
     },
   };
 }
