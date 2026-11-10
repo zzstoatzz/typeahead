@@ -124,6 +124,8 @@ pub const Outcome = union(enum) {
     },
 };
 
+pub const Observation = struct { observed_at: i64, outcome: Outcome };
+
 pub fn unavailableDelay(attempts: u32) i64 {
     const doublings = @min(attempts -| 1, 20);
     return @min(UNAVAILABLE_MAX_SECS, UNAVAILABLE_BASE_SECS << @intCast(doublings));
@@ -210,15 +212,31 @@ pub const Resolver = struct {
     /// poolio process function — called per dequeued Job.
     pub fn process(self: *Resolver, io: Io, job: Job) void {
         _ = io;
-        const did_slice = job.did.slice();
-
         var arena = std.heap.ArenaAllocator.init(self.allocator);
         defer arena.deinit();
+        const seen = self.observe(arena.allocator(), job);
+
+        // Pool workers share Resolver as their context. std.http.Client is not
+        // safe to use concurrently, so each worker invocation owns its client.
+        var transport = HttpTransport.init(self.io, self.allocator);
+        transport.keep_alive = false;
+        defer transport.deinit();
+        // A lost report is not lost work: the lease lapses and it is leased again.
+        self.postResult(&transport, resultJson(&job, seen.observed_at, seen.outcome)) catch |err| {
+            _ = stats.post_failed.fetchAdd(1, .monotonic);
+            log.warn("post identity {s}: {s}", .{ job.did.slice(), @errorName(err) });
+        };
+    }
+
+    /// Resolve one job from its authority and decide what to report. Strings
+    /// in the outcome are owned by `arena`.
+    pub fn observe(self: *Resolver, arena: Allocator, job: Job) Observation {
+        const did_slice = job.did.slice();
 
         // Taken before the fetch: the worker keeps the newest observation, and
         // a document fetched after this instant can only be newer.
         const observed_at = ingest.timestamp();
-        const lookup = self.fetchLookup(arena.allocator(), did_slice) catch |err| blk: {
+        const lookup = self.fetchLookup(arena, did_slice) catch |err| blk: {
             log.warn("resolve {s}: {s}", .{ did_slice, @errorName(err) });
             _ = stats.did_failed.fetchAdd(1, .monotonic);
             break :blk null;
@@ -236,17 +254,7 @@ pub const Resolver = struct {
                 log.info("handle unverified after retries {s}: {s}", .{ did_slice, lookup.?.handle.? });
             },
         }
-
-        // Pool workers share Resolver as their context. std.http.Client is not
-        // safe to use concurrently, so each worker invocation owns its client.
-        var transport = HttpTransport.init(self.io, self.allocator);
-        transport.keep_alive = false;
-        defer transport.deinit();
-        // A lost report is not lost work: the lease lapses and it is leased again.
-        self.postResult(&transport, resultJson(&job, observed_at, outcome)) catch |err| {
-            _ = stats.post_failed.fetchAdd(1, .monotonic);
-            log.warn("post identity {s}: {s}", .{ did_slice, @errorName(err) });
-        };
+        return .{ .observed_at = observed_at, .outcome = outcome };
     }
 
     /// Resolve the DID document from its authority and verify its handle.
