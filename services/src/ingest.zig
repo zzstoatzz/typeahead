@@ -152,6 +152,28 @@ pub fn blobCidOf(allocator: Allocator, record: zat.cbor.Value, key: []const u8) 
     return zat.multibase.encode(allocator, .base32lower, cid.raw) catch null;
 }
 
+pub fn isProfileCollection(collection: []const u8) bool {
+    return mem.eql(u8, collection, "app.bsky.actor.profile") or mem.eql(u8, collection, "sh.tangled.actor.profile");
+}
+
+pub const ProfileFields = struct {
+    display_name: ?[]const u8 = null,
+    avatar_cid: ?[]const u8 = null,
+    description: ?[]const u8 = null,
+    banner_cid: ?[]const u8 = null,
+};
+
+/// What a profile record (bsky or tangled) says about its actor, copied into
+/// `arena`. Tangled profiles have no displayName.
+pub fn profileFields(arena: Allocator, record: zat.cbor.Value) ProfileFields {
+    return .{
+        .display_name = if (record.getString("displayName")) |name| arena.dupe(u8, name) catch null else null,
+        .avatar_cid = avatarCidOf(arena, record),
+        .description = if (record.getString("description")) |d| arena.dupe(u8, d) catch null else null,
+        .banner_cid = blobCidOf(arena, record, "banner"),
+    };
+}
+
 /// an actor event to POST to the worker
 pub const ActorEvent = struct {
     did: []const u8,
@@ -299,27 +321,21 @@ pub const IngestHandler = struct {
     }
 
     fn handleOp(self: *IngestHandler, repo: []const u8, op: zat.firehose.RepoOp) void {
-        if (mem.eql(u8, op.collection, "app.bsky.actor.profile") or
-            mem.eql(u8, op.collection, "sh.tangled.actor.profile"))
-        {
+        if (isProfileCollection(op.collection)) {
             // rich extraction from profile records (bsky and tangled)
             if (op.action != .create and op.action != .update) return;
 
             const record = op.record orelse return;
 
             const did = self.dupe(repo) orelse return;
-            var event = ActorEvent{ .did = did };
-
-            // bsky profiles have displayName; tangled profiles don't
-            if (record.getString("displayName")) |name| {
-                event.display_name = self.dupe(name);
-            }
-
-            event.avatar_cid = avatarCidOf(self.arena.allocator(), record);
-            if (record.getString("description")) |d| {
-                event.description = self.dupe(d);
-            }
-            event.banner_cid = blobCidOf(self.arena.allocator(), record, "banner");
+            const fields = profileFields(self.arena.allocator(), record);
+            const event = ActorEvent{
+                .did = did,
+                .display_name = fields.display_name,
+                .avatar_cid = fields.avatar_cid,
+                .description = fields.description,
+                .banner_cid = fields.banner_cid,
+            };
 
             // ingester only sees self-labels from profile records — it can never
             // correctly determine hidden. let refreshModeration cron handle it.
