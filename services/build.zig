@@ -80,7 +80,22 @@ pub fn build(b: *std.Build) void {
     });
     const run_ingest_tests = b.addRunArtifact(ingest_tests);
 
+    const zkv = b.dependency("zkv", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const store_module = b.createModule(.{
+        .root_source_file = b.path("src/store/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+        .imports = &.{.{ .name = "zkv", .module = zkv.module("zkv") }},
+    });
+    const store_tests = b.addTest(.{ .root_module = store_module });
+    const run_store_tests = b.addRunArtifact(store_tests);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
     test_step.dependOn(&run_ingest_tests.step);
+    test_step.dependOn(&run_store_tests.step);
 }
