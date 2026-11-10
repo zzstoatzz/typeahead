@@ -17,6 +17,38 @@ def ms(value):
     return "n/a" if value is None else f"{value:.2f}"
 
 
+def class_table(classes):
+    rows = []
+    for name in corpus.CLASSES:
+        entry = classes[name]
+        labels = ", ".join(f"{count} {label}" for label, count in sorted(entry.get("arbiter_labels", {}).items()))
+        rows.append([name, entry["count"], len(entry["sample"]), labels or ("not run" if entry["count"] else "")])
+    return table(["class", "count", "sampled", "arbiter labels for the sample"], rows)
+
+
+TIMING_TITLES = {
+    corpus.UNCHANGED_IN_SHADOW: "Unchanged in the shadow since the watermark: divergence",
+    corpus.NEWER_IN_SHADOW: "Newer in the shadow than the snapshot: judged by the arbiter sample only",
+}
+
+
+def snapshot_section(result):
+    snapshot = result["snapshot"]
+    shadow = snapshot["shadow"]
+    lines = [
+        f"Production is a snapshot at watermark {snapshot['watermark']} and the shadow is live. A shadow record counts as "
+        f"changed since the snapshot when its change time is after {snapshot['cutoff']} (the watermark less {snapshot['skew_s']} s). "
+        f"{shadow['changed_since_cutoff']} of {shadow['records']} shadow records changed since then; "
+        f"{shadow['records'] - shadow['with_change_time']} carry no change time and count as unchanged."
+    ]
+    for name in corpus.TIMINGS:
+        if "timing" not in result:
+            break
+        part = result["timing"][name]
+        lines += ["", f"### {TIMING_TITLES[name]}", "", f"{part['differing_dids']} DIDs.", "", *class_table(part["classes"])]
+    return lines
+
+
 def corpus_section(result):
     lines = ["## Corpus", ""]
     state = "complete" if result["complete"] else f"incomplete ({result['stop_reason']}), resume from the checkpoint"
@@ -38,12 +70,9 @@ def corpus_section(result):
     if result.get("fields_available") is False:
         lines.append("A server returned no comparison fields, so differences could only be classified by presence and document hash.")
     lines.append("")
-    rows = []
-    for name in corpus.CLASSES:
-        entry = result["classes"][name]
-        labels = ", ".join(f"{count} {label}" for label, count in sorted(entry.get("arbiter_labels", {}).items()))
-        rows.append([name, entry["count"], len(entry["sample"]), labels or ("not run" if entry["count"] else "")])
-    lines += table(["class", "count", "sampled", "arbiter labels for the sample"], rows)
+    lines += class_table(result["classes"])
+    if "snapshot" in result:
+        lines += ["", *snapshot_section(result)]
     values = result.get("label_value_counts") or {}
     rows = [
         [value, values["only_in_production"].get(value, 0), values["only_in_shadow"].get(value, 0)]

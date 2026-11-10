@@ -165,19 +165,26 @@ def judge(entry, fact):
     return {name: {"label": label, "reason": reason} for name, (label, reason) in labels.items()}
 
 
+def class_groups(summary):
+    """Every per-class table in a corpus summary: the whole, and each timing partition when present."""
+    return [summary["classes"], *(part["classes"] for part in summary.get("timing", {}).values())]
+
+
 def label_samples(summary, authority):
     """Attach an `arbiter` verdict to every sampled difference in a corpus summary."""
     sampled = {}
-    for entry in summary["classes"].values():
-        for item in entry["sample"]:
-            sampled[item["did"]] = item
+    for classes in class_groups(summary):
+        for entry in classes.values():
+            for item in entry["sample"]:
+                sampled[item["did"]] = item
     facts = authority.facts(sorted(sampled))
-    for name, entry in summary["classes"].items():
-        tally = {}
-        for item in entry["sample"]:
-            verdict = judge(item, facts[item["did"]])[name]
-            item.setdefault("arbiter", {})[name] = verdict
-            tally[verdict["label"]] = tally.get(verdict["label"], 0) + 1
-        entry["arbiter_labels"] = tally
+    for classes in class_groups(summary):
+        for name, entry in classes.items():
+            tally = {}
+            for item in entry["sample"]:
+                verdict = judge(item, facts[item["did"]])[name]
+                item.setdefault("arbiter", {})[name] = verdict
+                tally[verdict["label"]] = tally.get(verdict["label"], 0) + 1
+            entry["arbiter_labels"] = tally
     summary["arbiter_ran"] = True
     return summary

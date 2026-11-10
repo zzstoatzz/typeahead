@@ -10,7 +10,10 @@ from sources import PAGE_LIMIT, TantivyAdmin
 from transport import BudgetExceeded, TransportError
 from views import ABSENT, Doc, f32, label_difference, profile_differences
 
-CHECKPOINT_VERSION = 2
+CHECKPOINT_VERSION = 3
+UNCHANGED_IN_SHADOW = "unchanged_in_shadow"
+NEWER_IN_SHADOW = "newer_in_shadow"
+TIMINGS = (UNCHANGED_IN_SHADOW, NEWER_IN_SHADOW)
 
 ONLY_IN_PRODUCTION = "only_in_production"
 ONLY_IN_SHADOW = "only_in_shadow"
@@ -62,6 +65,16 @@ def classify(production, shadow):
     return classes, other
 
 
+def changed_since(doc, cutoff):
+    """Whether a view says its content changed after the cutoff; unknown counts as unchanged."""
+    changed = (doc.fields or {}).get("changed_at")
+    return changed is not None and changed > cutoff
+
+
+def timing(entry, cutoff):
+    return NEWER_IN_SHADOW if changed_since(recorded(entry, "shadow"), cutoff) else UNCHANGED_IN_SHADOW
+
+
 def sample_key(did):
     return hashlib.sha256(did.encode()).hexdigest()
 
@@ -97,6 +110,7 @@ class Checkpoint:
         self.pages = 0
         self.differences = {}
         self.untracked = 0
+        self.shadow = {"records": 0, "with_change_time": 0, "changed_since_cutoff": 0}
         self.start_markers = None
         self.started_at = None
 
@@ -113,6 +127,7 @@ class Checkpoint:
         self.pages = saved["pages"]
         self.differences = {entry["did"]: entry for entry in saved["differences"]}
         self.untracked = saved["untracked"]
+        self.shadow = saved["shadow"]
         self.start_markers = saved["start_markers"]
         self.started_at = saved["started_at"]
         return True
@@ -130,6 +145,7 @@ class Checkpoint:
             "pages": self.pages,
             "differences": list(self.differences.values()),
             "untracked": self.untracked,
+            "shadow": self.shadow,
             "start_markers": self.start_markers,
             "started_at": self.started_at,
         }
@@ -170,7 +186,7 @@ def window(production, shadow):
     return dids, a, b, bound, not bounds
 
 
-def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked):
+def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked, cutoff=None):
     """Advance the merge walk; returns a stop reason and leaves progress in the checkpoint."""
     if not 1 <= page_size <= PAGE_LIMIT:
         raise TransportError(f"page size must be 1..{PAGE_LIMIT}")
@@ -194,6 +210,9 @@ def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked):
             a, b = production_docs.get(did, ABSENT), shadow_docs.get(did, ABSENT)
             checkpoint.live["production"] += a.live
             checkpoint.live["shadow"] += b.live
+            checkpoint.shadow["records"] += b.sha is not None
+            checkpoint.shadow["with_change_time"] += (b.fields or {}).get("changed_at") is not None
+            checkpoint.shadow["changed_since_cutoff"] += cutoff is not None and changed_since(b, cutoff)
             entry = difference(did, a, b)
             if entry is None:
                 continue
@@ -268,6 +287,15 @@ def summarize(differences, sample_size):
     }
 
 
+def by_timing(differences, cutoff, sample_size):
+    """The differences split by whether the shadow's record changed after the cutoff, each summarized."""
+    parts = {name: {} for name in TIMINGS}
+    for did, entry in differences.items():
+        entry["timing"] = timing(entry, cutoff)
+        parts[entry["timing"]][did] = entry
+    return {name: summarize(members, sample_size) for name, members in parts.items()}
+
+
 def run_sources(
     production,
     shadow,
@@ -278,13 +306,22 @@ def run_sources(
     max_tracked,
     settle_delay,
     sample_size,
+    watermark_skew=0,
     sleep=time.sleep,
 ):
+    """Walk two sources and summarize what differs.
+
+    When production is a fixed snapshot with a watermark, the two sides are not
+    simultaneous: each difference is also classed by whether the shadow's record
+    changed after the watermark less `watermark_skew`.
+    """
     want_fields = all(getattr(source, "want_fields", True) for source in (production, shadow))
-    identity = {"production": production.identity, "shadow": shadow.identity, "page_size": page_size}
+    watermark = getattr(production, "watermark", None) if production.fixed else None
+    cutoff = None if watermark is None else watermark - watermark_skew
+    identity = {"production": production.identity, "shadow": shadow.identity, "page_size": page_size, "cutoff": cutoff}
     checkpoint = Checkpoint(checkpoint_path, identity)
     resumed = checkpoint.load()
-    stop = walk(production, shadow, checkpoint, page_size=page_size, max_pages=max_pages, max_tracked=max_tracked)
+    stop = walk(production, shadow, checkpoint, page_size=page_size, max_pages=max_pages, max_tracked=max_tracked, cutoff=cutoff)
     result = {
         "complete": checkpoint.complete,
         "stop_reason": stop,
@@ -298,6 +335,8 @@ def run_sources(
         "start_markers": checkpoint.start_markers,
         "fields_requested": want_fields,
     }
+    if cutoff is not None:
+        result["snapshot"] = {"watermark": watermark, "skew_s": watermark_skew, "cutoff": cutoff, "shadow": checkpoint.shadow}
     if not checkpoint.complete:
         result.update(rechecked=False, differences_before_recheck=len(checkpoint.differences))
         result.update(summarize(checkpoint.differences, sample_size))
@@ -329,6 +368,8 @@ def run_sources(
         for side in ("production", "shadow")
     }
     result.update(summarize(settled, sample_size))
+    if cutoff is not None:
+        result["timing"] = by_timing(settled, cutoff, sample_size)
     result["flagged_dids"] = sorted(settled)
     return result
 
