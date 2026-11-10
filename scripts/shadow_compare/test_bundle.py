@@ -1,4 +1,6 @@
+import contextlib
 import gzip
+import hashlib
 import io
 import json
 import random
@@ -209,6 +211,72 @@ class WalkTests(Scratch):
         second, _, _ = self.run_pair(rows, rows[:30], checkpoint_path=path)
         self.assertTrue(second["resumed"] and second["complete"])
         self.assertEqual((second["dids_walked"], second["classes"][corpus.ONLY_IN_PRODUCTION]["count"]), (40, 10))
+
+
+
+class PackTests(Scratch):
+    def packed(self, rows=None):
+        out, _ = self.sort(rows or actors(300), run_records=64)
+        manifest, sha256, _ = bundle.pack(out, self.root / "packed", run_id="run-1", build_id="b1794333857-cp-test", watermark=1_794_333_857)
+        return out, manifest, sha256
+
+    def unpack(self, raw, manifest):
+        target = self.root / "fetched" / "views.jsonl"
+        target.parent.mkdir(exist_ok=True)
+        bundle.unpack(io.BytesIO(raw), manifest, target)
+        return target
+
+    def test_packed_views_unpack_to_the_same_bytes_and_read_as_the_same_source(self):
+        out, manifest, sha256 = self.packed()
+        raw = (self.root / "packed" / bundle.MANIFEST_NAME).read_bytes()
+        self.assertEqual(bundle.read_manifest(raw, sha256), manifest)
+        self.assertEqual((manifest["actors"], manifest["live"], manifest["build_id"], manifest["source_watermark"]), (300, 300, "b1794333857-cp-test", 1_794_333_857))
+        packed = (self.root / "packed" / bundle.VIEWS_NAME).read_bytes()
+        self.assertEqual(gzip.decompress(packed), out.read_bytes())
+        self.assertEqual((manifest["views"]["bytes"], manifest["views"]["sha256"]), (len(packed), hashlib.sha256(packed).hexdigest()))
+        target = self.unpack(packed, manifest)
+        self.assertEqual(target.read_bytes(), out.read_bytes())
+        sidecar = (self.root / "packed" / bundle.SIDECAR_NAME).read_bytes()
+        self.assertEqual(hashlib.sha256(sidecar).hexdigest(), manifest["sidecar"]["sha256"])
+        bundle.meta_path(target).write_bytes(sidecar)
+        fetched = bundle.BundleJsonl(target, watermark=manifest["source_watermark"], build_id=manifest["build_id"])
+        self.assertEqual(fetched.read("", 500), bundle.BundleJsonl(out).read("", 500))
+
+    def test_a_stream_that_is_not_the_described_object_leaves_no_file(self):
+        out, manifest, _ = self.packed()
+        packed = (self.root / "packed" / bundle.VIEWS_NAME).read_bytes()
+        flipped = bytearray(packed)
+        flipped[len(flipped) // 2] ^= 1
+        other = gzip.compress(out.read_bytes() + b"extra\n")
+        bomb = dict(manifest, views=dict(manifest["views"], bytes=len(other), sha256=hashlib.sha256(other).hexdigest()))
+        cases = [(packed[:-9], manifest), (packed + b"x", manifest), (bytes(flipped), manifest), (out.read_bytes(), manifest), (other, bomb), (packed + packed, manifest)]
+        for raw, described in cases:
+            with self.assertRaises(bundle.BundleError):
+                self.unpack(raw, described)
+            self.assertEqual(list((self.root / "fetched").iterdir()), [])
+
+    def test_a_manifest_is_refused_unless_its_bytes_and_shape_are_the_expected_ones(self):
+        _, manifest, sha256 = self.packed()
+        raw = (self.root / "packed" / bundle.MANIFEST_NAME).read_bytes()
+        with self.assertRaises(bundle.BundleError):
+            bundle.read_manifest(raw + b" ", sha256)
+        for change in ({"version": 2}, {"run_id": "../x"}, {"source_watermark": "now"}, {"views": dict(manifest["views"], name="other.gz")}, {"sidecar": None}, {"actors": -1}):
+            with self.assertRaises(bundle.BundleError):
+                bundle.check_manifest({**manifest, **change})
+
+    def test_pack_command_prints_the_manifest_and_its_hash_and_refuses_a_stale_sidecar(self):
+        out, _ = self.sort(actors(40))
+        printed = io.StringIO()
+        arguments = ["pack", "--views", str(out), "--out-dir", str(self.root / "cli"), "--run-id", "r2", "--build-id", "b1", "--watermark", "100"]
+        with contextlib.redirect_stdout(printed):
+            self.assertEqual(bundle.main(arguments), 0)
+        record = json.loads(printed.getvalue())
+        raw = (self.root / "cli" / bundle.MANIFEST_NAME).read_bytes()
+        self.assertEqual((record["event"], record["manifest_sha256"], record["actors"]), ("pack", hashlib.sha256(raw).hexdigest(), 40))
+        with out.open("ab") as stream:
+            stream.write(b"\n")
+        with contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(bundle.main(arguments), 2)
 
 
 if __name__ == "__main__":

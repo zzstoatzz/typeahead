@@ -10,6 +10,11 @@ each line to its comparable view, writes sorted runs of at most `run_records`
 views to a temporary directory, and merges them into one file with a sparse
 index beside it. Memory holds one run; disk holds the runs and the merged file
 at once, each about the size of the views.
+
+`pack` turns a sorted view file into three objects another machine can fetch:
+the views gzipped, the sidecar, and a manifest naming the bundle, its
+watermark, the counts and each object's size and SHA-256. `unpack` is the
+other end: it checks a fetched stream against the manifest while writing it.
 """
 
 import argparse
@@ -20,9 +25,12 @@ import hashlib
 import heapq
 import json
 import os
+import re
 import resource
+import shutil
 import sys
 import time
+import zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -37,6 +45,16 @@ FAN_IN = 64
 INDEX_STRIDE = 4096
 META_VERSION = 1
 BUFFER = 1 << 20
+MANIFEST_VERSION = 1
+MANIFEST_NAME = "manifest.json"
+VIEWS_NAME = "views.jsonl.gz"
+SIDECAR_NAME = "views.jsonl.meta.json"
+MANIFEST_MAX_BYTES = 1 << 20
+SIDECAR_MAX_BYTES = 256 << 20
+GZIP = 31
+SHA256 = re.compile(r"[0-9a-f]{64}")
+RUN_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
+COUNTS = ("lines", "actors", "live", "deleted", "duplicates")
 
 
 class BundleError(TransportError):
@@ -185,6 +203,126 @@ def sort(stream, out_path, tmp_dir, *, run_records=RUN_RECORDS, fan_in=FAN_IN):
     return facts
 
 
+def file_sha256(path):
+    with open(path, "rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def pack(views_path, out_dir, *, run_id, build_id, watermark):
+    """Write the gzipped views, the sidecar and the manifest into `out_dir`; returns the manifest and its SHA-256."""
+    views_path, out_dir = Path(views_path), Path(out_dir)
+    if not RUN_ID.fullmatch(str(run_id)):
+        raise BundleError("run id must be 1 to 64 letters, digits, dashes or underscores")
+    meta = json.loads(meta_path(views_path).read_text())
+    if meta.get("version") != META_VERSION or meta["output_bytes"] != views_path.stat().st_size:
+        raise BundleError(f"{views_path} does not match its sidecar; sort the dump again")
+    started = time.monotonic()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    plain, packed, packed_bytes = hashlib.sha256(), hashlib.sha256(), 0
+    squeeze = zlib.compressobj(6, zlib.DEFLATED, GZIP)
+    with open(views_path, "rb", buffering=BUFFER) as source, open(out_dir / VIEWS_NAME, "wb", buffering=BUFFER) as out:
+        while chunk := source.read(BUFFER):
+            plain.update(chunk)
+            piece = squeeze.compress(chunk)
+            packed.update(piece)
+            packed_bytes += len(piece)
+            out.write(piece)
+        piece = squeeze.flush()
+        packed.update(piece)
+        packed_bytes += len(piece)
+        out.write(piece)
+    shutil.copyfile(meta_path(views_path), out_dir / SIDECAR_NAME)
+    manifest = {
+        "version": MANIFEST_VERSION,
+        "run_id": str(run_id),
+        "build_id": build_id,
+        "source_watermark": watermark,
+        **{name: meta[name] for name in COUNTS},
+        "views": {
+            "name": VIEWS_NAME,
+            "bytes": packed_bytes,
+            "sha256": packed.hexdigest(),
+            "unpacked_bytes": meta["output_bytes"],
+            "unpacked_sha256": plain.hexdigest(),
+        },
+        "sidecar": {"name": SIDECAR_NAME, "bytes": (out_dir / SIDECAR_NAME).stat().st_size, "sha256": file_sha256(out_dir / SIDECAR_NAME)},
+        "packed_at": int(time.time()),
+    }
+    raw = json.dumps(check_manifest(manifest), separators=(",", ":"), ensure_ascii=False).encode()
+    (out_dir / MANIFEST_NAME).write_bytes(raw)
+    return manifest, hashlib.sha256(raw).hexdigest(), round(time.monotonic() - started, 3)
+
+
+def check_manifest(manifest):
+    def count(value):
+        return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+    def described(entry, name, sizes):
+        return (
+            isinstance(entry, dict) and entry.get("name") == name and SHA256.fullmatch(str(entry.get("sha256")))
+            and all(count(entry.get(size)) for size in sizes)
+        )
+
+    if not isinstance(manifest, dict) or manifest.get("version") != MANIFEST_VERSION:
+        raise BundleError("manifest has an unknown version")
+    if not RUN_ID.fullmatch(str(manifest.get("run_id"))) or not isinstance(manifest.get("build_id"), str) or not manifest["build_id"]:
+        raise BundleError("manifest does not name its run and bundle")
+    if not count(manifest.get("source_watermark")) or not all(count(manifest.get(name)) for name in COUNTS):
+        raise BundleError("manifest has no watermark or counts")
+    views = manifest.get("views")
+    if not described(views, VIEWS_NAME, ("bytes", "unpacked_bytes")) or not SHA256.fullmatch(str(views.get("unpacked_sha256"))):
+        raise BundleError("manifest does not describe the views")
+    if not described(manifest.get("sidecar"), SIDECAR_NAME, ("bytes",)) or manifest["sidecar"]["bytes"] > SIDECAR_MAX_BYTES:
+        raise BundleError("manifest does not describe the sidecar")
+    return manifest
+
+
+def read_manifest(raw, sha256):
+    """The manifest in `raw`, once its bytes hash to `sha256`."""
+    if len(raw) > MANIFEST_MAX_BYTES or hashlib.sha256(raw).hexdigest() != sha256:
+        raise BundleError("manifest differs from the expected SHA-256")
+    try:
+        return check_manifest(json.loads(raw))
+    except ValueError:
+        raise BundleError("manifest is not JSON") from None
+
+
+def unpack(stream, manifest, out_path):
+    """Write the gunzipped views to `out_path`, or nothing if the stream is not what the manifest describes."""
+    views, out_path = manifest["views"], Path(out_path)
+    partial = out_path.with_name(out_path.name + ".partial")
+    plain, packed = hashlib.sha256(), hashlib.sha256()
+    packed_bytes = plain_bytes = 0
+    expand = zlib.decompressobj(GZIP)
+    try:
+        with open(partial, "wb", buffering=BUFFER) as out:
+            while chunk := stream.read(BUFFER):
+                packed.update(chunk)
+                packed_bytes += len(chunk)
+                if packed_bytes > views["bytes"] or expand.eof:
+                    raise BundleError("views object is larger than its manifest says")
+                while True:
+                    piece = expand.decompress(chunk, BUFFER)
+                    chunk = expand.unconsumed_tail
+                    plain.update(piece)
+                    plain_bytes += len(piece)
+                    if plain_bytes > views["unpacked_bytes"]:
+                        raise BundleError("views unpack to more than their manifest says")
+                    out.write(piece)
+                    if not chunk and len(piece) < BUFFER:
+                        break
+            if not expand.eof or expand.unused_data:
+                raise BundleError("views object is not one complete gzip stream")
+        found = (packed_bytes, packed.hexdigest(), plain_bytes, plain.hexdigest())
+        if found != (views["bytes"], views["sha256"], views["unpacked_bytes"], views["unpacked_sha256"]):
+            raise BundleError("views differ from their manifest")
+        os.replace(partial, out_path)
+    except zlib.error:
+        raise BundleError("views object is not gzip") from None
+    finally:
+        partial.unlink(missing_ok=True)
+
+
 def parse(line):
     did, body = line.rstrip(b"\n").decode("utf-8", "surrogatepass").split("\t", 1)
     sha, fields = json.loads(body)
@@ -284,14 +422,24 @@ def main(argv=None):
     command.add_argument("--out", required=True, help="the sorted view file; a .meta.json sidecar is written beside it")
     command.add_argument("--tmp", required=True, help="directory for sorted runs, on a disk with room for the views twice")
     command.add_argument("--run-records", type=int, default=RUN_RECORDS)
+    command = commands.add_parser("pack", help="gzip a sorted view file and describe it in a manifest")
+    command.add_argument("--views", required=True, help="a view file written by sort, with its sidecar beside it")
+    command.add_argument("--out-dir", required=True, help=f"receives {VIEWS_NAME}, {SIDECAR_NAME} and {MANIFEST_NAME}")
+    command.add_argument("--run-id", required=True)
+    command.add_argument("--build-id", required=True)
+    command.add_argument("--watermark", required=True, type=int, help="the bundle's source watermark in unix seconds")
     args = parser.parse_args(argv)
     try:
-        with open_input(args.input) as stream:
-            facts = sort(stream, args.out, args.tmp, run_records=args.run_records)
-    except BundleError as error:
+        if args.command == "pack":
+            manifest, sha256, seconds = pack(args.views, args.out_dir, run_id=args.run_id, build_id=args.build_id, watermark=args.watermark)
+            record = {"event": "pack", "manifest_sha256": sha256, "seconds": seconds, **manifest}
+        else:
+            with open_input(args.input) as stream:
+                record = {"event": "sort", **sort(stream, args.out, args.tmp, run_records=args.run_records)}
+    except (BundleError, OSError) as error:
         print("error: " + str(error), file=sys.stderr)
         return 2
-    print(json.dumps({"event": "sort", **facts}, separators=(",", ":")), flush=True)
+    print(json.dumps(record, separators=(",", ":")), flush=True)
     return 0
 
 
