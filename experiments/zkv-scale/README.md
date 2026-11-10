@@ -2,7 +2,7 @@
 
 a measurement harness that loads the whole typeahead actor corpus into [zkv](https://tangled.org/zzstoatzz.io/zkv) 0.1.2 on a local directory store and records what that costs in time, disk, memory and latency. it answers the questions in issue 32: could an embedded ordered store hold the corpus that Turso holds today.
 
-status: harness only. it has run against synthetic actors on a laptop to prove it works; no corpus-scale run has been made.
+status: one corpus-scale run was made on 2026-11-10.
 
 ## ownership and storage
 
@@ -74,4 +74,4 @@ the last test builds both tools in a temporary directory and fetches zkv and the
 
 ## results
 
-none have been recorded yet.
+the [2026-11-10 run](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/evals/zkv-scale-20261110/README.md) loaded 13,214,296 actors: 9.4 GB settled, commits at 2 to 3 ms, cold reads under 200 µs at p99, and a full reader scan in about 11 s while the writer kept going. bulk loads stalled on compaction and a full compaction briefly doubled the disk used.
