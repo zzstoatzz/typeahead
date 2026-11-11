@@ -10,6 +10,7 @@
 //! | any other wanted record, not a delete   | `observe`, discovery queued if new             |
 //! | `#identity`                             | `observe`, `identity_enqueue` (identity)       |
 //! | `#account`, inactive                    | `gone` (deleted, or deactivated for the rest)  |
+//! | `#account`, throttled or desynchronized | nothing: the relay's trouble, not the account's |
 //! | `#account`, active                      | `reactivated`, `observe`, `identity_enqueue` (account) |
 //! | identity resolution, resolved           | `identity_complete` with the admitted handle   |
 //! | identity resolution, to retry           | `identity_complete` with the retry             |
@@ -97,6 +98,7 @@ pub const Changes = struct {
 
     fn account(self: *Changes, did: []const u8, active: bool, status: ?zat.AccountStatus) !void {
         if (!active) {
+            if (status == .throttled or status == .desynchronized) return;
             _ = self.observed.remove(did);
             return self.add(.{ .gone = .{ .did = did, .status = if (status == .deleted) .deleted else .deactivated } });
         }

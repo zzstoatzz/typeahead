@@ -194,6 +194,17 @@ test "a deactivated or deleted account is gone, with its cursor, in one commit" 
     try testing.expect(try f.queued(alice) == null);
 }
 
+test "an account the relay throttles or loses sync with stays live" {
+    const f = try Fixture.create(.{});
+    defer f.destroy();
+    try hear(f, 10, &.{ post(alice), post(bob) });
+    try hear(f, 12, &.{ account(alice, false, .throttled), account(bob, false, .desynchronized) });
+    try testing.expectEqual(store_mod.record.Status.live, (try f.actor(alice)).?.status);
+    try testing.expectEqual(store_mod.record.Status.live, (try f.actor(bob)).?.status);
+    try testing.expectEqual(@as(?u64, 12), (try f.cursors()).relay);
+    try testing.expectEqual(@as(u64, 0), f.owner.counters.actors_gone.load(.monotonic));
+}
+
 test "an inactive account we never saw leaves nothing behind" {
     const f = try Fixture.create(.{});
     defer f.destroy();
