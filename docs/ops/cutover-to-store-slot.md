@@ -154,6 +154,16 @@ just smoke
 
 watch `sync_lag_s` over a few minutes. the bridge sends a watermark at least every 30 s by default, so a low lag shows the bridge and index are alive. it does not show that the store is still taking in new records: the store's own health is on the machine's private port 8082 and nothing outside reads it yet.
 
+## if a process on the store slot fails while it is routed
+
+the slot's supervisor restarts whichever process exited, in place, and leaves the other running ([slot README](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/shadow-slot/README.md#what-a-failure-looks-like)). the machine does not restart and Fly does not stop it. **verified** against stand-in processes only (`just test-supervise`); **unverified** on the machine.
+
+- a store restart does not interrupt search. the index serves on its last watermark for 120 s, and the wait before a store restart is at most 30 s.
+- a store that cannot stay up long enough to push a watermark makes the slot report not ready 120 s after the last one: `/ready` answers 503 and so does search. `sync_lag_s` climbing past 30 is the early sign from outside. on the machine, `fly logs -a typeahead-shadow-a` shows `[supervisor] store stopped on its own, N time(s) without staying up 300s`, and `fly checks list -a typeahead-shadow-a` shows `store_health` failing while the store is not listening.
+- an index restart is an outage of the slot until the new process is ready.
+
+in the last two cases roll back, below. the rollback does not need the store slot to be healthy.
+
 ## rollback
 
 ```sh
