@@ -146,7 +146,7 @@ the machine has bash, curl, tar, jq and rclone, and no Python. `shadow-stage.sh`
 2. fetches the manifest with `rclone cat` and refuses it unless its bytes hash to `--manifest-sha256`, which the builder printed;
 3. checks free space: the unpacked views plus 1 GiB must fit while 12 GiB stays free on the volume, because the store's database needs room to compact;
 4. fetches the sidecar and streams the views through gunzip to `inputs/views.jsonl`, checking size and SHA-256 of both the object and the unpacked file; a stream that is anything else leaves no file;
-5. runs `compare.py --phases corpus --arbiter` against the loopback store with `--bundle-watermark` and `--bundle-build-id` from the manifest, 100 ms between requests, a budget of 80,000 requests and 32,768 MiB, and a checkpoint written at most once a minute.
+5. runs `compare.py --phases corpus --arbiter` against the loopback store with `--bundle-watermark` and `--bundle-build-id` from the manifest, a budget of 80,000 requests and 32,768 MiB, and a checkpoint written at most once a minute. between requests it waits as long as the store took to answer the last one and never less than 20 ms (`--rest 1 --delay 0.02`), so the store spends at most half its time on the walk however slow the machine is, and a store that answers in milliseconds is not held to a fixed pause.
 
 it prints the gate summary and nothing else; errors go to standard error with credential values replaced by their variable names. the exit status is compare.py's. a second `run` with the same run id finds the checked views in place, fetches nothing, and resumes the walk from `walk.json`, so a dropped session costs at most a minute of walking. arguments it does not know are passed to compare.py, which is how `--moderation-policy` and `--shadow-bootstrap-at` reach it.
 
@@ -182,21 +182,24 @@ uv run scripts/shadow_compare/compare.py --phases search,latency,freshness \
 
 `--production` is whichever production slot the route names at the time. the 61 canonical and recorded queries cost each backend about 500 requests, one a second, inside the default budget of 2,000.
 
-what the stage costs the machine, measured on a laptop with 200,000 synthetic actors and a local stand-in for the store, then scaled linearly to 13.2 million; no run at that size has been made and the machine's shared CPUs are slower:
+what the stage costs the machine, measured on a laptop with 200,000 synthetic actors of which 14,120 differ and a local stand-in for the store, then scaled linearly to 13.2 million; no run at that size has been made:
 
 | | measured at 200,000 | scaled to 13.2 million |
 |---|---|---|
-| views on the volume | 119 MB | 7.9 GB |
-| views object fetched (never on the volume) | 34 MB | 2.3 GB, if real views compress like synthetic ones |
+| views on the volume | 124 MB | 8.2 GB |
+| views object fetched (never on the volume) | 38 MB | 2.5 GB, if real views compress like synthetic ones |
 | uv, Python and httpx, measured in the container | 163 MB | 163 MB |
-| checkpoint, no differences / 49,761 tracked | 4 kB / 65 MB | the second is near the 50,000 cap, so about the ceiling; twice that while it is rewritten |
-| CPU, fetch and walk, one process at nice 10 | 3.8 s / 5.5 s | 4 to 6 minutes of one core |
-| memory, no differences / 49,761 tracked | 71 MB / 542 MB | unchanged; it grows with tracked differences, not with the corpus |
-| store requests and bytes | 403 and 85 MB | 26,400 pages and 5.6 GB for records shaped like the fixture's |
+| checkpoint, nothing walked / 14,120 differing | 5 kB / 1.3 MB | bounded by the caps, not the corpus: about 37 MB at 20,000 identity-level differences and every sample full, at the 1.5 kB an entry took on the real walk; twice that while it is rewritten |
+| list of differing DIDs beside the checkpoint | 466 kB | 27 MB at the first walk's rate of one account in sixteen |
+| CPU of the walk, one process at nice 10 | 2.9 s | see below |
+| memory | 81 MB | unchanged; it grows with kept differences, which are capped |
+| store requests and bytes | 405 and 136 MB | 26,400 pages and 8.9 GB for records shaped like the fixture's |
 
-so the volume holds about 8.2 GB more while a run's inputs are there. elapsed time is mostly the 100 ms between 26,400 pages (44 minutes) plus what the store takes to answer them, which is not measured, then the 120 s settle and the arbiter's requests a second apart.
+so the volume holds about 8.5 GB more while a run's inputs are there.
 
-status, 2026-11-10: the script and the stage ran end to end in a `debian:bookworm-slim` amd64 container, the shadow image's base, against 20,000 synthetic actors, a local directory as the rclone remote and a fake store on port 8082. nothing has run on the shadow machine, against R2, or through `fly ssh`.
+laptop CPU does not scale to the machine. the first real walk, on the shared 4 vCPU machine beside the live collector and search engine, covered 200,000 accounts in 8 minutes: 805 pages, 80 s of that the 100 ms pause, the rest unattributed between the store answering and the walk comparing, because that version did not time them. at that rate a full pass is about 9 hours. on the laptop the same walk now takes 2.9 s of CPU where that version took 6.7 s, and the fixed pause is gone; how much of the machine's time that removes depends on a split nobody has measured. the next run's report states it: seconds reading each side, seconds comparing, and seconds the store spent answering. after the walk come the 120 s settle and the arbiter's requests a second apart per target.
+
+status, 2026-11-11: the stage as it was on 2026-11-10 ran end to end in a `debian:bookworm-slim` amd64 container, the shadow image's base, and its walk ran on the shadow machine on 2026-11-11 against the store and a real bundle's packed views, where it was stopped at 200,000 accounts. the stage as it is now has run only in the unit tests and the builder's local test, against a fake store; it has not run in the container or on the machine.
 
 ## develop
 

@@ -107,6 +107,15 @@ class Stage(unittest.TestCase):
         pages = [body["after_did"] for path, body in fake.calls if path.endswith("/page")]
         self.assertEqual(pages.count(""), 1)
 
+    def test_the_walk_is_told_to_rest_as_long_as_the_store_took_and_never_under_20_ms(self):
+        seen = {}
+        with mock.patch.object(stage.compare, "main", side_effect=lambda argv: seen.update(argv=argv) or 0):
+            arguments = stage.parser().parse_args(["--root", str(self.root), "run", "--run-id", RUN, "--manifest-sha256", self.sha256, "--reserve-gib", "0"])
+            self.assertEqual(stage.run(arguments, ["--moderation-policy", "policy.json"], os.environ), 0)
+        argv = seen["argv"]
+        self.assertEqual([argv[argv.index(name) + 1] for name in ("--corpus-delay", "--corpus-rest")], ["0.02", "1.0"])
+        self.assertEqual(argv[-3:], ["--arbiter", "--moderation-policy", "policy.json"])
+
     def test_objects_that_are_not_the_expected_ones_stop_the_run_and_leave_no_views(self):
         views = self.remote / RUN / bundle.VIEWS_NAME
         intact = views.read_bytes()

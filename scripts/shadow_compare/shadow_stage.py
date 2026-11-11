@@ -11,6 +11,10 @@ SHA-256 given on the command line, then walks the store on loopback. A second
 `run` for the same run id finds the views in place and resumes the walk from
 its checkpoint. `clean` removes the fetched inputs and leaves the report.
 
+The walk waits between requests for as long as the store took to answer the
+last one, and never less than 20 ms, so the store spends at most half its
+time on the walk however slow the machine is.
+
 Credentials are read from the environment and never printed: the five
 `COMPARE_R2_*` values for rclone, and `STORE_READ_SECRET`, taken from this
 process's environment or else from a running process that has it.
@@ -45,6 +49,8 @@ NICENESS = 10
 MAX_REQUESTS = 80_000
 MAX_MIB = 32_768
 CHECKPOINT_INTERVAL_S = 60
+DELAY_S = 0.02
+REST = 1.0
 
 
 class StageError(TransportError):
@@ -193,6 +199,7 @@ def run(args, extra, environ):
         "--shadow-store", args.store,
         "--shadow-store-secret-env", STORE_SECRET,
         "--corpus-delay", str(args.delay),
+        "--corpus-rest", str(args.rest),
         "--corpus-max-requests", str(MAX_REQUESTS),
         "--corpus-max-mib", str(MAX_MIB),
         "--checkpoint", str(run_dir / "walk.json"),
@@ -232,7 +239,8 @@ def parser():
     command.add_argument("--run-id", required=True, type=run_id, help="the builder's run id")
     command.add_argument("--manifest-sha256", required=True, type=sha256, help="SHA-256 of the run's manifest, from the builder's summary")
     command.add_argument("--store", default=STORE, help="origin of the store process")
-    command.add_argument("--delay", type=float, default=0.1, help="seconds between requests to the store")
+    command.add_argument("--delay", type=float, default=DELAY_S, help="least seconds between requests to the store")
+    command.add_argument("--rest", type=float, default=REST, help="also wait this many times as long as the store took to answer the last request")
     command.add_argument("--reserve-gib", type=float, default=RESERVE_GIB, help="free space that must remain on the volume")
     command.add_argument("--no-arbiter", action="store_true")
     command = commands.add_parser("clean", help="remove a run's fetched inputs; its report and checkpoint stay")
