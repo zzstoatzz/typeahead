@@ -26,6 +26,8 @@ The Zig compiler, the Rust toolchain and both base images are pinned by version 
 
 The supervisor starts both processes, prefixes each line of their output with `[store]` or `[index]`, and forwards SIGTERM and SIGINT. If either process exits on its own, it stops the other and exits non-zero, and Fly restarts the machine. Neither process is restarted alone: the store process commits its cursors with its data, so a whole-machine restart is always safe, and a half-running slot would look healthy to one of its two checks. A requested stop exits zero when both processes stop cleanly.
 
+The store process is started at niceness 10 (`STORE_NICE`) and the index's merge threads run at niceness 19 (`INDEX_MERGE_NICE`), so when background work and a search want a CPU at the same time the search gets it. Niceness orders work inside the machine. It does nothing about a shared-CPU machine that has used up its quota; [sizing](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/shadow-slot/sizing.md#measured-on-the-machine-2026-11-11) has what that costs.
+
 On a volume without a bootstrap receipt the supervisor starts nothing and waits, so an operator can run the bootstrap on the machine.
 
 | process | listens on | reachable from |
@@ -59,6 +61,11 @@ Set in the Fly configuration, not secret:
 | `STORE_PORT` | port for the store process, 8082 |
 | `INDEX_RETRIEVAL` | retrieval strategy; production pins `global-merge` in the index deployment |
 | `INDEX_MAX_SYNC_LAG_S` | readiness limit on index lag, 120 as on production slots |
+| `INDEX_PUSH_INTERVAL_MS` | read by the store process: its rest between pushes to the index while it keeps up, 5000. Each push is an index commit, so the index commits about 12 times a minute and a change reaches search at most about 5 s after the store has it; the production poller runs every 40 s |
+| `INDEX_MERGE_MIN_SEGMENTS`, `INDEX_MERGE_LEVEL_LOG_SIZE`, `INDEX_MERGE_MIN_LAYER_SIZE`, `INDEX_MERGE_DELETE_RATIO`, `INDEX_MERGE_MAX_DOCS` | the index writer's [merge settings](https://tangled.org/zzstoatzz.io/typeahead/blob/main/services/tantivy/README.md#segment-merges): 3, 3, 1000, 0.2 and 1000000000. A size level merges at three segments or when a segment is more than a fifth deleted; levels are a factor of eight apart starting at 1,000 documents; no segment is too large to merge. Unset, the reader keeps Tantivy's defaults, which never remove deleted documents from an index that is not rebuilt |
+| `INDEX_MERGE_NICE` | niceness of the index's merge threads, 19 |
+| `INDEX_WARM_SEGMENT_FILES` | file extensions of each new index segment that the reader [reads into the page cache](https://tangled.org/zzstoatzz.io/typeahead/blob/main/services/tantivy/README.md#page-cache-warming) in the background: `term,fast,fieldnorm,idx`, 2.7 GB of the 4.7 GB index on 2026-11-11. The stored profiles (`store`, 1.9 GB) are left out because 4 GB of memory cannot hold them as well |
+| `STORE_NICE` | niceness the supervisor starts the store process at, 10 when unset |
 | the store process's bootstrap relay cursor | optional, set once for the first start; the name comes with the store process |
 
 Secrets the app needs:

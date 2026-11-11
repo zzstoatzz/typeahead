@@ -13,6 +13,16 @@ const wire = bridge_module.wire;
 const doubles = bridge_module.testing;
 
 const secret = "bridge-integration-secret";
+/// The merge settings of deploy/shadow-slot/fly.toml, the index the bridge
+/// feeds: with 3,000 actors every phase here merges, at three segments or
+/// when a fifth of a segment has been replaced.
+const shadow_merge_settings = .{
+    "--merge-min-segments",   "3",
+    "--merge-level-log-size", "3",
+    "--merge-min-layer-size", "1000",
+    "--merge-delete-ratio",   "0.2",
+    "--merge-max-docs",       "1000000000",
+};
 const actor_count = 3000;
 
 const Fixture = struct {
@@ -115,7 +125,7 @@ const Fixture = struct {
         defer environment.deinit();
         if (crash_at) |point| try environment.put("TYPEAHEAD_TEST_CRASH", point);
         self.server = try std.process.spawn(self.io, .{
-            .argv = &.{ self.binary, "serve", "--data", self.data, "--listen", self.listen, "--admin-listen", self.admin_listen },
+            .argv = &(.{ self.binary, "serve", "--data", self.data, "--listen", self.listen, "--admin-listen", self.admin_listen } ++ shadow_merge_settings),
             .environ_map = &environment,
             .stdout = .ignore,
             .stderr = .ignore,
