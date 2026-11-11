@@ -29,15 +29,11 @@ pub fn exitForRestart() noreturn {
     std.process.exit(1);
 }
 
-/// each of logfire's two providers gets this long on a clean stop, so both
-/// have given up before the deadman would report a flush that hung.
-pub const clean_flush_ms: u64 = 2_000;
-
 /// flush telemetry and exit 0 after a stop that was asked for. Returns
 /// never, within `exit_deadline_ms` like `exitForRestart`.
 pub fn exitClean() noreturn {
     arm(exit_deadline_ms, exitSuccess);
-    logfire.flushWithin(clean_flush_ms);
+    logfire.flush();
     std.process.exit(0);
 }
 
@@ -114,7 +110,6 @@ test "the deadman does not fire before its deadline" {
 }
 
 test "production deadlines leave room for logfire's own bounded flushes" {
-    try std.testing.expect(exit_deadline_ms > 2 * clean_flush_ms);
     try std.testing.expect(exit_deadline_ms > logfire.exit_flush_timeout_ms);
     try std.testing.expect(panic_deadline_ms > logfire.panic_flush_timeout_ms);
 }
