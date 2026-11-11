@@ -173,6 +173,7 @@ const Gen = struct {
                 .did = subject,
                 .source = self.pick(record.ProfileSource, &.{ .bsky, .bsky, .blacksky, .pds }),
                 .handle = try self.handle(),
+                .handle_check = if (self.chance(20)) null else .{ .settle_seconds = self.random.uintLessThan(u64, 3000), .backlog_limit = self.random.uintLessThan(usize, 4) },
                 .display_name = self.pick([]const u8, &displays),
                 .avatar = self.pick([]const u8, &cids),
                 .description = self.pick([]const u8, &texts),

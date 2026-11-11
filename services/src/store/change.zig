@@ -71,12 +71,41 @@ pub const DomainBlocked = struct {
     reason: []const u8 = "",
 };
 
+/// When a profile source reports a handle other than the stored one, how
+/// readily the actor goes back through identity resolution.
+pub const HandleCheck = struct {
+    /// An actor resolved within this many seconds is left alone, so a source
+    /// that stays wrong about a handle costs one resolution per period.
+    settle_seconds: u64 = 86_400,
+    /// Nothing is queued while this many identity entries are due, so
+    /// disagreements wait behind the relay's and the PLC export's signals.
+    backlog_limit: usize = 100,
+};
+
+pub const HandleVerdict = enum {
+    /// No handle was reported, it is the stored one, or no check was asked.
+    none,
+    /// The actor was queued for identity resolution.
+    queued,
+    /// The actor already has an identity queue entry.
+    pending,
+    /// The actor's identity was resolved within `settle_seconds`.
+    settled,
+    /// `backlog_limit` identity entries are due.
+    deferred,
+};
+
 /// What a profile fetch returned. Empty strings and zero counts keep the
 /// stored values, as the SQL `COALESCE(NULLIF(...))` writes did.
 pub const Enrichment = struct {
     did: []const u8,
     source: record.ProfileSource,
+    /// The handle the source reported. It is never written: a profile source
+    /// is not an authority for handles. One that differs from the stored
+    /// handle, without case, is grounds to resolve the identity again.
     handle: []const u8 = "",
+    /// Null leaves a differing handle unanswered.
+    handle_check: ?HandleCheck = null,
     display_name: []const u8 = "",
     avatar: []const u8 = "",
     description: []const u8 = "",
@@ -212,6 +241,8 @@ pub const Outcome = struct {
     changed: usize = 0,
     /// A new actor record was written.
     created: bool = false,
+    /// What an enrichment did about the handle its source reported.
+    handle: HandleVerdict = .none,
 };
 
 pub const Job = struct {

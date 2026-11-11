@@ -718,11 +718,35 @@ pub const Batch = struct {
         return if (incoming != 0) incoming else stored;
     }
 
+    /// Identity queue entries due now, counted up to `limit`. The count
+    /// includes what this batch has staged.
+    fn identityBacklog(self: *Batch, limit: usize) !usize {
+        var start: keys.Buf = undefined;
+        var end: keys.Buf = undefined;
+        var count: scan.Count = .{};
+        _ = try scan.all(self.tmp(), self.store.db(), keys.timedBound(&start, .identity, 0), keys.timedBound(&end, .identity, self.now + 1), .{ .limit = limit }, &count);
+        return count.entries;
+    }
+
+    fn handleVerdict(self: *Batch, old: Actor, c: change.Enrichment) !change.HandleVerdict {
+        const check = c.handle_check orelse return .none;
+        if (c.handle.len == 0 or std.ascii.eqlIgnoreCase(c.handle, old.handle)) return .none;
+        if (old.identity_due != 0) return .pending;
+        if (old.identity_resolved_at +| check.settle_seconds > self.now) return .settled;
+        if (try self.identityBacklog(check.backlog_limit) >= check.backlog_limit) return .deferred;
+        return .queued;
+    }
+
     fn enrichment(self: *Batch, c: change.Enrichment) !Outcome {
         const old = try self.load(c.did) orelse return .{};
         if (!old.live()) return .{};
         var new = old;
-        new.handle = keep(new.handle, c.handle);
+        const verdict = try self.handleVerdict(old, c);
+        var queue: ?record.QueueState = null;
+        if (verdict == .queued) {
+            new.identity_due = self.now;
+            queue = .{ .reason = .identity, .enqueued_at = self.now };
+        }
         new.display_name = keep(new.display_name, c.display_name);
         new.avatar = keep(new.avatar, c.avatar);
         new.description = keep(new.description, c.description);
@@ -740,7 +764,9 @@ pub const Batch = struct {
             try self.reconcile(c.did, list);
             try self.project(c.did, &new, list);
         }
-        return self.save(c.did, old, new, null);
+        var outcome = try self.save(c.did, old, new, queue);
+        outcome.handle = verdict;
+        return outcome;
     }
 
     fn identityEnqueue(self: *Batch, c: change.IdentityEnqueue) !Outcome {

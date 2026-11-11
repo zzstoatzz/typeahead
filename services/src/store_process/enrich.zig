@@ -9,23 +9,33 @@
 //!    due entries. Profile and identity writes queue their actor themselves,
 //!    which is how new and re-touched actors arrive.
 //! 2. Ask the appview's `getProfiles` for the leased DIDs.
-//! 3. A profile that came back becomes an `enrichment` from Bluesky,
-//!    handle included, with the response's labels as the labeler's answer.
+//! 3. A profile that came back becomes an `enrichment` from Bluesky, with
+//!    the response's labels as the labeler's answer.
 //! 4. A DID that did not come back is handled as `refreshModeration` in
 //!    `src/cron.ts` handles it. With a PDS on record and no `hide` override,
 //!    the appview's `getProfile` is asked why; `AccountTakedown`, or a `show`
 //!    override without asking, sends the DID to Blacksky's appview and then
 //!    to the profile record on its PDS (`app.bsky.actor.profile`, then
 //!    `sh.tangled.actor.profile`). Either becomes an `enrichment` from that
-//!    source that leaves the handle alone. Anything else (deactivated,
+//!    source. Anything else (deactivated,
 //!    suspended, never indexed) changes nothing and is stamped as checked.
 //!    Nothing is deleted here: account removal arrives on the relay.
 //! 5. The results are one submission. A request that taught nothing (429,
 //!    5xx, no connection, a body without `profiles`) reschedules its entries
 //!    and backs the whole loop off.
 //!
-//! Three things differ from the cron on purpose. A PDS record carries no
-//! labels, so that source keeps the stored ones; the cron wrote an empty
+//! No source's handle is ever written. The cron copied the appview's handle
+//! over the stored one, and the appview is often wrong about handles: it
+//! answers `handle.invalid` for handles that resolve, and an old handle
+//! after a PLC handle change. Here a handle from Bluesky or Blacksky that
+//! differs from the stored one sends the actor back through this role's own
+//! identity resolution, which alone writes handles. `Options.handle_check`
+//! bounds that: an actor resolved in the last day is left alone, and nothing
+//! is queued while a hundred identity entries are due. A PDS record carries
+//! no handle.
+//!
+//! Three more things differ from the cron on purpose. A PDS record carries
+//! no labels, so that source keeps the stored ones; the cron wrote an empty
 //! list and so unhid a taken-down account. A failed takedown probe retries
 //! the DID; the cron read it as "not taken down". And a 400 for a batch is
 //! split until the DID the appview refuses is alone, so one bad DID cannot
@@ -80,6 +90,9 @@ pub const Options = struct {
     backoff_max_seconds: u64 = 900,
     /// How long the loop waits when nothing is due.
     idle_seconds: u64 = 5,
+    /// When a reported handle that differs from the stored one sends its
+    /// actor to identity resolution.
+    handle_check: store_mod.change.HandleCheck = .{},
 };
 
 pub const Response = struct {
@@ -332,13 +345,14 @@ pub const Enricher = struct {
         return .absent;
     }
 
-    fn enrichment(job: RefreshJob, found: Found) Change {
+    fn enrichment(self: *const Enricher, job: RefreshJob, found: Found) Change {
         const f = found.fields;
-        const handle = if (found.source == .bsky and f.handle.len <= store_mod.keys.max_handle and std.mem.indexOfScalar(u8, f.handle, 0) == null) f.handle else "";
+        const handle = if (f.handle.len <= store_mod.keys.max_handle and std.mem.indexOfScalar(u8, f.handle, 0) == null) f.handle else "";
         return .{ .enrichment = .{
             .did = job.did,
             .source = found.source,
             .handle = handle,
+            .handle_check = self.options.handle_check,
             .display_name = f.display_name,
             .avatar = f.avatar,
             .description = f.description,
@@ -416,7 +430,7 @@ pub const Enricher = struct {
                         .pds => tally.pds += 1,
                         else => tally.enriched += 1,
                     }
-                    break :blk enrichment(job, found);
+                    break :blk self.enrichment(job, found);
                 },
                 .absent => blk: {
                     tally.absent += 1;

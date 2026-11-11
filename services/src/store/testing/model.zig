@@ -157,6 +157,18 @@ pub const Model = struct {
         self.queue.put(self.mem(), self.own(did), .{ .reason = .discovered, .enqueued_at = self.now }) catch @panic("out of memory");
     }
 
+    /// Whether a handle an enrichment reports sends the actor back to
+    /// identity resolution.
+    fn shouldVerify(self: *const Model, actor: Actor, c: change.Enrichment) bool {
+        const check = c.handle_check orelse return false;
+        if (c.handle.len == 0 or std.ascii.eqlIgnoreCase(c.handle, actor.handle)) return false;
+        if (actor.identity_due != 0) return false;
+        if (actor.identity_resolved_at +| check.settle_seconds > self.now) return false;
+        var due: usize = 0;
+        for (self.actors.values()) |other| due += @intFromBool(other.identity_due != 0 and other.identity_due <= self.now);
+        return due < check.backlog_limit;
+    }
+
     fn orKeep(stored: []const u8, incoming: []const u8) []const u8 {
         return if (incoming.len > 0) incoming else stored;
     }
@@ -356,7 +368,10 @@ pub const Model = struct {
             },
             .enrichment => |c| {
                 var actor = self.liveActor(c.did) orelse return 0;
-                actor.handle = orKeep(actor.handle, c.handle);
+                if (self.shouldVerify(actor, c)) {
+                    actor.identity_due = self.now;
+                    self.queue.put(self.mem(), self.own(c.did), .{ .reason = .identity, .enqueued_at = self.now }) catch @panic("out of memory");
+                }
                 actor.display_name = orKeep(actor.display_name, c.display_name);
                 actor.avatar = orKeep(actor.avatar, c.avatar);
                 actor.description = orKeep(actor.description, c.description);

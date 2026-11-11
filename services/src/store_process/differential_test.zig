@@ -886,8 +886,32 @@ test "divergence pds_record_keeps_labels: a taken-down account stays hidden when
     try testing.expectEqual(@as(usize, 0), row.labels.len);
 }
 
+test "divergence enrichment_verifies_handle: an appview's handle.invalid does not replace a handle that resolves" {
+    const pair = try Pair.create();
+    defer pair.destroy();
+    try pair.relay(.{ .sighting = eve });
+    try pair.resolve("eve.example");
+    try pair.advance(2 * 86_400);
+    pair.sim.remote[Sim.indexOf(eve)].bsky = "{\"did\":\"" ++ eve ++ "\",\"handle\":\"handle.invalid\",\"followersCount\":900,\"followsCount\":10,\"postsCount\":40}";
+    try pair.fetch(eve);
+
+    const stored = try pair.agree(eve);
+    try testing.expectEqualStrings("eve.example", stored.handle);
+    try testing.expectEqual(@as(u64, 900), stored.followers_count);
+    try testing.expect(stored.identity_due != 0);
+    const row = pair.production.actors.get(eve).?;
+    try testing.expectEqualStrings("handle.invalid", row.handle);
+    try testing.expectEqual(@as(u64, 900), row.followers);
+    try testing.expect(!pair.production.pending(eve));
+
+    try pair.resolve("eve.example");
+    const verified = try pair.agree(eve);
+    try testing.expectEqualStrings("eve.example", verified.handle);
+    try testing.expectEqual(@as(u64, 0), verified.identity_due);
+}
+
 test "every difference on the store's review list is a flag or an explained omission" {
-    try testing.expectEqual(@as(usize, 8), std.meta.fieldNames(sql.Divergence).len);
+    try testing.expectEqual(@as(usize, 9), std.meta.fieldNames(sql.Divergence).len);
     try testing.expectEqual(@as(usize, 13), sql.unmodelled.len);
     inline for (comptime std.meta.fieldNames(sql.Divergence)) |name| {
         try testing.expect(@field(sql.Divergence.store, name));

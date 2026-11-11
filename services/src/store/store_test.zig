@@ -304,6 +304,68 @@ test "an enrichment's labels replace the earlier answer and keep what the stream
     try testing.expectEqual(@as(u64, t0 + 3), stored.profile_checked_at);
 }
 
+test "an enrichment's handle is never written, and one that differs queues identity work within its bounds" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const check: change.HandleCheck = .{ .settle_seconds = 1000, .backlog_limit = 2 };
+    for ([_][2][]const u8{ .{ alice, "alice.test" }, .{ bob, "bob.test" }, .{ carol, "carol.test" } }) |row| {
+        _ = try f.apply(t0, .{ .profile = .{ .did = row[0], .handle = row[1] } });
+    }
+
+    const same = try f.apply(t0 + 1, .{ .enrichment = .{ .did = alice, .source = .bsky, .handle = "Alice.Test", .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.none, same.handle);
+    const unasked = try f.apply(t0 + 1, .{ .enrichment = .{ .did = alice, .source = .bsky, .handle = "handle.invalid" } });
+    try testing.expectEqual(change.HandleVerdict.none, unasked.handle);
+    try testing.expectEqual(@as(u64, 0), try f.count(.identity));
+
+    const differs = try f.apply(t0 + 2, .{ .enrichment = .{ .did = alice, .source = .bsky, .handle = "handle.invalid", .followers_count = 7, .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.queued, differs.handle);
+    var actor = try f.actor(alice);
+    try testing.expectEqualStrings("alice.test", actor.handle);
+    try testing.expectEqual(@as(u64, 7), actor.followers_count);
+    try testing.expectEqual(@as(u64, t0 + 2), actor.identity_due);
+    try expectDids(&.{alice}, try f.handleDids("alice.test"));
+    try expectDids(&.{}, try f.handleDids("handle.invalid"));
+    const state = (try read.queueState(f.store.db(), f.arena.allocator(), .{ .at = t0 + 2, .did = alice })).?;
+    try testing.expectEqual(record.IdentityReason.identity, state.reason);
+    try testing.expectEqual(@as(u64, 1), state.generation);
+
+    const again = try f.apply(t0 + 3, .{ .enrichment = .{ .did = alice, .source = .blacksky, .handle = "elsewhere.test", .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.pending, again.handle);
+    try testing.expectEqual(@as(u64, t0 + 2), (try f.actor(alice)).identity_due);
+
+    const second = try f.apply(t0 + 3, .{ .enrichment = .{ .did = bob, .source = .bsky, .handle = "stale.test", .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.queued, second.handle);
+    const third = try f.apply(t0 + 3, .{ .enrichment = .{ .did = carol, .source = .bsky, .handle = "stale.test", .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.deferred, third.handle);
+    try testing.expectEqual(@as(u64, 0), (try f.actor(carol)).identity_due);
+    try testing.expectEqualStrings("carol.test", (try f.actor(carol)).handle);
+
+    _ = try f.apply(t0 + 5, .{ .identity_complete = .{ .did = alice, .generation = 1, .observed_at = t0 + 5, .outcome = .{ .resolved = .{ .handle = "alice.test" } } } });
+    const settled = try f.apply(t0 + 6, .{ .enrichment = .{ .did = alice, .source = .bsky, .handle = "handle.invalid", .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.settled, settled.handle);
+    try testing.expectEqual(@as(u64, 0), (try f.actor(alice)).identity_due);
+    const later = try f.apply(t0 + 1005, .{ .enrichment = .{ .did = alice, .source = .bsky, .handle = "handle.invalid", .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.queued, later.handle);
+    actor = try f.actor(alice);
+    try testing.expectEqualStrings("alice.test", actor.handle);
+    try testing.expectEqual(@as(u64, t0 + 1005), actor.identity_due);
+
+    const full = try f.apply(t0 + 1005, .{ .enrichment = .{ .did = carol, .source = .bsky, .handle = "stale.test", .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.deferred, full.handle);
+    _ = try f.apply(t0 + 1005, .{ .identity_lease = .{ .limit = 1 } });
+    const room = try f.apply(t0 + 1005, .{ .enrichment = .{ .did = carol, .source = .bsky, .handle = "stale.test", .handle_check = check } });
+    try testing.expectEqual(change.HandleVerdict.queued, room.handle);
+    try testing.expectEqualStrings("carol.test", (try f.actor(carol)).handle);
+
+    _ = try f.apply(t0 + 1006, .{ .observe = .{ .did = "did:plc:dave" } });
+    _ = try f.apply(t0 + 1006, .{ .refresh_enqueue = .{ .did = "did:plc:dave", .due = t0 + 1006 } });
+    const empty = try f.apply(t0 + 1006, .{ .enrichment = .{ .did = "did:plc:dave", .source = .bsky, .handle = "claimed.test", .handle_check = .{} } });
+    try testing.expectEqual(change.HandleVerdict.queued, empty.handle);
+    try testing.expectEqualStrings("", (try f.actor("did:plc:dave")).handle);
+    try expectDids(&.{}, try f.handleDids("claimed.test"));
+}
+
 test "blocking a domain hides new writes at once and stored actors by sweep" {
     var f = try Fixture.init(.{});
     defer f.deinit();

@@ -187,6 +187,13 @@ const Rig = struct {
         return (try store.timed(self.f.arena.allocator(), .refresh, null, std.math.maxInt(u64), 100_000)).len;
     }
 
+    /// How many live actors the handle range lists under `handle`.
+    fn holders(self: *Rig, handle: []const u8) !usize {
+        const store = try self.f.owner.acquire();
+        defer self.f.owner.release();
+        return (try store.byHandle(self.f.arena.allocator(), handle)).len;
+    }
+
     fn load(self: *const Rig, counter: *const std.atomic.Value(u64)) u64 {
         _ = self;
         return counter.load(.monotonic);
@@ -211,7 +218,7 @@ test "due entries are fetched twenty-five at a time and settled" {
     try testing.expectEqual(@as(usize, 0), try rig.queued());
 
     const actor = try rig.f.live(rig.did(7));
-    try testing.expectEqualStrings("fresh.test", actor.handle);
+    try testing.expectEqualStrings("user7.test", actor.handle);
     try testing.expectEqualStrings("Fresh", actor.display_name);
     try testing.expectEqual(@as(u64, 1234), actor.followers_count);
     try testing.expectEqual(store_mod.record.ProfileSource.bsky, actor.profile_source);
@@ -288,6 +295,8 @@ test "a DID the appview leaves out goes to Blacksky, then its PDS, in the cron's
     const first = try rig.f.live(taken_down);
     try testing.expectEqual(store_mod.record.ProfileSource.blacksky, first.profile_source);
     try testing.expectEqualStrings("user1.test", first.handle);
+    try testing.expect(try rig.f.queued(taken_down) != null);
+    try testing.expect(try rig.f.queued(on_pds) == null);
     try testing.expectEqualStrings("On Blacksky", first.display_name);
     try testing.expectEqual(@as(u64, 25800), first.followers_count);
     try testing.expect(first.quality_score > 400);
@@ -316,6 +325,117 @@ test "a DID the appview leaves out goes to Blacksky, then its PDS, in the cron's
     try testing.expectEqual(@as(u64, 2), rig.load(&rig.enricher.stats.from_pds));
     try testing.expectEqual(@as(u64, 5), rig.load(&rig.enricher.stats.not_found));
     try testing.expectEqual(@as(u64, 0), rig.f.owner.counters.actors_gone.load(.monotonic));
+}
+
+fn refreshNow(rig: *Rig, subject: []const u8) !void {
+    _ = try rig.f.commit(&.{.{ .refresh_enqueue = .{ .did = subject, .due = rig.f.now() } }}, null);
+}
+
+/// Settle `subject`'s identity queue entry as this role's resolver would
+/// after verifying `handle`.
+fn resolveTo(rig: *Rig, subject: []const u8, handle: []const u8) !void {
+    const state = (try rig.f.queued(subject)).?;
+    _ = try rig.f.commit(&.{.{ .identity_complete = .{ .did = subject, .generation = state.generation, .observed_at = rig.f.now(), .outcome = .{ .resolved = .{ .handle = handle } } } }}, null);
+}
+
+test "an appview that answers handle.invalid leaves a valid handle and queues its verification" {
+    const rig = try Rig.create(quiet);
+    defer rig.destroy();
+    const subject = try rig.seed(1);
+    try rig.known(subject, "\"handle\":\"handle.invalid\",\"displayName\":\"Still Here\",\"followersCount\":10");
+    try testing.expectEqual(@as(usize, 1), try rig.drain());
+
+    var actor = try rig.f.live(subject);
+    try testing.expectEqualStrings("user1.test", actor.handle);
+    try testing.expectEqualStrings("Still Here", actor.display_name);
+    try testing.expectEqual(@as(u64, 10), actor.followers_count);
+    try testing.expect(!actor.hidden);
+    try testing.expectEqual(@as(usize, 1), try rig.holders("user1.test"));
+    try testing.expectEqual(@as(usize, 0), try rig.holders("handle.invalid"));
+    try testing.expectEqual(store_mod.record.IdentityReason.identity, (try rig.f.queued(subject)).?.reason);
+
+    try resolveTo(rig, subject, "user1.test");
+    try testing.expectEqual(@as(usize, 1), try rig.drain());
+    actor = try rig.f.live(subject);
+    try testing.expectEqualStrings("user1.test", actor.handle);
+    try testing.expectEqual(@as(u64, 0), actor.identity_due);
+
+    _ = World.sleepMs(rig.world, 86_400_000);
+    try refreshNow(rig, subject);
+    try testing.expectEqual(@as(usize, 1), try rig.drain());
+    try testing.expectEqualStrings("user1.test", (try rig.f.live(subject)).handle);
+    try testing.expect(try rig.f.queued(subject) != null);
+}
+
+test "an appview that still serves an old handle does not overwrite the resolved one" {
+    const rig = try Rig.create(quiet);
+    defer rig.destroy();
+    const subject = rig.did(1);
+    try rig.known(subject, "\"handle\":\"old.scenius.test\",\"followersCount\":10");
+    _ = try rig.f.commit(&.{
+        .{ .observe = .{ .did = subject } },
+        .{ .identity_resolved = .{ .did = subject, .observed_at = rig.f.now() - 90_000, .handle = "new.techne.test", .pds = "https://pds.test" } },
+    }, null);
+    try testing.expectEqual(@as(usize, 1), try rig.drain());
+
+    const actor = try rig.f.live(subject);
+    try testing.expectEqualStrings("new.techne.test", actor.handle);
+    try testing.expectEqual(@as(u64, 10), actor.followers_count);
+    try testing.expect(try rig.f.queued(subject) != null);
+
+    try resolveTo(rig, subject, "new.techne.test");
+    try testing.expectEqual(@as(usize, 1), try rig.drain());
+    try testing.expectEqualStrings("new.techne.test", (try rig.f.live(subject)).handle);
+    try testing.expect(try rig.f.queued(subject) == null);
+}
+
+test "an appview's handle for an actor without one is verified, not written" {
+    const rig = try Rig.create(quiet);
+    defer rig.destroy();
+    const subject = rig.did(1);
+    try rig.known(subject, "\"handle\":\"claimed.test\",\"followersCount\":10");
+    _ = try rig.f.commit(&.{.{ .observe = .{ .did = subject } }}, null);
+    try refreshNow(rig, subject);
+    try testing.expectEqual(@as(usize, 1), try rig.drain());
+
+    const actor = try rig.f.live(subject);
+    try testing.expectEqualStrings("", actor.handle);
+    try testing.expectEqual(@as(u64, 10), actor.followers_count);
+    try testing.expect(try rig.f.queued(subject) != null);
+    try testing.expectEqual(@as(usize, 0), try rig.holders("claimed.test"));
+}
+
+test "handle disagreements queue no more identity work than the backlog limit, and leave queued work alone" {
+    const rig = try Rig.create(.{ .requests_per_second = 2, .walk_per_hour = 0, .sweep_per_hour = 0, .handle_check = .{ .backlog_limit = 3 } });
+    defer rig.destroy();
+    const waiting = try rig.seed(0);
+    _ = try rig.f.commit(&.{
+        .{ .identity_enqueue = .{ .did = waiting, .reason = .plc } },
+        .{ .identity_lease = .{ .limit = 1 } },
+    }, null);
+    try rig.known(waiting, "\"handle\":\"handle.invalid\"");
+    for (1..11) |n| try rig.known(try rig.seed(n), "\"handle\":\"handle.invalid\"");
+    try testing.expectEqual(@as(usize, 1), try rig.drain());
+
+    var queued: usize = 0;
+    for (1..11) |n| {
+        try testing.expectEqualStrings(try std.fmt.allocPrint(rig.f.arena.allocator(), "user{d}.test", .{n}), (try rig.f.live(rig.did(n))).handle);
+        queued += @intFromBool(try rig.f.queued(rig.did(n)) != null);
+    }
+    try testing.expectEqual(@as(usize, 3), queued);
+    const held = (try rig.f.queued(waiting)).?;
+    try testing.expectEqual(store_mod.record.IdentityReason.plc, held.reason);
+    try testing.expectEqual(@as(u64, 1), held.generation);
+    try testing.expectEqual(@as(u64, 1), held.attempts);
+
+    for (1..11) |n| {
+        if (try rig.f.queued(rig.did(n)) != null) try resolveTo(rig, rig.did(n), try std.fmt.allocPrint(rig.f.arena.allocator(), "user{d}.test", .{n}));
+        try refreshNow(rig, rig.did(n));
+    }
+    try testing.expectEqual(@as(usize, 1), try rig.drain());
+    queued = 0;
+    for (1..11) |n| queued += @intFromBool(try rig.f.queued(rig.did(n)) != null);
+    try testing.expectEqual(@as(usize, 3), queued);
 }
 
 test "a request that teaches nothing reschedules its entries and backs the loop off" {

@@ -45,6 +45,12 @@ pub const Divergence = struct {
     /// stay; in SQL the cron writes an empty list and recomputes `hidden`
     /// from it, which unhides a taken-down account.
     pds_record_keeps_labels: bool,
+    /// A profile fetch never writes a handle. One from Bluesky or Blacksky
+    /// that differs from the stored handle queues the account for identity
+    /// resolution instead, unless it is queued already, was resolved within
+    /// a day, or a hundred queue entries are due. In SQL the cron copies
+    /// Bluesky's handle over the stored one, `handle.invalid` included.
+    enrichment_verifies_handle: bool,
 
     pub const store: Divergence = .{
         .gone_keeps_record = true,
@@ -55,6 +61,7 @@ pub const Divergence = struct {
         .slur_rule_left_to_index = true,
         .enrichment_reconciles_labels = true,
         .pds_record_keeps_labels = true,
+        .enrichment_verifies_handle = true,
     };
 
     pub const production: Divergence = .{
@@ -66,6 +73,7 @@ pub const Divergence = struct {
         .slur_rule_left_to_index = false,
         .enrichment_reconciles_labels = false,
         .pds_record_keeps_labels = false,
+        .enrichment_verifies_handle = false,
     };
 };
 
@@ -92,6 +100,8 @@ const hiding = [_][]const u8{ "!hide", "!takedown", "!suspend", "spam" };
 const lease_seconds = 300;
 const max_attempts = 12;
 const tombstone_seconds = 7 * 86_400;
+const handle_settle_seconds = 86_400;
+const handle_backlog_limit = 100;
 
 pub const Label = struct {
     uri: []const u8,
@@ -482,7 +492,9 @@ pub const Model = struct {
     }
 
     fn enriched(self: *Model, did: []const u8, row: *Row, f: Fetched, source: Source) void {
-        if (source == .bsky) row.handle = self.keep(row.handle, f.handle);
+        if (self.flags.enrichment_verifies_handle) {
+            self.verifyHandle(did, row, f.handle);
+        } else if (source == .bsky) row.handle = self.keep(row.handle, f.handle);
         row.display_name = self.keep(row.display_name, f.display_name);
         row.avatar = self.keep(row.avatar, f.avatar);
         row.description = self.keep(row.description, f.description);
@@ -511,6 +523,17 @@ pub const Model = struct {
         }
         row.labels = moderated.items;
         row.hidden = self.resolveHidden(row);
+    }
+
+    /// The store role's answer to a handle a profile source reports.
+    fn verifyHandle(self: *Model, did: []const u8, row: *const Row, reported: []const u8) void {
+        if (reported.len == 0 or reported.len > 253 or std.ascii.eqlIgnoreCase(reported, row.handle)) return;
+        if (self.queue.contains(did)) return;
+        if (row.identity_resolved_at + handle_settle_seconds > self.now) return;
+        var due: usize = 0;
+        for (self.queue.values()) |queued| due += @intFromBool(queued.due_at <= self.now);
+        if (due >= handle_backlog_limit) return;
+        self.queue.put(self.arena, self.own(did), .{ .due_at = self.now, .reason = "identity" }) catch @panic("out of memory");
     }
 
     fn laterOrSame(self: *Model, a: []const u8, b: []const u8) bool {
