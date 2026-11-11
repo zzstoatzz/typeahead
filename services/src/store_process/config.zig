@@ -22,6 +22,8 @@
 //! | `ENRICH_LEASE_SECONDS`   | no       | how long a leased refresh stays out of the queue, default 300  |
 //! | `ENRICH_BACKOFF_SECONDS` | no       | first pause after a failed appview request, doubling, default 30 |
 //! | `ENRICH_BACKOFF_MAX_SECONDS` | no   | longest such pause, default 900                                |
+//! | `ENRICH_HANDLE_SETTLE_SECONDS` | no | a reported handle that differs from the stored one is ignored for this long after the actor's identity was resolved, default 86400 |
+//! | `ENRICH_HANDLE_BACKLOG`  | no       | such a handle queues no identity work while this many identity entries are due, default 100; `0` queues none |
 //! | `ENRICH_APPVIEW_URL`     | no       | the appview asked for profiles, default `https://public.api.bsky.app` |
 //! | `ENRICH_BLACKSKY_URL`    | no       | the appview asked about accounts Bluesky took down, default `https://api.blacksky.community` |
 //! | `CORPUS_SCAN_SECONDS`    | no       | seconds between corpus counts, default 3600; `0` turns them off |
@@ -51,6 +53,13 @@
 //! - That leaves 10,909 actors an hour, 261,818 a day, for refreshes that
 //!   profile and identity writes queue. New accounts arrive at about 2,900
 //!   an hour.
+//! - A profile whose handle differs from the stored one queues one identity
+//!   resolution, at most once per actor per `ENRICH_HANDLE_SETTLE_SECONDS`
+//!   and never while `ENRICH_HANDLE_BACKLOG` entries are due. So however
+//!   many of the 40,909 profiles an hour disagree, enrichment stops adding
+//!   to the identity queue once 100 entries are due; the rest are counted
+//!   as deferred and looked at again on their walk's next pass. An entry it
+//!   did add comes due again on each retry the resolver asks for.
 //!
 //! The role reads nothing for Turso or the Worker and opens no connection
 //! to either. `MODE=store-bootstrap` loads a new store; see `bootstrap.zig`.
@@ -146,6 +155,10 @@ fn enrichment(getenv: Getenv) Error!enrich.Options {
         .lease_seconds = try whole(getenv, "ENRICH_LEASE_SECONDS", defaults.lease_seconds),
         .backoff_seconds = try whole(getenv, "ENRICH_BACKOFF_SECONDS", defaults.backoff_seconds),
         .backoff_max_seconds = try whole(getenv, "ENRICH_BACKOFF_MAX_SECONDS", defaults.backoff_max_seconds),
+        .handle_check = .{
+            .settle_seconds = try whole(getenv, "ENRICH_HANDLE_SETTLE_SECONDS", defaults.handle_check.settle_seconds),
+            .backlog_limit = try whole(getenv, "ENRICH_HANDLE_BACKLOG", defaults.handle_check.backlog_limit),
+        },
     };
     if (options.requests_per_second <= 0 or options.requests_per_second > 10 or options.jitter > 1) return error.InvalidEnrichment;
     if (options.lease_seconds < 30 or options.backoff_seconds == 0 or options.backoff_max_seconds < options.backoff_seconds) return error.InvalidEnrichment;
@@ -234,6 +247,8 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqual(@as(u64, 300), defaults.lease_seconds);
     try testing.expectEqual(@as(u64, 30), defaults.backoff_seconds);
     try testing.expectEqual(@as(u64, 900), defaults.backoff_max_seconds);
+    try testing.expectEqual(@as(u64, 86_400), defaults.handle_check.settle_seconds);
+    try testing.expectEqual(@as(usize, 100), defaults.handle_check.backlog_limit);
     try testing.expectEqualStrings("https://public.api.bsky.app", defaults.appview_url);
     try testing.expectEqualStrings("https://api.blacksky.community", defaults.blacksky_url);
     try testing.expectEqual(@as(u64, 3600), (try load(fakeEnv(&.{base}))).corpus_scan_seconds);
@@ -244,7 +259,8 @@ test "enrichment is on with its defaults unless the role is offline or told othe
         base,                                                   .{ "ENRICH_REQUESTS_PER_SECOND", "0.25" }, .{ "ENRICH_JITTER", "0.5" },
         .{ "ENRICH_WALK_PER_HOUR", "800" },                     .{ "ENRICH_SWEEP_PER_HOUR", "0" },         .{ "ENRICH_LEASE_SECONDS", "600" },
         .{ "ENRICH_BACKOFF_SECONDS", "10" },                    .{ "ENRICH_BACKOFF_MAX_SECONDS", "60" },   .{ "ENRICH_APPVIEW_URL", "http://127.0.0.1:2584/" },
-        .{ "ENRICH_BLACKSKY_URL", "https://blacksky.example" }, .{ "CORPUS_SCAN_SECONDS", "0" },
+        .{ "ENRICH_BLACKSKY_URL", "https://blacksky.example" }, .{ "CORPUS_SCAN_SECONDS", "0" },           .{ "ENRICH_HANDLE_SETTLE_SECONDS", "3600" },
+        .{ "ENRICH_HANDLE_BACKLOG", "25" },
     }));
     const options = set.enrich.?;
     try testing.expectEqual(@as(f64, 0.25), options.requests_per_second);
@@ -254,6 +270,8 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqual(@as(u64, 600), options.lease_seconds);
     try testing.expectEqual(@as(u64, 10), options.backoff_seconds);
     try testing.expectEqual(@as(u64, 60), options.backoff_max_seconds);
+    try testing.expectEqual(@as(u64, 3600), options.handle_check.settle_seconds);
+    try testing.expectEqual(@as(usize, 25), options.handle_check.backlog_limit);
     try testing.expectEqualStrings("http://127.0.0.1:2584", options.appview_url);
     try testing.expectEqualStrings("https://blacksky.example", options.blacksky_url);
     try testing.expectEqual(@as(u64, 0), set.corpus_scan_seconds);
@@ -265,7 +283,7 @@ test "enrichment settings that could not pace a loop are refused" {
         .{ "ENRICH_REQUESTS_PER_SECOND", "0" },              .{ "ENRICH_REQUESTS_PER_SECOND", "-1" }, .{ "ENRICH_REQUESTS_PER_SECOND", "fast" },
         .{ "ENRICH_REQUESTS_PER_SECOND", "50" },             .{ "ENRICH_JITTER", "2" },               .{ "ENRICH_WALK_PER_HOUR", "-5" },
         .{ "ENRICH_LEASE_SECONDS", "5" },                    .{ "ENRICH_BACKOFF_SECONDS", "0" },      .{ "ENRICH_BACKOFF_MAX_SECONDS", "10" },
-        .{ "ENRICH_APPVIEW_URL", "http://appview.example" },
+        .{ "ENRICH_APPVIEW_URL", "http://appview.example" }, .{ "ENRICH_HANDLE_BACKLOG", "many" },    .{ "ENRICH_HANDLE_SETTLE_SECONDS", "-1" },
     }) |pair| {
         const env = struct {
             var name: []const u8 = "";
