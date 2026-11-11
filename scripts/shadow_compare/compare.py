@@ -50,6 +50,7 @@ def parser():
     g.add_argument("--shadow-store-secret-env", help="name of the variable holding the store's read bearer")
     g.add_argument("--page-size", type=int, default=corpus.PAGE_LIMIT)
     g.add_argument("--corpus-delay", type=float, default=0.25, help="seconds between requests to one admin listener or store")
+    g.add_argument("--corpus-rest", type=float, default=0.0, help="also wait this many times as long as the last admin or store request took")
     g.add_argument("--corpus-max-requests", type=int, default=2000, help="per backend")
     g.add_argument("--corpus-max-mib", type=int, default=256, help="per backend, request plus response bodies")
     g.add_argument("--max-pages", type=int, help="stop after this many windows in this run")
@@ -98,9 +99,9 @@ def execute(args, environ=None, sleep=time.sleep):
     known = tuple(value for value in (*secrets.values(), store_secret) if value)
     budgets, clients = {}, []
 
-    def client(name, base, max_requests, max_bytes, delay, secret=None, secret_prefix="/admin/"):
+    def client(name, base, max_requests, max_bytes, delay, secret=None, secret_prefix="/admin/", rest=0.0):
         budgets[name] = Budget(max_requests, max_bytes)
-        made = Client(name, base, budgets[name], secret=secret, delay=delay, timeout=args.timeout, sleep=sleep, extra_secrets=known,
+        made = Client(name, base, budgets[name], secret=secret, delay=delay, rest=rest, timeout=args.timeout, sleep=sleep, extra_secrets=known,
                       secret_prefix=secret_prefix)
         clients.append(made)
         return made
@@ -109,7 +110,7 @@ def execute(args, environ=None, sleep=time.sleep):
         if not getattr(args, side + "_admin") or not secrets[side]:
             raise TransportError(f"{side}: this run needs --{side}-admin and --{side}-admin-secret-env")
         limits = (args.corpus_max_requests, args.corpus_max_mib * MIB, args.corpus_delay)
-        return client(side + " admin", getattr(args, side + "_admin"), *limits, secrets[side])
+        return client(side + " admin", getattr(args, side + "_admin"), *limits, secrets[side], rest=args.corpus_rest)
 
     public = None
     if set(phases) & {"search", "latency", "freshness"}:
@@ -130,7 +131,7 @@ def execute(args, environ=None, sleep=time.sleep):
             if not store_secret:
                 raise TransportError("shadow: --shadow-store needs --shadow-store-secret-env")
             limits = (args.corpus_max_requests, args.corpus_max_mib * MIB, args.corpus_delay)
-            shadow = store.StoreHttp(client("shadow store", args.shadow_store, *limits, store_secret, store.SECRET_PREFIX))
+            shadow = store.StoreHttp(client("shadow store", args.shadow_store, *limits, store_secret, store.SECRET_PREFIX, rest=args.corpus_rest))
         else:
             shadow = sources.TantivyAdmin(admins["shadow"] if admins else admin("shadow"), not args.no_fields)
         corpus_sources = {"production": production, "shadow": shadow}

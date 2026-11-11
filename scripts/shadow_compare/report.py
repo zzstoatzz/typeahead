@@ -223,8 +223,8 @@ def markdown(report):
         if report.get(name) is not None:
             lines += ["", *SECTIONS[name](report[name])]
     lines += ["", "## Load placed on each target", ""]
-    rows = [[name, usage["requests"], usage["bytes"], usage["max_requests"], usage["max_bytes"]] for name, usage in report["budgets"].items()]
-    lines += table(["target", "requests", "bytes", "request budget", "byte budget"], rows)
+    rows = [[name, usage["requests"], usage["bytes"], usage["seconds_in_requests"], usage["max_requests"], usage["max_bytes"]] for name, usage in report["budgets"].items()]
+    lines += table(["target", "requests", "bytes", "seconds answering", "request budget", "byte budget"], rows)
     return "\n".join(lines) + "\n"
 
 

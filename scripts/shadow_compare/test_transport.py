@@ -113,6 +113,25 @@ class PacingTests(unittest.TestCase):
         backend.get_json("/d")
         self.assertEqual(slept, [0.5, 0.3])
 
+    def test_a_slow_answer_is_followed_by_a_rest_in_proportion(self):
+        now = [0.0]
+        slept = []
+        took = iter([0.01, 0.4, 0.4, 0.01])
+
+        def sleep(seconds):
+            slept.append(round(seconds, 3))
+            now[0] += seconds
+
+        def answer(request):
+            now[0] += next(took)
+            return httpx.Response(200, json={})
+
+        backend = client(answer, delay=0.05, rest=1.5, sleep=sleep, clock=lambda: now[0])
+        for path in ("/a", "/b", "/c", "/d"):
+            backend.get_json(path)
+        self.assertEqual(slept, [0.05, 0.6, 0.6])
+        self.assertEqual(backend.budget.snapshot()["seconds_in_requests"], 0.8)
+
 
 if __name__ == "__main__":
     unittest.main()

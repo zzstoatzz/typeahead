@@ -54,6 +54,7 @@ class Budget:
     max_bytes: int
     requests: int = 0
     bytes: int = 0
+    seconds: float = 0.0
 
     def charge_request(self):
         if self.requests >= self.max_requests:
@@ -71,6 +72,7 @@ class Budget:
             "bytes": self.bytes,
             "max_requests": self.max_requests,
             "max_bytes": self.max_bytes,
+            "seconds_in_requests": round(self.seconds, 1),
         }
 
 
@@ -92,6 +94,7 @@ class Client:
     budget: Budget
     secret: str | None = None
     delay: float = 0.0
+    rest: float = 0.0
     timeout: float = 15.0
     retries: int = 2
     http: httpx.Client | None = None
@@ -100,6 +103,7 @@ class Client:
     extra_secrets: tuple = ()
     secret_prefix: str = "/admin/"
     last_finished: float | None = field(default=None, init=False)
+    last_took: float = field(default=0.0, init=False)
 
     def __post_init__(self):
         self.base = self.base.rstrip("/")
@@ -122,11 +126,18 @@ class Client:
         self.http.close()
 
     def pace(self):
-        if self.last_finished is None or self.delay <= 0:
+        """Wait out the delay, or `rest` times as long as the last request took when that is longer."""
+        pause = max(self.delay, self.rest * self.last_took)
+        if self.last_finished is None or pause <= 0:
             return
-        wait = self.delay - (self.clock() - self.last_finished)
+        wait = pause - (self.clock() - self.last_finished)
         if wait > 0:
             self.sleep(wait)
+
+    def finished(self, began):
+        self.last_finished = self.clock()
+        self.last_took = self.last_finished - began
+        self.budget.seconds += self.last_took
 
     def send(self, method, path, *, params=None, body=None, headers=None):
         headers = dict(headers or {})
@@ -142,15 +153,15 @@ class Client:
             self.pace()
             self.budget.charge_request()
             self.budget.charge_bytes(len(content or b""))
-            started = time.perf_counter()
+            started, began = time.perf_counter(), self.clock()
             try:
                 response = self.http.request(method, url, params=params, content=content, headers=headers)
             except httpx.HTTPError as error:
-                self.last_finished = self.clock()
+                self.finished(began)
                 failure = f"{type(error).__name__}: {error}"
                 continue
             elapsed = (time.perf_counter() - started) * 1000
-            self.last_finished = self.clock()
+            self.finished(began)
             self.budget.charge_bytes(len(response.content))
             if response.status_code in RETRY_STATUSES and attempt < self.retries:
                 failure = f"status {response.status_code}"
