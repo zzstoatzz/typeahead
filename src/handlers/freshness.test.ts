@@ -150,6 +150,26 @@ describe("freshness", () => {
       expect(f.reasons.join(" ")).toContain("checkpoint coverage 25h old");
       expect(f.refresh_overdue).toBe(false);
 
+      // a store-fed slot keeps the build id and checkpoint cut of its one
+      // bootstrap; the same status under the Turso policy is still stale
+      const bootstrapped = checkpoint(now - 10 * 86400, now - 9 * 86400);
+      bootstrapped.build_id = `b${now - 10 * 86400}-cp-bootstrap`;
+      index = { ...bootstrapped, source_cursor: { source_policy: "turso-authoritative-observations-v2" } };
+      f = await measureFreshness(target);
+      expect(f.stale).toBe(true);
+      expect(f.reasons.join(" ")).toContain("snapshot 240h old");
+      expect(f.reasons.join(" ")).toContain("checkpoint coverage 216h old");
+      index = { ...bootstrapped, source_cursor: { source_policy: "store-change-log-v1" } };
+      f = await measureFreshness(target);
+      expect(f.stale).toBe(false);
+      expect(f.refresh_overdue).toBe(false);
+      expect(f.build_id).toBe(bootstrapped.build_id ?? null);
+      expect(f.snapshot_age_s).toBeNull();
+      expect(f.coverage_age_s).toBeNull();
+      expect(f.coverage_deadline).toBeNull();
+      expect(f.replica_lag_s).toBe(30);
+      expect(f.reasons).toEqual([]);
+
       index = { build_id: `b${now - 3600}-21fc`, source_manifest: { source_kind: "flatpx05" } };
       f = await measureFreshness(target);
       expect(f.stale).toBe(false);

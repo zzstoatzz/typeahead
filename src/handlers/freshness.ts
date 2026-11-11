@@ -30,6 +30,10 @@ const COVERAGE_WINDOW_S = 24 * 3600;
 // replacement is promoted, so 15 h means a scheduled refresh was missed while
 // there is still time to run another before the slot goes stale.
 const COVERAGE_OVERDUE_S = 15 * 3600;
+// A store-fed slot is bootstrapped from one bundle and then follows its own
+// store's change log. Its build id and checkpoint cut never change, so they
+// date the bootstrap, not the data: only lag and the probe measure it.
+const STORE_SOURCE_POLICY = "store-change-log-v1";
 
 /** what the search service answers on /health, /index/status and /search */
 type HealthBody = { ready?: boolean; sync_lag_s?: number };
@@ -40,6 +44,7 @@ export type IndexStatusBody = {
     source_bootstrap?: { checkpoint_receipt?: { source_clock_before?: number } };
   };
   reconciliation?: { last_completed_at?: number | null };
+  source_cursor?: { source_policy?: string };
 };
 type SearchBody = { actors?: { handle?: string }[]; results?: { handle?: string }[] };
 
@@ -128,13 +133,14 @@ export async function measureFreshness(env: Env): Promise<Freshness> {
   }
 
   out.build_id = index?.build_id ?? null;
-  out.snapshot_age_s = snapshotAge(out.build_id);
+  const storeFed = index?.source_cursor?.source_policy === STORE_SOURCE_POLICY;
+  out.snapshot_age_s = storeFed ? null : snapshotAge(out.build_id);
   if (out.snapshot_age_s !== null && out.snapshot_age_s > SNAPSHOT_STALE_S) {
     out.stale = true;
     out.reasons.push(`snapshot ${Math.round(out.snapshot_age_s / 3600)}h old`);
   }
 
-  const anchor = checkpointCoverageAnchor(index);
+  const anchor = storeFed ? null : checkpointCoverageAnchor(index);
   if (anchor !== null) {
     out.coverage_deadline = anchor + COVERAGE_WINDOW_S;
     out.coverage_age_s = Math.floor(Date.now() / 1000) - anchor;
