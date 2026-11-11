@@ -12,6 +12,7 @@ from unittest import mock
 import bundle
 import corpus
 import sources
+import views
 from fakes import FakeBackend, admin_document, stored_actor
 
 LABEL = {"src": "did:plc:mod", "uri": "did:plc:x", "val": "spam", "cts": "2026-01-01T00:00:00Z"}
@@ -80,8 +81,8 @@ class SortTests(Scratch):
             source = self.source(rows, run_records=size)
             self.assertEqual((source.facts["lines"], source.facts["actors"], source.facts["duplicates"]), (6, 3, 3))
             found = dict(source.read("", 10))
-            self.assertEqual(found[did(1)].fields["handle"], "second.test")
-            self.assertEqual(found[did(3)].state, "deleted")
+            self.assertEqual(found[did(1)].doc().fields["handle"], "second.test")
+            self.assertEqual((found[did(3)].doc().state, found[did(3)].key), ("deleted", views.TOMBSTONE_KEY))
             self.assertEqual(source.marker()["duplicate_dids"], 3)
 
     def test_deleted_documents_are_kept_as_tombstones(self):
@@ -90,7 +91,7 @@ class SortTests(Scratch):
         self.assertEqual((source.facts["live"], source.facts["deleted"]), (6, 2))
         found = dict(source.read("", 10))
         self.assertFalse(found[did(50)].live)
-        self.assertEqual(found[did(50)].state, "deleted")
+        self.assertEqual(found[did(50)].doc().state, "deleted")
         self.assertEqual(source.marker()["tombstone_count"], 2)
 
     def test_gzip_input_and_blank_lines_are_read(self):
@@ -103,8 +104,9 @@ class SortTests(Scratch):
     def test_view_carries_the_document_hash_labels_and_versions(self):
         row = stored_actor(did(1), "a.test", labels=[LABEL], version=42, score=0.1)
         source = self.source([row])
-        [(seen, doc)] = source.read("", 5)
-        self.assertEqual(seen, did(1))
+        [(seen, found)] = source.read("", 5)
+        doc = found.doc()
+        self.assertEqual((seen, found.key, found.live), (did(1), views.key_of(doc.fields), True))
         self.assertEqual(doc.sha, bundle.hashlib.sha256(dump([row]).rstrip()).hexdigest())
         self.assertEqual([json.loads(text) for text in doc.fields["labels"]], [LABEL])
         self.assertEqual((source.facts["min_version"], source.facts["max_version"]), (42, 42))
@@ -161,6 +163,14 @@ class SourceTests(Scratch):
         out, _ = self.sort(actors(5))
         with out.open("ab") as stream:
             stream.write(b"x")
+        with self.assertRaises(bundle.BundleError):
+            bundle.BundleJsonl(out)
+
+
+    def test_a_view_file_from_before_comparison_keys_is_refused(self):
+        out, _ = self.sort(actors(5))
+        sidecar = bundle.meta_path(out)
+        sidecar.write_text(json.dumps({**json.loads(sidecar.read_text()), "version": 1}))
         with self.assertRaises(bundle.BundleError):
             bundle.BundleJsonl(out)
 
@@ -240,7 +250,10 @@ class PackTests(Scratch):
         self.assertEqual(hashlib.sha256(sidecar).hexdigest(), manifest["sidecar"]["sha256"])
         bundle.meta_path(target).write_bytes(sidecar)
         fetched = bundle.BundleJsonl(target, watermark=manifest["source_watermark"], build_id=manifest["build_id"])
-        self.assertEqual(fetched.read("", 500), bundle.BundleJsonl(out).read("", 500))
+        def rows(source):
+            return [(found, row.key, row.doc()) for found, row in source.read("", 500)]
+
+        self.assertEqual(rows(fetched), rows(bundle.BundleJsonl(out)))
 
     def test_a_stream_that_is_not_the_described_object_leaves_no_file(self):
         out, manifest, _ = self.packed()
@@ -260,7 +273,7 @@ class PackTests(Scratch):
         raw = (self.root / "packed" / bundle.MANIFEST_NAME).read_bytes()
         with self.assertRaises(bundle.BundleError):
             bundle.read_manifest(raw + b" ", sha256)
-        for change in ({"version": 2}, {"run_id": "../x"}, {"source_watermark": "now"}, {"views": dict(manifest["views"], name="other.gz")}, {"sidecar": None}, {"actors": -1}):
+        for change in ({"version": 1}, {"run_id": "../x"}, {"source_watermark": "now"}, {"views": dict(manifest["views"], name="other.gz")}, {"sidecar": None}, {"actors": -1}):
             with self.assertRaises(bundle.BundleError):
                 bundle.check_manifest({**manifest, **change})
 

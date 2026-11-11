@@ -67,6 +67,7 @@ class ViewTests(unittest.TestCase):
             "pds": "https://PDS.Test/", "pds_host": "pds.test", "quality_score": 0.1,
         }, sha=doc.sha, changed_at=500)
         self.assertEqual({k: v for k, v in doc.fields.items() if k != "store_status"}, expected.fields)
+        self.assertEqual(views.key_of(doc.fields), views.key_of(expected.fields))
         self.assertEqual((doc.state, doc.fields["changed_at"], doc.fields["store_status"]), ("live", 500, "live"))
 
     def test_records_the_index_would_not_serve_are_tombstones(self):
@@ -77,6 +78,47 @@ class ViewTests(unittest.TestCase):
 
     def test_an_empty_associated_is_an_empty_object(self):
         self.assertEqual(store.view(record(associated="")).fields["associated"], "{}")
+
+
+    def test_refresh_and_identity_times_and_an_override_are_kept_when_the_store_sends_them(self):
+        fields = store.view(record(profile_checked_at=700, identity_resolved_at=600, override="hide")).fields
+        self.assertEqual((fields["refreshed_at"], fields["identity_at"], fields["override"]), (700, 600, "hide"))
+        bare = store.view(record(override="none")).fields
+        self.assertFalse({"refreshed_at", "identity_at", "override"} & set(bare))
+
+
+class RowTests(unittest.TestCase):
+    """A row's key is the key of the view it would build, so the view is built only for rows that differ."""
+
+    LABELS = [
+        {"source": "did:plc:mod", "uri": "did:plc:x", "value": "spam", "created": "2026-01-01T00:00:00Z", "cid": "bafy", "expires": "2027-01-01T00:00:00Z", "negated": False},
+        {"source": "did:plc:mod", "uri": "did:plc:x", "value": "gone", "created": "c", "negated": True},
+        {"source": "did:plc:x", "uri": "at://x", "value": "self", "created": "c", "cid": "", "expires": "someday"},
+    ]
+    CHANGES = (
+        {}, {"labels": LABELS}, {"labels": LABELS[::-1]}, {"hidden": True}, {"associated": ""}, {"associated": '{"chat":{"allowIncoming":"all"},"labeler":false}'},
+        {"associated": {"labeler": True}}, {"quality_score": 168.02}, {"quality_score": 3}, {"pds": ""}, {"pds": "not a host"}, {"avatar": ""},
+        {"display_name": 'Ada "L" 名前\n'}, {"status": "deactivated"}, {"status": "deleted", "handle": ""}, {"handle": ""}, {"created_at": ""},
+        {"profile_checked_at": 700, "override": "show", "description": "ignored", "followers_count": 9},
+    )
+
+    def test_the_key_is_the_key_of_the_view(self):
+        for changes in self.CHANGES:
+            item = record(**changes)
+            row = store.row(item)
+            self.assertEqual(row.key, views.key_of(store.view(item).fields), changes)
+            self.assertEqual((row.live, row.changed_at), (store.view(item).live, 500), changes)
+            self.assertEqual(row.doc(), store.view(item), changes)
+
+    def test_a_dumped_actor_and_the_store_record_for_it_share_a_key(self):
+        for n, labels in enumerate(([], [LABEL])):
+            actor = stored_actor(did(n), f"h{n}.test", labels=labels, score=n / 7)
+            self.assertEqual(store.row(store_record(actor, 50)).key, views.key_of(views.from_actor(actor, sha="s").fields))
+
+    def test_a_row_carries_the_refresh_time_when_the_store_sends_one(self):
+        self.assertEqual(store.row(record(profile_checked_at=700)).refreshed_at, 700)
+        self.assertIsNone(store.row(record()).refreshed_at)
+        self.assertIsNone(store.row(record(profile_checked_at="soon")).refreshed_at)
 
 
 class ClientTests(unittest.TestCase):
@@ -100,7 +142,7 @@ class ClientTests(unittest.TestCase):
                 break
             after = page[-1][0]
         self.assertEqual([d for d, _ in seen], sorted(r["did"] for r in self.records))
-        self.assertEqual(seen[-1][1].state, "deleted")
+        self.assertEqual((seen[-1][1].doc().state, seen[-1][1].live, seen[0][1].live), ("deleted", False, True))
         self.assertEqual([body for path, body in self.fake.calls if path == store.PAGE_PATH][1], {"after_did": did(9), "limit": 10})
         with self.assertRaises(TransportError):
             source.read("", 501)

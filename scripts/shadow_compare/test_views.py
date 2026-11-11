@@ -133,5 +133,34 @@ class QualityTests(unittest.TestCase):
         self.assertEqual(corpus.classify(view(), view(quality_score=0.2)), ([corpus.QUALITY_SCORE_DIFFERS], []))
 
 
+class KeyTests(unittest.TestCase):
+    CHANGES = (
+        {}, {"handle": "b.test"}, {"hidden": True}, {"pds": "https://pds.test/"}, {"pds_host": "other.test"}, {"quality_score": 0.2},
+        {"display_name": "Other"}, {"avatar_url": "bafkother"}, {"associated": {"labeler": True}}, {"created_at": "x"},
+        {"labels": []}, {"labels": [dict(LABEL_A, cts="x")]}, {"labels": [LABEL_A, LABEL_B]}, {"version": 9}, {"deleted": True},
+        {"associated": {"chat": {"allowIncoming": "all"}, "labeler": False}}, {"quality_score": 0.10000000149011612},
+        {"labels": [dict(LABEL_A, ver=1)]}, {"deleted": True, "handle": ""},
+    )
+
+    def test_equal_keys_are_exactly_the_pairs_with_no_difference(self):
+        for left in self.CHANGES:
+            for right in self.CHANGES:
+                a, b = view(**left), view(**right)
+                same = views.key_of(a.fields) == views.key_of(b.fields)
+                self.assertEqual(same, corpus.difference("did:plc:a", a, b) is None, (left, right))
+
+    def test_a_key_cannot_be_forged_by_moving_text_between_fields(self):
+        self.assertNotEqual(views.key_of(view(display_name='a","b', avatar_url="").fields), views.key_of(view(display_name="a", avatar_url='b","').fields))
+
+    def test_a_row_builds_its_view_once_and_only_when_asked(self):
+        built = []
+        row = views.Row("k", True, lambda payload: built.append(payload) or view(), "payload", 5, 6)
+        self.assertEqual((row.key, row.live, row.changed_at, row.refreshed_at, built), ("k", True, 5, 6, []))
+        self.assertIs(row.doc(), row.doc())
+        self.assertEqual(built, ["payload"])
+        ready = views.Row.of(views.Doc("s", {"deleted": False, "changed_at": 3}))
+        self.assertEqual((ready.key, ready.live, ready.changed_at, ready.refreshed_at), (None, True, 3, None))
+
+
 if __name__ == "__main__":
     unittest.main()

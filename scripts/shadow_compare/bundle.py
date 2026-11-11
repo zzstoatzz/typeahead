@@ -11,6 +11,10 @@ views to a temporary directory, and merges them into one file with a sparse
 index beside it. Memory holds one run; disk holds the runs and the merged file
 at once, each about the size of the views.
 
+A line of the view file is the DID as JSON, the view's comparison key and the
+view as `[sha, fields]`, tab-separated. A walk reads the key and leaves the
+view unparsed unless the other side's key differs.
+
 `pack` turns a sorted view file into three objects another machine can fetch:
 the views gzipped, the sidecar, and a manifest naming the bundle, its
 watermark, the counts and each object's size and SHA-256. `unpack` is the
@@ -38,14 +42,14 @@ sys.path.insert(0, str(HERE))
 
 import views
 from transport import TransportError
-from views import ABSENT, Doc
+from views import ABSENT, TOMBSTONE_KEY, Doc, Row
 
 RUN_RECORDS = 250_000
 FAN_IN = 64
 INDEX_STRIDE = 4096
-META_VERSION = 1
+META_VERSION = 2
 BUFFER = 1 << 20
-MANIFEST_VERSION = 1
+MANIFEST_VERSION = 2
 SCRATCH_PREFIX = "scratch/shadow-compare"
 MANIFEST_NAME = "manifest.json"
 VIEWS_NAME = "views.jsonl.gz"
@@ -87,7 +91,7 @@ def record(number, raw):
     if not isinstance(version, int) or isinstance(version, bool) or version < 0:
         raise BundleError(f"line {number} has no version")
     doc = views.from_actor(actor, sha=hashlib.sha256(raw).hexdigest())
-    body = json.dumps([doc.sha, doc.fields], ensure_ascii=False, separators=(",", ":"))
+    body = views.key_of(doc.fields) + "\t" + json.dumps([doc.sha, doc.fields], ensure_ascii=False, separators=(",", ":"))
     return actor["did"], version, number, body
 
 
@@ -159,8 +163,7 @@ def sort(stream, out_path, tmp_dir, *, run_records=RUN_RECORDS, fan_in=FAN_IN):
 
     def emit(out, did, version, body):
         nonlocal actors, offset
-        sha, fields = json.loads(body)
-        counts["deleted" if fields["deleted"] else "live"] += 1
+        counts["deleted" if body.startswith(TOMBSTONE_KEY + "\t") else "live"] += 1
         versions[0] = version if versions[0] is None else min(versions[0], version)
         versions[1] = version if versions[1] is None else max(versions[1], version)
         if actors % INDEX_STRIDE == 0:
@@ -324,10 +327,21 @@ def unpack(stream, manifest, out_path):
         partial.unlink(missing_ok=True)
 
 
+def view_of(body):
+    sha, fields = json.loads(body.decode("utf-8", "surrogatepass"))
+    return Doc(sha, fields)
+
+
+def split(line):
+    """A line's DID, comparison key and unparsed view."""
+    did, key, body = line.rstrip(b"\n").split(b"\t", 2)
+    did = json.loads(did) if b"\\" in did else did[1:-1].decode("utf-8", "surrogatepass")
+    return did, key.decode(), body
+
+
 def parse(line):
-    did, body = line.rstrip(b"\n").decode("utf-8", "surrogatepass").split("\t", 1)
-    sha, fields = json.loads(body)
-    return json.loads(did), Doc(sha, fields)
+    did, _, body = split(line)
+    return did, view_of(body)
 
 
 class BundleJsonl:
@@ -377,7 +391,7 @@ class BundleJsonl:
         while True:
             offset = stream.tell()
             line = stream.readline()
-            if not line or parse(line)[0] > after:
+            if not line or split(line)[0] > after:
                 stream.seek(offset)
                 return
 
@@ -389,7 +403,8 @@ class BundleJsonl:
                 line = stream.readline()
                 if not line:
                     break
-                found.append(parse(line))
+                did, key, body = split(line)
+                found.append((did, Row(key, key != TOMBSTONE_KEY, view_of, body)))
             if found:
                 self.last = (found[-1][0], stream.tell())
         return found
@@ -407,10 +422,10 @@ class BundleJsonl:
                     line = stream.readline()
                     if not line:
                         break
-                    seen, doc = parse(line)
+                    seen, _, body = split(line)
                     if seen >= did:
                         if seen == did:
-                            found[did] = doc
+                            found[did] = view_of(body)
                         break
         return found
 

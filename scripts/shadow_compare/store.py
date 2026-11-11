@@ -22,7 +22,11 @@ A record names its fields as `services/src/store/record.zig` does:
      "labels": [{"source": "", "uri": "", "value": "", "created": "",
                  "cid": "", "expires": "", "negated": false}]}
 
-`did`, `status`, `handle`, `quality_score` and `updated_at` are required.
+`did`, `status`, `handle`, `quality_score` and `updated_at` are required. The
+store also sends `profile_checked_at` (unix seconds of the last profile
+refresh, or of the bootstrap load for a record not refreshed since),
+`identity_resolved_at` and `override` (`none`, `show` or `hide`); the view
+keeps them as `refreshed_at`, `identity_at` and `override`.
 
 The view of a record is the document the index bridge sends for it, so a
 store and an index fed from it compare equal: a record that is not live or
@@ -30,13 +34,14 @@ has no handle is a tombstone, negated labels are withdrawn, and a label
 expiry the index cannot evaluate is dropped.
 """
 
+import functools
 import hashlib
 import json
 import time
 
 import views
 from transport import TransportError
-from views import ABSENT
+from views import ABSENT, TOMBSTONE_KEY, Row
 
 PAGE_PATH = "/store/actors/page"
 BATCH_PATH = "/store/actors/batch"
@@ -47,6 +52,7 @@ STATUSES = ("live", "deactivated", "deleted")
 MONTH_DAYS = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 
 
+@functools.lru_cache(maxsize=65536)
 def pds_host(pds):
     """The canonical PDS host, as `source_host` over services/src/index/pds.zig."""
     if not pds or len(pds.encode()) > 263:
@@ -118,18 +124,49 @@ def index_labels(labels):
     return sent
 
 
+NUMBERS = (int, float)
+
+
 def checked(record, name):
     """A record from a reply, or a TransportError naming what is wrong with it."""
-    if not isinstance(record, dict) or not isinstance(record.get("did"), str):
-        raise TransportError(f"{name} returned a record without a did")
-    if record.get("status") not in STATUSES or not isinstance(record.get("handle"), str):
-        raise TransportError(f"{name} returned a record without a status or handle")
-    for field in ("quality_score", "updated_at"):
-        if isinstance(record.get(field), bool) or not isinstance(record.get(field), (int, float)):
-            raise TransportError(f"{name} returned a record without {field}")
-    if not isinstance(record.get("labels", []), list) or any(not isinstance(label, dict) for label in record.get("labels", [])):
+    try:
+        sound = (
+            type(record["did"]) is str and type(record["handle"]) is str and record["status"] in STATUSES
+            and type(record["quality_score"]) in NUMBERS and type(record["updated_at"]) in NUMBERS
+        )
+        labels = record.get("labels")
+    except (KeyError, TypeError, AttributeError):
+        sound, labels = False, None
+    if not sound:
+        raise TransportError(f"{name} returned a record without a did, status, handle, quality_score or updated_at")
+    if labels is not None and not (type(labels) is list and all(type(label) is dict for label in labels)):
         raise TransportError(f"{name} returned a record with invalid labels")
     return record
+
+
+def moment(record, name):
+    value = record.get(name)
+    return int(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+@functools.lru_cache(maxsize=65536)
+def associated_text(associated):
+    return views.text(json.loads(associated) if associated else {})
+
+
+def row(record):
+    """The record as a walk row: its key is the key of the view `view` would build."""
+    live = record["status"] == "live" and bool(record["handle"])
+    key = TOMBSTONE_KEY
+    if live:
+        pds, labels, associated = record.get("pds", ""), record.get("labels"), record.get("associated") or ""
+        key = views.comparison_key(
+            True, record["handle"], bool(record.get("hidden", False)), pds, pds_host(pds), views.f32(record["quality_score"]),
+            record.get("display_name", ""), record.get("avatar", ""),
+            associated_text(associated) if isinstance(associated, str) else views.text(associated), record.get("created_at", ""),
+            sorted(views.text(label) for label in index_labels(labels)) if labels else [],
+        )
+    return Row(key, live, view, record, int(record["updated_at"]), moment(record, "profile_checked_at"))
 
 
 def view(record):
@@ -157,6 +194,11 @@ def view(record):
             changed_at=int(record["updated_at"]),
         )
     doc.fields["store_status"] = record["status"]
+    for name, source in (("refreshed_at", "profile_checked_at"), ("identity_at", "identity_resolved_at")):
+        if moment(record, source) is not None:
+            doc.fields[name] = moment(record, source)
+    if record.get("override") in ("show", "hide"):
+        doc.fields["override"] = record["override"]
     return doc
 
 
@@ -186,7 +228,7 @@ class StoreHttp:
             raise TransportError(f"page size must be 1..{PAGE_LIMIT}")
         reply = self.client.post_json(PAGE_PATH, {"after_did": after, "limit": limit})
         try:
-            return [(record["did"], view(record)) for record in (checked(r, self.name) for r in self.records(reply, PAGE_PATH))]
+            return [(record["did"], row(record)) for record in (checked(r, self.name) for r in self.records(reply, PAGE_PATH))]
         except ValueError:
             raise TransportError(f"{self.name} returned a record whose associated is not JSON") from None
 

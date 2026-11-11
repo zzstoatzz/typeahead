@@ -7,7 +7,7 @@ A source has:
 - `fixed`, true when the content cannot change during the run, so differing DIDs
   are not read from it again;
 - `marker()`, the source's build, watermark and the time it was observed;
-- `read(after, limit)`, at most `limit` `(did, Doc)` pairs with DIDs strictly
+- `read(after, limit)`, at most `limit` `(did, Row)` pairs with DIDs strictly
   ascending and greater than `after`; fewer than `limit` means the source is exhausted;
 - `lookup(dids)`, a `Doc` for every requested DID, `ABSENT` where it has none.
 """
@@ -15,7 +15,7 @@ A source has:
 import time
 
 from transport import TransportError
-from views import Doc
+from views import Doc, Row
 
 PAGE_LIMIT = 500
 STATE_LIMIT = 500
@@ -83,7 +83,7 @@ class TantivyAdmin:
             raise TransportError(f"page size must be 1..{PAGE_LIMIT}")
         dids = fetch_page(self.client, after, limit)
         states = fetch_states(self.client, dids, self.want_fields)
-        return [(did, states[did]) for did in dids]
+        return [(did, Row.of(states[did])) for did in dids]
 
     def lookup(self, dids):
         return fetch_states(self.client, dids, self.want_fields)

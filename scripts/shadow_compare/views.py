@@ -6,7 +6,12 @@ itemises what that hash covers: `labels` (one canonical JSON text per label,
 sorted), `display_name`, `avatar_url`, `associated` (canonical JSON text) and
 `created_at`, so a difference can be named instead of reported as a hash. A
 source that knows when the actor's content last changed adds `changed_at` in
-unix seconds.
+unix seconds, and one that knows when its profile was last refreshed adds
+`refreshed_at`.
+
+A walk reads `Row`s, not views. A row carries a comparison key when its
+source can compute one cheaply: two rows with the same key have no
+difference, so the view is built only for the rows whose keys differ.
 """
 
 import hashlib
@@ -37,6 +42,52 @@ class Doc:
 
 
 ABSENT = Doc(None)
+TOMBSTONE_KEY = "-"
+
+
+class Row:
+    """One side's actor in a walk: `key` when the source has one, and `doc()` to build the view."""
+
+    __slots__ = ("key", "live", "changed_at", "refreshed_at", "build", "payload", "built")
+
+    def __init__(self, key, live, build, payload, changed_at=None, refreshed_at=None):
+        self.key = key
+        self.live = live
+        self.build = build
+        self.payload = payload
+        self.changed_at = changed_at
+        self.refreshed_at = refreshed_at
+        self.built = None
+
+    @classmethod
+    def of(cls, doc):
+        fields = doc.fields or {}
+        row = cls(None, doc.live, None, None, fields.get("changed_at"), fields.get("refreshed_at"))
+        row.built = doc
+        return row
+
+    def doc(self):
+        if self.built is None:
+            self.built = self.build(self.payload)
+        return self.built
+
+
+ENCODE_KEY = json.JSONEncoder(separators=(",", ":")).encode
+
+
+def comparison_key(live, handle, hidden, pds, pds_host, quality_score, display_name, avatar_url, associated, created_at, labels):
+    """Equal keys mean two itemised views differ in nothing `corpus.classify` compares; every tombstone has one key."""
+    if not live:
+        return TOMBSTONE_KEY
+    parts = [handle, hidden, pds, pds_host, quality_score, display_name, avatar_url, associated, created_at, labels]
+    return hashlib.blake2b(ENCODE_KEY(parts).encode(), digest_size=12).hexdigest()
+
+
+def key_of(fields):
+    return comparison_key(
+        not fields["deleted"], fields["handle"], fields["hidden"], fields["pds"], fields["pds_host"], fields["quality_score"],
+        fields["display_name"], fields["avatar_url"], fields["associated"], fields["created_at"], fields["labels"],
+    )
 
 
 def f32(value):
@@ -125,8 +176,9 @@ def from_actor(actor, *, sha, changed_at=None):
 
 
 def label_value(text):
+    """The labeler and the value: what a label says, apart from when and under which record version it was said."""
     label = json.loads(text)
-    return str(label.get("val", "")) if isinstance(label, dict) else ""
+    return [str(label.get("src", "")), str(label.get("val", ""))] if isinstance(label, dict) else ["", ""]
 
 
 def label_difference(production, shadow):

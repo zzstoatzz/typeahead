@@ -322,7 +322,7 @@ class Backends(unittest.TestCase):
         self.assertGreater(self.dump_facts["runs"], 1)
         client = Client("production admin", self.servers["production"]["admin"], Budget(10, 10**7), secret=self.secrets["production"])
         self.addCleanup(client.close)
-        dumped = dict(bundle.BundleJsonl(self.sorted).read("", 500))
+        dumped = {did: row.doc() for did, row in bundle.BundleJsonl(self.sorted).read("", 500)}
         served = sources.fetch_states(client, sorted(dumped))
         self.assertEqual(sorted(dumped), sorted(row["did"] for row in self.rows))
         for did, doc in dumped.items():

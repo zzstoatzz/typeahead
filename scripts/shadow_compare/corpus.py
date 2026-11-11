@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sources import PAGE_LIMIT, TantivyAdmin
 from transport import BudgetExceeded, TransportError
-from views import ABSENT, Doc, f32, label_difference, profile_differences
+from views import ABSENT, Doc, Row, f32, label_difference, profile_differences
 
 CHECKPOINT_VERSION = 3
 UNCHANGED_IN_SHADOW = "unchanged_in_shadow"
@@ -38,6 +38,7 @@ CLASSES = (
     OTHER_FIELD_DIFFERS,
     DOCUMENT_HASH_DIFFERS,
 )
+MISSING = Row.of(ABSENT)
 def classify(production, shadow):
     if not production.live and not shadow.live:
         return [], []
@@ -187,7 +188,7 @@ class Side:
 
 
 def window(production, shadow):
-    """The DIDs both sides have fully reported, each side's view of them, and whether both are exhausted."""
+    """The DIDs both sides have fully reported, each side's rows for them, and whether both are exhausted."""
     bounds = [side.buffer[-1][0] for side in (production, shadow) if not side.done]
     bound = min(bounds) if bounds else None
     a, b = production.take(bound), shadow.take(bound)
@@ -217,15 +218,17 @@ def walk(production, shadow, checkpoint, *, page_size, max_pages, max_tracked, c
         except BudgetExceeded:
             checkpoint.save()
             return "budget"
-        dids, production_docs, shadow_docs, bound, exhausted = window(*sides)
+        dids, production_rows, shadow_rows, bound, exhausted = window(*sides)
         for did in dids:
-            a, b = production_docs.get(did, ABSENT), shadow_docs.get(did, ABSENT)
+            a, b = production_rows.get(did, MISSING), shadow_rows.get(did, MISSING)
             checkpoint.live["production"] += a.live
             checkpoint.live["shadow"] += b.live
-            checkpoint.shadow["records"] += b.sha is not None
-            checkpoint.shadow["with_change_time"] += (b.fields or {}).get("changed_at") is not None
-            checkpoint.shadow["changed_since_cutoff"] += cutoff is not None and changed_since(b, cutoff)
-            entry = difference(did, a, b)
+            checkpoint.shadow["records"] += b is not MISSING
+            checkpoint.shadow["with_change_time"] += b.changed_at is not None
+            checkpoint.shadow["changed_since_cutoff"] += cutoff is not None and b.changed_at is not None and b.changed_at > cutoff
+            if a.key is not None and a.key == b.key or not (a.live or b.live):
+                continue
+            entry = difference(did, a.doc(), b.doc())
             if entry is None:
                 continue
             if len(checkpoint.differences) < max_tracked:
