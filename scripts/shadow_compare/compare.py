@@ -6,7 +6,9 @@
 """Compare a shadow search backend with production and decide four gates."""
 
 import argparse
+import hashlib
 import json
+import shutil
 import sys
 import time
 from datetime import datetime, timezone
@@ -20,6 +22,8 @@ import bundle
 import corpus
 import freshness
 import gates
+import identity
+import moderation
 import report as reporting
 import search
 import sources
@@ -56,11 +60,15 @@ def parser():
     g.add_argument("--max-pages", type=int, help="stop after this many windows in this run")
     g.add_argument("--checkpoint", help="file that makes the walk resumable")
     g.add_argument("--checkpoint-interval", type=float, default=0.0, help="seconds between checkpoint writes during the walk; 0 writes after every window")
+    g.add_argument("--shadow-bootstrap-at", type=int, help="unix seconds the shadow's store was loaded, when that is after the bundle's watermark")
+    g.add_argument("--moderation-policy", help="the moderation policy snapshot both servers load: blocked domains and overrides")
+    g.add_argument("--moderation-rules", default=str(moderation.RULES_FILE), help="the moderation rules artifact the server embeds")
     g.add_argument("--settle-delay", type=float, default=gates.SETTLE_DELAY_S)
     g.add_argument("--no-fields", action="store_true", help="do not ask source-state for comparison fields")
-    g.add_argument("--arbiter", action="store_true", help="check sampled differences against plc.directory, did:web hosts and the Bluesky appview")
+    g.add_argument("--arbiter", action="store_true", help="check sampled differences against plc.directory, DNS, handle and PDS hosts and the Bluesky appview")
     g.add_argument("--arbiter-delay", type=float, default=1.0)
     g.add_argument("--plc-url", default="https://plc.directory")
+    g.add_argument("--doh-url", default="https://cloudflare-dns.com", help="origin of a DNS-over-HTTPS resolver that answers application/dns-json")
     g.add_argument("--appview-url", default="https://public.api.bsky.app")
 
     g = p.add_argument_group("search and latency")
@@ -83,11 +91,32 @@ def parser():
     return p
 
 
+DIFFERING_DIDS_NAME = "differing-dids.txt"
+
+
 def lines(path):
     return [line.strip() for line in Path(path).read_text().splitlines() if line.strip()]
 
 
-def execute(args, environ=None, sleep=time.sleep):
+def policy_from(args):
+    rules = moderation.Rules.load(args.moderation_rules)
+    if not args.moderation_policy:
+        return moderation.Policy(rules)
+    try:
+        raw = Path(args.moderation_policy).read_bytes()
+        return moderation.Policy.from_snapshot(rules, json.loads(raw), "snapshot sha256 " + hashlib.sha256(raw).hexdigest())
+    except (OSError, ValueError) as error:
+        raise TransportError(f"cannot read the moderation policy at {args.moderation_policy}: {error}") from None
+
+
+def flagged_from(path):
+    """The DIDs an earlier corpus report flagged, with the full list beside it when the report kept only a part."""
+    found = set(json.loads(Path(path).read_text())["corpus"]["flagged_dids"])
+    beside = Path(path).with_name(DIFFERING_DIDS_NAME)
+    return found | set(lines(beside)) if beside.exists() else found
+
+
+def execute(args, environ=None, sleep=time.sleep, addresses=identity.system_addresses):
     phases = [name.strip() for name in args.phases.split(",") if name.strip()]
     unknown = sorted(set(phases) - set(PHASES))
     if unknown:
@@ -135,6 +164,7 @@ def execute(args, environ=None, sleep=time.sleep):
         else:
             shadow = sources.TantivyAdmin(admins["shadow"] if admins else admin("shadow"), not args.no_fields)
         corpus_sources = {"production": production, "shadow": shadow}
+        policy = policy_from(args)
     now = datetime.now(timezone.utc)
     report = {
         "schema_version": 1,
@@ -152,30 +182,35 @@ def execute(args, environ=None, sleep=time.sleep):
     try:
         flagged = set()
         if args.flagged_from:
-            flagged |= set(json.loads(Path(args.flagged_from).read_text())["corpus"]["flagged_dids"])
+            flagged |= flagged_from(args.flagged_from)
         if "corpus" in phases:
             result = corpus.run_sources(
                 corpus_sources["production"],
                 corpus_sources["shadow"],
+                policy=policy,
                 checkpoint_path=args.checkpoint,
                 page_size=args.page_size,
                 max_pages=args.max_pages,
-                max_tracked=gates.MAX_TRACKED_DIFFERENCES,
+                max_tracked=gates.MAX_TRACKED_IDENTITY_DIFFERENCES,
                 settle_delay=args.settle_delay,
-                sample_size=gates.ARBITER_SAMPLE_SIZE,
-                watermark_skew=gates.WATERMARK_SKEW_S,
+                sample_size=gates.REFRESH_SAMPLE_SIZE,
+                identity_sample_size=gates.IDENTITY_SAMPLE_SIZE,
+                bootstrap_at=args.shadow_bootstrap_at,
                 checkpoint_interval=args.checkpoint_interval,
                 sleep=sleep,
             )
             if args.arbiter and result["differing_dids"]:
-                limits = (1000, 32 * MIB, args.arbiter_delay)
-                authority = arbiter.Authority(
-                    client("plc directory", args.plc_url, *limits),
-                    client("appview", args.appview_url, *limits),
-                    web=lambda origin: client("did:web " + origin, origin, 50, MIB, args.arbiter_delay),
-                )
+                limits = (4000, 64 * MIB, args.arbiter_delay)
+                budgets["identity hosts"] = Budget(8000, 64 * MIB)
+                origins = identity.Origins(budgets["identity hosts"], delay=args.arbiter_delay, timeout=min(args.timeout, 10.0), sleep=sleep, addresses=addresses)
+                clients.append(origins)
+                resolver = identity.Resolver(client("plc directory", args.plc_url, *limits), client("dns over https", args.doh_url, *limits), origins)
+                authority = arbiter.Authority(resolver, client("appview", args.appview_url, *limits), policy, int(time.time() * 1000))
                 arbiter.label_samples(result, authority)
-            flagged |= set(result["flagged_dids"])
+            if result["flagged_dids_complete"]:
+                flagged |= set(result["flagged_dids"])
+            else:
+                flagged |= set(lines(result["differing_dids_log"])) if result["differing_dids_log"] else set(result["flagged_dids"])
             report["corpus"] = result
         cases = []
         if "search" in phases or "latency" in phases:
@@ -233,7 +268,12 @@ def main(argv=None):
         print("error: " + str(error), file=sys.stderr)
         return 2
     directory = args.out_dir or str(HERE.parents[1] / "docs/evals" / ("shadow-compare-" + report["date"].replace("-", "")))
+    log = (report.get("corpus") or {}).pop("differing_dids_log", None)
+    if log and Path(log).exists():
+        report["corpus"]["differing_dids_file"] = DIFFERING_DIDS_NAME
     reporting.write(report, directory)
+    if log and Path(log).exists():
+        shutil.copyfile(log, Path(directory) / DIFFERING_DIDS_NAME)
     verdict = report["verdict"]
     for name in gates.GATES:
         entry = verdict["gates"][name]

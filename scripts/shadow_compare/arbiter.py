@@ -1,190 +1,202 @@
-"""Label sampled corpus differences against each DID's own authority."""
+"""Label kept corpus differences against the authority for the field that differs.
 
-import re
-import urllib.parse
+Identity is read from where it is defined (`identity.py`): the DID document
+for the PDS, the document plus resolution back for the handle, the PDS's
+`getRepoStatus` for whether the account exists. What a search would return is
+the moderation rule applied to that handle and the appview's current labels.
+
+Refresh-derived fields come from the appview, because the appview is what
+both sides' profile refreshes read: one `getProfiles` per 25 DIDs, mapped to
+the values a refresh would store now (`refresh.py`). A side is right when it
+holds that value. A refresh never replaces a stored value with an empty one,
+so an empty answer faults neither side.
+"""
 
 import corpus
+import refresh
+import views
+from identity import INVALID_HANDLE
+from moderation import ModerationError
 from transport import TransportError
 
 SHADOW_RIGHT = "shadow is right"
 PRODUCTION_RIGHT = "production is right"
 BOTH_STALE = "both stale"
 UNDETERMINED = "undetermined"
+LABELS = (SHADOW_RIGHT, PRODUCTION_RIGHT, BOTH_STALE, UNDETERMINED)
 PROFILE_BATCH = 25
-HANDLE_SYNTAX = re.compile(r"^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]([a-z0-9-]{0,61}[a-z0-9])?$")
+SCORE_TOLERANCE = 1.0
+NEEDS_PROFILE = (*corpus.REFRESH_CLASSES, corpus.VISIBILITY_DIFFERS)
+PROFILE_FIELDS = {
+    corpus.DISPLAY_NAME_DIFFERS: ("display_name", "display name"),
+    corpus.ASSOCIATED_DIFFERS: ("associated", "associated"),
+    corpus.CREATED_AT_DIFFERS: ("created_at", "creation time"),
+}
 
 
-def host_of(endpoint):
-    if not isinstance(endpoint, str):
-        return None
-    host = urllib.parse.urlsplit(endpoint if "://" in endpoint else "https://" + endpoint).hostname
-    return host.rstrip(".").lower() if host else None
+def verdict(shadow, production, truth):
+    """Which side matches, given whether each does."""
+    if shadow and not production:
+        return SHADOW_RIGHT, truth
+    if production and not shadow:
+        return PRODUCTION_RIGHT, truth
+    return BOTH_STALE, truth + ("; both sides are within tolerance of it" if shadow else "; neither side holds it")
 
 
-def claimed_handle(document):
-    for entry in document.get("alsoKnownAs") or []:
-        if isinstance(entry, str) and entry.startswith("at://"):
-            handle = entry[5:].lower()
-            if HANDLE_SYNTAX.match(handle):
-                return handle
-    return None
+def side(entry, name, field):
+    return (entry[name]["fields"] or {}).get(field)
 
 
-def claimed_pds(document):
-    for service in document.get("service") or []:
-        if not isinstance(service, dict):
-            continue
-        if str(service.get("id", "")).endswith("#atproto_pds") and service.get("type") == "AtprotoPersonalDataServer":
-            return host_of(service.get("serviceEndpoint"))
-    return None
-
-
-def did_document_location(did):
-    if did.startswith("did:plc:"):
-        return "plc", "/" + did
-    if did.startswith("did:web:"):
-        name = did[len("did:web:") :]
-        if ":" in name or not name:
-            return None, None
-        return "web", "https://" + urllib.parse.unquote(name) + "/.well-known/did.json"
-    return None, None
+def label_values(labels):
+    return sorted([str(label.get("src", "")), str(label.get("val", ""))] for label in labels if isinstance(label, dict) and not label.get("neg"))
 
 
 class Authority:
-    """`plc` and `appview` are transport clients; `web` builds one for a did:web origin."""
+    """`resolver` is an `identity.Resolver`, `appview` a transport client, `policy` the moderation policy the walk used."""
 
-    def __init__(self, plc, appview, web=None):
-        self.plc = plc
+    def __init__(self, resolver, appview, policy, now_ms):
+        self.resolver = resolver
         self.appview = appview
-        self.web = web
+        self.policy = policy
+        self.now_ms = now_ms
+        self.profiles = {}
+        self.failures = []
 
-    def did_document(self, did):
-        kind, location = did_document_location(did)
-        if kind == "plc":
-            reply = self.plc.get(location)
-        elif kind == "web" and self.web is not None:
-            parts = urllib.parse.urlsplit(location)
-            reply = self.web(parts.scheme + "://" + parts.netloc).get(parts.path)
-        else:
-            return {"resolved": False, "reason": "unsupported DID method"}
-        if reply.status in (404, 410):
-            return {"resolved": True, "exists": False}
-        if reply.status != 200:
-            return {"resolved": False, "reason": f"authority returned {reply.status}"}
-        try:
-            document = reply.json()
-        except ValueError:
-            return {"resolved": False, "reason": "authority returned a body that is not JSON"}
-        if not isinstance(document, dict) or document.get("id") != did:
-            return {"resolved": False, "reason": "DID document does not name this DID"}
-        return {"resolved": True, "exists": True, "handle": claimed_handle(document), "pds_host": claimed_pds(document)}
-
-    def profiles(self, dids):
-        found = {}
-        for start in range(0, len(dids), PROFILE_BATCH):
-            chunk = dids[start : start + PROFILE_BATCH]
-            reply = self.appview.get("/xrpc/app.bsky.actor.getProfiles", [("actors", did) for did in chunk])
-            if reply.status != 200:
-                raise TransportError(f"getProfiles returned {reply.status}")
-            for profile in reply.json().get("profiles", []):
-                found[profile.get("did")] = profile
-        return found
-
-    def facts(self, dids):
-        try:
-            profiles = self.profiles(dids)
-            profile_error = None
-        except (TransportError, ValueError) as error:
-            profiles, profile_error = {}, str(error)
-        facts = {}
-        for did in dids:
+    def load(self, dids):
+        """Read the appview's profiles for these DIDs, 25 to a request; a DID it does not return is recorded as not served."""
+        wanted = [did for did in dict.fromkeys(dids) if did not in self.profiles]
+        for start in range(0, len(wanted), PROFILE_BATCH):
+            chunk = wanted[start : start + PROFILE_BATCH]
             try:
-                document = self.did_document(did)
-            except TransportError as error:
-                document = {"resolved": False, "reason": str(error)}
-            fact = {"document": document, "profile_error": profile_error, "active": None, "handle": None, "pds_host": None}
-            if profile_error is None:
-                profile = profiles.get(did)
-                fact["active"] = profile is not None and bool(document.get("exists", True))
-                if document.get("resolved") and document.get("exists") and profile is not None:
-                    seen = str(profile.get("handle", "")).lower()
-                    if document.get("handle") and seen == document["handle"]:
-                        fact["handle"] = seen
-            if document.get("resolved") and document.get("exists"):
-                fact["pds_host"] = document.get("pds_host")
-            facts[did] = fact
-        return facts
+                reply = self.appview.get("/xrpc/app.bsky.actor.getProfiles", [("actors", did) for did in chunk])
+                if reply.status != 200:
+                    raise TransportError(f"getProfiles returned {reply.status}")
+                found = {profile.get("did"): profile for profile in reply.json().get("profiles", []) if isinstance(profile, dict)}
+            except (TransportError, ValueError, AttributeError) as error:
+                self.failures.append(str(error))
+                self.profiles.update({did: ("unread", str(error)) for did in chunk})
+                continue
+            self.profiles.update({did: ("served", found[did]) if did in found else ("absent", None) for did in chunk})
 
+    def profile(self, did):
+        """`("served", profile)`, `("absent", None)` or `("unread", why)`."""
+        if did not in self.profiles:
+            self.load([did])
+        return self.profiles[did]
 
-def side_value(entry, side, name):
-    fields = entry[side]["fields"] or {}
-    value = fields.get(name)
-    return value.lower() if isinstance(value, str) else value
+    def stored(self, did):
+        """What a refresh would store now, or the reason it cannot be said."""
+        state, detail = self.profile(did)
+        if state == "served":
+            return refresh.stored_fields(detail, self.now_ms), None
+        return None, "the appview does not serve the account" if state == "absent" else "the appview could not be read: " + detail
 
+    def presence(self, entry, name):
+        did = entry["did"]
+        repo = self.resolver.repo(did)
+        active, reason = repo["active"], repo["reason"]
+        if active is None:
+            state, _ = self.profile(did)
+            if state != "served":
+                return UNDETERMINED, reason + ("; the appview does not serve the account" if state == "absent" else "; the appview could not be read")
+            active, reason = True, reason + "; the appview serves the account"
+        holder, other = (PRODUCTION_RIGHT, SHADOW_RIGHT) if name == corpus.ONLY_IN_PRODUCTION else (SHADOW_RIGHT, PRODUCTION_RIGHT)
+        return (holder if active else other), reason
 
-def by_value(entry, name, truth):
-    if truth is None:
-        return UNDETERMINED, f"the authority gave no verified {name}"
-    shadow, production = side_value(entry, "shadow", name), side_value(entry, "production", name)
-    if shadow == truth:
-        return SHADOW_RIGHT, f"authority {name} is {truth}"
-    if production == truth:
-        return PRODUCTION_RIGHT, f"authority {name} is {truth}"
-    return BOTH_STALE, f"authority {name} is {truth}"
+    def handle(self, entry):
+        truth = self.resolver.handle(entry["did"])
+        if truth["value"] is None:
+            return UNDETERMINED, truth["reason"]
 
+        def holds(name):
+            held = (side(entry, name, "handle") or "").lower()
+            return held.endswith(".invalid") if truth["value"] == INVALID_HANDLE else held == truth["value"]
 
-def judge(entry, fact):
-    """One label per class the DID falls in."""
-    labels = {}
-    for name in entry["classes"]:
-        if name in (corpus.ONLY_IN_PRODUCTION, corpus.ONLY_IN_SHADOW):
-            if fact["active"] is None:
-                labels[name] = (UNDETERMINED, "the appview could not be read")
-            else:
-                holder = PRODUCTION_RIGHT if name == corpus.ONLY_IN_PRODUCTION else SHADOW_RIGHT
-                other = SHADOW_RIGHT if name == corpus.ONLY_IN_PRODUCTION else PRODUCTION_RIGHT
-                labels[name] = (
-                    (holder, "the account is active at its authority and in the appview")
-                    if fact["active"]
-                    else (other, "the account is gone from its authority or the appview")
-                )
-        elif name == corpus.HANDLE_DIFFERS:
-            labels[name] = by_value(entry, "handle", fact["handle"])
-        elif name == corpus.PDS_DIFFERS:
-            labels[name] = by_value(entry, "pds_host", fact["pds_host"])
-        elif name == corpus.VISIBILITY_DIFFERS:
-            labels[name] = (UNDETERMINED, "hiding is decided by the service's own moderation policy; no public authority states it")
-        elif name == corpus.LABELS_DIFFER:
-            labels[name] = (UNDETERMINED, "labels come from each labeler's stream; no single public authority states the set")
-        elif name == corpus.QUALITY_SCORE_DIFFERS:
-            labels[name] = (UNDETERMINED, "the quality score is the service's own computation; no public authority states it")
-        elif name == corpus.OTHER_FIELD_DIFFERS:
-            labels[name] = (UNDETERMINED, "profile content and the raw PDS value are not checked against an authority")
+        return verdict(holds("shadow"), holds("production"), truth["reason"])
+
+    def pds(self, entry):
+        document = self.resolver.document(entry["did"])
+        if document["state"] != "found" or not document["pds_host"]:
+            return UNDETERMINED, "no PDS in a DID document: " + document.get("reason", "the document names none")
+        truth = document["pds_host"]
+        return verdict(side(entry, "shadow", "pds_host") == truth, side(entry, "production", "pds_host") == truth, f"the DID document names {truth}")
+
+    def visibility(self, entry):
+        did, returned = entry["did"], entry.get("returned")
+        handle = self.resolver.handle(did)
+        if handle["value"] is None or returned is None:
+            return UNDETERMINED, handle["reason"]
+        state, profile = self.profile(did)
+        if state != "served":
+            return UNDETERMINED, "the account's labels cannot be read: the appview " + ("does not serve it" if state == "absent" else "could not be read")
+        override = {"show": False, "hide": True}.get(side(entry, "shadow", "override")) if self.policy.source == "none" else None
+        try:
+            truth = self.policy.returned(did, False, handle["value"], profile.get("labels") or [], self.now_ms, override)
+        except ModerationError as error:
+            return UNDETERMINED, str(error)
+        reason = f"with handle {handle['value']} and the appview's labels a search would {'return' if truth else 'not return'} the account"
+        return verdict(returned["shadow"] == truth, returned["production"] == truth, reason)
+
+    def score(self, entry, truth):
+        if not truth["has_counts"] or truth["quality_score"] == 0:
+            return UNDETERMINED, "the appview gave no counts to score, and a zero score never replaces a stored one"
+        gaps = {name: abs((side(entry, name, "quality_score") or 0) - truth["quality_score"]) for name in ("shadow", "production")}
+        reason = f"the appview's counts score {truth['quality_score']}; shadow is off by {gaps['shadow']:.2f}, production by {gaps['production']:.2f}"
+        return verdict(gaps["shadow"] <= SCORE_TOLERANCE, gaps["production"] <= SCORE_TOLERANCE, reason)
+
+    def refreshed(self, entry, name):
+        truth, why = self.stored(entry["did"])
+        if truth is None:
+            return UNDETERMINED, why
+        if name == corpus.QUALITY_SCORE_DIFFERS:
+            return self.score(entry, truth)
+        if name == corpus.LABELS_DIFFER:
+            want = label_values(truth["labels"])
+            held = {who: sorted(map(views.label_value, side(entry, who, "labels") or [])) for who in ("shadow", "production")}
+            return verdict(held["shadow"] == want, held["production"] == want, f"the appview's labels are {want}")
+        if name == corpus.AVATAR_DIFFERS:
+            want, what = truth["avatar_cid"], "avatar"
+            held = {who: views.avatar_cid(side(entry, who, "avatar_url") or "") for who in ("shadow", "production")}
+        elif name in PROFILE_FIELDS:
+            field, what = PROFILE_FIELDS[name]
+            want = truth[field]
+            held = {who: side(entry, who, field) for who in ("shadow", "production")}
         else:
-            labels[name] = (UNDETERMINED, "the server returned no fields to compare with the authority")
-    return {name: {"label": label, "reason": reason} for name, (label, reason) in labels.items()}
+            return UNDETERMINED, "the server returned a profile hash, not fields to compare with the appview"
+        if want in ("", "{}"):
+            return UNDETERMINED, f"the appview's {what} is empty, and an empty value never replaces a stored one"
+        return verdict(held["shadow"] == want, held["production"] == want, f"the appview's {what} is {want}")
 
-
-def class_groups(summary):
-    """Every per-class table in a corpus summary: the whole, and each timing partition when present."""
-    return [summary["classes"], *(part["classes"] for part in summary.get("timing", {}).values())]
+    def judge(self, entry, name):
+        """The label and its reason for one class a kept difference falls in."""
+        if name in (corpus.ONLY_IN_PRODUCTION, corpus.ONLY_IN_SHADOW):
+            return self.presence(entry, name)
+        if name == corpus.HANDLE_DIFFERS:
+            return self.handle(entry)
+        if name == corpus.PDS_DIFFERS:
+            return self.pds(entry)
+        if name == corpus.VISIBILITY_DIFFERS:
+            return self.visibility(entry)
+        if name in corpus.REFRESH_CLASSES:
+            return self.refreshed(entry, name)
+        return UNDETERMINED, "the server returned no fields to compare with an authority"
 
 
 def label_samples(summary, authority):
-    """Attach an `arbiter` verdict to every sampled difference in a corpus summary."""
-    sampled = {}
-    for classes in class_groups(summary):
-        for entry in classes.values():
-            for item in entry["sample"]:
-                sampled[item["did"]] = item
-    facts = authority.facts(sorted(sampled))
-    for classes in class_groups(summary):
-        for name, entry in classes.items():
-            tally = {}
-            for item in entry["sample"]:
-                verdict = judge(item, facts[item["did"]])[name]
-                item.setdefault("arbiter", {})[name] = verdict
-                tally[verdict["label"]] = tally.get(verdict["label"], 0) + 1
-            entry["arbiter_labels"] = tally
+    """Attach a verdict to every sampled difference, and tally them per class and per refresh stratum."""
+    classes = summary["classes"]
+    authority.load(item["did"] for name in NEEDS_PROFILE for item in classes[name]["sample"])
+    for name, entry in classes.items():
+        tallies = {stratum: {} for stratum in corpus.STRATA}
+        for item in entry["sample"]:
+            label, reason = authority.judge(item, name)
+            item.setdefault("arbiter", {})[name] = {"label": label, "reason": reason}
+            corpus.bump(tallies[corpus.REFRESHED if item["refreshed"] else corpus.LAGGING], label)
+        entry["arbiter_labels"] = {label: sum(tally.get(label, 0) for tally in tallies.values()) for label in LABELS if any(label in tally for tally in tallies.values())}
+        for stratum, detail in entry.get("strata", {}).items():
+            detail["arbiter_labels"] = tallies[stratum]
+            wrong = tallies[stratum].get(PRODUCTION_RIGHT, 0)
+            detail["estimated_production_right"] = round(detail["count"] * wrong / detail["sampled"]) if detail["sampled"] else 0
     summary["arbiter_ran"] = True
+    summary["arbiter_failures"] = authority.failures
     return summary

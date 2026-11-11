@@ -95,12 +95,20 @@ def shadow_rows(rows, differ):
 
 
 class AuthorityHandler(BaseHTTPRequestHandler):
+    """plc.directory, a DNS-over-HTTPS resolver and the appview on one loopback port; every handle resolves back by DNS."""
+
     documents = {
         MISSING: ("onlyprod.test", "pds-one.test"),
         RENAMED: ("newhandle.test", "pds-one.test"),
         HIDDEN: ("veiled.test", "pds-one.test"),
         MOVED: ("moved.test", "pds-one.test"),
         NEWBORN: ("newborn.test", "pds-one.test"),
+        LABELLED: ("labelled.example.test", "pds-one.test"),
+        URLFORM: ("urlform.example.test", "mixed-case.example"),
+    }
+    profiles = {
+        LABELLED: {"labels": LABELS[:1], "followersCount": 1, "followsCount": 0, "postsCount": 3},
+        URLFORM: {"displayName": "Avatar Reformed"},
     }
 
     def log_message(self, *args):
@@ -118,8 +126,12 @@ class AuthorityHandler(BaseHTTPRequestHandler):
         parts = urllib.parse.urlsplit(self.path)
         if parts.path == "/xrpc/app.bsky.actor.getProfiles":
             wanted = urllib.parse.parse_qs(parts.query).get("actors", [])
-            profiles = [{"did": did, "handle": self.documents[did][0]} for did in wanted if did in self.documents]
+            profiles = [{"did": did, "handle": self.documents[did][0], **self.profiles.get(did, {})} for did in wanted if did in self.documents]
             return self.answer(200, {"profiles": profiles})
+        if parts.path == "/dns-query":
+            name = urllib.parse.parse_qs(parts.query)["name"][0]
+            owners = [did for did, (handle, _) in self.documents.items() if name == "_atproto." + handle]
+            return self.answer(200, {"Status": 0 if owners else 3, "Answer": [{"name": name, "type": 16, "data": f'"did={did}"'} for did in owners]})
         did = urllib.parse.unquote(parts.path.lstrip("/"))
         if did not in self.documents:
             return self.answer(404, {"message": "DID not registered"})
@@ -192,12 +204,12 @@ class Backends(unittest.TestCase):
             "--production-admin-secret-env", PRODUCTION_SECRET_ENV, "--shadow-admin-secret-env", SHADOW_SECRET_ENV,
             "--corpus-delay", "0", "--search-delay", "0", "--arbiter-delay", "0", "--freshness-interval", "0",
             "--freshness-samples", "3", "--warm-runs", "2", "--page-size", "7", "--out-dir", str(out),
-            "--plc-url", self.authority_url, "--appview-url", self.authority_url, *extra,
+            "--plc-url", self.authority_url, "--appview-url", self.authority_url, "--doh-url", self.authority_url, *extra,
         ]
         for name, value in flags.items():
             argv += ["--" + name.replace("_", "-"), str(value)]
         args = compare.parser().parse_args(argv)
-        report = compare.execute(args, environ=self.environ, sleep=lambda seconds: None)
+        report = compare.execute(args, environ=self.environ, sleep=lambda seconds: None, addresses=lambda host: set())
         compare.reporting.write(report, out)
         return report, out
 
@@ -223,9 +235,13 @@ class Backends(unittest.TestCase):
         self.assertEqual(labels, {
             corpus.ONLY_IN_PRODUCTION: {arbiter.PRODUCTION_RIGHT: 1, arbiter.SHADOW_RIGHT: 1},
             corpus.HANDLE_DIFFERS: {arbiter.SHADOW_RIGHT: 1},
-            corpus.VISIBILITY_DIFFERS: {arbiter.UNDETERMINED: 1},
+            corpus.VISIBILITY_DIFFERS: {arbiter.PRODUCTION_RIGHT: 1},
             corpus.PDS_DIFFERS: {arbiter.PRODUCTION_RIGHT: 1},
         })
+        reasons = {i["did"]: i["arbiter"][corpus.ONLY_IN_PRODUCTION]["reason"] for i in result["classes"][corpus.ONLY_IN_PRODUCTION]["sample"]}
+        self.assertIn("pds-one.test does not resolve; the appview serves the account", reasons[MISSING])
+        self.assertIn("the authority has no document", reasons[DELETED])
+        self.assertEqual(result["notes"][corpus.STORED_HIDDEN_DIFFERS]["count"], 1)
         verdict = report["verdict"]
         self.assertEqual(verdict["gates"]["corpus"]["status"], gates.FAIL)
         self.assertEqual(len(verdict["gates"]["corpus"]["reasons"]), 3)
@@ -294,9 +310,9 @@ class Backends(unittest.TestCase):
         args = compare.parser().parse_args([
             "--phases", "corpus", "--production-bundle", str(self.sorted), "--bundle-watermark", str(self.watermark),
             "--bundle-build-id", "b-production", *shadow, "--corpus-delay", "0", "--arbiter-delay", "0", "--page-size", "7",
-            "--plc-url", self.authority_url, "--appview-url", self.authority_url, "--out-dir", str(out), *extra,
+            "--plc-url", self.authority_url, "--appview-url", self.authority_url, "--doh-url", self.authority_url, "--out-dir", str(out), *extra,
         ])
-        report = compare.execute(args, environ=self.environ, sleep=lambda seconds: None)
+        report = compare.execute(args, environ=self.environ, sleep=lambda seconds: None, addresses=lambda host: set())
         compare.reporting.write(report, out)
         return report, out
 
@@ -312,10 +328,6 @@ class Backends(unittest.TestCase):
         fake = FakeStore(records.values(), self.secrets["store"], next_change=len(records) + 1)
         self.addCleanup(fake.close)
         return ["--shadow-store", fake.base, "--shadow-store-secret-env", STORE_SECRET_ENV]
-
-    def partition(self, report, name):
-        classes = report["corpus"]["timing"][name]["classes"]
-        return {key: sorted(i["did"] for i in entry["sample"]) for key, entry in classes.items() if entry["count"]}
 
     def test_dumped_views_carry_the_servers_own_hashes_and_fields(self):
         self.assertEqual((self.dump_facts["lines"], self.dump_facts["actors"], self.dump_facts["duplicates"]), (len(self.rows), len(self.rows), 0))
@@ -341,28 +353,28 @@ class Backends(unittest.TestCase):
         self.assertEqual(report["verdict"]["gates"]["corpus"], {"status": gates.PASS, "reasons": []})
         self.assertEqual(report["corpus_sources"]["production"]["kind"], "bundle-jsonl")
 
-    def test_bundle_against_an_index_without_change_times_counts_every_difference_as_divergence(self):
+    def test_bundle_against_an_index_judges_visibility_by_the_stored_flag_and_holds_every_record_refreshed(self):
         report, _ = self.run_bundle(*self.shadow_admin("shadow"), extra=["--arbiter"])
         result = report["corpus"]
-        self.assertEqual(self.partition(report, corpus.NEWER_IN_SHADOW), {})
-        self.assertEqual(self.partition(report, corpus.UNCHANGED_IN_SHADOW), {
+        self.assertEqual(self.classes(report), {
             corpus.ONLY_IN_PRODUCTION: sorted([MISSING, DELETED]),
             corpus.HANDLE_DIFFERS: [RENAMED],
             corpus.VISIBILITY_DIFFERS: [HIDDEN],
             corpus.PDS_DIFFERS: [MOVED],
         })
-        self.assertEqual(result["snapshot"]["shadow"], {"records": len(self.rows) - 1, "with_change_time": 0, "changed_since_cutoff": 0})
+        self.assertEqual(result["snapshot"]["shadow"], {
+            "records": len(self.rows) - 1, "with_change_time": 0, "changed_since_watermark": 0, "with_refresh_time": 0, "refreshed_since_watermark": 0,
+        })
         verdict = report["verdict"]["gates"]["corpus"]
         self.assertEqual(verdict["status"], gates.FAIL)
-        self.assertEqual(len(verdict["reasons"]), 3)
-        self.assertTrue(all(reason.startswith("unchanged in shadow since the watermark, ") for reason in verdict["reasons"]))
+        self.assertEqual(sorted(reason.split(":")[0] for reason in verdict["reasons"]), [corpus.ONLY_IN_PRODUCTION, corpus.PDS_DIFFERS, corpus.VISIBILITY_DIFFERS])
 
     def test_bundle_against_a_store_holding_the_same_actors_passes(self):
         report, _ = self.run_bundle(*self.store({}))
         self.assertEqual((report["corpus"]["differing_dids"], report["corpus"]["dids_walked"]), (0, len(self.rows)))
         self.assertEqual(report["verdict"]["gates"]["corpus"], {"status": gates.PASS, "reasons": []})
 
-    def test_changes_after_the_watermark_pass_when_the_shadow_is_never_wrong(self):
+    def test_a_shadow_that_moved_on_passes_when_it_is_never_wrong(self):
         later = self.watermark + 10
         newborn = actor(NEWBORN, "newborn.test", "Newborn Marker", 5)
         report, out = self.run_bundle(*self.store({
@@ -373,59 +385,69 @@ class Backends(unittest.TestCase):
             URLFORM: {"avatar": "bafkfixture", "display_name": "Avatar Reformed", "updated_at": later},
         }, extra=[(newborn, later)]), extra=["--arbiter"])
         result = report["corpus"]
-        self.assertEqual(self.partition(report, corpus.UNCHANGED_IN_SHADOW), {})
-        self.assertEqual(self.partition(report, corpus.NEWER_IN_SHADOW), {
+        self.assertEqual(self.classes(report), {
             corpus.ONLY_IN_PRODUCTION: [DELETED],
             corpus.ONLY_IN_SHADOW: [NEWBORN],
             corpus.HANDLE_DIFFERS: [RENAMED],
-            corpus.VISIBILITY_DIFFERS: [HIDDEN],
-            corpus.LABELS_DIFFER: [LABELLED],
             corpus.QUALITY_SCORE_DIFFERS: [LABELLED],
-            corpus.OTHER_FIELD_DIFFERS: [URLFORM],
+            corpus.LABELS_DIFFER: [LABELLED],
+            corpus.DISPLAY_NAME_DIFFERS: [URLFORM],
         })
-        newer = result["timing"][corpus.NEWER_IN_SHADOW]
-        self.assertEqual(newer["other_field_counts"], {"display_name": 1, "avatar_form": 1})
-        self.assertEqual(newer["label_value_counts"], {"only_in_production": {"self-test": 1}, "only_in_shadow": {}})
-        labels = {name: entry["arbiter_labels"] for name, entry in newer["classes"].items() if entry["count"]}
-        self.assertEqual(labels, {
-            corpus.ONLY_IN_PRODUCTION: {arbiter.SHADOW_RIGHT: 1},
-            corpus.ONLY_IN_SHADOW: {arbiter.SHADOW_RIGHT: 1},
-            corpus.HANDLE_DIFFERS: {arbiter.SHADOW_RIGHT: 1},
-            corpus.VISIBILITY_DIFFERS: {arbiter.UNDETERMINED: 1},
-            corpus.LABELS_DIFFER: {arbiter.UNDETERMINED: 1},
-            corpus.QUALITY_SCORE_DIFFERS: {arbiter.UNDETERMINED: 1},
-            corpus.OTHER_FIELD_DIFFERS: {arbiter.UNDETERMINED: 1},
+        self.assertEqual({name: note["count"] for name, note in result["notes"].items() if note["count"]},
+                         {corpus.STORED_HIDDEN_DIFFERS: 1, corpus.AVATAR_FORM_DIFFERS: 1})
+        self.assertEqual(result["notes"][corpus.STORED_HIDDEN_DIFFERS]["sample"][0]["returned"], {"production": True, "shadow": True})
+        self.assertEqual(result["label_value_counts"], {"only_in_production": {"self-test": 1}, "only_in_shadow": {}})
+        self.assertEqual(result["score_magnitude"][corpus.REFRESHED], {"production_zero": 0, "shadow_zero": 0, "under_1": 0, "1_to_50": 1, "50_or_more": 0})
+        labels = {name: entry["arbiter_labels"] for name, entry in result["classes"].items() if entry["count"]}
+        self.assertEqual(labels, dict.fromkeys(self.classes(report), {arbiter.SHADOW_RIGHT: 1}))
+        self.assertEqual(result["snapshot"]["shadow"], {
+            "records": len(self.rows) + 1, "with_change_time": len(self.rows) + 1, "changed_since_watermark": 6, "with_refresh_time": 0,
+            "refreshed_since_watermark": 0,
         })
-        self.assertEqual(result["snapshot"]["shadow"], {"records": len(self.rows) + 1, "with_change_time": len(self.rows) + 1, "changed_since_cutoff": 6})
-        breakdown = newer["classes"][corpus.OTHER_FIELD_DIFFERS]["breakdown"]
+        breakdown = result["classes"][corpus.DISPLAY_NAME_DIFFERS]["breakdown"]
         self.assertEqual((breakdown["handle_kind"], breakdown["pds_kind"]), ({"custom domain": 1}, {"independent pds": 1}))
         self.assertEqual(breakdown["top_pds_hosts"], [{"host": "mixed-case.example", "count": 1}])
         self.assertEqual(report["verdict"]["gates"]["corpus"], {"status": gates.PASS, "reasons": []})
         self.assertEqual(result["start_markers"]["shadow"]["next_change"], len(self.rows) + 2)
+        self.assertEqual(result["flagged_dids"], sorted([DELETED, NEWBORN, RENAMED, LABELLED, URLFORM]))
         written = (out / "report.json").read_text() + (out / "README.md").read_text()
         for secret in self.secrets.values():
             self.assertNotIn(secret, written)
         self.assertIn(STORE_SECRET_ENV, written)
         self.assertIn("Production is bundle b-production at watermark", written)
 
-    def test_divergence_before_the_watermark_fails_beside_newer_changes(self):
+    def test_identity_differences_fail_where_production_is_right_whenever_the_shadow_changed(self):
         report, _ = self.run_bundle(*self.store({
             RENAMED: {"handle": "newhandle.test", "updated_at": self.watermark + 10},
-            MOVED: {"pds": "https://pds-two.test"},
+            MOVED: {"pds": "https://pds-two.test", "updated_at": self.watermark + 10},
         }, missing=[MISSING]), extra=["--arbiter"])
-        self.assertEqual(self.partition(report, corpus.NEWER_IN_SHADOW), {corpus.HANDLE_DIFFERS: [RENAMED]})
-        self.assertEqual(self.partition(report, corpus.UNCHANGED_IN_SHADOW), {corpus.ONLY_IN_PRODUCTION: [MISSING], corpus.PDS_DIFFERS: [MOVED]})
+        self.assertEqual(self.classes(report), {corpus.ONLY_IN_PRODUCTION: [MISSING], corpus.HANDLE_DIFFERS: [RENAMED], corpus.PDS_DIFFERS: [MOVED]})
         verdict = report["verdict"]["gates"]["corpus"]
         self.assertEqual(verdict["status"], gates.FAIL)
-        self.assertEqual(sorted(reason.split(":")[0] for reason in verdict["reasons"]), [
-            "unchanged in shadow since the watermark, only_in_production", "unchanged in shadow since the watermark, pds_differs",
-        ])
+        self.assertEqual(sorted(reason.split(":")[0] for reason in verdict["reasons"]), [corpus.ONLY_IN_PRODUCTION, corpus.PDS_DIFFERS])
         self.assertTrue(all("production is right" in reason for reason in verdict["reasons"]))
 
-    def test_a_shadow_changed_after_the_watermark_without_an_arbiter_fails(self):
+    def test_a_policy_snapshot_applies_blocked_domains_and_overrides_to_both_sides(self):
+        policy = self.root / "policy.json"
+        policy.write_text(json.dumps({
+            "schema_version": 1, "source_observed_at": self.watermark, "complete": True,
+            "overrides": [{"did": HIDDEN, "action": "hide"}], "blocked_domains": ["oldhandle.test"],
+        }))
+        changes = {RENAMED: {"handle": "newhandle.test"}}
+        report, _ = self.run_bundle(*self.store(changes), extra=["--moderation-policy", str(policy)])
+        self.assertEqual(self.classes(report), {corpus.HANDLE_DIFFERS: [RENAMED], corpus.VISIBILITY_DIFFERS: [RENAMED]})
+        self.assertEqual((report["corpus"]["policy"]["overrides"], report["corpus"]["policy"]["blocked_domains"]), (1, 1))
+        self.assertTrue(report["corpus"]["policy"]["source"].startswith("snapshot sha256 "))
+        plain, _ = self.run_bundle(*self.store(changes))
+        self.assertEqual(self.classes(plain), {corpus.HANDLE_DIFFERS: [RENAMED]})
+        policy.write_text("{}")
+        with self.assertRaises(compare.TransportError):
+            self.run_bundle(*self.store(changes), extra=["--moderation-policy", str(policy)])
+
+    def test_differences_without_an_arbiter_fail(self):
         report, _ = self.run_bundle(*self.store({RENAMED: {"handle": "newhandle.test", "updated_at": self.watermark + 10}}))
         verdict = report["verdict"]["gates"]["corpus"]
-        self.assertEqual((verdict["status"], verdict["reasons"]), (gates.FAIL, ["newer in shadow, handle_differs: 1 differences and no arbiter sample"]))
+        self.assertEqual((verdict["status"], verdict["reasons"]), (gates.FAIL, ["handle_differs: 1 differences and no arbiter check"]))
 
     def test_wrong_admin_secret_fails_without_printing_it(self):
         wrong = dict(self.environ, **{SHADOW_SECRET_ENV: "wrong-" + self.secrets["shadow"]})

@@ -17,21 +17,40 @@ def ms(value):
     return "n/a" if value is None else f"{value:.2f}"
 
 
-def class_table(classes):
+def labels_text(labels):
+    return ", ".join(f"{count} {label}" for label, count in sorted((labels or {}).items()))
+
+
+def identity_table(classes):
     rows = []
-    for name in corpus.CLASSES:
+    for name in corpus.IDENTITY_CLASSES:
         entry = classes[name]
-        labels = ", ".join(f"{count} {label}" for label, count in sorted(entry.get("arbiter_labels", {}).items()))
-        rows.append([name, entry["count"], len(entry["sample"]), labels or ("not run" if entry["count"] else "")])
+        rows.append([name, entry["count"], len(entry["sample"]), labels_text(entry.get("arbiter_labels")) or ("not run" if entry["count"] else "")])
     return table(["class", "count", "sampled", "arbiter labels for the sample"], rows)
+
+
+def refresh_table(classes):
+    rows = []
+    for name in corpus.REFRESH_CLASSES:
+        entry = classes[name]
+        row = [name, entry["count"]]
+        for stratum in corpus.STRATA:
+            detail = entry["strata"][stratum]
+            row += [detail["count"], detail["sampled"], labels_text(detail.get("arbiter_labels")) or ("not run" if detail["sampled"] else "")]
+        row.append(entry["strata"][corpus.LAGGING].get("estimated_production_right", ""))
+        rows.append(row)
+    header = ["class", "count", "refreshed: count", "sampled", "arbiter labels", "not refreshed: count", "sampled", "arbiter labels", "estimated production right, not refreshed"]
+    return table(header, rows)
 
 
 HANDLE_KINDS = ("hosted handle", "custom domain", "no handle", "unknown")
 PDS_KINDS = ("bluesky pds", "independent pds", "no pds", "unknown")
+SCORE_BUCKET_TITLES = ("production holds 0", "shadow holds 0", "gap under 1", "gap 1 to 50", "gap 50 or more")
+STRATUM_TITLES = {corpus.REFRESHED: "refreshed by the shadow since the watermark", corpus.LAGGING: "not refreshed by the shadow since the watermark"}
 
 
-def breakdown_lines(classes):
-    present = [name for name in corpus.CLASSES if classes[name]["count"] and "breakdown" in classes[name]]
+def breakdown_lines(classes, names):
+    present = [name for name in names if classes[name]["count"]]
     if not present:
         return []
     rows, hosts = [], []
@@ -46,28 +65,17 @@ def breakdown_lines(classes):
             *table(header, rows), "", "Most frequent PDS hosts:", "", *hosts]
 
 
-TIMING_TITLES = {
-    corpus.UNCHANGED_IN_SHADOW: "Unchanged in the shadow since the watermark: divergence",
-    corpus.NEWER_IN_SHADOW: "Newer in the shadow than the snapshot: judged by the arbiter sample only",
-}
-
-
-def snapshot_section(result):
+def snapshot_lines(result):
+    if "snapshot" not in result:
+        return ["Both sides are live, so no record counts as lagging: every refresh-derived difference is held to the gate."]
     snapshot = result["snapshot"]
     shadow = snapshot["shadow"]
-    lines = [
-        f"Production is a snapshot at watermark {snapshot['watermark']} and the shadow is live. A shadow record counts as "
-        f"changed since the snapshot when its change time is after {snapshot['cutoff']} (the watermark less {snapshot['skew_s']} s). "
-        f"{shadow['changed_since_cutoff']} of {shadow['records']} shadow records changed since then; "
-        f"{shadow['records'] - shadow['with_change_time']} carry no change time and count as unchanged."
+    return [
+        f"Production is a snapshot at watermark {snapshot['watermark']} and the shadow is live. A shadow record counts as refreshed since then "
+        f"when its profile was last checked after {snapshot['refresh_threshold']}. {shadow['refreshed_since_watermark']} of {shadow['records']} "
+        f"shadow records were; {shadow['records'] - shadow['with_refresh_time']} carry no refresh time and are held to the stricter reading. "
+        f"{shadow['changed_since_watermark']} changed content since the watermark."
     ]
-    for name in corpus.TIMINGS:
-        if "timing" not in result:
-            break
-        part = result["timing"][name]
-        lines += ["", f"### {TIMING_TITLES[name]}", "", f"{part['differing_dids']} DIDs.", "", *class_table(part["classes"])]
-        lines += breakdown_lines(part["classes"])
-    return lines
 
 
 def marker_line(side, start, end):
@@ -86,30 +94,53 @@ def corpus_section(result):
     state = "complete" if result["complete"] else f"incomplete ({result['stop_reason']}), resume from the checkpoint"
     lines.append(
         f"Walk {state}: {result['dids_walked']} DIDs in {result['pages']} windows; "
-        f"{result['live']['production']} live in production, {result['live']['shadow']} live in the shadow."
+        f"{result['live']['production']} live in production, {result['live']['shadow']} live in the shadow. "
+        f"{result['differing_dids']} DIDs differ in at least one class."
     )
+    if "seconds" in result:
+        seconds = result["seconds"]
+        lines.append(
+            f"The walk spent {seconds['production_read']} s reading production, {seconds['shadow_read']} s reading the shadow "
+            f"(the delay between requests included) and {seconds['compare']} s comparing."
+        )
+    kept = result["identity_differences"]
     if result.get("rechecked"):
         lines.append(
-            f"{result['differences_before_recheck']} DIDs differed during the walk; "
-            f"{result['transient_differences']} agreed when re-read after {result['settle_delay_s']} s."
+            f"{kept['tracked']} DIDs with an identity-level difference were kept and re-read after {result['settle_delay_s']} s; "
+            f"{result['transient_differences']} of them no longer had one."
         )
         for side in ("production", "shadow"):
             lines.append(marker_line(side, result["start_markers"][side], result["end_markers"][side]))
+    if kept["untracked"]:
+        lines.append(f"{kept['untracked']} identity-level differences beyond the cap of {kept['cap']} were counted and not kept.")
     if result.get("fields_available") is False:
         lines.append("A server returned no comparison fields, so differences could only be classified by presence and document hash.")
-    lines.append("")
-    lines += class_table(result["classes"])
-    lines += breakdown_lines(result["classes"])
-    if "snapshot" in result:
-        lines += ["", *snapshot_section(result)]
+    if "policy" in result:
+        policy = result["policy"]
+        supplied = (
+            f"a policy snapshot with {policy['overrides']} overrides and {policy['blocked_domains']} blocked domains"
+            if policy["source"] != "none"
+            else "no policy snapshot, so blocked domains were not applied and overrides were taken from the shadow's records"
+        )
+        lines.append(f"What a search returns was computed at {policy['evaluated_at']} from each side's labels and handle, with {supplied}.")
+    classes = result["classes"]
+    lines += ["", "### Identity-level differences", "", *identity_table(classes), *breakdown_lines(classes, corpus.IDENTITY_CLASSES)]
+    lines += ["", "### Refresh-derived differences", "", *snapshot_lines(result), "", *refresh_table(classes)]
+    magnitude = result["score_magnitude"]
+    if any(sum(buckets.values()) for buckets in magnitude.values()):
+        rows = [[STRATUM_TITLES[stratum], *(magnitude[stratum][bucket] for bucket in corpus.SCORE_BUCKETS)] for stratum in corpus.STRATA]
+        lines += ["", "Quality score differences by size:", "", *table(["shadow record", *SCORE_BUCKET_TITLES], rows)]
+    lines += breakdown_lines(classes, corpus.REFRESH_CLASSES)
+    notes = [[name, entry["count"]] for name, entry in result["notes"].items() if entry["count"]]
+    if notes:
+        lines += ["", "### Counted for information", "", *table(["what differs", "DIDs"], notes)]
     values = result.get("label_value_counts") or {}
     rows = [
         [value, values["only_in_production"].get(value, 0), values["only_in_shadow"].get(value, 0)]
         for value in sorted(set(values.get("only_in_production", {})) | set(values.get("only_in_shadow", {})))
     ]
     if rows:
-        lines += ["", f"Labels held by one side only, by value ({result['label_detail_only']} DIDs agree on values and differ in other label detail):", ""]
-        lines += table(["label value", "only in production", "only in shadow"], rows)
+        lines += ["", "Labels held by one side only, by value:", "", *table(["label value", "only in production", "only in shadow"], rows)]
     return lines
 
 
@@ -192,7 +223,7 @@ def freshness_section(result):
 
 SECTIONS = {"corpus": corpus_section, "search": search_section, "latency": latency_section, "freshness": freshness_section}
 GATE_TITLES = {
-    "corpus": "(a) corpus differences zero or explained",
+    "corpus": "(a) shadow never wrong where production is right",
     "search": "(b) search identical or explained",
     "latency": "(c) shadow latency not worse",
     "freshness": "(d) both ready and fresh",

@@ -3,13 +3,13 @@
 import arbiter
 import corpus
 
-ARBITER_SAMPLE_SIZE = 25
-ARBITER_PASSING_LABELS = (arbiter.SHADOW_RIGHT, arbiter.BOTH_STALE)
-ARBITER_JUDGED_CLASSES = (corpus.ONLY_IN_PRODUCTION, corpus.ONLY_IN_SHADOW, corpus.HANDLE_DIFFERS, corpus.PDS_DIFFERS)
+IDENTITY_SAMPLE_SIZE = 150
+REFRESH_SAMPLE_SIZE = 300
+MAX_TRACKED_IDENTITY_DIFFERENCES = 20_000
+ARBITER_MUST_JUDGE = (corpus.ONLY_IN_PRODUCTION, corpus.ONLY_IN_SHADOW, corpus.HANDLE_DIFFERS, corpus.PDS_DIFFERS, corpus.DOCUMENT_HASH_DIFFERS)
+MAX_REFRESHED_PRODUCTION_RIGHT_SHARE = 0.02
+SCORE_TOLERANCE = arbiter.SCORE_TOLERANCE
 SETTLE_DELAY_S = 120
-WATERMARK_SKEW_S = 120
-MAX_SHADOW_CHANGED_SHARE = 0.25
-MAX_TRACKED_DIFFERENCES = 50_000
 LATENCY_NOISE_RATIO = 0.10
 LATENCY_NOISE_FLOOR_MS = 2.0
 LATENCY_PERCENTILES = ("p50", "p95", "p99")
@@ -25,43 +25,27 @@ def gate(reasons):
     return {"status": FAIL if reasons else PASS, "reasons": reasons}
 
 
-def unexplained(classes, arbiter_ran, prefix=""):
-    """Reasons for every class with differences that the arbiter did not label in the shadow's favour."""
-    reasons = []
-    for name, entry in classes.items():
-        if entry["count"] == 0:
-            continue
-        if not arbiter_ran:
-            reasons.append(f"{prefix}{name}: {entry['count']} differences and no arbiter check")
-            continue
-        failing = {
-            label: count
-            for label, count in entry.get("arbiter_labels", {}).items()
-            if label not in ARBITER_PASSING_LABELS
-        }
-        if failing:
-            detail = ", ".join(f"{count} {label}" for label, count in sorted(failing.items()))
-            reasons.append(f"{prefix}{name}: {entry['count']} differences, sample of {len(entry['sample'])} has {detail}")
-    return reasons
+def identity_reasons(name, entry):
+    """Why an identity-level class fails: the sample shows production right, or leaves open what the authorities can settle."""
+    labels = entry.get("arbiter_labels", {})
+    failing = {arbiter.PRODUCTION_RIGHT: labels.get(arbiter.PRODUCTION_RIGHT, 0)}
+    if name in ARBITER_MUST_JUDGE:
+        failing[arbiter.UNDETERMINED] = labels.get(arbiter.UNDETERMINED, 0)
+    detail = ", ".join(f"{count} {label}" for label, count in sorted(failing.items()) if count)
+    return [f"{name}: {entry['count']} differences, sample of {len(entry['sample'])} has {detail}"] if detail else []
 
 
-def shadow_wrong(classes, arbiter_ran, prefix):
-    """Reasons for every class whose sample shows the shadow wrong, or unjudged where the arbiter can judge."""
-    reasons = []
-    for name, entry in classes.items():
-        if entry["count"] == 0:
-            continue
-        if not arbiter_ran:
-            reasons.append(f"{prefix}{name}: {entry['count']} differences and no arbiter sample")
-            continue
-        labels = entry.get("arbiter_labels", {})
-        failing = {arbiter.PRODUCTION_RIGHT: labels.get(arbiter.PRODUCTION_RIGHT, 0)}
-        if name in ARBITER_JUDGED_CLASSES:
-            failing[arbiter.UNDETERMINED] = labels.get(arbiter.UNDETERMINED, 0)
-        detail = ", ".join(f"{count} {label}" for label, count in sorted(failing.items()) if count)
-        if detail:
-            reasons.append(f"{prefix}{name}: {entry['count']} differences, sample of {len(entry['sample'])} has {detail}")
-    return reasons
+def refresh_reasons(name, entry):
+    """Why a refresh-derived class fails: production is right too often on records the shadow refreshed after the watermark."""
+    stratum = entry["strata"][corpus.REFRESHED]
+    judged = stratum["sampled"]
+    wrong = stratum.get("arbiter_labels", {}).get(arbiter.PRODUCTION_RIGHT, 0)
+    if not judged or wrong <= MAX_REFRESHED_PRODUCTION_RIGHT_SHARE * judged:
+        return []
+    return [
+        f"{name}: production is right on {wrong} of {judged} sampled records the shadow refreshed after the watermark, "
+        f"more than {MAX_REFRESHED_PRODUCTION_RIGHT_SHARE:.0%}"
+    ]
 
 
 def corpus_gate(result):
@@ -69,22 +53,26 @@ def corpus_gate(result):
     if not result["complete"]:
         reasons.append(f"walk incomplete ({result['stop_reason']}) at cursor {result['cursor']!r}")
     if not result.get("rechecked"):
-        reasons.append("differences were not re-read after the settle delay")
-    if result["untracked_differences"]:
-        reasons.append(f"{result['untracked_differences']} differences exceeded the tracking cap and were not re-read")
+        reasons.append("kept differences were not re-read after the settle delay")
+    untracked = result["identity_differences"]["untracked"]
+    if untracked:
+        reasons.append(f"{untracked} identity-level differences exceeded the tracking cap of {result['identity_differences']['cap']} and were not examined")
+    unevaluated = result["notes"][corpus.VISIBILITY_UNEVALUATED]["count"]
+    if unevaluated:
+        reasons.append(f"{unevaluated} actors hold labels the server refuses to evaluate, so what a search returns for them is unknown")
     ran = result.get("arbiter_ran")
-    if "snapshot" not in result:
-        return gate(reasons + unexplained(result["classes"], ran))
-    shadow = result["snapshot"]["shadow"]
-    if shadow["records"] and shadow["changed_since_cutoff"] > MAX_SHADOW_CHANGED_SHARE * shadow["records"]:
-        reasons.append(
-            f"{shadow['changed_since_cutoff']} of {shadow['records']} shadow records changed after the snapshot cutoff, "
-            f"more than {MAX_SHADOW_CHANGED_SHARE:.0%}: the snapshot is too old or the change times are not content changes"
-        )
-    if "timing" in result:
-        parts = result["timing"]
-        reasons += unexplained(parts[corpus.UNCHANGED_IN_SHADOW]["classes"], ran, "unchanged in shadow since the watermark, ")
-        reasons += shadow_wrong(parts[corpus.NEWER_IN_SHADOW]["classes"], ran, "newer in shadow, ")
+    failures = result.get("arbiter_failures") or []
+    if failures:
+        reasons.append(f"the appview could not be read for {len(failures)} batches of the sample: {failures[0]}")
+    for name, entry in result["classes"].items():
+        if entry["count"] == 0:
+            continue
+        if not ran:
+            reasons.append(f"{name}: {entry['count']} differences and no arbiter check")
+        elif entry["level"] == "identity":
+            reasons += identity_reasons(name, entry)
+        else:
+            reasons += refresh_reasons(name, entry)
     return gate(reasons)
 
 

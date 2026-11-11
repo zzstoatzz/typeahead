@@ -5,15 +5,26 @@ import corpus
 import gates
 
 
-def corpus_result(**classes):
+def corpus_result(arbiter_ran=True, **classes):
+    """A complete walk whose classes hold `(count, labels)`, or for a refresh class `(count, refreshed labels, lagging labels)`."""
     result = {
-        "complete": True, "stop_reason": "complete", "cursor": "", "rechecked": True, "untracked_differences": 0,
-        "arbiter_ran": False,
-        "classes": {name: {"count": 0, "sample": []} for name in corpus.CLASSES},
+        "complete": True, "stop_reason": "complete", "cursor": "", "rechecked": True, "arbiter_ran": arbiter_ran,
+        "identity_differences": {"tracked": 0, "untracked": 0, "cap": 100},
+        "notes": {name: {"count": 0, "sample": []} for name in corpus.NOTES},
+        "classes": {},
     }
-    for name, (count, labels) in classes.items():
-        result["classes"][name] = {"count": count, "sample": [{}] * sum(labels.values()), "arbiter_labels": labels}
-        result["arbiter_ran"] = result["arbiter_ran"] or bool(labels)
+    for name in corpus.CLASSES:
+        count, *labels = classes.get(name, (0, {}))
+        level = "identity" if name in corpus.IDENTITY_CLASSES else "refresh"
+        entry = {"level": level, "count": count, "sample": [{}] * sum(sum(tally.values()) for tally in labels)}
+        entry["arbiter_labels"] = {label: sum(tally.get(label, 0) for tally in labels) for tally in labels for label in tally}
+        if level == "refresh":
+            refreshed, lagging = (*labels, {}, {})[:2]
+            entry["strata"] = {
+                corpus.REFRESHED: {"count": count, "sampled": sum(refreshed.values()), "arbiter_labels": refreshed},
+                corpus.LAGGING: {"count": 0, "sampled": sum(lagging.values()), "arbiter_labels": lagging},
+            }
+        result["classes"][name] = entry
     return result
 
 
@@ -47,29 +58,65 @@ def search_result(*cases):
 
 class CorpusGate(unittest.TestCase):
     def test_no_differences_passes(self):
-        self.assertEqual(gates.corpus_gate(corpus_result())["status"], gates.PASS)
+        self.assertEqual(gates.corpus_gate(corpus_result()), {"status": gates.PASS, "reasons": []})
+        self.assertEqual(gates.corpus_gate(corpus_result(arbiter_ran=False))["status"], gates.PASS)
 
     def test_differences_without_an_arbiter_fail(self):
-        verdict = gates.corpus_gate(corpus_result(handle_differs=(3, {})))
-        self.assertEqual(verdict["status"], gates.FAIL)
-        self.assertIn("no arbiter check", verdict["reasons"][0])
+        for name in (corpus.HANDLE_DIFFERS, corpus.QUALITY_SCORE_DIFFERS):
+            verdict = gates.corpus_gate(corpus_result(arbiter_ran=False, **{name: (3, {})}))
+            self.assertEqual(verdict["status"], gates.FAIL)
+            self.assertIn("no arbiter check", verdict["reasons"][0])
 
-    def test_sample_where_shadow_is_never_wrong_passes(self):
-        result = corpus_result(handle_differs=(40, {arbiter.SHADOW_RIGHT: 20, arbiter.BOTH_STALE: 5}))
+    def test_an_identity_sample_where_production_is_never_right_passes(self):
+        result = corpus_result(handle_differs=(900, {arbiter.SHADOW_RIGHT: 140, arbiter.BOTH_STALE: 10}), visibility_differs=(4, {arbiter.UNDETERMINED: 4}))
         self.assertEqual(gates.corpus_gate(result)["status"], gates.PASS)
 
-    def test_production_right_or_undetermined_fails(self):
-        for label in (arbiter.PRODUCTION_RIGHT, arbiter.UNDETERMINED):
-            result = corpus_result(pds_differs=(2, {arbiter.SHADOW_RIGHT: 1, label: 1}))
-            verdict = gates.corpus_gate(result)
-            self.assertEqual(verdict["status"], gates.FAIL)
-            self.assertIn(label, verdict["reasons"][0])
+    def test_one_identity_difference_where_production_is_right_fails(self):
+        for name in corpus.IDENTITY_CLASSES:
+            verdict = gates.corpus_gate(corpus_result(**{name: (900, {arbiter.SHADOW_RIGHT: 149, arbiter.PRODUCTION_RIGHT: 1})}))
+            self.assertEqual(verdict["status"], gates.FAIL, name)
+            self.assertIn(f"{name}: 900 differences, sample of 150 has 1 production is right", verdict["reasons"][0])
 
-    def test_incomplete_unrechecked_or_truncated_walks_fail(self):
-        for change in ({"complete": False, "stop_reason": "budget"}, {"rechecked": False}, {"untracked_differences": 4}):
+    def test_presence_handle_and_pds_may_not_stay_undetermined(self):
+        for name in gates.ARBITER_MUST_JUDGE:
+            verdict = gates.corpus_gate(corpus_result(**{name: (5, {arbiter.SHADOW_RIGHT: 4, arbiter.UNDETERMINED: 1})}))
+            self.assertEqual(verdict["status"], gates.FAIL, name)
+            self.assertIn("1 undetermined", verdict["reasons"][0])
+        self.assertEqual(set(corpus.IDENTITY_CLASSES) - set(gates.ARBITER_MUST_JUDGE), {corpus.VISIBILITY_DIFFERS})
+
+    def test_refresh_differences_pass_however_many_when_the_shadow_is_not_wrong(self):
+        result = corpus_result(
+            quality_score_differs=(650_000, {arbiter.SHADOW_RIGHT: 280, arbiter.BOTH_STALE: 20}, {arbiter.PRODUCTION_RIGHT: 290, arbiter.BOTH_STALE: 10}),
+            associated_differs=(260_000, {arbiter.SHADOW_RIGHT: 200, arbiter.UNDETERMINED: 100}, {}),
+            profile_differs=(9, {arbiter.UNDETERMINED: 9}, {}),
+        )
+        self.assertEqual(gates.corpus_gate(result), {"status": gates.PASS, "reasons": []})
+
+    def test_production_right_on_refreshed_records_fails_only_above_the_allowed_share(self):
+        allowed = corpus_result(quality_score_differs=(5000, {arbiter.SHADOW_RIGHT: 294, arbiter.PRODUCTION_RIGHT: 6}, {}))
+        self.assertEqual(gates.corpus_gate(allowed)["status"], gates.PASS)
+        over = corpus_result(quality_score_differs=(5000, {arbiter.SHADOW_RIGHT: 293, arbiter.PRODUCTION_RIGHT: 7}, {arbiter.PRODUCTION_RIGHT: 300}))
+        verdict = gates.corpus_gate(over)
+        self.assertEqual(verdict["status"], gates.FAIL)
+        self.assertEqual(verdict["reasons"], ["quality_score_differs: production is right on 7 of 300 sampled records the shadow refreshed after the watermark, more than 2%"])
+        self.assertEqual(gates.corpus_gate(corpus_result(labels_differ=(1, {arbiter.PRODUCTION_RIGHT: 1}, {})))["status"], gates.FAIL)
+
+    def test_incomplete_unrechecked_truncated_or_unjudgeable_walks_fail(self):
+        changes = (
+            {"complete": False, "stop_reason": "budget"}, {"rechecked": False},
+            {"identity_differences": {"tracked": 100, "untracked": 4, "cap": 100}},
+            {"arbiter_failures": ["getProfiles returned 502"]},
+        )
+        for change in changes:
             result = corpus_result()
             result.update(change)
             self.assertEqual(gates.corpus_gate(result)["status"], gates.FAIL, change)
+        result = corpus_result()
+        result["notes"][corpus.VISIBILITY_UNEVALUATED]["count"] = 2
+        self.assertIn("2 actors hold labels the server refuses to evaluate", gates.corpus_gate(result)["reasons"][0])
+        result = corpus_result()
+        result["notes"][corpus.STORED_HIDDEN_DIFFERS]["count"] = 900
+        self.assertEqual(gates.corpus_gate(result)["status"], gates.PASS)
 
 
 class SearchGate(unittest.TestCase):

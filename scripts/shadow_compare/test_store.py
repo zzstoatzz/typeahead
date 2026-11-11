@@ -10,7 +10,7 @@ import bundle
 import corpus
 import store
 import views
-from fakes import FakeStore, store_record, stored_actor
+from fakes import FakeStore, store_record, stored_actor, visibility, walk_settings
 from transport import Budget, Client, TransportError
 
 SECRET = "store-s3cr3t-0123456789"
@@ -78,7 +78,6 @@ class ViewTests(unittest.TestCase):
 
     def test_an_empty_associated_is_an_empty_object(self):
         self.assertEqual(store.view(record(associated="")).fields["associated"], "{}")
-
 
     def test_refresh_and_identity_times_and_an_override_are_kept_when_the_store_sends_them(self):
         fields = store.view(record(profile_checked_at=700, identity_resolved_at=600, override="hide")).fields
@@ -218,12 +217,10 @@ class WalkTests(unittest.TestCase):
             out = Path(root) / "sorted.jsonl"
             raw = b"".join(json.dumps(row, separators=(",", ":")).encode() + b"\n" for row in reversed(rows))
             bundle.sort(io.BytesIO(raw), out, Path(root) / "runs", run_records=8)
-            result = corpus.run_sources(
-                bundle.BundleJsonl(out, watermark=100, build_id="b1"), store.StoreHttp(client), checkpoint_path=None, page_size=7,
-                max_pages=None, max_tracked=100, settle_delay=0, sample_size=5, sleep=lambda s: None,
-            )
+            result = corpus.run_sources(bundle.BundleJsonl(out, watermark=100, build_id="b1"), store.StoreHttp(client), **walk_settings(page_size=7))
         self.assertTrue(result["complete"] and result["rechecked"])
         self.assertEqual((result["differing_dids"], result["dids_walked"]), (0, 31))
+        self.assertEqual({name: note["count"] for name, note in result["notes"].items() if note["count"]}, {})
         self.assertEqual(result["live"], {"production": 30, "shadow": 30})
         self.assertEqual(result["start_markers"]["shadow"]["next_change"], 1)
 

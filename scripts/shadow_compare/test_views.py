@@ -4,6 +4,7 @@ import unittest
 
 import corpus
 import views
+from fakes import recorded, visibility
 
 LABEL_A = {"src": "did:plc:mod", "uri": "did:plc:a", "val": "spam", "cts": "2026-01-01T00:00:00Z"}
 LABEL_B = {"val": "!hide", "uri": "did:plc:a", "src": "did:plc:mod", "cts": "2026-02-01T00:00:00Z", "cid": "bafy"}
@@ -22,6 +23,14 @@ def stored(**changes):
 
 def view(**changes):
     return views.from_actor(stored(**changes), sha="s")
+
+
+def classify(production, shadow):
+    return corpus.classify("did:plc:a", production, shadow, visibility())[:2]
+
+
+def difference(did, production, shadow):
+    return corpus.difference(did, production, shadow, visibility())
 
 
 class ProfileHashTests(unittest.TestCase):
@@ -61,54 +70,56 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(view(labels=[LABEL_B, LABEL_A]).fields["labels"], view(labels=reordered + [LABEL_B]).fields["labels"])
 
     def test_label_difference_is_its_own_class_with_the_labels_named(self):
-        classes, other = corpus.classify(view(), view(labels=[LABEL_A, LABEL_B]))
+        classes, other = classify(view(), view(labels=[LABEL_A, LABEL_B]))
         self.assertEqual((classes, other), ([corpus.LABELS_DIFFER], []))
-        entry = corpus.difference("did:plc:a", view(), view(labels=[LABEL_B]))
+        entry = difference("did:plc:a", view(), view(labels=[LABEL_B]))
         self.assertEqual(entry["labels"], {"only_in_production": [LABEL_A], "only_in_shadow": [LABEL_B], "values_agree": False})
 
     def test_same_values_with_different_detail_are_marked(self):
         later = dict(LABEL_A, cts="2026-03-03T00:00:00Z")
-        entry = corpus.difference("did:plc:a", view(), view(labels=[later]))
-        self.assertEqual(entry["classes"], [corpus.LABELS_DIFFER])
+        entry = difference("did:plc:a", view(), view(labels=[later]))
+        self.assertEqual((entry["classes"], entry["notes"]), ([], [corpus.LABEL_DETAIL_DIFFERS]))
         self.assertTrue(entry["labels"]["values_agree"])
+        other_labeler = difference("did:plc:a", view(), view(labels=[dict(LABEL_A, src="did:plc:other")]))
+        self.assertEqual(other_labeler["classes"], [corpus.LABELS_DIFFER])
 
     def test_profile_difference_beside_a_label_difference_is_reported_separately(self):
-        classes, other = corpus.classify(view(), view(labels=[], display_name="Other"))
-        self.assertEqual((classes, other), ([corpus.LABELS_DIFFER, corpus.OTHER_FIELD_DIFFERS], ["display_name"]))
+        classes, other = classify(view(), view(labels=[], display_name="Other"))
+        self.assertEqual((classes, other), ([corpus.LABELS_DIFFER, corpus.DISPLAY_NAME_DIFFERS], []))
 
     def test_a_side_without_itemised_fields_falls_back_to_the_profile_hash(self):
         hashed = views.Doc("s", {k: v for k, v in view(labels=[]).fields.items() if k not in views.ITEMISED})
-        self.assertEqual(corpus.classify(view(), hashed), ([corpus.OTHER_FIELD_DIFFERS], ["profile_sha256"]))
+        self.assertEqual(classify(view(), hashed), ([corpus.PROFILE_DIFFERS], []))
         same = views.Doc("s", {k: v for k, v in view().fields.items() if k not in views.ITEMISED})
-        self.assertEqual(corpus.classify(view(), same), ([], []))
+        self.assertEqual(classify(view(), same), ([], []))
 
     def test_summary_counts_label_values_per_side(self):
-        differences = {
-            "did:plc:a": corpus.difference("did:plc:a", view(), view(labels=[LABEL_B])),
-            "did:plc:b": corpus.difference("did:plc:b", view(), view(labels=[])),
-            "did:plc:c": corpus.difference("did:plc:c", view(), view(labels=[dict(LABEL_A, cts="x")])),
-        }
-        summary = corpus.summarize(differences, 5)
-        self.assertEqual(summary["classes"][corpus.LABELS_DIFFER]["count"], 3)
-        self.assertEqual(summary["label_value_counts"], {"only_in_production": {"spam": 3}, "only_in_shadow": {"!hide": 1, "spam": 1}})
-        self.assertEqual(summary["label_detail_only"], 1)
+        summary = recorded([
+            difference("did:plc:a", view(), view(labels=[LABEL_B])),
+            difference("did:plc:b", view(), view(labels=[])),
+            difference("did:plc:c", view(), view(labels=[dict(LABEL_A, cts="x")])),
+        ])
+        self.assertEqual(summary["classes"][corpus.LABELS_DIFFER]["count"], 2)
+        self.assertEqual(summary["label_value_counts"], {"only_in_production": {"spam": 2}, "only_in_shadow": {"!hide": 1}})
+        self.assertEqual(summary["notes"][corpus.LABEL_DETAIL_DIFFERS]["count"], 1)
+        self.assertEqual(summary["differing_dids"], 2)
 
 
 class ProfileFieldTests(unittest.TestCase):
     def test_each_profile_field_is_named(self):
         cases = {
-            "display_name": view(display_name="Other"),
-            "associated": view(associated={"labeler": True}),
-            "created_at": view(created_at="2026-01-01T00:00:00.000Z"),
-            "avatar": view(avatar_url="bafkother"),
-            "pds": view(pds="https://pds.test/"),
+            corpus.DISPLAY_NAME_DIFFERS: view(display_name="Other"),
+            corpus.ASSOCIATED_DIFFERS: view(associated={"labeler": True}),
+            corpus.CREATED_AT_DIFFERS: view(created_at="2026-01-01T00:00:00.000Z"),
+            corpus.AVATAR_DIFFERS: view(avatar_url="bafkother"),
         }
         for name, changed in cases.items():
-            self.assertEqual(corpus.classify(view(), changed), ([corpus.OTHER_FIELD_DIFFERS], [name]))
+            self.assertEqual(classify(view(), changed), ([name], []))
+        self.assertEqual(classify(view(), view(pds="https://pds.test/")), ([], [corpus.PDS_FORM_DIFFERS]))
 
     def test_associated_key_order_is_not_a_difference(self):
         reordered = view(associated={"chat": {"allowIncoming": "all"}, "labeler": False})
-        self.assertEqual(corpus.classify(view(), reordered), ([], []))
+        self.assertEqual(classify(view(), reordered), ([], []))
 
     def test_one_avatar_stored_as_a_cid_and_as_a_url_differs_only_in_form(self):
         did = "did:plc:a"
@@ -119,7 +130,7 @@ class ProfileFieldTests(unittest.TestCase):
         ]
         for form in forms:
             self.assertEqual(views.avatar_cid(form), "bafkavatar")
-            self.assertEqual(corpus.classify(view(), view(avatar_url=form)), ([corpus.OTHER_FIELD_DIFFERS], ["avatar_form"]))
+            self.assertEqual(classify(view(), view(avatar_url=form)), ([], [corpus.AVATAR_FORM_DIFFERS]))
         self.assertEqual(views.avatar_cid("https://cdn.test/path/x?y"), "")
         self.assertEqual(views.avatar_cid(""), "")
 
@@ -127,10 +138,10 @@ class ProfileFieldTests(unittest.TestCase):
 class QualityTests(unittest.TestCase):
     def test_widened_and_shortest_forms_of_one_float_agree(self):
         widened = views.Doc("s", dict(view().fields, quality_score=0.10000000149011612))
-        self.assertEqual(corpus.classify(view(), widened), ([], []))
+        self.assertEqual(classify(view(), widened), ([], []))
 
     def test_a_different_score_is_its_own_class(self):
-        self.assertEqual(corpus.classify(view(), view(quality_score=0.2)), ([corpus.QUALITY_SCORE_DIFFERS], []))
+        self.assertEqual(classify(view(), view(quality_score=0.2)), ([corpus.QUALITY_SCORE_DIFFERS], []))
 
 
 class KeyTests(unittest.TestCase):
@@ -147,7 +158,7 @@ class KeyTests(unittest.TestCase):
             for right in self.CHANGES:
                 a, b = view(**left), view(**right)
                 same = views.key_of(a.fields) == views.key_of(b.fields)
-                self.assertEqual(same, corpus.difference("did:plc:a", a, b) is None, (left, right))
+                self.assertEqual(same, difference("did:plc:a", a, b) is None, (left, right))
 
     def test_a_key_cannot_be_forged_by_moving_text_between_fields(self):
         self.assertNotEqual(views.key_of(view(display_name='a","b', avatar_url="").fields), views.key_of(view(display_name="a", avatar_url='b","').fields))

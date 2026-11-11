@@ -5,9 +5,45 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import httpx
+
+import arbiter
+import corpus
+import identity
+import moderation
 import store
 import views
-from transport import BudgetExceeded, TransportError
+from transport import Budget, BudgetExceeded, Client, TransportError
+
+RULES = moderation.Rules.load()
+NOW_MS = 1_794_355_200_000
+PUBLIC_ADDRESSES = {"93.184.216.34"}
+
+
+def policy(overrides=None, domains=(), source="none"):
+    return moderation.Policy(RULES, overrides, domains, source)
+
+
+def visibility(using=None):
+    return corpus.Visibility(using or policy(), NOW_MS)
+
+
+def walk_settings(**changes):
+    """Arguments for `corpus.run_sources` that keep every difference and never wait."""
+    settings = dict(
+        policy=policy(), checkpoint_path=None, page_size=100, max_pages=None, max_tracked=1000, settle_delay=7, sample_size=5,
+        identity_sample_size=5, sleep=lambda seconds: None,
+    )
+    settings.update(changes)
+    return settings
+
+
+def recorded(entries, *, max_tracked=1000, sample_size=5, identity_sample_size=5):
+    """The summary of a walk that found exactly these differences."""
+    checkpoint = corpus.Checkpoint(None, {}, max_tracked=max_tracked, sample_size=sample_size)
+    for entry in entries:
+        checkpoint.record(entry)
+    return corpus.summarize(checkpoint, checkpoint.entries, identity_sample_size, settled=False)
 
 
 def stored_actor(did, handle, *, version=100, deleted=False, hidden=False, pds_host="pds.test", score=1.0, labels=(), display="Name"):
@@ -147,3 +183,73 @@ class FakeStore:
         self.server.shutdown()
         self.server.server_close()
         self.thread.join()
+
+
+class Network:
+    """plc.directory, a DNS-over-HTTPS resolver, an appview and any number of hosts, answered from dicts."""
+
+    def __init__(self):
+        self.documents = {}
+        self.dns = {}
+        self.well_known = {}
+        self.repos = {}
+        self.addresses = {}
+        self.profiles = {}
+        self.fail_profiles = False
+        self.requests = []
+
+    def handler(self, request):
+        host, path = request.url.host, request.url.path
+        self.requests.append((host, path, request.headers.get("accept")))
+        if host == "plc.test":
+            found = self.documents.get(path.lstrip("/"))
+            return httpx.Response(*found) if isinstance(found, tuple) else httpx.Response(200, json=found) if found else httpx.Response(404, json={})
+        if host == "appview.test":
+            wanted = request.url.params.get_list("actors")
+            if self.fail_profiles or len(wanted) > arbiter.PROFILE_BATCH:
+                return httpx.Response(502)
+            return httpx.Response(200, json={"profiles": [dict(self.profiles[did], did=did) for did in wanted if did in self.profiles]})
+        if host == "doh.test":
+            name = request.url.params["name"]
+            if name not in self.dns:
+                return httpx.Response(200, json={"Status": 3})
+            found = self.dns[name]
+            return httpx.Response(found) if isinstance(found, int) else httpx.Response(200, json=found)
+        if path == identity.WELL_KNOWN_HANDLE:
+            found = self.well_known.get(host)
+            if isinstance(found, Exception):
+                raise found
+            return httpx.Response(404) if found is None else httpx.Response(*found) if isinstance(found, tuple) else httpx.Response(200, text=found)
+        if path == "/xrpc/com.atproto.sync.getRepoStatus":
+            found = self.repos.get((host, request.url.params["did"]))
+            return httpx.Response(*found[:1], json=found[1]) if found else httpx.Response(400, json={"error": "RepoNotFound"})
+        if path == "/.well-known/did.json":
+            found = self.documents.get("did:web:" + host)
+            return httpx.Response(200, json=found) if found else httpx.Response(404)
+        return httpx.Response(404)
+
+    def document(self, did, handle, pds="pds.test"):
+        self.documents[did] = {
+            "id": did, "alsoKnownAs": ["https://not-a-handle.test", "at://" + handle.upper(), "at://second.test"],
+            "service": [{"id": did + "#atproto_pds", "type": "AtprotoPersonalDataServer", "serviceEndpoint": "https://" + pds}],
+        }
+
+    def account(self, did, handle, pds="pds.test", active=True, profile=None):
+        """An account whose handle resolves back, whose PDS answers for it, and which the appview serves when given a profile."""
+        self.document(did, handle, pds)
+        self.well_known[handle.lower()] = did
+        self.repos[(pds, did)] = (200, {"did": did, "active": active, **({} if active else {"status": "deactivated"})})
+        if profile is not None:
+            self.profiles[did] = {"handle": handle, **profile}
+
+    def client(self, name):
+        http = httpx.Client(transport=httpx.MockTransport(self.handler))
+        return Client(name, f"https://{name}.test", Budget(10_000, 10**8), retries=0, http=http)
+
+    def resolver(self):
+        http = httpx.Client(transport=httpx.MockTransport(self.handler))
+        origins = identity.Origins(Budget(10_000, 10**8), http=http, addresses=lambda host: self.addresses.get(host, PUBLIC_ADDRESSES))
+        return identity.Resolver(self.client("plc"), self.client("doh"), origins)
+
+    def authority(self, using=None, now_ms=NOW_MS):
+        return arbiter.Authority(self.resolver(), self.client("appview"), using or policy(), now_ms)

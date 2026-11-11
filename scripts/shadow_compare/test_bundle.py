@@ -13,7 +13,7 @@ import bundle
 import corpus
 import sources
 import views
-from fakes import FakeBackend, admin_document, stored_actor
+from fakes import FakeBackend, admin_document, stored_actor, walk_settings
 
 LABEL = {"src": "did:plc:mod", "uri": "did:plc:x", "val": "spam", "cts": "2026-01-01T00:00:00Z"}
 
@@ -179,9 +179,7 @@ class WalkTests(Scratch):
     def run_pair(self, production_rows, shadow_rows, **options):
         production = self.source(production_rows, run_records=4)
         shadow = FakeBackend("s", [admin_document(row) for row in shadow_rows])
-        settings = dict(checkpoint_path=None, page_size=7, max_pages=None, max_tracked=1000, settle_delay=5, sample_size=5, sleep=lambda s: None)
-        settings.update(options)
-        return corpus.run_sources(production, sources.TantivyAdmin(shadow), **settings), production, shadow
+        return corpus.run_sources(production, sources.TantivyAdmin(shadow), **walk_settings(page_size=7, **options)), production, shadow
 
     def test_a_dump_and_an_admin_listener_holding_the_same_actors_agree(self):
         rows = actors(40) + [stored_actor(did(90), "", deleted=True), stored_actor(did(91), "l.test", labels=[LABEL], score=0.1)]
@@ -204,8 +202,7 @@ class WalkTests(Scratch):
         def settle(seconds):
             shadow.documents[did(7)]["handle"] = "h7.test"
 
-        result = corpus.run_sources(production, sources.TantivyAdmin(shadow), checkpoint_path=None, page_size=7, max_pages=None,
-                                    max_tracked=1000, settle_delay=5, sample_size=5, sleep=settle)
+        result = corpus.run_sources(production, sources.TantivyAdmin(shadow), **walk_settings(page_size=7, sleep=settle))
         counts = {name: entry["count"] for name, entry in result["classes"].items() if entry["count"]}
         self.assertEqual(counts, {corpus.ONLY_IN_PRODUCTION: 1, corpus.HANDLE_DIFFERS: 1, corpus.QUALITY_SCORE_DIFFERS: 1})
         self.assertEqual(result["transient_differences"], 1)

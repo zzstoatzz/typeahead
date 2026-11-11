@@ -70,7 +70,7 @@ class Stage(unittest.TestCase):
         code, out, err = self.stage(base=fake.base)
         self.assertEqual((code, err), (0, ""))
         lines = out.splitlines()
-        self.assertEqual(lines[0], "(a) corpus differences zero or explained: PASS")
+        self.assertEqual(lines[0], "(a) shadow never wrong where production is right: PASS")
         self.assertEqual(lines[-2:], ["overall: INCOMPLETE", f"report: {self.root / RUN / 'report'}"])
         self.assertEqual(len(lines), 6)
         report = self.report()
@@ -85,8 +85,12 @@ class Stage(unittest.TestCase):
         records[7]["handle"] = "diverged.example.test"
         code, out, _ = self.stage(base=self.store(records[:-1]).base)
         self.assertEqual(code, 1)
-        self.assertIn("(a) corpus differences zero or explained: FAIL", out)
-        self.assertEqual(self.report()["corpus"]["differing_dids"], 2)
+        self.assertIn("(a) shadow never wrong where production is right: FAIL", out)
+        report = self.report()["corpus"]
+        self.assertEqual((report["differing_dids"], report["differing_dids_file"]), (2, "differing-dids.txt"))
+        listed = (self.root / RUN / "report" / "differing-dids.txt").read_text().split()
+        self.assertEqual(listed, report["flagged_dids"])
+        self.assertEqual(sorted(item.name for item in (self.root / RUN).iterdir()), ["inputs", "report", "walk.json", "walk.json.dids"])
 
     def test_a_second_run_resumes_the_walk_without_fetching_again(self):
         fake = self.store()
@@ -96,7 +100,7 @@ class Stage(unittest.TestCase):
         shutil.rmtree(self.remote)
         code, out, _ = self.stage(base=fake.base)
         self.assertEqual(code, 0)
-        self.assertIn("(a) corpus differences zero or explained: PASS", out)
+        self.assertIn("(a) shadow never wrong where production is right: PASS", out)
         corpus = self.report()["corpus"]
         self.assertTrue(corpus["resumed"] and corpus["complete"])
         self.assertEqual(corpus["dids_walked"], ACTORS)

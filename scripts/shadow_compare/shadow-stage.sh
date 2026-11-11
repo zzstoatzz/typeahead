@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Runs shadow_stage.py on the shadow machine, which has neither Python nor this
 # repository. Everything it installs goes under /data/compare: uv, the Python
-# uv downloads, and the comparison's sources from one commit of the public
-# repository.
+# uv downloads, and the comparison's sources and the moderation rules from one
+# commit of the public repository.
 #
 #   shadow-stage.sh <commit> run --run-id <id> --manifest-sha256 <sha256>
 #   shadow-stage.sh <commit> clean --run-id <id>
@@ -39,6 +39,7 @@ if [[ ! -e $sources/.complete ]]; then
   mkdir -p "$sources"
   curl -fsSL "$repository/archive/$commit.tar.gz" | tar -xz -C "$sources" --strip-components=1 --wildcards \
     '*/scripts/bench.py' '*/scripts/shadow_compare/*' '*/deploy/tantivy-dev-ui/candidate-smoke-cases.json' \
+    '*/src/moderation-regexes.json' \
     || die "could not fetch $repository at $commit"
   touch "$sources/.complete"
 fi
