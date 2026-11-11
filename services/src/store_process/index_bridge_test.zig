@@ -166,6 +166,17 @@ const Rig = struct {
     /// The index holds exactly the store: every live actor with a handle,
     /// with its fields, and a tombstone for anything else it ever held.
     fn expectConverged(self: *Rig) !void {
+        // The owner prunes on its own thread, and a prune logs a change for
+        // every tombstone it drops. After the clock moved, the turn that
+        // prunes may not have run yet: a commit returns to its caller
+        // before that turn's housekeeping, so the second commit here is the
+        // one that proves the first turn's housekeeping is in the log.
+        // Without it the bridge can settle first and the prune land after.
+        for (0..2) |_| {
+            const turned = try owner_mod.Submission.create(testing.allocator);
+            defer turned.destroy();
+            try self.f.owner.call(turned);
+        }
         try self.settle();
         const barrier = try owner_mod.Submission.create(testing.allocator);
         defer barrier.destroy();
