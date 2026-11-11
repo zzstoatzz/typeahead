@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import secrets
 import subprocess
+import sys
 import tempfile
 import time
 
@@ -72,6 +73,26 @@ def check(public, admin, secret, generation_of):
         assert [a['handle'] for a in query(public, actor(n, 1)['handle'])[0]] == [actor(n, 1)['handle']]
 
 
+def niceness(root, data, secret):
+    """--merge-nice lowers the merge threads and nothing else; it needs Linux's per-thread niceness."""
+    if not sys.platform.startswith('linux'):
+        refused = subprocess.run([str(BIN), 'serve', '--data', str(data), '--merge-nice', '19'], capture_output=True, text=True, timeout=30)
+        assert refused.returncode != 0 and 'needs Linux' in refused.stderr, refused.stderr
+        return None
+    with (root/'nice.log').open('wb') as log:
+        child, _, _ = start(data, log, secret, extra=['--merge-nice', '19'])
+        try:
+            found = {}
+            for task in Path(f'/proc/{child.pid}/task').iterdir():
+                name = (task/'comm').read_text().strip()
+                found.setdefault(name.startswith('merge_thread_'), set()).add(int((task/'stat').read_text().rsplit(') ', 1)[1].split()[16]))
+            assert found.get(True) == {19}, found
+            assert found.get(False) == {0}, found
+        finally:
+            stop(child)
+    return 19
+
+
 def run():
     with tempfile.TemporaryDirectory(prefix='tantivy-merge-policy-') as temporary:
         root = Path(temporary)
@@ -108,7 +129,8 @@ def run():
                 check(public, admin, secret, generation_of)
             finally:
                 stop(child)
-    result = {'passed': True, 'actors': ACTORS, 'rewritten': REWRITTEN, 'settings': SETTINGS, 'most_segments_seen': most,
+        merge_nice = niceness(root, data, secret)
+    result = {'passed': True, 'merge_thread_niceness_checked': merge_nice, 'actors': ACTORS, 'rewritten': REWRITTEN, 'settings': SETTINGS, 'most_segments_seen': most,
               'settled': {k: status[k] for k in ('segments', 'documents', 'deleted_documents')},
               'binary_sha256': hashlib.sha256(BIN.read_bytes()).hexdigest()}
     destination = os.environ.get('TA_MERGE_POLICY_RECEIPT')

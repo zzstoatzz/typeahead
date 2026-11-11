@@ -1420,6 +1420,7 @@ name = "typeahead-tantivy"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "libc",
  "regex",
  "serde",
  "serde_json",

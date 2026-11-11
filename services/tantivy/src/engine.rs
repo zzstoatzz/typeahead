@@ -37,6 +37,7 @@ static QUARANTINED_HANDLES: std::sync::LazyLock<Vec<String>> = std::sync::LazyLo
     .expect("valid committed identity quarantine")
 });
 mod boost;
+mod merge_threads;
 mod rank_merge;
 mod source;
 mod source_page;
@@ -398,6 +399,20 @@ impl Engine {
             .set_merge_policy(Box::new(policy));
         self.merge = settings;
         Ok(())
+    }
+    /// Give the writer's merge threads scheduling niceness `nice`, so a merge
+    /// yields the CPU to a search. Linux applies niceness per thread; the
+    /// threads are found by the name Tantivy gives them. Returns how many
+    /// were changed.
+    pub fn set_merge_niceness(&self, nice: i32) -> Result<usize> {
+        if !(0..=19).contains(&nice) {
+            return Err(Error::Invalid("merge niceness must be 0..19".into()));
+        }
+        let _writer = self
+            .writer
+            .lock()
+            .map_err(|_| Error::Storage("writer lock poisoned".into()))?;
+        merge_threads::renice(nice)
     }
     /// Start the merges the previous process left pending, before any write
     /// is accepted. The commit carries the committed payload unchanged.

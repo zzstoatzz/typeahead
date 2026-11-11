@@ -149,6 +149,11 @@ async fn run() -> Result<()> {
                 merge.max_docs = value as usize;
             }
             engine.set_merge_settings(merge)?;
+            if let Some(nice) = args.get("merge-nice") {
+                let nice = nice.parse().map_err(|_| Error::Invalid("invalid --merge-nice".into()))?;
+                let threads = engine.set_merge_niceness(nice)?;
+                eprintln!("{}", serde_json::json!({"event":"merge_threads_reniced","threads":threads,"nice":nice}));
+            }
             let listen = args
                 .get("listen")
                 .map(String::as_str)

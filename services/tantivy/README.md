@@ -200,6 +200,12 @@ documents were deleted, in 12 to 18 segments, and nothing was going to merge the
 | `--merge-delete-ratio` | 1.0 | a level holding a segment with more than this share deleted is merged, whatever its segment count; 1.0 turns that off |
 | `--merge-max-docs` | 10000000 | a segment with more live documents than this is left alone |
 
+`--merge-nice N` (0 to 19, Linux only) gives the writer's merge threads that
+scheduling niceness, so a merge yields the CPU to a search; unset, they keep the
+process's. On `typeahead-shadow-a` during a 13-million-document merge on two
+dedicated CPUs (2026-11-11, 400 loopback queries a sample), the 90th percentile
+was 4.9 ms with the merge threads at 0 and 3.0 ms at 19, twice.
+
 `/index/status` reports the settings in force as `query_config.merge`, and
 `documents` and `deleted_documents`, summed over the generation's segments. Merges
 run on Tantivy's merge threads, not under the writer lock; a merged segment is
