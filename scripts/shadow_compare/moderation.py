@@ -55,6 +55,24 @@ def valid_date(year, month, day):
     return 1 <= day <= (29 if month == 2 and leap else MONTH_DAYS[month - 1])
 
 
+def date_time_ms(text):
+    """An RFC 3339 date-time in milliseconds since the epoch, or None when the text is not one."""
+    match = DATE_TIME.fullmatch(text)
+    if not match:
+        return None
+    year, month, day, hour, minute, second = map(int, match.groups()[:6])
+    fraction, sign, offset_hour, offset_minute = match.groups()[6:]
+    if not valid_date(year, month, day) or hour > 23 or minute > 59 or second > 59:
+        return None
+    offset = 0
+    if sign:
+        if int(offset_hour) > 23 or int(offset_minute) > 59:
+            return None
+        offset = (int(offset_hour) * 60 + int(offset_minute)) * 60_000 * (1 if sign == "+" else -1)
+    millis = int((fraction or "")[:3].ljust(3, "0"))
+    return days_from_civil(year, month, day) * 86_400_000 + (hour * 3600 + minute * 60 + second) * 1000 + millis - offset
+
+
 def expiry_ms(value):
     """A label expiry in milliseconds since the epoch, for the forms the server accepts."""
     unsupported = ModerationError("unsupported moderation expiry")
@@ -72,20 +90,10 @@ def expiry_ms(value):
         if not valid_date(year, month, day):
             raise unsupported
         return days_from_civil(year, month, day) * 86_400_000
-    match = DATE_TIME.fullmatch(value)
-    if not match:
+    found = date_time_ms(value)
+    if found is None:
         raise unsupported
-    year, month, day, hour, minute, second = map(int, match.groups()[:6])
-    fraction, sign, offset_hour, offset_minute = match.groups()[6:]
-    if not valid_date(year, month, day) or hour > 23 or minute > 59 or second > 59:
-        raise unsupported
-    offset = 0
-    if sign:
-        if int(offset_hour) > 23 or int(offset_minute) > 59:
-            raise unsupported
-        offset = (int(offset_hour) * 60 + int(offset_minute)) * 60_000 * (1 if sign == "+" else -1)
-    millis = int((fraction or "")[:3].ljust(3, "0"))
-    return days_from_civil(year, month, day) * 86_400_000 + (hour * 3600 + minute * 60 + second) * 1000 + millis - offset
+    return found
 
 
 class Rules:
