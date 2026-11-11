@@ -218,6 +218,45 @@ fn generationOf(f: *Fixture, did: []const u8) !?u64 {
     return if (try f.queued(did)) |state| state.generation else null;
 }
 
+test "a restarted owner commits at once and scans nothing until startup_seconds have passed" {
+    const f = try Fixture.create(.{ .startup_seconds = 30, .repair_limit = 2, .retain_without_consumer = 1 });
+    defer f.destroy();
+    _ = try f.commit(&.{
+        .{ .observe = .{ .did = alice } },
+        .{ .profile = .{ .did = bob, .handle = "handle.invalid" } },
+    }, .{ .relay = 7 });
+    _ = try f.commit(&.{.{ .gone = .{ .did = alice, .status = .deleted } }}, null);
+    f.advance(f.owner.options.tombstone_retention_seconds + 60);
+    try f.restart();
+
+    const opened = f.owner.health();
+    try testing.expectEqual(@as(u64, 0), opened.taken_at);
+    try testing.expectEqual(@as(?u64, 7), opened.cursors.relay);
+    try testing.expectEqual(@as(u64, 0), opened.tombstones);
+    try testing.expectEqual(@as(u64, 0), opened.disk.files);
+
+    _ = try f.commit(&.{.{ .observe = .{ .did = "did:plc:carol" } }}, .{ .relay = 8 });
+    f.advance(29);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(?u64, 8), (try f.cursors()).relay);
+    try testing.expect(try f.actor(alice) != null);
+    try testing.expectEqual(@as(u64, 0), f.owner.counters.tombstones_pruned.load(.monotonic));
+    try testing.expectEqual(@as(u64, 0), f.owner.counters.changes_trimmed.load(.monotonic));
+    try testing.expectEqual(@as(?u64, null), try generationOf(f, bob));
+    try testing.expectEqual(@as(u64, 0), f.owner.health().taken_at);
+
+    f.advance(1);
+    _ = f.owner.turn(0);
+    try testing.expect(try f.actor(alice) == null);
+    try testing.expectEqual(@as(u64, 1), f.owner.counters.tombstones_pruned.load(.monotonic));
+    try testing.expect(f.owner.counters.changes_trimmed.load(.monotonic) > 0);
+    try testing.expectEqual(@as(?u64, 1), try generationOf(f, bob));
+    const counted = f.owner.health();
+    try testing.expectEqual(f.now(), counted.taken_at);
+    try testing.expectEqual(@as(u64, 1), counted.identity_pending);
+    try testing.expect(counted.disk.files > 0);
+}
+
 test "the handle repair queues every handle.invalid record once, resumes after a restart, and then stays finished" {
     const f = try Fixture.create(.{ .repair_limit = 2, .repair_seconds = 5, .repair_backlog = 100 });
     defer f.destroy();
@@ -230,6 +269,7 @@ test "the handle repair queues every handle.invalid record once, resumes after a
     try testing.expectEqual(@as(?u64, 1), try generationOf(f, "did:plc:a"));
     try testing.expectEqual(@as(?u64, 1), try generationOf(f, "did:plc:b"));
     try testing.expectEqual(@as(?u64, null), try generationOf(f, "did:plc:c"));
+    try testing.expectEqual(@as(u64, 3), f.owner.health().repair.remaining);
     _ = f.owner.turn(0);
     try testing.expectEqual(@as(?u64, null), try generationOf(f, "did:plc:c"));
 
@@ -242,7 +282,6 @@ test "the handle repair queues every handle.invalid record once, resumes after a
     var health = f.owner.health();
     try testing.expectEqual(@as(u64, 4), health.repair.examined);
     try testing.expectEqual(@as(u64, 4), health.repair.queued);
-    try testing.expectEqual(@as(u64, 1), health.repair.remaining);
     try testing.expectEqual(@as(u64, 0), health.repair.finished_at);
     try testing.expectEqualStrings("did:plc:d", health.repair.position());
 

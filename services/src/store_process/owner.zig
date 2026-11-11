@@ -7,7 +7,10 @@
 //!   single store commit (each submission's cursor in the same commit as its
 //!   changes), and between commits does the store's housekeeping: stepped
 //!   maintenance, domain sweeps, tombstone pruning, the label-expiry pass,
-//!   change-log trimming, the handle repair and the health snapshot.
+//!   change-log trimming, the handle repair and the health snapshot. For
+//!   `startup_seconds` after it opens the store it leaves out everything in
+//!   that list that scans a range, which is all of it but the maintenance
+//!   and the sweeps.
 //! - Producers (the relay intake, the identity resolvers, the PLC tail, the
 //!   label tail, the enrichment loop) run on their own threads and never
 //!   touch the store. They
@@ -120,6 +123,12 @@ pub const Options = struct {
     repair_seconds: u64 = 5,
     repair_backlog: usize = 100,
     health_seconds: u64 = 60,
+    /// How long after it opens the store the owner only commits and
+    /// maintains: pruning, the expiry pass, trimming, the handle repair and
+    /// the health counts all wait this long, so a restart reaches its first
+    /// commits without a range scan in front of them. 0, the default,
+    /// starts them on the first turn: the role sets it.
+    startup_seconds: u64 = 0,
     /// Keys counted at most when sizing a queue for the health snapshot.
     count_cap: usize = 200_000,
 
@@ -208,6 +217,10 @@ pub const Consumer = struct {
 /// What `/health` and the heartbeat report about the store, as of `taken_at`.
 /// Refreshed by the owner, so reading it never waits on the store.
 pub const Health = struct {
+    /// 0 from a start until the owner's first refresh. Until then the
+    /// queue counts, `repair.remaining` and `disk` are zero: opening the
+    /// store reads the cursors, the walks, the repair's position and the
+    /// table statistics, and counts nothing.
     taken_at: u64 = 0,
     cursors: store_mod.read.Cursors = .{},
     plc_cursor: [change.max_cursor_bytes]u8 = undefined,
@@ -323,8 +336,17 @@ pub const Owner = struct {
         var arena: std.heap.ArenaAllocator = .init(gpa);
         defer arena.deinit();
         if ((try store.cursors(arena.allocator())).bridge) |position| self.noteConsumer("bridge", position);
-        try self.refreshHealth(self.now());
-        self.counters.last_turn_at.store(self.now(), .monotonic);
+        const at = self.now();
+        const first = at + options.startup_seconds;
+        self.next_prune = first;
+        self.next_expiry = first;
+        self.next_trim = first;
+        self.next_repair = first;
+        self.next_health = first;
+        var opened: Health = .{};
+        try self.readState(&opened);
+        self.health_snapshot = opened;
+        self.counters.last_turn_at.store(at, .monotonic);
         return self;
     }
 
@@ -804,22 +826,16 @@ pub const Owner = struct {
         return count.entries;
     }
 
-    fn refreshHealth(self: *Owner, at: u64) !void {
+    /// What the snapshot takes from point reads and the engine's own
+    /// counters: cursors, walks, where the repair stands, table statistics.
+    fn readState(self: *Owner, fresh: *Health) !void {
         _ = self.scratch.reset(.retain_capacity);
-        var fresh: Health = .{ .taken_at = at };
         fresh.cursors = try self.store.cursors(self.scratch.allocator());
         if (fresh.cursors.plc) |text| {
             fresh.plc_cursor_len = @min(text.len, fresh.plc_cursor.len);
             @memcpy(fresh.plc_cursor[0..fresh.plc_cursor_len], text[0..fresh.plc_cursor_len]);
         }
         fresh.cursors.plc = null;
-        var buf: keys.Buf = undefined;
-        const identity_bounds = keys.Prefix.identity.bounds();
-        fresh.identity_pending = try self.countRange(&identity_bounds[0], &identity_bounds[1], &fresh.counts_capped);
-        fresh.identity_due = try self.countRange(&identity_bounds[0], keys.timedBound(&buf, .identity, at + 1), &fresh.counts_capped);
-        const refresh_bounds = keys.Prefix.refresh.bounds();
-        fresh.refresh_pending = try self.countRange(&refresh_bounds[0], &refresh_bounds[1], &fresh.counts_capped);
-        fresh.refresh_due = try self.countRange(&refresh_bounds[0], keys.timedBound(&buf, .refresh, at + 1), &fresh.counts_capped);
         for (std.enums.values(change.WalkPool)) |pool| {
             const state = try store_mod.read.walkState(self.store.db(), self.scratch.allocator(), pool.cursor());
             var walk: Walk = .{ .started_at = state.started_at, .passes = state.passes, .last_pass_seconds = state.last_pass_seconds };
@@ -841,7 +857,21 @@ pub const Owner = struct {
         fresh.repair = .{ .started_at = repair.started_at, .finished_at = repair.finished_at, .examined = repair.examined, .queued = repair.queued };
         fresh.repair.did_len = @min(repair.position.len, max_walk_did);
         @memcpy(fresh.repair.did[0..fresh.repair.did_len], repair.position[0..fresh.repair.did_len]);
-        if (repair.finished_at == 0) {
+        fresh.maintenance = self.store.stats();
+    }
+
+    /// What the snapshot has to scan for: the size of each queue, the
+    /// holders the repair has left, and the files on disk.
+    fn countState(self: *Owner, fresh: *Health, at: u64) !void {
+        var buf: keys.Buf = undefined;
+        const identity_bounds = keys.Prefix.identity.bounds();
+        fresh.identity_pending = try self.countRange(&identity_bounds[0], &identity_bounds[1], &fresh.counts_capped);
+        fresh.identity_due = try self.countRange(&identity_bounds[0], keys.timedBound(&buf, .identity, at + 1), &fresh.counts_capped);
+        const refresh_bounds = keys.Prefix.refresh.bounds();
+        fresh.refresh_pending = try self.countRange(&refresh_bounds[0], &refresh_bounds[1], &fresh.counts_capped);
+        fresh.refresh_due = try self.countRange(&refresh_bounds[0], keys.timedBound(&buf, .refresh, at + 1), &fresh.counts_capped);
+        if (fresh.repair.finished_at == 0) {
+            const repair = try store_mod.read.repairState(self.store.db(), self.scratch.allocator());
             var end_buf: keys.Buf = undefined;
             const prefix = try keys.handlePrefix(&buf, handle_policy.invalid_handle);
             var start: std.ArrayList(u8) = .empty;
@@ -856,8 +886,13 @@ pub const Owner = struct {
         }
         const tombstone_bounds = keys.Prefix.tombstone.bounds();
         fresh.tombstones = try self.countRange(&tombstone_bounds[0], &tombstone_bounds[1], &fresh.counts_capped);
-        fresh.maintenance = self.store.stats();
         fresh.disk = self.store.diskUsage() catch .{};
+    }
+
+    fn refreshHealth(self: *Owner, at: u64) !void {
+        var fresh: Health = .{ .taken_at = at };
+        try self.readState(&fresh);
+        try self.countState(&fresh, at);
 
         self.health_lock.lockUncancelable(self.io);
         defer self.health_lock.unlock(self.io);
