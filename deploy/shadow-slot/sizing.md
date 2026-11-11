@@ -135,13 +135,15 @@ Neither is covered by the gate, which measures a settled machine.
 
 The index answers searches while its watermark is at most 120 s old, on its own clock (`sync_lag_s` in `/index/status` is that clock minus the watermark). The watermark is a second the store process sends: the bridge's clock when it began a read of the change log that reached the log's end. Only a committed push or heartbeat from the bridge moves it, and a heartbeat with no documents does: in six of the samples below the index's position stood still while its watermark advanced. So after the store process stops, the lag grows a second a second until the new process has opened the store and its bridge has committed one push.
 
-Measured on 2026-11-11 on four shared CPUs and 4 GB, 13.2 million actors in 641 tables, `sync_lag_s` read every 2 s from outside. "Before" is commit 6f92b05 with timing lines added; "after" is 00c6a14, and 75d76b8 for the last machine start. Times are from the supervisor's `started store` line.
+Measured on 2026-11-11 on four shared CPUs and 4 GB, 13.2 million actors in 641 tables, `sync_lag_s` read every 2 s from outside. "Before" is commit 6f92b05 with timing lines added; "after" is 00c6a14, 75d76b8 for the second machine start and 1fecba0 for the last two (the same code but for the clean stop's telemetry flush). Times are from the supervisor's `started store` line.
 
 | what happened | build | bridge's first push | relay connected | peak `sync_lag_s` |
 |---|---|---|---|---|
 | machine start (a deploy), index warming its files beside it | before, 19:23:59 UTC | 68 s | 106 s | 82 |
 | | after, 20:03:33 | 39 s | 23 s | 53 |
 | | after, 20:43:38 | 22 s | 22 s | 35 |
+| | after, 21:10:19 | 42 s | 19 s | 60 |
+| | after, 21:12:29 | 36 s | 18 s | 49 |
 | store killed, page cache warm, CPU balance left | before, 19:10:27 | 3 s | 5 s | 7, then 11 |
 | | after, 20:10:54 | 3 s | 3 s | 10 |
 | store killed, page cache dropped first | before, 19:11:55 | 7 s | 20 s | 14, then 15 |
@@ -154,9 +156,9 @@ Measured on 2026-11-11 on four shared CPUs and 4 GB, 13.2 million actors in 641 
 
 A kill's peak includes what the watermark had aged before the kill (the bridge rests 5 s between pushes) and the supervisor's 1 to 2 s. "Then" is the highest the lag reached in the five minutes after the restart, where that was 10 s or more: before, with the machine out of balance, the owner's turn ran 36 to 38 s once a minute (28 to 30 s of it one change-log trim) and the bridge, waiting behind it for room in the queue, sent nothing; 49 of 165 samples in that run were at 12 s or more. In the three runs after, 5, 3 and 1 of about 170 were.
 
-Where the time went before, on the machine start: 42.9 s opening the store for writing (641 tables' metadata, read one file at a time beside the index warming its own), 7.8 s counting queues for the health snapshot, 1.1 s and 0.8 s opening the `/store/*` handle and the bridge's, 15 s for the bridge's first push, while the corpus scan read the whole actor range (174 s); then the relay consumer waited 52.5 s for the store lock, held by the owner's first turn, 52.1 s of which was one trim's scan. After: 21.8 s and 19.9 s opening the store (the metadata is asked for ahead), 1.4 s opening the bridge's handle, 16 s and 1 s for the first push; the relay connects as the bridge starts.
+Where the time went before, on the machine start: 42.9 s opening the store for writing (641 tables' metadata, read one file at a time beside the index warming its own), 7.8 s counting queues for the health snapshot, 1.1 s and 0.8 s opening the `/store/*` handle and the bridge's, 15 s for the bridge's first push, while the corpus scan read the whole actor range (174 s); then the relay consumer waited 52.5 s for the store lock, held by the owner's first turn, 52.1 s of which was one trim's scan. After, in four machine starts: 16.3 to 21.8 s opening the store (the metadata is asked for ahead), 1.1 to 1.4 s opening the bridge's handle, and 1, 16, 18 and 23 s for the first push; the relay connects as the bridge starts.
 
-What is left is the open, which nothing can run ahead of, and the first push. On a machine start the index's watermark was already 18, 19 and 29 s old when the index came back in the three deploys watched, so a start has to reach its first push inside about 90 s; it took 39 s and 22 s the twice it was measured on this build. That is two samples, on a store of this size: the open reads every table's metadata, so it grows with the store.
+What is left is the open, which nothing can run ahead of, and the first push. On a machine start the index's watermark was already 18, 19 and 29 s old when the index came back in the three deploys watched, so a start has to reach its first push inside about 90 s; it took 22 to 42 s in the four starts measured on this build, and the lag peaked at 35 to 60. The first push is the part that varies: the bridge asks the index for its state and commits into it while the index is still reading its own files, and the watermark it carries is from before that began. Those are four samples, on a store of this size: the open reads every table's metadata, so it grows with the store.
 
 ### Prices
 
