@@ -85,6 +85,7 @@ mod tests {
             allow_stale: true,
             max_sync_lag_s: 1800,
             merge: crate::engine::MergeSettings::default(),
+            warm: Default::default(),
             healthy: AtomicBool::new(true),
         }
     }

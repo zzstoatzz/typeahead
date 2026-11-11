@@ -371,3 +371,27 @@ fn a_new_generation_shares_the_rank_columns_of_unchanged_segments() {
         }
     }
 }
+
+#[test]
+fn warming_reads_the_large_files_of_a_segment_and_skips_small_and_missing_ones() {
+    let directory = tempfile::tempdir().unwrap();
+    let large = vec![7u8; warm::MIN_FILE_BYTES as usize + 3];
+    fs::write(directory.path().join("abc.term"), &large).unwrap();
+    fs::write(directory.path().join("abc.idx"), &large[..1024]).unwrap();
+    fs::write(directory.path().join("other.term"), &large).unwrap();
+    let extensions = ["term".to_owned(), "idx".to_owned(), "fast".to_owned()];
+    let mut files = warm::files(directory.path(), "abc", &extensions);
+    assert_eq!(files, vec![directory.path().join("abc.term")]);
+    files.push(directory.path().join("merged-away.term"));
+    assert_eq!(warm::read(&files), 2 * large.len() as u64);
+}
+
+#[test]
+fn only_alphanumeric_extensions_are_accepted_for_warming() {
+    let (_directory, mut engine, _rows) = fixture(1);
+    assert!(engine.warm_segment_files(vec!["../meta".into()]).is_err());
+    assert!(engine.warm_segment_files(vec![String::new()]).is_err());
+    engine.warm_segment_files(vec!["term".into(), "idx".into()]).unwrap();
+    apply(&engine, vec![row(1000)], None);
+    assert_eq!(engine.snapshot().searcher.segment_readers().len(), 2);
+}

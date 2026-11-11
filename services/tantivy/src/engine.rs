@@ -41,6 +41,7 @@ mod merge_threads;
 mod rank_merge;
 mod source;
 mod source_page;
+mod warm;
 pub use source::{SourceBatchReceipt, SourceReconcile};
 pub fn epoch() -> u64 {
     SystemTime::now()
@@ -347,6 +348,10 @@ pub struct Engine {
     pub allow_stale: bool,
     pub max_sync_lag_s: u64,
     merge: MergeSettings,
+    /// The index directory and the file extensions to read into the page
+    /// cache for each segment a generation is the first to hold; empty
+    /// reads nothing.
+    warm: (std::path::PathBuf, Vec<String>),
     healthy: AtomicBool,
 }
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -383,8 +388,36 @@ impl Engine {
             allow_stale: false,
             max_sync_lag_s: 1800,
             merge: MergeSettings::default(),
+            warm: (data.join("index"), Vec::new()),
             healthy: AtomicBool::new(true),
         })
+    }
+    /// Read the files with these extensions, for the segments already open
+    /// and for each one a later commit brings in, into the page cache on a
+    /// background thread. A search that reaches a new segment first waits
+    /// on the disk for every page it touches; after a restart or a large
+    /// merge that is every search.
+    pub fn warm_segment_files(&mut self, extensions: Vec<String>) -> Result<()> {
+        if extensions.iter().any(|e| e.is_empty() || !e.bytes().all(|b| b.is_ascii_alphanumeric())) {
+            return Err(Error::Invalid("invalid segment file extension".into()));
+        }
+        self.warm.1 = extensions;
+        self.warm_new_segments(&self.snapshot(), None);
+        Ok(())
+    }
+    fn warm_new_segments(&self, generation: &Generation, previous: Option<&Generation>) {
+        if self.warm.1.is_empty() {
+            return;
+        }
+        let mut files = Vec::new();
+        for segment in generation.searcher.segment_readers() {
+            let id = segment.segment_id();
+            if previous.is_some_and(|old| old.searcher.segment_readers().iter().any(|r| r.segment_id() == id)) {
+                continue;
+            }
+            files.extend(warm::files(&self.warm.0, &id.uuid_string(), &self.warm.1));
+        }
+        warm::spawn(files);
     }
     pub fn merge_settings(&self) -> MergeSettings {
         self.merge
@@ -691,6 +724,7 @@ impl Engine {
                 return Err(error);
             }
         };
+        self.warm_new_segments(&next, Some(&generation));
         *self.generation.write().unwrap() = next;
         receipt.watermark = metadata.watermark;
         receipt.source_cursor = metadata.source_cursor;

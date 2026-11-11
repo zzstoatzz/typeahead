@@ -154,6 +154,9 @@ async fn run() -> Result<()> {
                 let threads = engine.set_merge_niceness(nice)?;
                 eprintln!("{}", serde_json::json!({"event":"merge_threads_reniced","threads":threads,"nice":nice}));
             }
+            if let Some(extensions) = args.get("warm-segment-files") {
+                engine.warm_segment_files(extensions.split(',').map(str::to_owned).collect())?;
+            }
             let listen = args
                 .get("listen")
                 .map(String::as_str)

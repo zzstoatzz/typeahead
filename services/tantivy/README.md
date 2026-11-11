@@ -214,6 +214,26 @@ settings against the real server: 3,000 documents, half of them replaced, settle
 into at most two segments with under a fifth deleted, across a restart, with every
 replaced handle gone from `/search` and every document answering `/admin/source-state`.
 
+### Page-cache warming
+
+A search reads the index through memory maps, so the first search to touch a page
+that is not in the page cache waits on the disk for it. After a restart, and after
+a large merge replaces most of the index with one new segment, that is every
+search. On `typeahead-shadow-a` on 2026-11-11, 25 minutes after a restart with no
+traffic but the comparison's 58 queries, 197 of 211 first-time queries took major
+page faults (about nine each) and their median was 6.9 ms; the 14 that took none
+had a median of 1.5 ms. The faults were in the term dictionary and the postings.
+
+`serve --warm-segment-files term,fast,fieldnorm,idx` reads the files with those
+extensions, when they are at least 16 MiB, twice from start to end on a background
+thread at niceness 19 (Linux keeps a page read twice ahead of pages read once, and
+the store process beside it reads large files once): for the segments open at start, and afterwards for each
+segment a commit is the first to bring in. It logs `segment_files_warmed` with the
+bytes and seconds. It does not delay readiness or the commit, so searches in the
+first minute still fault. Unset, nothing is read. What stays cached is the
+kernel's decision: name only as much as the machine's memory can hold beside
+everything else that reads files on it.
+
 ## Durable incremental replay
 
 Public routes contain no write handler. A separate loopback-only admin listener
