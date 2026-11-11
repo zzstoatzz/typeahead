@@ -128,8 +128,8 @@ class Client:
         if wait > 0:
             self.sleep(wait)
 
-    def send(self, method, path, *, params=None, body=None):
-        headers = {}
+    def send(self, method, path, *, params=None, body=None, headers=None):
+        headers = dict(headers or {})
         content = None
         if body is not None:
             content = json.dumps(body, separators=(",", ":")).encode()
@@ -163,8 +163,8 @@ class Client:
             )
         raise TransportError(redact(f"{self.name} {method} {path} failed: {failure}", self.secrets())) from None
 
-    def get(self, path, params=None):
-        return self.send("GET", path, params=params)
+    def get(self, path, params=None, headers=None):
+        return self.send("GET", path, params=params, headers=headers)
 
     def post(self, path, body):
         return self.send("POST", path, body=body)
