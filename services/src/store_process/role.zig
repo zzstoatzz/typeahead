@@ -207,11 +207,13 @@ const Role = struct {
     }
 
     fn watchdog(self: *Role) void {
+        const started_at = self.owner.now();
         while (true) {
             self.io.sleep(Io.Duration.fromSeconds(60), .awake) catch return;
             const signals = &self.intake.signals;
             const wedge = intake_mod.wedged(
                 self.owner.now(),
+                started_at,
                 signals.last_event_at.load(.monotonic),
                 signals.paused.load(.monotonic),
                 self.owner.counters.last_turn_at.load(.monotonic),

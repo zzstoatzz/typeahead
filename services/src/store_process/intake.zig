@@ -144,9 +144,10 @@ pub const Wedge = enum { relay_silent, owner_stuck };
 /// Whether the process is wedged and should exit for a restart: no relay
 /// event for `stall_seconds` while intake was not paused on the store, or
 /// an owner that has not finished a turn for as long. A long stall is
-/// neither: the owner keeps turning and intake is paused.
-pub fn wedged(now: u64, last_event_at: u64, intake_paused: bool, last_owner_turn_at: u64) ?Wedge {
+/// neither: the owner keeps turning and intake is paused. A relay that has
+/// not been heard yet is silent since `started_at`, not since the epoch.
+pub fn wedged(now: u64, started_at: u64, last_event_at: u64, intake_paused: bool, last_owner_turn_at: u64) ?Wedge {
     if (now -| last_owner_turn_at >= stall_seconds) return .owner_stuck;
-    if (!intake_paused and now -| last_event_at >= stall_seconds) return .relay_silent;
+    if (!intake_paused and now -| @max(last_event_at, started_at) >= stall_seconds) return .relay_silent;
     return null;
 }

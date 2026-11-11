@@ -225,8 +225,8 @@ test "a stalled store pauses intake, the pause is not a wedge, and intake resume
     }.ready);
     const last_event = intake.signals.last_event_at.load(.monotonic);
     try testing.expect(f.now() - last_event >= intake_mod.stall_seconds);
-    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(f.now(), last_event, intake.signals.paused.load(.monotonic), f.owner.counters.last_turn_at.load(.monotonic)));
-    try testing.expectEqual(@as(?intake_mod.Wedge, .relay_silent), intake_mod.wedged(f.now(), last_event, false, f.owner.counters.last_turn_at.load(.monotonic)));
+    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(f.now(), 0, last_event, intake.signals.paused.load(.monotonic), f.owner.counters.last_turn_at.load(.monotonic)));
+    try testing.expectEqual(@as(?intake_mod.Wedge, .relay_silent), intake_mod.wedged(f.now(), 0, last_event, false, f.owner.counters.last_turn_at.load(.monotonic)));
     try testing.expectEqual(committed, f.owner.counters.commits.load(.monotonic));
     try testing.expectEqual(handed, intake.signals.handed_cursor.load(.monotonic));
 
@@ -240,7 +240,7 @@ test "a stalled store pauses intake, the pause is not a wedge, and intake resume
 
     try testing.expect(!intake.signals.paused.load(.monotonic));
     try testing.expectEqual(f.now(), intake.signals.last_event_at.load(.monotonic));
-    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(f.now(), intake.signals.last_event_at.load(.monotonic), false, f.owner.counters.last_turn_at.load(.monotonic)));
+    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(f.now(), 0, intake.signals.last_event_at.load(.monotonic), false, f.owner.counters.last_turn_at.load(.monotonic)));
     try testing.expectEqual(@as(?u64, 200), try relayCursor(f));
     try testing.expectEqual(@as(u64, 200), f.owner.counters.actors_created.load(.monotonic));
     try testing.expect(f.owner.counters.posts_blocked.load(.monotonic) > 0);
@@ -249,10 +249,12 @@ test "a stalled store pauses intake, the pause is not a wedge, and intake resume
 
 test "an owner that stops turning, or a silent relay, is a wedge" {
     const now: u64 = harness.t0;
-    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(now, now - 599, false, now - 599));
-    try testing.expectEqual(@as(?intake_mod.Wedge, .relay_silent), intake_mod.wedged(now, now - 600, false, now));
-    try testing.expectEqual(@as(?intake_mod.Wedge, .owner_stuck), intake_mod.wedged(now, now, true, now - 600));
-    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(now, now - 6000, true, now));
+    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(now, 0, now - 599, false, now - 599));
+    try testing.expectEqual(@as(?intake_mod.Wedge, .relay_silent), intake_mod.wedged(now, 0, now - 600, false, now));
+    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(now, now - 60, 0, false, now));
+    try testing.expectEqual(@as(?intake_mod.Wedge, .relay_silent), intake_mod.wedged(now, now - 600, 0, false, now));
+    try testing.expectEqual(@as(?intake_mod.Wedge, .owner_stuck), intake_mod.wedged(now, 0, now, true, now - 600));
+    try testing.expectEqual(@as(?intake_mod.Wedge, null), intake_mod.wedged(now, 0, now - 6000, true, now));
 }
 
 test "leased identity work is resolved against the store's own queue" {
