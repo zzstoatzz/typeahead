@@ -378,6 +378,100 @@ class Rollback(unittest.TestCase):
         self.assertEqual(world.bucket.writes, [])
 
 
+REBUILT_A = target(SLOT_A, 'b1794420000-cp-standby-a', admission='b' * 64)
+REBUILT_B = target(SLOT_B, 'b1794463200-cp-standby-b', admission='c' * 64)
+
+
+class RollbackAfterStandbyRefresh(unittest.TestCase):
+    """my-prefect-server's standby refresh rebuilds the managed slot that is not the
+    rollback target, stores the route a rollback should restore, then repoints `previous`."""
+
+    def repoint(self, world, rebuilt, **changed):
+        record = world.bucket.record()
+        ledger = {
+            'schema_version': 1, 'owner': 'typeahead-snapshot-refresh', 'kind': 'standby-rollback-route',
+            'store_admission_sha256': record['current']['admission_sha256'], 'request_id': 'a' * 32,
+            'route': {'version': 1, 'current': rebuilt, 'previous': record['previous']},
+        }
+        ledger.update(changed)
+        key = f"control/tantivy-standby/{record['current']['admission_sha256']}/{rebuilt['admission_sha256']}.json"
+        world.bucket.objects[key] = json.dumps(ledger).encode()
+        world.slots[rebuilt['origin']] = Slot(turso_status(rebuilt))
+        world.bucket.objects[route.ROUTE_KEY] = route.encode_record({'version': 1, 'current': record['current'], 'previous': rebuilt})
+        return key
+
+    def routed_world(self, **changed):
+        world = World()
+        world.cutover()
+        key = self.repoint(world, REBUILT_A, **changed)
+        return world, key
+
+    def refused(self, world):
+        routed, writes = world.bucket.record(), list(world.bucket.writes)
+        for write in (False, True):
+            with self.assertRaises(route.Refused) as caught:
+                world.rollback(write=write)
+            self.assertIn('no standby refresh recorded', str(caught.exception))
+        self.assertEqual((world.bucket.record(), world.bucket.writes), (routed, writes))
+
+    def test_rollback_restores_the_freshly_rebuilt_slot(self):
+        world, _ = self.routed_world()
+        routed = world.bucket.record()
+        plan = world.rollback(write=False)
+        self.assertEqual((plan['written'], world.bucket.record()), (False, routed))
+        self.assertEqual(plan['route'], {'version': 1, 'current': REBUILT_A, 'previous': SERVING})
+        self.assertTrue(world.rollback()['written'])
+        self.assertEqual(world.bucket.record(), {'version': 1, 'current': REBUILT_A, 'previous': SERVING})
+
+    def test_each_standby_refresh_moves_the_rollback_target_to_the_slot_it_rebuilt(self):
+        world, _ = self.routed_world()
+        self.repoint(world, REBUILT_B)
+        self.assertTrue(world.rollback()['written'])
+        self.assertEqual(world.bucket.record(), {'version': 1, 'current': REBUILT_B, 'previous': REBUILT_A})
+
+    def test_the_restored_current_is_always_the_previous_of_the_routed_record(self):
+        for repoints in ((), (REBUILT_A,), (REBUILT_A, REBUILT_B)):
+            with self.subTest(repoints=len(repoints)):
+                world = World()
+                world.cutover()
+                for rebuilt in repoints:
+                    self.repoint(world, rebuilt)
+                previous = world.bucket.record()['previous']
+                self.assertEqual(world.rollback(write=False)['route']['current'], previous)
+                world.rollback()
+                self.assertEqual(world.bucket.record()['current'], previous)
+
+    def test_a_ledger_that_restores_another_slot_is_refused(self):
+        world, key = self.routed_world()
+        routed, writes = world.bucket.record(), list(world.bucket.writes)
+        ledger = json.loads(world.bucket.objects[key])
+        ledger['route'] = {'version': 1, 'current': SERVING, 'previous': REBUILT_A}
+        world.bucket.objects[key] = json.dumps(ledger).encode()
+        with self.assertRaises(route.Refused):
+            world.rollback()
+        self.assertEqual((world.bucket.record(), world.bucket.writes), (routed, writes))
+
+    def test_a_ledger_of_another_kind_schema_or_store_admission_is_refused(self):
+        for changed in ({'kind': 'store-slot-route-admission'}, {'schema_version': 2}, {'store_admission_sha256': 'd' * 64}):
+            with self.subTest(changed=changed):
+                self.refused(self.routed_world(**changed)[0])
+
+    def test_a_ledger_that_is_not_an_object_is_refused(self):
+        world, key = self.routed_world()
+        world.bucket.objects[key] = b'[]'
+        self.refused(world)
+
+    def test_a_repointed_record_without_a_ledger_is_refused(self):
+        world, key = self.routed_world()
+        del world.bucket.objects[key]
+        self.refused(world)
+
+    def test_a_ledger_stored_for_another_rollback_target_is_not_read(self):
+        world, key = self.routed_world()
+        world.bucket.objects[key.replace(REBUILT_A['admission_sha256'], 'd' * 64)] = world.bucket.objects.pop(key)
+        self.refused(world)
+
+
 class Check(unittest.TestCase):
     def test_check_reads_the_transport_and_writes_nowhere(self):
         world = World()

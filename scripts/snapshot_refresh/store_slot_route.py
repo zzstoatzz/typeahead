@@ -34,6 +34,7 @@ import urllib.request
 
 ROUTE_KEY = 'control/search-routing.json'
 ADMISSION_PREFIX = 'control/store-slot-admissions/'
+STANDBY_PREFIX = 'control/tantivy-standby/'
 TRANSPORT = 'https://typeahead-search-transport.n8-3e9.workers.dev'
 FORMAT = 'tantivy-0.27-f32-did-expiry-v4'
 STORE_POLICY = 'store-change-log-v1'
@@ -314,7 +315,7 @@ def plan_cutover(record, candidate_origin, candidate, serving, binary_sha256, no
     return admission, {'version': 1, 'current': validate_target(target, STORE_ORIGINS), 'previous': record['current']}
 
 
-def plan_rollback(record, admission, prior_slot):
+def plan_rollback(record, admission, prior_slot, standby=None):
     """The record that was routed before the cutover, if its slot still answers as it did."""
     validate_record(record, STORE_ORIGINS)
     if record.get('mutation') is not None:
@@ -326,6 +327,17 @@ def plan_rollback(record, admission, prior_slot):
     ):
         raise Refused('the stored admission does not match the routed store slot')
     prior = validate_record(admission.get('prior_route'), MANAGED_ORIGINS)
+    if prior.get('mutation') is None and prior['current'] != record.get('previous'):
+        # my-prefect-server's standby refresh rebuilt the other managed slot and
+        # recorded it as `previous`, after storing the route to restore for it.
+        if (
+            not isinstance(standby, dict)
+            or standby.get('schema_version') != 1
+            or standby.get('kind') != 'standby-rollback-route'
+            or standby.get('store_admission_sha256') != record['current']['admission_sha256']
+        ):
+            raise Refused('the stored prior route is not the one this record replaced, and no standby refresh recorded its previous slot')
+        prior = validate_record(standby.get('route'), MANAGED_ORIGINS)
     if prior.get('mutation') is not None or prior['current'] != record.get('previous'):
         raise Refused('the stored prior route is not the one this record replaced')
     reasons = identity_reasons('prior slot', prior_slot, prior['current'])
@@ -474,7 +486,9 @@ def rollback(store, *, write, get=http_get, **timing):
     prior_origin = (record.get('previous') or {}).get('origin')
     if prior_origin not in MANAGED_ORIGINS:
         raise Refused('the routing record has no managed previous slot to return to')
-    prior = plan_rollback(record, admission, observe(prior_origin, get))
+    found = store.get(STANDBY_PREFIX + record['current']['admission_sha256'] + '/' + record['previous']['admission_sha256'] + '.json')
+    standby = json.loads(found[0]) if found is not None else None
+    prior = plan_rollback(record, admission, observe(prior_origin, get), standby)
     report = {'operation': 'rollback', 'written': False, 'expected_etag': etag, 'route': prior}
     if not write:
         return report
