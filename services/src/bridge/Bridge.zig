@@ -56,6 +56,11 @@ pub const Config = struct {
     /// Take over an index whose cursor another controller wrote. The first
     /// resync round then decides what the index holds.
     adopt_foreign_cursor: bool = false,
+    /// How long the loop rests after a step that left nothing to do. Changes
+    /// that arrive meanwhile go out in one push, so while the bridge keeps
+    /// up this is the most often the index commits, and the longest a
+    /// change waits in the log before it is read. A step that stopped short
+    /// of the end of the log is followed at once.
     poll_interval_ms: u64 = 1000,
     error_backoff_ms: u64 = 1000,
     clock: ?Clock = null,
@@ -183,8 +188,13 @@ pub fn run(self: *Bridge, stop: *const std.atomic.Value(bool)) void {
             self.io.sleep(.fromMilliseconds(@intCast(self.config.error_backoff_ms)), .awake) catch return;
             continue;
         };
-        if (result.idle) self.io.sleep(.fromMilliseconds(@intCast(self.config.poll_interval_ms)), .awake) catch return;
+        if (self.rest(result)) |ms| self.io.sleep(.fromMilliseconds(@intCast(ms)), .awake) catch return;
     }
+}
+
+/// Milliseconds the loop waits before the step that follows `result`.
+pub fn rest(self: *const Bridge, result: StepResult) ?u64 {
+    return if (result.idle) self.config.poll_interval_ms else null;
 }
 
 /// One bounded unit of work: up to `max_batches_per_step` pushes from the

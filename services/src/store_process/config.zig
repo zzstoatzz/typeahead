@@ -14,6 +14,7 @@
 //! | `INDEX_ADMIN_URL`        | no       | that listener, a loopback URL; default `http://127.0.0.1:8081` |
 //! | `INDEX_SOURCE_ID`        | no       | names this store to the index; default `$FLY_APP_NAME-store`, change it when the store is rebuilt |
 //! | `INDEX_ADOPT_CURSOR`     | no       | `1` takes over an index whose cursor something else wrote (a bundle's), by a full resync |
+//! | `INDEX_PUSH_INTERVAL_MS` | no       | rest between pushes to the index while the bridge keeps up, 100 to 30000, default 1000; each push is an index commit, and a change waits at most this long to be read |
 //! | `ENRICH`                 | no       | `0` turns profile enrichment off; it is on unless `STORE_OFFLINE` |
 //! | `ENRICH_REQUESTS_PER_SECOND` | no   | ceiling on enrichment requests from this process, default 0.5  |
 //! | `ENRICH_JITTER`          | no       | each gap between requests is stretched by up to this fraction, default 0.2 |
@@ -90,12 +91,15 @@ pub const Index = struct {
     admin_secret: []const u8,
     source_id: []const u8,
     adopt_cursor: bool = false,
+    /// `bridge.Config.poll_interval_ms`. The ceiling is the bridge's
+    /// heartbeat: the index stops serving at 120 s without a watermark.
+    push_interval_ms: u64 = 1000,
 };
 
 pub const default_admin_url = "http://127.0.0.1:8081";
 var source_id_buf: [128]u8 = undefined;
 
-pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IndexNotLoopback, InvalidEnrichment, InvalidCorpusScan };
+pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IndexNotLoopback, InvalidIndexPushInterval, InvalidEnrichment, InvalidCorpusScan };
 
 /// The bridge sends the admin secret, so the index must be on this machine.
 pub fn loopback(url: []const u8) bool {
@@ -128,6 +132,11 @@ pub fn load(getenv: Getenv) Error!Config {
             .source_id = getenv("INDEX_SOURCE_ID") orelse (std.fmt.bufPrint(&source_id_buf, "{s}-store", .{getenv("FLY_APP_NAME") orelse "local"}) catch "local-store"),
             .adopt_cursor = if (getenv("INDEX_ADOPT_CURSOR")) |text| std.mem.eql(u8, text, "1") else false,
         };
+        if (getenv("INDEX_PUSH_INTERVAL_MS")) |text| {
+            const interval = std.fmt.parseInt(u64, text, 10) catch return error.InvalidIndexPushInterval;
+            if (interval < 100 or interval > 30_000) return error.InvalidIndexPushInterval;
+            config.index.?.push_interval_ms = interval;
+        }
     };
     const enrich_off = if (getenv("ENRICH")) |text| std.mem.eql(u8, text, "0") else false;
     if (!config.offline and !enrich_off) config.enrich = try enrichment(getenv);
@@ -243,6 +252,12 @@ test "the index bridge runs when the admin secret is set, against a loopback ind
     try testing.expectEqualStrings("http://127.0.0.1:8085", index.admin_url);
     try testing.expectEqualStrings("slot-a-2", index.source_id);
     try testing.expect(index.adopt_cursor);
+    try testing.expectEqual(@as(u64, 1000), index.push_interval_ms);
+    const paced = [2][]const u8{ "ADMIN_SECRET", "s" };
+    try testing.expectEqual(@as(u64, 5000), (try load(fakeEnv(&.{ base, paced, .{ "INDEX_PUSH_INTERVAL_MS", "5000" } }))).index.?.push_interval_ms);
+    inline for ([_][]const u8{ "99", "30001", "5s", "" }) |text| {
+        try testing.expectError(error.InvalidIndexPushInterval, load(fakeEnv(&.{ base, paced, .{ "INDEX_PUSH_INTERVAL_MS", text } })));
+    }
 }
 
 test "enrichment is on with its defaults unless the role is offline or told otherwise" {

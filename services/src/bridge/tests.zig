@@ -177,6 +177,36 @@ test "repeated changes to one actor coalesce into one document at the latest seq
     try rig.expectConverged();
 }
 
+test "the loop rests only when the log is drained, and what arrives meanwhile is one push" {
+    var rig: Rig = undefined;
+    rig.init();
+    defer rig.deinit();
+    try rig.seed(3);
+    var options = rig.config();
+    options.poll_interval_ms = 5000;
+    options.max_batches_per_step = 1;
+    var bridge = rig.bridge(options);
+    defer bridge.deinit();
+    try settle(&bridge);
+
+    const before = rig.server.reconciles;
+    for (0..40) |n| try rig.put(n, "while resting");
+    const drained = try bridge.step();
+    try testing.expectEqual(@as(usize, 1), drained.pushes);
+    try testing.expectEqual(before + 1, rig.server.reconciles);
+    try testing.expectEqual(@as(?u64, 5000), bridge.rest(drained));
+    try rig.expectConverged();
+
+    // Behind by more than a step can push: no rest until it has caught up.
+    for (0..1201) |n| try rig.put(n, "backlog");
+    const behind = try bridge.step();
+    try testing.expectEqual(@as(usize, 1), behind.pushes);
+    try testing.expect(!behind.idle);
+    try testing.expectEqual(@as(?u64, null), bridge.rest(behind));
+    try settle(&bridge);
+    try rig.expectConverged();
+}
+
 test "handle, display name, hide, unhide, delete and re-create all reach the index" {
     var rig: Rig = undefined;
     rig.init();

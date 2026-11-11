@@ -63,6 +63,12 @@ The server serves only while its `watermark` is within `--max-sync-lag-s` of now
 
 No watermark is sent until one full resync round has completed against the index. An index that is being filled, or that is known to have missed changes, therefore goes stale and stops serving instead of reporting fresh.
 
+## How often it pushes
+
+After a step that drained the log and has no resync page to send, the loop rests `poll_interval_ms` (1000 by default; the store role reads it from `INDEX_PUSH_INTERVAL_MS`, 100 to 30000). Changes logged during the rest are read together and go out as one push, so while the bridge keeps up the interval is the most often the index commits, and a change waits at most the interval, plus the push in flight, before the index has it. A step that stopped short of the end of the log is followed at once, so a backlog or a resync is not slowed by the interval. The ceiling is the 30 s heartbeat: a push that reaches the end of the log carries the watermark, and the index stops serving at 120 s without one.
+
+Each push is one index commit: a new segment, and a reload that reopens every segment's readers. The Turso poller it replaces runs once every 40 s.
+
 ## Full resync
 
 A round walks every record in the store in DID order and reconciles each page, then walks every DID in the index through `source-page` and tombstones the ones the store has no record of. Progress is in the cursor's `reconciliation`, so a round resumes after a restart. Source pages commit once per page; index pages that need no tombstone are skipped without a commit, and the position reached is committed once per step. A round runs:
