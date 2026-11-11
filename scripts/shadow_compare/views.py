@@ -92,6 +92,11 @@ def parsed(value, default):
     return default if value is None else value
 
 
+def comparable_label(label):
+    """A label without `ver`: production keeps it only on labels its profile refresh wrote last, and the bridge never sends it."""
+    return {key: value for key, value in label.items() if key != "ver"} if isinstance(label, dict) else label
+
+
 def from_actor(actor, *, sha, changed_at=None):
     """A view of one actor in the shape the Tantivy index stores (services/tantivy/src/actor.rs)."""
     labels = parsed(actor.get("labels"), [])
@@ -108,7 +113,7 @@ def from_actor(actor, *, sha, changed_at=None):
         "quality_score": f32(actor.get("quality_score", 0)),
         "version": actor.get("version"),
         "profile_sha256": profile_sha256(display_name, avatar_url, labels, associated, created_at),
-        "labels": sorted(text(label) for label in labels),
+        "labels": sorted(text(comparable_label(label)) for label in labels),
         "display_name": display_name,
         "avatar_url": avatar_url,
         "associated": text(associated),

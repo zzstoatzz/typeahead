@@ -25,6 +25,13 @@ def view(**changes):
 
 
 class ProfileHashTests(unittest.TestCase):
+    def test_a_label_version_does_not_make_labels_differ(self):
+        base = {"src": "did:plc:mod", "uri": "did:plc:a", "val": "porn", "cts": "2026-01-01T00:00:00Z"}
+        with_version = views.from_actor({"labels": [{**base, "ver": 1}]}, sha="a")
+        without = views.from_actor({"labels": [base]}, sha="b")
+        self.assertEqual(with_version.fields["labels"], without.fields["labels"])
+        self.assertNotEqual(with_version.fields["profile_sha256"], without.fields["profile_sha256"])
+
     def test_hash_is_over_compact_key_sorted_json_with_unicode_unescaped(self):
         expected = (
             '["Ada \\"L\\" 名前\\n","bafkavatar",'
