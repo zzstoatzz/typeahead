@@ -183,7 +183,12 @@ log's head, floor and each consumer's position, queue depths, table count and
 level sizes, bytes on disk, resident metadata, stall totals, last commit and
 last compaction, actor deltas since start, and the index bridge's position and
 lag when it is configured. The numbers under `store` and `queues` are a
-snapshot the owner refreshes once a minute (`store.taken_at`).
+snapshot the owner refreshes once a minute (`store.taken_at`). For 30 s after
+a process has opened the store the owner counts nothing: `taken_at` is 0 and
+the queue depths, `handle_repair.remaining` and the bytes on disk read zero,
+while the cursors, the walks, the repair's position and the table statistics
+are those read at the open. `/store/*` answers 503 for those 30 s and until
+its handle is open, and `corpus` stays empty until the first count, 300 s in.
 
 `enrichment` is the profile refresh loop: the pacing in force, entries leased,
 completed, retried and not found, requests failed and rate-limited, the last

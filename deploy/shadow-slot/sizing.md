@@ -131,6 +131,32 @@ Neither is covered by the gate, which measures a settled machine.
 - A run started within a minute of a restart had cold requests of 2.3 s and 0.4 s and a cold median of 6.6 ms: the reader reports ready before its files are in the cache.
 - The whole-index merge of 12:13 to 12:32 UTC, on two dedicated CPUs: a loopback sample of 400 requests taken in its first three minutes, which were also the first three minutes after a restart, had a 99th percentile of 375 ms. Later samples during the merge had medians of 1.75 to 1.87 ms and 90th percentiles of 3.0 to 4.9 ms (3.0 with the merge threads at niceness 19, 4.9 without), against 1.15 ms and 2.0 to 2.2 ms once it had landed; the 99th percentiles were 6.2 to 7.4 ms during and 5.2 to 6.6 ms after. One merge was observed.
 
+### What a store restart costs the watermark
+
+The index answers searches while its watermark is at most 120 s old, on its own clock (`sync_lag_s` in `/index/status` is that clock minus the watermark). The watermark is a second the store process sends: the bridge's clock when it began a read of the change log that reached the log's end. Only a committed push or heartbeat from the bridge moves it, and a heartbeat with no documents does: in six of the samples below the index's position stood still while its watermark advanced. So after the store process stops, the lag grows a second a second until the new process has opened the store and its bridge has committed one push.
+
+Measured on 2026-11-11 on four shared CPUs and 4 GB, 13.2 million actors in 641 tables, `sync_lag_s` read every 2 s from outside. "Before" is commit 6f92b05 with timing lines added; "after" is 00c6a14. Times are from the supervisor's `started store` line.
+
+| what happened | build | bridge's first push | relay connected | peak `sync_lag_s` |
+|---|---|---|---|---|
+| machine start (a deploy), index warming its files beside it | before, 19:23:59 UTC | 68 s | 106 s | 82 |
+| | after, 20:03:33 | 39 s | 23 s | 53 |
+| store killed, page cache warm, CPU balance left | before, 19:10:27 | 3 s | 5 s | 7 |
+| | after, 20:10:54 | 3 s | 3 s | 10 |
+| store killed, page cache dropped first | before, 19:11:55 | 7 s | 20 s | 14, then 15 |
+| | after, 20:16:44 | 6 s | 6 s | 13 |
+| store killed as the CPU balance ran out (four busy loops for 40 s first) | before, 19:37:41 | 17 s | 35 s | 21, then 27 |
+| | after, 20:22:59 | 6 s | 6 s | 14 |
+| store killed with the balance at zero for minutes | before, 19:44:49 | 13 s | 33 s | 16, then 32 |
+| | after, 20:27:58 | 9 s | 8 s | 15 |
+| | after, 20:33:40 | 5 s | 5 s | 10 |
+
+A kill's peak includes what the watermark had aged before the kill (the bridge rests 5 s between pushes) and the supervisor's 1 to 2 s. "Then" is the highest the lag reached in the five minutes after the restart: before, with the machine out of balance, the owner's turn ran 36 to 38 s once a minute (28 to 30 s of it one change-log trim) and the bridge, waiting behind it for room in the queue, sent nothing; 49 of 165 samples in that run were at 12 s or more. After, 3 of 170 were, all at the restart.
+
+Where the time went before, on the machine start: 42.9 s opening the store for writing (641 tables' metadata, read one file at a time beside the index warming its own), 7.8 s counting queues for the health snapshot, 1.1 s and 0.8 s opening the `/store/*` handle and the bridge's, 15 s for the bridge's first push, while the corpus scan read the whole actor range (174 s); then the relay consumer waited 52.5 s for the store lock, held by the owner's first turn, 52.1 s of which was one trim's scan. After: 21.8 s opening the store (the metadata is asked for ahead), 1.4 s opening the bridge's handle, 16 s for the first push; the relay connects as the bridge starts.
+
+What is left is the open, which nothing can run ahead of, and the first push. On a machine start the index's watermark was already 18, 19 and 29 s old when the index came back in the three deploys watched, so a start has to reach its first push inside about 90 s; it took 39 s the once it was measured on this build. That is one sample, on a store of this size: the open reads every table's metadata, so it grows with the store.
+
 ### Prices
 
 From [Fly's pricing page](https://docs.fly.io/about/pricing), read 2026-11-11, for `ewr`: performance-1x with 2 GB is $33.00 a month, performance-2x with 4 GB is $66.00, additional memory is $6.00 per GB. The page prices no four- or eight-CPU shared machine; those rows are derived as in the cost table above (a shared vCPU comes to $0.69: 2.19 − 0.25 × 6.00).
