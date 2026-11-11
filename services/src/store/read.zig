@@ -169,6 +169,13 @@ pub fn walkState(db: *Db, arena: std.mem.Allocator, which: keys.Cursor) !record.
     return record.WalkState.decode(try arena.dupe(u8, borrowed));
 }
 
+/// Where the handle repair stands; the default before its first step.
+pub fn repairState(db: *Db, arena: std.mem.Allocator) !record.RepairState {
+    var buf: keys.Buf = undefined;
+    const borrowed = try db.get(keys.cursor(&buf, .handle_repair)) orelse return .{};
+    return record.RepairState.decode(try arena.dupe(u8, borrowed));
+}
+
 pub const LabelRow = struct {
     source: []const u8,
     value: []const u8,

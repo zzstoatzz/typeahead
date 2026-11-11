@@ -24,6 +24,7 @@ pub const label_format = 1;
 pub const queue_format = 1;
 pub const policy_format = 1;
 pub const walk_format = 1;
+pub const repair_format = 1;
 
 pub const Error = error{ CorruptRecord, UnsupportedRecordFormat };
 
@@ -318,6 +319,44 @@ pub const WalkState = struct {
     }
 };
 
+/// Where the one-time pass over the holders of a handle stands.
+pub const RepairState = struct {
+    /// 0 before the first step.
+    started_at: u64 = 0,
+    /// 0 until the pass has reached the end of the range.
+    finished_at: u64 = 0,
+    /// Holders the pass has looked at, and those it queued for identity
+    /// resolution; the rest were queued already.
+    examined: u64 = 0,
+    queued: u64 = 0,
+    /// The last DID examined.
+    position: []const u8 = "",
+
+    pub fn encode(self: RepairState, gpa: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
+        out.clearRetainingCapacity();
+        try out.append(gpa, repair_format);
+        try putInt(gpa, out, self.started_at);
+        try putInt(gpa, out, self.finished_at);
+        try putInt(gpa, out, self.examined);
+        try putInt(gpa, out, self.queued);
+        try putBytes(gpa, out, self.position);
+    }
+
+    pub fn decode(bytes: []const u8) Error!RepairState {
+        var in: Input = .{ .bytes = bytes };
+        if (try in.byte() != repair_format) return error.UnsupportedRecordFormat;
+        const state: RepairState = .{
+            .started_at = try in.int(),
+            .finished_at = try in.int(),
+            .examined = try in.int(),
+            .queued = try in.int(),
+            .position = try in.slice(),
+        };
+        try in.end();
+        return state;
+    }
+};
+
 pub fn encodeU64(value: u64) [8]u8 {
     var out: [8]u8 = undefined;
     std.mem.writeInt(u64, &out, value, .big);
@@ -554,6 +593,12 @@ test "queue state, stored labels and policy entries round trip" {
         try testing.expectEqualDeep(entry, try PolicyEntry.decode(out.items));
     }
     try testing.expectError(error.UnsupportedRecordFormat, PolicyEntry.decode(&.{ policy_format + 1, 0, 0, 0 }));
+
+    const repair: RepairState = .{ .started_at = 1_794_000_000, .finished_at = 1_794_000_900, .examined = 70_000, .queued = 69_000, .position = "did:plc:abc" };
+    try repair.encode(gpa, &out);
+    try testing.expectEqualDeep(repair, try RepairState.decode(out.items));
+    try testing.expectError(error.CorruptRecord, RepairState.decode(out.items[0 .. out.items.len - 1]));
+    try testing.expectError(error.UnsupportedRecordFormat, RepairState.decode(&.{ repair_format + 1, 0, 0, 0, 0, 0 }));
 
     for ([_]u64{ 0, 1, 1 << 40, std.math.maxInt(u64) }) |value| try testing.expectEqual(value, try decodeU64(&encodeU64(value)));
     try testing.expectError(error.CorruptRecord, decodeU64("1234567"));

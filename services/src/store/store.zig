@@ -196,6 +196,62 @@ pub const Store = struct {
         }
     };
 
+    pub const Reverified = struct { examined: usize = 0, queued: usize = 0, finished: bool = false };
+
+    /// One step of a pass, made once in the life of a store, that sends the
+    /// live actors holding `handle` back through identity resolution: for
+    /// `handle.invalid`, the accounts an earlier build marked unresolvable
+    /// on the appview's word. A step looks at up to `limit` holders in DID
+    /// order, fewer when that would bring the identity entries due past
+    /// `backlog_limit`, and queues those not queued already. Where the pass
+    /// stands is stored in the step's own commit, so a restart resumes it,
+    /// and once it has reached the end every later call does nothing.
+    pub fn reverifyHandle(self: *Store, now: u64, handle: []const u8, limit: usize, backlog_limit: usize) !Reverified {
+        const batch = try self.begin(now);
+        errdefer batch.abort();
+        const a = batch.arena.allocator();
+        var state = try read.repairState(self.db(), a);
+        var step: Reverified = .{ .finished = state.finished_at != 0 };
+        const room = if (step.finished) 0 else @min(limit, backlog_limit -| try batch.identityBacklog(backlog_limit));
+        if (room > 0) {
+            var buf: keys.Buf = undefined;
+            const prefix = try keys.handlePrefix(&buf, handle);
+            var start: std.ArrayList(u8) = .empty;
+            try start.appendSlice(a, prefix);
+            if (state.position.len > 0) {
+                try start.appendSlice(a, state.position);
+                try start.append(a, 0);
+            }
+            const end = try a.dupe(u8, prefix);
+            end[end.len - 1] = 1;
+            var found: Keys = .{ .arena = a };
+            _ = try scan.all(a, self.db(), start.items, end, .{ .limit = room }, &found);
+            for (found.keys.items) |key| {
+                const did = (try keys.parseHandle(key)).did;
+                state.position = did;
+                step.examined += 1;
+                _ = batch.scratch.reset(.retain_capacity);
+                const holder = try batch.load(did) orelse return error.InconsistentStore;
+                if (holder.identity_due != 0) continue;
+                _ = try batch.apply(.{ .identity_enqueue = .{ .did = did, .reason = .identity } });
+                step.queued += 1;
+            }
+            if (state.started_at == 0) state.started_at = now;
+            state.examined += step.examined;
+            state.queued += step.queued;
+            if (found.keys.items.len < room) {
+                state.finished_at = now;
+                step.finished = true;
+            }
+            _ = batch.scratch.reset(.retain_capacity);
+            var value: std.ArrayList(u8) = .empty;
+            try state.encode(batch.tmp(), &value);
+            try self.db().put(keys.cursor(&buf, .handle_repair), value.items);
+        }
+        try batch.commit();
+        return step;
+    }
+
     pub const Trimmed = struct { removed: u64, floor: u64, more: bool };
 
     /// Drop change-log entries below `below`, the lowest position any

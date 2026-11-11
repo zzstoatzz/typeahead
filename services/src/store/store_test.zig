@@ -366,6 +366,82 @@ test "an enrichment's handle is never written, and one that differs queues ident
     try expectDids(&.{}, try f.handleDids("claimed.test"));
 }
 
+fn generationOf(f: *Fixture, did: []const u8) !?u64 {
+    const actor = try f.actor(did);
+    if (actor.identity_due == 0) return null;
+    return (try read.queueState(f.store.db(), f.arena.allocator(), .{ .at = actor.identity_due, .did = did })).?.generation;
+}
+
+test "the handle repair queues each holder of handle.invalid once, in steps, and survives a reopen" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const holders = [_][]const u8{ "did:plc:a", "did:plc:b", "did:plc:c", "did:plc:d", "did:plc:e" };
+    for (holders) |did| _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = "handle.invalid" } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = "did:plc:fine", .handle = "fine.test" } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = "did:plc:gone", .handle = "Handle.Invalid" } });
+    _ = try f.apply(t0, .{ .gone = .{ .did = "did:plc:gone", .status = .deactivated } });
+    _ = try f.apply(t0, .{ .identity_enqueue = .{ .did = "did:plc:c", .reason = .plc } });
+    _ = try f.apply(t0, .{ .identity_enqueue = .{ .did = "did:plc:c", .reason = .plc } });
+
+    const first = try f.store.reverifyHandle(t0 + 10, "handle.invalid", 2, 100);
+    try testing.expectEqual(Store.Reverified{ .examined = 2, .queued = 2 }, first);
+    try testing.expectEqual(@as(?u64, 1), try generationOf(&f, "did:plc:a"));
+    try testing.expectEqual(@as(?u64, 1), try generationOf(&f, "did:plc:b"));
+    try testing.expectEqual(@as(?u64, null), try generationOf(&f, "did:plc:d"));
+
+    try f.reopen();
+    var state = try read.repairState(f.store.db(), f.arena.allocator());
+    try testing.expectEqualStrings("did:plc:b", state.position);
+    try testing.expectEqual(@as(u64, t0 + 10), state.started_at);
+    try testing.expectEqual(@as(u64, 0), state.finished_at);
+
+    const second = try f.store.reverifyHandle(t0 + 20, "handle.invalid", 2, 100);
+    try testing.expectEqual(Store.Reverified{ .examined = 2, .queued = 1 }, second);
+    try testing.expectEqual(@as(?u64, 2), try generationOf(&f, "did:plc:c"));
+    _ = try f.apply(t0 + 25, .{ .identity_complete = .{ .did = "did:plc:a", .generation = 1, .observed_at = t0 + 25, .outcome = .{ .resolved = .{ .handle = "handle.invalid" } } } });
+    _ = try f.apply(t0 + 25, .{ .identity_complete = .{ .did = "did:plc:b", .generation = 1, .observed_at = t0 + 25, .outcome = .{ .resolved = .{ .handle = "b.test" } } } });
+
+    try f.reopen();
+    const third = try f.store.reverifyHandle(t0 + 30, "handle.invalid", 2, 100);
+    try testing.expectEqual(Store.Reverified{ .examined = 1, .queued = 1, .finished = true }, third);
+    for ([_][]const u8{ "did:plc:d", "did:plc:e" }) |did| try testing.expectEqual(@as(?u64, 1), try generationOf(&f, did));
+    try testing.expectEqual(@as(?u64, null), try generationOf(&f, "did:plc:a"));
+    try testing.expectEqual(@as(u64, 0), (try f.actor("did:plc:fine")).identity_due);
+    try testing.expectEqual(@as(u64, 0), (try f.actor("did:plc:gone")).identity_due);
+
+    _ = try f.apply(t0 + 40, .{ .profile = .{ .did = "did:plc:late", .handle = "handle.invalid" } });
+    try f.reopen();
+    const after = try f.store.reverifyHandle(t0 + 50, "handle.invalid", 2, 100);
+    try testing.expectEqual(Store.Reverified{ .finished = true }, after);
+    try testing.expectEqual(@as(u64, 0), (try f.actor("did:plc:late")).identity_due);
+    state = try read.repairState(f.store.db(), f.arena.allocator());
+    try testing.expectEqual(@as(u64, t0 + 30), state.finished_at);
+    try testing.expectEqual(@as(u64, 5), state.examined);
+    try testing.expectEqual(@as(u64, 4), state.queued);
+    try testing.expectEqualStrings("did:plc:e", state.position);
+}
+
+test "the handle repair queues nothing while the identity backlog is at its limit" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    var buf: [32]u8 = undefined;
+    for (0..8) |n| _ = try f.apply(t0, .{ .profile = .{ .did = try std.fmt.bufPrint(&buf, "did:plc:{d}", .{n}), .handle = "handle.invalid" } });
+    _ = try f.apply(t0, .{ .observe = .{ .did = "did:plc:relay", .enqueue_identity = true } });
+
+    try testing.expectEqual(Store.Reverified{ .examined = 2, .queued = 2 }, try f.store.reverifyHandle(t0 + 1, "handle.invalid", 5, 3));
+    const changes = (try f.store.cursors(f.arena.allocator())).next_change;
+    try testing.expectEqual(Store.Reverified{}, try f.store.reverifyHandle(t0 + 2, "handle.invalid", 5, 3));
+    try testing.expectEqual(@as(u64, 3), try f.count(.identity));
+    try testing.expectEqual(changes, (try f.store.cursors(f.arena.allocator())).next_change);
+
+    _ = try f.apply(t0 + 3, .{ .identity_lease = .{ .limit = 2 } });
+    try testing.expectEqual(Store.Reverified{ .examined = 2, .queued = 2 }, try f.store.reverifyHandle(t0 + 3, "handle.invalid", 5, 3));
+    _ = try f.apply(t0 + 4, .{ .identity_lease = .{ .limit = 50 } });
+    try testing.expectEqual(Store.Reverified{ .examined = 3, .queued = 3 }, try f.store.reverifyHandle(t0 + 4, "handle.invalid", 3, 100));
+    try testing.expectEqual(Store.Reverified{ .examined = 1, .queued = 1, .finished = true }, try f.store.reverifyHandle(t0 + 5, "handle.invalid", 3, 100));
+    try testing.expectEqual(@as(u64, 9), try f.count(.identity));
+}
+
 test "blocking a domain hides new writes at once and stored actors by sweep" {
     var f = try Fixture.init(.{});
     defer f.deinit();
