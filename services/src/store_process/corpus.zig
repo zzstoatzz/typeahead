@@ -14,6 +14,11 @@
 //!
 //! A scan that follows the writer is not one snapshot: an actor that changes
 //! while it runs is counted as it was when the scan passed it.
+//!
+//! The first scan waits `delay_seconds` after the process starts. A scan
+//! reads the whole actor range and takes as much CPU and disk as it is
+//! given, and on the shadow machine one that began with the process ran for
+//! 175 s beside the store's open and the relay catch-up (2026-11-11).
 
 const std = @import("std");
 const store_mod = @import("../store/root.zig");
@@ -71,6 +76,8 @@ pub const Scanner = struct {
     path: []const u8,
     layout: store_mod.engine.Layout,
     interval_seconds: u64,
+    delay_seconds: u64 = 0,
+    stopping: std.atomic.Value(bool) = .init(false),
     lock: Io.Mutex = .init,
     latest: Report = .{},
 
@@ -114,8 +121,15 @@ pub const Scanner = struct {
         }
     }
 
+    /// Ends `run` at its next wait, and before its next scan. A scan that
+    /// cancellation interrupts only fails, so `run` cannot rely on it.
+    pub fn stop(self: *Scanner) void {
+        self.stopping.store(true, .release);
+    }
+
     pub fn run(self: *Scanner) void {
-        while (true) {
+        self.io.sleep(Io.Duration.fromSeconds(@intCast(self.delay_seconds)), .awake) catch return;
+        while (!self.stopping.load(.acquire)) {
             self.scan();
             self.io.sleep(Io.Duration.fromSeconds(@intCast(self.interval_seconds)), .awake) catch return;
         }
@@ -148,4 +162,14 @@ test "a scan counts what the statistics page shows and what each walk covers" {
     try testing.expectEqual(@as(u64, 4), report.counts.?.total());
     try testing.expectEqual(@as(u64, 1), report.scans);
     try testing.expectEqual(@as(u64, 0), report.failed);
+}
+
+test "a stopped scanner returns without scanning" {
+    const f = try harness.Fixture.create(.{});
+    defer f.destroy();
+    _ = try f.commit(&.{.{ .observe = .{ .did = "did:plc:bare" } }}, null);
+    var scanner: Scanner = .{ .gpa = testing.allocator, .io = testing.io, .root = f.tmp.dir, .path = "store", .layout = f.owner.options.store.layout, .interval_seconds = 3600 };
+    scanner.stop();
+    scanner.run();
+    try testing.expectEqual(@as(u64, 0), scanner.report().scans);
 }
