@@ -125,6 +125,15 @@ pub const Stats = struct {
     not_found: std.atomic.Value(u64) = .init(0),
     /// Entries whose stored content the result changed.
     changed: std.atomic.Value(u64) = .init(0),
+    /// Reported handles that differed from the stored one: the actor was
+    /// queued for identity resolution,
+    handle_queued: std.atomic.Value(u64) = .init(0),
+    /// or already had a queue entry,
+    handle_pending: std.atomic.Value(u64) = .init(0),
+    /// or was resolved within `handle_check.settle_seconds`,
+    handle_settled: std.atomic.Value(u64) = .init(0),
+    /// or was passed over because `handle_check.backlog_limit` were due.
+    handle_deferred: std.atomic.Value(u64) = .init(0),
     /// Entries rescheduled because a request taught nothing.
     retried: std.atomic.Value(u64) = .init(0),
     requests: std.atomic.Value(u64) = .init(0),
@@ -454,6 +463,11 @@ pub const Enricher = struct {
         _ = self.stats.not_found.fetchAdd(tally.absent, .monotonic);
         _ = self.stats.retried.fetchAdd(tally.retried, .monotonic);
         _ = self.stats.changed.fetchAdd(report.summary.changed, .monotonic);
+        const handles = report.summary.handles;
+        _ = self.stats.handle_queued.fetchAdd(handles.get(.queued), .monotonic);
+        _ = self.stats.handle_pending.fetchAdd(handles.get(.pending), .monotonic);
+        _ = self.stats.handle_settled.fetchAdd(handles.get(.settled), .monotonic);
+        _ = self.stats.handle_deferred.fetchAdd(handles.get(.deferred), .monotonic);
         return .worked;
     }
 

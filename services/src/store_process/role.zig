@@ -79,6 +79,10 @@ fn heartbeat(owner: *Owner) void {
         span.setAttribute("enrich_from_pds", s.from_pds.load(.monotonic));
         span.setAttribute("enrich_not_found", s.not_found.load(.monotonic));
         span.setAttribute("enrich_changed", s.changed.load(.monotonic));
+        span.setAttribute("enrich_handle_queued", s.handle_queued.load(.monotonic));
+        span.setAttribute("enrich_handle_pending", s.handle_pending.load(.monotonic));
+        span.setAttribute("enrich_handle_settled", s.handle_settled.load(.monotonic));
+        span.setAttribute("enrich_handle_deferred", s.handle_deferred.load(.monotonic));
         span.setAttribute("enrich_retried", s.retried.load(.monotonic));
         span.setAttribute("enrich_requests", s.requests.load(.monotonic));
         span.setAttribute("enrich_failed", s.failed.load(.monotonic));

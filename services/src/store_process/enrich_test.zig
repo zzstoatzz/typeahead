@@ -423,6 +423,10 @@ test "handle disagreements queue no more identity work than the backlog limit, a
         queued += @intFromBool(try rig.f.queued(rig.did(n)) != null);
     }
     try testing.expectEqual(@as(usize, 3), queued);
+    try testing.expectEqual(@as(u64, 3), rig.load(&rig.enricher.stats.handle_queued));
+    try testing.expectEqual(@as(u64, 7), rig.load(&rig.enricher.stats.handle_deferred));
+    try testing.expectEqual(@as(u64, 1), rig.load(&rig.enricher.stats.handle_pending));
+    try testing.expectEqual(@as(u64, 0), rig.load(&rig.enricher.stats.handle_settled));
     const held = (try rig.f.queued(waiting)).?;
     try testing.expectEqual(store_mod.record.IdentityReason.plc, held.reason);
     try testing.expectEqual(@as(u64, 1), held.generation);
@@ -436,6 +440,26 @@ test "handle disagreements queue no more identity work than the backlog limit, a
     queued = 0;
     for (1..11) |n| queued += @intFromBool(try rig.f.queued(rig.did(n)) != null);
     try testing.expectEqual(@as(usize, 3), queued);
+    try testing.expectEqual(@as(u64, 6), rig.load(&rig.enricher.stats.handle_queued));
+    try testing.expectEqual(@as(u64, 11), rig.load(&rig.enricher.stats.handle_deferred));
+    try testing.expectEqual(@as(u64, 3), rig.load(&rig.enricher.stats.handle_settled));
+
+    const reader = try store_mod.Reader.open(testing.allocator, testing.io, rig.f.tmp.dir, "store", rig.f.owner.options.store.layout);
+    defer reader.close();
+    var signals: @import("intake.zig").Signals = .{};
+    var ignored: std.atomic.Value(u64) = .init(0);
+    const context: http.Context = .{ .owner = rig.f.owner, .reader = reader, .intake = &signals, .labels_ignored = &ignored, .read_secret = null, .enricher = &rig.enricher };
+    const a = rig.f.arena.allocator();
+    const response = try http.respond(&context, a, .GET, "/health", null, "");
+    const body = try std.json.parseFromSliceLeaky(http.HealthBody, a, response.body, .{ .ignore_unknown_fields = true });
+    const handles = body.enrichment.?.handles;
+    try testing.expectEqual(@as(u64, 86_400), handles.settle_seconds);
+    try testing.expectEqual(@as(u64, 3), handles.backlog_limit);
+    try testing.expectEqual(@as(u64, 21), handles.disagreed);
+    try testing.expectEqual(@as(u64, 6), handles.queued);
+    try testing.expectEqual(@as(u64, 1), handles.pending);
+    try testing.expectEqual(@as(u64, 3), handles.settled);
+    try testing.expectEqual(@as(u64, 11), handles.deferred);
 }
 
 test "a request that teaches nothing reschedules its entries and backs the loop off" {

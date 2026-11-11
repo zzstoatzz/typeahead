@@ -233,8 +233,25 @@ pub const EnrichmentBody = struct {
     backoff_until: u64,
     consecutive_failures: u64,
     backed_up: bool,
+    handles: HandleChecksBody,
     quality_walk: WalkBody,
     rest_walk: WalkBody,
+};
+
+/// Handles a profile source reported that differed from the stored one.
+/// None is written; `disagreed` is the sum of the four outcomes.
+pub const HandleChecksBody = struct {
+    settle_seconds: u64,
+    backlog_limit: u64,
+    disagreed: u64,
+    /// The actor was queued for identity resolution.
+    queued: u64,
+    /// The actor already had an identity queue entry.
+    pending: u64,
+    /// The actor's identity was resolved within `settle_seconds`.
+    settled: u64,
+    /// `backlog_limit` identity entries were due, so nothing was queued.
+    deferred: u64,
 };
 
 /// The last corpus count. `total` is what the statistics page calls total:
@@ -294,6 +311,15 @@ pub fn enrichmentBody(arena: Allocator, enricher: *enrich.Enricher, health: owne
         .backoff_until = load(&s.backoff_until),
         .consecutive_failures = load(&s.consecutive_failures),
         .backed_up = load(&s.backed_up),
+        .handles = .{
+            .settle_seconds = o.handle_check.settle_seconds,
+            .backlog_limit = o.handle_check.backlog_limit,
+            .disagreed = load(&s.handle_queued) + load(&s.handle_pending) + load(&s.handle_settled) + load(&s.handle_deferred),
+            .queued = load(&s.handle_queued),
+            .pending = load(&s.handle_pending),
+            .settled = load(&s.handle_settled),
+            .deferred = load(&s.handle_deferred),
+        },
         .quality_walk = try walkBody(arena, health.walks.get(.quality), o.walk_per_hour, load(&s.walk_queued), if (counts) |c| c.ranked else null, if (counts) |c| enrich.walkPeriod(c.ranked, c.ranked, o.walk_per_hour, enrich.quality_scan_factor) else null),
         .rest_walk = try walkBody(arena, health.walks.get(.rest), o.sweep_per_hour, load(&s.sweep_queued), if (counts) |c| c.rest else null, if (counts) |c| enrich.walkPeriod(c.rest, c.records, o.sweep_per_hour, enrich.rest_scan_factor) else null),
     };

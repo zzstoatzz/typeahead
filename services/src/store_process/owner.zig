@@ -121,6 +121,8 @@ pub const Summary = struct {
     created: u32 = 0,
     /// Changes the key layout could not hold; they were skipped.
     rejected: u32 = 0,
+    /// What the enrichments did about handles their sources reported.
+    handles: std.EnumArray(change.HandleVerdict, u32) = .initFill(0),
 };
 
 pub const Error = error{OwnerStopped};
@@ -544,6 +546,7 @@ pub const Owner = struct {
                 submission.summary.applied += @intFromBool(outcome.applied);
                 submission.summary.changed += @intCast(outcome.changed);
                 submission.summary.created += @intFromBool(outcome.created);
+                submission.summary.handles.getPtr(outcome.handle).* += 1;
                 switch (one) {
                     .gone => gone += @intFromBool(was_live and outcome.changed > 0),
                     .reactivated => reactivated += @intFromBool(!outcome.created and outcome.changed > 0),
