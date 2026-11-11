@@ -23,8 +23,13 @@ lint:
 rehearse-route-live config evidence:
     bun scripts/snapshot_refresh/route-rehearsal-live.ts {{config}} {{evidence}}
 
+# admission and conditional routing writes for a store-fed slot, against an
+# in-memory bucket and fixture slots; no network
+test-store-route:
+    python3 -W error -m unittest scripts/snapshot_refresh/test_store_slot_route.py
+
 # what CI runs, locally
-check: typecheck lint test
+check: typecheck lint test test-store-route
     bunx wrangler deploy --dry-run
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
     bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
