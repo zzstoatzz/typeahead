@@ -1,6 +1,6 @@
 # cutover to the store-fed slot
 
-how to route search to `typeahead-shadow-a`, the slot fed by its own store's change log, and how to route back. nothing here has been done: as of 2026-11-11 the routing record names `typeahead-tantivy-b`, and the code this runbook needs is on the `route-shadow` branch, not deployed.
+how to route search to `typeahead-shadow-a`, the slot fed by its own store's change log, and how to route back. nothing here has been done: as of 2026-11-11 the routing record names `typeahead-tantivy-b`, and the code this runbook needs is on the `route-shadow` branch, not deployed. it also assumes the standby refresh in my-prefect-server, which on that date is on its `typeahead-standby-refresh` branch, not merged and not deployed.
 
 every command is marked. **verified** means it was run on 2026-11-11 and behaved as described. **unverified** means it was not run, because it writes, needs credentials this was written without, or touches a deployed account.
 
@@ -87,17 +87,26 @@ all read-only.
    curl -sS https://typeahead.waow.tech/health/freshness | jq .
    ```
 
-## pause the refresh
+## the refresh while the store slot is routed
 
-the twice-daily refresh cannot run while the store slot is routed. its first step reads the record and rejects any origin but its own (`route_target` in [`typeahead_refresh.py`](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/packages/mps/src/mps/typeahead_refresh.py)), so it fails before it exports, publishes, leases or touches a slot, retries once, and fails again. it does not flip the route back. pause it so it does not fail twice a day:
+with the standby refresh deployed in my-prefect-server, leave the twice-daily schedule running. do not pause it. while the record's `current` is the store slot, the scheduled run becomes a standby refresh ([automatic typeahead refresh](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/automatic-typeahead-refresh.md), section "standby refresh while a store slot serves"; read, not run):
+
+- it exports, builds and publishes as usual, then installs and qualifies the new generation on the managed slot that is not the record's `previous`
+- it stores the record a rollback should restore, `{current: the rebuilt slot, previous: the other managed slot}`, at `control/tantivy-standby/<store slot admission sha256>/<rebuilt slot admission sha256>.json`
+- it replaces only `previous` in the routing record, with one write conditional on the ETag. `current` is copied byte for byte, so it never moves the route while the store slot is routed
+- the next run rebuilds the other slot, so each of A and B is rebuilt once a day
+
+a standby refresh that builds and records finishes as an ordinary completed run, so the missed-refresh automation, which expects a completed refresh every 13 hours, keeps working as before.
+
+**unverified**: no standby refresh has run against production. the rollback tool was run against the ledger that branch's code writes, in memory (`just test-store-route`, and a scratch check that imported the branch's constants and encoder).
+
+confirm the standby refresh is deployed before the cutover. without it the refresh fails at its first read of the record, before it exports, publishes, leases or touches a slot, retries once and fails again, twice a day, and the managed slots are not rebuilt. it does not flip the route back. in that case only, pause the schedule:
 
 ```sh
 just prefect --no-prompt deployment schedule pause typeahead-index/typeahead-index ae561c16-cb18-4291-be09-2e7f370d276f
 ```
 
 **unverified**: the pause was not run; `deployment schedule pause --help` confirms the argument order. also unverified: whether registering deployments again from `prefect.heavypad.yaml` re-activates the schedule. check `schedule ls` after any such registration.
-
-the missed-refresh automation in my-prefect-server expects a completed refresh every 13 hours and will fire while the schedule is paused. that is expected for as long as the store slot is routed.
 
 ## cutover
 
@@ -155,13 +164,18 @@ watch `sync_lag_s` over a few minutes. the bridge sends a watermark at least eve
 **unverified** against R2. the first prints the record it would restore. the second:
 
 1. reads the routed store slot's admission from `control/store-slot-admissions/` and checks its digest against the record
-2. checks that the prior slot's `/ready` is true and that it still acknowledges the build, format, binary and strategy the prior record names
-3. writes the prior record back exactly, `current` and `previous`, conditional on the ETag
-4. verifies through the transport as the cutover does, and puts the store slot's record back if the transport does not follow
+2. picks the record to restore. if the record's `previous` is still the slot that was serving at cutover, that is the prior record stored in the admission. if a standby refresh has repointed `previous`, it is the route in that refresh's ledger object under `control/tantivy-standby/`, which must name this store slot's admission. either way the restored `current` is the record's `previous`; anything else is refused
+3. checks that this slot's `/ready` is true and that it still acknowledges the build, format, binary and strategy the record names
+4. writes the restored record, `current` and `previous`, conditional on the ETag
+5. verifies through the transport as the cutover does, and puts the store slot's record back if the transport does not follow
 
-it does not need the store slot to be healthy. the exact prior record matters: the refresh controller refuses to prepare an inactive slot that still holds a machine unless the record's `previous` names that slot, so a record restored without `previous` would leave every later refresh failing.
+so a rollback before any standby refresh returns to the slot that was serving at cutover, and a rollback after one returns to the slot that refresh rebuilt, with the other managed slot as `previous`.
 
-then verify as above, expecting the prior slot's build and machine id, and resume the refresh:
+it does not need the store slot to be healthy. the exact record matters: the refresh controller refuses to prepare an inactive slot that still holds a machine unless the record's `previous` names that slot, so a record restored without `previous` would leave every later refresh failing.
+
+then verify as above, expecting the build and machine id of the slot the record's `previous` named. the schedule needs no change: once the record names a managed slot again, the next scheduled run is an ordinary promoting refresh. a rollback that lands while a standby refresh is preparing or recording its slot has its own recovery steps in [automatic typeahead refresh](https://tangled.org/zzstoatzz.io/my-prefect-server/blob/main/docs/automatic-typeahead-refresh.md) (read, not run).
+
+if the schedule was paused because the standby refresh was not deployed, resume it:
 
 ```sh
 just prefect --no-prompt deployment schedule resume typeahead-index/typeahead-index ae561c16-cb18-4291-be09-2e7f370d276f
@@ -169,14 +183,12 @@ just prefect --no-prompt deployment schedule resume typeahead-index/typeahead-in
 
 **unverified**; `deployment schedule resume --help` confirms the argument order.
 
-if the rollback is refused because the prior slot is not ready or answers with another identity, the record is unchanged and the store slot keeps serving. bring the prior slot back first (`fly machine start` in its app, **unverified**) and run the rollback again. there is no tool for routing to the other managed slot by hand.
+if the rollback is refused because the slot it returns to is not ready or answers with another identity, the record is unchanged and the store slot keeps serving. bring that slot back first (`fly machine start` in its app, **unverified**) and run the rollback again. there is no tool for routing to the other managed slot by hand.
 
 ## what must keep running for rollback to stay possible
 
-- **both production slots.** do not stop, resize, redeploy or destroy `typeahead-tantivy-a` or `-b`, or their volumes. the prior current slot is the rollback target and must keep the build and binary the record names. the other one is the record's `previous`, which the next refresh expects to retire.
-- **the Turso write path.** each production slot polls Turso from inside its machine. the ingester (`typeahead-ingester`), the Worker's admin ingest and Turso itself must keep running, or the production slots stop following the network. a slot whose poll is more than 120 s behind reports not ready, and the rollback refuses it.
-- **the store slot's admission object** in `control/store-slot-admissions/`. it holds the record to restore.
-- **the refresh, paused, not removed.** it cannot run while the store slot is routed, so the production slots are not rebuilt and their checkpoint coverage is not renewed. a slot keeps serving and polling past its coverage deadline (24 h after its checkpoint cut or last full round) and reports `coverage_stale`. after a rollback past that deadline, `/health/freshness` reports stale coverage until a refresh completes; the refresh's own check of the serving slot only warns on stale coverage (`retirement_freshness` in `typeahead_tantivy_slots.py`, read, not run). resume the schedule right after rolling back, or start one with `just refresh-search` (**unverified**).
-- **no manual slot operation.** `tantivy_operation` requests fail on the same record check while the store slot is routed.
-
-keeping the production slots rebuilt while the store slot serves would need a change in my-prefect-server that does not exist: a mode that prepares the inactive slot and stops before promotion. until then the rollback target ages from the moment of cutover, kept current only by its Turso poller.
+- **slots A and B.** do not stop, resize, redeploy or destroy `typeahead-tantivy-a` or `-b`, or their volumes, by hand. the record's `previous` is the rollback target and must keep the build and binary the record names. the other one is the slot the next standby refresh rebuilds.
+- **the ingester and Turso.** each managed slot polls Turso from inside its machine. the ingester (`typeahead-ingester`), the Worker's admin ingest and Turso itself must keep running, or the managed slots stop following the network. a slot whose poll is more than 120 s behind reports not ready, and the rollback refuses it.
+- **the twice-daily refresh.** it rebuilds A and B in turn and never moves the route while the store slot is routed. it is what keeps the rollback target's checkpoint coverage renewed; without it a slot keeps serving and polling past its coverage deadline (24 h after its checkpoint cut or last full round) and reports `coverage_stale`, and `/health/freshness` reports stale coverage after a rollback until a refresh completes.
+- **the store slot's admission object** in `control/store-slot-admissions/` **and the standby ledger objects** in `control/tantivy-standby/`. between them they hold the record to restore.
+- **no manual slot operation.** `tantivy_operation` requests, `cancel` included, are refused while the store slot is routed.
