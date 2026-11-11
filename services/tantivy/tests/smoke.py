@@ -27,11 +27,11 @@ def stop(child):
   child.send_signal(signal.SIGTERM)
   try:child.wait(timeout=5)
   except subprocess.TimeoutExpired:child.kill();child.wait(timeout=5)
-def start(data,log,secret,crash=None):
+def start(data,log,secret,crash=None,extra=()):
  public,admin=port(),port();env=dict(os.environ,ADMIN_SECRET=secret)
  if crash:env['TYPEAHEAD_TEST_CRASH']=crash
  else:env.pop('TYPEAHEAD_TEST_CRASH',None)
- child=subprocess.Popen([str(BIN),'serve','--data',str(data),'--allow-partial','true','--allow-stale','true',*(['--retrieval',os.environ['TA_RETRIEVAL_STRATEGY']] if 'TA_RETRIEVAL_STRATEGY' in os.environ else []),'--listen',f'127.0.0.1:{public}','--admin-listen',f'127.0.0.1:{admin}'],env=env,stdout=log,stderr=log,preexec_fn=lambda:resource.setrlimit(resource.RLIMIT_CORE,(0,0)),start_new_session=True)
+ child=subprocess.Popen([str(BIN),'serve','--data',str(data),'--allow-partial','true','--allow-stale','true',*(['--retrieval',os.environ['TA_RETRIEVAL_STRATEGY']] if 'TA_RETRIEVAL_STRATEGY' in os.environ else []),'--listen',f'127.0.0.1:{public}','--admin-listen',f'127.0.0.1:{admin}',*extra],env=env,stdout=log,stderr=log,preexec_fn=lambda:resource.setrlimit(resource.RLIMIT_CORE,(0,0)),start_new_session=True)
  base=f'http://127.0.0.1:{public}';private=f'http://127.0.0.1:{admin}'
  for _ in range(100):
   if child.poll() is not None:raise RuntimeError('server exited during startup')

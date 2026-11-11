@@ -313,9 +313,14 @@ async fn status(State(app): State<App>) -> Response {
     value["instance_id"] = json!(app.instance_id.as_ref().map(|value| value.as_str()));
     value["binary_sha256"] = json!(app.binary_sha256.as_str());
     value["retrieval_strategy"] = json!(app.engine.retrieval.name());
-    value["query_config"] = json!({"retrieval_strategy":app.engine.retrieval.name(),"max_candidates":app.engine.max_candidates,"max_segments":app.engine.max_segments,"allow_partial":app.engine.allow_partial,"allow_stale":app.engine.allow_stale,"max_sync_lag_s":app.engine.max_sync_lag_s,"concurrency":app.configured_concurrency});
+    value["query_config"] = json!({"retrieval_strategy":app.engine.retrieval.name(),"max_candidates":app.engine.max_candidates,"max_segments":app.engine.max_segments,"allow_partial":app.engine.allow_partial,"allow_stale":app.engine.allow_stale,"max_sync_lag_s":app.engine.max_sync_lag_s,"concurrency":app.configured_concurrency,"merge":app.engine.merge_settings()});
     value["ready"] = json!(app.engine.generation_ready(&g));
     value["segments"] = json!(g.searcher.segment_readers().len());
+    let stored = |count: fn(&tantivy::SegmentReader) -> u32| -> u64 {
+        g.searcher.segment_readers().iter().map(|segment| u64::from(count(segment))).sum()
+    };
+    value["documents"] = json!(stored(tantivy::SegmentReader::max_doc));
+    value["deleted_documents"] = json!(stored(tantivy::SegmentReader::num_deleted_docs));
     value["pds_scope_version"] = json!(1);
     value["pds_scope_policy"] = json!("all-recorded-canonical-hosts");
     value["pds_unknown_actor_count"] =

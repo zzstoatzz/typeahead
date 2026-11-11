@@ -84,6 +84,7 @@ mod tests {
             allow_partial: true,
             allow_stale: true,
             max_sync_lag_s: 1800,
+            merge: crate::engine::MergeSettings::default(),
             healthy: AtomicBool::new(true),
         }
     }

@@ -118,6 +118,37 @@ async fn run() -> Result<()> {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(10000)
                 .clamp(100, 100000);
+            let mut merge = engine.merge_settings();
+            let parsed = |name: &str| -> Result<Option<f64>> {
+                args.get(name)
+                    .map(|s| s.parse::<f64>().map_err(|_| Error::Invalid(format!("invalid --{name}"))))
+                    .transpose()
+            };
+            if let Some(value) = parsed("merge-min-segments")? {
+                if value.fract() != 0.0 || !(0.0..=1e6).contains(&value) {
+                    return Err(Error::Invalid("invalid --merge-min-segments".into()));
+                }
+                merge.min_segments = value as usize;
+            }
+            if let Some(value) = parsed("merge-level-log-size")? {
+                merge.level_log_size = value;
+            }
+            if let Some(value) = parsed("merge-min-layer-size")? {
+                if value.fract() != 0.0 || !(0.0..=f64::from(u32::MAX)).contains(&value) {
+                    return Err(Error::Invalid("invalid --merge-min-layer-size".into()));
+                }
+                merge.min_layer_size = value as u32;
+            }
+            if let Some(value) = parsed("merge-delete-ratio")? {
+                merge.delete_ratio = value;
+            }
+            if let Some(value) = parsed("merge-max-docs")? {
+                if value.fract() != 0.0 || !(0.0..=1e12).contains(&value) {
+                    return Err(Error::Invalid("invalid --merge-max-docs".into()));
+                }
+                merge.max_docs = value as usize;
+            }
+            engine.set_merge_settings(merge)?;
             let listen = args
                 .get("listen")
                 .map(String::as_str)

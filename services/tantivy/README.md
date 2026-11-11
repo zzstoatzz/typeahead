@@ -177,6 +177,37 @@ Budget/deadline exhaustion returns an explicit 503, never a false empty answer.
 Internal Tantivy scorer construction/seek work is not claimed to be an unconditional
 constant-time bound.
 
+### Segment merges
+
+Every applied batch commits one segment, and a replaced document stays in its old
+segment, marked deleted, until that segment is merged. Both cost queries: each
+retrieval pass opens a scorer per segment, and deleted matches are visited and
+count against the candidate budget. By default the serving writer keeps Tantivy's
+merge policy: a size level merges at eight segments, deletions never cause a merge,
+and a segment with more than ten million live documents is never merged again.
+That suits a slot that is replaced by a fresh one-segment snapshot twice a day. It
+does not suit an index that is only ever updated: on `typeahead-shadow-a` on
+2026-11-11, a day after its bootstrap resync, 11.4 million of 24.7 million stored
+documents were deleted, in 12 to 18 segments, and nothing was going to merge them.
+
+`serve` takes the policy's settings; unset, each keeps the default above:
+
+| option | default | meaning |
+|---|---|---|
+| `--merge-min-segments` | 8 | segments in one size level that start a merge of that level |
+| `--merge-level-log-size` | 0.75 | log2 of the size ratio between one level and the next |
+| `--merge-min-layer-size` | 10000 | segments smaller than this are placed as if they held this many documents, so the smallest level is one segment that absorbs each new commit until it is 2^level-log-size times this size |
+| `--merge-delete-ratio` | 1.0 | a level holding a segment with more than this share deleted is merged, whatever its segment count; 1.0 turns that off |
+| `--merge-max-docs` | 10000000 | a segment with more live documents than this is left alone |
+
+`/index/status` reports the settings in force as `query_config.merge`, and
+`documents` and `deleted_documents`, summed over the generation's segments. Merges
+run on Tantivy's merge threads, not under the writer lock; a merged segment is
+served from the next commit. `tests/merge_policy.py` runs the shadow slot's
+settings against the real server: 3,000 documents, half of them replaced, settle
+into at most two segments with under a fifth deleted, across a restart, with every
+replaced handle gone from `/search` and every document answering `/admin/source-state`.
+
 ## Durable incremental replay
 
 Public routes contain no write handler. A separate loopback-only admin listener

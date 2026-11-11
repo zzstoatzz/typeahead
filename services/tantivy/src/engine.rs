@@ -15,7 +15,7 @@ use std::{
 };
 use tantivy::collector::TopDocs;
 use tantivy::columnar::StrColumn;
-use tantivy::merge_policy::NoMergePolicy;
+use tantivy::merge_policy::{LogMergePolicy, NoMergePolicy};
 use tantivy::query::{BooleanQuery, EmptyQuery, EnableScoring, Occur, Query, TermQuery};
 use tantivy::schema::{
     FAST, Field, INDEXED, IndexRecordOption, STORED, STRING, Schema, Value as DocumentValue,
@@ -284,6 +284,57 @@ impl RetrievalStrategy {
         }
     }
 }
+/// When the serving writer merges segments. The defaults are Tantivy's: a
+/// level merges at eight segments, levels are a factor of 2^0.75 apart,
+/// every segment under 10,000 documents counts as that size, deleted
+/// documents never cause a merge, and a segment with more than ten million
+/// live documents is never merged again.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct MergeSettings {
+    /// Segments in one size level that start a merge of that level.
+    pub min_segments: usize,
+    /// log2 of the size ratio between one level and the next.
+    pub level_log_size: f64,
+    /// Segments smaller than this are all placed as if they held this many
+    /// documents, so the smallest level is one segment that absorbs each
+    /// new commit until it is `2^level_log_size` times this size.
+    pub min_layer_size: u32,
+    /// A level holding a segment with more than this share of its documents
+    /// deleted is merged, whatever its segment count; 1.0 turns that off.
+    pub delete_ratio: f64,
+    /// A segment with more live documents than this is left alone.
+    pub max_docs: usize,
+}
+impl Default for MergeSettings {
+    fn default() -> Self {
+        Self {
+            min_segments: 8,
+            level_log_size: 0.75,
+            min_layer_size: 10_000,
+            delete_ratio: 1.0,
+            max_docs: 10_000_000,
+        }
+    }
+}
+impl MergeSettings {
+    fn policy(self) -> Result<LogMergePolicy> {
+        if !(2..=64).contains(&self.min_segments)
+            || !(0.25..=8.0).contains(&self.level_log_size)
+            || self.min_layer_size == 0
+            || !(self.delete_ratio > 0.0 && self.delete_ratio <= 1.0)
+            || self.max_docs == 0
+        {
+            return Err(Error::Invalid("invalid merge settings".into()));
+        }
+        let mut policy = LogMergePolicy::default();
+        policy.set_min_num_segments(self.min_segments);
+        policy.set_level_log_size(self.level_log_size);
+        policy.set_min_layer_size(self.min_layer_size);
+        policy.set_del_docs_ratio_before_merge(self.delete_ratio as f32);
+        policy.set_max_docs_before_merge(self.max_docs);
+        Ok(policy)
+    }
+}
 pub struct Engine {
     fields: Fields,
     writer: Mutex<Writer>,
@@ -294,6 +345,7 @@ pub struct Engine {
     pub allow_partial: bool,
     pub allow_stale: bool,
     pub max_sync_lag_s: u64,
+    merge: MergeSettings,
     healthy: AtomicBool,
 }
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
@@ -329,8 +381,23 @@ impl Engine {
             allow_partial: false,
             allow_stale: false,
             max_sync_lag_s: 1800,
+            merge: MergeSettings::default(),
             healthy: AtomicBool::new(true),
         })
+    }
+    pub fn merge_settings(&self) -> MergeSettings {
+        self.merge
+    }
+    /// Takes effect at the next commit, `start_pending_merges` included.
+    pub fn set_merge_settings(&mut self, settings: MergeSettings) -> Result<()> {
+        let policy = settings.policy()?;
+        self.writer
+            .lock()
+            .map_err(|_| Error::Storage("writer lock poisoned".into()))?
+            .writer
+            .set_merge_policy(Box::new(policy));
+        self.merge = settings;
+        Ok(())
     }
     /// Start the merges the previous process left pending, before any write
     /// is accepted. The commit carries the committed payload unchanged.
