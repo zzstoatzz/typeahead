@@ -35,6 +35,8 @@ const Allocator = std.mem.Allocator;
 const source = @import("source.zig");
 const wire = @import("wire.zig");
 
+const log = std.log.scoped(.index_bridge);
+
 pub const Config = struct {
     /// Names the store these sequences belong to. A cursor written under a
     /// different name is not continued; the index is resynced instead.
@@ -496,6 +498,7 @@ fn push(self: *Bridge, batch: Batch, next: wire.Cursor, watermark: ?u64, policy:
         self.mutex.lockUncancelable(self.io);
         defer self.mutex.unlock(self.io);
         self.stats.pushes += 1;
+        if (self.stats.pushes == 1) log.info("first push committed: position {d}, watermark {d}{s}", .{ next.position, receipt.watermark, if (watermark == null) " (not moved)" else "" });
         self.stats.applied += receipt.applied;
         self.stats.unchanged += receipt.replayed;
         self.stats.rejected += batch.rejected;
