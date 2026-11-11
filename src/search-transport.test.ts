@@ -39,6 +39,20 @@ test("Tantivy requires explicit engine, bounded origin, source format and admiss
   expect(responseMatchesRoute(route, new Response("{}", { status: 503 }))).toBe(true);
 });
 
+test("the store slot is a routable target with its own acknowledged identity", () => {
+  const managed = { engine: "tantivy", origin: "https://typeahead-tantivy-b.fly.dev", build_id: "b1794377098-cp-managed", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
+  const store = { ...managed, origin: "https://typeahead-shadow-a.fly.dev", build_id: "b1794333857-cp-store", admission_sha256: "b".repeat(64), binary_sha256: "d".repeat(64) } as const;
+  const route = parseRoute({ version: 1, current: store, previous: managed });
+  expect(route).toEqual(store);
+  expect(routeIdentity(route)).not.toBe(routeIdentity(parseRoute({ version: 1, current: managed })));
+  const acknowledged = (target: typeof managed | typeof store) => new Response("{}", { headers: { "X-Typeahead-Engine": "tantivy", "X-Typeahead-Build": target.build_id, "X-Typeahead-Format": target.format, "X-Typeahead-Binary-Sha256": target.binary_sha256, "X-Typeahead-Retrieval-Strategy": target.retrieval_strategy } });
+  expect(responseMatchesRoute(route, acknowledged(store))).toBe(true);
+  expect(responseMatchesRoute(route, acknowledged(managed))).toBe(false);
+  for (const origin of ["https://typeahead-shadow-b.fly.dev", "https://typeahead-shadow-a.fly.dev/", "http://typeahead-shadow-a.fly.dev"]) {
+    expect(() => parseRoute({ version: 1, current: { ...store, origin } })).toThrow();
+  }
+});
+
 test("router exposes only backend read paths", () => {
   const base = "https://typeahead-search-transport.n8-3e9.workers.dev";
   for (const path of ["/search", "/ready", "/health", "/index/status", "/debug/search", "/route"]) {
