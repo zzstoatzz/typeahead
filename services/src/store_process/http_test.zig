@@ -14,7 +14,7 @@ const bearer = "Bearer " ++ secret;
 
 const Surface = struct {
     f: *Fixture,
-    reader: *store_mod.Reader,
+    reader: ?*store_mod.Reader,
     signals: intake_mod.Signals = .{},
     ignored: std.atomic.Value(u64) = .init(0),
     read_secret: ?[]const u8 = secret,
@@ -24,7 +24,7 @@ const Surface = struct {
     }
 
     fn close(self: *Surface) void {
-        self.reader.close();
+        if (self.reader) |reader| reader.close();
     }
 
     fn send(self: *Surface, method: std.http.Method, target: []const u8, authorization: ?[]const u8, body: []const u8) !http.Response {
@@ -82,6 +82,16 @@ test "the read endpoints are off without a secret and closed without the bearer"
     try testing.expectEqual(std.http.Status.not_found, (try surface.get("/store/actor?did=" ++ alice, bearer)).status);
     try testing.expect(!http.authorized("", "Bearer x"));
     try testing.expect(http.authorized("", "Bearer "));
+}
+
+test "the read endpoints answer 503 and health answers while no reader is open" {
+    const f = try seeded();
+    defer f.destroy();
+    var surface: Surface = .{ .f = f, .reader = null };
+    try testing.expectEqual(std.http.Status.service_unavailable, (try surface.get("/store/actor?did=" ++ alice, bearer)).status);
+    try testing.expectEqual(std.http.Status.service_unavailable, (try surface.get("/store/changes?from=0", bearer)).status);
+    try testing.expectEqual(std.http.Status.unauthorized, (try surface.get("/store/actor?did=" ++ alice, null)).status);
+    try testing.expectEqual(std.http.Status.ok, (try surface.get("/health", null)).status);
 }
 
 test "an actor is read by DID and by handle without case" {

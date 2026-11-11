@@ -20,7 +20,9 @@
 //! Every `/store/*` read goes through a read-only handle on the store,
 //! refreshed per request. It takes no lock the owner takes, so a walk of
 //! every actor cannot hold a commit back; it sees whole commits, as of the
-//! refresh. The handle keeps table metadata of its own.
+//! refresh. The handle keeps table metadata of its own. The role opens it
+//! after the index bridge and the upstream consumers are running, and until
+//! then a `/store/*` request with the right bearer is answered 503.
 
 const std = @import("std");
 const store_mod = @import("../store/root.zig");
@@ -416,7 +418,9 @@ pub fn bridgeBody(arena: Allocator, bridge: *Bridge) !BridgeBody {
 pub const Context = struct {
     owner: *Owner,
     /// The handle `/store/*` reads through. Used by one thread at a time.
-    reader: *store_mod.Reader,
+    /// Null until the role has opened it, which it does after the index
+    /// bridge and the upstream consumers are running.
+    reader: ?*store_mod.Reader,
     intake: *const intake_mod.Signals,
     labels_ignored: *const std.atomic.Value(u64),
     read_secret: ?[]const u8,
@@ -684,7 +688,7 @@ pub fn respond(ctx: *const Context, arena: Allocator, method: std.http.Method, t
     const secret = ctx.read_secret orelse return failure(arena, .not_found, "not found");
     if (!authorized(secret, authorization)) return failure(arena, .unauthorized, "unauthorized");
 
-    const reader = ctx.reader;
+    const reader = ctx.reader orelse return failure(arena, .service_unavailable, "the store reader is not open yet");
     try reader.refresh();
     const posted = std.mem.eql(u8, path, "/store/actors/batch") or std.mem.eql(u8, path, "/store/actors/page");
     if (method != (if (posted) std.http.Method.POST else std.http.Method.GET)) return failure(arena, .method_not_allowed, "method not allowed");
