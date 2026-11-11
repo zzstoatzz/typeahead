@@ -4,6 +4,7 @@
 //! opens no connection to Turso or the Worker. Configuration is in
 //! `config.zig`, the concurrency model in `owner.zig`, the HTTP surface in
 //! `http.zig`, enrichment in `enrich.zig`, the corpus count in `corpus.zig`.
+//! `Stage` is the order it starts in.
 
 const std = @import("std");
 const zat = @import("zat");
@@ -30,6 +31,48 @@ const log = std.log.scoped(.store_role);
 
 const socket_timeout_seconds = 5;
 const relay_host = "bsky.network";
+
+/// The points of a start, in the order the role reaches them. The index
+/// stops answering searches 120 s after its last watermark, and only the
+/// bridge moves the watermark, so the bridge and then the upstream
+/// consumers come before everything that reads the store for its own sake.
+pub const Stage = enum {
+    /// The writer is open and the relay cursor is read. Nothing has been
+    /// counted or scanned.
+    store_opened,
+    /// The owner is turning and, when an index is configured, the bridge
+    /// is pushing.
+    bridge_started,
+    /// The relay, the labeler, the PLC export and the identity work are
+    /// following. Offline, nothing is started here.
+    intake_started,
+    /// `/store/*` has its handle.
+    reader_opened,
+    /// The corpus scanner is waiting for its first count.
+    corpus_started,
+};
+
+pub const State = struct {
+    owner: *Owner,
+    reader_open: bool,
+    corpus_scans: u64,
+};
+
+pub const Options = struct {
+    /// How long after the start the process does only what feeds the
+    /// index: the owner leaves its scans (`owner.Options.startup_seconds`)
+    /// and the `/store/*` handle is not opened.
+    startup_seconds: u64 = 30,
+    /// How long after the start the first corpus count begins.
+    corpus_delay_seconds: u64 = 300,
+    context: ?*anyopaque = null,
+    /// Called as each stage is reached, on the thread that reached it.
+    on_stage: ?*const fn (context: ?*anyopaque, stage: Stage, state: State) void = null,
+    /// Ends `run` the way SIGTERM does, for a caller that cannot shut the
+    /// listening socket down under an accept (macOS): set it, then connect
+    /// to the listener once.
+    stop: ?*const std.atomic.Value(bool) = null,
+};
 
 var role: ?*Role = null;
 
@@ -170,8 +213,14 @@ const Role = struct {
     allocator: std.mem.Allocator,
     io: Io,
     config: config_mod.Config,
+    options: Options,
+    started: Io.Timestamp,
     owner: *Owner,
-    reader: *store_mod.Reader,
+    /// The handle `/store/*` reads through, once `late` has opened it.
+    reader: std.atomic.Value(?*store_mod.Reader) = .init(null),
+    /// The relay cursor the store held when it was opened, read before
+    /// the owner's first turn so the relay consumer never waits on one.
+    stored_relay: ?u64,
     intake: intake_mod.Intake,
     labels: tails.LabelSink,
     plc: tails.PlcTail,
@@ -182,14 +231,34 @@ const Role = struct {
     corpus: ?*corpus_mod.Scanner = null,
     bridge_stop: std.atomic.Value(bool) = .init(false),
 
-    fn relay(self: *Role) void {
-        const stored = blk: {
-            var arena: std.heap.ArenaAllocator = .init(self.allocator);
-            defer arena.deinit();
-            const store = self.owner.acquire() catch break :blk null;
-            defer self.owner.release();
-            break :blk (store.cursors(arena.allocator()) catch break :blk null).relay;
+    fn reached(self: *Role, stage: Stage) void {
+        const elapsed = self.started.untilNow(self.io, .awake);
+        log.info("start: {t} after {d} ms", .{ stage, elapsed.toMilliseconds() });
+        const report = self.options.on_stage orelse return;
+        report(self.options.context, stage, .{
+            .owner = self.owner,
+            .reader_open = self.reader.load(.acquire) != null,
+            .corpus_scans = if (self.corpus) |scanner| scanner.report().scans else 0,
+        });
+    }
+
+    /// What waits until the index is fed: the `/store/*` handle, whose
+    /// open reads every table's metadata, and then the corpus scanner.
+    fn late(self: *Role) void {
+        self.io.sleep(Io.Duration.fromSeconds(@intCast(self.options.startup_seconds)), .awake) catch return;
+        const reader = store_mod.Reader.open(self.allocator, self.io, Io.Dir.cwd(), self.config.store_dir, self.owner.options.store.layout) catch |err| {
+            log.err("store reader open failed: {s}, exiting for restart", .{@errorName(err)});
+            fatal.exitForRestart();
         };
+        self.reader.store(reader, .release);
+        self.reached(.reader_opened);
+        const scanner = self.corpus orelse return;
+        self.reached(.corpus_started);
+        scanner.run();
+    }
+
+    fn relay(self: *Role) void {
+        const stored = self.stored_relay;
         const cursor = config_mod.resumeCursor(stored, self.config.bootstrap_cursor) orelse {
             log.err("the store holds no usable relay cursor and RELAY_BOOTSTRAP_CURSOR is not set; refusing to start live and skip replay", .{});
             fatal.exitForRestart();
@@ -265,7 +334,7 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
 
     const context: http.Context = .{
         .owner = self.owner,
-        .reader = self.reader,
+        .reader = self.reader.load(.acquire),
         .intake = &self.intake.signals,
         .labels_ignored = &self.labels.ignored,
         .read_secret = self.config.read_secret,
@@ -289,12 +358,13 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
         log.err("store role configuration: {s}", .{@errorName(err)});
         return err;
     };
-    return run(allocator, io, listener, config);
+    return run(allocator, io, listener, config, .{});
 }
 
 /// The role under a configuration the caller built, until the listening
 /// socket is shut down.
-pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, config: config_mod.Config) !void {
+pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, config: config_mod.Config, options: Options) !void {
+    const started = Io.Timestamp.now(io, .awake);
     log.info("store at {s}, reads {s}{s}", .{
         config.store_dir,
         if (config.read_secret != null) "on" else "off (STORE_READ_SECRET not set)",
@@ -305,24 +375,29 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         .on_fatal = exitOnStoreFailure,
         .on_heartbeat = heartbeat,
         .repair_limit = config.handle_repair_per_step,
+        .startup_seconds = options.startup_seconds,
     }) catch |err| {
         log.err("store open failed: {s}", .{@errorName(err)});
         return err;
     };
     defer owner.close();
 
-    const reader = store_mod.Reader.open(allocator, io, Io.Dir.cwd(), config.store_dir, owner.options.store.layout) catch |err| {
-        log.err("store reader open failed: {s}", .{@errorName(err)});
-        return err;
+    const stored_relay = blk: {
+        var arena: std.heap.ArenaAllocator = .init(allocator);
+        defer arena.deinit();
+        const store = try owner.acquire();
+        defer owner.release();
+        break :blk (try store.cursors(arena.allocator())).relay;
     };
-    defer reader.close();
 
     var self: Role = .{
         .allocator = allocator,
         .io = io,
         .config = config,
+        .options = options,
+        .started = started,
         .owner = owner,
-        .reader = reader,
+        .stored_relay = stored_relay,
         .intake = .{ .gpa = allocator, .owner = owner, .options = .{ .on_fatal = exitOnIntakeFailure } },
         .labels = .{ .gpa = allocator, .owner = owner },
         .plc = .{ .gpa = allocator, .io = io, .owner = owner },
@@ -330,12 +405,11 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         .work = undefined,
     };
     defer self.intake.deinit();
+    defer if (self.reader.load(.acquire)) |reader| reader.close();
     self.work = .{ .gpa = allocator, .io = io, .owner = owner, .resolver = &self.resolver };
     role = &self;
     defer role = null;
-
-    var tasks: Io.Group = .init;
-    try tasks.concurrent(io, Owner.run, .{owner});
+    self.reached(.store_opened);
 
     // The index bridge: its own thread, its own reader, its own HTTP client.
     var bridge_source: index_bridge.StoreSource = undefined;
@@ -357,14 +431,24 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         };
         bridge = bridge_mod.Bridge.init(allocator, io, .{ .source_id = index.source_id, .adopt_foreign_cursor = index.adopt_cursor, .poll_interval_ms = index.push_interval_ms }, bridge_source.interface(), bridge_endpoint.transport());
         self.bridge = &bridge;
-        try tasks.concurrent(io, bridge_mod.Bridge.run, .{ &bridge, &self.bridge_stop });
-        log.info("index bridge to {s} as source {s}, resting {d} ms between pushes", .{ index.admin_url, index.source_id, index.push_interval_ms });
     }
     defer if (config.index != null) {
         bridge.deinit();
         bridge_http.deinit();
         bridge_source.close();
     };
+
+    // Enrichment: its own thread and its own HTTP client; see enrich.zig.
+    var enrich_http: enrich.Http = undefined;
+    var enrich_timer: enrich.WallTimer = .{ .io = io };
+    var enricher: enrich.Enricher = undefined;
+    if (config.enrich) |enrich_options| {
+        enrich_http = enrich.Http.init(io, allocator);
+        enricher = .{ .gpa = allocator, .owner = owner, .transport = enrich_http.transport(), .timer = enrich_timer.timer(), .options = enrich_options };
+        enricher.prng = .init(@truncate(@as(u96, @bitCast(Io.Timestamp.now(io, .real).nanoseconds))));
+        self.enricher = &enricher;
+    }
+    defer if (config.enrich != null) enrich_http.deinit();
 
     var scanner: corpus_mod.Scanner = .{
         .gpa = allocator,
@@ -373,38 +457,37 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         .path = config.store_dir,
         .layout = owner.options.store.layout,
         .interval_seconds = config.corpus_scan_seconds,
+        .delay_seconds = options.corpus_delay_seconds -| options.startup_seconds,
     };
-    if (config.corpus_scan_seconds > 0) {
-        self.corpus = &scanner;
-        try tasks.concurrent(io, corpus_mod.Scanner.run, .{&scanner});
-    }
+    if (config.corpus_scan_seconds > 0) self.corpus = &scanner;
 
-    // Enrichment: its own thread and its own HTTP client; see enrich.zig.
-    var enrich_http: enrich.Http = undefined;
-    var enrich_timer: enrich.WallTimer = .{ .io = io };
-    var enricher: enrich.Enricher = undefined;
-    if (config.enrich) |options| {
-        enrich_http = enrich.Http.init(io, allocator);
-        enricher = .{ .gpa = allocator, .owner = owner, .transport = enrich_http.transport(), .timer = enrich_timer.timer(), .options = options };
-        enricher.prng = .init(@truncate(@as(u96, @bitCast(Io.Timestamp.now(io, .real).nanoseconds))));
-        self.enricher = &enricher;
-        try tasks.concurrent(io, enrich.Enricher.run, .{&enricher});
+    // Everything the heartbeat reads through `self` is in place, so the
+    // threads can start, in the order `Stage` gives.
+    var tasks: Io.Group = .init;
+    try tasks.concurrent(io, Owner.run, .{owner});
+    if (config.index) |index| {
+        try tasks.concurrent(io, bridge_mod.Bridge.run, .{ &bridge, &self.bridge_stop });
+        log.info("index bridge to {s} as source {s}, resting {d} ms between pushes", .{ index.admin_url, index.source_id, index.push_interval_ms });
     }
-    defer if (config.enrich != null) enrich_http.deinit();
+    self.reached(.bridge_started);
 
     var pool: identity_work.Pool = undefined;
     var have_pool = false;
     if (!config.offline) {
+        try tasks.concurrent(io, Role.relay, .{&self});
         pool = try identity_work.Pool.init(allocator, .{ .queue_capacity = 64, .workers = 8, .ctx = &self.work, .process = identity_work.Work.process });
         have_pool = true;
         try pool.start(io);
         try tasks.concurrent(io, identity_work.Work.drain, .{ &self.work, &pool });
         try tasks.concurrent(io, tails.PlcTail.run, .{&self.plc});
         try tasks.concurrent(io, tails.LabelSink.run, .{ &self.labels, io });
-        try tasks.concurrent(io, Role.relay, .{&self});
         try tasks.concurrent(io, Role.watchdog, .{&self});
     }
     defer if (have_pool) pool.deinit();
+    self.reached(.intake_started);
+
+    if (self.enricher) |starting| try tasks.concurrent(io, enrich.Enricher.run, .{starting});
+    try tasks.concurrent(io, Role.late, .{&self});
 
     while (true) {
         const stream = listener.accept(io) catch |err| switch (err) {
@@ -414,12 +497,17 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
                 continue;
             },
         };
+        if (options.stop) |stop| if (stop.load(.acquire)) {
+            stream.close(io);
+            break;
+        };
         serveOne(&self, stream);
     }
 
     log.info("SIGTERM received, stopping the store role", .{});
     self.bridge_stop.store(true, .release);
     if (self.enricher) |running| running.stop();
+    scanner.stop();
     owner.stop();
     tasks.cancel(io);
     if (have_pool) pool.shutdown(io);
