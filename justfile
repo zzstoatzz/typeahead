@@ -28,8 +28,18 @@ rehearse-route-live config evidence:
 test-store-route:
     python3 -W error -m unittest scripts/snapshot_refresh/test_store_slot_route.py
 
+# the shadow slot's supervisor against stand-in processes: restarts, backoff and
+# the stop. Needs bash 5.2 or newer (macOS: `brew install bash`) and jq; no network
+test-supervise:
+    python3 -W error -m unittest deploy/shadow-slot/test_supervise.py
+
+# the same tests under the bash the slot image has, which is older than
+# Homebrew's and behaves differently. Needs Docker, and the network for apt
+test-supervise-image:
+    docker run --rm -v "$PWD/deploy/shadow-slot:/src:ro" "$(sed -n 's/^FROM \(debian:[^ ]*\)$/\1/p' deploy/shadow-slot/Dockerfile)" sh -c 'apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 jq >/dev/null && bash --version | head -n 1 && cd / && python3 -W error -m unittest /src/test_supervise.py'
+
 # what CI runs, locally
-check: typecheck lint test test-store-route
+check: typecheck lint test test-store-route test-supervise
     bunx wrangler deploy --dry-run
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
     bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run

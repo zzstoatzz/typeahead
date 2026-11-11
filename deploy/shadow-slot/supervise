@@ -1,20 +1,46 @@
 #!/usr/bin/env bash
-# Runs the store process and the index process side by side. If either one
-# exits, the other is stopped and this script exits non-zero so the machine
-# restarts as a whole. SIGTERM and SIGINT are passed on as SIGTERM, because
-# bash starts background commands with SIGINT ignored; the script then exits 0
-# when both stop cleanly.
+# Runs the store process and the index process side by side and keeps both
+# running. A process that exits on its own is started again in place while
+# the other is left alone: the index keeps answering searches through a store
+# restart, and the store keeps following the relay through an index restart.
+# The wait before a restart doubles from SHADOW_RESTART_MIN_S up to
+# SHADOW_RESTART_MAX_S and returns to the minimum once the process has stayed
+# up SHADOW_RESTART_STABLE_S. SIGTERM and SIGINT stop the store first and the
+# index after it, both with SIGTERM, because bash starts background commands
+# with SIGINT ignored; the script then exits 0 when both stop cleanly. It
+# exits on nothing else.
+#
+# The loop looks at its processes once a tick with `kill -0` and reads a dead
+# one's status with `wait PID`. It does not use `wait -n`: bash 5.2, which the
+# image has, drops a process from `wait -n` when it died by a signal while
+# the shell was busy, or in the same instant as another.
 set -uo pipefail
 
+if ((BASH_VERSINFO[0] * 100 + BASH_VERSINFO[1] < 502)); then
+  echo "[supervisor] bash $BASH_VERSION is older than 5.2, the oldest this was run on" >&2
+  exit 1
+fi
+
 data=${SHADOW_DATA:-/data}
+app=${SHADOW_APP:-/app}
 marker=$data/bootstrap.json
 grace=${SHADOW_STOP_GRACE_S:-50}
+store_grace=${SHADOW_STORE_STOP_S:-30}
+restart_min=${SHADOW_RESTART_MIN_S:-1}
+restart_max=${SHADOW_RESTART_MAX_S:-30}
+restart_stable=${SHADOW_RESTART_STABLE_S:-300}
+tick=${SHADOW_TICK_S:-1}
 store_port=${STORE_PORT:-8082}
 
-declare -A names=()
-loggers=()
+declare -A names=()       # pid of a running process -> store or index
+declare -A restart_at=()  # store or index -> the second it is started again
+# SECONDS counts whole seconds, so every deadline is passed with >, not >=:
+# a wait is never shorter than it says and at most a second and a tick longer.
+declare -A loggers=() started=() delay=() failures=() asked=()
 stopping=""
-deadline=""
+kill_at=""
+index_at=""
+result=0
 
 say() { printf '[supervisor] %s\n' "$*"; }
 
@@ -35,35 +61,6 @@ if [[ ! -f $marker ]]; then
   exit 1
 fi
 
-start() {
-  local name=$1 out
-  shift
-  exec {out}> >(trap '' TERM INT; exec sed -u "s/^/[$name] /")
-  loggers+=("$!")
-  "$@" >&"$out" 2>&1 &
-  names[$!]=$name
-  exec {out}>&-
-  say "started $name as pid $!"
-}
-
-arm_deadline() {
-  [[ -n $deadline ]] && return
-  (
-    trap 'exit 0' TERM
-    sleep "$grace" &
-    wait $!
-    kill -KILL "$@" 2>/dev/null
-  ) &
-  deadline=$!
-}
-
-forward() {
-  stopping=$1
-  say "received SIG$1, sending SIGTERM to ${names[*]}"
-  kill -TERM "${!names[@]}" 2>/dev/null
-  arm_deadline "${!names[@]}"
-}
-
 # The store works in the background and search answers people: when both
 # want a CPU, the index process gets it.
 store_nice=${STORE_NICE:-10}
@@ -77,61 +74,122 @@ merge=()
 [[ -n ${INDEX_MERGE_MAX_DOCS:-} ]] && merge+=(--merge-max-docs "$INDEX_MERGE_MAX_DOCS")
 [[ -n ${INDEX_MERGE_NICE:-} ]] && merge+=(--merge-nice "$INDEX_MERGE_NICE")
 [[ -n ${INDEX_WARM_SEGMENT_FILES:-} ]] && merge+=(--warm-segment-files "$INDEX_WARM_SEGMENT_FILES")
-
 index_only=()
+
+run_store() {
+  exec nice -n "$store_nice" env MODE=store STORE_DIR="$data/store" PORT="$store_port" "$app/typeahead-ingester"
+}
+
+run_index() {
+  exec "$app/typeahead-tantivy" serve \
+    --data "$data/tantivy" \
+    --listen 0.0.0.0:8080 \
+    --admin-listen 127.0.0.1:8081 \
+    --max-sync-lag-s "${INDEX_MAX_SYNC_LAG_S:-120}" \
+    --retrieval "${INDEX_RETRIEVAL:-global-merge}" \
+    "${merge[@]}" \
+    "${index_only[@]}"
+}
+
+start() {
+  local name=$1 out
+  exec {out}> >(trap '' TERM INT; exec sed -u "s/^/[$name] /")
+  loggers[$name]=$!
+  "run_$name" >&"$out" 2>&1 &
+  names[$!]=$name
+  started[$name]=$SECONDS
+  : "${delay[$name]:=$restart_min}" "${failures[$name]:=0}"
+  exec {out}>&-
+  say "started $name as pid $!"
+}
+
+restart_later() {
+  local name=$1 up=$2 wait_s
+  if ((up >= restart_stable)); then
+    delay[$name]=$restart_min
+    failures[$name]=0
+  fi
+  wait_s=${delay[$name]}
+  delay[$name]=$((wait_s * 2 > restart_max ? restart_max : wait_s * 2))
+  failures[$name]=$((failures[$name] + 1))
+  restart_at[$name]=$((SECONDS + wait_s))
+  say "$name stopped on its own, ${failures[$name]} time(s) without staying up ${restart_stable}s: starting it again in ${wait_s}s, ${names[*]:-nothing else} keeps running"
+}
+
+# Sends SIGTERM to the named process, once. Fails when it is not running.
+stop() {
+  local pid
+  for pid in "${!names[@]}"; do
+    [[ ${names[$pid]} == "$1" ]] || continue
+    [[ -n ${asked[$1]:-} ]] && return 0
+    asked[$1]=1
+    say "sending SIGTERM to $1"
+    kill -TERM "$pid" 2>/dev/null
+    return 0
+  done
+  return 1
+}
+
+# The index is stopped once the store has, so it is never stopped under a
+# push and answers searches for as long as it can. Nothing depends on the
+# order: the bridge's cursor commits with the documents it covers.
+stop_in_order() {
+  if [[ -z $kill_at ]]; then
+    say "received SIG$stopping"
+    kill_at=$((SECONDS + grace))
+    index_at=$((SECONDS + store_grace))
+  fi
+  if ! stop store || ((SECONDS > index_at)); then
+    stop index
+  fi
+  if ((SECONDS > kill_at)); then
+    say "${names[*]} still running ${grace}s after the stop was requested, sending SIGKILL"
+    kill -KILL "${!names[@]}" 2>/dev/null
+    kill_at=$((SECONDS + grace))
+  fi
+}
+
+trap 'stopping=${stopping:-TERM}' TERM
+trap 'stopping=${stopping:-INT}' INT
+
 if [[ $(jq -r '.store_loaded' "$marker") == false ]]; then
   say "the receipt records an index-only bootstrap: the store process is not started"
   say "nothing feeds this index, so it serves stale and never reports ready"
   index_only=(--allow-stale true)
 else
-  start store nice -n "$store_nice" env MODE=store STORE_DIR="$data/store" PORT="$store_port" /app/typeahead-ingester
+  start store
 fi
-start index /app/typeahead-tantivy serve \
-  --data "$data/tantivy" \
-  --listen 0.0.0.0:8080 \
-  --admin-listen 127.0.0.1:8081 \
-  --max-sync-lag-s "${INDEX_MAX_SYNC_LAG_S:-120}" \
-  --retrieval "${INDEX_RETRIEVAL:-global-merge}" \
-  "${merge[@]}" \
-  "${index_only[@]}"
+start index
 
-trap 'forward TERM' TERM
-trap 'forward INT' INT
-
-result=0
-unexpected=""
-while ((${#names[@]})); do
-  exited=""
-  wait -n -p exited "${!names[@]}"
-  code=$?
-  if [[ -z ${exited:-} ]]; then
-    ((code == 127)) || continue
-    say "lost the exit status of ${names[*]}"
-    kill -KILL "${!names[@]}" 2>/dev/null
-    ((result == 0)) && result=1
-    break
-  fi
-  name=${names[$exited]}
-  unset "names[$exited]"
-  say "$name exited with status $code"
-  ((result == 0)) && result=$code
-  if [[ -z $stopping && -z $unexpected ]]; then
-    unexpected=$name
-    if ((${#names[@]})); then
-      say "$name stopped on its own, stopping ${names[*]}"
-      kill -TERM "${!names[@]}" 2>/dev/null
-      arm_deadline "${!names[@]}"
+while :; do
+  for pid in "${!names[@]}"; do
+    kill -0 "$pid" 2>/dev/null && continue
+    wait "$pid" 2>/dev/null
+    code=$?
+    name=${names[$pid]}
+    unset "names[$pid]"
+    up=$((SECONDS - started[$name]))
+    say "$name exited with status $code after ${up}s"
+    if [[ -z $stopping ]]; then
+      restart_later "$name" "$up"
+    elif ((result == 0)); then
+      result=$code
     fi
+  done
+  if [[ -n $stopping ]]; then
+    ((${#names[@]})) || break
+    stop_in_order
+  else
+    for name in "${!restart_at[@]}"; do
+      ((SECONDS > restart_at[$name])) || continue
+      unset "restart_at[$name]"
+      start "$name"
+    done
   fi
+  sleep "$tick" >/dev/null 2>&1 &
+  wait $!
 done
 
-[[ -n $deadline ]] && kill "$deadline" 2>/dev/null
 wait "${loggers[@]}" 2>/dev/null
-
-if [[ -n $unexpected ]]; then
-  ((result == 0)) && result=1
-  say "exiting $result because $unexpected stopped"
-else
-  say "exiting $result after SIG$stopping"
-fi
+say "exiting $result after SIG$stopping"
 exit "$result"

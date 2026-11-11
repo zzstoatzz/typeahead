@@ -10,7 +10,7 @@ A production slot (`typeahead-tantivy-a` and `-b`) runs the Tantivy reader plus 
 
 The shadow slot puts the ingester's successor on the same machine as the reader. It holds no Turso credentials and no Worker admin secret, takes a bundle once at bootstrap, and afterwards is fed only by its own store. Its origin is in the transport's list of allowed origins in [`src/search-route.ts`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/src/search-route.ts), so the routing record can name it once a transport built from that list is deployed. The refresh controller never writes such a record; only [`store_slot_route.py`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/snapshot_refresh/store_slot_route.py) does, as the [cutover runbook](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/ops/cutover-to-store-slot.md) describes.
 
-The store process is a role of the ingester binary, selected with `MODE=store`, and is still being built. The binary in an image built from a tree without that role refuses the mode and exits, and the supervisor exits with it. The supervisor always starts the binary in that mode and refuses to start at all when Turso or Worker credentials are present, so this image cannot become a second production ingester by mistake.
+The store process is a role of the ingester binary, selected with `MODE=store`, and is still being built. The binary in an image built from a tree without that role refuses the mode and exits, and the supervisor keeps retrying it while the index runs. The supervisor always starts the binary in that mode and refuses to start at all when Turso or Worker credentials are present, so this image cannot become a second production ingester by mistake.
 
 ## Build
 
@@ -24,7 +24,26 @@ The Zig compiler, the Rust toolchain and both base images are pinned by version 
 
 ## Processes
 
-The supervisor starts both processes, prefixes each line of their output with `[store]` or `[index]`, and forwards SIGTERM and SIGINT. If either process exits on its own, it stops the other and exits non-zero, and Fly restarts the machine. Neither process is restarted alone: the store process commits its cursors with its data, so a whole-machine restart is always safe, and a half-running slot would look healthy to one of its two checks. A requested stop exits zero when both processes stop cleanly.
+The supervisor starts both processes, prefixes each line of their output with `[store]` or `[index]`, and keeps both running. It looks at them once a second (`SHADOW_TICK_S`). A process that exits on its own is started again in place and the other is left alone. The supervisor itself exits only when it is asked to stop, so a process that keeps failing never takes the machine down with it and never uses up Fly's restart limit.
+
+The wait before a restart is 1 s the first time and doubles to a cap of 30 s (`SHADOW_RESTART_MIN_S`, `SHADOW_RESTART_MAX_S`). It returns to 1 s once the process has stayed up 300 s (`SHADOW_RESTART_STABLE_S`). The cap is well under the 120 s the index serves without a watermark, so a store that runs long enough between exits to push one keeps search up.
+
+Restarting one process alone is safe because the two share nothing but the index's loopback admin endpoints, and the [index bridge](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/index-bridge.md) keeps its progress in the index's own commit. A new store process reads the committed cursor and continues from it. A store process whose index went away fails its push, forgets what it knew, and reads the cursor again once the index answers. `just test-bridge` does both against a real index: it kills the bridge before or after a random request in each of sixty rounds, and the index just before and just after a commit.
+
+SIGTERM and SIGINT stop the store first, with SIGTERM, and the index once the store has exited, so the index is not stopped under a push and answers searches until the store is down. No correctness depends on that order. A store still running after 30 s (`SHADOW_STORE_STOP_S`) no longer holds the index back, and anything still running after 50 s (`SHADOW_STOP_GRACE_S`) is killed, inside Fly's 60 s kill timeout. The exit status is zero when both stop cleanly, and otherwise the first non-zero status.
+
+### What a failure looks like
+
+| failure | search | what shows it |
+|---|---|---|
+| the store exits once, as its watchdog does on purpose | unaffected: the index serves on its last watermark and the new store process pushes the next | `[supervisor] store exited with status 1 after 4012s`, then `store stopped on its own, 1 time(s) without staying up 300s: starting it again in 1s, index keeps running`, then `started store as pid …` |
+| the store cannot stay up | unaffected while each run pushes a watermark. If none arrives for 120 s the index reports not ready and answers 503 until one does | the same lines every 30 s at most, with the count rising; the `store_health` check on 8082, listed by `fly checks list` and counted in `fly status`, fails whenever the store is not listening; `sync_lag_s` in `/index/status` grows |
+| the index exits | down until the new index process is ready; the store keeps following the relay and its pushes fail until then | `[supervisor] index exited with status …`, `index stopped on its own, …, store keeps running`; the `index_ready` check fails |
+| the index cannot stay up | down | the same lines every 30 s at most; `index_ready` stays failing. The machine stays started: route away as in the [cutover runbook](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/ops/cutover-to-store-slot.md#rollback) |
+
+The count in the log line is the signal that a process is flapping: it goes back to 1 only after a run of 300 s. A machine restart is no longer one, since neither process exiting causes it.
+
+`just test-supervise` runs the supervisor against stand-in processes for each row above and for the stop. The supervisor refuses a bash older than 5.2, which is what the image has. macOS ships 3.2, so run `brew install bash` there; the test looks on `PATH`, then in Homebrew's prefix, and `SUPERVISE_BASH` names one elsewhere. Homebrew's is 5.3, and the two differ where it matters here: under 5.2 `wait -n` loses a process that died by a signal while the shell was busy, and a bare `return` in a trap handler returns the interrupted command's status. The supervisor uses neither, and `just test-supervise-image` runs the same tests under the image's own bash, in Docker, to keep it so.
 
 The store process is started at niceness 10 (`STORE_NICE`) and the index's merge threads run at niceness 19 (`INDEX_MERGE_NICE`), so when background work and a search want a CPU at the same time the search gets it. Niceness orders work inside the machine. It does nothing about a shared-CPU machine that has used up its quota; [sizing](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/shadow-slot/sizing.md#measured-on-the-machine-2026-11-11) has what that costs.
 
@@ -52,7 +71,7 @@ The volume is 40 GB and the machine has four shared CPUs and 4 GB of memory. [Si
 
 ## Configuration
 
-The supervisor sets the store process's role and paths itself: `MODE=store`, `STORE_DIR=/data/store` and `PORT` from `STORE_PORT`.
+The supervisor sets the store process's role and paths itself: `MODE=store`, `STORE_DIR=/data/store` and `PORT` from `STORE_PORT`. It runs the two binaries from `/app`, or from `SHADOW_APP` when a test points it at stand-ins.
 
 Set in the Fly configuration, not secret:
 

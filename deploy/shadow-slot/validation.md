@@ -11,6 +11,8 @@ What was run locally against the image, on an arm64 laptop under OrbStack with e
 
 ## Supervisor
 
+These runs were of the supervisor as it was on 2026-11-10, when either process exiting stopped the other and the supervisor with it. It now restarts the one that exited and keeps running, so the rows below that end in the supervisor exiting 1, 7 or 137 after a process stopped on its own no longer describe it. `just test-supervise` covers the present behaviour against stand-in processes; the [slot README](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/shadow-slot/README.md#processes) describes it.
+
 The index was a 40-actor synthetic full-source import made with the image's own reader.
 
 | case | result |
