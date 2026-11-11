@@ -289,6 +289,12 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
         log.err("store role configuration: {s}", .{@errorName(err)});
         return err;
     };
+    return run(allocator, io, listener, config);
+}
+
+/// The role under a configuration the caller built, until the listening
+/// socket is shut down.
+pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, config: config_mod.Config) !void {
     log.info("store at {s}, reads {s}{s}", .{
         config.store_dir,
         if (config.read_secret != null) "on" else "off (STORE_READ_SECRET not set)",
