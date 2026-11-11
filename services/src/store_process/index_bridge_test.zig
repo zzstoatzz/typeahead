@@ -258,6 +258,33 @@ test "the bridge's position reaches the store through the owner's next commit" {
     try testing.expectEqualStrings("bridge", f.owner.consumerList(&buf)[0].name);
 }
 
+test "a full owner queue does not hold the bridge: its position is noted at once and stored when there is room" {
+    const f = try Fixture.create(.{ .max_queued_changes = 2 });
+    defer f.destroy();
+    var source = try index_bridge.StoreSource.open(testing.allocator, f.owner);
+    defer source.close();
+    const interface = source.interface();
+    _ = try f.commit(&.{.{ .profile = .{ .did = "did:plc:a", .handle = "a.test" } }}, null);
+
+    const filler = try owner_mod.Submission.create(f.arena.allocator());
+    filler.changes = &.{ .{ .observe = .{ .did = "did:plc:b" } }, .{ .observe = .{ .did = "did:plc:c" } } };
+    filler.waited = true;
+    try f.owner.post(filler, null);
+
+    try interface.setPosition(2);
+    var buf: [8]owner_mod.Consumer = undefined;
+    try testing.expectEqual(@as(u64, 2), f.owner.consumerList(&buf)[0].position);
+    try interface.setPosition(3);
+    _ = f.owner.turn(0);
+    try testing.expect(filler.done.isSet());
+    try testing.expectEqual(@as(?u64, null), (try f.cursors()).bridge);
+
+    try testing.expectEqual(@as(?u64, null), (try interface.cursors()).bridge);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(?u64, 3), (try interface.cursors()).bridge);
+    try testing.expectEqual(@as(u64, 3), f.owner.consumerList(&buf)[0].position);
+}
+
 test "the bridge keeps the index's policy snapshot fresh from the store's policy range" {
     const f = try Fixture.create(.{});
     defer f.destroy();

@@ -19,7 +19,8 @@
 //!   the result). Submissions from one producer commit in the order it handed
 //!   them over, so a cursor never moves ahead of an earlier batch.
 //! - The queue is bounded by queued changes. A producer that finds it full
-//!   blocks in `post`, which is the only backpressure there is: the relay
+//!   blocks in `post`, which is the only backpressure there is (the index
+//!   bridge alone uses `offer`, which never waits): the relay
 //!   intake stops reading its socket and the relay holds the rest. While the
 //!   store's maintainer reports a stall the owner takes nothing from the
 //!   queue and only works level 0 down, so the queue fills and intake pauses
@@ -395,6 +396,20 @@ pub const Owner = struct {
         self.queued_changes += @max(submission.changes.len, 1);
         self.counters.queued_changes.store(self.queued_changes, .monotonic);
         self.queue_changed.broadcast(self.io);
+    }
+
+    /// `post` for a producer that must not wait: false when the queue is
+    /// full, and the caller still owns the submission.
+    pub fn offer(self: *Owner, submission: *Submission) Error!bool {
+        self.queue_lock.lockUncancelable(self.io);
+        defer self.queue_lock.unlock(self.io);
+        if (self.stopped) return error.OwnerStopped;
+        if (self.queued_changes >= self.options.max_queued_changes) return false;
+        self.queue.append(self.gpa, submission) catch return error.OwnerStopped;
+        self.queued_changes += @max(submission.changes.len, 1);
+        self.counters.queued_changes.store(self.queued_changes, .monotonic);
+        self.queue_changed.broadcast(self.io);
+        return true;
     }
 
     /// Hand a submission over and wait for its commit. The caller keeps the

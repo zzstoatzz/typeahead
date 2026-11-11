@@ -7,7 +7,12 @@
 //! refreshed at the start of `cursors` and `changes`, so its reads never
 //! wait on a commit and never go backward within a step. `setPosition` is
 //! handed to the owner, which folds it into its next commit; the bridge
-//! repeats it after a restart if it did not land. `policy` is always a
+//! repeats it after a restart if it did not land. It never waits for room
+//! in the owner's queue: the index's watermark moves only when the bridge
+//! pushes, so a bridge held up behind a full queue would let the index go
+//! stale for as long as the owner was stalled or catching up. A position
+//! the queue had no room for is kept and offered again at the next step,
+//! and the trim sees it at once either way. `policy` is always a
 //! snapshot of the store's overrides and blocked domains: an index built
 //! from a bundle has policy enabled and stops serving without a fresh one.
 
@@ -25,6 +30,8 @@ pub const StoreSource = struct {
     gpa: Allocator,
     owner: *Owner,
     reader: *store_mod.Reader,
+    /// A position the owner's queue has not taken yet.
+    unstored: ?u64 = null,
 
     pub fn open(gpa: Allocator, owner: *Owner) !StoreSource {
         return .{
@@ -64,6 +71,7 @@ pub const StoreSource = struct {
 
     fn cursors(ptr: *anyopaque) anyerror!source.Cursors {
         const self: *StoreSource = @ptrCast(@alignCast(ptr));
+        try self.offerPosition();
         try self.reader.refresh();
         var arena: std.heap.ArenaAllocator = .init(self.gpa);
         defer arena.deinit();
@@ -170,10 +178,19 @@ pub const StoreSource = struct {
 
     fn setPosition(ptr: *anyopaque, position: u64) anyerror!void {
         const self: *StoreSource = @ptrCast(@alignCast(ptr));
-        const submission = try owner_mod.Submission.create(self.gpa);
-        errdefer submission.destroy();
-        submission.cursor = .{ .bridge = position };
-        try self.owner.post(submission, null);
         self.owner.noteConsumer(consumer_name, position);
+        self.unstored = position;
+        try self.offerPosition();
+    }
+
+    fn offerPosition(self: *StoreSource) !void {
+        const position = self.unstored orelse return;
+        const submission = try owner_mod.Submission.create(self.gpa);
+        submission.cursor = .{ .bridge = position };
+        const taken = self.owner.offer(submission) catch |err| {
+            submission.destroy();
+            return err;
+        };
+        if (taken) self.unstored = null else submission.destroy();
     }
 };
