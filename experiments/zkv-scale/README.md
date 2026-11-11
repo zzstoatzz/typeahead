@@ -59,21 +59,19 @@ just prefect deployment run 'typeahead-zkv-scale/issue-32'                      
 just prefect --script ~/tangled.org/zzstoatzz.io/typeahead/experiments/zkv-scale/register.py --delete         # remove it afterwards
 ```
 
-## shadow comparison runner
+## shadow comparison builder
+a second temporary deployment reuses the bundle download and `dump-actors` for the [shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md). it turns the newest bundle into the sorted views of production as of the bundle's watermark, and publishes them for the [stage that walks the store on the shadow machine](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md#corpus-phase-on-the-shadow-machine). it does not contact the shadow: the store answers on that machine only. status, 2026-11-10: tested locally on 3,000 synthetic actors, publishing to a directory that the shadow stage then read; it has not run in the cloud and has not written to R2.
 
-a second temporary deployment reuses the bundle download and `dump-actors` for the [shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md): it compares the shadow's store with production as of the newest bundle's watermark. status, 2026-11-10: tested locally on 3,000 synthetic actors against a fake store; it has not run in the cloud, and the store process does not serve the read endpoints yet.
+owner: the shadow comparison, issue 43. input is the newest published bundle in R2, read with the four `INDEX_R2_*` values. output is three objects in the same bucket under `scratch/shadow-compare/<flow run id>/`, written with the same values: `views.jsonl.gz`, `views.jsonl.meta.json` and, last, `manifest.json` with the bundle id, watermark, counts and each object's size and SHA-256. those values are the index deployment's `index-r2-*` secret blocks, which publish bundles to this bucket and so can write; a refused write fails the run with the error in its summary. nothing under `releases/` is written, production's serving machines, Turso and Fly are not contacted, and nothing removes the scratch objects afterwards.
 
-owner: the shadow comparison, issue 43. input is the newest published bundle in R2, read with the four `INDEX_R2_*` values, and the shadow's store, read over HTTPS with a bearer secret. the deployment maps a Prefect secret block to one environment variable and the flow is given only the variable's name; the value is never printed. production's serving machines, Turso and Fly are not contacted, and nothing is written to R2 or to the store.
+the scratch root is `/var/tmp/typeahead-shadow-compare-<flow run id>`. it holds the Rust toolchain and build tree, the downloaded bundle and extracted index, the sorted views and their packed copy. the run needs 80 GiB free at start, stops when scratch use passes 60 GiB, and has a two-hour limit. the bundle, index and toolchain are removed as soon as the views are sorted. every command runs under the same supervisor as the measurement above, and the scratch root is removed in `finally` with free space recorded before and after.
 
-the scratch root is `/var/tmp/typeahead-shadow-compare-<flow run id>`. it holds the Rust toolchain and build tree, the downloaded bundle and extracted index, the sorted views, the walk checkpoint and the report. the run needs 80 GiB free at start, stops when scratch use passes 60 GiB, and has a four-hour limit. the bundle, index and toolchain are removed as soon as the views are sorted. every command runs under the same supervisor as the measurement above, and the scratch root is removed in `finally` with free space recorded before and after. the report leaves the machine through the flow run's logs: its Markdown summary, then one summary line holding the whole report, with the list of differing DIDs cut to 2,000 plus its count and hash.
-
-it walks the store in pages of 500 with 50 ms between requests, inside a budget of 80,000 requests and 24,000 MiB. the comparison exits non-zero when gate (a) fails, which the log shows as a `command_failed` record with return code 1; the run still completes and reports. `input_jsonl` with `watermark` replaces the download with an actor file already on the machine, and `build_id` pins a bundle.
+the flow run's logs carry a `published` record and then one summary line; both hold `run_id` and `manifest_sha256`, the two values the shadow stage is given. `input_jsonl` with `watermark` replaces the download with an actor file already on the machine, `build_id` pins a bundle, and `output_dir` publishes to a directory instead of R2.
 
 ```sh
-just prefect --script ~/tangled.org/zzstoatzz.io/typeahead/experiments/zkv-scale/shadow_compare_register.py <full commit sha> \
-  --shadow-url https://SHADOW-STORE --shadow-secret-block SECRET-BLOCK-NAME                                              # create the deployment
-just prefect deployment run 'typeahead-shadow-compare/issue-43'                                                         # start one run
-just prefect --script ~/tangled.org/zzstoatzz.io/typeahead/experiments/zkv-scale/shadow_compare_register.py --delete     # remove it afterwards
+just prefect --script ~/tangled.org/zzstoatzz.io/typeahead/experiments/zkv-scale/shadow_compare_register.py <full commit sha>  # create the deployment
+just prefect deployment run 'typeahead-shadow-compare/issue-43'                                                            # start one run
+just prefect --script ~/tangled.org/zzstoatzz.io/typeahead/experiments/zkv-scale/shadow_compare_register.py --delete        # remove it afterwards
 ```
 
 ## develop
@@ -85,7 +83,7 @@ needs Rust, Zig 0.17.0 and uv.
 (cd zkvscale && zig build test && zig build)             # key encoding, ordering and a store round trip
 uv run --no-project --with prefect==3.8.2 python test_cloud.py   # bundle checks, supervision, and every phase on 20,000 synthetic actors
 uv run --no-project python synth.py --count 100000 > actors.jsonl  # synthetic actors for a manual run
-uv run --no-project --with prefect==3.8.2 --with httpx python test_shadow_compare_cloud.py   # the comparison runner on 3,000 synthetic actors and a fake store
+uv run --no-project --with prefect==3.8.2 --with httpx python test_shadow_compare_cloud.py   # the comparison's builder on 3,000 synthetic actors, then the shadow stage against a fake store
 ```
 
 the last test builds both tools in a temporary directory and fetches zkv and the Rust crates if they are not cached.

@@ -1,4 +1,4 @@
-"""Create or delete the temporary unscheduled deployment of the shadow comparison."""
+"""Create or delete the temporary unscheduled deployment of the shadow comparison's builder."""
 
 import argparse
 import asyncio
@@ -17,11 +17,10 @@ POOL = "typeahead-ephemeral"
 REPOSITORY = "https://github.com/zzstoatzz/typeahead.git"
 ENTRYPOINT = "experiments/zkv-scale/shadow_compare_cloud.py:shadow_compare"
 MPS_PIN = "26fae38154907881e5b25133e86c168a1c0c38e1"
-VM_TIMEOUT_SECONDS = 15600
-SECRET_ENV = "SHADOW_STORE_SECRET"
+VM_TIMEOUT_SECONDS = 8400
 
 
-def deployment(commit, mps_pin, shadow_url, secret_block):
+def deployment(commit, mps_pin):
     plugins = {
         "PREFECT_PLUGINS_ENABLED": "true",
         "PREFECT_PLUGINS_ALLOW": "mps-secrets",
@@ -40,7 +39,7 @@ def deployment(commit, mps_pin, shadow_url, secret_block):
     return {
         "name": NAME,
         "version": commit,
-        "description": "Temporary comparison of the shadow's store with production's newest search bundle (issue 43).",
+        "description": "Temporary builder that packs production's newest search bundle as views for the shadow comparison (issue 43).",
         "tags": ["experiment", "shadow-compare"],
         "work_pool_name": POOL,
         "entrypoint": ENTRYPOINT,
@@ -64,10 +63,9 @@ def deployment(commit, mps_pin, shadow_url, secret_block):
                 "INDEX_R2_BUCKET": "prefect-block://index-r2-bucket",
                 "INDEX_R2_ACCESS_KEY_ID": "prefect-block://index-r2-access-key-id",
                 "INDEX_R2_SECRET_ACCESS_KEY": "prefect-block://index-r2-secret-access-key",
-                SECRET_ENV: f"prefect-block://{secret_block}",
             },
         },
-        "parameters": {"shadow_url": shadow_url, "shadow_secret_env": SECRET_ENV},
+        "parameters": {},
         "paused": False,
         "enforce_parameter_schema": True,
         "concurrency_limit": 1,
@@ -87,13 +85,13 @@ def flow_schema():
     return parameter_schema(module.shadow_compare.fn).model_dump_for_openapi()
 
 
-async def create(commit, mps_pin, shadow_url, secret_block):
+async def create(commit, mps_pin):
     async with get_client() as client:
         flow_id = await client.create_flow_from_name(FLOW)
         deployment_id = await client.create_deployment(
             flow_id=flow_id,
             parameter_openapi_schema=flow_schema(),
-            **deployment(commit, mps_pin, shadow_url, secret_block),
+            **deployment(commit, mps_pin),
         )
     script = Path(__file__).resolve()
     print(f"deployment id: {deployment_id}")
@@ -119,23 +117,9 @@ def sha(value):
     return value
 
 
-def block(value):
-    if not re.fullmatch(r"[a-z0-9-]+", value):
-        raise argparse.ArgumentTypeError("a secret block name is lowercase letters, digits and dashes")
-    return value
-
-
-def origin(value):
-    if not re.fullmatch(r"https://[A-Za-z0-9.-]+(:[0-9]+)?", value):
-        raise argparse.ArgumentTypeError("the shadow's store is an https origin without a path")
-    return value
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("commit", nargs="?", type=sha, help="typeahead commit to clone")
-    parser.add_argument("--shadow-url", type=origin, help="origin of the shadow's store process")
-    parser.add_argument("--shadow-secret-block", type=block, help="name of the Prefect secret block holding the store's read bearer")
     parser.add_argument("--mps-pin", type=sha, default=MPS_PIN)
     parser.add_argument("--delete", action="store_true")
     args = parser.parse_args()
@@ -144,9 +128,7 @@ def main():
     if args.delete:
         asyncio.run(delete())
         return
-    if not args.shadow_url or not args.shadow_secret_block:
-        parser.error("creating the deployment needs --shadow-url and --shadow-secret-block")
-    asyncio.run(create(args.commit, args.mps_pin, args.shadow_url, args.shadow_secret_block))
+    asyncio.run(create(args.commit, args.mps_pin))
 
 
 if __name__ == "__main__":

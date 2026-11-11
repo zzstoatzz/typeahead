@@ -2,7 +2,7 @@
 
 decides whether a shadow search backend may take production traffic. it compares the shadow with production on corpus, search results, latency and freshness, and writes a PASS or FAIL per gate. it is the comparison job in step 2 of "proving it before it serves" in the [embedded-store plan](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/plans/embedded-store-service.md), tracked in issue 43.
 
-status, 2026-11-10: tested against local fixtures, local Tantivy servers, an index read back through `dump-actors`, and a fake of the store's read endpoints. no shadow exists yet, the store process does not serve those endpoints yet, and nothing here has run against production or a real bundle.
+status, 2026-11-10: tested against local fixtures, local Tantivy servers, an index read back through `dump-actors`, and a fake of the store's read endpoints. the store process serves those endpoints on the shadow machine only, so the corpus phase is split in two: a builder packs production's bundle as views, and the walk runs [on the shadow machine](#corpus-phase-on-the-shadow-machine). nothing here has run against production, the shadow or a real bundle.
 
 both backends are the [Tantivy server](https://tangled.org/zzstoatzz.io/typeahead/blob/main/services/tantivy/README.md). the tool only reads: `/search`, `/debug/search`, `/ready` and `/index/status` on the public listener, `/admin/source-page` and `/admin/source-state` on the admin listener, and the two store read endpoints described under corpus sources.
 
@@ -97,20 +97,18 @@ uv run scripts/shadow_compare/compare.py \
   --checkpoint walk.json --corpus-max-requests 60000 --corpus-max-mib 8192
 ```
 
-against a bundle and the shadow's store, with no production endpoint involved:
+against a bundle and the shadow's store, with no production endpoint involved. the store answers on loopback only, so this runs where the store does; [the next section](#corpus-phase-on-the-shadow-machine) is how it gets there:
 
 ```sh
 uv run scripts/shadow_compare/compare.py --phases corpus --arbiter \
   --production-bundle views.jsonl --bundle-watermark 1793236000 --bundle-build-id b1793236000-example \
-  --shadow-store https://SHADOW-STORE --shadow-store-secret-env SHADOW_STORE_SECRET \
-  --checkpoint walk.json --corpus-max-requests 60000 --corpus-max-mib 16384
+  --shadow-store http://127.0.0.1:8082 --shadow-store-secret-env STORE_READ_SECRET \
+  --checkpoint walk.json --corpus-max-requests 80000 --corpus-max-mib 32768
 ```
-
-the [cloud runner](https://tangled.org/zzstoatzz.io/typeahead/blob/main/experiments/zkv-scale/README.md#shadow-comparison-runner) does the download, dump, sort and walk on a disposable machine.
 
 ## corpus phase on the shadow machine
 
-the shadow's store process has no public service and is not getting one, so the walk runs on the shadow machine against `http://127.0.0.1:8082` and production's views are brought to it. `bundle.py pack` turns a sorted view file into three objects: `views.jsonl.gz`, its sidecar `views.jsonl.meta.json`, and `manifest.json` with the bundle id, watermark, counts and each object's size and SHA-256. they live in the bundle bucket under `scratch/shadow-compare/<run id>/`.
+the shadow's store process has no public service and is not getting one, so the walk runs on the shadow machine against `http://127.0.0.1:8082` and production's views are brought to it. `bundle.py pack` turns a sorted view file into three objects: `views.jsonl.gz`, its sidecar `views.jsonl.meta.json`, and `manifest.json` with the bundle id, watermark, counts and each object's size and SHA-256. they live in the bundle bucket under `scratch/shadow-compare/<run id>/`, put there by the [builder](https://tangled.org/zzstoatzz.io/typeahead/blob/main/experiments/zkv-scale/README.md#shadow-comparison-builder), a temporary deployment on a disposable machine that downloads the bundle, dumps and sorts it, packs the views and prints the run id and the manifest's SHA-256.
 
 the machine has bash, curl, tar, jq and rclone, and no Python. `shadow-stage.sh` installs what the walk needs under `/data/compare` and nowhere else: uv 0.13.4 from its GitHub release, checked against a pinned SHA-256; the Python and httpx that uv downloads; and this directory, `scripts/bench.py` and the recorded cases, extracted from GitHub's tarball of one full commit SHA. it then runs `shadow_stage.py`, which:
 
@@ -138,6 +136,31 @@ fly ssh console -a typeahead-shadow-a -C "bash -c 'curl -fsSL https://raw.github
 ```
 
 the first command puts the R2 values in the argument list of processes on the laptop and on the machine, which is why they should be temporary, read-only and scoped to the run's prefix.
+
+the other three phases need only the two public origins and run from anywhere. copying the corpus report off the machine first lets the search phase explain differing queries by the DIDs the walk flagged:
+
+```sh
+fly ssh sftp get -a typeahead-shadow-a /data/compare/$RUN_ID/report/report.json corpus-report.json
+uv run scripts/shadow_compare/compare.py --phases search,latency,freshness \
+  --production https://typeahead-tantivy-a.fly.dev --shadow https://typeahead-shadow-a.fly.dev \
+  --flagged-from corpus-report.json
+```
+
+`--production` is whichever production slot the route names at the time. the 61 canonical and recorded queries cost each backend about 500 requests, one a second, inside the default budget of 2,000.
+
+what the stage costs the machine, measured on a laptop with 200,000 synthetic actors and a local stand-in for the store, then scaled linearly to 13.2 million; no run at that size has been made and the machine's shared CPUs are slower:
+
+| | measured at 200,000 | scaled to 13.2 million |
+|---|---|---|
+| views on the volume | 119 MB | 7.9 GB |
+| views object fetched (never on the volume) | 34 MB | 2.3 GB, if real views compress like synthetic ones |
+| uv, Python and httpx, measured in the container | 163 MB | 163 MB |
+| checkpoint, no differences / 49,761 tracked | 4 kB / 65 MB | the second is near the 50,000 cap, so about the ceiling; twice that while it is rewritten |
+| CPU, fetch and walk, one process at nice 10 | 3.8 s / 5.5 s | 4 to 6 minutes of one core |
+| memory, no differences / 49,761 tracked | 71 MB / 542 MB | unchanged; it grows with tracked differences, not with the corpus |
+| store requests and bytes | 403 and 85 MB | 26,400 pages and 5.6 GB for records shaped like the fixture's |
+
+so the volume holds about 8.2 GB more while a run's inputs are there. elapsed time is mostly the 100 ms between 26,400 pages (44 minutes) plus what the store takes to answer them, which is not measured, then the 120 s settle and the arbiter's requests a second apart.
 
 status, 2026-11-10: the script and the stage ran end to end in a `debian:bookworm-slim` amd64 container, the shadow image's base, against 20,000 synthetic actors, a local directory as the rclone remote and a fake store on port 8082. nothing has run on the shadow machine, against R2, or through `fly ssh`.
 

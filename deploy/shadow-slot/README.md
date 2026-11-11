@@ -83,4 +83,4 @@ The [bootstrap runbook](https://tangled.org/zzstoatzz.io/typeahead/blob/main/dep
 - The store loader and cursor seeding in the bootstrap script. Seeding the index alone works.
 - The index bridge, so the index is not updated after bootstrap and reports not ready once its watermark is older than the lag limit.
 - Any Fly resource, and any measurement on a Fly volume.
-- The comparison job, and a way to reach the store process from outside the machine.
+- A run of the comparison job. The store process stays unreachable from outside the machine; the comparison's corpus walk [runs on the machine](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md#corpus-phase-on-the-shadow-machine) instead.

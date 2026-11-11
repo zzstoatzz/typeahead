@@ -1,11 +1,11 @@
 import argparse
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
 import os
 import random
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,14 +14,17 @@ from unittest import mock
 import shadow_compare_cloud as runner
 import synth
 
-sys.path.insert(0, str(runner.TOOLING))
-
+import bundle
+import shadow_stage
 from fakes import FakeStore, store_record
 
-SECRET_ENV = "SHADOW_COMPARE_CLOUD_TEST_SECRET"
 SECRET = "runner-s3cr3t-0123456789"
 WATERMARK = 1_800_000_000
 ACTORS = 3000
+FAKE_RCLONE = """#!/bin/sh
+[ "$1" = cat ] || exit 64
+exec cat "$2"
+"""
 
 
 def load_register():
@@ -32,126 +35,158 @@ def load_register():
     return module
 
 
+class Bucket:
+    """Records what an S3 client is asked to store."""
+
+    def __init__(self, refuse=None):
+        self.stored = {}
+        self.refuse = refuse
+
+    def upload_file(self, path, bucket, key):
+        if self.refuse:
+            raise PermissionError(self.refuse)
+        self.stored[(bucket, key)] = Path(path).read_bytes()
+
+    def head_object(self, Bucket, Key):
+        return {"ContentLength": len(self.stored[(Bucket, Key)])}
+
+
 class Orchestration(unittest.TestCase):
     def setUp(self):
         stack = tempfile.TemporaryDirectory()
         self.addCleanup(stack.cleanup)
         self.directory = Path(stack.name)
+        self.output = self.directory / "published"
         rng = random.Random(43)
         self.actors = [synth.actor(rng, n) for n in range(ACTORS)]
         self.input = self.directory / "actors.jsonl"
         self.input.write_text("".join(json.dumps(actor, ensure_ascii=False, separators=(",", ":")) + "\n" for actor in self.actors))
-        patch = mock.patch.dict(os.environ, {SECRET_ENV: SECRET})
-        patch.start()
-        self.addCleanup(patch.stop)
 
-    def store(self, records):
-        fake = FakeStore(records, SECRET)
-        self.addCleanup(fake.close)
-        return fake
-
-    def plan(self, url, **changes):
+    def plan(self, **changes):
         settings = dict(
-            shadow_url=url, shadow_secret_env=SECRET_ENV, input_jsonl=str(self.input), watermark=WATERMARK,
-            scratch_parent=str(self.directory), required_free_gib=1, budget_gib=1, run_records=700, request_delay=0,
-            settle_delay=0, arbiter=False,
+            input_jsonl=str(self.input), watermark=WATERMARK, output_dir=str(self.output), scratch_parent=str(self.directory),
+            required_free_gib=1, budget_gib=1, run_records=700,
         )
         settings.update(changes)
         return runner.Plan(**settings)
 
-    def run_plan(self, plan):
+    def run_plan(self, plan, run_id="dry-run"):
         printed = io.StringIO()
         with contextlib.redirect_stdout(printed):
             try:
-                summary = runner.compare("dry-run", runner.HERE, plan)
+                summary = runner.build(run_id, runner.HERE, plan)
             except RuntimeError as error:
                 summary = error
         return summary, printed.getvalue()
 
-    def test_a_store_holding_the_dumped_actors_passes_and_leaves_no_scratch(self):
-        fake = self.store([store_record(actor, WATERMARK - 500) for actor in self.actors])
-        summary, printed = self.run_plan(self.plan(fake.base))
+    def test_the_views_are_sorted_packed_and_published_and_no_scratch_is_left(self):
+        summary, printed = self.run_plan(self.plan())
         self.assertEqual(summary["status"], "completed", printed[-2000:])
-        self.assertEqual(summary["verdict"], {"status": "PASS", "reasons": []})
         self.assertEqual((summary["sort"]["lines"], summary["sort"]["actors"], summary["sort"]["runs"]), (ACTORS, ACTORS, 5))
-        corpus = summary["report"]["corpus"]
-        self.assertEqual((corpus["dids_walked"], corpus["differing_dids"]), (ACTORS, 0))
-        self.assertEqual(corpus["snapshot"]["watermark"], WATERMARK)
-        self.assertEqual(summary["report"]["corpus_sources"]["shadow"], {"kind": "store-http", "base": fake.base})
+        published = self.output / "dry-run"
+        self.assertEqual(sorted(item.name for item in published.iterdir()), sorted(runner.OBJECTS))
+        raw = (published / bundle.MANIFEST_NAME).read_bytes()
+        self.assertEqual(summary["pack"]["manifest_sha256"], hashlib.sha256(raw).hexdigest())
+        manifest = bundle.read_manifest(raw, summary["pack"]["manifest_sha256"])
+        self.assertEqual((manifest["run_id"], manifest["build_id"], manifest["source_watermark"], manifest["actors"]), ("dry-run", "local-actor-file", WATERMARK, ACTORS))
+        with (published / bundle.VIEWS_NAME).open("rb") as stream:
+            bundle.unpack(stream, manifest, self.directory / "views.jsonl")
+        dids = [bundle.parse(line)[0] for line in (self.directory / "views.jsonl").read_bytes().splitlines()]
+        self.assertEqual(dids, sorted(actor["did"] for actor in self.actors))
         self.assertTrue(summary["cleanup"]["scratch_removed"])
         self.assertEqual(list(self.directory.glob("typeahead-shadow-compare-*")), [])
-        self.assertNotIn(SECRET, printed)
-        self.assertIn("# Shadow comparison", printed)
-        self.assertEqual(json.loads(printed.splitlines()[-1])["event"], "shadow_compare_summary")
+        records = [json.loads(line) for line in printed.splitlines()]
+        self.assertEqual(records[-1]["event"], "shadow_compare_summary")
+        announced = next(record for record in records if record.get("event") == "published")
+        self.assertEqual((announced["run_id"], announced["manifest_sha256"]), ("dry-run", summary["pack"]["manifest_sha256"]))
 
-    def test_divergence_completes_with_a_failing_verdict(self):
+    def test_the_shadow_stage_walks_a_store_against_what_the_builder_published(self):
+        summary, printed = self.run_plan(self.plan(), run_id="handoff")
+        self.assertEqual(summary["status"], "completed", printed[-2000:])
         records = [store_record(actor, WATERMARK - 500) for actor in self.actors]
         live = next(record for record in records if record["status"] == "live" and record["handle"])
         live["handle"] = "diverged.example.test"
-        fake = self.store(records[1:] if records[0] is not live else records[:-1])
-        summary, printed = self.run_plan(self.plan(fake.base))
-        self.assertEqual(summary["status"], "completed", printed[-2000:])
-        self.assertEqual(summary["verdict"]["status"], "FAIL")
-        self.assertEqual(summary["report"]["corpus"]["timing"]["unchanged_in_shadow"]["differing_dids"], summary["report"]["corpus"]["differing_dids"])
-        self.assertEqual(summary["report"]["corpus"]["classes"]["handle_differs"]["count"], 1)
-        self.assertTrue(summary["cleanup"]["scratch_removed"])
+        tools = self.directory / "tools"
+        tools.mkdir()
+        (tools / "rclone").write_text(FAKE_RCLONE)
+        (tools / "rclone").chmod(0o755)
+        environment = {shadow_stage.STORE_SECRET: SECRET, shadow_stage.REMOTE_OVERRIDE: str(self.output), "PATH": f"{tools}{os.pathsep}{os.environ['PATH']}"}
+        root = self.directory / "compare"
+        for expected, held in ((0, [store_record(actor, WATERMARK - 500) for actor in self.actors]), (1, records)):
+            fake = FakeStore(held, SECRET)
+            self.addCleanup(fake.close)
+            command = ["--root", str(root / str(expected)), "run", "--run-id", "handoff", "--manifest-sha256", summary["pack"]["manifest_sha256"],
+                       "--store", fake.base, "--delay", "0", "--reserve-gib", "0", "--no-arbiter", "--settle-delay", "0"]
+            out = io.StringIO()
+            with mock.patch.dict(os.environ, environment), mock.patch.object(os, "nice"), contextlib.redirect_stdout(out):
+                self.assertEqual(shadow_stage.main(command), expected, out.getvalue())
+            self.assertNotIn(SECRET, out.getvalue())
+            report = json.loads((root / str(expected) / "handoff" / "report" / "report.json").read_text())
+            self.assertEqual((report["corpus"]["dids_walked"], report["corpus"]["differing_dids"]), (ACTORS, expected))
+            self.assertEqual(report["corpus_sources"]["production"]["build_id"], "local-actor-file")
 
-    def test_an_unreachable_store_fails_removes_scratch_and_keeps_the_secret_out(self):
-        fake = self.store([])
-        fake.close()
-        summary, printed = self.run_plan(self.plan(fake.base))
+    def test_objects_go_under_the_scratch_prefix_with_the_manifest_last(self):
+        packed = self.directory / "packed"
+        packed.mkdir()
+        for name in runner.OBJECTS:
+            (packed / name).write_text(name)
+        bucket = Bucket()
+        published = runner.publish(packed, "run-7", runner.Plan(), (bucket, "bundles"))
+        self.assertEqual(published, {"kind": "r2", "prefix": "scratch/shadow-compare/run-7", "objects": list(runner.OBJECTS)})
+        self.assertEqual(list(bucket.stored), [("bundles", f"scratch/shadow-compare/run-7/{name}") for name in runner.OBJECTS])
+        self.assertEqual(list(bucket.stored)[-1][1], "scratch/shadow-compare/run-7/manifest.json")
+
+    def test_a_refused_write_fails_the_run_without_leaking_credentials(self):
+        packed = self.directory / "packed"
+        packed.mkdir()
+        for name in runner.OBJECTS:
+            (packed / name).write_text(name)
+        with mock.patch.dict(os.environ, {"INDEX_R2_SECRET_ACCESS_KEY": SECRET}):
+            with self.assertRaises(RuntimeError) as caught:
+                runner.publish(packed, "run-7", runner.Plan(), (Bucket(refuse=f"AccessDenied for {SECRET}"), "bundles"))
+        self.assertEqual(str(caught.exception), "Publishing failed: PermissionError: AccessDenied for [INDEX_R2_SECRET_ACCESS_KEY]")
+
+    def test_an_unreadable_input_fails_removes_scratch_and_publishes_nothing(self):
+        self.input.write_text("not json\n")
+        summary, printed = self.run_plan(self.plan())
         self.assertIsInstance(summary, RuntimeError)
         final = json.loads(printed.splitlines()[-1])
         self.assertEqual((final["status"], final["cleanup"]["scratch_removed"]), ("failed", True))
         self.assertEqual(list(self.directory.glob("typeahead-shadow-compare-*")), [])
-        self.assertNotIn(SECRET, printed)
+        self.assertFalse(self.output.exists())
 
-    def test_a_missing_secret_or_too_little_disk_stops_before_any_scratch_exists(self):
-        for plan in (self.plan("https://store.test", shadow_secret_env="SHADOW_COMPARE_CLOUD_TEST_UNSET"), self.plan("https://store.test", required_free_gib=1e9)):
-            with self.assertRaises(RuntimeError):
-                runner.compare("refused", runner.HERE, plan)
-            self.assertEqual(list(self.directory.glob("typeahead-shadow-compare-*")), [])
+    def test_too_little_disk_or_a_bad_run_id_stops_before_any_scratch_exists(self):
+        with self.assertRaises(RuntimeError):
+            runner.build("refused", runner.HERE, self.plan(required_free_gib=1e9))
+        with self.assertRaises(ValueError):
+            runner.build("../escape", runner.HERE, self.plan())
+        self.assertEqual(list(self.directory.glob("typeahead-shadow-compare-*")), [])
 
 
-class Reporting(unittest.TestCase):
-    def test_plan_rejects_bad_build_ids_secret_names_and_files_without_a_watermark(self):
-        for changes in ({"build_id": "../escape"}, {"shadow_secret_env": "not a name"}, {"input_jsonl": "actors.jsonl"}):
+class Planning(unittest.TestCase):
+    def test_plan_rejects_bad_build_ids_and_files_without_a_watermark(self):
+        for changes in ({"build_id": "../escape"}, {"input_jsonl": "actors.jsonl"}):
             with self.assertRaises(ValueError):
-                runner.Plan(shadow_url="https://store.test", **changes)
-
-    def test_long_lists_of_differing_dids_are_cut_with_their_count_and_hash(self):
-        short = {"corpus": {"flagged_dids": ["did:plc:a"]}}
-        self.assertIs(runner.trimmed(short), short)
-        dids = [f"did:plc:{n:05}" for n in range(runner.REPORTED_DIDS + 5)]
-        cut = runner.trimmed({"corpus": {"flagged_dids": dids}})["corpus"]
-        self.assertEqual((len(cut["flagged_dids"]), cut["flagged_dids_total"]), (runner.REPORTED_DIDS, len(dids)))
-        self.assertEqual(len(cut["flagged_dids_sha256"]), 64)
-        self.assertEqual(runner.trimmed({"search": {}}), {"search": {}})
-
-    def test_redaction_covers_the_store_secret(self):
-        with mock.patch.dict(os.environ, {SECRET_ENV: SECRET}):
-            plan = runner.Plan(shadow_url="https://store.test", shadow_secret_env=SECRET_ENV)
-            self.assertEqual(runner.redact("bearer " + SECRET, plan), f"bearer [{SECRET_ENV}]")
+                runner.Plan(**changes)
 
 
 class Registration(unittest.TestCase):
-    def test_deployment_maps_the_secret_block_and_passes_the_shadow_as_parameters(self):
+    def test_deployment_reads_the_bundle_bucket_and_holds_no_shadow_secret(self):
         register = load_register()
-        made = register.deployment("a" * 40, register.MPS_PIN, "https://shadow-store.example", "shadow-store-read")
-        self.assertEqual(made["job_variables"]["env"][register.SECRET_ENV], "prefect-block://shadow-store-read")
-        self.assertEqual(made["parameters"], {"shadow_url": "https://shadow-store.example", "shadow_secret_env": register.SECRET_ENV})
+        made = register.deployment("a" * 40, register.MPS_PIN)
+        self.assertEqual(sorted(name for name in made["job_variables"]["env"] if not name.startswith("PREFECT_")), sorted(runner.cloud.SECRET_NAMES))
+        self.assertEqual(made["parameters"], {})
         self.assertEqual(made["entrypoint"], "experiments/zkv-scale/shadow_compare_cloud.py:shadow_compare")
         self.assertGreater(made["job_variables"]["timeout_seconds"], runner.DEADLINE_SECONDS)
         schema = register.flow_schema()
-        self.assertEqual(schema["required"], ["shadow_url"])
-        self.assertTrue(set(made["parameters"]) <= set(schema["properties"]))
+        self.assertNotIn("required", schema)
+        self.assertEqual(sorted(schema["properties"]), sorted(runner.Plan.__dataclass_fields__))
 
     def test_arguments_are_checked(self):
         register = load_register()
-        for check, bad in ((register.origin, "http://store.test"), (register.origin, "https://store.test/path"), (register.block, "Not A Block"), (register.sha, "abc")):
-            with self.assertRaises(argparse.ArgumentTypeError):
-                check(bad)
-        self.assertEqual(register.origin("https://store.example:8443"), "https://store.example:8443")
+        with self.assertRaises(argparse.ArgumentTypeError):
+            register.sha("abc")
+        self.assertEqual(register.sha("a" * 40), "a" * 40)
 
 
 if __name__ == "__main__":
