@@ -189,11 +189,23 @@ snapshot the owner refreshes once a minute (`store.taken_at`).
 completed, retried and not found, requests failed and rate-limited, the last
 success, the pause in force (`backoff_until`), and for each of the two walks
 its hourly rate, passes, position and the period that rate gives for the pool
-the last corpus scan counted. `queues.refresh_due` is what waits now and
+the last corpus scan counted. `enrichment.handles` counts the profiles whose
+handle differed from the stored one (`disagreed`), none of which is written:
+`queued` for identity resolution, `pending` because the actor was queued
+already, `settled` because its identity was resolved within
+`settle_seconds`, and `deferred` because `backlog_limit` identity entries
+were due. A `deferred` count that keeps rising beside a high
+`queues.identity_due` means the resolvers are behind. `queues.refresh_due` is what waits now and
 `queues.refresh_leased` what a fetch holds. `corpus` is the last count of the
 actor range (live, with handles, with avatars, hidden, and `total` as the
 statistics page defines it) with the scan's `duration_ms`. Mechanism and
 rates: [the embedded-store plan](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/plans/embedded-store-service.md#enrichment).
+
+`handle_repair` is the pass that sends every `handle.invalid` record back
+through identity resolution, once in the life of a store: when it started and
+finished, holders `examined` and `queued`, how many are `remaining`, and the
+last DID it looked at. It is done when `finished_at` is set. `HANDLE_REPAIR=0`
+stops it; its position is kept, so removing the variable resumes it.
 
 It emits one `store.heartbeat` span a minute, from the owner after that
 refresh, so a gap means the owner is not turning or the process is down. The
