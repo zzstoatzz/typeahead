@@ -912,7 +912,7 @@ test "divergence enrichment_verifies_handle: an appview's handle.invalid does no
 
 test "every difference on the store's review list is a flag or an explained omission" {
     try testing.expectEqual(@as(usize, 9), std.meta.fieldNames(sql.Divergence).len);
-    try testing.expectEqual(@as(usize, 13), sql.unmodelled.len);
+    try testing.expectEqual(@as(usize, 14), sql.unmodelled.len);
     inline for (comptime std.meta.fieldNames(sql.Divergence)) |name| {
         try testing.expect(@field(sql.Divergence.store, name));
         try testing.expect(!@field(sql.Divergence.production, name));

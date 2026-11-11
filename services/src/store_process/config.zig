@@ -26,6 +26,7 @@
 //! | `ENRICH_HANDLE_BACKLOG`  | no       | such a handle queues no identity work while this many identity entries are due, default 100; `0` queues none |
 //! | `ENRICH_APPVIEW_URL`     | no       | the appview asked for profiles, default `https://public.api.bsky.app` |
 //! | `ENRICH_BLACKSKY_URL`    | no       | the appview asked about accounts Bluesky took down, default `https://api.blacksky.community` |
+//! | `HANDLE_REPAIR`          | no       | `0` turns the one-time re-verification of `handle.invalid` records off; it is on unless `STORE_OFFLINE` |
 //! | `CORPUS_SCAN_SECONDS`    | no       | seconds between corpus counts, default 3600; `0` turns them off |
 //!
 //! Enrichment pacing, with the defaults, for one replica. Two replicas run
@@ -77,7 +78,12 @@ pub const Config = struct {
     /// Null when enrichment is off.
     enrich: ?enrich.Options = null,
     corpus_scan_seconds: u64 = 3600,
+    /// Holders of `handle.invalid` one step of the handle repair looks at;
+    /// 0 when the repair is off. See `owner.Options.repair_limit`.
+    handle_repair_per_step: usize = 0,
 };
+
+pub const handle_repair_per_step = 50;
 
 pub const Index = struct {
     admin_url: []const u8,
@@ -125,6 +131,8 @@ pub fn load(getenv: Getenv) Error!Config {
     };
     const enrich_off = if (getenv("ENRICH")) |text| std.mem.eql(u8, text, "0") else false;
     if (!config.offline and !enrich_off) config.enrich = try enrichment(getenv);
+    const repair_off = if (getenv("HANDLE_REPAIR")) |text| std.mem.eql(u8, text, "0") else false;
+    if (!config.offline and !repair_off) config.handle_repair_per_step = handle_repair_per_step;
     if (getenv("CORPUS_SCAN_SECONDS")) |text| config.corpus_scan_seconds = std.fmt.parseInt(u64, text, 10) catch return error.InvalidCorpusScan;
     return config;
 }
@@ -253,6 +261,9 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqualStrings("https://api.blacksky.community", defaults.blacksky_url);
     try testing.expectEqual(@as(u64, 3600), (try load(fakeEnv(&.{base}))).corpus_scan_seconds);
 
+    try testing.expectEqual(@as(usize, 50), (try load(fakeEnv(&.{base}))).handle_repair_per_step);
+    try testing.expectEqual(@as(usize, 0), (try load(fakeEnv(&.{ base, .{ "HANDLE_REPAIR", "0" } }))).handle_repair_per_step);
+    try testing.expectEqual(@as(usize, 0), (try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).handle_repair_per_step);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).enrich == null);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "ENRICH", "0" } }))).enrich == null);
     const set = try load(fakeEnv(&.{

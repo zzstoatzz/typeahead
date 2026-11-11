@@ -178,6 +178,7 @@ pub const HealthBody = struct {
     /// count of live actors plus `live_delta` since that count.
     actors: struct { created: u64, gone: u64, reactivated: u64, pruned: u64, live_delta: i64 },
     housekeeping: struct { hidden_refreshed: u64, expiry_passes: u64, domain_sweeps: u64, changes_trimmed: u64 },
+    handle_repair: HandleRepairBody,
     identity: struct { leased: u64, lease_failed: u64, verified: u64, unverified: u64, no_handle: u64, did_failed: u64, retried: u64, commit_failed: u64 },
     plc: struct { pages: u64, operations: u64, failed: u64 },
     labels: struct { frames: u64, adopted: u64, malformed: u64, ignored: u64, commits: u64, commit_failed: u64, cursor: i64, newest_cts: i64 },
@@ -187,6 +188,29 @@ pub const HealthBody = struct {
     enrichment: ?EnrichmentBody = null,
     /// Absent when the corpus scan is off.
     corpus: ?CorpusBody = null,
+};
+
+/// The pass, made once in the life of a store, that sends every live actor
+/// whose handle is `handle.invalid` back through identity resolution. It
+/// has run when `finished_at` is set; `remaining` is then 0.
+pub const HandleRepairBody = struct {
+    /// False when this process does not run the pass.
+    enabled: bool,
+    /// Holders one step looks at, seconds between steps, and the count of
+    /// due identity entries at which a step queues nothing.
+    per_step: u64,
+    step_seconds: u64,
+    backlog_limit: u64,
+    started_at: u64,
+    finished_at: u64,
+    /// Holders looked at so far, and those of them queued for resolution;
+    /// the rest already had an identity queue entry.
+    examined: u64,
+    queued: u64,
+    /// Holders not looked at yet, as of `store.taken_at`.
+    remaining: u64,
+    /// The last DID looked at.
+    position_did: []const u8,
 };
 
 /// One standing refresh walk. `period_seconds` is `enrich.walkPeriod` for
@@ -494,6 +518,18 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .expiry_passes = load(&c.expiry_passes),
             .domain_sweeps = load(&c.domain_sweeps),
             .changes_trimmed = load(&c.changes_trimmed),
+        },
+        .handle_repair = .{
+            .enabled = owner.options.repair_limit > 0,
+            .per_step = owner.options.repair_limit,
+            .step_seconds = owner.options.repair_seconds,
+            .backlog_limit = owner.options.repair_backlog,
+            .started_at = health.repair.started_at,
+            .finished_at = health.repair.finished_at,
+            .examined = health.repair.examined,
+            .queued = health.repair.queued,
+            .remaining = health.repair.remaining,
+            .position_did = try arena.dupe(u8, health.repair.position()),
         },
         .identity = .{
             .leased = load(&identity.stats.leased),

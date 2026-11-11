@@ -125,6 +125,10 @@ fn heartbeat(owner: *Owner) void {
             }
         }
     }
+    span.setAttribute("handle_repair_examined", health.repair.examined);
+    span.setAttribute("handle_repair_queued", health.repair.queued);
+    span.setAttribute("handle_repair_remaining", health.repair.remaining);
+    span.setAttribute("handle_repair_finished_at", health.repair.finished_at);
     span.setAttribute("tombstones", health.tombstones);
     span.setAttribute("commits", c.commits.load(.monotonic));
     span.setAttribute("changes_applied", c.changes_applied.load(.monotonic));
@@ -292,6 +296,7 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
     const owner = Owner.open(allocator, io, Io.Dir.cwd(), config.store_dir, .{
         .on_fatal = exitOnStoreFailure,
         .on_heartbeat = heartbeat,
+        .repair_limit = config.handle_repair_per_step,
     }) catch |err| {
         log.err("store open failed: {s}", .{@errorName(err)});
         return err;

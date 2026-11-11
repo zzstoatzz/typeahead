@@ -7,7 +7,7 @@
 //!   single store commit (each submission's cursor in the same commit as its
 //!   changes), and between commits does the store's housekeeping: stepped
 //!   maintenance, domain sweeps, tombstone pruning, the label-expiry pass,
-//!   change-log trimming and the health snapshot.
+//!   change-log trimming, the handle repair and the health snapshot.
 //! - Producers (the relay intake, the identity resolvers, the PLC tail, the
 //!   label tail, the enrichment loop) run on their own threads and never
 //!   touch the store. They
@@ -35,6 +35,7 @@
 const std = @import("std");
 const store_mod = @import("../store/root.zig");
 const log_route = @import("../log_route.zig");
+const handle_policy = @import("handle_policy.zig");
 const Io = std.Io;
 const Store = store_mod.Store;
 const Change = store_mod.Change;
@@ -108,6 +109,16 @@ pub const Options = struct {
     retain_without_consumer: u64 = 1_000_000,
     /// Entries kept at most: a consumer further behind is told to resync.
     retain_at_most: u64 = 20_000_000,
+    /// The handle repair: a pass, made once in the life of a store, that
+    /// sends every live actor whose handle is `handle.invalid` back through
+    /// identity resolution, because an earlier build wrote that handle on
+    /// the appview's word. A step looks at up to `repair_limit`
+    /// holders, fewer when more than `repair_backlog` identity entries
+    /// would be due. 0 turns it off, which is the default: the role turns
+    /// it on.
+    repair_limit: usize = 0,
+    repair_seconds: u64 = 5,
+    repair_backlog: usize = 100,
     health_seconds: u64 = 60,
     /// Keys counted at most when sizing a queue for the health snapshot.
     count_cap: usize = 200_000,
@@ -208,6 +219,7 @@ pub const Health = struct {
     refresh_due: u64 = 0,
     walks: std.EnumArray(change.WalkPool, Walk) = .initFill(.{}),
     tombstones: u64 = 0,
+    repair: Repair = .{},
     /// True when a count above stopped at `count_cap`.
     counts_capped: bool = false,
     maintenance: ?maintain.Stats = null,
@@ -215,6 +227,23 @@ pub const Health = struct {
 
     pub fn plc(self: *const Health) ?[]const u8 {
         return if (self.plc_cursor_len == 0) null else self.plc_cursor[0..self.plc_cursor_len];
+    }
+};
+
+/// Where the handle repair stands.
+pub const Repair = struct {
+    started_at: u64 = 0,
+    /// 0 until the pass has reached the end.
+    finished_at: u64 = 0,
+    examined: u64 = 0,
+    queued: u64 = 0,
+    /// Holders of `handle.invalid` the pass has yet to look at.
+    remaining: u64 = 0,
+    did: [max_walk_did]u8 = undefined,
+    did_len: usize = 0,
+
+    pub fn position(self: *const Repair) []const u8 {
+        return self.did[0..self.did_len];
     }
 };
 
@@ -276,6 +305,8 @@ pub const Owner = struct {
     next_prune: u64 = 0,
     next_expiry: u64 = 0,
     next_trim: u64 = 0,
+    next_repair: u64 = 0,
+    repair_finished: bool = false,
     next_health: u64 = 0,
 
     health_lock: Io.Mutex = .init,
@@ -495,6 +526,10 @@ pub const Owner = struct {
         if (at >= self.next_trim) {
             try self.trim();
             self.next_trim = at + self.options.trim_seconds;
+        }
+        if (self.options.repair_limit > 0 and !self.repair_finished and at >= self.next_repair) {
+            try self.repairStep(at);
+            self.next_repair = at + self.options.repair_seconds;
         }
         if (at >= self.next_health) {
             try self.refreshHealth(at);
@@ -733,6 +768,15 @@ pub const Owner = struct {
         _ = self.counters.hidden_refreshed.fetchAdd(changed, .monotonic);
     }
 
+    fn repairStep(self: *Owner, at: u64) !void {
+        const step = try self.store.reverifyHandle(at, handle_policy.invalid_handle, self.options.repair_limit, self.options.repair_backlog);
+        if (!step.finished) return;
+        self.repair_finished = true;
+        _ = self.scratch.reset(.retain_capacity);
+        const state = try store_mod.read.repairState(self.store.db(), self.scratch.allocator());
+        log.info("handle repair finished at {d}: {d} holders of {s} examined, {d} queued for identity resolution", .{ state.finished_at, state.examined, handle_policy.invalid_handle, state.queued });
+    }
+
     /// The position below which the change log may be dropped.
     fn trimTarget(self: *Owner) u64 {
         const next = self.store.next_change;
@@ -792,6 +836,23 @@ pub const Owner = struct {
                 @memcpy(walk.did[0..walk.did_len], did[0..walk.did_len]);
             }
             fresh.walks.set(pool, walk);
+        }
+        const repair = try store_mod.read.repairState(self.store.db(), self.scratch.allocator());
+        fresh.repair = .{ .started_at = repair.started_at, .finished_at = repair.finished_at, .examined = repair.examined, .queued = repair.queued };
+        fresh.repair.did_len = @min(repair.position.len, max_walk_did);
+        @memcpy(fresh.repair.did[0..fresh.repair.did_len], repair.position[0..fresh.repair.did_len]);
+        if (repair.finished_at == 0) {
+            var end_buf: keys.Buf = undefined;
+            const prefix = try keys.handlePrefix(&buf, handle_policy.invalid_handle);
+            var start: std.ArrayList(u8) = .empty;
+            try start.appendSlice(self.scratch.allocator(), prefix);
+            if (repair.position.len > 0) {
+                try start.appendSlice(self.scratch.allocator(), repair.position);
+                try start.append(self.scratch.allocator(), 0);
+            }
+            @memcpy(end_buf[0..prefix.len], prefix);
+            end_buf[prefix.len - 1] = 1;
+            fresh.repair.remaining = try self.countRange(start.items, end_buf[0..prefix.len], &fresh.counts_capped);
         }
         const tombstone_bounds = keys.Prefix.tombstone.bounds();
         fresh.tombstones = try self.countRange(&tombstone_bounds[0], &tombstone_bounds[1], &fresh.counts_capped);

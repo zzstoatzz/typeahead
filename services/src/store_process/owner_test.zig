@@ -213,3 +213,66 @@ test "the bridge's stored position is a consumer again after a restart" {
     try testing.expectEqualStrings("bridge", consumers[0].name);
     try testing.expectEqual(@as(u64, 7), consumers[0].position);
 }
+
+fn generationOf(f: *Fixture, did: []const u8) !?u64 {
+    return if (try f.queued(did)) |state| state.generation else null;
+}
+
+test "the handle repair queues every handle.invalid record once, resumes after a restart, and then stays finished" {
+    const f = try Fixture.create(.{ .repair_limit = 2, .repair_seconds = 5, .repair_backlog = 100 });
+    defer f.destroy();
+    const holders = [_][]const u8{ "did:plc:a", "did:plc:b", "did:plc:c", "did:plc:d", "did:plc:e" };
+    var seeds: std.ArrayList(store_mod.Change) = .empty;
+    for (holders) |did| try seeds.append(f.arena.allocator(), .{ .profile = .{ .did = did, .handle = "handle.invalid" } });
+    try seeds.append(f.arena.allocator(), .{ .profile = .{ .did = alice, .handle = "alice.test" } });
+    _ = try f.commit(seeds.items, null);
+
+    try testing.expectEqual(@as(?u64, 1), try generationOf(f, "did:plc:a"));
+    try testing.expectEqual(@as(?u64, 1), try generationOf(f, "did:plc:b"));
+    try testing.expectEqual(@as(?u64, null), try generationOf(f, "did:plc:c"));
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(?u64, null), try generationOf(f, "did:plc:c"));
+
+    f.advance(5);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(?u64, 1), try generationOf(f, "did:plc:d"));
+    try testing.expectEqual(@as(?u64, null), try generationOf(f, "did:plc:e"));
+    f.advance(60);
+    try f.restart();
+    var health = f.owner.health();
+    try testing.expectEqual(@as(u64, 4), health.repair.examined);
+    try testing.expectEqual(@as(u64, 4), health.repair.queued);
+    try testing.expectEqual(@as(u64, 1), health.repair.remaining);
+    try testing.expectEqual(@as(u64, 0), health.repair.finished_at);
+    try testing.expectEqualStrings("did:plc:d", health.repair.position());
+
+    _ = f.owner.turn(0);
+    try testing.expect(f.owner.repair_finished);
+    for (holders) |did| try testing.expectEqual(@as(?u64, 1), try generationOf(f, did));
+    try testing.expectEqual(@as(?u64, null), try generationOf(f, alice));
+
+    _ = try f.commit(&.{.{ .profile = .{ .did = bob, .handle = "handle.invalid" } }}, null);
+    f.advance(120);
+    _ = f.owner.turn(0);
+    try f.restart();
+    f.advance(120);
+    _ = f.owner.turn(0);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(?u64, null), try generationOf(f, bob));
+    for (holders) |did| try testing.expectEqual(@as(?u64, 1), try generationOf(f, did));
+    health = f.owner.health();
+    try testing.expectEqual(@as(u64, 5), health.repair.examined);
+    try testing.expectEqual(@as(u64, 5), health.repair.queued);
+    try testing.expectEqual(@as(u64, 0), health.repair.remaining);
+    try testing.expectEqual(health.repair.started_at + 65, health.repair.finished_at);
+}
+
+test "the handle repair is off unless asked for" {
+    const f = try Fixture.create(.{});
+    defer f.destroy();
+    _ = try f.commit(&.{.{ .profile = .{ .did = alice, .handle = "handle.invalid" } }}, null);
+    f.advance(60);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(?u64, null), try generationOf(f, alice));
+    try testing.expectEqual(@as(u64, 1), f.owner.health().repair.remaining);
+}
