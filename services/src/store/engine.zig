@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const zkv = @import("zkv");
 const Io = std.Io;
 
@@ -54,6 +55,7 @@ pub const Handle = struct {
         errdefer dir.close(io);
         self.* = .{ .gpa = gpa, .io = io, .dir = dir, .objects = .init(gpa, io, dir), .db = undefined };
         errdefer self.objects.deinit();
+        if (mode == .writer) prefetchTableMetadata(io, dir);
         self.db = switch (mode) {
             .writer => try Db.open(gpa, &self.objects, layout.engine()),
             .reader => try Db.openReader(gpa, &self.objects, layout.engine()),
@@ -68,3 +70,56 @@ pub const Handle = struct {
         self.gpa.destroy(self);
     }
 };
+
+/// The end of a table file this far back is asked for ahead of an open. A
+/// table of the default 8 MiB carried about 170 KiB of metadata on the
+/// shadow store, 2026-11-11.
+const metadata_tail_bytes: u64 = 256 << 10;
+const readahead_chunk_bytes: u64 = 128 << 10;
+
+/// Ask the kernel to start reading the end of every table file, which is
+/// where zkv 0.1.2 keeps a table's metadata. An open reads that metadata
+/// one file after another and waits for each, and beside another reader of
+/// the same disk it gets one request's share at a time: opening 641 tables
+/// took 43 s while the index process warmed its files on a machine start,
+/// against 4 s with the disk to itself. Asking first puts every read in
+/// the device's queue at once. A layout this guesses wrong costs reads the
+/// open did not need and nothing else. Linux only.
+fn prefetchTableMetadata(io: Io, dir: Io.Dir) void {
+    if (builtin.os.tag != .linux) return;
+    var tables = dir.openDir(io, "sst", .{ .iterate = true }) catch return;
+    defer tables.close(io);
+    var entries = tables.iterate();
+    while (entries.next(io) catch return) |entry| {
+        if (entry.kind != .file) continue;
+        const file = tables.openFile(io, entry.name, .{}) catch continue;
+        defer file.close(io);
+        const size = (file.stat(io) catch continue).size;
+        var at = size -| metadata_tail_bytes;
+        while (at < size) : (at += readahead_chunk_bytes) {
+            _ = std.os.linux.fadvise(file.handle, @intCast(at), @intCast(@min(readahead_chunk_bytes, size - at)), std.os.linux.POSIX_FADV.WILLNEED);
+        }
+    }
+}
+
+test "a store with flushed tables opens the same after the readahead hint" {
+    const testing = std.testing;
+    var tmp = testing.tmpDir(.{ .iterate = true });
+    defer tmp.cleanup();
+    {
+        const handle = try Handle.open(testing.allocator, testing.io, tmp.dir, "store", .{}, .writer);
+        defer handle.close();
+        try handle.db.put("a", "one");
+        try handle.db.commit();
+        try handle.db.flush();
+        try handle.db.put("b", "two");
+        try handle.db.commit();
+    }
+    var dir = try tmp.dir.openDir(testing.io, "store", .{ .iterate = true });
+    defer dir.close(testing.io);
+    prefetchTableMetadata(testing.io, dir);
+    const handle = try Handle.open(testing.allocator, testing.io, tmp.dir, "store", .{}, .writer);
+    defer handle.close();
+    try testing.expectEqualStrings("one", (try handle.db.get("a")).?);
+    try testing.expectEqualStrings("two", (try handle.db.get("b")).?);
+}
