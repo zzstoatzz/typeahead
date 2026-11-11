@@ -48,3 +48,99 @@ From [Fly's pricing page](https://fly.io/docs/about/pricing/), read 2026-11-10, 
 | total | | $32.76 |
 
 For comparison, a production slot by the same arithmetic is 2 × 2.19 + 0.5 × 6.00 + 20 × 0.15 = $10.38. A 2 GB shadow on two shared CPUs would be $13.39 + $6.00 = $19.39. Volume snapshots are $0.08 per GB a month after the first 10 GB and are not planned here.
+
+## Measured on the machine, 2026-11-11
+
+The sections above are arithmetic from other measurements. This one is what `typeahead-shadow-a` did while the search-latency gate of the [shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md) was being met. The runs, their per-query timings and the store's state around each are in [docs/evals/shadow-latency-20261111](https://tangled.org/zzstoatzz.io/typeahead/tree/main/docs/evals/shadow-latency-20261111).
+
+### Four shared CPUs are a quarter of one CPU
+
+Fly gives a shared vCPU 5 ms of every 80 ms, pooled across the machine's vCPUs, and a burst balance that lets it run above that until the balance is spent; a machine that has spent it and used its quota does not run again until the next 80 ms period ([Fly's CPU documentation](https://docs.fly.io/machines/cpu-performance), read 2026-11-11). Four shared vCPUs are 20 ms in 80: 0.25 of a CPU, which is what `fly_instance_cpu_baseline` reports for this machine.
+
+At 11:30 UTC the machine's balance had been under 7 ms in twelve of the thirteen half-hourly samples of the six hours before (the other followed a restart), with `fly_instance_cpu_throttle` rising throughout. Inside it, 20 seconds held 596 jiffies of user and system time, 0.30 of a CPU, and 5,087 of steal; nearly all of the work was the store process's. The same query sent again and again on loopback took about 6 ms, or about 78 ms, or about 155 ms, whichever number of whole periods it had to wait, and which one did not depend on whether the index had committed in between. The comparison's warm median was 74 ms against production's 1.75 ms.
+
+Those six hours were not the store's steady state: the bootstrap resync, a comparison walk and the one-time handle repair (which finished at 11:48) ran in them. What the processes want when nothing holds them back, measured on two dedicated CPUs:
+
+| state | store process | index process |
+|---|---|---|
+| minutes after a restart, catching up | 0.5 to 1.0 of a CPU: its writer thread alone 0.43 to 0.73 | 0.02 |
+| settled, enrichment at its 0.5 requests a second, no repair, no backlog | 0.11 to 0.18 | 0.016 to 0.024, merges included |
+| a merge of the whole index (13 million documents) | | one merge thread for 19 minutes, 963 s of CPU time; the process's anonymous memory peaked at 0.82 GB, against 0.05 to 0.25 GB otherwise |
+
+A profile of the store process while it was catching up put 33% of its samples in store maintenance (compaction), 18% in applying writes, 32% in opening HTTPS connections (21% in the TLS handshake, 5% re-reading the certificate bundle) and 9% in the relay stream. None of that was changed here.
+
+So the settled machine fits under a quarter of a CPU, by a little: restored to four shared CPUs with the settings below it used 0.23 of a CPU and its balance grew by about a tenth of a second a minute. A whole-index merge needs about 960 CPU-seconds and the balance holds at most 500, so on shared CPUs the merge, which recurs every few days, spends the balance in its first minutes and then every search waits on the quota until the merge has finished at the throttled rate. The same holds for a resync, a comparison walk or a restart's catch-up.
+
+The last measurement is the settled case. Back on four shared CPUs and 4 GB with the same build (commit 3cb79ae), from 14:26 UTC: no throttling in 24 minutes, CPU use between 0.21 and 0.25 of a CPU in ten of the eleven two-minute samples after the first four minutes (0.31 in the last), and the balance rising from 19.3 s to 21.7 s. Three runs after one to warm up, with enrichment running, one to two store compactions a run, no store stall and no bridge error:
+
+| run | | production p50 / p95 / p99 | shadow p50 / p95 / p99 | gate |
+|---|---|---|---|---|
+| 1 | cold | 1.91 / 2.51 / 3.23 | 2.24 / 4.18 / 5.19 | passes |
+| | warm | 1.86 / 2.58 / 3.56 | 1.29 / 2.60 / 3.26 | passes |
+| 2 | cold | 1.93 / 3.09 / 3.66 | 1.94 / 3.24 / 3.63 | passes |
+| | warm | 1.86 / 3.11 / 3.73 | 1.24 / 2.10 / 3.04 | passes |
+| 3 | cold | 1.99 / 3.40 / 3.52 | 1.80 / 3.02 / 3.68 | passes |
+| | warm | 1.90 / 3.17 / 4.02 | 1.31 / 2.10 / 2.95 | passes |
+
+The gate passes on the machine as it is sized, for as long as the balance lasts: 22 seconds of it, refilling at a tenth of a second a minute. The six hours before this work are what the other side of that looks like.
+
+### Two dedicated CPUs
+
+`fly machine update --vm-cpu-kind performance --vm-cpus 2`, same 4 GB, same build (commit 3cb79ae). Server-side search time in ms, gate (c) of the comparison (shadow at most production × 1.10 + 2 ms at each of p50, p95 and p99), three runs after one run to warm up, each about six minutes, 58 queries, one cold and five warm requests each. Background during every run: enrichment running at 0.5 requests a second with its queue backed up, one to two store compactions, the handle repair finished, no store stall, no bridge error.
+
+| run | | production p50 / p95 / p99 | shadow p50 / p95 / p99 | gate |
+|---|---|---|---|---|
+| 1 | cold | 1.83 / 2.55 / 3.42 | 1.88 / 3.78 / 8.40 | fails on p99 |
+| | warm | 1.80 / 2.70 / 3.62 | 1.20 / 2.68 / 4.29 | passes |
+| 2 | cold | 1.87 / 3.38 / 4.02 | 1.63 / 2.95 / 3.82 | passes |
+| | warm | 1.82 / 2.43 / 3.72 | 1.20 / 2.76 / 4.88 | passes |
+| 3 | cold | 1.84 / 2.26 / 3.96 | 1.82 / 2.87 / 4.05 | passes |
+| | warm | 1.82 / 2.53 / 3.37 | 1.23 / 2.53 / 3.88 | passes |
+
+The cold p99 of 58 requests is the slowest one. In run 1 it was the first request of the run, 8.4 ms. The build before this one (no page-cache warming) gave the same picture on the same machine: three runs, warm passing in all, cold failing once on one 6.4 ms request. What makes that one request slow is not established: giving the store process and the merge threads the idle scheduling class instead of niceness did not change the tail of a loopback sample, and requests next to a commit were only slightly slower than the rest (3.7% over 3 ms against 2.4%).
+
+### Memory
+
+The index is read through memory maps, so what a search costs depends on what the page cache holds, and 4 GB holds about 3.4 GB of files for an index of 4.7 GB and a store of 4.9 GB. Left alone 25 minutes after a restart, the cache held 1.0 GB of the index and 2.3 GB of the store. Sent queries neither backend had been sent before, one a second each:
+
+| | production p50 / p95 / max | shadow p50 / p95 / max |
+|---|---|---|
+| 4 GB, nothing warmed, 119 queries | 4.43 / 5.85 / 6.89 | 5.63 / 11.55 / 16.72 |
+| 4 GB, term, fast-field, fieldnorm and postings files read into the cache, 110 queries | 4.07 / 5.79 / 6.65 | 2.49 / 7.76 / 15.35 |
+| 8 GB, the whole index in the cache, 95 queries | 4.50 / 6.52 / 9.58 | 2.31 / 5.31 / 104.15 |
+
+The reader now does the second row's reading itself for each new segment (`INDEX_WARM_SEGMENT_FILES`). The stored profiles, 1.9 GB, do not fit beside the rest in 4 GB, and each result returned is a read of them. The 104 ms request in the third row was one query three minutes after a restart; the next slowest were 16.8 and 11.1 ms. It was not explained.
+
+With 8 GB (`--vm-memory 8192`) and the stored-profile file read into the cache by hand as well, the gate passed in all three runs and in the warm-up run before them:
+
+| run | | production p50 / p95 / p99 | shadow p50 / p95 / p99 | gate |
+|---|---|---|---|---|
+| 1 | cold | 2.01 / 3.03 / 3.28 | 1.76 / 3.25 / 5.15 | passes |
+| | warm | 1.85 / 3.02 / 3.66 | 1.21 / 2.55 / 3.79 | passes |
+| 2 | cold | 1.89 / 2.70 / 3.12 | 1.70 / 3.31 / 4.50 | passes |
+| | warm | 1.85 / 3.04 / 4.62 | 1.20 / 2.40 / 3.85 | passes |
+| 3 | cold | 1.89 / 2.61 / 3.23 | 1.75 / 2.52 / 3.25 | passes |
+| | warm | 1.82 / 2.37 / 3.29 | 1.21 / 2.71 / 4.26 | passes |
+
+Run 1's cold p99 passed by 0.46 ms. Three runs do not show that 8 GB is what removes the cold outlier; they show it did not occur in them.
+
+### What a restart and a whole-index merge cost searches
+
+Neither is covered by the gate, which measures a settled machine.
+
+- A run started within a minute of a restart had cold requests of 2.3 s and 0.4 s and a cold median of 6.6 ms: the reader reports ready before its files are in the cache.
+- The whole-index merge of 12:13 to 12:32 UTC, on two dedicated CPUs: a loopback sample of 400 requests taken in its first three minutes, which were also the first three minutes after a restart, had a 99th percentile of 375 ms. Later samples during the merge had medians of 1.75 to 1.87 ms and 90th percentiles of 3.0 to 4.9 ms (3.0 with the merge threads at niceness 19, 4.9 without), against 1.15 ms and 2.0 to 2.2 ms once it had landed; the 99th percentiles were 6.2 to 7.4 ms during and 5.2 to 6.6 ms after. One merge was observed.
+
+### Prices
+
+From [Fly's pricing page](https://docs.fly.io/about/pricing), read 2026-11-11, for `ewr`: performance-1x with 2 GB is $33.00 a month, performance-2x with 4 GB is $66.00, additional memory is $6.00 per GB. The page prices no four- or eight-CPU shared machine; those rows are derived as in the cost table above (a shared vCPU comes to $0.69: 2.19 − 0.25 × 6.00).
+
+| machine | a month | over today's | baseline CPU | gate (c) |
+|---|---|---|---|---|
+| 4 shared CPUs, 4 GB (today) | $26.76 | | 0.25 | passes in 3 of 3 runs while settled, with 0.02 of a CPU to spare; failed at every percentile, by 70 ms and more, while the balance was spent |
+| 8 shared CPUs, 4 GB | $29.52 | $2.76 | 0.5 | not measured; a whole-index merge still outlasts the 500 s balance |
+| 1 dedicated CPU, 4 GB | $45.00 | $18.24 | 1 | not measured |
+| 2 dedicated CPUs, 4 GB | $66.00 | $39.24 | 2 | warm passes in 6 of 6 runs, cold in 4 of 6 |
+| 2 dedicated CPUs, 8 GB | $90.00 | $63.24 | 2 | passes in 3 of 3 runs |
+
+The volume is $6.00 on top of each. The machine was returned to four shared CPUs and 4 GB after these measurements, and `fly.toml` still asks for that.
