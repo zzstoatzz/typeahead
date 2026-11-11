@@ -27,6 +27,10 @@ const Recorder = struct {
     seen: [8]Seen = undefined,
     len: usize = 0,
     finished: Io.Event = .unset,
+    stopped: std.atomic.Value(u32) = .init(0),
+    owner: ?*Owner = null,
+    /// Whether the owner had stopped when `on_stopped` was called.
+    owner_stopped: bool = false,
 
     fn stage(context: ?*anyopaque, at: role.Stage, state: role.State) void {
         const self: *Recorder = @ptrCast(@alignCast(context.?));
@@ -41,7 +45,14 @@ const Recorder = struct {
             .corpus_scans = state.corpus_scans,
         };
         self.len += 1;
+        self.owner = state.owner;
         if (at == .corpus_started) self.finished.set(self.io);
+    }
+
+    fn stoppedHook(context: ?*anyopaque) void {
+        const self: *Recorder = @ptrCast(@alignCast(context.?));
+        self.owner_stopped = self.owner.?.isStopped();
+        _ = self.stopped.fetchAdd(1, .monotonic);
     }
 };
 
@@ -74,7 +85,7 @@ fn seed(path: []const u8) !void {
     try testing.expect(!submission.failed);
 }
 
-test "the role feeds the index and follows upstream before it counts, trims, opens the read handle or scans" {
+test "the role feeds the index and follows upstream before it counts, trims, opens the read handle or scans, and stops once the owner has" {
     const io = testing.io;
     var tmp = testing.tmpDir(.{});
     defer tmp.cleanup();
@@ -97,7 +108,7 @@ test "the role feeds the index and follows upstream before it counts, trims, ope
             // Nothing listens there: the bridge runs and every step fails.
             .index = .{ .admin_url = "http://127.0.0.1:1", .admin_secret = "unused", .source_id = "role-test" },
         },
-        .options = .{ .startup_seconds = 1, .corpus_delay_seconds = 3600, .context = &recorder, .on_stage = Recorder.stage, .stop = &stop },
+        .options = .{ .startup_seconds = 1, .corpus_delay_seconds = 3600, .context = &recorder, .on_stage = Recorder.stage, .on_stopped = Recorder.stoppedHook, .stop = &stop },
     };
     const thread = try std.Thread.spawn(.{}, Running.run, .{&running});
     recorder.finished.waitUncancelable(io);
@@ -118,4 +129,10 @@ test "the role feeds the index and follows upstream before it counts, trims, ope
     }
     try testing.expect(recorder.seen[3].reader_open);
     for (recorder.seen[0..recorder.len]) |seen| try testing.expectEqual(@as(u64, 0), seen.corpus_scans);
+
+    try testing.expectEqual(@as(u32, 1), recorder.stopped.load(.monotonic));
+    try testing.expect(recorder.owner_stopped);
+    const reopened = try Owner.open(testing.allocator, io, Io.Dir.cwd(), path, .{});
+    defer reopened.close();
+    try testing.expectEqual(@as(?u64, 41), reopened.health().cursors.relay);
 }

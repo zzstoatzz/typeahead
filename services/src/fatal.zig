@@ -29,6 +29,14 @@ pub fn exitForRestart() noreturn {
     std.process.exit(1);
 }
 
+/// flush telemetry and exit 0 after a stop that was asked for. Returns
+/// never, within `exit_deadline_ms` like `exitForRestart`.
+pub fn exitClean() noreturn {
+    arm(exit_deadline_ms, exitSuccess);
+    logfire.flush();
+    std.process.exit(0);
+}
+
 /// `pub const panic = std.debug.FullPanic(fatal.panicHook)`: logfire's hook
 /// prints the message and trace to stderr, ships them, and aborts. The
 /// deadman aborts on its behalf if the ship never returns.
@@ -39,6 +47,10 @@ pub fn panicHook(msg: []const u8, first_trace_addr: ?usize) noreturn {
 
 fn exitFailure() void {
     std.process.exit(1);
+}
+
+fn exitSuccess() void {
+    std.process.exit(0);
 }
 
 fn abortNow() void {

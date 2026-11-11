@@ -68,6 +68,9 @@ pub const Options = struct {
     context: ?*anyopaque = null,
     /// Called as each stage is reached, on the thread that reached it.
     on_stage: ?*const fn (context: ?*anyopaque, stage: Stage, state: State) void = null,
+    /// Called after a stop was asked for and the owner has finished the
+    /// commit it was in. `serve` exits the process here: see `run`'s end.
+    on_stopped: ?*const fn (context: ?*anyopaque) void = null,
     /// Ends `run` the way SIGTERM does, for a caller that cannot shut the
     /// listening socket down under an accept (macOS): set it, then connect
     /// to the listener once.
@@ -81,12 +84,21 @@ fn cGetenv(name: [*:0]const u8) ?[]const u8 {
     return null;
 }
 
+/// True once a stop was asked for. The owner refuses submissions from then
+/// on, which every producer sees as a failure; none of them is one.
+fn stopping() bool {
+    const self = role orelse return false;
+    return self.stopping.load(.acquire);
+}
+
 fn exitOnStoreFailure() void {
+    if (stopping()) return;
     log.err("the store would not commit after repeated reopens, exiting for restart", .{});
     fatal.exitForRestart();
 }
 
 fn exitOnIntakeFailure() void {
+    if (stopping()) return;
     log.err("a relay event could not be queued, exiting for restart to replay it", .{});
     fatal.exitForRestart();
 }
@@ -230,6 +242,7 @@ const Role = struct {
     enricher: ?*enrich.Enricher = null,
     corpus: ?*corpus_mod.Scanner = null,
     bridge_stop: std.atomic.Value(bool) = .init(false),
+    stopping: std.atomic.Value(bool) = .init(false),
 
     fn reached(self: *Role, stage: Stage) void {
         const elapsed = self.started.untilNow(self.io, .awake);
@@ -247,6 +260,7 @@ const Role = struct {
     fn late(self: *Role) void {
         self.io.sleep(Io.Duration.fromSeconds(@intCast(self.options.startup_seconds)), .awake) catch return;
         const reader = store_mod.Reader.open(self.allocator, self.io, Io.Dir.cwd(), self.config.store_dir, self.owner.options.store.layout) catch |err| {
+            if (stopping()) return;
             log.err("store reader open failed: {s}, exiting for restart", .{@errorName(err)});
             fatal.exitForRestart();
         };
@@ -271,6 +285,7 @@ const Role = struct {
         var client = zat.FirehoseClient.init(self.io, self.allocator, .{ .hosts = &.{relay_host}, .cursor = cursor });
         defer client.deinit();
         client.subscribe(&self.intake) catch |err| log.err("firehose subscribe failed: {}", .{err});
+        if (stopping()) return;
         log.err("firehose subscription ended, exiting for restart", .{});
         fatal.exitForRestart();
     }
@@ -358,7 +373,11 @@ pub fn serve(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server) !vo
         log.err("store role configuration: {s}", .{@errorName(err)});
         return err;
     };
-    return run(allocator, io, listener, config, .{});
+    return run(allocator, io, listener, config, .{ .on_stopped = exitClean });
+}
+
+fn exitClean(_: ?*anyopaque) void {
+    fatal.exitClean();
 }
 
 /// The role under a configuration the caller built, until the listening
@@ -463,8 +482,12 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
 
     // Everything the heartbeat reads through `self` is in place, so the
     // threads can start, in the order `Stage` gives.
+    var owner_task = try io.concurrent(Owner.run, .{owner});
+    defer {
+        owner.stop();
+        owner_task.await(io);
+    }
     var tasks: Io.Group = .init;
-    try tasks.concurrent(io, Owner.run, .{owner});
     if (config.index) |index| {
         try tasks.concurrent(io, bridge_mod.Bridge.run, .{ &bridge, &self.bridge_stop });
         log.info("index bridge to {s} as source {s}, resting {d} ms between pushes", .{ index.admin_url, index.source_id, index.push_interval_ms });
@@ -505,10 +528,19 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     }
 
     log.info("SIGTERM received, stopping the store role", .{});
+    self.stopping.store(true, .release);
     self.bridge_stop.store(true, .release);
     if (self.enricher) |running| running.stop();
     scanner.stop();
     owner.stop();
+    // Awaited, not canceled: a cancellation lands inside a commit as a
+    // failed write, and the owner answers that by reopening the store.
+    owner_task.await(io);
+    log.info("the owner stopped after its last commit; whatever was still queued is replayed from the stored cursors", .{});
+    // Nothing can write now. The upstream clients take a cancellation for
+    // a dropped connection and reconnect, so canceling `tasks` in
+    // production would wait on them for ever: `serve` exits here instead.
+    if (options.on_stopped) |stopped| stopped(options.context);
     tasks.cancel(io);
     if (have_pool) pool.shutdown(io);
     log.info("shutdown complete", .{});
