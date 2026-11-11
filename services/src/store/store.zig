@@ -266,7 +266,10 @@ pub const Store = struct {
         var start_buf: keys.Buf = undefined;
         var end_buf: keys.Buf = undefined;
         var found: Keys = .{ .arena = arena };
-        _ = try scan.all(arena, self.db(), keys.change(&start_buf, 0), keys.change(&end_buf, target), .{ .limit = limit }, &found);
+        // Nothing is left below the floor but the deletions of earlier
+        // trims, and a scan from 0 walks every one of them to reach the
+        // first entry: 52 s for 11.5 million on a cold start, 2026-11-11.
+        _ = try scan.all(arena, self.db(), keys.change(&start_buf, @min(old_floor, target)), keys.change(&end_buf, target), .{ .limit = limit }, &found);
         var floor = @max(old_floor, target);
         const more = found.keys.items.len == limit and limit > 0 and target > 0;
         if (more) floor = @max(old_floor, 1 + try keys.parseChange(found.keys.items[found.keys.items.len - 1]));

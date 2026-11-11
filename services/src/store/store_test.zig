@@ -741,6 +741,25 @@ test "trimming the change log moves its floor, and a position below it is report
     try testing.expectEqual(@as(u64, 11), (try f.store.changes(mem, 11, 100)).entries[0].sequence);
 }
 
+test "a trim starts at the floor and reads nothing below it" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    var buf: [32]u8 = undefined;
+    for (0..10) |n| _ = try f.apply(t0, .{ .observe = .{ .did = try std.fmt.bufPrint(&buf, "did:plc:{d:0>4}", .{n}) } });
+    try testing.expectEqual(@as(u64, 6), (try f.store.trimChanges(6, 100)).floor);
+
+    // An entry no trim leaves behind, put back by hand: a trim that still
+    // walked the dead range from 0 would find it and remove it.
+    var key: keys.Buf = undefined;
+    try f.store.db().put(keys.change(&key, 2), "did:plc:0001");
+    try f.store.db().commit();
+    const trimmed = try f.store.trimChanges(9, 100);
+    try testing.expectEqual(@as(u64, 3), trimmed.removed);
+    try testing.expectEqual(@as(u64, 9), trimmed.floor);
+    try testing.expectEqual(@as(u64, 3), try f.count(.change));
+    try testing.expect(try f.store.db().get(keys.change(&key, 2)) != null);
+}
+
 test "a store written under another format is refused" {
     var tmp = testing.tmpDir(.{ .iterate = true });
     defer tmp.cleanup();
