@@ -343,3 +343,31 @@ fn bulk_import_rejects_invalid_resource_and_segment_limits_before_writing() {
         assert!(!directory.path().join("index").exists());
     }
 }
+
+#[test]
+fn a_new_generation_shares_the_rank_columns_of_unchanged_segments() {
+    let (_directory, engine, mut rows) = fixture(8);
+    let before = engine.snapshot();
+    assert_eq!(before.ranks.len(), 8);
+    assert!(before.ranks.iter().all(Option::is_some));
+    rows[100].display_name = "Renamed".into();
+    apply(&engine, vec![rows[100].clone()], None);
+    let after = engine.snapshot();
+    assert_eq!(after.searcher.segment_readers().len(), 9);
+    assert_eq!(after.ranks.len(), 9);
+    for (ordinal, segment) in after.searcher.segment_readers().iter().enumerate() {
+        let old = before
+            .searcher
+            .segment_readers()
+            .iter()
+            .position(|reader| reader.segment_id() == segment.segment_id());
+        let column = after.ranks[ordinal].as_ref().unwrap();
+        match old {
+            Some(old) => assert!(std::ptr::eq(
+                column.dictionary(),
+                before.ranks[old].as_ref().unwrap().dictionary()
+            )),
+            None => assert_eq!(column.num_rows(), 1),
+        }
+    }
+}

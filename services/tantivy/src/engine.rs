@@ -14,6 +14,7 @@ use std::{
     time::{Instant, SystemTime, UNIX_EPOCH},
 };
 use tantivy::collector::TopDocs;
+use tantivy::columnar::StrColumn;
 use tantivy::merge_policy::NoMergePolicy;
 use tantivy::query::{BooleanQuery, EmptyQuery, EnableScoring, Occur, Query, TermQuery};
 use tantivy::schema::{
@@ -199,8 +200,44 @@ pub struct Generation {
     pub metadata: Metadata,
     pub policy: Option<Arc<ModerationPolicy>>,
     pub policy_sha256: Option<String>,
+    /// Each segment's rank column, in `segment_readers()` order. Opening one
+    /// decodes a header per 512 documents of the segment, so it is done once
+    /// per segment when a generation is built, never per query. `None` is a
+    /// segment without the column, which a query reports as it always has.
+    ranks: Vec<Option<StrColumn>>,
 }
 impl Generation {
+    /// A segment's files never change, so a column the previous generation
+    /// opened for the same segment is shared rather than opened again.
+    fn new(
+        searcher: Searcher,
+        metadata: Metadata,
+        policy: Option<Arc<ModerationPolicy>>,
+        policy_sha256: Option<String>,
+        previous: Option<&Generation>,
+    ) -> Result<Self> {
+        let mut ranks = Vec::with_capacity(searcher.segment_readers().len());
+        for segment in searcher.segment_readers() {
+            let shared = previous.and_then(|old| {
+                old.searcher
+                    .segment_readers()
+                    .iter()
+                    .position(|reader| reader.segment_id() == segment.segment_id())
+                    .map(|ordinal| old.ranks[ordinal].clone())
+            });
+            ranks.push(match shared {
+                Some(column) => column,
+                None => segment.fast_fields().str("rank")?,
+            });
+        }
+        Ok(Self {
+            searcher,
+            metadata,
+            policy,
+            policy_sha256,
+            ranks,
+        })
+    }
     fn load(searcher: Searcher, metadata: Metadata) -> Result<Self> {
         let policy = metadata
             .policy_snapshot
@@ -220,12 +257,7 @@ impl Generation {
             .as_ref()
             .map(|p| policy_hash(p.snapshot()))
             .transpose()?;
-        Ok(Self {
-            searcher,
-            metadata,
-            policy,
-            policy_sha256,
-        })
+        Self::new(searcher, metadata, policy, policy_sha256, None)
     }
     pub fn policy_fresh(&self, now: u64) -> bool {
         self.policy.as_ref().is_none_or(|p| {
@@ -564,12 +596,19 @@ impl Engine {
             self.healthy.store(false, Ordering::Release);
             return Err(error.into());
         }
-        let next = Arc::new(Generation {
-            searcher: writer.reader.searcher(),
-            metadata: metadata.clone(),
+        let next = match Generation::new(
+            writer.reader.searcher(),
+            metadata.clone(),
             policy,
             policy_sha256,
-        });
+            Some(&generation),
+        ) {
+            Ok(next) => Arc::new(next),
+            Err(error) => {
+                self.healthy.store(false, Ordering::Release);
+                return Err(error);
+            }
+        };
         *self.generation.write().unwrap() = next;
         receipt.watermark = metadata.watermark;
         receipt.source_cursor = metadata.source_cursor;
@@ -723,9 +762,8 @@ impl Engine {
                         for (ordinal, segment) in
                             generation.searcher.segment_readers().iter().enumerate()
                         {
-                            let rank = segment
-                                .fast_fields()
-                                .str("rank")?
+                            let rank = generation.ranks[ordinal]
+                                .as_ref()
                                 .ok_or_else(|| Error::Storage("rank column missing".into()))?;
                             let mut scorer = weight.scorer(segment, 1.0)?;
                             scorers_opened += 1;
@@ -735,7 +773,7 @@ impl Engine {
                                 budget.visit()?;
                                 segments_visited.insert(ordinal);
                                 if !segment.is_deleted(doc) {
-                                    let key = rank_merge::rank_key(&rank, doc)?;
+                                    let key = rank_merge::rank_key(rank, doc)?;
                                     rank_head_reads += 1;
                                     if consider(key, DocAddress::new(ordinal as u32, doc))? {
                                         accepted += 1;
@@ -747,7 +785,7 @@ impl Engine {
                     }
                     RetrievalStrategy::GlobalMerge => {
                         let mut merge =
-                            rank_merge::RankMerge::new(&generation.searcher, weight.as_ref())?;
+                            rank_merge::RankMerge::new(&generation.searcher, &generation.ranks, weight.as_ref())?;
                         scorers_opened += generation.searcher.segment_readers().len();
                         let mut accepted = 0;
                         while accepted < limit {

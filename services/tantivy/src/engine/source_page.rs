@@ -72,12 +72,8 @@ mod tests {
         let mut metadata = Metadata::empty();
         metadata.source_cursor = json!({"through": 123});
         metadata.source_observation_revision = 7;
-        let generation = Arc::new(Generation {
-            searcher: reader.searcher(),
-            metadata,
-            policy: None,
-            policy_sha256: None,
-        });
+        let generation =
+            Arc::new(Generation::new(reader.searcher(), metadata, None, None, None).unwrap());
         Engine {
             fields,
             writer: Mutex::new(Writer { writer, reader }),
