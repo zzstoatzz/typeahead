@@ -11,7 +11,8 @@
     "SERVICE_DID": "did:plc:y6kywgnb7xletjpa5hhxmd4k",
     "PDS_UI_ENABLED": "1",
     "SEARCH_CACHE_GENERATION": "tantivy-b1793346536-cp-7c8322df79-cutover",
-    "STATS_DUAL_WRITE": "1"
+    "STATS_DUAL_WRITE": "1",
+    "STATS_READ_SOURCE": "turso"
   },
   "services": [
     { "binding": "SEARCH_TRANSPORT", "service": "typeahead-search-transport" },

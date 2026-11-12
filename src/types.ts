@@ -14,6 +14,11 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   /// database as well as to Turso (docs/plans/stats-off-turso.md, step 2).
   /// Any other value, or no STATS_DB binding, leaves Turso the only store.
   STATS_DUAL_WRITE?: string;
+  /// "d1" answers every statistics read from STATS_DB: the cron's KV
+  /// materialization, rollup and profile, the /stats tail and source list,
+  /// and /source-icon (docs/plans/stats-off-turso.md, step 6). Any other
+  /// value reads Turso. Corpus counts stay on Turso either way.
+  STATS_READ_SOURCE?: string;
   SEARCH_BACKEND_URL?: string;
   SEARCH_TRANSPORT?: Fetcher;
   SEARCH_CACHE_GENERATION?: string;

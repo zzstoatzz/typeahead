@@ -32,9 +32,32 @@ export async function handleStats(request: Request, db: SqlDb, env: Env, ctx: Ex
     return resp;
   }
 
+  const { body, timing } = await statsBody(db, env, { apps, range, origin: reqUrl.origin });
+
+  const cacheResponse = html(body, {
+    "Server-Timing": timing,
+    "Cache-Control": `public, max-age=${EDGE_CACHE_TTL}`,
+  });
+  ctx.waitUntil(cache.put(cacheKey, cacheResponse));
+
+  return html(body, {
+    "Server-Timing": timing,
+    "Cache-Control": "no-store",
+  });
+}
+
+type StatsBodyEnv = { KV: Pick<KVNamespace, "get"> };
+
+/** The page for one view: KV history from the cron plus the live tail and the
+ *  source list from `db`, the statistics store this deployment reads. */
+export async function statsBody(
+  db: SqlDb,
+  env: StatsBodyEnv,
+  view: { apps: string[]; range: string; origin: string },
+): Promise<{ body: string; timing: string }> {
   const t0 = performance.now();
 
-  // materialized data from KV (written by cron) — never hits turso
+  // history materialized to KV by the cron; only the tail and the source list are read live
   const [kvData, reqData, exclusions, profile] = await Promise.all([
     env.KV.get<StatsKvData>("stats_data", "json"),
     env.KV.get<RequestKvData>("request_data", "json"),
@@ -115,7 +138,7 @@ export async function handleStats(request: Request, db: SqlDb, env: Env, ctx: Ex
     requestSeries: withTail(reqData?.series ?? [], rowsAs<RequestHour>(requestHourTail?.results ?? []), "hour", requestStart / 12),
     requestSeries5m: withTail(reqData?.series_5m ?? [], rowsAs<Request5m>(request5mTail?.results ?? []), "bucket", requestStart),
     requestDaily: reqData?.daily ?? [],
-    view: { apps, range, origin: reqUrl.origin } });
+    view });
 
   const tRender = performance.now();
 
@@ -124,16 +147,6 @@ export async function handleStats(request: Request, db: SqlDb, env: Env, ctx: Ex
   const renderMs = (tRender - tProcess).toFixed(0);
   const totalMs2 = (tRender - t0).toFixed(0);
 
-  const timing = `query;dur=${queryMs}, process;dur=${processMs}, render;dur=${renderMs}, total;dur=${totalMs2}`;
-
-  const cacheResponse = html(body, {
-    "Server-Timing": timing,
-    "Cache-Control": `public, max-age=${EDGE_CACHE_TTL}`,
-  });
-  ctx.waitUntil(cache.put(cacheKey, cacheResponse));
-
-  return html(body, {
-    "Server-Timing": timing,
-    "Cache-Control": "no-store",
-  });
+  return { body, timing: `query;dur=${queryMs}, process;dur=${processMs}, render;dur=${renderMs}, total;dur=${totalMs2}` };
 }
+

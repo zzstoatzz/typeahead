@@ -1,6 +1,7 @@
 import { test, expect, mock } from "bun:test";
 import type { InValue } from "@libsql/client/web";
 import { GENERATION, controlStore } from "./control-d1-fixture";
+import type { SqlDb } from "./db";
 import { statsStores } from "./stats-d1-fixture";
 import type { Env } from "./types";
 
@@ -31,17 +32,20 @@ mock.module("@libsql/client/web", () => ({
     },
   }),
 }));
+const statsHandles: SqlDb[] = [];
 const realStats = await import("./handlers/stats");
 mock.module("./handlers/stats", () => ({
   ...realStats,
-  handleStats: async () => { throw new Error("boom"); },
+  handleStats: async (_request: Request, db: SqlDb) => { statsHandles.push(db); throw new Error("boom"); },
 }));
 
 const worker = (await import("./index")).default;
-function fakeEnv(fields: Partial<Env> & { TURSO_URL: string; TURSO_AUTH_TOKEN: string }): Env {
+type FakeKv = { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<void> };
+function fakeEnv(fields: Omit<Partial<Env>, "KV"> & { KV?: FakeKv; TURSO_URL: string; TURSO_AUTH_TOKEN: string }): Env {
   // SAFETY: the routes exercised here (404, OPTIONS, the throwing /stats, the
   // search route with a dead engine) read only the fields each test passes,
-  // and the libsql client is mocked above.
+  // and the libsql client is mocked above. The cron and the routes use KV only
+  // through get(key) and put(key, value).
   return fields as Env;
 }
 
@@ -49,6 +53,9 @@ function fakeEnv(fields: Partial<Env> & { TURSO_URL: string; TURSO_AUTH_TOKEN: s
 // `caches.default.match` and `.put`, which this stub provides.
 const cacheHost = globalThis as { caches?: { default: { match(): Promise<undefined>; put(): Promise<void> } } };
 const ENV = fakeEnv({ TURSO_URL: "https://example.turso.io", TURSO_AUTH_TOKEN: "t" });
+
+// SAFETY: the scheduled handler never reads its event.
+const scheduledEvent = {} as ScheduledEvent;
 
 function ctx() {
   const tasks: Promise<unknown>[] = [];
@@ -163,5 +170,62 @@ test("an unreachable engine returns unavailable without touching Turso", async (
   } finally {
     globalThis.fetch = realFetch;
     cacheHost.caches = realCaches;
+  }
+});
+
+// The read switch (docs/plans/stats-off-turso.md, step 6). The libsql client
+// above answers every query with no rows, so a statistic that is only in the
+// D1 fixture can come back only if the route read D1.
+test("STATS_READ_SOURCE=d1 hands /stats, /source-icon and the cron's materialization the D1 store", async () => {
+  const stores = await statsStores();
+  const realFetch = globalThis.fetch;
+  const realCaches = cacheHost.caches;
+  const fetched: string[] = [];
+  const refuse = async (input: RequestInfo | URL) => { fetched.push(String(input)); throw new Error("connect ECONNREFUSED"); };
+  globalThis.fetch = Object.assign(refuse, { preconnect: realFetch.preconnect });
+  cacheHost.caches = { default: { match: async () => undefined, put: async () => {} } };
+  const kv = new Map<string, string>();
+  const KV = { get: async (key: string) => kv.get(key) ?? null, put: async (key: string, value: string) => { kv.set(key, value); } };
+  try {
+    await stores.mirror.batch([
+      stores.mirror.prepare("INSERT INTO traffic_sources (domain, hits) VALUES ('only-in-d1.example', 3)"),
+      stores.mirror.prepare("INSERT INTO traffic_buckets (bucket, domain, hits) VALUES (?1, 'only-in-d1.example', 3)").bind(Math.floor(Date.now() / 300_000)),
+    ]);
+    const known = async (env: Env) => {
+      fetched.length = 0;
+      executed.length = 0;
+      const { ctx: c, tasks } = ctx();
+      const res = await worker.fetch(new Request("https://typeahead.waow.tech/source-icon?d=only-in-d1.example"), env, c);
+      expect(res.status).toBe(404);
+      await Promise.all(tasks);
+      return { fetched: [...fetched], turso: executed.filter((sql) => /traffic_sources WHERE domain/.test(sql)).length };
+    };
+    const readsD1 = async (env: Env) => {
+      statsHandles.length = 0;
+      const { ctx: c, tasks } = ctx();
+      await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), env, c)).rejects.toThrow("boom");
+      await Promise.all(tasks);
+      return (await statsHandles[0]!.prepare("SELECT hits FROM traffic_sources").all()).results.length === 1;
+    };
+    const materialized = async (env: Env) => {
+      kv.clear();
+      await worker.scheduled(scheduledEvent, env, ctx().ctx);
+      return JSON.parse(kv.get("stats_data") ?? "null")?.traffic_series_5m;
+    };
+
+    const base = { ...ENV, STATS_DB: stores.d1, STATS_DUAL_WRITE: "1", KV };
+    const turso = fakeEnv({ ...base, STATS_READ_SOURCE: "turso" });
+    const d1 = fakeEnv({ ...base, STATS_READ_SOURCE: "d1" });
+
+    expect(await known(turso)).toEqual({ fetched: [], turso: 1 });
+    expect(await known(d1)).toEqual({ fetched: ["https://only-in-d1.example/favicon.ico"], turso: 0 });
+    expect(await readsD1(turso)).toBe(false);
+    expect(await readsD1(d1)).toBe(true);
+    expect(await materialized(turso)).toEqual([]);
+    expect(await materialized(d1)).toMatchObject([{ domain: "only-in-d1.example", hits: 3 }]);
+  } finally {
+    globalThis.fetch = realFetch;
+    cacheHost.caches = realCaches;
+    await stores.dispose();
   }
 });

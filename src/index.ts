@@ -6,7 +6,7 @@ import { recordSnapshot, materializeStats } from "./enrichment";
 import { recordExclusions } from "./exclusions";
 import { recordProfile } from "./stats-profile";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
-import { recordStats } from "./stats-store";
+import { recordStats, statsReadDb } from "./stats-store";
 import { refreshModeration } from "./cron";
 import { controlDb, pruneIndexRequests } from "./control-store";
 import { controlHealth, handleControlHealth } from "./control-health";
@@ -37,6 +37,7 @@ export const CRON_BUDGET_MS = 12 * 60 * 1000;
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     const db = await getDb(env);
+    const statsDb = statsReadDb(env, db);
     // Record the ATTEMPT before any work. Without this a missing snapshot row is
     // ambiguous: it could mean the cron never fired (Cloudflare schedules are
     // best-effort) or that recordSnapshot itself failed. Those need different
@@ -73,8 +74,8 @@ export default {
         const counted = await recordExclusions(db, env.KV);
         if (counted) console.log(JSON.stringify({ event: "exclusions_recorded", ...counted }));
       }],
-      ["materializeStats", () => materializeStats(db, env)],
-      ["recordProfile", async () => { await recordProfile(db, env.KV); }],
+      ["materializeStats", () => materializeStats(statsDb, env)],
+      ["recordProfile", async () => { await recordProfile(statsDb, env.KV); }],
       ["refreshModeration", () => refreshModeration(db, env)],
       // the control database is what store slots take moderation policy
       // from; /request-indexing keeps answering when it is down, so nothing
@@ -215,7 +216,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   const db = await getDb(env);
 
   if (pathname === "/stats" && request.method === "GET") {
-    return handleStats(request, db, env, ctx);
+    return handleStats(request, statsReadDb(env, db), env, ctx);
   }
 
   if (pathname === "/debug/reputation" && request.method === "GET") {
@@ -274,7 +275,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
 
   if (pathname === "/source-icon" && request.method === "GET") {
-    return handleSourceIcon(request, db, ctx);
+    return handleSourceIcon(request, statsReadDb(env, db), ctx);
   }
 
   if (pathname === "/admin/ingest" && request.method === "POST") {
