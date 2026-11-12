@@ -1,0 +1,10 @@
+events=400000 actors=1000000 active=150000 skew=2.00 seed=20261112 rate=480/s simulated_s=833 mean_frame_bytes=2336
+cpu_ms_per_1000: total=76.84 tls=43.07 decode=10.97 intake=0.65 owner=22.15
+refresh: cpu_ms_per_1000=3.03 steps=413 leased=9236 step_ms_first=3.302 step_ms_last=2.540; history: steps=1000 leased=16643 cpu_s=2.2 step_ms_first=1.811 step_ms_last=1.716
+commits=3801 batches=1111 changes_applied=358067 actors_changed=28781 actors_created=411 trimmed=28013
+store: committed_bytes=29651761 flushes=14 flushed_bytes=20350046 compactions=3 compaction_steps=36 compacted_bytes=52110950 tables=54 table_bytes=439421578
+peak_rss_mb=63 wall_s=89.9
+stamped=30905 (77.3 per 1000 events)
+digest: actor=5f4de8e6fdefc4fb/1000411 change=613aa2fbecbcac8f/1000768 handle=8a9f81d5bedec6d7/999879 identity=8d5bf4ca85951917/1109 label=e3b0c44298fc1c14/0 policy=e3b0c44298fc1c14/0 quality=76b70e919bab372a/311921 refresh=11124e8415c22c3f/24 tombstone=8bd3a8c87cba540f/121 cursor=37177f0254dbba5b/6
+digest: content=f2e838a50a2b485a documents=17a6e426371c41c2
+digest: store=e43aa5d8789eab17

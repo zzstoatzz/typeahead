@@ -1,0 +1,12 @@
+== floors, 1,600,000 events
+cpu_ms_per_1000: total=34.67 tls=2.29 decode=2.92 intake=0.61 owner=28.85
+refresh: cpu_ms_per_1000=3.39 steps=1651 leased=36762 step_ms_first=3.062 step_ms_last=2.743; history: steps=1000 leased=16643 cpu_s=2.8 step_ms_first=1.762 step_ms_last=2.638
+peak_rss_mb=63 wall_s=194.6
+stamped=123660 (77.3 per 1000 events)
+digest: store=8525d3eeaaa4de37
+== seen, 1,600,000 events
+cpu_ms_per_1000: total=16.83 tls=2.34 decode=2.96 intake=0.61 owner=10.93
+refresh: cpu_ms_per_1000=3.23 steps=1651 leased=36762 step_ms_first=3.145 step_ms_last=2.446; history: steps=1000 leased=16643 cpu_s=2.1 step_ms_first=1.731 step_ms_last=2.430
+peak_rss_mb=77 wall_s=83.6
+stamped=123660 (77.3 per 1000 events)
+digest: store=8525d3eeaaa4de37

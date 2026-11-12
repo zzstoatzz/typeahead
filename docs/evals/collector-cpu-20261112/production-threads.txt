@@ -1,0 +1,32 @@
+typeahead-shadow-a, read-only: /proc/687/task/*/stat and io, and /health on 127.0.0.1:8082. 2026-11-12, about 02:55 CT.
+Machine: 8 CPUs, Intel Xeon 2.10 GHz; flags include aes avx avx2 avx512f pclmulqdq, not sha_ni. CLK_TCK 100.
+
+since boot (uptime 37,395 s), utime stime in ticks:
+705 (owner)         309803 55246   rchar 450,718,298,604  syscr 118,543,738  wchar 16,411,333,547
+745 (relay reader)  306417 37018   syscr 12 (socket reads are not counted there)
+704 (corpus scan)    15204  9219   rchar 46,570,727,831   syscr 11,041,697
+ten pool threads    about 7,800 ticks each
+/health then: events 14,188,991  batches 44,250  commits 120,612  changes_applied 12,261,807  actors_changed 378,734
+              flushes 453  compactions 127  enrichment leased 354,927  identity leased 26,582  actors created 12,588
+
+two readings 60 s apart:
+T 705  321727 56488  rchar 467171291607  syscr 122745310  wchar 16512185250
+T 745  310901 37649
+PROC   717169 122748
+events 14439182  batches 45256  commits 123507  changes_applied 12478560  flushes 463  compactions 130
+
+T 705  322708 56573  rchar 468416092080  syscr 123062412  wchar 16513769349
+T 745  311191 37682
+PROC   718523 122886
+events 14453640  batches 45316  commits 123680  changes_applied 12491323  flushes 464  compactions 130
+
+in those 60 s: 14,458 relay events (241/s), 12,763 changes (213/s), 173 commits.
+process  14.92 CPU-s  (0.249 of a CPU)
+owner    10.66 CPU-s  (71%)   317,102 preads (5,285/s), 1.245 GB read (20.7 MB/s), 1.58 MB written
+reader    3.23 CPU-s  (22%)   223 us per relay event
+others    1.03 CPU-s  (7%)
+
+TLS: `openssl s_client -connect bsky.network:443 -tls1_3 -ciphersuites TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384`
+answers `Cipher is TLS_AES_256_GCM_SHA384`: the server picks by its own order, and Zig's client offers that suite last when built without AES.
+
+typeahead-shadow-b host: AMD EPYC; flags include aes avx avx2 pclmulqdq sha_ni.

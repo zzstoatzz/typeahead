@@ -1,0 +1,10 @@
+bench at a67c360 (relay only, no refresh steps), 2026-11-12 02:50 CT, before other sessions loaded the machine.
+cpu lines as printed; store digest 3d677fa13ef982b5 in all four runs.
+
+native (Apple M5 Pro, AES and SHA2 instructions):
+cpu_ms_per_1000: total=12.85 tls=0.99 decode=1.54 intake=0.14 owner=10.18
+cpu_ms_per_1000: total=12.29 tls=0.98 decode=1.54 intake=0.11 owner=9.67
+cpu_ms_per_1000: total=12.72 tls=0.99 decode=1.54 intake=0.12 owner=10.07
+
+-Dcpu=native-aes-sha2 (software AES, GHASH and SHA-256, as the image's baseline x86-64 build has):
+cpu_ms_per_1000: total=36.30 tls=19.27 decode=5.74 intake=0.18 owner=11.11
