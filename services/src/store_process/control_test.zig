@@ -465,7 +465,10 @@ test "a restart resumes from the stored revision, and a poll that died before it
     // The process dies after the answer arrives and before the commit.
     rig.f.owner.stop();
     try testing.expectError(error.OwnerStopped, rig.loop.step());
-    try testing.expectEqual(control.Failure.commit, rig.loop.report().last_failure);
+    try testing.expectEqual(control.Failure.store, rig.loop.report().last_failure);
+    // Both polls ran and both met the stopped owner: neither waits on the other.
+    try testing.expectEqual(@as(u64, 1), rig.loop.report().failures);
+    try testing.expectEqual(@as(usize, 1), rig.worker.count(control.requests_path));
     rig = try rig.restart();
     try testing.expectEqual(@as(?u64, null), (try rig.f.cursors()).control_policy);
     try testing.expect(!try rig.hidden(alice));
@@ -820,6 +823,30 @@ test "an answer without a usable generation is refused" {
         try testing.expectEqual(@as(?u64, 2), (try rig.f.cursors()).control_policy);
         try testing.expectEqualStrings("spam.example ", try rig.bridgePolicy());
     }
+}
+
+test "a store that cannot be read is counted as a failure of the loop" {
+    const rig = try Rig.create();
+    defer rig.destroy();
+    rig.worker.block("spam.example");
+
+    // The owner's handle is closed, as it is between a failed commit and
+    // the reopen: the policy poll has its answer and cannot read the
+    // store's rules to compare.
+    rig.f.owner.store.close();
+    rig.f.owner.opened = false;
+    try testing.expectError(error.StoreBroken, rig.loop.pollPolicy());
+    const report = rig.loop.report();
+    try testing.expectEqual(control.Failure.store, report.last_failure);
+    try testing.expectEqual(@as(u64, 1), report.failures);
+    try testing.expectEqual(@as(?u64, null), report.policy_revision);
+
+    // The owner reopens on its next turn and the next poll applies it.
+    _ = rig.f.owner.turn(0);
+    try rig.poll();
+    try testing.expectEqualStrings("spam.example ", try rig.bridgePolicy());
+    try testing.expectEqual(@as(?u64, 2), (try rig.f.cursors()).control_policy);
+    try testing.expectEqual(@as(u64, 1), rig.loop.report().failures);
 }
 
 const bootstrap_policy =

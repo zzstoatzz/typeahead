@@ -116,8 +116,8 @@ pub const Failure = enum(u8) {
     malformed,
     /// A policy revision below the one already applied.
     older_revision,
-    /// The owner would not commit.
-    commit,
+    /// The store could not be read, or the owner would not commit.
+    store,
 };
 
 pub const Stats = struct {
@@ -412,7 +412,7 @@ pub const Controller = struct {
             .unauthorized => _ = s.unauthorized.fetchAdd(1, .monotonic),
             .malformed => _ = s.malformed.fetchAdd(1, .monotonic),
             .older_revision => _ = s.older_revision.fetchAdd(1, .monotonic),
-            .none, .status, .commit => {},
+            .none, .status, .store => {},
         }
         s.last_failure.store(what, .monotonic);
         s.last_failure_status.store(status, .monotonic);
@@ -432,12 +432,18 @@ pub const Controller = struct {
         return true;
     }
 
+    /// Every change in `changes` is one the store's key layout holds. The
+    /// owner skips a change it cannot hold and commits the rest with the
+    /// cursor, which would record a revision the store does not equal: so
+    /// nothing is handed over unless all of it will land.
+    fn holdable(changes: []const Change) bool {
+        for (changes) |one| store_mod.change.validate(one) catch return false;
+        return true;
+    }
+
     fn commit(self: *Controller, submission: *Submission, endpoint: []const u8) !void {
-        self.owner.call(submission) catch |err| {
-            self.failed(.commit, 0, endpoint);
-            return err;
-        };
-        if (submission.summary.rejected > 0) log.warn("{s}: the store refused {d} changes", .{ endpoint, submission.summary.rejected });
+        try self.owner.call(submission);
+        if (submission.summary.rejected > 0) log.err("{s}: the store refused {d} changes it had been checked to hold", .{ endpoint, submission.summary.rejected });
     }
 
     const Held = struct { generation: u64, revision: u64 };
@@ -461,8 +467,16 @@ pub const Controller = struct {
     }
 
     /// Ask for the policy and make the store equal to it. True when the
-    /// Worker answered and the store now holds its revision.
+    /// Worker answered and the store now holds its revision. An error is
+    /// the store's: it could not be read or would not commit, and is counted.
     pub fn pollPolicy(self: *Controller) !bool {
+        return self.policyPoll() catch |err| {
+            self.failed(.store, 0, policy_path);
+            return err;
+        };
+    }
+
+    fn policyPoll(self: *Controller) !bool {
         var arena: std.heap.ArenaAllocator = .init(self.gpa);
         defer arena.deinit();
         const a = arena.allocator();
@@ -505,6 +519,10 @@ pub const Controller = struct {
             const domains = try store_mod.read.blockedDomains(store.db(), owned);
             submission.changes = try difference(owned, overrides, domains, policy);
         }
+        if (!holdable(submission.changes)) {
+            self.failed(.malformed, response.status, policy_path);
+            return false;
+        }
         submission.cursor = .{ .control_policy = .{ .generation = policy.generation, .at = policy.revision } };
         try self.commit(submission, policy_path);
 
@@ -523,8 +541,16 @@ pub const Controller = struct {
     }
 
     /// Take the indexing requests after the stored sequence, a page at a
-    /// time. True when the Worker answered every page asked for.
+    /// time. True when the Worker answered every page asked for. An error
+    /// is the store's, and is counted.
     pub fn pollRequests(self: *Controller) !bool {
+        return self.requestsPoll() catch |err| {
+            self.failed(.store, 0, requests_path);
+            return err;
+        };
+    }
+
+    fn requestsPoll(self: *Controller) !bool {
         for (0..self.options.request_pages) |_| switch (try self.requestPage()) {
             .refused => return false,
             .more => {},
@@ -558,7 +584,7 @@ pub const Controller = struct {
         var changes: events.Changes = .{ .arena = submission.arena.allocator() };
         var skipped: u64 = 0;
         for (page.requests) |request| {
-            if (!events.validLabelDid(request.did)) {
+            if (!events.validLabelDid(request.did) or !holdable(&.{.{ .observe = .{ .did = request.did } }})) {
                 skipped += 1;
                 continue;
             }
@@ -579,12 +605,15 @@ pub const Controller = struct {
         return if (page.more) .more else .end;
     }
 
-    /// One poll of both endpoints. Neither waits on the other: a Worker
-    /// that serves requests but not policy still gets its requests taken.
+    /// One poll of both endpoints. Neither waits on the other: requests
+    /// are taken whether the policy poll was answered, refused or failed
+    /// against the store. The first error of the two is returned.
     pub fn step(self: *Controller) !void {
         _ = self.stats.polls.fetchAdd(1, .monotonic);
-        _ = try self.pollPolicy();
-        _ = try self.pollRequests();
+        const policy = self.pollPolicy();
+        const requests = self.pollRequests();
+        _ = try policy;
+        _ = try requests;
     }
 
     /// Milliseconds to rest before the next poll.
