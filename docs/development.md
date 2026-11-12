@@ -22,7 +22,7 @@ a bare `zig build run` does not configure one.
 ```sh
 just test-services           # ingester, normalizer, store and index bridge unit tests
 just --no-dotenv test-tantivy # isolated engine, source and recovery checks
-just --no-dotenv test-bridge  # index bridge against a real local Tantivy server
+just --no-dotenv test-bridge  # index bridge, and a policy change from the control loop to search, against a real local Tantivy server
 ```
 
 ## Deployment

@@ -153,6 +153,22 @@ pub fn build(b: *std.Build) void {
     const bridge_integration_step = b.step("test-bridge", "Run the index bridge against a real Tantivy server");
     bridge_integration_step.dependOn(&run_bridge_integration.step);
 
+    // The control loop, the store, the bridge and the same real server,
+    // from a policy change to what a search returns.
+    const control_e2e = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/control_e2e_test.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = role_imports,
+        }),
+    });
+    control_e2e.root_module.addAnonymousImport("identity-quarantine", .{ .root_source_file = quarantine });
+    const run_control_e2e = b.addRunArtifact(control_e2e);
+    run_control_e2e.has_side_effects = true;
+    bridge_integration_step.dependOn(&run_control_e2e.step);
+
     const stub_options = b.addOptions();
     stub_options.addOptionPath("script_path", b.path("src/testing/identity_stub.py"));
 

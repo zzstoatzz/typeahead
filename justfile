@@ -116,7 +116,8 @@ test-shadow-compare:
     uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts -p 'test_bench_*.py'
     uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts/shadow_compare -p 'test_*.py'
 
-# run the index bridge against a real Tantivy server built from this checkout:
+# run the index bridge against a real Tantivy server built from this checkout,
+# and the control loop's policy changes through a real store into its search:
 # loopback only, synthetic actors, everything in one temporary tree
 test-bridge:
     #!/usr/bin/env bash
