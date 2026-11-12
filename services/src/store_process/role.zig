@@ -538,6 +538,19 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     };
     if (config.corpus_scan_seconds > 0) self.corpus = &scanner;
 
+    // The corpus count goes to the index on its own thread, with its own
+    // HTTP client: the bridge's is in use for as long as a commit takes.
+    var corpus_http: zat.HttpTransport = undefined;
+    var corpus_endpoint: bridge_mod.wire.Http = undefined;
+    var corpus_reporter: index_bridge.CorpusReporter = undefined;
+    const reports_corpus = config.index != null and self.corpus != null;
+    if (reports_corpus) {
+        corpus_http = zat.HttpTransport.init(io, allocator);
+        corpus_endpoint = .{ .http = &corpus_http, .base_url = config.index.?.admin_url, .authorization = bridge_endpoint.authorization };
+        corpus_reporter = .{ .gpa = allocator, .io = io, .scanner = &scanner, .client = .{ .transport = corpus_endpoint.transport() } };
+    }
+    defer if (reports_corpus) corpus_http.deinit();
+
     // Everything the heartbeat reads through `self` is in place, so the
     // threads can start, in the order `Stage` gives.
     var owner_task = try io.concurrent(Owner.run, .{owner});
@@ -551,6 +564,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         log.info("index bridge to {s} as source {s}, resting {d} ms between pushes", .{ index.admin_url, index.source_id, index.push_interval_ms });
     }
     self.reached(.bridge_started);
+    if (reports_corpus) try tasks.concurrent(io, index_bridge.CorpusReporter.run, .{ &corpus_reporter, &self.bridge_stop });
 
     var pool: identity_work.Pool = undefined;
     var have_pool = false;

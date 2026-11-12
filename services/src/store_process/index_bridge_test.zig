@@ -9,6 +9,7 @@ const bridge_mod = @import("../bridge/root.zig");
 const store_mod = @import("../store/root.zig");
 const store_harness = @import("../store/testing/harness.zig");
 const index_bridge = @import("index_bridge.zig");
+const corpus_mod = @import("corpus.zig");
 const owner_mod = @import("owner.zig");
 const harness = @import("testing.zig");
 const Bridge = bridge_mod.Bridge;
@@ -376,4 +377,49 @@ test "the index is sent the profile-card fields: description, banner, the conten
     const read = (try interface.actor(a, "did:plc:a")).?;
     try testing.expect(read.profile_checked);
     try testing.expectEqual(written_at + 60, read.updated_at);
+}
+
+const CorpusSink = struct {
+    arena: std.mem.Allocator,
+    status: u16 = 200,
+    bodies: std.ArrayList([]const u8) = .empty,
+
+    fn transport(self: *CorpusSink) bridge_mod.wire.Transport {
+        return .{ .ptr = self, .send = send };
+    }
+
+    fn send(ptr: *anyopaque, _: std.mem.Allocator, request: bridge_mod.wire.Request) anyerror!bridge_mod.wire.Reply {
+        const self: *CorpusSink = @ptrCast(@alignCast(ptr));
+        try testing.expectEqual(std.http.Method.POST, request.method);
+        try testing.expectEqualStrings("/admin/corpus", request.path);
+        try self.bodies.append(self.arena, try self.arena.dupe(u8, request.body.?));
+        return .{ .status = self.status, .body = "{}" };
+    }
+};
+
+test "the corpus count is reported to the index once there is one, and a refusal is an error" {
+    const f = try Fixture.create(.{});
+    defer f.destroy();
+    _ = try f.commit(&.{
+        .{ .profile = .{ .did = "did:plc:shown", .handle = "shown.test", .avatar = "bafkreiavatar" } },
+        .{ .profile = .{ .did = "did:plc:hidden", .handle = "hidden.test" } },
+        .{ .override_set = .{ .did = "did:plc:hidden", .action = .hide } },
+        .{ .observe = .{ .did = "did:plc:bare" } },
+    }, null);
+    var scanner: corpus_mod.Scanner = .{ .gpa = testing.allocator, .io = testing.io, .root = f.tmp.dir, .path = "store", .layout = f.owner.options.store.layout, .interval_seconds = 3600 };
+    var sink: CorpusSink = .{ .arena = f.arena.allocator() };
+    var reporter: index_bridge.CorpusReporter = .{ .gpa = testing.allocator, .io = testing.io, .scanner = &scanner, .client = .{ .transport = sink.transport() } };
+
+    try testing.expect(!try reporter.report());
+    try testing.expectEqual(@as(usize, 0), sink.bodies.items.len);
+
+    scanner.scan();
+    try testing.expect(try reporter.report());
+    const sent = try std.json.parseFromSliceLeaky(bridge_mod.wire.CorpusCount, f.arena.allocator(), sink.bodies.items[0], .{});
+    try testing.expectEqual(bridge_mod.wire.CorpusCount{ .live = 3, .total = 2, .with_handles = 2, .with_avatars = 1, .hidden = 1, .scanned_at = scanner.report().finished_at }, sent);
+    try testing.expectEqual(@as(u64, 1), reporter.sent.load(.monotonic));
+
+    sink.status = 400;
+    try testing.expectError(error.IndexRejected, reporter.report());
+    try testing.expectEqual(@as(u64, 1), reporter.sent.load(.monotonic));
 }

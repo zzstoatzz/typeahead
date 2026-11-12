@@ -11,6 +11,8 @@
 //!       "policy_snapshot":{..}?,"batch_id":<64 hex>}
 //!   -> {"applied":n,"replayed":n,"stale":n,"watermark":n,"opstamp":n,
 //!       "source_cursor":{..},"source_observation_revision":n}
+//! POST /admin/corpus           {"live":n,"total":n,"with_handles":n,
+//!       "with_avatars":n,"hidden":n,"scanned_at":n} -> {"ok":true}
 //! GET  /index/status            -> generation metadata
 //!
 //! Limits enforced by the server: 500 DIDs per state or page request, 500
@@ -95,6 +97,17 @@ pub const Status = struct {
     ready: bool,
     source_observation_revision: u64,
     policy_observed_at: ?u64,
+};
+
+/// The store's corpus count, as the server keeps it in memory and serves it
+/// at /corpus on its public listener.
+pub const CorpusCount = struct {
+    live: u64,
+    total: u64,
+    with_handles: u64,
+    with_avatars: u64,
+    hidden: u64,
+    scanned_at: u64,
 };
 
 pub const Outcome = union(enum) {
@@ -455,6 +468,12 @@ pub const Client = struct {
             .cursor = try json.Stringify.valueAlloc(arena, wire.source_cursor, .{}),
             .revision = wire.source_observation_revision,
         };
+    }
+
+    pub fn corpus(self: Client, arena: Allocator, counted: CorpusCount) Error!void {
+        const body = try json.Stringify.valueAlloc(arena, counted, .{});
+        const reply = try self.call(arena, .{ .method = .POST, .path = "/admin/corpus", .body = body });
+        if (reply.status != 200) return error.IndexRejected;
     }
 
     pub fn reconcile(self: Client, arena: Allocator, body: []const u8) Error!Outcome {

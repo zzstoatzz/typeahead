@@ -20,11 +20,63 @@ const std = @import("std");
 const bridge = @import("../bridge/root.zig");
 const store_mod = @import("../store/root.zig");
 const owner_mod = @import("owner.zig");
+const corpus_mod = @import("corpus.zig");
 const Allocator = std.mem.Allocator;
 const Owner = owner_mod.Owner;
 const source = bridge.source;
 
 pub const consumer_name = "bridge";
+
+const log = std.log.scoped(.index_bridge);
+
+/// Hands the corpus scanner's last count to the index, which serves it on
+/// its public listener beside its own counts: the store's port has no
+/// public service, and the count is what the Worker's statistics page shows.
+/// The index keeps it in memory only, so it is sent every
+/// `interval_seconds` whether or not it changed, and an index restarted
+/// since the last scan has it back within one interval.
+pub const CorpusReporter = struct {
+    gpa: Allocator,
+    io: std.Io,
+    scanner: *corpus_mod.Scanner,
+    client: bridge.wire.Client,
+    interval_seconds: u64 = 60,
+    sent: std.atomic.Value(u64) = .init(0),
+    failed: std.atomic.Value(u64) = .init(0),
+
+    /// Whether there was a count to send.
+    pub fn report(self: *CorpusReporter) !bool {
+        const latest = self.scanner.report();
+        const counts = latest.counts orelse return false;
+        var arena: std.heap.ArenaAllocator = .init(self.gpa);
+        defer arena.deinit();
+        try self.client.corpus(arena.allocator(), .{
+            .live = counts.live,
+            .total = counts.total(),
+            .with_handles = counts.with_handles,
+            .with_avatars = counts.with_avatars,
+            .hidden = counts.hidden,
+            .scanned_at = latest.finished_at,
+        });
+        _ = self.sent.fetchAdd(1, .monotonic);
+        return true;
+    }
+
+    pub fn run(self: *CorpusReporter, stop: *const std.atomic.Value(bool)) void {
+        var failing = false;
+        while (!stop.load(.acquire)) {
+            if (self.report()) |_| {
+                if (failing) log.info("the index took the corpus count again", .{});
+                failing = false;
+            } else |err| {
+                _ = self.failed.fetchAdd(1, .monotonic);
+                if (!failing) log.warn("the index did not take the corpus count: {s}", .{@errorName(err)});
+                failing = true;
+            }
+            self.io.sleep(.fromSeconds(@intCast(self.interval_seconds)), .awake) catch return;
+        }
+    }
+};
 
 pub const StoreSource = struct {
     gpa: Allocator,

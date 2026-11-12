@@ -385,6 +385,15 @@ test "the bridge keeps a real Tantivy server equal to the store through changes,
     try testing.expectEqualStrings("", read[1].object.get("description").?.string);
     try testing.expectEqual(false, read[1].object.get("profile_checked").?.bool);
 
+    // The store's corpus count, posted to the admin listener, is served.
+    const counted: wire.CorpusCount = .{ .live = actor_count + 5, .total = actor_count, .with_handles = actor_count, .with_avatars = actor_count, .hidden = 5, .scanned_at = 1_794_000_000 };
+    try testing.expectEqual(json.Value.null, (try f.getJson(f.public, "/corpus")).object.get("store").?);
+    try (wire.Client{ .transport = f.endpoint.transport() }).corpus(f.arena.allocator(), counted);
+    const corpus = (try f.getJson(f.public, "/corpus")).object;
+    try testing.expectEqual(@as(i64, actor_count), corpus.get("store").?.object.get("total").?.integer);
+    try testing.expectEqual(@as(i64, 5), corpus.get("store").?.object.get("hidden").?.integer);
+    try testing.expectEqual(@as(i64, actor_count), corpus.get("index").?.object.get("actors").?.integer);
+
     // Each kind of change, checked through /search.
     const did = f.id(1234);
     var subject = try f.make(1234, 0);
