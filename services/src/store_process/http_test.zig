@@ -184,6 +184,50 @@ test "health carries the store's numbers" {
     try testing.expect(!body.store.stalled);
 }
 
+test "health reports how far the first-check pass has gone" {
+    const f = try Fixture.create(.{ .health_seconds = 0, .first_check_per_hour = 720, .first_check_scan = 2, .first_check_stamp = harness.t0 });
+    defer f.destroy();
+    _ = try f.commit(&.{
+        .{ .profile = .{ .did = "did:plc:a", .handle = "a.test" } },
+        .{ .enrichment = .{ .did = "did:plc:a", .source = .bsky } },
+        .{ .profile = .{ .did = "did:plc:b", .handle = "b.test" } },
+        .{ .enrichment = .{ .did = "did:plc:b", .source = .bsky, .quality_score = 30 } },
+        .{ .profile = .{ .did = "did:plc:c", .handle = "c.test" } },
+        .{ .enrichment = .{ .did = "did:plc:c", .source = .bsky } },
+    }, null);
+    var surface = try Surface.open(f);
+    defer surface.close();
+    var body = try std.json.parseFromSliceLeaky(http.HealthBody, f.arena.allocator(), (try surface.get("/health", null)).body, .{ .ignore_unknown_fields = true });
+    try testing.expect(body.first_check.enabled);
+    try testing.expectEqual(@as(u64, 720), body.first_check.per_hour);
+    try testing.expectEqual(@as(u64, 2), body.first_check.scan_per_step);
+    try testing.expectEqual(@as(u64, 5), body.first_check.step_seconds);
+    try testing.expectEqual(@as(u64, 500), body.first_check.backlog_limit);
+    try testing.expectEqual(harness.t0, body.first_check.stamp);
+    try testing.expectEqual(@as(u64, 0), body.first_check.stored_stamp);
+    try testing.expectEqual(@as(u64, 0), body.first_check.started_at);
+
+    f.advance(5);
+    _ = f.owner.turn(0);
+    body = try std.json.parseFromSliceLeaky(http.HealthBody, f.arena.allocator(), (try surface.get("/health", null)).body, .{ .ignore_unknown_fields = true });
+    try testing.expectEqual(harness.t0, body.first_check.stored_stamp);
+    try testing.expectEqual(f.now(), body.first_check.started_at);
+    try testing.expectEqual(@as(u64, 0), body.first_check.finished_at);
+    try testing.expectEqual(@as(u64, 1), body.first_check.examined);
+    try testing.expectEqual(@as(u64, 1), body.first_check.queued);
+    try testing.expectEqualStrings("did:plc:a", body.first_check.position_did);
+    try testing.expectEqual(@as(u64, 1), body.queues.refresh_due);
+
+    f.advance(10);
+    _ = f.owner.turn(0);
+    f.advance(5);
+    _ = f.owner.turn(0);
+    body = try std.json.parseFromSliceLeaky(http.HealthBody, f.arena.allocator(), (try surface.get("/health", null)).body, .{ .ignore_unknown_fields = true });
+    try testing.expectEqual(f.now(), body.first_check.finished_at);
+    try testing.expectEqual(@as(u64, 3), body.first_check.examined);
+    try testing.expectEqual(@as(u64, 2), body.first_check.queued);
+}
+
 test "health reports how far the handle repair has gone" {
     const f = try Fixture.create(.{ .health_seconds = 0, .repair_limit = 2, .repair_seconds = 5, .repair_backlog = 40 });
     defer f.destroy();

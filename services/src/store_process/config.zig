@@ -27,6 +27,8 @@
 //! | `ENRICH_HANDLE_BACKLOG`  | no       | such a handle queues no identity work while this many identity entries are due, default 100; `0` queues none |
 //! | `ENRICH_APPVIEW_URL`     | no       | the appview asked for profiles, default `https://public.api.bsky.app` |
 //! | `ENRICH_BLACKSKY_URL`    | no       | the appview asked about accounts Bluesky took down, default `https://api.blacksky.community` |
+//! | `ENRICH_FIRST_CHECK_PER_HOUR` | no  | actors the first-check pass queues an hour at most, default 15000; `0` turns the pass off |
+//! | `ENRICH_FIRST_CHECK_STAMP` | no     | the check time the pass looks for, Unix seconds, default 0: actors a bundle load left unchecked. On a store whose load stamped every actor, the load time (`profile_checked_at` of any actor not refreshed since) |
 //! | `HANDLE_REPAIR`          | no       | `0` turns the one-time re-verification of `handle.invalid` records off; it is on unless `STORE_OFFLINE` |
 //! | `CORPUS_SCAN_SECONDS`    | no       | seconds between corpus counts, default 3600; `0` turns them off. The first is taken 300 s after the start |
 //! | `CONTROL_URL`            | no       | the Worker's origin, `https://…`; with `SLOT_CONTROL_SECRET` it turns the control loop on: this slot pulls moderation policy and indexing requests from `/slot/control/*` there (`control.zig`). Unset, or `STORE_OFFLINE`, the loop is off and policy is whatever the store holds |
@@ -67,6 +69,20 @@
 //! - That leaves 10,909 actors an hour, 261,818 a day, for refreshes that
 //!   profile and identity writes queue. New accounts arrive at about 2,900
 //!   an hour.
+//! - The first-check pass runs once in the life of a store and queues the
+//!   actors no profile source has answered for: live, with a handle, holding
+//!   no score, no count and no creation time, and last checked at
+//!   `ENRICH_FIRST_CHECK_STAMP`. It queues at most 15,000 an hour, 600
+//!   requests of the 1,636, and nothing while 500 refresh entries are due,
+//!   so it takes what the quality walk and the writes leave (20,909 an hour)
+//!   and the rest walk, which stops when a lease comes back full, waits for
+//!   it. N such actors take N / 15,000 hours: 36 minutes for 9,000, 4.7
+//!   hours for 70,000 (a day of new accounts), 67 hours for a million, 16.7
+//!   days for six million. Finding them is a read of the actor range, 5,000
+//!   records every five seconds: 3.7 hours for 13.2 million, which is the
+//!   least a pass takes however few it queues. A DID the appview does not
+//!   return costs a request of its own, as above, so a pool of accounts the
+//!   appview has dropped drains more slowly than that.
 //! - A profile whose handle differs from the stored one queues one identity
 //!   resolution, at most once per actor per `ENRICH_HANDLE_SETTLE_SECONDS`
 //!   and never while `ENRICH_HANDLE_BACKLOG` entries are due. So however
@@ -96,6 +112,10 @@ pub const Config = struct {
     /// Holders of `handle.invalid` one step of the handle repair looks at;
     /// 0 when the repair is off. See `owner.Options.repair_limit`.
     handle_repair_per_step: usize = 0,
+    /// Actors the first-check pass queues an hour; 0 when it is off, as it
+    /// is whenever enrichment is. See `owner.Options.first_check_per_hour`.
+    first_check_per_hour: u64 = 0,
+    first_check_stamp: u64 = 0,
     control: Control = .off,
 };
 
@@ -107,6 +127,7 @@ pub const Control = union(enum) {
 };
 
 pub const handle_repair_per_step = 50;
+pub const first_check_per_hour = 15_000;
 
 pub const Index = struct {
     admin_url: []const u8,
@@ -161,7 +182,11 @@ pub fn load(getenv: Getenv) Error!Config {
         }
     };
     const enrich_off = if (getenv("ENRICH")) |text| std.mem.eql(u8, text, "0") else false;
-    if (!config.offline and !enrich_off) config.enrich = try enrichment(getenv);
+    if (!config.offline and !enrich_off) {
+        config.enrich = try enrichment(getenv);
+        config.first_check_per_hour = try whole(getenv, "ENRICH_FIRST_CHECK_PER_HOUR", first_check_per_hour);
+        config.first_check_stamp = try whole(getenv, "ENRICH_FIRST_CHECK_STAMP", 0);
+    }
     const repair_off = if (getenv("HANDLE_REPAIR")) |text| std.mem.eql(u8, text, "0") else false;
     if (!config.offline and !repair_off) config.handle_repair_per_step = handle_repair_per_step;
     if (getenv("CORPUS_SCAN_SECONDS")) |text| config.corpus_scan_seconds = std.fmt.parseInt(u64, text, 10) catch return error.InvalidCorpusScan;
@@ -332,6 +357,15 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqual(@as(usize, 0), (try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).handle_repair_per_step);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).enrich == null);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "ENRICH", "0" } }))).enrich == null);
+
+    try testing.expectEqual(@as(u64, 15_000), (try load(fakeEnv(&.{base}))).first_check_per_hour);
+    try testing.expectEqual(@as(u64, 0), (try load(fakeEnv(&.{base}))).first_check_stamp);
+    try testing.expectEqual(@as(u64, 0), (try load(fakeEnv(&.{ base, .{ "ENRICH_FIRST_CHECK_PER_HOUR", "0" } }))).first_check_per_hour);
+    try testing.expectEqual(@as(u64, 0), (try load(fakeEnv(&.{ base, .{ "STORE_OFFLINE", "1" } }))).first_check_per_hour);
+    try testing.expectEqual(@as(u64, 0), (try load(fakeEnv(&.{ base, .{ "ENRICH", "0" }, .{ "ENRICH_FIRST_CHECK_STAMP", "1794000000" } }))).first_check_per_hour);
+    const stamped = try load(fakeEnv(&.{ base, .{ "ENRICH_FIRST_CHECK_PER_HOUR", "40000" }, .{ "ENRICH_FIRST_CHECK_STAMP", "1794000000" } }));
+    try testing.expectEqual(@as(u64, 40_000), stamped.first_check_per_hour);
+    try testing.expectEqual(@as(u64, 1_794_000_000), stamped.first_check_stamp);
     const set = try load(fakeEnv(&.{
         base,                                                   .{ "ENRICH_REQUESTS_PER_SECOND", "0.25" }, .{ "ENRICH_JITTER", "0.5" },
         .{ "ENRICH_WALK_PER_HOUR", "800" },                     .{ "ENRICH_SWEEP_PER_HOUR", "0" },         .{ "ENRICH_LEASE_SECONDS", "600" },
@@ -398,10 +432,11 @@ test "a control loop that cannot run is left off and says why, and the role stil
 test "enrichment settings that could not pace a loop are refused" {
     const base = [2][]const u8{ "STORE_DIR", "/d" };
     for ([_][2][]const u8{
-        .{ "ENRICH_REQUESTS_PER_SECOND", "0" },              .{ "ENRICH_REQUESTS_PER_SECOND", "-1" }, .{ "ENRICH_REQUESTS_PER_SECOND", "fast" },
-        .{ "ENRICH_REQUESTS_PER_SECOND", "50" },             .{ "ENRICH_JITTER", "2" },               .{ "ENRICH_WALK_PER_HOUR", "-5" },
-        .{ "ENRICH_LEASE_SECONDS", "5" },                    .{ "ENRICH_BACKOFF_SECONDS", "0" },      .{ "ENRICH_BACKOFF_MAX_SECONDS", "10" },
-        .{ "ENRICH_APPVIEW_URL", "http://appview.example" }, .{ "ENRICH_HANDLE_BACKLOG", "many" },    .{ "ENRICH_HANDLE_SETTLE_SECONDS", "-1" },
+        .{ "ENRICH_REQUESTS_PER_SECOND", "0" },              .{ "ENRICH_REQUESTS_PER_SECOND", "-1" },       .{ "ENRICH_REQUESTS_PER_SECOND", "fast" },
+        .{ "ENRICH_REQUESTS_PER_SECOND", "50" },             .{ "ENRICH_JITTER", "2" },                     .{ "ENRICH_WALK_PER_HOUR", "-5" },
+        .{ "ENRICH_LEASE_SECONDS", "5" },                    .{ "ENRICH_BACKOFF_SECONDS", "0" },            .{ "ENRICH_BACKOFF_MAX_SECONDS", "10" },
+        .{ "ENRICH_APPVIEW_URL", "http://appview.example" }, .{ "ENRICH_HANDLE_BACKLOG", "many" },          .{ "ENRICH_HANDLE_SETTLE_SECONDS", "-1" },
+        .{ "ENRICH_FIRST_CHECK_PER_HOUR", "fast" },          .{ "ENRICH_FIRST_CHECK_STAMP", "2026-11-11" },
     }) |pair| {
         const env = struct {
             var name: []const u8 = "";

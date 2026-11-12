@@ -182,6 +182,7 @@ pub const HealthBody = struct {
     actors: struct { created: u64, gone: u64, reactivated: u64, pruned: u64, live_delta: i64 },
     housekeeping: struct { hidden_refreshed: u64, expiry_passes: u64, domain_sweeps: u64, changes_trimmed: u64 },
     handle_repair: HandleRepairBody,
+    first_check: FirstCheckBody,
     identity: struct { leased: u64, lease_failed: u64, verified: u64, unverified: u64, no_handle: u64, did_failed: u64, retried: u64, commit_failed: u64 },
     plc: struct { pages: u64, operations: u64, failed: u64 },
     labels: struct { frames: u64, adopted: u64, malformed: u64, ignored: u64, commits: u64, commit_failed: u64, cursor: i64, newest_cts: i64 },
@@ -283,6 +284,32 @@ pub fn controlBody(loop: *control.Controller) ControlBody {
         },
     };
 }
+
+/// The pass, made once in the life of a store, that queues a refresh for
+/// every actor no profile source has answered for. It has run when
+/// `finished_at` is set.
+pub const FirstCheckBody = struct {
+    /// False when this process does not run the pass.
+    enabled: bool,
+    /// Actors queued an hour at most, records one step examines, seconds
+    /// between steps, and the count of due refresh entries at which a step
+    /// queues nothing.
+    per_hour: u64,
+    scan_per_step: u64,
+    step_seconds: u64,
+    backlog_limit: u64,
+    /// The check time this process looks for, and the one the stored
+    /// progress was made for. They differ until the first step, which then
+    /// starts the pass over.
+    stamp: u64,
+    stored_stamp: u64,
+    started_at: u64,
+    finished_at: u64,
+    /// Actor records looked at so far, and the actors queued.
+    examined: u64,
+    queued: u64,
+    position_did: []const u8,
+};
 
 /// The pass, made once in the life of a store, that sends every live actor
 /// whose handle is `handle.invalid` back through identity resolution. It
@@ -629,6 +656,20 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
             .queued = health.repair.queued,
             .remaining = health.repair.remaining,
             .position_did = try arena.dupe(u8, health.repair.position()),
+        },
+        .first_check = .{
+            .enabled = owner.options.first_check_per_hour > 0,
+            .per_hour = owner.options.first_check_per_hour,
+            .scan_per_step = owner.options.first_check_scan,
+            .step_seconds = owner.options.first_check_seconds,
+            .backlog_limit = owner.options.first_check_backlog,
+            .stamp = owner.options.first_check_stamp,
+            .stored_stamp = health.first_check.stamp,
+            .started_at = health.first_check.started_at,
+            .finished_at = health.first_check.finished_at,
+            .examined = health.first_check.examined,
+            .queued = health.first_check.queued,
+            .position_did = try arena.dupe(u8, health.first_check.position()),
         },
         .identity = .{
             .leased = load(&identity.stats.leased),

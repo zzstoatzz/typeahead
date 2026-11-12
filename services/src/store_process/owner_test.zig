@@ -377,6 +377,104 @@ test "the handle repair queues every handle.invalid record once, resumes after a
     try testing.expectEqual(health.repair.started_at + 65, health.repair.finished_at);
 }
 
+/// Actors as a bundle load that stamped every one leaves them: checked at
+/// the load, out of the refresh queue, and holding nothing a fetch writes.
+fn loadBare(f: *Fixture, dids: []const []const u8) !void {
+    var seeds: std.ArrayList(store_mod.Change) = .empty;
+    for (dids) |did| {
+        try seeds.append(f.arena.allocator(), .{ .profile = .{ .did = did, .handle = "bare.test" } });
+        try seeds.append(f.arena.allocator(), .{ .enrichment = .{ .did = did, .source = .bsky } });
+    }
+    _ = try f.commit(seeds.items, null);
+}
+
+fn refreshDue(f: *Fixture, did: []const u8) !u64 {
+    return (try f.live(did)).refresh_due;
+}
+
+test "the first-check pass queues never-fetched actors at its hourly rate, resumes after a restart, and then stays finished" {
+    // 1,440 an hour is two every five seconds.
+    const f = try Fixture.create(.{ .first_check_per_hour = 1440, .first_check_seconds = 5, .first_check_scan = 3, .first_check_stamp = harness.t0 });
+    defer f.destroy();
+    const bare = [_][]const u8{ "did:plc:a", "did:plc:b", "did:plc:c", "did:plc:d", "did:plc:e" };
+    try loadBare(f, &bare);
+    _ = try f.commit(&.{
+        .{ .profile = .{ .did = alice, .handle = "alice.test" } },
+        .{ .enrichment = .{ .did = alice, .source = .bsky, .quality_score = 120, .followers_count = 9 } },
+    }, null);
+    // No time has passed, so the rate allows nothing yet.
+    for (bare) |did| try testing.expectEqual(@as(u64, 0), try refreshDue(f, did));
+
+    f.advance(5);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(f.now(), try refreshDue(f, "did:plc:a"));
+    try testing.expectEqual(f.now(), try refreshDue(f, "did:plc:b"));
+    try testing.expectEqual(@as(u64, 0), try refreshDue(f, "did:plc:c"));
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(u64, 0), try refreshDue(f, "did:plc:c"));
+
+    f.advance(5);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(f.now(), try refreshDue(f, "did:plc:d"));
+    try testing.expectEqual(@as(u64, 0), try refreshDue(f, "did:plc:e"));
+    f.advance(60);
+    try f.restart();
+    var health = f.owner.health();
+    // The scan passed alice, who has a score, on its way from a to b.
+    try testing.expectEqual(@as(u64, 5), health.first_check.examined);
+    try testing.expectEqual(@as(u64, 4), health.first_check.queued);
+    try testing.expectEqual(@as(u64, 0), health.first_check.finished_at);
+    try testing.expectEqual(harness.t0, health.first_check.stamp);
+    try testing.expectEqualStrings("did:plc:d", health.first_check.position());
+
+    // A minute behind, the pass is owed a minute's worth and no more: 24.
+    f.advance(600);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(u64, 24 * 3600 - 3600), f.owner.first_check_owed);
+    try testing.expect(f.owner.first_check_finished);
+    for (bare) |did| try testing.expect(try refreshDue(f, did) != 0);
+    try testing.expectEqual(@as(u64, 0), try refreshDue(f, alice));
+
+    try loadBare(f, &.{bob});
+    f.advance(120);
+    _ = f.owner.turn(0);
+    try f.restart();
+    f.advance(120);
+    _ = f.owner.turn(0);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(u64, 0), try refreshDue(f, bob));
+    health = f.owner.health();
+    try testing.expectEqual(@as(u64, 6), health.first_check.examined);
+    try testing.expectEqual(@as(u64, 5), health.first_check.queued);
+    try testing.expectEqual(health.first_check.started_at + 665, health.first_check.finished_at);
+}
+
+test "the first-check pass waits while refreshes are due and is off unless asked for" {
+    const off = try Fixture.create(.{});
+    defer off.destroy();
+    try loadBare(off, &.{alice});
+    off.advance(600);
+    _ = off.owner.turn(0);
+    try testing.expectEqual(@as(u64, 0), try refreshDue(off, alice));
+
+    const f = try Fixture.create(.{ .first_check_per_hour = 7200, .first_check_backlog = 2, .first_check_stamp = harness.t0 });
+    defer f.destroy();
+    try loadBare(f, &.{ "did:plc:a", "did:plc:b", "did:plc:c" });
+    // Two refreshes a write queued are due: the pass adds none to them.
+    _ = try f.commit(&.{ .{ .profile = .{ .did = alice, .handle = "alice.test" } }, .{ .profile = .{ .did = bob, .handle = "bob.test" } } }, null);
+    f.advance(5);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(@as(u64, 0), try refreshDue(f, "did:plc:a"));
+    try testing.expectEqual(@as(u64, 0), f.owner.health().first_check.examined);
+
+    _ = try f.commit(&.{.{ .refresh_lease = .{ .limit = 25 } }}, null);
+    f.advance(5);
+    _ = f.owner.turn(0);
+    try testing.expectEqual(f.now(), try refreshDue(f, "did:plc:a"));
+    try testing.expectEqual(f.now(), try refreshDue(f, "did:plc:b"));
+    try testing.expectEqual(@as(u64, 0), try refreshDue(f, "did:plc:c"));
+}
+
 test "the handle repair is off unless asked for" {
     const f = try Fixture.create(.{});
     defer f.destroy();

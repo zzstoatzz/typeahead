@@ -223,6 +223,18 @@ finished, holders `examined` and `queued`, how many are `remaining`, and the
 last DID it looked at. It is done when `finished_at` is set. `HANDLE_REPAIR=0`
 stops it; its position is kept, so removing the variable resumes it.
 
+`first_check` is the pass that queues a refresh for every actor no profile
+source has answered for, once in the life of a store: its hourly ceiling
+(`per_hour`), the check time it looks for (`stamp`) and the one its stored
+progress was made for (`stored_stamp`), when it started and finished, actor
+records `examined` and actors `queued`, and the last DID it looked at. It is
+done when `finished_at` is set. A store loaded by a bootstrap built before
+2026-11-12 holds those actors stamped as checked at the load: set
+`ENRICH_FIRST_CHECK_STAMP` to that time (`profile_checked_at` of any actor
+the slot has not refreshed since, as `/store/actor` reports it) and the pass
+starts over for them. `ENRICH_FIRST_CHECK_PER_HOUR=0` stops it; its position
+is kept. Not deployed as of 2026-11-12.
+
 It emits one `store.heartbeat` span a minute, from the owner after that
 refresh, so a gap means the owner is not turning or the process is down. The
 per-commit progress line stays on stderr through `services/src/log_route.zig`,
