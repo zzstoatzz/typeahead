@@ -490,12 +490,12 @@ export function reputationPage(): string {
               queryRow('display name', display) +
               queryRow('handle prefix', prefix) +
             '</div>') +
-          sec('sec-data', 'stored data', 'profile checked ' + (d.indexing.profileCheckedAt ? dateShort(d.indexing.profileCheckedAt) : 'never') + ' · row updated ' + (d.indexing.updatedAt ? dateShort(d.indexing.updatedAt) : 'unknown'),
+          sec('sec-data', 'stored data', 'profile checked ' + (d.indexing.profileCheckedAt ? dateShort(d.indexing.profileCheckedAt) : d.indexing.profileChecked ? 'yes' : 'never') + ' · row updated ' + (d.indexing.updatedAt ? dateShort(d.indexing.updatedAt) : 'unknown'),
             '', false,
             '<div class="checks">' +
               (d.indexing.enrichedOnView ? info('enriched on view', 'this actor had never been profile-enriched — the report fetched its profile just now.') : '') +
               info('row updated', d.indexing.updatedAt ? dateTime(d.indexing.updatedAt) : 'unknown') +
-              info('profile checked', d.indexing.profileCheckedAt ? dateTime(d.indexing.profileCheckedAt) : 'never') +
+              info('profile checked', d.indexing.profileCheckedAt ? dateTime(d.indexing.profileCheckedAt) : d.indexing.profileChecked ? 'yes; the time is not kept' : 'never') +
               info('PDS', d.actor.pds || 'unknown') +
               info('profile source', sourceCopy(d.indexing.profileSource)) +
             '</div>' +
