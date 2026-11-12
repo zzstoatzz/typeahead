@@ -38,8 +38,13 @@ test-supervise:
 test-supervise-image:
     docker run --rm -v "$PWD/deploy/shadow-slot:/src:ro" "$(sed -n 's/^FROM \(debian:[^ ]*\)$/\1/p' deploy/shadow-slot/Dockerfile)" sh -c 'apt-get update -qq && apt-get install -y -qq --no-install-recommends python3 jq >/dev/null && bash --version | head -n 1 && cd / && python3 -W error -m unittest /src/test_supervise.py'
 
+# the smoke suite's own logic against stand-in servers: what it counts as a
+# failure, and that its override lifecycle never touches a real override
+test-smoke:
+    python3 -W error -m unittest scripts.test_smoke_failures scripts.test_smoke_overrides
+
 # what CI runs, locally
-check: typecheck lint test test-store-route test-supervise
+check: typecheck lint test test-store-route test-supervise test-smoke
     bunx wrangler deploy --dry-run
     bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
     bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run

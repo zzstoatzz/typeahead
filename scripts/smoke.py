@@ -429,61 +429,73 @@ def test_link_visible(base_url: str):
     check(f"Link visible in search", LINK_HANDLE in handles, f"got {handles}")
 
 
+# The override lifecycle runs on this DID: syntactically a did:plc, and not an
+# account. The real override on LINK_DID is only read. Store slots pull the
+# policy on their own schedule, so clearing a real override here would hide
+# its account on any slot that polled before it was set again, and a run
+# that failed in between would leave it cleared.
+SMOKE_OVERRIDE_DID = "did:plc:smoketestsmoketestsmoke2"
+
+
+def override_dids(base_url: str, secret: str) -> dict[str, str] | None:
+    data, status = admin_fetch(f"{base_url}/admin/mod-overrides", secret)
+    if status != 200 or not data:
+        return None
+    return {o.get("did"): o.get("action") for o in data.get("overrides", [])}
+
+
 def test_mod_overrides(base_url: str, secret: str):
-    """exercise the override admin CRUD lifecycle."""
+    """exercise the override admin CRUD lifecycle on a DID that is no account."""
     print("\n--- mod_overrides admin API ---")
 
-    # 1. ensure Link is indexed
-    data, _ = fetch(f"{base_url}/request-indexing?handle={LINK_HANDLE}", method="POST")
-    if not data or "_error" in data:
-        check("index Link", False, f"got {data}")
-        return
-    check("index Link", data.get("did") == LINK_DID, f"got {data.get('did')}")
+    # 1. the permanent override that keeps Link visible is there, untouched
+    listed = override_dids(base_url, secret)
+    check("list overrides", listed is not None)
+    check("Link's show override is present", (listed or {}).get(LINK_DID) == "show",
+          f"got {(listed or {}).get(LINK_DID)}")
 
-    # 2. set show override
-    data, status = admin_fetch(
-        f"{base_url}/admin/mod-override", secret, "POST",
-        {"did": LINK_DID, "action": "show", "reason": "FREE LINK"},
-    )
-    check("set show override", status == 200 and data and data.get("action") == "show",
-          f"status={status}, got {data}")
-    if data:
-        check("override sets hidden=0", data.get("hidden") == 0, f"got hidden={data.get('hidden')}")
+    try:
+        # 2. set an override
+        data, status = admin_fetch(
+            f"{base_url}/admin/mod-override", secret, "POST",
+            {"did": SMOKE_OVERRIDE_DID, "action": "show", "reason": "smoke test"},
+        )
+        check("set show override", status == 200 and data and data.get("action") == "show",
+              f"status={status}, got {data}")
+        if data:
+            check("override sets hidden=0", data.get("hidden") == 0, f"got hidden={data.get('hidden')}")
 
-    # 3. validate input — bad action should 400
-    data, status = admin_fetch(
-        f"{base_url}/admin/mod-override", secret, "POST",
-        {"did": LINK_DID, "action": "yolo"},
-    )
-    check("bad action returns 400", status == 400, f"status={status}")
+        # 3. validate input: a bad action and a subject that is not a DID are 400
+        data, status = admin_fetch(
+            f"{base_url}/admin/mod-override", secret, "POST",
+            {"did": SMOKE_OVERRIDE_DID, "action": "yolo"},
+        )
+        check("bad action returns 400", status == 400, f"status={status}")
+        data, status = admin_fetch(
+            f"{base_url}/admin/mod-override", secret, "POST",
+            {"did": "not-a-did.example", "action": "hide"},
+        )
+        check("a subject that is not a DID returns 400", status == 400, f"status={status}")
 
-    # 4. list overrides — Link should be there
-    data, status = admin_fetch(f"{base_url}/admin/mod-overrides", secret)
-    if data:
-        override_dids = [o.get("did") for o in data.get("overrides", [])]
-        check("Link in override list", LINK_DID in override_dids)
-    else:
-        check("list overrides", False, f"status={status}")
+        # 4. list overrides: it is there, and so is Link's
+        listed = override_dids(base_url, secret)
+        check("override in list", (listed or {}).get(SMOKE_OVERRIDE_DID) == "show")
+        check("Link's show override still present", (listed or {}).get(LINK_DID) == "show")
 
-    # 5. delete override — hidden recomputed from labels
-    data, status = admin_fetch(f"{base_url}/admin/mod-override?did={LINK_DID}", secret, "DELETE")
-    check("delete override", status == 200, f"status={status}, got {data}")
-
-    # 6. verify override is gone
-    data, status = admin_fetch(f"{base_url}/admin/mod-overrides", secret)
-    if data:
-        override_dids = [o.get("did") for o in data.get("overrides", [])]
-        check("Link removed from overrides", LINK_DID not in override_dids)
-    else:
-        check("list overrides after delete", False, f"status={status}")
-
-    # 7. re-set the override — Link should stay visible permanently
-    data, status = admin_fetch(
-        f"{base_url}/admin/mod-override", secret, "POST",
-        {"did": LINK_DID, "action": "show", "reason": "FREE LINK"},
-    )
-    check("re-set show override", status == 200 and data and data.get("hidden") == 0,
-          f"status={status}, got {data}")
+        # 5. change it
+        data, status = admin_fetch(
+            f"{base_url}/admin/mod-override", secret, "POST",
+            {"did": SMOKE_OVERRIDE_DID, "action": "hide", "reason": "smoke test"},
+        )
+        check("change to hide", status == 200 and data and data.get("hidden") == 1,
+              f"status={status}, got {data}")
+    finally:
+        # 6. always clear it, whatever failed above
+        data, status = admin_fetch(f"{base_url}/admin/mod-override?did={SMOKE_OVERRIDE_DID}", secret, "DELETE")
+        check("delete override", status == 200, f"status={status}, got {data}")
+        listed = override_dids(base_url, secret)
+        check("override removed", listed is not None and SMOKE_OVERRIDE_DID not in listed)
+        check("Link's show override present at the end", (listed or {}).get(LINK_DID) == "show")
 
 
 def test_comparison(base_url: str, queries: list[str]):
