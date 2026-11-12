@@ -843,6 +843,126 @@ class Check(unittest.TestCase):
         self.assertIn('already routed', str(caught.exception))
 
 
+class Standby(unittest.TestCase):
+    """The read-only report on the store slot that is not serving."""
+
+    def world_on_a(self):
+        world = World()
+        world.cutover()
+        self.writes = list(world.bucket.writes)
+        return world
+
+    def report(self, world, binary=None):
+        report = route.standby(binary, now=NOW, get=world.get)
+        self.assertEqual((report['operation'], report['written'], world.bucket.writes), ('standby', False, self.writes))
+        return report
+
+    def only(self, report):
+        self.assertEqual(len(report['standby']), 1)
+        return report['standby'][0]
+
+    def test_a_healthy_second_slot_is_fit_to_take_the_route(self):
+        world = self.world_on_a()
+        report = self.report(world)
+        slot = self.only(report)
+        self.assertEqual((report['fit'], report['serving'], report['serving_healthy']), (True, world.bucket.record()['current'], True))
+        self.assertEqual((slot['origin'], slot['fit'], slot['cutover_needs_serving_slot_unhealthy'], slot['binary_sha256_expected_from']), (SHADOW_B, True, False, 'serving route'))
+        self.assertEqual(slot['gates']['sync_lag_s'], 20)
+        planned = world.cutover(write=False, origin=SHADOW_B)
+        self.assertEqual((slot['target'], slot['gates']), (planned['admission']['target'], planned['admission']['gates']))
+
+    def test_a_second_slot_that_fails_a_gate_is_not_fit_and_says_why(self):
+        cursor = store_b_status()['source_cursor']
+        moderation = store_b_status()['moderation']
+        for fragment, candidate in (
+            ('/ready is not true', Slot(store_b_status(), ready=False)),
+            ('sync lag', Slot(store_b_status(watermark=NOW - 400, source_cursor={**cursor, 'through': NOW - 400}))),
+            ('since its bootstrap', Slot(store_b_status(source_cursor={**cursor, 'reconciliation': {'schema_version': 1, 'phase': 'idle', 'last_completed_at': None, 'last_completed_started_at': None}}))),
+            ('moderation policy differs', Slot(store_b_status(moderation={**moderation, 'sha256': '9' * 64}))),
+            ('actors', Slot(store_b_status(actor_count=12000000))),
+        ):
+            with self.subTest(fragment=fragment):
+                world = self.world_on_a()
+                world.slots[SHADOW_B] = candidate
+                report = self.report(world)
+                slot = self.only(report)
+                self.assertEqual((report['fit'], slot['fit'], report['serving_healthy']), (False, False, True))
+                self.assertTrue(any(fragment in reason for reason in slot['refused']), slot['refused'])
+
+    def test_a_second_slot_that_does_not_answer_is_not_fit(self):
+        world = self.world_on_a()
+        world.slots[SHADOW_B].down = True
+        report = self.report(world)
+        self.assertIs(report['fit'], False)
+        self.assertTrue(any('ConnectionRefusedError' in reason for reason in self.only(report)['refused']))
+
+    def test_a_standby_runs_the_serving_slots_binary_unless_the_operator_names_another(self):
+        world = self.world_on_a()
+        world.slots[SHADOW_B] = Slot(store_b_status(binary_sha256='7' * 64))
+        slot = self.only(self.report(world))
+        self.assertIs(slot['fit'], False)
+        self.assertTrue(any('x-typeahead-binary-sha256' in reason for reason in slot['refused']))
+        slot = self.only(self.report(world, '7' * 64))
+        self.assertEqual((slot['fit'], slot['binary_sha256_expected_from'], slot['target']['binary_sha256']), (True, 'operator', '7' * 64))
+
+    def test_an_unhealthy_serving_slot_is_reported_and_the_standby_is_judged_for_failover(self):
+        for failure in ('stopped', 'unready'):
+            with self.subTest(failure=failure):
+                world = self.world_on_a()
+                if failure == 'stopped':
+                    world.slots[SHADOW].down = True
+                else:
+                    world.slots[SHADOW].ready = False
+                report = self.report(world)
+                slot = self.only(report)
+                self.assertEqual((report['fit'], report['serving_healthy'], slot['cutover_needs_serving_slot_unhealthy']), (True, False, True))
+                self.assertTrue(report['serving_unhealthy_reasons'])
+                self.assertEqual(slot['gates']['compared_with_serving'], failure == 'unready')
+                world.slots[SHADOW_B].ready = False
+                self.assertIs(self.report(world)['fit'], False)
+
+    def test_the_first_slot_is_the_standby_once_the_second_serves(self):
+        world = self.world_on_a()
+        world.cutover(origin=SHADOW_B)
+        self.writes = list(world.bucket.writes)
+        report = self.report(world)
+        self.assertEqual((report['serving']['origin'], self.only(report)['origin'], report['fit']), (SHADOW_B, SHADOW, True))
+
+    def test_while_a_managed_slot_serves_the_binary_has_to_be_named(self):
+        world = World()
+        self.writes = []
+        report = self.report(world)
+        self.assertEqual(([slot['origin'] for slot in report['standby']], report['fit']), ([SHADOW, SHADOW_B], False))
+        self.assertTrue(all('--binary-sha256' in slot['refused'][0] for slot in report['standby']))
+        report = self.report(world, SHADOW_BINARY)
+        self.assertEqual([slot['fit'] for slot in report['standby']], [True, True])
+
+    def test_a_transport_that_cannot_name_the_route_is_refused(self):
+        world = self.world_on_a()
+        world.transport_origins.discard(SHADOW)
+        with self.assertRaises(route.Refused) as caught:
+            route.standby(now=NOW, get=world.get)
+        self.assertIn('503', str(caught.exception))
+
+    def test_the_exit_status_is_the_verdict(self):
+        world = self.world_on_a()
+
+        def run(get):
+            with contextlib.redirect_stdout(io.StringIO()) as stdout:
+                status = route.main(['standby'], get=get, now=NOW)
+            return status, json.loads(stdout.getvalue())
+
+        status, report = run(world.get)
+        self.assertEqual((status, report['fit'], report['standby'][0]['fit']), (0, True, True))
+        world.slots[SHADOW_B].ready = False
+        status, report = run(world.get)
+        self.assertEqual((status, report['fit'], report['standby'][0]['origin']), (1, False, SHADOW_B))
+        world.transport_origins.discard(SHADOW)
+        status, report = run(world.get)
+        self.assertEqual((status, report['operation'], report['written']), (1, 'standby', False))
+        self.assertIn('503', report['refused'][0])
+
+
 class CommandLine(unittest.TestCase):
     def parse(self, *argv):
         with contextlib.redirect_stderr(io.StringIO()) as stderr:

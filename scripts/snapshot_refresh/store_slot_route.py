@@ -24,6 +24,10 @@ back with it and a second rollback undoes the cutover before.
     store_slot_route.py cutover  --origin URL --binary-sha256 HEX --write
     store_slot_route.py rollback                                    prints the plan
     store_slot_route.py rollback --write
+    store_slot_route.py standby  [--binary-sha256 HEX]              reads only public endpoints
+
+`standby` says whether the store slot that is not serving could take the route
+now, and exits 1 when it could not.
 
 The slot that would take the route is always named: there is no default origin.
 
@@ -190,6 +194,14 @@ def status_acknowledges(seen, expected):
     )
 
 
+def serving_slot_reasons(seen, target):
+    """Why the serving slot is not healthy: empty when it is ready as the slot the record names."""
+    reasons = identity_reasons('serving slot', seen, target)
+    if seen['ready']['http'] == 200 and seen['ready']['body'].get('ready') is not True:
+        reasons.append('serving slot /ready is not true')
+    return reasons
+
+
 def is_count(value):
     return type(value) is int and value >= 0
 
@@ -215,9 +227,7 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     if candidate_origin == serving_target['origin']:
         raise Refused(f'{candidate_origin} is already routed')
 
-    serving_reasons = identity_reasons('serving slot', serving, serving_target)
-    if serving['ready']['http'] == 200 and serving['ready']['body'].get('ready') is not True:
-        serving_reasons.append('serving slot /ready is not true')
+    serving_reasons = serving_slot_reasons(serving, serving_target)
     compared = True
     if not serving_unhealthy:
         reasons += serving_reasons
@@ -230,6 +240,9 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     ours = candidate['status']['body']
     build_id = ours.get('build_id')
     if not isinstance(build_id, str) or not BUILD.fullmatch(build_id):
+        unanswered = candidate['status']
+        if unanswered['http'] != 200:
+            reasons.append(f"candidate /index/status answered {unanswered.get('error') or unanswered['http']}")
         raise Refused(reasons + ['candidate does not report a valid build id'])
     identity = {
         'engine': 'tantivy',
@@ -562,11 +575,48 @@ def rollback(store, *, write, get=http_get, **timing):
     return report
 
 
-def check(candidate_origin, binary_sha256, *, serving_unhealthy=False, now=None, get=http_get):
+def serving_route(get):
     status, _, raw = get(TRANSPORT + '/route')
     if status != 200:
         raise Refused(f'the transport answered {status} for /route')
-    serving_target = validate_target(json.loads(raw), ROUTABLE_ORIGINS)
+    return validate_target(json.loads(raw), ROUTABLE_ORIGINS)
+
+
+def standby(binary_sha256=None, *, now=None, get=http_get):
+    """Whether each store slot that is not serving could take the route right now.
+
+    It runs the cutover's admission, as a failover when the serving slot is
+    not healthy. Without `binary_sha256` a standby is expected to run the
+    binary the serving store slot's record names, which an operator read from
+    that machine when it was admitted.
+    """
+    serving_target = serving_route(get)
+    now = int(time.time()) if now is None else now
+    serving = observe(serving_target['origin'], get)
+    serving_reasons = serving_slot_reasons(serving, serving_target)
+    slots = []
+    for origin in STORE_ORIGINS:
+        if origin == serving_target['origin']:
+            continue
+        expected, source = binary_sha256, 'operator'
+        if expected is None and serving_target['origin'] in STORE_ORIGINS:
+            expected, source = serving_target['binary_sha256'], 'serving route'
+        try:
+            if expected is None:
+                raise Refused('the serving slot is not a store slot, so its record does not name the binary a store slot runs; pass --binary-sha256')
+            identity, gates = admit(origin, observe(origin, get), serving_target, serving, expected, now, bool(serving_reasons))
+            slots.append({'origin': origin, 'fit': True, 'cutover_needs_serving_slot_unhealthy': bool(serving_reasons),
+                          'binary_sha256_expected_from': source, 'target': identity, 'gates': gates})
+        except Refused as refusal:
+            slots.append({'origin': origin, 'fit': False, 'refused': refusal.reasons})
+    return {
+        'operation': 'standby', 'written': False, 'fit': any(slot['fit'] for slot in slots), 'serving': serving_target,
+        'serving_healthy': not serving_reasons, 'serving_unhealthy_reasons': serving_reasons, 'standby': slots,
+    }
+
+
+def check(candidate_origin, binary_sha256, *, serving_unhealthy=False, now=None, get=http_get):
+    serving_target = serving_route(get)
     now = int(time.time()) if now is None else now
     identity, gates = admit(candidate_origin, observe(candidate_origin, get), serving_target, observe(serving_target['origin'], get), binary_sha256, now, serving_unhealthy)
     return {'operation': 'check', 'written': False, 'serving': serving_target, 'target': identity, 'gates': gates}
@@ -586,14 +636,19 @@ def build_parser():
         if name == 'cutover':
             command.add_argument('--write', action='store_true')
     commands.add_parser('rollback').add_argument('--write', action='store_true')
+    commands.add_parser('standby').add_argument(
+        '--binary-sha256', help="the reader's sha256 a standby must run; by default the one the serving store slot's record names"
+    )
     return parser
 
 
-def main(argv=None):
+def main(argv=None, get=http_get, now=None):
     args = build_parser().parse_args(argv)
     try:
         if args.command == 'check':
-            report = check(args.origin, args.binary_sha256, serving_unhealthy=args.serving_slot_unhealthy)
+            report = check(args.origin, args.binary_sha256, serving_unhealthy=args.serving_slot_unhealthy, now=now, get=get)
+        elif args.command == 'standby':
+            report = standby(args.binary_sha256, now=now, get=get)
         elif args.command == 'cutover':
             report = cutover(R2(os.environ), args.origin, args.binary_sha256, write=args.write, serving_unhealthy=args.serving_slot_unhealthy)
         else:
@@ -602,7 +657,7 @@ def main(argv=None):
         print(json.dumps({'operation': args.command, 'written': False, 'refused': refusal.reasons}, indent=2))
         return 1
     print(json.dumps(report, indent=2))
-    return 0
+    return 0 if report.get('fit', True) else 1
 
 
 if __name__ == '__main__':
