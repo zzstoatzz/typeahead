@@ -460,10 +460,10 @@ single, complete source.
   few minutes before the read switch, and the page does not move by the
   writes D1 dropped since `T0`. The offset arithmetic is the plan's with the
   cut in place of `T0`.
-- **No quiet window between cron runs is needed.** The daily tables are
-  copied last, read in one Turso transaction with the oldest remaining
-  bucket, and written in one D1 transaction that also removes the D1 buckets
-  Turso has rolled up since they were copied.
+- **No quiet window between cron runs is needed.** Each daily table is
+  copied after the buckets, read in one Turso transaction with its oldest
+  remaining bucket, and written in one D1 transaction that also removes the
+  D1 buckets Turso has rolled up since they were copied.
 - **Rows are bound, not dumped.** A page is written as multi-row `INSERT`s of
   bound values, 100 parameters a statement, so `total_ms` and `cache_ms`
   arrive as the same doubles.
@@ -479,8 +479,16 @@ single, complete source.
 - **The two stores roll up on different schedules** once D1 is read, so the
   comparison is of per-day sums (daily table plus remaining buckets) and of
   buckets both stores still hold, not of the daily tables row for row.
-- **Reading D1 keeps D1 written.** `STATS_READ_SOURCE=d1` implies the D1
-  write even with `STATS_DUAL_WRITE` off.
+- **One setting, not two.** `STATS_DUAL_WRITE` and a separate read switch
+  allowed "read D1, do not write it". `STATS_MODE` has three values and no
+  invalid ones: `turso-only`, `read-turso` (both written, Turso read) and
+  `read-d1` (both written, D1 read). `read-d1` without the binding fails
+  `/stats` and the two statistics cron steps; it does not fall back to
+  Turso, because a page that looks right from the wrong store is worse than
+  a deploy stopped by its smoke test.
+- **The tooling is temporary and lives in one place.** `src/stats-migration/`
+  holds the backfill, the parity check, their command line and the two admin
+  handlers; `src/index.ts` reaches it through one call. Step 8 deletes it.
 - **`counters` is shared.** Turso's `counters` table also holds
   `label_stream_seq`, the ingester's label cursor. It is not copied to D1 and
   it has to be dealt with before step 8 drops the table.
@@ -493,6 +501,129 @@ single, complete source.
   and 29,692 attributed searches; `metrics` identical; actor deltas 29,948
   and 29,936. This partly answers "Dropped writes become visible" under
   risks: both stores drop, at about one in ten thousand.
+
+## Cost and query plans, measured 2026-11-12
+
+Sources: `wrangler d1 info typeahead-stats` for what production wrote in 24
+hours; a local D1 (Miniflare, the real engine) filled to the 90-day steady
+state (155,526 `request_buckets`, 51,842 `traffic_buckets`, 35,601 `metrics`,
+63,001 `actor_deltas`, 4,900 `snapshots`, 700 `traffic_daily`, 410
+`traffic_sources`) for rows read per statement and `EXPLAIN QUERY PLAN`.
+Traffic is the measured 183,963 answers in 445 buckets: 119,070 answers,
+19,254 search misses and 600 cache hits a day. Worker CPU was not measured
+in production.
+
+### Rows and calls a day
+
+| | Turso today | D1 today (`read-turso`) | D1 after the flip (`read-d1`) | Turso after step 7 |
+| --- | --- | --- | --- | --- |
+| Statistics write statements | about 201,000 | 201,452 (measured) | same | 0 |
+| Rows written | about 202,000 | 202,232 (measured) | same, plus about 200 an hour of rollup | 0 |
+| Rows read by writes (upsert conflicts) | not measured | 110,162 (measured) | same | 0 |
+| Rows read by the cron | 17.3 million (D1's count of the same SQL) | 0 | 17.3 million: 24 × (658,315 + 64,514) | 0 for statistics |
+| Rows read by `/stats` | 2,425 a render | 0 | 2,425 a render; at most 13 million if every one of the about 5,360 daily non-search, non-admin answers were an uncached `/stats` | 0 |
+| Rows read by `/source-icon` | 1 a lookup | 0 | 1 a lookup | 0 |
+
+A month of `read-d1` is about 6.1 million rows written (12% of the 50 million
+included) and at most 0.9 billion rows read (under 4% of the 25 billion
+included): $0 beyond the plan. The write arithmetic: one row per answer
+(119,070), three per search miss (57,762: `metrics`, `traffic_sources`,
+`traffic_buckets`), one per cache hit (600), two per actor delta and one per
+snapshot for the remainder.
+
+What dual write costs while it lasts: every statistics write is issued
+twice, so about 201,000 extra D1 calls a day ride in `waitUntil` beside the
+201,000 Turso round trips. An answer makes one statistics subrequest per
+store and a search miss three, against a limit of 1,000 per invocation.
+Step 7 ends the Turso half: about 201,000 write round trips, 202,000 rows
+written and 17.3 million rows read a day leave Turso.
+
+Subrequests per call with `read-d1`: the cron makes 7 D1 calls (18
+statements) an hour; an uncached `/stats` makes one D1 batch of 7 statements
+and 4 KV reads; `/source-icon` at most one D1 read.
+
+### The migration tooling, once
+
+| | D1 statements | D1 rows | Turso rows read | Calls |
+| --- | --- | --- | --- | --- |
+| Backfill page of 1,000 rows, first apply | 52 (1 read, 1 delete, 50 inserts) | 996 written | 1,001 | 1 |
+| Backfill page, nothing differs | 1 | 996 read | 1,001 | 1 |
+| Whole backfill, first apply | about 14,000 | about 345,000 written (a new `traffic_buckets` or `traffic_sources` row is two, with its index) | about 295,000 | about 300 |
+| Whole backfill, any later run | about 300 | about 295,000 read, plus the pages that changed | about 295,000 | about 300 |
+| Parity page of 2,000 rows a side | 2 | about 2,000 read | 2,001 | 1 |
+| Whole parity run | about 320 | about 1.5 million read | about 1.5 million | about 160 |
+
+A realistic cutover is five backfill runs and twenty parity runs: about 31
+million rows read on each store. That is 0.1% of D1's monthly allowance and
+0.03% of the 100 billion in Turso's plan
+([usage](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/turso-usage-analytics.md)).
+Comparing 2,000 rows a side takes 1.75 ms of JavaScript (measured under bun).
+
+Two shapes were considered and left:
+
+- **One JSON parameter per page instead of 50 inserts.** `json_each` would
+  make a page one statement, but SQLite reads a real back from JSON text and
+  does not promise the same double. Bound values are exact, 51 statements is
+  one subrequest and one transaction, and D1 bills rows, not statements.
+- **Per-page digests before rows in the parity check.** Both stores bill the
+  rows a digest scans, so it would save transfer and about 2 ms of CPU a
+  page, not money. SQLite has no hash function, so the digest would be sums,
+  and a gate that can pass on a collision is not worth that.
+
+### Query plans for the reads `read-d1` moves
+
+`/stats`, one batch:
+
+| Statement | Plan | Rows read |
+| --- | --- | --- |
+| source list | `SCAN traffic_sources`, temp b-tree for `ORDER BY hits` | 1,230 |
+| source totals | `SCAN traffic_sources` | 820 |
+| `metrics` tail | `SEARCH metrics USING INTEGER PRIMARY KEY (rowid>?)` | 14 |
+| `traffic_buckets` tail, 5-minute | `SEARCH … USING INDEX sqlite_autoindex_traffic_buckets_1 (bucket>?)` | 26 |
+| `traffic_buckets` tail, hourly | same search, temp b-trees for `GROUP BY` and `ORDER BY` | 78 |
+| `request_buckets` tail, 5-minute | `SEARCH request_buckets USING PRIMARY KEY (bucket>?)` | 78 |
+| `request_buckets` tail, hourly | same search, temp b-trees for `GROUP BY` and `ORDER BY` | 179 |
+
+`/source-icon`: `SEARCH traffic_sources USING COVERING INDEX
+sqlite_autoindex_traffic_sources_1 (domain=?)`, 1 row.
+
+Cron, `materializeStats`:
+
+| Statement | Plan | Rows read |
+| --- | --- | --- |
+| `metrics`, newest 100,000 | `SCAN metrics` | 35,601 |
+| `snapshots`, newest 5,000 | `SCAN snapshots`, then a sort of the subquery | 9,800 |
+| `actor_deltas`, newest 288 | `SCAN actor_deltas` (stops at the limit) | 288 |
+| traffic hourly, 30 days | `SEARCH … (bucket>?)`, temp b-trees | 51,840 |
+| traffic 5-minute, 48 hours | `SEARCH … (bucket>?)` | 1,152 |
+| traffic daily, all time | `SCAN traffic_daily`, `SCAN traffic_buckets`, temp b-trees | 116,704 |
+| app count | `SCAN traffic_sources USING COVERING INDEX` | 820 |
+| traffic rollup and prune | `SEARCH … (bucket<?)` twice | 8 read, 4 written in the fixture |
+| request hourly, 30 days | `SEARCH request_buckets USING PRIMARY KEY (bucket>?)`, temp b-trees | 115,925 |
+| request 5-minute, 48 hours | `SEARCH … (bucket>?)` | 3,456 |
+| request daily, all time | `SCAN request_daily`, `SCAN request_buckets`, temp b-trees | 322,701 |
+| request rollup and prune | `SEARCH … (bucket<?)` twice | 20 read, 12 written in the fixture |
+
+Cron, `recordProfile`: `SEARCH … (bucket>? AND bucket<?)` on each bucket
+table, 16,129 and 48,385 rows.
+
+What the plans say:
+
+- Every time-bounded read is a primary-key range. No index is missing.
+- The two all-time daily queries are the only full scans of a large table,
+  440,000 of the cron's 723,000 rows an hour. They are the same SQL Turso
+  runs today and cost nothing at this size; they are what to bound first if
+  the bucket tables grow (already under risks).
+- `traffic_buckets` is a rowid table with a separate primary-key index, so a
+  range read costs three rows per row returned where `request_buckets`
+  (`WITHOUT ROWID`) costs one. The D1 schema copies production's on purpose;
+  rebuilding the table belongs with the Turso drop, not this cutover.
+- The 5-minute and hourly tails read the same rows twice, and the source
+  list and its totals scan `traffic_sources` twice: about 1,100 rows a
+  render that JavaScript could derive. Left as it is, because the SQL is
+  shared with the Turso path and the page must not change in this step.
+- A search miss still makes three statistics writes per store. Folding them
+  into one batch is the follow-up named under the recommended design.
 
 ## Files that change
 
