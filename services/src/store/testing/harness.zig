@@ -42,6 +42,17 @@ pub const Mismatch = error{ModelMismatch};
 /// Apply one generated batch to both. The model is told to commit only
 /// after the store has.
 pub fn applyStep(store: *Store, model: *Model, step: workload.Step, tally: *Tally) !void {
+    return applyBatch(store, model, step, tally, false);
+}
+
+/// `applyStep` for a caller that follows it with `sweepDomains`: every
+/// domain the batch blocks or unblocks is marked as owing a sweep, in the
+/// batch's own commit, as the store role's owner marks it.
+pub fn applyStepOwing(store: *Store, model: *Model, step: workload.Step, tally: *Tally) !void {
+    return applyBatch(store, model, step, tally, true);
+}
+
+fn applyBatch(store: *Store, model: *Model, step: workload.Step, tally: *Tally, owe: bool) !void {
     const batch = try store.begin(step.now);
     errdefer batch.abort();
     model.begin(step.now);
@@ -57,6 +68,17 @@ pub fn applyStep(store: *Store, model: *Model, step: workload.Step, tally: *Tall
         tally.applied.getPtr(kind).* += @intFromBool(outcome.applied);
         tally.altered.getPtr(kind).* += outcome.changed;
         tally.changes += 1;
+        if (owe) switch (one) {
+            .domain_blocked => |c| {
+                try batch.oweSweep(c.domain);
+                model.oweSweep(c.domain);
+            },
+            .domain_unblocked => |name| {
+                try batch.oweSweep(name);
+                model.oweSweep(name);
+            },
+            else => {},
+        };
     }
     for (step.cursors) |update| {
         try batch.setCursor(update);
@@ -88,6 +110,7 @@ pub fn sweepDomains(gpa: std.mem.Allocator, store: *Store, model: *Model, step: 
         var sweep: Store.Sweep = .{};
         defer sweep.deinit(gpa);
         while (!sweep.done()) try store.sweepDomain(&sweep, domain, step.now, scan_limit);
+        model.sweepFinished(domain);
         if (sweep.changed != expected) {
             std.debug.print("sweep of {s} altered {d} actors in the store, {d} in the model\n", .{ domain, sweep.changed, expected });
             return error.ModelMismatch;

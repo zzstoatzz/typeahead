@@ -8,7 +8,7 @@
 //! | `h`    | ASCII-lowercased handle, 0x00, DID                | empty                |
 //! | `i`    | due time, u64 big-endian, DID                     | identity queue state |
 //! | `l`    | DID, 0x00, label source, 0x00, value, 0x00, subject | label fields       |
-//! | `p`    | `d` + domain, or `o` + DID                        | policy entry         |
+//! | `p`    | `d` + domain, `o` + DID, or `s` + domain          | policy entry; empty for `s` |
 //! | `q`    | inverted score bits, u32 big-endian, DID          | empty                |
 //! | `r`    | due time, u64 big-endian, DID                     | empty                |
 //! | `t`    | deletion time, u64 big-endian, DID                | empty                |
@@ -24,6 +24,9 @@
 //!   sort by DID;
 //! - `r` and `i` for a live actor whose record carries that due time;
 //! - `t` for an actor that is deleted or deactivated.
+//!
+//! A `p` `s` key marks a domain whose block changed and whose sweep of the
+//! actors already stored has not finished; see `Store.sweepDomain`.
 //!
 //! The label subject is one byte, `a` for the account and `p` for its profile
 //! record: the labeler keys a label by subject URI, and the same value can sit
@@ -204,8 +207,16 @@ pub fn domain(buf: *Buf, name: []const u8) Error![]const u8 {
     return w.done();
 }
 
+pub fn owedSweep(buf: *Buf, name: []const u8) Error![]const u8 {
+    var w = start(buf, .policy);
+    w.byte('s');
+    w.lower(try checked(name, max_domain));
+    return w.done();
+}
+
 pub const domain_bounds = [2][2]u8{ .{ Prefix.policy.byte(), 'd' }, .{ Prefix.policy.byte(), 'd' + 1 } };
 pub const override_bounds = [2][2]u8{ .{ Prefix.policy.byte(), 'o' }, .{ Prefix.policy.byte(), 'o' + 1 } };
+pub const owed_sweep_bounds = [2][2]u8{ .{ Prefix.policy.byte(), 's' }, .{ Prefix.policy.byte(), 's' + 1 } };
 
 pub fn cursor(buf: *Buf, which: Cursor) []const u8 {
     var w = start(buf, .cursor);
@@ -275,6 +286,11 @@ pub fn parseDomain(key: []const u8) ParseError![]const u8 {
 
 pub fn parseOverride(key: []const u8) ParseError![]const u8 {
     if (key.len < 3 or !std.mem.startsWith(u8, key, &override_bounds[0])) return error.CorruptKey;
+    return key[2..];
+}
+
+pub fn parseOwedSweep(key: []const u8) ParseError![]const u8 {
+    if (key.len < 3 or !std.mem.startsWith(u8, key, &owed_sweep_bounds[0])) return error.CorruptKey;
     return key[2..];
 }
 
@@ -418,6 +434,11 @@ test "policy keys split into domains and overrides" {
     try testing.expect(less(try domain(&a, "\xff"), &domain_bounds[1]));
     try testing.expect(less(try override(&a, "did:plc:\xff"), &override_bounds[1]));
     try testing.expectError(error.CorruptKey, parseDomain(try override(&a, "did:plc:abc")));
+    try testing.expectEqualStrings("spam.example", try parseOwedSweep(try owedSweep(&a, "Spam.Example")));
+    try testing.expect(less(try override(&a, "did:plc:\xff"), try owedSweep(&b, "a.example")));
+    try testing.expect(less(try owedSweep(&a, "\xff"), &owed_sweep_bounds[1]));
+    try testing.expectError(error.CorruptKey, parseOwedSweep(try domain(&a, "spam.example")));
+    try testing.expectError(error.CorruptKey, parseDomain(try owedSweep(&a, "spam.example")));
 }
 
 test "cursor keys are distinct" {

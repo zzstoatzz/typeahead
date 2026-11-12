@@ -5,7 +5,9 @@
 //! - One thread, running `run`, is the only one that writes. It takes
 //!   submissions from a bounded FIFO queue, applies every one it took as a
 //!   single store commit (each submission's cursor in the same commit as its
-//!   changes), and between commits does the store's housekeeping: stepped
+//!   changes, and a mark for every domain whose block they change, so the
+//!   sweep that brings stored actors in line is owed until it has finished,
+//!   across restarts), and between commits does the store's housekeeping: stepped
 //!   maintenance, domain sweeps, tombstone pruning, the label-expiry pass,
 //!   change-log trimming, the handle repair and the health snapshot. For
 //!   `startup_seconds` after it opens the store it leaves out everything in
@@ -344,6 +346,11 @@ pub const Owner = struct {
         self.next_trim = first;
         self.next_repair = first;
         self.next_health = first;
+        errdefer {
+            self.dropSweeps();
+            self.sweeps.deinit(gpa);
+        }
+        try self.resumeSweeps();
         var opened: Health = .{};
         try self.readState(&opened);
         self.health_snapshot = opened;
@@ -355,10 +362,7 @@ pub const Owner = struct {
     pub fn close(self: *Owner) void {
         self.failQueued();
         if (self.opened) self.store.close();
-        for (self.sweeps.items) |*job| {
-            job.sweep.deinit(self.gpa);
-            self.gpa.free(job.domain);
-        }
+        self.dropSweeps();
         self.sweeps.deinit(self.gpa);
         for (self.noted_domains.items) |domain| self.gpa.free(domain);
         self.noted_domains.deinit(self.gpa);
@@ -624,8 +628,8 @@ pub const Owner = struct {
                     .reactivated => reactivated += @intFromBool(!outcome.created and outcome.changed > 0),
                     .tombstones_pruned => pruned += outcome.changed,
                     .hidden_refreshed => refreshed += outcome.changed,
-                    .domain_blocked => |c| try self.noteDomain(c.domain),
-                    .domain_unblocked => |name| try self.noteDomain(name),
+                    .domain_blocked => |c| try self.noteDomain(batch, c.domain),
+                    .domain_unblocked => |name| try self.noteDomain(batch, name),
                     else => {},
                 }
             }
@@ -679,18 +683,54 @@ pub const Owner = struct {
         });
 
         for (self.noted_domains.items) |domain| {
-            self.sweeps.append(self.gpa, .{ .domain = domain }) catch {
-                self.gpa.free(domain);
-                continue;
-            };
+            defer self.gpa.free(domain);
+            self.sweepFromStart(domain) catch |err| log.warn("the sweep of {s} could not be queued ({s}); it stays owed and starts with the next open", .{ domain, @errorName(err) });
         }
         self.noted_domains.clearRetainingCapacity();
     }
 
-    fn noteDomain(self: *Owner, domain: []const u8) !void {
-        const owned = try self.gpa.dupe(u8, domain);
+    /// A domain whose block this commit changes: mark its sweep as owed in
+    /// the commit, and remember to start it once the commit has landed.
+    fn noteDomain(self: *Owner, batch: *store_mod.Batch, domain: []const u8) !void {
+        try batch.oweSweep(domain);
+        const owned = try std.ascii.allocLowerString(self.gpa, domain);
         errdefer self.gpa.free(owned);
         try self.noted_domains.append(self.gpa, owned);
+    }
+
+    /// Sweep `domain` from the top of the handle range. A sweep already
+    /// queued or under way for it starts over: what it has passed was
+    /// brought in line with a policy that has since changed.
+    fn sweepFromStart(self: *Owner, domain: []const u8) !void {
+        for (self.sweeps.items) |*job| {
+            if (!std.mem.eql(u8, job.domain, domain)) continue;
+            job.sweep.deinit(self.gpa);
+            job.sweep = .{};
+            return;
+        }
+        const owned = try self.gpa.dupe(u8, domain);
+        errdefer self.gpa.free(owned);
+        try self.sweeps.append(self.gpa, .{ .domain = owned });
+    }
+
+    fn dropSweeps(self: *Owner) void {
+        for (self.sweeps.items) |*job| {
+            job.sweep.deinit(self.gpa);
+            self.gpa.free(job.domain);
+        }
+        self.sweeps.clearRetainingCapacity();
+    }
+
+    /// Queue, from the top, the sweep of every domain the store says is
+    /// owed: after an open, the ones an earlier process did not finish;
+    /// after a reopen, also the ones in memory, whose positions may be
+    /// past what the failed commit left durable.
+    fn resumeSweeps(self: *Owner) !void {
+        self.dropSweeps();
+        var arena: std.heap.ArenaAllocator = .init(self.gpa);
+        defer arena.deinit();
+        for (try self.store.owedSweeps(arena.allocator())) |domain| try self.sweepFromStart(domain);
+        if (self.sweeps.items.len > 0) log.info("{d} domain sweeps are owed and start again from the top", .{self.sweeps.items.len});
     }
 
     /// Wake or free every submission of the group just committed or abandoned.
@@ -727,6 +767,7 @@ pub const Owner = struct {
         }
         self.store = try Store.open(self.gpa, self.io, self.root, self.path, self.options.store);
         self.opened = true;
+        try self.resumeSweeps();
     }
 
     fn failQueued(self: *Owner) void {

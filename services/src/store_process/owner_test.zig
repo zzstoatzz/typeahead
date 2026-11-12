@@ -160,6 +160,77 @@ test "a domain block is followed by a sweep of the actors already stored" {
     try testing.expect(!(try f.live(alice)).hidden);
 }
 
+fn owed(f: *Fixture) ![]const []const u8 {
+    const store = try f.owner.acquire();
+    defer f.owner.release();
+    return store.owedSweeps(f.arena.allocator());
+}
+
+test "a sweep a restart interrupts is owed, and the next process runs it from the top" {
+    const f = try Fixture.create(.{ .sweep_scan = 1 });
+    defer f.destroy();
+    const carol = "did:plc:carol";
+    _ = try f.commit(&.{
+        .{ .profile = .{ .did = alice, .handle = "a.spam.example" } },
+        .{ .profile = .{ .did = bob, .handle = "b.fine.example" } },
+        .{ .profile = .{ .did = carol, .handle = "z.Spam.Example" } },
+    }, null);
+    try testing.expectEqual(@as(usize, 0), (try owed(f)).len);
+
+    // The block and its mark land in one commit; the process dies with the
+    // sweep part of the way down the handle range.
+    _ = try f.commit(&.{.{ .domain_blocked = .{ .domain = "Spam.Example" } }}, null);
+    try testing.expectEqualStrings("spam.example", (try owed(f))[0]);
+    try testing.expect((try f.live(alice)).hidden);
+    try testing.expect(!(try f.live(carol)).hidden);
+    try testing.expectEqual(@as(usize, 1), f.owner.sweeps.items.len);
+    try f.restart();
+
+    try testing.expectEqual(@as(usize, 1), f.owner.sweeps.items.len);
+    try testing.expectEqualStrings("spam.example", f.owner.sweeps.items[0].domain);
+    while (f.owner.sweeps.items.len > 0) _ = f.owner.turn(0);
+    try testing.expect((try f.live(alice)).hidden);
+    try testing.expect(!(try f.live(bob)).hidden);
+    try testing.expect((try f.live(carol)).hidden);
+    try testing.expectEqual(@as(usize, 0), (try owed(f)).len);
+
+    // Nothing is owed, so another start sweeps nothing.
+    try f.restart();
+    try testing.expectEqual(@as(usize, 0), f.owner.sweeps.items.len);
+
+    // An unblock that is interrupted is owed the same way.
+    _ = try f.commit(&.{.{ .domain_unblocked = "spam.example" }}, null);
+    try testing.expect((try f.live(carol)).hidden);
+    try f.restart();
+    while (f.owner.sweeps.items.len > 0) _ = f.owner.turn(0);
+    try testing.expect(!(try f.live(alice)).hidden);
+    try testing.expect(!(try f.live(carol)).hidden);
+    try testing.expectEqual(@as(usize, 0), (try owed(f)).len);
+}
+
+test "a block that changes while its sweep is under way starts the sweep over" {
+    const f = try Fixture.create(.{ .sweep_scan = 1 });
+    defer f.destroy();
+    const carol = "did:plc:carol";
+    _ = try f.commit(&.{
+        .{ .profile = .{ .did = alice, .handle = "a.spam.example" } },
+        .{ .profile = .{ .did = bob, .handle = "m.spam.example" } },
+        .{ .profile = .{ .did = carol, .handle = "z.spam.example" } },
+    }, null);
+    _ = try f.commit(&.{.{ .domain_blocked = .{ .domain = "spam.example" } }}, null);
+    try testing.expect((try f.live(alice)).hidden);
+    try testing.expect(!(try f.live(carol)).hidden);
+
+    // The unblock arrives with the first sweep past `a` and short of `z`.
+    // One sweep finishing from where it stood would leave `a` hidden.
+    _ = try f.commit(&.{.{ .domain_unblocked = "spam.example" }}, null);
+    try testing.expectEqual(@as(usize, 1), f.owner.sweeps.items.len);
+    while (f.owner.sweeps.items.len > 0) _ = f.owner.turn(0);
+    for ([_][]const u8{ alice, bob, carol }) |did| try testing.expect(!(try f.live(did)).hidden);
+    try testing.expectEqual(@as(usize, 0), (try owed(f)).len);
+    try testing.expectEqual(@as(u64, 1), f.owner.counters.domain_sweeps.load(.monotonic));
+}
+
 fn fill(f: *Fixture, first: usize, count: usize) !void {
     for (first..first + count) |n| {
         const did = try std.fmt.allocPrint(f.arena.allocator(), "did:plc:n{d:0>4}", .{n});

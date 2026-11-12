@@ -228,6 +228,14 @@ pub fn overrides(db: *Db, arena: std.mem.Allocator) ![]const Policy {
     return out;
 }
 
+/// Domains whose sweep of the handle range is owed, in key order.
+pub fn owedSweeps(db: *Db, arena: std.mem.Allocator) ![]const []const u8 {
+    const found = try collect(db, arena, &keys.owed_sweep_bounds[0], &keys.owed_sweep_bounds[1], std.math.maxInt(usize));
+    const out = try arena.alloc([]const u8, found.keys.items.len);
+    for (out, found.keys.items) |*slot, key| slot.* = try keys.parseOwedSweep(key);
+    return out;
+}
+
 pub const Counts = std.EnumArray(keys.Prefix, u64);
 
 /// Entries in every range. This scans the whole store: 19 s for 45 million

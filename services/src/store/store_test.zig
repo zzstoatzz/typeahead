@@ -715,6 +715,48 @@ test "a batch lands whole with its cursor, or not at all" {
     try testing.expectEqual(@as(u64, 4), (try f.logged())[3].sequence);
 }
 
+test "an owed sweep is marked with its cause and cleared by the step that finishes it" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const mem = f.arena.allocator();
+    _ = try f.apply(t0, .{ .profile = .{ .did = alice, .handle = "a.spam.example" } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = bob, .handle = "b.spam.example" } });
+
+    var batch = try f.store.begin(t0 + 1);
+    _ = try batch.apply(.{ .domain_blocked = .{ .domain = "Spam.Example" } });
+    try batch.oweSweep("Spam.Example");
+    batch.abort();
+    try testing.expectEqual(@as(usize, 0), (try f.store.owedSweeps(mem)).len);
+
+    batch = try f.store.begin(t0 + 1);
+    _ = try batch.apply(.{ .domain_blocked = .{ .domain = "Spam.Example" } });
+    try batch.oweSweep("Spam.Example");
+    try batch.commit();
+    try testing.expectEqualStrings("spam.example", (try f.store.owedSweeps(mem))[0]);
+    try testing.expectEqual(@as(usize, 1), (try read.blockedDomains(f.store.db(), mem)).len);
+
+    // One step short of the end leaves the mark; a reopened store still
+    // lists it, and a sweep from the top clears it with its last step.
+    var sweep: Store.Sweep = .{};
+    defer sweep.deinit(testing.allocator);
+    try f.store.sweepDomain(&sweep, "spam.example", t0 + 2, 1);
+    try testing.expect(!sweep.done());
+    try testing.expect((try f.actor(alice)).hidden and !(try f.actor(bob)).hidden);
+    try f.reopen();
+    try testing.expectEqualStrings("spam.example", (try f.store.owedSweeps(mem))[0]);
+
+    var again: Store.Sweep = .{};
+    defer again.deinit(testing.allocator);
+    while (!again.done()) {
+        try testing.expectEqual(@as(usize, 1), (try f.store.owedSweeps(mem)).len);
+        try f.store.sweepDomain(&again, "spam.example", t0 + 3, 1);
+    }
+    try testing.expectEqual(@as(usize, 0), (try f.store.owedSweeps(mem)).len);
+    try testing.expect((try f.actor(alice)).hidden and (try f.actor(bob)).hidden);
+    try f.reopen();
+    try testing.expectEqual(@as(usize, 0), (try f.store.owedSweeps(mem)).len);
+}
+
 test "trimming the change log moves its floor, and a position below it is reported" {
     var f = try Fixture.init(.{});
     defer f.deinit();

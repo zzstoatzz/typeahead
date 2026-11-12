@@ -58,7 +58,7 @@ fn run(plan: Plan) !Result {
     while (n <= plan.batches) : (n += 1) {
         _ = arena.reset(.retain_capacity);
         const step = try workload.batch(arena.allocator(), .{ .seed = plan.seed }, n, plan.batch_size);
-        try harness.applyStep(store, &model, step, &result.tally);
+        try harness.applyStepOwing(store, &model, step, &result.tally);
         try harness.sweepDomains(gpa, store, &model, step, 16, &result.tally);
         _ = try store.maintainStep();
         try bridge.consume(store);
@@ -146,7 +146,7 @@ test "replaying the change log from zero rebuilds what a scan of the actors show
         for (1..121) |n| {
             _ = arena.reset(.retain_capacity);
             const step = try workload.batch(arena.allocator(), .{ .seed = 99 }, n, 20);
-            try harness.applyStep(store, &model, step, &tally);
+            try harness.applyStepOwing(store, &model, step, &tally);
             try harness.sweepDomains(gpa, store, &model, step, 9, &tally);
             _ = try store.maintainStep();
         }

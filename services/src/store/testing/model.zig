@@ -48,6 +48,8 @@ pub const Model = struct {
     bridge: ?u64 = null,
     control_policy: ?u64 = null,
     control_requests: ?u64 = null,
+    /// Lowercase domains whose sweep is owed.
+    owed: std.StringArrayHashMapUnmanaged(void) = .empty,
     walks: std.EnumArray(change.WalkPool, record.WalkState) = .initFill(.{}),
     pending: std.ArrayList([]const u8) = .empty,
     now: u64 = 0,
@@ -574,6 +576,18 @@ pub const Model = struct {
         const x = self.actors.get(a).?.deleted_at;
         const y = self.actors.get(b).?.deleted_at;
         return if (x != y) x < y else std.mem.order(u8, a, b) == .lt;
+    }
+
+    fn lowered(self: *Model, domain: []const u8) []const u8 {
+        return std.ascii.allocLowerString(self.mem(), domain) catch @panic("out of memory");
+    }
+
+    pub fn oweSweep(self: *Model, domain: []const u8) void {
+        self.owed.put(self.mem(), self.lowered(domain), {}) catch @panic("out of memory");
+    }
+
+    pub fn sweepFinished(self: *Model, domain: []const u8) void {
+        _ = self.owed.orderedRemove(self.lowered(domain));
     }
 
     pub fn setCursor(self: *Model, update: change.CursorUpdate) void {

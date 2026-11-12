@@ -169,6 +169,10 @@ pub fn check(gpa: std.mem.Allocator, db: *engine.Db, model: *const Model) !Summa
         try ensure(policy.entry.created_at == want.created_at and std.mem.eql(u8, policy.entry.reason, want.reason), "blocked domain {s} differs", .{policy.subject});
     }
 
+    const found_owed = try read.owedSweeps(db, arena);
+    try ensure(found_owed.len == model.owed.count(), "store owes {d} domain sweeps, model {d}", .{ found_owed.len, model.owed.count() });
+    for (found_owed) |domain| try ensure(model.owed.contains(domain), "a sweep of {s} is owed in the store only", .{domain});
+
     const log = try prefixRange(arena, db, .change);
     const first = @max(model.floor, 1);
     try ensure(log.len == model.nextChange() - first, "change log holds {d} entries, model {d}", .{ log.len, model.nextChange() - first });
@@ -203,7 +207,7 @@ pub fn check(gpa: std.mem.Allocator, db: *engine.Db, model: *const Model) !Summa
     try ensure(counts.get(.actor) == summary.actors and counts.get(.handle) == summary.handles and counts.get(.quality) == summary.ranked and
         counts.get(.tombstone) == summary.tombstones and counts.get(.refresh) == summary.refresh and counts.get(.identity) == summary.identity and
         counts.get(.label) == summary.labels and counts.get(.change) == summary.changes and
-        counts.get(.policy) == found_overrides.len + found_domains.len, "range counts disagree with the scans", .{});
+        counts.get(.policy) == found_overrides.len + found_domains.len + found_owed.len, "range counts disagree with the scans", .{});
     return summary;
 }
 

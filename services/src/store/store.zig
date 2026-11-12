@@ -167,6 +167,13 @@ pub const Store = struct {
     /// by walking the handle range `scan_limit` keys per call, one commit
     /// each. Call until `sweep.done()`, with other commits free to run in
     /// between.
+    ///
+    /// The step that reaches the end of the range also removes the mark
+    /// `Batch.oweSweep` left for `domain`, in the same commit. A sweep is
+    /// good only for the policy that stood when it began: if `domain`'s
+    /// block changes while one is under way, start again from an empty
+    /// `Sweep`, or the earlier part of the range is left as the old policy
+    /// had it.
     pub fn sweepDomain(self: *Store, sweep: *Sweep, domain: []const u8, now: u64, scan_limit: usize) !void {
         const bounds = keys.Prefix.handle.bounds();
         if (!sweep.started) {
@@ -182,7 +189,16 @@ pub const Store = struct {
             const outcome = try batch.apply(.{ .hidden_refreshed = did });
             sweep.changed += outcome.changed;
         }
+        if (sweep.position.done) {
+            var buf: keys.Buf = undefined;
+            try self.db().del(try keys.owedSweep(&buf, domain));
+        }
         try batch.commit();
+    }
+
+    /// Domains marked by `Batch.oweSweep` whose sweep has not finished.
+    pub fn owedSweeps(self: *Store, arena: std.mem.Allocator) ![]const []const u8 {
+        return read.owedSweeps(self.db(), arena);
     }
 
     const Matched = struct {
@@ -401,6 +417,15 @@ pub const Batch = struct {
     /// What this batch's walk steps did, summed by pool.
     pub fn walked(self: *const Batch, pool: change.WalkPool) change.Walked {
         return self.walk_tally.get(pool);
+    }
+
+    /// Mark, in this batch's commit, that `domain`'s block changed and the
+    /// actors already stored have yet to be brought in line. The mark
+    /// outlives the process, so whoever opens the store next knows the
+    /// sweep is owed; `Store.sweepDomain` removes it when it finishes.
+    pub fn oweSweep(self: *Batch, domain: []const u8) !void {
+        var buf: keys.Buf = undefined;
+        try self.store.db().put(try keys.owedSweep(&buf, domain), "");
     }
 
     /// Carry a cursor in this batch's commit.
