@@ -8,6 +8,7 @@ import { recordProfile } from "./stats-profile";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { recordStats } from "./stats-store";
 import { refreshModeration } from "./cron";
+import { controlDb, pruneIndexRequests } from "./control-store";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
 import { handleLabelCursor, handleLabelReconcile, handleLabelStream } from "./account-labels";
@@ -74,6 +75,10 @@ export default {
       ["materializeStats", () => materializeStats(db, env)],
       ["recordProfile", async () => { await recordProfile(db, env.KV); }],
       ["refreshModeration", () => refreshModeration(db, env)],
+      ["pruneIndexRequests", async () => {
+        const pruned = await pruneIndexRequests(controlDb(env), Math.floor(Date.now() / 1000));
+        if (pruned) console.log(JSON.stringify({ event: "index_requests_pruned", pruned }));
+      }],
       // no enrichment here. The identity + profile passes that used to run
       // last were killed by the 15-minute wall in 120 of 140 runs
       // (2026-08-27..09-03), silently: a wall kill is not an exception, so

@@ -3,12 +3,14 @@ import type { Stmt, SqlDb } from "../db";
 import type { Env } from "../types";
 import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL, MICROCOSM_UA } from "../types";
 import { clientIP, json, extractProfileFields, fetchProfileFromBlacksky, fetchProfileFromPds } from "../utils";
-import type { ProfileSource } from "../utils";
+import type { ProfileFields, ProfileSource } from "../utils";
 import { getOverride, getOverrides, isDomainBlocked, getBlockedDomains } from "../moderation";
-import { blockDomain, clearOverride, controlDb, listBlockedDomains, listOverrides, setOverride, unblockDomain } from "../control-store";
+import { blockDomain, clearOverride, controlDb, listBlockedDomains, listOverrides, recordIndexRequest, setOverride, unblockDomain } from "../control-store";
 import { mirrorDomainBlock, mirrorDomainUnblock, mirrorOverrideClear, mirrorOverrideSet } from "../turso-policy-mirror";
 import { recordActorDelta } from "../metrics";
 import { recordStats } from "../stats-store";
+
+const unixNow = () => Math.floor(Date.now() / 1000);
 
 export async function handleDelete(
   request: Request,
@@ -133,6 +135,40 @@ async function announceHostToRelay(pdsUrl: string, env: Env): Promise<void> {
   }
 }
 
+/** The Turso copy of a requested account: the row the Turso-fed slots index
+ *  it from. Goes when Turso does. */
+async function mirrorRequestedActor(
+  db: SqlDb,
+  identity: { did: string; handle: string; pds: string },
+  f: Omit<ProfileFields, "handle">,
+  source: ProfileSource,
+): Promise<void> {
+  await db.prepare(
+    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, quality_score, description, banner_url, profile_source, profile_checked_at, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, unixepoch(), unixepoch())
+     ON CONFLICT(did) DO UPDATE SET
+       handle = ?2,
+       display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
+       avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
+       hidden = ?5,
+       labels = ?6,
+       created_at = COALESCE(NULLIF(?7, ''), actors.created_at),
+       associated = COALESCE(NULLIF(?8, '{}'), actors.associated),
+       pds = COALESCE(NULLIF(?9, ''), actors.pds),
+       followers_count = COALESCE(NULLIF(?10, 0), actors.followers_count),
+       follows_count = COALESCE(NULLIF(?11, 0), actors.follows_count),
+       posts_count = COALESCE(NULLIF(?12, 0), actors.posts_count),
+       quality_score = COALESCE(NULLIF(?13, 0), actors.quality_score),
+       description = COALESCE(NULLIF(?14, ''), actors.description),
+       banner_url = COALESCE(NULLIF(?15, ''), actors.banner_url),
+       profile_source = ?16,
+       profile_checked_at = unixepoch(),
+       updated_at = unixepoch()`
+  )
+    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore, f.description, f.bannerCid, source)
+    .run();
+}
+
 export async function handleRequestIndexing(
   request: Request,
   db: SqlDb,
@@ -172,14 +208,20 @@ export async function handleRequestIndexing(
   const identity = parsedIdentity.data;
   lap("slingshot");
 
+  // the request itself: store slots pull it and index the account from their
+  // own sources. Everything after this serves the response and the Turso copy.
+  const control = controlDb(env);
+  await recordIndexRequest(control, identity.did, unixNow());
+  lap("control_write");
+
   // fetch profile from public API for display name + avatar + labels + metadata
   let f = {
     displayName: '', avatarCid: '', description: '', bannerCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}',
     followersCount: 0, followsCount: 0, postsCount: 0, qualityScore: 0,
   };
-  const override = await getOverride(db, identity.did);
+  const override = await getOverride(control, identity.did);
   lap("override");
-  const domainBlocked = isDomainBlocked(identity.handle || "", await getBlockedDomains(db));
+  const domainBlocked = isDomainBlocked(identity.handle || "", await getBlockedDomains(control));
   lap("blocked_domains");
   let source: ProfileSource = 'bsky';
   try {
@@ -201,36 +243,11 @@ export async function handleRequestIndexing(
     // profile enrichment is best-effort
   }
 
-  await db.prepare(
-    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, quality_score, description, banner_url, profile_source, profile_checked_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, unixepoch(), unixepoch())
-     ON CONFLICT(did) DO UPDATE SET
-       handle = ?2,
-       display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
-       avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
-       hidden = ?5,
-       labels = ?6,
-       created_at = COALESCE(NULLIF(?7, ''), actors.created_at),
-       associated = COALESCE(NULLIF(?8, '{}'), actors.associated),
-       pds = COALESCE(NULLIF(?9, ''), actors.pds),
-       followers_count = COALESCE(NULLIF(?10, 0), actors.followers_count),
-       follows_count = COALESCE(NULLIF(?11, 0), actors.follows_count),
-       posts_count = COALESCE(NULLIF(?12, 0), actors.posts_count),
-       quality_score = COALESCE(NULLIF(?13, 0), actors.quality_score),
-       description = COALESCE(NULLIF(?14, ''), actors.description),
-       banner_url = COALESCE(NULLIF(?15, ''), actors.banner_url),
-       profile_source = ?16,
-       profile_checked_at = unixepoch(),
-       updated_at = unixepoch()`
-  )
-    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore, f.description, f.bannerCid, source)
-    .run();
+  await mirrorRequestedActor(db, identity, f, source);
   lap("turso_write");
 
   // fire-and-forget: fix the upstream invisibility too (see announceHostToRelay)
   if (identity.pds) ctx.waitUntil(announceHostToRelay(identity.pds, env));
-
-  // search picks the row up from Turso on its next poll (every 40 s)
 
   const timing = Object.entries(t).map(([k, v]) => `${k};dur=${v}`).join(", ");
   return json({
@@ -239,8 +256,6 @@ export async function handleRequestIndexing(
     ...(f.hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
   }, 200, { "Server-Timing": timing });
 }
-
-const unixNow = () => Math.floor(Date.now() / 1000);
 
 function authCheck(request: Request, env: Env): Response | null {
   const auth = request.headers.get("Authorization");
