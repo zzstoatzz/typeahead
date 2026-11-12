@@ -136,7 +136,24 @@ Public GET routes:
 - `/health`: liveness plus truthful readiness, watermark lag and build metadata
 - `/ready`: readiness status
 - `/index/status` and `/index-status`: committed generation/source/cursor metadata
+- `/actors?actor=<did or handle>`, the parameter up to 25 times: the stored
+  fields of each live document under their stored names, with `hidden` (the
+  moderation decision a search would make now) and `hidden_stored`. In the
+  order asked for, each actor once; a handle matches without regard to ASCII
+  case. Hidden actors are returned, marked: the caller decides what to show
+- `/corpus`: `index`, the index's own counts (`actors`, `searchable`,
+  `handle_invalid`, `quarantined`, `watermark`), taken at most once a minute,
+  and `store`, the co-located store's last corpus count, or null until it has
+  posted one to the admin listener's `/admin/corpus`. The count is kept in
+  memory only
 - Both canonical and compatibility XRPC actor-search paths, with equal bodies
+
+`/actors` and `/corpus` answer 503 while the index is not ready, as search
+does. They are what the Worker reads profiles and the statistics page's corpus
+numbers from; see [Turso retirement](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/turso-retirement.md).
+An actor document may carry `description`, `banner_url`, `updated_at` and
+`profile_checked`. Each is stored only when set, so a document without them
+serializes and hashes as it did before they existed.
 
 Default `/ready` and search require a verified full-source import, matching
 normalizer/plan versions, at most 256 segments, and a committed sync watermark no

@@ -133,9 +133,12 @@ Turso is still written because the Turso-fed slots (`typeahead-tantivy-a` and
 `-b`) are the rollback target and read `mod_overrides`, `blocked_domains` and
 `actors.hidden` from it. That copy is `src/turso-policy-mirror.ts` and
 `mirrorRequestedActor` in `src/handlers/admin.ts`: one call per handler. When
-Turso is retired those calls and that file go. One thing has to be replaced
-then: `DELETE /admin/mod-override` answers with the account's recomputed
-`hidden`, which today is read from the Turso row.
+Turso is retired those calls and that file go. `TURSO_ACTORS=off` turns the
+calls off first ([Turso retirement](turso-retirement.md), built on the
+`turso-reads` branch and not deployed as of 2026-11-12): the handlers then
+write the control database only, and the recomputed `hidden` that
+`DELETE /admin/mod-override` answers with, which is read from the Turso row
+today, is computed from the routed slot's copy of the account.
 
 ## What a slot does
 

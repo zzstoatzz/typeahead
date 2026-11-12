@@ -17,7 +17,7 @@ The bridge uses the endpoints the poller uses, unchanged, on the loopback admin 
 
 A reconcile is refused with 409 unless the committed cursor equals `expected_source_cursor`, the revision equals `expected_observation_revision`, and every document's hash equals the one `source-state` returned. It commits documents, cursor, watermark and policy together or not at all. `batch_id` is the SHA-256 of the rest of the body, so an identical resend is answered with the stored receipt.
 
-Each document is the actor's current record: `did`, `handle`, `display_name`, `avatar_url`, `labels`, `associated`, `created_at`, `pds`, `quality_score`, `hidden`, the three counts and `version`. A record whose status is not live, or that has no handle, is sent as a tombstone (`deleted: true`, every other field empty). Labels are rendered the way `actors.labels` is projected today: `src`, `uri`, `val`, `cts`, and `cid` and `exp` when present; negated labels are left out. `last_activity_at` is always sent as 0, because the store does not log a change when only that stamp moves.
+Each document is the actor's current record: `did`, `handle`, `display_name`, `avatar_url`, `labels`, `associated`, `created_at`, `pds`, `quality_score`, `hidden`, the three counts and `version`, and four more that are sent only when set: `description`, `banner_url`, `updated_at` (the second the store last changed the actor's content) and `profile_checked` (whether the store has ever read the appview profile). The four are what `getProfiles` returns beyond a search result ([Turso retirement](turso-retirement.md#what-a-slots-document-did-not-hold)). `profile_checked` is a flag and not the check time, for the reason `last_activity_at` is not sent. A record whose status is not live, or that has no handle, is sent as a tombstone (`deleted: true`, every other field empty). Labels are rendered the way `actors.labels` is projected today: `src`, `uri`, `val`, `cts`, and `cid` and `exp` when present; negated labels are left out. `last_activity_at` is always sent as 0, because the store does not log a change when only that stamp moves.
 
 ## The cursor is the record of progress
 
@@ -76,9 +76,14 @@ A round walks every record in the store in DID order and reconciles each page, t
 - at bootstrap, when the committed cursor is absent;
 - when the store answers `.trimmed`: the position fell below the log's floor;
 - when the index's position is past the end of the store's log, or the cursor names another `source_id`: the store was replaced;
-- on `requestResync()`, or every `resync_interval_s` when that is set.
+- on `requestResync()`, or every `resync_interval_s` when that is set;
+- once, when `resync_after` (the store role's `INDEX_RESYNC_AFTER`, Unix seconds) is set, the clock has reached it, and the last completed round started before it. This is how an index whose documents predate a change to what a document holds is rewritten. The condition reads the cursor's `last_completed_started_at`, so a restart neither repeats the round nor loses it.
 
 The first three move the position to the end of the log before walking, and withhold the watermark until the round completes. A cursor written by another controller (the Turso poller's) is refused unless `adopt_foreign_cursor` is set.
+
+## The corpus count
+
+The store role also posts its corpus scanner's last count to the same listener: `POST /admin/corpus` with `live`, `total`, `with_handles`, `with_avatars`, `hidden` and `scanned_at`, every 60 s from a thread of its own (`CorpusReporter` in `services/src/store_process/index_bridge.zig`). The server keeps it in memory and serves it at `/corpus` on its public listener, which is how the Worker's statistics page gets a count that only the store can take. It is not part of the bridge's protocol: nothing is committed, and a server that does not have the endpoint only makes the reporter log once.
 
 ## What the owner provides
 

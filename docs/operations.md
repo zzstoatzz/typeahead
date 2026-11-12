@@ -412,10 +412,23 @@ tested on the `control-pull` branch and none of it is deployed: the database
 does not exist, and the admin endpoints and `/request-indexing` still write
 only Turso, which store slots do not read.
 
+## Turso retirement
+
+What the Worker still reads and writes in Turso, the slot endpoints that
+replace the reads (`/actors`, `/corpus`), the three variables that move each
+feature over (`PROFILE_MODE`, `CORPUS_MODE`, `TURSO_ACTORS`), the parity checks
+and the order in which Turso, the old ingester and the HeavyPad flows are
+stopped are in [Turso retirement](turso-retirement.md). As of 2026-11-12 this
+is built and tested on the `turso-reads` branch and none of it is deployed:
+every feature listed there still runs against Turso.
+
 ## Search exclusion counts
 
 `/stats` shows two figures from the daily `recordExclusions` cron step
-(`src/exclusions.ts`, KV `search_exclusions`), logged as `exclusions_recorded`:
+(`src/corpus.ts`, KV `search_exclusions`), logged as `exclusions_recorded`.
+What follows describes the count taken in Turso (`src/exclusions.ts`), which
+is what runs unless `CORPUS_MODE` is `slot`; the slot's count is described in
+[Turso retirement](turso-retirement.md#what-an-app-sees-in-slot-mode):
 
 - **hidden by policy**: accounts the moderation rule excludes. The stored
   `actors.hidden` flag only nominates candidates. Each one is re-evaluated with

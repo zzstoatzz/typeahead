@@ -210,6 +210,14 @@ regression is pinned). Extend it, don't prune it.
   Turso-fed slots (`src/turso-policy-mirror.ts`). Built on the `control-pull` branch and not
   deployed as of 2026-11-12: until the rollout in [slot control](docs/slot-control.md) has run,
   production writes only Turso and a policy change does not reach a store slot.
+- profiles, the reputation report and the corpus counts on `/stats` can be read from the routed
+  store slot in place of Turso: the slot's index serves `/actors` and `/corpus` on its public
+  port, the Worker reaches them through the transport (`src/slot-read.ts`), and `PROFILE_MODE`
+  and `CORPUS_MODE` (`turso`, `compare`, `slot`) choose per feature; `TURSO_ACTORS=off` stops
+  every remaining write to Turso's actor tables. The store's port 8082 never gets a public
+  service: anything a slot must publish goes through the index. Built on the `turso-reads`
+  branch and not deployed as of 2026-11-12; inventory, parity checks and the ordered rollout are
+  in [Turso retirement](docs/turso-retirement.md).
 - ranking is by the stored `actors.quality_score`, not live followers; writes that touch
   aggregate counts must keep `quality_score` consistent with them (see the clobber regression
   guarded in `bench.py` + `smoke.py`).
