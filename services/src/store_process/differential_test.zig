@@ -18,6 +18,8 @@ const store_mod = @import("../store/root.zig");
 const store_harness = @import("../store/testing/harness.zig");
 const identity = @import("../identity.zig");
 const label_tail = @import("../label_tail.zig");
+const control = @import("control.zig");
+const control_test = @import("control_test.zig");
 const enrich = @import("enrich.zig");
 const identity_work = @import("identity_work.zig");
 const profile = @import("profile.zig");
@@ -72,6 +74,11 @@ const Sim = struct {
     world: [universe]Identity = @splat(.{}),
     remote: [universe]Remote = @splat(.{}),
     enricher: enrich.Enricher = undefined,
+    /// The Worker's control record, and the loop that pulls it.
+    worker: control_test.Worker,
+    controller: control.Controller = undefined,
+    policy_changes: u64 = 0,
+    requests: u64 = 0,
     /// DIDs the enrichment loop asked `getProfiles` for in its last step.
     asked: std.ArrayList([]const u8) = .empty,
     fetched: u64 = 0,
@@ -107,7 +114,17 @@ const Sim = struct {
             .work = .{ .gpa = testing.allocator, .io = testing.io, .owner = f.owner, .resolver = undefined },
             .sink = .{ .gpa = testing.allocator, .owner = f.owner },
             .plc = .{ .gpa = testing.allocator, .io = testing.io, .owner = f.owner },
+            .worker = .{ .arena = arena },
         };
+        self.controller = .{
+            .gpa = testing.allocator,
+            .owner = f.owner,
+            .transport = .{ .context = &self.worker, .get = control_test.Worker.get },
+            .timer = .{ .context = self, .now_ms = nowMs, .sleep_ms = noSleep },
+            .options = .{ .url = control_test.origin, .secret = control_test.secret },
+        };
+        try self.controller.start();
+        errdefer self.controller.deinit();
         for (&self.blobs, cids) |*raw, text| raw.* = try zat.multibase.decode(arena, text);
         self.enricher = .{
             .gpa = testing.allocator,
@@ -122,6 +139,7 @@ const Sim = struct {
 
     fn destroy(self: *Sim) void {
         self.running.stop();
+        self.controller.deinit();
         self.intake.deinit();
         self.f.destroy();
     }
@@ -508,6 +526,9 @@ const Sim = struct {
         self.sink.owner = self.f.owner;
         self.plc.owner = self.f.owner;
         self.enricher.owner = self.f.owner;
+        self.controller.deinit();
+        self.controller.owner = self.f.owner;
+        try self.controller.start();
         self.running = try harness.Running.start(self.f);
         for (self.relayed.items) |past| {
             if (past.seq <= from) continue;
@@ -516,10 +537,75 @@ const Sim = struct {
         }
     }
 
+    /// A live account's handle, or the domain above it: something a block
+    /// would catch.
+    fn blockable(self: *Sim) ?[]const u8 {
+        for (0..8) |_| {
+            const row = self.model.actors.get(self.anyDid()) orelse continue;
+            if (row.status != .live or row.handle.len == 0) continue;
+            const lower = std.ascii.allocLowerString(self.arena, row.handle) catch @panic("out of memory");
+            if (self.chance(50)) if (std.mem.indexOfScalar(u8, lower, '.')) |dot| {
+                if (std.mem.indexOfScalar(u8, lower[dot + 1 ..], '.') != null) return lower[dot + 1 ..];
+            };
+            return lower;
+        }
+        return null;
+    }
+
+    /// The operator changes the policy at the Worker, and the slot's next
+    /// poll applies it. The model runs the admin endpoint's statements.
+    fn changePolicy(self: *Sim) !void {
+        try self.settle();
+        const subject = self.anyDid();
+        switch (self.random.uintLessThan(u8, 10)) {
+            0...2 => {
+                self.worker.override(subject, "hide");
+                self.model.overrideSet(subject, .hide);
+            },
+            3, 4 => {
+                self.worker.override(subject, "show");
+                self.model.overrideSet(subject, .show);
+            },
+            5, 6 => {
+                const held = self.worker.overrides.keys();
+                const cleared = if (held.len > 0) held[self.random.uintLessThan(usize, held.len)] else subject;
+                self.model.overrideCleared(cleared);
+                self.worker.clear(cleared);
+            },
+            7, 8 => {
+                const domain = self.blockable() orelse "trump.com";
+                self.worker.block(domain);
+                self.model.domainBlockedSet(domain);
+            },
+            else => {
+                const held = self.worker.domains.keys();
+                const domain = if (held.len > 0) held[self.random.uintLessThan(usize, held.len)] else "trump.com";
+                self.model.domainUnblocked(domain);
+                self.worker.unblock(domain);
+            },
+        }
+        try testing.expect(try self.controller.pollPolicy());
+        self.policy_changes += 1;
+        try self.settle();
+    }
+
+    /// Someone asks the Worker to index an account, and the slot's next
+    /// poll takes the request: an `#identity` event that came by another road.
+    fn requestIndexing(self: *Sim) !void {
+        try self.settle();
+        const subject = self.anyDid();
+        self.worker.ask(subject);
+        try testing.expect(try self.controller.pollRequests());
+        self.model.ingest(.{ .identity = subject });
+        self.requests += 1;
+    }
+
     fn next(self: *Sim) !void {
         const subject = self.anyDid();
         switch (self.random.uintLessThan(u8, 100)) {
-            0...12 => try self.relay(.{ .sighting = subject }),
+            0...8 => try self.relay(.{ .sighting = subject }),
+            9...11 => try self.changePolicy(),
+            12 => try self.requestIndexing(),
             13...18 => try self.enrichStep(),
             19...24 => try self.changeRemote(),
             25...39 => try self.relay(.{ .profile = .{
@@ -619,10 +705,27 @@ const Sim = struct {
             try testing.expectEqualStrings(cursor, cursors.plc.?);
             try testing.expectEqualStrings(cursor, self.model.plc_cursor.?);
         }
+
+        // The store's policy is the Worker's, at the Worker's revision, and
+        // the model's tables hold the same rules.
+        try testing.expectEqual(if (self.policy_changes == 0) null else @as(?u64, self.worker.revision), cursors.control_policy);
+        try testing.expectEqual(if (self.requests == 0) null else @as(?u64, self.worker.next_seq - 1), cursors.control_requests);
+        const store = try self.f.owner.acquire();
+        defer self.f.owner.release();
+        const overrides = try store_mod.read.overrides(store.db(), self.arena);
+        try testing.expectEqual(self.model.overrides.count(), overrides.len);
+        for (overrides) |held| {
+            const want = self.model.overrides.get(held.subject) orelse return self.fail(held.subject, "an override is in the store only", .{});
+            if ((held.entry.action == .hide) != (want == .hide)) return self.fail(held.subject, "the override is {t} in the store, {t} in the model", .{ held.entry.action, want });
+        }
+        const domains = try store_mod.read.blockedDomains(store.db(), self.arena);
+        try testing.expectEqual(self.model.blocked.count(), domains.len);
+        for (domains) |held| if (!self.model.blocked.contains(held.subject)) return self.fail(held.subject, "the domain is blocked in the store only", .{});
+        try testing.expectEqual(@as(usize, 0), (try store.owedSweeps(self.arena)).len);
     }
 };
 
-const Tally = struct { fetched: u64 = 0, scored: usize = 0, fallbacks: u64 = 0, relayed: usize = 0, restarts: u64 = 0, live: usize = 0, gone: usize = 0, labelled: usize = 0, hidden: usize = 0, handles: usize = 0, pruned: u64 = 0, flushes: u64 = 0 };
+const Tally = struct { fetched: u64 = 0, scored: usize = 0, fallbacks: u64 = 0, relayed: usize = 0, restarts: u64 = 0, live: usize = 0, gone: usize = 0, labelled: usize = 0, hidden: usize = 0, handles: usize = 0, pruned: u64 = 0, flushes: u64 = 0, policy_changes: u64 = 0, requests: u64 = 0, overridden: usize = 0, blocked: usize = 0 };
 
 fn runSeed(seed: u64, steps: usize) !Tally {
     var prng: std.Random.DefaultPrng = undefined;
@@ -641,6 +744,8 @@ fn runSeed(seed: u64, steps: usize) !Tally {
     tally.fallbacks = sim.fallbacks;
     tally.pruned = sim.pruned + sim.f.owner.counters.tombstones_pruned.load(.monotonic);
     tally.restarts = sim.restarts;
+    tally.policy_changes = sim.policy_changes;
+    tally.requests = sim.requests;
     tally.flushes = sim.f.owner.health().maintenance.?.flushes.count;
     for (0..universe) |index| {
         const actor = try sim.f.actor(sim.did(index)) orelse continue;
@@ -651,6 +756,8 @@ fn runSeed(seed: u64, steps: usize) !Tally {
         tally.live += 1;
         tally.labelled += @intFromBool(actor.labels.len > 0);
         tally.hidden += @intFromBool(actor.hidden);
+        tally.overridden += @intFromBool(actor.override != .none);
+        tally.blocked += @intFromBool(sim.model.domainBlocked(actor.handle));
         tally.handles += @intFromBool(actor.handle.len > 0);
         tally.scored += @intFromBool(actor.quality_score > 0);
     }
@@ -675,6 +782,8 @@ test "the store role and the SQL model agree on every account, across restarts a
     try testing.expect(total.pruned > 0 and total.restarts > 3);
     try testing.expect(total.flushes > 0);
     try testing.expect(total.fetched > 200 and total.scored > 5 and total.fallbacks > 0);
+    try testing.expect(total.policy_changes > 40 and total.requests > 10);
+    try testing.expect(total.overridden > 0 and total.blocked > 0);
 }
 
 // -- what each divergence changes, against production's semantics --
@@ -743,6 +852,29 @@ const Pair = struct {
         for ([_]*sql.Model{ &self.sim.model, &self.production }) |model| {
             for (model.lease(identity.LEASE_BATCH)) |job| model.settle(.{ .did = job.did, .gen = job.gen, .observed_at = now, .pds = hosts[0], .outcome = .{ .resolved = .{ .handle = handle, .verified = true } } });
         }
+    }
+
+    /// A policy change at the Worker, pulled by the slot, and the admin
+    /// endpoint's statements on both models.
+    fn policy(self: *Pair, change: union(enum) { hide: []const u8, show: []const u8, clear: []const u8, block: []const u8, unblock: []const u8 }) !void {
+        try self.sim.settle();
+        const worker = &self.sim.worker;
+        for ([_]*sql.Model{ &self.sim.model, &self.production }) |model| switch (change) {
+            .hide => |did| model.overrideSet(did, .hide),
+            .show => |did| model.overrideSet(did, .show),
+            .clear => |did| model.overrideCleared(did),
+            .block => |domain| model.domainBlockedSet(domain),
+            .unblock => |domain| model.domainUnblocked(domain),
+        };
+        switch (change) {
+            .hide => |did| worker.override(did, "hide"),
+            .show => |did| worker.override(did, "show"),
+            .clear => |did| worker.clear(did),
+            .block => |domain| worker.block(domain),
+            .unblock => |domain| worker.unblock(domain),
+        }
+        try testing.expect(try self.sim.controller.pollPolicy());
+        self.sim.policy_changes += 1;
     }
 
     /// The store agrees with the model that carries the store's semantics.
@@ -819,7 +951,7 @@ test "divergence hidden flags: the stored flag follows a lapsed label here, and 
     try testing.expect(!(try pair.agree(eve)).hidden);
     const row = pair.production.actors.getPtr(eve).?;
     try testing.expect(row.hidden);
-    try testing.expect(!pair.production.resolveHidden(row));
+    try testing.expect(!pair.production.resolveHidden(eve, row));
 
     try pair.relay(.{ .profile = .{ .did = eve, .display_name = "Eve" } });
     try testing.expect(!(try pair.agree(eve)).hidden);
@@ -910,9 +1042,55 @@ test "divergence enrichment_verifies_handle: an appview's handle.invalid does no
     try testing.expectEqual(@as(u64, 0), verified.identity_due);
 }
 
+test "policy pulled from the Worker hides and restores stored accounts as the admin endpoints do in SQL" {
+    const pair = try Pair.create();
+    defer pair.destroy();
+    try pair.relay(.{ .sighting = eve });
+    try pair.relay(.{ .identity = eve });
+    try pair.resolve("eve.spam.example");
+    try testing.expect(!(try pair.agree(eve)).hidden);
+
+    try pair.policy(.{ .hide = eve });
+    try testing.expect((try pair.agree(eve)).hidden);
+    try testing.expect(pair.production.actors.get(eve).?.hidden);
+    try pair.policy(.{ .clear = eve });
+    try testing.expect(!(try pair.agree(eve)).hidden);
+    try testing.expect(!pair.production.actors.get(eve).?.hidden);
+
+    try pair.policy(.{ .block = "spam.example" });
+    try testing.expect((try pair.agree(eve)).hidden);
+    try testing.expect(pair.production.actors.get(eve).?.hidden);
+    try pair.policy(.{ .show = eve });
+    try testing.expect(!(try pair.agree(eve)).hidden);
+    try testing.expect(!pair.production.actors.get(eve).?.hidden);
+    try pair.policy(.{ .clear = eve });
+    try testing.expect((try pair.agree(eve)).hidden);
+    try testing.expect(pair.production.actors.get(eve).?.hidden);
+    try pair.policy(.{ .unblock = "spam.example" });
+    try testing.expect(!(try pair.agree(eve)).hidden);
+    try testing.expect(!pair.production.actors.get(eve).?.hidden);
+}
+
+test "divergence hidden_recomputed_on_every_write: an override set before its account exists hides it on sight" {
+    const pair = try Pair.create();
+    defer pair.destroy();
+    try pair.policy(.{ .hide = eve });
+    try testing.expect(try pair.sim.f.actor(eve) == null);
+
+    // The store holds the override without the account and applies it to
+    // the record the first sighting makes. In SQL the sighting writes a row
+    // with the column's default, and it stays visible until the cron or a
+    // label batch next recomputes the flag.
+    try pair.relay(.{ .sighting = eve });
+    try testing.expect((try pair.agree(eve)).hidden);
+    const row = pair.production.actors.getPtr(eve).?;
+    try testing.expect(!row.hidden);
+    try testing.expect(pair.production.resolveHidden(eve, row));
+}
+
 test "every difference on the store's review list is a flag or an explained omission" {
     try testing.expectEqual(@as(usize, 9), std.meta.fieldNames(sql.Divergence).len);
-    try testing.expectEqual(@as(usize, 14), sql.unmodelled.len);
+    try testing.expectEqual(@as(usize, 16), sql.unmodelled.len);
     inline for (comptime std.meta.fieldNames(sql.Divergence)) |name| {
         try testing.expect(@field(sql.Divergence.store, name));
         try testing.expect(!@field(sql.Divergence.production, name));

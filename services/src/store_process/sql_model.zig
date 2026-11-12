@@ -1,8 +1,9 @@
 //! Today's SQL semantics, in memory, for the differential test. Each method
 //! restates the statements one Worker endpoint runs: `handleIngest` and
 //! `handleDelete`, the identity queue's enqueue, lease and settle, the PLC
-//! report, the label stream, and the cron's `refreshModeration` for one
-//! selected row. It shares no code with the store. What a profile maps to
+//! report, the label stream, the cron's `refreshModeration` for one
+//! selected row, and the admin endpoints that set and clear an override and
+//! block and unblock a domain. It shares no code with the store. What a profile maps to
 //! arrives already extracted (`Fetched`): that mapping has its own test
 //! against the Worker's TypeScript.
 //!
@@ -86,7 +87,9 @@ pub const unmodelled = [_][2][]const u8{
     .{ "a failed takedown probe retries the DID; a refused batch is split", "neither changes what a completed fetch writes" },
     .{ "an account the appview does not know is stamped as checked", "the cron leaves it unstamped and the backfill flow stamps it; the check time is not compared" },
     .{ "unknown label fields are dropped", "ver and sig are not served by the SQL projection either" },
-    .{ "domain blocks apply at once to policy and by a sweep to stored actors", "no policy change reaches this role yet; the owner's sweep has its own test" },
+    .{ "domain blocks apply at once to policy and by a sweep to stored actors", "the SQL hides or restores every stored actor in the request that changes the block, in the background; the differential run lets the owner's sweep finish before it compares, and the owner's tests cover a sweep a restart interrupts" },
+    .{ "an override is held for an account the store has never seen", "same in SQL: the mod_overrides row exists without an actors row, and the account is hidden or shown by it once it is written" },
+    .{ "an indexing request is an #identity event", "in SQL /request-indexing resolves the account and writes its row itself; here the request queues the account for this role's own resolution, as the relay's #identity does" },
     .{ "queue due times live in the actor record", "layout only" },
     .{ "reactivation re-requests refresh but not identity", "the role sends identity_enqueue with every active #account, as the Worker enqueues it" },
     .{ "refresh is requested only for actors with a handle", "same in SQL: both of the cron's selectors and the backfill's require a handle" },
@@ -103,6 +106,12 @@ const max_attempts = 12;
 const tombstone_seconds = 7 * 86_400;
 const handle_settle_seconds = 86_400;
 const handle_backlog_limit = 100;
+
+/// The SQL's `handle = ?domain OR handle LIKE '%.' || ?domain`, without case.
+fn underDomain(handle: []const u8, domain: []const u8) bool {
+    if (handle.len < domain.len or !std.ascii.eqlIgnoreCase(handle[handle.len - domain.len ..], domain)) return false;
+    return handle.len == domain.len or handle[handle.len - domain.len - 1] == '.';
+}
 
 pub const Label = struct {
     uri: []const u8,
@@ -181,6 +190,8 @@ pub const Row = struct {
     source: Source = .none,
 };
 
+pub const Override = enum { show, hide };
+
 pub const Queued = struct {
     gen: u64 = 1,
     due_at: u64,
@@ -233,6 +244,9 @@ pub const Model = struct {
     tombstones: std.StringArrayHashMapUnmanaged(u64) = .empty,
     label_cursor: ?u64 = null,
     plc_cursor: ?[]const u8 = null,
+    /// `mod_overrides` and `blocked_domains`.
+    overrides: std.StringArrayHashMapUnmanaged(Override) = .empty,
+    blocked: std.StringArrayHashMapUnmanaged(void) = .empty,
     parse_ms: *const fn (text: []const u8) ?i64,
 
     fn own(self: *Model, text: []const u8) []const u8 {
@@ -267,19 +281,62 @@ pub const Model = struct {
         return false;
     }
 
+    /// `isDomainBlocked`: the handle is a blocked domain or sits under one.
+    pub fn domainBlocked(self: *Model, handle: []const u8) bool {
+        for (self.blocked.keys()) |domain| if (underDomain(handle, domain)) return true;
+        return false;
+    }
+
     /// `resolveHidden` as of now: what the engine decides at query time.
-    pub fn resolveHidden(self: *Model, row: *const Row) bool {
+    /// Later wins: a hiding label, a slur handle, a blocked domain, then the
+    /// account's override.
+    pub fn resolveHidden(self: *Model, did: []const u8, row: *const Row) bool {
         var hidden = self.labelsHide(row.labels);
         if (!self.flags.slur_rule_left_to_index) {
             if (self.flagged) |flagged| if (row.handle.len > 0 and flagged(row.handle)) {
                 hidden = true;
             };
         }
+        if (self.domainBlocked(row.handle)) hidden = true;
+        if (self.overrides.get(did)) |override| hidden = override == .hide;
         return hidden;
     }
 
-    fn wrote(self: *Model, row: *Row) void {
-        if (self.flags.hidden_recomputed_on_every_write) row.hidden = self.resolveHidden(row);
+    fn wrote(self: *Model, did: []const u8, row: *Row) void {
+        if (self.flags.hidden_recomputed_on_every_write) row.hidden = self.resolveHidden(did, row);
+    }
+
+    // -- handlers/admin.ts, as turso-policy-mirror.ts writes it --
+
+    /// `POST /admin/mod-override`.
+    pub fn overrideSet(self: *Model, did: []const u8, action: Override) void {
+        self.overrides.put(self.arena, self.own(did), action) catch @panic("out of memory");
+        if (self.live(did)) |row| row.hidden = action == .hide;
+    }
+
+    /// `DELETE /admin/mod-override`: the flag is recomputed from what is left.
+    pub fn overrideCleared(self: *Model, did: []const u8) void {
+        _ = self.overrides.orderedRemove(did);
+        if (self.live(did)) |row| row.hidden = self.resolveHidden(did, row);
+    }
+
+    /// `POST /admin/domain-block` and its backfill: every stored actor under
+    /// the domain is hidden, bar the ones an override shows.
+    pub fn domainBlockedSet(self: *Model, domain: []const u8) void {
+        self.blocked.put(self.arena, self.own(domain), {}) catch @panic("out of memory");
+        for (self.actors.keys(), self.actors.values()) |did, *row| {
+            if (row.status != .live or !underDomain(row.handle, domain)) continue;
+            if (self.overrides.get(did) != .show) row.hidden = true;
+        }
+    }
+
+    /// `DELETE /admin/domain-block` and its recompute, for every stored
+    /// actor under the domain, from the sources that remain.
+    pub fn domainUnblocked(self: *Model, domain: []const u8) void {
+        _ = self.blocked.orderedRemove(domain);
+        for (self.actors.keys(), self.actors.values()) |did, *row| {
+            if (row.status == .live and underDomain(row.handle, domain)) row.hidden = self.resolveHidden(did, row);
+        }
     }
 
     // -- identity-queue.ts enqueue rules --
@@ -331,7 +388,7 @@ pub const Model = struct {
             .sighting, .inactive => {},
         }
         if (row.last_activity_at + 3600 < self.now) row.last_activity_at = self.now;
-        self.wrote(row);
+        self.wrote(did, row);
     }
 
     // -- handlers/admin.ts handleDelete --
@@ -405,7 +462,7 @@ pub const Model = struct {
         row.handle = self.keep(row.handle, handle);
         row.pds = self.keep(row.pds, pds);
         row.identity_resolved_at = observed_at;
-        self.wrote(row);
+        self.wrote(did, row);
     }
 
     fn completeQueued(self: *Model, did: []const u8, gen: u64) void {
@@ -478,16 +535,20 @@ pub const Model = struct {
         self.label_cursor = @max(self.label_cursor orelse 0, cursor);
         for (touched.keys()) |did| {
             const row = self.live(did).?;
-            row.hidden = self.resolveHidden(row);
+            row.hidden = self.resolveHidden(did, row);
         }
     }
 
-    // -- cron.ts refreshModeration, for one selected row with no override --
+    // -- cron.ts refreshModeration, for one selected row --
 
     pub fn refresh(self: *Model, did: []const u8, appview: Appview) void {
         const row = self.live(did) orelse return;
         if (appview.bsky(appview.context, did)) |f| return self.enriched(did, row, f, .bsky);
-        if (row.pds.len == 0 or !appview.taken_down(appview.context, did)) return;
+        // An account Bluesky does not return: a `hide` override ends it
+        // there, a `show` override is taken as a takedown without asking.
+        const override = self.overrides.get(did);
+        if (row.pds.len == 0 or override == .hide) return;
+        if (override != .show and !appview.taken_down(appview.context, did)) return;
         if (appview.blacksky(appview.context, did)) |f| return self.enriched(did, row, f, .blacksky);
         if (appview.record(appview.context, did, row.pds)) |f| self.enriched(did, row, f, .pds);
     }
@@ -507,7 +568,7 @@ pub const Model = struct {
         if (f.posts != 0) row.posts = f.posts;
         if (f.score != 0) row.score = f.score;
         row.source = source;
-        if (source == .pds and self.flags.pds_record_keeps_labels) return self.wrote(row);
+        if (source == .pds and self.flags.pds_record_keeps_labels) return self.wrote(did, row);
 
         var others: std.ArrayList(ProfileLabel) = .empty;
         var moderated: std.ArrayList(Label) = .empty;
@@ -520,10 +581,10 @@ pub const Model = struct {
         if (self.flags.enrichment_reconciles_labels) {
             self.reconcile(did, moderated.items);
             self.project(did);
-            return self.wrote(row);
+            return self.wrote(did, row);
         }
         row.labels = moderated.items;
-        row.hidden = self.resolveHidden(row);
+        row.hidden = self.resolveHidden(did, row);
     }
 
     /// The store role's answer to a handle a profile source reports.
@@ -585,7 +646,7 @@ pub const Model = struct {
                 if (label.neg or label.exp.len == 0) continue;
                 if (self.parse_ms(label.exp)) |at| if (at <= @as(i64, @intCast(self.now)) * 1000) break true;
             } else false;
-            if (lapsed) row.hidden = self.resolveHidden(row);
+            if (lapsed) row.hidden = self.resolveHidden(did, row);
         }
     }
 

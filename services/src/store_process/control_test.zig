@@ -19,8 +19,8 @@ const zat = @import("zat");
 const Io = std.Io;
 const testing = std.testing;
 
-const origin = "https://worker.test";
-const secret = "0123456789abcdef0123456789abcdef";
+pub const origin = "https://worker.test";
+pub const secret = "0123456789abcdef0123456789abcdef";
 const bearer = "Bearer " ++ secret;
 
 const alice = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa";
@@ -33,7 +33,7 @@ const Asked = struct { seq: u64, did: []const u8 };
 
 /// The Worker's control record and the two endpoints that serve it, as
 /// `src/handlers/slot-control.ts` does.
-const Worker = struct {
+pub const Worker = struct {
     arena: std.mem.Allocator,
     revision: u64 = 1,
     overrides: std.StringArrayHashMapUnmanaged([]const u8) = .empty,
@@ -44,27 +44,27 @@ const Worker = struct {
     scripted: std.ArrayList(control.Response) = .empty,
     seen: std.ArrayList(Seen) = .empty,
 
-    fn override(self: *Worker, did: []const u8, action: []const u8) void {
+    pub fn override(self: *Worker, did: []const u8, action: []const u8) void {
         self.overrides.put(self.arena, did, action) catch @panic("out of memory");
         self.revision += 1;
     }
 
-    fn clear(self: *Worker, did: []const u8) void {
+    pub fn clear(self: *Worker, did: []const u8) void {
         _ = self.overrides.orderedRemove(did);
         self.revision += 1;
     }
 
-    fn block(self: *Worker, domain: []const u8) void {
+    pub fn block(self: *Worker, domain: []const u8) void {
         self.domains.put(self.arena, domain, {}) catch @panic("out of memory");
         self.revision += 1;
     }
 
-    fn unblock(self: *Worker, domain: []const u8) void {
+    pub fn unblock(self: *Worker, domain: []const u8) void {
         _ = self.domains.orderedRemove(domain);
         self.revision += 1;
     }
 
-    fn ask(self: *Worker, did: []const u8) void {
+    pub fn ask(self: *Worker, did: []const u8) void {
         self.requests.append(self.arena, .{ .seq = self.next_seq, .did = did }) catch @panic("out of memory");
         self.next_seq += 1;
     }
@@ -114,7 +114,7 @@ const Worker = struct {
         return out.written();
     }
 
-    fn get(context: *anyopaque, _: std.mem.Allocator, url: []const u8, authorization: []const u8) control.Response {
+    pub fn get(context: *anyopaque, _: std.mem.Allocator, url: []const u8, authorization: []const u8) control.Response {
         const self: *Worker = @ptrCast(@alignCast(context));
         self.seen.append(self.arena, .{
             .url = self.arena.dupe(u8, url) catch @panic("out of memory"),
