@@ -559,7 +559,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         try tasks.concurrent(io, tails.LabelSink.run, .{ &self.labels, io });
         try tasks.concurrent(io, Role.watchdog, .{&self});
     }
-    defer if (have_pool) pool.deinit();
+    defer if (have_pool) pool.deinit(io);
     self.reached(.intake_started);
 
     if (self.enricher) |starting| try tasks.concurrent(io, enrich.Enricher.run, .{starting});
@@ -597,6 +597,6 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     // production would wait on them for ever: `serve` exits here instead.
     if (options.on_stopped) |stopped| stopped(options.context);
     tasks.cancel(io);
-    if (have_pool) pool.shutdown(io);
+    if (have_pool) pool.shutdown(io) catch |err| log.warn("identity pool drain interrupted: {}", .{err});
     log.info("shutdown complete", .{});
 }

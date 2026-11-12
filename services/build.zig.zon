@@ -21,8 +21,8 @@
             .hash = "zkv-0.1.2-2lSvYIBZBADjWqr81MvZTS3irVj817PexNielqQQ_0Cq",
         },
         .poolio = .{
-            .url = "https://tangled.org/zzstoatzz.io/poolio/archive/ed65c24a3b8a6eb7b2070314c8cf04cb96ec300b.tar.gz",
-            .hash = "poolio-0.0.1-alpha.2-qYctK9tlAACCRGbHlKbpHlix6vJTn5n_-UAIlZZeUTqB",
+            .url = "https://tangled.org/zzstoatzz.io/poolio/archive/v0.1.0-alpha.1.tar.gz",
+            .hash = "poolio-0.1.0-alpha.1-qYctK9GyAADPePnxIwLSO9PkKRoN5NizLcycdCgMQQGU",
         },
     },
     .paths = .{

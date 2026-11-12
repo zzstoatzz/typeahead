@@ -219,7 +219,7 @@ pub fn main() !void {
 
     var identity_pool: identity.Pool = undefined;
     var have_identity_pool = false;
-    defer if (have_identity_pool) identity_pool.deinit();
+    defer if (have_identity_pool) identity_pool.deinit(io);
 
     var tail: plc_tail.Tail = undefined;
     var labels: label_tail.Tail = undefined;
@@ -351,7 +351,7 @@ pub fn main() !void {
     tasks.cancel(io);
     if (have_identity_pool) {
         log.info("draining identity resolver…", .{});
-        identity_pool.shutdown(io);
+        identity_pool.shutdown(io) catch |err| log.warn("identity pool drain interrupted: {}", .{err});
     }
     log.info("shutdown complete", .{});
 }

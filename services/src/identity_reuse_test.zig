@@ -161,7 +161,7 @@ const Sweep = struct {
     resolver: *identity.Resolver,
     failed: std.atomic.Value(u32) = .init(0),
 
-    fn process(self: *Sweep, _: Io, job: identity.Job) void {
+    fn process(self: *Sweep, _: Io, job: identity.Job) Io.Cancelable!void {
         expectCase(self.resolver, cases[0], job.gen) catch {
             _ = self.failed.fetchAdd(1, .monotonic);
         };
@@ -182,11 +182,11 @@ test "idle connections stay within the bound over hundreds of handle hosts and c
     var sweep: Sweep = .{ .resolver = &fixture.resolver };
     const Pool = poolio.Pool(identity.Job, Sweep);
     var pool = try Pool.init(testing.allocator, .{ .queue_capacity = 64, .workers = 16, .ctx = &sweep, .process = Sweep.process });
-    defer pool.deinit();
+    defer pool.deinit(testing.io);
     try pool.start(testing.io);
     const hosts = 400;
     for (0..hosts) |n| try pool.put(testing.io, .{ .did = stub_mod.did("okay", n), .gen = n, .attempts = 1 });
-    pool.shutdown(testing.io);
+    try pool.shutdown(testing.io);
     try testing.expectEqual(@as(u32, 0), sweep.failed.load(.monotonic));
 
     // Sixteen workers against eight kept sessions: the extra sessions were

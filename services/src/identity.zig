@@ -238,7 +238,7 @@ pub const Resolver = struct {
     }
 
     /// poolio process function — called per dequeued Job.
-    pub fn process(self: *Resolver, io: Io, job: Job) void {
+    pub fn process(self: *Resolver, io: Io, job: Job) Io.Cancelable!void {
         _ = io;
         var arena = std.heap.ArenaAllocator.init(self.allocator);
         defer arena.deinit();
@@ -662,7 +662,7 @@ test "integration: leased identity work is resolved and reported" {
     const n = try resolver.lease(&transport, &jobs);
     try testing.expect(n > 0);
     const before = stats.post_failed.load(.monotonic);
-    for (jobs[0..n]) |job| resolver.process(io, job);
+    for (jobs[0..n]) |job| try resolver.process(io, job);
     try testing.expectEqual(before, stats.post_failed.load(.monotonic));
     try testing.expectEqual(@as(usize, 0), try resolver.lease(&transport, &jobs));
 }

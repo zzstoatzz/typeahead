@@ -24,7 +24,7 @@ pub const Work = struct {
     resolver: *identity.Resolver,
 
     /// poolio process function: resolve one leased job and report it.
-    pub fn process(self: *Work, _: Io, job: identity.Job) void {
+    pub fn process(self: *Work, _: Io, job: identity.Job) Io.Cancelable!void {
         var arena: std.heap.ArenaAllocator = .init(self.gpa);
         defer arena.deinit();
         const seen = self.resolver.observe(arena.allocator(), job);

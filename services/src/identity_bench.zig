@@ -31,7 +31,7 @@ const Tally = struct {
     verified: std.atomic.Value(u64) = .init(0),
     other: std.atomic.Value(u64) = .init(0),
 
-    fn process(self: *Tally, _: Io, job: identity.Job) void {
+    fn process(self: *Tally, _: Io, job: identity.Job) Io.Cancelable!void {
         var arena: std.heap.ArenaAllocator = .init(self.arena_gpa);
         defer arena.deinit();
         const seen = self.resolver.observe(arena.allocator(), job);
@@ -69,7 +69,7 @@ pub fn main(init: std.process.Init) !void {
     var tally: Tally = .{ .arena_gpa = gpa, .resolver = &resolver };
 
     var pool = try Pool.init(gpa, .{ .queue_capacity = 64, .workers = workers, .ctx = &tally, .process = Tally.process });
-    defer pool.deinit();
+    defer pool.deinit(init.io);
     try pool.start(init.io);
 
     var prng: std.Random.DefaultPrng = .init(20261111);
@@ -87,7 +87,7 @@ pub fn main(init: std.process.Init) !void {
         const kind = only_kind orelse if (account % 7 == 0) "cust" else "okay";
         try pool.put(init.io, .{ .did = stub_mod.did(kind, account), .gen = 1, .attempts = 1 });
     }
-    pool.shutdown(init.io);
+    try pool.shutdown(init.io);
     const wall = @as(f64, @floatFromInt(started.durationTo(Io.Clock.awake.now(init.io)).toNanoseconds())) / 1e9;
     const cpu = cpuSeconds() - cpu_before;
     const after = try stub.counts();
