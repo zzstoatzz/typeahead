@@ -88,6 +88,13 @@ pub fn actor_keys(handle: &str, display: &str) -> Result<Vec<String>> {
     }
     serde_json::from_value(output["keys"].clone()).map_err(Error::from)
 }
+/// The index key every document with this handle carries, or `None` for a
+/// handle that normalizes to nothing.
+pub fn exact_handle_key(handle: &str) -> Result<Option<String>> {
+    Ok(actor_keys(handle, "")?
+        .into_iter()
+        .find(|key| key.starts_with("e:")))
+}
 pub fn query(q: &str) -> Result<Value> {
     let output = plan(json!({"op":"query","q":q}))?;
     match output["status"].as_str() {

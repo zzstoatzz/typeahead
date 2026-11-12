@@ -39,9 +39,11 @@ static QUARANTINED_HANDLES: std::sync::LazyLock<Vec<String>> = std::sync::LazyLo
 mod boost;
 mod merge_threads;
 mod rank_merge;
+mod read;
 mod source;
 mod source_page;
 mod warm;
+pub use read::{MAX_ACTORS, StoredActor};
 pub use source::{SourceBatchReceipt, SourceReconcile};
 pub fn epoch() -> u64 {
     SystemTime::now()

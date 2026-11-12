@@ -1,7 +1,7 @@
 use crate::{
     Error,
     actor::Actor,
-    engine::{Engine, SourceReconcile, epoch},
+    engine::{Engine, MAX_ACTORS, SourceReconcile, StoredActor, epoch},
     normalizer,
 };
 use axum::{
@@ -18,7 +18,7 @@ use std::{
     collections::HashMap,
     io::Read,
     net::SocketAddr,
-    sync::Arc,
+    sync::{Arc, Mutex, RwLock},
     time::{Duration, Instant},
 };
 use tokio::sync::Semaphore;
@@ -31,6 +31,10 @@ struct App {
     configured_concurrency: usize,
     machine_id: Option<Arc<String>>,
     instance_id: Option<Arc<String>>,
+    /// The co-located store's last corpus count, as it reported it. Held in
+    /// memory only: the store reports again after a restart of either side.
+    store_corpus: Arc<RwLock<Option<Value>>>,
+    index_corpus: Arc<Mutex<Option<(Instant, Value)>>>,
 }
 fn response(status: StatusCode, value: Value) -> Response {
     let mut response = (status, Json(value)).into_response();
@@ -267,6 +271,118 @@ async fn search_impl(app: App, values: HashMap<String, String>, debug: bool) -> 
         &app,
         result.retrieval_strategy,
     )
+}
+/// Stored actors by DID or handle: `?actor=` up to 25 times.
+async fn actors(State(app): State<App>, Query(pairs): Query<Vec<(String, String)>>) -> Response {
+    let wanted = pairs
+        .into_iter()
+        .filter_map(|(name, value)| (name == "actor").then_some(value))
+        .collect::<Vec<_>>();
+    if wanted.is_empty() || wanted.len() > MAX_ACTORS {
+        return failure(Error::Invalid(format!("1..{MAX_ACTORS} actor parameters required")));
+    }
+    let permit = match app.admission.clone().try_acquire_owned() {
+        Ok(permit) => permit,
+        Err(_) => return failure(Error::Busy),
+    };
+    let engine = app.engine.clone();
+    let job = tokio::task::spawn_blocking(move || {
+        let _permit = permit;
+        engine.actors(&wanted)
+    });
+    let found = match tokio::time::timeout(Duration::from_millis(2500), job).await {
+        Ok(Ok(Ok(found))) => found,
+        Ok(Ok(Err(error))) => return failure(error),
+        Ok(Err(_)) => return failure(Error::Storage("actor read task failed".into())),
+        Err(_) => {
+            return response(
+                StatusCode::SERVICE_UNAVAILABLE,
+                json!({"error":"SearchDeadlineExceeded"}),
+            );
+        }
+    };
+    let g = app.engine.snapshot();
+    with_identity(
+        response(
+            StatusCode::OK,
+            json!({"actors":found.iter().map(StoredActor::row).collect::<Vec<_>>()}),
+        ),
+        &g.metadata.build_id,
+        &g.metadata.format,
+        &app,
+        app.engine.retrieval.name(),
+    )
+}
+/// How long one count of the index is served before it is taken again.
+const INDEX_CORPUS_TTL: Duration = Duration::from_secs(60);
+/// The index's own counts, and the store's last corpus count when it has
+/// reported one.
+async fn corpus(State(app): State<App>) -> Response {
+    let cached = app
+        .index_corpus
+        .lock()
+        .unwrap()
+        .as_ref()
+        .filter(|(taken, _)| taken.elapsed() < INDEX_CORPUS_TTL)
+        .map(|(_, value)| value.clone());
+    let index = match cached {
+        Some(value) => value,
+        None => {
+            let engine = app.engine.clone();
+            match tokio::task::spawn_blocking(move || engine.corpus()).await {
+                Ok(Ok(value)) => {
+                    *app.index_corpus.lock().unwrap() = Some((Instant::now(), value.clone()));
+                    value
+                }
+                Ok(Err(error)) => return failure(error),
+                Err(_) => return failure(Error::Storage("corpus task failed".into())),
+            }
+        }
+    };
+    let store = app.store_corpus.read().unwrap().clone();
+    let g = app.engine.snapshot();
+    with_identity(
+        response(StatusCode::OK, json!({"index":index,"store":store})),
+        &g.metadata.build_id,
+        &g.metadata.format,
+        &app,
+        app.engine.retrieval.name(),
+    )
+}
+#[derive(Deserialize)]
+struct StoreCorpus {
+    live: u64,
+    total: u64,
+    with_handles: u64,
+    with_avatars: u64,
+    hidden: u64,
+    scanned_at: u64,
+}
+async fn store_corpus(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Body(body): Body<StoreCorpus>,
+) -> Response {
+    if !authorized(&app, &headers) {
+        return response(StatusCode::UNAUTHORIZED, json!({"error":"unauthorized"}));
+    }
+    if body.total > body.live
+        || body.with_handles > body.live
+        || body.with_avatars > body.live
+        || body.hidden > body.live
+        || body.scanned_at > epoch().saturating_add(300)
+    {
+        return failure(Error::Invalid("corpus counts are inconsistent".into()));
+    }
+    *app.store_corpus.write().unwrap() = Some(json!({
+        "live": body.live,
+        "total": body.total,
+        "with_handles": body.with_handles,
+        "with_avatars": body.with_avatars,
+        "hidden": body.hidden,
+        "scanned_at": body.scanned_at,
+    }));
+    response(StatusCode::OK, json!({"ok":true}))
 }
 async fn health(State(app): State<App>) -> Response {
     let g = app.engine.snapshot();
@@ -569,6 +685,8 @@ pub async fn serve(
         configured_concurrency: concurrency,
         machine_id: runtime_identity("FLY_MACHINE_ID")?,
         instance_id: runtime_identity("FLY_MACHINE_VERSION")?,
+        store_corpus: Arc::default(),
+        index_corpus: Arc::default(),
     };
     let router = Router::new()
         .route("/search", get(search))
@@ -577,6 +695,8 @@ pub async fn serve(
         .route("/ready", get(ready))
         .route("/index/status", get(status))
         .route("/index-status", get(status))
+        .route("/actors", get(actors))
+        .route("/corpus", get(corpus))
         .route("/xrpc/tech.waow.typeahead.searchActors", get(search))
         .route("/xrpc/app.bsky.actor.searchActorsTypeahead", get(search))
         .fallback(missing)
@@ -594,6 +714,7 @@ pub async fn serve(
                 .route("/admin/source-state", post(source_state))
                 .route("/admin/source-page", post(source_page))
                 .route("/admin/source-reconcile", post(source_reconcile))
+                .route("/admin/corpus", post(store_corpus))
                 .route("/index/status", get(status))
                 .route("/health", get(health))
                 .fallback(missing)
