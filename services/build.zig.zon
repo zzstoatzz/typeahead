@@ -17,7 +17,7 @@
             .hash = "zug-0.2.0-alpha.0-h4vXbRCwAAD8MKVUlLYj7aw48U06VaznoVcikwfv2x42",
         },
         .zkv = .{
-            .url = "https://tangled.org/zzstoatzz.io/zkv/archive/bcb66c8fba133ffc86287bfd98d21601df8f8f6f.tar.gz",
+            .url = "https://tangled.org/zzstoatzz.io/zkv/archive/v0.1.2.tar.gz",
             .hash = "zkv-0.1.2-2lSvYIBZBADjWqr81MvZTS3irVj817PexNielqQQ_0Cq",
         },
         .poolio = .{
