@@ -137,8 +137,13 @@ test-bridge:
     cd services && TANTIVY_TEST_BIN="$ta_bridge_root/typeahead-tantivy" zig build test-bridge --summary all
 
 
+# refuse to deploy a Worker whose control database is still the placeholder:
+# every admin policy write and /request-indexing would fail against it
+control-db-configured:
+    @! grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc || { echo "wrangler.jsonc: CONTROL_DB has the placeholder database_id; see docs/slot-control.md, rollout step 1" >&2; exit 1; }
+
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
-deploy-worker url="https://typeahead.waow.tech": lint
+deploy-worker url="https://typeahead.waow.tech": control-db-configured lint
     bunx tsc --noEmit
     npx wrangler deploy
     @echo "--- waiting for edge propagation before smoke ---"
@@ -161,7 +166,7 @@ deploy-search-transport url="https://typeahead.waow.tech": lint
     just smoke {{url}}
 
 # deploy the worker WITHOUT the post-deploy smoke gate (escape hatch)
-deploy-worker-only: lint
+deploy-worker-only: control-db-configured lint
     npx wrangler deploy
 
 # deploy the ingest service (relay subscribeRepos -> worker admin ingest)

@@ -1,6 +1,11 @@
-export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER">, Partial<Pick<PublicWorkerEnv, "STATS_DB">> {
+export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_DB">, Partial<Pick<PublicWorkerEnv, "STATS_DB">> {
   KV: KVNamespace;
   ADMIN_SECRET: string;
+  /// Bearer secret the store slots present to `/slot/control/*`, and nothing
+  /// else: it reads the control record and can change nothing. Never the
+  /// admin secret; while unset those endpoints answer 503. Set via:
+  ///   bunx wrangler secret put SLOT_CONTROL_SECRET
+  SLOT_CONTROL_SECRET?: string;
   RATE_LIMITER: RateLimit;
   RATE_LIMITER_STRICT: RateLimit;
   TURSO_URL: string;
