@@ -221,6 +221,24 @@ pub fn build(b: *std.Build) void {
     const identity_bench_step = b.step("bench-identity", "Measure the CPU cost of identity resolution against a loopback stand-in");
     identity_bench_step.dependOn(&run_identity_bench.step);
 
+    // Builds its synthetic store under .zig-cache/collector-bench on the
+    // first run; docs/evals/collector-cpu-20261112 has the method.
+    const collector_bench = b.addExecutable(.{
+        .name = "collector-bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/collector_bench.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = role_imports,
+        }),
+    });
+    collector_bench.root_module.addAnonymousImport("identity-quarantine", .{ .root_source_file = quarantine });
+    const run_collector_bench = b.addRunArtifact(collector_bench);
+    run_collector_bench.addPassthruArgs();
+    const collector_bench_step = b.step("bench-collector", "Measure the CPU cost of the store role's relay path on a synthetic stream");
+    collector_bench_step.dependOn(&run_collector_bench.step);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_store_role_tests.step);
     test_step.dependOn(&run_store_role_process_tests.step);
