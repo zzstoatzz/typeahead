@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { controlStore } from "./control-d1-fixture";
+import { GENERATION, controlStore } from "./control-d1-fixture";
 import { CONTROL_QUERIES, backfillSql, domainRow, overrideRow, parseWranglerRows, policyDifferences, type Policy } from "./control-backfill";
 import { policySnapshot, setOverride, unblockDomain } from "./control-store";
 
@@ -43,6 +43,7 @@ test("the backfill carries every rule with its reason and time, under a new revi
   });
   expect(policyDifferences(TURSO, await held())).toEqual([]);
   expect(await policySnapshot(control)).toEqual({
+    generation: GENERATION,
     revision: 3,
     overrides: [{ did: "did:plc:rescued", action: "show" }],
     blocked_domains: ["farm.example", "mixed.example", "spam.example"],

@@ -10,12 +10,20 @@ import type { Env } from "./types";
 export type OverrideAction = "show" | "hide";
 
 export type PolicySnapshot = {
+  /** which control database this is; see migrations/control-d1/0002 */
+  generation: number;
   revision: number;
   overrides: { did: string; action: OverrideAction }[];
   blocked_domains: string[];
 };
 
 export type IndexRequest = { seq: number; did: string };
+
+/** The statement that gives the database a new generation. An operator runs
+ *  it after restoring the database to an earlier time, so that every slot
+ *  drops the positions it took from the later one. */
+export const NEW_GENERATION_SQL =
+  "UPDATE control_meta SET value = abs(random() % 9007199254740991) + 1 WHERE name = 'generation'";
 
 /** A repeat request for one account inside this window adds no row. */
 export const INDEX_REQUEST_REPEAT_SECONDS = 300;
@@ -73,10 +81,27 @@ export async function listBlockedDomains(control: SqlDb): Promise<{ domain: stri
   return results;
 }
 
+const META = "SELECT name, value FROM control_meta WHERE name IN ('generation', 'policy_revision')";
+
+/** Which database this is and the revision its policy stands at. */
+export type ControlMeta = { generation: number; revision: number };
+
+function metaOf(rows: { name: string; value: number }[]): ControlMeta {
+  const generation = rows.find((row) => row.name === "generation");
+  const revision = rows.find((row) => row.name === "policy_revision");
+  if (generation === undefined || revision === undefined) {
+    throw new Error("control database has no generation or policy revision; apply migrations/control-d1");
+  }
+  return { generation: generation.value, revision: revision.value };
+}
+
+export async function controlMeta(control: SqlDb): Promise<ControlMeta> {
+  const { results } = await control.prepare(META).all<{ name: string; value: number }>();
+  return metaOf(results);
+}
+
 export async function policyRevision(control: SqlDb): Promise<number> {
-  const row = await control.prepare("SELECT value FROM control_meta WHERE name = 'policy_revision'").first<{ value: number }>();
-  if (row === null) throw new Error("control database has no policy revision; apply migrations/control-d1");
-  return row.value;
+  return (await controlMeta(control)).revision;
 }
 
 /** The whole policy as of one revision. The three reads are one transaction,
@@ -84,14 +109,12 @@ export async function policyRevision(control: SqlDb): Promise<number> {
  *  notes and stay out of it. */
 export async function policySnapshot(control: SqlDb): Promise<PolicySnapshot> {
   const [meta, overrides, domains] = await control.batch([
-    control.prepare("SELECT value FROM control_meta WHERE name = 'policy_revision'"),
+    control.prepare(META),
     control.prepare("SELECT did, action FROM mod_overrides ORDER BY did"),
     control.prepare("SELECT domain FROM blocked_domains ORDER BY domain"),
   ], "read");
-  const revision = rowsAs<{ value: number }>(meta!.results)[0];
-  if (revision === undefined) throw new Error("control database has no policy revision; apply migrations/control-d1");
   return {
-    revision: revision.value,
+    ...metaOf(rowsAs<{ name: string; value: number }>(meta!.results)),
     overrides: rowsAs<{ did: string; action: OverrideAction }>(overrides!.results).map((row) => ({ did: row.did, action: row.action })),
     blocked_domains: rowsAs<{ domain: string }>(domains!.results).map((row) => row.domain),
   };
@@ -113,6 +136,32 @@ export async function indexRequestsAfter(control: SqlDb, after: number, limit: n
     "SELECT seq, did FROM index_requests WHERE seq > ?1 ORDER BY seq LIMIT ?2",
   ).bind(after, limit + 1).all<IndexRequest>();
   return { requests: results.slice(0, limit).map((row) => ({ seq: row.seq, did: row.did })), more: results.length > limit };
+}
+
+/** A page of the request log for a slot whose position was taken from the
+ *  database of generation `held` (null when it holds none). A position from
+ *  another generation means nothing here, so that slot is served from the
+ *  start of the log: nothing the log still holds is skipped, and what the
+ *  slot has seen before it queues again, which changes nothing it has not
+ *  already done. Starting such a slot from the newest sequence instead would
+ *  lose every request made between the restore and its next poll. */
+export async function indexRequestPage(
+  control: SqlDb, held: number | null, after: number, limit: number,
+): Promise<{ generation: number; requests: IndexRequest[]; more: boolean }> {
+  const [meta, page] = await control.batch([
+    control.prepare(META),
+    control.prepare(
+      `SELECT seq, did FROM index_requests
+       WHERE seq > CASE WHEN (SELECT value FROM control_meta WHERE name = 'generation') = ?3 THEN ?1 ELSE 0 END
+       ORDER BY seq LIMIT ?2`,
+    ).bind(after, limit + 1, held),
+  ], "read");
+  const rows = rowsAs<IndexRequest>(page!.results);
+  return {
+    generation: metaOf(rowsAs<{ name: string; value: number }>(meta!.results)).generation,
+    requests: rows.slice(0, limit).map((row) => ({ seq: row.seq, did: row.did })),
+    more: rows.length > limit,
+  };
 }
 
 export async function pruneIndexRequests(control: SqlDb, now: number): Promise<number> {

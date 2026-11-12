@@ -1,6 +1,6 @@
 import { test, expect, mock } from "bun:test";
 import type { InValue } from "@libsql/client/web";
-import { controlStore } from "./control-d1-fixture";
+import { GENERATION, controlStore } from "./control-d1-fixture";
 import { statsStores } from "./stats-d1-fixture";
 import type { Env } from "./types";
 
@@ -97,9 +97,9 @@ test("the slot control routes answer from D1 alone and are counted under one lab
     const headers = { Authorization: `Bearer ${secret}` };
     const policy = await worker.fetch(new Request("https://typeahead.waow.tech/slot/control/policy", { headers }), env, c);
     expect(policy.status).toBe(200);
-    expect(JSON.parse(await policy.text())).toEqual({ revision: 1, overrides: [], blocked_domains: [] });
+    expect(JSON.parse(await policy.text())).toEqual({ generation: GENERATION, revision: 1, overrides: [], blocked_domains: [] });
     const requests = await worker.fetch(new Request("https://typeahead.waow.tech/slot/control/index-requests?after=0", { headers }), env, c);
-    expect(JSON.parse(await requests.text())).toEqual({ requests: [], more: false });
+    expect(JSON.parse(await requests.text())).toEqual({ generation: GENERATION, requests: [], more: false });
     const posted = await worker.fetch(new Request("https://typeahead.waow.tech/slot/control/policy", { method: "POST", headers }), env, c);
     expect(posted.status).toBe(404);
     await Promise.all(tasks);

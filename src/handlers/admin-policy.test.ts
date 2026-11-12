@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { controlStore, tursoPolicyTables } from "../control-d1-fixture";
+import { GENERATION, controlStore, tursoPolicyTables } from "../control-d1-fixture";
 import { policySnapshot } from "../control-store";
 import { BSKY_MOD_DID } from "../moderation";
 import type { Env } from "../types";
@@ -60,7 +60,7 @@ test("setting an override writes the control record and Turso, and answers as be
   const res = await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide", reason: "spam ring" }), turso, env);
   expect(res.status).toBe(200);
   expect(await body(res)).toEqual({ did: "did:plc:plain", action: "hide", reason: "spam ring", hidden: 1 });
-  expect(await policySnapshot(control)).toEqual({ revision: 2, overrides: [{ did: "did:plc:plain", action: "hide" }], blocked_domains: [] });
+  expect(await policySnapshot(control)).toEqual({ generation: GENERATION, revision: 2, overrides: [{ did: "did:plc:plain", action: "hide" }], blocked_domains: [] });
   expect(await tursoOverrides()).toEqual([{ did: "did:plc:plain", action: "hide", reason: "spam ring" }]);
   expect(await hidden("did:plc:plain")).toBe(1);
 
@@ -90,7 +90,7 @@ test("clearing an override removes it from both and recomputes what remains", as
   const plain = await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:plain"), turso, env);
   expect(await body(plain)).toEqual({ did: "did:plc:plain", hidden: 0 });
   expect(await tursoOverrides()).toEqual([]);
-  expect(await policySnapshot(control)).toEqual({ revision: 5, overrides: [], blocked_domains: [] });
+  expect(await policySnapshot(control)).toEqual({ generation: GENERATION, revision: 5, overrides: [], blocked_domains: [] });
 
   const unknown = await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:unknown"), turso, env);
   expect(await body(unknown)).toEqual({ did: "did:plc:unknown", hidden: 0 });

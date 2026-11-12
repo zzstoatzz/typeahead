@@ -1,6 +1,6 @@
 import { afterAll, expect, test } from "bun:test";
-import { controlStore } from "../control-d1-fixture";
-import { blockDomain, clearOverride, recordIndexRequest, setOverride } from "../control-store";
+import { GENERATION, controlStore } from "../control-d1-fixture";
+import { NEW_GENERATION_SQL, blockDomain, clearOverride, recordIndexRequest, setOverride } from "../control-store";
 import { handleSlotIndexRequests, handleSlotPolicy } from "./slot-control";
 
 const { d1, control, dispose } = await controlStore();
@@ -29,11 +29,12 @@ test("the policy endpoint serves the snapshot with its revision as the ETag", as
   await blockDomain(control, "spam.example", "another note", NOW);
   const res = await handleSlotPolicy(get("/slot/control/policy"), env());
   expect(res.status).toBe(200);
-  expect(res.headers.get("ETag")).toBe('"policy-3"');
+  expect(res.headers.get("ETag")).toBe('"policy-4242-3"');
   expect(res.headers.get("Cache-Control")).toBe("no-store");
   expect(res.headers.get("Access-Control-Allow-Origin")).toBeNull();
   const text = await res.text();
   expect(JSON.parse(text)).toEqual({
+    generation: GENERATION,
     revision: 3,
     overrides: [{ did: "did:plc:hidden", action: "hide" }],
     blocked_domains: ["spam.example"],
@@ -41,31 +42,37 @@ test("the policy endpoint serves the snapshot with its revision as the ETag", as
   expect(text).not.toContain("note");
 });
 
-test("a slot that holds the current revision is answered 304, by after or by ETag", async () => {
-  const byAfter = await handleSlotPolicy(get("/slot/control/policy?after=3"), env());
+test("a slot that holds the current revision of this generation is answered 304, by position or by ETag", async () => {
+  const byAfter = await handleSlotPolicy(get("/slot/control/policy?generation=4242&after=3"), env());
   expect(byAfter.status).toBe(304);
-  expect(byAfter.headers.get("ETag")).toBe('"policy-3"');
+  expect(byAfter.headers.get("ETag")).toBe('"policy-4242-3"');
   expect(await byAfter.text()).toBe("");
 
   const byTag = await handleSlotPolicy(
-    get("/slot/control/policy", { Authorization: `Bearer ${SECRET}`, "If-None-Match": '"policy-3"' }), env());
+    get("/slot/control/policy", { Authorization: `Bearer ${SECRET}`, "If-None-Match": '"policy-4242-3"' }), env());
   expect(byTag.status).toBe(304);
 
-  for (const path of ["/slot/control/policy?after=2", "/slot/control/policy?after=0", "/slot/control/policy?after=9"]) {
+  // an older or later revision, the revision without its generation, and
+  // the same revision of another generation all get the whole policy
+  for (const path of [
+    "/slot/control/policy?generation=4242&after=2", "/slot/control/policy?generation=4242&after=0",
+    "/slot/control/policy?generation=4242&after=9", "/slot/control/policy?after=3",
+    "/slot/control/policy?generation=4241&after=3", "/slot/control/policy?generation=4242",
+  ]) {
     const res = await handleSlotPolicy(get(path), env());
     expect(res.status).toBe(200);
     expect((await body(res)).revision).toBe(3);
   }
   const stale = await handleSlotPolicy(
-    get("/slot/control/policy", { Authorization: `Bearer ${SECRET}`, "If-None-Match": '"policy-2"' }), env());
+    get("/slot/control/policy", { Authorization: `Bearer ${SECRET}`, "If-None-Match": '"policy-4242-2"' }), env());
   expect(stale.status).toBe(200);
 });
 
 test("a removal reaches the next snapshot under a new revision", async () => {
   await clearOverride(control, "did:plc:hidden");
-  const res = await handleSlotPolicy(get("/slot/control/policy?after=3"), env());
+  const res = await handleSlotPolicy(get("/slot/control/policy?generation=4242&after=3"), env());
   expect(res.status).toBe(200);
-  expect(await body(res)).toEqual({ revision: 4, overrides: [], blocked_domains: ["spam.example"] });
+  expect(await body(res)).toEqual({ generation: GENERATION, revision: 4, overrides: [], blocked_domains: ["spam.example"] });
 });
 
 test("index requests page by sequence under a bounded limit", async () => {
@@ -73,15 +80,19 @@ test("index requests page by sequence under a bounded limit", async () => {
   const first = await handleSlotIndexRequests(get("/slot/control/index-requests?after=0&limit=2"), env());
   expect(first.status).toBe(200);
   expect(first.headers.get("Cache-Control")).toBe("no-store");
-  expect(await body(first)).toEqual({ requests: [{ seq: 1, did: "did:plc:a" }, { seq: 2, did: "did:plc:b" }], more: true });
-  const rest = await handleSlotIndexRequests(get("/slot/control/index-requests?after=2"), env());
-  expect(await body(rest)).toEqual({ requests: [{ seq: 3, did: "did:plc:c" }], more: false });
+  expect(await body(first)).toEqual({ generation: GENERATION, requests: [{ seq: 1, did: "did:plc:a" }, { seq: 2, did: "did:plc:b" }], more: true });
+  const rest = await handleSlotIndexRequests(get("/slot/control/index-requests?generation=4242&after=2"), env());
+  expect(await body(rest)).toEqual({ generation: GENERATION, requests: [{ seq: 3, did: "did:plc:c" }], more: false });
+  // a position without its generation, or from another one, starts at the top
+  for (const path of ["/slot/control/index-requests?after=2", "/slot/control/index-requests?generation=7&after=2", "/slot/control/index-requests?generation=7&after=900"]) {
+    expect((await body(await handleSlotIndexRequests(get(path), env()))).requests.map((r: { seq: number }) => r.seq)).toEqual([1, 2, 3]);
+  }
   const all = await handleSlotIndexRequests(get("/slot/control/index-requests"), env());
   expect((await body(all)).requests).toHaveLength(3);
 });
 
 test("positions and limits that are not plain numbers are refused", async () => {
-  for (const path of ["?after=-1", "?after=1.5", "?after=abc", "?after=", "?after=1e3", "?after=9999999999999999"]) {
+  for (const path of ["?after=-1", "?after=1.5", "?after=abc", "?after=", "?after=1e3", "?after=9999999999999999", "?generation=x&after=1", "?generation=-4&after=1"]) {
     expect((await handleSlotPolicy(get(`/slot/control/policy${path}`), env())).status).toBe(400);
     expect((await handleSlotIndexRequests(get(`/slot/control/index-requests${path}`), env())).status).toBe(400);
   }
@@ -128,5 +139,38 @@ test("without a usable secret the endpoints are off, even to the admin secret", 
       const requests = await handleSlotIndexRequests(get("/slot/control/index-requests", { Authorization: `Bearer ${offered}` }), env({ secret }));
       expect(requests.status).toBe(503);
     }
+  }
+});
+
+test("a revision that climbs back to the one a slot holds is not answered 304 once the generation is new", async () => {
+  const store = await controlStore();
+  const restored = { ...env(), CONTROL_DB: store.d1 };
+  const poll = (generation: number, after: number) =>
+    handleSlotPolicy(get(`/slot/control/policy?generation=${generation}&after=${after}`), restored);
+  try {
+    await blockDomain(store.control, "spam.example", "", 1);
+    expect((await poll(GENERATION, 2)).status).toBe(304);
+    // restored to revision 1 with an empty policy, then one unrelated write:
+    // revision 2 again, over a different policy
+    await store.d1.batch([
+      store.d1.prepare("DELETE FROM blocked_domains"),
+      store.d1.prepare("UPDATE control_meta SET value = 1 WHERE name = 'policy_revision'"),
+    ]);
+    await setOverride(store.control, "did:plc:x", "hide", "", 2);
+    expect((await poll(GENERATION, 2)).status).toBe(304);
+
+    await store.d1.prepare(NEW_GENERATION_SQL).run();
+    const res = await poll(GENERATION, 2);
+    expect(res.status).toBe(200);
+    const served = await body(res);
+    expect(served.generation).not.toBe(GENERATION);
+    expect(served).toMatchObject({ revision: 2, overrides: [{ did: "did:plc:x", action: "hide" }], blocked_domains: [] });
+    expect(res.headers.get("ETag")).toBe(`"policy-${served.generation}-2"`);
+    expect((await poll(served.generation, 2)).status).toBe(304);
+    // the old ETag does not match either
+    const byTag = await handleSlotPolicy(get("/slot/control/policy", { Authorization: `Bearer ${SECRET}`, "If-None-Match": '"policy-4242-2"' }), restored);
+    expect(byTag.status).toBe(200);
+  } finally {
+    await store.dispose();
   }
 });

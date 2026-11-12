@@ -1,4 +1,4 @@
-import { INDEX_REQUEST_PAGE_MAX, controlDb, indexRequestsAfter, policyRevision, policySnapshot } from "../control-store";
+import { INDEX_REQUEST_PAGE_MAX, controlDb, controlMeta, indexRequestPage, policySnapshot, type ControlMeta } from "../control-store";
 import type { Env } from "../types";
 import { clientIP } from "../utils";
 
@@ -56,34 +56,42 @@ async function refuse(request: Request, env: SlotEnv): Promise<Response | null> 
 function position(url: URL, name: string): number | null {
   const text = url.searchParams.get(name);
   if (text === null) return null;
-  return /^\d{1,15}$/.test(text) ? Number(text) : Number.NaN;
+  return /^\d{1,16}$/.test(text) && Number.isSafeInteger(Number(text)) ? Number(text) : Number.NaN;
 }
 
-const policyTag = (revision: number) => `"policy-${revision}"`;
+const policyTag = (meta: ControlMeta) => `"policy-${meta.generation}-${meta.revision}"`;
 
-/** `GET /slot/control/policy[?after=<revision>]`: the whole current policy
- *  and its revision, or 304 when the caller already holds that revision
- *  (`after`, or `If-None-Match` with the ETag of an earlier answer). */
+/** `GET /slot/control/policy[?generation=<g>&after=<revision>]`: the whole
+ *  current policy with its generation and revision, or 304 when the caller
+ *  already holds that revision of this generation (both parameters, or
+ *  `If-None-Match` with the ETag of an earlier answer). A revision without
+ *  the generation it belongs to is never answered 304: the same number in
+ *  a restored or recreated database names another policy. */
 export async function handleSlotPolicy(request: Request, env: SlotEnv): Promise<Response> {
   const refused = await refuse(request, env);
   if (refused) return refused;
-  const after = position(new URL(request.url), "after");
+  const url = new URL(request.url);
+  const after = position(url, "after");
   if (Number.isNaN(after)) return answer({ error: "after must be a revision" }, 400);
+  const generation = position(url, "generation");
+  if (Number.isNaN(generation)) return answer({ error: "generation must be a number" }, 400);
 
   const control = controlDb(env);
   const held = request.headers.get("If-None-Match");
-  if (after !== null || held !== null) {
-    const revision = await policyRevision(control);
-    if (after === revision || held === policyTag(revision)) {
-      return new Response(null, { status: 304, headers: { ...NO_STORE, ETag: policyTag(revision) } });
+  if ((after !== null && generation !== null) || held !== null) {
+    const meta = await controlMeta(control);
+    if ((after === meta.revision && generation === meta.generation) || held === policyTag(meta)) {
+      return new Response(null, { status: 304, headers: { ...NO_STORE, ETag: policyTag(meta) } });
     }
   }
   const snapshot = await policySnapshot(control);
-  return answer(snapshot, 200, { ETag: policyTag(snapshot.revision) });
+  return answer(snapshot, 200, { ETag: policyTag(snapshot) });
 }
 
-/** `GET /slot/control/index-requests?after=<seq>[&limit=<n>]`: requests with
- *  a sequence above `after`, oldest first. */
+/** `GET /slot/control/index-requests?after=<seq>[&generation=<g>][&limit=<n>]`:
+ *  requests with a sequence above `after`, oldest first, with the generation
+ *  they belong to. `after` counts only when `generation` is this database's;
+ *  otherwise the page starts at the beginning of the log. */
 export async function handleSlotIndexRequests(request: Request, env: SlotEnv): Promise<Response> {
   const refused = await refuse(request, env);
   if (refused) return refused;
@@ -94,5 +102,7 @@ export async function handleSlotIndexRequests(request: Request, env: SlotEnv): P
   if (Number.isNaN(limit) || limit < 1 || limit > INDEX_REQUEST_PAGE_MAX) {
     return answer({ error: `limit must be 1 to ${INDEX_REQUEST_PAGE_MAX}` }, 400);
   }
-  return answer(await indexRequestsAfter(controlDb(env), after, limit), 200);
+  const generation = position(url, "generation");
+  if (Number.isNaN(generation)) return answer({ error: "generation must be a number" }, 400);
+  return answer(await indexRequestPage(controlDb(env), generation, after, limit), 200);
 }
