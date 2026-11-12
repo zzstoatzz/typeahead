@@ -187,11 +187,22 @@ fn resultJson(job: *const Job, observed_at: i64, outcome: Outcome) ResultJson {
     };
 }
 
+/// Where resolution goes. The roles leave every field null; the benchmark and
+/// the tests point them at a loopback stand-in.
+pub const Upstreams = struct {
+    plc_url: ?[]const u8 = null,
+    doh_endpoint: ?[]const u8 = null,
+    /// Absolute path of a PEM file whose certificates are trusted in addition
+    /// to the system's.
+    extra_trust_path: ?[]const u8 = null,
+};
+
 pub const Resolver = struct {
     allocator: Allocator,
     io: Io,
     worker_url: []const u8,
     worker_secret: []const u8,
+    upstreams: Upstreams = .{},
 
     pub fn init(
         allocator: Allocator,
@@ -264,6 +275,9 @@ pub const Resolver = struct {
 
         var did_resolver = zat.DidResolver.initWithOptions(self.io, arena, .{ .keep_alive = false });
         defer did_resolver.deinit();
+        if (self.upstreams.plc_url) |url| did_resolver.plc_url = url;
+        if (self.upstreams.doh_endpoint) |url| did_resolver.doh_endpoint = url;
+        try self.trust(&did_resolver.transport);
         var doc = try did_resolver.resolve(did);
         defer doc.deinit();
 
@@ -275,12 +289,25 @@ pub const Resolver = struct {
         var handle_resolver = zat.HandleResolver.init(self.io, arena);
         handle_resolver.transport.keep_alive = false;
         defer handle_resolver.deinit();
+        if (self.upstreams.doh_endpoint) |url| handle_resolver.doh_endpoint = url;
+        try self.trust(&handle_resolver.transport);
         const resolved = handle_resolver.resolve(claimed) catch |err| {
             log.debug("verify {s} -> {s}: {s}", .{ out.handle.?, did_slice, @errorName(err) });
             return out;
         };
         out.verified = mem.eql(u8, resolved, did_slice);
         return out;
+    }
+
+    /// Load the system's trust anchors plus the extra ones, as the transport
+    /// would load the system's alone on its first TLS connection.
+    fn trust(self: *Resolver, transport: *HttpTransport) !void {
+        const path = self.upstreams.extra_trust_path orelse return;
+        const client = &transport.http_client;
+        const now = Io.Clock.real.now(self.io);
+        try client.ca_bundle.rescan(client.allocator, self.io, now);
+        try client.ca_bundle.addCertsFromFilePathAbsolute(client.allocator, self.io, now, path);
+        client.now = now;
     }
 
     fn post(self: *Resolver, transport: *HttpTransport, path: []const u8, payload: []const u8) ![]u8 {
