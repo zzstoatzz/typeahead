@@ -55,6 +55,11 @@ pub const Config = struct {
     /// Seconds between automatic resync rounds; 0 leaves resyncs to
     /// bootstrap, detected divergence and `requestResync`.
     resync_interval_s: u64 = 0,
+    /// Unix seconds. A round is owed while the last completed one started
+    /// before this, and it begins once the clock has reached it: one full
+    /// rewrite, asked for when what a document holds has changed, that a
+    /// restart neither repeats nor loses. 0 asks for none.
+    resync_after: u64 = 0,
     /// Take over an index whose cursor another controller wrote. The first
     /// resync round then decides what the index holds.
     adopt_foreign_cursor: bool = false,
@@ -528,7 +533,9 @@ fn resyncPage(self: *Bridge) !bool {
         const r = known.cursor.reconciliation;
         const interval = self.config.resync_interval_s;
         const scheduled = interval > 0 and r.last_completed_at != null and clock >= r.last_completed_at.? +| interval;
-        if (!self.resync_requested.swap(false, .acq_rel) and !scheduled) return false;
+        const after = self.config.resync_after;
+        const owed = after > 0 and clock >= after and (r.last_completed_started_at orelse 0) < after;
+        if (!self.resync_requested.swap(false, .acq_rel) and !scheduled and !owed) return false;
         known.cursor.reconciliation.round = r.round + 1;
         known.cursor.reconciliation.phase = .source;
         known.cursor.reconciliation.round_started_at = clock;

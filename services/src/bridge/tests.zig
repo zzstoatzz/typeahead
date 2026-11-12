@@ -700,6 +700,35 @@ test "a scheduled resync starts once the interval has passed" {
     try testing.expectEqual(@as(u64, 2), rig.cursor().reconciliation.round);
 }
 
+test "a round owed since a given time runs once, whatever restarts in between" {
+    var rig: Rig = undefined;
+    rig.init();
+    defer rig.deinit();
+    try rig.seed(3);
+    var options = rig.config();
+    options.resync_after = rig.clock.seconds + 500;
+    {
+        var bridge = rig.bridge(options);
+        defer bridge.deinit();
+        try settle(&bridge);
+        try testing.expectEqual(@as(u64, 1), rig.cursor().reconciliation.round);
+        rig.clock.seconds += 499;
+        try settle(&bridge);
+        try testing.expectEqual(@as(u64, 1), rig.cursor().reconciliation.round);
+
+        rig.clock.seconds += 1;
+        try settle(&bridge);
+        try testing.expectEqual(@as(u64, 2), rig.cursor().reconciliation.round);
+        try testing.expectEqual(options.resync_after, rig.cursor().reconciliation.last_completed_started_at.?);
+    }
+    rig.clock.seconds += 86_400;
+    var restarted = rig.bridge(options);
+    defer restarted.deinit();
+    try settle(&restarted);
+    try testing.expectEqual(@as(u64, 2), rig.cursor().reconciliation.round);
+    try rig.expectConverged();
+}
+
 test "the profile-card fields reach the index, and a record without them is the document it was" {
     var rig: Rig = undefined;
     rig.init();

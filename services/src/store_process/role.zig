@@ -482,7 +482,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
             .base_url = index.admin_url,
             .authorization = std.fmt.bufPrint(&authorization_buf, "Bearer {s}", .{index.admin_secret}) catch return error.IndexSecretTooLong,
         };
-        bridge = bridge_mod.Bridge.init(allocator, io, .{ .source_id = index.source_id, .adopt_foreign_cursor = index.adopt_cursor, .poll_interval_ms = index.push_interval_ms }, bridge_source.interface(), bridge_endpoint.transport());
+        bridge = bridge_mod.Bridge.init(allocator, io, .{ .source_id = index.source_id, .adopt_foreign_cursor = index.adopt_cursor, .poll_interval_ms = index.push_interval_ms, .resync_after = index.resync_after }, bridge_source.interface(), bridge_endpoint.transport());
         self.bridge = &bridge;
     }
     defer if (config.index != null) {

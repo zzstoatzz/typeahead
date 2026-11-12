@@ -15,6 +15,7 @@
 //! | `INDEX_SOURCE_ID`        | no       | names this store to the index; default `$FLY_APP_NAME-store`, change it when the store is rebuilt |
 //! | `INDEX_ADOPT_CURSOR`     | no       | `1` takes over an index whose cursor something else wrote (a bundle's), by a full resync |
 //! | `INDEX_PUSH_INTERVAL_MS` | no       | rest between pushes to the index while the bridge keeps up, 100 to 30000, default 1000; each push is an index commit, and a change waits at most this long to be read |
+//! | `INDEX_RESYNC_AFTER`     | no       | Unix seconds. The bridge rewrites every document in the index once, in a full resync round, unless the last completed round started at or after this time. Set it when an image changes what a document holds; a restart neither repeats the round nor loses it |
 //! | `ENRICH`                 | no       | `0` turns profile enrichment off; it is on unless `STORE_OFFLINE` |
 //! | `ENRICH_REQUESTS_PER_SECOND` | no   | ceiling on enrichment requests from this process, default 0.5  |
 //! | `ENRICH_JITTER`          | no       | each gap between requests is stretched by up to this fraction, default 0.2 |
@@ -137,12 +138,14 @@ pub const Index = struct {
     /// `bridge.Config.poll_interval_ms`. The ceiling is the bridge's
     /// heartbeat: the index stops serving at 120 s without a watermark.
     push_interval_ms: u64 = 1000,
+    /// `bridge.Config.resync_after`.
+    resync_after: u64 = 0,
 };
 
 pub const default_admin_url = "http://127.0.0.1:8081";
 var source_id_buf: [128]u8 = undefined;
 
-pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IndexNotLoopback, InvalidIndexPushInterval, InvalidEnrichment, InvalidCorpusScan };
+pub const Error = error{ StoreDirRequired, InvalidBootstrapCursor, EmptyReadSecret, IndexNotLoopback, InvalidIndexPushInterval, InvalidIndexResyncAfter, InvalidEnrichment, InvalidCorpusScan };
 
 /// The bridge sends the admin secret, so the index must be on this machine.
 pub fn loopback(url: []const u8) bool {
@@ -179,6 +182,9 @@ pub fn load(getenv: Getenv) Error!Config {
             const interval = std.fmt.parseInt(u64, text, 10) catch return error.InvalidIndexPushInterval;
             if (interval < 100 or interval > 30_000) return error.InvalidIndexPushInterval;
             config.index.?.push_interval_ms = interval;
+        }
+        if (getenv("INDEX_RESYNC_AFTER")) |text| {
+            config.index.?.resync_after = std.fmt.parseInt(u64, text, 10) catch return error.InvalidIndexResyncAfter;
         }
     };
     const enrich_off = if (getenv("ENRICH")) |text| std.mem.eql(u8, text, "0") else false;
@@ -331,6 +337,9 @@ test "the index bridge runs when the admin secret is set, against a loopback ind
     try testing.expectEqual(@as(u64, 1000), index.push_interval_ms);
     const paced = [2][]const u8{ "ADMIN_SECRET", "s" };
     try testing.expectEqual(@as(u64, 5000), (try load(fakeEnv(&.{ base, paced, .{ "INDEX_PUSH_INTERVAL_MS", "5000" } }))).index.?.push_interval_ms);
+    try testing.expectEqual(@as(u64, 0), index.resync_after);
+    try testing.expectEqual(@as(u64, 1_794_500_000), (try load(fakeEnv(&.{ base, paced, .{ "INDEX_RESYNC_AFTER", "1794500000" } }))).index.?.resync_after);
+    try testing.expectError(error.InvalidIndexResyncAfter, load(fakeEnv(&.{ base, paced, .{ "INDEX_RESYNC_AFTER", "tomorrow" } })));
     inline for ([_][]const u8{ "99", "30001", "5s", "" }) |text| {
         try testing.expectError(error.InvalidIndexPushInterval, load(fakeEnv(&.{ base, paced, .{ "INDEX_PUSH_INTERVAL_MS", text } })));
     }
