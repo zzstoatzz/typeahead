@@ -10,15 +10,10 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   RATE_LIMITER_STRICT: RateLimit;
   TURSO_URL: string;
   TURSO_AUTH_TOKEN: string;
-  /// "1" writes every request and traffic statistic to the STATS_DB D1
-  /// database as well as to Turso (docs/plans/stats-off-turso.md, step 2).
-  /// Any other value, or no STATS_DB binding, leaves Turso the only store.
-  STATS_DUAL_WRITE?: string;
-  /// "d1" answers every statistics read from STATS_DB: the cron's KV
-  /// materialization, rollup and profile, the /stats tail and source list,
-  /// and /source-icon (docs/plans/stats-off-turso.md, step 6). Any other
-  /// value reads Turso. Corpus counts stay on Turso either way.
-  STATS_READ_SOURCE?: string;
+  /// Where statistics are written and read: "turso-only", "read-turso" (both
+  /// stores written, Turso read) or "read-d1" (both written, D1 read). See
+  /// statsMode in src/stats-store.ts and docs/plans/stats-off-turso.md.
+  STATS_MODE?: string;
   SEARCH_BACKEND_URL?: string;
   SEARCH_TRANSPORT?: Fetcher;
   SEARCH_CACHE_GENERATION?: string;

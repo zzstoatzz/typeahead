@@ -54,7 +54,7 @@ It is a database of its own rather than more tables in `typeahead-stats`:
   the request sequences back (see [a restored or recreated
   database](#a-restored-or-recreated-database)). Restoring statistics must not
   be able to do that to policy.
-- The statistics database is an optional mirror behind `STATS_DUAL_WRITE`; this
+- The statistics database is optional behind `STATS_MODE`; this
   one is a source of truth the admin endpoints and `/request-indexing` cannot
   answer without.
 

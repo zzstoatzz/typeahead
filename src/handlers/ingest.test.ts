@@ -89,7 +89,7 @@ test("with dual write on, the new-actor count also lands in D1", async () => {
   try {
     const { db } = mockDb(new Set(["did:plc:bareNew", "did:plc:handleNew"]));
     const { ctx, promises } = fakeCtx();
-    const env = fakeEnv({ ADMIN_SECRET: "s3cret", STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" });
+    const env = fakeEnv({ ADMIN_SECRET: "s3cret", STATS_DB: stores.d1, STATS_MODE: "read-turso" });
     const events = [{ did: "did:plc:bareNew" }, { did: "did:plc:handleNew", handle: "new.bsky.social" }, { did: "did:plc:old" }];
 
     const res = await handleIngest(mockReq(events), db, env, ctx);

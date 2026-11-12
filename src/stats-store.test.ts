@@ -48,7 +48,7 @@ const failing: SqlDb = {
 const rowCount = (rows: Awaited<ReturnType<typeof statsRows>>, table: string) => rows.find((entry) => entry.table === table)?.rows.length;
 
 test("every writer leaves the same rows in both stores, after the response and inline", async () => {
-  const env = { STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" };
+  const env = { STATS_DB: stores.d1, STATS_MODE: "read-turso" };
   for (const [, write] of WRITERS) {
     for (let i = 0; i < 2; i++) {
       const { ctx, tasks } = collectingCtx();
@@ -71,7 +71,7 @@ test("every writer leaves the same rows in both stores, after the response and i
 test("both stores file a write under the bucket of one shared clock reading", async () => {
   const seen: number[] = [];
   const { ctx, tasks } = collectingCtx();
-  recordStats(ctx, { STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" }, stores.turso, async (_store, now) => { seen.push(now); });
+  recordStats(ctx, { STATS_DB: stores.d1, STATS_MODE: "read-turso" }, stores.turso, async (_store, now) => { seen.push(now); });
   await Promise.all(tasks);
   expect(seen).toHaveLength(2);
   expect(seen[0]).toBe(seen[1]);
@@ -80,7 +80,7 @@ test("both stores file a write under the bucket of one shared clock reading", as
 test("a failing D1 write does not stop the Turso write or reject the response's tasks", async () => {
   await stores.d1.prepare("DROP TABLE request_buckets").run();
   const { ctx, tasks } = collectingCtx();
-  recordStats(ctx, { STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" }, stores.turso, WRITERS[0]![1]);
+  recordStats(ctx, { STATS_DB: stores.d1, STATS_MODE: "read-turso" }, stores.turso, WRITERS[0]![1]);
   expect(await Promise.all(tasks)).toEqual([undefined, undefined]);
   expect(rowCount(await statsRows(stores.turso), "request_buckets")).toBe(1);
   expect(logged.map((line) => JSON.parse(line))).toMatchObject([{ event: "stats_write_failed", store: "d1" }]);
@@ -89,7 +89,7 @@ test("a failing D1 write does not stop the Turso write or reject the response's 
 test("a failing Turso write does not stop the D1 write or reject the response's tasks", async () => {
   for (const turso of [() => failing, () => Promise.reject<SqlDb>(new Error("no client"))]) {
     const { ctx, tasks } = collectingCtx();
-    recordStats(ctx, { STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" }, turso(), WRITERS[0]![1]);
+    recordStats(ctx, { STATS_DB: stores.d1, STATS_MODE: "read-turso" }, turso(), WRITERS[0]![1]);
     expect(await Promise.all(tasks)).toEqual([undefined, undefined]);
   }
   expect((await statsRows(stores.mirror)).find((entry) => entry.table === "request_buckets")?.rows).toMatchObject([{ hits: 2 }]);
@@ -100,7 +100,7 @@ test("a failing Turso write does not stop the D1 write or reject the response's 
 });
 
 test("inline, a Turso failure reaches the caller after D1 is written; a D1 failure never does", async () => {
-  const env = { STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" };
+  const env = { STATS_DB: stores.d1, STATS_MODE: "read-turso" };
   await expect(writeStats(env, failing, WRITERS[2]![1])).rejects.toThrow("turso is down");
   expect(rowCount(await statsRows(stores.mirror), "metrics")).toBe(1);
 
@@ -111,8 +111,8 @@ test("inline, a Turso failure reaches the caller after D1 is written; a D1 failu
 });
 
 test("with the switch off no D1 statement is issued", async () => {
-  for (const STATS_DUAL_WRITE of ["0", "", undefined]) {
-    const env = { STATS_DB: stores.d1, STATS_DUAL_WRITE };
+  for (const STATS_MODE of ["turso-only", "", "1", undefined]) {
+    const env = { STATS_DB: stores.d1, STATS_MODE };
     expect(statsMirror(env)).toBeNull();
     for (const [, write] of WRITERS) {
       const { ctx, tasks } = collectingCtx();
@@ -128,7 +128,7 @@ test("with the switch off no D1 statement is issued", async () => {
 });
 
 test("without the binding the D1 path is a no-op", async () => {
-  const env = { STATS_DUAL_WRITE: "1" };
+  const env = { STATS_MODE: "read-turso" };
   expect(statsMirror(env)).toBeNull();
   for (const [, write] of WRITERS) {
     const { ctx, tasks } = collectingCtx();
@@ -147,7 +147,7 @@ test("the hourly snapshot counts actors in Turso and writes the row to both stor
     INSERT INTO actors (did, handle, avatar_url, hidden) VALUES ('did:plc:a', 'a.test', 'cid', 0), ('did:plc:b', '', '', 0), ('did:plc:c', 'c.test', '', 1);
     UPDATE counters SET value = 3 WHERE name = 'actors_total';
   `);
-  await recordSnapshot(stores.turso, { STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" });
+  await recordSnapshot(stores.turso, { STATS_DB: stores.d1, STATS_MODE: "read-turso" });
   const snapshots = (await statsRows(stores.turso)).find((entry) => entry.table === "snapshots")?.rows;
   expect(snapshots).toMatchObject([{ total: 2, with_handles: 2, with_avatars: 1, hidden: 1 }]);
   expect((await statsRows(stores.mirror)).find((entry) => entry.table === "snapshots")?.rows).toEqual(snapshots);

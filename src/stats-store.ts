@@ -1,36 +1,43 @@
 import { d1Db, type SqlDb } from "./db";
 import type { Env } from "./types";
 
-export type StatsEnv = Pick<Env, "STATS_DB" | "STATS_DUAL_WRITE" | "STATS_READ_SOURCE">;
+export type StatsEnv = Pick<Env, "STATS_DB" | "STATS_MODE">;
 
 /** one statistics write, issued unchanged against whichever store it is handed */
 export type StatsWrite = (store: SqlDb, now: number) => Promise<void>;
 
-/** Which store answers statistics reads. `d1` needs the binding; without it
- *  the reads stay on Turso and the misconfiguration is logged. */
-export function statsReadSource(env: StatsEnv): "turso" | "d1" {
-  if (env.STATS_READ_SOURCE !== "d1") return "turso";
-  if (env.STATS_DB) return "d1";
-  console.log(JSON.stringify({ event: "stats_read_source_unavailable", wanted: "d1", using: "turso" }));
-  return "turso";
+/** Where statistics are written and read, from the one setting STATS_MODE:
+ *
+ *    turso-only   Turso is written and read; D1 is not touched
+ *    read-turso   both are written, Turso is read
+ *    read-d1      both are written, D1 is read
+ *
+ *  A store that is read is always written, so there is no setting that
+ *  serves a stale one. A missing or unknown value is turso-only. */
+export type StatsMode = "turso-only" | "read-turso" | "read-d1";
+
+export function statsMode(env: StatsEnv): StatsMode {
+  return env.STATS_MODE === "read-turso" || env.STATS_MODE === "read-d1" ? env.STATS_MODE : "turso-only";
 }
 
 /** The store every statistics read goes to: the cron's KV materialization,
  *  rollup and profile, the /stats tail and source list, and the /source-icon
  *  known-source check. Reads of the actor corpus (the hourly snapshot's
  *  counts, the exclusion counts) are not statistics reads and keep the Turso
- *  handle they are given. */
+ *  handle they are given.
+ *
+ *  read-d1 without the binding throws: a page of Turso's numbers under a
+ *  setting that says D1 would look right and be wrong, and a failed /stats
+ *  stops the deploy at its smoke test. */
 export function statsReadDb(env: StatsEnv, turso: SqlDb): SqlDb {
-  return statsReadSource(env) === "d1" && env.STATS_DB ? d1Db(env.STATS_DB) : turso;
+  if (statsMode(env) !== "read-d1") return turso;
+  if (!env.STATS_DB) throw new Error("STATS_MODE is read-d1 but this Worker has no STATS_DB binding");
+  return d1Db(env.STATS_DB);
 }
 
-/** The D1 copy of the statistics tables, or null when this Worker has no
- *  binding or nothing asks for it. Reading from D1 implies writing to it,
- *  whatever STATS_DUAL_WRITE says: a store that is read must not go stale. */
+/** the D1 copy of the statistics tables, when this mode writes it */
 export function statsMirror(env: StatsEnv): SqlDb | null {
-  if (!env.STATS_DB) return null;
-  if (env.STATS_DUAL_WRITE !== "1" && env.STATS_READ_SOURCE !== "d1") return null;
-  return d1Db(env.STATS_DB);
+  return statsMode(env) !== "turso-only" && env.STATS_DB ? d1Db(env.STATS_DB) : null;
 }
 
 async function settle(store: "turso" | "d1", write: () => Promise<void>): Promise<void> {

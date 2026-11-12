@@ -1,4 +1,4 @@
-import { test, expect, mock } from "bun:test";
+import { test, expect, mock, spyOn } from "bun:test";
 import type { InValue } from "@libsql/client/web";
 import { GENERATION, controlStore } from "./control-d1-fixture";
 import type { SqlDb } from "./db";
@@ -80,7 +80,7 @@ test("with dual write on, the same answer is also counted in D1", async () => {
   const stores = await statsStores();
   try {
     const { ctx: c, tasks } = ctx();
-    const env = fakeEnv({ ...ENV, STATS_DB: stores.d1, STATS_DUAL_WRITE: "1" });
+    const env = fakeEnv({ ...ENV, STATS_DB: stores.d1, STATS_MODE: "read-turso" });
     const res = await worker.fetch(new Request("https://typeahead.waow.tech/nope", { headers: { "X-Client": "plyr.fm" } }), env, c);
     expect(res.status).toBe(404);
     expect(tasks).toHaveLength(2);
@@ -176,7 +176,7 @@ test("an unreachable engine returns unavailable without touching Turso", async (
 // The read switch (docs/plans/stats-off-turso.md, step 6). The libsql client
 // above answers every query with no rows, so a statistic that is only in the
 // D1 fixture can come back only if the route read D1.
-test("STATS_READ_SOURCE=d1 hands /stats, /source-icon and the cron's materialization the D1 store", async () => {
+test("STATS_MODE=read-d1 hands /stats, /source-icon and the cron's materialization the D1 store", async () => {
   const stores = await statsStores();
   const realFetch = globalThis.fetch;
   const realCaches = cacheHost.caches;
@@ -213,9 +213,8 @@ test("STATS_READ_SOURCE=d1 hands /stats, /source-icon and the cron's materializa
       return JSON.parse(kv.get("stats_data") ?? "null")?.traffic_series_5m;
     };
 
-    const base = { ...ENV, STATS_DB: stores.d1, STATS_DUAL_WRITE: "1", KV };
-    const turso = fakeEnv({ ...base, STATS_READ_SOURCE: "turso" });
-    const d1 = fakeEnv({ ...base, STATS_READ_SOURCE: "d1" });
+    const turso = fakeEnv({ ...ENV, STATS_DB: stores.d1, STATS_MODE: "read-turso", KV });
+    const d1 = fakeEnv({ ...turso, STATS_MODE: "read-d1" });
 
     expect(await known(turso)).toEqual({ fetched: [], turso: 1 });
     expect(await known(d1)).toEqual({ fetched: ["https://only-in-d1.example/favicon.ico"], turso: 0 });
@@ -228,4 +227,27 @@ test("STATS_READ_SOURCE=d1 hands /stats, /source-icon and the cron's materializa
     cacheHost.caches = realCaches;
     await stores.dispose();
   }
+});
+
+test("read-d1 without the binding fails /stats and the two statistics cron steps, and the cron still finishes", async () => {
+  const kv = new Map<string, string>();
+  const KV = { get: async (key: string) => kv.get(key) ?? null, put: async (key: string, value: string) => { kv.set(key, value); } };
+  const env = fakeEnv({ ...ENV, STATS_MODE: "read-d1", KV });
+  const { ctx: c, tasks } = ctx();
+  await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), env, c)).rejects.toThrow("STATS_MODE is read-d1 but this Worker has no STATS_DB binding");
+  await Promise.all(tasks);
+
+  const lines: string[] = [];
+  const log = spyOn(console, "log").mockImplementation((line: string) => { lines.push(line); });
+  try {
+    await worker.scheduled(scheduledEvent, env, ctx().ctx);
+  } finally {
+    log.mockRestore();
+  }
+  const events = lines.map((line) => JSON.parse(line));
+  expect(events.filter((event) => event.event === "cron_step_failed" && /STATS_MODE is read-d1/.test(event.error)).map((event) => event.step))
+    .toEqual(["materializeStats", "recordProfile"]);
+  expect(Object.keys(events.find((event) => event.event === "cron_done").phases)).toEqual(
+    ["freshness", "recordSnapshot", "recordExclusions", "materializeStats", "recordProfile", "refreshModeration", "controlHealth", "pruneIndexRequests"]);
+  expect(kv.has("stats_data")).toBe(false);
 });

@@ -38,7 +38,6 @@ export const CRON_BUDGET_MS = 12 * 60 * 1000;
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
     const db = await getDb(env);
-    const statsDb = statsReadDb(env, db);
     // Record the ATTEMPT before any work. Without this a missing snapshot row is
     // ambiguous: it could mean the cron never fired (Cloudflare schedules are
     // best-effort) or that recordSnapshot itself failed. Those need different
@@ -75,8 +74,8 @@ export default {
         const counted = await recordExclusions(db, env.KV);
         if (counted) console.log(JSON.stringify({ event: "exclusions_recorded", ...counted }));
       }],
-      ["materializeStats", () => materializeStats(statsDb, env)],
-      ["recordProfile", async () => { await recordProfile(statsDb, env.KV); }],
+      ["materializeStats", () => materializeStats(statsReadDb(env, db), env)],
+      ["recordProfile", async () => { await recordProfile(statsReadDb(env, db), env.KV); }],
       ["refreshModeration", () => refreshModeration(db, env)],
       // the control database is what store slots take moderation policy
       // from; /request-indexing keeps answering when it is down, so nothing
