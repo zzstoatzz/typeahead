@@ -14,6 +14,8 @@ test("endpointLabel: known routes get stable labels, everything else is 'other'"
   expect(endpointLabel("/admin/delete")).toBe("admin/delete");
   expect(endpointLabel("/admin/mod-override")).toBe("admin");
   expect(endpointLabel("/health/freshness")).toBe("health");
+  expect(endpointLabel("/slot/control/policy")).toBe("slot-control");
+  expect(endpointLabel("/slot/control/index-requests")).toBe("slot-control");
   expect(endpointLabel("/")).toBe("page");
   expect(endpointLabel("/stats")).toBe("page");
   expect(endpointLabel("/favicon.svg")).toBe("page");

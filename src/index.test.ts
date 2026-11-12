@@ -1,5 +1,6 @@
 import { test, expect, mock } from "bun:test";
 import type { InValue } from "@libsql/client/web";
+import { controlStore } from "./control-d1-fixture";
 import { statsStores } from "./stats-d1-fixture";
 import type { Env } from "./types";
 
@@ -82,6 +83,34 @@ test("with dual write on, the same answer is also counted in D1", async () => {
     expect(results).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404, hits: 1 }]);
   } finally {
     await stores.dispose();
+  }
+});
+
+test("the slot control routes answer from D1 alone and are counted under one label", async () => {
+  recorded.length = 0;
+  executed.length = 0;
+  const store = await controlStore();
+  try {
+    const secret = "slot-control-secret-of-enough-length";
+    const env = fakeEnv({ ...ENV, CONTROL_DB: store.d1, SLOT_CONTROL_SECRET: secret, ADMIN_SECRET: "admin-secret" });
+    const { ctx: c, tasks } = ctx();
+    const headers = { Authorization: `Bearer ${secret}` };
+    const policy = await worker.fetch(new Request("https://typeahead.waow.tech/slot/control/policy", { headers }), env, c);
+    expect(policy.status).toBe(200);
+    expect(JSON.parse(await policy.text())).toEqual({ revision: 1, overrides: [], blocked_domains: [] });
+    const requests = await worker.fetch(new Request("https://typeahead.waow.tech/slot/control/index-requests?after=0", { headers }), env, c);
+    expect(JSON.parse(await requests.text())).toEqual({ requests: [], more: false });
+    const posted = await worker.fetch(new Request("https://typeahead.waow.tech/slot/control/policy", { method: "POST", headers }), env, c);
+    expect(posted.status).toBe(404);
+    await Promise.all(tasks);
+    expect(recorded).toEqual([
+      { domain: "unknown", endpoint: "slot-control", status: 200 },
+      { domain: "unknown", endpoint: "slot-control", status: 200 },
+      { domain: "unknown", endpoint: "slot-control", status: 404 },
+    ]);
+    expect(executed.filter((sql) => !/request_buckets/.test(sql))).toEqual([]);
+  } finally {
+    await store.dispose();
   }
 });
 

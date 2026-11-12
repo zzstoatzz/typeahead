@@ -126,6 +126,7 @@ export function endpointLabel(pathname: string): string {
   if (pathname.startsWith("/admin/identity/")) return "admin/identity";
   if (pathname === "/admin/labels" || pathname.startsWith("/admin/labels/")) return "admin/labels";
   if (pathname.startsWith("/admin/")) return "admin";
+  if (pathname.startsWith("/slot/control/")) return "slot-control";
   if (pathname.startsWith("/health/")) return "health";
   if (pathname.startsWith("/debug/")) return "debug";
   if (pathname === "/" || pathname === "/stats" || pathname === "/docs" ||

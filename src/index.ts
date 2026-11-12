@@ -19,6 +19,7 @@ import { handleWebManifest } from "./handlers/web-manifest";
 import { handleSourceIcon } from "./handlers/source-icon";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
+import { handleSlotIndexRequests, handleSlotPolicy } from "./handlers/slot-control";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
 import { llmsTxt } from "./pages/llms";
@@ -185,6 +186,12 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
   if (pathname === "/request-indexing" && request.method === "GET") {
     return new Response(null, { status: 302, headers: { Location: "/" } });
+  }
+  if (pathname === "/slot/control/policy" && request.method === "GET") {
+    return handleSlotPolicy(request, env);
+  }
+  if (pathname === "/slot/control/index-requests" && request.method === "GET") {
+    return handleSlotIndexRequests(request, env);
   }
 
   const db = await getDb(env);
