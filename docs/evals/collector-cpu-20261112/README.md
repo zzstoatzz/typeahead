@@ -8,10 +8,10 @@ The cost was not mainly per relay event. On the slot, 71% of the process's CPU w
 
 | change | commit | what it removes | measured |
 |---|---|---|---|
-| queue floors | `2769b63` | leases, prunes and health counts scanning a timed range from time 0 | refresh step 11.7–19.7 ms → 2.4–2.6 ms CPU, no longer growing with uptime |
-| known-actor cache | `f6333b6` | one store read per sighting of a known actor | owner stage 28.9 → 10.9 CPU-ms per 1,000 events (1.6M events, same seed, back to back) |
-| AES build of the store binary | `b6aace0` | software AES-GCM on the relay's TLS stream | TLS stage 43.1 → 2.3 CPU-ms per 1,000 events between a build without and with AES instructions |
-| short decode, **option, not adopted** | last commit on the branch | SHA-256 over every commit's blocks | decode stage 11.0 → 1.8 CPU-ms per 1,000 events in the software build, 2.9 → 1.7 with SHA instructions |
+| queue floors | `1a4d9f8` | leases, prunes and health counts scanning a timed range from time 0 | refresh step 11.7–19.7 ms → 2.4–2.6 ms CPU, no longer growing with uptime |
+| known-actor cache | `094f504` | one store read per sighting of a known actor | owner stage 28.9 → 10.9 CPU-ms per 1,000 events (1.6M events, same seed, back to back) |
+| AES build of the store binary | `7f9e1e3` | software AES-GCM on the relay's TLS stream | TLS stage 43.1 → 2.3 CPU-ms per 1,000 events between a build without and with AES instructions |
+| short decode, **option, not adopted** | `cccb804`, on the `event-cpu-optional` branch | SHA-256 over every commit's blocks | decode stage 11.0 → 1.8 CPU-ms per 1,000 events in the software build, 2.9 → 1.7 with SHA instructions |
 
 The store digest is identical before and after every change, for the same seed.
 
@@ -72,9 +72,9 @@ Other sessions loaded this machine during most runs (load average 140 to 480). C
 
 ## Baseline
 
-Relay only, unloaded, commit `a67c360`: 12.3, 12.7 and 12.9 CPU-ms per 1,000 events (TLS 1.0, decode 1.5, intake 0.1, owner 10). Without AES and SHA instructions: 36.3 (TLS 19.3, decode 5.7, intake 0.2, owner 11.1).
+Relay only, unloaded, commit `3e31379`: 12.3, 12.7 and 12.9 CPU-ms per 1,000 events (TLS 1.0, decode 1.5, intake 0.1, owner 10). Without AES and SHA instructions: 36.3 (TLS 19.3, decode 5.7, intake 0.2, owner 11.1).
 
-With the enrichment loop's steps, commit `8b25db1`, three runs under load ([baseline-native.txt](baseline-native.txt)):
+With the enrichment loop's steps, commit `e1cd52a`, three runs under load ([baseline-native.txt](baseline-native.txt)):
 
 | run | relay path | TLS | decode | intake | owner | refresh |
 |---|---|---|---|---|---|---|
@@ -127,7 +127,7 @@ SHA-256 stays in software on the Xeon either way: it has no SHA extensions, and 
 
 ## Option: decode a commit without hashing its blocks
 
-Not adopted. It is the last commit on the branch so the rest stands without it.
+Not adopted, and not on the `event-cpu` branch: it is commit `cccb804` on `event-cpu-optional`, the branch as it stood before it was rebased onto main on 2026-11-12, so the rest stands without it.
 
 **What is verified today.** The role calls `zat.firehose.decodeFrame`. For a `#commit` that function parses the CAR in `blocks` and recomputes the SHA-256 of every block against the CID the CAR itself gives for it (`car.read`), then decodes the record of each op by looking its CID up among those blocks. That is all. Nothing in the role checks the commit's signature against the repo's signing key, proves the MST, checks that `repo` is the DID the commit block names, or calls `zat.verifyCommitCar`. If the CAR fails its hash check the event is not dropped: zat discards the CAR and returns the event with no records.
 
@@ -182,3 +182,5 @@ What would dominate afterwards: SHA-256 over commit blocks on the reader, then t
 ## Verification
 
 At the head of the branch without the option, and again with it: `cd services && zig build test` (20 of 20 steps), `just --no-dotenv test-bridge`, `just --no-dotenv check`. The differential and model tests run with the floors and the cache on, which is their default.
+
+After the rebase onto main at `a2529e5`, without the option: `zig build`, `zig build test` (20 of 20 steps) and `just test-supervise` at each of the six commits.
