@@ -206,6 +206,15 @@ actor range (live, with handles, with avatars, hidden, and `total` as the
 statistics page defines it) with the scan's `duration_ms`. Mechanism and
 rates: [the embedded-store plan](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/plans/embedded-store-service.md#enrichment).
 
+`control` is the loop that pulls moderation policy and indexing requests from
+the Worker ([slot control](slot-control.md#watching-it)): whether it is `on`
+or `misconfigured`, the policy revision the store holds and when the Worker
+last confirmed it, the last indexing request taken, the failures by kind, and
+`age_seconds`, the time since both endpoints last answered. Alert when the
+heartbeat's `control_age_seconds` passes 300 or `control_misconfigured` is
+true: search is unaffected, but a policy change made at the Worker is not in
+force on that slot until it falls. No slot runs the loop as of 2026-11-12.
+
 `handle_repair` is the pass that sends every `handle.invalid` record back
 through identity resolution, once in the life of a store: when it started and
 finished, holders `examined` and `queued`, how many are `remaining`, and the
@@ -254,6 +263,17 @@ to 19:35 held identical totals in both stores when checked (407, 537, 394,
   A later plain deploy restores the value in `wrangler.jsonc`.
 - To check that rows are landing (read-only):
   `bunx wrangler d1 execute typeahead-stats --remote --command "SELECT datetime(bucket * 300, 'unixepoch') AS bucket_utc, sum(hits) AS answers FROM request_buckets GROUP BY bucket ORDER BY bucket DESC LIMIT 6"`.
+
+## Slot control
+
+Moderation overrides, blocked domains and indexing requests are recorded in
+the `typeahead-control` D1 database, bound as `CONTROL_DB`, and pulled by every
+store slot from `/slot/control/*` behind `SLOT_CONTROL_SECRET`. The record, the
+endpoints, what a slot does with them, what to alert on, the rollout and its
+undo are in [slot control](slot-control.md). As of 2026-11-12 this is built and
+tested on the `control-pull` branch and none of it is deployed: the database
+does not exist, and the admin endpoints and `/request-indexing` still write
+only Turso, which store slots do not read.
 
 ## Search exclusion counts
 

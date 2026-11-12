@@ -201,6 +201,13 @@ regression is pinned). Extend it, don't prune it.
   Statistics writers go through `recordStats`/`writeStats` (`src/stats-store.ts`), which also
   write the `STATS_DB` D1 database while `STATS_DUAL_WRITE` is `"1"`; reads still come from
   Turso. See [operations](docs/operations.md#statistics-dual-write-to-d1).
+- moderation overrides, blocked domains and indexing requests have one source of truth, the
+  `typeahead-control` D1 database, written only through `src/control-store.ts` (every policy
+  write raises the revision in the same transaction). Store slots pull it; nothing pushes to a
+  slot, and a slot never holds a credential that can write. The Turso copies are mirrors for the
+  Turso-fed slots (`src/turso-policy-mirror.ts`). Built on the `control-pull` branch and not
+  deployed as of 2026-11-12: until the rollout in [slot control](docs/slot-control.md) has run,
+  production writes only Turso and a policy change does not reach a store slot.
 - ranking is by the stored `actors.quality_score`, not live followers; writes that touch
   aggregate counts must keep `quality_score` consistent with them (see the clobber regression
   guarded in `bench.py` + `smoke.py`).

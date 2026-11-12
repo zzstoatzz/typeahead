@@ -8,7 +8,7 @@ Status, 2026-11-10: the Fly app `typeahead-shadow-a` exists with a 40 GB volume,
 
 A production slot (`typeahead-tantivy-a` and `-b`) runs the Tantivy reader plus a poller that reads Turso, is installed from a published bundle by the refresh controller twice a day, and is sized at two shared CPUs, 1 GB of memory and a 20 GB volume. The ingester is a separate app.
 
-The shadow slot puts the ingester's successor on the same machine as the reader. It holds no Turso credentials and no Worker admin secret, takes a bundle once at bootstrap, and afterwards is fed only by its own store. Its origin is in the transport's list of allowed origins in [`src/search-route.ts`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/src/search-route.ts), so the routing record can name it once a transport built from that list is deployed. The refresh controller never writes such a record; only [`store_slot_route.py`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/snapshot_refresh/store_slot_route.py) does, as the [store slot runbook](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/ops/store-slot-operations.md) describes.
+The shadow slot puts the ingester's successor on the same machine as the reader. It holds no Turso credentials and no Worker admin secret, takes a bundle once at bootstrap, and afterwards is fed only by its own store. Its one connection to the Worker is outbound and read-only: the store process pulls moderation policy and indexing requests from it ([slot control](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/slot-control.md)). Its origin is in the transport's list of allowed origins in [`src/search-route.ts`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/src/search-route.ts), so the routing record can name it once a transport built from that list is deployed. The refresh controller never writes such a record; only [`store_slot_route.py`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/snapshot_refresh/store_slot_route.py) does, as the [store slot runbook](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/ops/store-slot-operations.md) describes.
 
 The store process is a role of the ingester binary, selected with `MODE=store`, and is still being built. The binary in an image built from a tree without that role refuses the mode and exits, and the supervisor keeps retrying it while the index runs. The supervisor always starts the binary in that mode and refuses to start at all when Turso or Worker credentials are present, so this image cannot become a second production ingester by mistake.
 
@@ -87,6 +87,8 @@ Set in the Fly configuration, not secret:
 | `INDEX_MERGE_NICE` | niceness of the index's merge threads, 19 |
 | `INDEX_WARM_SEGMENT_FILES` | file extensions of each new index segment that the reader [reads into the page cache](https://tangled.org/zzstoatzz.io/typeahead/blob/main/services/tantivy/README.md#page-cache-warming) in the background: `term,fast,fieldnorm,idx`, 2.7 GB of the 4.7 GB index on 2026-11-11. The stored profiles (`store`, 1.9 GB) are left out because 4 GB of memory cannot hold them as well |
 | `STORE_NICE` | niceness the supervisor starts the store process at, 10 when unset |
+| `CONTROL_URL` | read by the store process: the Worker's origin, `https://typeahead.waow.tech`. With `SLOT_CONTROL_SECRET` it turns the control loop on. With the secret missing the loop stays off, the store says so in its log and in `/health` (`control.state`), and everything else runs |
+| `CONTROL_POLL_SECONDS` | read by the store process: seconds between polls of the Worker, 5 to 3600, 30 when unset |
 | the store process's bootstrap relay cursor | optional, set once for the first start; the name comes with the store process |
 
 Secrets the app needs:
@@ -98,6 +100,7 @@ Secrets the app needs:
 | `INDEX_R2_ENDPOINT`, `INDEX_R2_BUCKET` | the same account endpoint and bucket the production slots and the index deployment use |
 | `INDEX_R2_ACCESS_KEY_ID`, `INDEX_R2_SECRET_ACCESS_KEY` | a new R2 token with Object Read only on that bucket. The routing record lives in the same bucket, so the publisher's read-write token must not be reused. Needed only for bootstrap and can be unset afterwards |
 | `LOGFIRE_WRITE_TOKEN` | optional; the write token of the Logfire `typeahead` project that the ingester uses today |
+| `SLOT_CONTROL_SECRET` | the bearer secret for the Worker's `/slot/control/*`, at least 32 bytes, the same value on the Worker and on every slot. It reads the control record and can change nothing. It must not be the Worker's admin secret, which those endpoints refuse. Not set anywhere as of 2026-11-12; set it with `fly secrets set --stage` so that setting it restarts nothing |
 
 Secrets production has that the shadow must not: `TURSO_URL` and `TURSO_AUTH_TOKEN` (ingester and production slots) and `TYPEAHEAD_SECRET` (the ingester's copy of the Worker admin secret). `TYPEAHEAD_URL` goes with them. The supervisor exits if any of the three secrets is set.
 

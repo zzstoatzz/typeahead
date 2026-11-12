@@ -97,11 +97,12 @@ The store process is a second role of the ingester binary, `MODE=store`, in `ser
 - **Reads go through read-only handles.** `/store/*` and the index bridge each have one, refreshed per request or step, so neither can hold a commit back. Each handle keeps table metadata of its own (60 MB a handle at 13.2 million actors in the 2026-11-10 measurement).
 - **The index bridge runs in the process** when `ADMIN_SECRET` is set, on its own thread, against the index's loopback admin listener. Its policy is a snapshot of the store's overrides and blocked domains, sent with every push and heartbeat: an index built from a bundle has policy enabled and stops answering searches once its snapshot is 300 seconds old. With a snapshot the index decides visibility at query time from labels, its slur rules and those lists, and ignores the stored `hidden` flag.
 - **A new store is loaded by `MODE=store-bootstrap`** from the actor lines `dump-actors` prints and an optional policy file. The cursors and the bridge position land in the last batch's commit. `deploy/shadow-slot/bootstrap.sh` calls it; that script path has not run on a machine.
+- **Policy and indexing requests are pulled from the Worker** by a control loop when `CONTROL_URL` and `SLOT_CONTROL_SECRET` are set (built 2026-11-12, not deployed): [slot control](../slot-control.md). The policy file a store was bootstrapped with is only where it starts; its first poll makes it equal to the Worker's.
 
 What differs from production, all covered by named flags in `sql_model.zig` and a test each in `differential_test.zig`:
 
 - **A gone account stays gone until `#account` says otherwise**, and returns with its record. Production deletes the row, so any later event from the account recreates it bare and re-resolves it. This is the one difference a search user could see through the index.
-- **The stored `hidden` flag is not what search uses** while the bridge sends a policy snapshot, so its differences stay inside the store and the `/store` reads: no slur rule is applied to it (the role supplies no predicate), a lapsed label stops hiding when the expiry pass reaches it (2,000 label keys every 10 seconds), and a domain block reaches stored actors by a sweep that a crash can leave unfinished. The comparison job reads this flag and must allow for the slur rule.
+- **The stored `hidden` flag is not what search uses** while the bridge sends a policy snapshot, so its differences stay inside the store and the `/store` reads: no slur rule is applied to it (the role supplies no predicate), a lapsed label stops hiding when the expiry pass reaches it (2,000 label keys every 10 seconds), and a domain block reaches stored actors by a sweep the owner runs after the commit. Since 2026-11-12 the sweep is owed durably: the commit that changes a block marks the domain, and an owner that opens the store runs every marked sweep from the top. The comparison job reads this flag and must allow for the slur rule.
 - **A bundle does not carry everything.** A loaded actor has no description or banner until its profile is seen again, and its activity and update times are the load time.
 
 Tests (`cd services && zig build test`): encoding and ordering for every range, a model-based test of every kind of change against an in-memory model, a child process killed during commits, flushes and compaction steps, a change-log replay, and a reader scanning while another process writes, compacts and collects.
@@ -189,7 +190,7 @@ Tests (`cd services && zig build test`): the shared vectors; the loop against a 
 | label endpoints on the Worker | store process applies label frames and updates the actor in one commit |
 | hourly cron refreshes moderation and counts | a paced loop in the store process, as tern does |
 | HeavyPad flows for identity and enrichment | the same loop; the flows are retired |
-| request-indexing and admin overrides | Worker calls the routed slot's write surface; policy is also published so the standby applies it |
+| request-indexing and admin overrides | the Worker keeps a control record in D1 and every slot pulls it: [slot control](../slot-control.md). Built on the `control-pull` branch on 2026-11-12, not deployed |
 | request and traffic statistics | leave Turso separately (issue 34) |
 
 ## Things that read today and where they go
@@ -219,7 +220,7 @@ A new slot starts from the newest published bundle, exactly as the measurement d
 - **Disk.** Twice the store plus two index copies during a rebuild is roughly 40 GB per slot. Today's slots have 20 GB volumes.
 - **Upstream load.** Two replicas mean two relay connections and twice the profile fetches against the appview. The pacing has to assume both.
 - **Divergence.** Two independent consumers can disagree briefly. Decide what the comparison job tolerates and what triggers a resync from the peer.
-- **Policy distribution.** Overrides and blocked domains must reach both slots; the moderation artifact the slots already poll is the likely carrier.
+- **Policy distribution.** Settled on 2026-11-12: slots pull the whole policy from the Worker under a revision ([slot control](../slot-control.md)).
 - **Change-log retention.** How long the log is kept, and what a bridge that falls behind it does.
 - **Crash safety on Fly volumes.** zkv states its durability contract for ext4; the kill tests need to run on the real volume type.
 - **The preflight rule.** `AGENTS.md` forbids preparing a snapshot on the serving machine. A slot rebuilding its own index while not routed is within the rule's intent; the rule text needs updating when this ships.

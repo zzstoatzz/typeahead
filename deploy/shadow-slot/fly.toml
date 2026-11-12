@@ -22,6 +22,7 @@ kill_timeout = 60
   INDEX_MERGE_MAX_DOCS = '1000000000'
   INDEX_MERGE_NICE = '19'
   INDEX_WARM_SEGMENT_FILES = 'term,fast,fieldnorm,idx'
+  CONTROL_URL = 'https://typeahead.waow.tech'
 
 [[mounts]]
   source = 'shadow_data'
