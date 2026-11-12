@@ -1,6 +1,7 @@
 import { authorized, parseBody, rejectUnauthorized } from "../admin-auth";
 import { d1Db, type SqlDb } from "../db";
 import { BackfillInputError, backfillRequestSchema, backfillStep } from "../stats-backfill";
+import { ParityInputError, parityRequestSchema, parityStep } from "../stats-parity";
 import type { Env } from "../types";
 import { json } from "../utils";
 
@@ -22,6 +23,22 @@ export async function handleStatsBackfill(request: Request, turso: SqlDb, env: E
     return json(result);
   } catch (error) {
     if (error instanceof BackfillInputError) return json({ error: error.message }, 400);
+    throw error;
+  }
+}
+
+/** POST /admin/stats-parity: one section of the Turso and D1 comparison
+ *  (src/stats-parity.ts). It reads both stores and writes nothing; POST only
+ *  because the request is a JSON body. */
+export async function handleStatsParity(request: Request, turso: SqlDb, env: Env): Promise<Response> {
+  if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/stats-parity");
+  if (!env.STATS_DB) return json({ error: "this Worker has no STATS_DB binding" }, 503);
+  const body = await parseBody(request, parityRequestSchema);
+  if (!body) return json({ error: "expected { section, cursor, from, closed_before, limit }" }, 400);
+  try {
+    return json(await parityStep(turso, d1Db(env.STATS_DB), body));
+  } catch (error) {
+    if (error instanceof ParityInputError) return json({ error: error.message }, 400);
     throw error;
   }
 }

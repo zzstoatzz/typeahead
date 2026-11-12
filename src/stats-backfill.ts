@@ -160,7 +160,7 @@ function totalsQueries(db: SqlDb, cut: number) {
   ];
 }
 
-async function readTotals(db: SqlDb, cut: number) {
+export async function readTotals(db: SqlDb, cut: number) {
   const [sources, since, counter, deltas] = await db.batch(totalsQueries(db, cut), "read");
   const sinceCut = new Map(statRows(since!.results, ["domain", "hits"]).map((row) => [String(row.domain), Number(row.hits)]));
   return {
