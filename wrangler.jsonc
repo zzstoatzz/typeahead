@@ -31,12 +31,10 @@
       "migrations_dir": "migrations/stats-d1"
     },
     {
-      // The control record store slots pull (docs/slot-control.md). The id is
-      // a placeholder until `bunx wrangler d1 create typeahead-control` has
-      // run: `just deploy-worker` refuses to deploy while it is all zeros.
+      // The control record store slots pull (docs/slot-control.md).
       "binding": "CONTROL_DB",
       "database_name": "typeahead-control",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "a41ac6ae-0297-44ce-ba4c-066897d12f0d",
       "migrations_dir": "migrations/control-d1"
     }
   ],
