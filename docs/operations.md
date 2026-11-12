@@ -277,6 +277,38 @@ to 19:35 held identical totals in both stores when checked (407, 537, 394,
 
 ## Statistics read cutover to D1
 
+### Rollout commands
+
+Run in order from a checkout with this branch merged and `TYPEAHEAD_SECRET`
+in `.env`. A line whose condition is not met stops the rollout. The steps
+are explained under [Sequence](#sequence).
+
+| | Command | Pass condition |
+| --- | --- | --- |
+| 1 | `just control-ready` | exits 0. `just deploy-worker` runs it first, and this deploy carries the slot control Worker code if that is not live yet: finish steps 1 to 4 of the [slot control rollout](slot-control.md#rollout) before step 3 |
+| 2 | `bunx wrangler d1 migrations list typeahead-stats --remote` | prints "No migrations to apply" |
+| 3 | `just deploy-worker` | deploys `STATS_MODE=read-turso` (the value in `wrangler.jsonc`); both smoke suites pass |
+| 4 | `just stats-parity --since-dual-write` | not a gate: exit 1 with a few rows is expected; keep the output |
+| 5 | `just stats-backfill` | ends with "dry run complete: nothing written" |
+| 6 | `just stats-backfill --apply` | ends with "backfill complete"; if it prints "resume with:", run that command |
+| 7 | `just stats-parity` | **the gate**: exits 0 and ends with "parity: the stores agree on all closed data". On exit 1, run step 6 again, then this |
+| 8 | `just stats-parity`, after the next top-of-hour cron | exits 0 |
+| 9 | `just stats-backfill --apply && just stats-parity`, minutes before the flip | exits 0 |
+| 10 | `curl -s 'https://typeahead.waow.tech/stats?range=all' > stats-before.html` | saved for step 12 |
+| 11 | `sed -i '' 's/"STATS_MODE": "read-turso"/"STATS_MODE": "read-d1"/' wrangler.jsonc && bunx wrangler types src/public-worker-env.d.ts --env-interface PublicWorkerEnv --include-runtime=false --env-file /dev/null && git commit -am 'stats: read statistics from D1' && git push && just deploy-worker` | the flip: both smoke suites pass |
+| 12 | `curl -s 'https://typeahead.waow.tech/stats?range=all' > stats-after.html`, a minute after the deploy | actors indexed, searches and "requests · apps" match step 10 apart from traffic since |
+| 13 | `just stats-parity`, after the next top-of-hour cron | exits 0, and that cron's `cron_done` has no `cron_step_failed` |
+
+Rollback, at any point after step 11:
+
+| | Command | Effect |
+| --- | --- | --- |
+| now | `npx wrangler deploy --var STATS_MODE:read-turso` | reads return to Turso without a commit; it lasts until the next plain deploy |
+| then | `git revert --no-edit <the step 11 commit> && git push && just deploy-worker` | makes `read-turso` the committed value again |
+| D1 writes off as well | `npx wrangler deploy --var STATS_MODE:turso-only` | Turso alone is written and read |
+
+Before flipping forward again, repeat steps 9 to 13.
+
 Steps 3 to 6 of the [plan](plans/stats-off-turso.md), which holds the design,
 the measured sizes and costs, and the query plans. Status on 2026-11-12: the
 code is on the `stats-d1-read` branch, tested locally, not deployed; no
