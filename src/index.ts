@@ -9,6 +9,7 @@ import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { recordStats } from "./stats-store";
 import { refreshModeration } from "./cron";
 import { controlDb, pruneIndexRequests } from "./control-store";
+import { controlHealth, handleControlHealth } from "./control-health";
 import { handleSearch } from "./handlers/search";
 import { handleIngest } from "./handlers/ingest";
 import { handleLabelCursor, handleLabelReconcile, handleLabelStream } from "./account-labels";
@@ -75,6 +76,15 @@ export default {
       ["materializeStats", () => materializeStats(db, env)],
       ["recordProfile", async () => { await recordProfile(db, env.KV); }],
       ["refreshModeration", () => refreshModeration(db, env)],
+      // the control database is what store slots take moderation policy
+      // from; /request-indexing keeps answering when it is down, so nothing
+      // else would say so
+      ["controlHealth", async () => {
+        const health = await controlHealth(env);
+        if (health.ok) return;
+        console.log(JSON.stringify({ event: "control_unhealthy", error: health.error }));
+        await postWebhook(env, `**typeahead: the control database is not answering** — ${health.error}. Admin policy changes fail and indexing requests are not reaching store slots. See docs/slot-control.md.`);
+      }],
       ["pruneIndexRequests", async () => {
         const pruned = await pruneIndexRequests(controlDb(env), Math.floor(Date.now() / 1000));
         if (pruned) console.log(JSON.stringify({ event: "index_requests_pruned", pruned }));
@@ -165,6 +175,9 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
   if (pathname === "/health/freshness" && request.method === "GET") {
     return handleFreshness(env);
+  }
+  if (pathname === "/health/control" && request.method === "GET") {
+    return handleControlHealth(env);
   }
   if (pathname === "/og-image" && request.method === "GET") {
     return env.IMAGE_RENDERER.fetch(request);

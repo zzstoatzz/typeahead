@@ -94,3 +94,54 @@ export function policyDifferences(turso: Policy, control: Policy): string[] {
   for (const row of domains.values()) differences.push(`domain ${row.domain}: blocked in control, absent from Turso`);
   return differences;
 }
+
+/** The control database's own description of itself, as one statement's rows. */
+export const META_QUERY = "SELECT name, value FROM control_meta ORDER BY name";
+const metaRow = z.object({ name: z.string(), value: z.number().int() });
+
+/** Why the database is not ready for a Worker that needs it, or null. `output`
+ *  is what `wrangler d1 execute --json` printed for `META_QUERY`. A database
+ *  without the schema fails that statement, so the caller passes the error's
+ *  text instead and gets it back as the reason. */
+export function schemaProblem(output: string): string | null {
+  let rows: z.infer<typeof metaRow>[];
+  try {
+    rows = parseWranglerRows(output, metaRow);
+  } catch {
+    return `the control database did not answer "${META_QUERY}"; apply migrations/control-d1 (${output.trim().slice(0, 200)})`;
+  }
+  for (const name of ["generation", "policy_revision"]) {
+    if (!rows.some((row) => row.name === name && row.value >= 1)) return `control_meta has no ${name}; apply migrations/control-d1`;
+  }
+  return null;
+}
+
+/** What `/slot/control/policy` serves. */
+export const servedPolicy = z.object({
+  generation: z.number().int(),
+  revision: z.number().int(),
+  overrides: z.array(z.object({ did: z.string(), action: z.enum(["show", "hide"]) })),
+  blocked_domains: z.array(z.string()),
+});
+
+/** Every way the policy the Worker serves to slots differs from the rules
+ *  Turso holds, one line each. A slot makes its store equal to what is
+ *  served, so a rule missing here is one every slot would drop. */
+export function servedDifferences(turso: Policy, served: z.infer<typeof servedPolicy>): string[] {
+  const differences: string[] = [];
+  const overrides = new Map(served.overrides.map((row) => [row.did, row.action]));
+  for (const row of turso.overrides) {
+    const action = overrides.get(row.did);
+    overrides.delete(row.did);
+    if (action === undefined) differences.push(`override ${row.did}: ${row.action} in Turso, not served`);
+    else if (action !== row.action) differences.push(`override ${row.did}: ${row.action} in Turso, ${action} served`);
+  }
+  for (const [did, action] of overrides) differences.push(`override ${did}: ${action} served, absent from Turso`);
+  const domains = new Set(served.blocked_domains);
+  for (const row of turso.domains) {
+    const name = row.domain.toLowerCase();
+    if (!domains.delete(name)) differences.push(`domain ${name}: blocked in Turso, not served`);
+  }
+  for (const name of domains) differences.push(`domain ${name}: served, absent from Turso`);
+  return differences;
+}

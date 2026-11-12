@@ -143,10 +143,22 @@ test-bridge:
     cd services && TANTIVY_TEST_BIN="$ta_bridge_root/typeahead-tantivy" zig build test-bridge --summary all
 
 
-# refuse to deploy a Worker whose control database is still the placeholder:
-# every admin policy write and /request-indexing would fail against it
-control-db-configured:
+# refuse to deploy a Worker whose control database is not ready for it: the
+# binding is still the placeholder, the schema is not applied, or its rules
+# differ from Turso's. Without the schema every admin policy change fails and
+# no indexing request is logged; with rules missing, the first slot to poll
+# would drop them. Reads the remote database and Turso (TURSO_URL,
+# TURSO_AUTH_TOKEN); writes nothing
+control-ready:
     @! grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc || { echo "wrangler.jsonc: CONTROL_DB has the placeholder database_id; see docs/slot-control.md, rollout step 1" >&2; exit 1; }
+    bun scripts/control-backfill.ts gate --remote
+
+# the gate before a slot is deployed with the control loop on: the policy the
+# deployed Worker serves to slots must be Turso's rules, or the slot would
+# make its store equal to something else. Needs SLOT_CONTROL_SECRET and the
+# Turso variables; read-only
+control-served-check origin="https://typeahead.waow.tech":
+    bun scripts/control-backfill.ts served {{origin}}
 
 # print the SQL that carries Turso's moderation policy into the control
 # database. Reads Turso (TURSO_URL, TURSO_AUTH_TOKEN) and applies nothing
@@ -159,7 +171,7 @@ control-check target="--remote":
     bun scripts/control-backfill.ts check {{target}}
 
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
-deploy-worker url="https://typeahead.waow.tech": control-db-configured lint
+deploy-worker url="https://typeahead.waow.tech": control-ready lint
     bunx tsc --noEmit
     npx wrangler deploy
     @echo "--- waiting for edge propagation before smoke ---"
@@ -182,7 +194,7 @@ deploy-search-transport url="https://typeahead.waow.tech": lint
     just smoke {{url}}
 
 # deploy the worker WITHOUT the post-deploy smoke gate (escape hatch)
-deploy-worker-only: control-db-configured lint
+deploy-worker-only: control-ready lint
     npx wrangler deploy
 
 # deploy the ingest service (relay subscribeRepos -> worker admin ingest)

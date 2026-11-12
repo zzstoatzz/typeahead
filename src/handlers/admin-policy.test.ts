@@ -184,20 +184,29 @@ test("a subject a slot would refuse is refused at the write, so it is never serv
   await Promise.all(tasks);
 });
 
-test("a control write that fails leaves Turso untouched", async () => {
-  const broken = await controlStore();
-  await broken.d1.exec("DROP TABLE mod_overrides");
-  await broken.d1.exec("DROP TABLE blocked_domains");
-  // SAFETY: as `env` above.
-  const failing = { ADMIN_SECRET: ADMIN, CONTROL_DB: broken.d1 } as Env;
+test("with the control database out of reach an admin change answers 503 and changes nothing", async () => {
+  const unmigrated = await controlStore();
+  for (const table of ["mod_overrides", "blocked_domains", "control_meta", "index_requests"]) await unmigrated.d1.exec(`DROP TABLE ${table}`);
+  // SAFETY: as `env` above; the second has no binding at all.
+  const failing = [{ ADMIN_SECRET: ADMIN, CONTROL_DB: unmigrated.d1 } as Env, { ADMIN_SECRET: ADMIN } as Env];
   const { ctx, tasks } = background();
   try {
-    await expect(handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide" }), turso, failing)).rejects.toThrow();
-    await expect(handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:rescued"), turso, failing)).rejects.toThrow();
-    await expect(handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "spam.example" }), turso, failing, ctx)).rejects.toThrow();
-    await expect(handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=spam.example"), turso, failing, ctx)).rejects.toThrow();
+    for (const down of failing) {
+      const answers = [
+        await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide" }), turso, down),
+        await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:rescued"), turso, down),
+        await handleModOverrideList(send("GET", "/admin/mod-overrides"), down),
+        await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "spam.example" }), turso, down, ctx),
+        await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=spam.example"), turso, down, ctx),
+        await handleDomainBlockList(send("GET", "/admin/domain-blocks"), down),
+      ];
+      for (const res of answers) {
+        expect(res.status).toBe(503);
+        expect((await body(res)).error).toBe("the control database is unavailable; nothing was changed");
+      }
+    }
   } finally {
-    await broken.dispose();
+    await unmigrated.dispose();
   }
   expect(tasks).toEqual([]);
   expect(await tursoOverrides()).toEqual([{ did: "did:plc:rescued", action: "show", reason: "" }]);

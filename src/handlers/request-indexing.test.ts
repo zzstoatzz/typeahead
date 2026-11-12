@@ -2,6 +2,7 @@ import { afterAll, afterEach, expect, test } from "bun:test";
 import { controlStore, tursoPolicyTables } from "../control-d1-fixture";
 import { blockDomain, clearOverride, indexRequestsAfter, setOverride, unblockDomain } from "../control-store";
 import type { Env } from "../types";
+import { CONTROL_FAILURE_KEY, handleControlHealth, noteControlFailure } from "../control-health";
 import { handleRequestIndexing } from "./admin";
 
 // /request-indexing answers as it did when it wrote only Turso. What it adds
@@ -143,16 +144,61 @@ test("an account the appview does not know is still logged and stored bare", asy
   expect((await requests()).at(-1)).toEqual({ seq: 3, did: "did:web:carol.test" });
 });
 
-test("a control write that fails fails the request before Turso is written", async () => {
-  const broken = await controlStore();
-  await broken.d1.exec("DROP TABLE index_requests");
-  upstreams([{ did: "did:plc:dave", handle: "dave.test" }]);
-  // SAFETY: as `env` above.
-  const failing = { CONTROL_DB: broken.d1, KV: kv } as Env;
+test("with the control database down or unmigrated the request is answered as before it existed, and the failure is kept", async () => {
+  const unmigrated = await controlStore();
+  for (const table of ["mod_overrides", "blocked_domains", "control_meta", "index_requests"]) await unmigrated.d1.exec(`DROP TABLE ${table}`);
+  const kept = new Map<string, string>();
+  const recording = {
+    async get(key: string): Promise<string | null> { return key.startsWith("relay_crawl:") ? "1" : kept.get(key) ?? null; },
+    async put(key: string, value: string): Promise<void> { kept.set(key, value); },
+  };
+  upstreams([{ did: "did:plc:dave", handle: "dave.farm.example" }, { did: "did:plc:erin", handle: "erin.test" }]);
+  // the Turso copy of the policy is what answers when the control database cannot
+  await turso.prepare("INSERT INTO blocked_domains (domain, reason) VALUES ('farm.example', '')").run();
+  // SAFETY: as `env` above; the second has no control binding at all.
+  const down = [{ CONTROL_DB: unmigrated.d1, KV: recording } as Env, { KV: recording } as Env];
   try {
-    await expect(handleRequestIndexing(post("?handle=dave.test"), turso, failing, background().ctx)).rejects.toThrow();
+    for (const [i, failing] of down.entries()) {
+      kept.clear();
+      const { ctx, tasks } = background();
+      const res = await handleRequestIndexing(post("?handle=dave.farm.example"), turso, failing, ctx);
+      expect(res.status).toBe(200);
+      expect(await body(res)).toEqual({ handle: "dave.farm.example", did: "did:plc:dave", hidden: true, reason: "hidden by moderation" });
+      await Promise.all(tasks);
+      expect((await stored("did:plc:dave"))?.hidden).toBe(1);
+      const failure = JSON.parse(kept.get(CONTROL_FAILURE_KEY) ?? "null");
+      expect(failure.what).toBe("index_request");
+      expect(failure.at).toBeGreaterThan(1_700_000_000_000);
+
+      const health = await handleControlHealth(failing);
+      expect([i, health.status]).toEqual([i, 503]);
+      const reported = await body(health);
+      expect(reported.ok).toBe(false);
+      expect(reported.last_failure.what).toBe("index_request");
+    }
+    const visible = await handleRequestIndexing(post("?handle=erin.test"), turso, down[0]!, background().ctx);
+    expect(await body(visible)).toEqual({ handle: "erin.test", did: "did:plc:erin", hidden: false });
   } finally {
-    await broken.dispose();
+    await turso.prepare("DELETE FROM blocked_domains WHERE domain = 'farm.example'").run();
+    await unmigrated.dispose();
   }
-  expect(await stored("did:plc:dave")).toBeNull();
+});
+
+test("the control health endpoint answers 200 from a migrated database, with the last failure if there was one", async () => {
+  const kept = new Map<string, string>();
+  const recording = {
+    async get(key: string): Promise<string | null> { return kept.get(key) ?? null; },
+    async put(key: string, value: string): Promise<void> { kept.set(key, value); },
+  };
+  // SAFETY: the health probe reads CONTROL_DB and KV.get.
+  const healthy = { CONTROL_DB: d1, KV: recording } as Env;
+  const res = await handleControlHealth(healthy);
+  expect(res.status).toBe(200);
+  expect(res.headers.get("Cache-Control")).toBe("no-store");
+  expect(await body(res)).toEqual({ ok: true, revision: 5, last_failure: null });
+
+  const { ctx, tasks } = background();
+  noteControlFailure(ctx, healthy, "index_request", "D1_ERROR: no such table: index_requests");
+  await Promise.all(tasks);
+  expect((await body(await handleControlHealth(healthy))).last_failure).toMatchObject({ what: "index_request", error: "D1_ERROR: no such table: index_requests" });
 });

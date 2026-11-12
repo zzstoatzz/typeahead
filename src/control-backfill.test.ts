@@ -1,6 +1,6 @@
 import { afterAll, expect, test } from "bun:test";
 import { GENERATION, controlStore } from "./control-d1-fixture";
-import { CONTROL_QUERIES, backfillSql, domainRow, overrideRow, parseWranglerRows, policyDifferences, type Policy } from "./control-backfill";
+import { CONTROL_QUERIES, META_QUERY, backfillSql, domainRow, overrideRow, parseWranglerRows, policyDifferences, schemaProblem, servedDifferences, servedPolicy, type Policy } from "./control-backfill";
 import { policySnapshot, setOverride, unblockDomain } from "./control-store";
 
 const { d1, control, dispose } = await controlStore();
@@ -104,4 +104,39 @@ test("wrangler's JSON output is read as one statement's rows", () => {
   expect(parseWranglerRows(output, domainRow)).toEqual([{ domain: "spam.example", reason: "r", at: 5 }]);
   expect(() => parseWranglerRows("[]", domainRow)).toThrow();
   expect(() => parseWranglerRows(JSON.stringify([{ results: [{ domain: 5 }] }]), domainRow)).toThrow();
+});
+
+test("the deploy gate's schema probe tells a migrated database from one that is not", async () => {
+  const rows = (await control.prepare(META_QUERY).all()).results;
+  expect(schemaProblem(JSON.stringify([{ results: rows, success: true }]))).toBeNull();
+  // only the first migration applied
+  expect(schemaProblem(JSON.stringify([{ results: [{ name: "policy_revision", value: 1 }] }]))).toBe("control_meta has no generation; apply migrations/control-d1");
+  expect(schemaProblem(JSON.stringify([{ results: [] }]))).toContain("control_meta has no generation");
+  // no schema at all: wrangler fails the statement and prints an error
+  for (const output of ["", "✘ [ERROR] no such table: control_meta: SQLITE_ERROR", "wrangler d1 execute exited 1: Couldn't find a D1 DB"]) {
+    expect(schemaProblem(output)).toContain("apply migrations/control-d1");
+  }
+});
+
+test("the slot gate compares what is served with Turso's rules", () => {
+  const served = {
+    generation: 9, revision: 3,
+    overrides: [{ did: "did:plc:rescued", action: "show" as const }],
+    blocked_domains: ["farm.example", "mixed.example", "spam.example"],
+  };
+  expect(servedDifferences(TURSO, served)).toEqual([]);
+  // an unbackfilled database: every rule Turso holds is one a slot would drop
+  expect(servedDifferences(TURSO, { generation: 9, revision: 1, overrides: [], blocked_domains: [] })).toEqual([
+    "override did:plc:rescued: show in Turso, not served",
+    "domain farm.example: blocked in Turso, not served",
+    "domain mixed.example: blocked in Turso, not served",
+    "domain spam.example: blocked in Turso, not served",
+  ]);
+  expect(servedDifferences(TURSO, { ...served, overrides: [{ did: "did:plc:rescued", action: "hide" }, { did: "did:plc:extra", action: "hide" }], blocked_domains: ["farm.example", "spam.example", "more.example"] })).toEqual([
+    "override did:plc:rescued: show in Turso, hide served",
+    "override did:plc:extra: hide served, absent from Turso",
+    "domain mixed.example: blocked in Turso, not served",
+    "domain more.example: served, absent from Turso",
+  ]);
+  expect(() => servedPolicy.parse({ revision: 1, overrides: [], blocked_domains: [] })).toThrow();
 });

@@ -6,6 +6,7 @@ import { clientIP, json, extractProfileFields, fetchProfileFromBlacksky, fetchPr
 import type { ProfileFields, ProfileSource } from "../utils";
 import { getOverride, getOverrides, isDomainBlocked, getBlockedDomains } from "../moderation";
 import { blockDomain, clearOverride, controlDb, listBlockedDomains, listOverrides, recordIndexRequest, setOverride, unblockDomain } from "../control-store";
+import { noteControlFailure } from "../control-health";
 import { MAX_DID_BYTES, validBlockedDomain, validOverrideDid } from "../control-rules";
 import { mirrorDomainBlock, mirrorDomainUnblock, mirrorOverrideClear, mirrorOverrideSet } from "../turso-policy-mirror";
 import { recordActorDelta } from "../metrics";
@@ -211,8 +212,20 @@ export async function handleRequestIndexing(
 
   // the request itself: store slots pull it and index the account from their
   // own sources. Everything after this serves the response and the Turso copy.
-  const control = controlDb(env);
-  await recordIndexRequest(control, identity.did, unixNow());
+  //
+  // A control database that is down or unmigrated must not turn a visitor's
+  // request into an error: the failure is logged and kept for
+  // /health/control, the request goes on as it did before the control
+  // database existed, and the moderation answer below comes from Turso. What
+  // is lost is the request reaching the store slots.
+  let policy: SqlDb = db;
+  try {
+    const control = controlDb(env);
+    await recordIndexRequest(control, identity.did, unixNow());
+    policy = control;
+  } catch (error) {
+    noteControlFailure(ctx, env, "index_request", error instanceof Error ? error.message : String(error));
+  }
   lap("control_write");
 
   // fetch profile from public API for display name + avatar + labels + metadata
@@ -220,9 +233,20 @@ export async function handleRequestIndexing(
     displayName: '', avatarCid: '', description: '', bannerCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}',
     followersCount: 0, followsCount: 0, postsCount: 0, qualityScore: 0,
   };
-  const override = await getOverride(control, identity.did);
-  lap("override");
-  const domainBlocked = isDomainBlocked(identity.handle || "", await getBlockedDomains(control));
+  let override: Awaited<ReturnType<typeof getOverride>>;
+  let blockedDomains: Set<string>;
+  try {
+    override = await getOverride(policy, identity.did);
+    lap("override");
+    blockedDomains = await getBlockedDomains(policy);
+  } catch (error) {
+    if (policy === db) throw error;
+    noteControlFailure(ctx, env, "index_request_policy", error instanceof Error ? error.message : String(error));
+    override = await getOverride(db, identity.did);
+    lap("override");
+    blockedDomains = await getBlockedDomains(db);
+  }
+  const domainBlocked = isDomainBlocked(identity.handle || "", blockedDomains);
   lap("blocked_domains");
   let source: ProfileSource = 'bsky';
   try {
@@ -258,6 +282,20 @@ export async function handleRequestIndexing(
   }, 200, { "Server-Timing": timing });
 }
 
+/** An operator's policy change with the control database out of reach: say
+ *  so, and change nothing anywhere. An operator is there to see it and try
+ *  again, and a rule written to Turso alone would never reach a store slot. */
+async function controlWrite(env: Env, what: string, write: (control: SqlDb) => Promise<void>): Promise<Response | null> {
+  try {
+    await write(controlDb(env));
+    return null;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.log(JSON.stringify({ event: "control_write_failed", what, error: detail.slice(0, 300) }));
+    return json({ error: "the control database is unavailable; nothing was changed", detail: detail.slice(0, 300) }, 503);
+  }
+}
+
 function authCheck(request: Request, env: Env): Response | null {
   const auth = request.headers.get("Authorization");
   if (auth === `Bearer ${env.ADMIN_SECRET}`) return null;
@@ -291,7 +329,8 @@ export async function handleModOverrideSet(
     return json({ error: `did must be a DID: "did:" and printable ASCII without spaces, at most ${MAX_DID_BYTES} bytes` }, 400);
   }
 
-  await setOverride(controlDb(env), did, action, reason || '', unixNow());
+  const failed = await controlWrite(env, "override_set", (control) => setOverride(control, did, action, reason || '', unixNow()));
+  if (failed) return failed;
   await mirrorOverrideSet(db, did, action, reason || '');
 
   return json({ did, action, reason: reason || '', hidden: action === 'show' ? 0 : 1 });
@@ -309,7 +348,8 @@ export async function handleModOverrideDelete(
   const did = url.searchParams.get("did") || "";
   if (!did) return json({ error: "did query param required" }, 400);
 
-  await clearOverride(controlDb(env), did);
+  const failed = await controlWrite(env, "override_clear", (control) => clearOverride(control, did));
+  if (failed) return failed;
   const hidden = await mirrorOverrideClear(db, did);
 
   return json({ did, hidden });
@@ -322,7 +362,9 @@ export async function handleModOverrideList(
   const denied = authCheck(request, env);
   if (denied) return denied;
 
-  return json({ overrides: await listOverrides(controlDb(env)) });
+  let overrides: Awaited<ReturnType<typeof listOverrides>> = [];
+  const failed = await controlWrite(env, "override_list", async (control) => { overrides = await listOverrides(control); });
+  return failed ?? json({ overrides });
 }
 
 /** normalize an input domain: lowercase, trim, strip a leading "*." / "." */
@@ -351,7 +393,8 @@ export async function handleDomainBlockSet(
     return json({ error: "valid domain required (e.g. dadavidtseng.com)" }, 400);
   }
 
-  await blockDomain(controlDb(env), domain, body.reason || "", unixNow());
+  const failed = await controlWrite(env, "domain_block", (control) => blockDomain(control, domain, body.reason || "", unixNow()));
+  if (failed) return failed;
   await mirrorDomainBlock(db, ctx, domain, body.reason || "");
 
   return json({ domain, reason: body.reason || "", status: "blocked; backfilling existing matches in background" });
@@ -370,7 +413,8 @@ export async function handleDomainBlockDelete(
   const domain = normalizeDomain(url.searchParams.get("domain") || "");
   if (!domain) return json({ error: "domain query param required" }, 400);
 
-  await unblockDomain(controlDb(env), domain);
+  const failed = await controlWrite(env, "domain_unblock", (control) => unblockDomain(control, domain));
+  if (failed) return failed;
   await mirrorDomainUnblock(db, ctx, domain);
 
   return json({ domain, status: "unblocked; recomputing affected actors in background" });
@@ -383,7 +427,9 @@ export async function handleDomainBlockList(
   const denied = authCheck(request, env);
   if (denied) return denied;
 
-  return json({ blocked_domains: await listBlockedDomains(controlDb(env)) });
+  let blocked_domains: Awaited<ReturnType<typeof listBlockedDomains>> = [];
+  const failed = await controlWrite(env, "domain_list", async (control) => { blocked_domains = await listBlockedDomains(control); });
+  return failed ?? json({ blocked_domains });
 }
 
 /* ─── profile enrichment ─────────────────────────────────────────────────
