@@ -1012,7 +1012,9 @@ test "the role pulls the control record while it runs, reports it in /health and
     const arena = arena_state.allocator();
     const Body = struct { control: ?http.ControlBody = null };
     var reported: ?http.ControlBody = null;
-    for (0..500) |_| {
+    // Two minutes at most, for a machine busy with other work; it ends as
+    // soon as the role reports what the stub serves.
+    for (0..6000) |_| {
         var result = client.fetch(.{ .url = health_url, .deadline_ns = 2 * std.time.ns_per_s }) catch {
             try io.sleep(Io.Duration.fromMilliseconds(20), .awake);
             continue;
