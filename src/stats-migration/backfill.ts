@@ -1,10 +1,10 @@
 import { z } from "zod";
-import type { SqlDb, SqlRow } from "./db";
+import type { SqlDb, SqlRow } from "../db";
 import {
   DAILY_NAMES, DAILY_TABLES, DUAL_WRITE_START_BUCKET, RANGED_NAMES, RANGED_TABLES,
   bucketTime, differences, diffRows, insertStatements, readPagePair, statRows,
   type DailyName, type RangedName, type RowDiff, type StatRow,
-} from "./stats-rows";
+} from "./rows";
 
 /** Copying the statistics history from Turso into D1 (docs/plans/stats-off-turso.md,
  *  step 3), one bounded step a call.

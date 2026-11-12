@@ -1,12 +1,12 @@
 import { authorized, parseBody, rejectUnauthorized } from "../admin-auth";
 import { d1Db, type SqlDb } from "../db";
-import { BackfillInputError, backfillRequestSchema, backfillStep } from "../stats-backfill";
-import { ParityInputError, parityRequestSchema, parityStep } from "../stats-parity";
+import { BackfillInputError, backfillRequestSchema, backfillStep } from "./backfill";
+import { ParityInputError, parityRequestSchema, parityStep } from "./parity";
 import type { Env } from "../types";
 import { json } from "../utils";
 
 /** POST /admin/stats-backfill: one step of the Turso to D1 history copy
- *  (src/stats-backfill.ts). The rows travel from Turso to D1 inside this
+ *  (./backfill.ts). The rows travel from Turso to D1 inside this
  *  Worker; the caller sends a position and receives counts and the next
  *  position, so driving it costs the operator's connection a few hundred
  *  small requests. `dry_run` is required: nothing is written unless the
@@ -28,7 +28,7 @@ export async function handleStatsBackfill(request: Request, turso: SqlDb, env: E
 }
 
 /** POST /admin/stats-parity: one section of the Turso and D1 comparison
- *  (src/stats-parity.ts). It reads both stores and writes nothing; POST only
+ *  (./parity.ts). It reads both stores and writes nothing; POST only
  *  because the request is a JSON body. */
 export async function handleStatsParity(request: Request, turso: SqlDb, env: Env): Promise<Response> {
   if (!authorized(request, env)) return rejectUnauthorized(request, env, "/admin/stats-parity");

@@ -295,7 +295,7 @@ keeps.
 
 ### What the three pieces do
 
-- **Backfill** (`POST /admin/stats-backfill`, `src/stats-backfill.ts`, driven
+- **Backfill** (`POST /admin/stats-backfill`, `src/stats-migration/backfill.ts`, driven
   by `just stats-backfill`). The rows go from Turso to D1 inside the Worker in
   bounded pages; the command sends positions and prints counts, a few hundred
   small requests. It is relative to a cut: a closed 5-minute bucket at or
@@ -310,7 +310,7 @@ keeps.
   hourly rollup can land during a run: the daily tables are copied last, in
   one transaction with the removal of the D1 buckets Turso has already
   rolled up.
-- **Parity** (`POST /admin/stats-parity`, `src/stats-parity.ts`, driven by
+- **Parity** (`POST /admin/stats-parity`, `src/stats-migration/parity.ts`, driven by
   `just stats-parity`). Read-only. It compares closed buckets only: the five
   time-keyed tables row for row, per-day history as the cron reads it, the two
   totals as each store had them at the closed bound, and the `stats_data`,

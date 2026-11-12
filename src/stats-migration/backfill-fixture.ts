@@ -1,5 +1,5 @@
-import type { SqlDb } from "./db";
-import { DAILY_TABLES, DUAL_WRITE_START_BUCKET, RANGED_NAMES, RANGED_TABLES, insertStatements, type RangedName, type StatRow } from "./stats-rows";
+import type { SqlDb } from "../db";
+import { DAILY_TABLES, DUAL_WRITE_START_BUCKET, RANGED_NAMES, RANGED_TABLES, insertStatements, type RangedName, type StatRow } from "./rows";
 
 /** Test fixture: a Turso with months of statistics history and a D1 that has
  *  only counted since dual write started, both still counting past the cut. */

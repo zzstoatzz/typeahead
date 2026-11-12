@@ -19,7 +19,7 @@ import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { handleWebManifest } from "./handlers/web-manifest";
 import { handleSourceIcon } from "./handlers/source-icon";
-import { handleStatsBackfill, handleStatsParity } from "./handlers/stats-admin";
+import { handleStatsBackfill, handleStatsParity } from "./stats-migration/handlers";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
 import { handleSlotIndexRequests, handleSlotPolicy } from "./handlers/slot-control";

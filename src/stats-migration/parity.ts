@@ -1,13 +1,13 @@
 import { z } from "zod";
-import type { SqlDb, SqlRow } from "./db";
-import { readRequestPayload, readStatsPayload } from "./enrichment";
-import { readTotals } from "./stats-backfill";
-import { readProfile } from "./stats-profile";
+import type { SqlDb, SqlRow } from "../db";
+import { readRequestPayload, readStatsPayload } from "../enrichment";
+import { readTotals } from "./backfill";
+import { readProfile } from "../stats-profile";
 import {
   DAILY_NAMES, DAILY_TABLES, RANGED_NAMES, RANGED_TABLES,
   bucketTime, differences, diffRows, readPagePair, statRows,
   type DailyName, type RangedName, type RowDiff, type StatRow,
-} from "./stats-rows";
+} from "./rows";
 
 /** Comparing what Turso and D1 hold (docs/plans/stats-off-turso.md, steps 4
  *  and 5), one bounded section a call. This is the gate for reading from D1.

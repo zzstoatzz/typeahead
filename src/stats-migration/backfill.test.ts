@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
-import { materializeStats, readRequestPayload, readStatsPayload } from "./enrichment";
-import { handleStatsBackfill } from "./handlers/stats-admin";
-import { BACKFILL_STEPS, BackfillInputError, backfillStep, runBackfill, type BackfillRequest, type BackfillResult } from "./stats-backfill";
-import { CUT, NOW, T0, backfilled, seed } from "./stats-backfill-fixture";
-import { statsRows, statsStores } from "./stats-d1-fixture";
-import { readProfile } from "./stats-profile";
-import type { Env } from "./types";
+import { materializeStats, readRequestPayload, readStatsPayload } from "../enrichment";
+import { handleStatsBackfill } from "./handlers";
+import { BACKFILL_STEPS, BackfillInputError, backfillStep, runBackfill, type BackfillRequest, type BackfillResult } from "./backfill";
+import { CUT, NOW, T0, backfilled, seed } from "./backfill-fixture";
+import { statsRows, statsStores } from "../stats-d1-fixture";
+import { readProfile } from "../stats-profile";
+import type { Env } from "../types";
 
 // each test seeds two real stores, one of them a workerd process
 setDefaultTimeout(60_000);

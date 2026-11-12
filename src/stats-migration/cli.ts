@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
-import { BACKFILL_STEPS, runBackfill, type BackfillPosition, type BackfillRequest, type BackfillResult } from "./stats-backfill";
-import { PARITY_SECTIONS, runParity, type ParityReport, type ParityRequest, type ParityResult } from "./stats-parity";
-import { DUAL_WRITE_START_BUCKET, RANGED_NAMES, bucketTime, differences, type RowDiff } from "./stats-rows";
+import { BACKFILL_STEPS, runBackfill, type BackfillPosition, type BackfillRequest, type BackfillResult } from "./backfill";
+import { PARITY_SECTIONS, runParity, type ParityReport, type ParityRequest, type ParityResult } from "./parity";
+import { DUAL_WRITE_START_BUCKET, RANGED_NAMES, bucketTime, differences, type RowDiff } from "./rows";
 
 /** The operator's side of the statistics move to D1: `scripts/stats-d1.ts`
  *  calls this. It sends positions to the Worker's two admin endpoints and

@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
-import { handleStatsBackfill, handleStatsParity } from "./handlers/stats-admin";
-import { CUT, NOW, backfilled, seed } from "./stats-backfill-fixture";
-import { main, type CliHost } from "./stats-cli";
-import { statsRows, statsStores } from "./stats-d1-fixture";
-import type { Env } from "./types";
+import { handleStatsBackfill, handleStatsParity } from "./handlers";
+import { CUT, NOW, backfilled, seed } from "./backfill-fixture";
+import { main, type CliHost } from "./cli";
+import { statsRows, statsStores } from "../stats-d1-fixture";
+import type { Env } from "../types";
 
 // each test seeds two real stores, one of them a workerd process
 setDefaultTimeout(60_000);

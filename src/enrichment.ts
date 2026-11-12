@@ -73,7 +73,7 @@ export type RequestPayload = Omit<RequestKvData, "materialized_at">;
 
 /** What the cron writes to KV `stats_data`, read from one statistics store and
  *  written nowhere, so the same reads can be issued against Turso and D1 and
- *  their answers compared (src/stats-parity.ts). */
+ *  their answers compared (src/stats-migration/parity.ts). */
 export async function readStatsPayload(db: SqlDb, now = Date.now()): Promise<StatsPayload> {
   // metrics: 5-min buckets. 100k buckets ≈ 1 year of headroom — effectively
   // "all" for our current age. lets the /stats range selector compute true totals.

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { SqlDb, SqlRow, Stmt } from "./db";
+import type { SqlDb, SqlRow, Stmt } from "../db";
 
 /** `T0` of docs/plans/stats-off-turso.md: the first 5-minute bucket that began
  *  after dual write was live everywhere, 2026-11-10 19:20:00 UTC. D1 holds its

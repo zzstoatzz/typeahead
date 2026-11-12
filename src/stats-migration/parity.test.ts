@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
-import { materializeStats } from "./enrichment";
-import { handleStatsParity } from "./handlers/stats-admin";
-import { runBackfill, backfillStep, type BackfillRequest } from "./stats-backfill";
-import { CUT, NOW, T0, seed } from "./stats-backfill-fixture";
-import { statsStores } from "./stats-d1-fixture";
-import { PARITY_SECTIONS, ParityInputError, parityStep, runParity, type ParityReport, type ParityRequest, type ParityResult } from "./stats-parity";
-import { RANGED_NAMES } from "./stats-rows";
-import type { Env } from "./types";
+import { materializeStats } from "../enrichment";
+import { handleStatsParity } from "./handlers";
+import { runBackfill, backfillStep, type BackfillRequest } from "./backfill";
+import { CUT, NOW, T0, seed } from "./backfill-fixture";
+import { statsStores } from "../stats-d1-fixture";
+import { PARITY_SECTIONS, ParityInputError, parityStep, runParity, type ParityReport, type ParityRequest, type ParityResult } from "./parity";
+import { RANGED_NAMES } from "./rows";
+import type { Env } from "../types";
 
 // each test seeds two real stores, one of them a workerd process
 setDefaultTimeout(60_000);
