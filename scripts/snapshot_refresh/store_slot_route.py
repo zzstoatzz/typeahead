@@ -188,7 +188,7 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     ours = candidate['status']['body']
     build_id = ours.get('build_id')
     if not isinstance(build_id, str) or not BUILD.fullmatch(build_id):
-        raise Refused(reasons + ['store slot does not report a valid build id'])
+        raise Refused(reasons + ['candidate does not report a valid build id'])
     identity = {
         'engine': 'tantivy',
         'origin': candidate_origin,
@@ -197,44 +197,44 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
         'binary_sha256': binary_sha256,
         'retrieval_strategy': serving_target['retrieval_strategy'],
     }
-    reasons += identity_reasons('store slot', candidate, identity)
+    reasons += identity_reasons('candidate', candidate, identity)
 
     if candidate['ready']['body'].get('ready') is not True:
-        reasons.append('store slot /ready is not true')
+        reasons.append('candidate /ready is not true')
     if candidate['health']['body'].get('ready') is not True:
-        reasons.append('store slot /health is not ready')
+        reasons.append('candidate /health is not ready')
     if ours.get('ready') is not True:
-        reasons.append('store slot /index/status is not ready')
+        reasons.append('candidate /index/status is not ready')
 
     for key in ('normalize_version', 'plan_version', 'pds_scope_version', 'pds_scope_policy'):
         if not ours.get(key) or ours.get(key) != theirs.get(key):
-            reasons.append(f'{key} is {ours.get(key)!r} on the store slot and {theirs.get(key)!r} on the serving slot')
+            reasons.append(f'{key} is {ours.get(key)!r} on the candidate and {theirs.get(key)!r} on the serving slot')
 
     config = ours.get('query_config') or {}
     if config.get('allow_partial') is not False or config.get('allow_stale') is not False:
-        reasons.append('store slot answers from a partial or stale index')
+        reasons.append('candidate answers from a partial or stale index')
     if type(config.get('max_sync_lag_s')) is not int or not 1 <= config['max_sync_lag_s'] <= MAX_SYNC_LAG_S:
-        reasons.append(f'store slot does not bound its own sync lag at {MAX_SYNC_LAG_S} s or less')
+        reasons.append(f'candidate does not bound its own sync lag at {MAX_SYNC_LAG_S} s or less')
     for key in ('full_source', 'import_complete', 'expiry_coverage_ready'):
         if ours.get(key) is not True:
-            reasons.append(f'store slot {key} is not true')
+            reasons.append(f'candidate {key} is not true')
 
     watermark = ours.get('watermark')
     lag = now - watermark if is_count(watermark) else None
     if lag is None or not 0 <= lag <= MAX_SYNC_LAG_S:
-        reasons.append(f'store slot sync lag is {lag!r} s; the bound is {MAX_SYNC_LAG_S} s')
+        reasons.append(f'candidate sync lag is {lag!r} s; the bound is {MAX_SYNC_LAG_S} s')
 
     cursor = ours.get('source_cursor')
     if not isinstance(cursor, dict):
         cursor = {}
     if cursor.get('source_policy') != STORE_POLICY or cursor.get('schema_version') != 1:
-        reasons.append(f"store slot source policy is {cursor.get('source_policy')!r}, expected {STORE_POLICY!r}")
+        reasons.append(f"candidate source policy is {cursor.get('source_policy')!r}, expected {STORE_POLICY!r}")
     if cursor.get('cycle') is not None:
-        reasons.append('store slot is in the middle of a source cycle')
+        reasons.append('candidate is in the middle of a source cycle')
     if cursor.get('build_id') != build_id or cursor.get('snapshot_watermark') != ours.get('snapshot_watermark') or cursor.get('through') != watermark:
-        reasons.append('store slot source cursor does not describe the index it serves')
+        reasons.append('candidate source cursor does not describe the index it serves')
     if not is_count(ours.get('source_observation_revision')) or ours['source_observation_revision'] < 1:
-        reasons.append('store slot has applied no source observations')
+        reasons.append('candidate has applied no source observations')
 
     round_state = cursor.get('reconciliation')
     if not isinstance(round_state, dict):
@@ -249,11 +249,11 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     # the gate is that the index was reconciled against the store after the
     # bundle it started from, and that no round is running now.
     if round_state.get('schema_version') != 1 or not is_count(end) or not is_count(start) or not is_count(floor) or not floor < start <= end <= now:
-        reasons.append('store slot has not completed a reconciliation round against its store since its bootstrap')
+        reasons.append('candidate has not completed a reconciliation round against its store since its bootstrap')
     else:
         round_age, round_duration = now - end, end - start
     if round_state.get('phase') != 'idle':
-        reasons.append(f"store slot is in the middle of a reconciliation round (phase {round_state.get('phase')!r})")
+        reasons.append(f"candidate is in the middle of a reconciliation round (phase {round_state.get('phase')!r})")
 
     policy = ours.get('moderation')
     if not isinstance(policy, dict):
@@ -264,20 +264,20 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     observed = policy.get('source_observed_at')
     policy_age = now - observed if is_count(observed) else None
     if any(policy.get(key) is not True for key in ('enabled', 'complete', 'fresh')) or policy_age is None or not 0 <= policy_age <= MAX_POLICY_AGE_S:
-        reasons.append(f'store slot moderation policy is missing or stale (age {policy_age!r} s, bound {MAX_POLICY_AGE_S} s)')
+        reasons.append(f'candidate moderation policy is missing or stale (age {policy_age!r} s, bound {MAX_POLICY_AGE_S} s)')
     rules = policy.get('canonical_rules_source_sha256')
     if not isinstance(rules, str) or not DIGEST.fullmatch(rules) or rules != their_policy.get('canonical_rules_source_sha256'):
-        reasons.append('moderation rules differ between the store slot and the serving slot')
+        reasons.append('moderation rules differ between the candidate and the serving slot')
     # A stale serving slot holds an old policy; only a fresh one is a fair comparison.
     policy_compared = their_policy.get('fresh') is True
     if not isinstance(policy.get('sha256'), str) or not DIGEST.fullmatch(policy['sha256']):
-        reasons.append('store slot does not report a moderation policy hash')
+        reasons.append('candidate does not report a moderation policy hash')
     elif policy_compared and policy['sha256'] != their_policy.get('sha256'):
-        reasons.append('moderation policy differs between the store slot and the fresh serving slot')
+        reasons.append('moderation policy differs between the candidate and the fresh serving slot')
 
     actors, their_actors = ours.get('actor_count'), theirs.get('actor_count')
     if not is_count(actors) or not is_count(their_actors) or actors < 1 or abs(actors - their_actors) * 100 > their_actors * ACTOR_TOLERANCE_PERCENT:
-        reasons.append(f'store slot holds {actors!r} actors against {their_actors!r} on the serving slot; the tolerance is {ACTOR_TOLERANCE_PERCENT}% either way')
+        reasons.append(f'candidate holds {actors!r} actors against {their_actors!r} on the serving slot; the tolerance is {ACTOR_TOLERANCE_PERCENT}% either way')
 
     if reasons:
         raise Refused(reasons)
