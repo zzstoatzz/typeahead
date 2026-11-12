@@ -224,6 +224,16 @@ class Admission(unittest.TestCase):
             with self.subTest(fragment=fragment):
                 self.refused(fragment, candidate=candidate)
 
+    def test_the_actor_count_is_within_two_percent_of_the_serving_slot_either_way(self):
+        serving = turso_status()['actor_count']
+        edge = serving * route.ACTOR_TOLERANCE_PERCENT // 100
+        for actors in (serving - edge, serving, serving + edge):
+            with self.subTest(admitted=actors):
+                self.assertEqual(self.admit(candidate=Slot(store_status(actor_count=actors)))[1]['actor_count'], actors)
+        for actors in (0, serving // 2 + 1, serving - edge - 1, serving + edge + 1, serving * 2):
+            with self.subTest(refused=actors):
+                self.refused('actors', candidate=Slot(store_status(actor_count=actors)))
+
     def test_the_binary_must_be_the_one_the_operator_expects(self):
         self.refused('x-typeahead-binary-sha256', binary='5' * 64)
         with self.assertRaises(route.Refused):

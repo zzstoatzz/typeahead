@@ -17,7 +17,7 @@ the refresh controller in [my-prefect-server](https://tangled.org/zzstoatzz.io/m
 - sync lag is at most 120 s, the reader refuses partial or stale answers, and its own lag bound is at most 120 s
 - the source cursor is `store-change-log-v1`, names the index it serves, is between cycles, and has applied observations
 - a reconciliation round against the store has completed since the bootstrap bundle's cut, and none is running
-- it holds at least half the serving slot's actors
+- its actor count is within 2% of the serving slot's, either way
 
 it does not read `cutover_source_ready`. the reader computes that flag only for the `turso-authoritative-observations-v2` policy, and it is `false` on the store slot and, today, on both production slots too. the tool also does not judge search quality: that is the [shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md), which must have passed first.
 

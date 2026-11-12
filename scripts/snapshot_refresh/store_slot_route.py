@@ -55,6 +55,10 @@ IDENTITY_HEADERS = {
 # The reader's own ceilings (`cutover_source_slo` in /index/status).
 MAX_SYNC_LAG_S = 120
 MAX_POLICY_AGE_S = 300
+# Two slots that follow the same network differ by what arrived in the last
+# seconds. Further apart than this, one of them has lost or kept actors it
+# should not have.
+ACTOR_TOLERANCE_PERCENT = 2
 MAX_BODY = 4 * 1024 * 1024
 VERIFY_SECONDS = 60
 
@@ -272,8 +276,8 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
         reasons.append('moderation policy differs between the store slot and the fresh serving slot')
 
     actors, their_actors = ours.get('actor_count'), theirs.get('actor_count')
-    if not is_count(actors) or not is_count(their_actors) or actors < max(1, their_actors // 2):
-        reasons.append(f'store slot holds {actors!r} actors against {their_actors!r} on the serving slot')
+    if not is_count(actors) or not is_count(their_actors) or actors < 1 or abs(actors - their_actors) * 100 > their_actors * ACTOR_TOLERANCE_PERCENT:
+        reasons.append(f'store slot holds {actors!r} actors against {their_actors!r} on the serving slot; the tolerance is {ACTOR_TOLERANCE_PERCENT}% either way')
 
     if reasons:
         raise Refused(reasons)
