@@ -211,6 +211,10 @@ const Fixture = struct {
             .followers_count = n,
             .posts_count = generation,
             .quality_score = @floatFromInt(1 + n % 97),
+            .description = if (n % 4 == 0) try std.fmt.allocPrint(a, "about {d}\nsecond line", .{n}) else "",
+            .banner = if (n % 4 == 0) "bafkreibridgebanner" else "",
+            .updated_at = if (n % 4 == 0) 1_794_000_000 + n else 0,
+            .profile_checked = n % 2 == 0,
             .labels = if (n % 5 == 0) &.{.{
                 .source = "did:plc:labeler",
                 .uri = "did:plc:subject",
@@ -369,6 +373,17 @@ test "the bridge keeps a real Tantivy server equal to the store through changes,
     try testing.expectEqual(@as(u16, 200), try f.status(f.public, "/ready"));
     try f.expectIndexMatchesStore(&b);
     try testing.expectEqual(@as(u64, actor_count), b.health().applied);
+
+    // What the public read endpoint returns is what the store holds.
+    const read = (try f.getJson(f.public, try std.fmt.allocPrint(f.arena.allocator(), "/actors?actor={s}&actor=u00003g0.bridge.test", .{f.id(1000)}))).object.get("actors").?.array.items;
+    try testing.expectEqual(@as(usize, 2), read.len);
+    try testing.expectEqualStrings("about 1000\nsecond line", read[0].object.get("description").?.string);
+    try testing.expectEqualStrings("bafkreibridgebanner", read[0].object.get("banner_url").?.string);
+    try testing.expectEqual(@as(i64, 1_794_001_000), read[0].object.get("updated_at").?.integer);
+    try testing.expectEqual(true, read[0].object.get("profile_checked").?.bool);
+    try testing.expectEqualStrings(f.id(3), read[1].object.get("did").?.string);
+    try testing.expectEqualStrings("", read[1].object.get("description").?.string);
+    try testing.expectEqual(false, read[1].object.get("profile_checked").?.bool);
 
     // Each kind of change, checked through /search.
     const did = f.id(1234);

@@ -42,7 +42,8 @@ pub const MemoryStore = struct {
 
     fn same(a: source.Actor, b: source.Actor) bool {
         if (a.status != b.status or a.hidden != b.hidden or a.quality_score != b.quality_score or a.labels.len != b.labels.len) return false;
-        inline for (.{ "handle", "display_name", "avatar", "pds", "created_at", "associated" }) |name| {
+        if (a.updated_at != b.updated_at or a.profile_checked != b.profile_checked) return false;
+        inline for (.{ "handle", "display_name", "avatar", "description", "banner", "pds", "created_at", "associated" }) |name| {
             if (!std.mem.eql(u8, @field(a, name), @field(b, name))) return false;
         }
         for (a.labels, b.labels) |x, y| {
@@ -55,7 +56,7 @@ pub const MemoryStore = struct {
         if (self.actors.get(did)) |old| if (same(old, actor)) return;
         const a = self.strings.allocator();
         var copy = actor;
-        inline for (.{ "handle", "display_name", "avatar", "pds", "created_at", "associated" }) |name| {
+        inline for (.{ "handle", "display_name", "avatar", "description", "banner", "pds", "created_at", "associated" }) |name| {
             @field(copy, name) = try a.dupe(u8, @field(actor, name));
         }
         const labels = try a.alloc(source.Label, actor.labels.len);

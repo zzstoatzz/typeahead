@@ -352,3 +352,28 @@ test "the bridge keeps the index's policy snapshot fresh from the store's policy
     }
     try testing.expect(std.mem.indexOf(u8, server.last_reconcile, "\"blocked_domains\":[]") != null);
 }
+
+test "the index is sent the profile-card fields: description, banner, the content's update time and whether the profile was ever read" {
+    const f = try Fixture.create(.{});
+    defer f.destroy();
+    var source = try index_bridge.StoreSource.open(testing.allocator, f.owner);
+    defer source.close();
+    const interface = source.interface();
+    const a = f.arena.allocator();
+
+    _ = try f.commit(&.{.{ .profile = .{ .did = "did:plc:a", .handle = "a.test", .description = "two\nlines", .banner = "bafkbanner" } }}, null);
+    const written_at = f.now();
+    _ = try interface.cursors();
+    const unread = (try interface.actor(a, "did:plc:a")).?;
+    try testing.expectEqualStrings("two\nlines", unread.description);
+    try testing.expectEqualStrings("bafkbanner", unread.banner);
+    try testing.expectEqual(written_at, unread.updated_at);
+    try testing.expect(!unread.profile_checked);
+
+    f.advance(60);
+    _ = try f.commit(&.{.{ .enrichment = .{ .did = "did:plc:a", .source = .bsky, .description = "two\nlines", .banner = "bafkbanner", .followers_count = 3 } }}, null);
+    _ = try interface.cursors();
+    const read = (try interface.actor(a, "did:plc:a")).?;
+    try testing.expect(read.profile_checked);
+    try testing.expectEqual(written_at + 60, read.updated_at);
+}

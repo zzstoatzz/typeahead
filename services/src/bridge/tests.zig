@@ -700,6 +700,39 @@ test "a scheduled resync starts once the interval has passed" {
     try testing.expectEqual(@as(u64, 2), rig.cursor().reconciliation.round);
 }
 
+test "the profile-card fields reach the index, and a record without them is the document it was" {
+    var rig: Rig = undefined;
+    rig.init();
+    defer rig.deinit();
+    try rig.put(1, "plain");
+    var full = try rig.make(2, "full");
+    full.description = "line one\nline two";
+    full.banner = "bafkbanner";
+    full.updated_at = 1_794_000_000;
+    full.profile_checked = true;
+    try rig.store.put(rig.id(2), full);
+    var bridge = rig.bridge(rig.config());
+    defer bridge.deinit();
+    try settle(&bridge);
+
+    const a = rig.arena.allocator();
+    try testing.expectEqualStrings("line one\nline two", try rig.string(rig.id(2), "description"));
+    try testing.expectEqualStrings("bafkbanner", try rig.string(rig.id(2), "banner_url"));
+    try testing.expectEqual(@as(i64, 1_794_000_000), (try rig.server.field(a, rig.id(2), "updated_at")).?.integer);
+    try testing.expect(try rig.flag(rig.id(2), "profile_checked"));
+    inline for (.{ "description", "banner_url", "updated_at", "profile_checked" }) |name| {
+        try testing.expect(try rig.server.field(a, rig.id(1), name) == null);
+    }
+
+    const applied = rig.server.applied;
+    full.description = "";
+    full.profile_checked = false;
+    try rig.store.put(rig.id(2), full);
+    try settle(&bridge);
+    try testing.expectEqual(applied + 1, rig.server.applied);
+    try testing.expect(try rig.server.field(a, rig.id(2), "description") == null);
+}
+
 test "an index without a completed import is left alone" {
     var rig: Rig = undefined;
     rig.init();

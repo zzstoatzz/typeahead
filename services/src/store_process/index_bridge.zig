@@ -120,6 +120,8 @@ pub const StoreSource = struct {
             .handle = found.handle,
             .display_name = found.display_name,
             .avatar = found.avatar,
+            .description = found.description,
+            .banner = found.banner,
             .pds = found.pds,
             .created_at = found.created_at,
             .associated = found.associated,
@@ -127,6 +129,8 @@ pub const StoreSource = struct {
             .follows_count = found.follows_count,
             .posts_count = found.posts_count,
             .quality_score = found.quality_score,
+            .updated_at = found.updated_at,
+            .profile_checked = found.profile_checked_at > 0,
             .labels = labels,
         };
     }

@@ -139,7 +139,7 @@ pub fn validDid(did: []const u8) bool {
 /// bridge sends such a record as a tombstone.
 pub fn rejection(arena: Allocator, actor: source.Actor) ?[]const u8 {
     if (!std.math.isFinite(actor.quality_score)) return "quality score is not finite";
-    inline for (.{ "handle", "display_name", "avatar", "created_at", "pds" }) |name| {
+    inline for (.{ "handle", "display_name", "avatar", "description", "banner", "created_at", "pds" }) |name| {
         const value = @field(actor, name);
         if (value.len > max_profile_field) return name ++ " exceeds 65535 bytes";
         if (!std.unicode.utf8ValidateSlice(value)) return name ++ " is not UTF-8";
@@ -164,7 +164,7 @@ pub fn rejection(arena: Allocator, actor: source.Actor) ?[]const u8 {
 /// Bytes of profile data `encodeEntry` writes for this record, to bound a
 /// request before it is built.
 pub fn profileBytes(actor: source.Actor) usize {
-    var total = actor.handle.len + actor.display_name.len + actor.avatar.len + actor.created_at.len + actor.pds.len + actor.associated.len;
+    var total = actor.handle.len + actor.display_name.len + actor.avatar.len + actor.description.len + actor.banner.len + actor.created_at.len + actor.pds.len + actor.associated.len;
     for (actor.labels) |label| {
         total += 64 + label.source.len + label.uri.len + label.value.len + label.created.len + label.cid.len + label.expires.len;
     }
@@ -278,9 +278,22 @@ fn encodeEntry(w: *std.Io.Writer, entry: Entry) !void {
         // Widened to f64 so the decimal text is exact for the f32 and the
         // server's f64-to-f32 conversion returns the same bits.
         try w.print(",\"quality_score\":{d}", .{@as(f64, actor.quality_score)});
-        try w.print(",\"followers_count\":{d},\"follows_count\":{d},\"posts_count\":{d},\"last_activity_at\":0}}", .{
+        try w.print(",\"followers_count\":{d},\"follows_count\":{d},\"posts_count\":{d},\"last_activity_at\":0", .{
             count(actor.followers_count), count(actor.follows_count), count(actor.posts_count),
         });
+        // Sent only when set, as the server stores them: a record without
+        // them is the document it was before these fields existed.
+        if (actor.description.len > 0) {
+            try w.writeAll(",\"description\":");
+            try string(w, actor.description);
+        }
+        if (actor.banner.len > 0) {
+            try w.writeAll(",\"banner_url\":");
+            try string(w, actor.banner);
+        }
+        if (actor.updated_at > 0) try w.print(",\"updated_at\":{d}", .{actor.updated_at});
+        if (actor.profile_checked) try w.writeAll(",\"profile_checked\":true");
+        try w.writeByte('}');
     } else {
         try w.writeAll(",\"deleted\":true,\"hidden\":false,\"handle\":\"\",\"display_name\":\"\",\"avatar_url\":\"\"," ++
             "\"labels\":[],\"associated\":{},\"created_at\":\"\",\"pds\":\"\",\"quality_score\":0," ++
@@ -556,6 +569,10 @@ test "reconcile body carries every field the server parses" {
                 .followers_count = 3,
                 .follows_count = std.math.maxInt(u64),
                 .posts_count = 9,
+                .description = "two\nlines",
+                .banner = "bafkbanner",
+                .updated_at = 1_794_000_000,
+                .profile_checked = true,
             } },
             .{ .did = "did:plc:b", .version = 9, .record = null },
         },
@@ -594,6 +611,10 @@ test "reconcile body carries every field the server parses" {
     try testing.expect(live.get("associated").?.object.get("chat") != null);
     try testing.expectEqual(@as(i64, std.math.maxInt(i64)), live.get("follows_count").?.integer);
     try testing.expectEqual(@as(i64, 0), live.get("last_activity_at").?.integer);
+    try testing.expectEqualStrings("two\nlines", live.get("description").?.string);
+    try testing.expectEqualStrings("bafkbanner", live.get("banner_url").?.string);
+    try testing.expectEqual(@as(i64, 1_794_000_000), live.get("updated_at").?.integer);
+    try testing.expectEqual(true, live.get("profile_checked").?.bool);
     const score: f32 = switch (live.get("quality_score").?) {
         .integer => |n| @floatFromInt(n),
         .float => |f| @floatCast(f),
@@ -605,6 +626,9 @@ test "reconcile body carries every field the server parses" {
     try testing.expectEqual(true, tombstone.get("deleted").?.bool);
     try testing.expectEqualStrings("", tombstone.get("handle").?.string);
     try testing.expectEqual(@as(i64, 9), tombstone.get("version").?.integer);
+    inline for (.{ "description", "banner_url", "updated_at", "profile_checked" }) |name| {
+        try testing.expect(tombstone.get(name) == null);
+    }
 
     try testing.expectEqual(json.Value.null, root.get("expected_documents").?.array.items[1].object.get("document_sha256").?);
     try testing.expectEqual(json.Value.null, root.get("expected_source_cursor").?);

@@ -86,16 +86,22 @@ pub const Label = struct {
 };
 
 /// The fields of `record.Actor` the index holds, under the same names. These
-/// are the fields whose change appends to the change log. `last_activity_at`
-/// is left out on purpose: the store does not log it, so sending it would
-/// make every resync rewrite documents no log entry ever announced.
-/// `associated` is JSON object text, or empty for an empty object.
+/// are the fields whose change appends to the change log, and two that move
+/// only when one of those does or once in an actor's life: `updated_at`,
+/// which the store stamps when the content changes, and `profile_checked`,
+/// whether `profile_checked_at` has ever been set. `last_activity_at` and
+/// the raw `profile_checked_at` are left out on purpose: the store does not
+/// log them, so sending them would make every resync rewrite documents no
+/// log entry ever announced. `associated` is JSON object text, or empty for
+/// an empty object.
 pub const Actor = struct {
     status: Status = .live,
     hidden: bool = false,
     handle: []const u8 = "",
     display_name: []const u8 = "",
     avatar: []const u8 = "",
+    description: []const u8 = "",
+    banner: []const u8 = "",
     pds: []const u8 = "",
     created_at: []const u8 = "",
     associated: []const u8 = "",
@@ -103,6 +109,8 @@ pub const Actor = struct {
     follows_count: u64 = 0,
     posts_count: u64 = 0,
     quality_score: f32 = 0,
+    updated_at: u64 = 0,
+    profile_checked: bool = false,
     labels: []const Label = &.{},
 };
 
