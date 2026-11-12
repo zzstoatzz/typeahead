@@ -256,15 +256,150 @@ to 19:35 held identical totals in both stores when checked (407, 537, 394,
   and the hourly `snapshots` row. On the request path each store's write is its
   own `waitUntil` with its own swallowed failure, logged as
   `stats_write_failed` with `store` set to `turso` or `d1`.
-- Turso is still the only source for `/stats`, `/source-icon`, the KV
-  materialization and the 90-day rollup. Nothing reads D1, and D1 runs no
-  rollup or prune yet: its bucket tables only accumulate until the plan's
-  step 4.
+- Turso is the source for `/stats`, `/source-icon`, the KV materialization and
+  the 90-day rollup while `STATS_READ_SOURCE` is `"turso"` (the default in
+  `wrangler.jsonc`). Until it is `"d1"` nothing serves from D1 and D1 runs no
+  rollup or prune. The cutover is the next section.
 - To stop the D1 writes without a code change, deploy with
   `--var STATS_DUAL_WRITE:0`, or set the variable to `"0"` in `wrangler.jsonc`.
   A later plain deploy restores the value in `wrangler.jsonc`.
 - To check that rows are landing (read-only):
   `bunx wrangler d1 execute typeahead-stats --remote --command "SELECT datetime(bucket * 300, 'unixepoch') AS bucket_utc, sum(hits) AS answers FROM request_buckets GROUP BY bucket ORDER BY bucket DESC LIMIT 6"`.
+
+## Statistics read cutover to D1
+
+Steps 3 to 6 of the [plan](plans/stats-off-turso.md). Status on 2026-11-12:
+the code is on the `stats-d1-read` branch, tested locally, not deployed; no
+backfill has run and production reads Turso.
+
+Measured on 2026-11-12 08:25 UTC with read-only queries. Turso held about
+294,000 statistics rows; D1 held only what it had counted since `T0`:
+
+| Table | Turso rows | D1 rows | Turso range |
+| --- | --- | --- | --- |
+| `request_buckets` | 141,079 | 3,999 | from 2026-08-23 |
+| `actor_deltas` | 62,652 | 449 | from 2026-03-19 |
+| `traffic_buckets` | 49,813 | 1,239 | from 2026-08-14 |
+| `metrics` | 35,153 | 449 | from 2026-03-17 |
+| `snapshots` | 4,847 | 37 | from 2026-03-17 |
+| `traffic_daily` | 659 | 0 | 2026-07-24 to 2026-08-14 |
+| `request_daily` | 0 | 0 | no bucket is 90 days old yet |
+| `traffic_sources` | 410 (1,169,465 hits) | 66 | |
+| `counters` | `actors_total` 13,162,119, and `label_stream_seq` | `actors_total` 30,161 | |
+
+Over the 445 closed buckets from `T0` to that time the two stores had counted
+independently: 183,963 answers in Turso and 183,944 in D1, 29,690 and 29,692
+attributed searches, 29,747 searches and 928 cache hits in both, and actor
+deltas summing to 29,948 and 29,936. Each store drops a few writes the other
+keeps.
+
+### What the three pieces do
+
+- **Backfill** (`POST /admin/stats-backfill`, `src/stats-backfill.ts`, driven
+  by `just stats-backfill`). The rows go from Turso to D1 inside the Worker in
+  bounded pages; the command sends positions and prints counts, a few hundred
+  small requests. It is relative to a cut: a closed 5-minute bucket at or
+  after `T0`, by default two buckets before the command starts. Before the cut
+  D1 becomes a copy of Turso, including the buckets D1 counted alone since
+  `T0`. From the cut on D1 keeps its own rows. `traffic_sources.hits` and
+  `counters.actors_total` are set to Turso's value at the cut plus D1's own
+  count since the cut, so they equal Turso's at the instant the cut bucket
+  began and nothing is counted twice. Each step compares both stores and
+  writes only where they differ: a run can stop and resume, a second run
+  writes nothing, and without `--apply` it reports and writes nothing. The
+  hourly rollup can land during a run: the daily tables are copied last, in
+  one transaction with the removal of the D1 buckets Turso has already
+  rolled up.
+- **Parity** (`POST /admin/stats-parity`, `src/stats-parity.ts`, driven by
+  `just stats-parity`). Read-only. It compares closed buckets only: the five
+  time-keyed tables row for row, per-day history as the cron reads it, the two
+  totals as each store had them at the closed bound, and the `stats_data`,
+  `request_data` and `stats_profile` values the cron would write from each
+  store at the same instant, including the four figures on the default
+  preview image. It exits 1 on any closed difference and prints the rows.
+- **Read switch** (`STATS_READ_SOURCE`, `statsReadDb` in `src/stats-store.ts`).
+  `"d1"` moves the cron's `materializeStats` (KV values, rollup and prune) and
+  `recordProfile`, the `/stats` tail and source list, and the `/source-icon`
+  known-source check to D1. Writes still go to both stores, and reading D1
+  keeps D1 written even if `STATS_DUAL_WRITE` is switched off.
+
+Both commands read the admin secret from `TYPEAHEAD_SECRET` in `.env`, as
+`just smoke` does.
+
+### Operator sequence
+
+1. **Migrations.** This change adds none.
+   `bunx wrangler d1 migrations list typeahead-stats --remote` printed "No
+   migrations to apply" on 2026-11-12.
+2. **Deploy with the switch on Turso.** Merge, push, `just deploy-worker`.
+   `wrangler.jsonc` carries `"STATS_READ_SOURCE": "turso"`, so nothing a
+   reader sees changes; the deploy adds the two admin endpoints.
+3. **Record how the stores agree by themselves.**
+   `just stats-parity --since-dual-write` compares only the buckets both
+   stores counted since `T0`. It is expected to exit 1 with a few rows; this
+   is the drop rate of each store, and the backfill replaces these rows up to
+   its cut, so read it before step 5.
+4. **Backfill dry run.** `just stats-backfill`. It prints the cut and, per
+   page, how many rows differ. Expect about the Turso row counts above.
+5. **Backfill.** `just stats-backfill --apply`. If it stops it prints the
+   command that resumes it (`--cut N --from STEP:CURSOR`); starting again
+   from the beginning is also safe.
+6. **Parity.** `just stats-parity` must exit 0. Whatever it prints from the
+   cut onward is a write one store dropped; the owner decides whether that is
+   acceptable (question 3 of the plan). To remove those differences, run step
+   5 again, which takes a newer cut, and run parity straight after. Run parity
+   once more after a top-of-hour cron, so one comparison includes a rollup on
+   Turso.
+7. **Flip.** Run step 5 and step 6 again immediately before, so the cut is
+   minutes old. Set `"STATS_READ_SOURCE": "d1"` in `wrangler.jsonc`,
+   regenerate `src/public-worker-env.d.ts` with the command in its header,
+   commit, push, `just deploy-worker`.
+8. **Verify `/stats`.** Before the flip save
+   `curl -s 'https://typeahead.waow.tech/stats?range=all'`; after it (the page
+   is edge-cached for 60 seconds) the actors indexed, searches, and
+   "requests · apps" figures must be the same apart from traffic since.
+   `/stats?range=1h` must show the current bucket, which now comes from D1.
+   The KV history is still the copy Turso produced until the next
+   top-of-hour cron; after that cron, check its `cron_done` line carries
+   `materializeStats` and `recordProfile` with no `cron_step_failed`, load the
+   page and the preview image (`/og-image`) again, and run `just stats-parity`.
+9. **Watch.** `stats_write_failed` with `store: "d1"` (a dropped D1 write is
+   now a count missing from the page), `stats_read_source_unavailable` (the
+   binding is missing and reads fell back to Turso), `cron_step_failed` for
+   `materializeStats` or `recordProfile`, and the newest D1 snapshot: the
+   hourly snapshot's D1 write is swallowed on failure, so check
+   `SELECT max(hour) FROM snapshots` against the hour. Run `just stats-parity`
+   daily while dual write lasts.
+
+**To flip back:** set `"STATS_READ_SOURCE": "turso"`, regenerate the types,
+commit, push, `just deploy-worker`. Turso has been written throughout, and
+its rollup resumes at the next cron. The page moves by whatever the two
+stores counted differently since the last backfill cut. Before flipping
+forward again, repeat steps 5 and 6.
+
+### What still reads Turso after the flip
+
+These read the actor corpus, which stays in Turso until issue 31, and they are
+unchanged by the switch:
+
+- `countSnapshot` (`src/enrichment.ts`): one Turso batch reading
+  `counters.actors_total` and three counts on `actors` (`hidden != 0`, empty
+  handle, empty avatar). Its result is written to `snapshots` in both stores.
+  It needs the running actor total and those three counts from whoever owns
+  the corpus. D1 holds a dual-written `actors_total`, but the snapshot does
+  not read it.
+- `recordExclusions` (`src/exclusions.ts`): `actors` rows with `hidden != 0`,
+  `mod_overrides`, blocked domains and the two identity counts, written to KV
+  `search_exclusions`. It needs those counts published.
+- The actor deltas are computed from corpus writes: `changes` of the
+  `INSERT OR IGNORE INTO actors` probes in `/admin/ingest`, and deletes in
+  `/admin/delete` and the cron's dead-actor cleanup.
+- `counters.label_stream_seq`, the ingester's label cursor
+  (`src/account-labels.ts`), shares the `counters` table with `actors_total`.
+  It is not a statistic and is never copied; it has to move or stay before
+  the table is dropped in step 8 of the plan.
+- Every statistics write still goes to Turso as well as D1 until step 7 of
+  the plan.
 
 ## Slot control
 

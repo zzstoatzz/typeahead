@@ -1,12 +1,16 @@
 # Request and traffic statistics off Turso
 
-**Status, 2026-11-10:** steps 1 and 2 of the migration sequence (schema,
-binding, adapter, dual write) are implemented and not deployed; see
-[operations](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operations.md#statistics-dual-write-to-d1)
-and "Corrections from implementing steps 1 and 2" below. Steps 3 to 8 are
-still a proposal. The plan answers
-[issue 34](https://tangled.org/zzstoatzz.io/typeahead/issues/34) and was
-written against `main` at `16801e3`.
+**Status, 2026-11-12:** steps 1 and 2 of the migration sequence (schema,
+binding, adapter, dual write) have been live since 2026-11-10; see
+[operations](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operations.md#statistics-dual-write-to-d1).
+Steps 3 to 6 (backfill, comparison, read switch) are implemented and tested
+locally on the `stats-d1-read` branch, not deployed and not run; the operator
+sequence is in
+[operations](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operations.md#statistics-read-cutover-to-d1)
+and the differences from the sequence below are under "Corrections from
+implementing steps 3 to 6". Steps 7 and 8 are still a proposal. The plan
+answers [issue 34](https://tangled.org/zzstoatzz.io/typeahead/issues/34) and
+was written against `main` at `16801e3`.
 
 **Recommendation:** move all nine bookkeeping tables to a dedicated Cloudflare
 D1 database bound to the public Worker, keep the hourly KV materialization
@@ -435,6 +439,60 @@ single, complete source.
   empty, the backfill brings at most 90 days of buckets, and the daily series
   is computed from the daily table plus all remaining buckets, so unpruned
   buckets change nothing that is read. Step 4 remains the first place it runs.
+
+## Corrections from implementing steps 3 to 6
+
+- **Row counts, measured 2026-11-12.** About 294,000 statistics rows in
+  Turso: `request_buckets` 141,079, `actor_deltas` 62,652, `traffic_buckets`
+  49,813, `metrics` 35,153, `snapshots` 4,847, `traffic_daily` 659,
+  `traffic_sources` 410. `request_daily` is empty: the oldest request bucket
+  is from 2026-08-23, so the first one turns 90 days old on 2026-11-21 and
+  the "daily since 2026-08-23" history is still held as buckets.
+  `actor_deltas` and `metrics` are never pruned.
+- **Where the backfill runs.** Not an export and import from a laptop: an
+  authenticated admin endpoint copies one bounded page a call from Turso to
+  D1 inside the Worker, and a command sends it positions. That is too many
+  rows to pull across a home connection and few enough for a few hundred
+  Worker calls.
+- **The boundary is a cut, not `T0`.** Step 3 kept D1's own rows from `T0`.
+  The backfill takes any closed bucket at or after `T0` and replaces D1's
+  rows before it with Turso's, so D1 can be made identical to Turso up to a
+  few minutes before the read switch, and the page does not move by the
+  writes D1 dropped since `T0`. The offset arithmetic is the plan's with the
+  cut in place of `T0`.
+- **No quiet window between cron runs is needed.** The daily tables are
+  copied last, read in one Turso transaction with the oldest remaining
+  bucket, and written in one D1 transaction that also removes the D1 buckets
+  Turso has rolled up since they were copied.
+- **Rows are bound, not dumped.** A page is written as multi-row `INSERT`s of
+  bound values, 100 parameters a statement, so `total_ms` and `cache_ms`
+  arrive as the same doubles.
+- **Steps 4 and 5 are one on-demand check.** There are no `_d1` KV keys and
+  no second materialization in the cron. The parity endpoint reads what the
+  cron would write from each store at one instant and compares it, along
+  with the tables themselves. D1's rollup and prune first run when the cron
+  reads D1, at step 6; until then its daily tables are Turso's copy and its
+  old buckets are left in place, which gives the same per-day sums.
+- **Only closed buckets are compared.** A bucket being written can differ
+  between two stores for a moment. Hourly and daily KV rows that include an
+  open bucket are counted apart.
+- **The two stores roll up on different schedules** once D1 is read, so the
+  comparison is of per-day sums (daily table plus remaining buckets) and of
+  buckets both stores still hold, not of the daily tables row for row.
+- **Reading D1 keeps D1 written.** `STATS_READ_SOURCE=d1` implies the D1
+  write even with `STATS_DUAL_WRITE` off.
+- **`counters` is shared.** Turso's `counters` table also holds
+  `label_stream_seq`, the ingester's label cursor. It is not copied to D1 and
+  it has to be dealt with before step 8 drops the table.
+- **The snapshot's total stays on Turso.** `countSnapshot` reads
+  `counters.actors_total` in the same Turso batch as its three `actors`
+  counts, and stays there with them. D1's dual-written `actors_total` is
+  backfilled and compared but nothing reads it yet.
+- **Measured drop rates.** Over the 445 closed buckets from `T0` to
+  2026-11-12 08:25 UTC: 183,963 answers in Turso and 183,944 in D1; 29,690
+  and 29,692 attributed searches; `metrics` identical; actor deltas 29,948
+  and 29,936. This partly answers "Dropped writes become visible" under
+  risks: both stores drop, at about one in ten thousand.
 
 ## Files that change
 
