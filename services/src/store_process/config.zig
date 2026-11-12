@@ -29,6 +29,16 @@
 //! | `ENRICH_BLACKSKY_URL`    | no       | the appview asked about accounts Bluesky took down, default `https://api.blacksky.community` |
 //! | `HANDLE_REPAIR`          | no       | `0` turns the one-time re-verification of `handle.invalid` records off; it is on unless `STORE_OFFLINE` |
 //! | `CORPUS_SCAN_SECONDS`    | no       | seconds between corpus counts, default 3600; `0` turns them off. The first is taken 300 s after the start |
+//! | `CONTROL_URL`            | no       | the Worker's origin, `https://…`; with `SLOT_CONTROL_SECRET` it turns the control loop on: this slot pulls moderation policy and indexing requests from `/slot/control/*` there (`control.zig`). Unset, or `STORE_OFFLINE`, the loop is off and policy is whatever the store holds |
+//! | `SLOT_CONTROL_SECRET`    | no       | bearer secret for those endpoints, at least 32 bytes, the same value the Worker holds. It reads and can change nothing; never the Worker's admin secret |
+//! | `CONTROL_POLL_SECONDS`   | no       | seconds between polls, 5 to 3600, default 30; each rest is stretched by up to 20 % |
+//!
+//! The control loop is the one setting whose mistake does not stop the
+//! role: one of its two required variables without the other, a URL that is
+//! not `https://`, a short secret or a poll interval out of range leaves the
+//! loop off, logged at the start and reported as `control.state` in
+//! `/health`. A slot that will not start stops feeding its index, which
+//! takes search down; a slot without the loop serves with the policy it has.
 //!
 //! Enrichment pacing, with the defaults, for one replica. Two replicas run
 //! this loop against the same appview, so the appview sees twice each rate.
@@ -63,12 +73,14 @@
 //!   as deferred and looked at again on their walk's next pass. An entry it
 //!   did add comes due again on each retry the resolver asks for.
 //!
-//! The role reads nothing for Turso or the Worker and opens no connection
-//! to either. `MODE=store-bootstrap` loads a new store; see `bootstrap.zig`.
+//! The role reads nothing for Turso and opens no connection to it. Its one
+//! connection to the Worker is the control loop's, outbound and read-only.
+//! `MODE=store-bootstrap` loads a new store; see `bootstrap.zig`.
 
 const std = @import("std");
 const ingest = @import("../ingest.zig");
 const enrich = @import("enrich.zig");
+const control = @import("control.zig");
 
 pub const Config = struct {
     store_dir: []const u8,
@@ -82,6 +94,14 @@ pub const Config = struct {
     /// Holders of `handle.invalid` one step of the handle repair looks at;
     /// 0 when the repair is off. See `owner.Options.repair_limit`.
     handle_repair_per_step: usize = 0,
+    control: Control = .off,
+};
+
+pub const Control = union(enum) {
+    off,
+    /// The loop was asked for and cannot run; the text says why.
+    misconfigured: []const u8,
+    on: control.Options,
 };
 
 pub const handle_repair_per_step = 50;
@@ -143,7 +163,28 @@ pub fn load(getenv: Getenv) Error!Config {
     const repair_off = if (getenv("HANDLE_REPAIR")) |text| std.mem.eql(u8, text, "0") else false;
     if (!config.offline and !repair_off) config.handle_repair_per_step = handle_repair_per_step;
     if (getenv("CORPUS_SCAN_SECONDS")) |text| config.corpus_scan_seconds = std.fmt.parseInt(u64, text, 10) catch return error.InvalidCorpusScan;
+    if (!config.offline) config.control = controlLoop(getenv);
     return config;
+}
+
+fn controlLoop(getenv: Getenv) Control {
+    const url = getenv("CONTROL_URL") orelse "";
+    const secret = getenv("SLOT_CONTROL_SECRET") orelse "";
+    if (url.len == 0 and secret.len == 0) return .off;
+    if (url.len == 0) return .{ .misconfigured = "SLOT_CONTROL_SECRET is set without CONTROL_URL" };
+    if (secret.len == 0) return .{ .misconfigured = "CONTROL_URL is set without SLOT_CONTROL_SECRET" };
+    const trimmed = std.mem.trimEnd(u8, url, "/");
+    if (!(std.mem.startsWith(u8, trimmed, "https://") and trimmed.len > "https://".len) and !loopback(trimmed)) {
+        return .{ .misconfigured = "CONTROL_URL is neither https:// nor a loopback address" };
+    }
+    if (secret.len < control.min_secret_bytes) return .{ .misconfigured = "SLOT_CONTROL_SECRET is shorter than 32 bytes" };
+    var options: control.Options = .{ .url = trimmed, .secret = secret };
+    if (getenv("CONTROL_POLL_SECONDS")) |text| {
+        const seconds = std.fmt.parseInt(u64, text, 10) catch 0;
+        if (seconds < 5 or seconds > 3600) return .{ .misconfigured = "CONTROL_POLL_SECONDS is not a number from 5 to 3600" };
+        options.poll_seconds = seconds;
+    }
+    return .{ .on = options };
 }
 
 fn whole(getenv: Getenv, name: [*:0]const u8, default: u64) Error!u64 {
@@ -301,6 +342,38 @@ test "enrichment is on with its defaults unless the role is offline or told othe
     try testing.expectEqualStrings("http://127.0.0.1:2584", options.appview_url);
     try testing.expectEqualStrings("https://blacksky.example", options.blacksky_url);
     try testing.expectEqual(@as(u64, 0), set.corpus_scan_seconds);
+}
+
+test "the control loop runs when the Worker's origin and the slot secret are both set" {
+    const base = [2][]const u8{ "STORE_DIR", "/d" };
+    const secret = [2][]const u8{ "SLOT_CONTROL_SECRET", "0123456789abcdef0123456789abcdef" };
+    const url = [2][]const u8{ "CONTROL_URL", "https://typeahead.waow.tech/" };
+    try testing.expect((try load(fakeEnv(&.{base}))).control == .off);
+    try testing.expect((try load(fakeEnv(&.{ base, .{ "CONTROL_URL", "" }, .{ "SLOT_CONTROL_SECRET", "" } }))).control == .off);
+    try testing.expect((try load(fakeEnv(&.{ base, url, secret, .{ "STORE_OFFLINE", "1" } }))).control == .off);
+
+    const on = (try load(fakeEnv(&.{ base, url, secret }))).control.on;
+    try testing.expectEqualStrings("https://typeahead.waow.tech", on.url);
+    try testing.expectEqualStrings("0123456789abcdef0123456789abcdef", on.secret);
+    try testing.expectEqual(@as(u64, 30), on.poll_seconds);
+    try testing.expectEqual(@as(f64, 0.2), on.jitter);
+    try testing.expectEqual(@as(u64, 120), (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_POLL_SECONDS", "120" } }))).control.on.poll_seconds);
+    try testing.expectEqualStrings("http://127.0.0.1:8787", (try load(fakeEnv(&.{ base, secret, .{ "CONTROL_URL", "http://127.0.0.1:8787" } }))).control.on.url);
+}
+
+test "a control loop that cannot run is left off and says why, and the role still loads" {
+    const base = [2][]const u8{ "STORE_DIR", "/d" };
+    const secret = [2][]const u8{ "SLOT_CONTROL_SECRET", "0123456789abcdef0123456789abcdef" };
+    const url = [2][]const u8{ "CONTROL_URL", "https://typeahead.waow.tech" };
+    try testing.expectEqualStrings("CONTROL_URL is set without SLOT_CONTROL_SECRET", (try load(fakeEnv(&.{ base, url }))).control.misconfigured);
+    try testing.expectEqualStrings("SLOT_CONTROL_SECRET is set without CONTROL_URL", (try load(fakeEnv(&.{ base, secret }))).control.misconfigured);
+    try testing.expectEqualStrings("SLOT_CONTROL_SECRET is shorter than 32 bytes", (try load(fakeEnv(&.{ base, url, .{ "SLOT_CONTROL_SECRET", "short" } }))).control.misconfigured);
+    inline for ([_][]const u8{ "http://typeahead.waow.tech", "https://", "typeahead.waow.tech", "http://127.0.0.1.evil.example:80" }) |bad| {
+        try testing.expectEqualStrings("CONTROL_URL is neither https:// nor a loopback address", (try load(fakeEnv(&.{ base, secret, .{ "CONTROL_URL", bad } }))).control.misconfigured);
+    }
+    inline for ([_][]const u8{ "4", "3601", "30s", "", "-1" }) |bad| {
+        try testing.expectEqualStrings("CONTROL_POLL_SECONDS is not a number from 5 to 3600", (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_POLL_SECONDS", bad } }))).control.misconfigured);
+    }
 }
 
 test "enrichment settings that could not pace a loop are refused" {

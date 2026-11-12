@@ -9,6 +9,7 @@
 //! | profile record with no field we keep    | `observe`, discovery queued if new             |
 //! | any other wanted record, not a delete   | `observe`, discovery queued if new             |
 //! | `#identity`                             | `observe`, `identity_enqueue` (identity)       |
+//! | indexing request (`control.zig`)        | the same as `#identity`                        |
 //! | `#account`, inactive                    | `gone` (deleted, or deactivated for the rest)  |
 //! | `#account`, throttled or desynchronized | nothing: the relay's trouble, not the account's |
 //! | `#account`, active                      | `reactivated`, `observe`, `identity_enqueue` (account) |
@@ -64,14 +65,25 @@ pub const Changes = struct {
                     if (ingest.wantedCollection(one.collection)) try self.record(did, one);
                 }
             },
-            .identity => |id| {
-                const did = try self.arena.dupe(u8, id.did);
-                try self.observe(did, false);
-                try self.add(.{ .identity_enqueue = .{ .did = did, .reason = .identity } });
-            },
+            .identity => |id| try self.identity(try self.arena.dupe(u8, id.did)),
             .account => |acct| try self.account(try self.arena.dupe(u8, acct.did), acct.active, acct.status),
             .sync, .info => {},
         }
+    }
+
+    fn identity(self: *Changes, did: []const u8) !void {
+        try self.observe(did, false);
+        try self.add(.{ .identity_enqueue = .{ .did = did, .reason = .identity } });
+    }
+
+    /// An indexing request from the Worker's control record, as the
+    /// `#identity` event it stands in for: the actor is created if unknown
+    /// and its identity resolved again, and a gone account stays gone.
+    /// `did` must outlive the batch.
+    pub fn indexRequest(self: *Changes, did: []const u8) !void {
+        const before = self.list.items.len;
+        errdefer self.list.shrinkRetainingCapacity(before);
+        try self.identity(did);
     }
 
     fn record(self: *Changes, did: []const u8, one: zat.firehose.RepoOp) !void {

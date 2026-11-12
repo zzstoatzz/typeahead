@@ -1,9 +1,11 @@
 //! `MODE=store`: the ingester's second role. It follows the relay, the
 //! labeler and the PLC export, resolves identities, refreshes profiles from
 //! the appview, and commits everything to a zkv store on local disk. It
-//! opens no connection to Turso or the Worker. Configuration is in
-//! `config.zig`, the concurrency model in `owner.zig`, the HTTP surface in
-//! `http.zig`, enrichment in `enrich.zig`, the corpus count in `corpus.zig`.
+//! opens no connection to Turso, and one to the Worker: the control loop
+//! pulls moderation policy and indexing requests from it (`control.zig`).
+//! Configuration is in `config.zig`, the concurrency model in `owner.zig`,
+//! the HTTP surface in `http.zig`, enrichment in `enrich.zig`, the corpus
+//! count in `corpus.zig`.
 //! `Stage` is the order it starts in.
 
 const std = @import("std");
@@ -23,6 +25,7 @@ const tails = @import("tails.zig");
 const index_bridge = @import("index_bridge.zig");
 const corpus_mod = @import("corpus.zig");
 const enrich = @import("enrich.zig");
+const control = @import("control.zig");
 const bridge_mod = @import("../bridge/root.zig");
 const Io = std.Io;
 const Owner = owner_mod.Owner;
@@ -217,6 +220,23 @@ fn heartbeat(owner: *Owner) void {
         span.setAttribute("bridge_resyncs_started", b.resyncs_started);
         span.setAttribute("bridge_last_push_at", b.last_push_at);
     }
+    if (self.controller) |loop| {
+        const r = loop.report();
+        span.setAttribute("control_age_seconds", r.age_seconds);
+        span.setAttribute("control_policy_revision", @as(i64, @intCast(r.policy_revision orelse 0)));
+        span.setAttribute("control_policy_checked_at", r.policy_checked_at);
+        span.setAttribute("control_policy_applied_at", r.policy_applied_at);
+        span.setAttribute("control_rules_changed", r.rules_changed);
+        span.setAttribute("control_requests_sequence", r.requests_sequence);
+        span.setAttribute("control_requests_checked_at", r.requests_checked_at);
+        span.setAttribute("control_requests_queued", r.requests_queued);
+        span.setAttribute("control_requests_skipped", r.requests_skipped);
+        span.setAttribute("control_failures", r.failures);
+        span.setAttribute("control_unauthorized", r.unauthorized);
+        span.setAttribute("control_malformed", r.malformed);
+        span.setAttribute("control_older_revision", r.older_revision);
+    }
+    span.setAttribute("control_misconfigured", self.config.control == .misconfigured);
     span.setAttribute("last_commit_at", c.last_commit_at.load(.monotonic));
     span.setAttribute("rss_kb", ingest.getRssKB());
 }
@@ -241,6 +261,7 @@ const Role = struct {
     bridge: ?*bridge_mod.Bridge = null,
     enricher: ?*enrich.Enricher = null,
     corpus: ?*corpus_mod.Scanner = null,
+    controller: ?*control.Controller = null,
     bridge_stop: std.atomic.Value(bool) = .init(false),
     stopping: std.atomic.Value(bool) = .init(false),
 
@@ -356,6 +377,11 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
         .bridge = self.bridge,
         .enricher = self.enricher,
         .corpus = self.corpus,
+        .control = self.controller,
+        .control_problem = switch (self.config.control) {
+            .misconfigured => |problem| problem,
+            .off, .on => null,
+        },
     };
     const response = http.respond(&context, a, method, target, authorization, body) catch |err| blk: {
         log.warn("request failed: {s}", .{@errorName(err)});
@@ -469,6 +495,30 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     }
     defer if (config.enrich != null) enrich_http.deinit();
 
+    // The control loop: its own thread and its own HTTP client; see control.zig.
+    var control_http: control.Http = undefined;
+    var control_timer: enrich.WallTimer = .{ .io = io };
+    var controller: control.Controller = undefined;
+    switch (config.control) {
+        .off => {},
+        .misconfigured => |problem| log.err("the control loop is off: {s}. Moderation policy changes and indexing requests made at the Worker will not reach this slot", .{problem}),
+        .on => |control_options| {
+            control_http = control.Http.init(io, allocator);
+            controller = .{ .gpa = allocator, .owner = owner, .transport = control_http.transport(), .timer = control_timer.timer(), .options = control_options };
+            controller.prng = .init(@truncate(@as(u96, @bitCast(Io.Timestamp.now(io, .real).nanoseconds))));
+            controller.start() catch |err| {
+                log.err("control loop start failed: {s}", .{@errorName(err)});
+                control_http.deinit();
+                return err;
+            };
+            self.controller = &controller;
+        },
+    }
+    defer if (self.controller != null) {
+        controller.deinit();
+        control_http.deinit();
+    };
+
     var scanner: corpus_mod.Scanner = .{
         .gpa = allocator,
         .io = io,
@@ -510,6 +560,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     self.reached(.intake_started);
 
     if (self.enricher) |starting| try tasks.concurrent(io, enrich.Enricher.run, .{starting});
+    if (self.controller) |starting| try tasks.concurrent(io, control.Controller.run, .{starting});
     try tasks.concurrent(io, Role.late, .{&self});
 
     while (true) {
@@ -531,6 +582,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     self.stopping.store(true, .release);
     self.bridge_stop.store(true, .release);
     if (self.enricher) |running| running.stop();
+    if (self.controller) |running| running.stop();
     scanner.stop();
     owner.stop();
     // Awaited, not canceled: a cancellation lands inside a commit as a

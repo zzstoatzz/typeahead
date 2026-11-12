@@ -34,6 +34,7 @@ const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
 const corpus_mod = @import("corpus.zig");
 const enrich = @import("enrich.zig");
+const control = @import("control.zig");
 const Bridge = @import("../bridge/root.zig").Bridge;
 const Owner = owner_mod.Owner;
 const Actor = store_mod.Actor;
@@ -190,7 +191,67 @@ pub const HealthBody = struct {
     enrichment: ?EnrichmentBody = null,
     /// Absent when the corpus scan is off.
     corpus: ?CorpusBody = null,
+    /// Absent when the control loop was not asked for.
+    control: ?ControlBody = null,
 };
+
+/// The control loop (`control.zig`): the moderation policy and indexing
+/// requests this slot pulls from the Worker.
+pub const ControlBody = struct {
+    /// `on`, or `misconfigured` when the loop was asked for and cannot run:
+    /// `problem` says why, and the rest is absent.
+    state: []const u8,
+    problem: ?[]const u8 = null,
+    /// Seconds since both endpoints last answered, or since the start
+    /// before they first have. Alert when it passes a few poll intervals:
+    /// until it falls, a policy change made at the Worker is not in force
+    /// on this slot.
+    age_seconds: ?u64 = null,
+    poll_seconds: ?u64 = null,
+    policy: ?struct {
+        /// The revision the store's policy equals; absent before the first.
+        revision: ?u64 = null,
+        checked_at: u64,
+        applied_at: u64,
+        snapshots_applied: u64,
+        rules_changed: u64,
+    } = null,
+    index_requests: ?struct { sequence: u64, checked_at: u64, queued: u64, skipped: u64 } = null,
+    polls: ?u64 = null,
+    failures: ?struct {
+        total: u64,
+        no_response: u64,
+        unauthorized: u64,
+        malformed: u64,
+        older_revision: u64,
+        /// `none` when nothing has failed since the start.
+        last: []const u8,
+        last_status: u16,
+        last_at: u64,
+    } = null,
+};
+
+pub fn controlBody(loop: *control.Controller) ControlBody {
+    const r = loop.report();
+    return .{
+        .state = "on",
+        .age_seconds = r.age_seconds,
+        .poll_seconds = r.poll_seconds,
+        .policy = .{ .revision = r.policy_revision, .checked_at = r.policy_checked_at, .applied_at = r.policy_applied_at, .snapshots_applied = r.snapshots_applied, .rules_changed = r.rules_changed },
+        .index_requests = .{ .sequence = r.requests_sequence, .checked_at = r.requests_checked_at, .queued = r.requests_queued, .skipped = r.requests_skipped },
+        .polls = r.polls,
+        .failures = .{
+            .total = r.failures,
+            .no_response = r.unreachable_worker,
+            .unauthorized = r.unauthorized,
+            .malformed = r.malformed,
+            .older_revision = r.older_revision,
+            .last = @tagName(r.last_failure),
+            .last_status = r.last_failure_status,
+            .last_at = r.last_failure_at,
+        },
+    };
+}
 
 /// The pass, made once in the life of a store, that sends every live actor
 /// whose handle is `handle.invalid` back through identity resolution. It
@@ -427,6 +488,9 @@ pub const Context = struct {
     bridge: ?*Bridge = null,
     enricher: ?*enrich.Enricher = null,
     corpus: ?*corpus_mod.Scanner = null,
+    control: ?*control.Controller = null,
+    /// Why the control loop is not running although it was asked for.
+    control_problem: ?[]const u8 = null,
 };
 
 pub const Response = struct {
@@ -559,6 +623,7 @@ pub fn healthBody(ctx: *const Context, arena: Allocator) !HealthBody {
         .bridge = if (ctx.bridge) |bridge| try bridgeBody(arena, bridge) else null,
         .enrichment = if (ctx.enricher) |enricher| try enrichmentBody(arena, enricher, health, if (corpus_report) |report| report.counts else null) else null,
         .corpus = if (corpus_report) |report| corpusBody(report) else null,
+        .control = if (ctx.control) |loop| controlBody(loop) else if (ctx.control_problem) |problem| .{ .state = "misconfigured", .problem = problem } else null,
     };
 }
 

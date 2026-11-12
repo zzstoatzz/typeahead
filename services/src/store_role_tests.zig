@@ -19,6 +19,8 @@ test {
     _ = @import("store_process/enrich.zig");
     _ = @import("store_process/enrich_test.zig");
     _ = @import("store_process/corpus.zig");
+    _ = @import("store_process/control.zig");
+    _ = @import("store_process/control_test.zig");
     _ = @import("store_process/role_test.zig");
     _ = @import("identity_reuse_test.zig");
 }
