@@ -1,14 +1,23 @@
 //! CPU cost of identity resolution against a loopback stand-in.
 //!
-//!   zig build bench-identity -Doptimize=ReleaseFast -- [resolutions] [distinct] [workers]
+//!   zig build bench-identity -Doptimize=ReleaseFast -- [resolutions] [distinct] [workers] [reuse|fresh] [kind]
 //!
 //! Runs `resolutions` jobs through `identity.Resolver.observe` on a poolio pool
 //! of `workers`, as the store role does, and prints this process's user+system
 //! CPU per 1,000 resolutions and the TLS handshakes the stand-in completed.
 //! `distinct` is how many different accounts the jobs cover: equal to
 //! `resolutions`, every handle host is new; smaller, hosts repeat with a skew
-//! toward the low indices. The stand-in is a separate process, so its CPU is
+//! toward the low indices. `fresh` opens new connections for every lookup, as
+//! the resolver did before it kept sessions. `kind` gives every account one
+//! of the stand-in's behaviours, such as `noha` for a document without a
+//! handle; without it one account in seven has a custom-domain handle and the
+//! rest a bsky.social one. The stand-in is a separate process, so its CPU is
 //! not counted.
+//!
+//! `other` above zero means lookups failed and the numbers are not a
+//! measurement. On macOS that is usually `AddressUnavailable`: a `fresh` run
+//! of 2,000 uses 8,000 ephemeral ports that stay in TIME_WAIT for 30 s, so
+//! leave that long between such runs.
 
 const std = @import("std");
 const poolio = @import("poolio");
@@ -45,6 +54,8 @@ pub fn main(init: std.process.Init) !void {
     const resolutions: u64 = if (args.len > 1) try std.fmt.parseInt(u64, args[1], 10) else 2000;
     const distinct: u64 = if (args.len > 2) try std.fmt.parseInt(u64, args[2], 10) else resolutions;
     const workers: usize = if (args.len > 3) try std.fmt.parseInt(usize, args[3], 10) else 8;
+    const reuse = args.len <= 4 or !std.mem.eql(u8, args[4], "fresh");
+    const only_kind: ?*const [4]u8 = if (args.len > 5 and args[5].len == 4) args[5][0..4] else null;
     const gpa = std.heap.smp_allocator;
 
     var stub: stub_mod.Stub = undefined;
@@ -54,6 +65,7 @@ pub fn main(init: std.process.Init) !void {
     var resolver = identity.Resolver.init(gpa, stub.io(), "", "");
     defer resolver.deinit();
     resolver.upstreams = stub.upstreams();
+    resolver.reuse_connections = reuse;
     var tally: Tally = .{ .arena_gpa = gpa, .resolver = &resolver };
 
     var pool = try Pool.init(gpa, .{ .queue_capacity = 64, .workers = workers, .ctx = &tally, .process = Tally.process });
@@ -72,7 +84,7 @@ pub fn main(init: std.process.Init) !void {
             const u = random.float(f64);
             break :blk @as(u64, @intFromFloat(u * u * @as(f64, @floatFromInt(distinct))));
         };
-        const kind = if (account % 7 == 0) "cust" else "okay";
+        const kind = only_kind orelse if (account % 7 == 0) "cust" else "okay";
         try pool.put(init.io, .{ .did = stub_mod.did(kind, account), .gen = 1, .attempts = 1 });
     }
     pool.shutdown(init.io);
@@ -84,11 +96,10 @@ pub fn main(init: std.process.Init) !void {
     var out_buf: [512]u8 = undefined;
     var out = Io.File.stdout().writer(init.io, &out_buf);
     try out.interface.print(
-        "resolutions={d} distinct={d} workers={d} verified={d} other={d}\ncpu_s_per_1000={d:.3} wall_s={d:.2}\nhandshakes={d} per_resolution={d:.2} requests={d}\n",
+        "connections={s} resolutions={d} distinct={d} workers={d} verified={d} other={d}\ncpu_s_per_1000={d:.3} wall_s={d:.2}\nhandshakes={d} per_resolution={d:.2} requests={d}\n",
         .{
-            resolutions,                                                                                                    distinct,                             workers,                         tally.verified.load(.monotonic), tally.other.load(.monotonic),
-            cpu * per_thousand,                                                                                             wall,                                 after.handshakes - before.handshakes,
-            @as(f64, @floatFromInt(after.handshakes - before.handshakes)) / @as(f64, @floatFromInt(resolutions)), after.requests - before.requests - 1,
+            if (reuse) "reuse" else "fresh", resolutions, distinct,                             workers,                                                                                              tally.verified.load(.monotonic),      tally.other.load(.monotonic),
+            cpu * per_thousand,              wall,        after.handshakes - before.handshakes, @as(f64, @floatFromInt(after.handshakes - before.handshakes)) / @as(f64, @floatFromInt(resolutions)), after.requests - before.requests - 1,
         },
     );
     try out.interface.flush();
