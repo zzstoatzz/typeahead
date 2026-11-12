@@ -48,9 +48,21 @@ test("the store slot is a routable target with its own acknowledged identity", (
   const acknowledged = (target: typeof managed | typeof store) => new Response("{}", { headers: { "X-Typeahead-Engine": "tantivy", "X-Typeahead-Build": target.build_id, "X-Typeahead-Format": target.format, "X-Typeahead-Binary-Sha256": target.binary_sha256, "X-Typeahead-Retrieval-Strategy": target.retrieval_strategy } });
   expect(responseMatchesRoute(route, acknowledged(store))).toBe(true);
   expect(responseMatchesRoute(route, acknowledged(managed))).toBe(false);
-  for (const origin of ["https://typeahead-shadow-b.fly.dev", "https://typeahead-shadow-a.fly.dev/", "http://typeahead-shadow-a.fly.dev"]) {
+  for (const origin of ["https://typeahead-shadow-c.fly.dev", "https://typeahead-shadow-a.fly.dev/", "http://typeahead-shadow-a.fly.dev", "https://typeahead-shadow-b.fly.dev/", "http://typeahead-shadow-b.fly.dev"]) {
     expect(() => parseRoute({ version: 1, current: { ...store, origin } })).toThrow();
   }
+});
+
+test("either store slot is routable, and the record's previous never changes the route", () => {
+  const slotA = { engine: "tantivy", origin: "https://typeahead-shadow-a.fly.dev", build_id: "b1794333857-cp-store-a", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
+  const slotB = { ...slotA, origin: "https://typeahead-shadow-b.fly.dev", build_id: "b1794450000-cp-store-b", admission_sha256: "b".repeat(64) } as const;
+  const managed = { ...slotA, origin: "https://typeahead-tantivy-b.fly.dev", build_id: "b1794377098-cp-managed", admission_sha256: "d".repeat(64), binary_sha256: "e".repeat(64) } as const;
+  expect(parseRoute({ version: 1, current: slotB, previous: slotA })).toEqual(slotB);
+  const serving = parseRoute({ version: 1, current: slotA, previous: managed });
+  expect(serving).toEqual(slotA);
+  expect(routeIdentity(parseRoute({ version: 1, current: slotA, previous: slotB }))).toBe(routeIdentity(serving));
+  expect(routeIdentity(parseRoute({ version: 1, current: slotA }))).toBe(routeIdentity(serving));
+  expect(routeIdentity(parseRoute({ version: 1, current: slotB, previous: slotA }))).not.toBe(routeIdentity(serving));
 });
 
 test("router exposes only backend read paths", () => {
