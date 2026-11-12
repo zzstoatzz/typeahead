@@ -213,7 +213,9 @@ last confirmed it, the last indexing request taken, the failures by kind, and
 `age_seconds`, the time since both endpoints last answered. Alert when the
 heartbeat's `control_age_seconds` passes 300 or `control_misconfigured` is
 true: search is unaffected, but a policy change made at the Worker is not in
-force on that slot until it falls. No slot runs the loop as of 2026-11-12.
+force on that slot until it falls. The Worker's `GET /health/control` says
+whether the control database itself answers. No slot runs the loop as of
+2026-11-12.
 
 `handle_repair` is the pass that sends every `handle.invalid` record back
 through identity resolution, once in the life of a store: when it started and

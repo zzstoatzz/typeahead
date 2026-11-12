@@ -89,6 +89,7 @@ Set in the Fly configuration, not secret:
 | `STORE_NICE` | niceness the supervisor starts the store process at, 10 when unset |
 | `CONTROL_URL` | read by the store process: the Worker's origin, `https://typeahead.waow.tech`. With `SLOT_CONTROL_SECRET` it turns the control loop on. With the secret missing the loop stays off, the store says so in its log and in `/health` (`control.state`), and everything else runs |
 | `CONTROL_POLL_SECONDS` | read by the store process: seconds between polls of the Worker, 5 to 3600, 30 when unset |
+| `CONTROL_REQUESTS_PER_POLL`, `CONTROL_REQUEST_BACKLOG` | read by the store process: indexing requests taken in one poll at most (20 when unset), and the number of due identity queue entries at which none is taken (100 when unset), so requests cannot crowd out the relay's identity signals |
 | the store process's bootstrap relay cursor | optional, set once for the first start; the name comes with the store process |
 
 Secrets the app needs:
