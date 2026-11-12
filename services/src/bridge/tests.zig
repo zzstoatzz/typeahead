@@ -666,6 +666,22 @@ test "the backend sweep commits its progress once per step when pages need no wr
     try testing.expectEqualStrings("did:plc:test00002", rig.cursor().reconciliation.after_did);
 }
 
+test "a walk that returns more than the cap is pushed a cap at a time" {
+    var rig: Rig = undefined;
+    rig.init();
+    defer rig.deinit();
+    try rig.seed(20);
+    rig.store.walk_excess = 5;
+    var options = rig.config();
+    options.max_actors = 3;
+    var bridge = rig.bridge(options);
+    defer bridge.deinit();
+    try settle(&bridge);
+    try testing.expectEqual(@as(usize, 3), rig.server.max_actors_seen);
+    try testing.expectEqual(@as(u64, 20), rig.server.applied);
+    try rig.expectConverged();
+}
+
 test "a scheduled resync starts once the interval has passed" {
     var rig: Rig = undefined;
     rig.init();

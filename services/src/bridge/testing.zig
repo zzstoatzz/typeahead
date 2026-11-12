@@ -22,6 +22,8 @@ pub const MemoryStore = struct {
     bridge: ?u64 = null,
     policy_value: ?source.Policy = null,
     fail_next_set_position: bool = false,
+    /// DIDs `walk` returns beyond the limit it was given.
+    walk_excess: usize = 0,
 
     pub fn init(gpa: Allocator) MemoryStore {
         return .{ .gpa = gpa, .strings = .init(gpa) };
@@ -147,7 +149,7 @@ pub const MemoryStore = struct {
                 return std.mem.lessThan(u8, a, b);
             }
         }.lessThan);
-        return dids.items[0..@min(limit, dids.items.len)];
+        return dids.items[0..@min(limit + self.walk_excess, dids.items.len)];
     }
 
     fn policyOf(ptr: *anyopaque, _: Allocator) anyerror!?source.Policy {

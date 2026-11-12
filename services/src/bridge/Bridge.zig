@@ -542,7 +542,10 @@ fn resyncPage(self: *Bridge) !bool {
     switch (next.reconciliation.phase) {
         .idle => unreachable,
         .source => {
-            const dids = try self.store.walk(arena, next.reconciliation.after_did, self.batch_cap);
+            // A walk that returns more than it was asked for is cut to the
+            // cap: the rest comes back in the page after `last`.
+            const walked = try self.store.walk(arena, next.reconciliation.after_did, self.batch_cap);
+            const dids = walked[0..@min(walked.len, self.batch_cap)];
             if (dids.len == 0) {
                 next.reconciliation.phase = .backend;
                 next.reconciliation.after_did = "";
