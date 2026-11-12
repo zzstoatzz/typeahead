@@ -71,7 +71,12 @@ pub fn run(gpa: std.mem.Allocator, db: *engine.Db, position: *Position, end: []c
             stats.refreshes += 1;
         }
         const want = @min(options.page, left);
-        const got = page(gpa, db, position, end, want, &stats, visitor) catch |err| {
+        const before = stats.entries;
+        const result = page(gpa, db, position, end, want, &stats, visitor);
+        // A page that fails has still delivered what came before the
+        // failure, and the position is past it: it counts against the limit.
+        left -= @intCast(stats.entries - before);
+        const got = result catch |err| {
             if (err != error.Missing or !db.reader) return err;
             stats.missing += 1;
             failures += 1;
@@ -80,7 +85,6 @@ pub fn run(gpa: std.mem.Allocator, db: *engine.Db, position: *Position, end: []c
         };
         failures = 0;
         stats.pages += 1;
-        left -= got;
         if (got < want) position.done = true;
     }
     return stats;

@@ -931,6 +931,51 @@ test "a reader sees whole commits after a refresh and scans across collected tab
     try testing.expectEqual(@as(u64, 1), stats.refreshes);
 }
 
+/// Has the writer compact and collect every table once the scan has
+/// delivered `at` entries, so the page in flight loses its tables.
+const Collected = struct {
+    writer: *Store,
+    reader: *Reader,
+    at: u64,
+    entries: u64 = 0,
+
+    pub fn entry(self: *Collected, _: []const u8, _: []const u8) !void {
+        self.entries += 1;
+        if (self.entries != self.at) return;
+        try self.writer.maintainer.settle();
+        self.reader.handle.objects.deinit();
+    }
+};
+
+test "a limited scan delivers no more than its limit when a table is collected mid-page" {
+    var tmp = testing.tmpDir(.{ .iterate = true });
+    defer tmp.cleanup();
+    const layout: engine.Layout = .{ .block_bytes = 512, .cache_bytes = 0, .l0_tables = 2, .fence_stride = 2 };
+    const writer = try Store.open(testing.allocator, testing.io, tmp.dir, "store", .{ .layout = layout });
+    defer writer.close();
+    var arena: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena.deinit();
+    var buf: [32]u8 = undefined;
+    for (0..2) |half| {
+        const batch = try writer.begin(t0);
+        for (0..100) |n| _ = try batch.apply(.{ .profile = .{ .did = try std.fmt.bufPrint(&buf, "did:plc:{d:0>4}", .{half * 100 + n}), .handle = "h.test", .description = filler[0..200] } });
+        try batch.commit();
+        try writer.maintainer.flush();
+    }
+    const reader = try Reader.open(testing.allocator, testing.io, tmp.dir, "store", layout);
+    defer reader.close();
+
+    var collected: Collected = .{ .writer = writer, .reader = reader, .at = 30 };
+    var position: scan.Position = .{};
+    defer position.deinit(testing.allocator);
+    const stats = try reader.scanRange(&position, .actor, .{ .page = 50, .refresh = false, .limit = 50 }, &collected);
+    try testing.expectEqual(@as(u64, 1), stats.missing);
+    try testing.expectEqual(@as(u64, 50), collected.entries);
+    try testing.expectEqual(@as(u64, 50), stats.entries);
+    try testing.expect(!position.done);
+    try testing.expectEqualStrings("did:plc:0049", try keys.parseActor(position.next.items[0 .. position.next.items.len - 1]));
+}
+
 test "maintenance flushes, compacts in steps, collects, and accounts for stalls" {
     var tmp = testing.tmpDir(.{ .iterate = true });
     defer tmp.cleanup();
