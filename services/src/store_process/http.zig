@@ -221,7 +221,22 @@ pub const ControlBody = struct {
         snapshots_applied: u64,
         rules_changed: u64,
     } = null,
-    index_requests: ?struct { sequence: u64, checked_at: u64, queued: u64, skipped: u64 } = null,
+    index_requests: ?struct {
+        sequence: u64,
+        checked_at: u64,
+        queued: u64,
+        skipped: u64,
+        /// Polls that left the requests at the Worker because
+        /// `backlog_limit` identity entries were due. Rising with a high
+        /// `queues.identity_due` means the resolvers are behind, and
+        /// requests wait their turn behind the relay's signals.
+        deferred: u64,
+        deferred_at: u64,
+        /// The bound: at most `per_poll` requests a poll, none while
+        /// `backlog_limit` identity entries are due.
+        per_poll: usize,
+        backlog_limit: usize,
+    } = null,
     polls: ?u64 = null,
     failures: ?struct {
         total: u64,
@@ -245,7 +260,16 @@ pub fn controlBody(loop: *control.Controller) ControlBody {
         .generation = r.generation,
         .generation_changes = r.generation_changes,
         .policy = .{ .revision = r.policy_revision, .checked_at = r.policy_checked_at, .applied_at = r.policy_applied_at, .snapshots_applied = r.snapshots_applied, .rules_changed = r.rules_changed },
-        .index_requests = .{ .sequence = r.requests_sequence, .checked_at = r.requests_checked_at, .queued = r.requests_queued, .skipped = r.requests_skipped },
+        .index_requests = .{
+            .sequence = r.requests_sequence,
+            .checked_at = r.requests_checked_at,
+            .queued = r.requests_queued,
+            .skipped = r.requests_skipped,
+            .deferred = r.requests_deferred,
+            .deferred_at = r.requests_deferred_at,
+            .per_poll = r.requests_per_poll,
+            .backlog_limit = r.request_backlog,
+        },
         .polls = r.polls,
         .failures = .{
             .total = r.failures,

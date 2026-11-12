@@ -258,7 +258,7 @@ const Rig = struct {
             .owner = f.owner,
             .transport = .{ .context = served, .get = Worker.get },
             .timer = .{ .context = clock, .now_ms = Clock.nowMs, .sleep_ms = Clock.sleepMs },
-            .options = .{ .url = origin, .secret = secret, .request_page = 3, .request_pages = 2 },
+            .options = .{ .url = origin, .secret = secret, .requests_per_poll = 3 },
         } };
         try self.loop.start();
         return self;
@@ -959,7 +959,7 @@ test "an indexing request creates the actor and queues its identity, as an #iden
     try testing.expectEqual(@as(u64, 0), rig.loop.report().requests_queued);
 }
 
-test "requests are taken a bounded number of pages at a time, in order" {
+test "requests are taken a bounded number a poll, in order, and the rest wait at the Worker" {
     const rig = try Rig.create();
     defer rig.destroy();
     var dids: [8][]const u8 = undefined;
@@ -967,17 +967,70 @@ test "requests are taken a bounded number of pages at a time, in order" {
         did.* = try std.fmt.allocPrint(rig.f.arena.allocator(), "did:plc:{c}{c}{c}{c}aaaaaaaaaaaaaaaaaaaa", .{ 'a' + @as(u8, @intCast(n)), 'b', 'c', 'd' });
         rig.worker.ask(did.*);
     }
-    try rig.poll();
-    try testing.expectEqual(@as(?u64, 6), (try rig.f.cursors()).control_requests);
-    try testing.expectEqual(@as(usize, 2), rig.worker.count(control.requests_path));
-    for (dids[0..6]) |did| try testing.expect(try rig.f.queued(did) != null);
-    try testing.expect(try rig.f.actor(dids[6]) == null);
-
-    try rig.poll();
-    try testing.expectEqual(@as(?u64, 8), (try rig.f.cursors()).control_requests);
-    try testing.expectEqual(@as(usize, 3), rig.worker.count(control.requests_path));
+    for ([_]u64{ 3, 6, 8, 8 }, 1..) |through, polls| {
+        try rig.poll();
+        try testing.expectEqual(@as(?u64, through), (try rig.f.cursors()).control_requests);
+        try testing.expectEqual(polls, rig.worker.count(control.requests_path));
+        for (dids[0..through]) |did| try testing.expect(try rig.f.queued(did) != null);
+        for (dids[through..]) |did| try testing.expect(try rig.f.actor(did) == null);
+    }
     try testing.expectEqual(@as(u64, 8), rig.loop.report().requests_queued);
-    for (dids) |did| try testing.expect(try rig.f.queued(did) != null);
+    try testing.expectEqual(@as(usize, 3), rig.loop.report().requests_per_poll);
+}
+
+test "no request is taken while the identity queue is behind, so requests cannot crowd out the relay's signals" {
+    const rig = try Rig.create();
+    defer rig.destroy();
+    rig.loop.options.request_backlog = 4;
+    var asked: [9][]const u8 = undefined;
+    for (&asked, 0..) |*did, n| {
+        did.* = try std.fmt.allocPrint(rig.f.arena.allocator(), "did:plc:{c}qqqaaaaaaaaaaaaaaaaaaaa", .{'a' + @as(u8, @intCast(n))});
+        rig.worker.ask(did.*);
+    }
+    // Four accounts the relay announced are waiting for identity resolution.
+    var relayed = rig.f.changes();
+    for ([_][]const u8{ alice, bob, carol, dave }) |did| try relayed.firehose(.{ .identity = .{ .seq = 0, .did = did, .time = "2026-11-12T00:00:00.000Z" } });
+    _ = try rig.f.commit(relayed.items(), null);
+
+    for (1..4) |n| {
+        rig.advance(30);
+        try rig.poll();
+        const report = rig.loop.report();
+        try testing.expectEqual(@as(u64, n), report.requests_deferred);
+        try testing.expectEqual(@as(u64, 0), report.requests_queued);
+        try testing.expectEqual(@as(usize, 0), rig.worker.count(control.requests_path));
+        try testing.expectEqual(@as(?u64, null), (try rig.f.cursors()).control_requests);
+        // Deferring is the loop working: the age does not rise for it.
+        try testing.expectEqual(@as(u64, 0), report.age_seconds);
+        try testing.expectEqual(@as(u64, 0), report.failures);
+    }
+
+    // The resolvers lease one of the four: three are due, under the limit,
+    // and one poll's worth of requests is let in. That makes six due, and
+    // the gate closes again with the rest still at the Worker, in order.
+    _ = try rig.f.commit(&.{.{ .identity_lease = .{ .limit = 1 } }}, null);
+    try rig.poll();
+    try testing.expectEqual(@as(?u64, 3), (try rig.f.cursors()).control_requests);
+    for (asked[0..3]) |did| try testing.expect(try rig.f.queued(did) != null);
+    try rig.poll();
+    try rig.poll();
+    try testing.expectEqual(@as(?u64, 3), (try rig.f.cursors()).control_requests);
+    try testing.expectEqual(@as(u64, 5), rig.loop.report().requests_deferred);
+    try testing.expect(try rig.f.actor(asked[3]) == null);
+
+    // Once the queue drains, the requests follow, three a poll.
+    _ = try rig.f.commit(&.{.{ .identity_lease = .{ .limit = 50 } }}, null);
+    try rig.poll();
+    try rig.poll();
+    try testing.expectEqual(@as(?u64, 9), (try rig.f.cursors()).control_requests);
+    try testing.expectEqual(@as(u64, 9), rig.loop.report().requests_queued);
+
+    // A limit of 0 takes none.
+    rig.worker.ask(alice);
+    rig.loop.options.request_backlog = 0;
+    try rig.poll();
+    try testing.expectEqual(@as(?u64, 9), (try rig.f.cursors()).control_requests);
+    try testing.expectEqual(@as(u64, 6), rig.loop.report().requests_deferred);
 }
 
 test "a request that is not a DID this role indexes is passed over, and the sequence still moves" {
@@ -1107,6 +1160,9 @@ test "/health reports the loop, and says so when it was asked for and cannot run
     try testing.expectEqual(@as(u64, 1), on.policy.?.rules_changed);
     try testing.expectEqual(@as(u64, 1), on.index_requests.?.sequence);
     try testing.expectEqual(@as(u64, 1), on.index_requests.?.queued);
+    try testing.expectEqual(@as(u64, 0), on.index_requests.?.deferred);
+    try testing.expectEqual(@as(usize, 3), on.index_requests.?.per_poll);
+    try testing.expectEqual(@as(usize, 100), on.index_requests.?.backlog_limit);
     try testing.expectEqual(@as(u64, 2), on.failures.?.total);
     try testing.expectEqual(@as(u64, 1), on.failures.?.no_response);
     try testing.expectEqual(@as(u64, 1), on.failures.?.unauthorized);

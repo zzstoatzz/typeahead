@@ -87,10 +87,21 @@ pub const Options = struct {
     /// Each rest between polls is stretched by up to this fraction, so two
     /// slots started together drift apart.
     jitter: f64 = 0.2,
-    /// Indexing requests asked for in one page; the Worker allows 500.
-    request_page: usize = 100,
-    /// Pages taken in one poll while the Worker says more remain.
-    request_pages: usize = 10,
+    /// Indexing requests taken in one poll, at most; the Worker allows 500
+    /// a page. With the default interval this is 2,400 an hour.
+    requests_per_poll: usize = 20,
+    /// No request is taken while this many identity queue entries are due.
+    /// A request costs an identity resolution and then a profile refresh,
+    /// from the same queue and the same resolvers the relay's `#identity`
+    /// and `#account` signals and the PLC export are served by, in due-time
+    /// order. So however many requests the Worker holds, they add at most
+    /// `requests_per_poll` entries to a queue that is keeping up and none to
+    /// one that is not, and a relay signal never waits behind more than
+    /// `request_backlog + requests_per_poll` entries because of them. The
+    /// requests wait at the Worker, in order; nothing is dropped. 0 takes
+    /// none. Enrichment's handle checks hold themselves to the same gate
+    /// (`ENRICH_HANDLE_BACKLOG`).
+    request_backlog: usize = 100,
 };
 
 pub const Response = struct {
@@ -142,6 +153,10 @@ pub const Stats = struct {
     requests_queued: std.atomic.Value(u64) = .init(0),
     /// Requests whose DID this role does not index.
     requests_skipped: std.atomic.Value(u64) = .init(0),
+    /// Polls that asked for no requests because `request_backlog` identity
+    /// entries were due, and when the last one was.
+    requests_deferred: std.atomic.Value(u64) = .init(0),
+    requests_deferred_at: std.atomic.Value(u64) = .init(0),
     polls: std.atomic.Value(u64) = .init(0),
     failures: std.atomic.Value(u64) = .init(0),
     unreachable_worker: std.atomic.Value(u64) = .init(0),
@@ -163,12 +178,19 @@ pub const Report = struct {
     requests_sequence: u64,
     requests_checked_at: u64,
     /// Seconds since both endpoints last answered; since the start, before
-    /// they first have. This is the number to alert on.
+    /// they first have. A poll that left the requests at the Worker because
+    /// the identity queue was behind counts as the request endpoint's
+    /// answer: the loop is working, and `requests_deferred` says why nothing
+    /// was taken. This is the number to alert on.
     age_seconds: u64,
     snapshots_applied: u64,
     rules_changed: u64,
     requests_queued: u64,
     requests_skipped: u64,
+    requests_deferred: u64,
+    requests_deferred_at: u64,
+    requests_per_poll: usize,
+    request_backlog: usize,
     polls: u64,
     failures: u64,
     unreachable_worker: u64,
@@ -375,7 +397,7 @@ pub const Controller = struct {
         const s = &self.stats;
         const policy_at = s.policy_checked_at.load(.monotonic);
         const requests_at = s.requests_checked_at.load(.monotonic);
-        const answered = @min(policy_at, requests_at);
+        const answered = @min(policy_at, @max(requests_at, s.requests_deferred_at.load(.monotonic)));
         const since = if (answered == 0) s.started_at.load(.monotonic) else answered;
         const generation = s.generation.load(.monotonic);
         return .{
@@ -391,6 +413,10 @@ pub const Controller = struct {
             .rules_changed = s.rules_changed.load(.monotonic),
             .requests_queued = s.requests_queued.load(.monotonic),
             .requests_skipped = s.requests_skipped.load(.monotonic),
+            .requests_deferred = s.requests_deferred.load(.monotonic),
+            .requests_deferred_at = s.requests_deferred_at.load(.monotonic),
+            .requests_per_poll = self.options.requests_per_poll,
+            .request_backlog = self.options.request_backlog,
             .polls = s.polls.load(.monotonic),
             .failures = s.failures.load(.monotonic),
             .unreachable_worker = s.unreachable_worker.load(.monotonic),
@@ -540,9 +566,10 @@ pub const Controller = struct {
         return true;
     }
 
-    /// Take the indexing requests after the stored sequence, a page at a
-    /// time. True when the Worker answered every page asked for. An error
-    /// is the store's, and is counted.
+    /// Take the next indexing requests after the stored sequence, at most
+    /// `requests_per_poll`, unless the identity queue is behind. True when
+    /// the Worker answered, or was not asked. An error is the store's, and
+    /// is counted.
     pub fn pollRequests(self: *Controller) !bool {
         return self.requestsPoll() catch |err| {
             self.failed(.store, 0, requests_path);
@@ -550,34 +577,38 @@ pub const Controller = struct {
         };
     }
 
-    fn requestsPoll(self: *Controller) !bool {
-        for (0..self.options.request_pages) |_| switch (try self.requestPage()) {
-            .refused => return false,
-            .more => {},
-            .end => break,
-        };
-        self.stats.requests_checked_at.store(self.nowSeconds(), .monotonic);
-        return true;
+    /// Identity queue entries due now, counted up to `request_backlog`.
+    fn identityBacklog(self: *Controller, arena: Allocator) !usize {
+        const store = try self.owner.acquire();
+        defer self.owner.release();
+        return (try store_mod.read.timed(store.db(), arena, .identity, null, self.owner.now(), self.options.request_backlog)).len;
     }
 
-    fn requestPage(self: *Controller) !enum { refused, more, end } {
+    fn requestsPoll(self: *Controller) !bool {
         var arena: std.heap.ArenaAllocator = .init(self.gpa);
         defer arena.deinit();
         const a = arena.allocator();
+        const limit = self.options.requests_per_poll;
+        if (self.options.request_backlog == 0 or try self.identityBacklog(a) >= self.options.request_backlog) {
+            _ = self.stats.requests_deferred.fetchAdd(1, .monotonic);
+            self.stats.requests_deferred_at.store(self.nowSeconds(), .monotonic);
+            return true;
+        }
         const url = if (self.generation) |generation|
-            try std.fmt.allocPrint(a, "{s}" ++ requests_path ++ "?generation={d}&after={d}&limit={d}", .{ self.options.url, generation, self.requests_sequence, self.options.request_page })
+            try std.fmt.allocPrint(a, "{s}" ++ requests_path ++ "?generation={d}&after={d}&limit={d}", .{ self.options.url, generation, self.requests_sequence, limit })
         else
-            try std.fmt.allocPrint(a, "{s}" ++ requests_path ++ "?after=0&limit={d}", .{ self.options.url, self.options.request_page });
+            try std.fmt.allocPrint(a, "{s}" ++ requests_path ++ "?after=0&limit={d}", .{ self.options.url, limit });
         const response = self.transport.get(self.transport.context, a, url, self.authorization);
-        if (self.refused(response, requests_path)) return .refused;
-        const page = parsePage(a, response.body, self.generation, self.requests_sequence, self.options.request_page) catch |err| switch (err) {
+        if (self.refused(response, requests_path)) return false;
+        const page = parsePage(a, response.body, self.generation, self.requests_sequence, limit) catch |err| switch (err) {
             error.OutOfMemory => return err,
             error.Malformed => {
                 self.failed(.malformed, response.status, requests_path);
-                return .refused;
+                return false;
             },
         };
-        if (page.requests.len == 0) return .end;
+        self.stats.requests_checked_at.store(self.nowSeconds(), .monotonic);
+        if (page.requests.len == 0) return true;
 
         const submission = try Submission.create(self.gpa);
         defer submission.destroy();
@@ -601,8 +632,8 @@ pub const Controller = struct {
         s.requests_sequence.store(last, .monotonic);
         _ = s.requests_queued.fetchAdd(page.requests.len - skipped, .monotonic);
         _ = s.requests_skipped.fetchAdd(skipped, .monotonic);
-        log.info("indexing requests through {d}: {d} queued, {d} skipped", .{ last, page.requests.len - skipped, skipped });
-        return if (page.more) .more else .end;
+        log.info("indexing requests through {d}: {d} queued, {d} skipped{s}", .{ last, page.requests.len - skipped, skipped, if (page.more) ", more at the Worker" else "" });
+        return true;
     }
 
     /// One poll of both endpoints. Neither waits on the other: requests

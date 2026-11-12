@@ -233,6 +233,7 @@ fn heartbeat(owner: *Owner) void {
         span.setAttribute("control_requests_checked_at", control.attribute(r.requests_checked_at));
         span.setAttribute("control_requests_queued", control.attribute(r.requests_queued));
         span.setAttribute("control_requests_skipped", control.attribute(r.requests_skipped));
+        span.setAttribute("control_requests_deferred", control.attribute(r.requests_deferred));
         span.setAttribute("control_failures", control.attribute(r.failures));
         span.setAttribute("control_unauthorized", control.attribute(r.unauthorized));
         span.setAttribute("control_malformed", control.attribute(r.malformed));

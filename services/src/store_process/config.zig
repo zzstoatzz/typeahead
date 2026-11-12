@@ -32,6 +32,8 @@
 //! | `CONTROL_URL`            | no       | the Worker's origin, `https://…`; with `SLOT_CONTROL_SECRET` it turns the control loop on: this slot pulls moderation policy and indexing requests from `/slot/control/*` there (`control.zig`). Unset, or `STORE_OFFLINE`, the loop is off and policy is whatever the store holds |
 //! | `SLOT_CONTROL_SECRET`    | no       | bearer secret for those endpoints, at least 32 bytes, the same value the Worker holds. It reads and can change nothing; never the Worker's admin secret |
 //! | `CONTROL_POLL_SECONDS`   | no       | seconds between polls, 5 to 3600, default 30; each rest is stretched by up to 20 % |
+//! | `CONTROL_REQUESTS_PER_POLL` | no    | indexing requests taken in one poll at most, 1 to 500, default 20: 2,400 an hour at the default interval |
+//! | `CONTROL_REQUEST_BACKLOG` | no      | no indexing request is taken while this many identity queue entries are due, default 100; `0` takes none. The requests wait at the Worker |
 //!
 //! The control loop is the one setting whose mistake does not stop the
 //! role: one of its two required variables without the other, a URL that is
@@ -183,6 +185,14 @@ fn controlLoop(getenv: Getenv) Control {
         const seconds = std.fmt.parseInt(u64, text, 10) catch 0;
         if (seconds < 5 or seconds > 3600) return .{ .misconfigured = "CONTROL_POLL_SECONDS is not a number from 5 to 3600" };
         options.poll_seconds = seconds;
+    }
+    if (getenv("CONTROL_REQUESTS_PER_POLL")) |text| {
+        const count = std.fmt.parseInt(usize, text, 10) catch 0;
+        if (count < 1 or count > 500) return .{ .misconfigured = "CONTROL_REQUESTS_PER_POLL is not a number from 1 to 500" };
+        options.requests_per_poll = count;
+    }
+    if (getenv("CONTROL_REQUEST_BACKLOG")) |text| {
+        options.request_backlog = std.fmt.parseInt(usize, text, 10) catch return .{ .misconfigured = "CONTROL_REQUEST_BACKLOG is not a number" };
     }
     return .{ .on = options };
 }
@@ -357,6 +367,11 @@ test "the control loop runs when the Worker's origin and the slot secret are bot
     try testing.expectEqualStrings("0123456789abcdef0123456789abcdef", on.secret);
     try testing.expectEqual(@as(u64, 30), on.poll_seconds);
     try testing.expectEqual(@as(f64, 0.2), on.jitter);
+    try testing.expectEqual(@as(usize, 20), on.requests_per_poll);
+    try testing.expectEqual(@as(usize, 100), on.request_backlog);
+    const bounded = (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_REQUESTS_PER_POLL", "5" }, .{ "CONTROL_REQUEST_BACKLOG", "0" } }))).control.on;
+    try testing.expectEqual(@as(usize, 5), bounded.requests_per_poll);
+    try testing.expectEqual(@as(usize, 0), bounded.request_backlog);
     try testing.expectEqual(@as(u64, 120), (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_POLL_SECONDS", "120" } }))).control.on.poll_seconds);
     try testing.expectEqualStrings("http://127.0.0.1:8787", (try load(fakeEnv(&.{ base, secret, .{ "CONTROL_URL", "http://127.0.0.1:8787" } }))).control.on.url);
 }
@@ -371,6 +386,10 @@ test "a control loop that cannot run is left off and says why, and the role stil
     inline for ([_][]const u8{ "http://typeahead.waow.tech", "https://", "typeahead.waow.tech", "http://127.0.0.1.evil.example:80" }) |bad| {
         try testing.expectEqualStrings("CONTROL_URL is neither https:// nor a loopback address", (try load(fakeEnv(&.{ base, secret, .{ "CONTROL_URL", bad } }))).control.misconfigured);
     }
+    inline for ([_][]const u8{ "0", "501", "many", "" }) |bad| {
+        try testing.expectEqualStrings("CONTROL_REQUESTS_PER_POLL is not a number from 1 to 500", (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_REQUESTS_PER_POLL", bad } }))).control.misconfigured);
+    }
+    try testing.expectEqualStrings("CONTROL_REQUEST_BACKLOG is not a number", (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_REQUEST_BACKLOG", "-1" } }))).control.misconfigured);
     inline for ([_][]const u8{ "4", "3601", "30s", "", "-1" }) |bad| {
         try testing.expectEqualStrings("CONTROL_POLL_SECONDS is not a number from 5 to 3600", (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_POLL_SECONDS", bad } }))).control.misconfigured);
     }
