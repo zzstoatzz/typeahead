@@ -28,6 +28,70 @@ const bob = "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb";
 const carol = "did:plc:cccccccccccccccccccccccc";
 const dave = "did:plc:dddddddddddddddddddddddd";
 
+/// One value of `src/control-rule-vectors.json`: literal, or a long one
+/// written as its parts.
+const Vector = union(enum) {
+    text: []const u8,
+    parts: struct { prefix: []const u8, fill: []const u8, count: usize, suffix: []const u8 },
+
+    pub fn jsonParse(arena: std.mem.Allocator, source: anytype, options: std.json.ParseOptions) !Vector {
+        if (try source.peekNextTokenType() == .string) return .{ .text = try std.json.innerParse([]const u8, arena, source, options) };
+        return .{ .parts = try std.json.innerParse(@FieldType(Vector, "parts"), arena, source, options) };
+    }
+
+    fn expand(self: Vector, arena: std.mem.Allocator) ![]const u8 {
+        return switch (self) {
+            .text => |text| text,
+            .parts => |p| blk: {
+                var out: std.ArrayList(u8) = .empty;
+                try out.appendSlice(arena, p.prefix);
+                for (0..p.count) |_| try out.appendSlice(arena, p.fill);
+                try out.appendSlice(arena, p.suffix);
+                break :blk out.items;
+            },
+        };
+    }
+};
+
+const Judged = struct { accepted: []const Vector, refused: []const Vector };
+
+test "subjects are judged as the Worker judges them, by the vectors both read" {
+    var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
+    defer arena_state.deinit();
+    const arena = arena_state.allocator();
+    const vectors = try std.json.parseFromSliceLeaky(struct { dids: Judged, domains: Judged }, arena, @embedFile("control-rule-vectors"), .{});
+    try testing.expect(vectors.dids.accepted.len > 5 and vectors.dids.refused.len > 10);
+    try testing.expect(vectors.domains.accepted.len > 5 and vectors.domains.refused.len > 10);
+
+    const Case = struct { list: []const Vector, want: bool, check: *const fn ([]const u8) bool, what: []const u8 };
+    for ([_]Case{
+        .{ .list = vectors.dids.accepted, .want = true, .check = control.validDid, .what = "did" },
+        .{ .list = vectors.dids.refused, .want = false, .check = control.validDid, .what = "did" },
+        .{ .list = vectors.domains.accepted, .want = true, .check = control.validDomain, .what = "domain" },
+        .{ .list = vectors.domains.refused, .want = false, .check = control.validDomain, .what = "domain" },
+    }) |case| for (case.list) |vector| {
+        const text = try vector.expand(arena);
+        if (case.check(text) != case.want) {
+            std.debug.print("{s} {f} should be {s}\n", .{ case.what, std.json.fmt(text[0..@min(text.len, 60)], .{}), if (case.want) "accepted" else "refused" });
+            return error.TestExpectedEqual;
+        }
+        // The whole snapshot stands or falls with it, and what is accepted
+        // is something the store's key layout can hold.
+        const body = if (std.mem.eql(u8, case.what, "did"))
+            try std.fmt.allocPrint(arena, "{{\"revision\":2,\"overrides\":[{{\"did\":{f},\"action\":\"hide\"}}],\"blocked_domains\":[]}}", .{std.json.fmt(text, .{})})
+        else
+            try std.fmt.allocPrint(arena, "{{\"revision\":2,\"overrides\":[],\"blocked_domains\":[{f}]}}", .{std.json.fmt(text, .{})});
+        if (control.parsePolicy(arena, body)) |policy| {
+            try testing.expect(case.want);
+            for (policy.overrides) |rule| try store_mod.change.validate(.{ .override_set = .{ .did = rule.did, .action = .hide } });
+            for (policy.domains) |domain| try store_mod.change.validate(.{ .domain_blocked = .{ .domain = domain } });
+        } else |err| {
+            try testing.expectEqual(error.Malformed, err);
+            try testing.expect(!case.want);
+        }
+    };
+}
+
 const Seen = struct { url: []const u8, authorization: []const u8 };
 const Asked = struct { seq: u64, did: []const u8 };
 

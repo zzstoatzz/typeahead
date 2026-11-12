@@ -182,6 +182,9 @@ pub fn build(b: *std.Build) void {
         }),
     });
     store_role_tests.root_module.addAnonymousImport("identity-quarantine", .{ .root_source_file = quarantine });
+    // The Worker's own vectors for what a moderation rule's subject may be,
+    // so its validator and the slot's cannot drift apart.
+    store_role_tests.root_module.addAnonymousImport("control-rule-vectors", .{ .root_source_file = b.path("../src/control-rule-vectors.json") });
     store_role_tests.root_module.addOptions("identity_stub_options", stub_options);
     const run_store_role_tests = b.addRunArtifact(store_role_tests);
 

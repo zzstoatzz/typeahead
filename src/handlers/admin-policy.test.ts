@@ -155,6 +155,35 @@ test("a refused request changes neither store", async () => {
   expect(await tursoDomains()).toEqual([]);
 });
 
+test("a subject a slot would refuse is refused at the write, so it is never served", async () => {
+  const before = await policySnapshot(control);
+  const { ctx, tasks } = background();
+  const dids = ["alice.bsky.social", " did:plc:63hvnyjvqi2nzzcsjgnry5we", "did:plc:63hvnyjvqi2nzzcsjgnry5we ", "did:plc:" + "a".repeat(2100), "did:plc:a\u0000b", "at://did:plc:63hvnyjvqi2nzzcsjgnry5we"];
+  for (const did of dids) {
+    const res = await handleModOverrideSet(send("POST", "/admin/mod-override", { did, action: "hide" }), turso, env);
+    expect([did.slice(0, 40), res.status]).toEqual([did.slice(0, 40), 400]);
+  }
+  const domains = ["a\u0001b.example", "x".repeat(300) + ".example", "a\u007f.example", "caf\u00e9.example"];
+  for (const domain of domains) {
+    const res = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain }), turso, env, ctx);
+    expect([domain.slice(0, 40), res.status]).toEqual([domain.slice(0, 40), 400]);
+  }
+  expect(tasks).toEqual([]);
+  expect(await policySnapshot(control)).toEqual(before);
+  expect(await tursoOverrides()).toEqual([{ did: "did:plc:rescued", action: "show", reason: "" }]);
+  expect(await tursoDomains()).toEqual([]);
+
+  // what an operator sends today still goes through
+  const link = await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:63hvnyjvqi2nzzcsjgnry5we", action: "show", reason: "FREE LINK" }), turso, env);
+  expect(link.status).toBe(200);
+  const real = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "dadavidtseng.com" }), turso, env, ctx);
+  expect(real.status).toBe(200);
+  await Promise.all(tasks);
+  await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:63hvnyjvqi2nzzcsjgnry5we"), turso, env);
+  await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=dadavidtseng.com"), turso, env, ctx);
+  await Promise.all(tasks);
+});
+
 test("a control write that fails leaves Turso untouched", async () => {
   const broken = await controlStore();
   await broken.d1.exec("DROP TABLE mod_overrides");

@@ -87,6 +87,17 @@ test("rows that are not policy are refused rather than carried", () => {
   expect(overrideRow.parse({ did: "did:plc:x", action: "hide", reason: null, at: 1 }).reason).toBe("");
 });
 
+test("a Turso rule a slot would refuse stops the backfill and is named", () => {
+  const bad = (did: string): Policy => ({ overrides: [...TURSO.overrides, { did, action: "hide", reason: "", at: 1 }], domains: [] });
+  expect(() => backfillSql(bad("alice.bsky.social"))).toThrow('Turso override "alice.bsky.social"');
+  expect(() => backfillSql(bad(" did:plc:63hvnyjvqi2nzzcsjgnry5we"))).toThrow("is not a DID a slot accepts");
+  expect(() => backfillSql(bad("did:plc:" + "a".repeat(2100)))).toThrow("Turso override");
+  const blocked = (domain: string): Policy => ({ overrides: [], domains: [...TURSO.domains, { domain, reason: "", at: 1 }] });
+  expect(() => backfillSql(blocked("a\u0001b.example"))).toThrow("Turso blocked domain");
+  expect(() => backfillSql(blocked("x".repeat(300) + ".example"))).toThrow("is not a domain a slot accepts");
+  expect(() => backfillSql(blocked("nodot"))).toThrow('Turso blocked domain "nodot"');
+});
+
 test("wrangler's JSON output is read as one statement's rows", () => {
   const output = JSON.stringify([{ results: [{ domain: "spam.example", reason: "r", at: 5 }], success: true, meta: { duration: 0 } }]);
   expect(parseWranglerRows(output, domainRow)).toEqual([{ domain: "spam.example", reason: "r", at: 5 }]);

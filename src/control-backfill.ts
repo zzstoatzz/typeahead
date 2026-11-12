@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validBlockedDomain, validOverrideDid } from "./control-rules";
 
 /** Carrying the moderation policy Turso holds into the control database, and
  *  checking the two against each other. `scripts/control-backfill.ts` is the
@@ -45,8 +46,16 @@ const BUMP = "UPDATE control_meta SET value = value + 1 WHERE name = 'policy_rev
  *  leaves the ones it has alone, so running it again changes no rule. The
  *  revision is raised before and after the rows: however the statements are
  *  interleaved with a slot's read, the last thing to happen is a new
- *  revision, and the slot reads the complete policy under it. */
+ *  revision, and the slot reads the complete policy under it. A rule a slot
+ *  would refuse is not carried: one such rule served would stop every slot
+ *  taking any policy, so the whole backfill stops and names it. */
 export function backfillSql(policy: Policy): string {
+  for (const row of policy.overrides) {
+    if (!validOverrideDid(row.did)) throw new Error(`Turso override ${JSON.stringify(row.did.slice(0, 80))} is not a DID a slot accepts; fix or remove the row in Turso first`);
+  }
+  for (const row of policy.domains) {
+    if (!validBlockedDomain(row.domain.toLowerCase())) throw new Error(`Turso blocked domain ${JSON.stringify(row.domain.slice(0, 80))} is not a domain a slot accepts; fix or remove the row in Turso first`);
+  }
   if (policy.overrides.length === 0 && policy.domains.length === 0) return "";
   const lines = [BUMP];
   for (const row of policy.overrides) {

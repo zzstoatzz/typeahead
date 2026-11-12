@@ -184,11 +184,24 @@ fn wire(comptime T: type, arena: Allocator, body: []const u8) ParseError!T {
     };
 }
 
-fn validDomain(name: []const u8) bool {
-    if (name.len == 0 or name.len > store_mod.keys.max_domain) return false;
-    if (std.mem.indexOfScalar(u8, name, '.') == null) return false;
-    for (name) |c| if (c <= ' ' or c == 0x7f) return false;
+/// Printable ASCII with no space.
+fn visibleAscii(text: []const u8) bool {
+    for (text) |c| if (c < 0x21 or c > 0x7e) return false;
     return true;
+}
+
+/// The subject of an override. The Worker applies the same rule before it
+/// writes one (`src/control-rules.ts`), because a snapshot is refused whole
+/// over a single subject that fails it; `src/control-rule-vectors.json`
+/// holds values both must judge alike.
+pub fn validDid(did: []const u8) bool {
+    return std.mem.startsWith(u8, did, "did:") and did.len <= store_mod.keys.max_did and visibleAscii(did);
+}
+
+/// A blocked domain, under the same arrangement as `validDid`.
+pub fn validDomain(name: []const u8) bool {
+    if (name.len == 0 or name.len > store_mod.keys.max_domain) return false;
+    return std.mem.indexOfScalar(u8, name, '.') != null and visibleAscii(name);
 }
 
 /// The snapshot in `body`, or `Malformed` when any part of it is not a rule
@@ -202,8 +215,7 @@ pub fn parsePolicy(arena: Allocator, body: []const u8) ParseError!Policy {
     var seen: std.StringHashMapUnmanaged(void) = .empty;
     for (overrides, parsed.overrides) |*slot, one| {
         const action = std.meta.stringToEnum(Action, one.action) orelse return error.Malformed;
-        if (!std.mem.startsWith(u8, one.did, "did:")) return error.Malformed;
-        store_mod.change.validate(.{ .override_cleared = one.did }) catch return error.Malformed;
+        if (!validDid(one.did)) return error.Malformed;
         if ((try seen.getOrPut(arena, one.did)).found_existing) return error.Malformed;
         slot.* = .{ .did = one.did, .action = action };
     }

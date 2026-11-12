@@ -1,0 +1,55 @@
+{
+  "dids": {
+    "accepted": [
+      "did:plc:63hvnyjvqi2nzzcsjgnry5we",
+      "did:web:example.com",
+      "did:web:example.com:user:alice",
+      "did:web:localhost%3A8080",
+      "did:plc:UPPER",
+      "did:x",
+      "did:",
+      { "prefix": "did:plc:", "fill": "a", "count": 2040, "suffix": "" }
+    ],
+    "refused": [
+      "",
+      "alice.bsky.social",
+      "at://did:plc:63hvnyjvqi2nzzcsjgnry5we",
+      " did:plc:63hvnyjvqi2nzzcsjgnry5we",
+      "did:plc:63hvnyjvqi2nzzcsjgnry5we ",
+      "did:plc:63hvnyjv qi2nzzcsjgnry5we",
+      "did:plc:63hvnyjvqi2nzzcsjgnry5we\n",
+      "did:plc:a\tb",
+      "did:plc:a\u0000b",
+      "did:plc:a\u007fb",
+      "did:plc:café",
+      "DID:plc:63hvnyjvqi2nzzcsjgnry5we",
+      { "prefix": "did:plc:", "fill": "a", "count": 2041, "suffix": "" },
+      { "prefix": "did:plc:", "fill": "a", "count": 2100, "suffix": "" }
+    ]
+  },
+  "domains": {
+    "accepted": [
+      "spam.example",
+      "Spam.Example",
+      "a.b",
+      "xn--caf-dma.example",
+      "under_score.example",
+      "dadavidtseng.com",
+      { "prefix": "", "fill": "x", "count": 245, "suffix": ".example" }
+    ],
+    "refused": [
+      "",
+      "nodot",
+      "has space.example",
+      " spam.example",
+      "spam.example ",
+      "spam.example\n",
+      "a\u0001b.example",
+      "a\u0000.example",
+      "a\u007f.example",
+      "café.example",
+      { "prefix": "", "fill": "x", "count": 246, "suffix": ".example" },
+      { "prefix": "", "fill": "x", "count": 300, "suffix": ".example" }
+    ]
+  }
+}

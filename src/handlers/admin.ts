@@ -6,6 +6,7 @@ import { clientIP, json, extractProfileFields, fetchProfileFromBlacksky, fetchPr
 import type { ProfileFields, ProfileSource } from "../utils";
 import { getOverride, getOverrides, isDomainBlocked, getBlockedDomains } from "../moderation";
 import { blockDomain, clearOverride, controlDb, listBlockedDomains, listOverrides, recordIndexRequest, setOverride, unblockDomain } from "../control-store";
+import { MAX_DID_BYTES, validBlockedDomain, validOverrideDid } from "../control-rules";
 import { mirrorDomainBlock, mirrorDomainUnblock, mirrorOverrideClear, mirrorOverrideSet } from "../turso-policy-mirror";
 import { recordActorDelta } from "../metrics";
 import { recordStats } from "../stats-store";
@@ -284,6 +285,11 @@ export async function handleModOverrideSet(
   if (!did || (action !== 'show' && action !== 'hide')) {
     return json({ error: "did required, action must be 'show' or 'hide'" }, 400);
   }
+  // a subject a slot would refuse would be served with the rest of the
+  // policy, and every slot would refuse the whole snapshot from then on
+  if (did !== String(did) || !validOverrideDid(did)) {
+    return json({ error: `did must be a DID: "did:" and printable ASCII without spaces, at most ${MAX_DID_BYTES} bytes` }, 400);
+  }
 
   await setOverride(controlDb(env), did, action, reason || '', unixNow());
   await mirrorOverrideSet(db, did, action, reason || '');
@@ -341,7 +347,7 @@ export async function handleDomainBlockSet(
   }
 
   const domain = normalizeDomain(body.domain);
-  if (!domain || !domain.includes(".") || /\s/.test(domain)) {
+  if (!domain || !domain.includes(".") || /\s/.test(domain) || !validBlockedDomain(domain)) {
     return json({ error: "valid domain required (e.g. dadavidtseng.com)" }, 400);
   }
 
