@@ -181,6 +181,26 @@ pub fn build(b: *std.Build) void {
     const run_store_role_process_tests = b.addRunArtifact(store_role_process_tests);
     run_store_role_process_tests.has_side_effects = true;
 
+    const stub_options = b.addOptions();
+    stub_options.addOptionPath("script_path", b.path("src/testing/identity_stub.py"));
+
+    // Needs python3 and openssl on PATH for the loopback stand-in.
+    const identity_bench = b.addExecutable(.{
+        .name = "identity-bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/identity_bench.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = role_imports,
+        }),
+    });
+    identity_bench.root_module.addOptions("identity_stub_options", stub_options);
+    const run_identity_bench = b.addRunArtifact(identity_bench);
+    run_identity_bench.addPassthruArgs();
+    const identity_bench_step = b.step("bench-identity", "Measure the CPU cost of identity resolution against a loopback stand-in");
+    identity_bench_step.dependOn(&run_identity_bench.step);
+
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_store_role_tests.step);
     test_step.dependOn(&run_store_role_process_tests.step);
