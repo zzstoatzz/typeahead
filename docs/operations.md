@@ -354,7 +354,7 @@ actor deltas, which are computed from corpus writes in `/admin/ingest`,
 
 The backfill and parity code is temporary. When Turso's statistics tables are
 gone, one commit deletes `src/stats-migration/`, `scripts/stats-d1.ts`, the
-two `/admin/stats-*` routes in `src/index.ts`, the two `just` recipes and this
+`statsMigrationRoute` call in `src/index.ts`, the two `just` recipes and this
 section.
 
 ## Slot control

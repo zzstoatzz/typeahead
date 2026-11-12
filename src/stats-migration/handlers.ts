@@ -42,3 +42,11 @@ export async function handleStatsParity(request: Request, turso: SqlDb, env: Env
     throw error;
   }
 }
+
+/** The migration's two admin routes; null for any other request. */
+export function statsMigrationRoute(request: Request, pathname: string, turso: SqlDb, env: Env): Promise<Response> | null {
+  if (request.method !== "POST") return null;
+  if (pathname === "/admin/stats-backfill") return handleStatsBackfill(request, turso, env);
+  if (pathname === "/admin/stats-parity") return handleStatsParity(request, turso, env);
+  return null;
+}
