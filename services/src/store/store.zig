@@ -858,7 +858,7 @@ pub const Batch = struct {
         new.posts_count = keepCount(new.posts_count, c.posts_count);
         if (c.quality_score != 0) new.quality_score = c.quality_score;
         new.profile_source = c.source;
-        new.profile_checked_at = self.now;
+        if (c.checked) new.profile_checked_at = self.now;
         if (settles(old, c.lease)) new.refresh_due = c.next_refresh orelse 0;
         if (c.labels) |list| {
             try self.reconcile(c.did, list);

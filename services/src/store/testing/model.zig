@@ -388,7 +388,7 @@ pub const Model = struct {
                 if (c.posts_count != 0) actor.posts_count = c.posts_count;
                 if (c.quality_score != 0) actor.quality_score = c.quality_score;
                 actor.profile_source = c.source;
-                actor.profile_checked_at = self.now;
+                if (c.checked) actor.profile_checked_at = self.now;
                 if (c.lease == null or c.lease.? == actor.refresh_due) actor.refresh_due = c.next_refresh orelse 0;
                 if (c.labels) |list| {
                     self.reconcile(c.did, list);

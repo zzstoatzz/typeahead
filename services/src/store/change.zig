@@ -125,6 +125,10 @@ pub const Enrichment = struct {
     /// The lease this fetch ran under. The queue entry is settled only while
     /// it still carries that lease: a refresh requested since stays queued.
     lease: ?u64 = null,
+    /// False when no source was asked: a bundle line that carries nothing a
+    /// profile fetch writes. The actor's check time is left alone, so the
+    /// first-check pass (`Store.firstCheck`) still finds it.
+    checked: bool = true,
 };
 
 pub const IdentityEnqueue = struct {
