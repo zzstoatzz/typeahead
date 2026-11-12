@@ -40,6 +40,21 @@ pub struct Actor {
     pub posts_count: i64,
     #[serde(default)]
     pub last_activity_at: i64,
+    /// The four below are written only when set, so a document stored before
+    /// they existed serializes, and hashes, exactly as it did.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub description: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub banner_url: String,
+    /// Unix seconds of the source's last change to the actor's content.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub updated_at: u64,
+    /// Whether the source has ever read this actor's appview profile.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub profile_checked: bool,
+}
+fn is_zero(value: &u64) -> bool {
+    *value == 0
 }
 impl Actor {
     pub fn validate(mut self) -> Result<Self> {
@@ -60,6 +75,8 @@ impl Actor {
             || self.avatar_url.len() > 65535
             || self.created_at.len() > 65535
             || self.pds.len() > 65535
+            || self.description.len() > 65535
+            || self.banner_url.len() > 65535
         {
             return Err(Error::Invalid("profile field too large".into()));
         }
@@ -104,7 +121,11 @@ impl Actor {
             followers_count,
             follows_count,
             posts_count,
-            last_activity_at
+            last_activity_at,
+            description,
+            banner_url,
+            updated_at,
+            profile_checked
         );
         fields
     }
