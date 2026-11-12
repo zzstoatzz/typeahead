@@ -63,7 +63,8 @@ export function hourOfDayBands(totals: Map<number, number>, start: number, end: 
 
 type ProfileKv = { put(key: string, value: string): Promise<void> };
 
-export async function recordProfile(db: SqlDb, kv: ProfileKv, now = Date.now()): Promise<StatsProfile> {
+/** the profile as the cron computes it, read from one statistics store */
+export async function readProfile(db: SqlDb, now = Date.now()): Promise<StatsProfile> {
   const end = Math.floor(now / 3_600_000) * 12 - 288;
   const start = end - PROFILE_DAYS * 288;
   const [trafficRes, requestRes] = await db.batch([
@@ -73,13 +74,17 @@ export async function recordProfile(db: SqlDb, kv: ProfileKv, now = Date.now()):
   const totals = (rows: { bucket: number; hits: number }[]) => new Map(rows.map((r) => [Number(r.bucket), Number(r.hits)]));
   const traffic = totals(rowsAs<{ bucket: number; hits: number }>(trafficRes?.results ?? []));
   const requests = totals(rowsAs<{ bucket: number; hits: number }>(requestRes?.results ?? []));
-  const profile = {
+  return {
     version: 1,
     as_of: new Date(now).toISOString(),
     days: PROFILE_DAYS,
     source: { m5: hourOfDayBands(traffic, start, end, "m5"), h: hourOfDayBands(traffic, start, end, "h") },
     requests: { m5: hourOfDayBands(requests, start, end, "m5"), h: hourOfDayBands(requests, start, end, "h") },
   } satisfies StatsProfile;
+}
+
+export async function recordProfile(db: SqlDb, kv: ProfileKv, now = Date.now()): Promise<StatsProfile> {
+  const profile = await readProfile(db, now);
   await kv.put(PROFILE_KEY, JSON.stringify(profile));
   return profile;
 }
