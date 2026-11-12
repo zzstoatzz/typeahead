@@ -21,7 +21,7 @@ from pathlib import Path
 SUPERVISE = Path(__file__).with_name("supervise")
 
 STUB = r"""#!/bin/sh
-case ${0##*/} in typeahead-ingester) role=store ;; *) role=index ;; esac
+case ${0##*/} in typeahead-ingester*) role=store ;; *) role=index ;; esac
 note() { echo "$1 $role $$" >> "$STUB_DIR/events"; }
 plan=$STUB_DIR/$role.plan
 step=
@@ -31,6 +31,7 @@ if [ -s "$plan" ]; then
   mv "$plan.next" "$plan"
 fi
 echo "up MODE=${MODE:-} STORE_DIR=${STORE_DIR:-} PORT=${PORT:-} args=$*"
+echo "binary ${0##*/}"
 note start
 set -- $step
 verb=${1:-run}
@@ -97,7 +98,7 @@ def alive(pid: int) -> bool:
 
 
 class Slot:
-    def __init__(self, case: unittest.TestCase, *, store_loaded: bool = True, plans: dict[str, list[str]] | None = None, **settings: int | str):
+    def __init__(self, case: unittest.TestCase, *, store_loaded: bool = True, plans: dict[str, list[str]] | None = None, cpu_flags: str | None = None, **settings: int | str):
         self.case = case
         self.root = Path(tempfile.mkdtemp(prefix="supervise-test."))
         case.addCleanup(shutil.rmtree, self.root, True)
@@ -108,6 +109,10 @@ class Slot:
         for binary in ("typeahead-ingester", "typeahead-tantivy"):
             (app / binary).write_text(STUB)
             (app / binary).chmod(stat.S_IRWXU)
+        if cpu_flags is not None:
+            (app / "typeahead-ingester.aes").write_text(STUB)
+            (app / "typeahead-ingester.aes").chmod(stat.S_IRWXU)
+            (self.root / "cpuinfo").write_text(f"processor\t: 0\nflags\t\t: {cpu_flags}\n\nprocessor\t: 1\nflags\t\t: {cpu_flags}\n")
         self.events_path = self.root / "events"
         self.events_path.touch()
         for role, plan in (plans or {}).items():
@@ -117,6 +122,7 @@ class Slot:
             "PATH": os.environ["PATH"],
             "SHADOW_DATA": str(self.root / "data"),
             "SHADOW_APP": str(app),
+            "SHADOW_CPUINFO": str(self.root / "cpuinfo"),
             "STUB_DIR": str(self.root),
             "SHADOW_RESTART_MIN_S": "1",
             "SHADOW_RESTART_MAX_S": "4",
@@ -332,6 +338,35 @@ class SuperviseTest(unittest.TestCase):
         self.stop(slot)
         self.assertEqual([], [event for event in slot.events() if event[1] == "store"])
         self.assertEqual([second], slot.pids("term", "index"))
+
+    def test_the_aes_build_runs_only_on_a_cpu_that_reports_every_feature_it_needs(self) -> None:
+        needed = "fpu cx16 lahf_lm popcnt pni ssse3 sse4_1 sse4_2 avx aes pclmulqdq avx2"
+        slot = Slot(self, cpu_flags=needed, plans={"store": ["exit 3"]})
+        slot.wait_for("start", "store", 2)
+        slot.wait_for("start", "index")
+        slot.expect("[store] binary typeahead-ingester.aes\n", 2)
+        slot.expect("[supervisor] store binary: the build that uses the CPU's AES\n")
+        slot.expect("[index] binary typeahead-tantivy\n")
+        self.stop(slot)
+
+        for lacking, named in (("aes", " aes"), ("avx", " avx"), ("pclmulqdq", " pclmulqdq"), ("sse4_2 aes", " sse4_2 aes")):
+            flags = " ".join(flag for flag in needed.split() if flag not in lacking.split())
+            slot = Slot(self, cpu_flags=flags)
+            slot.wait_for("start", "store")
+            slot.wait_for("start", "index")
+            slot.expect("[store] binary typeahead-ingester\n")
+            slot.expect(f"[supervisor] store binary: the baseline build; this CPU does not report{named}\n")
+            slot.expect("[index] binary typeahead-tantivy\n")
+            self.stop(slot)
+
+    def test_an_image_without_the_aes_build_runs_the_baseline(self) -> None:
+        slot = Slot(self)
+        slot.wait_for("start", "store")
+        slot.wait_for("start", "index")
+        slot.expect("[store] binary typeahead-ingester\n")
+        slot.expect("[index] binary typeahead-tantivy\n")
+        self.assertNotIn("store binary:", slot.output())
+        self.stop(slot)
 
     def test_production_credentials_start_nothing(self) -> None:
         slot = Slot(self, TURSO_URL="libsql://example.invalid")

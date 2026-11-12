@@ -76,8 +76,32 @@ merge=()
 [[ -n ${INDEX_WARM_SEGMENT_FILES:-} ]] && merge+=(--warm-segment-files "$INDEX_WARM_SEGMENT_FILES")
 index_only=()
 
+# The image holds the store binary twice: built for any x86-64, and built
+# for a CPU with AES, AVX and carry-less multiply as well. Zig picks its AES
+# and GHASH when it compiles, and without those three it uses software
+# versions, which was most of what reading the relay's TLS stream cost
+# (docs/evals/collector-cpu-20261112). The second binary traps on a CPU
+# that lacks an instruction it was built with, so it runs only where the
+# kernel lists every one; anywhere else the first runs, as before.
+store_bin=$app/typeahead-ingester
+cpuinfo=${SHADOW_CPUINFO:-/proc/cpuinfo}
+aes_build_needs="cx16 lahf_lm popcnt pni ssse3 sse4_1 sse4_2 avx aes pclmulqdq"
+if [[ -x $app/typeahead-ingester.aes ]]; then
+  cpu_flags=" $(grep -m 1 '^flags' "$cpuinfo" 2>/dev/null | cut -d : -f 2) "
+  cpu_lacks=""
+  for flag in $aes_build_needs; do
+    [[ $cpu_flags == *" $flag "* ]] || cpu_lacks+=" $flag"
+  done
+  if [[ -z $cpu_lacks ]]; then
+    store_bin=$app/typeahead-ingester.aes
+    say "store binary: the build that uses the CPU's AES"
+  else
+    say "store binary: the baseline build; this CPU does not report$cpu_lacks"
+  fi
+fi
+
 run_store() {
-  exec nice -n "$store_nice" env MODE=store STORE_DIR="$data/store" PORT="$store_port" "$app/typeahead-ingester"
+  exec nice -n "$store_nice" env MODE=store STORE_DIR="$data/store" PORT="$store_port" "$store_bin"
 }
 
 run_index() {

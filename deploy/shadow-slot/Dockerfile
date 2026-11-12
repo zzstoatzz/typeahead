@@ -35,6 +35,11 @@ COPY src/identity-quarantine.json /src/src/identity-quarantine.json
 # -Dtarget pins the x86-64 baseline: native CPU detection breaks under
 # emulation (Rosetta reports an unknown CPU model)
 RUN --network=none zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-gnu
+# the same binary for a CPU with AES, AVX and carry-less multiply, the three
+# features std.crypto needs before it uses the CPU's AES-GCM. supervise runs
+# it only on a machine that reports them all.
+RUN --network=none zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-gnu \
+    -Dcpu=x86_64_v2+aes+avx+pclmul --prefix /src/services/zig-out-aes
 
 FROM zig AS normalizer
 
@@ -78,6 +83,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=store /src/services/zig-out/bin/typeahead-ingester .
+COPY --from=store /src/services/zig-out-aes/bin/typeahead-ingester ./typeahead-ingester.aes
 COPY --from=index /src/services/tantivy/target/release/typeahead-tantivy .
 COPY --from=dump /src/target/release/dump-actors .
 COPY --chmod=0755 deploy/shadow-slot/supervise deploy/shadow-slot/bootstrap.sh ./
