@@ -142,6 +142,16 @@ test-bridge:
 control-db-configured:
     @! grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc || { echo "wrangler.jsonc: CONTROL_DB has the placeholder database_id; see docs/slot-control.md, rollout step 1" >&2; exit 1; }
 
+# print the SQL that carries Turso's moderation policy into the control
+# database. Reads Turso (TURSO_URL, TURSO_AUTH_TOKEN) and applies nothing
+control-backfill-sql:
+    @bun scripts/control-backfill.ts sql
+
+# compare Turso's moderation policy with the control database's; read-only,
+# non-zero when they differ. `--local` reads wrangler's local database
+control-check target="--remote":
+    bun scripts/control-backfill.ts check {{target}}
+
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech": control-db-configured lint
     bunx tsc --noEmit
