@@ -74,7 +74,7 @@ export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: str
 export function allowedRoute(request: Request) {
   const path = new URL(request.url).pathname;
   return request.method === "GET"
-    && ["/search", "/health", "/ready", "/index/status", "/debug/search", "/route"].includes(path);
+    && ["/search", "/health", "/ready", "/index/status", "/debug/search", "/actors", "/corpus", "/route"].includes(path);
 }
 
 let cachedRoute: { route: SearchRoute; expiresAt: number; hintExpiresAt: number } | undefined;

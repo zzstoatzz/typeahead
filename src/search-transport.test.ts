@@ -67,10 +67,10 @@ test("either store slot is routable, and the record's previous never changes the
 
 test("router exposes only backend read paths", () => {
   const base = "https://typeahead-search-transport.n8-3e9.workers.dev";
-  for (const path of ["/search", "/ready", "/health", "/index/status", "/debug/search", "/route"]) {
+  for (const path of ["/search", "/ready", "/health", "/index/status", "/debug/search", "/actors", "/corpus", "/route"]) {
     expect(allowedRoute(new Request(base + path))).toBe(true);
   }
-  for (const [path, method] of [["/admin/refresh", "POST"], ["/admin/refresh", "GET"], ["/search", "POST"], ["/admin/delete", "POST"], ["/debug/index", "GET"], ["/other", "GET"]]) {
+  for (const [path, method] of [["/admin/refresh", "POST"], ["/admin/refresh", "GET"], ["/search", "POST"], ["/actors", "POST"], ["/admin/corpus", "POST"], ["/admin/delete", "POST"], ["/debug/index", "GET"], ["/other", "GET"]]) {
     expect(allowedRoute(new Request(base + path, { method }))).toBe(false);
   }
 });
