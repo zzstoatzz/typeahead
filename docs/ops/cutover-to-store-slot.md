@@ -68,7 +68,7 @@ all read-only.
 4. the admission, without credentials or writes. **verified**: exit 0 with the hash above, and a refusal listing each mismatch with the production reader's hash. it prints `"refused": [...]` and exits 1 when any gate fails.
 
    ```sh
-   ./scripts/snapshot_refresh/store_slot_route.py check --binary-sha256 <hash from step 3>
+   ./scripts/snapshot_refresh/store_slot_route.py check --origin https://typeahead-shadow-a.fly.dev --binary-sha256 <hash from step 3>
    ```
 
 5. no refresh is running or about to. **verified**: both commands ran; the schedule is `0 6,18 * * *` UTC, id `ae561c16-cb18-4291-be09-2e7f370d276f`, and nothing was running.
@@ -115,13 +115,13 @@ the write needs the R2 credentials the refresh controller uses, in the environme
 print the plan. this reads the record from R2, repeats the admission against the slot the record names, and writes nothing:
 
 ```sh
-./scripts/snapshot_refresh/store_slot_route.py cutover --binary-sha256 <hash>
+./scripts/snapshot_refresh/store_slot_route.py cutover --origin https://typeahead-shadow-a.fly.dev --binary-sha256 <hash>
 ```
 
 read `route.current` (the store slot's identity), `route.previous` (the slot serving now) and `admission.gates`. then:
 
 ```sh
-./scripts/snapshot_refresh/store_slot_route.py cutover --binary-sha256 <hash> --write
+./scripts/snapshot_refresh/store_slot_route.py cutover --origin https://typeahead-shadow-a.fly.dev --binary-sha256 <hash> --write
 ```
 
 with `--write` it:

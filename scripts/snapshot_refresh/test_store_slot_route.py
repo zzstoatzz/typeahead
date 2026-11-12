@@ -1,5 +1,7 @@
+import contextlib
 import copy
 import hashlib
+import io
 import json
 import sys
 import unittest
@@ -485,6 +487,28 @@ class Check(unittest.TestCase):
         with self.assertRaises(route.Refused) as caught:
             route.check(SHADOW, SHADOW_BINARY, now=NOW, get=world.get)
         self.assertIn('already routed', str(caught.exception))
+
+
+class CommandLine(unittest.TestCase):
+    def parse(self, *argv):
+        with contextlib.redirect_stderr(io.StringIO()) as stderr:
+            try:
+                return route.build_parser().parse_args(argv)
+            except SystemExit:
+                return stderr.getvalue()
+
+    def test_the_slot_to_route_to_is_always_named(self):
+        for command in ('check', 'cutover'):
+            with self.subTest(command=command):
+                self.assertIn('--origin', self.parse(command, '--binary-sha256', SHADOW_BINARY))
+                self.assertEqual(self.parse(command, '--origin', SHADOW, '--binary-sha256', SHADOW_BINARY).origin, SHADOW)
+
+    def test_only_a_store_slot_can_be_named(self):
+        self.assertIn('invalid choice', self.parse('cutover', '--origin', SLOT_A, '--binary-sha256', SHADOW_BINARY))
+
+    def test_nothing_is_written_unless_asked(self):
+        self.assertIs(self.parse('cutover', '--origin', SHADOW, '--binary-sha256', SHADOW_BINARY).write, False)
+        self.assertIs(self.parse('rollback').write, False)
 
 
 if __name__ == '__main__':

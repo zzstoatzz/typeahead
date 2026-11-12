@@ -12,11 +12,13 @@ it never reports `cutover_source_ready`, which the reader computes only for the
 Turso source policy. This admits it on what it reports about itself, compared
 with the slot that is serving now.
 
-    store_slot_route.py check    --binary-sha256 HEX   reads only public endpoints
-    store_slot_route.py cutover  --binary-sha256 HEX   prints the plan
-    store_slot_route.py cutover  --binary-sha256 HEX --write
-    store_slot_route.py rollback                       prints the plan
+    store_slot_route.py check    --origin URL --binary-sha256 HEX   reads only public endpoints
+    store_slot_route.py cutover  --origin URL --binary-sha256 HEX   prints the plan
+    store_slot_route.py cutover  --origin URL --binary-sha256 HEX --write
+    store_slot_route.py rollback                                    prints the plan
     store_slot_route.py rollback --write
+
+The slot that would take the route is always named: there is no default origin.
 
 `cutover` and `rollback` read INDEX_R2_ENDPOINT, INDEX_R2_BUCKET,
 INDEX_R2_ACCESS_KEY_ID and INDEX_R2_SECRET_ACCESS_KEY.
@@ -509,22 +511,26 @@ def check(candidate_origin, binary_sha256, *, now=None, get=http_get):
     return {'operation': 'check', 'written': False, 'serving': serving_target, 'target': identity, 'gates': gates}
 
 
-def main(argv=None):
+def build_parser():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     commands = parser.add_subparsers(dest='command', required=True)
     for name in ('check', 'cutover'):
         command = commands.add_parser(name)
-        command.add_argument('--candidate', default=STORE_ORIGINS[0])
-        command.add_argument('--binary-sha256', required=True, help="the reader's sha256 from the slot image build")
+        command.add_argument('--origin', required=True, choices=STORE_ORIGINS, help='the store slot that would take the route')
+        command.add_argument('--binary-sha256', required=True, help="the reader's sha256, read from the file on that slot's machine")
         if name == 'cutover':
             command.add_argument('--write', action='store_true')
     commands.add_parser('rollback').add_argument('--write', action='store_true')
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv=None):
+    args = build_parser().parse_args(argv)
     try:
         if args.command == 'check':
-            report = check(args.candidate, args.binary_sha256)
+            report = check(args.origin, args.binary_sha256)
         elif args.command == 'cutover':
-            report = cutover(R2(os.environ), args.candidate, args.binary_sha256, write=args.write)
+            report = cutover(R2(os.environ), args.origin, args.binary_sha256, write=args.write)
         else:
             report = rollback(R2(os.environ), write=args.write)
     except Refused as refusal:
