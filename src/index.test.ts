@@ -251,3 +251,58 @@ test("read-d1 without the binding fails /stats and the two statistics cron steps
     ["freshness", "recordSnapshot", "recordExclusions", "materializeStats", "recordProfile", "refreshModeration", "controlHealth", "pruneIndexRequests"]);
   expect(kv.has("stats_data")).toBe(false);
 });
+
+// TURSO_ACTORS=off is the last switch before Turso is retired: the endpoints
+// that wrote its actor tables say they are gone, and the cron no longer
+// walks those tables.
+test("with Turso's actor tables off, the endpoints that wrote them answer 410 and read nothing", async () => {
+  const env = fakeEnv({ ...ENV, TURSO_ACTORS: "off" });
+  const calls: [string, string][] = [
+    ["POST", "/admin/ingest"], ["POST", "/admin/delete"], ["POST", "/admin/enrich-profiles"],
+    ["POST", "/admin/identity/lease"], ["POST", "/admin/identity/complete"], ["GET", "/admin/identity/plc"],
+    ["POST", "/admin/identity/plc"], ["GET", "/admin/identity/status"],
+    ["POST", "/admin/labels"], ["POST", "/admin/labels/reconcile"], ["GET", "/admin/labels/cursor"],
+  ];
+  for (const [method, path] of calls) {
+    executed.length = 0;
+    const { ctx: c, tasks } = ctx();
+    const res = await worker.fetch(new Request(`https://typeahead.waow.tech${path}`, { method }), env, c);
+    expect([path, res.status]).toEqual([path, 410]);
+    expect(await res.json<unknown>()).toMatchObject({ error: "Gone" });
+    await Promise.all(tasks);
+    expect(executed.filter((sql) => !/request_buckets/.test(sql))).toEqual([]);
+  }
+
+  const { ctx: c, tasks } = ctx();
+  const on = await worker.fetch(
+    new Request("https://typeahead.waow.tech/admin/labels/cursor"),
+    fakeEnv({ ...ENV, RATE_LIMITER_STRICT: { limit: async () => ({ success: true }) } }), c);
+  expect(on.status).toBe(401);
+  await Promise.all(tasks);
+});
+
+test("the cron's moderation refresh runs unless Turso's actor tables are off", async () => {
+  const realFetch = globalThis.fetch;
+  const refuse = async () => { throw new Error("connect ECONNREFUSED"); };
+  globalThis.fetch = Object.assign(refuse, { preconnect: realFetch.preconnect });
+  const kv = {
+    async get(_key: string): Promise<string | null> { return null; },
+    async put(_key: string, _value: string): Promise<void> {},
+    async delete(_key: string): Promise<void> {},
+  };
+  const moderationWalk = (sql: string) => /ORDER BY quality_score DESC, rowid DESC/.test(sql);
+  // SAFETY: the cron does not read the event or the context, and uses KV
+  // only through get, put and delete; the libsql client is mocked above.
+  const run = (actors?: string) => worker.scheduled({} as ScheduledEvent, { ...ENV, KV: kv, TURSO_ACTORS: actors } as Env, {} as ExecutionContext);
+  try {
+    executed.length = 0;
+    await run();
+    expect(executed.some(moderationWalk)).toBe(true);
+
+    executed.length = 0;
+    await run("off");
+    expect(executed.some(moderationWalk)).toBe(false);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

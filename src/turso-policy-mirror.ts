@@ -1,5 +1,14 @@
 import type { SqlDb } from "./db";
 import { getBlockedDomains, getOverrides, isDomainBlocked, resolveHidden } from "./moderation";
+import type { Env } from "./types";
+
+/** Whether this Worker still keeps Turso's actor tables: false only when
+ *  TURSO_ACTORS is "off", the last switch before Turso is retired
+ *  (docs/turso-retirement.md). Off, nothing here is called, the ingester's
+ *  endpoints answer 410 and the cron's moderation refresh does not run. */
+export function tursoActorsOn(env: Pick<Env, "TURSO_ACTORS">): boolean {
+  return env.TURSO_ACTORS !== "off";
+}
 
 /** The Turso copy of a moderation policy change. The control database is the
  *  source of truth (src/control-store.ts); these writes keep `mod_overrides`,

@@ -8,7 +8,9 @@ import { getOverride, getOverrides, isDomainBlocked, getBlockedDomains } from ".
 import { blockDomain, clearOverride, controlDb, listBlockedDomains, listOverrides, recordIndexRequest, setOverride, unblockDomain } from "../control-store";
 import { noteControlFailure } from "../control-health";
 import { MAX_DID_BYTES, validBlockedDomain, validOverrideDid } from "../control-rules";
-import { mirrorDomainBlock, mirrorDomainUnblock, mirrorOverrideClear, mirrorOverrideSet } from "../turso-policy-mirror";
+import { mirrorDomainBlock, mirrorDomainUnblock, mirrorOverrideClear, mirrorOverrideSet, tursoActorsOn } from "../turso-policy-mirror";
+import { slotActors, SlotReadError } from "../slot-read";
+import { resolveHidden } from "../moderation";
 import { recordActorDelta } from "../metrics";
 import { recordStats } from "../stats-store";
 
@@ -216,13 +218,15 @@ export async function handleRequestIndexing(
   // A control database that is down or unmigrated must not turn a visitor's
   // request into an error: the failure is logged and kept for
   // /health/control, the request goes on as it did before the control
-  // database existed, and the moderation answer below comes from Turso. What
+  // database existed, and the moderation answer below comes from Turso, or,
+  // once Turso's actor tables are off, from the account's labels alone. What
   // is lost is the request reaching the store slots.
-  let policy: SqlDb = db;
+  const turso = tursoActorsOn(env) ? db : null;
+  let control: SqlDb | null = null;
   try {
-    const control = controlDb(env);
-    await recordIndexRequest(control, identity.did, unixNow());
-    policy = control;
+    const opened = controlDb(env);
+    await recordIndexRequest(opened, identity.did, unixNow());
+    control = opened;
   } catch (error) {
     noteControlFailure(ctx, env, "index_request", error instanceof Error ? error.message : String(error));
   }
@@ -233,19 +237,23 @@ export async function handleRequestIndexing(
     displayName: '', avatarCid: '', description: '', bannerCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}',
     followersCount: 0, followsCount: 0, postsCount: 0, qualityScore: 0,
   };
-  let override: Awaited<ReturnType<typeof getOverride>>;
-  let blockedDomains: Set<string>;
-  try {
-    override = await getOverride(policy, identity.did);
+  const policyIn = async (store: SqlDb) => {
+    const found = await getOverride(store, identity.did);
     lap("override");
-    blockedDomains = await getBlockedDomains(policy);
-  } catch (error) {
-    if (policy === db) throw error;
-    noteControlFailure(ctx, env, "index_request_policy", error instanceof Error ? error.message : String(error));
-    override = await getOverride(db, identity.did);
-    lap("override");
-    blockedDomains = await getBlockedDomains(db);
+    return { override: found, blockedDomains: await getBlockedDomains(store) };
+  };
+  let policy: Awaited<ReturnType<typeof policyIn>> = { override: null, blockedDomains: new Set() };
+  if (control) {
+    try {
+      policy = await policyIn(control);
+    } catch (error) {
+      noteControlFailure(ctx, env, "index_request_policy", error instanceof Error ? error.message : String(error));
+      if (turso) policy = await policyIn(turso);
+    }
+  } else if (turso) {
+    policy = await policyIn(turso);
   }
+  const { override, blockedDomains } = policy;
   const domainBlocked = isDomainBlocked(identity.handle || "", blockedDomains);
   lap("blocked_domains");
   let source: ProfileSource = 'bsky';
@@ -268,8 +276,10 @@ export async function handleRequestIndexing(
     // profile enrichment is best-effort
   }
 
-  await mirrorRequestedActor(db, identity, f, source);
-  lap("turso_write");
+  if (tursoActorsOn(env)) {
+    await mirrorRequestedActor(db, identity, f, source);
+    lap("turso_write");
+  }
 
   // fire-and-forget: fix the upstream invisibility too (see announceHostToRelay)
   if (identity.pds) ctx.waitUntil(announceHostToRelay(identity.pds, env));
@@ -331,7 +341,7 @@ export async function handleModOverrideSet(
 
   const failed = await controlWrite(env, "override_set", (control) => setOverride(control, did, action, reason || '', unixNow()));
   if (failed) return failed;
-  await mirrorOverrideSet(db, did, action, reason || '');
+  if (tursoActorsOn(env)) await mirrorOverrideSet(db, did, action, reason || '');
 
   return json({ did, action, reason: reason || '', hidden: action === 'show' ? 0 : 1 });
 }
@@ -350,9 +360,29 @@ export async function handleModOverrideDelete(
 
   const failed = await controlWrite(env, "override_clear", (control) => clearOverride(control, did));
   if (failed) return failed;
-  const hidden = await mirrorOverrideClear(db, did);
+  if (tursoActorsOn(env)) return json({ did, hidden: await mirrorOverrideClear(db, did) });
 
-  return json({ did, hidden });
+  try {
+    return json({ did, hidden: await hiddenWithoutOverride(env, did) });
+  } catch (error) {
+    if (!(error instanceof SlotReadError)) throw error;
+    return json({ error: "the override was cleared; the account's visibility could not be read from the slot", did }, 503);
+  }
+}
+
+/** The account's `hidden` once it has no override, by the rules a slot
+ *  applies: its stored labels and handle, and the blocked domains. 0 for an
+ *  account the routed slot does not hold. */
+async function hiddenWithoutOverride(env: Env, did: string): Promise<0 | 1> {
+  const [actor] = await slotActors(env, [did]);
+  if (!actor) return 0;
+  const blockedDomains = await getBlockedDomains(controlDb(env));
+  return resolveHidden({
+    labels: actor.labels,
+    handle: actor.handle,
+    override: null,
+    domainBlocked: isDomainBlocked(actor.handle, blockedDomains),
+  });
 }
 
 export async function handleModOverrideList(
@@ -395,7 +425,7 @@ export async function handleDomainBlockSet(
 
   const failed = await controlWrite(env, "domain_block", (control) => blockDomain(control, domain, body.reason || "", unixNow()));
   if (failed) return failed;
-  await mirrorDomainBlock(db, ctx, domain, body.reason || "");
+  if (tursoActorsOn(env)) await mirrorDomainBlock(db, ctx, domain, body.reason || "");
 
   return json({ domain, reason: body.reason || "", status: "blocked; backfilling existing matches in background" });
 }
@@ -415,7 +445,7 @@ export async function handleDomainBlockDelete(
 
   const failed = await controlWrite(env, "domain_unblock", (control) => unblockDomain(control, domain));
   if (failed) return failed;
-  await mirrorDomainUnblock(db, ctx, domain);
+  if (tursoActorsOn(env)) await mirrorDomainUnblock(db, ctx, domain);
 
   return json({ domain, status: "unblocked; recomputing affected actors in background" });
 }

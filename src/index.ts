@@ -23,6 +23,7 @@ import { statsMigrationRoute } from "./stats-migration/handlers";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
 import { handleSlotIndexRequests, handleSlotPolicy } from "./handlers/slot-control";
+import { tursoActorsOn } from "./turso-policy-mirror";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
 import { llmsTxt } from "./pages/llms";
@@ -34,6 +35,15 @@ import { RequestTiming } from "./request-timing";
  *  run is left, so every run ends with a `cron_done` line — or a
  *  `cron_budget_exhausted` one naming what was skipped. */
 export const CRON_BUDGET_MS = 12 * 60 * 1000;
+
+/** What the old ingester, the bulk scripts and operators call to write
+ *  Turso's actor tables. With TURSO_ACTORS off nothing writes those tables,
+ *  and a caller that is still running is told so. */
+const TURSO_ACTOR_ENDPOINTS = new Set([
+  "/admin/ingest", "/admin/delete", "/admin/enrich-profiles",
+  "/admin/identity/lease", "/admin/identity/complete", "/admin/identity/plc", "/admin/identity/status",
+  "/admin/labels", "/admin/labels/reconcile", "/admin/labels/cursor",
+]);
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
@@ -100,6 +110,7 @@ export default {
     const t_run = Date.now();
     const phases: Record<string, number> = {};
     for (const [name, fn] of steps) {
+      if (name === "refreshModeration" && !tursoActorsOn(env)) continue;
       const elapsed = Date.now() - t_run;
       if (elapsed > CRON_BUDGET_MS) {
         // say so, loudly: skipping is the honest alternative to being killed
@@ -211,6 +222,10 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
   if (pathname === "/slot/control/index-requests" && request.method === "GET") {
     return handleSlotIndexRequests(request, env);
+  }
+
+  if (!tursoActorsOn(env) && TURSO_ACTOR_ENDPOINTS.has(pathname)) {
+    return json({ error: "Gone", message: "this endpoint wrote the Turso actor tables, which are retired; store slots follow the network themselves" }, 410);
   }
 
   const db = await getDb(env);

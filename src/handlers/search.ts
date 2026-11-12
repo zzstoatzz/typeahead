@@ -1,6 +1,7 @@
 import { filterIdentityBody, filterIdentityResponse, isSearchExcludedHandle } from "../identity-policy";
 import { parseSearchScope, scopeAcknowledged, scopeParams, searchCacheGeneration, searchCacheUrl, validateBackendBody, type SearchScope } from "./search-contract";
 export { normalizePds } from "../pds";
+import { tursoActorsOn } from "../turso-policy-mirror";
 import { rowsAs, type SqlDb } from "../db";
 import type { ActorRow, Env } from "../types";
 import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
@@ -220,7 +221,7 @@ export async function handleSearch(
           } catch {
             empty = false;   // unparseable is the backend's problem, not a miss
           }
-          if (!scoped && empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1")) throw new Error("backend_empty");
+          if (!scoped && empty && tursoFallbackOnEmpty(limit, env.TURSO_FALLBACK_ON_EMPTY === "1" && tursoActorsOn(env))) throw new Error("backend_empty");
 
           const elapsedMs = Date.now() - t0;
           recordStats(ctx, env, db, (store, now) => recordTrafficSource(store, request, now));
