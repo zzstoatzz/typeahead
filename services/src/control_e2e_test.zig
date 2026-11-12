@@ -47,13 +47,13 @@ const WorkerRecord = struct {
         if (!std.mem.eql(u8, authorization, "Bearer " ++ slot_secret)) return .{ .status = 401 };
         if (std.mem.indexOf(u8, url, control.requests_path) != null) {
             const taken = std.mem.indexOf(u8, url, "after=0&") == null;
-            const body = std.fmt.allocPrint(arena, "{{\"requests\":[{s}],\"more\":false}}", .{if (taken) "" else self.requests}) catch return .{};
+            const body = std.fmt.allocPrint(arena, "{{\"generation\":1,\"requests\":[{s}],\"more\":false}}", .{if (taken) "" else self.requests}) catch return .{};
             return .{ .status = 200, .body = body };
         }
         self.polls += 1;
         const held = std.fmt.allocPrint(arena, "after={d}", .{self.revision}) catch return .{};
         if (std.mem.endsWith(u8, url, held)) return .{ .status = 304 };
-        const body = std.fmt.allocPrint(arena, "{{\"revision\":{d},\"overrides\":[{s}],\"blocked_domains\":[{s}]}}", .{ self.revision, self.overrides, self.domains }) catch return .{};
+        const body = std.fmt.allocPrint(arena, "{{\"generation\":1,\"revision\":{d},\"overrides\":[{s}],\"blocked_domains\":[{s}]}}", .{ self.revision, self.overrides, self.domains }) catch return .{};
         return .{ .status = 200, .body = body };
     }
 };

@@ -78,9 +78,9 @@ test "subjects are judged as the Worker judges them, by the vectors both read" {
         // The whole snapshot stands or falls with it, and what is accepted
         // is something the store's key layout can hold.
         const body = if (std.mem.eql(u8, case.what, "did"))
-            try std.fmt.allocPrint(arena, "{{\"revision\":2,\"overrides\":[{{\"did\":{f},\"action\":\"hide\"}}],\"blocked_domains\":[]}}", .{std.json.fmt(text, .{})})
+            try std.fmt.allocPrint(arena, "{{\"generation\":1,\"revision\":2,\"overrides\":[{{\"did\":{f},\"action\":\"hide\"}}],\"blocked_domains\":[]}}", .{std.json.fmt(text, .{})})
         else
-            try std.fmt.allocPrint(arena, "{{\"revision\":2,\"overrides\":[],\"blocked_domains\":[{f}]}}", .{std.json.fmt(text, .{})});
+            try std.fmt.allocPrint(arena, "{{\"generation\":1,\"revision\":2,\"overrides\":[],\"blocked_domains\":[{f}]}}", .{std.json.fmt(text, .{})});
         if (control.parsePolicy(arena, body)) |policy| {
             try testing.expect(case.want);
             for (policy.overrides) |rule| try store_mod.change.validate(.{ .override_set = .{ .did = rule.did, .action = .hide } });
@@ -99,6 +99,7 @@ const Asked = struct { seq: u64, did: []const u8 };
 /// `src/handlers/slot-control.ts` does.
 pub const Worker = struct {
     arena: std.mem.Allocator,
+    generation: u64 = 1,
     revision: u64 = 1,
     overrides: std.StringArrayHashMapUnmanaged([]const u8) = .empty,
     domains: std.StringArrayHashMapUnmanaged(void) = .empty,
@@ -149,7 +150,7 @@ pub const Worker = struct {
     fn snapshot(self: *Worker) []const u8 {
         var out: Io.Writer.Allocating = .init(self.arena);
         const w = &out.writer;
-        w.print("{{\"revision\":{d},\"overrides\":[", .{self.revision}) catch @panic("out of memory");
+        w.print("{{\"generation\":{d},\"revision\":{d},\"overrides\":[", .{ self.generation, self.revision }) catch @panic("out of memory");
         for (self.overrides.keys(), self.overrides.values(), 0..) |did, action, i| {
             w.print("{s}{{\"did\":\"{s}\",\"action\":\"{s}\"}}", .{ if (i > 0) "," else "", did, action }) catch @panic("out of memory");
         }
@@ -162,7 +163,7 @@ pub const Worker = struct {
     fn page(self: *Worker, after: u64, limit: u64) []const u8 {
         var out: Io.Writer.Allocating = .init(self.arena);
         const w = &out.writer;
-        w.writeAll("{\"requests\":[") catch @panic("out of memory");
+        w.print("{{\"generation\":{d},\"requests\":[", .{self.generation}) catch @panic("out of memory");
         var sent: u64 = 0;
         var more = false;
         for (self.requests.items) |one| {
@@ -189,11 +190,12 @@ pub const Worker = struct {
         if (!std.mem.startsWith(u8, url, origin)) return .{ .status = 404 };
         const target = url[origin.len..];
         if (std.mem.startsWith(u8, target, control.policy_path)) {
-            if (parameter(url, "after")) |after| if (after == self.revision) return .{ .status = 304 };
+            if (parameter(url, "after")) |after| if (after == self.revision and parameter(url, "generation") == self.generation) return .{ .status = 304 };
             return .{ .status = 200, .body = self.snapshot() };
         }
         if (std.mem.startsWith(u8, target, control.requests_path)) {
-            return .{ .status = 200, .body = self.page(parameter(url, "after") orelse 0, parameter(url, "limit") orelse 100) };
+            const after = if (parameter(url, "generation") == self.generation) parameter(url, "after") orelse 0 else 0;
+            return .{ .status = 200, .body = self.page(after, parameter(url, "limit") orelse 100) };
         }
         return .{ .status = 404 };
     }
@@ -361,7 +363,7 @@ test "a held revision is answered 304 and commits nothing" {
     try rig.poll();
     try rig.poll();
     try testing.expectEqual(before, rig.commits());
-    try testing.expectEqualStrings(origin ++ "/slot/control/policy?after=2", rig.worker.last(control.policy_path));
+    try testing.expectEqualStrings(origin ++ "/slot/control/policy?generation=1&after=2", rig.worker.last(control.policy_path));
     try testing.expectEqual(@as(u64, 1), rig.loop.report().snapshots_applied);
     try testing.expectEqual(@as(u64, 0), rig.loop.report().age_seconds);
 }
@@ -478,7 +480,7 @@ test "a restart resumes from the stored revision, and a poll that died before it
     try testing.expectEqual(@as(?u64, 2), rig.loop.report().policy_revision);
     const before = rig.commits();
     try rig.poll();
-    try testing.expectEqualStrings(origin ++ "/slot/control/policy?after=2", rig.worker.last(control.policy_path));
+    try testing.expectEqualStrings(origin ++ "/slot/control/policy?generation=1&after=2", rig.worker.last(control.policy_path));
     try testing.expectEqual(before, rig.commits());
     try testing.expectEqual(@as(u64, 0), rig.loop.report().snapshots_applied);
     try testing.expect(try rig.hidden(alice));
@@ -565,29 +567,29 @@ test "a malformed snapshot is refused whole" {
         "not json",
         "[]",
         "{}",
-        "{\"revision\":9}",
-        "{\"revision\":9,\"overrides\":[]}",
-        "{\"revision\":9,\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[]",
-        "{\"revision\":-1,\"overrides\":[],\"blocked_domains\":[]}",
-        "{\"revision\":9.5,\"overrides\":[],\"blocked_domains\":[]}",
-        "{\"revision\":null,\"overrides\":[],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":{},\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\"}],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\",\"action\":\"delete\"}],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\",\"action\":\"none\"}],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[{\"did\":\"\",\"action\":\"hide\"}],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[{\"did\":\"alice.test\",\"action\":\"hide\"}],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[{\"did\":\"did:plc:a\\u0000b\",\"action\":\"hide\"}],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[{\"did\":\"did:" ++ long ++ "\",\"action\":\"hide\"}],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\",\"action\":\"hide\"},{\"did\":\"" ++ alice ++ "\",\"action\":\"show\"}],\"blocked_domains\":[]}",
-        "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"\"]}",
-        "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"nodot\"]}",
-        "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"has space.example\"]}",
-        "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"a\\u0000.example\"]}",
-        "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"spam.example\",\"SPAM.example\"]}",
-        "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[{\"domain\":\"spam.example\"}]}",
-        "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[7]}",
+        "{\"generation\":1,\"revision\":9}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[]}",
+        "{\"generation\":1,\"revision\":9,\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[],\"blocked_domains\":[]",
+        "{\"generation\":1,\"revision\":-1,\"overrides\":[],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9.5,\"overrides\":[],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":null,\"overrides\":[],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":{},\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\"}],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\",\"action\":\"delete\"}],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\",\"action\":\"none\"}],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"\",\"action\":\"hide\"}],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"alice.test\",\"action\":\"hide\"}],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"did:plc:a\\u0000b\",\"action\":\"hide\"}],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"did:" ++ long ++ "\",\"action\":\"hide\"}],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\",\"action\":\"hide\"},{\"did\":\"" ++ alice ++ "\",\"action\":\"show\"}],\"blocked_domains\":[]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"\"]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"nodot\"]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"has space.example\"]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"a\\u0000.example\"]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[],\"blocked_domains\":[\"spam.example\",\"SPAM.example\"]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[],\"blocked_domains\":[{\"domain\":\"spam.example\"}]}",
+        "{\"generation\":1,\"revision\":9,\"overrides\":[],\"blocked_domains\":[7]}",
     };
     for (bodies, 1..) |body, n| {
         rig.worker.script(.{ .status = 200, .body = body });
@@ -600,7 +602,7 @@ test "a malformed snapshot is refused whole" {
     try testing.expectEqualStrings(alice ++ "=hide spam.example ", try rig.bridgePolicy());
 
     // Fields this build does not know are passed over.
-    rig.worker.script(.{ .status = 200, .body = "{\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\",\"action\":\"show\",\"reason\":\"x\"}],\"blocked_domains\":[\"Farm.Example\"],\"generated_at\":5}" });
+    rig.worker.script(.{ .status = 200, .body = "{\"generation\":1,\"revision\":9,\"overrides\":[{\"did\":\"" ++ alice ++ "\",\"action\":\"show\",\"reason\":\"x\"}],\"blocked_domains\":[\"Farm.Example\"],\"generated_at\":5}" });
     try rig.poll();
     try testing.expectEqualStrings(alice ++ "=show farm.example ", try rig.bridgePolicy());
     try testing.expectEqual(@as(?u64, 9), (try rig.f.cursors()).control_policy);
@@ -617,8 +619,8 @@ test "a revision or sequence past what a JavaScript number holds is refused, and
     try testing.expectEqual(@as(u64, 9007199254740992), control.max_position);
     for ([_][]const u8{ "9007199254740993", "9223372036854775808", "18446744073709551615", "18446744073709551616" }) |huge| {
         const arena = rig.f.arena.allocator();
-        rig.worker.script(.{ .status = 200, .body = try std.fmt.allocPrint(arena, "{{\"revision\":{s},\"overrides\":[],\"blocked_domains\":[]}}", .{huge}) });
-        rig.worker.script(.{ .status = 200, .body = try std.fmt.allocPrint(arena, "{{\"requests\":[{{\"seq\":{s},\"did\":\"" ++ bob ++ "\"}}],\"more\":false}}", .{huge}) });
+        rig.worker.script(.{ .status = 200, .body = try std.fmt.allocPrint(arena, "{{\"generation\":1,\"revision\":{s},\"overrides\":[],\"blocked_domains\":[]}}", .{huge}) });
+        rig.worker.script(.{ .status = 200, .body = try std.fmt.allocPrint(arena, "{{\"generation\":1,\"requests\":[{{\"seq\":{s},\"did\":\"" ++ bob ++ "\"}}],\"more\":false}}", .{huge}) });
         try rig.poll();
         try testing.expectEqual(control.Failure.malformed, rig.loop.report().last_failure);
         try testing.expectEqual(@as(?u64, 2), (try rig.f.cursors()).control_policy);
@@ -629,8 +631,8 @@ test "a revision or sequence past what a JavaScript number holds is refused, and
     try testing.expectEqual(@as(u64, 8), rig.loop.report().malformed);
 
     const arena = rig.f.arena.allocator();
-    try testing.expectEqual(@as(u64, control.max_position), (try control.parsePolicy(arena, "{\"revision\":9007199254740992,\"overrides\":[],\"blocked_domains\":[]}")).revision);
-    try testing.expectEqual(@as(usize, 1), (try control.parsePage(arena, "{\"requests\":[{\"seq\":9007199254740992,\"did\":\"" ++ bob ++ "\"}],\"more\":false}", 1, 5)).requests.len);
+    try testing.expectEqual(@as(u64, control.max_position), (try control.parsePolicy(arena, "{\"generation\":1,\"revision\":9007199254740992,\"overrides\":[],\"blocked_domains\":[]}")).revision);
+    try testing.expectEqual(@as(usize, 1), (try control.parsePage(arena, "{\"generation\":1,\"requests\":[{\"seq\":9007199254740992,\"did\":\"" ++ bob ++ "\"}],\"more\":false}", 1, 1, 5)).requests.len);
 
     // A position already in a store, from whatever wrote it, is reported
     // as the largest attribute value rather than ending the process.
@@ -651,7 +653,7 @@ test "a revision older than the one applied is refused, and the same one changes
     try testing.expectEqual(@as(?u64, 3), (try rig.f.cursors()).control_policy);
 
     // A stale answer: the policy as it was two changes ago.
-    rig.worker.script(.{ .status = 200, .body = "{\"revision\":1,\"overrides\":[],\"blocked_domains\":[]}" });
+    rig.worker.script(.{ .status = 200, .body = "{\"generation\":1,\"revision\":1,\"overrides\":[],\"blocked_domains\":[]}" });
     try rig.poll();
     try testing.expectEqual(control.Failure.older_revision, rig.loop.report().last_failure);
     try testing.expectEqual(@as(u64, 1), rig.loop.report().older_revision);
@@ -662,7 +664,7 @@ test "a revision older than the one applied is refused, and the same one changes
     // The applied revision with other contents, which the Worker cannot
     // send: the revision names one policy, and the store holds it.
     const before = rig.commits();
-    rig.worker.script(.{ .status = 200, .body = "{\"revision\":3,\"overrides\":[],\"blocked_domains\":[]}" });
+    rig.worker.script(.{ .status = 200, .body = "{\"generation\":1,\"revision\":3,\"overrides\":[],\"blocked_domains\":[]}" });
     try rig.poll();
     try testing.expectEqual(before, rig.commits());
     try testing.expect(try rig.hidden(alice));
@@ -675,6 +677,149 @@ test "a revision older than the one applied is refused, and the same one changes
     try fresh.poll();
     try testing.expectEqual(control.Failure.status, fresh.loop.report().last_failure);
     try testing.expectEqual(@as(?u64, null), (try fresh.f.cursors()).control_policy);
+}
+
+test "a control database of another generation replaces the stored positions, whatever their numbers" {
+    var rig = try Rig.create();
+    defer rig.destroy();
+    try rig.seed(alice, "alice.test");
+    try rig.seed(bob, "bob.spam.example");
+    rig.worker.override(alice, "hide");
+    rig.worker.block("spam.example");
+    rig.worker.ask(alice);
+    rig.worker.ask(bob);
+    try rig.poll();
+    try testing.expectEqual(@as(?u64, 1), (try rig.f.cursors()).control_generation);
+    try testing.expectEqual(@as(?u64, 3), (try rig.f.cursors()).control_policy);
+    try testing.expectEqual(@as(?u64, 2), (try rig.f.cursors()).control_requests);
+    try testing.expectEqual(@as(?u64, 1), rig.loop.report().generation);
+
+    // The database is recreated: a new generation, a revision below the
+    // slot's, another policy, and a request log that starts again at 1.
+    const worker = rig.worker;
+    worker.generation = 2;
+    worker.revision = 1;
+    worker.overrides.clearRetainingCapacity();
+    worker.domains.clearRetainingCapacity();
+    worker.overrides.put(worker.arena, bob, "hide") catch unreachable;
+    worker.requests.clearRetainingCapacity();
+    worker.next_seq = 1;
+    worker.ask(carol);
+    try rig.poll();
+
+    try testing.expectEqualStrings(origin ++ "/slot/control/policy?generation=1&after=3", worker.seen.items[worker.seen.items.len - 2].url);
+    try testing.expectEqualStrings(origin ++ "/slot/control/index-requests?generation=2&after=0&limit=3", worker.seen.items[worker.seen.items.len - 1].url);
+    try testing.expectEqualStrings(bob ++ "=hide ", try rig.bridgePolicy());
+    try testing.expect(!try rig.hidden(alice));
+    try testing.expect(try rig.hidden(bob));
+    try testing.expect(try rig.f.queued(carol) != null);
+    const cursors = try rig.f.cursors();
+    try testing.expectEqual(@as(?u64, 2), cursors.control_generation);
+    try testing.expectEqual(@as(?u64, 1), cursors.control_policy);
+    try testing.expectEqual(@as(?u64, 1), cursors.control_requests);
+    const report = rig.loop.report();
+    try testing.expectEqual(@as(?u64, 2), report.generation);
+    try testing.expectEqual(@as(u64, 1), report.generation_changes);
+    try testing.expectEqual(@as(u64, 0), report.failures);
+
+    // The new positions are what a restart resumes from.
+    rig = try rig.restart();
+    try rig.poll();
+    try testing.expectEqualStrings(origin ++ "/slot/control/policy?generation=2&after=1", worker.last(control.policy_path));
+    try testing.expectEqualStrings(origin ++ "/slot/control/index-requests?generation=2&after=1&limit=3", worker.last(control.requests_path));
+    try testing.expectEqual(@as(u64, 0), rig.loop.report().snapshots_applied);
+}
+
+test "a restored database whose revision climbs back to the slot's is not taken for the policy the slot holds" {
+    const rig = try Rig.create();
+    defer rig.destroy();
+    try rig.seed(alice, "alice.test");
+    try rig.seed(bob, "bob.spam.example");
+    rig.worker.block("spam.example");
+    rig.worker.ask(alice);
+    rig.worker.ask(bob);
+    try rig.poll();
+    try testing.expect(try rig.hidden(bob));
+
+    // Restored to before the block, given a new generation as the runbook
+    // says, then one unrelated write: revision 2 again, over another policy.
+    // The request log is back to its first entry, and takes a new one under
+    // a sequence the slot already holds.
+    const worker = rig.worker;
+    worker.generation = 77;
+    worker.revision = 1;
+    worker.domains.clearRetainingCapacity();
+    worker.override(alice, "hide");
+    worker.requests.shrinkRetainingCapacity(1);
+    worker.next_seq = 2;
+    worker.ask(carol);
+    try testing.expectEqual(@as(u64, 2), worker.revision);
+    try rig.poll();
+
+    try testing.expect(try rig.hidden(alice));
+    try testing.expect(!try rig.hidden(bob));
+    try testing.expectEqualStrings(alice ++ "=hide ", try rig.bridgePolicy());
+    // Sequence 2 is carol now. From the slot's old position it would never
+    // have been served; from the start of the log it is, and alice's
+    // request, taken once already, only raises her entry's generation.
+    try testing.expect(try rig.f.queued(carol) != null);
+    try testing.expectEqual(@as(u64, 2), (try rig.f.queued(alice)).?.generation);
+    try testing.expectEqual(@as(?u64, 77), (try rig.f.cursors()).control_generation);
+    try testing.expectEqual(@as(?u64, 2), (try rig.f.cursors()).control_requests);
+}
+
+test "a new generation seen first on the request log drops the policy revision too" {
+    const rig = try Rig.create();
+    defer rig.destroy();
+    rig.worker.block("spam.example");
+    rig.worker.ask(alice);
+    try rig.poll();
+
+    rig.worker.generation = 5;
+    rig.worker.revision = 2;
+    rig.worker.domains.clearRetainingCapacity();
+    rig.worker.requests.clearRetainingCapacity();
+    rig.worker.next_seq = 1;
+    rig.worker.ask(bob);
+    rig.worker.script(.{ .status = 500 });
+    try rig.poll();
+    var cursors = try rig.f.cursors();
+    try testing.expectEqual(@as(?u64, 5), cursors.control_generation);
+    try testing.expectEqual(@as(?u64, null), cursors.control_policy);
+    try testing.expectEqual(@as(?u64, 1), cursors.control_requests);
+    try testing.expectEqual(@as(?u64, null), rig.loop.report().policy_revision);
+    try testing.expectEqualStrings("spam.example ", try rig.bridgePolicy());
+
+    // With no revision held, the next poll asks for the policy outright,
+    // though the number it would have sent is the Worker's current one.
+    try rig.poll();
+    try testing.expectEqualStrings(origin ++ "/slot/control/policy", rig.worker.last(control.policy_path));
+    try testing.expectEqualStrings("", try rig.bridgePolicy());
+    cursors = try rig.f.cursors();
+    try testing.expectEqual(@as(?u64, 2), cursors.control_policy);
+    try testing.expectEqual(@as(?u64, 1), cursors.control_requests);
+}
+
+test "an answer without a usable generation is refused" {
+    const rig = try Rig.create();
+    defer rig.destroy();
+    rig.worker.block("spam.example");
+    try rig.poll();
+    const bodies = [_][2][]const u8{
+        .{ "{\"revision\":9,\"overrides\":[],\"blocked_domains\":[]}", "{\"requests\":[],\"more\":false}" },
+        .{ "{\"generation\":null,\"revision\":9,\"overrides\":[],\"blocked_domains\":[]}", "{\"generation\":-1,\"requests\":[],\"more\":false}" },
+        .{ "{\"generation\":9007199254740993,\"revision\":9,\"overrides\":[],\"blocked_domains\":[]}", "{\"generation\":9007199254740993,\"requests\":[],\"more\":false}" },
+        .{ "{\"generation\":1.5,\"revision\":9,\"overrides\":[],\"blocked_domains\":[]}", "{\"generation\":\"x\",\"requests\":[],\"more\":false}" },
+    };
+    for (bodies, 1..) |pair, n| {
+        rig.worker.script(.{ .status = 200, .body = pair[0] });
+        rig.worker.script(.{ .status = 200, .body = pair[1] });
+        try rig.poll();
+        try testing.expectEqual(@as(u64, 2 * n), rig.loop.report().malformed);
+        try testing.expectEqual(@as(?u64, 1), (try rig.f.cursors()).control_generation);
+        try testing.expectEqual(@as(?u64, 2), (try rig.f.cursors()).control_policy);
+        try testing.expectEqualStrings("spam.example ", try rig.bridgePolicy());
+    }
 }
 
 const bootstrap_policy =
@@ -734,7 +879,7 @@ test "a bootstrapped store converges to the Worker's policy whatever its policy 
 
     // From here it holds a revision like any other slot.
     try rig.?.poll();
-    try testing.expectEqualStrings(origin ++ "/slot/control/policy?after=0", worker.last(control.policy_path));
+    try testing.expectEqualStrings(origin ++ "/slot/control/policy?generation=1&after=0", worker.last(control.policy_path));
     try testing.expectEqual(@as(u64, 1), rig.?.loop.report().snapshots_applied);
 }
 
@@ -759,7 +904,7 @@ test "an indexing request creates the actor and queues its identity, as an #iden
     try testing.expect(!(try rig.f.actor(carol)).?.live());
     try testing.expect(try rig.f.queued(carol) == null);
     try testing.expectEqual(@as(?u64, 3), (try rig.f.cursors()).control_requests);
-    try testing.expectEqualStrings(origin ++ "/slot/control/index-requests?after=0&limit=3", rig.worker.seen.items[1].url);
+    try testing.expectEqualStrings(origin ++ "/slot/control/index-requests?generation=1&after=0&limit=3", rig.worker.seen.items[1].url);
     try testing.expectEqualStrings(bearer, rig.worker.seen.items[1].authorization);
 
     // The same as the relay's #identity for the same account.
@@ -782,7 +927,7 @@ test "an indexing request creates the actor and queues its identity, as an #iden
     // A restart asks from the stored sequence and queues nothing again.
     rig = try rig.restart();
     try rig.poll();
-    try testing.expectEqualStrings(origin ++ "/slot/control/index-requests?after=4&limit=3", rig.worker.last(control.requests_path));
+    try testing.expectEqualStrings(origin ++ "/slot/control/index-requests?generation=1&after=4&limit=3", rig.worker.last(control.requests_path));
     try testing.expectEqual(@as(u64, 2), (try rig.f.queued(alice)).?.generation);
     try testing.expectEqual(@as(u64, 0), rig.loop.report().requests_queued);
 }
@@ -834,20 +979,20 @@ test "a page that is malformed or out of order is refused whole" {
     const bodies = [_][]const u8{
         "",
         "{}",
-        "{\"requests\":[" ++ entry ++ "]}",
-        "{\"requests\":{},\"more\":false}",
-        "{\"requests\":[{\"seq\":3}],\"more\":false}",
-        "{\"requests\":[{\"seq\":-3,\"did\":\"" ++ carol ++ "\"}],\"more\":false}",
+        "{\"generation\":1,\"requests\":[" ++ entry ++ "]}",
+        "{\"generation\":1,\"requests\":{},\"more\":false}",
+        "{\"generation\":1,\"requests\":[{\"seq\":3}],\"more\":false}",
+        "{\"generation\":1,\"requests\":[{\"seq\":-3,\"did\":\"" ++ carol ++ "\"}],\"more\":false}",
         // at or below the stored sequence
-        "{\"requests\":[{\"seq\":2,\"did\":\"" ++ carol ++ "\"}],\"more\":false}",
-        "{\"requests\":[{\"seq\":1,\"did\":\"" ++ carol ++ "\"}," ++ entry ++ "],\"more\":false}",
+        "{\"generation\":1,\"requests\":[{\"seq\":2,\"did\":\"" ++ carol ++ "\"}],\"more\":false}",
+        "{\"generation\":1,\"requests\":[{\"seq\":1,\"did\":\"" ++ carol ++ "\"}," ++ entry ++ "],\"more\":false}",
         // not rising
-        "{\"requests\":[{\"seq\":4,\"did\":\"" ++ carol ++ "\"}," ++ entry ++ "],\"more\":false}",
-        "{\"requests\":[" ++ entry ++ "," ++ entry ++ "],\"more\":false}",
+        "{\"generation\":1,\"requests\":[{\"seq\":4,\"did\":\"" ++ carol ++ "\"}," ++ entry ++ "],\"more\":false}",
+        "{\"generation\":1,\"requests\":[" ++ entry ++ "," ++ entry ++ "],\"more\":false}",
         // more than was asked for
-        "{\"requests\":[" ++ entry ++ ",{\"seq\":4,\"did\":\"" ++ carol ++ "\"},{\"seq\":5,\"did\":\"" ++ carol ++ "\"},{\"seq\":6,\"did\":\"" ++ carol ++ "\"}],\"more\":false}",
+        "{\"generation\":1,\"requests\":[" ++ entry ++ ",{\"seq\":4,\"did\":\"" ++ carol ++ "\"},{\"seq\":5,\"did\":\"" ++ carol ++ "\"},{\"seq\":6,\"did\":\"" ++ carol ++ "\"}],\"more\":false}",
         // more to come after nothing
-        "{\"requests\":[],\"more\":true}",
+        "{\"generation\":1,\"requests\":[],\"more\":true}",
     };
     for (bodies, 1..) |body, n| {
         rig.worker.script(.{ .status = 304 });
@@ -1012,12 +1157,12 @@ const Stub = struct {
             } else if (!std.mem.eql(u8, authorization, bearer)) {
                 request.respond("{\"error\":\"unauthorized\"}", .{ .status = .unauthorized, .keep_alive = false, .extra_headers = json }) catch {};
             } else if (std.mem.startsWith(u8, target, control.requests_path)) {
-                const body = if (std.mem.indexOf(u8, target, "after=0&") != null) "{\"requests\":[{\"seq\":4,\"did\":\"" ++ alice ++ "\"}],\"more\":false}" else "{\"requests\":[],\"more\":false}";
+                const body = if (std.mem.indexOf(u8, target, "after=0&") != null) "{\"generation\":1,\"requests\":[{\"seq\":4,\"did\":\"" ++ alice ++ "\"}],\"more\":false}" else "{\"generation\":1,\"requests\":[],\"more\":false}";
                 request.respond(body, .{ .keep_alive = false, .extra_headers = json }) catch {};
             } else if (std.mem.endsWith(u8, target, "after=7")) {
                 request.respond("", .{ .status = .not_modified, .keep_alive = false }) catch {};
             } else {
-                request.respond("{\"revision\":7,\"overrides\":[{\"did\":\"" ++ bob ++ "\",\"action\":\"hide\"}],\"blocked_domains\":[\"spam.example\"]}", .{ .keep_alive = false, .extra_headers = json }) catch {};
+                request.respond("{\"generation\":1,\"revision\":7,\"overrides\":[{\"did\":\"" ++ bob ++ "\",\"action\":\"hide\"}],\"blocked_domains\":[\"spam.example\"]}", .{ .keep_alive = false, .extra_headers = json }) catch {};
             }
         }
     }

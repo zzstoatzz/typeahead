@@ -285,11 +285,20 @@ pub const CursorUpdate = union(enum) {
     /// The index bridge's position in the change log.
     bridge: u64,
     /// The revision of the Worker's policy snapshot the batch made the
-    /// store's overrides and blocked domains equal to; never moves backwards.
-    control_policy: u64,
-    /// The sequence of the last indexing request the batch queued; never
-    /// moves backwards.
-    control_requests: u64,
+    /// store's overrides and blocked domains equal to.
+    control_policy: ControlPosition,
+    /// The sequence of the last indexing request the batch queued.
+    control_requests: ControlPosition,
+};
+
+/// A position in the Worker's control record. It means something only
+/// against the control database it was read from, which `generation` names.
+/// Within one generation a position never moves backwards. A position from
+/// another generation replaces the stored generation and drops both stored
+/// positions first, so nothing taken from the old database outlives it.
+pub const ControlPosition = struct {
+    generation: u64,
+    at: u64,
 };
 
 pub const max_attempts = 12;

@@ -137,6 +137,8 @@ pub const Cursors = struct {
     labeler: ?u64 = null,
     plc: ?[]const u8 = null,
     bridge: ?u64 = null,
+    /// The control database the two positions below were read from.
+    control_generation: ?u64 = null,
     /// The policy revision last applied from the Worker's control record;
     /// null before the first.
     control_policy: ?u64 = null,
@@ -160,6 +162,7 @@ pub fn cursors(db: *Db, arena: std.mem.Allocator) !Cursors {
         .relay = try counter(db, .relay),
         .labeler = try counter(db, .labeler),
         .bridge = try counter(db, .bridge),
+        .control_generation = try counter(db, .control_generation),
         .control_policy = try counter(db, .control_policy),
         .control_requests = try counter(db, .control_requests),
         .next_change = try counter(db, .next_change) orelse 1,

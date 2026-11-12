@@ -188,6 +188,7 @@ pub fn check(gpa: std.mem.Allocator, db: *engine.Db, model: *const Model) !Summa
     try ensure(std.meta.eql(cursors.relay, model.relay), "relay cursor is {?d}, model {?d}", .{ cursors.relay, model.relay });
     try ensure(std.meta.eql(cursors.labeler, model.labeler), "labeler cursor is {?d}, model {?d}", .{ cursors.labeler, model.labeler });
     try ensure(std.meta.eql(cursors.bridge, model.bridge), "bridge cursor is {?d}, model {?d}", .{ cursors.bridge, model.bridge });
+    try ensure(std.meta.eql(cursors.control_generation, model.control_generation), "control generation is {?d}, model {?d}", .{ cursors.control_generation, model.control_generation });
     try ensure(std.meta.eql(cursors.control_policy, model.control_policy), "control policy revision is {?d}, model {?d}", .{ cursors.control_policy, model.control_policy });
     try ensure(std.meta.eql(cursors.control_requests, model.control_requests), "control request sequence is {?d}, model {?d}", .{ cursors.control_requests, model.control_requests });
     try ensure((cursors.plc == null) == (model.plc == null) and (cursors.plc == null or std.mem.eql(u8, cursors.plc.?, model.plc.?)), "plc cursor is {?s}, model {?s}", .{ cursors.plc, model.plc });

@@ -688,11 +688,11 @@ test "a batch lands whole with its cursor, or not at all" {
     try batch.setCursor(.{ .labeler = 7 });
     try batch.setCursor(.{ .plc = "2026-11-10T00:00:02.000Z" });
     try batch.setCursor(.{ .plc = "2026-11-10T00:00:01.000Z" });
-    try batch.setCursor(.{ .control_policy = 0 });
-    try batch.setCursor(.{ .control_policy = 12 });
-    try batch.setCursor(.{ .control_policy = 11 });
-    try batch.setCursor(.{ .control_requests = 300 });
-    try batch.setCursor(.{ .control_requests = 299 });
+    try batch.setCursor(.{ .control_policy = .{ .generation = 7, .at = 0 } });
+    try batch.setCursor(.{ .control_policy = .{ .generation = 7, .at = 12 } });
+    try batch.setCursor(.{ .control_policy = .{ .generation = 7, .at = 11 } });
+    try batch.setCursor(.{ .control_requests = .{ .generation = 7, .at = 300 } });
+    try batch.setCursor(.{ .control_requests = .{ .generation = 7, .at = 299 } });
     try batch.commit();
 
     const log = try f.logged();
@@ -705,6 +705,7 @@ test "a batch lands whole with its cursor, or not at all" {
     try testing.expectEqual(@as(?u64, 42), cursors.relay);
     try testing.expectEqual(@as(?u64, 9), cursors.labeler);
     try testing.expectEqualStrings("2026-11-10T00:00:02.000Z", cursors.plc.?);
+    try testing.expectEqual(@as(?u64, 7), cursors.control_generation);
     try testing.expectEqual(@as(?u64, 12), cursors.control_policy);
     try testing.expectEqual(@as(?u64, 300), cursors.control_requests);
     try testing.expectEqual(@as(u64, 4), cursors.next_change);
@@ -713,6 +714,37 @@ test "a batch lands whole with its cursor, or not at all" {
     try testing.expectEqual(@as(?u64, 42), (try f.store.cursors(mem)).relay);
     _ = try f.apply(t0 + 2, .{ .profile = .{ .did = alice, .display_name = "A" } });
     try testing.expectEqual(@as(u64, 4), (try f.logged())[3].sequence);
+}
+
+test "control positions hold within a generation and are dropped when the generation changes" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const mem = f.arena.allocator();
+    try f.store.setCursor(.{ .control_policy = .{ .generation = 7, .at = 12 } });
+    try f.store.setCursor(.{ .control_requests = .{ .generation = 7, .at = 300 } });
+    try f.store.setCursor(.{ .control_policy = .{ .generation = 7, .at = 5 } });
+    var cursors = try f.store.cursors(mem);
+    try testing.expectEqual(@as(?u64, 12), cursors.control_policy);
+
+    // Another control database: its revision 3 replaces 12, and the request
+    // sequence taken from the old one goes with it, in the same commit.
+    try f.store.setCursor(.{ .control_policy = .{ .generation = 9, .at = 3 } });
+    cursors = try f.store.cursors(mem);
+    try testing.expectEqual(@as(?u64, 9), cursors.control_generation);
+    try testing.expectEqual(@as(?u64, 3), cursors.control_policy);
+    try testing.expectEqual(@as(?u64, null), cursors.control_requests);
+
+    // And the other way round, from the request side.
+    try f.store.setCursor(.{ .control_requests = .{ .generation = 9, .at = 40 } });
+    try f.store.setCursor(.{ .control_requests = .{ .generation = 2, .at = 1 } });
+    cursors = try f.store.cursors(mem);
+    try testing.expectEqual(@as(?u64, 2), cursors.control_generation);
+    try testing.expectEqual(@as(?u64, null), cursors.control_policy);
+    try testing.expectEqual(@as(?u64, 1), cursors.control_requests);
+    try f.reopen();
+    cursors = try f.store.cursors(mem);
+    try testing.expectEqual(@as(?u64, 2), cursors.control_generation);
+    try testing.expectEqual(@as(?u64, 1), cursors.control_requests);
 }
 
 test "an owed sweep is marked with its cause and cleared by the step that finishes it" {

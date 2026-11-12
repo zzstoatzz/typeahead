@@ -440,8 +440,8 @@ pub const Batch = struct {
                 const stored = try read.counter(engine_db, .labeler) orelse 0;
                 if (value > stored) try engine_db.put(key, &record.encodeU64(value));
             },
-            .control_policy => |value| try advance(engine_db, .control_policy, value),
-            .control_requests => |value| try advance(engine_db, .control_requests, value),
+            .control_policy => |position| try controlPosition(engine_db, .control_policy, position),
+            .control_requests => |position| try controlPosition(engine_db, .control_requests, position),
             .plc => |value| {
                 if (value.len == 0 or value.len > change.max_cursor_bytes) return error.InvalidCursor;
                 const key = keys.cursor(&buf, .plc);
@@ -451,11 +451,18 @@ pub const Batch = struct {
         }
     }
 
-    /// Store `value` under `which` unless a value at least as high is there.
-    fn advance(engine_db: *engine.Db, which: keys.Cursor, value: u64) !void {
+    /// Store a control position: see `change.ControlPosition`.
+    fn controlPosition(engine_db: *engine.Db, which: keys.Cursor, position: change.ControlPosition) !void {
         var buf: keys.Buf = undefined;
-        if (try read.counter(engine_db, which)) |stored| if (value <= stored) return;
-        try engine_db.put(keys.cursor(&buf, which), &record.encodeU64(value));
+        const held = try read.counter(engine_db, .control_generation);
+        if (held == null or held.? != position.generation) {
+            try engine_db.put(keys.cursor(&buf, .control_generation), &record.encodeU64(position.generation));
+            try engine_db.del(keys.cursor(&buf, .control_policy));
+            try engine_db.del(keys.cursor(&buf, .control_requests));
+        } else if (try read.counter(engine_db, which)) |stored| {
+            if (position.at <= stored) return;
+        }
+        try engine_db.put(keys.cursor(&buf, which), &record.encodeU64(position.at));
     }
 
     /// Land the batch as one commit. A failed commit leaves the store

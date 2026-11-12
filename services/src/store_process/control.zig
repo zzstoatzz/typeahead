@@ -26,9 +26,22 @@
 //!   DID is worth a look; the handle and PDS are what this slot's own
 //!   resolver finds. The last sequence is stored in the same commit.
 //!
+//! Every answer names the control database it came from, its generation. A
+//! stored revision or sequence means something only against that database:
+//! one that is recreated starts both again, and one restored to an earlier
+//! time moves both back. So when an answer carries a generation other than
+//! the stored one, the loop drops both positions in the commit that takes
+//! the answer. The snapshot is then applied whatever its revision, and
+//! requests are taken from the start of the log, which the Worker serves to
+//! a slot of another generation. Requests the slot had already taken queue
+//! again, which is harmless: the identity queue holds one entry an actor.
+//! Starting from the newest sequence instead would lose whatever was asked
+//! between the restore and this slot's next poll.
+//!
 //! A snapshot or a page that is malformed in any part is refused whole. A
-//! snapshot older than the applied revision is refused: the Worker's
-//! revision only rises, so a lower one is a stale or replayed answer. While
+//! snapshot older than the applied revision of the same generation is
+//! refused: there the revision only rises, so a lower one is a stale or
+//! replayed answer. While
 //! the Worker cannot be reached the slot serves with the policy it last
 //! applied, and `/health` and the heartbeat report how long that has been.
 
@@ -114,6 +127,11 @@ pub const Stats = struct {
     policy_checked_at: std.atomic.Value(u64) = .init(0),
     requests_checked_at: std.atomic.Value(u64) = .init(0),
     policy_applied_at: std.atomic.Value(u64) = .init(0),
+    /// The control database the positions belong to; 0 before the first.
+    generation: std.atomic.Value(u64) = .init(0),
+    /// Times an answer came from another control database than the stored
+    /// positions did, and they were dropped.
+    generation_changes: std.atomic.Value(u64) = .init(0),
     /// 0 with `policy_known` false: no revision has been applied.
     policy_revision: std.atomic.Value(u64) = .init(0),
     policy_known: std.atomic.Value(bool) = .init(false),
@@ -137,6 +155,8 @@ pub const Stats = struct {
 
 /// What `/health` and the heartbeat say about the loop.
 pub const Report = struct {
+    generation: ?u64,
+    generation_changes: u64,
     policy_revision: ?u64,
     policy_checked_at: u64,
     policy_applied_at: u64,
@@ -166,6 +186,7 @@ pub const Rule = struct { did: []const u8, action: Action };
 
 /// A snapshot that passed every check.
 pub const Policy = struct {
+    generation: u64,
     revision: u64,
     overrides: []const Rule,
     /// Lowercase, without repeats.
@@ -173,17 +194,19 @@ pub const Policy = struct {
 };
 
 pub const Request = struct { seq: u64, did: []const u8 };
-pub const Page = struct { requests: []const Request, more: bool };
+pub const Page = struct { generation: u64, requests: []const Request, more: bool };
 
 pub const ParseError = error{ Malformed, OutOfMemory };
 
 const PolicyWire = struct {
+    generation: u64,
     revision: u64,
     overrides: []const struct { did: []const u8, action: []const u8 },
     blocked_domains: []const []const u8,
 };
 
 const PageWire = struct {
+    generation: u64,
     requests: []const struct { seq: u64, did: []const u8 },
     more: bool,
 };
@@ -220,7 +243,7 @@ pub fn validDomain(name: []const u8) bool {
 /// partial one would read as the removal of every rule it lacks.
 pub fn parsePolicy(arena: Allocator, body: []const u8) ParseError!Policy {
     const parsed = try wire(PolicyWire, arena, body);
-    if (parsed.revision > max_position) return error.Malformed;
+    if (parsed.revision > max_position or parsed.generation > max_position) return error.Malformed;
     if (parsed.overrides.len > max_rules or parsed.blocked_domains.len > max_rules) return error.Malformed;
 
     const overrides = try arena.alloc(Rule, parsed.overrides.len);
@@ -240,24 +263,26 @@ pub fn parsePolicy(arena: Allocator, body: []const u8) ParseError!Policy {
         if ((try seen.getOrPut(arena, lower)).found_existing) return error.Malformed;
         slot.* = lower;
     }
-    return .{ .revision = parsed.revision, .overrides = overrides, .domains = domains };
+    return .{ .generation = parsed.generation, .revision = parsed.revision, .overrides = overrides, .domains = domains };
 }
 
-/// The page in `body`, or `Malformed` unless its sequences rise from above
-/// `after`: the position stored is the last one, so a page out of order
-/// would skip what lies between.
-pub fn parsePage(arena: Allocator, body: []const u8, after: u64, limit: usize) ParseError!Page {
+/// The page in `body`, asked for by a slot holding sequence `after` of
+/// generation `held`. `Malformed` unless its sequences rise, from above
+/// `after` when the page is of that generation and from the start of the
+/// log when it is of another: the position stored is the last one, so a
+/// page out of order would skip what lies between.
+pub fn parsePage(arena: Allocator, body: []const u8, held: ?u64, after: u64, limit: usize) ParseError!Page {
     const parsed = try wire(PageWire, arena, body);
-    if (parsed.requests.len > limit) return error.Malformed;
+    if (parsed.requests.len > limit or parsed.generation > max_position) return error.Malformed;
     const requests = try arena.alloc(Request, parsed.requests.len);
-    var last = after;
+    var last: u64 = if (held != null and held.? == parsed.generation) after else 0;
     for (requests, parsed.requests) |*slot, one| {
         if (one.seq <= last or one.seq > max_position) return error.Malformed;
         last = one.seq;
         slot.* = .{ .seq = one.seq, .did = one.did };
     }
     if (parsed.more and requests.len == 0) return error.Malformed;
-    return .{ .requests = requests, .more = parsed.more };
+    return .{ .generation = parsed.generation, .requests = requests, .more = parsed.more };
 }
 
 /// The changes that make a store holding `overrides` and `domains` hold
@@ -310,6 +335,7 @@ pub const Controller = struct {
     authorization: []const u8 = "",
     /// What the store holds, read at `start` and kept in step with every
     /// commit this loop makes.
+    generation: ?u64 = null,
     policy_revision: ?u64 = null,
     requests_sequence: u64 = 0,
 
@@ -322,8 +348,10 @@ pub const Controller = struct {
         const store = try self.owner.acquire();
         defer self.owner.release();
         const cursors = try store.cursors(arena.allocator());
+        self.generation = cursors.control_generation;
         self.policy_revision = cursors.control_policy;
         self.requests_sequence = cursors.control_requests orelse 0;
+        self.stats.generation.store(cursors.control_generation orelse 0, .monotonic);
         self.stats.started_at.store(self.nowSeconds(), .monotonic);
         self.stats.policy_revision.store(cursors.control_policy orelse 0, .monotonic);
         self.stats.policy_known.store(cursors.control_policy != null, .monotonic);
@@ -349,7 +377,10 @@ pub const Controller = struct {
         const requests_at = s.requests_checked_at.load(.monotonic);
         const answered = @min(policy_at, requests_at);
         const since = if (answered == 0) s.started_at.load(.monotonic) else answered;
+        const generation = s.generation.load(.monotonic);
         return .{
+            .generation = if (generation == 0) null else generation,
+            .generation_changes = s.generation_changes.load(.monotonic),
             .policy_revision = if (s.policy_known.load(.monotonic)) s.policy_revision.load(.monotonic) else null,
             .policy_checked_at = policy_at,
             .policy_applied_at = s.policy_applied_at.load(.monotonic),
@@ -409,18 +440,39 @@ pub const Controller = struct {
         if (submission.summary.rejected > 0) log.warn("{s}: the store refused {d} changes", .{ endpoint, submission.summary.rejected });
     }
 
+    const Held = struct { generation: u64, revision: u64 };
+
+    /// After a commit that carried a position of `generation`: when that is
+    /// not the generation held, the store dropped both positions in that
+    /// commit, and so does the loop.
+    fn adopt(self: *Controller, generation: u64) void {
+        if (self.generation != null and self.generation.? == generation) return;
+        if (self.generation) |old| {
+            _ = self.stats.generation_changes.fetchAdd(1, .monotonic);
+            log.warn("the control database's generation changed from {d} to {d}: the stored policy revision and request sequence are dropped", .{ old, generation });
+        }
+        self.generation = generation;
+        self.policy_revision = null;
+        self.requests_sequence = 0;
+        self.stats.generation.store(generation, .monotonic);
+        self.stats.policy_known.store(false, .monotonic);
+        self.stats.policy_revision.store(0, .monotonic);
+        self.stats.requests_sequence.store(0, .monotonic);
+    }
+
     /// Ask for the policy and make the store equal to it. True when the
     /// Worker answered and the store now holds its revision.
     pub fn pollPolicy(self: *Controller) !bool {
         var arena: std.heap.ArenaAllocator = .init(self.gpa);
         defer arena.deinit();
         const a = arena.allocator();
-        const url = if (self.policy_revision) |revision|
-            try std.fmt.allocPrint(a, "{s}" ++ policy_path ++ "?after={d}", .{ self.options.url, revision })
+        const held: ?Held = if (self.generation != null and self.policy_revision != null) .{ .generation = self.generation.?, .revision = self.policy_revision.? } else null;
+        const url = if (held) |position|
+            try std.fmt.allocPrint(a, "{s}" ++ policy_path ++ "?generation={d}&after={d}", .{ self.options.url, position.generation, position.revision })
         else
             try std.fmt.allocPrint(a, "{s}" ++ policy_path, .{self.options.url});
         const response = self.transport.get(self.transport.context, a, url, self.authorization);
-        if (response.status == 304 and self.policy_revision != null) {
+        if (response.status == 304 and held != null) {
             self.stats.policy_checked_at.store(self.nowSeconds(), .monotonic);
             return true;
         }
@@ -432,16 +484,16 @@ pub const Controller = struct {
                 return false;
             },
         };
-        if (self.policy_revision) |held| {
-            if (policy.revision < held) {
+        if (held) |position| if (position.generation == policy.generation) {
+            if (policy.revision < position.revision) {
                 self.failed(.older_revision, response.status, policy_path);
                 return false;
             }
-            if (policy.revision == held) {
+            if (policy.revision == position.revision) {
                 self.stats.policy_checked_at.store(self.nowSeconds(), .monotonic);
                 return true;
             }
-        }
+        };
 
         const submission = try Submission.create(self.gpa);
         defer submission.destroy();
@@ -453,9 +505,10 @@ pub const Controller = struct {
             const domains = try store_mod.read.blockedDomains(store.db(), owned);
             submission.changes = try difference(owned, overrides, domains, policy);
         }
-        submission.cursor = .{ .control_policy = policy.revision };
+        submission.cursor = .{ .control_policy = .{ .generation = policy.generation, .at = policy.revision } };
         try self.commit(submission, policy_path);
 
+        self.adopt(policy.generation);
         self.policy_revision = policy.revision;
         const now = self.nowSeconds();
         const s = &self.stats;
@@ -485,10 +538,13 @@ pub const Controller = struct {
         var arena: std.heap.ArenaAllocator = .init(self.gpa);
         defer arena.deinit();
         const a = arena.allocator();
-        const url = try std.fmt.allocPrint(a, "{s}" ++ requests_path ++ "?after={d}&limit={d}", .{ self.options.url, self.requests_sequence, self.options.request_page });
+        const url = if (self.generation) |generation|
+            try std.fmt.allocPrint(a, "{s}" ++ requests_path ++ "?generation={d}&after={d}&limit={d}", .{ self.options.url, generation, self.requests_sequence, self.options.request_page })
+        else
+            try std.fmt.allocPrint(a, "{s}" ++ requests_path ++ "?after=0&limit={d}", .{ self.options.url, self.options.request_page });
         const response = self.transport.get(self.transport.context, a, url, self.authorization);
         if (self.refused(response, requests_path)) return .refused;
-        const page = parsePage(a, response.body, self.requests_sequence, self.options.request_page) catch |err| switch (err) {
+        const page = parsePage(a, response.body, self.generation, self.requests_sequence, self.options.request_page) catch |err| switch (err) {
             error.OutOfMemory => return err,
             error.Malformed => {
                 self.failed(.malformed, response.status, requests_path);
@@ -510,9 +566,10 @@ pub const Controller = struct {
         }
         const last = page.requests[page.requests.len - 1].seq;
         submission.changes = changes.items();
-        submission.cursor = .{ .control_requests = last };
+        submission.cursor = .{ .control_requests = .{ .generation = page.generation, .at = last } };
         try self.commit(submission, requests_path);
 
+        self.adopt(page.generation);
         self.requests_sequence = last;
         const s = &self.stats;
         s.requests_sequence.store(last, .monotonic);

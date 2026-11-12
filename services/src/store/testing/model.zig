@@ -46,6 +46,7 @@ pub const Model = struct {
     labeler: ?u64 = null,
     plc: ?[]const u8 = null,
     bridge: ?u64 = null,
+    control_generation: ?u64 = null,
     control_policy: ?u64 = null,
     control_requests: ?u64 = null,
     /// Lowercase domains whose sweep is owed.
@@ -590,13 +591,26 @@ pub const Model = struct {
         _ = self.owed.orderedRemove(self.lowered(domain));
     }
 
+    fn controlSource(self: *Model, generation: u64) void {
+        if (self.control_generation == generation) return;
+        self.control_generation = generation;
+        self.control_policy = null;
+        self.control_requests = null;
+    }
+
     pub fn setCursor(self: *Model, update: change.CursorUpdate) void {
         switch (update) {
             .relay => |value| self.relay = value,
             .bridge => |value| self.bridge = value,
             .labeler => |value| self.labeler = @max(self.labeler orelse 0, value),
-            .control_policy => |value| self.control_policy = if (self.control_policy) |stored| @max(stored, value) else value,
-            .control_requests => |value| self.control_requests = if (self.control_requests) |stored| @max(stored, value) else value,
+            .control_policy => |position| {
+                self.controlSource(position.generation);
+                self.control_policy = if (self.control_policy) |stored| @max(stored, position.at) else position.at;
+            },
+            .control_requests => |position| {
+                self.controlSource(position.generation);
+                self.control_requests = if (self.control_requests) |stored| @max(stored, position.at) else position.at;
+            },
             .plc => |value| {
                 if (self.plc) |stored| if (std.mem.order(u8, value, stored) != .gt) return;
                 self.plc = self.own(value);

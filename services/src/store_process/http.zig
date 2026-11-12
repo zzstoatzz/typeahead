@@ -208,6 +208,11 @@ pub const ControlBody = struct {
     /// on this slot.
     age_seconds: ?u64 = null,
     poll_seconds: ?u64 = null,
+    /// The control database the positions below were read from, and how
+    /// often since the start an answer came from another one and they were
+    /// dropped. A change means that database was recreated or restored.
+    generation: ?u64 = null,
+    generation_changes: ?u64 = null,
     policy: ?struct {
         /// The revision the store's policy equals; absent before the first.
         revision: ?u64 = null,
@@ -237,6 +242,8 @@ pub fn controlBody(loop: *control.Controller) ControlBody {
         .state = "on",
         .age_seconds = r.age_seconds,
         .poll_seconds = r.poll_seconds,
+        .generation = r.generation,
+        .generation_changes = r.generation_changes,
         .policy = .{ .revision = r.policy_revision, .checked_at = r.policy_checked_at, .applied_at = r.policy_applied_at, .snapshots_applied = r.snapshots_applied, .rules_changed = r.rules_changed },
         .index_requests = .{ .sequence = r.requests_sequence, .checked_at = r.requests_checked_at, .queued = r.requests_queued, .skipped = r.requests_skipped },
         .polls = r.polls,

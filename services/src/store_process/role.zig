@@ -223,6 +223,8 @@ fn heartbeat(owner: *Owner) void {
     if (self.controller) |loop| {
         const r = loop.report();
         span.setAttribute("control_age_seconds", control.attribute(r.age_seconds));
+        span.setAttribute("control_generation", control.attribute(r.generation orelse 0));
+        span.setAttribute("control_generation_changes", control.attribute(r.generation_changes));
         span.setAttribute("control_policy_revision", control.attribute(r.policy_revision orelse 0));
         span.setAttribute("control_policy_checked_at", control.attribute(r.policy_checked_at));
         span.setAttribute("control_policy_applied_at", control.attribute(r.policy_applied_at));
