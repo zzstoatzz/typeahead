@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, setSystemTime, test } from "bun:test";
+import { afterEach, beforeEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
 import { materializeStats, readRequestPayload, readStatsPayload } from "./enrichment";
 import { handleStatsBackfill } from "./handlers/stats-admin";
 import { BACKFILL_STEPS, BackfillInputError, backfillStep, runBackfill, type BackfillRequest, type BackfillResult } from "./stats-backfill";
@@ -6,6 +6,9 @@ import { CUT, NOW, T0, backfilled, seed } from "./stats-backfill-fixture";
 import { statsRows, statsStores } from "./stats-d1-fixture";
 import { readProfile } from "./stats-profile";
 import type { Env } from "./types";
+
+// each test seeds two real stores, one of them a workerd process
+setDefaultTimeout(60_000);
 
 // The history copy from Turso into D1 (docs/plans/stats-off-turso.md, step 3).
 // Both stores counted across the start of dual write and across the cut; the
@@ -112,7 +115,7 @@ test("a run that stops part way finishes from where it stopped, or from the star
     await runBackfill(call, { ...apply, start: resume === "from the start" ? undefined : position ?? undefined });
     expect(await d1Rows()).toEqual(backfilled(seeded));
   }
-}, 30_000);
+});
 
 test("a rollup on Turso between two halves of a run leaves both stores telling the cron the same thing", async () => {
   await seed(stores.turso, stores.mirror, { agree: true });
@@ -138,7 +141,7 @@ test("a rollup on Turso between two halves of a run leaves both stores telling t
   expect(await readRequestPayload(stores.mirror, later)).toEqual(await readRequestPayload(stores.turso, later));
   expect(await readProfile(stores.mirror, later)).toEqual(await readProfile(stores.turso, later));
   expect((await d1Rows()).traffic_buckets).toHaveLength(after!.n);
-}, 30_000);
+});
 
 test("a later cut replaces what D1 counted alone up to it", async () => {
   const seeded = await seed(stores.turso, stores.mirror, { agree: false });

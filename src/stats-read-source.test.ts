@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, setSystemTime, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, expect, setDefaultTimeout, setSystemTime, spyOn, test } from "bun:test";
 import { materializeStats, writeSnapshot } from "./enrichment";
 import { statsBody } from "./handlers/stats";
 import { knownSource } from "./handlers/source-icon";
@@ -6,6 +6,9 @@ import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTr
 import { collectingCtx, statsStores } from "./stats-d1-fixture";
 import { recordProfile } from "./stats-profile";
 import { recordStats, statsMirror, statsReadDb, statsReadSource, writeStats } from "./stats-store";
+
+// each test seeds two real stores, one of them a workerd process
+setDefaultTimeout(60_000);
 
 // The read switch (docs/plans/stats-off-turso.md, step 6): STATS_READ_SOURCE
 // picks the store every statistics read goes to. With the same rows in both

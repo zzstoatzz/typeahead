@@ -1,9 +1,12 @@
-import { afterEach, beforeEach, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import type { SqlDb } from "./db";
 import { recordSnapshot, writeSnapshot } from "./enrichment";
 import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
 import { collectingCtx, statsRows, statsStores } from "./stats-d1-fixture";
 import { recordStats, statsMirror, writeStats, type StatsWrite } from "./stats-store";
+
+// each test fills a workerd-backed D1, which a loaded machine makes slow
+setDefaultTimeout(60_000);
 
 // Dual write (docs/plans/stats-off-turso.md, step 2): every statistics writer
 // goes to Turso and to D1 independently. The stores must end up with the same

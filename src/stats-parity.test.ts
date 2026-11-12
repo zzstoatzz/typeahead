@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, setSystemTime, test } from "bun:test";
+import { afterEach, beforeEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
 import { materializeStats } from "./enrichment";
 import { handleStatsParity } from "./handlers/stats-admin";
 import { runBackfill, backfillStep, type BackfillRequest } from "./stats-backfill";
@@ -7,6 +7,9 @@ import { statsStores } from "./stats-d1-fixture";
 import { PARITY_SECTIONS, ParityInputError, parityStep, runParity, type ParityReport, type ParityRequest, type ParityResult } from "./stats-parity";
 import { RANGED_NAMES } from "./stats-rows";
 import type { Env } from "./types";
+
+// each test seeds two real stores, one of them a workerd process
+setDefaultTimeout(60_000);
 
 // The comparison that gates reading from D1 (docs/plans/stats-off-turso.md,
 // steps 4 and 5): after a backfill the two stores must be reported equal, and

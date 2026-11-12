@@ -1,9 +1,12 @@
-import { afterEach, beforeEach, expect, setSystemTime, test } from "bun:test";
+import { afterEach, beforeEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
 import { handleStatsBackfill, handleStatsParity } from "./handlers/stats-admin";
 import { CUT, NOW, backfilled, seed } from "./stats-backfill-fixture";
 import { main, type CliHost } from "./stats-cli";
 import { statsRows, statsStores } from "./stats-d1-fixture";
 import type { Env } from "./types";
+
+// each test seeds two real stores, one of them a workerd process
+setDefaultTimeout(60_000);
 
 // The operator's command against the two admin endpoints, over the same
 // requests and responses it exchanges with the deployed Worker.

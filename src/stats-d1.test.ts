@@ -1,4 +1,4 @@
-import { afterAll, expect, test } from "bun:test";
+import { afterAll, expect, setDefaultTimeout, test } from "bun:test";
 import { rowsAs } from "./db";
 import { materializeStats, writeSnapshot } from "./enrichment";
 import { knownSource } from "./handlers/source-icon";
@@ -6,6 +6,9 @@ import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTr
 import { PROFILE_KEY, parseProfile, recordProfile } from "./stats-profile";
 import { STATS_TABLES, statsStores } from "./stats-d1-fixture";
 import { sourceQueries, tailQueries } from "./stats-tail";
+
+// each test fills a workerd-backed D1, which a loaded machine makes slow
+setDefaultTimeout(60_000);
 
 // The D1 database is created by the migrations alone, so a statement the
 // statistics code issues against a table or column the migrations lack has to
@@ -128,4 +131,4 @@ test("every statistics statement runs against the migrated database", async () =
   expect(trafficHour.results).toHaveLength(2);
   expect(request5m.results).toHaveLength(2);
   expect(requestHour.results).toHaveLength(2);
-}, 30_000);
+});
