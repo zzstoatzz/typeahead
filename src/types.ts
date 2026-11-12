@@ -14,6 +14,19 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   /// stores written, Turso read) or "read-d1" (both written, D1 read). See
   /// statsMode in src/stats-store.ts and docs/plans/stats-off-turso.md.
   STATS_MODE?: string;
+  /// Where getProfile, getProfiles and /debug/reputation read actors:
+  /// "turso", "compare" (Turso answers, differences from the routed slot are
+  /// logged) or "slot". See readMode in src/slot-read.ts and
+  /// docs/turso-retirement.md.
+  PROFILE_MODE?: string;
+  /// The same three values for the corpus counts the cron records for
+  /// /stats: the hourly snapshot and the daily exclusions.
+  CORPUS_MODE?: string;
+  /// "off" stops every write to, and remaining read of, the Turso actor
+  /// tables: the ingester's endpoints answer 410, admin policy changes and
+  /// /request-indexing write the control database only, and the cron's
+  /// moderation refresh does not run. Anything else leaves them on.
+  TURSO_ACTORS?: string;
   SEARCH_BACKEND_URL?: string;
   SEARCH_TRANSPORT?: Fetcher;
   SEARCH_CACHE_GENERATION?: string;
