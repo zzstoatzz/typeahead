@@ -442,6 +442,122 @@ test "the handle repair queues nothing while the identity backlog is at its limi
     try testing.expectEqual(@as(u64, 9), try f.count(.identity));
 }
 
+/// A store as a bundle load that stamped every actor leaves it: each actor
+/// checked at `t0` and out of the refresh queue.
+fn loadStamped(f: *Fixture, did: []const u8, handle: []const u8, fetched: change.Enrichment) !void {
+    _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = handle } });
+    var enrichment = fetched;
+    enrichment.did = did;
+    _ = try f.apply(t0, .{ .enrichment = enrichment });
+}
+
+test "the first-check pass queues each actor no source answered for once, in steps, and survives a reopen" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const bare: change.Enrichment = .{ .did = "", .source = .bsky };
+    for ([_][]const u8{ "did:plc:a", "did:plc:c", "did:plc:e", "did:plc:g" }) |did| try loadStamped(&f, did, "bare.test", bare);
+    try loadStamped(&f, "did:plc:b", "scored.test", .{ .did = "", .source = .bsky, .quality_score = 30 });
+    try loadStamped(&f, "did:plc:d", "counted.test", .{ .did = "", .source = .bsky, .followers_count = 2 });
+    try loadStamped(&f, "did:plc:f", "dated.test", .{ .did = "", .source = .bsky, .created_at = "2026-11-01T00:00:00.000Z" });
+    try loadStamped(&f, "did:plc:h", "", bare);
+    try loadStamped(&f, "did:plc:i", "gone.test", bare);
+    _ = try f.apply(t0, .{ .gone = .{ .did = "did:plc:i", .status = .deactivated } });
+    // Checked since the load, and found to have no profile anywhere.
+    try loadStamped(&f, "did:plc:j", "absent.test", bare);
+    _ = try f.apply(t0 + 5, .{ .refresh_complete = .{ .did = "did:plc:j" } });
+    // Queued already, and leased: the pass leaves the entry as it is.
+    _ = try f.apply(t0 + 5, .{ .refresh_enqueue = .{ .did = "did:plc:e", .due = t0 + 300 } });
+    try testing.expectEqual(@as(u64, 1), try f.count(.refresh));
+
+    const pass: Store.FirstCheck = .{ .stamp = t0, .limit = 2, .scan = 3, .backlog_limit = 100 };
+    try testing.expectEqual(Store.FirstChecked{ .examined = 3, .queued = 2 }, try f.store.firstCheck(t0 + 10, pass));
+    try testing.expectEqual(@as(u64, t0 + 10), (try f.actor("did:plc:a")).refresh_due);
+    try testing.expectEqual(@as(u64, t0 + 10), (try f.actor("did:plc:c")).refresh_due);
+    const changes = (try f.store.cursors(f.arena.allocator())).next_change;
+
+    try f.reopen();
+    var state = try read.firstCheckState(f.store.db(), f.arena.allocator());
+    try testing.expectEqualStrings("did:plc:c", state.position);
+    try testing.expectEqual(@as(u64, t0), state.stamp);
+    try testing.expectEqual(@as(u64, t0 + 10), state.started_at);
+    try testing.expectEqual(@as(u64, 0), state.finished_at);
+
+    // A step that fills its limit before its scan ends stops there.
+    try testing.expectEqual(Store.FirstChecked{ .examined = 4, .queued = 1 }, try f.store.firstCheck(t0 + 20, .{ .stamp = t0, .limit = 1, .scan = 50, .backlog_limit = 100 }));
+    try testing.expectEqual(@as(u64, t0 + 20), (try f.actor("did:plc:g")).refresh_due);
+    try testing.expectEqual(@as(u64, t0 + 300), (try f.actor("did:plc:e")).refresh_due);
+    // The pass is finished by a scan that comes back short of its limit.
+    try testing.expectEqual(Store.FirstChecked{ .examined = 3 }, try f.store.firstCheck(t0 + 25, pass));
+    try testing.expectEqual(Store.FirstChecked{ .finished = true }, try f.store.firstCheck(t0 + 30, pass));
+    for ([_][]const u8{ "did:plc:b", "did:plc:d", "did:plc:f", "did:plc:h", "did:plc:i", "did:plc:j" }) |did| try testing.expectEqual(@as(u64, 0), (try f.actor(did)).refresh_due);
+    try testing.expectEqual(@as(u64, 4), try f.count(.refresh));
+    // Queuing a refresh is not a change to the actor.
+    try testing.expectEqual(changes, (try f.store.cursors(f.arena.allocator())).next_change);
+
+    try loadStamped(&f, "did:plc:late", "late.test", bare);
+    try f.reopen();
+    try testing.expectEqual(Store.FirstChecked{ .finished = true }, try f.store.firstCheck(t0 + 50, pass));
+    try testing.expectEqual(@as(u64, 0), (try f.actor("did:plc:late")).refresh_due);
+    state = try read.firstCheckState(f.store.db(), f.arena.allocator());
+    try testing.expectEqual(@as(u64, t0 + 30), state.finished_at);
+    try testing.expectEqual(@as(u64, 10), state.examined);
+    try testing.expectEqual(@as(u64, 3), state.queued);
+    try testing.expectEqualStrings("did:plc:j", state.position);
+}
+
+test "the first-check pass starts over when it is asked for another check time" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const bare: change.Enrichment = .{ .did = "", .source = .bsky };
+    try loadStamped(&f, "did:plc:stamped", "stamped.test", bare);
+    // What a load leaves that does not stamp an actor no source answered for.
+    _ = try f.apply(t0, .{ .profile = .{ .did = "did:plc:unchecked", .handle = "unchecked.test" } });
+    var unchecked = bare;
+    unchecked.did = "did:plc:unchecked";
+    unchecked.checked = false;
+    _ = try f.apply(t0, .{ .enrichment = unchecked });
+    try testing.expectEqual(@as(u64, 0), (try f.actor("did:plc:unchecked")).profile_checked_at);
+    try testing.expectEqual(@as(u64, 0), try f.count(.refresh));
+
+    const never: Store.FirstCheck = .{ .limit = 10, .scan = 10, .backlog_limit = 100 };
+    try testing.expectEqual(Store.FirstChecked{ .examined = 2, .queued = 1, .finished = true }, try f.store.firstCheck(t0 + 10, never));
+    try testing.expectEqual(@as(u64, t0 + 10), (try f.actor("did:plc:unchecked")).refresh_due);
+    try testing.expectEqual(@as(u64, 0), (try f.actor("did:plc:stamped")).refresh_due);
+    try testing.expectEqual(Store.FirstChecked{ .finished = true }, try f.store.firstCheck(t0 + 20, never));
+
+    var stamped = never;
+    stamped.stamp = t0;
+    try testing.expectEqual(Store.FirstChecked{ .examined = 2, .queued = 1, .finished = true }, try f.store.firstCheck(t0 + 30, stamped));
+    try testing.expectEqual(@as(u64, t0 + 30), (try f.actor("did:plc:stamped")).refresh_due);
+    const state = try read.firstCheckState(f.store.db(), f.arena.allocator());
+    try testing.expectEqual(@as(u64, t0), state.stamp);
+    try testing.expectEqual(@as(u64, t0 + 30), state.started_at);
+    try testing.expectEqual(@as(u64, 2), state.examined);
+    try testing.expectEqual(@as(u64, 1), state.queued);
+}
+
+test "the first-check pass queues nothing while the refresh backlog is at its limit" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    var buf: [32]u8 = undefined;
+    for (0..8) |n| try loadStamped(&f, try std.fmt.bufPrint(&buf, "did:plc:{d}", .{n}), "bare.test", .{ .did = "", .source = .bsky });
+    _ = try f.apply(t0, .{ .profile = .{ .did = "did:plc:written", .handle = "written.test" } });
+    try testing.expectEqual(@as(u64, 1), try f.count(.refresh));
+
+    const pass: Store.FirstCheck = .{ .stamp = t0, .limit = 5, .scan = 50, .backlog_limit = 3 };
+    try testing.expectEqual(Store.FirstChecked{ .examined = 2, .queued = 2 }, try f.store.firstCheck(t0 + 1, pass));
+    try testing.expectEqual(Store.FirstChecked{}, try f.store.firstCheck(t0 + 2, pass));
+    try testing.expectEqual(@as(u64, 3), try f.count(.refresh));
+    try testing.expectEqualStrings("did:plc:1", (try read.firstCheckState(f.store.db(), f.arena.allocator())).position);
+
+    // A lease takes the due entries out of the backlog, and a fetch settles them.
+    _ = try f.apply(t0 + 3, .{ .refresh_lease = .{ .limit = 2 } });
+    try testing.expectEqual(Store.FirstChecked{ .examined = 2, .queued = 2 }, try f.store.firstCheck(t0 + 3, pass));
+    _ = try f.apply(t0 + 4, .{ .refresh_lease = .{ .limit = 50 } });
+    try testing.expectEqual(Store.FirstChecked{ .examined = 5, .queued = 4, .finished = true }, try f.store.firstCheck(t0 + 4, .{ .stamp = t0, .limit = 5, .scan = 50, .backlog_limit = 100 }));
+    try testing.expectEqual(@as(u64, 9), try f.count(.refresh));
+}
+
 test "blocking a domain hides new writes at once and stored actors by sweep" {
     var f = try Fixture.init(.{});
     defer f.deinit();

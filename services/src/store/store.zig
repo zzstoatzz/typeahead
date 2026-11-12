@@ -268,6 +268,92 @@ pub const Store = struct {
         return step;
     }
 
+    pub const FirstCheck = struct {
+        /// The check time of the actors the pass is after: 0 for those a
+        /// bundle load left unchecked, or the load time of a store whose
+        /// load stamped every actor as checked.
+        stamp: u64 = 0,
+        /// Actors to queue at most.
+        limit: usize,
+        /// Actor records to examine at most.
+        scan: usize,
+        /// Nothing is queued while this many refresh entries are due.
+        backlog_limit: usize,
+    };
+
+    pub const FirstChecked = struct { examined: usize = 0, queued: usize = 0, finished: bool = false };
+
+    const Unfetched = struct {
+        arena: std.mem.Allocator,
+        stamp: u64,
+        room: usize,
+        dids: std.ArrayList([]const u8) = .empty,
+        examined: usize = 0,
+        last: std.ArrayList(u8) = .empty,
+
+        pub fn entry(self: *Unfetched, key: []const u8, value: []const u8) !void {
+            if (self.dids.items.len == self.room) return;
+            self.examined += 1;
+            const did = try keys.parseActor(key);
+            self.last.clearRetainingCapacity();
+            try self.last.appendSlice(self.arena, did);
+            const found = try Actor.decode(self.arena, value);
+            if (found.live() and found.handle.len > 0 and found.refresh_due == 0 and
+                found.profile_checked_at == self.stamp and found.unenriched()) try self.dids.append(self.arena, try self.arena.dupe(u8, did));
+        }
+    };
+
+    /// One step of a pass, made once in the life of a store, that queues a
+    /// refresh for every actor no profile source has answered for: live,
+    /// with a handle, holding nothing a fetch writes (`Actor.unenriched`),
+    /// and last checked at `stamp`. Those are the actors a bundle carried
+    /// bare. Left to the rest walk they wait for its pass of the whole
+    /// actor range; here they are found in DID order and queued due now.
+    ///
+    /// A step examines up to `scan` records and queues up to `limit`, fewer
+    /// when that would bring the refresh entries due past `backlog_limit`,
+    /// so the pass yields to the refreshes that writes and the quality walk
+    /// queue. Where it stands is stored in the step's own commit, so a
+    /// restart resumes it; once it has reached the end every later call
+    /// does nothing, until one names another `stamp`, which starts it over.
+    pub fn firstCheck(self: *Store, now: u64, c: FirstCheck) !FirstChecked {
+        const batch = try self.begin(now);
+        errdefer batch.abort();
+        const a = batch.arena.allocator();
+        var state = try read.firstCheckState(self.db(), a);
+        if (state.stamp != c.stamp) state = .{ .stamp = c.stamp };
+        var step: FirstChecked = .{ .finished = state.finished_at != 0 };
+        const room = if (step.finished) 0 else @min(c.limit, c.backlog_limit -| try batch.refreshBacklog(c.backlog_limit));
+        if (room > 0 and c.scan > 0) {
+            var buf: keys.Buf = undefined;
+            const bounds = keys.Prefix.actor.bounds();
+            var start: std.ArrayList(u8) = .empty;
+            if (state.position.len > 0) {
+                try start.appendSlice(a, try keys.actor(&buf, state.position));
+                try start.append(a, 0);
+            } else try start.appendSlice(a, &bounds[0]);
+            var found: Unfetched = .{ .arena = a, .stamp = c.stamp, .room = room };
+            const scanned = try scan.all(a, self.db(), start.items, &bounds[1], .{ .limit = c.scan }, &found);
+            for (found.dids.items) |did| _ = try batch.apply(.{ .refresh_enqueue = .{ .did = did, .due = now } });
+            step.examined = found.examined;
+            step.queued = found.dids.items.len;
+            if (state.started_at == 0) state.started_at = now;
+            if (found.examined > 0) state.position = found.last.items;
+            state.examined += step.examined;
+            state.queued += step.queued;
+            if (scanned.entries < c.scan and found.examined == scanned.entries) {
+                state.finished_at = now;
+                step.finished = true;
+            }
+            _ = batch.scratch.reset(.retain_capacity);
+            var value: std.ArrayList(u8) = .empty;
+            try state.encode(batch.tmp(), &value);
+            try self.db().put(keys.cursor(&buf, .first_check), value.items);
+        }
+        try batch.commit();
+        return step;
+    }
+
     pub const Trimmed = struct { removed: u64, floor: u64, more: bool };
 
     /// Drop change-log entries below `below`, the lowest position any
@@ -825,6 +911,15 @@ pub const Batch = struct {
         var end: keys.Buf = undefined;
         var count: scan.Count = .{};
         _ = try scan.all(self.tmp(), self.store.db(), keys.timedBound(&start, .identity, 0), keys.timedBound(&end, .identity, self.now + 1), .{ .limit = limit }, &count);
+        return count.entries;
+    }
+
+    /// Refresh queue entries due now, counted up to `limit`.
+    fn refreshBacklog(self: *Batch, limit: usize) !usize {
+        var start: keys.Buf = undefined;
+        var end: keys.Buf = undefined;
+        var count: scan.Count = .{};
+        _ = try scan.all(self.tmp(), self.store.db(), keys.timedBound(&start, .refresh, 0), keys.timedBound(&end, .refresh, self.now + 1), .{ .limit = limit }, &count);
         return count.entries;
     }
 

@@ -25,6 +25,7 @@ pub const queue_format = 1;
 pub const policy_format = 1;
 pub const walk_format = 1;
 pub const repair_format = 1;
+pub const first_check_format = 1;
 
 pub const Error = error{ CorruptRecord, UnsupportedRecordFormat };
 
@@ -87,6 +88,14 @@ pub const Actor = struct {
     /// What a search could return: the rule behind the quality walk.
     pub fn ranked(self: Actor) bool {
         return self.live() and !self.hidden and self.handle.len > 0 and self.quality_score > 0;
+    }
+
+    /// Nothing a profile fetch writes is here: no score, no counts and no
+    /// creation time. An actor a source answered for has at least the last,
+    /// so this one was loaded or discovered and never fetched.
+    pub fn unenriched(self: Actor) bool {
+        return self.quality_score == 0 and self.followers_count == 0 and self.follows_count == 0 and
+            self.posts_count == 0 and self.created_at.len == 0;
     }
 
     /// Equality of everything a consumer of the change log reads. Scheduling
@@ -357,6 +366,48 @@ pub const RepairState = struct {
     }
 };
 
+/// Where the first-check pass over the actor range stands.
+pub const FirstCheckState = struct {
+    /// The check time the pass looks for. A step asked for another one
+    /// starts the pass again from the top.
+    stamp: u64 = 0,
+    /// 0 before the first step.
+    started_at: u64 = 0,
+    /// 0 until the pass has reached the end of the range.
+    finished_at: u64 = 0,
+    /// Actors the pass has looked at, and those it queued for a refresh.
+    examined: u64 = 0,
+    queued: u64 = 0,
+    /// The last DID examined.
+    position: []const u8 = "",
+
+    pub fn encode(self: FirstCheckState, gpa: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
+        out.clearRetainingCapacity();
+        try out.append(gpa, first_check_format);
+        try putInt(gpa, out, self.stamp);
+        try putInt(gpa, out, self.started_at);
+        try putInt(gpa, out, self.finished_at);
+        try putInt(gpa, out, self.examined);
+        try putInt(gpa, out, self.queued);
+        try putBytes(gpa, out, self.position);
+    }
+
+    pub fn decode(bytes: []const u8) Error!FirstCheckState {
+        var in: Input = .{ .bytes = bytes };
+        if (try in.byte() != first_check_format) return error.UnsupportedRecordFormat;
+        const state: FirstCheckState = .{
+            .stamp = try in.int(),
+            .started_at = try in.int(),
+            .finished_at = try in.int(),
+            .examined = try in.int(),
+            .queued = try in.int(),
+            .position = try in.slice(),
+        };
+        try in.end();
+        return state;
+    }
+};
+
 pub fn encodeU64(value: u64) [8]u8 {
     var out: [8]u8 = undefined;
     std.mem.writeInt(u64, &out, value, .big);
@@ -599,6 +650,12 @@ test "queue state, stored labels and policy entries round trip" {
     try testing.expectEqualDeep(repair, try RepairState.decode(out.items));
     try testing.expectError(error.CorruptRecord, RepairState.decode(out.items[0 .. out.items.len - 1]));
     try testing.expectError(error.UnsupportedRecordFormat, RepairState.decode(&.{ repair_format + 1, 0, 0, 0, 0, 0 }));
+
+    const first_check: FirstCheckState = .{ .stamp = 1_793_990_000, .started_at = 1_794_000_000, .finished_at = 1_794_013_200, .examined = 13_200_000, .queued = 70_000, .position = "did:plc:abc" };
+    try first_check.encode(gpa, &out);
+    try testing.expectEqualDeep(first_check, try FirstCheckState.decode(out.items));
+    try testing.expectError(error.CorruptRecord, FirstCheckState.decode(out.items[0 .. out.items.len - 1]));
+    try testing.expectError(error.UnsupportedRecordFormat, FirstCheckState.decode(&.{ first_check_format + 1, 0, 0, 0, 0, 0, 0 }));
 
     for ([_]u64{ 0, 1, 1 << 40, std.math.maxInt(u64) }) |value| try testing.expectEqual(value, try decodeU64(&encodeU64(value)));
     try testing.expectError(error.CorruptRecord, decodeU64("1234567"));
