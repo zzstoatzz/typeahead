@@ -688,6 +688,11 @@ test "a batch lands whole with its cursor, or not at all" {
     try batch.setCursor(.{ .labeler = 7 });
     try batch.setCursor(.{ .plc = "2026-11-10T00:00:02.000Z" });
     try batch.setCursor(.{ .plc = "2026-11-10T00:00:01.000Z" });
+    try batch.setCursor(.{ .control_policy = 0 });
+    try batch.setCursor(.{ .control_policy = 12 });
+    try batch.setCursor(.{ .control_policy = 11 });
+    try batch.setCursor(.{ .control_requests = 300 });
+    try batch.setCursor(.{ .control_requests = 299 });
     try batch.commit();
 
     const log = try f.logged();
@@ -700,6 +705,8 @@ test "a batch lands whole with its cursor, or not at all" {
     try testing.expectEqual(@as(?u64, 42), cursors.relay);
     try testing.expectEqual(@as(?u64, 9), cursors.labeler);
     try testing.expectEqualStrings("2026-11-10T00:00:02.000Z", cursors.plc.?);
+    try testing.expectEqual(@as(?u64, 12), cursors.control_policy);
+    try testing.expectEqual(@as(?u64, 300), cursors.control_requests);
     try testing.expectEqual(@as(u64, 4), cursors.next_change);
 
     try f.reopen();

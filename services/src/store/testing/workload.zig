@@ -242,6 +242,8 @@ pub fn batch(arena: std.mem.Allocator, config: Config, n: u64, size: usize) !Ste
     try cursors.append(arena, .{ .relay = n });
     if (gen.chance(40)) try cursors.append(arena, .{ .labeler = gen.now - base_time + gen.random.uintLessThan(u64, 50) -| 25 });
     if (gen.chance(30)) try cursors.append(arena, .{ .plc = try gen.stamp(gen.now - gen.random.uintLessThan(u64, 400)) });
+    if (gen.chance(25)) try cursors.append(arena, .{ .control_policy = (n + gen.random.uintLessThan(u64, 6)) -| 3 });
+    if (gen.chance(25)) try cursors.append(arena, .{ .control_requests = (n * 4 + gen.random.uintLessThan(u64, 20)) -| 10 });
     return .{ .now = gen.now, .changes = changes.items, .cursors = cursors.items };
 }
 

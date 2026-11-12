@@ -137,6 +137,11 @@ pub const Cursors = struct {
     labeler: ?u64 = null,
     plc: ?[]const u8 = null,
     bridge: ?u64 = null,
+    /// The policy revision last applied from the Worker's control record;
+    /// null before the first.
+    control_policy: ?u64 = null,
+    /// The last indexing request taken from the control record.
+    control_requests: ?u64 = null,
     /// The sequence the next change-log entry will take.
     next_change: u64 = 1,
     /// The lowest position a change-log consumer may still ask for.
@@ -155,6 +160,8 @@ pub fn cursors(db: *Db, arena: std.mem.Allocator) !Cursors {
         .relay = try counter(db, .relay),
         .labeler = try counter(db, .labeler),
         .bridge = try counter(db, .bridge),
+        .control_policy = try counter(db, .control_policy),
+        .control_requests = try counter(db, .control_requests),
         .next_change = try counter(db, .next_change) orelse 1,
         .change_floor = try counter(db, .change_floor) orelse 0,
     };

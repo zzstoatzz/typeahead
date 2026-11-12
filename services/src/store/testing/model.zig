@@ -46,6 +46,8 @@ pub const Model = struct {
     labeler: ?u64 = null,
     plc: ?[]const u8 = null,
     bridge: ?u64 = null,
+    control_policy: ?u64 = null,
+    control_requests: ?u64 = null,
     walks: std.EnumArray(change.WalkPool, record.WalkState) = .initFill(.{}),
     pending: std.ArrayList([]const u8) = .empty,
     now: u64 = 0,
@@ -579,6 +581,8 @@ pub const Model = struct {
             .relay => |value| self.relay = value,
             .bridge => |value| self.bridge = value,
             .labeler => |value| self.labeler = @max(self.labeler orelse 0, value),
+            .control_policy => |value| self.control_policy = if (self.control_policy) |stored| @max(stored, value) else value,
+            .control_requests => |value| self.control_requests = if (self.control_requests) |stored| @max(stored, value) else value,
             .plc => |value| {
                 if (self.plc) |stored| if (std.mem.order(u8, value, stored) != .gt) return;
                 self.plc = self.own(value);

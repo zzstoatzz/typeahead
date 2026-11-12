@@ -415,6 +415,8 @@ pub const Batch = struct {
                 const stored = try read.counter(engine_db, .labeler) orelse 0;
                 if (value > stored) try engine_db.put(key, &record.encodeU64(value));
             },
+            .control_policy => |value| try advance(engine_db, .control_policy, value),
+            .control_requests => |value| try advance(engine_db, .control_requests, value),
             .plc => |value| {
                 if (value.len == 0 or value.len > change.max_cursor_bytes) return error.InvalidCursor;
                 const key = keys.cursor(&buf, .plc);
@@ -422,6 +424,13 @@ pub const Batch = struct {
                 try engine_db.put(key, value);
             },
         }
+    }
+
+    /// Store `value` under `which` unless a value at least as high is there.
+    fn advance(engine_db: *engine.Db, which: keys.Cursor, value: u64) !void {
+        var buf: keys.Buf = undefined;
+        if (try read.counter(engine_db, which)) |stored| if (value <= stored) return;
+        try engine_db.put(keys.cursor(&buf, which), &record.encodeU64(value));
     }
 
     /// Land the batch as one commit. A failed commit leaves the store

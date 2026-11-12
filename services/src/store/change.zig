@@ -284,6 +284,12 @@ pub const CursorUpdate = union(enum) {
     plc: []const u8,
     /// The index bridge's position in the change log.
     bridge: u64,
+    /// The revision of the Worker's policy snapshot the batch made the
+    /// store's overrides and blocked domains equal to; never moves backwards.
+    control_policy: u64,
+    /// The sequence of the last indexing request the batch queued; never
+    /// moves backwards.
+    control_requests: u64,
 };
 
 pub const max_attempts = 12;
