@@ -59,7 +59,7 @@ def store_status(source_id='typeahead-shadow-a-store', build_id='b1794333857-cp-
 
 def store_b_status(**changed):
     """The second store slot: its own store and bootstrap bundle, the same image."""
-    return store_status('typeahead-shadow-b-store', 'b1794450000-cp-bootstrap-b', actor_count=13177350, **changed)
+    return store_status('typeahead-shadow-b-store', 'b1794450000-cp-bootstrap-b', **{'actor_count': 13177350, **changed})
 
 
 def turso_status(serving=SERVING, **changed):
@@ -155,8 +155,8 @@ class World:
             self.clock += seconds
         return {'get': self.get, 'sleep': sleep, 'clock': lambda: self.clock}
 
-    def cutover(self, write=True, origin=SHADOW):
-        return route.cutover(self.bucket, origin, SHADOW_BINARY, write=write, now=NOW, **self.timing())
+    def cutover(self, write=True, origin=SHADOW, binary=SHADOW_BINARY, **kwargs):
+        return route.cutover(self.bucket, origin, binary, write=write, now=NOW, **kwargs, **self.timing())
 
     def rollback(self, write=True):
         return route.rollback(self.bucket, write=write, **self.timing())
@@ -478,7 +478,7 @@ class StoreToStore(unittest.TestCase):
             ('pds_scope_policy', store_b_status(pds_scope_policy='other')),
             ('moderation rules differ', store_b_status(moderation={**moderation, 'canonical_rules_source_sha256': '9' * 64})),
             ('moderation policy differs', store_b_status(moderation={**moderation, 'sha256': '9' * 64})),
-            ('actors', {**store_b_status(), 'actor_count': serving - serving * 3 // 100}),
+            ('actors', store_b_status(actor_count=serving - serving * 3 // 100)),
             ('sync lag', store_b_status(watermark=NOW - 121)),
             ('since its bootstrap', {**store_b_status(), 'snapshot_watermark': NOW - 10}),
         ]
@@ -587,6 +587,150 @@ class StoreToStore(unittest.TestCase):
         writes = list(world.bucket.writes)
         report = route.check(SHADOW_B, SHADOW_BINARY, now=NOW, get=world.get)
         self.assertEqual((report['serving'], report['target']['origin'], report['written']), (world.bucket.record()['current'], SHADOW_B, False))
+        self.assertEqual(world.bucket.writes, writes)
+
+
+class Failover(unittest.TestCase):
+    """The serving slot is not ready, or does not answer, and the other store slot takes the route."""
+
+    def world_on_a(self, failure='stopped'):
+        world = World()
+        world.cutover()
+        if failure == 'stopped':
+            world.slots[SHADOW].down = True
+        elif failure == 'unready':
+            world.slots[SHADOW].ready = False
+        elif failure == 'replaced':
+            world.slots[SHADOW] = Slot(store_status(build_id='b1794500000-cp-rebootstrapped'))
+        return world
+
+    def failover(self, world, origin=SHADOW_B, **kwargs):
+        return world.cutover(origin=origin, serving_unhealthy=True, **kwargs)
+
+    def refused(self, world, fragment, **kwargs):
+        before, writes = world.bucket.record(), list(world.bucket.writes)
+        with self.assertRaises(route.Refused) as caught:
+            self.failover(world, **kwargs)
+        self.assertTrue(any(fragment in reason for reason in caught.exception.reasons), caught.exception.reasons)
+        self.assertEqual((world.bucket.record(), world.bucket.writes), (before, writes))
+
+    def test_a_serving_slot_that_does_not_answer_can_be_left(self):
+        world = self.world_on_a('stopped')
+        on_a = world.bucket.record()
+        with self.assertRaises(route.Refused):
+            world.cutover(origin=SHADOW_B)
+        plan = self.failover(world, write=False)
+        self.assertEqual((plan['written'], world.bucket.record()), (False, on_a))
+        report = self.failover(world)
+        gates = report['admission']['gates']
+        self.assertEqual((gates['serving_healthy'], gates['compared_with_serving'], gates['policy_compared_with_serving'], gates['serving_actor_count']), (False, False, False, None))
+        self.assertTrue(any('ConnectionRefusedError' in reason for reason in gates['serving_unhealthy_reasons']))
+        on_b = world.bucket.record()
+        self.assertEqual((on_b['current']['origin'], on_b['previous']), (SHADOW_B, on_a['current']))
+        stored = json.loads(world.bucket.objects[route.ADMISSION_PREFIX + on_b['current']['admission_sha256'] + '.json'])
+        self.assertEqual((stored['prior_route'], stored['gates']['compared_with_serving']), (on_a, False))
+
+    def test_a_serving_slot_that_answers_503_is_still_compared(self):
+        world = self.world_on_a('unready')
+        gates = self.failover(world)['admission']['gates']
+        self.assertEqual((gates['serving_healthy'], gates['compared_with_serving'], gates['policy_compared_with_serving']), (False, True, True))
+        self.assertEqual(gates['serving_actor_count'], store_status()['actor_count'])
+        self.assertEqual(world.bucket.record()['current']['origin'], SHADOW_B)
+
+    def test_what_an_unready_serving_slot_still_reports_can_refuse_the_candidate(self):
+        moderation = store_status()['moderation']
+        for fragment, body in (
+            ('normalize_version', store_b_status(normalize_version='v3')),
+            ('moderation rules differ', store_b_status(moderation={**moderation, 'canonical_rules_source_sha256': '9' * 64})),
+            ('moderation policy differs', store_b_status(moderation={**moderation, 'sha256': '9' * 64})),
+            ('actors', store_b_status(actor_count=6000000)),
+        ):
+            with self.subTest(fragment=fragment):
+                world = self.world_on_a('unready')
+                world.slots[SHADOW_B] = Slot(body)
+                self.refused(world, fragment)
+
+    def test_a_serving_slot_answering_as_another_build_is_not_a_reference(self):
+        world = self.world_on_a('replaced')
+        world.slots[SHADOW_B] = Slot(store_b_status(normalize_version='v3'))
+        gates = self.failover(world)['admission']['gates']
+        self.assertEqual((gates['serving_healthy'], gates['compared_with_serving']), (False, False))
+
+    def test_the_override_is_refused_while_the_serving_slot_is_healthy(self):
+        world = self.world_on_a(None)
+        self.refused(world, 'only for a serving slot that does not')
+        with self.assertRaises(route.Refused):
+            route.check(SHADOW_B, SHADOW_BINARY, serving_unhealthy=True, now=NOW, get=world.get)
+
+    def test_every_gate_on_the_candidate_itself_still_applies(self):
+        cursor = store_b_status()['source_cursor']
+        moderation = store_b_status()['moderation']
+        cases = [
+            ('/ready is not true', Slot(store_b_status(), ready=False), SHADOW_BINARY),
+            ('x-typeahead-binary-sha256', Slot(store_b_status()), '5' * 64),
+            ('sync lag', Slot(store_b_status(watermark=NOW - 121, source_cursor={**cursor, 'through': NOW - 121})), SHADOW_BINARY),
+            ('partial or stale', Slot(store_b_status(query_config={'allow_partial': True, 'allow_stale': False, 'max_sync_lag_s': 120})), SHADOW_BINARY),
+            ('source policy', Slot(store_b_status(source_cursor={**cursor, 'source_policy': 'turso-authoritative-observations-v2'})), SHADOW_BINARY),
+            ('does not describe the index', Slot(store_b_status(source_cursor={**cursor, 'through': NOW - 60})), SHADOW_BINARY),
+            ('since its bootstrap', Slot(store_b_status(source_cursor={**cursor, 'reconciliation': {'schema_version': 1, 'phase': 'idle', 'last_completed_at': None, 'last_completed_started_at': None}})), SHADOW_BINARY),
+            ('middle of a reconciliation round', Slot(store_b_status(source_cursor={**cursor, 'reconciliation': {**cursor['reconciliation'], 'phase': 'backend'}})), SHADOW_BINARY),
+            ('moderation policy is missing or stale', Slot(store_b_status(moderation={**moderation, 'fresh': False})), SHADOW_BINARY),
+            ('moderation rules hash', Slot(store_b_status(moderation={**moderation, 'canonical_rules_source_sha256': None})), SHADOW_BINARY),
+            ('moderation policy hash', Slot(store_b_status(moderation={**moderation, 'sha256': None})), SHADOW_BINARY),
+            ('does not report normalize_version', Slot(store_b_status(normalize_version=None)), SHADOW_BINARY),
+            ('actors', Slot(store_b_status(actor_count=0)), SHADOW_BINARY),
+        ]
+        for fragment, candidate, binary in cases:
+            with self.subTest(fragment=fragment):
+                world = self.world_on_a('stopped')
+                world.slots[SHADOW_B] = candidate
+                self.refused(world, fragment, binary=binary)
+        world = self.world_on_a('stopped')
+        world.slots[SHADOW_B].down = True
+        self.refused(world, 'valid build id')
+        self.refused(world, 'already routed', origin=SHADOW)
+
+    def test_the_slot_that_failed_takes_the_route_back_once_it_answers_again(self):
+        world = self.world_on_a('stopped')
+        on_a = world.bucket.record()
+        self.failover(world)
+        on_b = world.bucket.record()
+        with self.assertRaises(route.Refused):
+            world.rollback()
+        with self.assertRaises(route.Refused):
+            world.cutover(origin=SHADOW)
+        self.assertEqual(world.bucket.record(), on_b)
+        world.slots[SHADOW].down = False
+        self.assertEqual(world.rollback(write=False)['route'], on_a)
+        report = world.cutover(origin=SHADOW)
+        self.assertEqual((report['admission']['gates']['serving_origin'], report['admission']['gates']['compared_with_serving']), (SHADOW_B, True))
+        self.assertEqual((world.bucket.record()['current']['origin'], world.bucket.record()['previous']), (SHADOW, on_b['current']))
+
+    def test_a_transport_that_does_not_follow_a_failover_gets_the_prior_record_back(self):
+        world = self.world_on_a('stopped')
+        on_a = world.bucket.record()
+        world.transport_origins.discard(SHADOW_B)
+        with self.assertRaises(route.Refused) as caught:
+            self.failover(world)
+        self.assertIn('prior record was restored', str(caught.exception))
+        self.assertEqual(world.bucket.record(), on_a)
+
+    def test_a_managed_serving_slot_that_does_not_answer_can_be_left_too(self):
+        world = World()
+        world.slots[SLOT_B].down = True
+        with self.assertRaises(route.Refused):
+            world.cutover()
+        gates = world.cutover(serving_unhealthy=True)['admission']['gates']
+        self.assertEqual((gates['serving_origin'], gates['compared_with_serving']), (SLOT_B, False))
+        self.assertEqual(world.bucket.record()['previous'], SERVING)
+
+    def test_check_reports_the_failover_admission_without_credentials(self):
+        world = self.world_on_a('unready')
+        writes = list(world.bucket.writes)
+        with self.assertRaises(route.Refused):
+            route.check(SHADOW_B, SHADOW_BINARY, now=NOW, get=world.get)
+        report = route.check(SHADOW_B, SHADOW_BINARY, serving_unhealthy=True, now=NOW, get=world.get)
+        self.assertEqual((report['target']['origin'], report['gates']['serving_healthy'], report['written']), (SHADOW_B, False, False))
         self.assertEqual(world.bucket.writes, writes)
 
 
@@ -715,6 +859,12 @@ class CommandLine(unittest.TestCase):
 
     def test_only_a_store_slot_can_be_named(self):
         self.assertIn('invalid choice', self.parse('cutover', '--origin', SLOT_A, '--binary-sha256', SHADOW_BINARY))
+
+    def test_the_failover_override_is_never_implied(self):
+        for command in ('check', 'cutover'):
+            self.assertIs(self.parse(command, '--origin', SHADOW_B, '--binary-sha256', SHADOW_BINARY).serving_slot_unhealthy, False)
+            self.assertIs(self.parse(command, '--origin', SHADOW_B, '--binary-sha256', SHADOW_BINARY, '--serving-slot-unhealthy').serving_slot_unhealthy, True)
+        self.assertIn('unrecognized', self.parse('rollback', '--serving-slot-unhealthy'))
 
     def test_nothing_is_written_unless_asked(self):
         self.assertIs(self.parse('cutover', '--origin', SHADOW, '--binary-sha256', SHADOW_BINARY).write, False)

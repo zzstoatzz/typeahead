@@ -27,6 +27,10 @@ back with it and a second rollback undoes the cutover before.
 
 The slot that would take the route is always named: there is no default origin.
 
+`check` and `cutover` refuse while the serving slot is not ready, because the
+candidate is judged against it. `--serving-slot-unhealthy` is the failover
+override for exactly that case; see `admit`.
+
 `cutover` and `rollback` read INDEX_R2_ENDPOINT, INDEX_R2_BUCKET,
 INDEX_R2_ACCESS_KEY_ID and INDEX_R2_SECRET_ACCESS_KEY.
 """
@@ -175,15 +179,32 @@ def identity_reasons(label, seen, expected):
     return reasons
 
 
+def status_acknowledges(seen, expected):
+    """Whether /index/status alone answered as the slot `expected` names."""
+    reply = seen['status']
+    return (
+        reply['http'] == 200
+        and reply['headers'].get('x-typeahead-engine') == 'tantivy'
+        and reply['body'].get('engine') == 'tantivy'
+        and all(reply['headers'].get(header) == expected[key] and reply['body'].get(key) == expected[key] for key, header in IDENTITY_HEADERS.items())
+    )
+
+
 def is_count(value):
     return type(value) is int and value >= 0
 
 
-def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, now):
+def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, now, serving_unhealthy=False):
     """Decide whether a store-fed slot may take the route from `serving_target`.
 
     Returns the candidate's route identity (everything but the admission
     digest) and the measured gates, or raises Refused with every reason.
+
+    `serving_unhealthy` is the failover case: the serving slot is not required
+    to be ready or to answer at all, and is refused if it is in fact healthy.
+    Every gate on the candidate itself still applies. The comparisons with the
+    serving slot are made when its /index/status still answers as the slot the
+    record names, and skipped when it does not, which the gates record.
     """
     reasons = []
     if candidate_origin not in STORE_ORIGINS:
@@ -194,8 +215,17 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     if candidate_origin == serving_target['origin']:
         raise Refused(f'{candidate_origin} is already routed')
 
-    reasons += identity_reasons('serving slot', serving, serving_target)
-    theirs = serving['status']['body']
+    serving_reasons = identity_reasons('serving slot', serving, serving_target)
+    if serving['ready']['http'] == 200 and serving['ready']['body'].get('ready') is not True:
+        serving_reasons.append('serving slot /ready is not true')
+    compared = True
+    if not serving_unhealthy:
+        reasons += serving_reasons
+    elif not serving_reasons:
+        raise Refused('the serving slot answers ready as the slot the record names; --serving-slot-unhealthy is only for a serving slot that does not')
+    else:
+        compared = status_acknowledges(serving, serving_target)
+    theirs = serving['status']['body'] if compared else {}
 
     ours = candidate['status']['body']
     build_id = ours.get('build_id')
@@ -219,7 +249,9 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
         reasons.append('candidate /index/status is not ready')
 
     for key in ('normalize_version', 'plan_version', 'pds_scope_version', 'pds_scope_policy'):
-        if not ours.get(key) or ours.get(key) != theirs.get(key):
+        if not ours.get(key):
+            reasons.append(f'candidate does not report {key}')
+        elif compared and ours.get(key) != theirs.get(key):
             reasons.append(f'{key} is {ours.get(key)!r} on the candidate and {theirs.get(key)!r} on the serving slot')
 
     config = ours.get('query_config') or {}
@@ -278,17 +310,21 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     if any(policy.get(key) is not True for key in ('enabled', 'complete', 'fresh')) or policy_age is None or not 0 <= policy_age <= MAX_POLICY_AGE_S:
         reasons.append(f'candidate moderation policy is missing or stale (age {policy_age!r} s, bound {MAX_POLICY_AGE_S} s)')
     rules = policy.get('canonical_rules_source_sha256')
-    if not isinstance(rules, str) or not DIGEST.fullmatch(rules) or rules != their_policy.get('canonical_rules_source_sha256'):
+    if not isinstance(rules, str) or not DIGEST.fullmatch(rules):
+        reasons.append('candidate does not report a moderation rules hash')
+    elif compared and rules != their_policy.get('canonical_rules_source_sha256'):
         reasons.append('moderation rules differ between the candidate and the serving slot')
     # A stale serving slot holds an old policy; only a fresh one is a fair comparison.
-    policy_compared = their_policy.get('fresh') is True
+    policy_compared = compared and their_policy.get('fresh') is True
     if not isinstance(policy.get('sha256'), str) or not DIGEST.fullmatch(policy['sha256']):
         reasons.append('candidate does not report a moderation policy hash')
     elif policy_compared and policy['sha256'] != their_policy.get('sha256'):
         reasons.append('moderation policy differs between the candidate and the fresh serving slot')
 
     actors, their_actors = ours.get('actor_count'), theirs.get('actor_count')
-    if not is_count(actors) or not is_count(their_actors) or actors < 1 or abs(actors - their_actors) * 100 > their_actors * ACTOR_TOLERANCE_PERCENT:
+    if not is_count(actors) or actors < 1:
+        reasons.append(f'candidate holds {actors!r} actors')
+    elif compared and (not is_count(their_actors) or abs(actors - their_actors) * 100 > their_actors * ACTOR_TOLERANCE_PERCENT):
         reasons.append(f'candidate holds {actors!r} actors against {their_actors!r} on the serving slot; the tolerance is {ACTOR_TOLERANCE_PERCENT}% either way')
 
     if reasons:
@@ -310,18 +346,21 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
         'actor_count': actors,
         'serving_actor_count': their_actors,
         'serving_origin': serving_target['origin'],
+        'serving_healthy': not serving_reasons,
+        'serving_unhealthy_reasons': serving_reasons,
+        'compared_with_serving': compared,
         'machine_id': candidate['status']['headers'].get('x-typeahead-machine-id'),
         'cutover_source_ready_reported': ours.get('cutover_source_ready'),
     }
     return identity, gates
 
 
-def plan_cutover(record, candidate_origin, candidate, serving, binary_sha256, now):
+def plan_cutover(record, candidate_origin, candidate, serving, binary_sha256, now, serving_unhealthy=False):
     """The admission document and the record that would replace `record`."""
     validate_record(record, ROUTABLE_ORIGINS)
     if record.get('mutation') is not None:
         raise Refused('a refresh holds a mutation lease on the routing record; let it finish or cancel it first')
-    identity, gates = admit(candidate_origin, candidate, record['current'], serving, binary_sha256, now)
+    identity, gates = admit(candidate_origin, candidate, record['current'], serving, binary_sha256, now, serving_unhealthy)
     admission = {
         'schema_version': 1,
         'kind': 'store-slot-route-admission',
@@ -480,12 +519,12 @@ def switch(store, etag, before, after, *, get=http_get, sleep=time.sleep, clock=
     return written
 
 
-def cutover(store, candidate_origin, binary_sha256, *, write, now=None, get=http_get, **timing):
+def cutover(store, candidate_origin, binary_sha256, *, write, serving_unhealthy=False, now=None, get=http_get, **timing):
     record, etag = read_record(store)
     validate_record(record, ROUTABLE_ORIGINS)
     now = int(time.time()) if now is None else now
     admission, after = plan_cutover(
-        record, candidate_origin, observe(candidate_origin, get), observe(record['current']['origin'], get), binary_sha256, now
+        record, candidate_origin, observe(candidate_origin, get), observe(record['current']['origin'], get), binary_sha256, now, serving_unhealthy
     )
     report = {'operation': 'cutover', 'written': False, 'expected_etag': etag, 'admission': admission, 'route': after}
     if not write:
@@ -523,13 +562,13 @@ def rollback(store, *, write, get=http_get, **timing):
     return report
 
 
-def check(candidate_origin, binary_sha256, *, now=None, get=http_get):
+def check(candidate_origin, binary_sha256, *, serving_unhealthy=False, now=None, get=http_get):
     status, _, raw = get(TRANSPORT + '/route')
     if status != 200:
         raise Refused(f'the transport answered {status} for /route')
     serving_target = validate_target(json.loads(raw), ROUTABLE_ORIGINS)
     now = int(time.time()) if now is None else now
-    identity, gates = admit(candidate_origin, observe(candidate_origin, get), serving_target, observe(serving_target['origin'], get), binary_sha256, now)
+    identity, gates = admit(candidate_origin, observe(candidate_origin, get), serving_target, observe(serving_target['origin'], get), binary_sha256, now, serving_unhealthy)
     return {'operation': 'check', 'written': False, 'serving': serving_target, 'target': identity, 'gates': gates}
 
 
@@ -540,6 +579,10 @@ def build_parser():
         command = commands.add_parser(name)
         command.add_argument('--origin', required=True, choices=STORE_ORIGINS, help='the store slot that would take the route')
         command.add_argument('--binary-sha256', required=True, help="the reader's sha256, read from the file on that slot's machine")
+        command.add_argument(
+            '--serving-slot-unhealthy', action='store_true',
+            help='failover: admit the candidate although the serving slot is not ready or does not answer; refused when it is healthy',
+        )
         if name == 'cutover':
             command.add_argument('--write', action='store_true')
     commands.add_parser('rollback').add_argument('--write', action='store_true')
@@ -550,9 +593,9 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     try:
         if args.command == 'check':
-            report = check(args.origin, args.binary_sha256)
+            report = check(args.origin, args.binary_sha256, serving_unhealthy=args.serving_slot_unhealthy)
         elif args.command == 'cutover':
-            report = cutover(R2(os.environ), args.origin, args.binary_sha256, write=args.write)
+            report = cutover(R2(os.environ), args.origin, args.binary_sha256, write=args.write, serving_unhealthy=args.serving_slot_unhealthy)
         else:
             report = rollback(R2(os.environ), write=args.write)
     except Refused as refusal:
