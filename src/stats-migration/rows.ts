@@ -100,24 +100,8 @@ export interface RowDiff {
 
 const EXAMPLES = 20;
 
-export function emptyDiff(): RowDiff {
-  return { turso_rows: 0, d1_rows: 0, same: 0, differing: 0, only_turso: 0, only_d1: 0, examples: [] };
-}
-
 export function differences(diff: RowDiff): number {
   return diff.differing + diff.only_turso + diff.only_d1;
-}
-
-export function addDiff(total: RowDiff, page: RowDiff): RowDiff {
-  return {
-    turso_rows: total.turso_rows + page.turso_rows,
-    d1_rows: total.d1_rows + page.d1_rows,
-    same: total.same + page.same,
-    differing: total.differing + page.differing,
-    only_turso: total.only_turso + page.only_turso,
-    only_d1: total.only_d1 + page.only_d1,
-    examples: [...total.examples, ...page.examples].slice(0, EXAMPLES),
-  };
 }
 
 /** Row-for-row comparison on the primary key; every other column must be
@@ -125,7 +109,7 @@ export function addDiff(total: RowDiff, page: RowDiff): RowDiff {
 export function diffRows(turso: StatRow[], d1: StatRow[], primaryKey: readonly string[]): RowDiff {
   const keyOf = (row: StatRow) => JSON.stringify(primaryKey.map((column) => row[column]));
   const mirror = new Map(d1.map((row) => [keyOf(row), row]));
-  const diff = { ...emptyDiff(), turso_rows: turso.length, d1_rows: d1.length };
+  const diff: RowDiff = { turso_rows: turso.length, d1_rows: d1.length, same: 0, differing: 0, only_turso: 0, only_d1: 0, examples: [] };
   const note = (a: StatRow | null, b: StatRow | null) => { if (diff.examples.length < EXAMPLES) diff.examples.push({ turso: a, d1: b }); };
   for (const row of turso) {
     const key = keyOf(row);

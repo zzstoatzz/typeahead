@@ -52,8 +52,7 @@ function backfillLine(result: BackfillResult): string {
   const verb = result.dry_run ? "would change" : result.wrote ? "changed" : "left";
   switch (report.kind) {
     case "rows": return `${report.table} [${report.from}, ${report.to}): ${verb} ${result.changes} (${counts(report.diff)})`;
-    case "daily": return `daily: ${verb} ${result.changes} (traffic_daily ${counts(report.tables.traffic_daily)}; request_daily ${counts(report.tables.request_daily)}; `
-      + `d1 buckets turso has rolled up: ${report.rolled_up_in_turso.traffic_daily} traffic, ${report.rolled_up_in_turso.request_daily} request)`;
+    case "daily": return `${report.table}: ${verb} ${result.changes} (${counts(report.diff)}; d1 buckets turso has rolled up: ${report.rolled_up_in_turso})`;
     case "totals": return `totals: ${verb} ${result.changes} (traffic_sources ${counts(report.traffic_sources)}; actors_total turso ${report.actors_total.turso} `
       + `minus ${report.actors_total.turso_since_cut} since the cut plus d1's ${report.actors_total.d1_since_cut} = ${report.actors_total.target}, d1 holds ${report.actors_total.d1})`;
   }

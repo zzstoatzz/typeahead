@@ -25,9 +25,10 @@ import {
  *  Each step reads what both stores hold, writes only when they differ, and
  *  takes its position from the request, so a run can stop anywhere and start
  *  again from any step, and a second run over an unchanged Turso writes
- *  nothing. `counters.label_stream_seq` is the ingester's label cursor, not a
+ *  nothing. The steps run in this order; the daily tables come after the
+ *  buckets they are rolled up from. `counters.label_stream_seq` is the ingester's label cursor, not a
  *  statistic, and is never copied. */
-export const BACKFILL_STEPS = [...RANGED_NAMES, "daily", "totals"] as const;
+export const BACKFILL_STEPS = [...RANGED_NAMES, ...DAILY_NAMES, "totals"] as const;
 export type BackfillStep = (typeof BACKFILL_STEPS)[number];
 
 export const backfillRequestSchema = z.object({
@@ -41,7 +42,8 @@ export type BackfillRequest = z.infer<typeof backfillRequestSchema>;
 
 export type BackfillReport =
   | { kind: "rows"; table: RangedName; from: number; to: number; diff: RowDiff }
-  | { kind: "daily"; tables: Record<DailyName, RowDiff>; rolled_up_in_turso: Record<DailyName, number> }
+  /** `rolled_up_in_turso` counts D1 buckets older than Turso's oldest: Turso has moved them into this table */
+  | { kind: "daily"; table: DailyName; diff: RowDiff; rolled_up_in_turso: number }
   | {
     kind: "totals";
     /** `turso` in this diff is the value D1 should hold, not Turso's current one */
@@ -65,8 +67,9 @@ export interface BackfillResult {
 
 export class BackfillInputError extends Error {}
 
-/** The largest daily history one step replaces in a single D1 transaction.
- *  Turso held 659 traffic_daily rows and no request_daily rows on 2026-11-12. */
+/** The largest daily table one step replaces in a single D1 transaction, 600
+ *  statements at most. Turso held 659 traffic_daily rows and no request_daily
+ *  rows on 2026-11-12. */
 const DAILY_ROWS_MAX = 12_000;
 
 function checkCut(cut: number, now: number): void {
@@ -109,47 +112,42 @@ const firstNumber = (rows: SqlRow[], column: string): number | null => {
   return value === null || value === undefined ? null : Number(value);
 };
 
-/** The two daily tables, whole, in one D1 transaction, together with the
- *  removal of the D1 buckets Turso has already rolled into them. The cron
- *  moves buckets older than 90 days into the daily table every hour, so the
- *  daily rows and the oldest bucket are read in one Turso transaction, and
- *  this step runs after the bucket pages: whatever a rollup moved while they
- *  were being copied is in the daily rows read here and leaves D1's buckets. */
-async function dailyStep(turso: SqlDb, d1: SqlDb, request: BackfillRequest) {
-  const source = await turso.batch(DAILY_NAMES.flatMap((name) => [
-    turso.prepare(`SELECT ${DAILY_TABLES[name].columns.join(", ")} FROM ${name} ORDER BY ${DAILY_TABLES[name].primaryKey.join(", ")}`),
-    turso.prepare(`SELECT min(bucket) AS oldest FROM ${DAILY_TABLES[name].buckets}`),
-  ]), "read");
-  const oldest = DAILY_NAMES.map((_, i) => firstNumber(source[i * 2 + 1]!.results, "oldest") ?? 0);
-  const mirror = await d1.batch(DAILY_NAMES.flatMap((name, i) => [
-    d1.prepare(`SELECT ${DAILY_TABLES[name].columns.join(", ")} FROM ${name} ORDER BY ${DAILY_TABLES[name].primaryKey.join(", ")}`),
-    d1.prepare(`SELECT count(*) AS n FROM ${DAILY_TABLES[name].buckets} WHERE bucket < ?1`).bind(oldest[i]!),
-  ]), "read");
+/** One daily table, whole, in one D1 transaction, together with the removal
+ *  of the D1 buckets Turso has already rolled into it. The cron moves buckets
+ *  older than 90 days into the daily table every hour, so the daily rows and
+ *  the oldest remaining bucket are read in one Turso transaction, and this
+ *  step runs after the bucket pages: whatever a rollup moved while they were
+ *  being copied is in the daily rows read here and leaves D1's buckets. */
+async function dailyStep(turso: SqlDb, d1: SqlDb, table: DailyName, request: BackfillRequest) {
+  const { columns, primaryKey, buckets } = DAILY_TABLES[table];
+  const history = `SELECT ${columns.join(", ")} FROM ${table} ORDER BY ${primaryKey.join(", ")}`;
+  const [source, oldest] = await turso.batch([
+    turso.prepare(history),
+    turso.prepare(`SELECT min(bucket) AS oldest FROM ${buckets}`),
+  ], "read");
+  const oldestBucket = firstNumber(oldest!.results, "oldest") ?? 0;
+  const [mirror, older] = await d1.batch([
+    d1.prepare(history),
+    d1.prepare(`SELECT count(*) AS n FROM ${buckets} WHERE bucket < ?1`).bind(oldestBucket),
+  ], "read");
 
-  const rows = DAILY_NAMES.map((name, i) => statRows(source[i * 2]!.results, DAILY_TABLES[name].columns));
-  if (rows.some((table) => table.length > DAILY_ROWS_MAX)) {
-    throw new Error(`a daily table holds more than ${DAILY_ROWS_MAX} rows, too many for one D1 transaction`);
-  }
-  const diffs = DAILY_NAMES.map((name, i) =>
-    diffRows(rows[i]!, statRows(mirror[i * 2]!.results, DAILY_TABLES[name].columns), DAILY_TABLES[name].primaryKey));
-  const rolledUp = DAILY_NAMES.map((_, i) => firstNumber(mirror[i * 2 + 1]!.results, "n") ?? 0);
-  const changes = diffs.reduce((sum, diff) => sum + differences(diff), 0) + rolledUp.reduce((sum, n) => sum + n, 0);
+  const rows = statRows(source!.results, columns);
+  if (rows.length > DAILY_ROWS_MAX) throw new Error(`${table} holds more than ${DAILY_ROWS_MAX} rows, too many for one D1 transaction`);
+  const diff = diffRows(rows, statRows(mirror!.results, columns), primaryKey);
+  const rolledUp = firstNumber(older!.results, "n") ?? 0;
+  const changes = differences(diff) + rolledUp;
   const wrote = !request.dry_run && changes > 0;
   if (wrote) {
-    await d1.batch(DAILY_NAMES.flatMap((name, i) => [
-      d1.prepare(`DELETE FROM ${name}`),
-      ...insertStatements(d1, name, DAILY_TABLES[name].columns, rows[i]!),
-      d1.prepare(`DELETE FROM ${DAILY_TABLES[name].buckets} WHERE bucket < ?1`).bind(oldest[i]!),
-    ]));
+    await d1.batch([
+      d1.prepare(`DELETE FROM ${table}`),
+      ...insertStatements(d1, table, columns, rows),
+      d1.prepare(`DELETE FROM ${buckets} WHERE bucket < ?1`).bind(oldestBucket),
+    ]);
   }
   return {
     changes, wrote,
-    report: {
-      kind: "daily",
-      tables: { traffic_daily: diffs[0]!, request_daily: diffs[1]! },
-      rolled_up_in_turso: { traffic_daily: rolledUp[0]!, request_daily: rolledUp[1]! },
-    } satisfies BackfillReport,
-    next: following("daily"),
+    report: { kind: "daily", table, diff, rolled_up_in_turso: rolledUp } satisfies BackfillReport,
+    next: following(table),
   };
 }
 
@@ -206,9 +204,10 @@ async function totalsStep(turso: SqlDb, d1: SqlDb, request: BackfillRequest) {
       const chunk = atCut.slice(i, i + perStatement);
       inserts.push(d1.prepare(
         `INSERT INTO traffic_sources (domain, hits)
-         SELECT at_cut.column1, at_cut.column2 + coalesce(
-           (SELECT SUM(hits) FROM traffic_buckets WHERE domain = at_cut.column1 AND bucket >= ?1), 0)
-         FROM (VALUES ${chunk.map((_, r) => `(?${r * 2 + 2}, ?${r * 2 + 3})`).join(", ")}) AS at_cut`,
+         SELECT at_cut.column1, at_cut.column2 + coalesce(since.hits, 0)
+         FROM (VALUES ${chunk.map((_, r) => `(?${r * 2 + 2}, ?${r * 2 + 3})`).join(", ")}) AS at_cut
+         LEFT JOIN (SELECT domain, SUM(hits) AS hits FROM traffic_buckets WHERE bucket >= ?1 GROUP BY domain) AS since
+           ON since.domain = at_cut.column1`,
       ).bind(cut, ...chunk.flatMap((row) => [row.domain, row.hits])));
     }
     await d1.batch([
@@ -242,8 +241,8 @@ async function totalsStep(turso: SqlDb, d1: SqlDb, request: BackfillRequest) {
 export async function backfillStep(turso: SqlDb, d1: SqlDb, request: BackfillRequest, now = Date.now()): Promise<BackfillResult> {
   checkCut(request.cut, now);
   const { step } = request;
-  const done = step === "daily" ? await dailyStep(turso, d1, request)
-    : step === "totals" ? await totalsStep(turso, d1, request)
+  const done = step === "totals" ? await totalsStep(turso, d1, request)
+    : step === "traffic_daily" || step === "request_daily" ? await dailyStep(turso, d1, step, request)
     : await rangedStep(turso, d1, step, request);
   return { step, cut: request.cut, cut_utc: bucketTime(request.cut), dry_run: request.dry_run, ...done };
 }
@@ -268,7 +267,7 @@ export async function runBackfill(
     cut: options.cut, dry_run: options.dry_run, calls: 0, changes: 0,
     steps: {
       metrics: none(), traffic_buckets: none(), request_buckets: none(), actor_deltas: none(), snapshots: none(),
-      daily: none(), totals: none(),
+      traffic_daily: none(), request_daily: none(), totals: none(),
     },
   };
   let position: BackfillResult["next"] = options.start ?? { step: BACKFILL_STEPS[0], cursor: 0 };

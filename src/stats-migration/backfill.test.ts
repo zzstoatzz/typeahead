@@ -37,7 +37,7 @@ test("a dry run reports what differs and writes nothing", async () => {
   const run = await runBackfill(call, { ...apply, dry_run: true });
   expect(await d1Rows()).toEqual(before);
   expect(run.changes).toBeGreaterThan(1000);
-  expect(Object.values(run.steps).map((step) => step.wrote)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+  expect(Object.values(run.steps).map((step) => step.wrote)).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   expect(Object.values(run.steps).every((step) => step.changes > 0)).toBe(true);
 });
 
@@ -91,7 +91,7 @@ test("a second full run changes nothing and writes nothing", async () => {
   await runBackfill(call, apply);
   const second = await runBackfill(call, apply);
   expect(second.changes).toBe(0);
-  expect(Object.values(second.steps).map((step) => step.wrote)).toEqual([0, 0, 0, 0, 0, 0, 0]);
+  expect(Object.values(second.steps).map((step) => step.wrote)).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
   expect(await d1Rows()).toEqual(backfilled(seeded));
 });
 
@@ -121,12 +121,12 @@ test("a rollup on Turso between two halves of a run leaves both stores telling t
   await seed(stores.turso, stores.mirror, { agree: true });
   let position: BackfillResult["next"] = null;
   const untilDaily = async (request: BackfillRequest) => {
-    if (request.step === "daily") throw new Error("stopped before the daily step");
+    if (request.step === "traffic_daily") throw new Error("stopped before the daily tables");
     const result = await call(request);
     position = result.next;
     return result;
   };
-  await expect(runBackfill(untilDaily, apply)).rejects.toThrow("stopped before the daily step");
+  await expect(runBackfill(untilDaily, apply)).rejects.toThrow("stopped before the daily tables");
 
   // five days on, the hourly cron has moved Turso's oldest buckets into its daily tables
   const later = NOW + 5 * 86_400_000;
