@@ -80,6 +80,19 @@ pub fn timed(db: *Db, arena: std.mem.Allocator, prefix: keys.Prefix, after: ?Tim
     var start_buf: keys.Buf = undefined;
     var end_buf: keys.Buf = undefined;
     const start = if (after) |last| successor(&start_buf, try keys.timed(&end_buf, prefix, last.at, last.did)) else keys.timedBound(&start_buf, prefix, 0);
+    return timedRange(db, arena, prefix, start, until, limit);
+}
+
+/// `timed` for a caller that knows no entry lies before `from`: the scan
+/// starts there instead of at time 0, so it does not read the keys that
+/// earlier entries left behind and no compaction has dropped yet.
+pub fn timedFrom(db: *Db, arena: std.mem.Allocator, prefix: keys.Prefix, from: u64, until: u64, limit: usize) ![]const Timed {
+    var start_buf: keys.Buf = undefined;
+    return timedRange(db, arena, prefix, keys.timedBound(&start_buf, prefix, from), until, limit);
+}
+
+fn timedRange(db: *Db, arena: std.mem.Allocator, prefix: keys.Prefix, start: []const u8, until: u64, limit: usize) ![]const Timed {
+    var end_buf: keys.Buf = undefined;
     const bounds = prefix.bounds();
     const end: []const u8 = if (until == std.math.maxInt(u64)) &bounds[1] else keys.timedBound(&end_buf, prefix, until + 1);
     const found = try collect(db, arena, start, end, limit);

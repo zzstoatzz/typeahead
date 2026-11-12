@@ -987,11 +987,14 @@ pub const Owner = struct {
     fn countState(self: *Owner, fresh: *Health, at: u64) !void {
         var buf: keys.Buf = undefined;
         const identity_bounds = keys.Prefix.identity.bounds();
-        fresh.identity_pending = try self.countRange(&identity_bounds[0], &identity_bounds[1], &fresh.counts_capped);
-        fresh.identity_due = try self.countRange(&identity_bounds[0], keys.timedBound(&buf, .identity, at + 1), &fresh.counts_capped);
+        var start_buf: keys.Buf = undefined;
+        const identity_start = self.store.timedStart(&start_buf, .identity);
+        fresh.identity_pending = try self.countRange(identity_start, &identity_bounds[1], &fresh.counts_capped);
+        fresh.identity_due = try self.countRange(identity_start, keys.timedBound(&buf, .identity, at + 1), &fresh.counts_capped);
         const refresh_bounds = keys.Prefix.refresh.bounds();
-        fresh.refresh_pending = try self.countRange(&refresh_bounds[0], &refresh_bounds[1], &fresh.counts_capped);
-        fresh.refresh_due = try self.countRange(&refresh_bounds[0], keys.timedBound(&buf, .refresh, at + 1), &fresh.counts_capped);
+        const refresh_start = self.store.timedStart(&start_buf, .refresh);
+        fresh.refresh_pending = try self.countRange(refresh_start, &refresh_bounds[1], &fresh.counts_capped);
+        fresh.refresh_due = try self.countRange(refresh_start, keys.timedBound(&buf, .refresh, at + 1), &fresh.counts_capped);
         if (fresh.repair.finished_at == 0) {
             const repair = try store_mod.read.repairState(self.store.db(), self.scratch.allocator());
             var end_buf: keys.Buf = undefined;
@@ -1007,7 +1010,7 @@ pub const Owner = struct {
             fresh.repair.remaining = try self.countRange(start.items, end_buf[0..prefix.len], &fresh.counts_capped);
         }
         const tombstone_bounds = keys.Prefix.tombstone.bounds();
-        fresh.tombstones = try self.countRange(&tombstone_bounds[0], &tombstone_bounds[1], &fresh.counts_capped);
+        fresh.tombstones = try self.countRange(self.store.timedStart(&start_buf, .tombstone), &tombstone_bounds[1], &fresh.counts_capped);
         fresh.disk = self.store.diskUsage() catch .{};
     }
 

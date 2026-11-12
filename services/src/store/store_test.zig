@@ -707,6 +707,90 @@ test "a lease moves due refreshes ahead and settles only what still carries it" 
     try testing.expectEqual(@as(usize, 2), (try f.store.timed(f.arena.allocator(), .refresh, null, t0 + 340, 10)).len);
 }
 
+test "a lease reads its queue from the first time an entry can have, not from time 0" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    for ([_][]const u8{ alice, bob }) |did| _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = "a.test" } });
+    _ = try f.apply(t0 + 10, .{ .refresh_lease = .{ .limit = 5, .lease_seconds = 300 } });
+    for ([_][]const u8{ alice, bob }) |did| _ = try f.apply(t0 + 20, .{ .enrichment = .{ .did = did, .source = .bsky, .lease = t0 + 310 } });
+    _ = try f.apply(t0 + 30, .{ .refresh_lease = .{ .limit = 5 } });
+    _ = try f.apply(t0 + 30, .{ .identity_lease = .{ .limit = 5 } });
+    try testing.expectEqual(@as(u64, 0), try f.count(.refresh));
+
+    // Keys no lease leaves behind, put back by hand for an actor the store
+    // does not hold: a lease that still walked the dead range from time 0
+    // would find them and fail on the missing actor.
+    var key: keys.Buf = undefined;
+    try f.store.db().put(try keys.timed(&key, .refresh, t0 + 5, "did:plc:ghost"), "");
+    try f.store.db().put(try keys.timed(&key, .identity, t0 + 5, "did:plc:ghost"), "");
+    try f.store.db().commit();
+    const batch = try f.store.begin(t0 + 40);
+    _ = try batch.apply(.{ .refresh_lease = .{ .limit = 5 } });
+    _ = try batch.apply(.{ .identity_lease = .{ .limit = 5 } });
+    try testing.expectEqual(@as(usize, 0), batch.refreshLeased().len);
+    try testing.expectEqual(@as(usize, 0), batch.leased().len);
+    try batch.commit();
+}
+
+test "an entry queued for a time before the last lease is still leased" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    for ([_][]const u8{ alice, bob }) |did| _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = "a.test" } });
+    _ = try f.apply(t0 + 10, .{ .refresh_lease = .{ .limit = 5, .lease_seconds = 300 } });
+    for ([_][]const u8{ alice, bob }) |did| _ = try f.apply(t0 + 20, .{ .enrichment = .{ .did = did, .source = .bsky, .lease = t0 + 310 } });
+    _ = try f.apply(t0 + 500, .{ .refresh_lease = .{ .limit = 5 } });
+    _ = try f.apply(t0 + 500, .{ .identity_lease = .{ .limit = 5 } });
+
+    _ = try f.apply(t0 + 500, .{ .refresh_enqueue = .{ .did = bob, .due = t0 + 1 } });
+    // A commit stamped earlier than the last one, as after a clock step.
+    _ = try f.apply(t0 + 2, .{ .identity_enqueue = .{ .did = alice, .reason = .identity } });
+    const batch = try f.store.begin(t0 + 600);
+    _ = try batch.apply(.{ .refresh_lease = .{ .limit = 5 } });
+    _ = try batch.apply(.{ .identity_lease = .{ .limit = 5 } });
+    try testing.expectEqual(@as(usize, 1), batch.refreshLeased().len);
+    try testing.expectEqualStrings(bob, batch.refreshLeased()[0].did);
+    try testing.expectEqual(@as(usize, 1), batch.leased().len);
+    try testing.expectEqualStrings(alice, batch.leased()[0].did);
+    try batch.commit();
+
+    _ = try f.apply(t0 + 700, .{ .gone = .{ .did = alice, .status = .deleted } });
+    _ = try f.apply(t0 + 800, .{ .tombstones_pruned = .{ .before = t0 + 100, .limit = 5 } });
+    _ = try f.apply(t0 + 50, .{ .gone = .{ .did = bob, .status = .deleted } });
+    try testing.expectEqual(@as(u64, 1), (try f.apply(t0 + 900, .{ .tombstones_pruned = .{ .before = t0 + 100, .limit = 5 } })).changed);
+    try testing.expectEqual(@as(u64, 1), try f.count(.tombstone));
+}
+
+test "a lease in a batch that is dropped does not hide what it leased" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    _ = try f.apply(t0, .{ .profile = .{ .did = alice, .handle = "a.test" } });
+    {
+        const batch = try f.store.begin(t0 + 10);
+        _ = try batch.apply(.{ .refresh_lease = .{ .limit = 5 } });
+        _ = try batch.apply(.{ .refresh_lease = .{ .limit = 5 } });
+        _ = try batch.apply(.{ .identity_enqueue = .{ .did = alice, .reason = .identity } });
+        _ = try batch.apply(.{ .identity_lease = .{ .limit = 5 } });
+        _ = try batch.apply(.{ .identity_lease = .{ .limit = 5 } });
+        try testing.expectEqual(@as(usize, 1), batch.refreshLeased().len);
+        batch.abort();
+    }
+    _ = try f.apply(t0 + 5, .{ .identity_enqueue = .{ .did = alice, .reason = .identity } });
+    const batch = try f.store.begin(t0 + 10);
+    _ = try batch.apply(.{ .refresh_lease = .{ .limit = 5 } });
+    _ = try batch.apply(.{ .identity_lease = .{ .limit = 5 } });
+    try testing.expectEqual(@as(usize, 1), batch.refreshLeased().len);
+    try testing.expectEqual(@as(usize, 1), batch.leased().len);
+    try batch.commit();
+
+    try f.reopen();
+    _ = try f.apply(t0 + 20, .{ .enrichment = .{ .did = alice, .source = .bsky, .lease = t0 + 310 } });
+    try testing.expectEqual(@as(u64, 0), try f.count(.refresh));
+    const again = try f.store.begin(t0 + 400);
+    _ = try again.apply(.{ .identity_lease = .{ .limit = 5 } });
+    try testing.expectEqual(@as(usize, 1), again.leased().len);
+    try again.commit();
+}
+
 test "the quality walk queues ranked actors best first and starts again at the end" {
     var f = try Fixture.init(.{});
     defer f.deinit();

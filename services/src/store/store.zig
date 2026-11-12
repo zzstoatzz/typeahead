@@ -49,12 +49,37 @@ pub const Error = error{
     InvalidCursor,
 };
 
+/// The ranges keyed by time: the two queues and the tombstones.
+pub const Timed = enum {
+    identity,
+    refresh,
+    tombstone,
+
+    pub fn prefix(self: Timed) keys.Prefix {
+        return switch (self) {
+            .identity => .identity,
+            .refresh => .refresh,
+            .tombstone => .tombstone,
+        };
+    }
+};
+
+/// Per timed range, a time below which it holds no entry. An entry leaves a
+/// queue by deletion, and the deleted key stays in the tables until a
+/// compaction reaches it, so a scan from time 0 reads every key the queue
+/// ever held: 20 MB a second on the owner's thread after ten hours of
+/// leases, 2026-11-12. The writer is the only one that adds entries, so it
+/// knows where the first one can be. Kept in memory: 0 after an open, which
+/// costs the first scan of each range the whole walk once.
+pub const Floors = std.EnumArray(Timed, u64);
+
 pub const Store = struct {
     gpa: std.mem.Allocator,
     handle: *engine.Handle,
     options: Options,
     maintainer: maintain.Maintainer,
     domains: moderation.Domains = .empty,
+    floors: Floors = .initFill(0),
     next_change: u64 = 1,
     broken: bool = false,
     batch_open: bool = false,
@@ -122,7 +147,7 @@ pub const Store = struct {
     pub fn begin(self: *Store, now: u64) Error!*Batch {
         if (self.broken) return error.StoreBroken;
         if (self.batch_open) return error.BatchOpen;
-        self.batch = .{ .store = self, .now = now, .arena = .init(self.gpa), .scratch = .init(self.gpa) };
+        self.batch = .{ .store = self, .now = now, .arena = .init(self.gpa), .scratch = .init(self.gpa), .floors = self.floors };
         self.batch_open = true;
         return &self.batch;
     }
@@ -393,6 +418,12 @@ pub const Store = struct {
         return self.maintainer.stats();
     }
 
+    /// The first key of a timed range that can hold an entry, as of the last
+    /// commit: where a count of the range may start.
+    pub fn timedStart(self: *const Store, buf: *keys.Buf, range: Timed) []const u8 {
+        return keys.timedBound(buf, range.prefix(), self.floors.get(range));
+    }
+
     pub fn diskUsage(self: *Store) !maintain.Disk {
         return maintain.disk(self.gpa, self.handle.io, self.handle.dir);
     }
@@ -470,6 +501,10 @@ pub const Batch = struct {
     walk_tally: change.WalkTally = .initFill(.{}),
     domains_dirty: bool = false,
     encoded: std.ArrayList(u8) = .empty,
+    /// The store's floors as this batch leaves them. They replace the
+    /// store's when the batch commits and are dropped when it aborts, so a
+    /// floor never rests on a scan of changes that did not land.
+    floors: Floors,
 
     fn release(self: *Batch) void {
         self.arena.deinit();
@@ -572,7 +607,23 @@ pub const Batch = struct {
             };
         }
         store.next_change = next;
+        store.floors = self.floors;
         self.release();
+    }
+
+    fn lower(self: *Batch, range: Timed, at: u64) void {
+        const floor = self.floors.getPtr(range);
+        floor.* = @min(floor.*, at);
+    }
+
+    /// Up to `limit` entries of a timed range at or before `until`, oldest
+    /// first, read from the range's floor. The floor moves up to the first
+    /// entry found, or past `until` when there is none.
+    fn oldest(self: *Batch, arena: std.mem.Allocator, range: Timed, until: u64, limit: usize) ![]const read.Timed {
+        const floor = self.floors.getPtr(range);
+        const found = try read.timedFrom(self.store.db(), arena, range.prefix(), floor.*, until, limit);
+        if (found.len > 0) floor.* = found[0].at else if (limit > 0) floor.* = @max(floor.*, until +| 1);
+        return found;
     }
 
     /// Stage one change. A change that fails validation stages nothing and
@@ -666,6 +717,11 @@ pub const Batch = struct {
             if (was != null and is != null and std.mem.eql(u8, was.?, is.?)) continue;
             if (was) |key| try engine_db.del(key);
             if (is) |key| try engine_db.put(key, "");
+            if (is != null) switch (prefix) {
+                .refresh => self.lower(.refresh, new.refresh_due),
+                .tombstone => self.lower(.tombstone, new.deleted_at),
+                else => {},
+            };
         }
 
         const was_due = if (old) |o| o.identity_due else 0;
@@ -675,6 +731,7 @@ pub const Batch = struct {
             var value: std.ArrayList(u8) = .empty;
             try state.encode(self.tmp(), &value);
             try engine_db.put(try keys.timed(&new_buf, .identity, new.identity_due, did), value.items);
+            self.lower(.identity, new.identity_due);
         }
 
         if (old == null or !old.?.eql(new)) {
@@ -910,7 +967,7 @@ pub const Batch = struct {
         var start: keys.Buf = undefined;
         var end: keys.Buf = undefined;
         var count: scan.Count = .{};
-        _ = try scan.all(self.tmp(), self.store.db(), keys.timedBound(&start, .identity, 0), keys.timedBound(&end, .identity, self.now + 1), .{ .limit = limit }, &count);
+        _ = try scan.all(self.tmp(), self.store.db(), keys.timedBound(&start, .identity, self.floors.get(.identity)), keys.timedBound(&end, .identity, self.now + 1), .{ .limit = limit }, &count);
         return count.entries;
     }
 
@@ -982,7 +1039,7 @@ pub const Batch = struct {
     }
 
     fn identityLease(self: *Batch, c: change.IdentityLease) !Outcome {
-        const due = try read.timed(self.store.db(), self.arena.allocator(), .identity, null, self.now, c.limit);
+        const due = try self.oldest(self.arena.allocator(), .identity, self.now, c.limit);
         for (due) |entry| {
             _ = self.scratch.reset(.retain_capacity);
             self.encoded = .empty;
@@ -1050,7 +1107,7 @@ pub const Batch = struct {
 
     fn refreshLease(self: *Batch, c: change.RefreshLease) !Outcome {
         const a = self.arena.allocator();
-        const due = try read.timed(self.store.db(), a, .refresh, null, self.now, c.limit);
+        const due = try self.oldest(a, .refresh, self.now, c.limit);
         for (due) |entry| {
             _ = self.scratch.reset(.retain_capacity);
             self.encoded = .empty;
@@ -1139,7 +1196,7 @@ pub const Batch = struct {
     fn tombstonesPruned(self: *Batch, c: change.TombstonesPruned) !Outcome {
         if (c.before == 0) return .{};
         const engine_db = self.store.db();
-        const due = try read.timed(engine_db, self.arena.allocator(), .tombstone, null, c.before - 1, c.limit);
+        const due = try self.oldest(self.arena.allocator(), .tombstone, c.before - 1, c.limit);
         var buf: keys.Buf = undefined;
         for (due) |entry| {
             _ = self.scratch.reset(.retain_capacity);
