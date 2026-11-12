@@ -31,6 +31,14 @@
 //! What a bundle does not carry is not loaded: description and banner, the
 //! last activity time and the last content change (both become the load
 //! time), and the identity resolution time.
+//!
+//! Nor does it carry when a profile was last fetched. An actor whose line
+//! holds something a fetch writes (a score, a count, a creation time) is
+//! stamped as checked at the load, and the refresh walks reach it in their
+//! own time. A line without any of that is an actor no source answered for
+//! before the bundle was built: its check time stays 0, and the store role's
+//! first-check pass (`Store.firstCheck`) queues it ahead of the rest walk.
+//! The load itself queues nothing.
 
 const std = @import("std");
 const store_mod = @import("../store/root.zig");
@@ -57,6 +65,8 @@ pub const Summary = struct {
     /// Lines that were not an actor object, or that the key layout refused.
     rejected: u64 = 0,
     changed: u64 = 0,
+    /// Loaded actors whose line held nothing a profile fetch writes.
+    unchecked: u64 = 0,
     overrides: u64 = 0,
     blocked_domains: u64 = 0,
     commits: u64 = 0,
@@ -110,6 +120,8 @@ fn changesOf(arena: std.mem.Allocator, text: []const u8) !?[2]Change {
         .expires = label.exp orelse "",
         .negated = label.neg orelse false,
     };
+    const score: f32 = if (std.math.isFinite(line.quality_score) and line.quality_score > 0) line.quality_score else 0;
+    const fetched = score > 0 or line.followers_count > 0 or line.follows_count > 0 or line.posts_count > 0 or line.created_at.len > 0;
     const associated: []const u8 = switch (line.associated) {
         .object => |object| if (object.count() == 0) "" else try std.json.Stringify.valueAlloc(arena, line.associated, .{}),
         else => "",
@@ -124,8 +136,9 @@ fn changesOf(arena: std.mem.Allocator, text: []const u8) !?[2]Change {
             .followers_count = line.followers_count,
             .follows_count = line.follows_count,
             .posts_count = line.posts_count,
-            .quality_score = if (std.math.isFinite(line.quality_score) and line.quality_score > 0) line.quality_score else 0,
+            .quality_score = score,
             .labels = labels,
+            .checked = fetched,
         } },
     };
 }
@@ -152,6 +165,7 @@ const Loader = struct {
     arena: std.heap.ArenaAllocator,
     pending: std.ArrayList(Change) = .empty,
     held: usize = 0,
+    held_unchecked: usize = 0,
 
     fn add(self: *Loader, text: []const u8) !void {
         self.summary.lines += 1;
@@ -167,6 +181,7 @@ const Loader = struct {
         };
         try self.pending.appendSlice(self.arena.allocator(), &pair);
         self.held += 1;
+        self.held_unchecked += @intFromBool(!pair[1].enrichment.checked);
     }
 
     /// Commit what is held. With `final`, the commit also carries the
@@ -202,9 +217,11 @@ const Loader = struct {
         }
         try batch.commit();
         self.summary.loaded += self.held;
+        self.summary.unchecked += self.held_unchecked;
         self.summary.changed += distinct.count();
         self.summary.commits += 1;
         self.held = 0;
+        self.held_unchecked = 0;
         self.pending = .empty;
         _ = self.arena.reset(.retain_capacity);
         _ = try store.maintainStep();
@@ -288,5 +305,5 @@ pub fn run(gpa: std.mem.Allocator, io: Io) !void {
     var clock: Clock = .{ .io = io, .started = Io.Timestamp.now(io, .awake).nanoseconds };
     log.info("loading {s} into {s}", .{ actors_path, store_dir });
     try load(gpa, store, @intCast(now), &reader.interface, cursors, .{ .context = &clock, .report = Clock.report }, &summary);
-    log.info("bootstrap complete: {d} actors in {d} commits; relay cursor {d}, bridge position {d}", .{ summary.loaded, summary.commits, cursors.relay, summary.bridge_position });
+    log.info("bootstrap complete: {d} actors in {d} commits, {d} of them never fetched and left for the first-check pass; relay cursor {d}, bridge position {d}", .{ summary.loaded, summary.commits, summary.unchecked, cursors.relay, summary.bridge_position });
 }
