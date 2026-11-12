@@ -299,7 +299,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     return handleModOverrideDelete(request, db, env);
   }
   if (pathname === "/admin/mod-overrides" && request.method === "GET") {
-    return handleModOverrideList(request, db, env);
+    return handleModOverrideList(request, env);
   }
 
   if (pathname === "/admin/domain-block" && request.method === "POST") {
@@ -309,7 +309,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     return handleDomainBlockDelete(request, db, env, ctx);
   }
   if (pathname === "/admin/domain-blocks" && request.method === "GET") {
-    return handleDomainBlockList(request, db, env);
+    return handleDomainBlockList(request, env);
   }
 
   if (pathname === "/admin/enrich-profiles" && request.method === "POST") {
