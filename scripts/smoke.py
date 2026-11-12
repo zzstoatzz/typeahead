@@ -412,10 +412,11 @@ def admin_fetch(url: str, secret: str, method: str = "GET", body: dict | None = 
         with urllib.request.urlopen(req, timeout=15) as resp:
             return json.loads(resp.read()), resp.status
     except urllib.error.HTTPError as e:
-        try:
-            return json.loads(e.read()), e.code
-        except Exception:
-            return None, e.code
+        with e:
+            try:
+                return json.loads(e.read()), e.code
+            except Exception:
+                return None, e.code
 
 
 def test_link_visible(base_url: str):
