@@ -22,7 +22,9 @@
 //!
 //! CPU is `getrusage` user + system of this process. `decode` is measured in
 //! a pass of its own over the same frames; `intake` is the relay pass less
-//! that and less the owner's turns.
+//! that and less the owner's turns. `refresh` is the enrichment loop's
+//! queue work (walk, lease, report), which shares the owner's thread and
+//! is reported beside the relay path, not in its total.
 
 const std = @import("std");
 const builtin = @import("builtin");
@@ -64,9 +66,16 @@ const Config = struct {
     /// 1 decrypts every frame as one AES-256-GCM record, the suite
     /// bsky.network picks from what Zig's TLS client offers.
     tls: u64 = 1,
-    /// Enrichment results committed per simulated second, as a stand-in for
-    /// the role's other writer. 0 leaves the relay alone with the store.
-    enrich: u64 = 0,
+    /// Profile refreshes the quality walk and the rest walk queue per
+    /// simulated hour. Every other simulated second they are queued, leased
+    /// and completed in the order the enrichment loop does it. 0 and 0
+    /// leave the relay alone with the store.
+    walk: u64 = 20_000,
+    sweep: u64 = 10_000,
+    /// Refresh steps taken before the measured run, two simulated seconds
+    /// apart, so the queue ranges hold the dead keys of a process that has
+    /// been up that long.
+    history: u64 = 1000,
     dir: []const u8 = ".zig-cache/collector-bench",
 
     fn parse(args: []const []const u8) !Config {
@@ -117,11 +126,12 @@ fn peakRssBytes() u64 {
 }
 
 const SimClock = struct {
+    start: u64 = t0,
     micros: u64 = 0,
 
     fn seconds(context: ?*anyopaque, _: Io) u64 {
         const self: *SimClock = @ptrCast(@alignCast(context.?));
-        return t0 + self.micros / 1_000_000;
+        return self.start + self.micros / 1_000_000;
     }
 };
 
@@ -547,28 +557,88 @@ const Writes = struct {
     }
 };
 
-const Enricher = struct {
+/// The enrichment loop's side of the store: `Enricher.step` without the
+/// fetch. Every refresh it leases comes back changed.
+const Refresher = struct {
+    gpa: Allocator,
     config: Config,
+    owner: *owner_mod.Owner,
     random: std.Random.DefaultPrng,
+    walk_tokens: f64 = 0,
+    sweep_tokens: f64 = 0,
+    steps: u64 = 0,
+    leased: u64 = 0,
+    cpu: f64 = 0,
+    /// CPU of the first and the last `edge` steps, to show drift.
+    first: f64 = 0,
+    last: [edge]f64 = @splat(0),
 
-    fn post(self: *Enricher, gpa: Allocator, owner: *owner_mod.Owner) !void {
-        const submission = try owner_mod.Submission.create(gpa);
-        errdefer submission.destroy();
-        const a = submission.arena.allocator();
-        const r = self.random.random();
-        const changes = try a.alloc(store_mod.Change, self.config.enrich);
-        for (changes) |*slot| {
-            const did = try a.dupe(u8, &didOf(self.config.seed, r.uintLessThan(u64, self.config.actors)));
-            slot.* = .{ .enrichment = .{
-                .did = did,
+    const edge = 50;
+    const step_seconds = 2;
+    const batch = 25;
+
+    fn enabled(self: *const Refresher) bool {
+        return self.config.walk + self.config.sweep > 0;
+    }
+
+    fn settle(self: *Refresher, submission: *owner_mod.Submission) !void {
+        submission.waited = true;
+        try self.owner.post(submission, null);
+        while (!submission.done.isSet()) _ = self.owner.turn(0);
+        if (submission.failed) return error.OwnerStopped;
+    }
+
+    fn step(self: *Refresher) !void {
+        const started = cpuSeconds();
+        const leasing = try owner_mod.Submission.create(self.gpa);
+        defer leasing.destroy();
+        const a = leasing.arena.allocator();
+        var asks: std.ArrayList(store_mod.Change) = .empty;
+        self.walk_tokens = @min(4 * batch, self.walk_tokens + @as(f64, @floatFromInt(self.config.walk * step_seconds)) / 3600.0);
+        self.sweep_tokens = @min(4 * batch, self.sweep_tokens + @as(f64, @floatFromInt(self.config.sweep * step_seconds)) / 3600.0);
+        if (self.walk_tokens >= batch) {
+            const limit: usize = @intFromFloat(self.walk_tokens);
+            self.walk_tokens -= @floatFromInt(limit);
+            try asks.append(a, .{ .refresh_walk = .{ .pool = .quality, .limit = limit, .scan = limit * 4 } });
+        }
+        if (self.sweep_tokens >= batch) {
+            const limit: usize = @intFromFloat(self.sweep_tokens);
+            self.sweep_tokens -= @floatFromInt(limit);
+            try asks.append(a, .{ .refresh_walk = .{ .pool = .rest, .limit = limit, .scan = limit * 8 } });
+        }
+        try asks.append(a, .{ .refresh_lease = .{ .limit = batch } });
+        leasing.changes = asks.items;
+        try self.settle(leasing);
+
+        if (leasing.refresh_jobs.len > 0) {
+            const reporting = try owner_mod.Submission.create(self.gpa);
+            defer reporting.destroy();
+            const r = self.random.random();
+            const changes = try reporting.arena.allocator().alloc(store_mod.Change, leasing.refresh_jobs.len);
+            for (changes, leasing.refresh_jobs) |*slot, job| slot.* = .{ .enrichment = .{
+                .did = job.did,
                 .source = .bsky,
                 .followers_count = 1 + r.uintLessThan(u64, 5000),
                 .posts_count = 1 + r.uintLessThan(u64, 20_000),
-                .quality_score = 1.0 + @as(f32, @floatFromInt(r.uintLessThan(u32, 30_000))) / 100.0,
+                .labels = &.{},
+                .lease = job.lease,
             } };
+            reporting.changes = changes;
+            try self.settle(reporting);
+            self.leased += changes.len;
         }
-        submission.changes = changes;
-        try owner.post(submission, null);
+
+        const spent = cpuSeconds() - started;
+        self.cpu += spent;
+        if (self.steps < edge) self.first += spent;
+        self.last[self.steps % edge] = spent;
+        self.steps += 1;
+    }
+
+    fn lastMean(self: *const Refresher) f64 {
+        var total: f64 = 0;
+        for (self.last) |one| total += one;
+        return total / @as(f64, @floatFromInt(@min(@max(self.steps, 1), edge)));
     }
 };
 
@@ -711,7 +781,21 @@ pub fn main(init: std.process.Init) !void {
     var pools: std.heap.ArenaAllocator = .init(gpa);
     defer pools.deinit();
     var relay = try Relay.init(pools.allocator(), config);
-    var enricher: Enricher = .{ .config = config, .random = .init(config.seed +% 1) };
+    var refresher: Refresher = .{ .gpa = gpa, .config = config, .owner = owner, .random = .init(config.seed +% 1) };
+    clock.start = t0 - config.history * Refresher.step_seconds;
+    for (0..config.history) |step| {
+        clock.micros = step * Refresher.step_seconds * 1_000_000;
+        try refresher.step();
+    }
+    const history_cpu = refresher.cpu;
+    const history_first = refresher.first;
+    const history_last = refresher.lastMean();
+    const history_leased = refresher.leased;
+    refresher.steps = 0;
+    refresher.cpu = 0;
+    refresher.first = 0;
+    refresher.leased = 0;
+    clock.start = t0;
     var chunk: std.heap.ArenaAllocator = .init(gpa);
     defer chunk.deinit();
     const frames = try gpa.alloc(Frame, 2048);
@@ -723,7 +807,7 @@ pub fn main(init: std.process.Init) !void {
     var owner_cpu: f64 = 0;
     var frame_bytes: u64 = 0;
     var batches_seen: u64 = 0;
-    var enriched_at: u64 = 0;
+    var refreshed_at: u64 = 0;
     var done: u64 = 0;
     const wall_started = Io.Clock.awake.now(io);
     while (done < config.events) {
@@ -757,14 +841,14 @@ pub fn main(init: std.process.Init) !void {
             if (handed == batches_seen) continue;
             batches_seen = handed;
             const turn_started = cpuSeconds();
-            const second = clock.micros / 1_000_000;
-            if (config.enrich > 0 and second > enriched_at) {
-                enriched_at = second;
-                try enricher.post(gpa, owner);
-            }
             _ = owner.turn(0);
             while (owner.counters.queued_changes.load(.monotonic) > 0) _ = owner.turn(0);
             owner_cpu += cpuSeconds() - turn_started;
+            const second = clock.micros / 1_000_000;
+            if (refresher.enabled() and second >= refreshed_at + Refresher.step_seconds) {
+                refreshed_at = second;
+                try refresher.step();
+            }
         }
         relay_cpu += cpuSeconds() - mark;
         done += count;
@@ -780,21 +864,30 @@ pub fn main(init: std.process.Init) !void {
     const wall = @as(f64, @floatFromInt(wall_started.durationTo(Io.Clock.awake.now(io)).toNanoseconds())) / 1e9;
 
     const per_thousand = 1000.0 / @as(f64, @floatFromInt(config.events));
+    const ms = per_thousand * 1000;
+    const refresh_cpu = refresher.cpu;
+    const path_cpu = relay_cpu - refresh_cpu;
     const c = &owner.counters;
     const stats = owner.store.stats();
-    try out.print(
-        \\events={d} actors={d} active={d} skew={d:.2} seed={d} rate={d}/s simulated_s={d} mean_frame_bytes={d}
-        \\cpu_ms_per_1000: total={d:.2} tls={d:.2} decode={d:.2} intake={d:.2} owner={d:.2}
-        \\commits={d} batches={d} changes_applied={d} actors_changed={d} actors_created={d} trimmed={d}
-        \\store: committed_bytes={d} flushes={d} flushed_bytes={d} compactions={d} compaction_steps={d} compacted_bytes={d} tables={d} table_bytes={d}
-        \\peak_rss_mb={d} wall_s={d:.1}
-        \\
-    , .{
-        config.events,                               config.actors,                     config.active,                      config.skew,                                                config.seed,                     config.rate,                clock.micros / 1_000_000,                frame_bytes / config.events,
-        (tls_cpu + relay_cpu) * per_thousand * 1000, tls_cpu * per_thousand * 1000,     decode_cpu * per_thousand * 1000,   (relay_cpu - decode_cpu - owner_cpu) * per_thousand * 1000, owner_cpu * per_thousand * 1000, c.commits.load(.monotonic), intake.signals.batches.load(.monotonic), c.changes_applied.load(.monotonic),
-        c.actors_changed.load(.monotonic),           c.actors_created.load(.monotonic), c.changes_trimmed.load(.monotonic), writes.committed_bytes,                                     stats.flushes.count,             writes.flushed_bytes,       stats.compactions,                       stats.compaction_steps.count,
-        writes.compacted_bytes,                      stats.tables,                      stats.table_bytes,                  peakRssBytes() >> 20,                                       wall,
+    try out.print("events={d} actors={d} active={d} skew={d:.2} seed={d} rate={d}/s simulated_s={d} mean_frame_bytes={d}\n", .{
+        config.events, config.actors, config.active, config.skew, config.seed, config.rate, clock.micros / 1_000_000, frame_bytes / config.events,
     });
+    try out.print("cpu_ms_per_1000: total={d:.2} tls={d:.2} decode={d:.2} intake={d:.2} owner={d:.2}\n", .{
+        (tls_cpu + path_cpu) * ms, tls_cpu * ms, decode_cpu * ms, (path_cpu - decode_cpu - owner_cpu) * ms, owner_cpu * ms,
+    });
+    try out.print("refresh: cpu_ms_per_1000={d:.2} steps={d} leased={d} step_ms_first={d:.3} step_ms_last={d:.3}; history: steps={d} leased={d} cpu_s={d:.1} step_ms_first={d:.3} step_ms_last={d:.3}\n", .{
+        refresh_cpu * ms,                                                                                 refresher.steps,             refresher.leased,
+        refresher.first / @as(f64, @floatFromInt(@min(@max(refresher.steps, 1), Refresher.edge))) * 1000, refresher.lastMean() * 1000, config.history,
+        history_leased,                                                                                   history_cpu,                 history_first / @as(f64, @floatFromInt(@min(@max(config.history, 1), Refresher.edge))) * 1000,
+        history_last * 1000,
+    });
+    try out.print("commits={d} batches={d} changes_applied={d} actors_changed={d} actors_created={d} trimmed={d}\n", .{
+        c.commits.load(.monotonic), intake.signals.batches.load(.monotonic), c.changes_applied.load(.monotonic), c.actors_changed.load(.monotonic), c.actors_created.load(.monotonic), c.changes_trimmed.load(.monotonic),
+    });
+    try out.print("store: committed_bytes={d} flushes={d} flushed_bytes={d} compactions={d} compaction_steps={d} compacted_bytes={d} tables={d} table_bytes={d}\n", .{
+        writes.committed_bytes, stats.flushes.count, writes.flushed_bytes, stats.compactions, stats.compaction_steps.count, writes.compacted_bytes, stats.tables, stats.table_bytes,
+    });
+    try out.print("peak_rss_mb={d} wall_s={d:.1}\n", .{ peakRssBytes() >> 20, wall });
     try out.flush();
 
     var digest: Digest = .{ .arena = .init(gpa), .since = t0 };
