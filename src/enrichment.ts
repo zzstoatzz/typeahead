@@ -1,9 +1,10 @@
 import { rowsAs, type SqlDb } from "./db";
 import type { RequestKvData, StatsKvData } from "./types";
 import { TRAFFIC_SOURCE_WHERE } from "./metrics";
-import { writeStats, type StatsEnv } from "./stats-store";
 
-/** record an actor-count snapshot for the current hour (idempotent).
+export type Snapshot = StatsKvData["snapshots"][number];
+
+/** count Turso's actors for the current hour's snapshot (src/corpus.ts records it).
  *
  *  the corpus is ~6M rows; a `COUNT(*)` / `SUM(CASE …)` over the whole table
  *  takes ~300s over libSQL HTTP, which silently blew the cron's budget once the
@@ -14,13 +15,6 @@ import { writeStats, type StatsEnv } from "./stats-store";
  *    - empty avatars  — selective count via `idx_actors_avatar_empty`
  *  with_handles / with_avatars are then `total - empty`. every count touches
  *  only a small slice (<400k matching rows), so the whole thing is sub-second. */
-export async function recordSnapshot(db: SqlDb, env: StatsEnv): Promise<void> {
-  const snapshot = await countSnapshot(db);
-  if (snapshot) await writeStats(env, db, (store) => writeSnapshot(store, snapshot));
-}
-
-export type Snapshot = StatsKvData["snapshots"][number];
-
 export async function countSnapshot(db: SqlDb, now = Date.now()): Promise<Snapshot | null> {
   const hour = Math.floor(now / 3_600_000);
   const [totalRes, hiddenRes, emptyHandlesRes, emptyAvatarsRes] = await db.batch([

@@ -27,7 +27,7 @@ export function parseExclusions(raw: string | null): SearchExclusions | null {
   }
 }
 
-type ExclusionsKv = {
+export type ExclusionsKv = {
   get(key: string): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
 };
@@ -55,9 +55,19 @@ export function parseLabels(raw: string): unknown[] {
  *  outlive them. Daily, because the quarantined-handle count walks every
  *  index entry of one PLC spam wave (1.76M on 2026-11-01). */
 export async function recordExclusions(db: SqlDb, kv: ExclusionsKv, now = new Date()): Promise<SearchExclusions | null> {
-  const previous = parseExclusions(await kv.get(EXCLUSIONS_KEY));
-  if (previous && now.getTime() - Date.parse(previous.as_of) < EXCLUSIONS_REFRESH_MS) return null;
+  if (!await exclusionsDue(kv, now)) return null;
+  const exclusions = await countExclusions(db, now);
+  await kv.put(EXCLUSIONS_KEY, JSON.stringify(exclusions));
+  return exclusions;
+}
 
+/** Whether the stored count is missing or a day old. */
+export async function exclusionsDue(kv: ExclusionsKv, now: Date): Promise<boolean> {
+  const previous = parseExclusions(await kv.get(EXCLUSIONS_KEY));
+  return !previous || now.getTime() - Date.parse(previous.as_of) >= EXCLUSIONS_REFRESH_MS;
+}
+
+export async function countExclusions(db: SqlDb, now: Date): Promise<SearchExclusions> {
   const [flaggedRes, overridesRes, identityRes] = await db.batch([
     db.prepare("SELECT did, handle, labels FROM actors WHERE hidden != 0"),
     db.prepare("SELECT did, action FROM mod_overrides"),
@@ -90,14 +100,12 @@ export async function recordExclusions(db: SqlDb, kv: ExclusionsKv, now = new Da
 
   const [identity] = rowsAs<{ handle_invalid: number; quarantined: number }>(identityRes.results);
 
-  const exclusions = {
+  return {
     version: 2,
     as_of: now.toISOString(),
     policy_hidden: policyHidden,
     stale_hidden_flags: staleFlags,
     handle_invalid: Number(identity?.handle_invalid ?? 0),
     quarantined: Number(identity?.quarantined ?? 0),
-  } satisfies SearchExclusions;
-  await kv.put(EXCLUSIONS_KEY, JSON.stringify(exclusions));
-  return exclusions;
+  };
 }

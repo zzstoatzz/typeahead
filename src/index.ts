@@ -2,8 +2,8 @@ import type { Env } from "./types";
 import { CORS_HEADERS, FAVICON_SVG } from "./types";
 import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
-import { recordSnapshot, materializeStats } from "./enrichment";
-import { recordExclusions } from "./exclusions";
+import { materializeStats } from "./enrichment";
+import { recordExclusions, recordSnapshot } from "./corpus";
 import { recordProfile } from "./stats-profile";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
 import { recordStats, statsReadDb } from "./stats-store";
@@ -71,7 +71,7 @@ export default {
       }],
       ["recordSnapshot", () => recordSnapshot(db, env)],
       ["recordExclusions", async () => {
-        const counted = await recordExclusions(db, env.KV);
+        const counted = await recordExclusions(db, env.KV, env);
         if (counted) console.log(JSON.stringify({ event: "exclusions_recorded", ...counted }));
       }],
       ["materializeStats", () => materializeStats(statsReadDb(env, db), env)],

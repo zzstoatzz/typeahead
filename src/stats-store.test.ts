@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, setDefaultTimeout, spyOn, test } from "bun:test";
 import type { SqlDb } from "./db";
-import { recordSnapshot, writeSnapshot } from "./enrichment";
+import { recordSnapshot } from "./corpus";
+import { writeSnapshot } from "./enrichment";
 import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
 import { collectingCtx, statsRows, statsStores } from "./stats-d1-fixture";
 import { recordStats, statsMirror, writeStats, type StatsWrite } from "./stats-store";
