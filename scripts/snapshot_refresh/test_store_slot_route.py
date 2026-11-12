@@ -13,6 +13,7 @@ import store_slot_route as route
 
 NOW = 1794386900
 SHADOW = 'https://typeahead-shadow-a.fly.dev'
+SHADOW_B = 'https://typeahead-shadow-b.fly.dev'
 SLOT_A = 'https://typeahead-tantivy-a.fly.dev'
 SLOT_B = 'https://typeahead-tantivy-b.fly.dev'
 SHADOW_BINARY = '4' * 64
@@ -47,13 +48,18 @@ def status(build_id, binary, cursor, **changed):
     return value
 
 
-def store_status(**changed):
+def store_status(source_id='typeahead-shadow-a-store', build_id='b1794333857-cp-bootstrap', **changed):
     cursor = {
-        'schema_version': 1, 'source_policy': 'store-change-log-v1', 'source_id': 'typeahead-shadow-a-store', 'cycle': None,
-        'build_id': 'b1794333857-cp-bootstrap', 'snapshot_watermark': 1794333557, 'through': NOW - 20, 'position': 13433659,
+        'schema_version': 1, 'source_policy': 'store-change-log-v1', 'source_id': source_id, 'cycle': None,
+        'build_id': build_id, 'snapshot_watermark': 1794333557, 'through': NOW - 20, 'position': 13433659,
         'reconciliation': {'schema_version': 1, 'phase': 'idle', 'round': 1, 'last_completed_at': NOW - 27000, 'last_completed_started_at': NOW - 33700},
     }
-    return status('b1794333857-cp-bootstrap', SHADOW_BINARY, cursor, **changed)
+    return status(build_id, SHADOW_BINARY, cursor, **changed)
+
+
+def store_b_status(**changed):
+    """The second store slot: its own store and bootstrap bundle, the same image."""
+    return store_status('typeahead-shadow-b-store', 'b1794450000-cp-bootstrap-b', actor_count=13177350, **changed)
 
 
 def turso_status(serving=SERVING, **changed):
@@ -124,11 +130,11 @@ class World:
     """The slots, the bucket, and a transport that serves whatever the bucket routes."""
 
     def __init__(self, record=None):
-        self.slots = {SHADOW: Slot(store_status()), SLOT_B: Slot(turso_status(), machine='2869394f4d1e58'),
-                      SLOT_A: Slot(turso_status(PREVIOUS), machine='e82de19f7d3528')}
+        self.slots = {SHADOW: Slot(store_status()), SHADOW_B: Slot(store_b_status(), machine='d8d9947a2e0d08'),
+                      SLOT_B: Slot(turso_status(), machine='2869394f4d1e58'), SLOT_A: Slot(turso_status(PREVIOUS), machine='e82de19f7d3528')}
         self.bucket = Bucket({'version': 1, 'current': SERVING, 'previous': PREVIOUS} if record is None else record)
-        self.transport_follows = True
-        self.transport_knows_store_origin = True
+        self.transport_stuck_on = None
+        self.transport_origins = {SLOT_A, SLOT_B, SHADOW, SHADOW_B}
         self.clock = 0.0
 
     def get(self, url):
@@ -136,8 +142,8 @@ class World:
             if url.startswith(origin + '/'):
                 return slot.reply(url[len(origin):])
         if url.startswith(route.TRANSPORT + '/'):
-            current = self.bucket.record()['current'] if self.transport_follows else SERVING
-            if current['origin'] == SHADOW and not self.transport_knows_store_origin:
+            current = self.bucket.record()['current'] if self.transport_stuck_on is None else self.transport_stuck_on
+            if current['origin'] not in self.transport_origins:
                 return 503, {}, b'{"error":"SearchRouteUnavailable"}'
             if url == route.TRANSPORT + '/route':
                 return 200, {}, json.dumps(current).encode()
@@ -149,8 +155,8 @@ class World:
             self.clock += seconds
         return {'get': self.get, 'sleep': sleep, 'clock': lambda: self.clock}
 
-    def cutover(self, write=True):
-        return route.cutover(self.bucket, SHADOW, SHADOW_BINARY, write=write, now=NOW, **self.timing())
+    def cutover(self, write=True, origin=SHADOW):
+        return route.cutover(self.bucket, origin, SHADOW_BINARY, write=write, now=NOW, **self.timing())
 
     def rollback(self, write=True):
         return route.rollback(self.bucket, write=write, **self.timing())
@@ -308,7 +314,7 @@ class Cutover(unittest.TestCase):
     def test_a_transport_that_does_not_follow_gets_the_prior_record_back(self):
         world = World()
         before = world.bucket.record()
-        world.transport_follows = False
+        world.transport_stuck_on = SERVING
         with self.assertRaises(route.Refused) as caught:
             world.cutover()
         self.assertIn('prior record was restored', str(caught.exception))
@@ -318,7 +324,7 @@ class Cutover(unittest.TestCase):
     def test_a_transport_deployed_before_the_store_origin_gets_the_prior_record_back_at_once(self):
         world = World()
         before = world.bucket.record()
-        world.transport_knows_store_origin = False
+        world.transport_origins.discard(SHADOW)
         with self.assertRaises(route.Refused) as caught:
             world.cutover()
         self.assertIn('cannot use the new record', str(caught.exception))
@@ -388,6 +394,200 @@ class Rollback(unittest.TestCase):
         with self.assertRaises(route.Refused):
             world.rollback()
         self.assertEqual(world.bucket.writes, [])
+
+
+class StoreToStore(unittest.TestCase):
+    """One store slot takes the route from the other, and gives it back."""
+
+    def world_on_a(self):
+        world = World()
+        world.cutover()
+        return world
+
+    def refused(self, world, fragment, **kwargs):
+        before, writes = world.bucket.record(), list(world.bucket.writes)
+        with self.assertRaises(route.Refused) as caught:
+            world.cutover(**kwargs)
+        self.assertTrue(any(fragment in reason for reason in caught.exception.reasons), caught.exception.reasons)
+        self.assertEqual((world.bucket.record(), world.bucket.writes), (before, writes))
+
+    def test_the_second_store_slot_takes_the_route_from_the_first(self):
+        world = self.world_on_a()
+        on_a = world.bucket.record()
+        plan = world.cutover(write=False, origin=SHADOW_B)
+        self.assertEqual((plan['written'], world.bucket.record()), (False, on_a))
+        report = world.cutover(origin=SHADOW_B)
+        on_b = world.bucket.record()
+        self.assertEqual((on_b['current']['origin'], on_b['current']['build_id'], on_b['previous']), (SHADOW_B, 'b1794450000-cp-bootstrap-b', on_a['current']))
+        self.assertEqual((report['admission']['gates']['serving_origin'], report['admission']['gates']['source_id']), (SHADOW, 'typeahead-shadow-b-store'))
+        self.assertIs(report['admission']['gates']['policy_compared_with_serving'], True)
+        admission = json.loads(world.bucket.objects[route.ADMISSION_PREFIX + on_b['current']['admission_sha256'] + '.json'])
+        self.assertEqual(admission['prior_route'], on_a)
+
+    def test_rollback_restores_the_record_that_named_the_first_store_slot(self):
+        world = self.world_on_a()
+        on_a = world.bucket.record()
+        world.cutover(origin=SHADOW_B)
+        on_b = world.bucket.record()
+        self.assertEqual((world.rollback(write=False)['route'], world.bucket.record()), (on_a, on_b))
+        self.assertTrue(world.rollback()['written'])
+        self.assertEqual(world.bucket.record(), on_a)
+
+    def test_each_rollback_undoes_one_cutover_through_a_b_a(self):
+        world = World()
+        records = [world.bucket.record()]
+        for origin in (SHADOW, SHADOW_B, SHADOW):
+            world.cutover(origin=origin)
+            records.append(world.bucket.record())
+        managed, first_a, on_b, second_a = records
+        self.assertEqual((second_a['current']['origin'], second_a['previous']), (SHADOW, on_b['current']))
+        self.assertNotEqual(second_a['current']['admission_sha256'], first_a['current']['admission_sha256'])
+        for restored in (on_b, first_a, managed):
+            routed = world.bucket.record()
+            self.assertEqual(world.rollback(write=False)['route']['current'], routed['previous'])
+            self.assertTrue(world.rollback()['written'])
+            self.assertEqual(world.bucket.record(), restored)
+        with self.assertRaises(route.Refused):
+            world.rollback()
+
+    def test_two_store_slots_bootstrapped_from_one_bundle_are_still_two_targets(self):
+        world = self.world_on_a()
+        world.slots[SHADOW_B] = Slot(store_status('typeahead-shadow-b-store'), machine='d8d9947a2e0d08')
+        world.cutover(origin=SHADOW_B)
+        on_b = world.bucket.record()
+        self.assertEqual(on_b['current']['build_id'], on_b['previous']['build_id'])
+        self.assertEqual((on_b['current']['origin'], on_b['previous']['origin']), (SHADOW_B, SHADOW))
+        world.rollback()
+        self.assertEqual(world.bucket.record()['current']['origin'], SHADOW)
+
+    def test_the_serving_slot_is_not_a_candidate(self):
+        world = self.world_on_a()
+        self.refused(world, 'already routed')
+        world.cutover(origin=SHADOW_B)
+        self.refused(world, 'already routed', origin=SHADOW_B)
+        with self.assertRaises(route.Refused) as caught:
+            route.check(SHADOW_B, SHADOW_BINARY, now=NOW, get=world.get)
+        self.assertIn('already routed', str(caught.exception))
+
+    def test_the_candidate_is_compared_with_the_serving_store_slot(self):
+        moderation = store_status()['moderation']
+        serving = store_status()['actor_count']
+        cases = [
+            ('normalize_version', store_b_status(normalize_version='v3')),
+            ('plan_version', store_b_status(plan_version='other-plan')),
+            ('pds_scope_policy', store_b_status(pds_scope_policy='other')),
+            ('moderation rules differ', store_b_status(moderation={**moderation, 'canonical_rules_source_sha256': '9' * 64})),
+            ('moderation policy differs', store_b_status(moderation={**moderation, 'sha256': '9' * 64})),
+            ('actors', {**store_b_status(), 'actor_count': serving - serving * 3 // 100}),
+            ('sync lag', store_b_status(watermark=NOW - 121)),
+            ('since its bootstrap', {**store_b_status(), 'snapshot_watermark': NOW - 10}),
+        ]
+        for fragment, body in cases:
+            with self.subTest(fragment=fragment):
+                world = self.world_on_a()
+                world.slots[SHADOW_B] = Slot(body)
+                self.refused(world, fragment, origin=SHADOW_B)
+
+    def test_a_serving_store_slot_that_is_not_ready_refuses_an_ordinary_cutover(self):
+        for change in ('unready', 'stopped', 'another binary'):
+            with self.subTest(change=change):
+                world = self.world_on_a()
+                if change == 'unready':
+                    world.slots[SHADOW].ready = False
+                elif change == 'stopped':
+                    world.slots[SHADOW].down = True
+                else:
+                    world.slots[SHADOW] = Slot(store_status(binary_sha256='7' * 64))
+                self.refused(world, 'serving slot', origin=SHADOW_B)
+
+    def test_rollback_to_a_store_slot_needs_that_slot_and_not_the_routed_one(self):
+        world = self.world_on_a()
+        on_a = world.bucket.record()
+        world.cutover(origin=SHADOW_B)
+        on_b = world.bucket.record()
+        world.slots[SHADOW_B].down = True
+        for change in ('rebuilt', 'unready', 'stopped'):
+            with self.subTest(change=change):
+                healthy = world.slots[SHADOW]
+                if change == 'rebuilt':
+                    world.slots[SHADOW] = Slot(store_status(build_id='b1794500000-cp-rebootstrapped'))
+                elif change == 'unready':
+                    world.slots[SHADOW] = Slot(store_status(), ready=False)
+                else:
+                    world.slots[SHADOW] = Slot(store_status())
+                    world.slots[SHADOW].down = True
+                with self.assertRaises(route.Refused):
+                    world.rollback()
+                self.assertEqual(world.bucket.record(), on_b)
+                world.slots[SHADOW] = healthy
+        self.assertTrue(world.rollback()['written'])
+        self.assertEqual(world.bucket.record(), on_a)
+
+    def test_a_previous_that_is_not_the_slot_the_cutover_replaced_is_refused(self):
+        world = self.world_on_a()
+        world.cutover(origin=SHADOW_B)
+        on_b = world.bucket.record()
+        for previous in (SERVING, {**on_b['previous'], 'admission_sha256': 'd' * 64}, None):
+            with self.subTest(previous=previous):
+                edited = {'version': 1, 'current': on_b['current'], **({} if previous is None else {'previous': previous})}
+                world.bucket.objects[route.ROUTE_KEY] = route.encode_record(edited)
+                writes = list(world.bucket.writes)
+                with self.assertRaises(route.Refused):
+                    world.rollback()
+                self.assertEqual((world.bucket.record(), world.bucket.writes), (edited, writes))
+
+    def test_a_record_naming_one_slot_twice_is_left_alone(self):
+        world = self.world_on_a()
+        current = world.bucket.record()['current']
+        world.bucket.objects[route.ROUTE_KEY] = route.encode_record({'version': 1, 'current': current, 'previous': {**current, 'admission_sha256': 'd' * 64}})
+        self.refused(world, 'both current and previous', origin=SHADOW_B)
+        with self.assertRaises(route.Refused):
+            world.rollback()
+
+    def test_a_refresh_lease_fences_a_store_to_store_cutover(self):
+        world = self.world_on_a()
+        lease = {'owner': 'typeahead-snapshot-refresh', 'request_id': 'a' * 32, 'app': 'typeahead-tantivy-a', 'acquired_at': NOW - 60}
+        world.bucket.objects[route.ROUTE_KEY] = route.encode_record({**world.bucket.record(), 'mutation': lease})
+        self.refused(world, 'mutation lease', origin=SHADOW_B)
+
+    def test_a_transport_deployed_before_the_second_origin_gets_the_first_slot_back_at_once(self):
+        world = self.world_on_a()
+        on_a = world.bucket.record()
+        world.transport_origins.discard(SHADOW_B)
+        clock = world.clock
+        with self.assertRaises(route.Refused) as caught:
+            world.cutover(origin=SHADOW_B)
+        self.assertIn('cannot use the new record', str(caught.exception))
+        self.assertEqual((world.bucket.record(), world.clock), (on_a, clock))
+
+    def test_a_transport_that_stays_on_the_first_slot_gets_its_record_back(self):
+        world = self.world_on_a()
+        on_a = world.bucket.record()
+        world.transport_stuck_on = on_a['current']
+        with self.assertRaises(route.Refused) as caught:
+            world.cutover(origin=SHADOW_B)
+        self.assertIn('prior record was restored', str(caught.exception))
+        self.assertEqual(world.bucket.record(), on_a)
+
+    def test_a_record_that_changes_during_a_store_to_store_decision_wins(self):
+        world = self.world_on_a()
+        rolled_back = {'version': 1, 'current': SERVING, 'previous': PREVIOUS}
+
+        def someone_rolls_back():
+            world.bucket.objects[route.ROUTE_KEY] = route.encode_record(rolled_back)
+
+        world.bucket.before_route_put = someone_rolls_back
+        with self.assertRaises(route.Refused) as caught:
+            world.cutover(origin=SHADOW_B)
+        self.assertIn('changed while', str(caught.exception))
+        self.assertEqual(world.bucket.record(), rolled_back)
+
+    def test_check_compares_the_second_store_slot_with_the_first_without_credentials(self):
+        world = self.world_on_a()
+        writes = list(world.bucket.writes)
+        report = route.check(SHADOW_B, SHADOW_BINARY, now=NOW, get=world.get)
+        self.assertEqual((report['serving'], report['target']['origin'], report['written']), (world.bucket.record()['current'], SHADOW_B, False))
+        self.assertEqual(world.bucket.writes, writes)
 
 
 REBUILT_A = target(SLOT_A, 'b1794420000-cp-standby-a', admission='b' * 64)
