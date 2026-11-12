@@ -203,6 +203,20 @@ pub const Resolver = struct {
     worker_url: []const u8,
     worker_secret: []const u8,
     upstreams: Upstreams = .{},
+    /// Resolve over kept connections. Off, every lookup opens and closes its
+    /// own, which is what this did before 2026-11-11 and what the tests
+    /// compare outcomes against.
+    reuse_connections: bool = true,
+    /// A session idle this long is closed and replaced rather than reused.
+    /// A server that closes an idle connection is handled by the transport,
+    /// which replays the request on a new one. A connection a middlebox
+    /// dropped without a FIN would instead hold a lookup for the transport's
+    /// 10 s head deadline and fail it; no connection older than this is
+    /// offered the chance.
+    session_idle_seconds: i64 = 20,
+    sessions_mutex: Io.Mutex = .init,
+    sessions: [max_sessions]*Session = undefined,
+    sessions_idle: usize = 0,
 
     pub fn init(
         allocator: Allocator,
@@ -218,7 +232,10 @@ pub const Resolver = struct {
         };
     }
 
-    pub fn deinit(_: *Resolver) void {}
+    pub fn deinit(self: *Resolver) void {
+        for (self.sessions[0..self.sessions_idle]) |session| session.destroy();
+        self.sessions_idle = 0;
+    }
 
     /// poolio process function — called per dequeued Job.
     pub fn process(self: *Resolver, io: Io, job: Job) void {
@@ -227,8 +244,8 @@ pub const Resolver = struct {
         defer arena.deinit();
         const seen = self.observe(arena.allocator(), job);
 
-        // Pool workers share Resolver as their context. std.http.Client is not
-        // safe to use concurrently, so each worker invocation owns its client.
+        // Pool workers share Resolver as their context, so each invocation
+        // reports over its own client.
         var transport = HttpTransport.init(self.io, self.allocator);
         transport.keep_alive = false;
         defer transport.deinit();
@@ -272,12 +289,22 @@ pub const Resolver = struct {
     /// Strings in the result are owned by `arena`.
     fn fetchLookup(self: *Resolver, arena: Allocator, did_slice: []const u8) !Lookup {
         const did = zat.Did.parse(did_slice) orelse return error.InvalidDid;
+        if (self.reuse_connections) {
+            const session = try self.acquireSession();
+            defer self.releaseSession(session);
+            return lookupWith(arena, did, &session.did, &session.handle);
+        }
 
         var did_resolver = zat.DidResolver.initWithOptions(self.io, arena, .{ .keep_alive = false });
         defer did_resolver.deinit();
-        if (self.upstreams.plc_url) |url| did_resolver.plc_url = url;
-        if (self.upstreams.doh_endpoint) |url| did_resolver.doh_endpoint = url;
-        try self.trust(&did_resolver.transport);
+        var handle_resolver = zat.HandleResolver.init(self.io, arena);
+        handle_resolver.transport.keep_alive = false;
+        defer handle_resolver.deinit();
+        try self.configure(&did_resolver, &handle_resolver);
+        return lookupWith(arena, did, &did_resolver, &handle_resolver);
+    }
+
+    fn lookupWith(arena: Allocator, did: zat.Did, did_resolver: *zat.DidResolver, handle_resolver: *zat.HandleResolver) !Lookup {
         var doc = try did_resolver.resolve(did);
         defer doc.deinit();
 
@@ -286,17 +313,131 @@ pub const Resolver = struct {
         const claimed = firstHandle(doc.handles) orelse return out;
         out.handle = try std.ascii.allocLowerString(arena, claimed.str());
 
-        var handle_resolver = zat.HandleResolver.init(self.io, arena);
-        handle_resolver.transport.keep_alive = false;
-        defer handle_resolver.deinit();
-        if (self.upstreams.doh_endpoint) |url| handle_resolver.doh_endpoint = url;
-        try self.trust(&handle_resolver.transport);
         const resolved = handle_resolver.resolve(claimed) catch |err| {
-            log.debug("verify {s} -> {s}: {s}", .{ out.handle.?, did_slice, @errorName(err) });
+            log.debug("verify {s} -> {s}: {s}", .{ out.handle.?, did.raw, @errorName(err) });
             return out;
         };
-        out.verified = mem.eql(u8, resolved, did_slice);
+        defer handle_resolver.allocator.free(resolved);
+        out.verified = mem.eql(u8, resolved, did.raw);
         return out;
+    }
+
+    fn configure(self: *Resolver, did_resolver: *zat.DidResolver, handle_resolver: *zat.HandleResolver) !void {
+        if (self.upstreams.plc_url) |url| did_resolver.plc_url = url;
+        if (self.upstreams.doh_endpoint) |url| {
+            did_resolver.doh_endpoint = url;
+            handle_resolver.doh_endpoint = url;
+        }
+        try self.trust(&did_resolver.transport);
+        try self.trust(&handle_resolver.transport);
+    }
+
+    /// The clients one lookup uses, kept between lookups so the connections
+    /// to the PLC directory and the DNS-over-HTTPS endpoint, and to a handle
+    /// host that comes up again, are opened once instead of per lookup.
+    ///
+    /// A session serves one lookup at a time. The transport would allow
+    /// concurrent fetches, but it opens TLS connections under one lock, so
+    /// lookups sharing a client would queue behind each other's handshakes
+    /// to slow hosts.
+    const Session = struct {
+        gpa: Allocator,
+        did: zat.DidResolver,
+        handle: zat.HandleResolver,
+        released_at: Io.Timestamp = .{ .nanoseconds = 0 },
+
+        fn destroy(self: *Session) void {
+            self.did.deinit();
+            self.handle.deinit();
+            self.gpa.destroy(self);
+        }
+    };
+
+    /// Sessions kept between lookups: one per identity worker. More lookups
+    /// than this at once still each get a session; the extra ones are closed
+    /// when their lookup ends.
+    pub const max_sessions = 8;
+    /// Idle connections a session keeps. The DID client talks to the PLC
+    /// directory, plus a did:web host and the DNS endpoint for the rare
+    /// did:web; the handle client to the DNS endpoint and to handle hosts,
+    /// nearly all of which are never asked twice. When a pool is full the
+    /// connection idle longest is closed, so the bound holds however many
+    /// hosts go by: at most max_sessions * (4 + 8) = 96 idle sockets.
+    pub const did_idle_connections = 4;
+    pub const handle_idle_connections = 8;
+    pub const max_idle_connections = max_sessions * (did_idle_connections + handle_idle_connections);
+
+    fn acquireSession(self: *Resolver) !*Session {
+        if (self.popSession()) |session| {
+            if (session.released_at.untilNow(self.io, .awake).toSeconds() < self.session_idle_seconds) {
+                dropClosedConnections(self.io, &session.did.transport);
+                dropClosedConnections(self.io, &session.handle.transport);
+                return session;
+            }
+            session.destroy();
+        }
+        const session = try self.allocator.create(Session);
+        session.* = .{
+            .gpa = self.allocator,
+            .did = zat.DidResolver.initWithOptions(self.io, self.allocator, .{ .keep_alive = true }),
+            .handle = zat.HandleResolver.init(self.io, self.allocator),
+        };
+        errdefer session.destroy();
+        session.handle.transport.keep_alive = true;
+        session.did.transport.http_client.connection_pool.free_size = did_idle_connections;
+        session.handle.transport.http_client.connection_pool.free_size = handle_idle_connections;
+        try self.configure(&session.did, &session.handle);
+        return session;
+    }
+
+    /// Close the idle connections whose peer has closed them. Nothing is
+    /// owed on an idle connection, so one that is readable holds a close (or
+    /// bytes that make it unusable). The transport replays a request whose
+    /// kept connection turns out reset or closed with a TLS close_notify,
+    /// but a bare FIN on a TLS connection reaches it as
+    /// TlsConnectionTruncated, which it reports as a failed request: a
+    /// directory lookup would be retried a minute later and a verifiable
+    /// handle reported unverified. A close that lands between this check and
+    /// the request can still do that.
+    fn dropClosedConnections(io: Io, transport: *HttpTransport) void {
+        const pool = &transport.http_client.connection_pool;
+        pool.mutex.lockUncancelable(io);
+        defer pool.mutex.unlock(io);
+        var next = pool.free.first;
+        while (next) |node| {
+            next = node.next;
+            const connection: *std.http.Client.Connection = @alignCast(@fieldParentPtr("pool_node", node));
+            var fds = [_]std.posix.pollfd{.{ .fd = connection.stream_reader.stream.socket.handle, .events = std.posix.POLL.IN, .revents = 0 }};
+            const ready = std.posix.poll(&fds, 0) catch 0;
+            if (ready == 0) continue;
+            pool.free.remove(node);
+            pool.free_len -= 1;
+            connection.destroy(io);
+        }
+    }
+
+    /// The session released last, so a quiet resolver keeps using one
+    /// session's connections instead of spreading lookups over all of them.
+    fn popSession(self: *Resolver) ?*Session {
+        self.sessions_mutex.lockUncancelable(self.io);
+        defer self.sessions_mutex.unlock(self.io);
+        if (self.sessions_idle == 0) return null;
+        self.sessions_idle -= 1;
+        return self.sessions[self.sessions_idle];
+    }
+
+    fn releaseSession(self: *Resolver, session: *Session) void {
+        session.released_at = Io.Timestamp.now(self.io, .awake);
+        {
+            self.sessions_mutex.lockUncancelable(self.io);
+            defer self.sessions_mutex.unlock(self.io);
+            if (self.sessions_idle < max_sessions) {
+                self.sessions[self.sessions_idle] = session;
+                self.sessions_idle += 1;
+                return;
+            }
+        }
+        session.destroy();
     }
 
     /// Load the system's trust anchors plus the extra ones, as the transport

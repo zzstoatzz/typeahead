@@ -153,6 +153,9 @@ pub fn build(b: *std.Build) void {
     const bridge_integration_step = b.step("test-bridge", "Run the index bridge against a real Tantivy server");
     bridge_integration_step.dependOn(&run_bridge_integration.step);
 
+    const stub_options = b.addOptions();
+    stub_options.addOptionPath("script_path", b.path("src/testing/identity_stub.py"));
+
     const store_role_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/store_role_tests.zig"),
@@ -163,6 +166,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     store_role_tests.root_module.addAnonymousImport("identity-quarantine", .{ .root_source_file = quarantine });
+    store_role_tests.root_module.addOptions("identity_stub_options", stub_options);
     const run_store_role_tests = b.addRunArtifact(store_role_tests);
 
     // The store role killed between and during commits: the executable
@@ -180,9 +184,6 @@ pub fn build(b: *std.Build) void {
     store_role_process_tests.root_module.addAnonymousImport("identity-quarantine", .{ .root_source_file = quarantine });
     const run_store_role_process_tests = b.addRunArtifact(store_role_process_tests);
     run_store_role_process_tests.has_side_effects = true;
-
-    const stub_options = b.addOptions();
-    stub_options.addOptionPath("script_path", b.path("src/testing/identity_stub.py"));
 
     // Needs python3 and openssl on PATH for the loopback stand-in.
     const identity_bench = b.addExecutable(.{

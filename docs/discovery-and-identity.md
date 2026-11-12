@@ -90,6 +90,18 @@ DID (`src/identity-queue.ts`, `services/src/identity.zig`):
   `/admin/identity/complete` with the lease's `gen` and the time the
   observation began. A resolver that dies mid-batch loses nothing: the lease
   lapses and the work is leased again.
+- **connections.** A lookup makes four HTTPS requests: the DID document, two
+  DNS-over-HTTPS queries that vet the handle host's addresses, and the handle
+  host's `/.well-known/atproto-did`. Each of the eight resolver workers keeps
+  a session (`Resolver.Session` in `services/src/identity.zig`) whose
+  connections to the directory and the DNS endpoint stay open between
+  lookups, so a lookup opens one connection, to the handle host, where it
+  opened four until November 11. A session keeps at most 12 idle connections
+  (96 across the resolver), closing the one idle longest; it drops
+  connections the peer has closed before each lookup and is itself replaced
+  after 20 s idle. `cd services && zig build bench-identity
+  -Doptimize=ReleaseFast` measures the CPU per 1,000 lookups against a
+  loopback stand-in (needs `python3` and `openssl`).
 - **guards.** An actor's identity is written only by an observation at least as
   new as `identity_resolved_at`; the queue row is settled only for the
   generation that was leased, so a signal that arrived during resolution
