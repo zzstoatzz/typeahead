@@ -49,6 +49,8 @@ export type BackfillReport =
     actors_total: { turso: number; turso_since_cut: number; d1_since_cut: number; target: number; d1: number | null };
   };
 
+export interface BackfillPosition { step: BackfillStep; cursor: number }
+
 export interface BackfillResult {
   step: BackfillStep;
   cut: number;
@@ -58,7 +60,7 @@ export interface BackfillResult {
   changes: number;
   wrote: boolean;
   report: BackfillReport;
-  next: { step: BackfillStep; cursor: number } | null;
+  next: BackfillPosition | null;
 }
 
 export class BackfillInputError extends Error {}
@@ -258,7 +260,7 @@ export interface BackfillRun {
  *  `call` is the admin endpoint for an operator and `backfillStep` in tests. */
 export async function runBackfill(
   call: (request: BackfillRequest) => Promise<BackfillResult>,
-  options: { cut: number; dry_run: boolean; limit: number; start?: { step: BackfillStep; cursor: number } },
+  options: { cut: number; dry_run: boolean; limit: number; start?: BackfillPosition },
   onResult: (result: BackfillResult) => void = () => {},
 ): Promise<BackfillRun> {
   const none = () => ({ calls: 0, changes: 0, wrote: 0 });
