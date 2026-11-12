@@ -791,6 +791,85 @@ test "a lease in a batch that is dropped does not hide what it leased" {
     try again.commit();
 }
 
+const dave = "did:plc:dddddddddddddddddddddddd";
+const erin = "did:plc:eeeeeeeeeeeeeeeeeeeeeeee";
+
+test "a sighting of a known actor inside its hour reads no record, and the stamp still lands on the hour" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    try testing.expect((try f.apply(t0, .{ .observe = .{ .did = dave } })).created);
+
+    // The record taken away by hand: a sighting that still read it would
+    // find no actor and create one.
+    var key: keys.Buf = undefined;
+    const stored = try f.arena.allocator().dupe(u8, (try f.store.db().get(try keys.actor(&key, dave))).?);
+    try f.store.db().del(try keys.actor(&key, dave));
+    try f.store.db().commit();
+    const outcome = try f.apply(t0 + change.activity_interval, .{ .observe = .{ .did = dave } });
+    try testing.expect(outcome.applied and !outcome.created and outcome.changed == 0);
+    try testing.expect(try f.store.actor(f.arena.allocator(), dave) == null);
+    try f.store.db().put(try keys.actor(&key, dave), stored);
+    try f.store.db().commit();
+
+    _ = try f.apply(t0 + change.activity_interval + 1, .{ .observe = .{ .did = dave } });
+    try testing.expectEqual(@as(u64, t0 + change.activity_interval + 1), (try f.actor(dave)).last_activity_at);
+    _ = try f.apply(t0 + 2 * change.activity_interval + 1, .{ .observe = .{ .did = dave } });
+    try testing.expectEqual(@as(u64, t0 + change.activity_interval + 1), (try f.actor(dave)).last_activity_at);
+    try testing.expectEqual(@as(usize, 1), (try f.logged()).len);
+}
+
+test "a sighting still sees an actor that left, a label that lapsed and a domain that was blocked" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    _ = try f.apply(t0, .{ .profile = .{ .did = dave, .handle = "dave.spam.example" } });
+    _ = try f.apply(t0, .{ .profile = .{ .did = erin, .handle = "erin.test" } });
+    for ([_][]const u8{ dave, erin }) |did| _ = try f.apply(t0 + 1, .{ .observe = .{ .did = did } });
+
+    _ = try f.apply(t0 + 2, .{ .domain_blocked = .{ .domain = "spam.example" } });
+    try testing.expect(!(try f.actor(dave)).hidden);
+    try testing.expectEqual(@as(u64, 1), (try f.apply(t0 + 3, .{ .observe = .{ .did = dave } })).changed);
+    try testing.expect((try f.actor(dave)).hidden);
+    _ = try f.apply(t0 + 4, .{ .domain_unblocked = "spam.example" });
+    try testing.expectEqual(@as(u64, 1), (try f.apply(t0 + 5, .{ .observe = .{ .did = dave } })).changed);
+    try testing.expect(!(try f.actor(dave)).hidden);
+
+    _ = try f.apply(t0 + 6, .{ .label = .{ .did = erin, .source = moderation.bsky_moderation, .value = "!hide", .created = "2026-11-01T00:00:00Z", .expires = "2026-11-08T00:00:00Z", .sequence = 1 } });
+    try testing.expect((try f.actor(erin)).hidden);
+    try testing.expectEqual(@as(u64, 0), (try f.apply(t0 + 7, .{ .observe = .{ .did = erin } })).changed);
+    try testing.expectEqual(@as(u64, 1), (try f.apply(t0 + 86_400 * 30, .{ .observe = .{ .did = erin } })).changed);
+    try testing.expect(!(try f.actor(erin)).hidden);
+
+    _ = try f.apply(t0 + 86_400 * 30, .{ .gone = .{ .did = dave, .status = .deactivated } });
+    try testing.expect(!(try f.apply(t0 + 86_400 * 30 + 1, .{ .observe = .{ .did = dave } })).applied);
+    try testing.expect(!(try f.actor(dave)).live());
+    _ = try f.apply(t0 + 86_400 * 30 + 2, .{ .reactivated = dave });
+    try testing.expect((try f.apply(t0 + 86_400 * 30 + 3, .{ .observe = .{ .did = dave } })).applied);
+}
+
+test "a sighting in a batch that is dropped is not remembered" {
+    var f = try Fixture.init(.{ .seen_limit = 2 });
+    defer f.deinit();
+    {
+        const batch = try f.store.begin(t0);
+        try testing.expect((try batch.apply(.{ .observe = .{ .did = dave } })).created);
+        try testing.expect(!(try batch.apply(.{ .observe = .{ .did = dave } })).created);
+        batch.abort();
+    }
+    try testing.expect((try f.apply(t0 + 1, .{ .observe = .{ .did = dave } })).created);
+
+    var buf: [32]u8 = undefined;
+    for (0..8) |n| _ = try f.apply(t0 + 2, .{ .observe = .{ .did = try std.fmt.bufPrint(&buf, "did:plc:{d:0>24}", .{n}) } });
+    for (0..8) |n| {
+        const outcome = try f.apply(t0 + 3, .{ .observe = .{ .did = try std.fmt.bufPrint(&buf, "did:plc:{d:0>24}", .{n}) } });
+        try testing.expect(outcome.applied and !outcome.created);
+    }
+    try testing.expectEqual(@as(usize, 9), (try f.logged()).len);
+
+    try f.reopen();
+    try testing.expect(!(try f.apply(t0 + 4, .{ .observe = .{ .did = dave } })).created);
+    try testing.expectEqual(@as(u64, t0 + 1), (try f.actor(dave)).last_activity_at);
+}
+
 test "the quality walk queues ranked actors best first and starts again at the end" {
     var f = try Fixture.init(.{});
     defer f.deinit();

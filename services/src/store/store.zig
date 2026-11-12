@@ -38,6 +38,10 @@ pub const Options = struct {
     /// Unicode regexes (src/moderation-regexes.json) that Zig cannot run, so
     /// the owner supplies the predicate; without one no handle is flagged.
     handle_flagged: ?*const fn (handle: []const u8) bool = null,
+    /// Actors `Seen` remembers at most; 0 turns it off. An entry is 40
+    /// bytes, and the slot heard from about 143,000 actors an hour on
+    /// 2026-11-12.
+    seen_limit: usize = 1 << 18,
 };
 
 pub const Error = error{
@@ -73,6 +77,34 @@ pub const Timed = enum {
 /// costs the first scan of each range the whole walk once.
 pub const Floors = std.EnumArray(Timed, u64);
 
+/// Known actors that a sighting cannot change yet, each with the last second
+/// for which that holds.
+///
+/// `observe` on a known actor changes it only when its hourly activity
+/// stamp is due or its `hidden` flag would come out different, and it had
+/// to read the record to learn that neither was: one point read for nearly
+/// every relay event. `save` is the only place an actor record is written,
+/// and it leaves an entry here for every live actor whose `hidden` does not
+/// depend on the time (no label with an expiry) and removes the entry of
+/// every other, so an entry says what the record says. Everything is
+/// dropped when a batch aborts, because its saves did not land, when the
+/// blocked domains change, because `hidden` can then come out different,
+/// and when the map is full. In memory only: empty after an open.
+const Seen = struct {
+    quiet_until: std.AutoHashMapUnmanaged(Key, u64) = .empty,
+
+    /// A did:plc, which is every DID but a handful.
+    const Key = [32]u8;
+
+    fn key(did: []const u8) ?Key {
+        return if (did.len == @sizeOf(Key)) did[0..@sizeOf(Key)].* else null;
+    }
+
+    fn clear(self: *Seen) void {
+        self.quiet_until.clearRetainingCapacity();
+    }
+};
+
 pub const Store = struct {
     gpa: std.mem.Allocator,
     handle: *engine.Handle,
@@ -80,6 +112,7 @@ pub const Store = struct {
     maintainer: maintain.Maintainer,
     domains: moderation.Domains = .empty,
     floors: Floors = .initFill(0),
+    seen: Seen = .{},
     next_change: u64 = 1,
     broken: bool = false,
     batch_open: bool = false,
@@ -116,6 +149,7 @@ pub const Store = struct {
         if (self.batch_open) self.batch.release();
         self.maintainer.deinit();
         self.clearDomains();
+        self.seen.quiet_until.deinit(self.gpa);
         self.handle.close();
         self.gpa.destroy(self);
     }
@@ -522,6 +556,7 @@ pub const Batch = struct {
         if (self.domains_dirty) store.loadDomains() catch {
             store.broken = true;
         };
+        store.seen.clear();
         self.release();
     }
 
@@ -739,7 +774,30 @@ pub const Batch = struct {
             try engine_db.put(try keys.actor(&new_buf, did), self.encoded.items);
         }
         if (content_changed) try self.markChanged(did);
+        self.remember(did, new);
         return .{ .applied = true, .changed = @intFromBool(content_changed), .created = old == null };
+    }
+
+    /// Bring `Seen` in line with the record `save` just left for `did`.
+    fn remember(self: *Batch, did: []const u8, actor: Actor) void {
+        const store = self.store;
+        const key = Seen.key(did) orelse return;
+        const map = &store.seen.quiet_until;
+        const timeless = for (actor.labels) |one| {
+            if (one.expires.len > 0) break false;
+        } else true;
+        if (store.options.seen_limit == 0 or !actor.live() or !timeless) {
+            _ = map.remove(key);
+            return;
+        }
+        if (map.count() >= store.options.seen_limit and !map.contains(key)) store.seen.clear();
+        map.put(store.gpa, key, actor.last_activity_at + change.activity_interval) catch store.seen.clear();
+    }
+
+    /// Whether `Seen` knows a sighting of `did` now would write nothing.
+    fn quiet(self: *Batch, did: []const u8) bool {
+        const until = self.store.seen.quiet_until.get(Seen.key(did) orelse return false) orelse return false;
+        return self.now <= until;
     }
 
     fn queueState(self: *Batch, did: []const u8, actor: Actor) !?record.QueueState {
@@ -767,6 +825,7 @@ pub const Batch = struct {
     }
 
     fn observe(self: *Batch, c: change.Observe) !Outcome {
+        if (self.quiet(c.did)) return .{ .applied = true };
         const old = try self.load(c.did);
         var new = old orelse try self.fresh(c.did);
         if (!new.live()) return .{};
@@ -936,6 +995,7 @@ pub const Batch = struct {
         try (record.PolicyEntry{ .created_at = self.now, .reason = c.reason }).encode(self.tmp(), &value);
         try store.db().put(key, value.items);
         const name = try keys.parseDomain(key);
+        store.seen.clear();
         if (!store.domains.contains(name)) {
             self.domains_dirty = true;
             const owned = try store.gpa.dupe(u8, name);
@@ -950,6 +1010,7 @@ pub const Batch = struct {
         var buf: keys.Buf = undefined;
         const key = try keys.domain(&buf, domain);
         try store.db().del(key);
+        store.seen.clear();
         if (store.domains.fetchRemove(try keys.parseDomain(key))) |removed| {
             self.domains_dirty = true;
             store.gpa.free(removed.key);
