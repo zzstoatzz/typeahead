@@ -115,12 +115,12 @@ fn heartbeat(owner: *Owner) void {
     const c = &owner.counters;
     const span = logfire.span("store.heartbeat", .{});
     defer span.end();
-    span.setAttribute("relay_cursor", @as(i64, @intCast(health.cursors.relay orelse 0)));
+    span.setAttribute("relay_cursor", control.attribute(health.cursors.relay orelse 0));
     span.setAttribute("relay_handed_cursor", self.intake.signals.handed_cursor.load(.monotonic));
     span.setAttribute("relay_events", self.intake.signals.events.load(.monotonic));
     span.setAttribute("relay_paused", self.intake.signals.paused.load(.monotonic));
     span.setAttribute("source_event_at", self.intake.signals.source_event_at.load(.monotonic));
-    span.setAttribute("labeler_cursor", @as(i64, @intCast(health.cursors.labeler orelse 0)));
+    span.setAttribute("labeler_cursor", control.attribute(health.cursors.labeler orelse 0));
     span.setAttribute("change_log_head", health.cursors.next_change);
     span.setAttribute("change_log_floor", health.cursors.change_floor);
     span.setAttribute("queued_changes", c.queued_changes.load(.monotonic));
@@ -210,7 +210,7 @@ fn heartbeat(owner: *Owner) void {
     }
     if (self.bridge) |bridge| {
         const b = bridge.health();
-        span.setAttribute("bridge_position", @as(i64, @intCast(b.position orelse 0)));
+        span.setAttribute("bridge_position", control.attribute(b.position orelse 0));
         span.setAttribute("bridge_index_position", b.index_position);
         span.setAttribute("bridge_lag", b.lag);
         span.setAttribute("bridge_pushes", b.pushes);
@@ -222,19 +222,19 @@ fn heartbeat(owner: *Owner) void {
     }
     if (self.controller) |loop| {
         const r = loop.report();
-        span.setAttribute("control_age_seconds", r.age_seconds);
-        span.setAttribute("control_policy_revision", @as(i64, @intCast(r.policy_revision orelse 0)));
-        span.setAttribute("control_policy_checked_at", r.policy_checked_at);
-        span.setAttribute("control_policy_applied_at", r.policy_applied_at);
-        span.setAttribute("control_rules_changed", r.rules_changed);
-        span.setAttribute("control_requests_sequence", r.requests_sequence);
-        span.setAttribute("control_requests_checked_at", r.requests_checked_at);
-        span.setAttribute("control_requests_queued", r.requests_queued);
-        span.setAttribute("control_requests_skipped", r.requests_skipped);
-        span.setAttribute("control_failures", r.failures);
-        span.setAttribute("control_unauthorized", r.unauthorized);
-        span.setAttribute("control_malformed", r.malformed);
-        span.setAttribute("control_older_revision", r.older_revision);
+        span.setAttribute("control_age_seconds", control.attribute(r.age_seconds));
+        span.setAttribute("control_policy_revision", control.attribute(r.policy_revision orelse 0));
+        span.setAttribute("control_policy_checked_at", control.attribute(r.policy_checked_at));
+        span.setAttribute("control_policy_applied_at", control.attribute(r.policy_applied_at));
+        span.setAttribute("control_rules_changed", control.attribute(r.rules_changed));
+        span.setAttribute("control_requests_sequence", control.attribute(r.requests_sequence));
+        span.setAttribute("control_requests_checked_at", control.attribute(r.requests_checked_at));
+        span.setAttribute("control_requests_queued", control.attribute(r.requests_queued));
+        span.setAttribute("control_requests_skipped", control.attribute(r.requests_skipped));
+        span.setAttribute("control_failures", control.attribute(r.failures));
+        span.setAttribute("control_unauthorized", control.attribute(r.unauthorized));
+        span.setAttribute("control_malformed", control.attribute(r.malformed));
+        span.setAttribute("control_older_revision", control.attribute(r.older_revision));
     }
     span.setAttribute("control_misconfigured", self.config.control == .misconfigured);
     span.setAttribute("last_commit_at", c.last_commit_at.load(.monotonic));

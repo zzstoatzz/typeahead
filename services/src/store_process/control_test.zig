@@ -606,6 +606,41 @@ test "a malformed snapshot is refused whole" {
     try testing.expectEqual(@as(?u64, 9), (try rig.f.cursors()).control_policy);
 }
 
+test "a revision or sequence past what a JavaScript number holds is refused, and no stored position can stop the heartbeat" {
+    const rig = try Rig.create();
+    defer rig.destroy();
+    rig.worker.block("spam.example");
+    rig.worker.ask(alice);
+    try rig.poll();
+
+    // 2^53 is the last value taken; 2^53 + 1, 2^63 and 2^64 - 1 are not.
+    try testing.expectEqual(@as(u64, 9007199254740992), control.max_position);
+    for ([_][]const u8{ "9007199254740993", "9223372036854775808", "18446744073709551615", "18446744073709551616" }) |huge| {
+        const arena = rig.f.arena.allocator();
+        rig.worker.script(.{ .status = 200, .body = try std.fmt.allocPrint(arena, "{{\"revision\":{s},\"overrides\":[],\"blocked_domains\":[]}}", .{huge}) });
+        rig.worker.script(.{ .status = 200, .body = try std.fmt.allocPrint(arena, "{{\"requests\":[{{\"seq\":{s},\"did\":\"" ++ bob ++ "\"}}],\"more\":false}}", .{huge}) });
+        try rig.poll();
+        try testing.expectEqual(control.Failure.malformed, rig.loop.report().last_failure);
+        try testing.expectEqual(@as(?u64, 2), (try rig.f.cursors()).control_policy);
+        try testing.expectEqual(@as(?u64, 1), (try rig.f.cursors()).control_requests);
+        try testing.expectEqualStrings("spam.example ", try rig.bridgePolicy());
+        try testing.expect(try rig.f.actor(bob) == null);
+    }
+    try testing.expectEqual(@as(u64, 8), rig.loop.report().malformed);
+
+    const arena = rig.f.arena.allocator();
+    try testing.expectEqual(@as(u64, control.max_position), (try control.parsePolicy(arena, "{\"revision\":9007199254740992,\"overrides\":[],\"blocked_domains\":[]}")).revision);
+    try testing.expectEqual(@as(usize, 1), (try control.parsePage(arena, "{\"requests\":[{\"seq\":9007199254740992,\"did\":\"" ++ bob ++ "\"}],\"more\":false}", 1, 5)).requests.len);
+
+    // A position already in a store, from whatever wrote it, is reported
+    // as the largest attribute value rather than ending the process.
+    try testing.expectEqual(@as(i64, 0), control.attribute(0));
+    try testing.expectEqual(@as(i64, 9007199254740992), control.attribute(control.max_position));
+    try testing.expectEqual(@as(i64, std.math.maxInt(i64)), control.attribute(std.math.maxInt(i64)));
+    try testing.expectEqual(@as(i64, std.math.maxInt(i64)), control.attribute(1 << 63));
+    try testing.expectEqual(@as(i64, std.math.maxInt(i64)), control.attribute(std.math.maxInt(u64)));
+}
+
 test "a revision older than the one applied is refused, and the same one changes nothing" {
     const rig = try Rig.create();
     defer rig.destroy();

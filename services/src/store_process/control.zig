@@ -54,6 +54,17 @@ pub const min_secret_bytes = 32;
 /// 80 bytes an override this is room for about 50,000.
 pub const max_response_bytes = 4 << 20;
 pub const max_rules = 100_000;
+/// A revision or sequence above this is refused. The Worker's are JavaScript
+/// numbers, exact only to here, and what this role stores it also reports
+/// as a signed 64-bit span attribute.
+pub const max_position = 1 << 53;
+
+/// `value` as a span attribute, which is a signed 64-bit integer: one too
+/// large to be one is reported as the largest, instead of stopping the
+/// process on the conversion.
+pub fn attribute(value: u64) i64 {
+    return std.math.cast(i64, value) orelse std.math.maxInt(i64);
+}
 
 pub const Options = struct {
     /// The Worker's origin, without a trailing slash.
@@ -209,6 +220,7 @@ pub fn validDomain(name: []const u8) bool {
 /// partial one would read as the removal of every rule it lacks.
 pub fn parsePolicy(arena: Allocator, body: []const u8) ParseError!Policy {
     const parsed = try wire(PolicyWire, arena, body);
+    if (parsed.revision > max_position) return error.Malformed;
     if (parsed.overrides.len > max_rules or parsed.blocked_domains.len > max_rules) return error.Malformed;
 
     const overrides = try arena.alloc(Rule, parsed.overrides.len);
@@ -240,7 +252,7 @@ pub fn parsePage(arena: Allocator, body: []const u8, after: u64, limit: usize) P
     const requests = try arena.alloc(Request, parsed.requests.len);
     var last = after;
     for (requests, parsed.requests) |*slot, one| {
-        if (one.seq <= last) return error.Malformed;
+        if (one.seq <= last or one.seq > max_position) return error.Malformed;
         last = one.seq;
         slot.* = .{ .seq = one.seq, .did = one.did };
     }
