@@ -99,6 +99,47 @@ test "a broken store is reopened and the same submissions are applied once" {
     try testing.expectEqual(@as(u64, 1), f.owner.counters.reopens.load(.monotonic));
 }
 
+test "a page of the profile fill lands with its position in the owner's commit, once across a reopen, and health reports it" {
+    const f = try Fixture.create(.{ .health_seconds = 0 });
+    defer f.destroy();
+    _ = try f.commit(&.{ .{ .profile = .{ .did = alice, .handle = "alice.test" } }, .{ .profile = .{ .did = bob, .handle = "bob.test", .description = "bob's own" } } }, null);
+
+    const intruder = try Store.open(testing.allocator, testing.io, f.tmp.dir, "store", .{});
+    intruder.close();
+
+    const page = try queue(f, &.{}, null);
+    page.fill = .{ .rows = &.{ .{ .did = alice, .description = "from turso", .banner = "bafkalice" }, .{ .did = bob, .description = "other" } }, .next = "did:plc:m" };
+    const beside = try queue(f, &.{.{ .observe = .{ .did = "did:plc:carol" } }}, .{ .relay = 4 });
+    while (!page.done.isSet()) _ = f.owner.turn(0);
+    try testing.expect(beside.done.isSet());
+    try testing.expectEqual(@as(u64, 1), f.owner.counters.reopens.load(.monotonic));
+    try testing.expectEqual(Store.Filled{ .applied = true, .filled = 1 }, page.filled);
+    try testing.expectEqual(@as(u32, 1), page.summary.changed);
+    try testing.expectEqualStrings("from turso", (try f.live(alice)).description);
+    try testing.expectEqualStrings("bob's own", (try f.live(bob)).description);
+    try testing.expectEqual(@as(?u64, 4), (try f.cursors()).relay);
+
+    // The page again, as a producer that did not hear of the commit sends it.
+    const again = try queue(f, &.{}, null);
+    again.fill = page.fill;
+    while (!again.done.isSet()) _ = f.owner.turn(0);
+    try testing.expectEqual(Store.Filled{}, again.filled);
+
+    const last = try queue(f, &.{}, null);
+    last.fill = .{ .after = "did:plc:m" };
+    while (!last.done.isSet()) _ = f.owner.turn(0);
+    try testing.expectEqual(Store.Filled{ .applied = true, .finished = true }, last.filled);
+
+    try f.restart();
+    const health = f.owner.health();
+    try testing.expectEqual(@as(u64, 2), health.profile_fill.pages);
+    try testing.expectEqual(@as(u64, 2), health.profile_fill.rows);
+    try testing.expectEqual(@as(u64, 1), health.profile_fill.filled);
+    try testing.expectEqual(harness.t0, health.profile_fill.started_at);
+    try testing.expectEqual(harness.t0, health.profile_fill.finished_at);
+    try testing.expectEqualStrings("did:plc:m", health.profile_fill.position());
+}
+
 var fatal_calls: usize = 0;
 
 fn countFatal() void {

@@ -7,7 +7,8 @@
 //!   single store commit (each submission's cursor in the same commit as its
 //!   changes, and a mark for every domain whose block they change, so the
 //!   sweep that brings stored actors in line is owed until it has finished,
-//!   across restarts), and between commits does the store's housekeeping: stepped
+//!   across restarts, and a page of the profile fill with the position it
+//!   moves), and between commits does the store's housekeeping: stepped
 //!   maintenance, domain sweeps, tombstone pruning, the label-expiry pass,
 //!   change-log trimming, the handle repair, the first-check pass and the
 //!   health snapshot. For
@@ -177,6 +178,10 @@ pub const Submission = struct {
     refresh_jobs: []const change.RefreshJob = &.{},
     /// What this submission's `refresh_walk` changes did.
     walked: change.WalkTally = .initFill(.{}),
+    /// A page of the profile fill (`Store.profileFill`), applied after the
+    /// changes in the same commit, and what it did.
+    fill: ?Store.FillPage = null,
+    filled: Store.Filled = .{},
     summary: Summary = .{},
     waited: bool = false,
     failed: bool = false,
@@ -251,6 +256,7 @@ pub const Health = struct {
     tombstones: u64 = 0,
     repair: Repair = .{},
     first_check: FirstCheck = .{},
+    profile_fill: ProfileFill = .{},
     /// True when a count above stopped at `count_cap`.
     counts_capped: bool = false,
     maintenance: ?maintain.Stats = null,
@@ -291,6 +297,22 @@ pub const FirstCheck = struct {
     did_len: usize = 0,
 
     pub fn position(self: *const FirstCheck) []const u8 {
+        return self.did[0..self.did_len];
+    }
+};
+
+/// Where the profile fill stands.
+pub const ProfileFill = struct {
+    started_at: u64 = 0,
+    /// 0 until the source has said its table ended.
+    finished_at: u64 = 0,
+    pages: u64 = 0,
+    rows: u64 = 0,
+    filled: u64 = 0,
+    did: [max_walk_did]u8 = undefined,
+    did_len: usize = 0,
+
+    pub fn position(self: *const ProfileFill) []const u8 {
         return self.did[0..self.did_len];
     }
 };
@@ -646,6 +668,7 @@ pub const Owner = struct {
             submission.summary = .{};
             submission.jobs = &.{};
             submission.refresh_jobs = &.{};
+            submission.filled = .{};
             const jobs_before = batch.leased().len;
             const refresh_before = batch.refreshLeased().len;
             var walked_before: change.WalkTally = undefined;
@@ -676,6 +699,10 @@ pub const Owner = struct {
                     .domain_unblocked => |name| try self.noteDomain(batch, name),
                     else => {},
                 }
+            }
+            if (submission.fill) |page| {
+                submission.filled = try batch.profileFill(page);
+                submission.summary.changed += @intCast(submission.filled.filled);
             }
             if (submission.cursor) |update| try batch.setCursor(update);
             const leased = batch.leased()[jobs_before..];
@@ -944,8 +971,8 @@ pub const Owner = struct {
     }
 
     /// What the snapshot takes from point reads and the engine's own
-    /// counters: cursors, walks, where the repair and the first-check pass
-    /// stand, table statistics.
+    /// counters: cursors, walks, where the repair, the first-check pass and
+    /// the profile fill stand, table statistics.
     fn readState(self: *Owner, fresh: *Health) !void {
         _ = self.scratch.reset(.retain_capacity);
         fresh.cursors = try self.store.cursors(self.scratch.allocator());
@@ -979,6 +1006,10 @@ pub const Owner = struct {
         fresh.first_check = .{ .stamp = first_check.stamp, .started_at = first_check.started_at, .finished_at = first_check.finished_at, .examined = first_check.examined, .queued = first_check.queued };
         fresh.first_check.did_len = @min(first_check.position.len, max_walk_did);
         @memcpy(fresh.first_check.did[0..fresh.first_check.did_len], first_check.position[0..fresh.first_check.did_len]);
+        const fill = try store_mod.read.profileFillState(self.store.db(), self.scratch.allocator());
+        fresh.profile_fill = .{ .started_at = fill.started_at, .finished_at = fill.finished_at, .pages = fill.pages, .rows = fill.rows, .filled = fill.filled };
+        fresh.profile_fill.did_len = @min(fill.position.len, max_walk_did);
+        @memcpy(fresh.profile_fill.did[0..fresh.profile_fill.did_len], fill.position[0..fresh.profile_fill.did_len]);
         fresh.maintenance = self.store.stats();
     }
 
