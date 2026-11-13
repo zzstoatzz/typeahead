@@ -128,27 +128,28 @@ for the accounts it has refreshed from the appview since its load, and
 Bluesky is about a million requests and is ruled out. The profile fill copies
 them from Turso once per store, before Turso goes.
 
-**The Worker** serves them at `GET /slot/control/profile-fill?after=<did>&limit=<n>`,
+**The Worker** serves them at `GET /slot/control/profile-fill?after=<row>&limit=<n>`,
 beside the [slot control endpoints](slot-control.md#endpoints) and behind the
 same `SLOT_CONTROL_SECRET` (`src/handlers/slot-control.ts`). A call reads the
-next `limit` rows of `actors` in DID order (1 to 1000, default 500) with
+next `limit` rows of `actors` in the order the table is stored (1 to 1000,
+default 500) with
 
 ```sql
-SELECT did, description, banner_url FROM actors WHERE did > ?1 ORDER BY did LIMIT ?2
+SELECT rowid, did, description, banner_url FROM actors WHERE rowid > ?1 ORDER BY rowid LIMIT ?2
 ```
 
-and answers `{"rows":[{"did","description","banner"}],"next":"<did>"|null}`:
-the rows read that have a description or a banner, and the last DID read,
+and answers `{"rows":[{"did","description","banner"}],"next":"<row>"|null}`:
+the rows read that have a description or a banner, and the last row number read,
 which is the next call's `after`. `next` moves on when no row of the page
 qualified and is null once the table has ended (a page shorter than `limit`).
 `banner` is the blob's CID, the form a store record holds; Turso's
 `banner_url` holds a CID, a CDN URL or a getBlob URL, and the handler reduces
-all three. The query is a range search of the primary key's index (`SEARCH
-actors USING INDEX sqlite_autoindex_actors_1 (did>?)`, pinned with bound
-parameters by `src/handlers/slot-profile-fill.test.ts` on the production
-schema dump under stock SQLite; not confirmed with an `EXPLAIN` against Turso),
-so a call costs `limit` index entries and `limit` row lookups wherever in the
-table it starts. It answers `400` for an `after` that is not a DID or a
+all three. The query is a range search of the table by rowid (`SEARCH actors
+USING INTEGER PRIMARY KEY (rowid>?)`, pinned with bound parameters by
+`src/handlers/slot-profile-fill.test.ts` on the production schema dump), so a
+call reads `limit` rows that lie next to each other. Paged by DID a call was
+`limit` index entries and `limit` lookups scattered through the table, 2.8 s
+a page on 2026-11-12. It answers `400` for an `after` that is not a row number or a
 `limit` out of range, `401`, `429` and `503` as the other slot endpoints do,
 and `410` once `TURSO_ACTORS` is `off`.
 
@@ -215,7 +216,7 @@ fly ssh console -a <slot> -C "curl -s localhost:8082/health" | jq .profile_fill
 
 A deploy restarts the machine: see
 [what a store restart costs](../deploy/shadow-slot/sizing.md#what-a-store-restart-costs-the-watermark).
-While it runs, `state` is `on`, `pages` and `position_did` rise (the stored
+While it runs, `state` is `on`, `pages` and `position` (a row number of Turso's table) rise (the stored
 figures are refreshed once a minute), `failures.total` stays 0, and `deferred`
 rises only while `bridge_lag` is above the limit. It is done when `finished`
 is true and `finished_at` is set; `filled` is the number of actors that took a

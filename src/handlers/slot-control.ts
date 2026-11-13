@@ -1,5 +1,4 @@
 import { INDEX_REQUEST_PAGE_MAX, controlDb, controlMeta, indexRequestPage, policySnapshot, type ControlMeta } from "../control-store";
-import { validOverrideDid } from "../control-rules";
 import type { SqlDb } from "../db";
 import { tursoActorsOn } from "../turso-policy-mirror";
 import type { Env } from "../types";
@@ -114,9 +113,12 @@ export async function handleSlotIndexRequests(request: Request, env: SlotEnv): P
 export const PROFILE_FILL_PAGE_MAX = 1000;
 const PROFILE_FILL_PAGE_DEFAULT = 500;
 
-/** One page of the scan, in primary-key order. Every row is read whether or
- *  not it qualifies, so the last one is where the next call starts. */
-export const PROFILE_FILL_SQL = "SELECT did, description, banner_url FROM actors WHERE did > ?1 ORDER BY did LIMIT ?2";
+/** One page of the scan, in the order the table is stored. `actors` is a
+ *  rowid table, so this reads it front to back; in DID order every row was
+ *  an index entry and then a lookup elsewhere in the table, and a page took
+ *  2.8 s. Every row is read whether or not it qualifies, so the last one is
+ *  where the next call starts. */
+export const PROFILE_FILL_SQL = "SELECT rowid, did, description, banner_url FROM actors WHERE rowid > ?1 ORDER BY rowid LIMIT ?2";
 
 interface ProfileFillRow { did: string; description: string; banner: string }
 
@@ -131,12 +133,12 @@ export function bannerCid(stored: string): string {
   }
 }
 
-/** `GET /slot/control/profile-fill?after=<did>[&limit=<n>]`: the descriptions
+/** `GET /slot/control/profile-fill?after=<row>[&limit=<n>]`: the descriptions
  *  and banners Turso holds, for the one-time pass that copies them into a
  *  store slot loaded from a bundle without them (docs/turso-retirement.md).
- *  A call reads the `limit` rows of `actors` after `after` in DID order and
- *  returns those with a description or a banner. `next` is the last DID
- *  read, to pass as the next `after`, and null once the table has ended; it
+ *  A call reads the `limit` rows of `actors` after row `after` in stored order
+ *  and returns those with a description or a banner. `next` is the last row
+ *  number read, to pass as the next `after`, and null once the table has ended; it
  *  moves on even when no row of the page qualified. `banner` is the blob's
  *  CID, the form a store's record holds, whatever shape Turso's
  *  `banner_url` has. */
@@ -146,14 +148,14 @@ export async function handleSlotProfileFill(request: Request, env: FillEnv, db: 
   if (!tursoActorsOn(env)) return answer({ error: "Turso's actor tables are retired" }, 410);
   const url = new URL(request.url);
   const after = url.searchParams.get("after") ?? "";
-  if (after !== "" && !validOverrideDid(after)) return answer({ error: "after must be a DID" }, 400);
+  if (!/^\d{0,18}$/.test(after)) return answer({ error: "after must be a row number" }, 400);
   const limit = position(url, "limit") ?? PROFILE_FILL_PAGE_DEFAULT;
   if (Number.isNaN(limit) || limit < 1 || limit > PROFILE_FILL_PAGE_MAX) {
     return answer({ error: `limit must be 1 to ${PROFILE_FILL_PAGE_MAX}` }, 400);
   }
 
-  const { results } = await db.prepare(PROFILE_FILL_SQL).bind(after, limit)
-    .all<{ did: string; description: string | null; banner_url: string | null }>();
+  const { results } = await db.prepare(PROFILE_FILL_SQL).bind(after === "" ? 0 : Number(after), limit)
+    .all<{ rowid: number; did: string; description: string | null; banner_url: string | null }>();
   const rows: ProfileFillRow[] = [];
   for (const row of results) {
     const description = row.description ?? "";
@@ -161,5 +163,5 @@ export async function handleSlotProfileFill(request: Request, env: FillEnv, db: 
     if (description !== "" || banner !== "") rows.push({ did: row.did, description, banner });
   }
   const last = results.at(-1);
-  return answer({ rows, next: results.length === limit && last !== undefined ? last.did : null }, 200);
+  return answer({ rows, next: results.length === limit && last !== undefined ? String(last.rowid) : null }, 200);
 }

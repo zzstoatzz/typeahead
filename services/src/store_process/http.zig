@@ -308,7 +308,8 @@ pub const ProfileFillBody = struct {
     rows: u64,
     filled: u64,
     /// The last DID the Worker read: where the next page is asked from.
-    position_did: []const u8,
+    /// The last row of the Worker's table the pass has read.
+    position: []const u8,
     /// Rows of Turso's table one page reads, seconds between pages, and
     /// the bridge lag above which no page is asked for.
     page_size: ?usize = null,
@@ -344,7 +345,7 @@ pub fn profileFillBody(ctx: *const Context, arena: Allocator, stored: owner_mod.
         .pages = stored.pages,
         .rows = stored.rows,
         .filled = stored.filled,
-        .position_did = try arena.dupe(u8, stored.position()),
+        .position = try arena.dupe(u8, stored.position()),
     };
     const loop = ctx.profile_fill orelse return body;
     const r = loop.report();

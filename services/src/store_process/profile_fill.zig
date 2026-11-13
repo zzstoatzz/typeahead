@@ -5,7 +5,7 @@
 //! A slot's store was loaded from a search-index bundle, which carries
 //! neither field, so it holds them only for the accounts it has refreshed
 //! since. The Worker serves Turso's at `/slot/control/profile-fill`, a page
-//! of its `actors` table at a time in DID order (`src/handlers/slot-control.ts`),
+//! of its `actors` table at a time in stored order (`src/handlers/slot-control.ts`),
 //! behind the secret the control loop uses. This loop asks for the page
 //! after its stored position and hands it to the owner, which writes the
 //! rows and the new position in one commit (`Store.profileFill`): a field
@@ -127,26 +127,35 @@ const Wire = struct {
     next: ?[]const u8,
 };
 
-/// The page in `body`, asked for after `after` with `limit`. `Malformed`
-/// unless its DIDs rise from above `after` and `next` is at or past the
-/// last of them: the position stored is `next`, so a page out of order
-/// would skip what lies between, and one that does not move would be asked
-/// for again for ever.
+/// A position in the Worker's table: a row number in decimal, or the empty
+/// string for the start.
+fn rowNumber(text: []const u8) ?u64 {
+    if (text.len == 0) return 0;
+    if (text.len > 18) return null;
+    return std.fmt.parseInt(u64, text, 10) catch null;
+}
+
+/// The page in `body`, asked for after row `after` with `limit`. `Malformed`
+/// unless every row names a DID and `next` is a row number past `after`:
+/// the position stored is `next`, and one that does not move would be asked
+/// for again for ever. The Worker reads its table in stored order, so the
+/// DIDs of a page come in no order.
 pub fn parsePage(arena: Allocator, body: []const u8, after: []const u8, limit: usize) ParseError!Store.FillPage {
     const parsed = std.json.parseFromSliceLeaky(Wire, arena, body, .{ .ignore_unknown_fields = true }) catch |err| switch (err) {
         error.OutOfMemory => return error.OutOfMemory,
         else => return error.Malformed,
     };
     if (parsed.rows.len > limit) return error.Malformed;
+    const from = rowNumber(after) orelse return error.Malformed;
     const rows = try arena.alloc(Store.FillRow, parsed.rows.len);
-    var last = after;
     for (rows, parsed.rows) |*slot, one| {
-        if (std.mem.order(u8, one.did, last) != .gt) return error.Malformed;
-        last = one.did;
+        if (!control.validDid(one.did)) return error.Malformed;
         slot.* = .{ .did = one.did, .description = one.description, .banner = one.banner };
     }
     if (parsed.next) |next| {
-        if (!control.validDid(next) or std.mem.order(u8, next, last) == .lt or std.mem.order(u8, next, after) != .gt) return error.Malformed;
+        if (next.len == 0) return error.Malformed;
+        const to = rowNumber(next) orelse return error.Malformed;
+        if (to <= from) return error.Malformed;
     }
     return .{ .after = after, .rows = rows, .next = parsed.next };
 }
@@ -347,26 +356,25 @@ pub const Filler = struct {
 
 const testing = std.testing;
 
-test "a page is taken only when its DIDs rise from the position asked from" {
+test "a page is taken only when its position moves past the one asked from" {
     var arena_state: std.heap.ArenaAllocator = .init(testing.allocator);
     defer arena_state.deinit();
     const arena = arena_state.allocator();
 
     const page = try parsePage(arena,
-        \\{"rows":[{"did":"did:plc:b","description":"line\none","banner":""},{"did":"did:plc:c","description":"","banner":"bafkc"}],"next":"did:plc:d","extra":1}
-    , "did:plc:a", 2);
-    try testing.expectEqualStrings("did:plc:a", page.after);
+        \\{"rows":[{"did":"did:plc:c","description":"line\none","banner":""},{"did":"did:plc:b","description":"","banner":"bafkc"}],"next":"12","extra":1}
+    , "10", 2);
+    try testing.expectEqualStrings("10", page.after);
     try testing.expectEqual(@as(usize, 2), page.rows.len);
     try testing.expectEqualStrings("line\none", page.rows[0].description);
     try testing.expectEqualStrings("bafkc", page.rows[1].banner);
-    try testing.expectEqualStrings("did:plc:d", page.next.?);
+    try testing.expectEqualStrings("12", page.next.?);
 
-    const empty = try parsePage(arena, "{\"rows\":[],\"next\":\"did:plc:b\"}", "did:plc:a", 500);
+    const empty = try parsePage(arena, "{\"rows\":[],\"next\":\"510\"}", "10", 500);
     try testing.expectEqual(@as(usize, 0), empty.rows.len);
     const end = try parsePage(arena, "{\"rows\":[{\"did\":\"did:plc:b\",\"description\":\"x\",\"banner\":\"\"}],\"next\":null}", "", 500);
     try testing.expect(end.next == null and end.rows.len == 1);
-    // The last DID read may be the last row's.
-    _ = try parsePage(arena, "{\"rows\":[{\"did\":\"did:plc:b\",\"description\":\"x\",\"banner\":\"\"}],\"next\":\"did:plc:b\"}", "did:plc:a", 500);
+    _ = try parsePage(arena, "{\"rows\":[],\"next\":\"1\"}", "", 500);
 
     for ([_][]const u8{
         "",
@@ -375,21 +383,20 @@ test "a page is taken only when its DIDs rise from the position asked from" {
         "{\"next\":null}",
         "{\"rows\":[{\"did\":\"did:plc:b\",\"description\":\"x\"}],\"next\":null}",
         "{\"rows\":[{\"did\":\"did:plc:b\",\"description\":\"x\",\"banner\":7}],\"next\":null}",
-        // at or before the position asked from
-        "{\"rows\":[{\"did\":\"did:plc:a\",\"description\":\"x\",\"banner\":\"\"}],\"next\":\"did:plc:b\"}",
-        "{\"rows\":[],\"next\":\"did:plc:a\"}",
-        "{\"rows\":[],\"next\":\"did:plc:0\"}",
-        // out of order, or repeated
-        "{\"rows\":[{\"did\":\"did:plc:c\",\"description\":\"x\",\"banner\":\"\"},{\"did\":\"did:plc:b\",\"description\":\"x\",\"banner\":\"\"}],\"next\":\"did:plc:d\"}",
-        "{\"rows\":[{\"did\":\"did:plc:b\",\"description\":\"x\",\"banner\":\"\"},{\"did\":\"did:plc:b\",\"description\":\"y\",\"banner\":\"\"}],\"next\":\"did:plc:d\"}",
-        // a next position before the last row, or one that is no DID
-        "{\"rows\":[{\"did\":\"did:plc:c\",\"description\":\"x\",\"banner\":\"\"}],\"next\":\"did:plc:b\"}",
+        // a row that names no DID
+        "{\"rows\":[{\"did\":\"eve.test\",\"description\":\"x\",\"banner\":\"\"}],\"next\":\"11\"}",
+        // a next position at or before the one asked from, or no row number
+        "{\"rows\":[],\"next\":\"10\"}",
+        "{\"rows\":[],\"next\":\"9\"}",
         "{\"rows\":[],\"next\":\"\"}",
-        "{\"rows\":[],\"next\":\"eve.test\"}",
-        "{\"rows\":[],\"next\":\"did:plc:b c\"}",
-    }) |body| try testing.expectError(error.Malformed, parsePage(arena, body, "did:plc:a", 500));
+        "{\"rows\":[],\"next\":\"did:plc:b\"}",
+        "{\"rows\":[],\"next\":\"1 2\"}",
+        "{\"rows\":[],\"next\":\"1234567890123456789\"}",
+    }) |body| try testing.expectError(error.Malformed, parsePage(arena, body, "10", 500));
+    // a position this pass cannot have stored
+    try testing.expectError(error.Malformed, parsePage(arena, "{\"rows\":[],\"next\":\"11\"}", "did:plc:a", 500));
     // more rows than were asked for
-    try testing.expectError(error.Malformed, parsePage(arena, "{\"rows\":[{\"did\":\"did:plc:b\",\"description\":\"x\",\"banner\":\"\"},{\"did\":\"did:plc:c\",\"description\":\"x\",\"banner\":\"\"}],\"next\":\"did:plc:c\"}", "did:plc:a", 1));
+    try testing.expectError(error.Malformed, parsePage(arena, "{\"rows\":[{\"did\":\"did:plc:b\",\"description\":\"x\",\"banner\":\"\"},{\"did\":\"did:plc:c\",\"description\":\"x\",\"banner\":\"\"}],\"next\":\"12\"}", "10", 1));
 }
 
 test "a position is sent as a query value" {

@@ -26,7 +26,9 @@ pub const policy_format = 1;
 pub const walk_format = 1;
 pub const repair_format = 1;
 pub const first_check_format = 1;
-pub const profile_fill_format = 1;
+/// 1 was the pass that read the source in DID order, whose position was a
+/// DID; 2 reads it in stored order and keeps a row number.
+pub const profile_fill_format = 2;
 
 pub const Error = error{ CorruptRecord, UnsupportedRecordFormat };
 
@@ -437,7 +439,9 @@ pub const ProfileFillState = struct {
 
     pub fn decode(bytes: []const u8) Error!ProfileFillState {
         var in: Input = .{ .bytes = bytes };
-        if (try in.byte() != profile_fill_format) return error.UnsupportedRecordFormat;
+        const format = try in.byte();
+        if (format == 1) return .{};
+        if (format != profile_fill_format) return error.UnsupportedRecordFormat;
         const state: ProfileFillState = .{
             .started_at = try in.int(),
             .finished_at = try in.int(),
@@ -700,9 +704,11 @@ test "queue state, stored labels and policy entries round trip" {
     try testing.expectError(error.CorruptRecord, FirstCheckState.decode(out.items[0 .. out.items.len - 1]));
     try testing.expectError(error.UnsupportedRecordFormat, FirstCheckState.decode(&.{ first_check_format + 1, 0, 0, 0, 0, 0, 0 }));
 
-    const profile_fill: ProfileFillState = .{ .started_at = 1_794_500_000, .finished_at = 1_794_526_400, .pages = 26_400, .rows = 1_000_000, .filled = 900_000, .position = "did:plc:abc" };
+    const profile_fill: ProfileFillState = .{ .started_at = 1_794_500_000, .finished_at = 1_794_526_400, .pages = 26_400, .rows = 1_000_000, .filled = 900_000, .position = "1000000" };
     try profile_fill.encode(gpa, &out);
     try testing.expectEqualDeep(profile_fill, try ProfileFillState.decode(out.items));
+    // what the DID-ordered pass stored is a position this one cannot use
+    try testing.expectEqualDeep(ProfileFillState{}, try ProfileFillState.decode(&.{ 1, 9, 9, 9 }));
     try testing.expectError(error.CorruptRecord, ProfileFillState.decode(out.items[0 .. out.items.len - 1]));
     try testing.expectError(error.UnsupportedRecordFormat, ProfileFillState.decode(&.{ profile_fill_format + 1, 0, 0, 0, 0, 0, 0 }));
 

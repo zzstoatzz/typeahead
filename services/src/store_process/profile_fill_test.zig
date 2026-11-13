@@ -55,14 +55,15 @@ const Worker = struct {
         var out: Io.Writer.Allocating = .init(self.arena);
         const w = &out.writer;
         w.writeAll("{\"rows\":[") catch @panic("out of memory");
+        const from = if (after.len == 0) 0 else std.fmt.parseInt(usize, after, 10) catch return .{ .status = 400 };
         var read: usize = 0;
         var sent: usize = 0;
-        var last: []const u8 = "";
-        for (self.table) |row| {
-            if (std.mem.order(u8, row.did, after) != .gt) continue;
+        var last: usize = from;
+        for (self.table, 1..) |row, number| {
+            if (number <= from) continue;
             if (read == limit) break;
             read += 1;
-            last = row.did;
+            last = number;
             if (row.description.len == 0 and row.banner.len == 0) continue;
             w.print("{s}{{\"did\":{f},\"description\":{f},\"banner\":{f}}}", .{
                 if (sent > 0) "," else "", std.json.fmt(row.did, .{}), std.json.fmt(row.description, .{}), std.json.fmt(row.banner, .{}),
@@ -70,7 +71,7 @@ const Worker = struct {
             sent += 1;
         }
         if (read == limit) {
-            w.print("],\"next\":{f}}}", .{std.json.fmt(last, .{})}) catch @panic("out of memory");
+            w.print("],\"next\":\"{d}\"}}", .{last}) catch @panic("out of memory");
         } else {
             w.writeAll("],\"next\":null}") catch @panic("out of memory");
         }
@@ -250,13 +251,13 @@ test "pages are pulled from the stored position and fill only what the store lac
     // Each filled actor is in the change log, for the bridge to send on.
     try testing.expectEqual(log_head + 2, try rig.head());
     var state = try rig.state();
-    try testing.expectEqualStrings("did:plc:c", state.position);
+    try testing.expectEqualStrings("3", state.position);
     try testing.expectEqual(@as(u64, 1), state.pages);
     try testing.expectEqual(@as(u64, 2), state.filled);
 
     // d is gone and f was never seen: neither is written or created.
     try testing.expectEqual(profile_fill.Step.applied, try rig.step());
-    try testing.expectEqualStrings(origin ++ "/slot/control/profile-fill?after=did:plc:c&limit=3", rig.worker.seen.items[1]);
+    try testing.expectEqualStrings(origin ++ "/slot/control/profile-fill?after=3&limit=3", rig.worker.seen.items[1]);
     try testing.expectEqualStrings("", (try rig.f.actor("did:plc:d")).?.description);
     try testing.expect(try rig.f.actor("did:plc:f") == null);
     try testing.expectEqualStrings("bafke", (try rig.f.live("did:plc:e")).banner);
@@ -265,7 +266,7 @@ test "pages are pulled from the stored position and fill only what the store lac
     try testing.expectEqual(profile_fill.Step.applied, try rig.step());
     try testing.expectEqualStrings("g \"quoted\"\nsecond line", (try rig.f.live("did:plc:g")).description);
     state = try rig.state();
-    try testing.expectEqualStrings("did:plc:i", state.position);
+    try testing.expectEqualStrings("9", state.position);
     try testing.expectEqual(@as(u64, 0), state.finished_at);
 
     // The last page is short, so the Worker says its table has ended.
@@ -294,9 +295,9 @@ test "a restart resumes after the last page that was committed" {
     try testing.expectEqual(profile_fill.Step.applied, try rig.step());
     try testing.expectEqual(profile_fill.Step.applied, try rig.step());
     rig = try rig.restart();
-    try testing.expectEqualStrings("did:plc:f", rig.loop.position.items);
+    try testing.expectEqualStrings("6", rig.loop.position.items);
     try testing.expectEqual(profile_fill.Step.applied, try rig.step());
-    try testing.expectEqualStrings(origin ++ "/slot/control/profile-fill?after=did:plc:f&limit=3", rig.worker.seen.items[2]);
+    try testing.expectEqualStrings(origin ++ "/slot/control/profile-fill?after=6&limit=3", rig.worker.seen.items[2]);
     try testing.expectEqual(profile_fill.Step.finished, try rig.step());
     try testing.expectEqual(@as(usize, 4), rig.worker.seen.items.len);
     const state = try rig.state();
@@ -451,7 +452,7 @@ test "/health reports where the pass stands and what the loop met" {
     try testing.expectEqual(@as(u64, 1), body.pages);
     try testing.expectEqual(@as(u64, 2), body.rows);
     try testing.expectEqual(@as(u64, 2), body.filled);
-    try testing.expectEqualStrings("did:plc:c", body.position_did);
+    try testing.expectEqualStrings("3", body.position);
     try testing.expectEqual(@as(?usize, 3), body.page_size);
     try testing.expectEqual(@as(?u64, 1), body.step_seconds);
     try testing.expectEqual(@as(?u64, 50_000), body.lag_limit);
@@ -571,5 +572,5 @@ test "the role runs the pass to its end over HTTP and never asks again after a r
     try testing.expect(stored.finished_at != 0);
     try testing.expectEqual(@as(u64, 2), stored.pages);
     try testing.expectEqual(@as(u64, 1), stored.rows);
-    try testing.expectEqualStrings("did:plc:cccccccccccccccccccccccc", stored.position());
+    try testing.expectEqualStrings("7", stored.position());
 }

@@ -14,7 +14,7 @@ const CID = "bafkreibannerbannerbannerbannerbannerbannerbannerbannerbanner";
 
 const did = (n: number) => `did:plc:${String(n).padStart(24, "0")}`;
 
-// ten actors in DID order; 3, 4 and 5 hold nothing to copy
+// ten actors; 3, 4, 5 and 9 hold nothing to copy
 const HELD = new Map<number, [description: string | null, banner: string | null]>([
   [1, ["first", ""]],
   [2, ["", CID]],
@@ -27,7 +27,7 @@ const HELD = new Map<number, [description: string | null, banner: string | null]
   [9, ["", "https://pds.example/xrpc/com.atproto.sync.getBlob?cid=%E0%A4%A"]],
   [10, ["tenth", CID]],
 ]);
-// inserted out of DID order, so the page order is the key's and not the rowid's
+// inserted out of DID order: a page follows the rows as stored, 10 3 7 1 9 5 2 8 4 6
 await turso.batch([10, 3, 7, 1, 9, 5, 2, 8, 4, 6].map((n) => {
   const [description, banner] = HELD.get(n) ?? ["", ""];
   return turso.prepare("INSERT INTO actors (did, handle, description, banner_url) VALUES (?1, ?2, ?3, ?4)")
@@ -53,15 +53,15 @@ const page = async (query: string) => {
   return JSON.parse(await res.text());
 };
 
-test("a page holds the rows with a description or a banner, in DID order, and names the last DID read", async () => {
-  expect(await page("?limit=2")).toEqual({
-    rows: [{ did: did(1), description: "first", banner: "" }, { did: did(2), description: "", banner: CID }],
-    next: did(2),
+test("a page holds the rows with a description or a banner, in stored order, and names the last row read", async () => {
+  expect(await page("?limit=3")).toEqual({
+    rows: [{ did: did(10), description: "tenth", banner: CID }, { did: did(7), description: "", banner: CID }],
+    next: "3",
   });
 });
 
 test("a page with nothing to copy still moves on", async () => {
-  expect(await page(`?after=${did(2)}&limit=3`)).toEqual({ rows: [], next: did(5) });
+  expect(await page("?after=4&limit=2")).toEqual({ rows: [], next: "6" });
 });
 
 test("following next reads every row once and ends with null", async () => {
@@ -76,10 +76,10 @@ test("following next reads every row once and ends with null", async () => {
     after = body.next;
   }
   expect(calls).toBe(3);
-  expect(seen).toEqual([1, 2, 6, 7, 8, 10].map(did));
+  expect(seen).toEqual([10, 7, 1, 2, 8, 6].map(did));
   // a table that ends on a page boundary takes one more, empty, call
-  expect(await page(`?after=${did(5)}&limit=5`)).toMatchObject({ next: did(10) });
-  expect(await page(`?after=${did(10)}`)).toEqual({ rows: [], next: null });
+  expect(await page("?after=5&limit=5")).toMatchObject({ next: "10" });
+  expect(await page("?after=10")).toEqual({ rows: [], next: null });
 });
 
 test("a banner is served as its CID whatever shape Turso holds", async () => {
@@ -96,7 +96,7 @@ test("a banner is served as its CID whatever shape Turso holds", async () => {
 test("the limit defaults to 500 and is refused above 1000", async () => {
   expect((await page("")).next).toBeNull();
   expect((await handleSlotProfileFill(get("?limit=1000"), env(), turso)).status).toBe(200);
-  for (const query of ["?limit=0", "?limit=1001", "?limit=many", "?limit=-5", "?limit=1.5", "?after=alice.test", "?after=did:plc:a%20b"]) {
+  for (const query of ["?limit=0", "?limit=1001", "?limit=many", "?limit=-5", "?limit=1.5", "?after=alice.test", `?after=${did(2)}`, "?after=-1", "?after=1.5"]) {
     expect((await handleSlotProfileFill(get(query), env(), turso)).status).toBe(400);
   }
 });
@@ -124,7 +124,7 @@ test("with Turso's actor tables retired it answers 410, after the secret is chec
   expect((await handleSlotProfileFill(get(""), env({ actors: "on" }), turso)).status).toBe(200);
 });
 
-test("the page query is a search of the primary key, with bound parameters", async () => {
-  const { results } = await turso.prepare(`EXPLAIN QUERY PLAN ${PROFILE_FILL_SQL}`).bind(did(5), 500).all<{ detail: string }>();
-  expect(results.map((row) => row.detail)).toEqual(["SEARCH actors USING INDEX sqlite_autoindex_actors_1 (did>?)"]);
+test("the page query reads the table in stored order, with bound parameters", async () => {
+  const { results } = await turso.prepare(`EXPLAIN QUERY PLAN ${PROFILE_FILL_SQL}`).bind(5, 500).all<{ detail: string }>();
+  expect(results.map((row) => row.detail)).toEqual(["SEARCH actors USING INTEGER PRIMARY KEY (rowid>?)"]);
 });

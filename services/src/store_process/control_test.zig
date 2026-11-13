@@ -1241,7 +1241,7 @@ pub const Stub = struct {
             } else if (!std.mem.eql(u8, authorization, bearer)) {
                 request.respond("{\"error\":\"unauthorized\"}", .{ .status = .unauthorized, .keep_alive = false, .extra_headers = json }) catch {};
             } else if (std.mem.startsWith(u8, target, profile_fill.path)) {
-                const body = if (std.mem.indexOf(u8, target, "after=&") != null) "{\"rows\":[{\"did\":\"" ++ alice ++ "\",\"description\":\"from turso\",\"banner\":\"\"}],\"next\":\"" ++ carol ++ "\"}" else "{\"rows\":[],\"next\":null}";
+                const body = if (std.mem.indexOf(u8, target, "after=&") != null) "{\"rows\":[{\"did\":\"" ++ alice ++ "\",\"description\":\"from turso\",\"banner\":\"\"}],\"next\":\"7\"}" else "{\"rows\":[],\"next\":null}";
                 request.respond(body, .{ .keep_alive = false, .extra_headers = json }) catch {};
             } else if (std.mem.startsWith(u8, target, control.requests_path)) {
                 const body = if (std.mem.indexOf(u8, target, "after=0&") != null) "{\"generation\":1,\"requests\":[{\"seq\":4,\"did\":\"" ++ alice ++ "\"}],\"more\":false}" else "{\"generation\":1,\"requests\":[],\"more\":false}";
