@@ -1,6 +1,7 @@
 # Documentation
 
-Start with [architecture](architecture.md) for how the system fits together,
+Start with [how it works](how-it-works.md) for the running system in pictures,
+[architecture](architecture.md) for how the rest fits together,
 [development](development.md) for local setup and checks, and
 [operations](operations.md) for serving, recovery and deployment.
 The public [API reference](https://typeahead.waow.tech/docs) covers app integration.

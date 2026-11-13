@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 890" role="img" aria-labelledby="slot-title slot-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <title id="slot-title">Inside one slot</title>
+  <desc id="slot-desc">A slot is one machine running a store process and a search engine. The store follows the relay, the PLC directory and the labeler, asks Bluesky for profiles and the Worker for policy, and keeps one record per account on disk. An index bridge sends each changed account to the search engine, which holds one document per account and answers search, profile and count requests from the Worker.</desc>
+  <style>
+    svg { --fg: #1f2328; --muted: #59636e; --line: #8c959f; --panel: #f6f8fa; --accent: #0969da; --accent-soft: #ddf4ff; --bg: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      svg { --fg: #e6edf3; --muted: #9198a1; --line: #6e7681; --panel: #161b22; --accent: #4493f8; --accent-soft: #121d2f; --bg: #0d1117; }
+    }
+    .ground { fill: var(--bg); }
+    .box { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+    .core { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 2; }
+    .slot { fill: none; stroke: var(--line); stroke-width: 1.5; stroke-dasharray: 6 5; }
+    .name { fill: var(--fg); font-size: 17px; font-weight: 600; }
+    .sub { fill: var(--muted); font-size: 14px; }
+    .body { fill: var(--fg); font-size: 15px; }
+    .note { fill: var(--muted); font-size: 14px; }
+    .wire { stroke: var(--line); stroke-width: 2; fill: none; }
+    .flow { stroke: var(--accent); stroke-width: 2.5; fill: none; }
+    .head { fill: var(--line); }
+    .flowhead { fill: var(--accent); }
+    .label { fill: var(--fg); font-size: 14px; }
+  </style>
+
+  <rect class="ground" width="600" height="890" rx="12"/>
+
+  <g text-anchor="middle">
+    <rect class="box" x="20" y="20" width="176" height="56" rx="8"/>
+    <text class="name" x="108" y="44">Relay</text>
+    <text class="sub" x="108" y="64">account events, live</text>
+
+    <rect class="box" x="212" y="20" width="176" height="56" rx="8"/>
+    <text class="name" x="300" y="44">PLC directory</text>
+    <text class="sub" x="300" y="64">identity changes, live</text>
+
+    <rect class="box" x="404" y="20" width="176" height="56" rx="8"/>
+    <text class="name" x="492" y="44">Labeler</text>
+    <text class="sub" x="492" y="64">moderation labels, live</text>
+
+    <rect class="box" x="116" y="90" width="176" height="56" rx="8"/>
+    <text class="name" x="204" y="114">Bluesky AppView</text>
+    <text class="sub" x="204" y="134">profiles and counts</text>
+
+    <rect class="box" x="308" y="90" width="176" height="56" rx="8"/>
+    <text class="name" x="396" y="114">Worker</text>
+    <text class="sub" x="396" y="134">policy, index requests</text>
+  </g>
+
+  <path class="wire" d="M300 146 V226"/>
+  <polygon class="head" points="300,236 293,224 307,224"/>
+  <text class="label" x="314" y="180">the store follows or asks;</text>
+  <text class="label" x="314" y="198">nothing pushes into a slot</text>
+
+  <rect class="slot" x="20" y="212" width="560" height="556" rx="12"/>
+
+  <rect class="core" x="50" y="238" width="500" height="178" rx="10"/>
+  <text class="name" x="74" y="270">Store process</text>
+  <text class="body" x="74" y="302">One record per account, every field, on disk.</text>
+  <text class="body" x="74" y="328">Applies events, verifies handles, refreshes profiles.</text>
+  <text class="body" x="74" y="354">Applies moderation policy.</text>
+  <text class="body" x="74" y="380">Keeps a log of every change it makes.</text>
+  <text class="note" x="74" y="404">its port is private: health checks only</text>
+
+  <path class="flow" d="M300 416 V482"/>
+  <polygon class="flowhead" points="300,494 292,480 308,480"/>
+  <text class="label" x="316" y="446">index bridge:</text>
+  <text class="label" x="316" y="464">sends each changed account</text>
+
+  <rect class="core" x="50" y="496" width="500" height="152" rx="10"/>
+  <text class="name" x="74" y="528">Search engine</text>
+  <text class="body" x="74" y="560">One document per account: what a result shows.</text>
+  <text class="body" x="74" y="586">Prefix search and ranking (Tantivy).</text>
+  <text class="body" x="74" y="612">Stops answering if the store falls 2 minutes behind.</text>
+  <text class="note" x="74" y="636">its port is the only way into a slot</text>
+
+  <text class="name" x="50" y="690">One slot</text>
+  <text class="note" x="50" y="714">A Fly machine with its own disk. A supervisor restarts</text>
+  <text class="note" x="50" y="734">either process without stopping the other.</text>
+
+  <path class="wire" d="M500 814 V662"/>
+  <polygon class="head" points="500,650 493,664 507,664"/>
+  <text class="label" x="486" y="796" text-anchor="end">search, profile and count requests</text>
+
+  <rect class="box" x="150" y="814" width="400" height="56" rx="8"/>
+  <text class="name" x="350" y="838" text-anchor="middle">Worker</text>
+  <text class="sub" x="350" y="858" text-anchor="middle">through the search transport</text>
+</svg>
