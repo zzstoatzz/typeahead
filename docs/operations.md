@@ -235,6 +235,15 @@ the slot has not refreshed since, as `/store/actor` reports it) and the pass
 starts over for them. `ENRICH_FIRST_CHECK_PER_HOUR=0` stops it; its position
 is kept. Not deployed as of 2026-11-12.
 
+`profile_fill` is the pass that copies the descriptions and banners Turso
+holds into the actors that have none, once in the life of a store
+([Turso retirement](turso-retirement.md#profile-fill)): its `state` (`on`,
+`off`, or `misconfigured` with `problem`), whether it has `finished`, when it
+started and finished, `pages` applied, the `rows` they carried, actors
+`filled`, the last DID the Worker read, and while it runs the page size, the
+step interval, the bridge lag limit, steps `deferred` for it and `failures` by
+kind. Off unless `PROFILE_FILL=1`. Not deployed as of 2026-11-12.
+
 It emits one `store.heartbeat` span a minute, from the owner after that
 refresh, so a gap means the owner is not turning or the process is down. The
 per-commit progress line stays on stderr through `services/src/log_route.zig`,

@@ -114,6 +114,129 @@ entry, so its document says "not read" until the account next changes or a
 resync runs. The only effect is that three zero counts are left out of its
 profile.
 
+## Profile fill
+
+Status, 2026-11-12: built and tested locally on the `profile-fill` branch.
+Nothing here is deployed, the endpoint has not been called against production
+Turso, and no slot has run the pass.
+
+A store slot was loaded from a search-index bundle, and a bundle carries no
+`description` and no `banner`. So a slot's store holds those two fields only
+for the accounts it has refreshed from the appview since its load, and
+`getProfiles` in slot mode would return the rest without them. Turso's
+`actors` table has both for every account. Re-reading every profile from
+Bluesky is about a million requests and is ruled out. The profile fill copies
+them from Turso once per store, before Turso goes.
+
+**The Worker** serves them at `GET /slot/control/profile-fill?after=<did>&limit=<n>`,
+beside the [slot control endpoints](slot-control.md#endpoints) and behind the
+same `SLOT_CONTROL_SECRET` (`src/handlers/slot-control.ts`). A call reads the
+next `limit` rows of `actors` in DID order (1 to 1000, default 500) with
+
+```sql
+SELECT did, description, banner_url FROM actors WHERE did > ?1 ORDER BY did LIMIT ?2
+```
+
+and answers `{"rows":[{"did","description","banner"}],"next":"<did>"|null}`:
+the rows read that have a description or a banner, and the last DID read,
+which is the next call's `after`. `next` moves on when no row of the page
+qualified and is null once the table has ended (a page shorter than `limit`).
+`banner` is the blob's CID, the form a store record holds; Turso's
+`banner_url` holds a CID, a CDN URL or a getBlob URL, and the handler reduces
+all three. The query is a range search of the primary key's index (`SEARCH
+actors USING INDEX sqlite_autoindex_actors_1 (did>?)`, pinned with bound
+parameters by `src/handlers/slot-profile-fill.test.ts` on the production
+schema dump under stock SQLite; not confirmed with an `EXPLAIN` against Turso),
+so a call costs `limit` index entries and `limit` row lookups wherever in the
+table it starts. It answers `400` for an `after` that is not a DID or a
+`limit` out of range, `401`, `429` and `503` as the other slot endpoints do,
+and `410` once `TURSO_ACTORS` is `off`.
+
+**The store role** runs the pass when `PROFILE_FILL=1` and the control loop is
+on (`services/src/store_process/profile_fill.zig`). It asks for the page after
+its stored position and hands it to the owner, which applies it and stores
+the new position in one commit (`Store.profileFill`), so a restart resumes
+where the last commit left it. For each row whose actor the store holds and
+that is live:
+
+- the description is written if the stored one is empty, and the banner
+  likewise. A stored value is never replaced, so what the slot's own refreshes
+  wrote wins;
+- nothing else is written: not the check time, the profile source, the
+  counts, the score, the handle or the labels, and no refresh or identity
+  entry is queued. `updated_at` moves, as for any content change, so
+  `indexedAt` for a filled account is the time of the fill;
+- the actor goes into the change log, and the index bridge sends the two
+  fields to its document.
+
+An account Turso holds and the slot does not is passed over, and so is one the
+slot holds as gone. The pass makes no request to Bluesky.
+
+When the Worker answers `next: null` the store records `finished_at`, the loop
+ends, and no later process asks again for that store, whatever `PROFILE_FILL`
+says. A store bootstrapped afresh starts its own pass.
+
+| variable | default | meaning |
+|---|---|---|
+| `PROFILE_FILL` | unset | `1` runs the pass. It needs `CONTROL_URL` and `SLOT_CONTROL_SECRET`; without them it stays off and `/health` says `profile_fill.state: "misconfigured"` |
+| `PROFILE_FILL_PAGE` | 500 | rows of Turso's table one page reads, 1 to 1000 |
+| `PROFILE_FILL_STEP_SECONDS` | 1 | seconds between pages, 1 to 3600 |
+| `PROFILE_FILL_LAG_LIMIT` | 50000 | no page is asked for while the index bridge is more than this many change-log entries behind (`change_log.head` less `cursors.bridge`) |
+
+**What a pass costs.** Turso held about 13.2 million actors on 2026-11-12.
+
+- 13,200,000 rows / 500 a page = 26,400 pages, and 26,400 requests to the
+  Worker, for one slot; 52,800 for both.
+- 26,400 pages x 1 s = 26,400 s = 7 h 20 min of rests. Each page also takes
+  its request and its commit, which were not measured, and every step skipped
+  for bridge lag adds a second, so this is the least a pass takes.
+- 13.2 million rows read from Turso for one slot, 26.4 million for both; twice
+  that if Turso counts the index entry and the row separately. The plan allows
+  100,000 million a month ([usage](turso-usage-analytics.md)).
+- One change-log entry and one index document rewrite for each actor filled.
+  A page can fill up to 500, so the lag limit is what keeps the pass from
+  outrunning the bridge; how many actors Turso holds a description or a banner
+  for was not counted.
+
+A page that cannot be had (no answer, `401`, any other status, a body whose
+DIDs do not rise from the position asked from) is counted, changes nothing and
+is asked for again after 30 to 36 s.
+
+**Running it on one slot.** It needs the [slot control rollout](slot-control.md#rollout)
+finished for that slot (the Worker serves `/slot/control/*` and the slot holds
+the secret), a deployed Worker that has this endpoint, and `TURSO_ACTORS` not
+`off`. Run it on the standby first.
+
+```sh
+curl -s -H "Authorization: Bearer $SLOT_CONTROL_SECRET" 'https://typeahead.waow.tech/slot/control/profile-fill?limit=2' | jq '{rows: (.rows | length), next}'
+fly deploy . --config deploy/shadow-slot/fly.toml -a <slot> -e PROFILE_FILL=1
+fly ssh console -a <slot> -C "curl -s localhost:8082/health" | jq .profile_fill
+```
+
+A deploy restarts the machine: see
+[what a store restart costs](../deploy/shadow-slot/sizing.md#what-a-store-restart-costs-the-watermark).
+While it runs, `state` is `on`, `pages` and `position_did` rise (the stored
+figures are refreshed once a minute), `failures.total` stays 0, and `deferred`
+rises only while `bridge_lag` is above the limit. It is done when `finished`
+is true and `finished_at` is set; `filled` is the number of actors that took a
+field. Then check a profile the slot had not refreshed:
+
+```sh
+curl -s 'https://<slot>.fly.dev/actors?actor=<a handle>' | jq '.actors[0] | {description, banner_url}'
+just profile-check 2000 https://<slot>.fly.dev
+```
+
+`profile-check`'s `fields` should no longer list `description` or `banner`
+beyond what the two stores' refresh schedules explain. The variable can stay
+or go with the next deploy; a finished store ignores it. To stop a pass midway,
+deploy without `PROFILE_FILL`: the position is kept, and setting it again
+resumes.
+
+The heartbeat span carries `profile_fill_pages`, `profile_fill_rows`,
+`profile_fill_filled`, `profile_fill_finished_at`, `profile_fill_failures`,
+`profile_fill_deferred`, `profile_fill_bridge_lag` and
+`profile_fill_misconfigured`.
+
 ## What is built
 
 ```mermaid
@@ -351,7 +474,10 @@ Below, `<standby>` is the store slot the transport's `/route` does not name and
    `settled_differ` stay a small share of `turso`, and the snapshot's three
    counts are within what the chart can absorb.
 
-8. **Serve profiles from the slot.** `"PROFILE_MODE": "slot"`, deploy.
+8. **Serve profiles from the slot.** First the [profile fill](#profile-fill)
+   has to have finished on both store slots, or profiles lose the
+   descriptions and banners their slot never refreshed. Then
+   `"PROFILE_MODE": "slot"`, deploy.
    `just deploy-worker`'s smoke suite requires `getProfiles` for `zzstoatzz.io`
    to carry a description, a banner, a positive `followersCount` and an
    `indexedAt`, and `getProfile` to answer 400 for a missing actor. Then:
@@ -494,6 +620,16 @@ long as the owner wants:
   `TURSO_ACTORS` off (`admin-actors-off.test.ts`); the 410s and the cron
   (`src/index.test.ts`); the parity arithmetic (`src/turso-parity.test.ts`);
   the transport's allowed paths.
+
+- The profile fill. `bun test`: the endpoint's auth, paging, empty pages,
+  bounds, 410, banner forms and query plan
+  (`src/handlers/slot-profile-fill.test.ts`). `cd services && zig build test`:
+  the store method (`store_test.zig`: fills empty fields only, leaves the
+  check time and the queues, logs a change, passes over absent and gone
+  actors, takes a page once, resumes, finishes), a page in the owner's commit
+  across a reopen (`owner_test.zig`), the configuration (`config.zig`), and
+  the loop against a stand-in Worker and inside the running role
+  (`profile_fill_test.zig`: stepping, bridge lag, failures, restart, `/health`).
 
 Not tested: anything against production Turso, a deployed slot, the deployed
 transport or the deployed Worker; how long a resync round takes on a slot and

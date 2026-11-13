@@ -217,7 +217,11 @@ regression is pinned). Extend it, don't prune it.
   every remaining write to Turso's actor tables. The store's port 8082 never gets a public
   service: anything a slot must publish goes through the index. Built on the `turso-reads`
   branch and not deployed as of 2026-11-12; inventory, parity checks and the ordered rollout are
-  in [Turso retirement](docs/turso-retirement.md).
+  in [Turso retirement](docs/turso-retirement.md). A slot loaded from a bundle has no
+  description or banner for an account until it refreshes it: the one-time profile fill
+  (`PROFILE_FILL=1`, [profile fill](docs/turso-retirement.md#profile-fill)) copies both from
+  Turso and has to finish on every slot before `PROFILE_MODE` is `slot`. Never refill them
+  from Bluesky.
 - ranking is by the stored `actors.quality_score`, not live followers; writes that touch
   aggregate counts must keep `quality_score` consistent with them (see the clobber regression
   guarded in `bench.py` + `smoke.py`).

@@ -93,6 +93,8 @@ Set in the Fly configuration, not secret:
 | `CONTROL_URL` | read by the store process: the Worker's origin, `https://typeahead.waow.tech`. With `SLOT_CONTROL_SECRET` it turns the control loop on. With the secret missing the loop stays off, the store says so in its log and in `/health` (`control.state`), and everything else runs |
 | `CONTROL_POLL_SECONDS` | read by the store process: seconds between polls of the Worker, 5 to 3600, 30 when unset |
 | `CONTROL_REQUESTS_PER_POLL`, `CONTROL_REQUEST_BACKLOG` | read by the store process: indexing requests taken in one poll at most (20 when unset), and the number of due identity queue entries at which none is taken (100 when unset), so requests cannot crowd out the relay's identity signals |
+| `PROFILE_FILL` | read by the store process: `1` runs the one-time [profile fill](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/turso-retirement.md#profile-fill), which copies the descriptions and banners Turso holds into the actors of this store that have none, through the Worker and the control loop's secret. Unset in `fly.toml`; passed with one deploy (`fly deploy -e PROFILE_FILL=1`). A store that has finished the pass ignores it |
+| `PROFILE_FILL_PAGE`, `PROFILE_FILL_STEP_SECONDS`, `PROFILE_FILL_LAG_LIMIT` | read by the store process: rows of Turso's table one page reads (500 when unset, at most 1000), seconds between pages (1 when unset), and the bridge lag in change-log entries above which no page is asked for (50000 when unset) |
 | the store process's bootstrap relay cursor | optional, set once for the first start; the name comes with the store process |
 
 Secrets the app needs:

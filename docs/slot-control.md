@@ -104,6 +104,10 @@ endpoints off (503), so a slot never holds a credential that can write.
 | `GET /slot/control/policy?generation=g&after=n`, or `If-None-Match: "policy-g-n"` | `304` when `g` is this database's generation and `n` its current revision, else the `200` above. A revision without its generation is never answered `304` |
 | `GET /slot/control/index-requests?generation=g&after=s&limit=l` | `200 {"generation": g', "requests": [{"seq", "did"}], "more": bool}`: sequences above `s`, ascending, at most `l` (1 to 500, default 100). `after` counts only when `g` is this database's generation; with another, or none, the page starts at the beginning of the log |
 
+A third endpoint under the same path and secret is not part of the control
+record: `GET /slot/control/profile-fill` pages Turso's descriptions and
+banners for the one-time [profile fill](turso-retirement.md#profile-fill).
+
 Other answers: `400` for a `generation`, `after` or `limit` that is not a plain number,
 `401` for a wrong or missing bearer (counted against the strict rate limit per
 address, `429` once it is exhausted), `503` when the Worker has no usable slot
