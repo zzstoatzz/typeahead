@@ -39,7 +39,7 @@
 //! | `CONTROL_REQUEST_BACKLOG` | no      | no indexing request is taken while this many identity queue entries are due, default 100; `0` takes none. The requests wait at the Worker |
 //! | `PROFILE_FILL`           | no       | `1` runs the profile fill (`profile_fill.zig`): once in the life of this store, the descriptions and banners Turso holds are copied into the actors that have none, pulled from the Worker's `/slot/control/profile-fill` with the control loop's URL and secret. Finished, it does nothing; unset it then |
 //! | `PROFILE_FILL_PAGE`      | no       | rows of Turso's table one page reads, 1 to 1000, default 500   |
-//! | `PROFILE_FILL_STEP_SECONDS` | no    | seconds between pages, 1 to 3600, default 1: 13.2 million rows are 26,400 pages, 7 h 20 min |
+//! | `PROFILE_FILL_STEP_SECONDS` | no    | seconds between pages, 0 to 3600, default 1 (0 asks for the next page as soon as one commits): 13.2 million rows are 26,400 pages, 7 h 20 min |
 //! | `PROFILE_FILL_LAG_LIMIT` | no       | no page is asked for while the index bridge is more than this many change-log entries behind, default 50000 |
 //!
 //! The control loop and the profile fill are the settings whose mistake
@@ -228,8 +228,8 @@ fn profileFill(getenv: Getenv, loop: Control) ProfileFill {
         options.page_size = size;
     }
     if (getenv("PROFILE_FILL_STEP_SECONDS")) |text| {
-        const seconds = std.fmt.parseInt(u64, text, 10) catch 0;
-        if (seconds < 1 or seconds > 3600) return .{ .misconfigured = "PROFILE_FILL_STEP_SECONDS is not a number from 1 to 3600" };
+        const seconds = std.fmt.parseInt(u64, text, 10) catch 3601;
+        if (seconds > 3600) return .{ .misconfigured = "PROFILE_FILL_STEP_SECONDS is not a number from 0 to 3600" };
         options.step_seconds = seconds;
     }
     if (getenv("PROFILE_FILL_LAG_LIMIT")) |text| {
@@ -509,8 +509,8 @@ test "the profile fill runs only when asked for, with the control loop's origin 
         try testing.expectEqualStrings("PROFILE_FILL_PAGE is not a number from 1 to 1000", loaded.profile_fill.misconfigured);
         try testing.expect(loaded.control == .on);
     }
-    inline for ([_][]const u8{ "0", "3601", "1s", "-1" }) |bad| {
-        try testing.expectEqualStrings("PROFILE_FILL_STEP_SECONDS is not a number from 1 to 3600", (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_STEP_SECONDS", bad } }))).profile_fill.misconfigured);
+    inline for ([_][]const u8{ "3601", "1s", "-1" }) |bad| {
+        try testing.expectEqualStrings("PROFILE_FILL_STEP_SECONDS is not a number from 0 to 3600", (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_STEP_SECONDS", bad } }))).profile_fill.misconfigured);
     }
     try testing.expectEqualStrings("PROFILE_FILL_LAG_LIMIT is not a number", (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_LAG_LIMIT", "-1" } }))).profile_fill.misconfigured);
 }

@@ -319,6 +319,7 @@ pub const Filler = struct {
 
     /// Milliseconds to rest after a step that ended as `outcome`.
     pub fn rest(self: *Filler, outcome: Step) u64 {
+        if (outcome == .deferred) return @max(self.options.step_seconds, 1) * 1000;
         if (outcome != .failed) return self.options.step_seconds * 1000;
         const base: f64 = @floatFromInt(self.options.failure_seconds * 1000);
         return @intFromFloat(base * (1 + self.options.jitter * self.prng.random().float(f64)));

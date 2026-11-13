@@ -180,7 +180,7 @@ says. A store bootstrapped afresh starts its own pass.
 |---|---|---|
 | `PROFILE_FILL` | unset | `1` runs the pass. It needs `CONTROL_URL` and `SLOT_CONTROL_SECRET`; without them it stays off and `/health` says `profile_fill.state: "misconfigured"` |
 | `PROFILE_FILL_PAGE` | 500 | rows of Turso's table one page reads, 1 to 1000 |
-| `PROFILE_FILL_STEP_SECONDS` | 1 | seconds between pages, 1 to 3600 |
+| `PROFILE_FILL_STEP_SECONDS` | 1 | seconds between pages, 0 to 3600; 0 asks for the next page as soon as one commits, and a page deferred for bridge lag still rests 1 s |
 | `PROFILE_FILL_LAG_LIMIT` | 50000 | no page is asked for while the index bridge is more than this many change-log entries behind (`change_log.head` less `cursors.bridge`) |
 
 **What a pass costs.** Turso held about 13.2 million actors on 2026-11-12.
