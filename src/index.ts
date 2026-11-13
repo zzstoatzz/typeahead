@@ -22,7 +22,7 @@ import { handleSourceIcon } from "./handlers/source-icon";
 import { statsMigrationRoute } from "./stats-migration/handlers";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
-import { handleSlotIndexRequests, handleSlotPolicy } from "./handlers/slot-control";
+import { handleSlotIndexRequests, handleSlotPolicy, handleSlotProfileFill } from "./handlers/slot-control";
 import { tursoActorsOn } from "./turso-policy-mirror";
 import { indexPage } from "./pages/home";
 import { docsPage } from "./pages/docs";
@@ -222,6 +222,9 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
   if (pathname === "/slot/control/index-requests" && request.method === "GET") {
     return handleSlotIndexRequests(request, env);
+  }
+  if (pathname === "/slot/control/profile-fill" && request.method === "GET") {
+    return handleSlotProfileFill(request, env, await getDb(env));
   }
 
   if (!tursoActorsOn(env) && TURSO_ACTOR_ENDPOINTS.has(pathname)) {
