@@ -37,12 +37,18 @@
 //! | `CONTROL_POLL_SECONDS`   | no       | seconds between polls, 5 to 3600, default 30; each rest is stretched by up to 20 % |
 //! | `CONTROL_REQUESTS_PER_POLL` | no    | indexing requests taken in one poll at most, 1 to 500, default 20: 2,400 an hour at the default interval |
 //! | `CONTROL_REQUEST_BACKLOG` | no      | no indexing request is taken while this many identity queue entries are due, default 100; `0` takes none. The requests wait at the Worker |
+//! | `PROFILE_FILL`           | no       | `1` runs the profile fill (`profile_fill.zig`): once in the life of this store, the descriptions and banners Turso holds are copied into the actors that have none, pulled from the Worker's `/slot/control/profile-fill` with the control loop's URL and secret. Finished, it does nothing; unset it then |
+//! | `PROFILE_FILL_PAGE`      | no       | rows of Turso's table one page reads, 1 to 1000, default 500   |
+//! | `PROFILE_FILL_STEP_SECONDS` | no    | seconds between pages, 1 to 3600, default 1: 13.2 million rows are 26,400 pages, 7 h 20 min |
+//! | `PROFILE_FILL_LAG_LIMIT` | no       | no page is asked for while the index bridge is more than this many change-log entries behind, default 50000 |
 //!
-//! The control loop is the one setting whose mistake does not stop the
-//! role: one of its two required variables without the other, a URL that is
+//! The control loop and the profile fill are the settings whose mistake
+//! does not stop the role: one of the loop's two required variables without
+//! the other, a URL that is
 //! not `https://`, a short secret or a poll interval out of range leaves the
 //! loop off, logged at the start and reported as `control.state` in
-//! `/health`. A slot that will not start stops feeding its index, which
+//! `/health`; the fill asked for without the loop, or with a number out of
+//! range, is left off and reported as `profile_fill.state`. A slot that will not start stops feeding its index, which
 //! takes search down; a slot without the loop serves with the policy it has.
 //!
 //! Enrichment pacing, with the defaults, for one replica. Two replicas run
@@ -100,6 +106,7 @@ const std = @import("std");
 const ingest = @import("../ingest.zig");
 const enrich = @import("enrich.zig");
 const control = @import("control.zig");
+const profile_fill = @import("profile_fill.zig");
 
 pub const Config = struct {
     store_dir: []const u8,
@@ -118,6 +125,14 @@ pub const Config = struct {
     first_check_per_hour: u64 = 0,
     first_check_stamp: u64 = 0,
     control: Control = .off,
+    profile_fill: ProfileFill = .off,
+};
+
+pub const ProfileFill = union(enum) {
+    off,
+    /// The pass was asked for and cannot run; the text says why.
+    misconfigured: []const u8,
+    on: profile_fill.Options,
 };
 
 pub const Control = union(enum) {
@@ -197,7 +212,30 @@ pub fn load(getenv: Getenv) Error!Config {
     if (!config.offline and !repair_off) config.handle_repair_per_step = handle_repair_per_step;
     if (getenv("CORPUS_SCAN_SECONDS")) |text| config.corpus_scan_seconds = std.fmt.parseInt(u64, text, 10) catch return error.InvalidCorpusScan;
     if (!config.offline) config.control = controlLoop(getenv);
+    if (!config.offline) config.profile_fill = profileFill(getenv, config.control);
     return config;
+}
+
+fn profileFill(getenv: Getenv, loop: Control) ProfileFill {
+    if (!std.mem.eql(u8, getenv("PROFILE_FILL") orelse "", "1")) return .off;
+    var options: profile_fill.Options = switch (loop) {
+        .on => |on| .{ .url = on.url, .secret = on.secret },
+        .off, .misconfigured => return .{ .misconfigured = "PROFILE_FILL is set and the control loop is not on: it needs CONTROL_URL and SLOT_CONTROL_SECRET" },
+    };
+    if (getenv("PROFILE_FILL_PAGE")) |text| {
+        const size = std.fmt.parseInt(usize, text, 10) catch 0;
+        if (size < 1 or size > profile_fill.max_page_size) return .{ .misconfigured = "PROFILE_FILL_PAGE is not a number from 1 to 1000" };
+        options.page_size = size;
+    }
+    if (getenv("PROFILE_FILL_STEP_SECONDS")) |text| {
+        const seconds = std.fmt.parseInt(u64, text, 10) catch 0;
+        if (seconds < 1 or seconds > 3600) return .{ .misconfigured = "PROFILE_FILL_STEP_SECONDS is not a number from 1 to 3600" };
+        options.step_seconds = seconds;
+    }
+    if (getenv("PROFILE_FILL_LAG_LIMIT")) |text| {
+        options.lag_limit = std.fmt.parseInt(u64, text, 10) catch return .{ .misconfigured = "PROFILE_FILL_LAG_LIMIT is not a number" };
+    }
+    return .{ .on = options };
 }
 
 fn controlLoop(getenv: Getenv) Control {
@@ -436,6 +474,45 @@ test "a control loop that cannot run is left off and says why, and the role stil
     inline for ([_][]const u8{ "4", "3601", "30s", "", "-1" }) |bad| {
         try testing.expectEqualStrings("CONTROL_POLL_SECONDS is not a number from 5 to 3600", (try load(fakeEnv(&.{ base, url, secret, .{ "CONTROL_POLL_SECONDS", bad } }))).control.misconfigured);
     }
+}
+
+test "the profile fill runs only when asked for, with the control loop's origin and secret" {
+    const base = [2][]const u8{ "STORE_DIR", "/d" };
+    const secret = [2][]const u8{ "SLOT_CONTROL_SECRET", "0123456789abcdef0123456789abcdef" };
+    const url = [2][]const u8{ "CONTROL_URL", "https://typeahead.waow.tech/" };
+    const asked = [2][]const u8{ "PROFILE_FILL", "1" };
+    try testing.expect((try load(fakeEnv(&.{ base, url, secret }))).profile_fill == .off);
+    try testing.expect((try load(fakeEnv(&.{ base, url, secret, .{ "PROFILE_FILL", "0" } }))).profile_fill == .off);
+    try testing.expect((try load(fakeEnv(&.{ base, url, secret, .{ "PROFILE_FILL", "" } }))).profile_fill == .off);
+    try testing.expect((try load(fakeEnv(&.{ base, url, secret, asked, .{ "STORE_OFFLINE", "1" } }))).profile_fill == .off);
+
+    const on = (try load(fakeEnv(&.{ base, url, secret, asked }))).profile_fill.on;
+    try testing.expectEqualStrings("https://typeahead.waow.tech", on.url);
+    try testing.expectEqualStrings("0123456789abcdef0123456789abcdef", on.secret);
+    try testing.expectEqual(@as(usize, 500), on.page_size);
+    try testing.expectEqual(@as(u64, 1), on.step_seconds);
+    try testing.expectEqual(@as(u64, 50_000), on.lag_limit);
+    try testing.expectEqual(@as(u64, 30), on.failure_seconds);
+    const set = (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_PAGE", "1000" }, .{ "PROFILE_FILL_STEP_SECONDS", "5" }, .{ "PROFILE_FILL_LAG_LIMIT", "0" } }))).profile_fill.on;
+    try testing.expectEqual(@as(usize, 1000), set.page_size);
+    try testing.expectEqual(@as(u64, 5), set.step_seconds);
+    try testing.expectEqual(@as(u64, 0), set.lag_limit);
+
+    // Asked for and unable to run: left off, with the reason, and the role
+    // still loads with its control loop as it was.
+    const needs_loop = "PROFILE_FILL is set and the control loop is not on: it needs CONTROL_URL and SLOT_CONTROL_SECRET";
+    try testing.expectEqualStrings(needs_loop, (try load(fakeEnv(&.{ base, asked }))).profile_fill.misconfigured);
+    try testing.expectEqualStrings(needs_loop, (try load(fakeEnv(&.{ base, url, asked }))).profile_fill.misconfigured);
+    try testing.expectEqualStrings(needs_loop, (try load(fakeEnv(&.{ base, url, asked, .{ "SLOT_CONTROL_SECRET", "short" } }))).profile_fill.misconfigured);
+    inline for ([_][]const u8{ "0", "1001", "many", "" }) |bad| {
+        const loaded = try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_PAGE", bad } }));
+        try testing.expectEqualStrings("PROFILE_FILL_PAGE is not a number from 1 to 1000", loaded.profile_fill.misconfigured);
+        try testing.expect(loaded.control == .on);
+    }
+    inline for ([_][]const u8{ "0", "3601", "1s", "-1" }) |bad| {
+        try testing.expectEqualStrings("PROFILE_FILL_STEP_SECONDS is not a number from 1 to 3600", (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_STEP_SECONDS", bad } }))).profile_fill.misconfigured);
+    }
+    try testing.expectEqualStrings("PROFILE_FILL_LAG_LIMIT is not a number", (try load(fakeEnv(&.{ base, url, secret, asked, .{ "PROFILE_FILL_LAG_LIMIT", "-1" } }))).profile_fill.misconfigured);
 }
 
 test "enrichment settings that could not pace a loop are refused" {

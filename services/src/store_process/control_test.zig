@@ -9,6 +9,7 @@ const bootstrap = @import("bootstrap.zig");
 const control = @import("control.zig");
 const http = @import("http.zig");
 const index_bridge = @import("index_bridge.zig");
+const profile_fill = @import("profile_fill.zig");
 const intake_mod = @import("intake.zig");
 const owner_mod = @import("owner.zig");
 const harness = @import("testing.zig");
@@ -21,7 +22,7 @@ const testing = std.testing;
 
 pub const origin = "https://worker.test";
 pub const secret = "0123456789abcdef0123456789abcdef";
-const bearer = "Bearer " ++ secret;
+pub const bearer = "Bearer " ++ secret;
 
 const alice = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa";
 const bob = "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb";
@@ -1181,7 +1182,7 @@ test "/health reports the loop, and says so when it was asked for and cannot run
 }
 
 /// A loopback HTTP server that answers each request from `answer`.
-const Stub = struct {
+pub const Stub = struct {
     io: Io,
     listener: Io.net.Server,
     thread: ?std.Thread = null,
@@ -1190,11 +1191,11 @@ const Stub = struct {
     authorizations: std.ArrayList([]const u8) = .empty,
     big: []const u8,
 
-    fn start(self: *Stub) !void {
+    pub fn start(self: *Stub) !void {
         self.thread = try std.Thread.spawn(.{}, serve, .{self});
     }
 
-    fn deinit(self: *Stub) void {
+    pub fn deinit(self: *Stub) void {
         self.stop.store(true, .release);
         if (self.listener.socket.address.connect(self.io, .{ .mode = .stream })) |wake| wake.close(self.io) else |_| {}
         if (self.thread) |thread| thread.join();
@@ -1205,7 +1206,7 @@ const Stub = struct {
         self.authorizations.deinit(testing.allocator);
     }
 
-    fn url(self: *Stub, buf: []u8, path: []const u8) []const u8 {
+    pub fn url(self: *Stub, buf: []u8, path: []const u8) []const u8 {
         return std.fmt.bufPrint(buf, "http://127.0.0.1:{d}{s}", .{ self.listener.socket.address.getPort(), path }) catch unreachable;
     }
 
@@ -1239,6 +1240,9 @@ const Stub = struct {
                 request.respond("", .{ .status = .not_modified, .keep_alive = false }) catch {};
             } else if (!std.mem.eql(u8, authorization, bearer)) {
                 request.respond("{\"error\":\"unauthorized\"}", .{ .status = .unauthorized, .keep_alive = false, .extra_headers = json }) catch {};
+            } else if (std.mem.startsWith(u8, target, profile_fill.path)) {
+                const body = if (std.mem.indexOf(u8, target, "after=&") != null) "{\"rows\":[{\"did\":\"" ++ alice ++ "\",\"description\":\"from turso\",\"banner\":\"\"}],\"next\":\"" ++ carol ++ "\"}" else "{\"rows\":[],\"next\":null}";
+                request.respond(body, .{ .keep_alive = false, .extra_headers = json }) catch {};
             } else if (std.mem.startsWith(u8, target, control.requests_path)) {
                 const body = if (std.mem.indexOf(u8, target, "after=0&") != null) "{\"generation\":1,\"requests\":[{\"seq\":4,\"did\":\"" ++ alice ++ "\"}],\"more\":false}" else "{\"generation\":1,\"requests\":[],\"more\":false}";
                 request.respond(body, .{ .keep_alive = false, .extra_headers = json }) catch {};
@@ -1290,13 +1294,13 @@ test "the transport sends the bearer secret, bounds the answer and follows no re
     try testing.expectEqual(@as(u16, 0), transport.get(transport.context, arena, "http://127.0.0.1:1" ++ control.policy_path, bearer).status);
 }
 
-const RunningRole = struct {
+pub const RunningRole = struct {
     listener: *Io.net.Server,
     config: config_mod.Config,
     options: role.Options,
     result: anyerror!void = {},
 
-    fn run(self: *RunningRole) void {
+    pub fn run(self: *RunningRole) void {
         self.result = role.run(testing.allocator, testing.io, self.listener, self.config, self.options);
     }
 };

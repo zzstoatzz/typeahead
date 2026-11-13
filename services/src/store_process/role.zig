@@ -2,7 +2,9 @@
 //! labeler and the PLC export, resolves identities, refreshes profiles from
 //! the appview, and commits everything to a zkv store on local disk. It
 //! opens no connection to Turso, and one to the Worker: the control loop
-//! pulls moderation policy and indexing requests from it (`control.zig`).
+//! pulls moderation policy and indexing requests from it (`control.zig`),
+//! and the one-time profile fill pulls Turso's descriptions and banners the
+//! same way (`profile_fill.zig`).
 //! Configuration is in `config.zig`, the concurrency model in `owner.zig`,
 //! the HTTP surface in `http.zig`, enrichment in `enrich.zig`, the corpus
 //! count in `corpus.zig`.
@@ -26,6 +28,7 @@ const index_bridge = @import("index_bridge.zig");
 const corpus_mod = @import("corpus.zig");
 const enrich = @import("enrich.zig");
 const control = @import("control.zig");
+const profile_fill = @import("profile_fill.zig");
 const bridge_mod = @import("../bridge/root.zig");
 const Io = std.Io;
 const Owner = owner_mod.Owner;
@@ -190,6 +193,17 @@ fn heartbeat(owner: *Owner) void {
     span.setAttribute("first_check_examined", health.first_check.examined);
     span.setAttribute("first_check_queued", health.first_check.queued);
     span.setAttribute("first_check_finished_at", health.first_check.finished_at);
+    span.setAttribute("profile_fill_pages", control.attribute(health.profile_fill.pages));
+    span.setAttribute("profile_fill_rows", control.attribute(health.profile_fill.rows));
+    span.setAttribute("profile_fill_filled", control.attribute(health.profile_fill.filled));
+    span.setAttribute("profile_fill_finished_at", control.attribute(health.profile_fill.finished_at));
+    if (self.filler) |loop| {
+        const r = loop.report();
+        span.setAttribute("profile_fill_failures", control.attribute(r.failures));
+        span.setAttribute("profile_fill_deferred", control.attribute(r.deferred));
+        span.setAttribute("profile_fill_bridge_lag", control.attribute(r.bridge_lag));
+    }
+    span.setAttribute("profile_fill_misconfigured", self.config.profile_fill == .misconfigured);
     span.setAttribute("tombstones", health.tombstones);
     span.setAttribute("commits", c.commits.load(.monotonic));
     span.setAttribute("changes_applied", c.changes_applied.load(.monotonic));
@@ -268,6 +282,7 @@ const Role = struct {
     enricher: ?*enrich.Enricher = null,
     corpus: ?*corpus_mod.Scanner = null,
     controller: ?*control.Controller = null,
+    filler: ?*profile_fill.Filler = null,
     bridge_stop: std.atomic.Value(bool) = .init(false),
     stopping: std.atomic.Value(bool) = .init(false),
 
@@ -385,6 +400,11 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
         .corpus = self.corpus,
         .control = self.controller,
         .control_problem = switch (self.config.control) {
+            .misconfigured => |problem| problem,
+            .off, .on => null,
+        },
+        .profile_fill = self.filler,
+        .profile_fill_problem = switch (self.config.profile_fill) {
             .misconfigured => |problem| problem,
             .off, .on => null,
         },
@@ -527,6 +547,31 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
         control_http.deinit();
     };
 
+    // The profile fill: its own thread and its own HTTP client, like the
+    // control loop it shares an origin and a secret with; see profile_fill.zig.
+    var fill_http: control.Http = undefined;
+    var fill_timer: enrich.WallTimer = .{ .io = io };
+    var filler: profile_fill.Filler = undefined;
+    switch (config.profile_fill) {
+        .off => {},
+        .misconfigured => |problem| log.err("the profile fill is off: {s}", .{problem}),
+        .on => |fill_options| {
+            fill_http = control.Http.init(io, allocator);
+            filler = .{ .gpa = allocator, .owner = owner, .transport = fill_http.transport(), .timer = fill_timer.timer(), .options = fill_options };
+            filler.prng = .init(@truncate(@as(u96, @bitCast(Io.Timestamp.now(io, .real).nanoseconds))));
+            filler.start() catch |err| {
+                log.err("profile fill start failed: {s}", .{@errorName(err)});
+                fill_http.deinit();
+                return err;
+            };
+            self.filler = &filler;
+        },
+    }
+    defer if (self.filler != null) {
+        filler.deinit();
+        fill_http.deinit();
+    };
+
     var scanner: corpus_mod.Scanner = .{
         .gpa = allocator,
         .io = io,
@@ -583,6 +628,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
 
     if (self.enricher) |starting| try tasks.concurrent(io, enrich.Enricher.run, .{starting});
     if (self.controller) |starting| try tasks.concurrent(io, control.Controller.run, .{starting});
+    if (self.filler) |starting| try tasks.concurrent(io, profile_fill.Filler.run, .{starting});
     try tasks.concurrent(io, Role.late, .{&self});
 
     while (true) {
@@ -605,6 +651,7 @@ pub fn run(allocator: std.mem.Allocator, io: Io, listener: *Io.net.Server, confi
     self.bridge_stop.store(true, .release);
     if (self.enricher) |running| running.stop();
     if (self.controller) |running| running.stop();
+    if (self.filler) |running| running.stop();
     scanner.stop();
     owner.stop();
     // Awaited, not canceled: a cancellation lands inside a commit as a
