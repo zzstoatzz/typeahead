@@ -26,6 +26,7 @@ pub const policy_format = 1;
 pub const walk_format = 1;
 pub const repair_format = 1;
 pub const first_check_format = 1;
+pub const profile_fill_format = 1;
 
 pub const Error = error{ CorruptRecord, UnsupportedRecordFormat };
 
@@ -408,6 +409,48 @@ pub const FirstCheckState = struct {
     }
 };
 
+/// Where the one-time copy of descriptions and banners from another store
+/// of profiles stands (`Store.profileFill`).
+pub const ProfileFillState = struct {
+    /// 0 before the first page.
+    started_at: u64 = 0,
+    /// 0 until the source has said its table ended.
+    finished_at: u64 = 0,
+    /// Pages applied, the rows they carried, and the actors that took a
+    /// description or a banner from one.
+    pages: u64 = 0,
+    rows: u64 = 0,
+    filled: u64 = 0,
+    /// The last DID the source read: where the next page is asked from.
+    position: []const u8 = "",
+
+    pub fn encode(self: ProfileFillState, gpa: std.mem.Allocator, out: *std.ArrayList(u8)) !void {
+        out.clearRetainingCapacity();
+        try out.append(gpa, profile_fill_format);
+        try putInt(gpa, out, self.started_at);
+        try putInt(gpa, out, self.finished_at);
+        try putInt(gpa, out, self.pages);
+        try putInt(gpa, out, self.rows);
+        try putInt(gpa, out, self.filled);
+        try putBytes(gpa, out, self.position);
+    }
+
+    pub fn decode(bytes: []const u8) Error!ProfileFillState {
+        var in: Input = .{ .bytes = bytes };
+        if (try in.byte() != profile_fill_format) return error.UnsupportedRecordFormat;
+        const state: ProfileFillState = .{
+            .started_at = try in.int(),
+            .finished_at = try in.int(),
+            .pages = try in.int(),
+            .rows = try in.int(),
+            .filled = try in.int(),
+            .position = try in.slice(),
+        };
+        try in.end();
+        return state;
+    }
+};
+
 pub fn encodeU64(value: u64) [8]u8 {
     var out: [8]u8 = undefined;
     std.mem.writeInt(u64, &out, value, .big);
@@ -656,6 +699,12 @@ test "queue state, stored labels and policy entries round trip" {
     try testing.expectEqualDeep(first_check, try FirstCheckState.decode(out.items));
     try testing.expectError(error.CorruptRecord, FirstCheckState.decode(out.items[0 .. out.items.len - 1]));
     try testing.expectError(error.UnsupportedRecordFormat, FirstCheckState.decode(&.{ first_check_format + 1, 0, 0, 0, 0, 0, 0 }));
+
+    const profile_fill: ProfileFillState = .{ .started_at = 1_794_500_000, .finished_at = 1_794_526_400, .pages = 26_400, .rows = 1_000_000, .filled = 900_000, .position = "did:plc:abc" };
+    try profile_fill.encode(gpa, &out);
+    try testing.expectEqualDeep(profile_fill, try ProfileFillState.decode(out.items));
+    try testing.expectError(error.CorruptRecord, ProfileFillState.decode(out.items[0 .. out.items.len - 1]));
+    try testing.expectError(error.UnsupportedRecordFormat, ProfileFillState.decode(&.{ profile_fill_format + 1, 0, 0, 0, 0, 0, 0 }));
 
     for ([_]u64{ 0, 1, 1 << 40, std.math.maxInt(u64) }) |value| try testing.expectEqual(value, try decodeU64(&encodeU64(value)));
     try testing.expectError(error.CorruptRecord, decodeU64("1234567"));

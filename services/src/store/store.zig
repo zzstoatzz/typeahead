@@ -413,6 +413,45 @@ pub const Store = struct {
         return step;
     }
 
+    pub const FillRow = struct {
+        did: []const u8,
+        description: []const u8 = "",
+        banner: []const u8 = "",
+    };
+
+    /// One page of another store's descriptions and banners, in the order
+    /// that store reads its accounts.
+    pub const FillPage = struct {
+        /// Where the page was asked from. It is applied only while this is
+        /// the stored position, so a page delivered twice lands once.
+        after: []const u8 = "",
+        rows: []const FillRow = &.{},
+        /// The last DID the source read, or null when its table has ended.
+        next: ?[]const u8 = null,
+    };
+
+    pub const Filled = struct {
+        /// False when the page was not the one the stored position asks
+        /// for, or the pass has finished: nothing was written.
+        applied: bool = false,
+        /// Actors that took a description or a banner from the page.
+        filled: usize = 0,
+        finished: bool = false,
+    };
+
+    /// One page of a pass, made once in the life of a store, that copies
+    /// the description and banner another store holds into the actors here
+    /// that have none: a store loaded from a bundle, which carries neither.
+    /// See `Batch.profileFill`. Once a page has said the source ended,
+    /// every later call does nothing.
+    pub fn profileFill(self: *Store, now: u64, page: FillPage) !Filled {
+        const batch = try self.begin(now);
+        errdefer batch.abort();
+        const filled = try batch.profileFill(page);
+        try batch.commit();
+        return filled;
+    }
+
     pub const Trimmed = struct { removed: u64, floor: u64, more: bool };
 
     /// Drop change-log entries below `below`, the lowest position any
@@ -1247,6 +1286,48 @@ pub const Batch = struct {
         try state.encode(self.tmp(), &value);
         try engine_db.put(keys.cursor(&buf, c.pool.cursor()), value.items);
         return .{ .applied = queued > 0 };
+    }
+
+    /// Stage one page of the profile fill, and where the pass then stands,
+    /// so the two land in one commit. A row writes its description where
+    /// the stored one is empty and its banner likewise, and nothing else:
+    /// a stored value is never replaced, the check time, the profile
+    /// source, the counts, the score and the queues stay as they were, and
+    /// an actor that is absent or gone is passed over. An actor that took a
+    /// field is in the change log like any other content change.
+    pub fn profileFill(self: *Batch, page: Store.FillPage) !Store.Filled {
+        const engine_db = self.store.db();
+        var state = try read.profileFillState(engine_db, self.arena.allocator());
+        if (state.finished_at != 0) return .{ .finished = true };
+        if (!std.mem.eql(u8, state.position, page.after)) return .{};
+        if (page.next) |next| if (next.len == 0 or next.len > keys.max_did) return error.InvalidCursor;
+
+        var filled: usize = 0;
+        for (page.rows) |row| {
+            keys.validDid(row.did) catch continue;
+            _ = self.scratch.reset(.retain_capacity);
+            self.encoded = .empty;
+            const old = try self.load(row.did) orelse continue;
+            if (!old.live()) continue;
+            var new = old;
+            if (old.description.len == 0) new.description = row.description;
+            if (old.banner.len == 0) new.banner = row.banner;
+            if (new.description.len == old.description.len and new.banner.len == old.banner.len) continue;
+            _ = try self.save(row.did, old, new, null);
+            filled += 1;
+        }
+
+        if (state.started_at == 0) state.started_at = self.now;
+        state.pages += 1;
+        state.rows += page.rows.len;
+        state.filled += filled;
+        if (page.next) |next| state.position = next else state.finished_at = self.now;
+        _ = self.scratch.reset(.retain_capacity);
+        var buf: keys.Buf = undefined;
+        var value: std.ArrayList(u8) = .empty;
+        try state.encode(self.tmp(), &value);
+        try engine_db.put(keys.cursor(&buf, .profile_fill), value.items);
+        return .{ .applied = true, .filled = filled, .finished = page.next == null };
     }
 
     fn hiddenRefreshed(self: *Batch, did: []const u8) !Outcome {

@@ -558,6 +558,100 @@ test "the first-check pass queues nothing while the refresh backlog is at its li
     try testing.expectEqual(@as(u64, 9), try f.count(.refresh));
 }
 
+test "the profile fill writes a description or a banner only where the store has none, and logs each actor it changed" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    const loaded: change.Enrichment = .{ .did = "", .source = .bsky, .followers_count = 40, .follows_count = 7, .posts_count = 3, .quality_score = 12.5, .created_at = "2024-01-01T00:00:00.000Z", .checked = false };
+    try loadStamped(&f, "did:plc:a", "bare.test", loaded);
+    var half = loaded;
+    half.description = "kept";
+    try loadStamped(&f, "did:plc:b", "described.test", half);
+    var full = loaded;
+    full.description = "mine";
+    full.banner = "bafkmine";
+    full.checked = true;
+    try loadStamped(&f, "did:plc:c", "full.test", full);
+    try loadStamped(&f, "did:plc:d", "gone.test", loaded);
+    _ = try f.apply(t0 + 1, .{ .gone = .{ .did = "did:plc:d", .status = .deleted } });
+    try loadStamped(&f, "did:plc:e", "empty.test", loaded);
+    _ = try f.apply(t0 + 2, .{ .refresh_complete = .{ .did = "did:plc:a", .next_due = t0 + 9000 } });
+
+    const before = [_]record.Actor{ try f.actor("did:plc:a"), try f.actor("did:plc:b"), try f.actor("did:plc:c"), try f.actor("did:plc:d"), try f.actor("did:plc:e") };
+    const head = (try f.store.cursors(f.arena.allocator())).next_change;
+    const queued = .{ try f.count(.refresh), try f.count(.identity) };
+
+    const long: [keys.max_did + 1]u8 = @splat('d');
+    const page: Store.FillPage = .{ .rows = &.{
+        .{ .did = "did:plc:a", .description = "from turso", .banner = "bafkturso" },
+        .{ .did = "did:plc:absent", .description = "nobody", .banner = "bafknobody" },
+        .{ .did = "did:plc:b", .description = "other", .banner = "bafkother" },
+        .{ .did = "did:plc:c", .description = "other", .banner = "bafkother" },
+        .{ .did = "did:plc:d", .description = "late", .banner = "bafklate" },
+        .{ .did = "did:plc:e" },
+        .{ .did = &long, .description = "unholdable" },
+    }, .next = "did:plc:f" };
+    try testing.expectEqual(Store.Filled{ .applied = true, .filled = 2 }, try f.store.profileFill(t0 + 100, page));
+
+    const a = try f.actor("did:plc:a");
+    try testing.expectEqualStrings("from turso", a.description);
+    try testing.expectEqualStrings("bafkturso", a.banner);
+    const b = try f.actor("did:plc:b");
+    try testing.expectEqualStrings("kept", b.description);
+    try testing.expectEqualStrings("bafkother", b.banner);
+    // Nothing but the two fields and the content time moved.
+    for ([_]record.Actor{ a, b }, before[0..2]) |after, was| {
+        var expected = was;
+        expected.description = after.description;
+        expected.banner = after.banner;
+        expected.updated_at = t0 + 100;
+        try testing.expect(expected.eql(after));
+        try testing.expectEqual(was.profile_checked_at, after.profile_checked_at);
+        try testing.expectEqual(was.refresh_due, after.refresh_due);
+    }
+    try testing.expectEqual(@as(u64, t0 + 2), a.profile_checked_at);
+    try testing.expectEqual(@as(u64, 0), b.profile_checked_at);
+    for ([_][]const u8{ "did:plc:c", "did:plc:d", "did:plc:e" }, before[2..]) |did, was| try testing.expect(was.eql(try f.actor(did)));
+    try testing.expect(try f.store.actor(f.arena.allocator(), "did:plc:absent") == null);
+    try testing.expectEqual(queued, .{ try f.count(.refresh), try f.count(.identity) });
+
+    const log = (try f.store.changes(f.arena.allocator(), head, 100)).entries;
+    try testing.expectEqual(@as(usize, 2), log.len);
+    try testing.expectEqualStrings("did:plc:a", log[0].did);
+    try testing.expectEqualStrings("did:plc:b", log[1].did);
+
+    const state = try read.profileFillState(f.store.db(), f.arena.allocator());
+    try testing.expectEqualDeep(record.ProfileFillState{ .started_at = t0 + 100, .pages = 1, .rows = 7, .filled = 2, .position = "did:plc:f" }, state);
+}
+
+test "the profile fill resumes from its stored position, takes each page once, and stays finished" {
+    var f = try Fixture.init(.{});
+    defer f.deinit();
+    for ([_][]const u8{ "did:plc:a", "did:plc:m", "did:plc:z" }) |did| _ = try f.apply(t0, .{ .profile = .{ .did = did, .handle = "bare.test" } });
+
+    const first: Store.FillPage = .{ .rows = &.{.{ .did = "did:plc:a", .description = "one" }}, .next = "did:plc:k" };
+    try testing.expectEqual(Store.Filled{ .applied = true, .filled = 1 }, try f.store.profileFill(t0 + 10, first));
+    // The same page again, and one asked from a position the store is not at.
+    try testing.expectEqual(Store.Filled{}, try f.store.profileFill(t0 + 11, first));
+    try testing.expectEqual(Store.Filled{}, try f.store.profileFill(t0 + 11, .{ .after = "did:plc:j", .rows = &.{.{ .did = "did:plc:m", .description = "skipped ahead" }}, .next = "did:plc:n" }));
+    try testing.expectError(error.InvalidCursor, f.store.profileFill(t0 + 11, .{ .after = "did:plc:k", .next = "" }));
+
+    try f.reopen();
+    try testing.expectEqualStrings("did:plc:k", (try read.profileFillState(f.store.db(), f.arena.allocator())).position);
+    // A page with nothing to copy still moves the position.
+    try testing.expectEqual(Store.Filled{ .applied = true }, try f.store.profileFill(t0 + 20, .{ .after = "did:plc:k", .next = "did:plc:l" }));
+    const head = (try f.store.cursors(f.arena.allocator())).next_change;
+    try testing.expectEqual(Store.Filled{ .applied = true, .filled = 1, .finished = true }, try f.store.profileFill(t0 + 30, .{ .after = "did:plc:l", .rows = &.{.{ .did = "did:plc:m", .banner = "bafkm" }} }));
+    try testing.expectEqual(head + 1, (try f.store.cursors(f.arena.allocator())).next_change);
+
+    try f.reopen();
+    try testing.expectEqual(Store.Filled{ .finished = true }, try f.store.profileFill(t0 + 40, .{ .after = "did:plc:l", .rows = &.{.{ .did = "did:plc:z", .description = "too late" }}, .next = "did:plc:zz" }));
+    try testing.expectEqual(Store.Filled{ .finished = true }, try f.store.profileFill(t0 + 40, .{ .rows = &.{.{ .did = "did:plc:z", .description = "from the top" }} }));
+    try testing.expectEqualStrings("", (try f.actor("did:plc:z")).description);
+    try testing.expectEqualStrings("one", (try f.actor("did:plc:a")).description);
+    try testing.expectEqualStrings("bafkm", (try f.actor("did:plc:m")).banner);
+    try testing.expectEqualDeep(record.ProfileFillState{ .started_at = t0 + 10, .finished_at = t0 + 30, .pages = 3, .rows = 2, .filled = 2, .position = "did:plc:l" }, try read.profileFillState(f.store.db(), f.arena.allocator()));
+}
+
 test "blocking a domain hides new writes at once and stored actors by sweep" {
     var f = try Fixture.init(.{});
     defer f.deinit();

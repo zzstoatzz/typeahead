@@ -206,6 +206,13 @@ pub fn firstCheckState(db: *Db, arena: std.mem.Allocator) !record.FirstCheckStat
     return record.FirstCheckState.decode(try arena.dupe(u8, borrowed));
 }
 
+/// Where the profile fill stands; the default before its first page.
+pub fn profileFillState(db: *Db, arena: std.mem.Allocator) !record.ProfileFillState {
+    var buf: keys.Buf = undefined;
+    const borrowed = try db.get(keys.cursor(&buf, .profile_fill)) orelse return .{};
+    return record.ProfileFillState.decode(try arena.dupe(u8, borrowed));
+}
+
 pub const LabelRow = struct {
     source: []const u8,
     value: []const u8,
