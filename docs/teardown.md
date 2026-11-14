@@ -2,8 +2,8 @@
 
 What is left over from the old system. Search runs on the two store slots;
 everything here is retired and still exists, or is code that only the retired
-parts used. Read on 2026-11-13 with read-only commands. "Not checked" marks
-what those commands could not see.
+parts used. Read on 2026-11-13 with read-only commands, with measurements
+from the cutover of the same date. "Not checked" marks what neither covered.
 
 Nothing in the first group may be deleted without the owner's explicit go.
 Turso has not been approved for deletion.
@@ -36,13 +36,10 @@ Size and plan: not checked.
 `fly apps list` shows no other `typeahead-*` app besides the two slots. The
 two 20 GB volumes are billed while they exist.
 
-Before deleting `typeahead-tantivy-a` and `-b`: the route record's `previous`
-may still name one of them. Reading the record needs R2 credentials; not
-checked. A [rollback](operating.md#roll-back) to a stopped slot is refused, so
-nothing depends on them, but the next flip should be made first so `previous`
-names a store slot.
+The route record no longer names them: on 2026-11-13 its `current` was
+`typeahead-shadow-a` and its `previous` `typeahead-shadow-b`.
 
-Then remove `https://typeahead-tantivy-dev.fly.dev`,
+With the apps, remove `https://typeahead-tantivy-dev.fly.dev`,
 `https://typeahead-tantivy-a.fly.dev` and `https://typeahead-tantivy-b.fly.dev`
 from the origin list in `src/search-route.ts` and from `MANAGED_ORIGINS` in
 `scripts/snapshot_refresh/store_slot_route.py`.
@@ -52,18 +49,22 @@ from the origin list in `src/search-route.ts` and from `MANAGED_ORIGINS` in
 Keep `control/search-routing.json` and `control/store-slot-admissions/`.
 Everything else was written for the old slots: published snapshot bundles and
 manifests (`releases/…`), the bootstrap bundles the two store slots were
-loaded from, and `control/tantivy-standby/`. The bucket's contents and size:
-not checked.
+loaded from, and `control/tantivy-standby/`. The bucket held about 131 GB on
+2026-11-12, about 93 GB of it under October prefixes.
 
 ### Prefect, in my-prefect-server
 
-- The paused deployments `typeahead-index`, `typeahead-identity-hourly` and
-  `typeahead-enrich-backfill`, and the automation that retries a missed
-  refresh.
-- The `typeahead-turso-*` credential blocks.
+- `typeahead-identity-hourly` and `typeahead-enrich-backfill`: schedules
+  paused 2026-11-13 (my-prefect-server commit `d21bee8`).
+- `typeahead-index` and the automation that retries a missed refresh: paused
+  earlier the same week.
+- `typeahead-plc-identity` and `cloud-builder-probe`: two more deployments
+  whose purpose is not known.
+- Credential blocks: `typeahead-turso-*`, `typeahead-tantivy-a-fly-deploy-token`
+  and `typeahead-tantivy-b-fly-deploy-token`.
 - The flow code and image pins for them in that repository.
 
-State of each: not checked. `just refresh-search` in this repository submits
+`just refresh-search` in this repository submits
 `typeahead-index` and goes with it.
 
 ### DNS and certificate
@@ -101,6 +102,16 @@ The unmerged ones hold work against the native engine or the Turso system.
 Whether any of it is still wanted: not checked.
 
 ## Work that remains
+
+The Worker still writes to Turso on every request. `STATS_MODE=read-d1` reads
+statistics from D1 and writes each one to Turso as well, and there is no
+setting that writes D1 alone. The Turso bill does not stop until a D1-only
+statistics mode ships.
+
+### Evergreen's inventory
+
+`site/services.json` in the `evergreen` repository still lists the old
+typeahead resources and none of the new ones.
 
 ### Turso in the Worker
 
@@ -153,15 +164,16 @@ nothing from Turso for accounts and writes nothing to its account tables.
 ### Left on the slots
 
 - The Fly secret `ENRICH_FIRST_CHECK_STAMP` on both slots. It restarted the
-  one-time first-check pass and is not needed once `first_check.finished_at`
-  is set in the store's `/health`. Whether it is set: not checked. Unset it
-  with `fly secrets unset --stage` so nothing restarts.
+  one-time first-check pass and has to stay until `first_check.finished_at`
+  is set in the store's `/health`. On 2026-11-13 it was 0 on both: slot A had
+  examined 793,755 accounts and slot B 354,452. Then unset it with
+  `fly secrets unset --stage` so nothing restarts.
 - Machine environment from past deploys, on both slots: `PROFILE_FILL=0`,
   `PROFILE_FILL_PAGE=1000`, `PROFILE_FILL_STEP_SECONDS=0` and
   `INDEX_RESYNC_AFTER`. None is in `deploy/shadow-slot/fly.toml`, so the next
   plain deploy drops them.
 - `/data/compare` on slot A's volume, left by the comparison run before the
-  cutover. Its size: not checked.
+  cutover. It exists; its size was not measured.
 - `deploy/shadow-slot/README.md`, `bootstrap.md`, `sizing.md` and
   `validation.md` still describe the slot as a shadow beside production, and
   `fly.toml` begins with "Not deployed".
@@ -169,10 +181,12 @@ nothing from Turso for accounts and writes nothing to its account tables.
 
 ### The readiness gap
 
-After a restart a slot reports ready about 45 seconds before its search
-engine answers searches at normal speed. A flip in that window would be
-admitted and would serve slow answers. Until `/ready` waits for the index
-files to be read into memory, wait a minute after a restart before a flip.
+After a restart a slot reports ready, and `standby` reports it fit, long
+before it answers at normal speed: about 10 minutes at 2 GB, and hours after a
+full resync at the shared size. A flip in that window would be admitted and
+would serve slow or failing answers. Until readiness or the admission measures
+latency, run a [latency round](operating.md#restarts-and-warm-up) against the
+slot's own origin and require a clean one before a flip.
 
 ### Smaller things
 

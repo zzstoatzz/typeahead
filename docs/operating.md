@@ -95,8 +95,10 @@ the route, then deploy to the slot that was serving.
    ./scripts/snapshot_refresh/store_slot_route.py standby --binary-sha256 <hash>
    ```
 
-5. [Flip the route](#flip-the-route) to it.
-6. Deploy the same image to the other slot and wait for `standby` to report it
+5. Run a [latency round](#restarts-and-warm-up) against the standby's own
+   origin and wait for a clean one. Fit is not fast.
+6. [Flip the route](#flip-the-route) to it.
+7. Deploy the same image to the other slot and wait for `standby` to report it
    fit.
 
 An image that changes the normalizer version, the plan version or the index
@@ -106,8 +108,28 @@ compares all three, and there is no procedure for that case yet.
 An image that changes what an index document holds needs every document
 rewritten once. Pass `-e INDEX_RESYNC_AFTER=$(date +%s)` with the deploy to the
 standby. The store then walks every account into the index in one round, and
-the admission refuses the slot until the round completes. A round took 87
-minutes on slot B (`reconciliation_duration_s` in the `standby` report).
+the admission refuses the slot until the round completes.
+
+A round is throttled at the slot's normal size: about 578 documents a second
+on four shared CPUs, against 1,650 to 2,000 on four performance CPUs, so
+several hours against 87 minutes (measured 2026-11-13). Give the standby
+performance CPUs for the pass and put it back afterwards:
+
+```sh
+fly machine update <machine id> -a <standby app> --vm-cpu-kind performance --vm-cpus 4 --vm-memory 8192
+fly machine update <machine id> -a <standby app> --vm-cpu-kind shared --vm-cpus 4 --vm-memory 2048
+```
+
+`fly deploy` sets a machine back to the size in `fly.toml`.
+`fly machine update --image … --env …` changes the image or environment and
+keeps the size.
+
+After a round the search engine merges the rewritten segments for hours. At
+the shared size slot A stayed 50 to 70% CPU-throttled, with a p90 of 165 to
+343 ms, for more than an hour after its pass, and was clean the next day (2%
+throttled, p90 42 to 45 ms). Do not flip to a freshly resynced slot at the
+shared size until a [latency round](#restarts-and-warm-up) against it is
+clean.
 
 ## Flip the route
 
@@ -221,15 +243,22 @@ Restart the standby freely. Restart the serving slot only after flipping away
 from it:
 
 - The search engine is down until its new process is ready.
-- A slot reports ready about 45 seconds before its search engine answers
-  searches at normal speed. Requests in the first minute after a restart have
-  taken up to 2.3 s while index files were read back into memory.
+- A slot reports ready long before it answers at normal speed. At 2 GB it
+  takes about 10 minutes to read its index files back into memory. Measured
+  2026-11-13 on slot B: 4 minutes after a restart a round of 741 queries had
+  66 failures and a p99 of 2.2 s; at 12 minutes it had none, with p50 34 ms,
+  p90 41 ms and p99 59 ms.
 - The index stops answering when it has heard nothing from the store for 120
   seconds. After a machine start the store took 22 to 42 s to reach its first
   push, and the index's lag peaked at 35 to 60 s.
 
-After a restart, wait for `standby` to print `"fit": true` before treating the
-slot as a standby again.
+`standby` printing `"fit": true` does not measure latency. Before flipping to
+a slot that has restarted, run a latency round against its own origin and
+require a clean one: no failures, and percentiles like the serving slot's.
+
+```sh
+just bench-search --url https://<app>.fly.dev
+```
 
 The supervisor inside a slot restarts either process by itself and leaves the
 other running. The machine does not restart when a process exits.
@@ -245,9 +274,16 @@ In the last three cases, [fail over](#fail-over) if the slot is serving.
 
 ## Resize
 
-Machine size is the `[[vm]]` block in `deploy/shadow-slot/fly.toml`. Change
-it there and [upgrade the slots](#upgrade-the-slots), standby first, so the
-file and the machines agree. A resize restarts the machine.
+Machine size is the `[[vm]]` block in `deploy/shadow-slot/fly.toml`, and
+every `fly deploy` applies it. To resize without a deploy:
+
+```sh
+fly machine update <machine id> -a <app> --vm-cpu-kind shared --vm-cpus 4 --vm-memory 2048
+```
+
+Change `fly.toml` to match, or the next deploy undoes it. A resize restarts
+the machine, so resize the standby, [check its latency](#restarts-and-warm-up),
+flip, then resize the other.
 
 A volume can grow while the machine runs and cannot shrink:
 
@@ -265,22 +301,31 @@ whole policy from the Worker every 30 seconds. A change is in force in search
 within about a minute. The public cache holds an answer for 60 seconds more.
 
 The admin endpoints take the Worker's admin secret, which `.env` holds as
-`TYPEAHEAD_SECRET`.
+`ADMIN_SECRET`. Load it into the shell first:
+
+```sh
+set -a; . ./.env; set +a
+```
+
+`just smoke`, `just stats-parity` and `just stats-backfill` read the same
+secret from `TYPEAHEAD_SECRET`, so run them as
+`TYPEAHEAD_SECRET="$ADMIN_SECRET" just smoke`. Without it the smoke suite
+skips its admin checks.
 
 ```sh
 # list
-curl -sS -H "Authorization: Bearer $TYPEAHEAD_SECRET" https://typeahead.waow.tech/admin/mod-overrides
-curl -sS -H "Authorization: Bearer $TYPEAHEAD_SECRET" https://typeahead.waow.tech/admin/domain-blocks
+curl -sS -H "Authorization: Bearer $ADMIN_SECRET" https://typeahead.waow.tech/admin/mod-overrides
+curl -sS -H "Authorization: Bearer $ADMIN_SECRET" https://typeahead.waow.tech/admin/domain-blocks
 
 # hide or show one account, whatever its labels say
-curl -sS -X POST -H "Authorization: Bearer $TYPEAHEAD_SECRET" -H 'Content-Type: application/json' \
+curl -sS -X POST -H "Authorization: Bearer $ADMIN_SECRET" -H 'Content-Type: application/json' \
   -d '{"did":"did:plc:…","action":"hide","reason":"…"}' https://typeahead.waow.tech/admin/mod-override
-curl -sS -X DELETE -H "Authorization: Bearer $TYPEAHEAD_SECRET" 'https://typeahead.waow.tech/admin/mod-override?did=did:plc:…'
+curl -sS -X DELETE -H "Authorization: Bearer $ADMIN_SECRET" 'https://typeahead.waow.tech/admin/mod-override?did=did:plc:…'
 
 # hide every handle under a domain
-curl -sS -X POST -H "Authorization: Bearer $TYPEAHEAD_SECRET" -H 'Content-Type: application/json' \
+curl -sS -X POST -H "Authorization: Bearer $ADMIN_SECRET" -H 'Content-Type: application/json' \
   -d '{"domain":"example.com","reason":"…"}' https://typeahead.waow.tech/admin/domain-block
-curl -sS -X DELETE -H "Authorization: Bearer $TYPEAHEAD_SECRET" 'https://typeahead.waow.tech/admin/domain-block?domain=example.com'
+curl -sS -X DELETE -H "Authorization: Bearer $ADMIN_SECRET" 'https://typeahead.waow.tech/admin/domain-block?domain=example.com'
 ```
 
 `action` is `hide` or `show`. To confirm a change reached a slot, ask the
@@ -403,7 +448,7 @@ time.
 
 ## Alerts
 
-Alerts come from two places.
+Alerts come from three places.
 
 The Worker's hourly cron posts to the alert webhook (`ALERT_WEBHOOK_URL`, a
 Discord channel) when a state changes, not every hour:
@@ -424,6 +469,11 @@ Logfire, project `typeahead`, has one alert per slot:
 | --- | --- | --- |
 | store slot heartbeat missing or relay stalled | no `store.heartbeat` from that slot for 15 minutes, or its newest relay event is over 15 minutes old | read `fly logs` and the store's `/health`; if the slot is serving and does not recover, [fail over](#fail-over) |
 | telemetry volume exceeds 50,000 records in 15 minutes | something is logging in a loop | find the source and stop it |
+
+Evergreen's fleet-health sweep (repository `evergreen`,
+`site/services.json`) reads `/health/freshness` every 15 minutes and posts to
+the Prefect alerts channel when it fails. Treat it as the freshness alert
+above.
 
 The store process sends one `store.heartbeat` span a minute. Its attributes
 include `control_age_seconds`, the time since the slot last reached the
