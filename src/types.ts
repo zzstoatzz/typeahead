@@ -25,19 +25,13 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   SEARCH_CACHE_GENERATION?: string;
   PDS_SEARCH_DISABLED?: string;
   PDS_UI_ENABLED?: string;
-  /// "1" re-asks Turso when the engine answers empty (limit ≤ 25 only).
-  /// Off by default since 2026-09-04: see tursoFallbackOnEmpty.
-  TURSO_FALLBACK_ON_EMPTY?: string;
-  /// "1" sends the query to Turso when the engine is unreachable or errors.
-  /// Off by default since 2026-09-04: see tursoFallbackOnUnreachable.
-  TURSO_FALLBACK_ON_UNREACHABLE?: string;
   /// DID of the service's own atproto account (@typeahead.waow.tech).
   /// served at /.well-known/atproto-did for handle verification; the
   /// _lexicon DNS record points here so the service owns its lexicons.
   SERVICE_DID?: string;
   /// Emergency kill switch: when set (any non-empty value), the search
-  /// handler bypasses everything (ingester, Turso, cache) and proxies
-  /// directly to Bluesky's public typeahead API. Flip via:
+  /// handler bypasses the engine and the cache and proxies directly to
+  /// Bluesky's public typeahead API. Flip via:
   ///   bunx wrangler secret put EMERGENCY_PROXY_BSKY
   /// Turn off with:
   ///   bunx wrangler secret delete EMERGENCY_PROXY_BSKY
@@ -70,17 +64,6 @@ export interface RequestKvData {
   series_5m?: { bucket: number; domain: string; endpoint: string; status: number; hits: number }[];
   daily?: { day: number; domain: string; endpoint: string; status: number; hits: number }[];
   materialized_at: number;
-}
-
-export interface ActorRow {
-  did: string;
-  handle: string;
-  display_name: string;
-  avatar_url: string;
-  labels: string;
-  created_at: string;
-  associated: string;
-  pds: string;
 }
 
 export interface IngestEvent {
