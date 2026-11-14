@@ -24,26 +24,6 @@ writes.
 
 Size and plan: not checked.
 
-### Fly apps
-
-| app | state | machines | volumes | other |
-| --- | --- | --- | --- | --- |
-| `typeahead-ingester` | suspended | `7845636a3d0ee8`, stopped | none | certificate for `ingest.typeahead.waow.tech`; two IPs |
-| `typeahead-tantivy-a` | suspended | `e820357f16e048`, stopped | `vol_re161yxy0zgo80d4`, 20 GB | two IPs |
-| `typeahead-tantivy-b` | suspended | `0803e1dc740128`, stopped | `vol_vgnwley2wdlnj884`, 20 GB | two IPs |
-| `typeahead-tantivy-dev` | suspended | none | none | two IPs |
-
-`fly apps list` shows no other `typeahead-*` app besides the two slots. The
-two 20 GB volumes are billed while they exist.
-
-The route record no longer names them: on 2026-11-13 its `current` was
-`typeahead-shadow-a` and its `previous` `typeahead-shadow-b`.
-
-With the apps, remove `https://typeahead-tantivy-dev.fly.dev`,
-`https://typeahead-tantivy-a.fly.dev` and `https://typeahead-tantivy-b.fly.dev`
-from the origin list in `src/search-route.ts` and from `MANAGED_ORIGINS` in
-`scripts/snapshot_refresh/store_slot_route.py`.
-
 ### R2: old prefixes in `typeahead-index`
 
 Keep `control/search-routing.json` and `control/store-slot-admissions/`.
@@ -52,54 +32,30 @@ manifests (`releases/…`), the bootstrap bundles the two store slots were
 loaded from, and `control/tantivy-standby/`. The bucket held about 131 GB on
 2026-11-12, about 93 GB of it under October prefixes.
 
-### Prefect, in my-prefect-server
+### Still in my-prefect-server
 
-- `typeahead-identity-hourly` and `typeahead-enrich-backfill`: schedules
-  paused 2026-11-13 (my-prefect-server commit `d21bee8`).
-- `typeahead-index` and the automation that retries a missed refresh: paused
-  earlier the same week.
-- `typeahead-plc-identity` and `cloud-builder-probe`: two more deployments
-  whose purpose is not known.
-- Credential blocks: `typeahead-turso-*`, `typeahead-tantivy-a-fly-deploy-token`
-  and `typeahead-tantivy-b-fly-deploy-token`.
-- The flow code and image pins for them in that repository.
+- The flow code and tests for the three removed deployments, and
+  `just refresh-search` in this repository, which submitted `typeahead-index`.
+- The `typeahead-turso-*` and `typeahead-tantivy-*-fly-deploy-token` credential
+  blocks. The deploy tokens are for apps that no longer exist.
+- The deployments `typeahead-plc-identity` and `cloud-builder-probe`. What
+  they are for: not checked.
+- `deploy/prefect-edge/typeahead_health.py` still probes the old ingester and
+  the two destroyed slots.
 
-`just refresh-search` in this repository submits
-`typeahead-index` and goes with it.
+## Already removed
 
-### DNS and certificate
+On 2026-11-14, with the owner's go:
 
-`ingest.typeahead.waow.tech` is a CNAME to
-`2m2mk80.typeahead-ingester.fly.dev`, with a certificate issued on the
-`typeahead-ingester` app. Delete the DNS record with the app.
-
-### Logfire
-
-The alert `ingester heartbeat missing` is active and matching, because the
-ingester is stopped. `native search overlay sync silent` is already disabled.
-Both can be deleted. The two store slot alerts name
-`docs/ops/store-slot-operations.md` and `docs/ops/cutover-to-store-slot.md` in
-their descriptions; the runbook is now [operating](operating.md).
-
-### Remote branches
-
-`origin` is tangled, `github` is the mirror.
-
-| branch | last commit | merged into main |
-| --- | --- | --- |
-| `origin/codex/tantivy-cutover-readiness` | 2026-10-30 | yes |
-| `github/codex/tantivy-cutover-readiness` | 2026-10-30 | yes |
-| `origin/archive/pds-repair-research-20261020` | 2026-10-20 | no, 66 commits |
-| `origin/archive/preexisting-typeahead-work-20261020` | 2026-10-20 | no, 1 commit |
-| `origin/codex/ranking-explainer` | 2026-10-21 | no, 3 commits |
-| `origin/codex/native-compaction` | 2026-10-09 | no, 2 commits |
-| `origin/codex/overlay-ranking` | 2026-10-09 | no, 2 commits |
-| `origin/codex/full-name-recall` | 2026-09-05 | no, 2 commits |
-| `origin/codex/wip-pre-jimray-cleanup` | 2026-07-22 | no, 1 commit |
-| `origin/codex/brand-new-account-downrank` | 2026-06-25 | no, 1 commit |
-
-The unmerged ones hold work against the native engine or the Turso system.
-Whether any of it is still wanted: not checked.
+- The Fly apps `typeahead-ingester`, `typeahead-tantivy-a`, `typeahead-tantivy-b`
+  and `typeahead-tantivy-dev`, with their machines, volumes and addresses.
+- The DNS record `ingest.typeahead.waow.tech`.
+- The Prefect deployments `typeahead-index`, `typeahead-identity-hourly` and
+  `typeahead-enrich-backfill`, and the automation that retried a missed
+  refresh (my-prefect-server `c1c80a2`).
+- The Logfire alerts `ingester heartbeat missing` and `native search overlay
+  sync silent`.
+- Every remote branch except `main`, on both remotes.
 
 ## Work that remains
 
@@ -145,6 +101,9 @@ nothing from Turso for accounts and writes nothing to its account tables.
   system.
 
 ### The old ingester's code
+
+- The destroyed slots' origins in `src/search-route.ts` and `MANAGED_ORIGINS`
+  in `scripts/snapshot_refresh/store_slot_route.py`.
 
 - The ingester role in `services/src/`: `main.zig`'s `MODE=ingester` path,
   `ingest.zig`, and what only it uses. The store role is the same binary, so
