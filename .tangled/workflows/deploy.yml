@@ -5,12 +5,15 @@ when:
 engine: microvm
 image: nixos
 
+# Bun comes from a pinned nixpkgs revision, not the image. The image's 1.3.13
+# fails this suite intermittently on Linux when tests start workerd (`EBADF:
+# bad file descriptor, epoll_ctl` from child_process.spawn), and a failed spawn
+# can leave `bun test` hanging. 1.3.14 does the same; 1.4.0 and 1.4.4 do not.
 dependencies:
+  - "github:nixos/nixpkgs/d4f25a3e562008648d45bcf2d70bcc7422cad84e#bun"
   - nodejs
   - gcc
   - patchelf
-  - curl
-  - unzip
   - coreutils
 
 # Deploy is intentionally NOT done from tangled CI — the secrets path has been
@@ -23,10 +26,7 @@ steps:
   - name: verify
     command: |
       set -euo pipefail
-      # the image's Bun fails this suite on Linux: see scripts/ci-bun.sh
-      scripts/ci-bun.sh "$PWD/.bun"
-      scripts/ci-workerd.sh "$PWD/.bun/bun"
-      export PATH="$PWD/.bun:$PATH"
+      bun --version
       bun install
       scripts/ci-workerd.sh
       bunx tsc --noEmit
