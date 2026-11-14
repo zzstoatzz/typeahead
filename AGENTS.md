@@ -30,15 +30,19 @@ directly when no ancestor `CLAUDE.md` overrides it. Paths are repository-relativ
   review; no automated check can prove a prose claim is true.
 
 
-Community actor search for atproto. Discovery is the relay's firehose
-(`com.atproto.sync.subscribeRepos`), NOT jetstream — see `docs/discovery-and-identity.md`.
+Community actor search for atproto. Accounts are discovered from the relay's
+firehose (`com.atproto.sync.subscribeRepos`), NOT jetstream, which silently
+drops records the relay carries.
 Canonical endpoint: `tech.waow.typeahead.searchActors`
 (self-owned lexicon, `lexicons/`); `app.bsky.actor.searchActorsTypeahead` is served forever as
 the drop-in migration alias — the two must stay byte-identical (smoke enforces this).
 When endpoints change, update ALL public docs together: `/docs`, `/llms.txt` (src/pages/llms.ts),
 README.md, homepage API chip. Service identity: @typeahead.waow.tech
 (`did:plc:y6kywgnb7xletjpa5hhxmd4k`); lexicon publishing via `scripts/publish-lexicon.py`.
-README.md has the architecture; this file is the operational contract for assessing the system.
+[How it works](docs/how-it-works.md) explains the system, [operating](docs/operating.md)
+has the procedures, and this file is the contract for changing it.
+`docs/history/` holds the old Turso system and the move off it: read it for
+reasoning, never for instructions, and do not link current docs into it.
 
 **Check the Stream archive before designing any backfill.** [Stream](https://tangled.org/zat.dev/stream)
 (our jetstream v2 port, live at `stream.waow.tech`, source in `~/tangled.org/zat.dev/stream`)
@@ -63,35 +67,46 @@ and correct the docs rather than assuming one automatically describes production
 
 ## the serving invariant
 
-The target is predictable, bounded request work. Production uses Tantivy with
-complete postings, global ranked retrieval and durable live updates; it is the
-only search engine (the native Zig engine was removed on 2026-11-02). Verify
-matching, ranking and PDS scope against the deployed engine before changing
-retrieval.
+The target is predictable, bounded request work. Search is answered by one of
+two store slots on Fly (`typeahead-shadow-a`, `typeahead-shadow-b`): each
+follows the network itself, keeps every account in a store on its own disk and
+feeds a Tantivy index on the same machine with complete postings, global ranked
+retrieval and durable live updates. Verify matching, ranking and PDS scope
+against the deployed engine before changing retrieval.
 
-Avoid corpus-proportional request work and full-scan Worker cron selectors. Full
-index builds are deliberately corpus-scale offline jobs; this is not permission
-to move that work onto the request path.
+Avoid corpus-proportional work on the request path and in the Worker cron. A
+full resync of a slot's index from its store is deliberately corpus-scale; it
+runs on the standby, never on the serving slot.
 
-## snapshot refresh ownership
+## slots and the route
 
-Bulk builds and refresh orchestration belong to the cloud `typeahead-index`
-deployment in my-prefect-server. Prepare and admit snapshots only on the inactive
-managed Fly slot with independent storage. Never download, verify, resize or restart
-the serving slot for a trial or refresh. Its slot pointer stays fixed while serving.
-Promote only a qualified backend through the conditional R2 routing update; retain
-the previous backend for rollback. Follow [the refresh runbook](docs/history/plans/automatic-snapshot-refresh.md).
+One slot serves and the other stands by; the route record in R2
+(`control/search-routing.json`) says which. Follow
+[operating](docs/operating.md) for every one of these.
+
+- Deploy, restart, resize or resync the standby only. To change the serving
+  slot, flip the route to a fit standby first.
+- Change the route only with `scripts/snapshot_refresh/store_slot_route.py`.
+  Its admission and conditional write are the safety; never write the record
+  by hand.
+- Nothing pushes into a slot. A slot follows the relay, the PLC directory and
+  the labeler and pulls policy and index requests from the Worker. It never
+  holds a credential that can write anywhere else, and its store's port 8082
+  never gets a public service.
+- Both slots run one image. A change to the normalizer, plan version or index
+  format cannot be admitted against the serving slot and needs its own plan.
+- Bulk and backfill work runs in cloud infrastructure, never on HeavyPad or
+  this laptop.
 
 ## production continuity during experiments
 
-Before any serving, snapshot or capacity experiment, read the
-[October 31 outage retrospective and preflight](docs/history/retros/2026-10-31-search-expiry-outage.md) and the
-[November 2 follow-up](docs/history/retros/2026-11-02-tantivy-slot-expired-again.md).
-Check live coverage expiry and the last successful refresh, not just readiness or
-an enabled schedule. Account for inactive-slot occupancy. In an outage, restore
-unscoped search with the documented Bluesky switch before lengthy diagnosis.
-Recovery tests must include an unavailable old backend. Automatic fallback and
-PDS scope safety must remain intact during changes.
+Before any serving or capacity experiment, check the live route, that the
+serving slot is healthy and that the standby is fit
+(`store_slot_route.py standby`), not just that machines are started. In an
+outage, restore unscoped search first, with a failover or the
+`EMERGENCY_PROXY_BSKY` switch, and diagnose afterwards. Recovery tests must
+include an unavailable serving slot. Automatic fallback to Bluesky and PDS
+scope safety must remain intact during changes.
 
 ## performance & benchmarking
 
@@ -105,14 +120,14 @@ one command each; `just perf` runs them all in order. Results land in
 | `just bench` | **edge latency** — the worker + 60s CF cache, what users actually feel | warm p50 ≲ 60ms (cache hit); cold p50 faster than bluesky; mean overlap with bsky ≳ 75% |
 | `just bench-search` | **engine latency** — the search service alone, bypassing the edge cache | warm p50 ≲ 100ms; cold varied-prefix queries should stay in the low hundreds of ms and beat bluesky's ~300ms |
 | `just bench-ranking` | **ranking quality** — canonical query set vs bluesky as oracle, with `/debug/search` score breakdowns | structural criteria pass; parity criteria are aspirational (see below) |
-| `just index-status` | **corpus scale** — `build_id`, `actor_count`, `prefix_count`, `normalize_version` | actor_count tracks the live corpus; build_id matches the deployed snapshot |
+| `just index-status` | **corpus scale** — `build_id`, `actor_count`, `normalize_version` | actor_count tracks the live corpus; build_id matches the route's |
 
 Defaults target prod (`typeahead.waow.tech`) and the search backend
 through the stable transport route (`typeahead-search-transport.n8-3e9.workers.dev`);
 `smoke`/`bench-ranking`/`index-status` take a
 positional url, `bench`/`bench-search` take `--url X`. Add `--quick` /
 `--no-stress` to `bench`/`bench-search` for a fast pass. `bench-search` skips stress by
-default so it doesn't hammer the serving Fly box. For engine-only timing, pass the
+default so it doesn't hammer the serving slot. For engine-only timing, pass the
 explicit backend origin; transport timing includes the routing hop.
 
 **The benchmark oracle is bluesky, not a fixed number.** `scripts/bench.py` measures us
@@ -138,8 +153,8 @@ regression is pinned). Extend it, don't prune it.
   results against the old implementation on the same data, not just Bluesky parity.
 - **after a worker change** → `just smoke` runs automatically as the post-deploy gate of
   `just deploy-worker`; run `just bench` if the change could touch latency or caching.
-- **after a snapshot rebuild / promote** → `just index-status` to confirm the new `build_id`
-  is serving, then `just bench-ranking`.
+- **after a route flip** → `just index-status` to confirm the new slot's `build_id`
+  is serving, then `just smoke` and `just bench-ranking`.
 - **periodic health** → only when requested; do not start recurring monitors
   without authorization. `just perf` includes benchmarks, not just health probes.
 
@@ -147,83 +162,54 @@ regression is pinned). Extend it, don't prune it.
 
 - `just deploy-worker` — lint and type-check, then `wrangler deploy` **then** the smoke suite. A deploy that breaks
   shape, ranking, or the admin API fails loudly here. `deploy-worker-only` skips smoke but still requires lint.
+- `just deploy-search-transport` deploys the transport, then runs the smoke suite. A slot's
+  origin must be in `src/search-route.ts` and deployed before a route record can name it.
 - `just deploy-image-renderer` deploys the private PNG renderer, then validates
   fresh public images. Keep `workers-og` and its Wasm imports exclusive to that
   Worker. Deploy the renderer before introducing its public service binding.
-- `just deploy-ingest` deploys the Zig ingester (`MODE=ingester`, the only
-  role deployed; `MODE=store` is the embedded-store role, built and tested
-  locally only, see `docs/history/plans/embedded-store-service.md`). Search backends are not Fly-deployed from this repo: Tantivy slot
-  releases follow the [refresh runbook](docs/history/plans/automatic-snapshot-refresh.md),
-  including inactive installation, admission, qualification and guarded routing.
-- **Index builds are not a Fly deploy.** The cloud
-  `typeahead-index` deployment in `my-prefect-server` reads Turso, publishes
-  immutable artifacts to R2, and invokes the managed rollout controller. Its
-  cloud worker stays separate from home monitoring and analytics. That repo owns
-  `flows/typeahead_index.py`, deployment definitions, image pins and schedules;
-  verify active API/worker ownership against its migration records before changing
-  them. Do not revive the obsolete home cadence as an automatic path. See
-  [operations](docs/operations.md).
-  `just refresh-search` explicitly submits that managed deployment through the
-  operations repository's configured Prefect wrapper; it does not deploy the
-  current checkout. Main-branch CI never invokes it.
-- PDS backlog repair and freshness work must run in cloud infrastructure, never HeavyPad.
-  The retired PLC home job must not be restored. See [repair contracts](docs/history/pds-identity-repair.md).
+- A slot image is deployed with `fly deploy . --config deploy/shadow-slot/fly.toml -a <standby app>`,
+  standby first, then a route flip, then the other slot:
+  [operating](docs/operating.md#upgrade-the-slots).
 - Deploy is manual (not tangled CI — the secret path is unreliable; CI only builds + tests +
   `wrangler deploy --dry-run`). So the smoke gate lives in the deploy recipe, not in CI.
+- The old ingester, the Turso-fed slots, the index refresh and the HeavyPad flows are
+  retired and listed in [teardown](docs/teardown.md). Do not deploy, resume or delete
+  any of them without Nate's explicit go; `just deploy-ingest` and `just refresh-search`
+  belong to them.
 
 ## conventions
 
 - worker tests: `bun test`. zig tests: `just test-services` (or `cd services && zig build test`).
   Retrieval changes also require `just --no-dotenv test-tantivy`, run by CI on main.
 - never run work proportional to the corpus on the request/cron path (see the invariant above).
-- **the cron contract**: every cron selector must be an index SEARCH (smoke's
-  `test_cron_selector_plans` EXPLAIN-guards this live against Turso), every batch size must
-  state what it honestly covers against measured arrival rates (~2,900 new actors/hour), and
-  the cron NEVER claims to drain a corpus-scale backlog — backlogs belong to the bulk paths
-  (the `typeahead-enrich-backfill` Prefect deployment for profiles, `typeahead-identity-hourly`
-  for new actors' handles, defined in `my-prefect-server`), run off-worker.
-  Live identity freshness is the durable `identity_queue` (signals enqueued before the
-  relay cursor can pass them; the ingester leases and resolves). Never move a pending
-  identity lookup back into process memory. See [discovery and identity](docs/discovery-and-identity.md).
-  Missing PDS metadata requires a separately qualified cloud repair, never HeavyPad. Since 2026-09-03
-  the worker cron does NO enrichment at all: freshness, stats, and the moderation refresh
-  only, inside a 12-minute budget (`CRON_BUDGET_MS`) so the 15-minute wall kill — which took
-  120 of 140 runs, silently — cannot recur. Every run logs `cron_done` with per-phase ms.
-- every equality query on `actors.handle` needs `COLLATE NOCASE`, or it scans the whole
-  table — `idx_actors_handle` is declared with that collation. Paginate on `rowid`.
-- Turso is single-writer and the live ingester shares it. Bulk writes must batch (one
-  statement per batch, not per row) and pace against observed latency.
+- **the cron contract**: the Worker cron does freshness, statistics, the control
+  database probe and index-request pruning, inside a 12-minute budget
+  (`CRON_BUDGET_MS`), because a 15-minute wall kill is silent. It does no
+  enrichment and never drains a backlog: discovering, resolving and refreshing
+  accounts is the store process's work on each slot. Every run logs `cron_done`
+  with per-phase ms.
+- the Worker reads and writes nothing in Turso for accounts (`PROFILE_MODE=slot`,
+  `CORPUS_MODE=slot`, `TURSO_ACTORS=off`). Add no new Turso read or write. The
+  Turso code that remains is listed for removal in [teardown](docs/teardown.md).
 - traffic stats: `traffic_buckets` counts search cache-misses by app; `request_buckets` counts
   EVERY answer the worker gives (app × endpoint × status, router wrapper in `src/index.ts`) and
   feeds the `source · endpoint · status` views on /stats. `endpointLabel` is a fixed label set —
   unknown paths must collapse to `other`, never mint a new endpoint. Check `/stats?view=status`
-  first when something smells; a 16% 500-rate on `/admin/ingest` was invisible before this.
-  Statistics writers go through `recordStats`/`writeStats` (`src/stats-store.ts`), which also
-  write the `STATS_DB` D1 database, and statistics reads go through `statsReadDb`. One
-  setting, `STATS_MODE`, decides both: `turso-only`, `read-turso` (both written, Turso read)
-  or `read-d1` (both written, D1 read). Corpus counts stay on Turso. See [operations](docs/operations.md#statistics-dual-write-to-d1) and
-  [the read cutover](docs/operations.md#statistics-read-cutover-to-d1).
+  first when something smells.
+  Statistics writers go through `recordStats`/`writeStats` (`src/stats-store.ts`) and
+  statistics reads go through `statsReadDb`. `STATS_MODE=read-d1` reads the `STATS_DB` D1
+  database and still writes Turso as well.
 - moderation overrides, blocked domains and indexing requests have one source of truth, the
   `typeahead-control` D1 database, written only through `src/control-store.ts` (every policy
   write raises the revision in the same transaction). Store slots pull it; nothing pushes to a
-  slot, and a slot never holds a credential that can write. The Turso copies are mirrors for the
-  Turso-fed slots (`src/turso-policy-mirror.ts`). Built on the `control-pull` branch and not
-  deployed as of 2026-11-12: until the rollout in [slot control](docs/slot-control.md) has run,
-  production writes only Turso and a policy change does not reach a store slot.
-- profiles, the reputation report and the corpus counts on `/stats` can be read from the routed
-  store slot in place of Turso: the slot's index serves `/actors` and `/corpus` on its public
-  port, the Worker reaches them through the transport (`src/slot-read.ts`), and `PROFILE_MODE`
-  and `CORPUS_MODE` (`turso`, `compare`, `slot`) choose per feature; `TURSO_ACTORS=off` stops
-  every remaining write to Turso's actor tables. The store's port 8082 never gets a public
-  service: anything a slot must publish goes through the index. Built on the `turso-reads`
-  branch and not deployed as of 2026-11-12; inventory, parity checks and the ordered rollout are
-  in [Turso retirement](docs/turso-retirement.md). A slot loaded from a bundle has no
-  description or banner for an account until it refreshes it: the one-time profile fill
-  (`PROFILE_FILL=1`, [profile fill](docs/turso-retirement.md#profile-fill)) copies both from
-  Turso and has to finish on every slot before `PROFILE_MODE` is `slot`. Never refill them
-  from Bluesky.
-- ranking is by the stored `actors.quality_score`, not live followers; writes that touch
-  aggregate counts must keep `quality_score` consistent with them (see the clobber regression
+  slot.
+- profiles, the reputation report and the corpus counts on `/stats` are read from the routed
+  slot: its index serves `/actors` and `/corpus` on its public port and the Worker reaches
+  them through the transport (`src/slot-read.ts`). Anything a slot must publish goes through
+  the index. Never refill descriptions or banners from Bluesky in bulk; the store refreshes
+  each account on its own schedule.
+- ranking is by the stored quality score, not live followers; writes that touch
+  aggregate counts must keep the score consistent with them (see the clobber regression
   guarded in `bench.py` + `smoke.py`).
 
 
@@ -232,12 +218,11 @@ regression is pinned). Extend it, don't prune it.
 `pds` filters hosting identity before candidate caps; never implement it by
 filtering global top-N results. Global keys and unscoped responses must remain
 unchanged. Scope keys, old-PDS suppression during identity migration, cache keys,
-and fail-closed fallback behavior must be tested together. Snapshot metadata
-`pds_scope_version=1` advertises support; the Worker also requires the search
-response's `X-Typeahead-Pds` acknowledgment. Production Tantivy supports every
-recorded canonical host. See `docs/history/evals/pds-scope.md` for
-isolated evaluation commands and rollout order. No full-corpus capacity claim
-may be inferred from synthetic fixture timings.
+and fail-closed fallback behavior must be tested together. The index's
+`pds_scope_version` advertises support and the route admission compares it between
+slots; the Worker also requires the search response's `X-Typeahead-Pds`
+acknowledgment. The engine supports every recorded canonical host. No full-corpus
+capacity claim may be inferred from synthetic fixture timings.
 
 ## experiment storage lifecycle
 
