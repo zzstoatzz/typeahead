@@ -292,6 +292,26 @@ fly volumes list -a <app>
 fly volumes extend <volume id> -s <GB> -a <app>
 ```
 
+
+## Replace a lost volume
+
+Fly snapshots each slot's volume daily and keeps two days of them. A slot
+whose volume is lost or damaged is rebuilt from a snapshot, its own or the
+other slot's: both hold the same accounts and index. This has not been
+exercised yet; treat the first run as a rehearsal on the standby.
+
+```sh
+fly volumes snapshots list <volume id>
+fly volumes create shadow_data --snapshot-id <snapshot id> -s 40 -r ewr -a <app>
+```
+
+Then destroy the slot's machine and [deploy](#upgrade-the-slots) to that app,
+which creates a machine on the new volume. The store resumes from the cursors
+in the snapshot, so a snapshot older than the relay keeps events for leaves a
+gap that the PLC directory and the scheduled refresh close over time; prefer
+the newest snapshot. Wait for `standby` to report the slot fit and for a
+clean latency round before flipping to it.
+
 ## Moderation
 
 An account is hidden from search by a moderation label, a blocked handle

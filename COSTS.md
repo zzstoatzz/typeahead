@@ -11,7 +11,13 @@ estimate, not an invoice. The source for each is named beside it.
 | `typeahead-shadow-a`, volume | 40 GB | $6.00 | hub snapshot: $0.15 per GB |
 | `typeahead-shadow-b`, compute | the same machine | $13.25 | same shape as slot A |
 | `typeahead-shadow-b`, volume | 40 GB | $6.00 | $0.15 per GB |
-| **the two slots** | | **about $38.50** | |
+| volume snapshots, both slots | daily, kept 2 days, about 40 GB each | about $13 | $0.08 per GB stored, after Fly's 10 GB free tier |
+| **the two slots** | | **about $51** | |
+
+Fly snapshots every volume daily. Retention was 5 days until 2026-11-14, which
+at about 40 GB a snapshot would have come to about $32 a month; it is 2 days
+now (`fly volumes update <volume id> --snapshot-retention 2`). The snapshot
+figure is an estimate until a hub snapshot shows the steady state.
 
 The hub snapshot is `https://hub.waow.tech/api/costs.json`, read on
 2026-11-13. It prices each Fly machine from July 2026 list prices and its
@@ -31,17 +37,12 @@ line item:
 - Logfire: the `typeahead` project receives one heartbeat a minute from each
   slot, plus warnings and errors.
 
-## What still bills and should not
+## Trailing lines
 
-These are left over and are listed in [teardown](docs/teardown.md).
-
-| resource | estimate a month | source |
-| --- | --- | --- |
-| old snapshot bundles in the `typeahead-index` R2 bucket | not measured | |
-
-The hub snapshot may still show `typeahead-ingester` and the two
-`typeahead-tantivy` apps because it looks back seven days. They were destroyed
-on 2026-11-14.
+The hub snapshot looks back over the month, so it keeps showing the destroyed
+`typeahead-ingester` and `typeahead-tantivy` apps and the `typeahead-index`
+bucket's old 300 GB until those windows pass. The bucket holds 15 KB since
+2026-11-14.
 
 ## Reading real use before resizing
 
