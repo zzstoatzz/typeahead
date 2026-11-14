@@ -3,7 +3,7 @@
 > Historical cost research. Resource sizes and totals below are dated and are
 > not current billing estimates. Use the [hub snapshot](https://hub.waow.tech/api/costs.json)
 > for attributed line items; shared Turso and Cloudflare invoices must not be
-> assigned wholly to Typeahead. See [README](README.md#costs).
+> assigned wholly to Typeahead. See [README](../../README.md#costs).
 
 > **Mandate.** This file tracks the infrastructure costs attributed to **typeahead** and
 > what we're doing to bring them down. It is the running record of what this project

@@ -38,7 +38,7 @@ the local checkout. A failed rollout with retained artifacts can use the existin
 `resume_rollout:true` path; inspect its journal and ownership before retrying.
 Never rebuild the serving slot, override a newer route, or fake admission freshness.
 Artifact cleanup must protect the current, previous and pending generations;
-see [operations](../../operations.md#deploy-and-verify) and audit actual consumers
+see [operations](../operations.md#deploy-and-verify) and audit actual consumers
 before pruning legacy release objects. Retired apps may still host pinned registry images; do not delete
 app registrations as a substitute for retiring unused machines and volumes.
 

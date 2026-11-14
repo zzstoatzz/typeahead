@@ -7,7 +7,7 @@ serves `/slot/control/*`, and no slot runs the control loop. The
 
 Search has been answered by store slots since 2026-11-11: Fly apps that follow
 the relay themselves and keep the corpus in a store on their own disk
-([plan](history/plans/embedded-store-service.md)). They never read Turso. Two things an
+([plan](plans/embedded-store-service.md)). They never read Turso. Two things an
 operator or a user asks the Worker for were still written only to Turso, so
 since the cutover neither has reached search:
 
@@ -388,7 +388,7 @@ Each step is safe to stop after. Steps 1 to 3 change nothing anything reads.
    `deploy/shadow-slot/fly.toml`. Do the slot that is not serving first and
    check it before the other. A deploy restarts the machine, so deploy the
    serving slot the way any image reaches it; what a restart costs is in
-   [sizing](../deploy/shadow-slot/sizing.md#what-a-store-restart-costs-the-watermark).
+   [sizing](../../deploy/shadow-slot/sizing.md#what-a-store-restart-costs-the-watermark).
    On the machine, read-only:
 
    ```sh

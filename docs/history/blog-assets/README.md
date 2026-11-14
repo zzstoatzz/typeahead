@@ -11,7 +11,7 @@ Source + rendered images embedded in the pckt blog post
 - deps: `bun add mathjax-full @resvg/resvg-js` (run from a scratch dir).
 
 ## sources
-- `../archive/architecture-diagram.svg` — historical system diagram used in this post; current design is in [architecture](../../architecture.md).
+- `../archive/architecture-diagram.svg` — historical system diagram used in this post; current design is in [architecture](../architecture.md).
 - `cost-bars.svg` — d: index cost decoupling (+69% build vs +0.9% serve).
 - `dns-tree.svg` — DNS subtree-harvest intuition for the d: index.
 - equation TeX is inline in `render.mjs`.

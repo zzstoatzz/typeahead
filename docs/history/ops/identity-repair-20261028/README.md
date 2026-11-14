@@ -46,5 +46,5 @@ label assertion. Desktop and phone stats layout were visually checked.
 2026-11-01: the stats count landed without the offline audit. A daily worker
 cron step counts both groups through indexed queries, and /stats shows them as
 separate "hidden by policy" and "invalid identity" figures; see
-[search exclusion counts](../../../operations.md#search-exclusion-counts). The
+[search exclusion counts](../../operations.md#search-exclusion-counts). The
 bulk identity repair is still pending.

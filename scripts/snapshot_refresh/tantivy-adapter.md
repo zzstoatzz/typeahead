@@ -1,7 +1,7 @@
 # Tantivy artifact and route adapter
 
 This describes the current source and artifact contracts. The
-[operations guide](../../docs/operations.md) distinguishes the deployed image
+[operations guide](../../docs/history/operations.md) distinguishes the deployed image
 from changes still under qualification. Historical image receipts are not a
 production inventory.
 

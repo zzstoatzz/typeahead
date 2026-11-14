@@ -1,5 +1,5 @@
 > Archived historical record. This is not a current deployment runbook.
-> See [current architecture](../../architecture.md) and [operations](../../operations.md).
+> See [current architecture](../architecture.md) and [operations](../operations.md).
 
 # typeahead — cost & scalability
 
@@ -7,7 +7,7 @@
 assessment below are retained as dated research. The initial assessment missed
 Worker fallback saturation and ingest loss. Both Turso search fallbacks are now
 opt-in, request counters still write to Turso, builds run on heavypad, and the
-full actor replica is gone. Use [current architecture](../../architecture.md) and the
+full actor replica is gone. Use [current architecture](../architecture.md) and the
 [incident report](../retros/2026-09-03-ingester-panic-hang-and-turso-saturation.md)
 for current behavior. Do not treat the old maintenance-gap list as current.
 

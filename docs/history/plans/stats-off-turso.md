@@ -2,11 +2,11 @@
 
 **Status, 2026-11-12:** steps 1 and 2 of the migration sequence (schema,
 binding, adapter, dual write) have been live since 2026-11-10; see
-[operations](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operations.md#statistics-dual-write-to-d1).
+[operations](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/operations.md#statistics-dual-write-to-d1).
 Steps 3 to 6 (backfill, comparison, read switch) are implemented and tested
 locally on the `stats-d1-read` branch, not deployed and not run; the operator
 sequence is in
-[operations](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operations.md#statistics-read-cutover-to-d1)
+[operations](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/operations.md#statistics-read-cutover-to-d1)
 and the differences from the sequence below are under "Corrections from
 implementing steps 3 to 6". Steps 7 and 8 are still a proposal. The plan
 answers [issue 34](https://tangled.org/zzstoatzz.io/typeahead/issues/34) and
@@ -147,7 +147,7 @@ the Worker when the corpus leaves Turso, recorded answers fall to roughly
 
 All prices are Workers Paid, documented on 2026-11-10. The $5 monthly minimum
 is already paid by the account according to
-[COSTS.md](https://tangled.org/zzstoatzz.io/typeahead/blob/main/COSTS.md)
+[COSTS.md](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/costs-through-20261024.md)
 (dated 2026-06-17; not re-verified).
 
 ### Workers Analytics Engine
@@ -649,9 +649,9 @@ Documentation, in the same change as the behavior
 requires it): the traffic-stats bullet and the Turso single-writer bullet in
 `AGENTS.md`, the architecture and development sections of
 [README.md](https://tangled.org/zzstoatzz.io/typeahead/blob/main/README.md),
-[docs/architecture.md](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/architecture.md)
+[docs/architecture.md](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/architecture.md)
 and the statistics paragraphs of
-[docs/operations.md](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operations.md).
+[docs/operations.md](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/operations.md).
 
 ## Tests
 

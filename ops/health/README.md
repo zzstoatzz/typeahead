@@ -11,7 +11,7 @@ required; public viewing is unresolved.
 - CPU throttle is the rate of the centisecond counter divided by 100, shown as
   throttled seconds per second.
 - The dashboard says nothing about freshness, ingest backlog or Worker errors.
-  Those are covered in [operations: telemetry](../../docs/operations.md#telemetry).
+  Those are covered in [operating: alerts](../../docs/operating.md#alerts).
 
 The probe exporter that used to live here ran on the Hetzner Prefect cluster,
 which is retired. Its collector moved to the operations repository

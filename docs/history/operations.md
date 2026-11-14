@@ -2,13 +2,13 @@
 
 Production uses the public Cloudflare Worker, search transport and managed
 Tantivy A/B slots. Start with the [architecture](architecture.md) for data flow
-and the [refresh runbook](history/plans/automatic-snapshot-refresh.md) for deployments.
+and the [refresh runbook](plans/automatic-snapshot-refresh.md) for deployments.
 The retired native engine's machine IDs and schedules are history, not
 operational instructions.
 
 ## Before changing infrastructure
 
-Read the [outage retrospective and preflight](history/retros/2026-10-31-search-expiry-outage.md).
+Read the [outage retrospective and preflight](retros/2026-10-31-search-expiry-outage.md).
 Check the live route, serving readiness, coverage deadline, last completed refresh
 and inactive-slot ownership. An enabled schedule does not prove a refresh succeeded.
 Never prepare a snapshot on the serving machine or its disk.
@@ -28,11 +28,11 @@ production: use isolated targets for load tests.
 Unscoped searches automatically fall back to Bluesky on backend failure.
 PDS-scoped requests fail explicitly because Bluesky cannot honor that contract.
 The manual `EMERGENCY_PROXY_BSKY` override and recovery procedure are documented
-in the [outage runbook](history/retros/2026-10-31-search-expiry-outage.md#first-action-during-a-search-outage).
+in the [outage runbook](retros/2026-10-31-search-expiry-outage.md#first-action-during-a-search-outage).
 Restore service before investigating the builder.
 
 The serving runtime no longer stops on checkpoint coverage age (live November 5,
-2026 at 10:52 UTC; [qualification and cutover](history/ops/lifecycle-cleanup-20261105/)).
+2026 at 10:52 UTC; [qualification and cutover](ops/lifecycle-cleanup-20261105/)).
 A running or restarted slot keeps serving and records `coverage`
 (`coverage_anchor`, `coverage_deadline`, `coverage_age_s`, `coverage_stale`,
 `checked_at`, `basis`) in `/data/tantivy/installation.json` every 5 seconds,
@@ -57,10 +57,10 @@ before pruning.
 The serving source poller uses continuous mode with a durable hourly byte
 budget, live November 5, 2026 at 04:26 UTC. The older image restarted the
 poller hourly and rechecked the entire immutable PDS mapping each time, pausing
-polling for about 88 seconds. The [release record](history/ops/poller-readiness-20261104/)
+polling for about 88 seconds. The [release record](ops/poller-readiness-20261104/)
 contains the observed readiness failures, guarded cutover and hourly-boundary
 verification. See the
-[source adapter](../services/tantivy-input/README.md) for the unchanged work bounds.
+[source adapter](../../services/tantivy-input/README.md) for the unchanged work bounds.
 
 Refreshes run at 06:00 and 18:00 UTC against a 24-hour coverage window, so one
 missed run uses up the margin. Each signal below fires once, on change:
@@ -112,10 +112,10 @@ time that the in-code clock cannot measure. An invocation's total wall time
 also includes background work, so it is not response latency.
 Do not infer handler return by adding `worker_ms` to `eventTimestamp`: event
 receipt can precede fetch entry by hundreds of milliseconds. Use the native
-entry and completion log timestamps. The [November 4 activation evaluation](history/evals/worker-startup-cause-20261104/result.json)
+entry and completion log timestamps. The [November 4 activation evaluation](evals/worker-startup-cause-20261104/result.json)
 isolates pre-handler delay in the full bundle and the image renderer's
 contribution; its renderer-removed and lazy variants were temporary trials.
-The [first-request follow-up](history/evals/first-request-latency-20261104/result.json)
+The [first-request follow-up](evals/first-request-latency-20261104/result.json)
 compares minification, transport placement and late authority reads, then
 records the deployed versions and European probes. Its induced-delay routing
 qualification is separate from the natural production measurements; neither
@@ -150,7 +150,7 @@ Each signal has one home:
 | is search serving fresh results? | `/health/freshness` on the public Worker, and `just index-status` |
 | is the ingester writing? | `https://typeahead-ingester.fly.dev/health`, and `ingest.heartbeat` in Logfire |
 | what did the Worker do with a request? | Workers Logs for `typeahead` (`worker_request_timing`, `ingest_done`, `cron_done`) |
-| machine CPU, memory, disk | the [Fly dashboard](../ops/health/README.md) |
+| machine CPU, memory, disk | the [Fly dashboard](../../ops/health/README.md) |
 
 Logfire's `typeahead` project receives records from the ingester only. The
 Worker and the Tantivy slots do not export there.
@@ -260,7 +260,7 @@ in operational counts; `X-Client: smoke-testing` is excluded from app/adoption c
 ## Statistics dual write to D1
 
 Request and traffic statistics are moving from Turso to the `typeahead-stats`
-D1 database ([plan](history/plans/stats-off-turso.md), issue 34). Steps 1 and 2 of that
+D1 database ([plan](plans/stats-off-turso.md), issue 34). Steps 1 and 2 of that
 plan went live on 2026-11-10: the schema was applied and the Worker deployed at
 19:19:01 UTC. `T0`, the first 5-minute bucket that begins after the deploy, is
 2026-11-10 19:20:00 UTC (bucket 5981128). The four closed buckets from `T0`
@@ -330,7 +330,7 @@ Rollback, at any point after step 11:
 
 Before flipping forward again, repeat steps 9 to 13.
 
-Steps 3 to 6 of the [plan](history/plans/stats-off-turso.md), which holds the design,
+Steps 3 to 6 of the [plan](plans/stats-off-turso.md), which holds the design,
 the measured sizes and costs, and the query plans. Status on 2026-11-12: the
 code is on the `stats-d1-read` branch, tested locally, not deployed; no
 backfill has run and production reads Turso.
@@ -461,10 +461,10 @@ backfill has flagged them.
 
 ## Evidence and history
 
-- [October 31 recovery](history/ops/production-recovery-20261031/): verified full refresh,
+- [October 31 recovery](ops/production-recovery-20261031/): verified full refresh,
   automatic fallback and publisher ownership.
-- [Trial retirement](history/ops/test-resource-retirement-20261031/): removed resources,
+- [Trial retirement](ops/test-resource-retirement-20261031/): removed resources,
   retained dependencies and post-removal search checks.
-- [Historical operations](history/archive/native-operations-through-20261031.md): dated
+- [Historical operations](archive/native-operations-through-20261031.md): dated
   incidents, previous native deployments and old tuning experiments. Commands and
   machine inventories there must not be used as current deployment instructions.

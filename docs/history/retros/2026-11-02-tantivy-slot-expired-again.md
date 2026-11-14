@@ -60,7 +60,7 @@ broke the promotion that restored Tantivy.
   is serving but past its coverage ships with the new image, on branch
   `drop-native-provenance`.
 - **Alerts:** each fires once, on change. They are listed in
-  [operations](../../operations.md#missed-refresh-alerts).
+  [operations](../operations.md#missed-refresh-alerts).
   - After 13 hours with no completed refresh, Prefect retries the refresh and
     says what is at stake. A probe confirmed it triggers and delivers.
   - At 15 hours of coverage age, the Worker posts "refresh missed" with the

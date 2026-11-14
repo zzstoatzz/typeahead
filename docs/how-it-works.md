@@ -2,7 +2,7 @@
 
 Typeahead answers account search for AT Protocol apps: someone types a few
 letters and gets matching accounts back. This page explains the running system
-in five pictures. Procedures are in [operations](operations.md).
+in five pictures. Procedures are in [operating](operating.md).
 
 ## A search request
 
@@ -89,9 +89,7 @@ that carries moderation policy and index requests to the slots, and the
 request statistics behind `/stats`. The slots read the relay, the PLC
 directory, the labeler and Bluesky's AppView, and write to none of them.
 
-Details: [index bridge](index-bridge.md), [slot control](slot-control.md),
-[discovery and identity](discovery-and-identity.md),
-[store slot operations](ops/store-slot-operations.md).
+Procedures: [operating](operating.md).
 
 ## Changing the pictures
 

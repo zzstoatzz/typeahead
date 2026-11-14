@@ -80,7 +80,7 @@ The object stays in the colo where it was first created, and each search waits
 for a round trip to it, so it must be created by the transport (no location
 hint). Check its colo with the `durableObjectsInvocationsAdaptiveGroups`
 GraphQL dataset (`coloCode`); it should match the transport's. Serving from
-more than one region is a [proposal](history/plans/worldwide-serving.md), not built.
+more than one region is a [proposal](plans/worldwide-serving.md), not built.
 
 Tantivy searches indexed handles and display names, ranks eligible matches and
 returns stored actor profiles. Exact eligible handles have priority. Moderation
@@ -137,7 +137,7 @@ These offline steps never run on the serving slot.
 The A/B deployment slots let preparation happen separately from serving. They
 are roles that alternate, not a requirement to run two backends continuously.
 Build cadence, resource allocations, rollback prerequisites and retention are
-operating policies documented in the [refresh runbook](history/plans/automatic-snapshot-refresh.md),
+operating policies documented in the [refresh runbook](plans/automatic-snapshot-refresh.md),
 not properties of the search engine.
 
 ## Handling failures

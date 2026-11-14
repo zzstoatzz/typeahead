@@ -150,7 +150,7 @@ Public GET routes:
 
 `/actors` and `/corpus` answer 503 while the index is not ready, as search
 does. They are what the Worker reads profiles and the statistics page's corpus
-numbers from; see [Turso retirement](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/turso-retirement.md).
+numbers from; see [Turso retirement](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/turso-retirement.md).
 An actor document may carry `description`, `banner_url`, `updated_at` and
 `profile_checked`. Each is stored only when set, so a document without them
 serializes and hashes as it did before they existed.
