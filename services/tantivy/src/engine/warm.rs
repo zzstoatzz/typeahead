@@ -23,7 +23,7 @@ pub(super) fn files(index: &Path, segment: &str, extensions: &[String]) -> Vec<P
 
 /// Read each file from start to end, twice: Linux keeps a page that has been
 /// read twice ahead of pages read once, and other processes on the machine
-/// read large files once (measured on typeahead-shadow-a, 2026-11-11: after
+/// read large files once (measured on typeahead-slot-a, 2026-11-11: after
 /// one pass, 0.9 GB of 2.8 GB was still cached 90 s later, the store
 /// process's start having read its own files meanwhile). A file a merge
 /// has removed meanwhile is skipped. Returns the bytes read.

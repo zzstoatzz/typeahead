@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { z } from "zod";
 import { actors, aliases, fingerprints, rehearsalScripts, route, transportOrigin } from "./route-rehearsal";
 
-const tantivy = { engine: "tantivy", origin: "https://typeahead-shadow-a.fly.dev", build_id: "b1792908655-tantivy", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
-const previous = { ...tantivy, origin: "https://typeahead-shadow-b.fly.dev", build_id: "b1792908600-previous", admission_sha256: "b".repeat(64) } as const;
+const tantivy = { engine: "tantivy", origin: "https://typeahead-slot-a.fly.dev", build_id: "b1792908655-tantivy", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
+const previous = { ...tantivy, origin: "https://typeahead-slot-b.fly.dev", build_id: "b1792908600-previous", admission_sha256: "b".repeat(64) } as const;
 const stats = z.object({ unexpected: z.number(), calls: z.array(z.object({ origin: z.string(), q: z.string(), pds: z.string().nullable(), preferred: z.string().nullable(), preference: z.string().nullable(), boost: z.string().nullable(), ack: z.string() })) });
 
 test("local public handler, actual transport and R2 CAS rehearse promotion and compensation", async () => {

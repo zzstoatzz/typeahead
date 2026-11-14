@@ -12,8 +12,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 import slot_route as route
 
 NOW = 1794386900
-SLOT_A = 'https://typeahead-shadow-a.fly.dev'
-SLOT_B = 'https://typeahead-shadow-b.fly.dev'
+SLOT_A = 'https://typeahead-slot-a.fly.dev'
+SLOT_B = 'https://typeahead-slot-b.fly.dev'
+route.STORE_ORIGINS = (SLOT_A, SLOT_B)
 DESTROYED = 'https://typeahead-tantivy-a.fly.dev'
 BINARY = '4' * 64
 RULES = '3' * 64
@@ -48,7 +49,7 @@ def status(build_id, binary, cursor, **changed):
     return value
 
 
-def store_status(source_id='typeahead-shadow-a-store', build_id='b1794333857-cp-bootstrap', **changed):
+def store_status(source_id='typeahead-slot-a-store', build_id='b1794333857-cp-bootstrap', **changed):
     cursor = {
         'schema_version': 1, 'source_policy': 'store-change-log-v1', 'source_id': source_id, 'cycle': None,
         'build_id': build_id, 'snapshot_watermark': 1794333557, 'through': NOW - 20, 'position': 13433659,
@@ -59,7 +60,7 @@ def store_status(source_id='typeahead-shadow-a-store', build_id='b1794333857-cp-
 
 def store_b_status(**changed):
     """The second store slot: its own store and its own build id, the same image."""
-    return store_status('typeahead-shadow-b-store', 'b1794450000-cp-bootstrap-b', **{'actor_count': 13177350, **changed})
+    return store_status('typeahead-slot-b-store', 'b1794450000-cp-bootstrap-b', **{'actor_count': 13177350, **changed})
 
 
 class Slot:
@@ -241,7 +242,7 @@ class Admission(unittest.TestCase):
         self.refused('valid build id', candidate=stopped)
 
     def test_the_serving_slot_must_be_the_one_the_record_names(self):
-        self.refused('serving slot /index/status build_id', serving=Slot(store_status('typeahead-shadow-b-store', 'b1794450000-cp-replaced')))
+        self.refused('serving slot /index/status build_id', serving=Slot(store_status('typeahead-slot-b-store', 'b1794450000-cp-replaced')))
 
     def test_a_stale_serving_slot_does_not_veto_on_policy_hash(self):
         stale = store_b_status()
@@ -348,7 +349,7 @@ class Rollback(unittest.TestCase):
                 world = self.routed_world()
                 routed = world.bucket.record()
                 if change == 'rebuilt':
-                    world.slots[SLOT_B] = Slot(store_status('typeahead-shadow-b-store', 'b1794420000-cp-rebuilt'))
+                    world.slots[SLOT_B] = Slot(store_status('typeahead-slot-b-store', 'b1794420000-cp-rebuilt'))
                 elif change == 'stopped':
                     world.slots[SLOT_B].down = True
                 else:
@@ -398,7 +399,7 @@ class StoreToStore(unittest.TestCase):
         report = world.cutover(origin=SLOT_B)
         on_b = world.bucket.record()
         self.assertEqual((on_b['current']['origin'], on_b['current']['build_id'], on_b['previous']), (SLOT_B, 'b1794450000-cp-bootstrap-b', on_a['current']))
-        self.assertEqual((report['admission']['gates']['serving_origin'], report['admission']['gates']['source_id']), (SLOT_A, 'typeahead-shadow-b-store'))
+        self.assertEqual((report['admission']['gates']['serving_origin'], report['admission']['gates']['source_id']), (SLOT_A, 'typeahead-slot-b-store'))
         self.assertIs(report['admission']['gates']['policy_compared_with_serving'], True)
         admission = json.loads(world.bucket.objects[route.ADMISSION_PREFIX + on_b['current']['admission_sha256'] + '.json'])
         self.assertEqual(admission['prior_route'], on_a)
@@ -431,7 +432,7 @@ class StoreToStore(unittest.TestCase):
 
     def test_two_slots_with_one_build_id_are_still_two_targets(self):
         world = self.world_on_a()
-        world.slots[SLOT_B] = Slot(store_status('typeahead-shadow-b-store'), machine='d8d9947a2e0d08')
+        world.slots[SLOT_B] = Slot(store_status('typeahead-slot-b-store'), machine='d8d9947a2e0d08')
         world.cutover(origin=SLOT_B)
         on_b = world.bucket.record()
         self.assertEqual(on_b['current']['build_id'], on_b['previous']['build_id'])

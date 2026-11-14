@@ -6,20 +6,13 @@
 //! | `GET /health`                                        | `HealthBody`, no auth                   |
 //! | `GET /store/actor?did=`                              | `{"actor": ActorBody}` or 404           |
 //! | `GET /store/handle?handle=`                          | `{"actors": [ActorBody]}`               |
-//! | `POST /store/actors/batch` `{"dids": [at most 500]}` | `ActorsBody`, null where none, in request order |
-//! | `POST /store/actors/page` `{"after_did", "limit"}`   | `ActorsBody`: the records after that DID in ascending byte order, any status, at most `limit` (1 to 500) |
-//! | `GET /store/changes?from=&limit=&consumer=`          | `ChangesBody`                           |
 //!
 //! `/store/*` needs `Authorization: Bearer $STORE_READ_SECRET` and answers
-//! 404 when no secret is configured. The two POSTs are the contract of
-//! `scripts/shadow_compare/store.py`. `from` is the first change sequence
-//! wanted; the body's `next` is the `from` of the following request. Naming
-//! a `consumer` records `from` as that consumer's position, which holds the
-//! change log's trimming back to it.
+//! 404 when no secret is configured.
 //!
 //! Every `/store/*` read goes through a read-only handle on the store,
-//! refreshed per request. It takes no lock the owner takes, so a walk of
-//! every actor cannot hold a commit back; it sees whole commits, as of the
+//! refreshed per request. It takes no lock the owner takes, so a read
+//! cannot hold a commit back; it sees whole commits, as of the
 //! refresh. The handle keeps table metadata of its own. The role opens it
 //! after the index bridge and the upstream consumers are running, and until
 //! then a `/store/*` request with the right bearer is answered 503.
@@ -40,10 +33,6 @@ const Owner = owner_mod.Owner;
 const Actor = store_mod.Actor;
 const Allocator = std.mem.Allocator;
 
-pub const max_batch = 500;
-pub const max_page = 500;
-pub const max_changes = 1000;
-pub const max_body_bytes = 256 * 1024;
 
 /// A label, with the field names of `store/record.zig`.
 pub const LabelBody = struct {
@@ -90,26 +79,6 @@ pub const ActorBody = struct {
     /// The actor has an entry in the identity queue.
     identity_pending: bool,
     refresh_due: u64,
-};
-
-pub const ActorsBody = struct {
-    actors: []const ?ActorBody,
-    /// The sequence the next change-log entry will take.
-    next_change: u64,
-};
-
-pub const ChangeBody = struct { seq: u64, did: []const u8 };
-
-pub const ChangesBody = struct {
-    /// Changed DIDs at or after `from`, in commit order.
-    entries: []const ChangeBody = &.{},
-    /// The `from` of the next request.
-    next: u64,
-    /// The sequence the next change will take.
-    head: u64,
-    /// Set when `from` was below the log's floor: entries are gone, and the
-    /// consumer must rebuild from the actors and continue from here.
-    trimmed: ?u64 = null,
 };
 
 pub const ConsumerBody = struct { name: []const u8, position: u64, seen_at: u64 };
@@ -759,27 +728,8 @@ fn readActor(reader: *store_mod.Reader, arena: Allocator, did: []const u8) !?Act
     }
 }
 
-/// A page of the walk over every actor. A record pruned between the walk
-/// and its read is passed over, and the page is filled from further on: a
-/// short page must mean the walk is over.
-fn page(reader: *store_mod.Reader, arena: Allocator, after_did: []const u8, limit: usize) ![]const ?ActorBody {
-    var bodies: std.ArrayList(?ActorBody) = .empty;
-    var after = after_did;
-    while (bodies.items.len < limit) {
-        const want = limit - bodies.items.len;
-        const dids = try reader.walk(arena, after, want);
-        for (dids) |did| {
-            if (try readActor(reader, arena, did)) |actor| try bodies.append(arena, try actorBody(arena, did, actor));
-        }
-        if (dids.len < want) break;
-        after = dids[dids.len - 1];
-    }
-    return bodies.items;
-}
-
-/// Answer one request. `target` is the request target with its query, and
-/// `body` what a POST carried.
-pub fn respond(ctx: *const Context, arena: Allocator, method: std.http.Method, target: []const u8, authorization: ?[]const u8, body: []const u8) !Response {
+/// Answer one request. `target` is the request target with its query.
+pub fn respond(ctx: *const Context, arena: Allocator, method: std.http.Method, target: []const u8, authorization: ?[]const u8) !Response {
     const split = std.mem.indexOfScalar(u8, target, '?');
     const path = if (split) |at| target[0..at] else target;
     const query = if (split) |at| target[at + 1 ..] else "";
@@ -791,25 +741,8 @@ pub fn respond(ctx: *const Context, arena: Allocator, method: std.http.Method, t
 
     const reader = ctx.reader orelse return failure(arena, .service_unavailable, "the store reader is not open yet");
     try reader.refresh();
-    const posted = std.mem.eql(u8, path, "/store/actors/batch") or std.mem.eql(u8, path, "/store/actors/page");
-    if (method != (if (posted) std.http.Method.POST else std.http.Method.GET)) return failure(arena, .method_not_allowed, "method not allowed");
+    if (method != .GET) return failure(arena, .method_not_allowed, "method not allowed");
 
-    if (std.mem.eql(u8, path, "/store/actors/batch")) {
-        const request = std.json.parseFromSliceLeaky(struct { dids: []const []const u8 }, arena, body, .{ .ignore_unknown_fields = true }) catch return failure(arena, .bad_request, "body must be {\"dids\": [...]}");
-        if (request.dids.len > max_batch) return failure(arena, .bad_request, "at most 500 dids");
-        const bodies = try arena.alloc(?ActorBody, request.dids.len);
-        for (bodies, request.dids) |*slot, did| {
-            store_mod.keys.validDid(did) catch return failure(arena, .bad_request, "invalid did");
-            slot.* = if (try readActor(reader, arena, did)) |actor| try actorBody(arena, did, actor) else null;
-        }
-        return json(arena, .ok, ActorsBody{ .actors = bodies, .next_change = (try reader.cursors(arena)).next_change });
-    }
-    if (std.mem.eql(u8, path, "/store/actors/page")) {
-        const request = std.json.parseFromSliceLeaky(struct { after_did: []const u8 = "", limit: usize }, arena, body, .{ .ignore_unknown_fields = true }) catch return failure(arena, .bad_request, "body must be {\"after_did\": \"...\", \"limit\": n}");
-        if (request.limit == 0 or request.limit > max_page) return failure(arena, .bad_request, "limit must be between 1 and 500");
-        if (request.after_did.len > 0) store_mod.keys.validDid(request.after_did) catch return failure(arena, .bad_request, "invalid after_did");
-        return json(arena, .ok, ActorsBody{ .actors = try page(reader, arena, request.after_did, request.limit), .next_change = (try reader.cursors(arena)).next_change });
-    }
     if (std.mem.eql(u8, path, "/store/actor")) {
         const did = try single(arena, query, "did") orelse return failure(arena, .bad_request, "did is required");
         store_mod.keys.validDid(did) catch return failure(arena, .bad_request, "invalid did");
@@ -825,22 +758,6 @@ pub fn respond(ctx: *const Context, arena: Allocator, method: std.http.Method, t
             if (try readActor(reader, arena, did)) |actor| try bodies.append(arena, try actorBody(arena, did, actor));
         }
         return json(arena, .ok, .{ .actors = bodies.items });
-    }
-    if (std.mem.eql(u8, path, "/store/changes")) {
-        const from = std.fmt.parseInt(u64, try single(arena, query, "from") orelse "0", 10) catch return failure(arena, .bad_request, "from must be a sequence");
-        const limit = std.fmt.parseInt(usize, try single(arena, query, "limit") orelse "1000", 10) catch return failure(arena, .bad_request, "limit must be a number");
-        if (limit == 0 or limit > max_changes) return failure(arena, .bad_request, "limit must be between 1 and 1000");
-        const head = (try reader.cursors(arena)).next_change;
-        const changes: ChangesBody = switch (try reader.changes(arena, from, limit)) {
-            .trimmed => |floor| .{ .next = floor, .head = head, .trimmed = floor },
-            .entries => |entries| blk: {
-                const bodies = try arena.alloc(ChangeBody, entries.len);
-                for (bodies, entries) |*slot, entry| slot.* = .{ .seq = entry.sequence, .did = entry.did };
-                break :blk .{ .entries = bodies, .next = if (entries.len > 0) entries[entries.len - 1].sequence + 1 else @max(from, 1), .head = head };
-            },
-        };
-        if (try single(arena, query, "consumer")) |name| ctx.owner.noteConsumer(name, from);
-        return json(arena, .ok, changes);
     }
     return failure(arena, .not_found, "not found");
 }

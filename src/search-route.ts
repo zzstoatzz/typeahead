@@ -5,6 +5,8 @@ export const ROUTE_KEY = "control/search-routing.json";
 const targetSchema = z.object({
   engine: z.literal("tantivy"),
   origin: z.enum([
+    "https://typeahead-slot-a.fly.dev",
+    "https://typeahead-slot-b.fly.dev",
     "https://typeahead-shadow-a.fly.dev",
     "https://typeahead-shadow-b.fly.dev",
   ]),

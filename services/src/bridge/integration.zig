@@ -16,7 +16,7 @@ const secret = "bridge-integration-secret";
 /// The merge settings of deploy/slot/fly.toml, the index the bridge
 /// feeds: with 3,000 actors every phase here merges, at three segments or
 /// when a fifth of a segment has been replaced.
-const shadow_merge_settings = .{
+const slot_merge_settings = .{
     "--merge-min-segments",   "3",
     "--merge-level-log-size", "3",
     "--merge-min-layer-size", "1000",
@@ -125,7 +125,7 @@ const Fixture = struct {
         defer environment.deinit();
         if (crash_at) |point| try environment.put("TYPEAHEAD_TEST_CRASH", point);
         self.server = try std.process.spawn(self.io, .{
-            .argv = &(.{ self.binary, "serve", "--data", self.data, "--listen", self.listen, "--admin-listen", self.admin_listen } ++ shadow_merge_settings),
+            .argv = &(.{ self.binary, "serve", "--data", self.data, "--listen", self.listen, "--admin-listen", self.admin_listen } ++ slot_merge_settings),
             .environ_map = &environment,
             .stdout = .ignore,
             .stderr = .ignore,

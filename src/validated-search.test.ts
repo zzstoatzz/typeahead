@@ -3,11 +3,11 @@ import { parseRoute } from "./search-route";
 import { validatedSearch } from "./validated-search";
 
 const first = parseRoute({ version: 1, current: {
-  engine: "tantivy", origin: "https://typeahead-shadow-a.fly.dev", build_id: "b1792908655-cp-first",
+  engine: "tantivy", origin: "https://typeahead-slot-a.fly.dev", build_id: "b1792908655-cp-first",
   format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge",
 } });
 const second = parseRoute({ version: 1, current: {
-  ...first, origin: "https://typeahead-shadow-b.fly.dev", build_id: "b1793081565-cp-second", admission_sha256: "b".repeat(64),
+  ...first, origin: "https://typeahead-slot-b.fly.dev", build_id: "b1793081565-cp-second", admission_sha256: "b".repeat(64),
 } });
 
 function identity(buildId: string) {
@@ -24,7 +24,7 @@ async function until(done: () => boolean): Promise<void> {
 }
 
 test("a changed admission identity discards a same-origin same-build hinted response", async () => {
-  const candidate = { engine: "tantivy", origin: "https://typeahead-shadow-a.fly.dev", build_id: "b1792908655-test", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" } as const;
+  const candidate = { engine: "tantivy", origin: "https://typeahead-slot-a.fly.dev", build_id: "b1792908655-test", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" } as const;
   const previous = parseRoute({ version: 1, current: candidate });
   const next = parseRoute({ version: 1, current: { ...candidate, admission_sha256: "b".repeat(64) } });
   const arrivals: string[] = [];

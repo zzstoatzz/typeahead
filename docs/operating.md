@@ -13,7 +13,7 @@ parts; read it first.
 | route record | R2 | `control/search-routing.json` in the `typeahead-index` bucket |
 | control database | D1 | `typeahead-control` |
 | statistics | D1 and KV | `typeahead-stats`, and the `stats_data` and `request_data` keys |
-| two slots | Fly, `ewr` | `typeahead-shadow-a` and `typeahead-shadow-b` |
+| two slots | Fly, `ewr` | `typeahead-slot-a` and `typeahead-slot-b` |
 
 Each slot is one machine with four shared CPUs, 2 GB of memory and a 40 GB
 volume at `/data`. One slot serves and the other stands by; the route record
@@ -41,7 +41,7 @@ just index-status
 - `standby` runs the whole admission on the slot that is not serving. It exits
   0 and prints `"fit": true` when a flip to it would be allowed right now.
 
-Per slot, with `<app>` as `typeahead-shadow-a` or `typeahead-shadow-b`:
+Per slot, with `<app>` as `typeahead-slot-a` or `typeahead-slot-b`:
 
 ```sh
 curl -sS https://<app>.fly.dev/ready
@@ -314,7 +314,7 @@ exercised yet; treat the first run as a rehearsal on the standby.
 
 ```sh
 fly volumes snapshots list <volume id>
-fly volumes create shadow_data --snapshot-id <snapshot id> -s 40 -r ewr -a <app>
+fly volumes create slot_data --snapshot-id <snapshot id> -s 40 -r ewr -a <app>
 ```
 
 Then destroy the slot's machine and [deploy](#upgrade-the-slots) to that app,

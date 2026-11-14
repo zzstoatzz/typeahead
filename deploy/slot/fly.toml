@@ -1,7 +1,7 @@
 # The slot image. Both slots deploy from this file; pass the app with -a.
 # Deploy from the repository root: fly deploy . --config deploy/slot/fly.toml
 
-app = 'typeahead-shadow-a'
+app = 'typeahead-slot-a'
 primary_region = 'ewr'
 kill_signal = 'SIGTERM'
 kill_timeout = 60
@@ -25,7 +25,7 @@ kill_timeout = 60
   CONTROL_URL = 'https://typeahead.waow.tech'
 
 [[mounts]]
-  source = 'shadow_data'
+  source = 'slot_data'
   destination = '/data'
   initial_size = '40gb'
 

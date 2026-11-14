@@ -17,7 +17,7 @@
 //!
 //! The first scan waits `delay_seconds` after the process starts. A scan
 //! reads the whole actor range and takes as much CPU and disk as it is
-//! given, and on the shadow machine one that began with the process ran for
+//! given, and on slot A one that began with the process ran for
 //! 175 s beside the store's open and the relay catch-up (2026-11-11).
 
 const std = @import("std");

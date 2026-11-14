@@ -73,7 +73,7 @@ pub const Handle = struct {
 
 /// The end of a table file this far back is asked for ahead of an open. A
 /// table of the default 8 MiB carried about 170 KiB of metadata on the
-/// shadow store, 2026-11-11.
+/// store on slot A, 2026-11-11.
 const metadata_tail_bytes: u64 = 256 << 10;
 const readahead_chunk_bytes: u64 = 128 << 10;
 

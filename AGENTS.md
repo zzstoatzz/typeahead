@@ -68,7 +68,7 @@ and correct the docs rather than assuming one automatically describes production
 ## the serving invariant
 
 The target is predictable, bounded request work. Search is answered by one of
-two store slots on Fly (`typeahead-shadow-a`, `typeahead-shadow-b`): each
+two store slots on Fly (`typeahead-slot-a`, `typeahead-slot-b`): each
 follows the network itself, keeps every account in a store on its own disk and
 feeds a Tantivy index on the same machine with complete postings, global ranked
 retrieval and durable live updates. Verify matching, ranking and PDS scope

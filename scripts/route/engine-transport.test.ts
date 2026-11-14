@@ -12,12 +12,12 @@ test("a route write is conditional, and the transport follows the record through
   if (!built.success) throw new Error(built.logs.join("\n"));
   const mf = new Miniflare({ r2Persist: join(directory, "r2"), workers: [
     { name: "transport", script: await built.outputs[0].text(), modules: true, compatibilityDate: "2026-10-29", r2Buckets: ["SEARCH_CONTROL"], outboundService: "origin" },
-    { name: "origin", modules: true, script: `export default {fetch(r){const u=new URL(r.url);if(r.method==='POST')return Response.json({error:'auth-fixture'},{status:401});const h=new Headers({'Content-Type':'application/json'});if(u.hostname==='typeahead-shadow-a.fly.dev'&&u.searchParams.get('q')!=='wrong'){h.set('X-Typeahead-Engine','tantivy');h.set('X-Typeahead-Build','b1792908655-test');h.set('X-Typeahead-Format','tantivy-0.27-f32-did-expiry-v4');h.set('X-Typeahead-Binary-Sha256',(u.searchParams.get('q')==='wrongbinary'?'d':'c').repeat(64));h.set('X-Typeahead-Retrieval-Strategy',u.searchParams.get('q')==='wrongstrategy'?'global-merge':'per-segment')}return new Response(JSON.stringify({origin:u.origin,actors:[]}),{headers:h})}}` },
+    { name: "origin", modules: true, script: `export default {fetch(r){const u=new URL(r.url);if(r.method==='POST')return Response.json({error:'auth-fixture'},{status:401});const h=new Headers({'Content-Type':'application/json'});if(u.hostname==='typeahead-slot-a.fly.dev'&&u.searchParams.get('q')!=='wrong'){h.set('X-Typeahead-Engine','tantivy');h.set('X-Typeahead-Build','b1792908655-test');h.set('X-Typeahead-Format','tantivy-0.27-f32-did-expiry-v4');h.set('X-Typeahead-Binary-Sha256',(u.searchParams.get('q')==='wrongbinary'?'d':'c').repeat(64));h.set('X-Typeahead-Retrieval-Strategy',u.searchParams.get('q')==='wrongstrategy'?'global-merge':'per-segment')}return new Response(JSON.stringify({origin:u.origin,actors:[]}),{headers:h})}}` },
   ] });
   const base = "https://typeahead-search-transport.n8-3e9.workers.dev";
   const retired = { origin: "https://typeahead-startup-20261024.fly.dev", build_id: "b1792908655-test", source_watermark: 1792908650, machine_id: "8e3d79b70dd748", volume_id: "vol_fixture", legacy_build_id: "b1792908655-legacy" };
-  const candidate = { engine: "tantivy", origin: "https://typeahead-shadow-a.fly.dev", build_id: "b1792908655-test", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" };
-  const slotB = { ...candidate, origin: "https://typeahead-shadow-b.fly.dev", admission_sha256: "e".repeat(64) };
+  const candidate = { engine: "tantivy", origin: "https://typeahead-slot-a.fly.dev", build_id: "b1792908655-test", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" };
+  const slotB = { ...candidate, origin: "https://typeahead-slot-b.fly.dev", admission_sha256: "e".repeat(64) };
   const control = async () => {
     const response = await mf.dispatchFetch(`${base}/__control`);
     return { etag: response.headers.get("ETag"), value: await response.json() };

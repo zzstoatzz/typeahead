@@ -27,29 +27,19 @@ const Surface = struct {
         if (self.reader) |reader| reader.close();
     }
 
-    fn send(self: *Surface, method: std.http.Method, target: []const u8, authorization: ?[]const u8, body: []const u8) !http.Response {
+    fn send(self: *Surface, method: std.http.Method, target: []const u8, authorization: ?[]const u8) !http.Response {
         const context: http.Context = .{ .owner = self.f.owner, .reader = self.reader, .intake = &self.signals, .labels_ignored = &self.ignored, .read_secret = self.read_secret };
-        return http.respond(&context, self.f.arena.allocator(), method, target, authorization, body);
+        return http.respond(&context, self.f.arena.allocator(), method, target, authorization);
     }
 
     fn get(self: *Surface, target: []const u8, authorization: ?[]const u8) !http.Response {
-        return self.send(.GET, target, authorization, "");
+        return self.send(.GET, target, authorization);
     }
 
     fn parsed(self: *Surface, comptime T: type, target: []const u8) !T {
         const response = try self.get(target, bearer);
         try testing.expectEqual(std.http.Status.ok, response.status);
         return std.json.parseFromSliceLeaky(T, self.f.arena.allocator(), response.body, .{ .ignore_unknown_fields = true });
-    }
-
-    fn posted(self: *Surface, target: []const u8, body: []const u8) !http.ActorsBody {
-        const response = try self.send(.POST, target, bearer, body);
-        try testing.expectEqual(std.http.Status.ok, response.status);
-        return std.json.parseFromSliceLeaky(http.ActorsBody, self.f.arena.allocator(), response.body, .{});
-    }
-
-    fn status(self: *Surface, target: []const u8, body: []const u8) !std.http.Status {
-        return (try self.send(.POST, target, bearer, body)).status;
     }
 };
 
@@ -89,7 +79,6 @@ test "the read endpoints answer 503 and health answers while no reader is open" 
     defer f.destroy();
     var surface: Surface = .{ .f = f, .reader = null };
     try testing.expectEqual(std.http.Status.service_unavailable, (try surface.get("/store/actor?did=" ++ alice, bearer)).status);
-    try testing.expectEqual(std.http.Status.service_unavailable, (try surface.get("/store/changes?from=0", bearer)).status);
     try testing.expectEqual(std.http.Status.unauthorized, (try surface.get("/store/actor?did=" ++ alice, null)).status);
     try testing.expectEqual(std.http.Status.ok, (try surface.get("/health", null)).status);
 }
@@ -120,42 +109,7 @@ test "an actor is read by DID and by handle without case" {
 
     try testing.expectEqual(std.http.Status.not_found, (try surface.get("/store/actor?did=did:plc:unknown", bearer)).status);
     try testing.expectEqual(std.http.Status.bad_request, (try surface.get("/store/actor", bearer)).status);
-    try testing.expectEqual(std.http.Status.method_not_allowed, (try surface.send(.POST, "/store/actor?did=" ++ alice, bearer, "")).status);
-}
-
-test "the change log is read from a position, and a named consumer holds trimming back" {
-    const f = try seeded();
-    defer f.destroy();
-    var surface = try Surface.open(f);
-    defer surface.close();
-    const first = try surface.parsed(http.ChangesBody, "/store/changes?from=0&limit=1");
-    try testing.expectEqual(@as(usize, 1), first.entries.len);
-    try testing.expectEqual(@as(u64, 1), first.entries[0].seq);
-    try testing.expectEqualStrings(alice, first.entries[0].did);
-    try testing.expectEqual(@as(u64, 2), first.next);
-    try testing.expectEqual(@as(u64, 3), first.head);
-
-    const rest = try surface.parsed(http.ChangesBody, "/store/changes?from=2&consumer=compare");
-    try testing.expectEqual(@as(usize, 1), rest.entries.len);
-    try testing.expectEqualStrings(bob, rest.entries[0].did);
-    try testing.expectEqual(@as(u64, 3), rest.next);
-    const idle = try surface.parsed(http.ChangesBody, "/store/changes?from=3");
-    try testing.expectEqual(@as(usize, 0), idle.entries.len);
-    try testing.expectEqual(@as(u64, 3), idle.next);
-
-    var buf: [8]owner_mod.Consumer = undefined;
-    const consumers = f.owner.consumerList(&buf);
-    try testing.expectEqualStrings("compare", consumers[0].name);
-    try testing.expectEqual(@as(u64, 2), consumers[0].position);
-
-    const store = try f.owner.acquire();
-    _ = try store.trimChanges(3, 100);
-    f.owner.release();
-    const trimmed = try surface.parsed(http.ChangesBody, "/store/changes?from=1");
-    try testing.expectEqual(@as(?u64, 3), trimmed.trimmed);
-    try testing.expectEqual(@as(u64, 3), trimmed.next);
-    try testing.expectEqual(std.http.Status.bad_request, (try surface.get("/store/changes?from=x", bearer)).status);
-    try testing.expectEqual(std.http.Status.bad_request, (try surface.get("/store/changes?limit=5000", bearer)).status);
+    try testing.expectEqual(std.http.Status.method_not_allowed, (try surface.send(.POST, "/store/actor?did=" ++ alice, bearer)).status);
 }
 
 test "health carries the store's numbers" {

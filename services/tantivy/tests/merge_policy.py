@@ -1,9 +1,9 @@
 """The serving writer's merge settings bound segments and deleted documents.
 
-Regression (2026-11-11): typeahead-shadow-a, fed by the index bridge and never
+Regression (2026-11-11): typeahead-slot-a, fed by the index bridge and never
 rebuilt from a snapshot, held 24.7 million documents of which 11.4 million were
 deleted, in 12 to 18 segments: Tantivy's default policy merges a level only at
-eight segments and never because of deletions. With the settings the shadow
+eight segments and never because of deletions. With the settings a
 slot passes, a level merges at three segments or when a segment is more than a
 fifth deleted, and no replaced document comes back through those merges. The
 writes here are 500 and 100 documents each, below the smallest level, so the

@@ -1138,7 +1138,7 @@ test "/health reports the loop, and says so when it was asked for and cannot run
     var context: http.Context = .{ .owner = rig.f.owner, .reader = null, .intake = &signals, .labels_ignored = &ignored, .read_secret = null, .control = &rig.loop };
     const arena = rig.f.arena.allocator();
     const Body = struct { control: ?http.ControlBody = null };
-    const on = (try std.json.parseFromSliceLeaky(Body, arena, (try http.respond(&context, arena, .GET, "/health", null, "")).body, .{ .ignore_unknown_fields = true })).control.?;
+    const on = (try std.json.parseFromSliceLeaky(Body, arena, (try http.respond(&context, arena, .GET, "/health", null)).body, .{ .ignore_unknown_fields = true })).control.?;
     try testing.expectEqualStrings("on", on.state);
     try testing.expectEqual(@as(?u64, 90), on.age_seconds);
     try testing.expectEqual(@as(?u64, 30), on.poll_seconds);
@@ -1156,11 +1156,11 @@ test "/health reports the loop, and says so when it was asked for and cannot run
     try testing.expectEqual(@as(u16, 401), on.failures.?.last_status);
 
     context.control = null;
-    const off = try http.respond(&context, arena, .GET, "/health", null, "");
+    const off = try http.respond(&context, arena, .GET, "/health", null);
     try testing.expect(std.mem.indexOf(u8, off.body, "\"control\"") == null);
 
     context.control_problem = "CONTROL_URL is set without SLOT_CONTROL_SECRET";
-    const broken = (try std.json.parseFromSliceLeaky(Body, arena, (try http.respond(&context, arena, .GET, "/health", null, "")).body, .{ .ignore_unknown_fields = true })).control.?;
+    const broken = (try std.json.parseFromSliceLeaky(Body, arena, (try http.respond(&context, arena, .GET, "/health", null)).body, .{ .ignore_unknown_fields = true })).control.?;
     try testing.expectEqualStrings("misconfigured", broken.state);
     try testing.expectEqualStrings("CONTROL_URL is set without SLOT_CONTROL_SECRET", broken.problem.?);
     try testing.expectEqual(@as(?u64, null), broken.age_seconds);

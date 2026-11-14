@@ -7,8 +7,8 @@ import { join, resolve } from 'node:path';
 import { createServer } from 'node:http';
 
 const identity = { engine: 'tantivy', format: 'tantivy-0.27-f32-did-expiry-v4', binary_sha256: 'c'.repeat(64), retrieval_strategy: 'global-merge' };
-const a = { ...identity, origin: 'https://typeahead-shadow-a.fly.dev', build_id: 'b1792908655-cp-slota', admission_sha256: 'a'.repeat(64) };
-const b = { ...identity, origin: 'https://typeahead-shadow-b.fly.dev', build_id: 'b1793081565-cp-slotb', admission_sha256: 'b'.repeat(64) };
+const a = { ...identity, origin: 'https://typeahead-slot-a.fly.dev', build_id: 'b1792908655-cp-slota', admission_sha256: 'a'.repeat(64) };
+const b = { ...identity, origin: 'https://typeahead-slot-b.fly.dev', build_id: 'b1793081565-cp-slotb', admission_sha256: 'b'.repeat(64) };
 const identify = (response, origin) => {
   const target = [a, b].find(candidate => candidate.origin === origin);
   if (!target) return;

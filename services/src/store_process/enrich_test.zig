@@ -450,7 +450,7 @@ test "handle disagreements queue no more identity work than the backlog limit, a
     var ignored: std.atomic.Value(u64) = .init(0);
     const context: http.Context = .{ .owner = rig.f.owner, .reader = reader, .intake = &signals, .labels_ignored = &ignored, .read_secret = null, .enricher = &rig.enricher };
     const a = rig.f.arena.allocator();
-    const response = try http.respond(&context, a, .GET, "/health", null, "");
+    const response = try http.respond(&context, a, .GET, "/health", null);
     const body = try std.json.parseFromSliceLeaky(http.HealthBody, a, response.body, .{ .ignore_unknown_fields = true });
     const handles = body.enrichment.?.handles;
     try testing.expectEqual(@as(u64, 86_400), handles.settle_seconds);
@@ -737,7 +737,7 @@ test "health reports the loop, both walks with their periods, and the corpus cou
     var signals: @import("intake.zig").Signals = .{};
     var ignored: std.atomic.Value(u64) = .init(0);
     const context: http.Context = .{ .owner = rig.f.owner, .reader = reader, .intake = &signals, .labels_ignored = &ignored, .read_secret = null, .enricher = &rig.enricher, .corpus = &scanner };
-    const response = try http.respond(&context, a, .GET, "/health", null, "");
+    const response = try http.respond(&context, a, .GET, "/health", null);
     const body = try std.json.parseFromSliceLeaky(http.HealthBody, a, response.body, .{ .ignore_unknown_fields = true });
 
     const loop = body.enrichment.?;

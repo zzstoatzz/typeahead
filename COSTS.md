@@ -7,10 +7,10 @@ estimate, not an invoice. The source for each is named beside it.
 
 | resource | shape | estimate a month | source |
 | --- | --- | --- | --- |
-| `typeahead-shadow-a`, compute | Fly, 4 shared CPUs, 2 GB, always on | $13.25 | hub snapshot |
-| `typeahead-shadow-a`, volume | 40 GB | $6.00 | hub snapshot: $0.15 per GB |
-| `typeahead-shadow-b`, compute | the same machine | $13.25 | same shape as slot A |
-| `typeahead-shadow-b`, volume | 40 GB | $6.00 | $0.15 per GB |
+| `typeahead-slot-a`, compute | Fly, 4 shared CPUs, 2 GB, always on | $13.25 | hub snapshot |
+| `typeahead-slot-a`, volume | 40 GB | $6.00 | hub snapshot: $0.15 per GB |
+| `typeahead-slot-b`, compute | the same machine | $13.25 | same shape as slot A |
+| `typeahead-slot-b`, volume | 40 GB | $6.00 | $0.15 per GB |
 | volume snapshots, both slots | daily, kept 2 days, about 40 GB each | about $13 | $0.08 per GB stored, after Fly's 10 GB free tier |
 | **the two slots** | | **about $51** | |
 

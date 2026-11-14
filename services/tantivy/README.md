@@ -203,7 +203,7 @@ count against the candidate budget. By default the serving writer keeps Tantivy'
 merge policy: a size level merges at eight segments, deletions never cause a merge,
 and a segment with more than ten million live documents is never merged again.
 That suits a slot that is replaced by a fresh one-segment snapshot twice a day. It
-does not suit an index that is only ever updated: on `typeahead-shadow-a` on
+does not suit an index that is only ever updated: on `typeahead-slot-a` on
 2026-11-11, a day after its bootstrap resync, 11.4 million of 24.7 million stored
 documents were deleted, in 12 to 18 segments, and nothing was going to merge them.
 
@@ -219,14 +219,14 @@ documents were deleted, in 12 to 18 segments, and nothing was going to merge the
 
 `--merge-nice N` (0 to 19, Linux only) gives the writer's merge threads that
 scheduling niceness, so a merge yields the CPU to a search; unset, they keep the
-process's. On `typeahead-shadow-a` during a 13-million-document merge on two
+process's. On `typeahead-slot-a` during a 13-million-document merge on two
 dedicated CPUs (2026-11-11, 400 loopback queries a sample), the 90th percentile
 was 4.9 ms with the merge threads at 0 and 3.0 ms at 19, twice.
 
 `/index/status` reports the settings in force as `query_config.merge`, and
 `documents` and `deleted_documents`, summed over the generation's segments. Merges
 run on Tantivy's merge threads, not under the writer lock; a merged segment is
-served from the next commit. `tests/merge_policy.py` runs the shadow slot's
+served from the next commit. `tests/merge_policy.py` runs a slot's
 settings against the real server: 3,000 documents, half of them replaced, settle
 into at most two segments with under a fifth deleted, across a restart, with every
 replaced handle gone from `/search` and every document answering `/admin/source-state`.
@@ -236,7 +236,7 @@ replaced handle gone from `/search` and every document answering `/admin/source-
 A search reads the index through memory maps, so the first search to touch a page
 that is not in the page cache waits on the disk for it. After a restart, and after
 a large merge replaces most of the index with one new segment, that is every
-search. On `typeahead-shadow-a` on 2026-11-11, 25 minutes after a restart with no
+search. On `typeahead-slot-a` on 2026-11-11, 25 minutes after a restart with no
 traffic but the comparison's 58 queries, 197 of 211 first-time queries took major
 page faults (about nine each) and their median was 6.9 ms; the 14 that took none
 had a median of 1.5 ms. The faults were in the term dictionary and the postings.
@@ -341,9 +341,8 @@ Unix seconds remain evidence rather than an invented total order.
 each stored document (null when absent): `deleted`, `hidden`, `handle`, `pds`,
 `pds_host`, `quality_score`, `version` and `profile_sha256`, a SHA-256 over the
 compact JSON array of display name, avatar, labels, associated and creation time.
-The document hash covers the source version, so two backends fed by different
-sources cannot be compared by it; these fields let the
-[shadow comparison](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/README.md) name what differs.
+The bridge's integration test reads them to check what the index holds against
+the store, field by field.
 The default response and the reconcile protocol are unchanged.
 
 An optional complete `policy_snapshot` carries operator DID actions, blocked

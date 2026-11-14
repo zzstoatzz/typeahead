@@ -21,7 +21,7 @@ lint:
 test-route:
     python3 -W error -m unittest scripts/route/test_slot_route.py
 
-# the shadow slot's supervisor against stand-in processes: restarts, backoff and
+# the slot's supervisor against stand-in processes: restarts, backoff and
 # the stop. Needs bash 5.2 or newer (macOS: `brew install bash`) and jq; no network
 test-supervise:
     python3 -W error -m unittest deploy/slot/test_supervise.py

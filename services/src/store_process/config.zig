@@ -246,9 +246,9 @@ test "the index bridge runs when the admin secret is set, against a loopback ind
     try testing.expect((try load(fakeEnv(&.{base}))).index == null);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "" } }))).index == null);
     try testing.expect((try load(fakeEnv(&.{ base, .{ "INDEX_ADMIN_URL", "http://127.0.0.1:9" } }))).index == null);
-    const defaults = (try load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "s" }, .{ "FLY_APP_NAME", "typeahead-shadow-a" } }))).index.?;
+    const defaults = (try load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "s" }, .{ "FLY_APP_NAME", "typeahead-slot-a" } }))).index.?;
     try testing.expectEqualStrings("http://127.0.0.1:8081", defaults.admin_url);
-    try testing.expectEqualStrings("typeahead-shadow-a-store", defaults.source_id);
+    try testing.expectEqualStrings("typeahead-slot-a-store", defaults.source_id);
     try testing.expect(!defaults.adopt_cursor);
     try testing.expectError(error.IndexNotLoopback, load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "s" }, .{ "INDEX_ADMIN_URL", "https://index.example:8081" } })));
     try testing.expectError(error.IndexNotLoopback, load(fakeEnv(&.{ base, .{ "ADMIN_SECRET", "s" }, .{ "INDEX_ADMIN_URL", "http://127.0.0.1.evil.example:80" } })));

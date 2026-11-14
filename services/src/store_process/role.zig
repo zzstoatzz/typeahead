@@ -363,16 +363,6 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
     }
     const method = request.head.method;
     const target = a.dupe(u8, request.head.target) catch return;
-    var body: []const u8 = "";
-    if (method.requestHasBody()) {
-        var body_buffer: [4096]u8 = undefined;
-        const body_reader = request.readerExpectContinue(&body_buffer) catch return;
-        body = body_reader.allocRemaining(a, .limited(http.max_body_bytes)) catch {
-            request.respond("{\"error\":\"body too large\"}", .{ .status = .payload_too_large, .keep_alive = false }) catch {};
-            return;
-        };
-    }
-
     const context: http.Context = .{
         .owner = self.owner,
         .reader = self.reader.load(.acquire),
@@ -388,7 +378,7 @@ fn serveOne(self: *Role, stream: Io.net.Stream) void {
             .off, .on => null,
         },
     };
-    const response = http.respond(&context, a, method, target, authorization, body) catch |err| blk: {
+    const response = http.respond(&context, a, method, target, authorization) catch |err| blk: {
         log.warn("request failed: {s}", .{@errorName(err)});
         break :blk http.Response{ .status = .internal_server_error, .body = "{\"error\":\"internal error\"}" };
     };
