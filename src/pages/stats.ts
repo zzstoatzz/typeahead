@@ -196,11 +196,18 @@ export function statsPage(d: StatsData): string {
   // 43.6% of all traffic. The rest slice is selectable like any source: its
   // history is the sum of every source outside the named twelve, computed
   // on the client from the same per-domain series (see seriesFor).
+  //
+  // The whole is every search answered, the number the activity panel shows
+  // for all time. Until 2026-11-14 a cache hit or an empty query was counted
+  // as a search but not for the app that sent it, and searches from our own
+  // probes are counted but are not apps, so the apps sum to less than the
+  // whole. The ring draws the difference as one slice that names no app.
   const trafficListed = d.trafficSources.reduce((s, r) => s + r.hits, 0);
-  const trafficGrandTotal = Math.max(d.trafficAll.hits, trafficListed);
+  const trafficAttributed = Math.max(d.trafficAll.hits, trafficListed);
+  const trafficGrandTotal = Math.max(d.totalSearches, trafficAttributed);
   const pieSlice = d.trafficSources.slice(0, PIE_TOP_N);
   const pieShown = pieSlice.reduce((s, r) => s + r.hits, 0);
-  const restHits = trafficGrandTotal - pieShown;
+  const restHits = trafficAttributed - pieShown;
   const restDomains = Math.max(d.trafficAll.domains, d.trafficSources.length) - pieSlice.length;
   const rest = restHits > 0 && restDomains > 0 ? { hits: restHits, domains: restDomains } : null;
   const REST_LABEL = 'everything else';
@@ -260,7 +267,7 @@ export function statsPage(d: StatsData): string {
 
   const sourcePills = d.trafficSources.map((row, i) => {
     const pct = trafficGrandTotal ? (row.hits / trafficGrandTotal * 100).toFixed(1) : '0';
-    return `<button type="button" data-domain="${esc(row.domain)}" data-hits="${row.hits}" data-share="${pct}" title="${esc(row.domain)} · ${row.hits.toLocaleString()} requests · ${pct}% of traffic" aria-label="${esc(row.domain)}, ${row.hits.toLocaleString()} requests, ${pct}% of traffic" aria-pressed="false"${i >= 12 ? ' hidden' : ''}><span class="source-name">${esc(row.domain)}</span><span class="source-value">${pct}%</span></button>`;
+    return `<button type="button" data-domain="${esc(row.domain)}" data-hits="${row.hits}" data-share="${pct}" title="${esc(row.domain)} · ${row.hits.toLocaleString()} searches · ${pct}% of searches" aria-label="${esc(row.domain)}, ${row.hits.toLocaleString()} requests, ${pct}% of traffic" aria-pressed="false"${i >= 12 ? ' hidden' : ''}><span class="source-name">${esc(row.domain)}</span><span class="source-value">${pct}%</span></button>`;
   }).join('');
 
   return `<!doctype html>
@@ -354,9 +361,8 @@ export function statsPage(d: StatsData): string {
     .source-detail .detail-total { font-size: clamp(24px, 6vw, 36px); }
     .source-detail .detail-count { font-size: clamp(10px, 2.5vw, 12px); line-height: 1.5; color: var(--muted); font-variant-numeric: tabular-nums; }
     .source-detail a { pointer-events: auto; display: inline-flex; align-items: center; min-height: 32px; color: var(--accent); font-size: 11px; }
-    .source-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+    .source-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
     .source-heading a { font-size: 0.65rem; color: var(--muted); white-space: nowrap; }
-    .source-context { font-size: 0.7rem; color: var(--muted); margin-bottom: 0.6rem; }
     #pie .pie-segment { cursor: pointer; outline: none; }
     #pie .pie-face { stroke: var(--panel); stroke-width: 0.6; transition: opacity 100ms ease; }
     #pie .pie-segment:hover .pie-face, #pie .pie-segment:focus-visible .pie-face { filter: brightness(1.12); }
@@ -369,6 +375,7 @@ export function statsPage(d: StatsData): string {
     #source-list button[aria-pressed="true"]::after { content: "✓"; color: var(--text); }
     #pie text, #pie image, #pie .pie-logo { pointer-events: none; }
     #pie .pie-tail-count { fill: var(--text); font-family: inherit; font-weight: 600; }
+    #pie .pie-segment.unattributed .pie-face { stroke: var(--line-2); stroke-dasharray: 3 3; }
     #pie .pie-segment.tail:hover .pie-face, #pie .pie-segment.tail:focus-visible .pie-face { fill: var(--dim); }
     @media (prefers-reduced-motion: reduce) { #pie .pie-face { transition: none; } }
     .traffic-series { margin-top: 0.85rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
@@ -633,10 +640,9 @@ export function statsPage(d: StatsData): string {
 
     <div class="pie-wrap">
       <div class="source-heading"><h2>traffic sources</h2><a href="#traffic-chart">View activity ↑</a></div>
-      <div class="source-context">${trafficGrandTotal.toLocaleString()} requests · ${d.trafficSources.length} apps</div>
       ${d.trafficSources.length > 0
-        ? `<div id="pie-position" class="pie-position" aria-live="polite"></div>
-           <div class="pie-stage"><svg id="pie" viewBox="0 0 400 400" role="group" aria-label="Traffic sources. Select a source to compare, or step through smaller sources with the arrow keys."></svg><div class="source-detail" id="source-detail" aria-live="polite"></div></div>
+        ? `<div class="pie-stage"><svg id="pie" viewBox="0 0 400 400" role="group" aria-label="Traffic sources. Select a source to compare, or step through smaller sources with the arrow keys."></svg><div class="source-detail" id="source-detail" aria-live="polite"></div></div>
+           <div id="pie-position" class="pie-position" aria-live="polite"></div>
            <div class="pie-help"><button type="button" id="pie-larger" hidden>← larger</button><button type="button" id="pie-smaller" hidden></button></div>
            <div class="source-tools"><input type="search" id="source-search" placeholder="Find an app" aria-label="Find an app" autocomplete="off"><button type="button" id="source-toggle" aria-controls="source-list" aria-expanded="false"${d.trafficSources.length <= 12 ? ' hidden' : ''}>Show all</button></div>
            <div id="source-list" aria-label="All apps">${sourcePills}</div>
@@ -881,6 +887,7 @@ export function statsPage(d: StatsData): string {
     const PIE_COLORS = ${jsonScript(PIE_COLORS)};
     const traffic = ${trafficJson};
     const trafficGrandTotal = ${trafficGrandTotal};
+    const trafficAttributed = ${trafficAttributed};
     const pieCanvas = document.getElementById('pie');
     const pieTip = document.getElementById('pie-tip');
     let refreshPie = () => {};
@@ -917,7 +924,8 @@ export function statsPage(d: StatsData): string {
     let showBaseline = true;   // the dotted all-sources line, for relative scale
     let tsView = null;         // {t0Sec, stepSec, step, toY, series[]} — the trace reads this
     // which way the volume is sliced. 'source' is the original per-app chart
-    // (search cache misses, from traffic_buckets); the other two read
+    // (searches, from traffic_buckets; cache misses only before 2026-11-14);
+    // the other two read
     // request_buckets, which counts every answer the worker gave — so their
     // total is larger and includes the ingester's own admin traffic.
     let tsDim = 'source';
@@ -1098,7 +1106,7 @@ export function statsPage(d: StatsData): string {
       judged.append(verdict);
       const usual = document.createElement('span'); usual.className = 'now-usual'; usual.textContent = 'usual ' + fmtUsual(band);
       fact.append(label, when, reading, judged, usual);
-      fact.title = 'Search cache misses in the last complete hour, compared with the middle 80% of the same UTC hour over the last '
+      fact.title = 'Searches in the last complete hour, compared with the middle 80% of the same UTC hour over the last '
         + PROFILE.days + ' days. It does not follow the range selector.';
       fact.hidden = false;
     }
@@ -1332,7 +1340,7 @@ export function statsPage(d: StatsData): string {
         comparison.textContent = ranked[0].name + ' ' + (ratio < 10 ? ratio.toFixed(2) : Math.round(ratio)) + '× ' + ranked[1].name;
         tseriesTotals.append(comparison);
       }
-      tseriesTotals.title = (tsDim === 'source' ? 'Search cache misses' : 'All answered requests') + ' in the plotted window, counted as requests.';
+      tseriesTotals.title = (tsDim === 'source' ? 'Searches' : 'All answered requests') + ' in the plotted window, counted as requests.';
       const clear = document.getElementById('clear-series');
       clear.disabled = tsDim === 'source' && pinned.length === 0;
       clear.textContent = tsDim !== 'source' && pinned.length === 0 ? 'select all' : 'clear';
@@ -1588,7 +1596,7 @@ export function statsPage(d: StatsData): string {
     }
     function showSourceDetail(row, total, count, scoped) {
       const detail = document.getElementById('source-detail'); detail.replaceChildren();
-      const iconUrl = row && !failedLogos.has(row.domain) ? sourceIconUrl(row.domain) : null;
+      const iconUrl = row && !row.unattributed && !failedLogos.has(row.domain) ? sourceIconUrl(row.domain) : null;
       if (iconUrl) {
         const logo = document.createElement('img');
         logo.className = 'detail-logo'; logo.alt = ''; logo.width = 32; logo.height = 32; logo.src = iconInfo.get(row.domain)?.cut ?? iconUrl;
@@ -1601,11 +1609,12 @@ export function statsPage(d: StatsData): string {
       if (row) name.title = row.domain;
       detail.append(name);
       const counts = document.createElement('span'); counts.className = 'detail-count';
-      counts.textContent = row ? row.hits.toLocaleString() + ' requests' : count + ' apps'; detail.append(counts);
+      counts.textContent = row ? row.hits.toLocaleString() + ' searches' : count + ' apps';
+      if (row || scoped) detail.append(counts);
       const share = document.createElement('span'); share.className = 'detail-count';
       const percent = row ? row.hits / trafficGrandTotal * 100 : 0;
-      share.textContent = row ? (percent > 0 && percent < 0.1 ? '<0.1' : percent.toFixed(1)) + '% of all traffic' : scoped ? (total / trafficGrandTotal * 100).toFixed(2) + '% of all traffic' : 'all-time requests'; detail.append(share);
-      const site = row ? sourceSite(row.domain) : null;
+      share.textContent = row ? (percent > 0 && percent < 0.1 ? '<0.1' : percent.toFixed(1)) + '% of all searches' : scoped ? (total / trafficGrandTotal * 100).toFixed(2) + '% of all searches' : 'all-time searches'; detail.append(share);
+      const site = row && !row.unattributed ? sourceSite(row.domain) : null;
       if (site) {
         const link = document.createElement('a'); link.href = site;
         link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Visit website ↗'; detail.append(link);
@@ -1687,7 +1696,9 @@ export function statsPage(d: StatsData): string {
     if (pieCanvas && allTraffic.length > 0) {
       const rootRows = allTraffic.filter(row => row.hits > 0);
       const rootSum = rootRows.reduce((sum, row) => sum + row.hits, 0);
-      if (trafficGrandTotal > rootSum) rootRows.push({domain: 'unattributed remainder', hits: trafficGrandTotal - rootSum});
+      if (trafficAttributed > rootSum) rootRows.push({domain: 'unattributed remainder', hits: trafficAttributed - rootSum});
+      const UNATTRIBUTED = {domain: 'not attributed', hits: trafficGrandTotal - trafficAttributed, rest: false, unattributed: true};
+      let unattributedShown = false;
       // The ring shows one window of the ranked sources at a time, drawn
       // across the full ring. A window takes sources while each stays at least
       // MIN_SHARE of it, so every slice has room for its icon. Only the first
@@ -1763,6 +1774,7 @@ export function statsPage(d: StatsData): string {
         const rows = rootRows.slice(at, end).map(row => ({...row, rest: false}));
         const tail = rootRows.slice(end);
         if (at === 0 && tail.length) rows.push({domain: 'Smaller sources', hits: tail.reduce((sum, row) => sum + row.hits, 0), rest: true, count: tail.length});
+        if (at === 0 && UNATTRIBUTED.hits > 0) rows.push(UNATTRIBUTED);
         return {rows, end};
       }
       function step(direction) {
@@ -1804,16 +1816,20 @@ export function statsPage(d: StatsData): string {
           const start = angle;
           const end = angle + row.hits / total * Math.PI * 2 - 0.00001;
           angle = end + 0.00001;
-          const group = svgNode('g', {class: 'pie-segment' + (row.rest ? ' tail' : ''), tabindex: 0, role: 'button', 'data-domain': row.domain, 'data-hits': row.hits, 'data-rest': row.rest, 'data-angle': (start + end) / 2,
-            'aria-label': row.rest ? 'Show the ' + row.count + ' smaller sources, ' + row.hits.toLocaleString() + ' hits' : row.domain + ', ' + row.hits.toLocaleString() + ' hits, ' + (row.hits / total * 100).toFixed(1) + '% of this view',
-            ...(row.rest ? {} : {'aria-pressed': String(tsDim === 'source' && pinned.includes(row.domain))})});
+          const plain = row.rest || row.unattributed;
+          const group = svgNode('g', {class: 'pie-segment' + (row.rest ? ' tail' : row.unattributed ? ' unattributed' : ''), tabindex: 0, role: 'button', 'data-domain': row.domain, 'data-hits': row.hits, 'data-rest': plain, 'data-angle': (start + end) / 2,
+            'aria-label': row.rest ? 'Show the ' + row.count + ' smaller sources, ' + row.hits.toLocaleString() + ' searches'
+              : row.unattributed ? 'Not attributed to an app, ' + row.hits.toLocaleString() + ' searches, ' + (row.hits / total * 100).toFixed(1) + '% of all searches: cache hits and empty queries before 2026-11-14, and our own probes'
+              : row.domain + ', ' + row.hits.toLocaleString() + ' searches, ' + (row.hits / total * 100).toFixed(1) + '% of this view',
+            ...(plain ? {} : {'aria-pressed': String(tsDim === 'source' && pinned.includes(row.domain))})});
           const path = arcPath(outer, start, end) + ' L ' + point(inner, end).join(' ') + ' A ' + inner + ' ' + inner + ' 0 ' + (end - start > Math.PI ? 1 : 0) + ' 0 ' + point(inner, start).join(' ') + ' Z';
-          group.append(svgNode('path', {d: path, class: 'pie-face', fill: row.rest ? 'var(--line-2)' : domainColor(row.domain), opacity: tsDim === 'source' && pinned.length && !pinned.includes(row.domain) && !row.rest ? 0.72 : 1}));
+          group.append(svgNode('path', {d: path, class: 'pie-face', fill: row.rest ? 'var(--line-2)' : row.unattributed ? 'var(--panel-2)' : domainColor(row.domain), opacity: tsDim === 'source' && pinned.length && !pinned.includes(row.domain) && !plain ? 0.72 : 1}));
           group.append(svgNode('title', {}, group.getAttribute('aria-label')));
-          if (!row.rest) addIcon(group, row, start, end, outer, inner, scale);
-          else addTailLabel(group, row, start, end, outer, inner, scale);
+          if (row.rest) addTailLabel(group, row, start, end, outer, inner, scale);
+          else if (!row.unattributed) addIcon(group, row, start, end, outer, inner, scale);
           activateOnTap(group, () => {
             if (row.rest) step(1);
+            else if (row.unattributed) { unattributedShown = !unattributedShown; refreshPie(); }
             else { if (tsDim !== 'source') setDim('source'); applySelection(row.domain); }
           });
           pieCanvas.append(group);
@@ -1828,9 +1844,9 @@ export function statsPage(d: StatsData): string {
         smaller.setAttribute('aria-label', 'Show smaller sources, from rank ' + (nextOffset + 1));
         smaller.onclick = () => step(1);
         const position = document.getElementById('pie-position');
-        const share = view.filter(r => !r.rest).reduce((sum, r) => sum + r.hits, 0) / trafficGrandTotal * 100;
-        position.textContent = offset === 0 ? 'top ' + nextOffset + ' of ' + rootRows.length + ' sources'
-          : 'ranks ' + (offset + 1) + '–' + nextOffset + ' of ' + rootRows.length + ' · ' + (share < 0.01 ? '<0.01' : share.toFixed(2)) + '% of traffic';
+        const share = view.filter(r => !r.rest && !r.unattributed).reduce((sum, r) => sum + r.hits, 0) / trafficGrandTotal * 100;
+        position.textContent = (offset === 0 ? 'top ' + nextOffset : 'ranks ' + (offset + 1) + '–' + nextOffset) + ' of ' + rootRows.length + ' apps · '
+          + (share < 0.01 ? '<0.01' : share.toFixed(offset === 0 ? 1 : 2)) + '% of searches';
         refreshPie();
       }
       // a horizontal swipe on the ring steps between windows; vertical scroll stays native
@@ -1847,9 +1863,10 @@ export function statsPage(d: StatsData): string {
         if (e.key === 'ArrowLeft') { e.preventDefault(); step(-1); }
       });
       refreshPie = () => {
-        const row = tsDim === 'source' ? rootRows.find(r => r.domain === inspectedSource) ?? null : null;
-        const shown = offset === 0 ? rootRows : view;
-        showSourceDetail(row, shown.reduce((sum, r) => sum + r.hits, 0), shown.length, offset > 0);
+        const inspected = tsDim === 'source' ? rootRows.find(r => r.domain === inspectedSource) ?? null : null;
+        if (inspected || offset > 0) unattributedShown = false;
+        const row = inspected ?? (unattributedShown ? UNATTRIBUTED : null);
+        showSourceDetail(row, offset === 0 ? trafficGrandTotal : view.reduce((sum, r) => sum + r.hits, 0), offset === 0 ? rootRows.length : view.length, offset > 0);
         pieCanvas.querySelectorAll('.pie-segment[data-rest="false"]').forEach(group => {
           const selected = tsDim === 'source' && pinned.includes(group.dataset.domain);
           group.setAttribute('aria-pressed', String(selected));

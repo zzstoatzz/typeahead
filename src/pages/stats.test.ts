@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { statsPage, type StatsData } from "./stats";
 import { SOURCE_BRANDS } from "./source-brands";
 
-function page(domains: string[], trafficAll?: StatsData["trafficAll"]): string {
+function page(domains: string[], trafficAll?: StatsData["trafficAll"], totalSearches = 0): string {
   const trafficSources = domains.map((domain, i) => ({ domain, hits: 100 - i }));
   const d: StatsData = {
-    total: 100, exclusions: null, profile: null, rows: [], totalSearches: 0,
+    total: 100, exclusions: null, profile: null, rows: [], totalSearches,
     avgLatency: 0, avgCacheLatency: 0, handlePct: "0", avatarPct: "0",
     snapshots: [],
     trafficSources,
@@ -191,6 +191,15 @@ describe("everything else", () => {
     const html = page(twelve, { domains: 52, hits: 2000 });
     // app0.test has 100 hits: 5.0% of 2000, which would be 8.8% of the 1134 listed
     expect(html).toContain("const trafficGrandTotal = 2000;");
+  });
+
+  test("the whole is every search, and the apps' shortfall is kept apart from them", () => {
+    const html = page(twelve, { domains: 52, hits: 2000 }, 2300);
+    expect(html).toContain("const trafficGrandTotal = 2300;");
+    expect(html).toContain("const trafficAttributed = 2000;");
+    // app0.test has 100 hits: 4.3% of every search, not 5.0% of the attributed ones
+    expect(html).toContain('data-share="4.3"');
+    expect(html).not.toContain("source-context");
   });
 
   test("no rest slice when the ring already holds everything", () => {
