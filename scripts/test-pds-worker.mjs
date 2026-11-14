@@ -15,10 +15,10 @@ const built = spawnSync("bun", ["build", "scripts/pds-worker-entry.js", "--targe
 assert.equal(built.status, 0);
 let checks = 0;
 async function runtime(bindings, test) {
-  const options = { modules: true, modulesRoot: directory, scriptPath: bundle, compatibilityDate: "2024-12-01", d1Databases: ["DB"], bindings };
+  const options = { modules: true, modulesRoot: directory, scriptPath: bundle, compatibilityDate: "2024-12-01", d1Databases: ["STATS_DB"], bindings };
   const mf = new Miniflare(options);
   try {
-    const db = await mf.getD1Database("DB");
+    const db = await mf.getD1Database("STATS_DB");
     await db.exec("CREATE TABLE metrics(hour INTEGER PRIMARY KEY, searches INTEGER DEFAULT 0, total_ms INTEGER DEFAULT 0, cache_hits INTEGER DEFAULT 0, cache_ms INTEGER DEFAULT 0); CREATE TABLE traffic_sources(domain TEXT PRIMARY KEY,hits INTEGER); CREATE TABLE traffic_buckets(bucket INTEGER,domain TEXT,hits INTEGER,PRIMARY KEY(bucket,domain));");
     const fetch = async (query, alias = false) => {
       const path = alias ? "app.bsky.actor.searchActorsTypeahead" : "tech.waow.typeahead.searchActors";
@@ -30,7 +30,7 @@ async function runtime(bindings, test) {
   }
 }
 try {
-  await runtime({ SEARCH_BACKEND_URL: backend, TURSO_FALLBACK_ON_EMPTY: "1", TURSO_FALLBACK_ON_UNREACHABLE: "1" }, async (fetch, db, updateBindings) => {
+  await runtime({ SEARCH_BACKEND_URL: backend }, async (fetch, db, updateBindings) => {
     const global = await (await fetch("q=bob")).text();
     const scoped = await (await fetch("q=bob&pds=acme.test")).text();
     assert.notEqual(scoped, global); checks++;
@@ -56,7 +56,7 @@ try {
   for (const bindings of [
     { SEARCH_BACKEND_URL: backend, PDS_SEARCH_DISABLED: "1" },
     { SEARCH_BACKEND_URL: unsupportedBackend },
-    { SEARCH_BACKEND_URL: "http://127.0.0.1:1", TURSO_FALLBACK_ON_UNREACHABLE: "1" },
+    { SEARCH_BACKEND_URL: "http://127.0.0.1:1" },
     {},
     { SEARCH_BACKEND_URL: backend, EMERGENCY_PROXY_BSKY: "1" },
   ]) {

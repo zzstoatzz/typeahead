@@ -1,4 +1,3 @@
-import type { SqlDb } from "./db";
 import { writeSnapshot, type Snapshot } from "./enrichment";
 import { EXCLUSIONS_KEY, exclusionsDue, type ExclusionsKv, type SearchExclusions } from "./exclusions";
 import { slotCorpus, type SlotCorpus, type SlotEnv } from "./slot-read";
@@ -49,13 +48,13 @@ type CorpusEnv = SlotEnv & StatsEnv;
 /** Record this hour's actor counts. A slot that does not answer fails the
  *  step; a slot whose store has no recent count leaves the hour without a
  *  row. */
-export async function recordSnapshot(db: SqlDb, env: CorpusEnv, now = Date.now()): Promise<void> {
+export async function recordSnapshot(env: CorpusEnv, now = Date.now()): Promise<void> {
   const snapshot = slotSnapshot(await slotCorpus(env), now);
   if (!snapshot) {
     console.log(JSON.stringify({ event: "corpus_snapshot_skipped", reason: "the slot's store has no recent count" }));
     return;
   }
-  await writeStats(env, db, (store) => writeSnapshot(store, snapshot));
+  await writeStats(env, (store) => writeSnapshot(store, snapshot));
 }
 
 /** Record what search excludes, once a day. */

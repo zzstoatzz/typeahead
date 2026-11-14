@@ -1,10 +1,12 @@
-import { afterAll, expect, setDefaultTimeout, test } from "bun:test";
+import { afterAll, afterEach, expect, setDefaultTimeout, setSystemTime, test } from "bun:test";
 import { rowsAs } from "./db";
 import { materializeStats, writeSnapshot } from "./enrichment";
 import { knownSource } from "./handlers/source-icon";
-import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
+import { statsBody } from "./handlers/stats";
+import { recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
 import { PROFILE_KEY, parseProfile, recordProfile } from "./stats-profile";
-import { STATS_TABLES, statsStores } from "./stats-d1-fixture";
+import { STATS_TABLES, collectingCtx, statsStores } from "./stats-d1-fixture";
+import { recordStats, writeStats } from "./stats-store";
 import { sourceQueries, tailQueries } from "./stats-tail";
 
 // each test fills a workerd-backed D1, which a loaded machine makes slow
@@ -14,23 +16,19 @@ setDefaultTimeout(60_000);
 // statistics code issues against a table or column the migrations lack has to
 // fail here rather than in production.
 
-const { mirror: db, dispose } = await statsStores();
+const { d1, db, dispose } = await statsStores();
 afterAll(dispose);
+afterEach(() => { setSystemTime(); });
 
 const stored = new Map<string, string>();
 const kv = { async put(key: string, value: string) { stored.set(key, value); } };
 const storedJson = (key: string) => JSON.parse(stored.get(key) ?? "null");
 
-/** the fixture drops SQL comments before it applies a migration, as wrangler does */
-const ddl = (sql: string) => sql.replace(/--[^\n]*/g, "").replace(/\s+/g, " ");
-
-test("the migrations define the nine statistics tables as production does", async () => {
-  const dump = ddl(await Bun.file(new URL("../docs/ops/turso-schema-20261110.sql", import.meta.url).pathname).text());
+test("the migrations define the nine statistics tables and seed the actor counter", async () => {
   const { results } = await db.prepare(
-    "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name != 'd1_migrations' ORDER BY name",
-  ).all<{ name: string; sql: string }>();
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name != 'd1_migrations' ORDER BY name",
+  ).all<{ name: string }>();
   expect(results.map((r) => r.name)).toEqual(STATS_TABLES);
-  for (const table of results) expect(dump).toContain(`${ddl(table.sql)};`);
   expect(await db.prepare("SELECT value FROM counters WHERE name = 'actors_total'").first<{ value: number }>()).toEqual({ value: 0 });
 });
 
@@ -45,15 +43,14 @@ test("every statistics statement runs against the migrated database", async () =
     await recordMetric(db, 12.5, now);
     await recordCacheHit(db, 1.5, now);
     await recordTrafficSource(db, search("plyr.fm"), now);
-    await recordActorDelta(db, { actors: 3 }, now);
   }
   await recordRequest(db, "plyr.fm", "search", 503, now);
   await recordTrafficSource(db, search("smoke-testing"), now);
-  await recordActorDelta(db, { actors: -1 }, now);
+  // nothing in the Worker writes actor deltas; the rows the table holds are still read
+  await db.prepare("INSERT INTO actor_deltas (bucket, actors_delta, handles_delta, avatars_delta) VALUES (?1, 5, 0, 0)").bind(bucket).run();
   await writeSnapshot(db, { hour: Math.floor(now / 3_600_000), total: 90, with_handles: 80, with_avatars: 70, hidden: 10 });
   await writeSnapshot(db, { hour: Math.floor(now / 3_600_000), total: 95, with_handles: 80, with_avatars: 70, hidden: 5 });
 
-  expect(await db.prepare("SELECT value FROM counters WHERE name = 'actors_total'").first<{ value: number }>()).toEqual({ value: 5 });
   expect(await knownSource(db, "plyr.fm")).toBe(true);
   expect(await knownSource(db, "never-seen.example")).toBe(false);
 
@@ -131,4 +128,74 @@ test("every statistics statement runs against the migrated database", async () =
   expect(trafficHour.results).toHaveLength(2);
   expect(request5m.results).toHaveLength(2);
   expect(requestHour.results).toHaveLength(2);
+});
+
+function memoryKv() {
+  const stored = new Map<string, string>();
+  return {
+    stored,
+    async put(key: string, value: string) { stored.set(key, value); },
+    // SAFETY: the page reads its four keys either as text or as JSON it
+    // declares the shape of; this fake returns what the cron stored.
+    get: (async (key: string, type?: string) => {
+      const value = stored.get(key) ?? null;
+      return type === "json" && value !== null ? JSON.parse(value) : value;
+    }) as KVNamespace["get"],
+  };
+}
+
+const VIEWS = [
+  { apps: [], range: "7d", origin: "https://typeahead.waow.tech" },
+  { apps: [], range: "1h", origin: "https://typeahead.waow.tech" },
+  { apps: ["plyr.fm", "leaflet.pub"], range: "all", origin: "https://typeahead.waow.tech" },
+];
+
+test("the page shows what the cron materialized and, live, what was recorded after it", async () => {
+  for (const table of STATS_TABLES.filter((name) => name !== "counters")) await db.prepare(`DELETE FROM ${table}`).run();
+  const NOW = Date.UTC(2026, 10, 12, 15, 7, 0);
+  const env = { STATS_DB: d1 };
+  const from = (client: string) =>
+    new Request("https://typeahead.waow.tech/xrpc/tech.waow.typeahead.searchActors?q=nate", { headers: { "X-Client": client } });
+
+  // two days of traffic through the writers the Worker uses
+  for (let age = 0; age < 40; age++) {
+    setSystemTime(new Date(NOW - age * 71 * 60_000));
+    const { ctx, tasks } = collectingCtx();
+    const client = age % 3 === 0 ? "plyr.fm" : "leaflet.pub";
+    recordStats(ctx, env, (store, now) => recordRequest(store, client, "search", age % 7 === 0 ? 503 : 200, now));
+    recordStats(ctx, env, (store, now) => recordMetric(store, 10.1 + age * 0.3, now));
+    recordStats(ctx, env, (store, now) => recordCacheHit(store, 0.7, now));
+    recordStats(ctx, env, (store, now) => recordTrafficSource(store, from(client), now));
+    await Promise.all(tasks);
+    await writeStats(env, (store, now) =>
+      writeSnapshot(store, { hour: Math.floor(now / 3_600_000), total: 9000 - age, with_handles: 8000 - age, with_avatars: 7000 - age, hidden: 10 }));
+  }
+  setSystemTime(new Date(NOW));
+
+  const kv = memoryKv();
+  await materializeStats(db, { KV: kv });
+  await recordProfile(db, kv, NOW);
+  expect([...kv.stored.keys()].sort()).toEqual(["request_data", "stats_data", "stats_profile"]);
+  const materialized = JSON.parse(kv.stored.get("stats_data")!);
+  expect(materialized.traffic_series_5m.length).toBeGreaterThan(30);
+  expect(materialized.snapshots).toHaveLength(40);
+  expect(materialized.snapshots.at(-1)).toEqual({ hour: Math.floor(NOW / 3_600_000), total: 9000, with_handles: 8000, with_avatars: 7000, hidden: 10 });
+
+  const before = await statsBody(db, { KV: kv }, VIEWS[0]!);
+  expect(before.body).toContain("leaflet.pub");
+  expect(before.body).not.toContain("after-the-cron.example");
+
+  // traffic after the cron ran is not in KV: the page reads it from the store
+  setSystemTime(new Date(NOW + 4 * 60_000));
+  const { ctx, tasks } = collectingCtx();
+  recordStats(ctx, env, (store, now) => recordTrafficSource(store, from("after-the-cron.example"), now));
+  recordStats(ctx, env, (store, now) => recordRequest(store, "after-the-cron.example", "search", 200, now));
+  await Promise.all(tasks);
+
+  for (const view of VIEWS) {
+    const page = await statsBody(db, { KV: kv }, view);
+    expect(page.body).toContain("after-the-cron.example");
+    expect(page.body).toContain("leaflet.pub");
+    expect(page.timing).toMatch(/^query;dur=\d+, process;dur=\d+, render;dur=\d+, total;dur=\d+$/);
+  }
 });

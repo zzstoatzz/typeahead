@@ -8,11 +8,11 @@ import { z } from "zod";
 test("workerd cache generations isolate promotion and rollback without backend work on hits", async () => {
   const directory = await mkdtemp(join(tmpdir(), "typeahead-cache-generation-"));
   const entry = join(directory, "worker.ts");
-  await writeFile(entry, `import {handleSearch} from ${JSON.stringify(new URL("./search.ts", import.meta.url).pathname)};export default{fetch(r,e,c){if(new URL(r.url).pathname==='/__fixture/control')return e.SEARCH_TRANSPORT.fetch(r);return handleSearch(r,e.DB,{...e,SEARCH_CACHE_GENERATION:r.headers.get('X-Fixture-Generation')??undefined},c)}}`);
+  await writeFile(entry, `import {handleSearch} from ${JSON.stringify(new URL("./search.ts", import.meta.url).pathname)};export default{fetch(r,e,c){if(new URL(r.url).pathname==='/__fixture/control')return e.SEARCH_TRANSPORT.fetch(r);return handleSearch(r,{...e,SEARCH_CACHE_GENERATION:r.headers.get('X-Fixture-Generation')??undefined},c)}}`);
   const built = await Bun.build({ entrypoints: [entry], target: "browser" });
   if (!built.success) throw new Error(built.logs.join("\n"));
   const mf = new Miniflare({ workers: [
-    { name: "public", modules: true, script: await built.outputs[0].text(), compatibilityDate: "2026-10-29", d1Databases: ["DB"], bindings: { SEARCH_BACKEND_URL: "https://fixture-engine.test" }, serviceBindings: { SEARCH_TRANSPORT: "engine" } },
+    { name: "public", modules: true, script: await built.outputs[0].text(), compatibilityDate: "2026-10-29", d1Databases: ["STATS_DB"], bindings: { SEARCH_BACKEND_URL: "https://fixture-engine.test" }, serviceBindings: { SEARCH_TRANSPORT: "engine" } },
     { name: "engine", modules: true, script: `let slot='a',calls=0;export default{fetch(r){const u=new URL(r.url);if(u.pathname==='/__fixture/control'){if(u.searchParams.has('slot'))slot=u.searchParams.get('slot');return Response.json({slot,calls})}calls++;const headers=new Headers({'Content-Type':'application/json'});if(u.searchParams.get('q')!=='unidentified'){headers.set('X-Typeahead-Engine','tantivy');headers.set('X-Typeahead-Format','tantivy-0.27-f32-did-expiry-v4');headers.set('X-Typeahead-Build','b1792908655-slot-'+slot)}return Response.json({actors:[{did:'did:plc:fixture',handle:'slot-'+slot+'.test'}]},{headers})}}` },
   ] });
   const request = (generation?: string, q = "same") => mf.dispatchFetch(`https://public.test/search?q=${q}`, { headers: generation === undefined ? {} : { "X-Fixture-Generation": generation } });
@@ -29,7 +29,7 @@ test("workerd cache generations isolate promotion and rollback without backend w
     throw new Error("Cache did not settle");
   }
   try {
-    const db = await mf.getD1Database("DB");
+    const db = await mf.getD1Database("STATS_DB");
     await db.exec("CREATE TABLE metrics(hour INTEGER PRIMARY KEY, searches INTEGER DEFAULT 0,total_ms REAL DEFAULT 0,cache_hits INTEGER DEFAULT 0,cache_ms REAL DEFAULT 0); CREATE TABLE traffic_sources(domain TEXT PRIMARY KEY,hits INTEGER); CREATE TABLE traffic_buckets(bucket INTEGER,domain TEXT,hits INTEGER,PRIMARY KEY(bucket,domain));");
     const first = await request("A"); expect(first.status).toBe(200); expect(first.headers.get("X-Typeahead-Build")).toBe("b1792908655-slot-a"); expect(first.headers.get("X-Typeahead-Cache-Generation")).toBe("A"); await first.arrayBuffer();
     await (await hit("A")).arrayBuffer();

@@ -25,7 +25,7 @@ if(u.pathname==='/__fixture/generation'){generation=u.searchParams.get('value');
 if(u.pathname==='/__fixture/route')return e.SEARCH_TRANSPORT.fetch(new Request(${JSON.stringify(transportOrigin)}+'/__fixture/route',r));
 if(u.pathname==='/__fixture/origin')return e.ORIGIN.fetch(new Request('https://fixture-origin.test/__fixture/control'+u.search,r));
 if(!${JSON.stringify(aliases)}.includes(u.pathname))return new Response('fixture path unavailable',{status:404});
-return handleSearch(r,e.DB,{...e,SEARCH_CACHE_GENERATION:generation},c)}}`);
+return handleSearch(r,{...e,STATS_DB:e.DB,SEARCH_CACHE_GENERATION:generation},c)}}`);
   await writeFile(transportEntry, `import transport from ${JSON.stringify(resolve("src/search-transport.ts"))};
 import {conditionalRouteUpdate,ROUTE_KEY} from ${JSON.stringify(resolve("src/search-route.ts"))};
 export default{async fetch(r,e,c){if(new URL(r.url).pathname==='/__fixture/route'){

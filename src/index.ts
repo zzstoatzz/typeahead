@@ -1,12 +1,11 @@
 import type { Env } from "./types";
 import { CORS_HEADERS, FAVICON_SVG } from "./types";
-import { getDb } from "./db";
 import { clientIP, json, html } from "./utils";
 import { materializeStats } from "./enrichment";
 import { recordExclusions, recordSnapshot } from "./corpus";
 import { recordProfile } from "./stats-profile";
 import { endpointLabel, recordRequest, trafficDomain } from "./metrics";
-import { recordStats, statsReadDb } from "./stats-store";
+import { recordStats, statsDb } from "./stats-store";
 import { controlDb, pruneIndexRequests } from "./control-store";
 import { controlHealth, handleControlHealth } from "./control-health";
 import { handleSearch } from "./handlers/search";
@@ -41,7 +40,6 @@ const RETIRED_ENDPOINTS = new Set([
 
 export default {
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
-    const db = await getDb(env);
     // Record the ATTEMPT before any work. Without this a missing snapshot row is
     // ambiguous: it could mean the cron never fired (Cloudflare schedules are
     // best-effort) or that recordSnapshot itself failed. Those need different
@@ -73,13 +71,13 @@ export default {
         await notifyFreshnessChange(env, f);
         await env.KV.put("freshness", JSON.stringify({ ...f, at: Date.now() })).catch(() => {});
       }],
-      ["recordSnapshot", () => recordSnapshot(db, env)],
+      ["recordSnapshot", () => recordSnapshot(env)],
       ["recordExclusions", async () => {
         const counted = await recordExclusions(env.KV, env);
         if (counted) console.log(JSON.stringify({ event: "exclusions_recorded", ...counted }));
       }],
-      ["materializeStats", () => materializeStats(statsReadDb(env, db), env)],
-      ["recordProfile", async () => { await recordProfile(statsReadDb(env, db), env.KV); }],
+      ["materializeStats", () => materializeStats(statsDb(env), env)],
+      ["recordProfile", async () => { await recordProfile(statsDb(env), env.KV); }],
       // the control database is what store slots take moderation policy
       // from; /request-indexing keeps answering when it is down, so nothing
       // else would say so
@@ -138,7 +136,7 @@ export default {
         worker_ms: timing.elapsedMs(), rate_limit_ms: timing.rateLimitMs }));
       if (request.method !== "OPTIONS") {
         const domain = trafficDomain(request);
-        recordStats(ctx, env, getDb(env), (store, now) => recordRequest(store, domain, endpoint, status, now));
+        recordStats(ctx, env, (store, now) => recordRequest(store, domain, endpoint, status, now));
       }
     }
   },
@@ -216,10 +214,8 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     return json({ error: "Gone", message: "this endpoint wrote the Turso actor tables, which are retired; store slots follow the network themselves" }, 410);
   }
 
-  const db = await getDb(env);
-
   if (pathname === "/stats" && request.method === "GET") {
-    return handleStats(request, statsReadDb(env, db), env, ctx);
+    return handleStats(request, statsDb(env), env, ctx);
   }
 
   if (pathname === "/debug/reputation" && request.method === "GET") {
@@ -250,7 +246,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
       console.log(JSON.stringify({ event: "rate_limited", endpoint: "/search", ip }));
       return json({ error: "rate limited" }, 429);
     }
-    return handleSearch(request, db, env, ctx);
+    return handleSearch(request, env, ctx);
   }
 
   if (
@@ -278,7 +274,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
 
   if (pathname === "/source-icon" && request.method === "GET") {
-    return handleSourceIcon(request, statsReadDb(env, db), ctx);
+    return handleSourceIcon(request, statsDb(env), ctx);
   }
 
   if (pathname === "/admin/mod-override" && request.method === "POST") {

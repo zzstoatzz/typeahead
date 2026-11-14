@@ -1,5 +1,4 @@
-import { test, expect, mock, spyOn } from "bun:test";
-import type { InValue } from "@libsql/client/web";
+import { afterAll, beforeEach, test, expect, mock, spyOn } from "bun:test";
 import { GENERATION, controlStore } from "./control-d1-fixture";
 import type { SqlDb } from "./db";
 import { statsStores } from "./stats-d1-fixture";
@@ -11,27 +10,17 @@ import type { Env } from "./types";
 // the 2026-08-23 finding that /admin/ingest 500'd 8–35% of the time for a
 // day with nothing we own counting it.
 
-const recorded: { domain: string; endpoint: string; status: number }[] = [];
-const executed: string[] = [];
-// bun's module mocks are process-wide: mock the libsql client factory (the
-// lowest layer) rather than ./db, so db.test.ts still exercises the real getDb.
-// Every client records request_buckets upserts; everything else is a no-op.
-mock.module("@libsql/client/web", () => ({
-  createClient: () => ({
-    async execute({ sql, args }: { sql: string; args: InValue[] }) {
-      executed.push(sql);
-      if (/INSERT INTO request_buckets/.test(sql)) {
-        const [, domain, endpoint, status] = args;
-        recorded.push({ domain: String(domain), endpoint: String(endpoint), status: Number(status) });
-      }
-      return { rows: [], rowsAffected: 1 };
-    },
-    async batch(stmts: { sql?: string }[]) {
-      for (const st of stmts) executed.push(String(st.sql ?? ""));
-      return stmts.map(() => ({ rows: [], rowsAffected: 1 }));
-    },
-  }),
-}));
+const stores = await statsStores();
+afterAll(() => stores.dispose());
+beforeEach(async () => {
+  await stores.db.batch(["request_buckets", "traffic_sources", "traffic_buckets", "metrics"].map((table) => stores.db.prepare(`DELETE FROM ${table}`)));
+});
+
+/** what the recorder counted, summed over the 5-minute buckets a test may straddle */
+const recorded = async () => (await stores.db.prepare(
+  "SELECT domain, endpoint, status, SUM(hits) AS hits FROM request_buckets GROUP BY domain, endpoint, status ORDER BY endpoint, status",
+).all<{ domain: string; endpoint: string; status: number; hits: number }>()).results;
+
 const statsHandles: SqlDb[] = [];
 const realStats = await import("./handlers/stats");
 mock.module("./handlers/stats", () => ({
@@ -41,18 +30,17 @@ mock.module("./handlers/stats", () => ({
 
 const worker = (await import("./index")).default;
 type FakeKv = { get(key: string): Promise<string | null>; put(key: string, value: string): Promise<void> };
-function fakeEnv(fields: Omit<Partial<Env>, "KV"> & { KV?: FakeKv; TURSO_URL: string; TURSO_AUTH_TOKEN: string }): Env {
+function fakeEnv(fields: Omit<Partial<Env>, "KV"> & { KV?: FakeKv }): Env {
   // SAFETY: the routes exercised here (404, OPTIONS, the throwing /stats, the
-  // search route with a dead engine) read only the fields each test passes,
-  // and the libsql client is mocked above. The cron and the routes use KV only
-  // through get(key) and put(key, value).
+  // search route with a dead engine) read only the fields each test passes.
+  // The cron and the routes use KV only through get(key) and put(key, value).
   return fields as Env;
 }
 
 // SAFETY: bun has no `caches` global; the search handler reads only
 // `caches.default.match` and `.put`, which this stub provides.
 const cacheHost = globalThis as { caches?: { default: { match(): Promise<undefined>; put(): Promise<void> } } };
-const ENV = fakeEnv({ TURSO_URL: "https://example.turso.io", TURSO_AUTH_TOKEN: "t" });
+const ENV = fakeEnv({ STATS_DB: stores.d1 });
 
 // SAFETY: the scheduled handler never reads its event.
 const scheduledEvent = {} as ScheduledEvent;
@@ -67,35 +55,15 @@ function ctx() {
 }
 
 test("records the real status of a served response", async () => {
-  recorded.length = 0;
   const { ctx: c, tasks } = ctx();
   const res = await worker.fetch(new Request("https://typeahead.waow.tech/nope", { headers: { "X-Client": "plyr.fm" } }), ENV, c);
   expect(res.status).toBe(404);
+  expect(tasks).toHaveLength(1);
   await Promise.all(tasks);
-  expect(recorded).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404 }]);
+  expect(await recorded()).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404, hits: 1 }]);
 });
 
-test("with dual write on, the same answer is also counted in D1", async () => {
-  recorded.length = 0;
-  const stores = await statsStores();
-  try {
-    const { ctx: c, tasks } = ctx();
-    const env = fakeEnv({ ...ENV, STATS_DB: stores.d1, STATS_MODE: "read-turso" });
-    const res = await worker.fetch(new Request("https://typeahead.waow.tech/nope", { headers: { "X-Client": "plyr.fm" } }), env, c);
-    expect(res.status).toBe(404);
-    expect(tasks).toHaveLength(2);
-    await Promise.all(tasks);
-    expect(recorded).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404 }]);
-    const { results } = await stores.mirror.prepare("SELECT domain, endpoint, status, hits FROM request_buckets").all();
-    expect(results).toEqual([{ domain: "plyr.fm", endpoint: "other", status: 404, hits: 1 }]);
-  } finally {
-    await stores.dispose();
-  }
-});
-
-test("the slot control routes answer from D1 alone and are counted under one label", async () => {
-  recorded.length = 0;
-  executed.length = 0;
+test("the slot control routes answer from the control database and are counted under one label", async () => {
   const store = await controlStore();
   try {
     const secret = "slot-control-secret-of-enough-length";
@@ -109,47 +77,41 @@ test("the slot control routes answer from D1 alone and are counted under one lab
     expect(JSON.parse(await requests.text())).toEqual({ generation: GENERATION, requests: [], more: false });
     const posted = await worker.fetch(new Request("https://typeahead.waow.tech/slot/control/policy", { method: "POST", headers }), env, c);
     expect(posted.status).toBe(404);
+    const filled = await worker.fetch(new Request("https://typeahead.waow.tech/slot/control/profile-fill", { headers }), env, c);
+    expect(filled.status).toBe(404);
     await Promise.all(tasks);
-    expect(recorded).toEqual([
-      { domain: "unknown", endpoint: "slot-control", status: 200 },
-      { domain: "unknown", endpoint: "slot-control", status: 200 },
-      { domain: "unknown", endpoint: "slot-control", status: 404 },
+    expect(await recorded()).toEqual([
+      { domain: "unknown", endpoint: "slot-control", status: 200, hits: 2 },
+      { domain: "unknown", endpoint: "slot-control", status: 404, hits: 2 },
     ]);
-    expect(executed.filter((sql) => !/request_buckets/.test(sql))).toEqual([]);
   } finally {
     await store.dispose();
   }
 });
 
 test("an uncaught throw is counted as 500 and still propagates", async () => {
-  recorded.length = 0;
   const { ctx: c, tasks } = ctx();
   await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), ENV, c)).rejects.toThrow("boom");
   await Promise.all(tasks);
-  expect(recorded).toEqual([{ domain: "unknown", endpoint: "page", status: 500 }]);
+  expect(await recorded()).toEqual([{ domain: "unknown", endpoint: "page", status: 500, hits: 1 }]);
 });
 
 test("OPTIONS preflights are answered without being counted", async () => {
-  recorded.length = 0;
   const { ctx: c, tasks } = ctx();
   const res = await worker.fetch(new Request("https://typeahead.waow.tech/xrpc/x", { method: "OPTIONS" }), ENV, c);
   expect(res.status).toBe(204);
   await Promise.all(tasks);
-  expect(recorded).toEqual([]);
+  expect(await recorded()).toEqual([]);
 });
 
-// The engine is one machine and restarts in ~15 s. While it is down the
-// worker must report unavailable without re-asking Turso for every query: on 2026-09-04
-// one such restart under a viral burst put Turso over its connection limit
-// and the ingester dropped events. Turso-on-unreachable is opt-in. Since
-// 2026-10-31 unscoped search falls back to Bluesky; with every fetch refused
-// here, both providers fail and the answer is 503.
-test("an unreachable engine returns unavailable without touching Turso", async () => {
-  recorded.length = 0;
-  executed.length = 0;
+// The engine is one machine and restarts in ~15 s. While it is down unscoped
+// search falls back to Bluesky; with every fetch refused here, both providers
+// fail and the answer is 503.
+test("an unreachable engine and an unreachable Bluesky answer unavailable", async () => {
   const realFetch = globalThis.fetch;
   const realCaches = cacheHost.caches;
-  const refuse = async () => { throw new Error("connect ECONNREFUSED"); };
+  const asked: string[] = [];
+  const refuse = async (input: RequestInfo | URL) => { asked.push(new URL(String(input)).host); throw new Error("connect ECONNREFUSED"); };
   globalThis.fetch = Object.assign(refuse, { preconnect: realFetch.preconnect });
   cacheHost.caches = { default: { match: async () => undefined, put: async () => {} } };
   try {
@@ -166,18 +128,17 @@ test("an unreachable engine returns unavailable without touching Turso", async (
     expect(res.status).toBe(503);
     expect(await res.json<unknown>()).toEqual({ error: "SearchUnavailable", message: "Search and emergency fallback are unavailable" });
     await Promise.all(tasks);
-    expect(executed.filter((sql) => /FROM actors/i.test(sql))).toEqual([]);
+    expect(asked).toEqual(["engine.invalid", "public.api.bsky.app"]);
+    expect(await recorded()).toEqual([{ domain: "plyr.fm", endpoint: "search", status: 503, hits: 1 }]);
   } finally {
     globalThis.fetch = realFetch;
     cacheHost.caches = realCaches;
   }
 });
 
-// The read switch (docs/plans/stats-off-turso.md, step 6). The libsql client
-// above answers every query with no rows, so a statistic that is only in the
-// D1 fixture can come back only if the route read D1.
-test("STATS_MODE=read-d1 hands /stats, /source-icon and the cron's materialization the D1 store", async () => {
-  const stores = await statsStores();
+// A statistic that is only in the D1 fixture can come back only if the route
+// read the statistics database.
+test("/stats, /source-icon and the cron's materialization read the statistics database", async () => {
   const realFetch = globalThis.fetch;
   const realCaches = cacheHost.caches;
   const fetched: string[] = [];
@@ -187,54 +148,44 @@ test("STATS_MODE=read-d1 hands /stats, /source-icon and the cron's materializati
   const kv = new Map<string, string>();
   const KV = { get: async (key: string) => kv.get(key) ?? null, put: async (key: string, value: string) => { kv.set(key, value); } };
   try {
-    await stores.mirror.batch([
-      stores.mirror.prepare("INSERT INTO traffic_sources (domain, hits) VALUES ('only-in-d1.example', 3)"),
-      stores.mirror.prepare("INSERT INTO traffic_buckets (bucket, domain, hits) VALUES (?1, 'only-in-d1.example', 3)").bind(Math.floor(Date.now() / 300_000)),
+    await stores.db.batch([
+      stores.db.prepare("INSERT INTO traffic_sources (domain, hits) VALUES ('only-in-d1.example', 3)"),
+      stores.db.prepare("INSERT INTO traffic_buckets (bucket, domain, hits) VALUES (?1, 'only-in-d1.example', 3)").bind(Math.floor(Date.now() / 300_000)),
     ]);
-    const known = async (env: Env) => {
-      fetched.length = 0;
-      executed.length = 0;
-      const { ctx: c, tasks } = ctx();
-      const res = await worker.fetch(new Request("https://typeahead.waow.tech/source-icon?d=only-in-d1.example"), env, c);
-      expect(res.status).toBe(404);
-      await Promise.all(tasks);
-      return { fetched: [...fetched], turso: executed.filter((sql) => /traffic_sources WHERE domain/.test(sql)).length };
-    };
-    const readsD1 = async (env: Env) => {
-      statsHandles.length = 0;
-      const { ctx: c, tasks } = ctx();
-      await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), env, c)).rejects.toThrow("boom");
-      await Promise.all(tasks);
-      return (await statsHandles[0]!.prepare("SELECT hits FROM traffic_sources").all()).results.length === 1;
-    };
-    const materialized = async (env: Env) => {
-      kv.clear();
-      await worker.scheduled(scheduledEvent, env, ctx().ctx);
-      return JSON.parse(kv.get("stats_data") ?? "null")?.traffic_series_5m;
-    };
+    const env = fakeEnv({ ...ENV, KV });
 
-    const turso = fakeEnv({ ...ENV, STATS_DB: stores.d1, STATS_MODE: "read-turso", KV });
-    const d1 = fakeEnv({ ...turso, STATS_MODE: "read-d1" });
+    const icon = ctx();
+    const known = await worker.fetch(new Request("https://typeahead.waow.tech/source-icon?d=only-in-d1.example"), env, icon.ctx);
+    expect(known.status).toBe(404);
+    await Promise.all(icon.tasks);
+    expect(fetched).toEqual(["https://only-in-d1.example/favicon.ico"]);
 
-    expect(await known(turso)).toEqual({ fetched: [], turso: 1 });
-    expect(await known(d1)).toEqual({ fetched: ["https://only-in-d1.example/favicon.ico"], turso: 0 });
-    expect(await readsD1(turso)).toBe(false);
-    expect(await readsD1(d1)).toBe(true);
-    expect(await materialized(turso)).toEqual([]);
-    expect(await materialized(d1)).toMatchObject([{ domain: "only-in-d1.example", hits: 3 }]);
+    fetched.length = 0;
+    const unknown = ctx();
+    await worker.fetch(new Request("https://typeahead.waow.tech/source-icon?d=never-seen.example"), env, unknown.ctx);
+    await Promise.all(unknown.tasks);
+    expect(fetched).toEqual([]);
+
+    statsHandles.length = 0;
+    const page = ctx();
+    await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), env, page.ctx)).rejects.toThrow("boom");
+    await Promise.all(page.tasks);
+    expect((await statsHandles[0]!.prepare("SELECT domain, hits FROM traffic_sources").all()).results).toEqual([{ domain: "only-in-d1.example", hits: 3 }]);
+
+    await worker.scheduled(scheduledEvent, env, ctx().ctx);
+    expect(JSON.parse(kv.get("stats_data") ?? "null")?.traffic_series_5m).toMatchObject([{ domain: "only-in-d1.example", hits: 3 }]);
   } finally {
     globalThis.fetch = realFetch;
     cacheHost.caches = realCaches;
-    await stores.dispose();
   }
 });
 
-test("read-d1 without the binding fails /stats and the two statistics cron steps, and the cron still finishes", async () => {
+test("without the statistics binding /stats and the two statistics cron steps fail, and the cron still finishes", async () => {
   const kv = new Map<string, string>();
   const KV = { get: async (key: string) => kv.get(key) ?? null, put: async (key: string, value: string) => { kv.set(key, value); } };
-  const env = fakeEnv({ ...ENV, STATS_MODE: "read-d1", KV });
+  const env = fakeEnv({ KV });
   const { ctx: c, tasks } = ctx();
-  await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), env, c)).rejects.toThrow("STATS_MODE is read-d1 but this Worker has no STATS_DB binding");
+  await expect(worker.fetch(new Request("https://typeahead.waow.tech/stats"), env, c)).rejects.toThrow("this Worker has no STATS_DB binding");
   await Promise.all(tasks);
 
   const lines: string[] = [];
@@ -245,7 +196,7 @@ test("read-d1 without the binding fails /stats and the two statistics cron steps
     log.mockRestore();
   }
   const events = lines.map((line) => JSON.parse(line));
-  expect(events.filter((event) => event.event === "cron_step_failed" && /STATS_MODE is read-d1/.test(event.error)).map((event) => event.step))
+  expect(events.filter((event) => event.event === "cron_step_failed" && /no STATS_DB binding/.test(event.error)).map((event) => event.step))
     .toEqual(["materializeStats", "recordProfile"]);
   expect(Object.keys(events.find((event) => event.event === "cron_done").phases)).toEqual(
     ["freshness", "recordSnapshot", "recordExclusions", "materializeStats", "recordProfile", "controlHealth", "pruneIndexRequests"]);
@@ -253,7 +204,8 @@ test("read-d1 without the binding fails /stats and the two statistics cron steps
 });
 
 // The endpoints that wrote the retired actor tables say they are gone,
-// whatever the method, and touch no store.
+// whatever the method. The environment here holds the statistics database
+// and nothing else, so an answer proves no other store was reached for.
 test("the endpoints that wrote the retired actor tables answer 410 and read nothing", async () => {
   const calls: [string, string][] = [
     ["POST", "/admin/ingest"], ["POST", "/admin/delete"], ["POST", "/admin/enrich-profiles"],
@@ -262,14 +214,19 @@ test("the endpoints that wrote the retired actor tables answer 410 and read noth
     ["POST", "/admin/labels"], ["POST", "/admin/labels/reconcile"], ["GET", "/admin/labels/cursor"],
   ];
   for (const [method, path] of calls) {
-    executed.length = 0;
     const { ctx: c, tasks } = ctx();
     const res = await worker.fetch(new Request(`https://typeahead.waow.tech${path}`, { method }), ENV, c);
     expect([path, res.status]).toEqual([path, 410]);
     expect(await res.text()).toBe('{"error":"Gone","message":"this endpoint wrote the Turso actor tables, which are retired; store slots follow the network themselves"}');
     await Promise.all(tasks);
-    expect(executed.filter((sql) => !/request_buckets/.test(sql))).toEqual([]);
   }
+  expect(await recorded()).toEqual([
+    { domain: "unknown", endpoint: "admin", status: 410, hits: 1 },
+    { domain: "unknown", endpoint: "admin/delete", status: 410, hits: 1 },
+    { domain: "unknown", endpoint: "admin/identity", status: 410, hits: 5 },
+    { domain: "unknown", endpoint: "admin/ingest", status: 410, hits: 1 },
+    { domain: "unknown", endpoint: "admin/labels", status: 410, hits: 3 },
+  ]);
 
   const { ctx: c, tasks } = ctx();
   const neighbour = await worker.fetch(new Request("https://typeahead.waow.tech/admin/labels/other", { method: "POST" }), ENV, c);

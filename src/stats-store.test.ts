@@ -1,16 +1,14 @@
 import { afterEach, beforeEach, expect, setDefaultTimeout, spyOn, test } from "bun:test";
-import type { SqlDb } from "./db";
 import { writeSnapshot } from "./enrichment";
-import { recordActorDelta, recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
+import { recordCacheHit, recordMetric, recordRequest, recordTrafficSource } from "./metrics";
 import { collectingCtx, statsRows, statsStores } from "./stats-d1-fixture";
-import { recordStats, statsMirror, writeStats, type StatsWrite } from "./stats-store";
+import { recordStats, statsDb, writeStats, type StatsWrite } from "./stats-store";
 
 // each test fills a workerd-backed D1, which a loaded machine makes slow
 setDefaultTimeout(60_000);
 
-// Dual write (docs/plans/stats-off-turso.md, step 2): every statistics writer
-// goes to Turso and to D1 independently. The stores must end up with the same
-// rows, and neither may be able to stop the other or reach the caller.
+// Every statistics writer goes through recordStats (after the response) or
+// writeStats (the cron), and both write the D1 statistics database.
 
 let stores: Awaited<ReturnType<typeof statsStores>>;
 let logged: string[];
@@ -35,108 +33,82 @@ const WRITERS: [string, StatsWrite][] = [
   ["recordMetric", (store, now) => recordMetric(store, 12.5, now)],
   ["recordCacheHit", (store, now) => recordCacheHit(store, 1.5, now)],
   ["recordTrafficSource", (store, now) => recordTrafficSource(store, search, now)],
-  ["recordActorDelta, new actors", (store, now) => recordActorDelta(store, { actors: 3 }, now)],
-  ["recordActorDelta, deletes", (store, now) => recordActorDelta(store, { actors: -1 }, now)],
   ["writeSnapshot", (store, now) => writeSnapshot(store, { hour: Math.floor(now / 3_600_000), total: 90, with_handles: 80, with_avatars: 70, hidden: 10 })],
 ];
 
-const failing: SqlDb = {
-  prepare() { throw new Error("turso is down"); },
-  async batch() { throw new Error("turso is down"); },
-};
+const rowsOf = (rows: Awaited<ReturnType<typeof statsRows>>, table: string) => rows.find((entry) => entry.table === table)?.rows;
 
-const rowCount = (rows: Awaited<ReturnType<typeof statsRows>>, table: string) => rows.find((entry) => entry.table === table)?.rows.length;
-
-test("every writer leaves the same rows in both stores, after the response and inline", async () => {
-  const env = { STATS_DB: stores.d1, STATS_MODE: "read-turso" };
+test("every writer leaves its rows in the statistics database, after the response and inline", async () => {
+  const env = { STATS_DB: stores.d1 };
   for (const [, write] of WRITERS) {
     for (let i = 0; i < 2; i++) {
       const { ctx, tasks } = collectingCtx();
-      recordStats(ctx, env, stores.turso, write);
-      expect(tasks).toHaveLength(2);
-      await Promise.all(tasks);
-      await writeStats(env, stores.turso, write);
-    }
-  }
-  const turso = await statsRows(stores.turso);
-  expect(await statsRows(stores.mirror)).toEqual(turso);
-  expect(turso.map((entry) => [entry.table, entry.rows.length])).toEqual([
-    ["actor_deltas", 1], ["counters", 1], ["metrics", 1], ["request_buckets", 2], ["request_daily", 0],
-    ["snapshots", 1], ["traffic_buckets", 1], ["traffic_daily", 0], ["traffic_sources", 1],
-  ]);
-  expect(turso.find((entry) => entry.table === "counters")?.rows).toEqual([{ name: "actors_total", value: 8 }]);
-  expect(logged).toEqual([]);
-});
-
-test("both stores file a write under the bucket of one shared clock reading", async () => {
-  const seen: number[] = [];
-  const { ctx, tasks } = collectingCtx();
-  recordStats(ctx, { STATS_DB: stores.d1, STATS_MODE: "read-turso" }, stores.turso, async (_store, now) => { seen.push(now); });
-  await Promise.all(tasks);
-  expect(seen).toHaveLength(2);
-  expect(seen[0]).toBe(seen[1]);
-});
-
-test("a failing D1 write does not stop the Turso write or reject the response's tasks", async () => {
-  await stores.d1.prepare("DROP TABLE request_buckets").run();
-  const { ctx, tasks } = collectingCtx();
-  recordStats(ctx, { STATS_DB: stores.d1, STATS_MODE: "read-turso" }, stores.turso, WRITERS[0]![1]);
-  expect(await Promise.all(tasks)).toEqual([undefined, undefined]);
-  expect(rowCount(await statsRows(stores.turso), "request_buckets")).toBe(1);
-  expect(logged.map((line) => JSON.parse(line))).toMatchObject([{ event: "stats_write_failed", store: "d1" }]);
-});
-
-test("a failing Turso write does not stop the D1 write or reject the response's tasks", async () => {
-  for (const turso of [() => failing, () => Promise.reject<SqlDb>(new Error("no client"))]) {
-    const { ctx, tasks } = collectingCtx();
-    recordStats(ctx, { STATS_DB: stores.d1, STATS_MODE: "read-turso" }, turso(), WRITERS[0]![1]);
-    expect(await Promise.all(tasks)).toEqual([undefined, undefined]);
-  }
-  expect((await statsRows(stores.mirror)).find((entry) => entry.table === "request_buckets")?.rows).toMatchObject([{ hits: 2 }]);
-  expect(logged.map((line) => JSON.parse(line))).toMatchObject([
-    { event: "stats_write_failed", store: "turso", error: "turso is down" },
-    { event: "stats_write_failed", store: "turso", error: "no client" },
-  ]);
-});
-
-test("inline, a Turso failure reaches the caller after D1 is written; a D1 failure never does", async () => {
-  const env = { STATS_DB: stores.d1, STATS_MODE: "read-turso" };
-  await expect(writeStats(env, failing, WRITERS[2]![1])).rejects.toThrow("turso is down");
-  expect(rowCount(await statsRows(stores.mirror), "metrics")).toBe(1);
-
-  await stores.d1.prepare("DROP TABLE metrics").run();
-  await writeStats(env, stores.turso, WRITERS[2]![1]);
-  expect(rowCount(await statsRows(stores.turso), "metrics")).toBe(1);
-  expect(logged.map((line) => JSON.parse(line))).toMatchObject([{ event: "stats_write_failed", store: "d1" }]);
-});
-
-test("with the switch off no D1 statement is issued", async () => {
-  for (const STATS_MODE of ["turso-only", "", "1", undefined]) {
-    const env = { STATS_DB: stores.d1, STATS_MODE };
-    expect(statsMirror(env)).toBeNull();
-    for (const [, write] of WRITERS) {
-      const { ctx, tasks } = collectingCtx();
-      recordStats(ctx, env, stores.turso, write);
+      recordStats(ctx, env, write);
       expect(tasks).toHaveLength(1);
       await Promise.all(tasks);
-      await writeStats(env, stores.turso, write);
+      await writeStats(env, write);
     }
   }
-  const mirror = await statsRows(stores.mirror);
-  expect(mirror.map((entry) => entry.rows)).toEqual(mirror.map((entry) => entry.table === "counters" ? [{ name: "actors_total", value: 0 }] : []));
-  expect(rowCount(await statsRows(stores.turso), "request_buckets")).toBe(2);
+  const rows = await statsRows(stores.db);
+  expect(rows.map((entry) => [entry.table, entry.rows.length])).toEqual([
+    ["actor_deltas", 0], ["counters", 1], ["metrics", 1], ["request_buckets", 2], ["request_daily", 0],
+    ["snapshots", 1], ["traffic_buckets", 1], ["traffic_daily", 0], ["traffic_sources", 1],
+  ]);
+  expect(rowsOf(rows, "request_buckets")).toMatchObject([
+    { domain: "plyr.fm", endpoint: "search", status: 200, hits: 4 },
+    { domain: "plyr.fm", endpoint: "search", status: 503, hits: 4 },
+  ]);
+  expect(rowsOf(rows, "metrics")).toMatchObject([{ searches: 4, total_ms: 50, cache_hits: 4, cache_ms: 6 }]);
+  expect(rowsOf(rows, "traffic_sources")).toEqual([{ domain: "plyr.fm", hits: 4 }]);
+  expect(rowsOf(rows, "snapshots")).toMatchObject([{ total: 90, with_handles: 80, with_avatars: 70, hidden: 10 }]);
+  expect(logged).toEqual([]);
 });
 
-test("without the binding the D1 path is a no-op", async () => {
-  const env = { STATS_MODE: "read-turso" };
-  expect(statsMirror(env)).toBeNull();
-  for (const [, write] of WRITERS) {
-    const { ctx, tasks } = collectingCtx();
-    recordStats(ctx, env, stores.turso, write);
-    expect(tasks).toHaveLength(1);
-    await Promise.all(tasks);
-    await writeStats({}, stores.turso, write);
-  }
-  expect(rowCount(await statsRows(stores.turso), "request_buckets")).toBe(2);
+test("a write is handed the store and the clock reading taken when it was recorded", async () => {
+  const seen: number[] = [];
+  const before = Date.now();
+  const { ctx, tasks } = collectingCtx();
+  recordStats(ctx, { STATS_DB: stores.d1 }, async (_store, now) => { seen.push(now); });
+  const after = Date.now();
+  await Promise.all(tasks);
+  await writeStats({ STATS_DB: stores.d1 }, async (_store, now) => { seen.push(now); });
+  expect(seen).toHaveLength(2);
+  expect(seen[0]).toBeGreaterThanOrEqual(before);
+  expect(seen[0]).toBeLessThanOrEqual(after);
+  expect(seen[1]).toBeGreaterThanOrEqual(after);
+});
+
+test("a failing write after the response is logged and does not reject the response's tasks", async () => {
+  await stores.d1.prepare("DROP TABLE request_buckets").run();
+  const { ctx, tasks } = collectingCtx();
+  recordStats(ctx, { STATS_DB: stores.d1 }, WRITERS[0]![1]);
+  recordStats(ctx, { STATS_DB: stores.d1 }, async () => { throw new Error("d1 down"); });
+  expect(await Promise.all(tasks)).toEqual([undefined, undefined]);
+  // the write that throws at once is logged before the one D1 refuses
+  expect(logged.map((line) => JSON.parse(line))).toMatchObject([
+    { event: "stats_write_failed", store: "d1", error: "d1 down" },
+    { event: "stats_write_failed", store: "d1", error: expect.stringContaining("request_buckets") },
+  ]);
+});
+
+test("inline, a failure reaches the caller", async () => {
+  const env = { STATS_DB: stores.d1 };
+  await expect(writeStats(env, async () => { throw new Error("d1 down"); })).rejects.toThrow("d1 down");
+  await stores.d1.prepare("DROP TABLE metrics").run();
+  await expect(writeStats(env, WRITERS[2]![1])).rejects.toThrow();
   expect(logged).toEqual([]);
+});
+
+test("a missing binding is not silent", async () => {
+  expect(() => statsDb({})).toThrow("this Worker has no STATS_DB binding");
+  await expect(writeStats({}, async () => {})).rejects.toThrow("this Worker has no STATS_DB binding");
+
+  let wrote = false;
+  const { ctx, tasks } = collectingCtx();
+  recordStats(ctx, {}, async () => { wrote = true; });
+  expect(await Promise.all(tasks)).toEqual([undefined]);
+  expect(wrote).toBe(false);
+  expect(logged.map((line) => JSON.parse(line))).toEqual([
+    { event: "stats_write_failed", store: "d1", error: "this Worker has no STATS_DB binding" },
+  ]);
 });

@@ -1,6 +1,5 @@
 import { afterAll, afterEach, beforeEach, expect, spyOn, test } from "bun:test";
 import { STORE_COUNT_MAX_AGE_S, recordExclusions, recordSnapshot, slotExclusions, slotSnapshot } from "./corpus";
-import type { SqlDb } from "./db";
 import { EXCLUSIONS_KEY, EXCLUSIONS_REFRESH_MS, parseExclusions } from "./exclusions";
 import type { SlotCorpus, SlotEnv } from "./slot-read";
 import { statsRows, statsStores } from "./stats-d1-fixture";
@@ -29,15 +28,10 @@ function slot(answer: () => Response) {
   };
   // SAFETY: the reads use the binding only through fetch(url, init).
   const env: SlotEnv = { SEARCH_BACKEND_URL: "https://transport.test", SEARCH_TRANSPORT: transport as Fetcher };
-  return { env: { ...env, STATS_DB: stores.d1, STATS_MODE: "d1-only" }, asked };
+  return { env: { ...env, STATS_DB: stores.d1 }, asked };
 }
 const answering = (corpus: SlotCorpus) => slot(() => Response.json(corpus));
 const down = () => slot(() => Response.json({ error: "not ready" }, { status: 503 }));
-
-const noTurso: SqlDb = {
-  prepare(sql) { throw new Error(`Turso was read: ${sql}`); },
-  batch() { throw new Error("Turso was read"); },
-};
 
 function memoryKv() {
   const store = new Map<string, string>();
@@ -48,13 +42,13 @@ function memoryKv() {
   };
 }
 
-const snapshots = async () => (await statsRows(stores.mirror)).find((entry) => entry.table === "snapshots")?.rows;
+const snapshots = async () => (await statsRows(stores.db)).find((entry) => entry.table === "snapshots")?.rows;
 let logged: string[] = [];
 let log: ReturnType<typeof spyOn>;
 beforeEach(async () => {
   logged = [];
   log = spyOn(console, "log").mockImplementation((line: string) => { logged.push(line); });
-  await stores.mirror.prepare("DELETE FROM snapshots").run();
+  await stores.db.prepare("DELETE FROM snapshots").run();
 });
 afterEach(() => { log.mockRestore(); });
 const events = () => logged.map((line) => JSON.parse(line));
@@ -77,17 +71,17 @@ test("a slot's exclusions come from the index: unsearchable documents less the u
 
 test("the hourly snapshot is the slot's count, written to the statistics store", async () => {
   const { env, asked } = answering(CORPUS);
-  await recordSnapshot(noTurso, env, NOW);
+  await recordSnapshot(env, NOW);
   expect(asked).toEqual(["https://transport.test/corpus"]);
   expect(await snapshots()).toEqual([SLOT_SNAPSHOT]);
 });
 
 test("no row is written while the store has no count, and a slot that does not answer fails the step", async () => {
-  await recordSnapshot(noTurso, answering({ ...CORPUS, store: null }).env, NOW);
+  await recordSnapshot(answering({ ...CORPUS, store: null }).env, NOW);
   expect(await snapshots()).toEqual([]);
   expect(events()).toEqual([{ event: "corpus_snapshot_skipped", reason: "the slot's store has no recent count" }]);
 
-  await expect(recordSnapshot(noTurso, down().env, NOW)).rejects.toThrow("the slot answered 503");
+  await expect(recordSnapshot(down().env, NOW)).rejects.toThrow("the slot answered 503");
   expect(await snapshots()).toEqual([]);
 });
 

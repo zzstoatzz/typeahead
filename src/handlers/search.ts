@@ -1,7 +1,6 @@
 import { filterIdentityBody, filterIdentityResponse } from "../identity-policy";
 import { parseSearchScope, scopeAcknowledged, scopeParams, searchCacheGeneration, searchCacheUrl, validateBackendBody, type SearchScope } from "./search-contract";
 export { normalizePds } from "../pds";
-import type { SqlDb } from "../db";
 import type { Env } from "../types";
 import { CORS_HEADERS, BSKY_TYPEAHEAD_URL } from "../types";
 import { json, sanitize } from "../utils";
@@ -48,7 +47,6 @@ async function blueskyFallback(term: string, limit: number, mode: "manual" | "au
 
 export async function handleSearch(
   request: Request,
-  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
@@ -76,14 +74,14 @@ export async function handleSearch(
   const t0 = Date.now();
   const term = sanitize(q);
   if (!term) {
-    recordStats(ctx, env, db, (store, now) => recordMetric(store, now - t0, now));
+    recordStats(ctx, env, (store, now) => recordMetric(store, now - t0, now));
     return json({ actors: [] });
   }
 
   const fallback = async (mode: "manual" | "automatic") => {
     const response = await blueskyFallback(term, limit, mode);
-    recordStats(ctx, env, db, (store, now) => recordMetric(store, now - t0, now));
-    recordStats(ctx, env, db, (store, now) => recordTrafficSource(store, request, now));
+    recordStats(ctx, env, (store, now) => recordMetric(store, now - t0, now));
+    recordStats(ctx, env, (store, now) => recordTrafficSource(store, request, now));
     return response;
   };
   if (env.EMERGENCY_PROXY_BSKY) return fallback("manual");
@@ -104,7 +102,7 @@ export async function handleSearch(
   const cache = caches.default;
   const cached = await cache.match(cacheKey);
   if (cached) {
-    recordStats(ctx, env, db, (store, now) => recordCacheHit(store, now - t0, now));
+    recordStats(ctx, env, (store, now) => recordCacheHit(store, now - t0, now));
     const response = await filterIdentityResponse(cached, "actors");
     response.headers.set("Server-Timing", `cache;desc="hit";dur=${Date.now() - t0}`);
     return response;
@@ -155,7 +153,7 @@ export async function handleSearch(
         }
 
         const elapsedMs = Date.now() - t0;
-        recordStats(ctx, env, db, (store, now) => recordTrafficSource(store, request, now));
+        recordStats(ctx, env, (store, now) => recordTrafficSource(store, request, now));
         const timing = backendRes.headers.get("Server-Timing") ?? "";
         const routeMs = /transport_route;dur=([0-9.]+)/.exec(timing);
         const originMs = /transport_origin_headers;dur=([0-9.]+)/.exec(timing);
@@ -190,6 +188,6 @@ export async function handleSearch(
       return fallback("automatic");
     }
   } finally {
-    recordStats(ctx, env, db, (store, now) => recordMetric(store, now - t0, now));
+    recordStats(ctx, env, (store, now) => recordMetric(store, now - t0, now));
   }
 }

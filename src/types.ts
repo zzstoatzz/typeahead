@@ -10,11 +10,6 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   RATE_LIMITER_STRICT: RateLimit;
   TURSO_URL: string;
   TURSO_AUTH_TOKEN: string;
-  /// Where statistics are written and read: "turso-only", "read-turso" (both
-  /// stores written, Turso read), "read-d1" (both written, D1 read) or
-  /// "d1-only" (Turso not touched). See
-  /// statsMode in src/stats-store.ts.
-  STATS_MODE?: string;
   SEARCH_BACKEND_URL?: string;
   SEARCH_TRANSPORT?: Fetcher;
   SEARCH_CACHE_GENERATION?: string;

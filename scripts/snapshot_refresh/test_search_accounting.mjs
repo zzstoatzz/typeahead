@@ -27,8 +27,8 @@ try {
   writeFileSync(entry, `import { handleSearch } from ${JSON.stringify(resolve('src/handlers/search.ts'))};
     export default { async fetch(request, env, ctx) {
       const tasks = [];
-      const response = await handleSearch(request, env.DB,
-        { SEARCH_BACKEND_URL: ${JSON.stringify(origin)}, TURSO_FALLBACK_ON_UNREACHABLE: request.headers.get('X-Fixture-Fallback') ?? undefined },
+      const response = await handleSearch(request,
+        { STATS_DB: env.DB, SEARCH_BACKEND_URL: ${JSON.stringify(origin)} },
         { waitUntil(promise) { tasks.push(promise); ctx.waitUntil(promise); } });
       await Promise.all(tasks);
       return response;
