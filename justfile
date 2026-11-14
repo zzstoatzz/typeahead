@@ -145,31 +145,12 @@ test-bridge:
 
 
 # refuse to deploy a Worker whose control database is not ready for it: the
-# binding is still the placeholder, the schema is not applied, or its rules
-# differ from Turso's. Without the schema every admin policy change fails and
-# no indexing request is logged; with rules missing, the first slot to poll
-# would drop them. Reads the remote database and Turso (TURSO_URL,
-# TURSO_AUTH_TOKEN); writes nothing
+# binding is still the placeholder, or the schema is not applied. Without the
+# schema every admin policy change fails and no indexing request is logged.
+# Reads the remote database through wrangler; writes nothing
 control-ready:
-    @! grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc || { echo "wrangler.jsonc: CONTROL_DB has the placeholder database_id; see docs/slot-control.md, rollout step 1" >&2; exit 1; }
-    bun scripts/control-backfill.ts gate --remote
-
-# the gate before a slot is deployed with the control loop on: the policy the
-# deployed Worker serves to slots must be Turso's rules, or the slot would
-# make its store equal to something else. Needs SLOT_CONTROL_SECRET and the
-# Turso variables; read-only
-control-served-check origin="https://typeahead.waow.tech":
-    bun scripts/control-backfill.ts served {{origin}}
-
-# print the SQL that carries Turso's moderation policy into the control
-# database. Reads Turso (TURSO_URL, TURSO_AUTH_TOKEN) and applies nothing
-control-backfill-sql:
-    @bun scripts/control-backfill.ts sql
-
-# compare Turso's moderation policy with the control database's; read-only,
-# non-zero when they differ. `--local` reads wrangler's local database
-control-check target="--remote":
-    bun scripts/control-backfill.ts check {{target}}
+    @! grep -q '"database_id": "00000000-0000-0000-0000-000000000000"' wrangler.jsonc || { echo "wrangler.jsonc: CONTROL_DB has the placeholder database_id; put the typeahead-control database's id there" >&2; exit 1; }
+    bun scripts/control-ready.ts --remote
 
 # deploy the worker, then run the smoke suite as a post-deploy gate (fails loudly on regression)
 deploy-worker url="https://typeahead.waow.tech": control-ready lint
