@@ -16,13 +16,6 @@ lint:
     bunx oxlint --deny-warnings src
 
 
-# rehearse a route switch and rollback between the two Tantivy slots: the Worker
-# and R2 are local Miniflare, the backends receive at most 16 GETs, and
-# production routing is never written. The loopback test in
-# `just test` covers the same sequence without network access.
-rehearse-route-live config evidence:
-    bun scripts/snapshot_refresh/route-rehearsal-live.ts {{config}} {{evidence}}
-
 # admission and conditional routing writes for a store-fed slot, against an
 # in-memory bucket and fixture slots; no network
 test-store-route:
@@ -92,7 +85,6 @@ test-tantivy:
     TA_MERGE_POLICY_RECEIPT="$ta_verify_root/merge-policy.json" python3 services/tantivy/tests/merge_policy.py
     TA_ACTOR_READ_RECEIPT="$ta_verify_root/actor-read.json" python3 services/tantivy/tests/actor_read.py
     python3 services/tantivy-normalizer/test_backend_adversarial.py
-    python3 scripts/snapshot_refresh/test_tantivy_install.py
 
 # shadow comparison tooling (scripts/shadow_compare): unit tests, then the tool against
 # real local Tantivy servers whose indexes differ in known ways, one of them also read

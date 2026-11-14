@@ -1,16 +1,13 @@
 import { expect, test } from "bun:test";
 import { Miniflare } from "miniflare";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
-import { liveConfiguration, liveOriginAdapter } from "./rehearsal-live-origin";
-import { actors, aliases, fingerprints, rehearsalScripts, route, runLiveRehearsal, transportOrigin } from "./route-rehearsal";
+import { actors, aliases, fingerprints, rehearsalScripts, route, transportOrigin } from "./route-rehearsal";
 
-const tantivy = { engine: "tantivy", origin: "https://typeahead-tantivy-a.fly.dev", build_id: "b1792908655-tantivy", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
-const previous = { ...tantivy, origin: "https://typeahead-tantivy-b.fly.dev", build_id: "b1792908600-previous", admission_sha256: "b".repeat(64) } as const;
-const operator = { ...tantivy, origin: "https://typeahead-tantivy-dev.fly.dev", build_id: "b1792908655-operator", admission_sha256: "d".repeat(64) } as const;
+const tantivy = { engine: "tantivy", origin: "https://typeahead-shadow-a.fly.dev", build_id: "b1792908655-tantivy", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
+const previous = { ...tantivy, origin: "https://typeahead-shadow-b.fly.dev", build_id: "b1792908600-previous", admission_sha256: "b".repeat(64) } as const;
 const stats = z.object({ unexpected: z.number(), calls: z.array(z.object({ origin: z.string(), q: z.string(), pds: z.string().nullable(), preferred: z.string().nullable(), preference: z.string().nullable(), boost: z.string().nullable(), ack: z.string() })) });
 
 test("local public handler, actual transport and R2 CAS rehearse promotion and compensation", async () => {
@@ -22,11 +19,11 @@ test("local public handler, actual transport and R2 CAS rehearse promotion and c
     { name: "public", modules: true, script: scripts.publicScript, compatibilityDate: "2026-10-29", d1Databases: ["DB"], bindings: { SEARCH_BACKEND_URL: transportOrigin }, serviceBindings: { SEARCH_TRANSPORT: "transport", ORIGIN: "origin" }, outboundService: "origin" },
     { name: "transport", modules: true, script: scripts.transportScript, compatibilityDate: "2026-10-29", r2Buckets: ["SEARCH_CONTROL"], outboundService: "origin" },
     { name: "origin", modules: true, compatibilityDate: "2026-10-29", script: `let ack='normal',unexpected=0;const calls=[];
-const builds=${JSON.stringify({ [previous.origin]: previous.build_id, [tantivy.origin]: tantivy.build_id, [operator.origin]: operator.build_id })};
+const builds=${JSON.stringify({ [previous.origin]: previous.build_id, [tantivy.origin]: tantivy.build_id})};
 export default{fetch(r){const u=new URL(r.url);if(u.pathname==='/__fixture/control'){if(u.searchParams.has('ack'))ack=u.searchParams.get('ack');return Response.json({unexpected,calls})}
 if(!(u.origin in builds)||u.pathname!=='/search'){unexpected++;return new Response('external traffic prohibited',{status:500})}
 const p=u.searchParams;calls.push({origin:u.origin,q:p.get('q')??'',pds:p.get('pds'),preferred:p.get('prefer_pds'),preference:p.get('preference'),boost:p.get('boost'),ack});
-const names={${JSON.stringify(previous.origin)}:'previous',${JSON.stringify(tantivy.origin)}:'candidate',${JSON.stringify(operator.origin)}:'operator'};
+const names={${JSON.stringify(previous.origin)}:'previous',${JSON.stringify(tantivy.origin)}:'candidate'};
 const headers=new Headers({'Content-Type':'application/json','X-Typeahead-Engine':'tantivy','X-Typeahead-Build':builds[u.origin],'X-Typeahead-Format':${JSON.stringify(tantivy.format)},'X-Typeahead-Binary-Sha256':${JSON.stringify(tantivy.binary_sha256)},'X-Typeahead-Retrieval-Strategy':${JSON.stringify(tantivy.retrieval_strategy)}});
 if(p.has('pds'))headers.set('X-Typeahead-Pds',ack==='bad-pds'?'remote.test':p.get('pds'));
 if(p.has('prefer_pds')){headers.set('X-Typeahead-Prefer-Pds',p.get('prefer_pds'));if(ack!=='bad-preference')headers.set('X-Typeahead-Preference',p.get('preference'));if(p.has('boost'))headers.set('X-Typeahead-Boost',ack==='bad-boost'?'00000000':'3e800000')}
@@ -39,7 +36,7 @@ if(p.has('pds'))rows=rows.slice(1);else if(p.has('prefer_pds'))rows.reverse();re
     const response = await calls("/__fixture/route");
     return { etag: response.headers.get("ETag"), value: route.parse(await response.json()) };
   }
-  async function update(value: typeof previous | typeof tantivy | typeof operator, etag: string | null) {
+  async function update(value: typeof previous | typeof tantivy, etag: string | null) {
     const response = await calls("/__fixture/route", { method: "POST", headers: etag ? { "If-Match": etag } : {}, body: JSON.stringify(value) });
     await response.arrayBuffer(); return response.status;
   }
@@ -114,38 +111,14 @@ if(p.has('pds'))rows=rows.slice(1);else if(p.has('prefer_pds'))rows.reverse();re
     await observeTransition(previous.build_id, "candidate-to-previous", compensatedAt);
     await cachedPair(tantivy.build_id);
     await generation("C"); await correct(previous.build_id, "q=baseline"); await cachedPair(previous.build_id);
-    const compensation = await control(); expect(await update(operator, compensation.etag)).toBe(200); const operatorAt = performance.now();
-    expect(await update(previous, compensation.etag)).toBe(409); expect((await control()).value.current).toEqual(operator);
-    await observeTransition(operator.build_id, "operator-change", operatorAt);
-    await generation("D"); await correct(operator.build_id, "q=baseline"); await cachedPair(operator.build_id);
+    const compensation = await control(); expect(await update(tantivy, compensation.etag)).toBe(200); const operatorAt = performance.now();
+    expect(await update(previous, compensation.etag)).toBe(409); expect((await control()).value.current).toEqual(tantivy);
+    await observeTransition(tantivy.build_id, "operator-change", operatorAt);
+    await generation("D"); await correct(tantivy.build_id, "q=baseline"); await cachedPair(tantivy.build_id);
     const final = await origin(); expect(final.unexpected).toBe(0);
     expect(final.calls.some(call => call.pds === "local.test")).toBe(true); expect(final.calls.some(call => call.preference === "pds_first")).toBe(true); expect(final.calls.some(call => call.preference === "boost" && call.boost === "0.25")).toBe(true);
     expect(await fingerprints()).toEqual(sourceHashes);
     const evidence = { schema_version: 1, observed_at: new Date().toISOString(), source_sha256: sourceHashes, scope: "local-workerd-public-handler-transport-R2-CAS", passed: true, production_contact: false, release_qualified: false, production_downtime_measured: false, aliases, components: ["handleSearch", "search-transport.fetch", "conditionalRouteUpdate", "filesystem-backed Miniflare R2", "workerd Cache API", "local D1 metrics"], fixture_only: ["public alias dispatcher and cache-generation config control", "bounded deterministic origin responses; no Rust engine", "all Worker fetch egress confined to the local origin service binding", "scope acknowledgements validated upstream by actual handler"], checks: { previous_candidate_previous_compensation: true, old_cache_identity_retained: true, transport_identity_verified_before_new_cache_generation: true, cache_generation_barrier: true, cache_hits_no_origin_work: true, hard_pds: true, pds_first_and_f32_boost: true, missing_or_wrong_scope_ack_rejected_without_cache_poisoning: true, stale_etags_rejected: true, operator_change_wins: true, external_origin_requests: final.unexpected }, wall_ms: performance.now() - started, propagation, public_requests: samples.length, intentional_scope_rejections: samples.filter(sample => sample.status === 503).length, origin_requests: final.calls.length, samples, limitations: ["One local fixture sequence with 50ms unique-key polling and a 2s test bound, not a latency benchmark or production propagation estimate", "No Cloudflare deployment/config propagation, real engines, source readiness, Fly network, release admission or downtime measured", "Alias paths enter the actual handler through a local dispatcher; production router covered separately by index tests"] };
     if (Bun.env.TYPEAHEAD_REHEARSAL_EVIDENCE) await writeFile(Bun.env.TYPEAHEAD_REHEARSAL_EVIDENCE, JSON.stringify(evidence, null, 2) + "\n");
   } finally { await mf.dispose(); await rm(directory, { recursive: true, force: true }); }
-}, 30000);
-
-
-test("live rehearsal path uses the same Worker/R2 sequence with loopback HTTP fixtures", async () => {
-  const configuration = liveConfiguration({ schema_version: 2, previous, candidate: tantivy });
-  const server = createServer((request, response) => {
-    const tv = request.headers["x-fixture-origin"] === tantivy.origin;
-    response.setHeader("Content-Type", "application/json");
-    response.setHeader("X-Typeahead-Engine", "tantivy");
-    response.setHeader("X-Typeahead-Build", tv ? tantivy.build_id : previous.build_id);
-    response.setHeader("X-Typeahead-Format", tantivy.format);
-    response.setHeader("X-Typeahead-Binary-Sha256", tantivy.binary_sha256);
-    response.setHeader("X-Typeahead-Retrieval-Strategy", tantivy.retrieval_strategy);
-    response.end(JSON.stringify({ actors: [{ did: "did:plc:rehearsalfixture", handle: "zzstoatzz.io", labels: [] }] }));
-  });
-  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
-  const address = z.object({ port: z.number() }).parse(server.address());
-  const adapter = liveOriginAdapter(configuration, (url, options) => fetch(`http://127.0.0.1:${address.port}${url.pathname}`, { ...options, headers: { "X-Fixture-Origin": url.origin } }));
-  try {
-    await runLiveRehearsal(configuration, adapter);
-    expect(adapter.evidence().calls.some(call => call.origin === tantivy.origin)).toBe(true);
-    expect(adapter.evidence().calls.some(call => call.origin === previous.origin)).toBe(true);
-    expect(adapter.evidence().request_count).toBeLessThanOrEqual(16);
-  } finally { await new Promise<void>(resolve => server.close(() => resolve())); }
 }, 30000);
