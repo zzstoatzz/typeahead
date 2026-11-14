@@ -28,15 +28,6 @@ export type ExclusionsKv = {
   put(key: string, value: string): Promise<void>;
 };
 
-export function parseLabels(raw: string): unknown[] {
-  try {
-    const labels: unknown = JSON.parse(raw || "[]");
-    return Array.isArray(labels) ? labels : [];
-  } catch {
-    return [];
-  }
-}
-
 /** Whether the stored count is missing or a day old. */
 export async function exclusionsDue(kv: ExclusionsKv, now: Date): Promise<boolean> {
   const previous = parseExclusions(await kv.get(EXCLUSIONS_KEY));
