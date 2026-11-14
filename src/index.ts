@@ -19,7 +19,6 @@ import { handleGetProfiles, handleGetProfile } from "./handlers/profiles";
 import { handleStats } from "./handlers/stats";
 import { handleWebManifest } from "./handlers/web-manifest";
 import { handleSourceIcon } from "./handlers/source-icon";
-import { statsMigrationRoute } from "./stats-migration/handlers";
 import { handleFreshness, measureFreshness, notifyFreshnessChange, postWebhook } from "./handlers/freshness";
 import { handleReputation } from "./handlers/reputation";
 import { handleSlotIndexRequests, handleSlotPolicy, handleSlotProfileFill } from "./handlers/slot-control";
@@ -348,9 +347,6 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   if (pathname === "/admin/domain-blocks" && request.method === "GET") {
     return handleDomainBlockList(request, env);
   }
-
-  const statsMigration = statsMigrationRoute(request, pathname, db, env);
-  if (statsMigration) return statsMigration;
 
   if (pathname === "/admin/enrich-profiles" && request.method === "POST") {
     return handleEnrichProfiles(request, db, env);

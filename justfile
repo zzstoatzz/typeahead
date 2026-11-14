@@ -237,16 +237,6 @@ smoke url=WORKER_URL:
     sh -c 'set -a; [ -f .env ] && . ./.env; set +a; ./scripts/smoke.py --url {{url}}'
 alias prod-smoke := smoke
 
-# copy the statistics history from Turso into D1, inside the Worker. A dry run
-# unless --apply is passed; see docs/operations.md "Statistics read cutover".
-# TYPEAHEAD_SECRET comes from .env, as it does for smoke.
-stats-backfill *ARGS:
-    sh -c 'set -a; [ -f .env ] && . ./.env; set +a; bun scripts/stats-d1.ts backfill {{ARGS}}'
-
-# compare Turso and D1 statistics; exits 1 when closed data differs
-stats-parity *ARGS:
-    sh -c 'set -a; [ -f .env ] && . ./.env; set +a; bun scripts/stats-d1.ts parity {{ARGS}}'
-
 # edge latency + coverage + fields + stress, against the prod worker (what users feel)
 bench *ARGS:
     ./scripts/bench.py {{ARGS}}
