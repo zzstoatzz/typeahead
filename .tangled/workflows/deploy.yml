@@ -6,10 +6,12 @@ engine: microvm
 image: nixos
 
 dependencies:
-  - bun
   - nodejs
   - gcc
   - patchelf
+  - curl
+  - unzip
+  - coreutils
 
 # Deploy is intentionally NOT done from tangled CI — the secrets path has been
 # unreliable (rolled values don't propagate, see commits 0ff3acb/eacaf7f). The
@@ -21,11 +23,16 @@ steps:
   - name: verify
     command: |
       set -euo pipefail
+      # the image's Bun fails this suite on Linux: see scripts/ci-bun.sh
+      scripts/ci-bun.sh "$PWD/.bun"
+      scripts/ci-workerd.sh "$PWD/.bun/bun"
+      export PATH="$PWD/.bun:$PATH"
       bun install
       scripts/ci-workerd.sh
       bunx tsc --noEmit
       bunx oxlint --deny-warnings src
-      bun test
+      # a hung test run fails here, not at the spindle's 4-hour limit
+      timeout 900 bun test
       bunx wrangler deploy --dry-run
       bunx wrangler deploy -c deploy/search-transport/wrangler.jsonc --dry-run
       bunx wrangler deploy -c deploy/image-renderer/wrangler.jsonc --dry-run
