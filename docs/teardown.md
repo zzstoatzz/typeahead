@@ -27,33 +27,19 @@ and what in the repository still carries the old system's shape.
 - In this repository: the Worker's Turso client, modes and retired endpoints'
   handlers; the ingester role; the refresh controller; the R2 bundle
   bootstrap; the comparison tooling and experiments; the finished one-time
-  passes (profile fill, handle repair); and managed-slot support in the route
-  tool.
+  passes (profile fill, handle repair); managed-slot support in the route
+  tool; the Turso poller the engine's tests ran through; and the model of the
+  old SQL the store was tested against.
 
 ## Still shaped by the old system
 
-- **The search engine's source protocol.** `services/tantivy` still accepts
-  the Turso poller's source policy beside the store's, with the code and
-  tests for it, and `services/tantivy-input/` is that poller. `just
-  test-tantivy` drives the engine through the poller for policy expiry,
-  rejected snapshots and crash recovery. Removing both means porting those
-  tests to the store's bridge and changes the engine binary, which the route
-  admission pins.
-- **`src/moderation.ts` imports a type named `TursoDB`.** The file's bytes
-  are hashed into the rules both slots compare at admission, so editing it
-  needs both slots upgraded through a failover, not an ordinary flip.
-- **`services/src/store_process/sql_model.zig`** models the old SQL behaviour
-  as the reference for the store role's differential tests.
-- **The first-check pass** (`first_check` in the store's `/health`) is still
-  running on both slots. When `finished_at` is set, unset the
-  `ENRICH_FIRST_CHECK_STAMP` secret on each (`fly secrets unset --stage`) and
-  remove the pass.
-- **Names Fly holds.** The apps are `typeahead-shadow-a` and `-b` and the
-  volumes `shadow_data`. Fly cannot rename either.
-- **The readiness gap.** After a restart a slot reports ready before its
-  search engine answers at normal speed, and at 2 GB latency took about ten
-  minutes to settle. Until `/ready` waits for the index files to be read
-  into memory, require a clean latency round before flipping to a slot that
-  restarted ([operating](operating.md#restarts-and-warm-up)).
-- **Nothing runs `slot_route.py standby` on a schedule**, so a standby that
-  stops being fit is found only when someone looks.
+- **Names Fly holds.** The apps are `typeahead-shadow-a` and `-b` and their
+  volumes `shadow_data`, from when a slot ran beside the old system as its
+  shadow. Fly cannot rename either; new apps on volumes restored from
+  snapshots replace them.
+- **The first-check pass** (`first_check` in the store's `/health`) exists
+  because the stores were first loaded from a search bundle, which left
+  accounts no profile source had answered for. It is still running on both
+  slots. When `finished_at` is set on both, unset the
+  `ENRICH_FIRST_CHECK_STAMP` secret (`fly secrets unset --stage`) and remove
+  the pass from the store.

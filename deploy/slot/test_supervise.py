@@ -353,6 +353,12 @@ class SuperviseTest(unittest.TestCase):
         self.assertNotIn("store binary:", slot.output())
         self.stop(slot)
 
+    def test_a_slots_own_admin_secret_does_not_stop_it(self) -> None:
+        slot = Slot(self, ADMIN_SECRET="the-index-loopback-secret")
+        slot.wait_for("start", "store", 1)
+        slot.wait_for("start", "index", 1)
+        self.stop(slot)
+
     def test_the_workers_admin_secret_starts_nothing(self) -> None:
         slot = Slot(self, TYPEAHEAD_SECRET="not-for-a-slot")
         self.assertEqual(1, slot.exit_status())

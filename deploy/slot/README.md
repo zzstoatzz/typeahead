@@ -98,4 +98,4 @@ Secrets the app needs:
 
 ## A new or lost volume
 
-A slot's volume is replaced from a Fly volume snapshot, its own or the other slot's: [operating](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operating.md#replace-a-lost-volume). On an empty volume the store starts with no accounts and follows the network from now, and the route tool will not admit it: its account count is not within 2% of the serving slot's.
+A slot's volume is replaced from a Fly volume snapshot, its own or the other slot's: [operating](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/operating.md#replace-a-lost-volume). On an empty volume the store process refuses to start, because a store without a relay cursor would follow the relay from now and skip everything before; the index stays empty and never reports ready.

@@ -296,11 +296,11 @@ const Role = struct {
 
     fn relay(self: *Role) void {
         const stored = self.stored_relay;
-        const cursor = config_mod.resumeCursor(stored, self.config.bootstrap_cursor) orelse {
-            log.err("the store holds no usable relay cursor and RELAY_BOOTSTRAP_CURSOR is not set; refusing to start live and skip replay", .{});
+        const cursor = config_mod.resumeCursor(stored) orelse {
+            log.err("the store holds no usable relay cursor; refusing to follow the relay from now and skip what came before", .{});
             fatal.exitForRestart();
         };
-        log.info("following {s} after seq {d} ({s})", .{ relay_host, cursor, if (stored != null) "stored" else "bootstrap" });
+        log.info("following {s} after seq {d}", .{ relay_host, cursor });
         self.intake.resumeFrom(cursor);
 
         // One host, deliberately. zat's default_hosts lists four relays, but

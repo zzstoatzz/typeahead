@@ -100,6 +100,19 @@ the route, then deploy to the slot that was serving.
 7. Deploy the same image to the other slot and wait for `standby` to report it
    fit.
 
+An image that changes `src/moderation.ts` reports a new moderation rules hash,
+which can never equal the serving slot's. Name the new hash in every route
+command for that upgrade, and the candidate must report exactly it:
+
+```sh
+jq -r .canonical_source_sha256 src/moderation-regexes.json
+./scripts/route/slot_route.py standby --binary-sha256 <hash> --rules-sha256 <rules hash>
+./scripts/route/slot_route.py cutover --origin https://<app>.fly.dev --binary-sha256 <hash> --rules-sha256 <rules hash> --write
+```
+
+Once the other slot runs the same image the two agree again and the flag is
+dropped.
+
 An image that changes the normalizer version, the plan version or the index
 format cannot be admitted against a serving slot on the old one. The admission
 compares all three, and there is no procedure for that case yet.
