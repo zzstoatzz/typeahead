@@ -92,3 +92,18 @@ directory, the labeler and Bluesky's AppView, and write to none of them.
 Details: [index bridge](index-bridge.md), [slot control](slot-control.md),
 [discovery and identity](discovery-and-identity.md),
 [store slot operations](ops/store-slot-operations.md).
+
+## Changing the pictures
+
+The five pictures are written by one script,
+[`diagrams/build.py`](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/diagrams/build.py).
+Every part names an icon slot, and the script holds a default icon for each, so
+a part looks the same wherever it appears. Edit the script and run it; do not
+edit the SVG files.
+
+Replacing a default icon with a Doodl drawing is not built. The model to follow
+is how ZDS does it:
+[slots with bundled defaults, and a config that pins a drawing to a slot](https://tangled.org/zat.dev/zds/blob/56918b12276a425b66c3b78f1822b70600f25b1c/docs/iconography-proposal.md).
+That link is pinned to a commit so it keeps working if the file moves. A
+drawing would have to be inlined into the SVG when the script runs, because
+these files are shown as images and an image cannot load another file.
