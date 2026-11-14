@@ -2,13 +2,11 @@ import { identitySchema, verifyIdentityHandle } from "../verify-identity";
 import type { Stmt, SqlDb } from "../db";
 import type { Env } from "../types";
 import { SLINGSHOT_URL, BSKY_GET_PROFILES_URL, MICROCOSM_UA } from "../types";
-import { clientIP, json, extractProfileFields, fetchProfileFromBlacksky, fetchProfileFromPds } from "../utils";
-import type { ProfileFields, ProfileSource } from "../utils";
+import { clientIP, json, extractProfileFields } from "../utils";
 import { getOverride, getOverrides, isDomainBlocked, getBlockedDomains } from "../moderation";
 import { blockDomain, clearOverride, controlDb, listBlockedDomains, listOverrides, recordIndexRequest, setOverride, unblockDomain } from "../control-store";
 import { noteControlFailure } from "../control-health";
 import { MAX_DID_BYTES, validBlockedDomain, validOverrideDid } from "../control-rules";
-import { mirrorDomainBlock, mirrorDomainUnblock, mirrorOverrideClear, mirrorOverrideSet, tursoActorsOn } from "../turso-policy-mirror";
 import { slotActors, SlotReadError } from "../slot-read";
 import { resolveHidden } from "../moderation";
 import { recordActorDelta } from "../metrics";
@@ -109,7 +107,6 @@ export async function handleCursor(
   });
 }
 
-/** resolve a handle or DID via slingshot, then upsert into the active DB */
 /** A valid PDS that never announced itself is invisible to the relay, so its
  *  accounts never reach the firehose — for us or ANY consumer (hey.pds.zat.dev,
  *  2026-08-15: PLC knew the account, no relay had ever crawled the host, and
@@ -139,43 +136,8 @@ async function announceHostToRelay(pdsUrl: string, env: Env): Promise<void> {
   }
 }
 
-/** The Turso copy of a requested account: the row the Turso-fed slots index
- *  it from. Goes when Turso does. */
-async function mirrorRequestedActor(
-  db: SqlDb,
-  identity: { did: string; handle: string; pds: string },
-  f: Omit<ProfileFields, "handle">,
-  source: ProfileSource,
-): Promise<void> {
-  await db.prepare(
-    `INSERT INTO actors (did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds, followers_count, follows_count, posts_count, quality_score, description, banner_url, profile_source, profile_checked_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, unixepoch(), unixepoch())
-     ON CONFLICT(did) DO UPDATE SET
-       handle = ?2,
-       display_name = COALESCE(NULLIF(?3, ''), actors.display_name),
-       avatar_url = COALESCE(NULLIF(?4, ''), actors.avatar_url),
-       hidden = ?5,
-       labels = ?6,
-       created_at = COALESCE(NULLIF(?7, ''), actors.created_at),
-       associated = COALESCE(NULLIF(?8, '{}'), actors.associated),
-       pds = COALESCE(NULLIF(?9, ''), actors.pds),
-       followers_count = COALESCE(NULLIF(?10, 0), actors.followers_count),
-       follows_count = COALESCE(NULLIF(?11, 0), actors.follows_count),
-       posts_count = COALESCE(NULLIF(?12, 0), actors.posts_count),
-       quality_score = COALESCE(NULLIF(?13, 0), actors.quality_score),
-       description = COALESCE(NULLIF(?14, ''), actors.description),
-       banner_url = COALESCE(NULLIF(?15, ''), actors.banner_url),
-       profile_source = ?16,
-       profile_checked_at = unixepoch(),
-       updated_at = unixepoch()`
-  )
-    .bind(identity.did, identity.handle, f.displayName, f.avatarCid, f.hidden, f.labels, f.createdAt, f.associated, identity.pds || '', f.followersCount, f.followsCount, f.postsCount, f.qualityScore, f.description, f.bannerCid, source)
-    .run();
-}
-
 export async function handleRequestIndexing(
   request: Request,
-  db: SqlDb,
   env: Env,
   ctx: ExecutionContext,
 ): Promise<Response> {
@@ -213,15 +175,13 @@ export async function handleRequestIndexing(
   lap("slingshot");
 
   // the request itself: store slots pull it and index the account from their
-  // own sources. Everything after this serves the response and the Turso copy.
+  // own sources. Everything after this serves the response.
   //
   // A control database that is down or unmigrated must not turn a visitor's
   // request into an error: the failure is logged and kept for
-  // /health/control, the request goes on as it did before the control
-  // database existed, and the moderation answer below comes from Turso, or,
-  // once Turso's actor tables are off, from the account's labels alone. What
-  // is lost is the request reaching the store slots.
-  const turso = tursoActorsOn(env) ? db : null;
+  // /health/control, and the moderation answer below comes from the
+  // account's labels alone. What is lost is the request reaching the store
+  // slots.
   let control: SqlDb | null = null;
   try {
     const opened = controlDb(env);
@@ -232,11 +192,6 @@ export async function handleRequestIndexing(
   }
   lap("control_write");
 
-  // fetch profile from public API for display name + avatar + labels + metadata
-  let f = {
-    displayName: '', avatarCid: '', description: '', bannerCid: '', hidden: 0, labels: '[]', createdAt: '', associated: '{}',
-    followersCount: 0, followsCount: 0, postsCount: 0, qualityScore: 0,
-  };
   const policyIn = async (store: SqlDb) => {
     const found = await getOverride(store, identity.did);
     lap("override");
@@ -248,37 +203,22 @@ export async function handleRequestIndexing(
       policy = await policyIn(control);
     } catch (error) {
       noteControlFailure(ctx, env, "index_request_policy", error instanceof Error ? error.message : String(error));
-      if (turso) policy = await policyIn(turso);
     }
-  } else if (turso) {
-    policy = await policyIn(turso);
   }
   const { override, blockedDomains } = policy;
   const domainBlocked = isDomainBlocked(identity.handle || "", blockedDomains);
   lap("blocked_domains");
-  let source: ProfileSource = 'bsky';
+  // the account's labels, as the public appview reports them: with the
+  // policy above they decide the `hidden` this response states
+  let hidden = 0;
   try {
     const profileRes = await fetch(
       `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(identity.did)}`
     );
     lap("bsky_profile");
-    if (profileRes.ok) {
-      f = extractProfileFields(await profileRes.json(), override, domainBlocked);
-    } else if (override === 'show' && identity.pds) {
-      // same order as the cron's takedown path: Blacksky's appview (has
-      // counts), then the PDS record (has none)
-      const blacksky = await fetchProfileFromBlacksky(identity.did);
-      source = blacksky ? 'blacksky' : 'pds';
-      const profile = blacksky ?? await fetchProfileFromPds(identity.did, identity.pds);
-      if (profile) f = extractProfileFields(profile, override, domainBlocked);
-    }
+    if (profileRes.ok) hidden = extractProfileFields(await profileRes.json(), override, domainBlocked).hidden;
   } catch {
-    // profile enrichment is best-effort
-  }
-
-  if (tursoActorsOn(env)) {
-    await mirrorRequestedActor(db, identity, f, source);
-    lap("turso_write");
+    // best-effort: without the profile the account is reported visible
   }
 
   // fire-and-forget: fix the upstream invisibility too (see announceHostToRelay)
@@ -288,13 +228,12 @@ export async function handleRequestIndexing(
   return json({
     handle: identity.handle,
     did: identity.did,
-    ...(f.hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
+    ...(hidden ? { hidden: true, reason: "hidden by moderation" } : { hidden: false }),
   }, 200, { "Server-Timing": timing });
 }
 
 /** An operator's policy change with the control database out of reach: say
- *  so, and change nothing anywhere. An operator is there to see it and try
- *  again, and a rule written to Turso alone would never reach a store slot. */
+ *  so, and change nothing. An operator is there to see it and try again. */
 async function controlWrite(env: Env, what: string, write: (control: SqlDb) => Promise<void>): Promise<Response | null> {
   try {
     await write(controlDb(env));
@@ -316,7 +255,6 @@ function authCheck(request: Request, env: Env): Response | null {
 
 export async function handleModOverrideSet(
   request: Request,
-  db: SqlDb,
   env: Env,
 ): Promise<Response> {
   const denied = authCheck(request, env);
@@ -341,14 +279,12 @@ export async function handleModOverrideSet(
 
   const failed = await controlWrite(env, "override_set", (control) => setOverride(control, did, action, reason || '', unixNow()));
   if (failed) return failed;
-  if (tursoActorsOn(env)) await mirrorOverrideSet(db, did, action, reason || '');
 
   return json({ did, action, reason: reason || '', hidden: action === 'show' ? 0 : 1 });
 }
 
 export async function handleModOverrideDelete(
   request: Request,
-  db: SqlDb,
   env: Env,
 ): Promise<Response> {
   const denied = authCheck(request, env);
@@ -360,7 +296,6 @@ export async function handleModOverrideDelete(
 
   const failed = await controlWrite(env, "override_clear", (control) => clearOverride(control, did));
   if (failed) return failed;
-  if (tursoActorsOn(env)) return json({ did, hidden: await mirrorOverrideClear(db, did) });
 
   try {
     return json({ did, hidden: await hiddenWithoutOverride(env, did) });
@@ -404,9 +339,7 @@ function normalizeDomain(raw: string): string {
 
 export async function handleDomainBlockSet(
   request: Request,
-  db: SqlDb,
   env: Env,
-  ctx: ExecutionContext,
 ): Promise<Response> {
   const denied = authCheck(request, env);
   if (denied) return denied;
@@ -425,16 +358,13 @@ export async function handleDomainBlockSet(
 
   const failed = await controlWrite(env, "domain_block", (control) => blockDomain(control, domain, body.reason || "", unixNow()));
   if (failed) return failed;
-  if (tursoActorsOn(env)) await mirrorDomainBlock(db, ctx, domain, body.reason || "");
 
   return json({ domain, reason: body.reason || "", status: "blocked; backfilling existing matches in background" });
 }
 
 export async function handleDomainBlockDelete(
   request: Request,
-  db: SqlDb,
   env: Env,
-  ctx: ExecutionContext,
 ): Promise<Response> {
   const denied = authCheck(request, env);
   if (denied) return denied;
@@ -445,7 +375,6 @@ export async function handleDomainBlockDelete(
 
   const failed = await controlWrite(env, "domain_unblock", (control) => unblockDomain(control, domain));
   if (failed) return failed;
-  if (tursoActorsOn(env)) await mirrorDomainUnblock(db, ctx, domain);
 
   return json({ domain, status: "unblocked; recomputing affected actors in background" });
 }

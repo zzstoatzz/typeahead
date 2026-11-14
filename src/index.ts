@@ -250,7 +250,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
         return json({ error: "slow down — try again in a minute." }, 429);
       }
     }
-    return handleRequestIndexing(request, db, env, ctx);
+    return handleRequestIndexing(request, env, ctx);
   }
 
   if (
@@ -329,20 +329,20 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
 
   if (pathname === "/admin/mod-override" && request.method === "POST") {
-    return handleModOverrideSet(request, db, env);
+    return handleModOverrideSet(request, env);
   }
   if (pathname === "/admin/mod-override" && request.method === "DELETE") {
-    return handleModOverrideDelete(request, db, env);
+    return handleModOverrideDelete(request, env);
   }
   if (pathname === "/admin/mod-overrides" && request.method === "GET") {
     return handleModOverrideList(request, env);
   }
 
   if (pathname === "/admin/domain-block" && request.method === "POST") {
-    return handleDomainBlockSet(request, db, env, ctx);
+    return handleDomainBlockSet(request, env);
   }
   if (pathname === "/admin/domain-block" && request.method === "DELETE") {
-    return handleDomainBlockDelete(request, db, env, ctx);
+    return handleDomainBlockDelete(request, env);
   }
   if (pathname === "/admin/domain-blocks" && request.method === "GET") {
     return handleDomainBlockList(request, env);

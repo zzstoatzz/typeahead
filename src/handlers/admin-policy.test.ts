@@ -1,7 +1,8 @@
 import { afterAll, expect, test } from "bun:test";
-import { GENERATION, controlStore, tursoPolicyTables } from "../control-d1-fixture";
+import { GENERATION, controlStore } from "../control-d1-fixture";
 import { policySnapshot } from "../control-store";
 import { BSKY_MOD_DID } from "../moderation";
+import type { SlotActor } from "../slot-read";
 import type { Env } from "../types";
 import {
   handleDomainBlockDelete, handleDomainBlockList, handleDomainBlockSet,
@@ -9,26 +10,39 @@ import {
 } from "./admin";
 
 // The admin policy endpoints write the control database, which store slots
-// pull, and then Turso, which the Turso-fed slots still read. Their responses
-// are the ones they gave when Turso was the only store.
+// pull. The one value in their answers that is about an account, the `hidden`
+// a cleared override leaves behind, is computed from the routed slot's copy
+// of it.
 
-const { d1, control, dispose: disposeControl } = await controlStore();
-const { turso, dispose: disposeTurso } = await tursoPolicyTables();
-afterAll(async () => {
-  disposeTurso();
-  await disposeControl();
-});
+const { d1, control, dispose } = await controlStore();
+afterAll(dispose);
 
 const ADMIN = "admin-secret";
-// SAFETY: the policy handlers read only ADMIN_SECRET and CONTROL_DB.
-const env = { ADMIN_SECRET: ADMIN, CONTROL_DB: d1 } as Env;
 
-function background() {
-  const tasks: Promise<unknown>[] = [];
-  const c = { waitUntil: (task: Promise<unknown>) => { tasks.push(task); }, passThroughOnException() {} };
-  // SAFETY: the handlers use the context only through waitUntil.
-  return { ctx: c as ExecutionContext, tasks };
+function held(did: string, handle: string, labels: SlotActor["labels"] = []): SlotActor {
+  return {
+    did, handle, display_name: "", avatar_url: "", labels, created_at: "", associated: {}, pds: "", description: "", banner_url: "",
+    followers_count: 0, follows_count: 0, posts_count: 0, quality_score: 0, updated_at: 0, profile_checked: false, hidden: false, hidden_stored: false,
+  };
 }
+const SLOT = [
+  held("did:plc:plain", "plain.test"),
+  held("did:plc:labelled", "labelled.test", [{ src: BSKY_MOD_DID, val: "!takedown", uri: "did:plc:labelled", cts: "2026-01-01T00:00:00Z" }]),
+  held("did:plc:sub", "a.Spam.Example"),
+];
+let slotUp = true;
+let slotAsked = 0;
+const transport = {
+  async fetch(input: RequestInfo | URL): Promise<Response> {
+    slotAsked++;
+    if (!slotUp) return Response.json({ error: "not ready" }, { status: 503 });
+    const wanted = new URL(String(input)).searchParams.getAll("actor");
+    return Response.json({ actors: SLOT.filter((actor) => wanted.includes(actor.did)) });
+  },
+};
+// SAFETY: the policy handlers read ADMIN_SECRET and CONTROL_DB, and reach
+// the slot only through SEARCH_BACKEND_URL and SEARCH_TRANSPORT.fetch.
+const env = { ADMIN_SECRET: ADMIN, CONTROL_DB: d1, SEARCH_BACKEND_URL: "https://transport.test", SEARCH_TRANSPORT: transport } as Env;
 
 type Payload = { did?: string; action?: string; reason?: string; domain?: string };
 const send = (method: string, path: string, payload?: Payload, auth = `Bearer ${ADMIN}`) =>
@@ -39,165 +53,152 @@ const send = (method: string, path: string, payload?: Payload, auth = `Bearer ${
   });
 const body = async (res: Response) => JSON.parse(await res.text());
 
-const tursoOverrides = async () =>
-  (await turso.prepare("SELECT did, action, reason FROM mod_overrides ORDER BY did").all<{ did: string; action: string; reason: string }>()).results.map((row) => ({ ...row }));
-const tursoDomains = async () =>
-  (await turso.prepare("SELECT domain, reason FROM blocked_domains ORDER BY domain").all<{ domain: string; reason: string }>()).results.map((row) => ({ ...row }));
-const hidden = async (did: string) =>
-  (await turso.prepare("SELECT hidden FROM actors WHERE did = ?1").bind(did).first<{ hidden: number }>())?.hidden;
-
-const TAKEN_DOWN = JSON.stringify([{ src: BSKY_MOD_DID, val: "!takedown", uri: "did:plc:labelled", cts: "2026-01-01T00:00:00Z" }]);
-await turso.batch([
-  turso.prepare("INSERT INTO actors (did, handle) VALUES ('did:plc:plain', 'plain.test')"),
-  turso.prepare("INSERT INTO actors (did, handle, labels, hidden) VALUES ('did:plc:labelled', 'labelled.test', ?1, 1)").bind(TAKEN_DOWN),
-  turso.prepare("INSERT INTO actors (did, handle) VALUES ('did:plc:apex', 'spam.example')"),
-  turso.prepare("INSERT INTO actors (did, handle) VALUES ('did:plc:sub', 'a.Spam.Example')"),
-  turso.prepare("INSERT INTO actors (did, handle) VALUES ('did:plc:rescued', 'ok.spam.example')"),
-  turso.prepare("INSERT INTO actors (did, handle) VALUES ('did:plc:other', 'notspam.example')"),
-]);
-
-test("setting an override writes the control record and Turso, and answers as before", async () => {
-  const res = await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide", reason: "spam ring" }), turso, env);
+test("setting an override writes the control record and answers with the hidden it forces", async () => {
+  const res = await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide", reason: "spam ring" }), env);
   expect(res.status).toBe(200);
-  expect(await body(res)).toEqual({ did: "did:plc:plain", action: "hide", reason: "spam ring", hidden: 1 });
+  expect(await res.text()).toBe('{"did":"did:plc:plain","action":"hide","reason":"spam ring","hidden":1}');
   expect(await policySnapshot(control)).toEqual({ generation: GENERATION, revision: 2, overrides: [{ did: "did:plc:plain", action: "hide" }], blocked_domains: [] });
-  expect(await tursoOverrides()).toEqual([{ did: "did:plc:plain", action: "hide", reason: "spam ring" }]);
-  expect(await hidden("did:plc:plain")).toBe(1);
 
-  const shown = await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:labelled", action: "show" }), turso, env);
-  expect(await body(shown)).toEqual({ did: "did:plc:labelled", action: "show", reason: "", hidden: 0 });
-  expect(await hidden("did:plc:labelled")).toBe(0);
+  const shown = await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:labelled", action: "show" }), env);
+  expect(await shown.text()).toBe('{"did":"did:plc:labelled","action":"show","reason":"","hidden":0}');
   expect((await policySnapshot(control)).overrides).toEqual([
     { did: "did:plc:labelled", action: "show" }, { did: "did:plc:plain", action: "hide" },
   ]);
+  expect(slotAsked).toBe(0);
 });
 
-test("the override listing reads the control record in its old shape", async () => {
+test("the override listing reads the control record", async () => {
   const res = await handleModOverrideList(send("GET", "/admin/mod-overrides"), env);
   const listed = await body(res);
   expect(listed.overrides.map((row: { did: string }) => row.did).sort()).toEqual(["did:plc:labelled", "did:plc:plain"]);
+  expect(listed.overrides.find((row: { did: string }) => row.did === "did:plc:plain")).toMatchObject({ action: "hide", reason: "spam ring" });
   for (const row of listed.overrides) {
     expect(Object.keys(row).sort()).toEqual(["action", "created_at", "did", "reason"]);
     expect(row.created_at).toBeGreaterThan(1_700_000_000);
   }
 });
 
-test("clearing an override removes it from both and recomputes what remains", async () => {
-  const res = await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:labelled"), turso, env);
-  expect(await body(res)).toEqual({ did: "did:plc:labelled", hidden: 1 });
-  expect(await hidden("did:plc:labelled")).toBe(1);
-
-  const plain = await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:plain"), turso, env);
-  expect(await body(plain)).toEqual({ did: "did:plc:plain", hidden: 0 });
-  expect(await tursoOverrides()).toEqual([]);
-  expect(await policySnapshot(control)).toEqual({ generation: GENERATION, revision: 5, overrides: [], blocked_domains: [] });
-
-  const unknown = await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:unknown"), turso, env);
-  expect(await body(unknown)).toEqual({ did: "did:plc:unknown", hidden: 0 });
-});
-
-test("blocking a domain writes both stores and hides its stored actors in the background", async () => {
-  await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:rescued", action: "show" }), turso, env);
-  const { ctx, tasks } = background();
-  const res = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "*.Spam.Example", reason: "farm" }), turso, env, ctx);
-  expect(await body(res)).toEqual({ domain: "spam.example", reason: "farm", status: "blocked; backfilling existing matches in background" });
+test("blocking a domain writes the control record, normalized, and lists it", async () => {
+  const res = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "*.Spam.Example", reason: "farm" }), env);
+  expect(res.status).toBe(200);
+  expect(await res.text()).toBe('{"domain":"spam.example","reason":"farm","status":"blocked; backfilling existing matches in background"}');
   expect((await policySnapshot(control)).blocked_domains).toEqual(["spam.example"]);
-  expect(await tursoDomains()).toEqual([{ domain: "spam.example", reason: "farm" }]);
-  await Promise.all(tasks);
-  expect(await hidden("did:plc:apex")).toBe(1);
-  expect(await hidden("did:plc:sub")).toBe(1);
-  expect(await hidden("did:plc:rescued")).toBe(0);
-  expect(await hidden("did:plc:other")).toBe(0);
 
   const listed = await body(await handleDomainBlockList(send("GET", "/admin/domain-blocks"), env));
   expect(listed.blocked_domains).toHaveLength(1);
   expect(listed.blocked_domains[0]).toMatchObject({ domain: "spam.example", reason: "farm" });
   expect(Object.keys(listed.blocked_domains[0]).sort()).toEqual(["created_at", "domain", "reason"]);
+  expect(slotAsked).toBe(0);
 });
 
-test("unblocking a domain removes it from both stores and restores its actors", async () => {
-  const { ctx, tasks } = background();
-  const res = await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=.SPAM.example"), turso, env, ctx);
-  expect(await body(res)).toEqual({ domain: "spam.example", status: "unblocked; recomputing affected actors in background" });
+test("clearing an override answers with the hidden the slot's copy of the account then has", async () => {
+  // no label, a takedown label, a handle under the blocked domain, an account the slot does not hold
+  for (const [did, hidden] of [["did:plc:plain", 0], ["did:plc:labelled", 1], ["did:plc:sub", 1], ["did:plc:unknown", 0]] as const) {
+    const res = await handleModOverrideDelete(send("DELETE", `/admin/mod-override?did=${did}`), env);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe(JSON.stringify({ did, hidden }));
+  }
+  expect(await policySnapshot(control)).toEqual({ generation: GENERATION, revision: 8, overrides: [], blocked_domains: ["spam.example"] });
+});
+
+test("a slot that does not answer after the override is cleared is a 503 that says what happened", async () => {
+  await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "show" }), env);
+  slotUp = false;
+  try {
+    const res = await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:plain"), env);
+    expect(res.status).toBe(503);
+    expect(await body(res)).toEqual({ error: "the override was cleared; the account's visibility could not be read from the slot", did: "did:plc:plain" });
+    expect((await policySnapshot(control)).overrides).toEqual([]);
+  } finally {
+    slotUp = true;
+  }
+});
+
+test("unblocking a domain removes it from the control record", async () => {
+  const res = await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=.SPAM.example"), env);
+  expect(res.status).toBe(200);
+  expect(await res.text()).toBe('{"domain":"spam.example","status":"unblocked; recomputing affected actors in background"}');
   expect((await policySnapshot(control)).blocked_domains).toEqual([]);
-  expect(await tursoDomains()).toEqual([]);
-  await Promise.all(tasks);
-  expect(await hidden("did:plc:apex")).toBe(0);
-  expect(await hidden("did:plc:sub")).toBe(0);
+
+  const unblocked = await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:sub"), env);
+  expect(await body(unblocked)).toEqual({ did: "did:plc:sub", hidden: 0 });
 });
 
-test("a refused request changes neither store", async () => {
+test("a refused request changes nothing", async () => {
+  await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:rescued", action: "show" }), env);
   const before = await policySnapshot(control);
-  const { ctx, tasks } = background();
+  const asked = slotAsked;
   const refused = [
-    await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide" }, "Bearer wrong"), turso, env),
-    await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:rescued", undefined, "Bearer wrong"), turso, env),
+    await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide" }, "Bearer wrong"), env),
+    await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:rescued", undefined, "Bearer wrong"), env),
     await handleModOverrideList(send("GET", "/admin/mod-overrides", undefined, "Bearer wrong"), env),
-    await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "spam.example" }, "Bearer wrong"), turso, env, ctx),
-    await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=spam.example", undefined, "Bearer wrong"), turso, env, ctx),
+    await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "spam.example" }, "Bearer wrong"), env),
+    await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=spam.example", undefined, "Bearer wrong"), env),
     await handleDomainBlockList(send("GET", "/admin/domain-blocks", undefined, "Bearer wrong"), env),
   ];
-  for (const res of refused) expect(res.status).toBe(401);
+  for (const res of refused) {
+    expect(res.status).toBe(401);
+    expect(await body(res)).toEqual({ error: "unauthorized" });
+  }
 
   const invalid = [
-    await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "delete" }), turso, env),
-    await handleModOverrideSet(send("POST", "/admin/mod-override", { action: "hide" }), turso, env),
-    await handleModOverrideDelete(send("DELETE", "/admin/mod-override"), turso, env),
-    await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "nodot" }), turso, env, ctx),
-    await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "has space.example" }), turso, env, ctx),
-    await handleDomainBlockDelete(send("DELETE", "/admin/domain-block"), turso, env, ctx),
+    await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "delete" }), env),
+    await handleModOverrideSet(send("POST", "/admin/mod-override", { action: "hide" }), env),
+    await handleModOverrideDelete(send("DELETE", "/admin/mod-override"), env),
+    await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "nodot" }), env),
+    await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "has space.example" }), env),
+    await handleDomainBlockDelete(send("DELETE", "/admin/domain-block"), env),
   ];
   for (const res of invalid) expect(res.status).toBe(400);
 
-  expect(tasks).toEqual([]);
   expect(await policySnapshot(control)).toEqual(before);
-  expect(await tursoOverrides()).toEqual([{ did: "did:plc:rescued", action: "show", reason: "" }]);
-  expect(await tursoDomains()).toEqual([]);
+  expect(before.overrides).toEqual([{ did: "did:plc:rescued", action: "show" }]);
+  expect(slotAsked).toBe(asked);
 });
 
 test("a subject a slot would refuse is refused at the write, so it is never served", async () => {
   const before = await policySnapshot(control);
-  const { ctx, tasks } = background();
   const dids = ["alice.bsky.social", " did:plc:63hvnyjvqi2nzzcsjgnry5we", "did:plc:63hvnyjvqi2nzzcsjgnry5we ", "did:plc:" + "a".repeat(2100), "did:plc:a\u0000b", "at://did:plc:63hvnyjvqi2nzzcsjgnry5we"];
   for (const did of dids) {
-    const res = await handleModOverrideSet(send("POST", "/admin/mod-override", { did, action: "hide" }), turso, env);
+    const res = await handleModOverrideSet(send("POST", "/admin/mod-override", { did, action: "hide" }), env);
     expect([did.slice(0, 40), res.status]).toEqual([did.slice(0, 40), 400]);
   }
   const domains = ["a\u0001b.example", "x".repeat(300) + ".example", "a\u007f.example", "caf\u00e9.example"];
   for (const domain of domains) {
-    const res = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain }), turso, env, ctx);
+    const res = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain }), env);
     expect([domain.slice(0, 40), res.status]).toEqual([domain.slice(0, 40), 400]);
   }
-  expect(tasks).toEqual([]);
   expect(await policySnapshot(control)).toEqual(before);
-  expect(await tursoOverrides()).toEqual([{ did: "did:plc:rescued", action: "show", reason: "" }]);
-  expect(await tursoDomains()).toEqual([]);
 
   // what an operator sends today still goes through
-  const link = await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:63hvnyjvqi2nzzcsjgnry5we", action: "show", reason: "FREE LINK" }), turso, env);
+  const link = await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:63hvnyjvqi2nzzcsjgnry5we", action: "show", reason: "FREE LINK" }), env);
   expect(link.status).toBe(200);
-  const real = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "dadavidtseng.com" }), turso, env, ctx);
+  const real = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "dadavidtseng.com" }), env);
   expect(real.status).toBe(200);
-  await Promise.all(tasks);
-  await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:63hvnyjvqi2nzzcsjgnry5we"), turso, env);
-  await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=dadavidtseng.com"), turso, env, ctx);
-  await Promise.all(tasks);
+  expect(await policySnapshot(control)).toMatchObject({
+    overrides: [{ did: "did:plc:63hvnyjvqi2nzzcsjgnry5we", action: "show" }, { did: "did:plc:rescued", action: "show" }],
+    blocked_domains: ["dadavidtseng.com"],
+  });
+  await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:63hvnyjvqi2nzzcsjgnry5we"), env);
+  await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=dadavidtseng.com"), env);
+  expect(await policySnapshot(control)).toMatchObject({ overrides: before.overrides, blocked_domains: before.blocked_domains });
 });
 
 test("with the control database out of reach an admin change answers 503 and changes nothing", async () => {
+  const before = await policySnapshot(control);
+  const asked = slotAsked;
   const unmigrated = await controlStore();
   for (const table of ["mod_overrides", "blocked_domains", "control_meta", "index_requests"]) await unmigrated.d1.exec(`DROP TABLE ${table}`);
-  // SAFETY: as `env` above; the second has no binding at all.
-  const failing = [{ ADMIN_SECRET: ADMIN, CONTROL_DB: unmigrated.d1 } as Env, { ADMIN_SECRET: ADMIN } as Env];
-  const { ctx, tasks } = background();
+  // SAFETY: as `env` above; the second has no control binding at all.
+  const failing = [{ ...env, CONTROL_DB: unmigrated.d1 } as Env, { ADMIN_SECRET: ADMIN, SEARCH_BACKEND_URL: env.SEARCH_BACKEND_URL, SEARCH_TRANSPORT: transport } as Env];
   try {
     for (const down of failing) {
       const answers = [
-        await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide" }), turso, down),
-        await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:rescued"), turso, down),
+        await handleModOverrideSet(send("POST", "/admin/mod-override", { did: "did:plc:plain", action: "hide" }), down),
+        await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:rescued"), down),
         await handleModOverrideList(send("GET", "/admin/mod-overrides"), down),
-        await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "spam.example" }), turso, down, ctx),
-        await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=spam.example"), turso, down, ctx),
+        await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "spam.example" }), down),
+        await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=spam.example"), down),
         await handleDomainBlockList(send("GET", "/admin/domain-blocks"), down),
       ];
       for (const res of answers) {
@@ -208,8 +209,6 @@ test("with the control database out of reach an admin change answers 503 and cha
   } finally {
     await unmigrated.dispose();
   }
-  expect(tasks).toEqual([]);
-  expect(await tursoOverrides()).toEqual([{ did: "did:plc:rescued", action: "show", reason: "" }]);
-  expect(await tursoDomains()).toEqual([]);
-  expect(await hidden("did:plc:plain")).toBe(0);
+  expect(await policySnapshot(control)).toEqual(before);
+  expect(slotAsked).toBe(asked);
 });

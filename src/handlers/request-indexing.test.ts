@@ -1,21 +1,19 @@
 import { afterAll, afterEach, expect, test } from "bun:test";
-import { controlStore, tursoPolicyTables } from "../control-d1-fixture";
+import { controlStore } from "../control-d1-fixture";
 import { blockDomain, clearOverride, indexRequestsAfter, setOverride, unblockDomain } from "../control-store";
 import type { Env } from "../types";
 import { CONTROL_FAILURE_KEY, handleControlHealth, noteControlFailure } from "../control-health";
+import { BSKY_MOD_DID } from "../moderation";
 import { handleRequestIndexing } from "./admin";
 
-// /request-indexing answers as it did when it wrote only Turso. What it adds
-// is a row in the control database's request log, which store slots pull.
+// /request-indexing verifies the account, logs the request in the control
+// database, which store slots pull, and answers with the account's
+// moderation state.
 
 const { d1, control, dispose: disposeControl } = await controlStore();
-const { turso, dispose: disposeTurso } = await tursoPolicyTables();
 const realFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = realFetch; });
-afterAll(async () => {
-  disposeTurso();
-  await disposeControl();
-});
+afterAll(disposeControl);
 
 const kv = {
   async get(_key: string): Promise<string | null> { return "1"; },
@@ -32,7 +30,7 @@ function background() {
   return { ctx: c as ExecutionContext, tasks };
 }
 
-type Account = { did: string; handle: string; verified?: boolean; profile?: boolean };
+type Account = { did: string; handle: string; verified?: boolean; profile?: boolean; labels?: { src: string; val: string }[] };
 const ALICE: Account = { did: "did:plc:alice", handle: "alice.test" };
 
 /** The four upstreams the handler asks, answering for the accounts given. */
@@ -58,7 +56,7 @@ function upstreams(accounts: Account[]): void {
     if (url.hostname === "public.api.bsky.app") {
       const found = accounts.find((account) => account.did === url.searchParams.get("actor"));
       return reply(found && found.profile !== false
-        ? { did: found.did, handle: found.handle, displayName: "Alice", followersCount: 10, followsCount: 5, postsCount: 3, labels: [] }
+        ? { did: found.did, handle: found.handle, displayName: "Alice", followersCount: 10, followsCount: 5, postsCount: 3, labels: found.labels ?? [] }
         : null);
     }
     return reply(null);
@@ -69,44 +67,40 @@ function upstreams(accounts: Account[]): void {
 const post = (query: string) => new Request(`https://typeahead.waow.tech/request-indexing${query}`, { method: "POST" });
 const body = async (res: Response) => JSON.parse(await res.text());
 const requests = async () => (await indexRequestsAfter(control, 0, 100)).requests;
-const stored = (did: string) =>
-  turso.prepare("SELECT handle, display_name, hidden, pds FROM actors WHERE did = ?1").bind(did).first<{ handle: string; display_name: string; hidden: number; pds: string }>();
 
-test("a verified account is answered as before and its request is logged for the slots", async () => {
+test("a verified account is answered and its request is logged for the slots", async () => {
   upstreams([ALICE]);
   const { ctx, tasks } = background();
-  const res = await handleRequestIndexing(post("?handle=alice.test"), turso, env, ctx);
+  const res = await handleRequestIndexing(post("?handle=alice.test"), env, ctx);
   expect(res.status).toBe(200);
-  expect(await body(res)).toEqual({ handle: "alice.test", did: "did:plc:alice", hidden: false });
-  expect(res.headers.get("Server-Timing")).toContain("control_write;dur=");
+  expect(await res.text()).toBe('{"handle":"alice.test","did":"did:plc:alice","hidden":false}');
+  expect(res.headers.get("Server-Timing")).toMatch(/^slingshot;dur=\d+, control_write;dur=\d+, override;dur=\d+, blocked_domains;dur=\d+, bsky_profile;dur=\d+$/);
   await Promise.all(tasks);
   expect(await requests()).toEqual([{ seq: 1, did: "did:plc:alice" }]);
-  expect({ ...await stored("did:plc:alice") }).toEqual({ handle: "alice.test", display_name: "Alice", hidden: 0, pds: "https://pds.test" });
 });
 
 test("a DID is accepted as well as a handle, and a repeat inside the window logs nothing more", async () => {
   upstreams([ALICE]);
-  const res = await handleRequestIndexing(post("?did=did:plc:alice"), turso, env, background().ctx);
+  const res = await handleRequestIndexing(post("?did=did:plc:alice"), env, background().ctx);
   expect(await body(res)).toEqual({ handle: "alice.test", did: "did:plc:alice", hidden: false });
   expect(await requests()).toEqual([{ seq: 1, did: "did:plc:alice" }]);
 });
 
-test("requests that were refused before are refused the same way and log nothing", async () => {
+test("a request without an identifier, for an unknown one or for an unverified handle is refused and logs nothing", async () => {
   upstreams([ALICE, { did: "did:plc:mallory", handle: "mallory.test", verified: false }]);
-  const empty = await handleRequestIndexing(post(""), turso, env, background().ctx);
+  const empty = await handleRequestIndexing(post(""), env, background().ctx);
   expect(empty.status).toBe(400);
   expect(await body(empty)).toEqual({ error: "enter a handle or DID to request indexing." });
 
-  const unknown = await handleRequestIndexing(post("?handle=nobody.test"), turso, env, background().ctx);
+  const unknown = await handleRequestIndexing(post("?handle=nobody.test"), env, background().ctx);
   expect(unknown.status).toBe(404);
   expect(await body(unknown)).toEqual({ error: 'could not resolve "nobody.test". check that it\'s a valid handle or DID.' });
 
-  const unverified = await handleRequestIndexing(post("?handle=mallory.test"), turso, env, background().ctx);
+  const unverified = await handleRequestIndexing(post("?handle=mallory.test"), env, background().ctx);
   expect(unverified.status).toBe(422);
   expect(await body(unverified)).toEqual({ error: "handle ownership could not be verified" });
 
   expect(await requests()).toEqual([{ seq: 1, did: "did:plc:alice" }]);
-  expect(await stored("did:plc:mallory")).toBeNull();
 });
 
 test("the moderation answer comes from the control record", async () => {
@@ -114,22 +108,21 @@ test("the moderation answer comes from the control record", async () => {
   upstreams([bob]);
 
   await setOverride(control, bob.did, "hide", "", 1_794_400_000);
-  const overridden = await handleRequestIndexing(post("?handle=bob.spam.example"), turso, env, background().ctx);
-  expect(await body(overridden)).toEqual({ handle: "bob.spam.example", did: "did:plc:bob", hidden: true, reason: "hidden by moderation" });
-  expect((await stored(bob.did))?.hidden).toBe(1);
+  const overridden = await handleRequestIndexing(post("?handle=bob.spam.example"), env, background().ctx);
+  expect(await overridden.text()).toBe('{"handle":"bob.spam.example","did":"did:plc:bob","hidden":true,"reason":"hidden by moderation"}');
   await clearOverride(control, bob.did);
 
   await blockDomain(control, "spam.example", "", 1_794_400_000);
-  const blocked = await handleRequestIndexing(post("?handle=bob.spam.example"), turso, env, background().ctx);
+  const blocked = await handleRequestIndexing(post("?handle=bob.spam.example"), env, background().ctx);
   expect(await body(blocked)).toEqual({ handle: "bob.spam.example", did: "did:plc:bob", hidden: true, reason: "hidden by moderation" });
   await unblockDomain(control, "spam.example");
 
-  const clear = await handleRequestIndexing(post("?handle=bob.spam.example"), turso, env, background().ctx);
+  const clear = await handleRequestIndexing(post("?handle=bob.spam.example"), env, background().ctx);
   expect(await body(clear)).toEqual({ handle: "bob.spam.example", did: "did:plc:bob", hidden: false });
   expect(await requests()).toEqual([{ seq: 1, did: "did:plc:alice" }, { seq: 2, did: "did:plc:bob" }]);
 });
 
-test("an account the appview does not know is still logged and stored bare", async () => {
+test("an account the appview does not know is still logged, and reported visible", async () => {
   upstreams([{ did: "did:web:carol.test", handle: "carol.test", profile: false }]);
   const fake = globalThis.fetch;
   globalThis.fetch = Object.assign(async (input: RequestInfo | URL) => {
@@ -139,12 +132,24 @@ test("an account the appview does not know is still logged and stored bare", asy
     }
     return fake(input);
   }, { preconnect: realFetch.preconnect });
-  const res = await handleRequestIndexing(post("?handle=carol.test"), turso, env, background().ctx);
+  const res = await handleRequestIndexing(post("?handle=carol.test"), env, background().ctx);
   expect(await body(res)).toEqual({ handle: "carol.test", did: "did:web:carol.test", hidden: false });
   expect((await requests()).at(-1)).toEqual({ seq: 3, did: "did:web:carol.test" });
 });
 
-test("with the control database down or unmigrated the request is answered as before it existed, and the failure is kept", async () => {
+test("an account the appview labels as taken down is reported hidden, unless an override shows it", async () => {
+  const frank: Account = { did: "did:plc:frank", handle: "frank.test", labels: [{ src: BSKY_MOD_DID, val: "!takedown" }] };
+  upstreams([frank]);
+  const labelled = await handleRequestIndexing(post("?handle=frank.test"), env, background().ctx);
+  expect(await body(labelled)).toEqual({ handle: "frank.test", did: "did:plc:frank", hidden: true, reason: "hidden by moderation" });
+
+  await setOverride(control, frank.did, "show", "", 1_794_400_000);
+  const shown = await handleRequestIndexing(post("?handle=frank.test"), env, background().ctx);
+  expect(await body(shown)).toEqual({ handle: "frank.test", did: "did:plc:frank", hidden: false });
+  await clearOverride(control, frank.did);
+});
+
+test("with the control database down or unmigrated the request is answered from the account's labels alone, and the failure is kept", async () => {
   const unmigrated = await controlStore();
   for (const table of ["mod_overrides", "blocked_domains", "control_meta", "index_requests"]) await unmigrated.d1.exec(`DROP TABLE ${table}`);
   const kept = new Map<string, string>();
@@ -152,20 +157,22 @@ test("with the control database down or unmigrated the request is answered as be
     async get(key: string): Promise<string | null> { return key.startsWith("relay_crawl:") ? "1" : kept.get(key) ?? null; },
     async put(key: string, value: string): Promise<void> { kept.set(key, value); },
   };
-  upstreams([{ did: "did:plc:dave", handle: "dave.farm.example" }, { did: "did:plc:erin", handle: "erin.test" }]);
-  // the Turso copy of the policy is what answers when the control database cannot
-  await turso.prepare("INSERT INTO blocked_domains (domain, reason) VALUES ('farm.example', '')").run();
+  upstreams([
+    { did: "did:plc:dave", handle: "dave.farm.example", labels: [{ src: BSKY_MOD_DID, val: "!takedown" }] },
+    { did: "did:plc:erin", handle: "erin.test" },
+  ]);
+  const logged = await requests();
   // SAFETY: as `env` above; the second has no control binding at all.
   const down = [{ CONTROL_DB: unmigrated.d1, KV: recording } as Env, { KV: recording } as Env];
   try {
     for (const [i, failing] of down.entries()) {
       kept.clear();
       const { ctx, tasks } = background();
-      const res = await handleRequestIndexing(post("?handle=dave.farm.example"), turso, failing, ctx);
+      const res = await handleRequestIndexing(post("?handle=dave.farm.example"), failing, ctx);
       expect(res.status).toBe(200);
       expect(await body(res)).toEqual({ handle: "dave.farm.example", did: "did:plc:dave", hidden: true, reason: "hidden by moderation" });
+      expect(res.headers.get("Server-Timing")).toMatch(/^slingshot;dur=\d+, control_write;dur=\d+, blocked_domains;dur=\d+, bsky_profile;dur=\d+$/);
       await Promise.all(tasks);
-      expect((await stored("did:plc:dave"))?.hidden).toBe(1);
       const failure = JSON.parse(kept.get(CONTROL_FAILURE_KEY) ?? "null");
       expect(failure.what).toBe("index_request");
       expect(failure.at).toBeGreaterThan(1_700_000_000_000);
@@ -176,12 +183,12 @@ test("with the control database down or unmigrated the request is answered as be
       expect(reported.ok).toBe(false);
       expect(reported.last_failure.what).toBe("index_request");
     }
-    const visible = await handleRequestIndexing(post("?handle=erin.test"), turso, down[0]!, background().ctx);
+    const visible = await handleRequestIndexing(post("?handle=erin.test"), down[0]!, background().ctx);
     expect(await body(visible)).toEqual({ handle: "erin.test", did: "did:plc:erin", hidden: false });
   } finally {
-    await turso.prepare("DELETE FROM blocked_domains WHERE domain = 'farm.example'").run();
     await unmigrated.dispose();
   }
+  expect(await requests()).toEqual(logged);
 });
 
 test("the control health endpoint answers 200 from a migrated database, with the last failure if there was one", async () => {
@@ -195,7 +202,7 @@ test("the control health endpoint answers 200 from a migrated database, with the
   const res = await handleControlHealth(healthy);
   expect(res.status).toBe(200);
   expect(res.headers.get("Cache-Control")).toBe("no-store");
-  expect(await body(res)).toEqual({ ok: true, revision: 5, last_failure: null });
+  expect(await body(res)).toEqual({ ok: true, revision: 7, last_failure: null });
 
   const { ctx, tasks } = background();
   noteControlFailure(ctx, healthy, "index_request", "D1_ERROR: no such table: index_requests");
