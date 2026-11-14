@@ -21,5 +21,10 @@ steps:
       scripts/ci-zig.sh "$PWD/.zig"
       export PATH="$PWD/.zig:$PATH"
       test "$(zig version)" = "0.17.0"
+      # Zig dependencies come from the tarballs vendored in the repository,
+      # as in the slot image, so a failing archive download cannot fail the run.
+      export ZIG_GLOBAL_CACHE_DIR="$PWD/.zig-global-cache"
+      mkdir -p "$ZIG_GLOBAL_CACHE_DIR/p"
+      cp services/.zig-pkg-vendor/* "$ZIG_GLOBAL_CACHE_DIR/p/"
       just --no-dotenv test-tantivy
       just --no-dotenv test-bridge
