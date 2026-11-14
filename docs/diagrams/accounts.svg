@@ -20,51 +20,60 @@
     .head { fill: var(--line); }
     .flowhead { fill: var(--accent); }
     .label { fill: var(--fg); font-size: 14px; }
+    .icon { fill: none; stroke: var(--muted); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .icon.on { stroke: var(--accent); }
   </style>
 
   <rect class="ground" width="600" height="750" rx="12"/>
-  <g>
-  <rect class="box" x="20" y="20" width="176" height="56" rx="8"/>
-  <text class="name" x="108.0" y="44" text-anchor="middle">Relay</text>
-  <text class="sub" x="108.0" y="64" text-anchor="middle">an account event</text>
-  <rect class="box" x="212" y="20" width="176" height="56" rx="8"/>
-  <text class="name" x="300.0" y="44" text-anchor="middle">PLC directory</text>
-  <text class="sub" x="300.0" y="64" text-anchor="middle">an identity change</text>
-  <rect class="box" x="404" y="20" width="176" height="56" rx="8"/>
-  <text class="name" x="492.0" y="44" text-anchor="middle">Worker</text>
-  <text class="sub" x="492.0" y="64" text-anchor="middle">an index request</text>
-  </g>
-  <path class="wire" d="M300 76 V144"/>
-  <polygon class="head" points="300,154 293,142 307,142"/>
-  <text class="label" x="314" y="108">any of these starts it</text>
-  <rect class="slot" x="20" y="130" width="560" height="600" rx="12"/>
-  <rect class="box" x="50" y="156" width="500" height="66" rx="8"/>
-  <text class="name" x="74" y="183">1  Record</text>
-  <text class="body" x="74" y="206">The store creates or updates the account's record.</text>
-  <path class="wire" d="M300 222 V236"/>
-  <polygon class="head" points="300,246 293,234 307,234"/>
-  <rect class="box" x="50" y="248" width="500" height="66" rx="8"/>
-  <text class="name" x="74" y="275">2  Handle</text>
-  <text class="body" x="74" y="298">Verifies the handle against the account's DID.</text>
-  <path class="wire" d="M300 314 V328"/>
-  <polygon class="head" points="300,338 293,326 307,326"/>
-  <rect class="box" x="50" y="340" width="500" height="66" rx="8"/>
-  <text class="name" x="74" y="367">3  Profile</text>
-  <text class="body" x="74" y="390">Asks Bluesky's AppView for name, avatar and counts.</text>
-  <path class="wire" d="M300 406 V420"/>
-  <polygon class="head" points="300,430 293,418 307,418"/>
-  <rect class="box" x="50" y="432" width="500" height="66" rx="8"/>
-  <text class="name" x="74" y="459">4  Policy</text>
-  <text class="body" x="74" y="482">Applies labels, domain blocks and overrides.</text>
-  <path class="wire" d="M300 498 V512"/>
-  <polygon class="head" points="300,522 293,510 307,510"/>
-  <rect class="box" x="50" y="524" width="500" height="66" rx="8"/>
-  <text class="name" x="74" y="551">5  Index</text>
-  <text class="body" x="74" y="574">The bridge sends the account to the search engine.</text>
-  <path class="flow" d="M300 590 V604"/>
-  <polygon class="flowhead" points="300,614 293,602 307,602"/>
-  <rect class="core" x="50" y="616" width="500" height="66" rx="8"/>
-  <text class="name" x="74" y="643">Searchable</text>
-  <text class="body" x="74" y="666">The search engine can now return the account.</text>
-  <text class="note" x="50" y="716">Each slot does all of this on its own, from the same sources.</text>
+  <rect class="box" x="20" y="20" width="164" height="60" rx="10"/>
+  <g class="icon" transform="translate(34 36.0) scale(1.167)"><circle cx="12" cy="12" r="1.8"/><path d="M8.1 8.1a5.5 5.5 0 0 0 0 7.8M15.9 8.1a5.5 5.5 0 0 1 0 7.8M5.3 5.3a9.5 9.5 0 0 0 0 13.4M18.7 5.3a9.5 9.5 0 0 1 0 13.4"/></g>
+  <text class="name" x="74" y="47.0">Relay</text>
+  <text class="sub" x="74" y="67.0">account event</text>
+  <rect class="box" x="196" y="20" width="208" height="60" rx="10"/>
+  <g class="icon" transform="translate(210 36.0) scale(1.167)"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.5 16c.5-1.5 1.6-2.2 3-2.2s2.5.7 3 2.2M14.5 10h4M14.5 14h4"/></g>
+  <text class="name" x="250" y="47.0">PLC directory</text>
+  <text class="sub" x="250" y="67.0">identity change</text>
+  <rect class="box" x="416" y="20" width="164" height="60" rx="10"/>
+  <g class="icon" transform="translate(430 36.0) scale(1.167)"><path d="M7.5 18.5a4.5 4.5 0 0 1-.6-8.96 5.5 5.5 0 0 1 10.6 1.2 3.9 3.9 0 0 1-.5 7.76z"/></g>
+  <text class="name" x="470" y="47.0">Worker</text>
+  <text class="sub" x="470" y="67.0">index request</text>
+  <path class="wire" d="M300 80 V148"/>
+  <polygon class="head" points="300,158 293,146 307,146"/>
+  <text class="label" x="314" y="112">any of these starts it</text>
+  <rect class="slot" x="20" y="134" width="560" height="596" rx="12"/>
+  <rect class="box" x="50" y="160" width="500" height="66" rx="10"/>
+  <g class="icon" transform="translate(66 179) scale(1.167)"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6"/><path d="M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3"/></g>
+  <text class="name" x="108" y="188">1. Record</text>
+  <text class="body" x="108" y="211">The store creates or updates the account's record.</text>
+  <path class="wire" d="M300 226 V240"/>
+  <polygon class="head" points="300,250 293,238 307,238"/>
+  <rect class="box" x="50" y="252" width="500" height="66" rx="10"/>
+  <g class="icon" transform="translate(66 271) scale(1.167)"><rect x="3" y="5" width="18" height="14" rx="2.5"/><circle cx="8.5" cy="10.5" r="2"/><path d="M5.5 16c.5-1.5 1.6-2.2 3-2.2s2.5.7 3 2.2M14.5 10h4M14.5 14h4"/></g>
+  <text class="name" x="108" y="280">2. Handle</text>
+  <text class="body" x="108" y="303">Verifies the handle against the account's DID.</text>
+  <path class="wire" d="M300 318 V332"/>
+  <polygon class="head" points="300,342 293,330 307,330"/>
+  <rect class="box" x="50" y="344" width="500" height="66" rx="10"/>
+  <g class="icon" transform="translate(66 363) scale(1.167)"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c.8-3.8 3.6-5.7 7.5-5.7s6.700 1.900 7.500 5.700"/></g>
+  <text class="name" x="108" y="372">3. Profile</text>
+  <text class="body" x="108" y="395">Asks Bluesky's AppView for name, avatar and counts.</text>
+  <path class="wire" d="M300 410 V424"/>
+  <polygon class="head" points="300,434 293,422 307,422"/>
+  <rect class="box" x="50" y="436" width="500" height="66" rx="10"/>
+  <g class="icon" transform="translate(66 455) scale(1.167)"><path d="M3.5 11.5v-8h8l9 9-8 8z"/><circle cx="7.8" cy="7.8" r="1.3"/></g>
+  <text class="name" x="108" y="464">4. Policy</text>
+  <text class="body" x="108" y="487">Applies labels, domain blocks and overrides.</text>
+  <path class="wire" d="M300 502 V516"/>
+  <polygon class="head" points="300,526 293,514 307,514"/>
+  <rect class="box" x="50" y="528" width="500" height="66" rx="10"/>
+  <g class="icon" transform="translate(66 547) scale(1.167)"><path d="M12 4v15M6 13l6 6 6-6"/></g>
+  <text class="name" x="108" y="556">5. Index</text>
+  <text class="body" x="108" y="579">The bridge sends the account to the search engine.</text>
+  <path class="flow" d="M300 594 V608"/>
+  <polygon class="flowhead" points="300,618 293,606 307,606"/>
+  <rect class="core" x="50" y="620" width="500" height="66" rx="10"/>
+  <g class="icon on" transform="translate(66 639) scale(1.167)"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20.5 20.5-5.2-5.2"/></g>
+  <text class="name" x="108" y="648">Searchable</text>
+  <text class="body" x="108" y="671">The search engine can now return the account.</text>
+  <text class="note" x="50" y="718">Each slot does all of this on its own, from the same sources.</text>
 </svg>
