@@ -46,10 +46,11 @@ kept indefinitely. new integrations should prefer the canonical endpoint.
 
 ## architecture
 
-Tantivy serves our own index, seeded from verified R2 artifacts and updated continuously
-from Turso. The public Worker handles caching and API responses. Offline refresh builds
-and qualifies an inactive backend before routing changes; live updates do not wait for a build.
-The current 12-hour rebuild cadence renews source-coverage evidence, not a Tantivy requirement.
+Two slots each follow the network themselves: the relay's firehose, the PLC directory and
+the moderation labeler. Each keeps every account in a store on its own disk and feeds a
+Tantivy index on the same machine. One slot serves search and the other stands by, ready
+to take over. The public Worker handles caching and API responses, and reads profiles from
+the serving slot.
 
 ## etiquette
 

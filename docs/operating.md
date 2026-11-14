@@ -307,8 +307,7 @@ The admin endpoints take the Worker's admin secret, which `.env` holds as
 set -a; . ./.env; set +a
 ```
 
-`just smoke`, `just stats-parity` and `just stats-backfill` read the same
-secret from `TYPEAHEAD_SECRET`, so run them as
+`just smoke` reads the same secret from `TYPEAHEAD_SECRET`, so run it as
 `TYPEAHEAD_SECRET="$ADMIN_SECRET" just smoke`. Without it the smoke suite
 skips its admin checks.
 
@@ -400,20 +399,21 @@ just deploy-image-renderer    # renderer, then the image smoke suite
 Push before deploying. All three lint and type-check first.
 `just deploy-worker-only` skips the smoke suites.
 
-`just deploy-worker` also runs `just control-ready` first, which compares the
-control database's rules with Turso's and needs `TURSO_URL` and
-`TURSO_AUTH_TOKEN`. That check is [left over](teardown.md).
+`just deploy-worker` and `just deploy-worker-only` run `just control-ready`
+first. It refuses to deploy while `wrangler.jsonc` has the placeholder
+`database_id` for `CONTROL_DB`, or while the control database lacks its
+schema, which it reads through wrangler. Without the schema every admin
+policy change fails and no indexing request is logged.
 
 Deploy the renderer before a public Worker that changes how it calls it. The
 transport accepts only the slot origins listed in `src/search-route.ts`; a
 new slot's origin has to be deployed there before a record can name it.
 
-The public Worker's settings are in `wrangler.jsonc`. `PROFILE_MODE` and
-`CORPUS_MODE` are `slot`: profiles, the reputation page and the account counts
-on `/stats` are read from the serving slot through the transport.
-`TURSO_ACTORS` is `off`: the endpoints the old ingester wrote through answer
-410. `STATS_MODE` is `d1-only`: statistics are written to and read from D1,
-and Turso is not touched.
+The public Worker's settings are in `wrangler.jsonc`. Profiles, the
+reputation page and the account counts on `/stats` are read from the serving
+slot through the transport. Policy and index requests are in the
+`typeahead-control` D1 database and statistics in `typeahead-stats`. The
+`/admin` endpoints the old ingester wrote through answer 410.
 
 ## Statistics
 
@@ -434,7 +434,6 @@ wrong.
 
 ```sh
 bunx wrangler d1 execute typeahead-stats --remote --command "SELECT datetime(bucket * 300, 'unixepoch') AS bucket_utc, sum(hits) AS answers FROM request_buckets GROUP BY bucket ORDER BY bucket DESC LIMIT 6"
-just stats-parity     # compares Turso's statistics with D1's; they diverge from 2026-11-13, when Turso stopped being written
 ```
 
 Migrations are in `migrations/stats-d1`. Worker logs are in Cloudflare's

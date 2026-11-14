@@ -160,8 +160,9 @@ regression is pinned). Extend it, don't prune it.
 
 ## deploys (smoke-gated)
 
-- `just deploy-worker` — lint and type-check, then `wrangler deploy` **then** the smoke suite. A deploy that breaks
-  shape, ranking, or the admin API fails loudly here. `deploy-worker-only` skips smoke but still requires lint.
+- `just deploy-worker` — `control-ready` (the control database has its schema), lint and type-check, then
+  `wrangler deploy` **then** the smoke suite. A deploy that breaks shape, ranking, or the admin API fails loudly
+  here. `deploy-worker-only` skips smoke but still requires `control-ready` and lint.
 - `just deploy-search-transport` deploys the transport, then runs the smoke suite. A slot's
   origin must be in `src/search-route.ts` and deployed before a route record can name it.
 - `just deploy-image-renderer` deploys the private PNG renderer, then validates
@@ -188,17 +189,18 @@ regression is pinned). Extend it, don't prune it.
   enrichment and never drains a backlog: discovering, resolving and refreshing
   accounts is the store process's work on each slot. Every run logs `cron_done`
   with per-phase ms.
-- the Worker reads and writes nothing in Turso for accounts (`PROFILE_MODE=slot`,
-  `CORPUS_MODE=slot`, `TURSO_ACTORS=off`). Add no new Turso read or write. The
-  Turso code that remains is listed for removal in [teardown](docs/teardown.md).
+- the Worker has three stores and no other database: the routed slot for
+  accounts (`src/slot-read.ts`), the `typeahead-control` D1 database for policy
+  and index requests, and the `typeahead-stats` D1 database for statistics.
+  The `/admin` endpoints that wrote the old actor tables answer 410 from a
+  static table in `src/index.ts`; keep their paths and body.
 - traffic stats: `traffic_buckets` counts search cache-misses by app; `request_buckets` counts
   EVERY answer the worker gives (app × endpoint × status, router wrapper in `src/index.ts`) and
   feeds the `source · endpoint · status` views on /stats. `endpointLabel` is a fixed label set —
   unknown paths must collapse to `other`, never mint a new endpoint. Check `/stats?view=status`
   first when something smells.
   Statistics writers go through `recordStats`/`writeStats` (`src/stats-store.ts`) and
-  statistics reads go through `statsReadDb`. `STATS_MODE=d1-only` writes and reads the
-  `STATS_DB` D1 database and does not touch Turso.
+  statistics reads go through `statsDb`, the `STATS_DB` D1 database.
 - moderation overrides, blocked domains and indexing requests have one source of truth, the
   `typeahead-control` D1 database, written only through `src/control-store.ts` (every policy
   write raises the revision in the same transaction). Store slots pull it; nothing pushes to a

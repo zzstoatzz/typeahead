@@ -14,13 +14,18 @@ Turso has not been approved for deletion.
 
 Take a final dump first and keep it somewhere that outlives the database.
 
-One thing still reads it, so it cannot go before the code under
-[Turso in the Worker](#turso-in-the-worker) does: `just deploy-worker` runs
-`just control-ready` first, which reads Turso's moderation rules.
+Nothing in this repository's Worker, tests or tooling reads or writes it, and
+`just deploy-worker` does not consult it. The deployed Worker has made no
+Turso query since 2026-11-13. Before deleting the database:
 
-The Worker itself stopped using it on 2026-11-13: `STATS_MODE=d1-only` writes
-statistics to D1 alone, and `TURSO_ACTORS=off` had already stopped the account
-writes.
+- Deploy the public Worker from a commit without the Turso client. The Worker
+  deployed before it builds a client on every request, though it sends
+  nothing, and the deploy gate of earlier commits reads Turso's rules.
+- Delete the Worker's `TURSO_URL` and `TURSO_AUTH_TOKEN` secrets
+  (`bunx wrangler secret delete`) and take both out of `.env`.
+
+The code under [The old ingester's code](#the-old-ingesters-code) can still
+read it and runs nowhere.
 
 Size and plan: not checked.
 
@@ -57,6 +62,32 @@ On 2026-11-14, with the owner's go:
   sync silent`.
 - Every remote branch except `main`, on both remotes.
 
+From the code, on 2026-11-14. The deployed Worker changes with its next
+deploy:
+
+- The Worker's Turso client, the `@libsql/client` dependency and the
+  `TURSO_URL` and `TURSO_AUTH_TOKEN` bindings.
+- `STATS_MODE`, `PROFILE_MODE`, `CORPUS_MODE` and `TURSO_ACTORS`, with the
+  code only their other values reached: the Turso statistics store and the
+  dual write, the Turso profile and reputation lookups and their compare
+  mode, the Turso corpus counts, and the mirror of policy changes and
+  requested accounts into Turso.
+- The handlers behind `/admin/ingest`, `/admin/delete`,
+  `/admin/enrich-profiles`, `/admin/identity/*` and `/admin/labels*`, and the
+  cron's moderation refresh. Those paths answer 410 from a static table.
+- The Turso search fallback and its two switches, `/slot/control/profile-fill`,
+  the statistics migration and its `/admin/stats-backfill` and
+  `/admin/stats-parity` routes.
+- The comparison with Turso in `just control-ready`, and the recipes
+  `control-backfill-sql`, `control-check`, `control-served-check`,
+  `profile-check`, `corpus-check`, `stats-backfill`, `stats-parity`,
+  `enrich-plan`, `cleanup` and `cleanup-dry` with their scripts.
+- The two Turso `EXPLAIN` checks in the smoke suite, and the scripts that
+  queried Turso or posted to the retired endpoints: the PLC and targeted
+  backfills, the PDS repair canary, and the ingest-recovery steps that
+  audited, compared, reconciled or refreshed Turso rows.
+- The Turso schema dump and the in-memory libSQL the tests used in its place.
+
 ## Work that remains
 
 ### Evergreen's inventory
@@ -64,41 +95,33 @@ On 2026-11-14, with the owner's go:
 `site/services.json` in the `evergreen` repository still lists the old
 typeahead resources and none of the new ones.
 
-### Turso in the Worker
+### Turso's traces in the Worker
 
-Remove once the owner is ready to let the database go. The Worker reads
-nothing from Turso for accounts and writes nothing to its account tables.
+None of these reads or writes Turso.
 
-- The Turso half of `src/stats-store.ts` and the modes other than `d1-only`, `src/stats-migration/`, `scripts/stats-d1.ts`, the
-  `statsMigrationRoute` call in `src/index.ts`, and the `stats-backfill` and
-  `stats-parity` recipes.
-- `src/turso-policy-mirror.ts` and its calls. `mirrorRequestedActor`,
-  `handleDelete`, `handleEnrichProfiles` and `enrichProfileDids` in
-  `src/handlers/admin.ts`.
-- `src/handlers/ingest.ts`, `src/identity-queue.ts`, `src/account-labels.ts`
-  and `src/backfill.ts`, with the `/admin/*` routes that answer 410 now.
-- `refreshModeration` in `src/cron.ts`.
-- The Turso branch of `src/handlers/search.ts`, with `TURSO_FALLBACK_ON_EMPTY`
-  and `TURSO_FALLBACK_ON_UNREACHABLE`.
-- `countSnapshot` and `countExclusions`, and the Turso halves of
-  `src/handlers/profiles.ts`, `src/handlers/reputation.ts` and `src/corpus.ts`.
-- `/slot/control/profile-fill` and `src/handlers/slot-profile-fill.test.ts`.
-- `PROFILE_MODE`, `CORPUS_MODE`, `TURSO_ACTORS` and `STATS_MODE` themselves.
-  `getDb`, `tursoDb`, the `@libsql/client` dependency, and the `TURSO_URL` and
-  `TURSO_AUTH_TOKEN` secrets on the Worker and in `.env`.
-- `scripts/turso-parity.ts` and `src/turso-parity.ts` with the `profile-check`
-  and `corpus-check` recipes. `scripts/control-backfill.ts` with
-  `control-backfill-sql`, `control-check`, `control-served-check` and
-  `control-ready`, including `control-ready` as a prerequisite of
-  `just deploy-worker`.
-- The two Turso `EXPLAIN` checks in `scripts/smoke.py`.
-- `scripts/prioritized-enrich.py`, `scripts/cleanup-dead-actors.py`, the
-  recovery scripts and the `cleanup`, `cleanup-dry` and `enrich-plan` recipes.
-- `docs/ops/turso-schema-20261110.sql`, once `src/control-d1-fixture.ts` and
-  `src/stats-d1.test.ts` no longer load it.
-- The `architecture` section of `/llms.txt` (`src/pages/llms.ts`) and the
-  Turso panel of the costs page (`src/pages/costs.ts`) still describe the old
-  system.
+- `TursoDB` in `src/db.ts`, an alias of `SqlDb`. `src/moderation.ts` imports
+  it, and that file's bytes are hashed into `src/moderation-regexes.json`,
+  which the slots' engine is built against. Renaming it is a slot image
+  change.
+- The 410 answer for the retired `/admin` paths says "the Turso actor
+  tables". It is the body those paths answered before, kept so a caller that
+  is still running sees no change.
+- `endpointLabel` in `src/metrics.ts` still has labels for the retired
+  `/admin` paths, so their 410s keep their own rows on `/stats`.
+- The `actor_deltas` and `counters` tables in `typeahead-stats`. Nothing
+  writes them; `/stats` still reads `actor_deltas`.
+- `migrations/stats-d1/0001_statistics_tables.sql` names Turso and the schema
+  dump in its opening comment. It is an applied migration.
+- A comment in `src/handlers/og.ts`, the notes in `ops/usage/README.md`, and
+  `scripts/tests/turso_transport.py`, which drives the old ingester's Zig
+  tests.
+- `scripts/capture-ingest-recovery.py`, `scripts/check-recovery-status.py`,
+  `scripts/plan-ingest-recovery.py` and the `scripts/pds_repair_*.py` modules
+  are what is left of the ingest recovery and the PDS repair. They read the
+  relay, the old ingester's health and local files.
+- `scripts/snapshot_refresh/test_search_accounting.mjs` expects the search
+  handler to answer 200 with no actors when its engine fails. It answers from
+  Bluesky or 503, so the script fails; no check runs it.
 
 ### The old ingester's code
 

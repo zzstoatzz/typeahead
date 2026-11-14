@@ -38,7 +38,7 @@ These are left over and are listed in [teardown](docs/teardown.md).
 | resource | estimate a month | source |
 | --- | --- | --- |
 | old snapshot bundles in the `typeahead-index` R2 bucket | not measured | |
-| the Turso database `typeahead`, one database on a shared plan | not measured | |
+| the Turso database `typeahead`, one database on a shared plan, which nothing reads or writes | not measured | |
 
 The hub snapshot may still show `typeahead-ingester` and the two
 `typeahead-tantivy` apps because it looks back seven days. They were destroyed
