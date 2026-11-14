@@ -4,7 +4,7 @@ import { readRoute, ROUTE_KEY, type RouteSource } from "./search-route";
 
 const current = {
   engine: "tantivy",
-  origin: "https://typeahead-tantivy-b.fly.dev",
+  origin: "https://typeahead-shadow-b.fly.dev",
   build_id: "b1792908655-test",
   format: "tantivy-0.27-f32-did-expiry-v4",
   admission_sha256: "a".repeat(64),

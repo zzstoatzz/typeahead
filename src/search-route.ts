@@ -5,9 +5,6 @@ export const ROUTE_KEY = "control/search-routing.json";
 const targetSchema = z.object({
   engine: z.literal("tantivy"),
   origin: z.enum([
-    "https://typeahead-tantivy-dev.fly.dev",
-    "https://typeahead-tantivy-a.fly.dev",
-    "https://typeahead-tantivy-b.fly.dev",
     "https://typeahead-shadow-a.fly.dev",
     "https://typeahead-shadow-b.fly.dev",
   ]),
@@ -27,13 +24,6 @@ export const parseRoute = routeSchema.parse;
 
 export type SearchRoute = ReturnType<typeof parseRoute>;
 
-const mutationSchema = z.object({
-  owner: z.literal("typeahead-snapshot-refresh"),
-  request_id: z.string().check(z.regex(/^[A-Za-z0-9_-]{8,80}$/)),
-  app: z.enum(["typeahead-tantivy-a", "typeahead-tantivy-b"]),
-  acquired_at: z.int().check(z.gte(0)),
-});
-
 export function routeIdentity(route: SearchRoute): string {
   return JSON.stringify([route.engine, route.origin, route.build_id, route.format, route.admission_sha256, route.binary_sha256, route.retrieval_strategy]);
 }
@@ -52,21 +42,12 @@ export async function conditionalRouteUpdate(bucket: R2Bucket, expectedEtag: str
   const current = targetSchema.parse(candidate);
   const before = await bucket.get(ROUTE_KEY);
   if ((before?.etag ?? null) !== expectedEtag) return false;
-  const retained = before === null ? undefined : z.object({
-    current: z.unknown(),
-    mutation: z.optional(z.unknown()),
-  }).parse(await before.json());
-  const mutation = retained?.mutation == null ? null : mutationSchema.parse(retained.mutation);
-  if (mutation && current.origin === `https://${mutation.app}.fly.dev`) return false;
+  const retained = before === null ? undefined : z.object({ current: z.unknown() }).parse(await before.json());
   const previous = targetSchema.safeParse(retained?.current);
   const options = expectedEtag === null
     ? { onlyIf: { etagDoesNotMatch: "*" } }
     : { onlyIf: { etagMatches: expectedEtag } };
-  const next = {
-    version: 1, current,
-    previous: previous.success ? previous.data : undefined,
-    mutation: mutation ?? undefined,
-  };
+  const next = { version: 1, current, previous: previous.success ? previous.data : undefined };
   const result = await bucket.put(ROUTE_KEY, JSON.stringify(next), options);
   return result !== null;
 }

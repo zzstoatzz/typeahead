@@ -1,8 +1,8 @@
 import { afterEach, expect, setSystemTime, test } from "bun:test";
 import { parseRoute, readRoute, sharedHintsAllowed, type RouteSource } from "./search-route";
 
-const current = { engine: "tantivy", origin: "https://typeahead-tantivy-a.fly.dev", build_id: "b1792908655-authority", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
-const replacement = { ...current, origin: "https://typeahead-tantivy-b.fly.dev", build_id: "b1792908655-bucket" } as const;
+const current = { engine: "tantivy", origin: "https://typeahead-shadow-a.fly.dev", build_id: "b1792908655-authority", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "global-merge" } as const;
+const replacement = { ...current, origin: "https://typeahead-shadow-b.fly.dev", build_id: "b1792908655-bucket" } as const;
 let clock = 2_200_000_000_000;
 afterEach(() => setSystemTime());
 
