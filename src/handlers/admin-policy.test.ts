@@ -81,7 +81,7 @@ test("the override listing reads the control record", async () => {
 test("blocking a domain writes the control record, normalized, and lists it", async () => {
   const res = await handleDomainBlockSet(send("POST", "/admin/domain-block", { domain: "*.Spam.Example", reason: "farm" }), env);
   expect(res.status).toBe(200);
-  expect(await res.text()).toBe('{"domain":"spam.example","reason":"farm","status":"blocked; backfilling existing matches in background"}');
+  expect(await res.text()).toBe('{"domain":"spam.example","reason":"farm","status":"blocked; slots apply it on their next policy pull"}');
   expect((await policySnapshot(control)).blocked_domains).toEqual(["spam.example"]);
 
   const listed = await body(await handleDomainBlockList(send("GET", "/admin/domain-blocks"), env));
@@ -117,7 +117,7 @@ test("a slot that does not answer after the override is cleared is a 503 that sa
 test("unblocking a domain removes it from the control record", async () => {
   const res = await handleDomainBlockDelete(send("DELETE", "/admin/domain-block?domain=.SPAM.example"), env);
   expect(res.status).toBe(200);
-  expect(await res.text()).toBe('{"domain":"spam.example","status":"unblocked; recomputing affected actors in background"}');
+  expect(await res.text()).toBe('{"domain":"spam.example","status":"unblocked; slots apply it on their next policy pull"}');
   expect((await policySnapshot(control)).blocked_domains).toEqual([]);
 
   const unblocked = await handleModOverrideDelete(send("DELETE", "/admin/mod-override?did=did:plc:sub"), env);

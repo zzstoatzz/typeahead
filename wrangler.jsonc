@@ -10,7 +10,7 @@
   "vars": {
     "SERVICE_DID": "did:plc:y6kywgnb7xletjpa5hhxmd4k",
     "PDS_UI_ENABLED": "1",
-    "SEARCH_CACHE_GENERATION": "tantivy-b1793346536-cp-7c8322df79-cutover"
+    "SEARCH_CACHE_GENERATION": "slots-20261114"
   },
   "services": [
     { "binding": "SEARCH_TRANSPORT", "service": "typeahead-search-transport" },
@@ -30,7 +30,7 @@
       "migrations_dir": "migrations/stats-d1"
     },
     {
-      // The control record store slots pull (docs/slot-control.md).
+      // The control record the slots pull (docs/operating.md).
       "binding": "CONTROL_DB",
       "database_name": "typeahead-control",
       "database_id": "a41ac6ae-0297-44ce-ba4c-066897d12f0d",

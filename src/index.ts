@@ -85,7 +85,7 @@ export default {
         const health = await controlHealth(env);
         if (health.ok) return;
         console.log(JSON.stringify({ event: "control_unhealthy", error: health.error }));
-        await postWebhook(env, `**typeahead: the control database is not answering** — ${health.error}. Admin policy changes fail and indexing requests are not reaching store slots. See docs/slot-control.md.`);
+        await postWebhook(env, `**typeahead: the control database is not answering** — ${health.error}. Admin policy changes fail and indexing requests are not reaching store slots. See docs/operating.md.`);
       }],
       ["pruneIndexRequests", async () => {
         const pruned = await pruneIndexRequests(controlDb(env), Math.floor(Date.now() / 1000));

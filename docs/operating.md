@@ -33,9 +33,8 @@ just index-status
 ```
 
 - `/health/freshness` asks the serving slot whether it is ready, how far its
-  index is behind its store (`replica_lag_s`), and whether a search for a known
+  index is behind its store (`index_lag_s`), and whether a search for a known
   handle finds it (`probe_ok`). `ok: true` and `stale: false` is healthy.
-  `snapshot_age_s`, `coverage_age_s` and `coverage_deadline` are always `null`.
 - `/health/control` says whether the control database answers, and its policy
   revision.
 - `/route` names the serving slot's origin, build and binary.

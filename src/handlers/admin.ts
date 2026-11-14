@@ -292,7 +292,7 @@ export async function handleDomainBlockSet(
   const failed = await controlWrite(env, "domain_block", (control) => blockDomain(control, domain, body.reason || "", unixNow()));
   if (failed) return failed;
 
-  return json({ domain, reason: body.reason || "", status: "blocked; backfilling existing matches in background" });
+  return json({ domain, reason: body.reason || "", status: "blocked; slots apply it on their next policy pull" });
 }
 
 export async function handleDomainBlockDelete(
@@ -309,7 +309,7 @@ export async function handleDomainBlockDelete(
   const failed = await controlWrite(env, "domain_unblock", (control) => unblockDomain(control, domain));
   if (failed) return failed;
 
-  return json({ domain, status: "unblocked; recomputing affected actors in background" });
+  return json({ domain, status: "unblocked; slots apply it on their next policy pull" });
 }
 
 export async function handleDomainBlockList(

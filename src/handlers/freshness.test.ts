@@ -1,5 +1,5 @@
 import { describe, expect, test, afterEach } from "bun:test";
-import { measureFreshness, notifyFreshnessChange, type Freshness, type IndexStatusBody } from "./freshness";
+import { measureFreshness, notifyFreshnessChange, type Freshness } from "./freshness";
 import type { Env } from "../types";
 
 const realFetch = globalThis.fetch;
@@ -13,7 +13,7 @@ function installFetch(fake: FetchLike): void {
 
 /** stand in for the search service */
 function backend(opts: {
-  lag?: number; ready?: boolean; buildEpoch?: number; findsSelf?: boolean; down?: boolean;
+  lag?: number; ready?: boolean; findsSelf?: boolean; down?: boolean;
 }) {
   installFetch(async (input) => {
     if (opts.down) throw new Error("unreachable");
@@ -21,13 +21,13 @@ function backend(opts: {
     const body = url.includes("/health")
       ? { status: "ok", ready: opts.ready ?? true, sync_lag_s: opts.lag ?? 42 }
       : url.includes("/index/status")
-      ? { build_id: `b${opts.buildEpoch ?? Math.floor(Date.now() / 1000)}-21fc` }
+      ? { build_id: "b1794333857-cp-slot" }
       : { actors: opts.findsSelf === false ? [] : [{ handle: "zzstoatzz.io" }] };
     return new Response(JSON.stringify(body), { status: 200 });
   });
 }
 
-type PrevState = { stale: boolean; refresh_overdue?: boolean } | null;
+type PrevState = { stale: boolean } | null;
 /** the slice of KVNamespace notifyFreshnessChange consumes: one get("freshness", "json") */
 type FreshnessKv = { get(key: string, type: "json"): Promise<PrevState> };
 
@@ -46,138 +46,21 @@ describe("freshness", () => {
     const f = await measureFreshness(env);
     expect(f.stale).toBe(false);
     expect(f.ok).toBe(true);
-    expect(f.replica_lag_s).toBe(120);
+    expect(f.index_lag_s).toBe(120);
+    expect(f.build_id).toBe("b1794333857-cp-slot");
   });
 
-  test("catches the 2026-07-28 failure: replica far behind, everything else green", async () => {
-    // exactly the shape of the incident — service up, ready, snapshot fresh,
-    // serving fine, and 48h stale underneath
+  test("an index far behind its store is stale while everything else is green", async () => {
+    // the shape of the 2026-07-28 incident: up, ready, answering, and 48h stale underneath
     backend({ lag: 175469 });
     const f = await measureFreshness(env);
     expect(f.stale).toBe(true);
-    expect(f.reasons.join(" ")).toContain("behind turso");
+    expect(f.reasons.join(" ")).toContain("behind its store");
   });
 
-  test("normal sync jitter does not trip it", async () => {
+  test("a lag under the warning line does not trip it", async () => {
     backend({ lag: 8 * 60 });          // under the 10 min warn line
     expect((await measureFreshness(env)).stale).toBe(false);
-  });
-
-  test("a stalled snapshot rebuild is stale even with a healthy replica", async () => {
-    backend({ lag: 30, buildEpoch: Math.floor(Date.now() / 1000) - 5 * 24 * 3600 });
-    const f = await measureFreshness(env);
-    expect(f.stale).toBe(true);
-    expect(f.reasons.join(" ")).toContain("old");
-  });
-
-  test("legacy and compact snapshots retain age alerts through real HTTP", async () => {
-    const now = Math.floor(Date.now() / 1000);
-    let buildId = "";
-    const server = Bun.serve({
-      hostname: "127.0.0.1", port: 0,
-      fetch(request) {
-        const path = new URL(request.url).pathname;
-        if (path === "/health") return Response.json({ ready: true, sync_lag_s: 30 });
-        if (path === "/index/status") return Response.json({ build_id: buildId });
-        return Response.json({ actors: [{ handle: "zzstoatzz.io" }] });
-      },
-    });
-    try {
-      for (const prefix of ["b", "compact-b"]) {
-        for (const age of [3600, 5 * 24 * 3600]) {
-          buildId = `${prefix}${now - age}-21fc-px05`;
-          const result = await measureFreshness(fakeEnv({ SEARCH_BACKEND_URL: server.url.origin }));
-          expect(result.snapshot_age_s).toBeGreaterThanOrEqual(age);
-          expect(result.snapshot_age_s).toBeLessThan(age + 10);
-          expect(result.stale).toBe(age > 4 * 24 * 3600);
-          expect(result.build_id).toBe(buildId);
-        }
-      }
-    } finally {
-      server.stop(true);
-    }
-  });
-
-  test("a checkpoint slot past its coverage deadline is stale but still ok", async () => {
-    const now = Math.floor(Date.now() / 1000);
-    let index: IndexStatusBody = {};
-    const server = Bun.serve({
-      hostname: "127.0.0.1", port: 0,
-      fetch(request) {
-        const path = new URL(request.url).pathname;
-        if (path === "/health") return Response.json({ ready: true, sync_lag_s: 30 });
-        if (path === "/index/status") return Response.json(index);
-        return Response.json({ actors: [{ handle: "zzstoatzz.io" }] });
-      },
-    });
-    const checkpoint = (cut: number, round: number | null): IndexStatusBody => ({
-      build_id: `b${now - 3600}-cp-test`,
-      source_manifest: {
-        source_kind: "sqlite-committed-prefix",
-        source_bootstrap: { checkpoint_receipt: { source_clock_before: cut } },
-      },
-      reconciliation: { last_completed_at: round },
-    });
-    try {
-      const target = fakeEnv({ SEARCH_BACKEND_URL: server.url.origin });
-      index = checkpoint(now - 3600, null);
-      let f = await measureFreshness(target);
-      expect(f.stale).toBe(false);
-      expect(f.coverage_deadline).toBe(now - 3600 + 86400);
-      expect(f.coverage_age_s).toBeGreaterThanOrEqual(3600);
-      expect(f.refresh_overdue).toBe(false);
-
-      // the 2026-11-02 shape: the morning refresh never ran, so by mid-afternoon
-      // the checkpoint is 16 h old — still serving, but one more miss is an outage
-      index = checkpoint(now - 16 * 3600, null);
-      f = await measureFreshness(target);
-      expect(f.stale).toBe(false);
-      expect(f.refresh_overdue).toBe(true);
-      expect(f.reasons.join(" ")).toContain("refresh overdue: checkpoint coverage 16h old, stale in 8h");
-
-      index = checkpoint(now - 3 * 86400, now - 7200);
-      f = await measureFreshness(target);
-      expect(f.stale).toBe(false);
-      expect(f.coverage_deadline).toBe(now - 7200 + 86400);
-
-      index = checkpoint(now - 3 * 86400, now - 86400 - 3600);
-      f = await measureFreshness(target);
-      expect(f.stale).toBe(true);
-      expect(f.ok).toBe(true);
-      expect(f.probe_ok).toBe(true);
-      expect(f.coverage_deadline).toBe(now - 3600);
-      expect(f.coverage_age_s).toBeGreaterThanOrEqual(86400 + 3600);
-      expect(f.reasons.join(" ")).toContain("checkpoint coverage 25h old");
-      expect(f.refresh_overdue).toBe(false);
-
-      // a store-fed slot keeps the build id and checkpoint cut of its one
-      // bootstrap; the same status under the Turso policy is still stale
-      const bootstrapped = checkpoint(now - 10 * 86400, now - 9 * 86400);
-      bootstrapped.build_id = `b${now - 10 * 86400}-cp-bootstrap`;
-      index = { ...bootstrapped, source_cursor: { source_policy: "turso-authoritative-observations-v2" } };
-      f = await measureFreshness(target);
-      expect(f.stale).toBe(true);
-      expect(f.reasons.join(" ")).toContain("snapshot 240h old");
-      expect(f.reasons.join(" ")).toContain("checkpoint coverage 216h old");
-      index = { ...bootstrapped, source_cursor: { source_policy: "store-change-log-v1" } };
-      f = await measureFreshness(target);
-      expect(f.stale).toBe(false);
-      expect(f.refresh_overdue).toBe(false);
-      expect(f.build_id).toBe(bootstrapped.build_id ?? null);
-      expect(f.snapshot_age_s).toBeNull();
-      expect(f.coverage_age_s).toBeNull();
-      expect(f.coverage_deadline).toBeNull();
-      expect(f.replica_lag_s).toBe(30);
-      expect(f.reasons).toEqual([]);
-
-      index = { build_id: `b${now - 3600}-21fc`, source_manifest: { source_kind: "flatpx05" } };
-      f = await measureFreshness(target);
-      expect(f.stale).toBe(false);
-      expect(f.coverage_age_s).toBeNull();
-      expect(f.coverage_deadline).toBeNull();
-    } finally {
-      server.stop(true);
-    }
   });
 
   test("a serving path that cannot find the probe handle is not ok", async () => {
@@ -213,33 +96,9 @@ describe("freshness notification", () => {
     });
   };
 
-  const F = (stale: boolean, refresh_overdue = false): Freshness => ({
-    ok: !stale, stale, replica_lag_s: stale ? 3600 : 60, snapshot_age_s: 7200,
-    build_id: "b1-x", coverage_age_s: null, coverage_deadline: null, refresh_overdue, probe_ok: true,
-    reasons: stale ? ["replica 3600s behind turso"] : refresh_overdue ? ["refresh overdue: checkpoint coverage 16h old, stale in 8h"] : [],
-  });
-
-  test("warns once when a refresh is missed, then escalates and recovers", async () => {
-    capture();
-    await notifyFreshnessChange(envWith({ stale: false }), F(false, true));
-    expect(calls.length).toBe(1);
-    expect(calls[0]).toContain("refresh missed");
-    expect(calls[0]).toContain("stale in 8h");
-    capture();
-    await notifyFreshnessChange(envWith({ stale: false, refresh_overdue: true }), F(false, true));
-    expect(calls.length).toBe(0);          // still overdue -> silent
-    capture();
-    await notifyFreshnessChange(envWith({ stale: false, refresh_overdue: true }), F(true));
-    expect(calls[0]).toContain("serving is stale");
-    capture();
-    await notifyFreshnessChange(envWith({ stale: false, refresh_overdue: true }), F(false));
-    expect(calls[0]).toContain("fresh again");
-  });
-
-  test("first run that is already overdue warns", async () => {
-    capture();
-    await notifyFreshnessChange(envWith(null), F(false, true));
-    expect(calls[0]).toContain("refresh missed");
+  const F = (stale: boolean): Freshness => ({
+    ok: !stale, stale, index_lag_s: stale ? 3600 : 60, build_id: "b1-x", probe_ok: true,
+    reasons: stale ? ["index 3600s behind its store"] : [],
   });
 
   test("fires when it goes stale", async () => {
