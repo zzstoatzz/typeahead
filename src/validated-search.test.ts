@@ -14,6 +14,15 @@ function identity(buildId: string) {
   return { "X-Typeahead-Engine": "tantivy", "X-Typeahead-Build": buildId, "X-Typeahead-Format": first.format, "X-Typeahead-Binary-Sha256": first.binary_sha256, "X-Typeahead-Retrieval-Strategy": first.retrieval_strategy };
 }
 
+/** Wait for something a request causes, for at most a second. A fixed sleep
+ *  here failed on a busy CI host, where two loopback round trips took longer
+ *  than 40 ms; the tests that use this give the route 1.5 s so that what they
+ *  wait for still has to happen before validation can finish. */
+async function until(done: () => boolean): Promise<void> {
+  const deadline = performance.now() + 1000;
+  while (!done() && performance.now() < deadline) await Bun.sleep(5);
+}
+
 test("a changed admission identity discards a same-origin same-build hinted response", async () => {
   const candidate = { engine: "tantivy", origin: "https://typeahead-tantivy-dev.fly.dev", build_id: "b1792908655-test", format: "tantivy-0.27-f32-did-expiry-v4", admission_sha256: "a".repeat(64), binary_sha256: "c".repeat(64), retrieval_strategy: "per-segment" } as const;
   const previous = parseRoute({ version: 1, current: candidate });
@@ -74,11 +83,11 @@ test("real HTTP control and origin reads overlap while complete responses stay i
 });
 
 test("a completed hinted response waits for fresh route validation", async () => {
-  const f = fixture({ routeDelay: 120, originDelay: 5 });
+  const f = fixture({ routeDelay: 1500, originDelay: 5 });
   try {
     let returned = false;
     const response = validatedSearch(f.current(), first, f.origin).then(value => { returned = true; return value; });
-    await Bun.sleep(40);
+    await until(() => f.arrivals.includes("/" + first.build_id));
     expect(f.arrivals).toContain("/" + first.build_id);
     expect(returned).toBe(false);
     expect((await response).status).toBe(200);
@@ -115,7 +124,7 @@ test("route failure fails closed and cancels a slow hinted request", async () =>
     expect(response.status).toBe(503);
     expect(await response.text()).toBe(JSON.stringify({ error: "SearchRouteUnavailable" }));
     expect(performance.now() - start).toBeLessThan(300);
-    await Bun.sleep(10);
+    await until(() => f.aborted.includes("/" + first.build_id));
     expect(f.aborted).toContain("/" + first.build_id);
   } finally { f.server.stop(true); }
 });
@@ -140,12 +149,12 @@ test("a real refused origin connection becomes explicit backend unavailability",
 });
 
 test("an asynchronous hint overlaps real HTTP origin work without bypassing validation", async () => {
-  const f = fixture({ routeDelay: 120, originDelay: 5 });
+  const f = fixture({ routeDelay: 1500, originDelay: 5 });
   try {
     let returned = false;
     const hint = fetch(new URL('/hint', f.server.url)).then(() => first);
     const response = validatedSearch(f.current(), hint, f.origin, 'shared').then(value => { returned = true; return value; });
-    await Bun.sleep(40);
+    await until(() => f.arrivals.includes('/' + first.build_id));
     expect(f.arrivals).toContain('/' + first.build_id);
     expect(returned).toBe(false);
     expect((await response).status).toBe(200);
