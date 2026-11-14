@@ -4,8 +4,7 @@ import type { Env } from "./types";
 /** The control record: what an operator or a user asked for that every store
  *  slot must come to hold. It lives in the `typeahead-control` D1 database and
  *  is the source of truth for moderation overrides, blocked domains and
- *  indexing requests. Slots pull it; nothing pushes to a slot.
- *  docs/slot-control.md. */
+ *  indexing requests. Slots pull it; nothing pushes to a slot. */
 
 export type OverrideAction = "show" | "hide";
 
@@ -168,4 +167,16 @@ export async function pruneIndexRequests(control: SqlDb, now: number): Promise<n
   const result = await control.prepare("DELETE FROM index_requests WHERE requested_at < ?1")
     .bind(now - INDEX_REQUEST_RETENTION_SECONDS).run();
   return result.meta.changes;
+}
+
+/** one DID's override, or null when it has none */
+export async function getOverride(db: SqlDb, did: string): Promise<"show" | "hide" | null> {
+  const row = await db.prepare("SELECT action FROM mod_overrides WHERE did = ?1").bind(did).first<{ action: "show" | "hide" }>();
+  return row ? row.action : null;
+}
+
+/** every blocked domain, lowercased, as the set isDomainBlocked takes */
+export async function getBlockedDomains(db: SqlDb): Promise<Set<string>> {
+  const { results } = await db.prepare("SELECT domain FROM blocked_domains").all<{ domain: string }>();
+  return new Set((results || []).map((row) => row.domain.toLowerCase()));
 }

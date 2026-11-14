@@ -1,5 +1,3 @@
-import type { TursoDB } from "./db";
-
 export const BSKY_MOD_DID = "did:plc:ar7c4by46qjdydhdevvrndac";
 /** labels from bluesky's moderation service that hide an actor from search */
 export const MOD_HIDE_VALS = new Set(["!hide", "!takedown", "!suspend", "spam"]);
@@ -42,34 +40,11 @@ export function shouldHide(labels?: any[]): boolean {
   });
 }
 
-/** look up a single DID's mod override (null = no override) */
-export async function getOverride(db: TursoDB, did: string): Promise<'show' | 'hide' | null> {
-  const row = await db.prepare(
-    "SELECT action FROM mod_overrides WHERE did = ?1"
-  ).bind(did).first<{ action: 'show' | 'hide' }>();
-  if (!row) return null;
-  return row.action;
-}
-
-/** batch-fetch overrides for a list of DIDs */
-export async function getOverrides(db: TursoDB, dids: string[]): Promise<Map<string, 'show' | 'hide'>> {
-  const map = new Map<string, 'show' | 'hide'>();
-  if (dids.length === 0) return map;
-  const placeholders = dids.map(() => '?').join(',');
-  const { results } = await db.prepare(
-    `SELECT did, action FROM mod_overrides WHERE did IN (${placeholders})`
-  ).bind(...dids).all<{ did: string; action: 'show' | 'hide' }>();
-  for (const r of results || []) {
-    map.set(r.did, r.action);
-  }
-  return map;
-}
-
 /**
  * apex-inclusive domain match: a handle is blocked if it equals a blocked
  * domain OR is a subdomain of one (`x.dadavidtseng.com` and the bare
  * `dadavidtseng.com` both match a block on `dadavidtseng.com`). Case-folded;
- * `domains` is assumed lowercase (see getBlockedDomains).
+ * `domains` is assumed lowercase.
  */
 export function isDomainBlocked(handle: string, domains: Set<string>): boolean {
   if (!handle || domains.size === 0) return false;
@@ -78,14 +53,6 @@ export function isDomainBlocked(handle: string, domains: Set<string>): boolean {
     if (h === d || h.endsWith("." + d)) return true;
   }
   return false;
-}
-
-/** all blocked domains, lowercased, as a set for isDomainBlocked. */
-export async function getBlockedDomains(db: TursoDB): Promise<Set<string>> {
-  const { results } = await db.prepare(
-    "SELECT domain FROM blocked_domains"
-  ).all<{ domain: string }>();
-  return new Set((results || []).map((r) => r.domain.toLowerCase()));
 }
 
 /**

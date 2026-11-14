@@ -18,7 +18,7 @@
 //! point of that cycle.
 //!
 //! Every share is a flag, in events per thousand; the defaults are the
-//! production slot's own counters on 2026-11-12 (docs/evals/collector-cpu-20261112).
+//! production slot's own counters on 2026-11-12 (docs/history/evals/collector-cpu-20261112).
 //!
 //! CPU is `getrusage` user + system of this process. `decode` is measured in
 //! a pass of its own over the same frames; `intake` is the relay pass less

@@ -211,7 +211,7 @@ pub fn build(b: *std.Build) void {
     identity_bench_step.dependOn(&run_identity_bench.step);
 
     // Builds its synthetic store under .zig-cache/collector-bench on the
-    // first run; docs/evals/collector-cpu-20261112 has the method.
+    // first run; docs/history/evals/collector-cpu-20261112 has the method.
     const collector_bench = b.addExecutable(.{
         .name = "collector-bench",
         .root_module = b.createModule(.{

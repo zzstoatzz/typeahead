@@ -439,6 +439,22 @@ class StoreToStore(unittest.TestCase):
         world.rollback()
         self.assertEqual(world.bucket.record()['current']['origin'], SLOT_A)
 
+    def test_changed_moderation_rules_are_admitted_only_when_their_hash_is_named(self):
+        world = self.world_on_a()
+        moderation = store_status()['moderation']
+        world.slots[SLOT_B] = Slot(store_b_status(moderation={**moderation, 'canonical_rules_source_sha256': '9' * 64}))
+        self.refused(world, 'moderation rules differ', origin=SLOT_B)
+        self.refused(world, 'not the ones named', origin=SLOT_B, rules_sha256='8' * 64)
+        report = world.cutover(origin=SLOT_B, rules_sha256='9' * 64)
+        gates = report['admission']['gates']
+        self.assertEqual((gates['canonical_rules_source_sha256'], gates['rules_compared_with_serving']), ('9' * 64, False))
+        self.assertEqual(world.bucket.record()['current']['origin'], SLOT_B)
+
+    def test_naming_a_rules_hash_does_not_admit_unchanged_rules_under_another_name(self):
+        world = self.world_on_a()
+        self.refused(world, 'not the ones named', origin=SLOT_B, rules_sha256='9' * 64)
+        self.assertIs(world.cutover(origin=SLOT_B)['admission']['gates']['rules_compared_with_serving'], True)
+
     def test_the_serving_slot_is_not_a_candidate(self):
         world = self.world_on_a()
         self.refused(world, 'already routed')

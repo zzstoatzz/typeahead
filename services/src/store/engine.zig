@@ -9,7 +9,7 @@ pub const level_count = @typeInfo(@FieldType(@typeInfo(@FieldType(Db, "version")
 /// Table layout and memory settings, fixed for the life of a handle.
 ///
 /// The defaults follow the 2026-11-10 measurement of 13.2 million actors
-/// (docs/evals/zkv-scale-20261110). `fence_stride` 32 cut a handle's resident
+/// (docs/history/evals/zkv-scale-20261110). `fence_stride` 32 cut a handle's resident
 /// table metadata from 212 MB to 60 MB and moved cold point reads by a few
 /// microseconds. 4 KiB blocks are the only size whose read latency was
 /// measured (p99 under 200 µs). 64 KiB blocks loaded faster, opened in half

@@ -20,11 +20,6 @@ export interface SqlDb {
   batch(stmts: Stmt[], mode?: "write" | "read"): Promise<{ results: SqlRow[]; meta: { changes: number } }[]>;
 }
 
-/** src/moderation.ts imports the interface under this name. Its bytes are
- *  hashed into src/moderation-regexes.json and from there into every Tantivy
- *  snapshot manifest, so it is not edited for a rename. */
-export type TursoDB = SqlDb;
-
 /** batch() hands back raw rows; callers name the shape of the SELECT they wrote. */
 export function rowsAs<T>(rows: SqlRow[]): T[] {
   // SAFETY: same boundary contract as Stmt.all() — T is the caller's declaration

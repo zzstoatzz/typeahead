@@ -198,7 +198,7 @@ def is_count(value):
     return type(value) is int and value >= 0
 
 
-def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, now, serving_unhealthy=False):
+def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, now, serving_unhealthy=False, rules_sha256=None):
     """Decide whether a store-fed slot may take the route from `serving_target`.
 
     Returns the candidate's route identity (everything but the admission
@@ -209,6 +209,10 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     Every gate on the candidate itself still applies. The comparisons with the
     serving slot are made when its /index/status still answers as the slot the
     record names, and skipped when it does not, which the gates record.
+
+    `rules_sha256` is for an image that changes the moderation rules' source:
+    the candidate must report exactly that hash, and is not required to match
+    the serving slot's.
     """
     reasons = []
     if candidate_origin not in STORE_ORIGINS:
@@ -316,6 +320,9 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     rules = policy.get('canonical_rules_source_sha256')
     if not isinstance(rules, str) or not DIGEST.fullmatch(rules):
         reasons.append('candidate does not report a moderation rules hash')
+    elif rules_sha256 is not None:
+        if rules != rules_sha256:
+            reasons.append('candidate moderation rules are not the ones named with --rules-sha256')
     elif compared and rules != their_policy.get('canonical_rules_source_sha256'):
         reasons.append('moderation rules differ between the candidate and the serving slot')
     # A stale serving slot holds an old policy; only a fresh one is a fair comparison.
@@ -339,6 +346,7 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
         'policy_sha256': policy['sha256'],
         'policy_compared_with_serving': policy_compared,
         'canonical_rules_source_sha256': rules,
+        'rules_compared_with_serving': compared and rules_sha256 is None,
         'reconciliation_age_s': round_age,
         'reconciliation_duration_s': round_duration,
         'source_policy': STORE_POLICY,
@@ -358,10 +366,10 @@ def admit(candidate_origin, candidate, serving_target, serving, binary_sha256, n
     return identity, gates
 
 
-def plan_cutover(record, candidate_origin, candidate, serving, binary_sha256, now, serving_unhealthy=False):
+def plan_cutover(record, candidate_origin, candidate, serving, binary_sha256, now, serving_unhealthy=False, rules_sha256=None):
     """The admission document and the record that would replace `record`."""
     validate_record(record)
-    identity, gates = admit(candidate_origin, candidate, record['current'], serving, binary_sha256, now, serving_unhealthy)
+    identity, gates = admit(candidate_origin, candidate, record['current'], serving, binary_sha256, now, serving_unhealthy, rules_sha256)
     admission = {
         'schema_version': 1,
         'kind': 'store-slot-route-admission',
@@ -496,12 +504,12 @@ def switch(store, etag, before, after, *, get=http_get, sleep=time.sleep, clock=
     return written
 
 
-def cutover(store, candidate_origin, binary_sha256, *, write, serving_unhealthy=False, now=None, get=http_get, **timing):
+def cutover(store, candidate_origin, binary_sha256, *, write, serving_unhealthy=False, rules_sha256=None, now=None, get=http_get, **timing):
     record, etag = read_record(store)
     validate_record(record)
     now = int(time.time()) if now is None else now
     admission, after = plan_cutover(
-        record, candidate_origin, observe(candidate_origin, get), observe(record['current']['origin'], get), binary_sha256, now, serving_unhealthy
+        record, candidate_origin, observe(candidate_origin, get), observe(record['current']['origin'], get), binary_sha256, now, serving_unhealthy, rules_sha256
     )
     report = {'operation': 'cutover', 'written': False, 'expected_etag': etag, 'admission': admission, 'route': after}
     if not write:
@@ -540,7 +548,7 @@ def serving_route(get):
     return validate_target(json.loads(raw))
 
 
-def standby(binary_sha256=None, *, now=None, get=http_get):
+def standby(binary_sha256=None, *, rules_sha256=None, now=None, get=http_get):
     """Whether each store slot that is not serving could take the route right now.
 
     It runs the cutover's admission, as a failover when the serving slot is
@@ -560,7 +568,7 @@ def standby(binary_sha256=None, *, now=None, get=http_get):
         if expected is None:
             expected, source = serving_target['binary_sha256'], 'serving route'
         try:
-            identity, gates = admit(origin, observe(origin, get), serving_target, serving, expected, now, bool(serving_reasons))
+            identity, gates = admit(origin, observe(origin, get), serving_target, serving, expected, now, bool(serving_reasons), rules_sha256)
             slots.append({'origin': origin, 'fit': True, 'cutover_needs_serving_slot_unhealthy': bool(serving_reasons),
                           'binary_sha256_expected_from': source, 'target': identity, 'gates': gates})
         except Refused as refusal:
@@ -571,11 +579,17 @@ def standby(binary_sha256=None, *, now=None, get=http_get):
     }
 
 
-def check(candidate_origin, binary_sha256, *, serving_unhealthy=False, now=None, get=http_get):
+def check(candidate_origin, binary_sha256, *, serving_unhealthy=False, rules_sha256=None, now=None, get=http_get):
     serving_target = serving_route(get)
     now = int(time.time()) if now is None else now
-    identity, gates = admit(candidate_origin, observe(candidate_origin, get), serving_target, observe(serving_target['origin'], get), binary_sha256, now, serving_unhealthy)
+    identity, gates = admit(candidate_origin, observe(candidate_origin, get), serving_target, observe(serving_target['origin'], get), binary_sha256, now, serving_unhealthy, rules_sha256)
     return {'operation': 'check', 'written': False, 'serving': serving_target, 'target': identity, 'gates': gates}
+
+
+RULES_HELP = (
+    "for an image that changes the moderation rules' source: the hash the candidate must report "
+    '(canonical_source_sha256 in src/moderation-regexes.json), in place of matching the serving slot'
+)
 
 
 def build_parser():
@@ -589,12 +603,15 @@ def build_parser():
             '--serving-slot-unhealthy', action='store_true',
             help='failover: admit the candidate although the serving slot is not ready or does not answer; refused when it is healthy',
         )
+        command.add_argument('--rules-sha256', help=RULES_HELP)
         if name == 'cutover':
             command.add_argument('--write', action='store_true')
     commands.add_parser('rollback').add_argument('--write', action='store_true')
-    commands.add_parser('standby').add_argument(
+    standby_command = commands.add_parser('standby')
+    standby_command.add_argument(
         '--binary-sha256', help="the reader's sha256 a standby must run; by default the one the serving slot's record names"
     )
+    standby_command.add_argument('--rules-sha256', help=RULES_HELP)
     return parser
 
 
@@ -602,11 +619,11 @@ def main(argv=None, get=http_get, now=None):
     args = build_parser().parse_args(argv)
     try:
         if args.command == 'check':
-            report = check(args.origin, args.binary_sha256, serving_unhealthy=args.serving_slot_unhealthy, now=now, get=get)
+            report = check(args.origin, args.binary_sha256, serving_unhealthy=args.serving_slot_unhealthy, rules_sha256=args.rules_sha256, now=now, get=get)
         elif args.command == 'standby':
-            report = standby(args.binary_sha256, now=now, get=get)
+            report = standby(args.binary_sha256, rules_sha256=args.rules_sha256, now=now, get=get)
         elif args.command == 'cutover':
-            report = cutover(R2(os.environ), args.origin, args.binary_sha256, write=args.write, serving_unhealthy=args.serving_slot_unhealthy)
+            report = cutover(R2(os.environ), args.origin, args.binary_sha256, write=args.write, serving_unhealthy=args.serving_slot_unhealthy, rules_sha256=args.rules_sha256)
         else:
             report = rollback(R2(os.environ), write=args.write)
     except Refused as refusal:

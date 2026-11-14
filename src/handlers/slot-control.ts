@@ -3,7 +3,7 @@ import type { Env } from "../types";
 import { clientIP } from "../utils";
 
 /** What a store slot pulls: the policy snapshot and the indexing requests.
- *  Read-only, behind a secret used for nothing else. docs/slot-control.md. */
+ *  Read-only, behind a secret used for nothing else. docs/operating.md. */
 
 type SlotEnv = Pick<Env, "CONTROL_DB" | "SLOT_CONTROL_SECRET" | "ADMIN_SECRET" | "RATE_LIMITER_STRICT">;
 

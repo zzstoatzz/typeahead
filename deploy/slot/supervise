@@ -66,7 +66,7 @@ merge=()
 # for a CPU with AES, AVX and carry-less multiply as well. Zig picks its AES
 # and GHASH when it compiles, and without those three it uses software
 # versions, which was most of what reading the relay's TLS stream cost
-# (docs/evals/collector-cpu-20261112). The second binary traps on a CPU
+# (docs/history/evals/collector-cpu-20261112). The second binary traps on a CPU
 # that lacks an instruction it was built with, so it runs only where the
 # kernel lists every one; anywhere else the first runs, as before.
 store_bin=$app/typeahead-store

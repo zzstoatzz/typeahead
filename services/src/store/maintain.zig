@@ -3,7 +3,7 @@
 //! commits, and `relieve` decides what happens when level 0 builds up.
 //!
 //! The thresholds are the ones the 2026-11-10 measurement ran with
-//! (docs/evals/zkv-scale-20261110). Under steady writes of 30 commits a
+//! (docs/history/evals/zkv-scale-20261110). Under steady writes of 30 commits a
 //! minute they never stalled and the slowest step took 40 ms. Under a bulk
 //! load of 13.2 million actors they stalled 74 times for 717 s in total,
 //! 12 s at the longest. No other thresholds have been measured.

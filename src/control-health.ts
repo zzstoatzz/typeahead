@@ -4,7 +4,7 @@ import type { Env } from "./types";
 /** Whether the control database can be used, and the last time a write to it
  *  failed. The admin endpoints fail loudly when it cannot; `/request-indexing`
  *  does not (a visitor's request must not start failing because of it), so
- *  this is where its failures show. docs/slot-control.md. */
+ *  this is where its failures show. docs/operating.md. */
 
 export const CONTROL_FAILURE_KEY = "control_failure";
 
