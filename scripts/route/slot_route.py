@@ -560,7 +560,6 @@ def standby(binary_sha256=None, *, rules_sha256=None, now=None, get=http_get):
     machine when it was admitted.
     """
     serving_target = serving_route(get)
-    now = int(time.time()) if now is None else now
     serving = observe(serving_target['origin'], get)
     serving_reasons = serving_slot_reasons(serving, serving_target)
     slots = []
@@ -571,7 +570,8 @@ def standby(binary_sha256=None, *, rules_sha256=None, now=None, get=http_get):
         if expected is None:
             expected, source = serving_target['binary_sha256'], 'serving route'
         try:
-            identity, gates = admit(origin, observe(origin, get), serving_target, serving, expected, now, bool(serving_reasons), rules_sha256)
+            observed = observe(origin, get)
+            identity, gates = admit(origin, observed, serving_target, serving, expected, int(time.time()) if now is None else now, bool(serving_reasons), rules_sha256)
             slots.append({'origin': origin, 'fit': True, 'cutover_needs_serving_slot_unhealthy': bool(serving_reasons),
                           'binary_sha256_expected_from': source, 'target': identity, 'gates': gates})
         except Refused as refusal:
