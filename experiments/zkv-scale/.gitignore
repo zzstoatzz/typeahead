@@ -1,5 +1,0 @@
-target/
-.zig-cache/
-zig-out/
-zig-pkg/
-__pycache__/

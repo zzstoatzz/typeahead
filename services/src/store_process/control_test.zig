@@ -5,7 +5,6 @@
 const std = @import("std");
 const store_mod = @import("../store/root.zig");
 const store_harness = @import("../store/testing/harness.zig");
-const bootstrap = @import("bootstrap.zig");
 const control = @import("control.zig");
 const http = @import("http.zig");
 const index_bridge = @import("index_bridge.zig");
@@ -850,42 +849,29 @@ test "a store that cannot be read is counted as a failure of the loop" {
     try testing.expectEqual(@as(u64, 1), rig.loop.report().failures);
 }
 
-const bootstrap_policy =
-    \\{"overrides":[{"did":"did:plc:aaaaaaaaaaaaaaaaaaaaaaaa","action":"hide","reason":"withdrawn since the bundle"},
-    \\              {"did":"did:plc:bbbbbbbbbbbbbbbbbbbbbbbb","action":"show","reason":"kept"},
-    \\              {"did":"did:plc:cccccccccccccccccccccccc","action":"show","reason":"reversed since"}],
-    \\ "blocked_domains":[{"domain":"Stale.Example","reason":"unblocked since"},{"domain":"spam.example","reason":"kept"}]}
-;
-
-const bootstrap_actors =
-    \\{"did":"did:plc:aaaaaaaaaaaaaaaaaaaaaaaa","handle":"alice.test","quality_score":1}
-    \\{"did":"did:plc:bbbbbbbbbbbbbbbbbbbbbbbb","handle":"bob.spam.example","quality_score":1}
-    \\{"did":"did:plc:cccccccccccccccccccccccc","handle":"carol.test","quality_score":1}
-    \\{"did":"did:plc:dddddddddddddddddddddddd","handle":"dave.stale.example","quality_score":1}
-    \\{"did":"did:plc:eeeeeeeeeeeeeeeeeeeeeeee","handle":"erin.new.example","quality_score":1}
-;
-
-test "a bootstrapped store converges to the Worker's policy whatever its policy file held" {
+test "a store holding policy with no stored revision converges to the Worker's policy" {
     const f = try Fixture.create(.{ .idle_wait_ms = 1, .sweep_scan = 2 });
     var rig: ?*Rig = null;
     defer if (rig) |attached| attached.destroy() else f.destroy();
-    {
-        const store = try f.owner.acquire();
-        defer f.owner.release();
-        var summary: bootstrap.Summary = .{};
-        try bootstrap.applyPolicy(store, f.arena.allocator(), f.now(), bootstrap_policy, &summary);
-        var reader: Io.Reader = .fixed(bootstrap_actors);
-        try bootstrap.load(testing.allocator, store, f.now(), &reader, .{ .relay = 32_234_719_514 }, null, &summary);
-        try testing.expectEqual(@as(u64, 5), summary.loaded);
-    }
+    _ = try f.commit(&.{
+        .{ .domain_blocked = .{ .domain = "stale.example", .reason = "unblocked since" } },
+        .{ .domain_blocked = .{ .domain = "spam.example", .reason = "kept" } },
+        .{ .override_set = .{ .did = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa", .action = .hide, .reason = "withdrawn since" } },
+        .{ .override_set = .{ .did = "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb", .action = .show, .reason = "kept" } },
+        .{ .override_set = .{ .did = "did:plc:cccccccccccccccccccccccc", .action = .show, .reason = "reversed since" } },
+        .{ .profile = .{ .did = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa", .handle = "alice.test" } },
+        .{ .profile = .{ .did = "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb", .handle = "bob.spam.example" } },
+        .{ .profile = .{ .did = "did:plc:cccccccccccccccccccccccc", .handle = "carol.test" } },
+        .{ .profile = .{ .did = "did:plc:dddddddddddddddddddddddd", .handle = "dave.stale.example" } },
+        .{ .profile = .{ .did = "did:plc:eeeeeeeeeeeeeeeeeeeeeeee", .handle = "erin.new.example" } },
+    }, null);
     try testing.expectEqual(@as(?u64, null), (try f.cursors()).control_policy);
     const erin = "did:plc:eeeeeeeeeeeeeeeeeeeeeeee";
     try testing.expect((try f.live(alice)).hidden and !(try f.live(bob)).hidden and !(try f.live(carol)).hidden);
     try testing.expect((try f.live(dave)).hidden and !(try f.live(erin)).hidden);
 
-    // The Worker has never changed its policy since the store's bundle was
-    // cut, so it is still at the revision the bundle's era had: nothing but
-    // the absence of a stored revision makes the slot ask.
+    // The Worker is still at revision 0: nothing but the absence of a stored
+    // revision makes the slot ask.
     const worker = try f.arena.allocator().create(Worker);
     worker.* = .{ .arena = f.arena.allocator(), .revision = 0 };
     worker.overrides.put(worker.arena, bob, "show") catch unreachable;

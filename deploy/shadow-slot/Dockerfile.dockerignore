@@ -1,6 +1,5 @@
 *
 !deploy/shadow-slot/supervise
-!deploy/shadow-slot/bootstrap.sh
 !services/build.zig
 !services/build.zig.zon
 !services/src
@@ -13,6 +12,3 @@
 !services/tantivy/src
 !src/identity-quarantine.json
 !src/moderation-regexes.json
-!experiments/zkv-scale/dump-actors/Cargo.toml
-!experiments/zkv-scale/dump-actors/Cargo.lock
-!experiments/zkv-scale/dump-actors/src

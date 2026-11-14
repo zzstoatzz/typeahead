@@ -13,7 +13,6 @@ test {
     _ = @import("store_process/http_test.zig");
     _ = @import("store_process/differential_test.zig");
     _ = @import("store_process/index_bridge_test.zig");
-    _ = @import("store_process/bootstrap_test.zig");
     _ = @import("store_process/authority_score.zig");
     _ = @import("store_process/profile_test.zig");
     _ = @import("store_process/enrich.zig");

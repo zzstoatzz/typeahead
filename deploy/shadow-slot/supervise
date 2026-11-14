@@ -23,7 +23,6 @@ fi
 
 data=${SHADOW_DATA:-/data}
 app=${SHADOW_APP:-/app}
-marker=$data/bootstrap.json
 grace=${SHADOW_STOP_GRACE_S:-50}
 store_grace=${SHADOW_STORE_STOP_S:-30}
 restart_min=${SHADOW_RESTART_MIN_S:-1}
@@ -44,22 +43,12 @@ result=0
 
 say() { printf '[supervisor] %s\n' "$*"; }
 
-for forbidden in TURSO_URL TURSO_AUTH_TOKEN TYPEAHEAD_SECRET; do
+for forbidden in ADMIN_SECRET TYPEAHEAD_SECRET; do
   if [[ -n ${!forbidden:-} ]]; then
-    say "$forbidden is set: a shadow slot must not hold production write credentials"
+    say "$forbidden is set: a slot must not hold the Worker's admin secret"
     exit 1
   fi
 done
-
-if [[ ! -f $marker ]]; then
-  say "$marker is missing: the volume is not bootstrapped, so nothing is started"
-  say "run /app/bootstrap.sh on this machine, then restart it"
-  sleep infinity &
-  idle=$!
-  trap 'kill "$idle" 2>/dev/null; exit 0' TERM INT
-  wait "$idle"
-  exit 1
-fi
 
 # The store works in the background and search answers people: when both
 # want a CPU, the index process gets it.
@@ -74,7 +63,6 @@ merge=()
 [[ -n ${INDEX_MERGE_MAX_DOCS:-} ]] && merge+=(--merge-max-docs "$INDEX_MERGE_MAX_DOCS")
 [[ -n ${INDEX_MERGE_NICE:-} ]] && merge+=(--merge-nice "$INDEX_MERGE_NICE")
 [[ -n ${INDEX_WARM_SEGMENT_FILES:-} ]] && merge+=(--warm-segment-files "$INDEX_WARM_SEGMENT_FILES")
-index_only=()
 
 # The image holds the store binary twice: built for any x86-64, and built
 # for a CPU with AES, AVX and carry-less multiply as well. Zig picks its AES
@@ -111,8 +99,7 @@ run_index() {
     --admin-listen 127.0.0.1:8081 \
     --max-sync-lag-s "${INDEX_MAX_SYNC_LAG_S:-120}" \
     --retrieval "${INDEX_RETRIEVAL:-global-merge}" \
-    "${merge[@]}" \
-    "${index_only[@]}"
+    "${merge[@]}"
 }
 
 start() {
@@ -176,13 +163,7 @@ stop_in_order() {
 trap 'stopping=${stopping:-TERM}' TERM
 trap 'stopping=${stopping:-INT}' INT
 
-if [[ $(jq -r '.store_loaded' "$marker") == false ]]; then
-  say "the receipt records an index-only bootstrap: the store process is not started"
-  say "nothing feeds this index, so it serves stale and never reports ready"
-  index_only=(--allow-stale true)
-else
-  start store
-fi
+start store
 start index
 
 while :; do

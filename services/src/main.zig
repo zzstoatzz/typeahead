@@ -4,7 +4,6 @@ const logfire = @import("logfire");
 const log_route = @import("log_route.zig");
 const fatal = @import("fatal.zig");
 const store_role = @import("store_process/role.zig");
-const store_bootstrap = @import("store_process/bootstrap.zig");
 
 const log = std.log.scoped(.ingester);
 
@@ -48,18 +47,11 @@ pub fn main() !void {
     // Explicit role, no default: a machine that was not given one must not
     // quietly open a store and follow the relay.
     const mode = cGetenv("MODE") orelse {
-        log.err("MODE not set: must be store or store-bootstrap", .{});
+        log.err("MODE not set: must be store", .{});
         return error.RoleRequired;
     };
-    if (mem.eql(u8, mode, "store-bootstrap")) {
-        store_bootstrap.run(allocator, io) catch |err| {
-            log.err("store bootstrap failed: {s}", .{@errorName(err)});
-            return err;
-        };
-        return;
-    }
     if (!mem.eql(u8, mode, "store")) {
-        log.err("MODE='{s}' is not a role of this binary: must be store or store-bootstrap", .{mode});
+        log.err("MODE='{s}' is not a role of this binary: must be store", .{mode});
         return error.RoleRequired;
     }
 

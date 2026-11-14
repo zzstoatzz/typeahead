@@ -7,7 +7,6 @@ plan, one line per start, that says when to exit. Nothing here uses the
 network or the real binaries.
 """
 
-import json
 import os
 import shutil
 import signal
@@ -85,8 +84,6 @@ BASH = ""
 def setUpModule() -> None:
     global BASH
     BASH = find_bash()
-    if shutil.which("jq") is None:
-        raise RuntimeError("supervise reads the bootstrap receipt with jq, which is not on PATH")
 
 
 def alive(pid: int) -> bool:
@@ -98,12 +95,11 @@ def alive(pid: int) -> bool:
 
 
 class Slot:
-    def __init__(self, case: unittest.TestCase, *, store_loaded: bool = True, plans: dict[str, list[str]] | None = None, cpu_flags: str | None = None, **settings: int | str):
+    def __init__(self, case: unittest.TestCase, *, plans: dict[str, list[str]] | None = None, cpu_flags: str | None = None, **settings: int | str):
         self.case = case
         self.root = Path(tempfile.mkdtemp(prefix="supervise-test."))
         case.addCleanup(shutil.rmtree, self.root, True)
         (self.root / "data").mkdir()
-        (self.root / "data" / "bootstrap.json").write_text(json.dumps({"store_loaded": store_loaded}))
         app = self.root / "app"
         app.mkdir()
         for binary in ("typeahead-ingester", "typeahead-tantivy"):
@@ -328,17 +324,6 @@ class SuperviseTest(unittest.TestCase):
         self.assertEqual(1, len(slot.pids("start", "store")))
         self.assertEqual([index], slot.pids("term", "index"))
 
-    def test_an_index_only_receipt_runs_and_restarts_the_index_alone(self) -> None:
-        slot = Slot(self, store_loaded=False, plans={"index": ["exit 2"]})
-        first, second = slot.wait_for("start", "index", 2)
-        self.assertNotEqual(first, second)
-        slot.expect(" --allow-stale true\n", 2)
-        self.assertIn("the store process is not started", slot.output())
-        self.assertIn("starting it again in 1s, nothing else keeps running", slot.output())
-        self.stop(slot)
-        self.assertEqual([], [event for event in slot.events() if event[1] == "store"])
-        self.assertEqual([second], slot.pids("term", "index"))
-
     def test_the_aes_build_runs_only_on_a_cpu_that_reports_every_feature_it_needs(self) -> None:
         needed = "fpu cx16 lahf_lm popcnt pni ssse3 sse4_1 sse4_2 avx aes pclmulqdq avx2"
         slot = Slot(self, cpu_flags=needed, plans={"store": ["exit 3"]})
@@ -368,11 +353,13 @@ class SuperviseTest(unittest.TestCase):
         self.assertNotIn("store binary:", slot.output())
         self.stop(slot)
 
-    def test_production_credentials_start_nothing(self) -> None:
-        slot = Slot(self, TURSO_URL="libsql://example.invalid")
-        self.assertEqual(1, slot.exit_status())
-        self.assertEqual([], slot.events())
-        self.assertIn("TURSO_URL is set", slot.output())
+    def test_the_workers_admin_secret_starts_nothing(self) -> None:
+        for name in ("ADMIN_SECRET", "TYPEAHEAD_SECRET"):
+            with self.subTest(name=name):
+                slot = Slot(self, **{name: "not-for-a-slot"})
+                self.assertEqual(1, slot.exit_status())
+                self.assertEqual([], slot.events())
+                self.assertIn(f"{name} is set", slot.output())
 
 
 if __name__ == "__main__":

@@ -86,34 +86,6 @@ test-tantivy:
     TA_ACTOR_READ_RECEIPT="$ta_verify_root/actor-read.json" python3 services/tantivy/tests/actor_read.py
     python3 services/tantivy-normalizer/test_backend_adversarial.py
 
-# shadow comparison tooling (scripts/shadow_compare): unit tests, then the tool against
-# real local Tantivy servers whose indexes differ in known ways, one of them also read
-# back through dump-actors as a bundle. Contacts nothing remote.
-test-shadow-compare:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    test "$(zig version)" = "0.17.0"
-    ta_verify_root=$(mktemp -d "${TMPDIR:-/tmp}/typeahead-shadow-compare.XXXXXX")
-    trap 'rm -rf "$ta_verify_root"' EXIT
-    mkdir -p "$ta_verify_root/normalizer" "$ta_verify_root/tmp"
-    export TMPDIR="$ta_verify_root/tmp"
-    export PYTHONDONTWRITEBYTECODE=1
-    export CARGO_BUILD_JOBS=2
-    export CARGO_TARGET_DIR="${CARGO_TARGET_DIR:-$PWD/services/tantivy/target}"
-    export TA_NORMALIZER_LIB_DIR="$ta_verify_root/normalizer"
-    export TA_IDENTITY_POLICY_PATH="$PWD/src/identity-quarantine.json"
-    export TA_MODERATION_RULES_PATH="$PWD/src/moderation-regexes.json"
-    unset CARGO_BUILD_TARGET TYPEAHEAD_TEST_CRASH TA_RETRIEVAL_STRATEGY
-    python3 services/tantivy-normalizer/build.py --output "$TA_NORMALIZER_LIB_DIR/libtypeahead_normalizer.a"
-    cargo build --release --locked --jobs 2 --manifest-path services/tantivy/Cargo.toml
-    cp "$CARGO_TARGET_DIR/release/typeahead-tantivy" "$ta_verify_root/typeahead-tantivy"
-    export TA_BINARY="$ta_verify_root/typeahead-tantivy"
-    cargo build --release --locked --jobs 2 --manifest-path experiments/zkv-scale/dump-actors/Cargo.toml
-    cp "$CARGO_TARGET_DIR/release/dump-actors" "$ta_verify_root/dump-actors"
-    export DUMP_ACTORS_BINARY="$ta_verify_root/dump-actors"
-    uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts -p 'test_bench_*.py'
-    uv run --with httpx python -W error::ResourceWarning -m unittest discover -s scripts/shadow_compare -p 'test_*.py'
-
 # run the index bridge against a real Tantivy server built from this checkout,
 # and the control loop's policy changes through a real store into its search:
 # loopback only, synthetic actors, everything in one temporary tree

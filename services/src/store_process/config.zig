@@ -98,9 +98,8 @@
 //!   as deferred and looked at again on their walk's next pass. An entry it
 //!   did add comes due again on each retry the resolver asks for.
 //!
-//! The role reads nothing for Turso and opens no connection to it. Its one
-//! connection to the Worker is the control loop's, outbound and read-only.
-//! `MODE=store-bootstrap` loads a new store; see `bootstrap.zig`.
+//! The role's one connection to the Worker is the control loop's, outbound
+//! and read-only.
 
 const std = @import("std");
 const ingest = @import("../ingest.zig");
