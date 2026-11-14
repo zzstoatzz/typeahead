@@ -15,13 +15,10 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   /// "d1-only" (Turso not touched). See
   /// statsMode in src/stats-store.ts.
   STATS_MODE?: string;
-  /// Where getProfile, getProfiles and /debug/reputation read actors:
-  /// "turso", "compare" (Turso answers, differences from the routed slot are
-  /// logged) or "slot". See readMode in src/slot-read.ts and
-  /// docs/turso-retirement.md.
-  PROFILE_MODE?: string;
-  /// The same three values for the corpus counts the cron records for
-  /// /stats: the hourly snapshot and the daily exclusions.
+  /// Where the corpus counts the cron records for /stats come from, the
+  /// hourly snapshot and the daily exclusions: "turso", "compare" (Turso's
+  /// counts, with the routed slot's logged beside them) or "slot". See
+  /// readMode in src/slot-read.ts.
   CORPUS_MODE?: string;
   /// "off" stops every write to, and remaining read of, the Turso actor
   /// tables: the ingester's endpoints answer 410, admin policy changes and
@@ -89,17 +86,6 @@ export interface ActorRow {
   created_at: string;
   associated: string;
   pds: string;
-}
-
-/** getProfiles row: ActorRow plus the Turso-only profile-card columns. */
-export interface ProfileRow extends ActorRow {
-  description: string;
-  banner_url: string;
-  followers_count: number;
-  follows_count: number;
-  posts_count: number;
-  profile_checked_at: number;
-  updated_at: number;
 }
 
 export interface IngestEvent {

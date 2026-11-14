@@ -237,7 +237,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
   }
 
   if (pathname === "/debug/reputation" && request.method === "GET") {
-    return handleReputation(request, db, env);
+    return handleReputation(request, env);
   }
 
   if (pathname === "/request-indexing" && request.method === "POST") {
@@ -276,7 +276,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     if (!success) {
       return json({ error: "rate limited" }, 429);
     }
-    return handleGetProfiles(request, db, env, ctx);
+    return handleGetProfiles(request, env, ctx);
   }
 
   if (
@@ -288,7 +288,7 @@ async function route(request: Request, env: Env, ctx: ExecutionContext, timing: 
     if (!success) {
       return json({ error: "rate limited" }, 429);
     }
-    return handleGetProfile(request, db, env, ctx);
+    return handleGetProfile(request, env, ctx);
   }
 
   if (pathname === "/source-icon" && request.method === "GET") {

@@ -1,30 +1,9 @@
-import type { SqlDb } from "../db";
 import { percentileFromQuantiles, queryLabelers } from "../labelers";
 import { json, computeAuthorityScoreBreakdown, avatarUrl, avatarFallbackUrl } from "../utils";
 import { BSKY_MOD_DID, MOD_HIDE_VALS, resolveHidden } from "../moderation";
-import { enrichProfileDids } from "./admin";
 import type { Env } from "../types";
 import { controlDb } from "../control-store";
-import { readMode, slotActors, SlotReadError } from "../slot-read";
-
-interface ReputationActorRow {
-  did: string;
-  handle: string;
-  display_name: string;
-  avatar_url: string;
-  hidden: number;
-  labels: string;
-  created_at: string;
-  associated: string;
-  pds: string;
-  followers_count: number;
-  follows_count: number;
-  posts_count: number;
-  quality_score: number;
-  updated_at: number;
-  profile_checked_at: number;
-  profile_source: string;
-}
+import { slotActors, SlotReadError, type SlotActor } from "../slot-read";
 
 interface ScorePercentile {
   cohort: "snapshot_actors";
@@ -35,15 +14,6 @@ interface ScorePercentile {
   above: number;
   belowOrEqual: number;
   note: string;
-}
-
-function parseLabels(raw: string): any[] {
-  try {
-    const labels = JSON.parse(raw || "[]");
-    return Array.isArray(labels) ? labels : [];
-  } catch {
-    return [];
-  }
 }
 
 function toIsoSeconds(sec: number | null | undefined): string | null {
@@ -124,130 +94,50 @@ type DomainNote = { domain: string; reason: string; created_at: number };
 
 /** Everything the report says about one actor that comes from a store. */
 interface StoredReputation {
-  row: Omit<ReputationActorRow, "labels" | "profile_checked_at"> & {
-    labels: any[];
-    /** null when the store keeps only whether the profile was ever read */
-    profile_checked_at: number | null;
-    profile_checked: boolean;
-  };
-  enrichedOnView: boolean;
+  actor: SlotActor;
   override: OverrideNote | null;
   blockedDomain: DomainNote | null;
   /** the visible actor an exact lookup of the handle resolves to */
   exactHandleDid: string | null;
 }
 
-const OVERRIDE_SQL = (time: string) => `SELECT action, reason, ${time} AS created_at FROM mod_overrides WHERE did = ?1`;
-const BLOCKED_DOMAIN_SQL = (time: string) => `SELECT domain, reason, ${time} AS created_at FROM blocked_domains
+const OVERRIDE_SQL = "SELECT action, reason, updated_at AS created_at FROM mod_overrides WHERE did = ?1";
+const BLOCKED_DOMAIN_SQL = `SELECT domain, reason, updated_at AS created_at FROM blocked_domains
      WHERE lower(?1) = domain OR lower(?1) LIKE '%.' || domain
      ORDER BY length(domain) DESC LIMIT 1`;
 
-/** The override and the blocked domain that apply to one actor. Turso names
- *  the time a rule was written `created_at`, the control database `updated_at`. */
-async function policyNotes(db: SqlDb, time: "created_at" | "updated_at", did: string, handle: string) {
-  const override = await db.prepare(OVERRIDE_SQL(time)).bind(did).first<OverrideNote>();
-  const blockedDomain = await db.prepare(BLOCKED_DOMAIN_SQL(time)).bind(handle).first<DomainNote>();
-  return { override, blockedDomain };
-}
-
-async function tursoReputation(db: SqlDb, env: Env, actor: string): Promise<StoredReputation | null> {
-  const row = await db.prepare(
-    `SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds,
-            followers_count, follows_count, posts_count, quality_score, updated_at, profile_checked_at, profile_source, profile_source
-     FROM actors
-     WHERE did = ?1 OR handle = ?1 COLLATE NOCASE
-     LIMIT 1`
-  ).bind(actor).first<ReputationActorRow>();
-
-  if (!row) return null;
-
-  // On-view enrichment: an actor someone is literally looking at is the best
-  // possible enrichment candidate (same demand-driven principle as 59f6e39's
-  // immediate request-indexing). Best-effort: failures fall back to the
-  // stale row, with a labeled log line (never a silent collapsing catch).
-  //
-  // Concurrency: the conditional stamp below is an optimistic claim — turso's
-  // single writer guarantees exactly one concurrent viewer gets changes=1 and
-  // does the fetch; the rest proceed with the stale row and see fresh data on
-  // their next view. The claim also stamps dead DIDs (bsky_404) out of the
-  // queue up front, so an unresolvable actor costs one fetch ever instead of
-  // one per view. Named tradeoff: a winner that dies mid-enrich leaves the
-  // actor stamped-but-empty — the same exposure the cron's stamp-first
-  // identity path accepts, for the same queue-pinning reason.
-  let enrichedOnView = false;
-  if (!row.profile_checked_at) {
-    try {
-      const claim = await db.prepare(
-        "UPDATE actors SET profile_checked_at = unixepoch() WHERE did = ?1 AND profile_checked_at = 0"
-      ).bind(row.did).run();
-      if ((claim.meta?.changes ?? 0) === 1) {
-        const r = await enrichProfileDids(db, env, [row.did]);
-        if (r.written > 0) {
-          const fresh = await db.prepare(
-            `SELECT did, handle, display_name, avatar_url, hidden, labels, created_at, associated, pds,
-                    followers_count, follows_count, posts_count, quality_score, updated_at, profile_checked_at
-             FROM actors WHERE did = ?1 LIMIT 1`
-          ).bind(row.did).first<ReputationActorRow>();
-          if (fresh) {
-            Object.assign(row, fresh);
-            enrichedOnView = true;
-          }
-        } else if (r.errors.length > 0) {
-          console.log(JSON.stringify({ event: "enrich_on_view_miss", did: row.did, reason: r.errors[0]?.reason }));
-        }
-      }
-    } catch (e) {
-      console.log(JSON.stringify({ event: "enrich_on_view_failed", did: row.did, error: String(e).slice(0, 120) }));
-    }
-  }
-
-  const exact = await db.prepare(
-    "SELECT did FROM actors WHERE handle = ?1 COLLATE NOCASE AND hidden = 0 LIMIT 1"
-  ).bind(row.handle).first<{ did: string }>();
-  return {
-    row: { ...row, labels: parseLabels(row.labels), profile_checked: row.profile_checked_at > 0 },
-    enrichedOnView,
-    ...await policyNotes(db, "created_at", row.did, row.handle || ""),
-    exactHandleDid: exact?.did ?? null,
-  };
-}
-
-/** The same facts from the routed store slot and the control database. The
- *  slot refreshes profiles on its own schedule, so nothing is fetched on
- *  view; it keeps whether a profile was read, not when, and not from where. */
+/** The actor from the routed store slot, with the override and the blocked
+ *  domain that apply to it from the control database. */
 async function slotReputation(env: Env, actor: string): Promise<StoredReputation | null> {
   const [found] = await slotActors(env, [actor]);
   if (!found) return null;
   const sameHandle = await slotActors(env, [found.handle]);
+  const control = controlDb(env);
+  const override = await control.prepare(OVERRIDE_SQL).bind(found.did).first<OverrideNote>();
+  const blockedDomain = await control.prepare(BLOCKED_DOMAIN_SQL).bind(found.handle).first<DomainNote>();
   return {
-    row: {
-      ...found,
-      hidden: found.hidden_stored ? 1 : 0,
-      associated: JSON.stringify(found.associated),
-      profile_checked_at: null,
-      profile_source: "",
-    },
-    enrichedOnView: false,
-    ...await policyNotes(controlDb(env), "updated_at", found.did, found.handle),
+    actor: found,
+    override,
+    blockedDomain,
     exactHandleDid: sameHandle.find((candidate) => !candidate.hidden)?.did ?? null,
   };
 }
 
-export async function handleReputation(request: Request, db: SqlDb, env: Env): Promise<Response> {
+export async function handleReputation(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const actor = (url.searchParams.get("actor") || url.searchParams.get("handle") || url.searchParams.get("did") || "").trim();
   if (!actor) return json({ error: "actor query param required" }, 400);
 
   let stored: StoredReputation | null;
   try {
-    stored = readMode(env.PROFILE_MODE) === "slot" ? await slotReputation(env, actor) : await tursoReputation(db, env, actor);
+    stored = await slotReputation(env, actor);
   } catch (error) {
     if (!(error instanceof SlotReadError)) throw error;
     console.log(JSON.stringify({ event: "reputation_slot_failed", status: error.status, error: error.message }));
     return json({ error: "actor lookup is temporarily unavailable" }, 503);
   }
   if (!stored) return json({ error: "actor not found" }, 404);
-  const { row, enrichedOnView, override, blockedDomain } = stored;
+  const { actor: row, override, blockedDomain } = stored;
 
   const labels = row.labels;
   const effectiveHidden = resolveHidden({
@@ -298,7 +188,7 @@ export async function handleReputation(request: Request, db: SqlDb, env: Env): P
       // appview reports: self-labels plus Bluesky's own moderation service.
       storedLabelsSource: "self-labels + Bluesky Moderation Service, as the unauthenticated appview reports them",
       labelers,
-      hiddenStored: Boolean(row.hidden),
+      hiddenStored: row.hidden_stored,
       hiddenComputed: Boolean(effectiveHidden),
       labels: moderationLabels(labels),
       domainBlocked: blockedDomain ? {
@@ -313,12 +203,14 @@ export async function handleReputation(request: Request, db: SqlDb, env: Env): P
       } : null,
     },
     indexing: {
-      enrichedOnView,
+      // a slot keeps whether a profile was read, not when or from where, and
+      // fetches nothing on view: enrichedOnView, profileCheckedAt and
+      // profileSource are constants the report page still reads
+      enrichedOnView: false,
       updatedAt: toIsoSeconds(row.updated_at),
-      profileCheckedAt: toIsoSeconds(row.profile_checked_at),
+      profileCheckedAt: null,
       profileChecked: row.profile_checked,
-      // 'bsky' | 'blacksky' | 'pds' | '' (written before the column existed)
-      profileSource: row.profile_source || "",
+      profileSource: "",
       shouldBeInPrefixIndex: Boolean(row.handle && !effectiveHidden),
       exactHandleLookupFindsIt: stored.exactHandleDid === row.did,
       exactHandleLookupDid: stored.exactHandleDid,
