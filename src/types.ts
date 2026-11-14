@@ -11,8 +11,9 @@ export interface Env extends Pick<PublicWorkerEnv, "IMAGE_RENDERER" | "CONTROL_D
   TURSO_URL: string;
   TURSO_AUTH_TOKEN: string;
   /// Where statistics are written and read: "turso-only", "read-turso" (both
-  /// stores written, Turso read) or "read-d1" (both written, D1 read). See
-  /// statsMode in src/stats-store.ts and docs/plans/stats-off-turso.md.
+  /// stores written, Turso read), "read-d1" (both written, D1 read) or
+  /// "d1-only" (Turso not touched). See
+  /// statsMode in src/stats-store.ts.
   STATS_MODE?: string;
   /// Where getProfile, getProfiles and /debug/reputation read actors:
   /// "turso", "compare" (Turso answers, differences from the routed slot are

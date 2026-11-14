@@ -77,12 +77,13 @@ test("one setting decides which stores are written and which is read", () => {
   expect(behaviour("turso-only")).toEqual({ mode: "turso-only", writesD1: false, readsTurso: true });
   expect(behaviour("read-turso")).toEqual({ mode: "read-turso", writesD1: true, readsTurso: true });
   expect(behaviour("read-d1")).toEqual({ mode: "read-d1", writesD1: true, readsTurso: false });
-  for (const other of [undefined, "", "1", "d1", "READ-D1"]) {
+  expect(behaviour("d1-only")).toEqual({ mode: "d1-only", writesD1: true, readsTurso: false });
+  for (const other of [undefined, "", "1", "d1", "READ-D1", "D1-ONLY"]) {
     expect(behaviour(other)).toEqual({ mode: "turso-only", writesD1: false, readsTurso: true });
   }
 });
 
-test("the deployed configuration names one of the three modes", async () => {
+test("the deployed configuration names one of the modes", async () => {
   const config = await Bun.file(new URL("../wrangler.jsonc", import.meta.url).pathname).text();
   const modes = [...config.matchAll(/"STATS_MODE":\s*"([^"]*)"/g)].map((match) => match[1]);
   expect(modes).toHaveLength(1);
@@ -111,6 +112,28 @@ test("while D1 is read, both stores are still written", async () => {
   await Promise.all(tasks);
   expect((await stores.mirror.prepare("SELECT hits FROM request_buckets").all()).results).toEqual([{ hits: 1 }]);
   expect((await stores.turso.prepare("SELECT hits FROM request_buckets").all()).results).toEqual([{ hits: 1 }]);
+});
+
+test("with d1-only, Turso is never asked", async () => {
+  const env = { STATS_DB: stores.d1, STATS_MODE: "d1-only" };
+  // a Turso handle that fails the test if anything touches it
+  const untouchable = new Proxy(stores.turso, { get() { throw new Error("Turso was used under d1-only"); } });
+  const { ctx, tasks } = collectingCtx();
+  recordStats(ctx, env, untouchable, (store, now) => recordRequest(store, "plyr.fm", "search", 200, now));
+  await Promise.all(tasks);
+  await writeStats(env, untouchable, (store, now) =>
+    writeSnapshot(store, { hour: Math.floor(now / 3_600_000), total: 9, with_handles: 8, with_avatars: 7, hidden: 1 }));
+  expect(statsReadDb(env, untouchable)).not.toBe(untouchable);
+  expect((await stores.mirror.prepare("SELECT hits FROM request_buckets").all()).results).toEqual([{ hits: 1 }]);
+  expect((await stores.turso.prepare("SELECT count(*) AS n FROM request_buckets").all()).results).toEqual([{ n: 0 }]);
+});
+
+test("with d1-only, a missing binding and a failed cron write are not silent", async () => {
+  const env = { STATS_MODE: "d1-only" };
+  expect(() => statsReadDb(env, stores.turso)).toThrow("STATS_MODE is d1-only but this Worker has no STATS_DB binding");
+  await expect(writeStats(env, stores.turso, async () => {})).rejects.toThrow("no STATS_DB binding");
+  const failing = { STATS_DB: stores.d1, STATS_MODE: "d1-only" };
+  await expect(writeStats(failing, stores.turso, async () => { throw new Error("d1 down"); })).rejects.toThrow("d1 down");
 });
 
 test("equal rows give the same KV values and the same page from either store", async () => {
