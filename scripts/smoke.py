@@ -299,10 +299,8 @@ def test_request_indexing(base_url: str):
     check("POST empty returns 400", data is not None and data.get("_http_error") == 400, f"got {data}")
 
     # POST with valid handle should return JSON with handle/did/hidden.
-    # 60s timeout: the synchronous turso upsert queues behind the ingester's
-    # batch transactions and spikes 10-45s under firehose floods (measured
-    # 2026-08-04, server-timing turso_write;dur=10178). that variance is the
-    # endpoint's documented behavior, not a regression for this gate to catch.
+    # 60s timeout: the endpoint waits on slingshot, the handle verification
+    # and the appview in turn, and their latency is not this gate's to judge.
     data, _ = fetch(f"{base_url}/request-indexing?handle=zzstoatzz.io", method="POST", timeout=60)
     if not data or "_error" in data or "_http_error" in data:
         check("POST valid handle", False, f"got {data}")
@@ -347,9 +345,8 @@ def test_moderation_filtering(base_url: str):
 # known !no-unauthenticated accounts, validated live against bsky before use so
 # a removed label can never false-fail us. dynamic discovery via searchActors is
 # impossible: bsky's unauthenticated search excludes labeled actors entirely
-# (getProfile still shows them). refresh candidates with:
-#   turso db shell typeahead "SELECT did, handle FROM actors WHERE labels LIKE
-#     '%no-unauthenticated%' AND hidden = 0 ORDER BY followers_count DESC LIMIT 8"
+# (getProfile still shows them). refresh candidates from accounts whose
+# getProfile labels include !no-unauthenticated.
 NOAUTH_FIXTURES = [
     "did:plc:vc7f4oafdgxsihk4cry2xpze",  # jcsalterego.bsky.social
     "did:plc:3ijusmsw4eizbtvn3k263rhv",  # philinvestigates.com
@@ -524,145 +521,6 @@ def test_comparison(base_url: str, queries: list[str]):
         )
 
 
-def test_sync_keyset_plan():
-    """The sync drain's paged keyset query must plan as an index SEARCH on
-    Turso *with bound parameters*. The plain OR keyset form planned fine with
-    literals but degraded to a full index SCAN of the ~8M-row corpus when the
-    values arrived as hrana params, blowing the 60s fetch deadline on every
-    page-2 query (Aug 3-14 2026 staleness incident). Stock local SQLite plans
-    both forms fine, so only a live EXPLAIN against Turso can catch it."""
-    print("\n--- turso keyset query plan ---")
-    turso_url = os.environ.get("TURSO_URL", "")
-    token = os.environ.get("TURSO_AUTH_TOKEN", "")
-    if not turso_url or not token:
-        print(f"  [{SKIP}] skipped (set TURSO_URL + TURSO_AUTH_TOKEN)")
-        return
-    if turso_url.startswith("libsql://"):
-        turso_url = "https://" + turso_url.removeprefix("libsql://")
-
-    sql = (
-        "EXPLAIN QUERY PLAN SELECT did FROM actors WHERE handle != '' "
-        "AND updated_at >= ?1 AND (updated_at > ?1 OR did > ?2) "
-        "ORDER BY updated_at, did LIMIT 500"
-    )
-    body = json.dumps({
-        "requests": [
-            {"type": "execute", "stmt": {"sql": sql, "args": [
-                {"type": "text", "value": "1786740000"},
-                {"type": "text", "value": "did:plc:aaaa"},
-            ]}},
-            {"type": "close"},
-        ]
-    }).encode()
-    try:
-        req = urllib.request.Request(
-            f"{turso_url}/v2/pipeline", data=body, method="POST",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            result = json.loads(resp.read())
-        rows = result["results"][0]["response"]["result"]["rows"]
-        details = [r[3]["value"] for r in rows]
-    except Exception as e:
-        check("keyset plan fetch", False, str(e))
-        return
-    plan = "; ".join(details)
-    check("keyset page query is an index SEARCH (not SCAN)",
-          any("SEARCH" in d for d in details) and not any("SCAN" in d for d in details),
-          plan)
-
-
-def test_cron_selector_plans():
-    """THE CRON CONTRACT: every cron selector must plan as an index SEARCH on
-    Turso, never a corpus scan. The moderation-refresh selector used to run two
-    full-table ORDER BY scans over ~11M rows every hour; these EXPLAINs pin its
-    replacement (quality-keyset walk + firehose event queue, src/cron.ts) to
-    the indexes that serve them. Like test_sync_keyset_plan, only a live
-    EXPLAIN against Turso is trustworthy — local SQLite plans differently."""
-    print("\n--- turso cron selector plans ---")
-    turso_url = os.environ.get("TURSO_URL", "")
-    token = os.environ.get("TURSO_AUTH_TOKEN", "")
-    if not turso_url or not token:
-        print(f"  [{SKIP}] skipped (set TURSO_URL + TURSO_AUTH_TOKEN)")
-        return
-    if turso_url.startswith("libsql://"):
-        turso_url = "https://" + turso_url.removeprefix("libsql://")
-
-    # each selector must be served by its named index with the ORDER BY coming
-    # from index order (no temp b-tree — a sort spill means the LIMIT no longer
-    # bounds the work and the whole matching set gets materialized). The event
-    # queue legitimately plans as `SCAN ... USING INDEX`: SQLite says SCAN when
-    # there is no constraint on the index's key column, but the partial index
-    # predicate does the filtering and LIMIT + index order cap it at 200
-    # entries. The dangerous plan is a scan of the TABLE or the wrong index.
-    selectors = {
-        # quality walk: keyset literals inlined exactly as src/cron.ts builds them
-        "quality walk uses idx_actors_visible_quality_score": (
-            "EXPLAIN QUERY PLAN SELECT did FROM actors "
-            "WHERE handle != '' AND hidden = 0 AND quality_score > 0 "
-            "AND (quality_score < 123.45 OR (quality_score = 123.45 AND rowid < 678)) "
-            "ORDER BY quality_score DESC, rowid DESC LIMIT 800",
-            "idx_actors_visible_quality_score",
-        ),
-        "event queue uses idx_actors_refresh_queue": (
-            "EXPLAIN QUERY PLAN SELECT did FROM actors "
-            "WHERE profile_checked_at = 0 AND handle != '' "
-            "ORDER BY updated_at DESC LIMIT 200",
-            "idx_actors_refresh_queue",
-        ),
-        # the identity lease's inner selector, as src/identity-queue.ts LEASE_SQL builds it
-        "identity lease uses idx_identity_queue_due": (
-            "EXPLAIN QUERY PLAN SELECT did FROM identity_queue "
-            "WHERE due_at <= unixepoch() ORDER BY due_at LIMIT 50",
-            "idx_identity_queue_due",
-        ),
-        # the daily exclusion count, as src/exclusions.ts builds both queries
-        "exclusion candidates use idx_actors_hidden": (
-            "EXPLAIN QUERY PLAN SELECT did, handle, labels FROM actors WHERE hidden != 0",
-            "idx_actors_hidden",
-        ),
-        "identity exclusion count uses idx_actors_handle": (
-            "EXPLAIN QUERY PLAN " + identity_count_sql(),
-            "idx_actors_handle",
-        ),
-    }
-    for label, (sql, index_name) in selectors.items():
-        body = json.dumps({
-            "requests": [
-                {"type": "execute", "stmt": {"sql": sql}},
-                {"type": "close"},
-            ]
-        }).encode()
-        try:
-            req = urllib.request.Request(
-                f"{turso_url}/v2/pipeline", data=body, method="POST",
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                result = json.loads(resp.read())
-            rows = result["results"][0]["response"]["result"]["rows"]
-            details = [r[3]["value"] for r in rows]
-        except Exception as e:
-            check(f"{label} (plan fetch)", False, str(e))
-            continue
-        plan = "; ".join(details)
-        check(label,
-              any(f"INDEX {index_name}" in d for d in details)
-              and not any("TEMP B-TREE" in d.upper() for d in details)
-              and not any(d.startswith("SCAN actors") and "INDEX" not in d for d in details),
-              plan)
-
-
-def identity_count_sql() -> str:
-    path = os.path.join(os.path.dirname(__file__), "..", "src", "identity-quarantine.json")
-    with open(path) as f:
-        handles = ", ".join("'" + h.lower().replace("'", "''") + "'" for h in json.load(f))
-    return (
-        "SELECT (SELECT COUNT(*) FROM actors WHERE handle = 'handle.invalid' COLLATE NOCASE) AS handle_invalid, "
-        f"(SELECT COUNT(*) FROM actors WHERE handle COLLATE NOCASE IN ({handles})) AS quarantined"
-    )
-
-
 def main():
     parser = argparse.ArgumentParser(description="typeahead smoke tests")
     parser.add_argument("--url", required=True, help="typeahead service URL")
@@ -702,8 +560,6 @@ def main():
         print(f"  [{SKIP}] skipped (use --secret or set TYPEAHEAD_SECRET)")
 
     test_page_scripts(args.url)
-    test_sync_keyset_plan()
-    test_cron_selector_plans()
 
     if args.compare:
         test_comparison(args.url, args.queries)
