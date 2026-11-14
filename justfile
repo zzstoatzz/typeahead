@@ -76,7 +76,7 @@ test-tantivy:
     done
     export TA_RETRIEVAL_STRATEGY=global-merge
     TA_SOURCE_AUTHORITY_RECEIPT="$ta_verify_root/source-authority.json" python3 services/tantivy/tests/source_authority.py
-    python3 services/tantivy-input/test_rust.py --binary "$TA_BINARY" --scratch-root "$TMPDIR" --receipt "$ta_verify_root/source-policy.json" --policy-checks
+    TA_SOURCE_POLICY_RECEIPT="$ta_verify_root/source-policy.json" python3 services/tantivy/tests/source_policy.py
     python3 services/tantivy/tests/source_version_only.py --binary "$TA_BINARY" --actors 128 --receipt "$ta_verify_root/source-version-only.json"
     TA_EXPIRY_COVERAGE_RECEIPT="$ta_verify_root/expiry.json" python3 services/tantivy/tests/expiry_coverage.py
     TA_SOURCE_PDS_RECEIPT="$ta_verify_root/source-pds.json" python3 services/tantivy/tests/source_pds.py

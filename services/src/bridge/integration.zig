@@ -518,12 +518,12 @@ test "the bridge keeps a real Tantivy server equal to the store through changes,
     const final = try f.indexStatus();
     std.debug.print("bridge integration: {d} actors bootstrapped, {d} change-log entries, {d} bridge kills, {d} failed steps, " ++
         "server killed 5 times; index holds {d} live and {d} tombstones at revision {d}; ready={any} sync_lag_s={d} " ++
-        "cutover_source_ready={any} reconciliation={f}\n", .{
+        "reconciliation={f}\n", .{
         actor_count,                                        f.store.next_change - 1,
         kills,                                              failed_steps,
         final.get("actor_count").?.integer,                 final.get("tombstone_count").?.integer,
         final.get("source_observation_revision").?.integer, final.get("ready").?.bool,
-        final.get("sync_lag_s").?.integer,                  final.get("cutover_source_ready").?.bool,
+        final.get("sync_lag_s").?.integer,
         json.fmt(final.get("reconciliation").?, .{}),
     });
 }

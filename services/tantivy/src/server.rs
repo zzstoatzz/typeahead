@@ -486,27 +486,6 @@ async fn status(State(app): State<App>) -> Response {
         "age_s": last_round.map(|t| now.saturating_sub(t)),
         "polling_freshness_is_full_coverage": false,
     });
-    value["cutover_source_ready"] = json!(
-        app.engine.generation_ready(&g)
-            && g.metadata.full_source
-            && !app.engine.allow_partial
-            && !app.engine.allow_stale
-            && g.metadata.source_observation_revision > 0
-            && g.metadata.source_cursor["source_policy"] == "turso-authoritative-observations-v2"
-            && g.metadata.source_cursor["schema_version"] == 1
-            && g.metadata.source_cursor["cycle"].is_null()
-            && g.metadata.source_cursor["through"].as_u64() == Some(g.metadata.watermark)
-            && g.metadata.source_cursor["build_id"].as_str() == Some(g.metadata.build_id.as_str())
-            && g.metadata.source_cursor["snapshot_watermark"].as_u64()
-                == Some(g.metadata.snapshot_watermark)
-            && g.metadata.format == "tantivy-0.27-f32-did-expiry-v4"
-            && now.saturating_sub(g.metadata.watermark) <= 120
-            && policy.is_some()
-            && g.policy_fresh(now)
-            && last_round.is_some_and(|t| t <= now && now - t <= 86400)
-            && round_duration.is_some_and(|duration| duration <= 86400)
-    );
-    value["cutover_source_slo"] = json!({"poll_max_age_s":120,"policy_max_age_s":300,"round_max_age_s":86400,"round_max_duration_s":86400,"qualified":false});
     value["source_snapshot_watermark"] = json!(g.metadata.snapshot_watermark);
     value["sync_lag_s"] = json!(epoch().saturating_sub(g.metadata.watermark));
     with_identity(

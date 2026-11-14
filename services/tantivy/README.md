@@ -1,7 +1,7 @@
 # Tantivy search backend
 
-The production search backend. Deployment and routing belong to the managed
-refresh controller; running local tests does not deploy it. It uses Tantivy 0.27.0 with the repository's
+The search engine each slot runs beside its store process, which feeds it
+through the source protocol below. It uses Tantivy 0.27.0 with the repository's
 canonical Zig normalization/PDS code through `../tantivy-normalizer`.
 
 ## Build and local verification
@@ -58,10 +58,10 @@ segment. These options do not change the serving writer. Finalization merges
 disjoint groups concurrently when needed to reach the segment bound. The
 `import_indexed` and `import_merge_finished` events separate indexing and final
 merge timings. Multiple segments require search qualification on the same input
-before changing production settings. See the [isolated performance evaluation](../../docs/history/evals/refresh-performance-20261105/README.md).
+before changing production settings.
 
-Input is a JSONL stream; production seeds come from the controller's verified
-SQLite checkpoint stream:
+`import` builds an index from a JSONL stream. The tests seed their indexes
+with it; a slot's index is fed by its store:
 
 1. Manifest: `type=manifest`, `build_id`, `source_watermark`, `actor_count`,
    `source_actor_count`, `partial=false`, and source provenance.
@@ -150,7 +150,7 @@ Public GET routes:
 
 `/actors` and `/corpus` answer 503 while the index is not ready, as search
 does. They are what the Worker reads profiles and the statistics page's corpus
-numbers from; see [Turso retirement](https://tangled.org/zzstoatzz.io/typeahead/blob/main/docs/history/turso-retirement.md).
+numbers from.
 An actor document may carry `description`, `banner_url`, `updated_at` and
 `profile_checked`. Each is stored only when set, so a document without them
 serializes and hashes as it did before they existed.
@@ -158,7 +158,7 @@ serializes and hashes as it did before they existed.
 Default `/ready` and search require a verified full-source import, matching
 normalizer/plan versions, at most 256 segments, and a committed sync watermark no
 older than 1,800 seconds (or implausibly future-dated). `/health` and index status
-remain readable while stale, allowing the replay controller to advance the cursor.
+remain readable while stale, allowing the source to advance the cursor.
 Do not start sync by waiting for fresh search readiness: read index status first.
 Only synthetic/local tests may explicitly use `--allow-partial true` and
 `--allow-stale true`. These flags are absent from a real development deployment.
@@ -263,7 +263,7 @@ Authorization: Bearer <platform-provided secret>
 
 {
   "actors": ["full actor/tombstone records"],
-  "source_cursor": {"controller-owned cursor": "..."},
+  "source_cursor": {"the source's own cursor": "..."},
   "expected_source_cursor": null,
   "watermark": 1793236000
 }
@@ -271,7 +271,7 @@ Authorization: Bearer <platform-provided secret>
 
 Batches are at most 1,000 actors and 16 MiB. `source_cursor` is an opaque bounded
 object, compare-and-set against the previous committed cursor; initial cursor is
-null. `watermark` is optional and advances only when the controller has drained all
+null. `watermark` is optional and advances only when the source has drained all
 source streams through its safe cutoff. It must not mean merely the largest actor
 timestamp seen. Responses report applied/replayed/stale counts, cursor, watermark
 and Tantivy commit opstamp. On a slot the store process's index bridge is the
@@ -324,7 +324,7 @@ the end of that merge does not remove the document is not established.
 ## Source-owned observations and generation policy
 
 The private `/admin/source-state`, `/admin/source-page` and
-`/admin/source-reconcile` routes support the read-only source controller. Each
+`/admin/source-reconcile` routes are the source protocol the store's index bridge speaks. Each
 reconciliation batch checks expected document hashes, the prior opaque cursor
 and an independent observation revision before committing. Identical batch-ID
 retries recover the durable receipt; changed-body reuse and stale preconditions
@@ -333,7 +333,6 @@ observations that differ only in version retain the stored document/version and
 count as replayed while advancing durable observation metadata. That stored
 version can remain a coarse seed or last projection timestamp; it does not order
 source observations. All other validated Actor fields remain part of equality.
-See [the paired write experiment](../../docs/history/evals/tantivy-dev-20261028/source-version-only.md).
  Source
 Unix seconds remain evidence rather than an invented total order.
 
@@ -368,19 +367,10 @@ missing expiry evidence or serve those generations as qualified. Policy freshnes
 policy hash, clock, age, counts and canonical rules source hash; it never exposes
 the policy's rule/DID lists or internal retry receipt.
 
-Timestamp polling and full identity-sweep coverage are reported separately.
-Sweep completion retains both its start and completion clocks. The additional
-`cutover_source_ready` gate requires a fresh policy, polling age at most 120
-seconds, and completed sweep age and duration each at most one day. Those
-initial bounds are explicitly unqualified operational SLOs; a true boolean does
-not establish full-corpus throughput, policy query cost or deployment admission.
-Native local operator rows still require independent inventory/migration.
-
-Run `python3 services/tantivy-input/test_rust.py --policy-checks` (part of
-`just test-tantivy`; it drives the engine with the retired Turso poller as its
-client) for actual HTTP/SQLite/Rust policy tests, including pre-K refill, source ordering, policy
-expiry/readiness, failed policy admission, deletion without reindexing,
-restart and commit-abort durability. `/debug/search` reports hydrated candidates,
+`services/tantivy/tests/source_policy.py` (part of `just test-tantivy`) drives the
+real binary through policy expiry and readiness, refused snapshots, policy-only
+batches that change eligibility before the top results are cut, and a snapshot
+committing with its batch at both kill points.
 hydration time and moderation time separately for controlled qualification.
 
 ## Retrieval/storage contract and remaining gates
@@ -409,7 +399,6 @@ K eligible profiles per exact/preference bucket across all segments. Default
 eligibility before acceptance, and both use exact mathematical f32 base-plus-boost
 comparison. Debug fields distinguish scorer setup, rank-head reads, document
 visits, hydrated profiles and unique segments; they are not disk/posting counters.
-See [the synthetic work comparison](../../docs/history/evals/tantivy-dev-20261028/rank-merge.md).
 No full-corpus speed claim follows from those fixtures.
 
 Successful public responses include `X-Typeahead-Engine`, `X-Typeahead-Build`,

@@ -174,7 +174,6 @@ class Admission(unittest.TestCase):
         identity, gates = self.admit()
         self.assertEqual(identity, {'engine': 'tantivy', 'origin': SLOT_A, 'build_id': 'b1794333857-cp-bootstrap', 'format': route.FORMAT,
                                     'binary_sha256': BINARY, 'retrieval_strategy': 'global-merge'})
-        self.assertNotIn('cutover_source_ready_reported', gates)
         self.assertEqual((gates['sync_lag_s'], gates['policy_age_s'], gates['reconciliation_age_s'], gates['reconciliation_duration_s']), (20, 28, 27000, 6700))
         self.assertEqual(gates['source_policy'], 'store-change-log-v1')
         self.assertIs(gates['policy_compared_with_serving'], True)

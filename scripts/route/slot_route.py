@@ -60,7 +60,7 @@ IDENTITY_HEADERS = {
     'binary_sha256': 'x-typeahead-binary-sha256',
     'retrieval_strategy': 'x-typeahead-retrieval-strategy',
 }
-# The reader's own ceilings (`cutover_source_slo` in /index/status).
+# The ceilings on poll, policy and round age.
 MAX_SYNC_LAG_S = 120
 MAX_POLICY_AGE_S = 300
 # Two slots that follow the same network differ by what arrived in the last
