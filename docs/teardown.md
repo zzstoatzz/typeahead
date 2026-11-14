@@ -6,28 +6,8 @@ parts used. Read on 2026-11-13 with read-only commands, with measurements
 from the cutover of the same date. "Not checked" marks what neither covered.
 
 Nothing in the first group may be deleted without the owner's explicit go.
-Turso has not been approved for deletion.
 
 ## Permanent deletions that need the owner's go
-
-### The Turso database `typeahead`
-
-Take a final dump first and keep it somewhere that outlives the database.
-
-Nothing in this repository's Worker, tests or tooling reads or writes it, and
-`just deploy-worker` does not consult it. The deployed Worker has made no
-Turso query since 2026-11-13. Before deleting the database:
-
-- Deploy the public Worker from a commit without the Turso client. The Worker
-  deployed before it builds a client on every request, though it sends
-  nothing, and the deploy gate of earlier commits reads Turso's rules.
-- Delete the Worker's `TURSO_URL` and `TURSO_AUTH_TOKEN` secrets
-  (`bunx wrangler secret delete`) and take both out of `.env`.
-
-The code under [The old ingester's code](#the-old-ingesters-code) can still
-read it and runs nowhere.
-
-Size and plan: not checked.
 
 ### R2: old prefixes in `typeahead-index`
 
@@ -61,6 +41,12 @@ On 2026-11-14, with the owner's go:
 - The Logfire alerts `ingester heartbeat missing` and `native search overlay
   sync silent`.
 - Every remote branch except `main`, on both remotes.
+- The Turso database `typeahead`, after the Worker without a Turso client
+  was deployed (`4cd2595`), Turso's query counters had not moved for 54
+  minutes of traffic, and the Worker's `TURSO_URL` and `TURSO_AUTH_TOKEN`
+  secrets were deleted. No dump was taken: the slots hold the accounts, the
+  control database held identical moderation rules, and the statistics history
+  is in D1.
 
 From the code, on 2026-11-14. The deployed Worker changes with its next
 deploy:
