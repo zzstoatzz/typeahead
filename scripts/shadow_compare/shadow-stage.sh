@@ -38,7 +38,7 @@ if [[ ! -e $sources/.complete ]]; then
   rm -rf "$sources"
   mkdir -p "$sources"
   curl -fsSL "$repository/archive/$commit.tar.gz" | tar -xz -C "$sources" --strip-components=1 --wildcards \
-    '*/scripts/bench.py' '*/scripts/shadow_compare/*' '*/deploy/tantivy-dev-ui/candidate-smoke-cases.json' \
+    '*/scripts/bench.py' '*/scripts/shadow_compare/*' \
     '*/src/moderation-regexes.json' \
     || die "could not fetch $repository at $commit"
   touch "$sources/.complete"

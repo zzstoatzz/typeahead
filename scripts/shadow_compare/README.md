@@ -56,7 +56,7 @@ what this cannot detect: a difference in a field neither side stores in the acto
 
 a server that predates the `fields` option of source-state returns only a document hash. that hash includes the source version, so against such a server every DID two independent backends hold shows as `document_hash_differs` and the corpus gate cannot pass.
 
-**search** runs the canonical sets from [bench.py](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/bench.py), the [recorded candidate and PDS-scope cases](https://tangled.org/zzstoatzz.io/typeahead/blob/main/deploy/tantivy-dev-ui/candidate-smoke-cases.json), and any extra queries, against both backends directly. per query it reports identical ordered DIDs or the first differing rank, set overlap, actors whose response body differs, whether the scope acknowledgment headers agree, and whether bench.py's structural checks and each case's recorded expectations pass on each side. a differing query is run once more after a settle delay. a remaining difference is explained only when a DID the corpus phase found differing appears in either result.
+**search** runs the canonical sets from [bench.py](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/bench.py), the [recorded candidate and PDS-scope cases](https://tangled.org/zzstoatzz.io/typeahead/blob/main/scripts/shadow_compare/search-cases.json), and any extra queries, against both backends directly. per query it reports identical ordered DIDs or the first differing rank, set overlap, actors whose response body differs, whether the scope acknowledgment headers agree, and whether bench.py's structural checks and each case's recorded expectations pass on each side. a differing query is run once more after a settle delay. a remaining difference is explained only when a DID the corpus phase found differing appears in either result.
 
 it does not prove agreement on queries outside the set, and an explanation is an association, not a derivation: a flagged DID in the results does not show that it caused the difference. bench.py's spam guard needs Bluesky's answer and runs only with `--bluesky-oracle`. the public Worker path can be compared with `--production-public`, for information only, since its cache may be a minute old.
 
@@ -112,7 +112,7 @@ on the stopped walk's recorded differences the redesigned classes read: 12,570 d
 
 ```sh
 uv run scripts/shadow_compare/compare.py \
-  --production https://typeahead-tantivy-a.fly.dev --shadow https://SHADOW \
+  --production https://PRODUCTION --shadow https://SHADOW \
   --phases search,latency,freshness
 ```
 
@@ -176,7 +176,7 @@ mkdir corpus-report
 fly ssh sftp get -a typeahead-shadow-a /data/compare/$RUN_ID/report/report.json corpus-report/report.json
 fly ssh sftp get -a typeahead-shadow-a /data/compare/$RUN_ID/report/differing-dids.txt corpus-report/differing-dids.txt
 uv run scripts/shadow_compare/compare.py --phases search,latency,freshness \
-  --production https://typeahead-tantivy-a.fly.dev --shadow https://typeahead-shadow-a.fly.dev \
+  --production https://PRODUCTION --shadow https://typeahead-shadow-a.fly.dev \
   --flagged-from corpus-report/report.json
 ```
 

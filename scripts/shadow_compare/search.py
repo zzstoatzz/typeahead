@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import bench
 
-CASES_FILE = ROOT / "deploy/tantivy-dev-ui/candidate-smoke-cases.json"
+CASES_FILE = Path(__file__).resolve().with_name("search-cases.json")
 ACK_HEADERS = ("x-typeahead-pds", "x-typeahead-prefer-pds", "x-typeahead-preference", "x-typeahead-boost")
 IDENTITY_HEADERS = ("x-typeahead-build", "x-typeahead-format", "x-typeahead-binary-sha256", "x-typeahead-retrieval-strategy")
 SCOPE_PARAMS = ("pds", "prefer_pds", "preference", "boost")
