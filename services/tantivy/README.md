@@ -94,11 +94,14 @@ The private observation protocol and restart retain these aggregates atomically
 with documents/cursors.
 
 Older formats remain readable, but their missing coverage is `unknown`, never
-inferred zero. They cannot serve through the new readiness gate or qualify for
-cutover until evidence is established. A future bounded committed-index audit can
-upgrade existing data without full reimport; this change does not implement that
-audit or claim one ran. Changed classifier/rule fingerprints likewise require
-new evidence. Unrelated binary changes do not invalidate the classifier hash.
+inferred zero, and they cannot serve through the readiness gate.
+
+The counts are made under one set of moderation rules and one classifier, whose
+fingerprints the evidence records, and a write is refused while they differ from
+the binary's. At start `serve` compares them and, when they differ, reads every
+committed document once, counts again under its own rules and commits the new
+counts with its fingerprints before accepting a write. `imported` stays what the
+import counted. Unrelated binary changes do not change the fingerprints.
 
 Actor fields are `did`, `handle`, `display_name`, `avatar_url`, `labels` (JSON array),
 `associated` (JSON object), `created_at`, original `pds`, finite `quality_score` (f32),

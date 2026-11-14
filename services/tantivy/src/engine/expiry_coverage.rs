@@ -49,6 +49,10 @@ impl Counts {
         }
     }
 
+    pub fn add(&mut self, other: &Self) -> Result<()> {
+        self.replace(&Self::default(), other)
+    }
+
     fn replace(&mut self, old: &Self, new: &Self) -> Result<()> {
         macro_rules! update {
             ($($field:ident),+) => {$(self.$field = self.$field.checked_sub(old.$field)
@@ -119,13 +123,29 @@ impl Evidence {
         Ok(())
     }
 
+    /// Whether `current` was counted under this binary's rules and classifier.
+    pub fn rules_current(&self) -> Result<bool> {
+        Ok(
+            moderation::ModerationPolicy::rules_source_sha256()?
+                == self.canonical_rules_source_sha256
+                && self.classifier_sha256 == classifier_sha256(),
+        )
+    }
+
+    /// Take a count of the committed documents made under this binary's rules
+    /// and classifier. `imported` stays what the import counted under its own.
+    pub fn recounted(&mut self, current: Counts) -> Result<()> {
+        self.canonical_rules_source_sha256 =
+            moderation::ModerationPolicy::rules_source_sha256()?.into();
+        self.classifier_sha256 = classifier_sha256().into();
+        self.current = current;
+        Ok(())
+    }
+
     pub fn replace_actor(&mut self, old: Option<&Actor>, new: &Actor) -> Result<()> {
-        if moderation::ModerationPolicy::rules_source_sha256()?
-            != self.canonical_rules_source_sha256
-            || self.classifier_sha256 != classifier_sha256()
-        {
+        if !self.rules_current()? {
             return Err(Error::Conflict(
-                "expiry coverage rules changed; bounded audit required".into(),
+                "expiry coverage was counted under other rules".into(),
             ));
         }
         let previous = old.map(Counts::actor).unwrap_or_default();

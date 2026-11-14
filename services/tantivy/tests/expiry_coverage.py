@@ -98,6 +98,26 @@ def run():
                 assert request(public,'/index/status')[2]['expiry_coverage']==committed
                 checks.append('coverage_and_repaired_readiness_survive_restart')
             finally:stop(child)
+            # A count made under other rules is made again at start, from the committed documents.
+            meta_path=data/'index/meta.json';meta=json.loads(meta_path.read_text());payload=json.loads(meta['payload'])
+            payload['expiry_coverage']['canonical_rules_source_sha256']='0'*64
+            payload['expiry_coverage']['current']={key:0 for key in payload['expiry_coverage']['current']}
+            meta['payload']=json.dumps(payload);meta_path.write_text(json.dumps(meta))
+            child,public,admin=start(data,log,secret)
+            try:
+                assert request(public,'/ready')[0]==200
+                recounted=request(public,'/index/status')[2]['expiry_coverage']
+                assert recounted==committed,(recounted,committed)
+                added=actor(9,'coverage9.test','Coverage Needle');added['version']=floor
+                observe(admin,secret,[added],6)
+                assert request(public,'/index/status')[2]['expiry_coverage']['current']['live_actors']==6
+                checks.append('a_count_under_other_rules_is_made_again_at_start')
+            finally:stop(child)
+            child,public,admin=start(data,log,secret)
+            try:
+                assert request(public,'/ready')[0]==200
+                assert request(public,'/index/status')[2]['expiry_coverage']['current']['live_actors']==6
+            finally:stop(child)
         for kind in ['bad-footer','short-count','malformed-shape']:
             local=copy.deepcopy(rows[:3])
             if kind=='malformed-shape':local[-1]['labels']={'invalid':'array required'}

@@ -174,6 +174,7 @@ async fn run() -> Result<()> {
                 .get("concurrency")
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(4);
+            engine.recount_stale_coverage()?;
             engine.start_pending_merges()?;
             server::serve(Arc::new(engine), listen, admin, concurrency).await?;
         }

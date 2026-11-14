@@ -449,6 +449,56 @@ impl Engine {
             .map_err(|_| Error::Storage("writer lock poisoned".into()))?;
         merge_threads::renice(nice)
     }
+    /// Count label-expiry coverage again when the index's count was made
+    /// under other moderation rules or another classifier, before any write
+    /// is accepted. A write is refused while the two differ, so without this
+    /// an index could not outlive a rules change. Every committed document
+    /// is read once.
+    pub fn recount_stale_coverage(&self) -> Result<()> {
+        let mut writer = self
+            .writer
+            .lock()
+            .map_err(|_| Error::Storage("writer lock poisoned".into()))?;
+        let generation = self.snapshot();
+        let mut metadata = generation.metadata.clone();
+        let Some(coverage) = metadata.expiry_coverage.as_mut() else {
+            return Ok(());
+        };
+        if coverage.rules_current()? {
+            return Ok(());
+        }
+        let started = std::time::Instant::now();
+        let mut current = expiry_coverage::Counts::default();
+        let mut documents = 0u64;
+        for segment in generation.searcher.segment_readers() {
+            let store = segment.get_store_reader(1)?;
+            for document in store.iter::<TantivyDocument>(segment.alive_bitset()) {
+                let document = document?;
+                let raw = document
+                    .get_first(self.fields.actor)
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| Error::Storage("committed profile missing".into()))?;
+                current.add(&expiry_coverage::Counts::actor(&serde_json::from_str(raw)?))?;
+                documents += 1;
+            }
+        }
+        coverage.recounted(current)?;
+        commit(&mut writer.writer, &mut metadata)?;
+        writer.reader.reload()?;
+        let next = Generation::new(
+            writer.reader.searcher(),
+            metadata,
+            generation.policy.clone(),
+            generation.policy_sha256.clone(),
+            Some(&generation),
+        )?;
+        eprintln!(
+            "{}",
+            json!({"event":"expiry_coverage_recounted","documents":documents,"live_actors":next.metadata.expiry_coverage.as_ref().map(|c| c.current.live_actors),"elapsed_s":started.elapsed().as_secs()})
+        );
+        *self.generation.write().unwrap() = Arc::new(next);
+        Ok(())
+    }
     /// Start the merges the previous process left pending, before any write
     /// is accepted. The commit carries the committed payload unchanged.
     pub fn start_pending_merges(&self) -> Result<()> {
